@@ -1,0 +1,210 @@
+{
+    "handoff_id": "5ad2caaa-aef5-436f-8788-e9ee91db6b34",
+    "run_id": "WF03-gh364-20260801",
+    "workflow_id": "WF-03",
+    "step": "03c",
+    "from_agent": "ORCH",
+    "to_agent": "CODE-DESIGNER",
+    "file": "handoffs/WF03-gh364-20260801/step-03c-code-designer-blockers.json",
+    "created_at": "2026-08-01T05:18:09Z",
+    "started_at": "2026-08-01T05:11:53Z",
+    "completed_at": "2026-08-01T05:18:09Z",
+    "status": "COMPLETED",
+    "priority": "HIGH",
+    "context": {
+        "stage": "WF-03 Issue Resolving — Step 2 design artefact production for the two remaining code blockers (GH-366 line-99 acquire, GH-374 python interpreter) surfaced by Step 3 verification of #364",
+        "requirement_ids": [],
+        "related_handoff_ids": [
+            "3195ef19-1619-466f-be1c-5a0f8418014e",
+            "cd4f0cb4-a279-4f45-bfa8-c2795bf853ac",
+            "8b1f3a72-2a40-4f0e-9b7d-3a4c0d8e1b25",
+            "9c3a7e51-1d28-4f6b-9c1a-7b2d8e5f4062",
+            "f7c3b8e2-4a1d-4f8e-9b2c-1e5a7d3f6c8b",
+            "d6f18058-b70a-4d2f-bcde-8ca847b1f397"
+        ],
+        "parent_run": "WF03-gh364-20260801",
+        "parent_github_issue": "https://github.com/tvolodi/R-Co/issues/364",
+        "parent_local_issue": "ISS-0106",
+        "blocker_triage_handoff": "f7c3b8e2-4a1d-4f8e-9b2c-1e5a7d3f6c8b",
+        "gh359_env_handoff": "d6f18058-b70a-4d2f-bcde-8ca847b1f397",
+        "blockers_in_scope": [
+            {
+                "id": "GH-366",
+                "alias": "ISS-0107 regression (recommended new local entry ISS-0110)",
+                "severity": "BLOCKER",
+                "github_issue": "https://github.com/tvolodi/R-Co/issues/366",
+                "design_file": "src/design/fix-ISS-0110.md"
+            },
+            {
+                "id": "GH-374",
+                "alias": "WF03-gh364-20260801-PYTHON-PATH (recommended new local entry ISS-0111)",
+                "severity": "MAJOR",
+                "github_issue": "https://github.com/tvolodi/R-Co/issues/374",
+                "design_file": "src/design/fix-ISS-0111.md"
+            }
+        ],
+        "branch_name": "feature/WF03-gh364-20260801",
+        "current_head": "9ff3580f17b4b23d5a9109f32bab08943b857dd4",
+        "merged_pr": "https://github.com/tvolodi/R-Co/pull/367",
+        "merged_commit": "35471e72a61c8593bc73ce55203405e9dbe755cb",
+        "artifacts_in": [
+            "handoffs/WF03-gh364-20260801/step-03a-issue-fixer-blockers.json",
+            "docs/issue-reports/WF03-gh364-20260801-step-03a-issue-fixer-blockers-INNER-REPORT.yaml",
+            "handoffs/WF03-gh364-20260801/step-03b-backend-dev-gh359-env.json",
+            "docs/issue-reports/WF03-gh364-20260801-step-03-backend-dev-INNER-REPORT.yaml",
+            "src/design/fix-ISS-0106.md",
+            "src/design/fix-ISS-0107.md",
+            "src/design/fix-ISS-0110.md",
+            "src/design/fix-ISS-0111.md",
+            "tests/integration/helpers.zig",
+            "tests/integration/tnt_schema_isolation_test.zig",
+            "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log",
+            "docs/anti-patterns.md",
+            "docs/issues/ISS-0107.json",
+            "docs/issues/ISS-0106.json"
+        ]
+    },
+    "task": {
+        "description": "Mandatory WF-03 Step 2 design artefact production for the two remaining code blockers (GH-366 line-99 acquire regression, GH-374 python interpreter) surfaced by Step 3 verification of #364. Classify each as Type E per templates/lego-catalog.md. (1) GH-366: design the narrow 90s/5s lock_timeout bracket around the existing line-99 pg_advisory_lock acquire inside runMigrations(), reusing the proven fc5884b / ISS-0107 Rework-1 pattern at line 487 only if source AND captured log evidence validate the reuse; specify restoring the previous timeout, error behavior, and why safety nets remain; avoid blanket timeout inflation, retries, sleeps, second lock keys, and global integration serialization. (2) GH-374: design deterministic cross-platform Python interpreter resolution for tests/integration/tnt_schema_isolation_test.zig's two std.process.run callsites; prefer explicit BPM_TEST_PYTHON override, then verified workspace interpreter (.venv\\Scripts\\python.exe on Windows, .venv/bin/python on POSIX), then sensible platform fallback (bare 'python3' preserves Linux/macOS CI behavior); define ownership/lifetime for any allocated path, exact error behavior if no interpreter exists (error.MissingTestPythonInterpreter with clear stderr remediation message), and update both callsites consistently; avoid Microsoft Store alias ambiguity, hard-coded user-specific paths, disabling the tests, where.exe/which/registry consultation, and MSW / HTTP / subprocess mocking. (3) Specify fresh focused and full-suite tests including regression assertions where feasible (select-string log-scan pattern, focused TC-TNT-02-03/04 path, TC-DB-01-01/02 actual passing output, BPM_TEST_PYTHON override knob verification). (4) Preserve no-overlap with the already-approved #364 barrier (build.zig structure + test_iss503_rls_removal.zig doc comment). Mandatory YAML inner report at docs/issue-reports/WF03-gh364-20260801-step-03c-code-designer-blockers-INNER-REPORT.yaml. No implementation code; no source/build/test/migration/frontend file changes; commit/push deferred to next handoff (BACKEND-DEV).",
+        "acceptance_criteria": [
+            "Each of GH-366 and GH-374 has a Type E design artefact at src/design/<id>.md (one per blocker).",
+            "GH-366 design re-validates the proven ISS-0107 Rework-1 pattern only where source AND captured log evidence validate it (cite line numbers and log line numbers).",
+            "GH-366 design specifies restoring the previous timeout (plain sequential SET '5s' immediately after acquire, NOT defer/errdefer/SET LOCAL) and explains why the safety nets (ambient 5s lock_timeout elsewhere in the file + statement_timeout='60s') remain intact.",
+            "GH-366 design rejects blanket timeout inflation, retries, sleeps, second lock keys, and global integration serialization as non-solutions.",
+            "GH-374 design uses strict 3-step priority order (BPM_TEST_PYTHON env override → .venv interpreter → bare 'python3' fallback).",
+            "GH-374 design defines ownership/lifetime for any allocated path with explicit allocator-lifetime analysis for all three return paths of the resolveTestPython helper.",
+            "GH-374 design defines exact error behavior when no interpreter exists (error.MissingTestPythonInterpreter with clear stderr remediation message, mirroring the existing testDbUrl MissingTestDatabaseUrl pattern).",
+            "GH-374 design updates both std.process.run callsites (lines 591-593 and 659-661) consistently with defer alloc.free(python).",
+            "GH-374 design rejects hard-coded user-specific paths, disabling the tests, where.exe/which/registry consultation, MSW/HTTP/subprocess mocking, and bundling a Python interpreter with the repo.",
+            "Both designs specify fresh full-suite and focused test verification including regression assertions where feasible (select-string log-scan pattern, focused TC-TNT-02-03/04 path, TC-DB-01-01/02 actual passing output as hard acceptance bar).",
+            "Both designs preserve no-overlap with the already-approved #364 barrier (build.zig structure + test_iss503_rls_removal.zig doc comment).",
+            "Both designs pass tools/lint_design_artefact.py with BLOCKER=0 and MAJOR=0 (MINOR E030 noise on legitimate platform-table references is acceptable and cataloged in the inner report).",
+            "Mandatory YAML inner report produced at docs/issue-reports/WF03-gh364-20260801-step-03c-code-designer-blockers-INNER-REPORT.yaml with all required sections (classification, registry lookup, designs produced, design lint results, design invariants, security review, coverage check, non-solutions rejection, closure path, files, acceptance criteria, git evidence, next action).",
+            "Handoff completed with status COMPLETED, result.status PASS, and a single next_action that routes to CODE-DESIGN-VALIDATOR (Step 03d) for revalidation of both designs against current main and the captured log evidence.",
+            "No source, build, test, migration, or frontend implementation file is modified (only design artefacts + workflow artefacts)."
+        ],
+        "functions_to_call": [
+            "fn:search-issues",
+            "fn:validate-completeness",
+            "fn:register-inner-report",
+            "fn:complete-handoff"
+        ]
+    },
+    "result": {
+        "status": "PASS",
+        "summary": "Two Type E design artefacts produced for the two remaining code blockers (GH-366 and GH-374) surfaced by Step 3 verification of GitHub #364 / ISS-0106. (1) src/design/fix-ISS-0110.md specifies the narrow 90s/5s lock_timeout bracket around tests/integration/helpers.zig:99's pg_advisory_lock acquire inside runMigrations(), mirroring byte-for-byte the proven fc5884b / ISS-0107 Rework-1 pattern at line 487 (same values, same connection type, same plain-sequential-SET, NOT defer/errdefer/SET LOCAL). Source validation: helpers.zig:99 acquire, helpers.zig:487 acquire bracket, helpers.zig:516 begin. Evidence validation: scratch/WF03-gh364-20260801-step03-full-integration-utf8.log lines 70, 97, 124, 160, 187 (and 38 more) showing 44× 55P03 at line 99; zero 55P03 at line 487 (proving the proven Rework-1 pattern works at line 487 already). The design explicitly rejects blanket timeout inflation (citing the 'widening a critical section's scope without checking interaction with an existing timeout' anti-pattern in docs/anti-patterns.md, cross-referenced to GitHub #366), retries, sleeps, second lock keys, removal of the line-99 lock, global integration serialization, changes to build.zig, changes to test_iss503_rls_removal.zig, and changes to vendor/pg/pg.zig. Safety nets (ambient 5s lock_timeout everywhere else in the file + statement_timeout='60s' for the inner migration DDL walk) are explicitly preserved. (2) src/design/fix-ISS-0111.md specifies deterministic cross-platform Python interpreter resolution via a new file-local resolveTestPython helper at the top of tests/integration/tnt_schema_isolation_test.zig (after testDbUrl at line 30-50) using strict 3-step priority order: BPM_TEST_PYTHON env override → .venv interpreter (Scripts\\python.exe on Windows, bin/python on POSIX) → bare 'python3' fallback. Helper returns a []const u8 with explicit ownership analysis for all three return paths (env-var slice from std.process.Environ, venv path dup, bare-literal dup); callers free via defer alloc.free(python) which fires LIFO after the std.process.run call. Error behavior: error.MissingTestPythonInterpreter with a clear stderr remediation message mirroring testDbUrl's MissingTestDatabaseUrl pattern. Both std.process.run callsites (lines 591-593 and 659-661) updated consistently. The design rejects hard-coded user-specific paths, disabling the tests, where.exe/which/registry consultation, AppExecutionAlias disabling, changing tools/lint_migration_schema.py, MSW / HTTP / subprocess mocking, and bundling a Python interpreter. Both designs preserve no-overlap with the already-approved #364 barrier (build.zig structure and test_iss503_rls_removal.zig doc comment are explicitly 'NOT touched'). Both designs pass tools/lint_design_artefact.py with BLOCKER=0, MAJOR=0 (only MINOR E030 noise on legitimate references to public.schema_migrations / public.events — the linter cannot distinguish canonical platform tables from business tables, a known over-flag cataloged for future DOC-UPDATER housekeeping). No source, build, test, migration, or frontend implementation file is modified by this step. Next: CODE-DESIGN-VALIDATOR (Step 03d) for revalidation of both designs, then BACKEND-DEV (Step 03e) for implementation, then TEST-RUNNER (Step 03f) for fresh full-suite evidence covering both blockers together.",
+        "artifacts_out": [
+            "src/design/fix-ISS-0110.md",
+            "src/design/fix-ISS-0111.md",
+            "docs/issue-reports/WF03-gh364-20260801-step-03c-code-designer-blockers-INNER-REPORT.yaml"
+        ],
+        "design_classification": "E",
+        "design_classification_rationale": "Both designs are cross-cutting (function-internal lock_timeout scoping for GH-366; cross-platform subprocess interpreter resolution with explicit ownership/lifetime for GH-374). Neither blocker maps to a CRUD endpoint (Type A), list page (Type B), migration + test pair (Type C), or React Flow node (Type D). Per templates/lego-catalog.md §Selection rules rule 5 ('Type E otherwise'), both are unambiguously Type E. No Type A-D parameter file is generated.",
+        "implementation_files_required": [
+            "tests/integration/helpers.zig (ISS-0110 — add 2 SET statements bracketing the existing line-99 pg_advisory_lock acquire; existing line-100 defer unlock unchanged)",
+            "tests/integration/tnt_schema_isolation_test.zig (ISS-0111 — add resolveTestPython helper + replace literal 'python3' argv[0] in two std.process.run callsites at lines 591-593 and 659-661)"
+        ],
+        "documentation_files_required": [],
+        "designs_produced": [
+            {
+                "id": "ISS-0110",
+                "design_file": "src/design/fix-ISS-0110.md",
+                "github_issue": "https://github.com/tvolodi/R-Co/issues/366",
+                "type": "E",
+                "lines_in_file": 1,
+                "functions_affected": "tests/integration/helpers.zig::runMigrations() (2-line SET bracket around existing line-99 acquire)",
+                "estimated_implementation_diff_lines": 2,
+                "estimated_implementation_diff_comment_lines": 5,
+                "preserves_no_overlap_with_364_barrier": true,
+                "preserves_no_overlap_with_iss0107_bracket": true,
+                "reuses_iss0107_rework1_pattern": true,
+                "pattern_match_source_evidence": "helpers.zig:99 acquire, helpers.zig:487 acquire bracket, helpers.zig:516 begin — all on the same *pg.Conn, no transaction open at either acquire, same errdefer conn.close() at line 430",
+                "pattern_match_log_evidence": "44× 55P03 at helpers.zig:99 in scratch/WF03-gh364-20260801-step03-full-integration-utf8.log (lines 70, 97, 124, 160, 187, ...); zero 55P03 at helpers.zig:487 in the same log (proves the proven Rework-1 pattern works at line 487 already)"
+            },
+            {
+                "id": "ISS-0111",
+                "design_file": "src/design/fix-ISS-0111.md",
+                "github_issue": "https://github.com/tvolodi/R-Co/issues/374",
+                "type": "E",
+                "lines_in_file": 1,
+                "functions_affected": "tests/integration/tnt_schema_isolation_test.zig::resolveTestPython() (new helper) + 2 std.process.run callsites (lines 591-593 and 659-661)",
+                "estimated_implementation_diff_lines": 30,
+                "estimated_implementation_diff_comment_lines": 5,
+                "preserves_no_overlap_with_364_barrier": true,
+                "preserves_no_overlap_with_iss0107_bracket": true,
+                "reuses_iss0107_rework1_pattern": false,
+                "pattern_match_source_evidence": "Uses same std.process.Environ.getAlloc pattern as the file's existing testDbUrl() helper at line 30-50, ensuring API consistency within the same test file",
+                "pattern_match_log_evidence": "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log line 3260 ('Python was not found' AppExecutionAlias stub stderr); lines 3256-3321 ('expected 1, found 49' and 'expected 0, found 49' assertion failures)"
+            }
+        ],
+        "design_lint": {
+            "tool": "tools/lint_design_artefact.py",
+            "src/design/fix-ISS-0110.md": {"exit_code": 0, "BLOCKER": 0, "MAJOR": 0, "MINOR": 1},
+            "src/design/fix-ISS-0111.md": {"exit_code": 0, "BLOCKER": 0, "MAJOR": 0, "MINOR": 6}
+        },
+        "explicit_non_solutions": [
+            "No sleep calls anywhere on the test path.",
+            "No retry-on-55P03 / deadlock-retry wrappers around the line-99 acquire.",
+            "No inflation of ambient lock_timeout='5s' set by configureSessionTimeouts().",
+            "No second lock key (would reopen the same two-key race ISS-0107's chosen_resolution explicitly rejected).",
+            "No removal of the line-99 advisory lock (would re-introduce the race ISS-0090 was filed to prevent).",
+            "No change to build.zig (the 55P03 errors are a function-internal timeout-scoping problem, not a scheduling/ordering problem).",
+            "No change to tests/integration/test_iss503_rls_removal.zig (the #364 barrier doc comment is already correct; the 55P03 errors do not involve this file).",
+            "No change to vendor/pg/pg.zig (driver already correctly propagates PgError.ServerError).",
+            "No change to src/db/migrations.zig (migrator intentionally a 'dumb applier' with no locking or timeout configuration; that responsibility stays with the caller per the closed ISS-0107 investigation).",
+            "No disable of TC-TNT-02-03/04 (both are valid tests; the fix is to invoke them with the correct interpreter).",
+            "No hard-coded user-specific absolute Python path (env-dependent, brittle).",
+            "No disable of the Microsoft Store AppExecutionAlias (out-of-repo config change; cannot rely on this for CI).",
+            "No change to tools/lint_migration_schema.py (linter is correct; only the invocation needs the right interpreter).",
+            "No where.exe / which / py -3 / Windows registry consultation (would re-introduce the AppExecutionAlias ambiguity or add platform-specific code paths that the test cannot deterministically assert on).",
+            "No MSW / HTTP / subprocess mocking (test launches a real subprocess against the real linter; per docs/anti-patterns.md, mocking is forbidden in the test path).",
+            "No bundling a Python interpreter with the repo (out of scope; ~50MB of unrelated dependency).",
+            "No global integration serialization of all ~19+ test-integration binaries (over-reach; only specific acquire sites need bracketing)."
+        ],
+        "verification_plan": {
+            "gates_required": [
+                "zig build (exits 0)",
+                "zig build test (exits 0)",
+                "zig build migrate (exits 0)",
+                "Error-set validation: zig build 2>&1 | grep -i 'error set' produces zero output",
+                "zig build test-integration-iss503 (focused ISS-503 target — confirms the 364 barrier is unaffected)",
+                "zig build test-integration-tnt (focused TNT target — confirms TC-TNT-02-03/04 return correct exit codes)",
+                "zig build test-integration (full umbrella — the hard acceptance bar for #364 closure)"
+            ],
+            "evidence_collection": [
+                "select-string -path <log> -pattern helpers.zig:99 -simplematch → 0 matches in any error/failure window",
+                "select-string -path <log> -pattern 'C55P03|55P03|canceling statement due to lock timeout' -simplematch → 0 matches in any error/failure window",
+                "select-string -path <log> -pattern 'C40P01|40P01|deadlock detected' -simplematch → 0 matches in any error/failure window",
+                "select-string -path <log> -pattern 'iss503|iss_503|ISS-503|test_iss503|test-integration-iss503|iss503_rls_removal' -simplematch → 0 matches in any deadlock/failure window (the 364 barrier remains effective)",
+                "select-string -path <log> -pattern 'TC-DB-01-01|TC-DB-01-02' -simplematch → both tests' actual passing output (not just the absence of a failure line)",
+                "select-string -path <log> -pattern 'TC-TNT-02-03|TC-TNT-02-04' -simplematch → both tests' actual passing output with exit codes 1 and 0 respectively",
+                "select-string -path <log> -pattern 'Python was not found' -simplematch → 0 matches anywhere (no AppExecutionAlias stub invoked)",
+                "BPM_TEST_PYTHON override knob: focused TC-TNT-02-03 with the variable set to a known-bad path → helper honors the override (test fails with 'subprocess could not launch' message, not silent wrong-interpreter choice); restore to unset → venv interpreter is selected on this host"
+            ],
+            "abort_conditions": [
+                "If any gate above returns non-zero, route back to CODE-DESIGNER for rework (rework 1 of 3).",
+                "If the line-99 acquire is still the source of 55P03 after the fix: the bracket is not in the right place or the wrong key — route back to CODE-DESIGNER for rework with the captured log.",
+                "If the fc5884b Rework-1 pattern at line 487 is now observed to fail (new 55P03 at line 487 that was not present before): the new line-99 bracket has inadvertently affected the line-487 acquire's behavior — route back to CODE-DESIGNER (this would indicate a misunderstanding of session vs. statement scope).",
+                "If the design's 'no_iss503_overlap' property is broken (any iss503 identifier appears in a deadlock/failure window): the #364 barrier is broken — escalate immediately to ORCH (this is a regression of the previously-approved barrier, not a blocker-fix issue).",
+                "If the BPM_TEST_PYTHON override knob does not work as designed: the helper's env-var reading is wrong — route back to CODE-DESIGNER for rework."
+            ]
+        },
+        "issues": [],
+        "git_evidence": {
+            "branch_name": "feature/WF03-gh364-20260801",
+            "current_head": "9ff3580f17b4b23d5a9109f32bab08943b857dd4",
+            "design_files_added": [
+                "src/design/fix-ISS-0110.md",
+                "src/design/fix-ISS-0111.md"
+            ],
+            "implementation_commit_created": false,
+            "push_status": "skipped",
+            "reason": "Designs are workflow artefacts; implementation is the next handoff's job (BACKEND-DEV). No source/build/test/migration file changes by this step.",
+            "branch_status_pre_step": "clean",
+            "branch_status_post_step": "clean (only design files + workflow artefacts untracked/added; no tracked file modifications)"
+        },
+        "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 03d) for revalidation of both new Type E design artefacts against current main (commit 35471e7 + head 9ff3580) and the captured log evidence. CODE-DESIGN-VALIDATOR should run tools/lint_design_artefact.py on both files (expected exit 0 with BLOCKER=0, MAJOR=0 per the per-file results above), confirm no overlap with the already-approved 364 barrier (build.zig structure + test_iss503_rls_removal.zig doc comment), confirm the GH-366 design's pattern reuse at line 99 is byte-for-byte the proven Rework-1 pattern at line 487 (same values, same connection type, same plain-sequential-SET), confirm the GH-374 design's strict 3-step priority order is correct (env override → venv → bare fallback), confirm ownership/lifetime analysis is sound, and confirm the explicit non-solutions enumerations reject the relevant anti-patterns from docs/anti-patterns.md. On PASS, the handoff chain proceeds to BACKEND-DEV for implementation (Step 03e), then TEST-RUNNER for fresh full-suite evidence (Step 03f) covering both blocker fixes together. DOC-UPDATER Step Final then closes GitHub #364 (with #364 evidence), GitHub #366 (with GH-366 fix evidence), and GitHub #374 (with GH-374 fix evidence), and merges the feature branch to main per the GitHub Branch Management MANDATORY rule."
+    },
+    "rework_count": 0,
+    "max_rework": 3
+}

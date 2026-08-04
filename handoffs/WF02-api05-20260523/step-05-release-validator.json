@@ -1,0 +1,56 @@
+{
+  "handoff_id": "api05005-2605-4000-8005-202605230005",
+  "run_id": "WF02-api05-20260523",
+  "workflow_id": "WF-02",
+  "sequence": 5,
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "created_at": "2026-05-23T09:00:00Z",
+  "started_at": "2026-05-22T21:42:36Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4",
+    "requirement_ids": [
+      "API-05"
+    ],
+    "related_handoff_ids": [
+      "api05001-2605-4000-8005-202605230001",
+      "api05002-2605-4000-8005-202605230002",
+      "api05003-2605-4000-8005-202605230003",
+      "api05004-2605-4000-8005-202605230004"
+    ],
+    "artifacts_in": [
+      "tests/reports/API-05-test-report.md",
+      "tests/specs/API-05.md",
+      "src/design/api-05-history-endpoint.md",
+      "docs/requirements/API-05.md"
+    ]
+  },
+  "task": {
+    "description": "Validate API-05 (History endpoint) for release readiness.\n\nAPI-05 requires:\n- GET /instances/:id/history returns all events in ascending sequence order\n- Optional filters: event_type, from, to (ISO 8601 timestamps)\n- Cursor-based pagination per API-06\n- Any authenticated role may access\n- Archived events (ES-07) included in correct sequence position\n\nVerify:\n1. All API-05 acceptance criteria from docs/requirements/API-05.md are met\n2. Test report at tests/reports/API-05-test-report.md shows all tests passing\n3. zig build test exits 0\n4. No regressions in existing tests\n\nIf PASS, update docs/status/requirement_status.json:\n- Set API-05 status to \"RELEASED\"\n- Set released_at to current timestamp\n- Set release_run to \"WF02-api05-20260523\"\n\nWrite release decision to docs/status/release-API-05-20260523.json",
+    "acceptance_criteria": [
+      "All API-05 acceptance criteria verified",
+      "Test report confirms all tests pass",
+      "requirement_status.json updated with API-05 RELEASED",
+      "Release decision document written"
+    ],
+    "functions_to_call": [
+      "fn:validate-release"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for API-05 (History endpoint). All 22 unit tests pass (0 fail, 0 skip). All acceptance criteria verified. zig build test exits 0. No regressions.",
+    "artifacts_out": [
+      "docs/status/release-API-05-20260523.json",
+      "docs/issue-reports/release-validator-api05-20260522.json"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER for changelog update (API-05 already set to RELEASED in requirement_status.json)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T21:43:26Z"
+}

@@ -1,0 +1,86 @@
+{
+  "handoff_id": "0a7b8a0c-5d7c-44da-9d1d-5b3f57b3b88c",
+  "run_id": "WF03-xc02-06-testfix-20260528",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-xc02-06-testfix-20260528/step-03-test-runner.json",
+  "created_at": "2026-05-28T13:43:50Z",
+  "started_at": "2026-05-28T13:43:54Z",
+  "completed_at": "2026-05-28T13:48:57Z",
+  "status": "COMPLETED",
+  "priority": "CRITICAL",
+  "context": {
+    "stage": "Cross-Cutting Requirements XC remediation",
+    "requirement_ids": [
+      "XC-04",
+      "XC-05",
+      "XC-06"
+    ],
+    "related_handoff_ids": [
+      "2c6db2ec-3a96-4b66-99b4-9b0d5f7c8df1",
+      "4aa9f1b7-3a3d-457a-a7fb-2f3a24a39f69",
+      "87a3f494-a3be-4d36-9aa8-4c2c9f9a27cd"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-xc02-06-testfix-20260528/step-02b-issue-fixer.json",
+      "docs/issue-reports/WF03-xc02-06-testfix-20260528-step-02b-issue-fixer-INNER-REPORT.json",
+      "tests/integration/xc04_kernel_determinism_test.zig",
+      "tests/integration/xc05_deterministic_replay_test.zig",
+      "tests/integration/xc06_backwards_compatibility_test.zig"
+    ],
+    "branch_name": "feature/WF03-xc02-06-testfix-20260528"
+  },
+  "task": {
+    "description": "WF-03 Step 3 (Verify) for XC-04..XC-06 after XC-03 is fixed. Re-run the relevant integration suite and record exact remaining failures for the outstanding blockers.\n\nRun the broader XC integration validation and report results clearly so ORCH can route any residual failures back to ISSUE-FIXER. Produce a structured test report artifact.",
+    "acceptance_criteria": [
+      "Relevant integration tests are executed",
+      "Remaining XC-04/XC-05/XC-06 failures are reported precisely",
+      "A test report artifact is written",
+      "Handoff result status is PASS or FAIL with exact regression details"
+    ],
+    "functions_to_call": [
+      "fn:run-integration-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Broader XC integration validation failed. XC-04, XC-05, XC-06 remain failing and XC-03 regressed.",
+    "artifacts_out": [
+      "tests/reports/report-20260528-wf03-xc02-06-testfix-20260528-step-03.json",
+      "tests/reports/wf03-xc02-06-testfix-20260528-integration-output.txt"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "requirement_id": "XC-04",
+        "description": "XC-04 suite has 2 failing cases: TC-XC-04-03 (tests/integration/xc04_kernel_determinism_test.zig:105) and TC-XC-04-05 (tests/integration/xc04_kernel_determinism_test.zig:214). Dominant error path is PgError.ServerError from vendor/pg/pg.zig during conn.exec."
+      },
+      {
+        "severity": "BLOCKER",
+        "requirement_id": "XC-05",
+        "description": "XC-05 suite has 8/8 failing cases: TC-XC-05-01..08 (tests/integration/xc05_deterministic_replay_test.zig:31,119,206,294,398,496,592,640). Dominant error path is PgError.ServerError/readUntilReady and query failures in replay reconstruction paths."
+      },
+      {
+        "severity": "BLOCKER",
+        "requirement_id": "XC-06",
+        "description": "XC-06 suite has 9/9 failing cases: TC-XC-06-01..09 (tests/integration/xc06_backwards_compatibility_test.zig:48,69,118,180,229,290,385,541,566). Failures include assertion failures and PgError.ServerError in migration/compatibility setup steps."
+      },
+      {
+        "severity": "BLOCKER",
+        "requirement_id": "XC-03",
+        "description": "XC-03 does not remain resolved. Current run shows 1 pass, 8 fail in tests/integration/xc03_configuration_repository_test.zig with failed cases TC-XC-03-01,02,03,04,05,07,08,09 and repeated PgError.ServerError at insertConfigArtifactRoot (line 21)."
+      },
+      {
+        "severity": "MAJOR",
+        "requirement_id": "XC-01",
+        "description": "Additional regression observed in broader integration validation: xc01_trace_propagation_test TC-XC-01-03 reports leaked allocation via src/util/uuid.zig:16."
+      }
+    ],
+    "next_action": "Route back to ISSUE-FIXER (WF-03 Step 2) to resolve XC-04..XC-06 blockers and XC-03 regression before re-running TEST-RUNNER Step 3."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

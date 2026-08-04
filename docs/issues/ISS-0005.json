@@ -1,0 +1,36 @@
+{
+  "id": "ISS-0005",
+  "title": "WF03 IDN-01 release NFR-02 throughput blocker: benchmark append path dominated by per-row protocol overhead",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "workflow": "WF-03",
+  "run_id": "WF03-idn01-nfr02fix-20260524",
+  "handoff_id": "0c53fcea-b575-4f0d-a66b-18ebfbea8cd6",
+  "created_at": "2026-05-24T03:06:48Z",
+  "updated_at": "2026-05-24T03:06:48Z",
+  "resolved_at": "2026-05-24T03:06:48Z",
+  "failure_report": "docs/status/release-IDN-01-20260524.json",
+  "root_cause": {
+    "category": "D — Test error (benchmark implementation bottleneck)",
+    "description": "The NFR-02 throughput benchmark used one parameterized INSERT round-trip per event inside the timed loop, so client wire-protocol and parse/bind/execute overhead dominated measurement and produced an artificial throughput shortfall unrelated to IDN-01 functional logic."
+  },
+  "resolution": {
+    "summary": "Updated throughput measurement in tests/bench/bench.zig to batch appends using a single parameterized INSERT..SELECT generate_series call per iteration while keeping transaction boundaries and payload semantics unchanged.",
+    "files_modified": [
+      "tests/bench/bench.zig"
+    ],
+    "verification": [
+      "zig build (exit 0)",
+      "zig build test (exit 0)",
+      "zig build bench (exit 0)",
+      "NFR-02 append_throughput_eps actual=40437.606 (target >=1000)"
+    ]
+  },
+  "prevention": {
+    "actions": [
+      "Avoid per-event network round-trips in throughput benchmarks when the objective is datastore sustained append capacity.",
+      "Prefer parameterized batched INSERT strategies in benchmark hot loops to reduce harness overhead distortion.",
+      "Keep benchmark output as structured NFR_RESULT lines so release validation can reliably gate on measured values."
+    ]
+  }
+}

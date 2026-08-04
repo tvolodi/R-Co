@@ -1,0 +1,73 @@
+{
+  "handoff_id": "d2f42ab0-c6a4-4da6-8f2f-f0b77d7e294f",
+  "run_id": "WF02-stage11-sim01-04-20260528",
+  "workflow_id": "WF-02",
+  "step": "04-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-stage11-sim01-04-20260528/step-04-rework1-test-runner.json",
+  "created_at": "2026-05-28T16:39:20Z",
+  "started_at": "2026-05-28T16:39:40Z",
+  "completed_at": "2026-05-28T16:45:05Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04"
+    ],
+    "related_handoff_ids": [
+      "dd0e4f9c-c153-4ce4-93e4-5e03bb418ce7",
+      "ee34f66e-9d15-4d07-9530-26be33ec80f6"
+    ],
+    "artifacts_in": [
+      "tests/integration/sim01_04_simulation_mode_test.zig",
+      "tests/integration/main_test.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK TEST RUN: Execute Stage 11 SIM-01..SIM-04 test run after WF03 and test-design reworks. Produce updated test report and classify any remaining failures.",
+    "acceptance_criteria": [
+      "Updated test execution completed",
+      "Report written to tests/reports",
+      "PASS/FAIL and issues clearly captured"
+    ],
+    "functions_to_call": [
+      "fn:run-required-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Benchmark pre-check passed and backend unit tests passed, but integration tests failed with 44 failing tests (including TC-SIM-01-01).",
+    "artifacts_out": [
+      "tests/reports/20260528T164441Z-integration.md",
+      "tests/reports/WF02-stage11-sim01-04-20260528-step-04-rework1-zig-build-test.log",
+      "tests/reports/WF02-stage11-sim01-04-20260528-step-04-rework1-zig-build-test-integration.log",
+      "tests/reports/WF02-stage11-sim01-04-20260528-step-04-rework1-failed-tests.txt"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "TC-SIM-01-01 failed in tests/integration/sim01_04_simulation_mode_test.zig during integration run.",
+        "requirement_ids": [
+          "SIM-01",
+          "SIM-02",
+          "SIM-03",
+          "SIM-04"
+        ]
+      },
+      {
+        "severity": "MAJOR",
+        "description": "Integration run reported 44 total failing tests across XC, PD, EE, EXT, IDN, ADP, and SIM areas. Full failing list is recorded in tests/reports/WF02-stage11-sim01-04-20260528-step-04-rework1-failed-tests.txt.",
+        "requirement_ids": []
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (WF-03), then re-run TEST-RUNNER Step 04-rework2."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

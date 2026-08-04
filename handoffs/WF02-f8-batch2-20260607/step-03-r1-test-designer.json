@@ -1,0 +1,44 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-003-r1",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "03-r1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-06T21:50:34Z",
+  "started_at": "2026-06-06T21:50:48Z",
+  "completed_at": "2026-06-06T21:57:28Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 test design rework",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": ["wf02-f8-b2-20260607-003b"],
+    "artifacts_in": [
+      "handoffs/WF02-f8-batch2-20260607/step-03b-test-design-validator.json",
+      "tests/integration/tm01_tenant_list_test.zig",
+      "web/tests/e2e/tenants.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "Rework tests to resolve 03b FAIL findings:\n\n1. Integration tests must FAIL clearly (not skip) when BPM_TEST_DB_URL is missing for MUST TM tests.\n2. Replace static TM-04/TM-05 integration slugs with per-test UUID-based fixture identifiers.\n3. Remove hardcoded fallback credentials from web/tests/e2e/tenants.e2e.spec.ts and enforce env-driven credentials in line with test directives.\n\nAfter fixes, keep TM-04/TM-05 coverage intact and update specs if needed.",
+    "acceptance_criteria": [
+      "No env-missing skip path on MUST TM integration tests",
+      "Per-test UUID fixture IDs used in TM-04/TM-05 integration tests",
+      "No hardcoded fallback credentials in tenants e2e test"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Reworked TM-04/TM-05 tests to clear 03b findings: env-missing now fails clearly in integration tests, lifecycle fixtures use UUID-based slugs per test, and tenants E2E credentials are strictly env-driven with no hardcoded fallback.",
+    "artifacts_out": [
+      "tests/integration/tm01_tenant_list_test.zig",
+      "web/tests/e2e/tenants.e2e.spec.ts",
+      "docs/issue-reports/WF02-f8-batch2-20260607-step-03-r1-test-designer-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

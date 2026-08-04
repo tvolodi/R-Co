@@ -1,0 +1,26 @@
+{
+  "report_id": "WF02-adp12-20260526-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-adp12-20260526",
+  "step": "01",
+  "created_at": "2026-05-26T17:51:31Z",
+  "summary": "Produced a complete ADP-12 backend design artifact defining deterministic pre/post migration regression orchestration, canonical diff policy, Stage 1-6 coverage matrix, report schema, flaky controls, fixture assumptions, implementation touchpoints, and acceptance-to-test traceability.",
+  "files_created": [
+    "src/design/adp-12-default-tenant-regression-suite.md",
+    "docs/issue-reports/WF02-adp12-20260526-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [],
+  "tests_run": [
+    {
+      "name": "fn:validate-completeness (design evidence review)",
+      "status": "pass",
+      "detail": "All handoff acceptance criteria mapped to explicit design sections and traceability table."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) to implement ADP-12 regression harness per design artifact.",
+    "Route to TEST-DESIGNER if additional explicit case manifests/spec IDs are required before implementation."
+  ],
+  "blockers": []
+}

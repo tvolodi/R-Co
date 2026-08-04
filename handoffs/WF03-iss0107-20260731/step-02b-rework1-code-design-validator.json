@@ -1,0 +1,59 @@
+{
+  "handoff_id": "e2db9724-a63b-46c0-bb1f-1a10d3fa7bff",
+  "run_id": "WF03-iss0107-20260731",
+  "workflow_id": "WF-03",
+  "step": "02b-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-iss0107-20260731/step-02b-rework1-code-design-validator.json",
+  "created_at": "2026-07-31T19:51:41Z",
+  "started_at": "2026-07-31T19:52:43Z",
+  "completed_at": "2026-07-31T19:54:49Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "1992dcc2-c3a2-4515-b89c-adffd2011da9"
+    ],
+    "artifacts_in": [
+      "src/design/fix-ISS-0107.md",
+      "docs/issues/ISS-0107.json",
+      "tests/integration/helpers.zig"
+    ],
+    "branch_name": "feature/WF03-iss0107-20260731"
+  },
+  "task": {
+    "description": "Re-validate the REVISED fix design at src/design/fix-ISS-0107.md (rework 1) for ISS-0107 / GitHub #366. The original design (widen bpm_test_migrations_public lock scope) was implemented, and while it eliminated the original deadlock storm, it surfaced a new failure: the pre-existing lock_timeout='5s' session setting now cancels later-queued binaries' own advisory-lock acquire with 55P03 before the lock is granted. The revision keeps the widened-lock fix (unchanged) and ADDS: bracket only the specific advisory-lock acquire statement (line ~473 in the current working-tree state) with a plain SET lock_timeout='90s' immediately before it and SET lock_timeout='5s' restored immediately after (via defer, matching this file's existing idiom) -- NOT SET LOCAL, since the acquire runs on a plain autocommit connection outside any transaction (conn.begin() happens later, at line ~516). Verify this reasoning is factually correct against the live source and that the rationale for why this is not a symptom-masking workaround (lock_timeout exists to catch unbounded/hung waits; the wait here is finite and expected, a direct consequence of the original fix's own intentional serialization; the untouched statement_timeout='60s' independently backstops genuine hangs regardless) is sound.",
+    "acceptance_criteria": [
+      "Design explicitly addresses the 55P03 finding with a scoped, non-workaround fix",
+      "Independently verify against live tests/integration/helpers.zig that configureSessionTimeouts() line numbers, the lock_timeout=5s setting, the widened-lock acquire's exact line/statement, and the conn.begin() timing (transaction vs autocommit) are all accurately described",
+      "Verify SET (not SET LOCAL) is the structurally correct choice given the autocommit-connection timing -- this is the key technical claim to scrutinize",
+      "Confirm the 90s value and its rationale (multiples of realistic worst-case queue-drain time, backstopped independently by statement_timeout=60s) is reasonable, not arbitrary",
+      "Confirm the original widened-lock-scope fix is NOT regressed by this revision",
+      "No implementation code present",
+      "Fix scope <= 5 files, still tests/integration/helpers.zig only"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Independently verified all factual/technical claims against the live tests/integration/helpers.zig working-tree state: line numbers match exactly (lock_timeout='5s' at 203; migration lock 99/100; per-schema lock 144/145; widened acquire at 473; unlock at 505; conn.begin() at 516). Confirmed conn.begin() runs well after the widened critical section completes and its lock is released, so the acquire at 473 genuinely executes in autocommit mode with no open transaction -- the design's SET-not-SET-LOCAL reasoning is technically correct. Confirmed pg.Conn (vendor/pg/pg.zig) is a raw single-socket struct returned directly by connectUrl(), not pool-backed; every conn.exec() call in this section runs against the identical physical backend session, so the connection-pooling concern raised in the task is definitively ruled out -- SET lock_timeout on this connection is guaranteed to apply to the immediately-following pg_advisory_lock() acquire on the same conn. lint_design_artefact.py passes clean (exit 0, no issues). Original widened-lock fix (A) is unchanged/unregressed. Fix scope remains 1 file. Error taxonomy correctly assessed as unchanged (no new error{} members). Symptom-masking analysis holds up: the wait is a finite, bounded, expected queue-drain (not an unbounded hang), it is narrowly scoped to one statement (not a blanket session relaxation), and statement_timeout='60s' (untouched) independently backstops genuine hangs regardless of the lock_timeout value chosen -- 90s is a reasonable, non-arbitrary, generously-bounded value given a ~22-binary queue of short per-binary critical sections. HOWEVER: found one BLOCKER-level internal contradiction in the 'Required change' section that must be resolved before implementation. Section (B)'s structural pseudo-diff and prose (lines 323-333) describe THREE SEQUENTIAL statements -- raise, acquire, restore -- with the restore executing as 'the very next statement after line 473, before configureTestSearchPath() runs' (an explicit, immediate restore). The later 'Failure-path correctness' section (lines 358-375) instead instructs implementing the restore via `defer ... catch {};` registered immediately after the raise succeeds, matching this file's existing defer idiom at lines 100/145. These are NOT equivalent in Zig: a defer registered after the raise statement fires at TestHarness.init()'s function-scope exit, not immediately before configureTestSearchPath() runs. If BACKEND-DEV follows the defer instruction literally (the more detailed, idiom-matching instruction, and the one most likely to be followed since it cites this file's own existing pattern), lock_timeout would remain stuck at 90s through configureTestSearchPath(), resetTestData(), ensureDefaultOidcSeeds(), applyCompatibilityShims(), the unlock, and into the per-test transaction begun at conn.begin() -- directly contradicting the design's own 'tighter, more defensible scope' claim (line 390-392) and its explicit argument against blanket/unscoped relaxation (the exact failure mode 'Why this is not a symptom-masking workaround' argues the design avoids). Checked whether the failure-path concern the defer is meant to solve is even real: errdefer conn.close() (line 431) already closes the connection on ANY init() error path, including the acquire itself failing -- so an explicit sequential restore (not deferred) would in practice be safe on the only failure path that matters (the connection is torn down either way), meaning the defer complexity in section 358-375 is solving a non-problem while simultaneously breaking the success-path scoping the rest of the design relies on. This is a genuine, previously-unforeseen blind spot in this revision (analogous in kind, not degree, to the original design's unforeseen lock_timeout interaction) -- it must be resolved with ONE unambiguous mechanism before BACKEND-DEV re-implements, or two different correct-looking engineers could implement two different, materially-different behaviors from the same document.",
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "'Required change' section (B) is internally contradictory about the restore mechanism. Lines 323-333 (prose + structural pseudo-diff) specify an explicit, immediate sequential restore ('the very next statement after line 473, before configureTestSearchPath() runs'). Lines 358-375 ('Failure-path correctness') instead specify a `defer ... catch {};` registered right after the raise statement -- which in Zig fires at TestHarness.init()'s function-scope exit (i.e., after conn.begin(), after the whole function returns), not immediately before configureTestSearchPath(). These two mechanisms produce materially different runtime behavior (narrowly-scoped 90s window vs. 90s held for the rest of init() and the per-test transaction) and the design does not acknowledge or resolve the conflict. REQUIRED FIX: pick exactly one mechanism and make both sections agree. Recommended: keep the explicit sequential restore (raise; acquire; restore -- three statements in program order, as the structural diagram and 'Why bracket only the acquire statement' section already correctly describe and rely on), and drop or correct the defer instruction, since errdefer conn.close() at line 431 already tears down the connection on every init() failure path (including the acquire's own failure), making a defer-based restore unnecessary for correctness and actively harmful to the intended scoping if implemented as literally instructed."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Design does not explicitly state what happens if the RAISE statement itself (SET lock_timeout = '90s' before the acquire) fails -- e.g. connection error. In practice this is governed the same way as every other try conn.exec() call in init() (propagates via errdefer conn.close()), so this is not a functional gap, only a documentation completeness note; does not block PASS on its own but should be cleaned up alongside the BLOCKER fix above for a fully unambiguous spec."
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER for further rework. Fix required: resolve the explicit-sequential-restore vs. defer-based-restore contradiction in 'Required change' section (B) into one unambiguous mechanism (recommend explicit sequential restore, since errdefer conn.close() at helpers.zig:431 already makes the defer's stated rationale moot). All other aspects of the revision (55P03 root-cause framing, SET vs SET LOCAL reasoning, 90s value rationale, symptom-masking analysis, fix scope, error taxonomy, non-regression of the original widened-lock fix) independently verified correct and do not need to change."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

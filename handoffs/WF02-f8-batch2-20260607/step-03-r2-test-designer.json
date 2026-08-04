@@ -1,0 +1,41 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-003-r2",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "03-r2",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-06T22:00:11Z",
+  "started_at": "2026-06-06T22:00:23Z",
+  "completed_at": "2026-06-06T22:04:01Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 test design rework 2",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": ["wf02-f8-b2-20260607-003b-r1"],
+    "artifacts_in": [
+      "tests/integration/tm01_tenant_list_test.zig",
+      "handoffs/WF02-f8-batch2-20260607/step-03b-r1-test-design-validator.json"
+    ]
+  },
+  "task": {
+    "description": "Resolve remaining 03b-r1 blocker exactly: TM-04/TM-05 integration fixtures must use runtime per-test UUID identifiers, not static hardcoded slug literals.\n\nUpdate tests/integration/tm01_tenant_list_test.zig so each TM-04/TM-05 test builds fixture slug values at runtime (e.g., std.fmt with random UUID suffix or deterministic per-test UUID generated in-test) and uses those values consistently through arrange/act/assert.\n\nNo other scope changes.",
+    "acceptance_criteria": [
+      "No static hardcoded lifecycle fixture slugs remain in TM-04/TM-05 test blocks",
+      "Fixture IDs are generated runtime per test",
+      "Tests remain readable and deterministic"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Applied the focused TM-04/TM-05 fixture-ID rework: replaced static lifecycle slugs with runtime per-test UUID-style slugs generated in-test via deterministic hashing helper.",
+    "artifacts_out": [
+      "tests/integration/tm01_tenant_list_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

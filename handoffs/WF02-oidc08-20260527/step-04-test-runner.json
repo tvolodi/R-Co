@@ -1,0 +1,53 @@
+{
+  "handoff_id": "20260527-914",
+  "run_id": "WF02-oidc08-20260527",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-oidc08-20260527/step-04-test-runner.json",
+  "created_at": "2026-05-27T16:45:22Z",
+  "started_at": "2026-05-27T16:45:33Z",
+  "completed_at": "2026-05-27T16:57:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": ["OIDC-08"],
+    "related_handoff_ids": ["20260527-913", "20260527-912", "20260527-911", "20260527-910"],
+    "artifacts_in": [
+      "tests/specs/OIDC-08.md",
+      "tests/unit/test_oidc08_claim_mapping.zig",
+      "tests/integration/oidc08_claim_mapping_config_test.zig",
+      "src/oidc/claim_mapping.zig"
+    ]
+  },
+  "task": {
+    "description": "Execute the OIDC-08 test suite and produce a structured test report.\n\n1. Run: zig build test (ensure all unit tests pass)\n2. Run: zig build test-integration (requires BPM_TEST_DB_URL — run with env var set)\n3. Run: zig build 2>&1 | grep -i \"error set\" (must produce no output)\n4. Check test spec coverage: every test case in tests/specs/OIDC-08.md must have a corresponding passing test\n5. Write test report to tests/reports/\n\nIf any compile-time errors occur (error-set mismatch, mutability, missing import, unused variable) affecting ≤2 files, fix inline. Otherwise route non-compile failures to ISSUE-FIXER.\n\nAll integration tests connect to real PostgreSQL via BPM_TEST_DB_URL.",
+    "acceptance_criteria": [
+      "zig build test exits 0 — all unit tests pass",
+      "zig build test-integration exits 0 — all integration tests pass",
+      "No 'error set' warnings in stderr",
+      "Test report written to tests/reports/",
+      "All MUST acceptance criteria have passing test cases"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:check-code-coverage",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All test layers pass for OIDC-08. zig build test exits 0 (all 20 unit test cases pass). zig build test-integration exits 0 (all 3 integration test cases pass). No error-set warnings. Fixed one compile-time error-set mismatch in src/oidc/claim_mapping.zig (PoolExhausted → ExhaustedPool, 2 catch blocks). All 23 test cases from tests/specs/OIDC-08.md have corresponding passing tests with zero skips.",
+    "artifacts_out": [
+      "tests/reports/report-2026-05-27-WF02-oidc08-step04.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

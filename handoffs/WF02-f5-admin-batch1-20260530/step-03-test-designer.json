@@ -1,0 +1,39 @@
+{
+  "handoff_id": "cbf8784e-1a4f-4eb3-8e7e-9d1d8fa40f29",
+  "run_id": "WF02-f5-admin-batch1-20260530",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-30T14:00:01Z",
+  "started_at": "2026-05-30T14:05:27Z",
+  "completed_at": "2026-05-30T14:08:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F5 - Administration (batch 1)",
+    "requirement_ids": ["ADM-UI-01", "ADM-UI-02", "ADM-UI-03", "ADM-UI-04"],
+    "related_handoff_ids": ["efac70f8-b863-42af-b65e-f7bcf7d18e0c"],
+    "artifacts_in": ["web/tests/e2e/f5-admin-users.e2e.spec.ts"]
+  },
+  "task": {
+    "description": "Produce and validate tests for ADM-UI-01..04.",
+    "acceptance_criteria": ["Runnable test coverage exists for all MUST requirements"],
+    "functions_to_call": ["fn:design-tests"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and E2E coverage refreshed for ADM-UI-01..04.",
+    "artifacts_out": [
+      "tests/specs/ADM-UI-01.md",
+      "tests/specs/ADM-UI-02.md",
+      "tests/specs/ADM-UI-03.md",
+      "tests/specs/ADM-UI-04.md",
+      "web/tests/e2e/f5-admin-users.e2e.spec.ts"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 03b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

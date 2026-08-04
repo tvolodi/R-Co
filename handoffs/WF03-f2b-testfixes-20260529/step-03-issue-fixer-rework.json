@@ -1,0 +1,52 @@
+{
+  "handoff_id": "wf03-f2b-step03-004",
+  "run_id": "WF03-f2b-testfixes-20260529",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-05-29T08:47:12Z",
+  "started_at": "2026-05-29T08:51:24Z",
+  "completed_at": "2026-05-29T08:54:31Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 2 \u2014 Process Designer UI",
+    "requirement_ids": [
+      "PD-UI-16"
+    ],
+    "related_handoff_ids": [
+      "wf03-f2b-step01-002",
+      "wf03-f2b-step02-003"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-05-29-WF03-f2b-testfixes.json"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: 3 tests still failing on branch feature/WF02-f2b-shoulds-20260529. Previous attempt fixed 3/6.\n\nRemaining failures:\n\n1. **PDUI16-01** \u2014 CodeMirror CEL editor (`.cm-editor`) not rendering in the DOM inside ConditionDialog. The dialog opens and shows 'Delete Edge' button but no editor. Check CelExpressionEditor component rendering and ensure it's properly mounted with data-testid='cel-expression-editor'.\n\n2. **PDUI12-03 & TC-SAVE-01** \u2014 HTTP 422 'Unprocessable Entity' when saving. The PropertyPanel is sending placeholder values to the backend for validation. Fix: strip/omit placeholder/empty attribute values before PUT, OR make the backend validation accept empty/placeholder strings for DRAFT definitions.\n\nChange approach for the CodeMirror issue \u2014 don't just add a testid, ensure the editor actually renders.",
+    "acceptance_criteria": [
+      "PDUI16-01: CodeMirror editor renders in ConditionDialog DOM",
+      "PDUI12-03: Save succeeds (HTTP 200/201) with placeholder values stripped",
+      "TC-SAVE-01: Save succeeds and toast appears",
+      "npm run type-check, lint, build all pass",
+      "Changes committed and pushed"
+    ],
+    "functions_to_call": [
+      "fn:fix-tests"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed 2 root causes for 3 test failures:\n\n1. PDUI16-01 (CodeMirror not rendering): Added onEdgeDoubleClick handler to ProcessCanvas that opens ConditionDialog for EXCLUSIVE_GATEWAY edges. Updated ConditionDialog to accept initialCondition/initialIsDefault props for pre-populating the CEL editor when editing existing edges. Updated handleConditionConfirm to update existing edge data instead of always creating new edges.\n\n2. PDUI12-03 & TC-SAVE-01 (HTTP 422 on save): Fixed flowToGraph attribute serialization. node.data.attributes is stored as a parsed Record<string, unknown> by graphToFlow, but flowToGraph checked for string type, causing all original attributes (including required HUMAN_TASK role) to be lost during save round-trips. Now uses the object directly.",
+    "artifacts_out": [
+      "web/src/components/canvas/ProcessCanvas.tsx",
+      "web/src/components/canvas/ConditionDialog.tsx",
+      "web/src/utils/canvas/flowToGraph.ts"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to TEST-RUNNER for verification"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

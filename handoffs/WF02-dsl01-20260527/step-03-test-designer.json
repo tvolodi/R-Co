@@ -1,0 +1,49 @@
+{
+  "handoff_id": "20260527-020",
+  "run_id": "WF02-dsl01-20260527",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-dsl01-20260527/step-03-test-designer.json",
+  "created_at": "2026-05-26T21:21:00Z",
+  "started_at": "2026-05-26T21:21:34Z",
+  "completed_at": "2026-05-26T21:25:04Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-01"],
+    "related_handoff_ids": ["20260527-019"],
+    "artifacts_in": [
+      "src/design/expr.md",
+      "src/expr/mod.zig",
+      "src/expr/parser.zig",
+      "src/expr/lexer.zig",
+      "src/expr/ast.zig",
+      "src/expr/error.zig",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Produce a test spec at tests/specs/DSL-01.md for DSL-01 (Grammar conformance).\n\nThe spec must cover the two acceptance criteria from the requirement:\n1. For each grammar production, at least one positive and one negative parser test exists.\n2. Rejection messages include the line number, column number, and the offending token.\n\nGrammar productions to cover (from Architecture §5.1 / docs/addon-1/01-architecture.md):\n  or_expr, and_expr, not_expr, cmp_expr, add_expr, mul_expr, unary, primary (number/string/bool/null/identifier/dot-path/grouped), func_call\n\nFor each production include:\n- TC-DSL01-NNN id\n- Input expression string\n- Expected outcome: PASS (parsed successfully) or FAIL (ParseError with expected line, column, token)\n- Which acceptance criterion it satisfies\n\nAlso include integration-level test cases:\n- A compound expression using multiple operators (gateway condition example: order.total > 10000 and customer.tier == \"VIP\")\n- A call to each of the 11 whitelisted built-in functions (length, lower, upper, trim, contains, startsWith, endsWith, coalesce, now, date_add, date_diff)\n- An expression with a non-whitelisted function name — must be rejected\n- A deeply nested dot-path (a.b.c.d) — must parse successfully\n\nOutput: tests/specs/DSL-01.md",
+    "acceptance_criteria": [
+      "tests/specs/DSL-01.md exists",
+      "At least one positive and one negative test case per grammar production (9 productions × 2 = 18 minimum)",
+      "All 11 whitelisted built-in functions covered with positive tests",
+      "Non-whitelisted function name covered with a negative test",
+      "Each negative test specifies expected line, column, and offending token"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Produced tests/specs/DSL-01.md: 56 test cases covering all 9 grammar productions (28 positive + 14 negative for productions, 11 built-in function coverage cases, 3 non-whitelisted rejection cases, 14 integration/precedence/error-format cases). Every negative test specifies expected line, column, and offending token derived from the lexer and parser source.",
+    "artifacts_out": ["tests/specs/DSL-01.md"],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER step-04"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

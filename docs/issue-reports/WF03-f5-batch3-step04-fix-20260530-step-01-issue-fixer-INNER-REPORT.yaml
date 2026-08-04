@@ -1,0 +1,35 @@
+run_id: WF03-f5-batch3-step04-fix-20260530
+workflow_id: WF-03
+step: "01"
+agent: ISSUE-FIXER
+handoff_id: 27dfa92a-19f3-4a12-8a90-cb71d44f76c7
+timestamp_utc: 2026-05-30T22:20:40Z
+status: PASS
+summary: Fixed the shared PostgreSQL result-cleanup defect behind the reported OBS-03 and OBS-04 DebugAllocator leak traces, then verified the previously masking TC-IDN-02-05 aggregate blocker no longer fails.
+diagnosis:
+  category: A
+  findings:
+    - Prior issue notes for OBS-03 already pointed to ownership mistakes around query-lifetime buffers, which matched the new leak symptoms.
+    - The root source defect was lower in the stack: vendor/pg/pg.zig deinitialized row containers but not the duplicated per-column buffers created by parseDataRow.
+    - src/db/pool.zig queryRow also needed guaranteed defer-based result cleanup on every exit path.
+validation:
+  - command: zig build
+    result: PASS
+    evidence: Build completed after stopping the locked bpm-platform.exe process.
+  - command: zig build test-integration-obs03
+    result: PASS
+    evidence: OBS03_EXIT=0
+  - command: zig build test-integration-obs04
+    result: PASS
+    evidence: OBS04_EXIT=0
+  - command: zig build test-integration -- --test-filter "TC-IDN-02-05"
+    result: PASS
+    evidence: EXIT=0
+  - command: zig build test-integration
+    result: PASS
+    evidence: INTEGRATION_EXIT_CODE=0
+artifacts:
+  - vendor/pg/pg.zig
+  - src/db/pool.zig
+  - docs/issues/ISS-0062.json
+next_action: Route to TEST-RUNNER (WF-03 Step 3)

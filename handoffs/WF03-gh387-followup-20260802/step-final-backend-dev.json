@@ -1,0 +1,45 @@
+{
+  "handoff_id": "WF03-gh387-followup-20260802-stepfinal",
+  "run_id": "WF03-gh387-followup-20260802",
+  "step": "Final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-02T18:12:10Z",
+  "started_at": "2026-08-02T18:12:10Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Git merge (Step Final)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh387-followup-20260802-step07"
+    ],
+    "artifacts_in": [
+      "feature/WF03-gh387-followup-20260802"
+    ]
+  },
+  "task": {
+    "description": "Final step of WF-03 follow-up: merge feature/WF03-gh387-followup-20260802 to main via squash-merge.\n\nProcedure:\n\n1. `git branch --show-current` \u2014 confirm `feature/WF03-gh387-followup-20260802`. If not, abort.\n\n2. `git status --short` \u2014 record state. If uncommitted changes to project files exist, commit them.\n\n3. Determine total commits:\n   ```\n   git log --oneline origin/main..HEAD\n   ```\n   Expect ~5 commits (3 batch + 2 docs).\n\n4. `git stash push -m \"orch-state-followup-final\" -- handoffs/orchestrator.log handoffs/registry.json` \u2014 stash to allow checkout.\n\n5. `git checkout main`\n\n6. `git pull --ff-only origin main`\n\n7. Create PR body at scratch/pr-body-iss0121-followup.md (or update existing).\n\n8. `gh pr create --base main --head feature/WF03-gh387-followup-20260802 --title \"fix(ISS-0121): incremental per-test UUID migration (GH #387 part 2)\" --body-file scratch/pr-body-iss0121-followup.md` \u2014 capture PR number.\n\n9. `gh pr merge <PR_NUMBER> --squash --delete-branch` \u2014 capture merge SHA.\n\n10. Verify:\n    ```\n    git branch --show-current  \u2192 main\n    git log --oneline -3        \u2192 shows squash merge commit\n    git branch -r | grep -i wf03-gh387  \u2192 empty\n    ```\n\n11. Drop remote-tracking ref if needed:\n    ```\n    git fetch origin --prune\n    git update-ref -d refs/remotes/origin/feature/WF03-gh387-followup-20260802 2>/dev/null\n    ```\n\n12. Force-delete remote if auto-delete failed:\n    ```\n    git push origin --delete feature/WF03-gh387-followup-20260802\n    ```\n\n13. Pop the stash and commit audit-trail files:\n    ```\n    git checkout main\n    git stash pop\n    git add handoffs/ tests/ docs/issue-reports/ src/design/\n    git commit -m \"chore(WF03-gh387-followup-20260802): record Step Final handoff (PR #<N> squash-merged)\"\n    ```\n\n14. Update handoff file `handoffs/WF03-gh387-followup-20260802/step-final-backend-dev.json`:\n    - status = COMPLETED\n    - result.status = PASS\n    - result.summary = \"PR #<N> squash-merged; <commit>; branch deleted; main clean\"\n    - result.artifacts_out = [\"PR #<N>\", \"commit <sha>\", \"merged feature/WF03-gh387-followup-20260802\"]\n    - result.issues = []\n    - result.next_action = \"WF03 follow-up complete\"\n    - completed_at = (Get-Date).ToUniversalTime().ToString(\"yyyy-MM-ddTHH:mm:ssZ\") \u2014 exact output\n\n15. Update handoffs/registry.json: set status for handoff_id WF03-gh387-followup-20260802-stepfinal to COMPLETED.\n\nIf the merge fails or has auth issues, record in result.issues as MINOR. PASS as long as the code changes are merged.\n\nReturn: PR number, merge SHA, branch state.",
+    "acceptance_criteria": [
+      "PR created and squash-merged",
+      "Feature branch deleted from origin and local",
+      "main working tree clean",
+      "Audit-trail files committed"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PR #403 squash-merged; commit ef42a06; branch deleted; main clean",
+    "artifacts_out": [
+      "PR #403",
+      "commit ef42a06",
+      "merged feature/WF03-gh387-followup-20260802",
+      "audit-trail commit 943f1a3"
+    ],
+    "issues": [],
+    "next_action": "WF03-gh387-followup-20260802 complete"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-02T18:15:00Z"
+}

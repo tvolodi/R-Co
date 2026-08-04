@@ -1,0 +1,46 @@
+{
+  "report_id": "WF02-oidc27-34-20260528-step-04-test-runner-INNER-REPORT",
+  "run_id": "WF02-oidc27-34-20260528",
+  "workflow_id": "WF-02",
+  "handoff_id": "bc2e115f-c230-46e9-9652-b945206c9563",
+  "agent": "TEST-RUNNER",
+  "status": "FAIL",
+  "completed_at": "2026-05-28T02:48:11Z",
+  "summary": "Executed the required WF-02 OIDC-27..34 validation suite. zig build and zig build test passed, but zig build test-integration failed on unrelated OIDC-10 and DB migration blockers and zig build test-integration-oidc31 failed on live endpoint CONNECTION_REFUSED, so requirement-level validation cannot advance.",
+  "files_modified": [
+    "handoffs/WF02-oidc27-34-20260528/step-04-test-runner.json",
+    "handoffs/registry.json",
+    "tests/reports/report-20260528T024811Z-WF02-oidc27-34-step04.json",
+    "docs/issue-reports/WF02-oidc27-34-20260528-step-04-test-runner-INNER-REPORT.json"
+  ],
+  "artifacts_out": [
+    "tests/reports/report-20260528T024811Z-WF02-oidc27-34-step04.json",
+    "docs/issue-reports/WF02-oidc27-34-20260528-step-04-test-runner-INNER-REPORT.json"
+  ],
+  "issues": [
+    {
+      "severity": "BLOCKER",
+      "requirement_id": "OIDC-31",
+      "description": "Focused OIDC-31 preflight failed with CONNECTION_REFUSED against the configured BPM_IDP_BASE_URL and could not establish live IDP/backend evidence."
+    },
+    {
+      "severity": "BLOCKER",
+      "requirement_id": "OIDC-34",
+      "description": "Aggregate integration remained red because DB migration integration tests failed with error.ServerError during TestHarness.init."
+    },
+    {
+      "severity": "MAJOR",
+      "requirement_id": "OIDC-34",
+      "description": "Aggregate integration also failed in OIDC-10 attribute-sync coverage due PoolError.QueryFailed, adding a second blocker outside the OIDC-27..34 slice."
+    }
+  ],
+  "severity_classification": {
+    "highest_severity": "BLOCKER",
+    "counts": {
+      "BLOCKER": 2,
+      "MAJOR": 1,
+      "MINOR": 0
+    }
+  },
+  "next_action": "Return control to ORCH and route a WF-03 fix for the live OIDC preflight connectivity failure plus the unrelated aggregate integration blockers before rerunning WF02-oidc27-34 step 04."
+}

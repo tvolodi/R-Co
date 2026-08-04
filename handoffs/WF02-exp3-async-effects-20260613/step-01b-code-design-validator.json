@@ -1,0 +1,64 @@
+{
+  "run_id": "WF02-exp3-async-effects-20260613",
+  "handoff_id": "f00ea90a-0850-4a0b-afdb-32b43bde88d8",
+  "workflow_id": "WF-02",
+  "task": {
+    "acceptance_criteria": [
+      "PASS/FAIL verdict with issues list",
+      "All acceptance criteria covered by design sections",
+      "No implementation code in design artifact",
+      "Ready for BACKEND-DEV without ambiguity"
+    ],
+    "description": "Validate Epic 3 design artifact for completeness and implementation readiness. Ensure acceptance criteria coverage for EXP-301/302/303, no implementation code in design, and explicit preservation of transition purity + audit invariants.",
+    "functions_to_call": [
+      "fn:validate-design"
+    ]
+  },
+  "max_rework": 3,
+  "created_at": "2026-06-13T06:40:40Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validation after rework: design artifact exp-03-async-effects.md passes all gates. E050 MAJOR resolved \u2014 3 data-flow sections now split into separate fenced blocks (max 37 lines, zero exceed 40). lint_design_artefact.py exits 0, no issues. All acceptance criteria for EXP-301/302/303 covered. Transition purity and audit invariants explicitly stated. Open questions documented. Ready for BACKEND-DEV.",
+    "artifacts_out": [
+      "src/design/exp-03-async-effects.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "code": "INFO",
+        "location": "src/design/exp-03-async-effects.md",
+        "description": "EXP-501 (secrets module) not yet implemented. HttpEffectSpec.secret_ref will return EffectDeliveryError.SecretResolutionFailed until EXP-501 lands. Forward-declared open question; marked with TODO(EXP-501). Non-blocking."
+      },
+      {
+        "severity": "MINOR",
+        "code": "INFO",
+        "location": "src/design/exp-03-async-effects.md",
+        "description": "CATCH_EVENT node type not yet in definition/graph.zig. BACKEND-DEV must verify and extend graph format before EXP-302 Phase 2 begins. Documented open question. Non-blocking for Phase 1 scaffolding."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 2a)"
+  },
+  "rework_count": 1,
+  "started_at": "2026-06-13T06:40:44Z",
+  "status": "COMPLETED",
+  "from_agent": "ORCH",
+  "step": "01b",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "completed_at": "2026-06-13T06:47:33Z",
+  "context": {
+    "related_handoff_ids": [
+      "81d6efa2-e477-4220-9915-f410269b021d"
+    ],
+    "requirement_ids": [
+      "EXP-301",
+      "EXP-302",
+      "EXP-303"
+    ],
+    "stage": "EPIC-3 Async Outbound Effects",
+    "artifacts_in": [
+      "src/design/exp-03-async-effects.md",
+      "handoffs/WF02-exp3-async-effects-20260613/step-01-code-designer.json"
+    ]
+  },
+  "priority": "HIGH"
+}

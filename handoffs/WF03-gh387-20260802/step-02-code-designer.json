@@ -1,0 +1,47 @@
+{
+  "handoff_id": "WF03-gh387-20260802-step02",
+  "run_id": "WF03-gh387-20260802",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-02T10:57:19Z",
+  "started_at": "2026-08-02T10:57:19Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Fix design (Step 2)",
+    "requirement_ids": [],
+    "related_handoff_ids": ["WF03-gh387-20260802-step01"],
+    "artifacts_in": [
+      "docs/issues/ISS-0121.json",
+      "docs/issue-reports/WF03-gh387-20260802-step-01-issue-fixer-INNER-REPORT.yaml",
+      "tests/integration/helpers.zig",
+      "tools/lint_test_isolation.py"
+    ]
+  },
+  "task": {
+    "description": "Produce a fix-design artefact for ISS-0121 (hardcoded UUID violations across 100+ integration test files). This is a Type E design (novel / cross-cutting — does not fit any of Type A–D).\n\nWrite a markdown design document to `src/design/iss0121_per_test_uuids.md` covering:\n\n1. **Problem statement** — 258 MAJOR T010 hardcoded UUID findings across 100+ test files; collisions break isolation under sequential or concurrent runs.\n\n2. **Solution overview** — Add a `pub fn newUuid(self: *TestHarness) std.uuid.Uuid` method on `TestHarness` that allocates and returns a fresh UUID (use `std.crypto.random` or `std.crypto.SecretBuffer`/`std.Random`). The returned UUID must be unique per call within the same process. Provide a `pub fn newUuidString(self: *TestHarness, allocator: std.mem.Allocator) ![]u8` convenience that converts the UUID to its canonical hyphenated text form (allocated, caller-frees).\n\n3. **API contract** — Signature, semantics, error set, allocation behaviour, thread-safety note.\n\n4. **Replacement rule** — Each test block should declare `const id = try h.newUuid();` (or `try h.newUuidString(...)` when a string is needed) and pass that into SQL parameters rather than literal strings.\n\n5. **Migration strategy** — Concrete recipe per affected file: open the file, run grep to find each UUID literal, replace each with a `h.newUuidString(...)` (or a local `const xxx = try h.newUuidString(alloc);`), update the test to use that binding instead of the literal, and re-run `python tools/lint_test_isolation.py tests/integration` to confirm the T010 count decreases by the number of literals replaced.\n\n6. **Files-to-change** — list the 20 files from `docs/issues/ISS-0121.json#files_to_change`. For each, list the approximate number of literals to replace (a rough count from the lint output).\n\n7. **Lint baseline update** — After replacement, `tools/lint_test_isolation.baseline.json` must be regenerated from a clean lint run so that suppressions only apply to genuinely legitimate residuals (e.g. UUIDs intentionally encoded as test-data within a JSON blob fixture, not as INSERT parameters). Spurious suppressions must not be added — the linter will rightly flag them again.\n\n8. **CI hook (prevention)** — In `tools/lint_test_isolation.py`, ensure the exit code is non-zero whenever MAJOR > the baseline-MAJOR ceiling. Document the exact command the CI workflow should run.\n\n9. **Acceptance criteria** —\n   - `zig build` exits 0.\n   - `zig build test` exits 0 (existing unit tests untouched).\n   - `zig build test-integration-iss0122` exits 0 (no regressions of the prior UTF-8 chain fix).\n   - `python tools/lint_test_isolation.py tests/integration` reports MAJOR ≤ 10 (only legitimate baseline residuals like constant UUIDs in JSON fixtures), BLOCKER=0, MINOR=0.\n   - `docs/issues/ISS-0121.json#status` updates to RESOLVED with a `resolution` field documenting commit hash.\n\n10. **Out of scope** — T020 (module-level mutable var) and T050 (missing BPM_TEST_DB_URL reference) findings listed in the same lint baseline can be triaged in a follow-up WF-03; this design addresses T010 only.\n\n11. **Risks & mitigations** —\n    - Risk: Some INSERT statements need a stable UUID across multiple SQL statements in the same test. Mitigation: bind the UUID to a local `const`, use the same value in every statement that requires it.\n    - Risk: Cyclic run-time dependency between UUID generation and TestHarness. Mitigation: `newUuid` does NOT touch the database; it returns an in-memory UUID.\n    - Risk: 195 baseline-suppressed findings might mask real regressions. Mitigation: regenerate baseline only AFTER literals are replaced; verify the new baseline count is strictly smaller than 258.\n\nThe design MUST NOT contain implementation code. Section 11 (Risks & mitigations) and section 9 (Acceptance criteria) are sufficient. Function signatures and SQL are allowed only in section 3 (API contract) — no function bodies.",
+    "acceptance_criteria": [
+      "Design file exists at src/design/iss0121_per_test_uuids.md",
+      "All 11 numbered sections present",
+      "No implementation code (no function bodies, no Zig `{}` blocks)",
+      "Function signatures listed in §3 only",
+      "Reference to files_to_change from ISS-0121.json",
+      "Reference to docs/guides/test_infrastructure_guide.md §11.1 (per-test UUID pattern)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created src/design/iss0121_per_test_uuids.md as a Type E cross-cutting per-test UUID isolation design.",
+    "artifacts_out": [
+      "src/design/iss0121_per_test_uuids.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-02T10:57:19Z",
+  "completed_at": "2026-08-02T11:00:50Z"
+}

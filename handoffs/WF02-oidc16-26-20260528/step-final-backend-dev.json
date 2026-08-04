@@ -1,0 +1,81 @@
+{
+  "handoff_id": "ce238713-ffdd-4cfd-a772-d74f62bb4738",
+  "run_id": "WF02-oidc16-26-20260528",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-oidc16-26-20260528/step-final-backend-dev.json",
+  "created_at": "2026-05-28T00:45:10Z",
+  "started_at": "2026-05-28T00:45:30Z",
+  "completed_at": "2026-05-27T22:46:05Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-16",
+      "OIDC-17",
+      "OIDC-18",
+      "OIDC-19",
+      "OIDC-20",
+      "OIDC-21",
+      "OIDC-22",
+      "OIDC-23",
+      "OIDC-24",
+      "OIDC-25",
+      "OIDC-26"
+    ],
+    "related_handoff_ids": [
+      "7bcdb840-18f1-4d49-9f35-01d88f686f57",
+      "5f16cff0-44f8-4791-a8f6-9135d2e3647a",
+      "f6030d4a-facd-4fa2-8916-95de58e4b9f6",
+      "405271cc-2fdb-49a9-a182-d15f6dd8b6a9",
+      "f2e0f367-9d52-4368-a17c-e2d86e99c8f8",
+      "345273e8-3fbc-4213-9f04-ac91c43c786e",
+      "441a7ed8-7947-4d13-b854-09f7d3248571",
+      "63d6a0ea-97cf-4dda-bf27-12f4beff7e06"
+    ],
+    "artifacts_in": [
+      "docs/status/release-OIDC-16-26-20260528.json",
+      "docs/metrics/retrospectives/WF02-oidc16-26-20260528.json"
+    ],
+    "branch_name": "feature/WF02-oidc16-26-20260528"
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md. Rebase feature branch on origin/main, create PR, squash-merge, delete branch as protocol allows, and provide git evidence including push_status and pr_url/pr_create_error.",
+    "acceptance_criteria": [
+      "Result includes branch_name, commit_sha_list, remote_branch, push_status",
+      "PR URL recorded when available (or explicit pr_create_error)",
+      "push_status is ok"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Executed fn:git-merge for WF02-oidc16-26-20260528: committed final artifacts, rebased on origin/main, pushed, created PR #25, squash-merged, and deleted feature branch.",
+    "artifacts_out": [
+      "branch: feature/WF02-oidc16-26-20260528 (squash-merged into main, branch deleted)",
+      "docs/status/release-OIDC-16-26-20260528.json",
+      "docs/metrics/retrospectives/WF02-oidc16-26-20260528.json"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-oidc16-26-20260528",
+      "commit_sha_list": [
+        "20e0907",
+        "086aaac",
+        "851d65d"
+      ],
+      "remote_branch": "origin/feature/WF02-oidc16-26-20260528",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/My-Fab/pull/25",
+      "pr_create_error": null
+    },
+    "next_action": "ORCH marks run COMPLETED and releases owned_modules lock"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

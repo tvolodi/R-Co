@@ -1,0 +1,35 @@
+report_id: WF02-f6-dlq-webhooks-batch1-20260531-step-03-rework3-test-designer
+agent_id: TEST-DESIGNER
+run_id: WF02-f6-dlq-webhooks-batch1-20260531
+step: "03"
+created_at: "2026-05-31T03:25:59Z"
+summary: >-
+  Executed rework iteration 3 for DLQ Step 03 by hardening fixture lifecycle in
+  web/tests/e2e/f6-dlq.e2e.spec.ts. Added deterministic per-test UUID fixture naming,
+  restricted DLQ item selection to the fixture instance, and implemented guaranteed
+  afterEach cleanup (discard DLQ item, cancel instance, delete definition). Validation
+  rerun passed and the handoff is ready for Step 3b hard-gate review.
+files_created:
+  - docs/issue-reports/WF02-f6-dlq-webhooks-batch1-20260531-step03-rework3.yaml
+  - docs/issue-reports/WF02-f6-dlq-webhooks-batch1-20260531-step-03-rework3-test-designer-INNER-REPORT.yaml
+files_modified:
+  - web/tests/e2e/f6-dlq.e2e.spec.ts
+  - handoffs/WF02-f6-dlq-webhooks-batch1-20260531/step-03-test-designer.json
+  - handoffs/registry.json
+tests_run:
+  - name: python tools/lint_test_isolation.py tests/integration
+    status: pass
+    detail: "OK - 76 files checked, no isolation issues."
+  - name: python tools/lint_frontend_conventions.py
+    status: pass
+    detail: "OK - 112 files checked, no convention issues."
+  - name: npx playwright test tests/e2e/f6-dlq.e2e.spec.ts
+    status: pass
+    detail: "4 passed (14.2s)."
+  - name: curl.exe -s -o NUL -w "%{http_code}" http://127.0.0.1:8080/api/v1/dlq
+    status: pass
+    detail: "200"
+issues_found: []
+next_steps:
+  - Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b).
+blockers: []

@@ -1,0 +1,61 @@
+{
+  "run_id": "WF03-oidc27-34-testfix-20260528",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "agent": "ISSUE-FIXER",
+  "handoff_id": "7df9dd9a-7c1e-4439-87e2-b1697f6f0115",
+  "status": "PASS",
+  "completed_at": "2026-05-28T02:35:43Z",
+  "diagnosis": {
+    "categories": [
+      "D_TEST_ERROR",
+      "A_LOGIC_ERROR",
+      "E_ENVIRONMENT"
+    ],
+    "notes": [
+      "OIDC-28 and OIDC-32 unit tests used stale std.fs.cwd API against Zig 0.16.",
+      "OIDC-34 migration_helper used const QueryResult value with mutable deinit requirement.",
+      "OIDC-31 focused preflight used stale vendor pg.Pool symbol instead of project pool module.",
+      "Windows task-level env injection for BPM_TEST_DB_URL was brittle under inline PowerShell quoting."
+    ]
+  },
+  "fixes": [
+    "Updated OIDC-28/32 unit file readers to std.Io.Dir.cwd().readFileAlloc(..., std.Io.Limit.limited(...)).",
+    "Changed rows binding to var in src/oidc/migration_helper.zig before rows.deinit().",
+    "Reworked tests/integration/oidc31_end_to_end_auth_suite_test.zig to use pool_mod.Pool API and explicit queryRow/freeRow handling.",
+    "Updated build.zig OIDC-31 test target imports from pg module to pool module.",
+    "Replaced inline PowerShell task command with script invocation: .vscode/run-zig-test-integration.ps1."
+  ],
+  "verification": [
+    {
+      "command": "zig build",
+      "result": "PASS"
+    },
+    {
+      "command": "zig build test",
+      "result": "PASS"
+    },
+    {
+      "command": ".vscode/run-zig-test-integration.ps1",
+      "result": "PASS",
+      "evidence": "MISSING_ENV=false; INTEGRATION_EXIT=0"
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration-oidc31",
+      "result": "PASS",
+      "evidence": "OIDC31_EXIT=0"
+    }
+  ],
+  "artifacts": [
+    "tests/unit/test_oidc28_local_dev_realm.zig",
+    "tests/unit/test_oidc32_agent_test_identities.zig",
+    "src/oidc/migration_helper.zig",
+    "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
+    "build.zig",
+    ".vscode/tasks.json",
+    ".vscode/run-zig-test-integration.ps1",
+    "docs/issues/ISS-0041.json",
+    "docs/issues/issue_index.json"
+  ],
+  "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+}

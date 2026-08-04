@@ -1,0 +1,29 @@
+{
+  "report_id": "WF02-adp07-20260526-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-adp07-20260526",
+  "step": "01",
+  "created_at": "2026-05-26T10:03:19Z",
+  "summary": "Produced the backend design artefact for ADP-07 at src/design/adp-07-agent-role-reserved-usernames.md. The design defines additive AGENT_RUNNER role semantics, reserved username policy for agent: with PLATFORM_ADMIN-only creation enforcement, integration touchpoints across identity create and role/token grant flows, backward-compatible constraints for existing users and roles, auditability expectations for rejects and grants, and explicit acceptance-to-test mapping for ADP-07 criteria.",
+  "files_created": [
+    "src/design/adp-07-agent-role-reserved-usernames.md",
+    "docs/issue-reports/WF02-adp07-20260526-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-adp07-20260526/step-01-code-designer.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "design completeness and acceptance traceability review",
+      "status": "pass",
+      "detail": "Verified required design sections and full ADP-07 acceptance mapping, including AGENT_RUNNER grantability, reserved username actor enforcement, integration touchpoints, migration and backward-compatibility constraints, and auditability guidance."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)."
+  ],
+  "blockers": []
+}

@@ -1,0 +1,42 @@
+{
+  "handoff_id": "gh-289-WF03-iss0074-20260730-04",
+  "run_id": "WF03-iss0074-20260730",
+  "workflow_id": "WF-03",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-07-30T11:28:33Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 04",
+    "requirement_ids": [
+      "EXP-501"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/fix-ISS-0074.md",
+      "src/secrets/crypto.zig"
+    ]
+  },
+  "task": {
+    "description": "Write test spec and unit tests covering the ISS-0074 fix.",
+    "acceptance_criteria": [],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "tests/specs/ISS-0074-fix.md written with 10 test cases (TC-ISS-0074-01..10). tests/unit/crypto_iss0074_test.zig implements 9 as runtime tests (TC-10 is a static code-review note, documented as such in the spec, not a runtime assertion). Wired into build.zig as `test-crypto-iss0074` step and added as a dependency of the default `test` step. All pure unit tests, no BPM_TEST_DB_URL dependency. No error.SkipZigTest used.",
+    "artifacts_out": [
+      "tests/specs/ISS-0074-fix.md",
+      "tests/unit/crypto_iss0074_test.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR Step 4b"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-07-30T11:28:33Z",
+  "completed_at": "2026-07-30T11:28:33Z"
+}

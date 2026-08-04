@@ -1,0 +1,48 @@
+{
+  "handoff_id": "fd3551f0-3f35-4dcf-8fa5-4fab0095d2ce",
+  "run_id": "WF02-stage11-sim01-04-20260528",
+  "workflow_id": "WF-02",
+  "step": "04-post-wf03-4",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-stage11-sim01-04-20260528/step-04-post-wf03-4-test-runner.json",
+  "created_at": "2026-05-29T01:32:20Z",
+  "started_at": "2026-05-29T01:32:40Z",
+  "completed_at": "2026-05-29T01:37:50Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": ["SIM-01", "SIM-02", "SIM-03", "SIM-04"],
+    "related_handoff_ids": [
+      "8fb67847-9b40-44f7-b9fc-81e531ca850f",
+      "7d7a9ec4-2f85-4e30-9ddb-c4c992f7c1be"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-stage11-sim01-04-20260528/step-3b-post-wf03-5-test-design-validator.json",
+      "tests/integration/xc04_kernel_determinism_test.zig",
+      "tests/integration/stage11_sim_xc04_aggregate_test.zig",
+      "tests/integration/sim01_04_simulation_mode_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Post-WF03 verification for WF02 Step 04. Execute Stage 11 SIM-01..SIM-04 required tests with deterministic targets and report PASS/FAIL with blocker list and evidence logs.",
+    "acceptance_criteria": [
+      "Required Stage 11 verification tests executed",
+      "PASS/FAIL outcome recorded with artifacts",
+      "If PASS, route to RELEASE-VALIDATOR Step 05"
+    ],
+    "functions_to_call": ["fn:run-required-tests", "fn:write-test-report"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Mandatory bench precheck passed and deterministic Stage 11 SIM-01..SIM-04 verification targets passed (XC-04 focused + Stage11 aggregate).",
+    "artifacts_out": [
+      "tests/reports/report-WF02-stage11-sim01-04-20260528-step04-post-wf03-4.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

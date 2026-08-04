@@ -1,0 +1,56 @@
+{
+  "handoff_id": "e3b277cc-be53-47c5-9f74-ec7c5bf66bc8",
+  "run_id": "WF02-exp3-async-effects-20260613",
+  "step": "03-rework3",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "workflow_id": "WF-02",
+  "created_at": "2026-06-13T10:24:30Z",
+  "started_at": "2026-06-13T10:24:44Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Epic 3 \u2014 Async Outbound Effects",
+    "requirement_ids": [
+      "EXP-301",
+      "EXP-302",
+      "EXP-303"
+    ],
+    "related_handoff_ids": [
+      "4173da6e-cd89-4822-9c31-a043881f3a03",
+      "f3956342-696c-4cd3-9724-be592698556c"
+    ],
+    "artifacts_in": [
+      "tests/specs/EXP-301.md",
+      "tests/specs/EXP-302.md",
+      "tests/specs/EXP-303.md",
+      "tests/integration/effects_subsystem_test.zig",
+      "handoffs/WF02-exp3-async-effects-20260613/step-03b-revalidation2-test-design-validator.json"
+    ]
+  },
+  "task": {
+    "description": "HARD-GATE REWORK #3 for Step 03 test design implementation.\n\nAddress all FAIL issues from latest Step 03b revalidation:\n\nBLOCKER 1: EXP-301 spec/implementation mismatch\n- EXP-301 spec defines TC-EXP-301-11 and TC-EXP-301-12\n- effects_subsystem_test.zig currently implements only TC-EXP-301-01..10\n- Implement the missing two integration tests so EXP-301 MUST coverage is complete\n\nBLOCKER 2: Hard-gate case-count gap\n- Ensure implemented EXP-301 integration tests count equals spec count (12/12)\n\nMAJOR 3: Fixture isolation consistency\n- Replace static token/correlation literals with per-test unique values where needed\n- Ensure tests remain deterministic and isolated under repeated execution\n\nValidation required before completion:\n- zig build test\n- zig build test-integration-tm\n\nDeliverables:\n- Updated tests/integration/effects_subsystem_test.zig\n- If needed, synchronized tests/specs/EXP-301.md (only if spec correction is required; prefer implementation completion)\n\nOutcome target: make next Step 03b revalidation PASS.",
+    "acceptance_criteria": [
+      "TC-EXP-301-11 implemented as real integration test",
+      "TC-EXP-301-12 implemented as real integration test",
+      "EXP-301 implementation count matches spec count (12)",
+      "Static fixture literals replaced with per-test unique values where applicable",
+      "zig build test exits 0",
+      "zig build test-integration-tm exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Resolved validator findings for EXP-301 by implementing TC-EXP-301-11 and TC-EXP-301-12 and hardening fixture isolation in EXP-301 integration tests. Required validations passed.",
+    "artifacts_out": [
+      "tests/integration/effects_subsystem_test.zig",
+      "docs/issue-reports/WF02-exp3-async-effects-20260613-step-03-rework3-test-designer-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "rework_count": 3,
+  "max_rework": 4,
+  "completed_at": "2026-06-13T10:28:23Z"
+}

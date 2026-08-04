@@ -1,0 +1,80 @@
+{
+  "handoff_id": "ac5941f4-bd43-4f84-84ca-c2f09589098d",
+  "run_id": "WF02-stage11-sim01-04-20260528",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-stage11-sim01-04-20260528/step-2a-backend-dev.json",
+  "created_at": "2026-05-28T15:10:00Z",
+  "started_at": "2026-05-28T15:10:20Z",
+  "completed_at": "2026-05-28T15:20:32Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04"
+    ],
+    "related_handoff_ids": [
+      "95cab7f4-aa0b-42fc-a59c-958a6a0fba69"
+    ],
+    "artifacts_in": [
+      "src/design/stage11_sim01_04.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/status/implementation_order.md"
+    ]
+  },
+  "task": {
+    "description": "Implement SIM-01..SIM-04 per src/design/stage11_sim01_04.md. Scope includes simulation tenant isolation, deterministic service mocking layer, controllable simulation time source, and deterministic UUID generation for simulation runs. Update backend code/tests/migrations as required. Validate with zig build, zig build test, zig build migrate, and error-set check. Commit and push to feature/WF02-stage11-sim01-04-20260528.",
+    "acceptance_criteria": [
+      "SIM-01..SIM-04 implemented according to design",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build migrate exits 0",
+      "zig build 2>&1 | grep -i error set has no output",
+      "Implementation commit pushed to feature/WF02-stage11-sim01-04-20260528"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented SIM-01..SIM-04 simulation core: added simulation context/tenant isolation, deterministic time and UUID sources, deterministic mock catalog service interception, and Lua host API simulation-time/service-call overrides. Also fixed migration runner ordering logic so required zig build migrate validation succeeds with existing migration set.",
+    "artifacts_out": [
+      "src/simulation/types.zig",
+      "src/simulation/context.zig",
+      "src/simulation/time_source.zig",
+      "src/simulation/uuid_source.zig",
+      "src/simulation/mock_catalog.zig",
+      "src/simulation/service_interceptor.zig",
+      "src/simulation/tenant_store.zig",
+      "src/simulation/runtime.zig",
+      "src/simulation/mod.zig",
+      "src/lua/host_api/now.zig",
+      "src/lua/host_api/call_service.zig",
+      "src/bpm.zig",
+      "src/db/migrations.zig",
+      "src/tools/migrate.zig"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-stage11-sim01-04-20260528",
+      "commit_sha_list": [
+        "e99af48ba812a96cafbce74b0a55b50b5c2bcb0f"
+      ],
+      "remote_branch": "origin/feature/WF02-stage11-sim01-04-20260528",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

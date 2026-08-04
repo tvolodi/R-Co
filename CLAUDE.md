@@ -113,10 +113,24 @@ The following file types MUST always be written to `scratch/` and nowhere else:
 | Stray SQL backups / snapshots | `original_*.sql`, `migration-*-old.sql` |
 | Any file you would not commit to `main` | if in doubt → `scratch/` |
 
+**Workflow artifacts are committed to git (mandatory).** The following directories are tracked in the repository and must be committed at the end of every workflow step that produces or modifies files in them:
+
+| Directory | Must commit |
+|---|---|
+| `handoffs/` | After every step that creates or updates a handoff file |
+| `handoffs/registry.json` | After every routing decision |
+| `handoffs/orchestrator.log` | After every log append |
+| `docs/issue-reports/` | After every ISSUE-FIXER step that writes a report |
+| `docs/issues/` | After every ISS-*.json create/update |
+| `src/design/` | After every CODE-DESIGNER step |
+
+These files are the audit trail of the project. Leaving them uncommitted means losing the record of what was done and why.
+
 **Before completing any handoff, run this self-check:**
 - Is any new file sitting in the project root that is not `build.zig`, `build.zig.zon`, `CLAUDE.md`, `CHANGELOG.md`, `README.md`, `docker-compose.yml`, `.gitignore`, `.env.example`, or `start-backend.ps1`? → Move it to the correct directory or `scratch/` immediately.
 - Did I write a `.log` file anywhere other than `scratch/`? → Move it.
 - Did I write a one-off `.py` or `.ps1` script anywhere other than `scratch/`? → Move it.
+- Did I create or update any file in `handoffs/`, `docs/issue-reports/`, `docs/issues/`, or `src/design/`? → Stage and commit it before completing the handoff.
 
 **Forbidden:** Leaving any scratch file in the project root. If the file cannot go in a tracked directory and is not one of the permanent root files listed above, it belongs in `scratch/`.
 

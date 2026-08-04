@@ -1,0 +1,63 @@
+{
+  "handoff_id": "20260525-024",
+  "run_id": "WF03-obs04-e2eauth-20260525",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-obs04-e2eauth-20260525/step-01-issue-fixer.json",
+  "created_at": "2026-05-25T14:35:00Z",
+  "started_at": "2026-05-25T14:35:20Z",
+  "completed_at": "2026-05-25T03:37:05Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-04"
+    ],
+    "related_handoff_ids": [
+      "20260525-023",
+      "20260525-022",
+      "20260525-021"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-obs04-e2eexec-20260525/step-01-issue-fixer.json",
+      "tests/reports/report-20260525T033104Z-WF03-obs04-step01-e2eexec.json",
+      "web/tests/e2e/obs04.timeline.e2e.spec.ts",
+      "docs/issues/ISS-0015.json",
+      "docs/issues/ISS-0017.json"
+    ]
+  },
+  "task": {
+    "description": "Resolve OBS-04 E2E auth fixture failure by establishing deterministic test credentials/data path for Playwright in current repo context. Ensure OBS-04 Playwright scenario can authenticate successfully and proceed to timeline assertions. Keep setup CI-friendly and avoid manual pre-steps. Capture evidence from executed E2E command.",
+    "acceptance_criteria": [
+      "OBS-04 Playwright E2E authenticates successfully",
+      "E2E command runs with executed assertions (not skipped, not auth-blocked)",
+      "Issue OBS04-TEST-GAP-001 status can be updated based on evidence",
+      "No regressions in existing validation commands"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue",
+      "fn:run-targeted-validation"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed E_ENVIRONMENT deterministic auth gap in OBS-04 E2E by adding a Playwright auth/data harness so login succeeds and timeline assertions execute in CI/local runs.",
+    "artifacts_out": [
+      "web/tests/e2e/obs04.timeline.e2e.spec.ts",
+      "tests/reports/report-20260525T033705Z-WF03-obs04-step01-e2eauth.json",
+      "docs/issues/ISS-0018.json",
+      "docs/issues/ISS-0017.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-obs04-e2eauth-20260525-step-01-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,52 @@
+{
+  "handoff_id": "ap040001-2605-4000-8004-202605220001",
+  "run_id": "WF02-api04-20260523",
+  "workflow_id": "WF-02",
+  "sequence": 1,
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-22T19:53:21Z",
+  "started_at": "2026-05-22T19:54:52Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4",
+    "requirement_ids": [
+      "API-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "src/api/routes/tasks.zig",
+      "src/design/api_conventions.md",
+      "src/design/api-03-instance-management.md",
+      "src/design/engine.md"
+    ]
+  },
+  "task": {
+    "description": "Design the task operation endpoints for API-04.\n\nAPI-04 requires these endpoints:\n1. GET /tasks - list tasks, paginated (API-06), filterable by assignee_id, status, instance_id. TASK_WORKER sees only their own tasks; PROCESS_OPERATOR and above see all.\n2. GET /tasks/:id - returns task including status, instance_id, node_id, assignee_type, assignee_ref, created_at. HTTP 404 if not found.\n3. POST /tasks/:id/complete - completes task per EE-04. Body: { output_variables: {...} }. HTTP 409 if already completed or cancelled.\n4. POST /tasks/:id/assign - assigns an unassigned task to a specific user. Body: { user_id: '...' }. HTTP 409 if task already assigned.\n5. POST /tasks/:id/reassign - changes the assignee of an already-assigned task. Requires PROCESS_OPERATOR or above.\n\nProduce a design artifact at src/design/api-04-task-operations.md covering:\n- Request/response types (Zig structs) for all five endpoints\n- Role-based visibility rules for GET /tasks (TASK_WORKER vs PROCESS_OPERATOR+)\n- Pagination parameter handling per API-06 conventions\n- Filter parameter handling (assignee_id, status, instance_id query params)\n- How to invoke EE-04 task completion from the complete endpoint\n- Error response codes for each endpoint\n- Edge cases: TASK_WORKER completing another task owner's task (403), task for CANCELLED instance (409)\n\nFollow the pattern established in src/design/api-03-instance-management.md. Do not write implementation code.",
+    "acceptance_criteria": [
+      "src/design/api-04-task-operations.md exists",
+      "Design covers all five endpoints",
+      "Request/response struct definitions are provided",
+      "Role-based visibility strategy for GET /tasks is specified",
+      "Error codes for all failure modes are enumerated"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Designed API-04 task operation endpoints: GET /tasks (cursor-paginated, role-filtered), GET /tasks/:id, POST /tasks/:id/complete (with TASK_WORKER ownership check), POST /tasks/:id/assign, POST /tasks/:id/reassign. Design artifact at src/design/api-04-task-operations.md.",
+    "artifacts_out": [
+      "src/design/api-04-task-operations.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T19:59:23Z"
+}

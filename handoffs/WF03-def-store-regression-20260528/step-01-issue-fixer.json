@@ -1,0 +1,52 @@
+{
+  "handoff_id": "7e73f75d-77a1-4f0f-b934-25c8f868f66c",
+  "run_id": "WF03-def-store-regression-20260528",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-05-28T05:48:00Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 4-6 regression",
+    "requirement_ids": [
+      "API-02",
+      "API-03",
+      "OBS-03",
+      "ADP-05"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/definition/store.zig",
+      "tests/reports/WF02-ext02-20260528-integration.json"
+    ],
+    "issue_report": "162 pre-existing integration test failures in api02/api03/obs03/adp05 suites. Root cause: DefinitionError.TransactionFailed at src/definition/store.zig:270. RELEASED requirements are now failing \u2014 regression."
+  },
+  "task": {
+    "description": "Fix regression: 162 integration tests failing across api02, api03, obs03, adp05 suites.\n\nRoot cause per TEST-RUNNER: DefinitionError.TransactionFailed at src/definition/store.zig line 270.\n\nSteps:\n1. Read src/definition/store.zig around line 270 to diagnose the root cause\n2. Reproduce by running integration tests with BPM_TEST_DB_URL set and examining failures\n3. Fix the root cause in src/definition/store.zig\n4. Validate: zig build exits 0, zig build test exits 0\n5. Run integration tests again to confirm api02, api03, obs03, adp05 failures are resolved\n\nConstraints: max 5 source files changed. No schema drops. All RELEASED requirements must still pass.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "Integration tests for API-02, API-03, OBS-03, ADP-05 pass"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:check-zig-build",
+      "fn:run-integration-tests"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed Category-A regression: DSL-13 merge changed store.zig to use ON CONFLICT ON CONSTRAINT uq_definition_tenant_version, but migration 028 had already been applied to test databases in the old form (unique index, not named constraint). PostgreSQL rejects ON CONFLICT ON CONSTRAINT when only a unique index exists, returning an error caught as DefinitionError.TransactionFailed. Added migration 044_fix_definition_conflict_constraint.sql to idempotently drop the unique index and create the named constraint. After applying migration 044 (zig build migrate with BPM_DB_URL=test DB), api02/api03/obs03/adp05 integration suites pass. zig build and zig build test exit 0. 37 pre-existing failures remain in unrelated suites (EE-09/10, EXT-01/03, IDN-02/03, PD-08 snapshot) — none introduced by this fix.",
+    "artifacts_out": [
+      "migrations/044_fix_definition_conflict_constraint.sql",
+      "docs/issues/ISS-0044.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-28T05:48:00Z",
+  "completed_at": "2026-05-28T05:55:26Z"
+}

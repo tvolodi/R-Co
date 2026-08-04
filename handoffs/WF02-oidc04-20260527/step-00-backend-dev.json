@@ -1,0 +1,68 @@
+{
+    "handoff_id":  "20260527-027",
+    "run_id":  "WF02-oidc04-20260527",
+    "workflow_id":  "WF-02",
+    "step":  "00",
+    "from_agent":  "ORCH",
+    "to_agent":  "BACKEND-DEV",
+    "file":  "handoffs/WF02-oidc04-20260527/step-00-backend-dev.json",
+    "created_at":  "2026-05-27T00:10:00Z",
+    "started_at":  "2026-05-27T00:10:20Z",
+    "completed_at":  "2026-05-27T01:54:08Z",
+    "status":  "COMPLETED",
+    "priority":  "NORMAL",
+    "context":  {
+                    "stage":  "Stage 6.5 - Schema adaptations + OIDC foundations",
+                    "requirement_ids":  [
+                                            "OIDC-04"
+                                        ],
+                    "related_handoff_ids":  [
+                                                "20260527-026"
+                                            ],
+                    "artifacts_in":  [
+                                         "docs/agents/protocols/GIT_SETUP.md",
+                                         "docs/agents/AGENT_SYSTEM.md",
+                                         "docs/agents/ORCHESTRATOR.md",
+                                         "docs/BPM_Platform_Functional_Requirements.md",
+                                         "docs/status/implementation_order.md",
+                                         "docs/status/requirement_status.json"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Execute WF-02 Step 00 git wrapper gate for run WF02-oidc04-20260527 by performing fn:git-setup exactly per docs/agents/protocols/GIT_SETUP.md. Create or sync feature branch feature/WF02-oidc04-20260527 from latest main, push the branch, and record git evidence fields required by AGENT_SYSTEM.md. This step is blocking; do not implement OIDC-04 in this handoff.",
+                 "acceptance_criteria":  [
+                                             "Result status is PASS",
+                                             "result.git_evidence.branch_name is feature/WF02-oidc04-20260527",
+                                             "result.git_evidence.push_status is ok",
+                                             "result.git_evidence.commit_sha_list contains base commit used for branch point",
+                                             "next_action explicitly authorizes routing to CODE-DESIGNER step 01"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:git-setup"
+                                       ]
+             },
+    "result":  {
+                   "status":  "PASS",
+                   "summary":  "Executed WF-02 Step 00 git wrapper gate via fn:git-setup: synchronized main with origin/main, created and verified feature/WF02-oidc04-20260527 from base commit 980e41bb0bc1cdc1b478de6a4357bb5d08e1d762, and pushed the branch to origin.",
+                   "artifacts_out":  [
+                                         "branch: feature/WF02-oidc04-20260527",
+                                         "docs/issue-reports/WF02-oidc04-20260527-step-00-backend-dev-INNER-REPORT.json"
+                                     ],
+                   "issues":  [
+
+                              ],
+                   "git_evidence":  {
+                                        "branch_name":  "feature/WF02-oidc04-20260527",
+                                        "commit_sha_list":  [
+                                                                "980e41bb0bc1cdc1b478de6a4357bb5d08e1d762"
+                                                            ],
+                                        "remote_branch":  "origin/feature/WF02-oidc04-20260527",
+                                        "push_status":  "ok",
+                                        "pr_url":  null,
+                                        "pr_create_error":  null
+                                    },
+                   "next_action":  "Authorize ORCH to route to CODE-DESIGNER step 01 for run WF02-oidc04-20260527."
+               },
+    "rework_count":  0,
+    "max_rework":  3
+}

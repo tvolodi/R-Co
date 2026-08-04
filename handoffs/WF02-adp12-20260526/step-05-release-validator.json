@@ -1,0 +1,54 @@
+{
+  "handoff_id": "20260526-109",
+  "run_id": "WF02-adp12-20260526",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-adp12-20260526/step-05-release-validator.json",
+  "created_at": "2026-05-26T18:37:40Z",
+  "started_at": "2026-05-26T18:38:00Z",
+  "completed_at": "2026-05-26T18:40:59Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-12"
+    ],
+    "related_handoff_ids": [
+      "20260526-108"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-adp12-20260526/step-04b-test-runner-rework1.json",
+      "tests/reports/report-20260526T183724Z-WF02-adp12-20260526-step04b-rework1.json",
+      "tests/reports/adp12/adp12-regression-summary.json"
+    ]
+  },
+  "task": {
+    "description": "Perform release validation for ADP-12 using WF-02 evidence and NFR checks required by release workflow. Confirm ADP-12 acceptance criteria are met with no blocking issues and produce release decision artifact in docs/status.",
+    "acceptance_criteria": [
+      "Release decision artifact produced for ADP-12",
+      "No BLOCKER/MAJOR issues remain open for ADP-12",
+      "Result is PASS with clear release rationale"
+    ],
+    "functions_to_call": [
+      "fn:run-release-checks",
+      "fn:write-release-decision"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for ADP-12 after zero-diff regression validation and NFR benchmark pass.",
+    "artifacts_out": [
+      "docs/status/release-ADP-12-20260526.json",
+      "docs/issue-reports/WF02-adp12-20260526-step-05-release-validator-INNER-REPORT.json",
+      "tests/reports/WF02-adp12-20260526-step-05-release-validator-bench.log",
+      "handoffs/WF02-adp12-20260526/registry.json"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER to set requirement status to RELEASED"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

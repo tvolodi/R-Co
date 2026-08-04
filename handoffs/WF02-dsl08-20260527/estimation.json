@@ -1,0 +1,20 @@
+{
+  "run_id": "WF02-dsl08-20260527",
+  "created_at": "2026-05-27T16:42:48Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["DSL-08"],
+  "difficulty": 2,
+  "difficulty_rationale": "Single module (src/expr/mod.zig) — add purity verification tests and compile-time assertions for already-implemented built-in functions. No schema change, no new API.",
+  "integration_surface": "low",
+  "integration_surface_rationale": "Additive to src/expr/mod.zig only — no caller signatures change, no other modules touched.",
+  "steps": ["code-designer", "backend-dev", "test-designer", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 2,
+    "backend-dev": 4,
+    "test-designer": 3,
+    "test-runner": 1,
+    "release-validator": 1,
+    "doc-updater": 2,
+    "total": 13
+  }
+}

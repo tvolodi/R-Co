@@ -1,0 +1,65 @@
+{
+  "handoff_id": "wf03-f2b-step02-003",
+  "run_id": "WF03-f2b-testfixes-20260529",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-05-29T08:40:15Z",
+  "started_at": "2026-05-29T08:40:15Z",
+  "completed_at": "2026-05-29T08:46:17Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 2 \u2014 Process Designer UI",
+    "requirement_ids": [
+      "PD-UI-16",
+      "PD-UI-17",
+      "PD-UI-19"
+    ],
+    "related_handoff_ids": [
+      "wf03-f2b-step01-002"
+    ],
+    "artifacts_in": [
+      "web/tests/e2e/"
+    ]
+  },
+  "task": {
+    "description": "Verify ISSUE-FIXER fixes. Run E2E tests on branch feature/WF02-f2b-shoulds-20260529. The 6 previously failing tests should now pass.\n\n1. Set env vars from .env (use start-backend.ps1 pattern)\n2. Start backend, start frontend (cd web && npx vite --port 4173)\n3. Wait, then run: cd web && npx playwright test\n4. Write results to tests/reports/",
+    "acceptance_criteria": [
+      "All previously failing tests now pass (PDUI16-01, PDUI11-02, PDUI12-03, TC-SAVE-01, PDUI17-02, PDUI19-03)",
+      "All existing tests still pass",
+      "Total test count: 63, pass count: 63"
+    ],
+    "functions_to_call": [
+      "fn:run-e2e-tests"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "E2E tests: 60 passed, 3 failed (63 total). 3 of 6 previously failing tests now pass (PDUI11-02, PDUI17-02, PDUI19-03). 3 still fail: PDUI16-01 (CodeMirror CEL editor not rendering), PDUI12-03 and TC-SAVE-01 (HTTP 422 Unprocessable Entity on save).",
+    "artifacts_out": [
+      "tests/reports/report-2026-05-29-WF03-f2b-testfixes.json"
+    ],
+    "issues": [
+      {
+        "test_id": "TC-PDUI16-01",
+        "severity": "BLOCKER",
+        "description": "ConditionDialog opens but CodeMirror CEL expression editor (.cm-editor) does not render in the DOM. Count is 0."
+      },
+      {
+        "test_id": "TC-PDUI12-03",
+        "severity": "BLOCKER",
+        "description": "Save definition returns HTTP 422 Unprocessable Entity. Placeholder values in assignee_ref and form_schema likely cause validation failure."
+      },
+      {
+        "test_id": "TC-SAVE-01",
+        "severity": "BLOCKER",
+        "description": "Save definition returns HTTP 422 Unprocessable Entity. Same root cause as PDUI12-03."
+      }
+    ],
+    "next_action": "ORCH routes to ISSUE-FIXER for rework (WF-03). PDUI16-01 is frontend render issue; PDUI12-03/TC-SAVE-01 is backend validation or frontend field sanitization issue."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

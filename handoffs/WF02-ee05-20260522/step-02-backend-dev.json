@@ -1,0 +1,55 @@
+{
+  "handoff_id": "ee050002-2605-4000-8005-202605220002",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee05-20260522",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-22T05:08:49Z",
+  "started_at": "2026-05-22T05:18:53Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 — Execution Engine",
+    "requirement_ids": ["EE-05"],
+    "related_handoff_ids": ["ee050001-2605-4000-8005-202605220001"],
+    "artifacts_in": [
+      "src/design/engine.md",
+      "src/engine/transition.zig",
+      "vendor/cel/cel.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement EE-05 (Exclusive Gateway — CEL integration) per the design in `src/design/engine.md §EE-05`.\n\nRead the EE-05 section of the design file in full before writing any code.\n\nFiles to modify:\n1. `vendor/cel/cel.zig` — implement `cel.evaluate` with the CEL subset defined in the design.\n2. `src/engine/transition.zig` — replace the EXCLUSIVE_GATEWAY CEL stub with a real `cel.evaluate` call; add new EE-05 unit tests TC-EE-05-01 through TC-EE-05-05.\n\n### Implementation notes:\n\n**vendor/cel/cel.zig:**\n- Implement the `evaluate(allocator, expression, variables) CelError!bool` function.\n- Implement a Pratt/recursive-descent parser for the grammar defined in the design.\n- Supported types: bool, i64 (from JSON number), []const u8 (from JSON string).\n- Variable access: `variables.<key>` looks up `key` in the ObjectMap. If not found → return `CelError.EvalError`.\n- Type mismatch (e.g., comparing string to integer) → return `CelError.EvalError`.\n- All memory allocated with the provided allocator.\n- No I/O; no filesystem; no network.\n\n**src/engine/transition.zig:**\n- Import `vendor/cel/cel.zig` at the top of the file.\n- In the `.EXCLUSIVE_GATEWAY` branch of `processNodeEntry`, replace the stub condition check:\n  ```zig\n  // OLD (stub):\n  if (std.mem.eql(u8, cond, \"true\")) { chosen = edge; break; }\n\n  // NEW:\n  const match = cel.evaluate(allocator, cond, new_state.variables) catch false;\n  if (match) { chosen = edge; break; }\n  ```\n- Update TC-EE-02-04 through TC-EE-02-06 to use real CEL expressions (e.g., `variables.score > 50`) instead of literal `\"true\"`/`\"false\"` strings, so tests exercise the real evaluator.\n- Add TC-EE-05-01 through TC-EE-05-05 as described in the design.\n\n### Security checklist:\n- No SQL in this module — N/A.\n- No secrets in source.\n- No `catch unreachable` on realistic failure paths.\n- CEL parser input is an untrusted string (user-defined condition from definition graph); parser must not panic on malformed input — return `CelError.ParseError` instead.\n\n### Validation:\n- `zig build` exits 0\n- `zig build test` exits 0 (all existing tests plus TC-EE-05-01 through TC-EE-05-05 must pass)",
+    "acceptance_criteria": [
+      "vendor/cel/cel.zig implements evaluate() with the full CEL subset from the design",
+      "CelError has ParseError, EvalError, OutOfMemory variants",
+      "transition.zig EXCLUSIVE_GATEWAY handler uses cel.evaluate(allocator, cond, variables) catch false",
+      "TC-EE-02-04 through TC-EE-02-06 updated to use real CEL expressions",
+      "TC-EE-05-01 through TC-EE-05-05 added and passing",
+      "zig build exits 0",
+      "zig build test exits 0"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:check-zig-test",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented EE-05 (Exclusive Gateway CEL Integration): replaced cel.zig stub with a full recursive-descent CEL evaluator, updated transition.zig EXCLUSIVE_GATEWAY handler to call cel.evaluate(), and added TC-EE-05-01 through TC-EE-05-05 in tests/unit/test_engine_ee05.zig. All 5 new tests pass. zig build and zig build test both exit 0 (29/29 steps succeeded).",
+    "artifacts_out": [
+      "vendor/cel/cel.zig",
+      "src/engine/transition.zig",
+      "tests/unit/test_engine_ee05.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "status": "COMPLETED",
+  "completed_at": "2026-05-22T05:46:17Z"
+}

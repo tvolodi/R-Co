@@ -1,0 +1,61 @@
+{
+  "handoff_id": "20260527-020",
+  "run_id": "WF02-oidc09-20260527",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-oidc09-20260527/step-05-release-validator.json",
+  "created_at": "2026-05-27T19:39:15Z",
+  "started_at": "2026-05-27T19:41:16Z",
+  "completed_at": "2026-05-27T19:42:22Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-09"
+    ],
+    "related_handoff_ids": [
+      "20260527-013",
+      "20260527-014",
+      "20260527-015",
+      "20260527-016",
+      "20260527-017",
+      "20260527-018",
+      "20260527-019"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-WF02-oidc09-20260527-step04b.json",
+      "docs/agents/workflows/WF-04_full_test_run.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/status/requirement_status.json"
+    ]
+  },
+  "task": {
+    "description": "Validate OIDC-09 for release. Follow WF-04 Steps 6-8:\n\n1. Verify all MUST acceptance criteria are met by reading test report: tests/reports/report-WF02-oidc09-20260527-step04b.json\n2. Run: zig build bench (set BPM_TEST_DB_URL env var) \u2014 verify NFR results pass\n3. Run: zig build test (must exit 0)\n4. Run: zig build test-integration-oidc09 (set BPM_TEST_DB_URL env var, must exit 0)\n5. Produce release decision at docs/status/release-OIDC-09-20260527.json with PASS/FAIL\n\nOIDC-09 acceptance criteria:\n- First login of a new OIDC user creates exactly one local record.\n- Subsequent logins for the same OIDC user do not create duplicates.\n- The created record has auth_source = 'oidc'.\n- JIT provisioning failure blocks auth (returns 401/500).",
+    "acceptance_criteria": [
+      "All acceptance criteria verified via test report",
+      "zig build test exits 0",
+      "zig build bench shows NFR_BENCH_SUMMARY|overall_passed=true",
+      "zig build test-integration-oidc09 exits 0",
+      "Release decision written to docs/status/release-OIDC-09-20260527.json"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-benchmarks",
+      "fn:write-release-decision"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for OIDC-09 (Stage 6.5). All MUST acceptance criteria verified from test report (build, unit, integration all passed). zig build test exits 0. zig build bench shows NFR_BENCH_SUMMARY|overall_passed=true (NFR-01 p99_read=1.32ms, p99_write=3.09ms; NFR-02 throughput=74,675eps; NFR-04 replay=37.34ms). zig build test-integration-oidc09 exits 0. Release decision written to docs/status/release-OIDC-09-20260527.json.",
+    "artifacts_out": [
+      "docs/status/release-OIDC-09-20260527.json"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER to set OIDC-09 status to RELEASED in requirement_status.json"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

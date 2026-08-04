@@ -1,0 +1,63 @@
+{
+  "handoff_id": "exp201-202-test-design-validator-03b-rework",
+  "run_id": "WF02-exp201-202-20260612",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-14T04:59:43Z",
+  "started_at": "2026-06-14T04:59:44Z",
+  "completed_at": "2026-06-14T05:02:16Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "EPIC-2 Run 1 Rework: test design validation",
+    "requirement_ids": [
+      "EXP-201",
+      "EXP-202"
+    ],
+    "related_handoff_ids": [
+      "exp201-202-test-designer-03-rework"
+    ],
+    "artifacts_in": [
+      "tests/specs/EXP-201.md",
+      "tests/specs/EXP-202.md",
+      "tests/integration/exp201_202_entities_test.zig",
+      "tests/integration/main_test.zig"
+    ],
+    "branch_name": "feature/WF02-exp201-202-20260612"
+  },
+  "task": {
+    "description": "Validate reworked test design for EXP-201/202. Verify every MUST acceptance criterion has runnable integration coverage in current branch paths; no stale test artifact references remain; no skipped MUST coverage; tests are real PostgreSQL/self-sufficient.",
+    "acceptance_criteria": [
+      "PASS: all MUST criteria covered with runnable tests",
+      "No stale file path references in active run chain",
+      "Ready to route TEST-RUNNER Step 04"
+    ],
+    "functions_to_call": [
+      "fn:validate-test-design"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Validation failed for EXP-201/202 test design: MUST-case granularity and fixture-isolation hard gates are not fully satisfied for Step 3b.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Spec/test case parity hard gate failed: tests/specs/EXP-201.md and tests/specs/EXP-202.md define 6 MUST test cases total, but tests/integration/exp201_202_entities_test.zig implements 3 combined test blocks (TC-EXP-201-01/02, TC-EXP-202-01/02/03) instead of one runnable test block per spec case."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "Fixture-isolation convention failed: tests/integration/exp201_202_entities_test.zig uses static fixture identifiers (test_tenant_id, actor_id, literal entity_type/idempotency keys) rather than per-test UUID-generated fixtures required by integration test policy."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Active run chain still contains stale-token wording ('entity_subsystem_test') in handoffs/WF02-exp201-202-20260612/step-03-test-designer-rework.json summary text. Runnable artifact paths correctly point to tests/integration/exp201_202_entities_test.zig, but stale-name text should be removed for strict path hygiene."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER for Step 03 rework"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

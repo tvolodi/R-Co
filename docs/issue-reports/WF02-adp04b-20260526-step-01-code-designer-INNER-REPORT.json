@@ -1,0 +1,29 @@
+{
+  "report_id": "WF02-adp04b-20260526-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-adp04b-20260526",
+  "step": "01",
+  "created_at": "2026-05-26T05:06:36Z",
+  "summary": "Produced the backend design artefact for ADP-04b at src/design/adp-04b-tenant-realm-binding.md. The design defines additive tenant realm-binding schema semantics, default-tenant migration/backfill rules, OIDC-enabled tenant create/update validation boundaries, repository and service contracts for realm binding and lookup, ADP-04a linkage invariants, and traceability to ADP-04, ADP-04a, OIDC-12, and OIDC-14.",
+  "files_created": [
+    "src/design/adp-04b-tenant-realm-binding.md",
+    "docs/issue-reports/WF02-adp04b-20260526-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-adp04b-20260526/step-01-code-designer.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "design completeness and acceptance traceability review",
+      "status": "pass",
+      "detail": "Verified required sections (module purpose, interfaces, data flow, error taxonomy, state transitions, dependencies, open questions) and explicit ADP-04/ADP-04a/OIDC-12/OIDC-14 mapping with concrete migration and validation testability notes."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)."
+  ],
+  "blockers": []
+}

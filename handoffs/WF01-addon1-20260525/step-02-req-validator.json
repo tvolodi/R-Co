@@ -1,0 +1,60 @@
+{
+  "handoff_id": "6f8d7786-2c02-4e86-ab2a-6634b4ce44a4",
+  "run_id": "WF01-addon1-20260525",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "REQ-VALIDATOR",
+  "created_at": "2026-05-26T00:10:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-01 Step 2 \u2014 Requirement validation",
+    "requirement_ids": [
+      "OIDC-01..OIDC-34",
+      "DSL-01..DSL-13",
+      "LUA-01..LUA-16",
+      "WASM-01..WASM-14",
+      "REPO-01..REPO-14",
+      "SIM-01..SIM-10",
+      "ADP-01..ADP-12",
+      "XC-01..XC-06"
+    ],
+    "related_handoff_ids": [
+      "1e363160-d74c-4cf4-9618-be4b11147419"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/addon-1/01-architecture.md",
+      "docs/addon-1/02-functional-requirements.md",
+      "docs/addon-1/03-extension-adaptations.md",
+      "handoffs/WF01-addon1-20260525/step-01-req-analyst.json"
+    ]
+  },
+  "task": {
+    "description": "Validate the requirements drafted by REQ-ANALYST in docs/BPM_Platform_Functional_Requirements.md. The new requirements cover Stages 6.5-11 (OIDC-*, DSL-*, LUA-*, WASM-*, REPO-*, SIM-*), cross-cutting requirements (XC-01..XC-06), and adaptation requirements (ADP-01..ADP-12).\n\nRun these checks against every new requirement:\n1. COMPLETENESS: Each requirement has a stable ID, title, description with RFC 2119 language (MUST/SHOULD/MAY), priority field, and at least one acceptance criterion.\n2. CONSISTENCY: No requirement contradicts another. Cross-cutting requirements (XC-*) are consistent with stage requirements. ADP-* do not modify existing Stage 1-6 behaviour.\n3. ID UNIQUENESS: No duplicate IDs exist in the document. New IDs do not collide with existing Stage 1-6 IDs.\n4. TRACEABILITY: Each new requirement can be traced to a specific section of the source addon-1 documents.\n5. KEYCLOAK VERSION: No requirement references legacy Keycloak versions or WildFly-based distributions. All Keycloak references must target 26.x / Quarkus-based OSS edition.\n6. ACCEPTANCE CRITERIA TESTABILITY: Each acceptance hint describes a concrete, observable, testable condition (not vague phrases like \"works correctly\").\n7. NO EXISTING REQUIREMENT MODIFIED: Compare structure of original Stage 1-6 requirements; confirm none were altered.\n\nProduce a PASS or FAIL result. For FAIL, list every issue with: requirement ID, check that failed, and specific description of the problem.\n\nREVALIDATION: REQ-ANALYST has applied rework 1 fixing ISSUE-001..ISSUE-004. Re-run all 7 checks. Focus especially on LUA-03 sandbox list, OIDC-08 acceptance criteria, SIM-10 acceptance criteria, and Appendix A counts.",
+    "acceptance_criteria": [
+      "Every new requirement passes all 7 checks above",
+      "Result is PASS or FAIL with a complete issue list",
+      "Handoff completed with result.status = PASS or FAIL"
+    ],
+    "functions_to_call": [
+      "fn:read-requirements-doc",
+      "fn:check-completeness",
+      "fn:check-consistency",
+      "fn:check-id-uniqueness"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validation of OIDC-01..OIDC-34, DSL-01..DSL-13, LUA-01..LUA-16, WASM-01..WASM-14, REPO-01..REPO-14, SIM-01..SIM-10, ADP-01..ADP-12 (incl. ADP-04a, ADP-04b), XC-01..XC-06, and IR-01..IR-09. All 4 previously-failed items (ISSUE-001 LUA-03, ISSUE-002 OIDC-08, ISSUE-003 SIM-10, ISSUE-004 Appendix A) are confirmed fixed. All 7 checks pass. No new issues introduced by the rework edits.",
+    "artifacts_out": [
+      "docs/BPM_Platform_Functional_Requirements.md"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (WF-01 Step 3) to set status VALIDATED for all requirement IDs in scope"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-26T00:50:00Z",
+  "completed_at": "2026-05-25T19:21:09Z"
+}

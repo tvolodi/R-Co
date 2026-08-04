@@ -1,0 +1,49 @@
+{
+  "handoff_id": "WF03-gh391-step07",
+  "run_id": "WF03-gh391-20260801",
+  "workflow_id": "WF-03",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-01T19:03:18.308125Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 7",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh391-step05"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260801-WF03-gh391.yaml",
+      "docs/issue-reports/ISS-0125-root-cause.md"
+    ],
+    "issue_ref": "ISS-0125 / GitHub tvolodi/R-Co#391"
+  },
+  "task": {
+    "description": "Step 7 \u2014 update documentation for ISS-0125 fix.\n\nUpdate CHANGELOG.md:\n- Add entry: \"fix(ISS-0125): ON DELETE CASCADE FK constraint + cleanup hardening for instance_definition_snapshots\"\n- Reference GitHub #391 and the migration 1106_iss0125_instance_definition_snapshots_cascade.sql\n- Include: 'Fixes C23503 errors in 43 integration test runs caused by FK constraint ordering.'\n\nUpdate requirement status (if applicable):\n- Run: python3 tools/reqctl.py set-status ISS-0125 RELEASED --implemented-in migrations/1106_iss0125_instance_definition_snapshots_cascade.sql,tests/integration/helpers.zig,tests/integration/iss0125_cascade_test.zig\n- Run: python3 tools/reqctl.py render-status to regenerate docs/status/requirement_status.yaml\n\nCommit to feature branch:\n- git add CHANGELOG.md docs/status/requirement_status.yaml\n- git commit -m \"chore(ISS-0125): update documentation and requirement status\"\n- git push origin feature/{run_id}\n\nComplete the handoff with PASS if all updates committed successfully.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with ISS-0125 fix entry",
+      "Requirement status set to RELEASED (if applicable)",
+      "docs/status/requirement_status.yaml regenerated",
+      "All changes committed to feature branch"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-requirement-status"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated CHANGELOG.md with ISS-0125 fix entry for ON DELETE CASCADE FK constraint. ISS-0125 not found in requirements.yaml (skip reqctl.py steps). Changes committed and pushed to feature branch.",
+    "artifacts_out": [
+      "CHANGELOG.md"
+    ],
+    "issues": [],
+    "next_action": "Workflow complete for WF-03 ISS-0125 fix"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": null,
+  "completed_at": "2026-08-01T19:05:34Z"
+}

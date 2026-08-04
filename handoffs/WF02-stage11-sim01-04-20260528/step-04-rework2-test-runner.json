@@ -1,0 +1,70 @@
+{
+  "handoff_id": "327f8f40-bf24-4327-a31d-d44f0f8e76ca",
+  "run_id": "WF02-stage11-sim01-04-20260528",
+  "workflow_id": "WF-02",
+  "step": "04-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-stage11-sim01-04-20260528/step-04-rework2-test-runner.json",
+  "created_at": "2026-05-28T18:32:40Z",
+  "started_at": "2026-05-28T18:33:00Z",
+  "completed_at": "2026-05-28T18:36:50Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04"
+    ],
+    "related_handoff_ids": [
+      "f452f17f-884c-48ad-9e32-7f31125f748a",
+      "a5e86c7d-2d9f-4c4f-9876-ed2e3f4d7e5b",
+      "d8d7f4e0-8918-417e-a450-5f73ef353c2c"
+    ],
+    "artifacts_in": [
+      "tests/integration/sim01_04_simulation_mode_test.zig",
+      "tests/integration/main_test.zig",
+      "tests/integration/oidc31_end_to_end_auth_suite_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Execute Stage 11 Step 04 rework2 test run after WF03 and ADHOC env fixes. Generate updated report and classify remaining failures with severity and scope.",
+    "acceptance_criteria": [
+      "Integration and required tests executed",
+      "Report written in tests/reports",
+      "Result status and issue list updated"
+    ],
+    "functions_to_call": [
+      "fn:run-required-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Benchmark pre-check passed and backend unit tests passed, but integration layer failed due to IDP bootstrap error (MissingProviderType).",
+    "artifacts_out": [
+      "tests/reports/20260528T183650Z-integration.md",
+      "tests/reports/WF02-stage11-sim01-04-20260528-step-04-rework2-bench-precheck.log",
+      "tests/reports/WF02-stage11-sim01-04-20260528-step-04-rework2-zig-build-test.log",
+      "tests/reports/WF02-stage11-sim01-04-20260528-step-04-rework2-zig-build-test-integration.log"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Integration test layer aborted before scenario execution: Failed to bootstrap IDP provider from env: error.MissingProviderType.",
+        "requirement_ids": [
+          "SIM-01",
+          "SIM-02",
+          "SIM-03",
+          "SIM-04"
+        ]
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (WF-03), then re-run TEST-RUNNER Step 04-rework3."
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

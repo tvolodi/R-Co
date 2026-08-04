@@ -1,0 +1,37 @@
+{
+  "run_id": "WF02-f5-admin-batch2-20260530",
+  "created_at": "2026-05-30T17:19:29Z",
+  "rules_version": "1.1",
+  "requirement_ids": [
+    "ADM-UI-05",
+    "ADM-UI-06",
+    "ADM-UI-07",
+    "ADM-UI-08"
+  ],
+  "difficulty": 3,
+  "difficulty_rationale": "Grouped administration UI feature set covering groups and API token management workflows.",
+  "integration_surface": "medium",
+  "integration_surface_rationale": "Touches shared admin pages, token/group API client calls, and E2E coverage.",
+  "steps": [
+    "code-designer",
+    "code-design-validator",
+    "frontend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "release-validator",
+    "doc-updater",
+    "total"
+  ],
+  "estimated_minutes": {
+    "code-designer": 26,
+    "code-design-validator": 12,
+    "frontend-dev": 35,
+    "test-designer": 6,
+    "test-design-validator": 10,
+    "test-runner": 3,
+    "release-validator": 3,
+    "doc-updater": 2,
+    "total": 97
+  }
+}

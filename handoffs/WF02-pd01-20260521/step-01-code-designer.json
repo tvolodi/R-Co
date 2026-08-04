@@ -1,0 +1,49 @@
+{
+  "handoff_id": "22100001-2605-4000-8002-202605210100",
+  "run_id": "WF02-pd01-20260521",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-21T13:00:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 — Process Definition",
+    "requirement_ids": ["PD-01", "PD-02"],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/requirements/PD-01.md",
+      "docs/requirements/PD-02.md",
+      "docs/guides/backend_developer_guide.md",
+      "src/db/pool.zig",
+      "migrations/004_definitions.sql"
+    ]
+  },
+  "task": {
+    "description": "Produce a design artefact at `src/design/definition.md` for the process definition module covering PD-01 (Create definition) and PD-02 (Graph validation). PD-02 validation runs inside the PD-01 create path, so both must be designed together.\n\nThe design MUST include:\n1. Module file layout: `src/definition/store.zig` (CRUD + queries), `src/definition/graph.zig` (graph validation logic).\n2. Public API surface: function signatures with parameter types and return types.\n3. Data types: `Definition`, `DefinitionGraph`, `GraphNode`, `GraphEdge`, `NodeType` (START, END, USER_TASK, SERVICE_TASK, EXCLUSIVE_GATEWAY, PARALLEL_GATEWAY, SCRIPT_TASK), `DefinitionStatus` (DRAFT, ACTIVE, DEPRECATED, ARCHIVED).\n4. Database mapping: how definition rows map to `migrations/004_definitions.sql`.\n5. Graph validation algorithm outline for PD-02 checks (one START, at least one END, no dangling edges, no isolated nodes, no duplicate node IDs, no non-gateway cycles, count limits ≤500 nodes / ≤2000 edges).\n6. Error types defined in a per-module error set.\n7. Concurrency safety note for the unique(name, version) constraint (HTTP 409 path).",
+    "acceptance_criteria": [
+      "src/design/definition.md exists and documents all types and function signatures",
+      "Graph validation algorithm is outlined with named checks",
+      "All PD-01 and PD-02 acceptance criteria are traceable to design elements"
+    ],
+    "functions_to_call": ["fn:validate-completeness", "fn:register-inner-report", "fn:complete-handoff"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for the process definition module (PD-01, PD-02). Produced src/design/definition.md covering: module file layout (store.zig + graph.zig), all required data types (Definition, DefinitionGraph, GraphNode, GraphEdge, NodeType, DefinitionStatus), public function signatures for Store and graph.validateGraph(), database column mapping to migrations/004_definitions.sql, eight named PD-02 validation checks (CHK-01..CHK-08) with DFS cycle-detection algorithm outline, per-module error sets (DefinitionError, GraphError), concurrency safety analysis for the HTTP 409 path, state transition diagram, dependency constraints, and a full PD-01/PD-02 acceptance criteria traceability table.",
+    "artifacts_out": [
+      "src/design/definition.md",
+      "docs/issue-reports/WF02-pd01-20260521-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Naming discrepancy: backend_developer_guide.md §2 lists 'registry.zig' and 'validator.zig' while the handoff task specifies 'store.zig' and 'graph.zig'. Design follows the handoff. BACKEND-DEV should confirm final file names."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-21T14:00:00Z"
+}

@@ -1,0 +1,71 @@
+{
+  "report_id": "WF03-stage11-sim01-04-testfix-20260528-step-01-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-stage11-sim01-04-testfix-20260528",
+  "step": "01",
+  "created_at": "2026-05-28T16:18:05Z",
+  "summary": "Diagnosed the Step-04 failure cluster as mixed logic and test-harness compatibility issues, reused prior XC issue guidance, fixed SIM compile blockers, hardened integration compatibility shims, repaired OIDC-35 compensation/cleanup and leak paths, and reran focused integration suites. Focused XC03/04/05/06 and OIDC35 suites pass after fixes.",
+  "files_created": [
+    "docs/issues/ISS-0046.json"
+  ],
+  "files_modified": [
+    "docs/issues/issue_index.json",
+    "src/simulation/tenant_store.zig",
+    "src/simulation/uuid_source.zig",
+    "src/identity/onboarding.zig",
+    "tests/integration/helpers.zig",
+    "tests/integration/oidc35_onboarding_test.zig",
+    "tests/integration/sim01_04_simulation_mode_test.zig",
+    "tests/integration/xc01_trace_propagation_test.zig",
+    "handoffs/WF03-stage11-sim01-04-testfix-20260528/step-01-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "Build succeeded after code/test changes."
+    },
+    {
+      "name": "zig build test-xc03",
+      "status": "pass",
+      "detail": "XC03_EXIT=0"
+    },
+    {
+      "name": "zig build test-xc04",
+      "status": "pass",
+      "detail": "XC04_EXIT=0"
+    },
+    {
+      "name": "zig build test-xc05",
+      "status": "pass",
+      "detail": "XC05_EXIT=0"
+    },
+    {
+      "name": "zig build test-xc06",
+      "status": "pass",
+      "detail": "XC06_EXIT=0"
+    },
+    {
+      "name": "zig build test-integration-oidc35",
+      "status": "pass",
+      "detail": "OIDC35_EXIT=0"
+    },
+    {
+      "name": "zig build test-integration",
+      "status": "fail",
+      "detail": "Aggregate run still reports unrelated non-scope failures (example seen during run: ADP-02 assertion mismatch)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Full aggregate integration run is not yet fully green due unrelated non-scope failures observed during verification; reported blocker/major cluster from this handoff is resolved in focused suites."
+    }
+  ],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-03 Step 3) for full-suite rerun and refreshed report after issue-fix patches.",
+    "If aggregate integration remains red, open follow-up WF-03 for remaining unrelated ADP/API failures."
+  ],
+  "blockers": []
+}

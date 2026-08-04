@@ -1,0 +1,42 @@
+{
+  "handoff_id": "0637cd50-e344-458a-837f-e923bfb33f0a",
+  "run_id": "WF02-oidcf2-20260528",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-28T10:20:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F1.6 - Subdomain Tenant Routing",
+    "requirement_ids": [
+      "OIDC-F-05",
+      "OIDC-F-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Commit all remaining artifacts, rebase on main, create PR, squash-merge, delete branch feature/WF02-oidcf2-20260528.",
+    "acceptance_criteria": [
+      "PR created and merged",
+      "Branch deleted from origin",
+      "npm type-check and build pass on main"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Branch feature/WF02-oidcf2-20260528 squash-merged to main via PR #35 (6d0e876) and deleted. OIDC-F-05 and OIDC-F-06 released. npm type-check and build pass on main.",
+    "artifacts_out": [
+      "PR #35",
+      "merge_commit: 6d0e876"
+    ],
+    "issues": [],
+    "next_action": "None - pipeline complete"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-28T10:52:18Z",
+  "completed_at": "2026-05-28T11:00:25Z"
+}

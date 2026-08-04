@@ -1,0 +1,62 @@
+{
+  "handoff_id": "8438730d-33c1-46a3-8b62-c684fbf6ad90",
+  "run_id": "WF02-uat-tenant-url-20260607",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-uat-tenant-url-20260607/step-03-test-designer.json",
+  "created_at": "2026-06-07T05:32:00Z",
+  "started_at": "2026-06-07T05:35:38Z",
+  "completed_at": "2026-06-07T05:56:12Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "UAT Tenant URL",
+    "requirement_ids": [
+      "UAT-TM-01",
+      "UAT-TM-02",
+      "UAT-TM-03",
+      "UAT-TM-04"
+    ],
+    "related_handoff_ids": [
+      "1524bad3-427b-45eb-b415-0521adfe485d"
+    ],
+    "artifacts_in": [
+      "src/design/uat-tenant-url.md",
+      "web/tests/e2e/pipeline.ts",
+      "docs/agents/UAT_RUNNER.md",
+      "docs/agents/uat-scenario-schema.md"
+    ]
+  },
+  "task": {
+    "description": "Design tests for the UAT Tenant URL feature (UAT-TM-01 through UAT-TM-04).\n\nThe implementation is in web/tests/e2e/pipeline.ts - changes are:\n  1. getKeycloakToken() and refreshTokenIfNeeded() now accept optional realm parameter\n  2. New resolveTenantContext(request, companySlug, adminToken) function\n  3. UAT_RUNNER.md updated with Step 2.5 for tenant resolution\n  4. uat-scenario-schema.md updated with company_id note\n\nThese are TypeScript test infrastructure changes, NOT Zig backend code. Tests should be:\n  - Unit tests for resolveTenantContext() - mock the API call, verify caching, error handling\n  - Unit tests for keycloakTokenUrl() - verify URL construction for different realms\n  - Integration test: verify getKeycloakToken() works with non-default realm against real Keycloak\n\nWrite test specs to tests/specs/ and test source files to web/tests/ or tests/ as appropriate.\n\nIMPORTANT: These are test-infrastructure tests (testing the test helpers), not application tests. They do NOT require a running backend for unit tests. Integration tests that call Keycloak directly require BPM_IDP_BASE_URL.",
+    "acceptance_criteria": [
+      "Test spec files exist for each MUST requirement",
+      "Unit tests for resolveTenantContext() cover success, caching, and error cases",
+      "Unit tests for keycloakTokenUrl() cover default and custom realms",
+      "Integration test for getKeycloakToken() with non-default realm",
+      "No mocks/stubs for backend API in integration tests (direct Keycloak calls are OK)",
+      "All fixtures use per-test UUIDs where applicable",
+      "Tests are self-sufficient (start services or fail clearly)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented UAT-TM-01..04 test design artifacts with executable Playwright helper tests for UAT-TM-01/UAT-TM-02 and documentation traceability specs for UAT-TM-03/UAT-TM-04.",
+    "artifacts_out": [
+      "tests/specs/UAT-TM-01.md",
+      "tests/specs/UAT-TM-02.md",
+      "tests/specs/UAT-TM-03.md",
+      "tests/specs/UAT-TM-04.md",
+      "web/tests/e2e/uat-tenant-url.e2e.spec.ts",
+      "web/tests/e2e/pipeline.ts",
+      "docs/issue-reports/WF02-uat-tenant-url-20260607-step-03-test-designer-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

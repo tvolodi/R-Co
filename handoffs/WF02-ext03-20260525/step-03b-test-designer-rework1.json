@@ -1,0 +1,62 @@
+{
+  "handoff_id": "20260525-071",
+  "run_id": "WF02-ext03-20260525",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-ext03-20260525/step-03b-test-designer-rework1.json",
+  "created_at": "2026-05-25T14:25:00Z",
+  "started_at": "2026-05-25T14:25:20Z",
+  "completed_at": "2026-05-25T14:36:50Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-03"
+    ],
+    "related_handoff_ids": [
+      "20260525-067",
+      "20260525-068",
+      "20260525-069",
+      "20260525-070"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-ext03-20260525/step-04-test-runner.json",
+      "tests/reports/report-20260525T142247Z-WF02-ext03-20260525.json",
+      "tests/specs/EXT-03.md",
+      "tests/unit/ext03_plugin_test.zig",
+      "tests/integration/main_test.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: Address blocking test gaps reported by TEST-RUNNER for EXT-03. Add and wire executable EXT-03 integration tests covering TC-EXT-03-INT-01..10 into the integration suite entrypoint so these scenarios are actually executed. Ensure coverage of startup-only registration, plugin precedence shadowing, panic-to-ERROR mapping, COMPLETE/ERROR handling, and EE-09/EE-10 integration paths in integration-level behavior. Keep tests deterministic and aligned with tests/specs/EXT-03.md. Also resolve or explicitly account for coverage-step expectations so subsequent TEST-RUNNER execution can produce non-partial verification.",
+    "acceptance_criteria": [
+      "Dedicated EXT-03 integration tests exist and are imported/executed by integration entrypoint",
+      "Spec-defined EXT-03 integration IDs are mapped to executable cases",
+      "No flaky/time-dependent behavior in added tests",
+      "Handoff result includes updated artifacts and no unresolved MAJOR coverage gaps"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:load-test-specs",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "EXT-03 rework completed: added executable integration tests TC-EXT-03-INT-01..10, wired them into integration entrypoint, and updated EXT-03 spec to explicitly handle coverage-step expectations when test-coverage step is unavailable.",
+    "artifacts_out": [
+      "tests/integration/ext03_plugin_integration_test.zig",
+      "tests/integration/main_test.zig",
+      "tests/specs/EXT-03.md",
+      "docs/issue-reports/WF02-ext03-20260525-step-03b-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4) for re-run and full verification."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

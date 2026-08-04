@@ -1,0 +1,118 @@
+{
+  "escalations": [
+    {
+      "handoff_id": "673f1f4c-458e-45f9-b127-f2ce4f7ea3b0",
+      "workflow_id": "WF-02",
+      "agent": "TEST-RUNNER",
+      "reason": "Max rework (3) exceeded at Step 04 for WF02-stage11-sim01-04-20260528",
+      "last_issues": [
+        {
+          "severity": "BLOCKER",
+          "description": "Backend integration layer failed: 44 tests failed in aggregate run; blocker includes TC-SIM-01-01 in simulation isolation path.",
+          "requirement_ids": [
+            "SIM-01",
+            "SIM-02",
+            "SIM-03",
+            "SIM-04"
+          ]
+        }
+      ],
+      "timestamp": "2026-05-28T18:58:20Z"
+    },
+    {
+      "action_required": "User must start PostgreSQL database and configure BPM_TEST_DB_URL before TEST-RUNNER can proceed",
+      "step": "04",
+      "workflow_id": "WF02-xc01-06-20260528",
+      "severity": "BLOCKER",
+      "progress": {
+        "test_compilation": "\u2713 All 46 cases compiled",
+        "zig_compiler": "\u2713 Available (0.16.0)",
+        "database_connectivity": "\u2717 PostgreSQL not accessible"
+      },
+      "agent": "TEST-RUNNER",
+      "instructions": [
+        "1. Ensure PostgreSQL server is installed and running on localhost:5432",
+        "2. Create test database if needed",
+        "3. Set environment variable: BPM_TEST_DB_URL=postgres://[user]:[password]@localhost:5432/[database]",
+        "4. Retry: zig build test-xc01 through zig build test-xc06"
+      ],
+      "last_issues": [
+        {
+          "resolution": "Start PostgreSQL server; set BPM_TEST_DB_URL environment variable; then run: zig build test-xc01 through zig build test-xc06",
+          "description": "Connection refused to postgres://localhost:5432 (BPM_TEST_DB_URL); cannot execute integration tests against real database",
+          "severity": "BLOCKER"
+        },
+        {
+          "description": "All 46 test cases compiled successfully; ready to execute once database is available",
+          "severity": "INFO"
+        }
+      ],
+      "reason": "PostgreSQL database not accessible at localhost:5432; all 46 test cases blocked on connection",
+      "handoff_id": "test-runner-db-blocker-20260528",
+      "timestamp": "2026-05-28T07:58:58Z"
+    },
+    {
+      "handoff_id": "1fb71a0a-95ef-4fde-8f6a-0dd041b8a23f",
+      "workflow_id": "WF-02",
+      "agent": "TEST-RUNNER",
+      "reason": "Max rework (3) exceeded at Step 04 for WF02-stage11-sim05-08-20260529",
+      "last_issues": [
+        {
+          "id": "SIM05-08-INTEGRATION-HANG-REWORK3-01",
+          "severity": "BLOCKER",
+          "description": "Integration validation remains blocked: env-bound zig build test-integration stalls and does not produce a completion marker.",
+          "affected_requirement": "SIM-05,SIM-06,SIM-07,SIM-08"
+        }
+      ],
+      "timestamp": "2026-05-29T11:34:03Z"
+    },
+    {
+      "handoff_id": "f3a-step04r3-013",
+      "workflow_id": "WF-02",
+      "agent": "TEST-RUNNER",
+      "reason": "Max rework (3) exceeded at Step 04 for WF02-f3a-batch1-20260529",
+      "last_issues": [
+        {
+          "severity": "BLOCKER",
+          "description": "Playwright E2E failure in TC-PDUI08-03 (web/tests/e2e/pdui08-debounced-search.e2e.spec.ts) blocks full suite PASS despite IN-UI-01..04 requirement tests passing.",
+          "requirement_ids": [
+            "PD-UI-08"
+          ]
+        }
+      ],
+      "timestamp": "2026-05-29T20:50:38Z"
+    },
+    {
+      "handoff_id": "wf02-f8-b1-20260606-004-r3",
+      "run_id": "WF02-f8-batch1-20260606",
+      "workflow_id": "WF-02",
+      "agent": "TEST-RUNNER",
+      "reason": "Max rework (3/3) exhausted on Step 4 test execution",
+      "last_report": "tests/reports/report-20260606-WF02-f8-batch1-20260606-rerun3.yaml",
+      "last_issues": [
+        "Integration suite fails with allocator leak errors (api02_crud_test TC-API-02-28 context)",
+        "Tenants E2E suite 7/7 fail with auth/session instability (execution context destroyed, redirect timeout, cleanup 401 invalid token issuer)"
+      ],
+      "timestamp": "2026-06-06T13:50:20Z",
+      "status": "ESCALATED"
+    },
+    null,
+    {
+      "handoff_id": "67bedc9c-6b1c-4e6b-9aef-18796cff608c",
+      "workflow_id": "WF03-gh409-20260803",
+      "agent": "BACKEND-DEV",
+      "reason": "Test hang after 2 rework attempts",
+      "last_issues": [
+        {
+          "severity": "BLOCKER",
+          "description": "Integration test consistently hangs on TC-ISS-601-08 with 2500 events",
+          "location": "tests/integration/iss601_state_snapshots_test.zig:1273"
+        }
+      ],
+      "timestamp": "2026-08-03T17:30:00Z",
+      "status": "RESOLVED",
+      "resolved_at": "2026-08-03T20:01:36Z",
+      "resolution": "Root cause: transition() shallow-cloned InstanceState.variables/join_counters via std.json.ObjectMap.clone(), aliasing memory across generations; putVariableSafe's free-on-overwrite then freed memory still referenced by older generations, corrupting the allocator under high event volume. Fixed via deep-clone helpers (cloneObjectMapSafe/cloneJsonValueSafe) and a freeInstanceState() cleanup called on every superseded generation in reconstruction.zig's replay loops. See handoffs/WF03-gh409-20260803/step-03-backend-dev.json."
+    }
+  ]
+}

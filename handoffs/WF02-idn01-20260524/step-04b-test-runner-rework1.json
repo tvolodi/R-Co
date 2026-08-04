@@ -1,0 +1,66 @@
+{
+  "handoff_id": "153d07b5-b16f-4ce3-aeb0-2f76900ccf42",
+  "run_id": "WF02-idn01-20260524",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-idn01-20260524/step-04b-test-runner-rework1.json",
+  "created_at": "2026-05-24T02:36:20Z",
+  "started_at": "2026-05-24T02:36:40Z",
+  "completed_at": "2026-05-24T02:42:16Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": [
+      "IDN-01"
+    ],
+    "related_handoff_ids": [
+      "99af97c2-1763-4e87-8f22-075fa3f327f9"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-idn01-20260524/step-04-test-runner.json",
+      "tests/reports/report-2026-05-24T02-35-24Z-WF02-idn01.json",
+      "tests/specs/IDN-01.md"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: Prior run failed due missing BPM_TEST_DB_URL causing DB-backed IDN-01 tests to skip. Unblock test environment and rerun the required suites so IDN-01 acceptance criteria are evaluated with real pass/fail results. Start/ensure local test DB availability (for example via docker compose if required), set BPM_TEST_DB_URL for the test run context, execute the relevant tests including integration coverage for IDN-01 and inactive-user auth behavior, and produce an updated structured test report.",
+    "acceptance_criteria": [
+      "IDN-01 DB-backed tests execute (not skipped due missing DB URL)",
+      "Test commands and exit codes are recorded",
+      "Updated tests/reports artifact is written",
+      "All IDN-01 acceptance criteria are marked pass/fail from executed tests"
+    ],
+    "functions_to_call": [
+      "fn:run-tests",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Resolved the BPM_TEST_DB_URL environment blocker and executed DB-backed test runs against a real local Postgres test database. Migrations and unit suite succeeded, but integration suite failed with SCH-07 regressions and IDN-01 integration tests TC-IDN-01-01..05 are not wired into integration entrypoint, so IDN-01 cannot be marked fully passing.",
+    "artifacts_out": [
+      "tests/reports/report-2026-05-24T02-42-16Z-WF02-idn01-rework1.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-IDN01-INTEGRATION-WIRING-001",
+        "severity": "BLOCKER",
+        "description": "tests/integration/idn01_user_registry_test.zig is not imported in tests/integration/main_test.zig, so TC-IDN-01-01..05 are not exercised by zig build test-integration.",
+        "affected_requirement": "IDN-01"
+      },
+      {
+        "id": "ISS-SCH07-REGRESSION-001",
+        "severity": "BLOCKER",
+        "description": "Integration suite failed with SCH-07 regressions (example: TC-SCH-07-05 in tests/integration/sch02_timer_polling_test.zig); build summary reports 6 failed tests.",
+        "affected_requirement": "SCH-07"
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (WF-03) to fix SCH-07 integration failures and wire IDN-01 integration tests into tests/integration/main_test.zig, then rerun TEST-RUNNER for WF02-idn01-20260524 step 04b."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

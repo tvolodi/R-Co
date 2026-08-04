@@ -1,0 +1,35 @@
+{
+  "issue_id": "ISS-0031",
+  "title": "Production HTTP server is a placeholder: all API routes return HTTP 501",
+  "status": "OPEN",
+  "severity": "CRITICAL",
+  "category": "E_MISSING_IMPLEMENTATION",
+  "run_id": "AUDIT-test-20260527",
+  "workflow_id": null,
+  "handoff_id": null,
+  "requirement_ids": [
+    "API-01", "API-02", "API-03", "API-04", "API-05", "API-06",
+    "API-07", "API-08", "API-09", "API-10", "API-11", "API-12",
+    "EE-01", "EE-02", "EE-03", "EE-04",
+    "OBS-01", "OBS-02", "OBS-03", "OBS-04", "OBS-05", "OBS-06",
+    "IDN-01", "IDN-02", "IDN-03", "IDN-04",
+    "EXT-01", "EXT-02", "EXT-03", "EXT-04", "EXT-05",
+    "SCH-01", "SCH-02"
+  ],
+  "summary": "src/main.zig pub fn main() calls runPlaceholderApiServer() which returns HTTP 501 for every route except /health/live and /health/ready. /health/live and /health/ready are served with hardcoded inline JSON strings, bypassing the real health_routes.handleLive and health_routes.handleReady handlers (which emit metrics, check DB readiness, and evaluate subsystems). All 20+ real route handler modules are imported at the top of main.zig but are never registered with a router or called. A deployed binary would serve HTTP 501 for every business request.",
+  "root_cause": {
+    "type": "missing_http_router_implementation",
+    "details": "The HTTP dispatch layer was never built. Handler functions for all implemented requirements exist and are individually correct and tested (integration tests call them directly), but no URL router dispatches incoming HTTP requests to the correct handler. The placeholder server was a temporary scaffold added when pg.zig was still a stub; it was never replaced once real handlers were implemented."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [
+    "src/main.zig"
+  ],
+  "created_at": "2026-05-27T12:00:00Z",
+  "resolved_at": null,
+  "prevention": [
+    "HTTP router wiring must be part of the acceptance criteria for every new route handler requirement.",
+    "A smoke test that issues a real HTTP request to a running binary (or a testable router dispatch function) should be added to the integration suite."
+  ]
+}

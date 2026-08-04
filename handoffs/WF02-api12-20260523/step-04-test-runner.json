@@ -1,0 +1,47 @@
+{
+  "handoff_id": "a1200004-2605-4000-8012-202605231426",
+  "run_id": "WF02-api12-20260523",
+  "step": "04",
+  "from_agent": "TEST-DESIGNER",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-05-23T14:26:26.746562Z",
+  "started_at": "2026-05-23T14:28:19.571500Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4 — API Layer",
+    "requirement_ids": ["API-12"],
+    "related_handoff_ids": [
+      "a1200001-2605-4000-8012-202605231410",
+      "a1200002-2605-4000-8012-202605231416",
+      "a1200003-2605-4000-8012-202605231422"
+    ],
+    "artifacts_in": [
+      "tests/specs/API-12.md",
+      "handoffs/WF02-api12-20260523/step-03-test-designer.json"
+    ]
+  },
+  "task": {
+    "description": "Run API-12 verification tests and produce a structured test report.\n\nRequired execution:\n- zig build test\n\nThen validate API-12 acceptance criteria via the implemented tests (public /health/live success, /health/ready success with db_latency_ms, degraded 503 responses with failing subsystem detail including pool exhausted and DB failure variants, and trace compatibility expectations).\n\nWrite a report to tests/reports/API-12-test-report.md and update this handoff with PASS/FAIL and any issues.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "tests/reports/API-12-test-report.md is created",
+      "Report clearly states pass/fail per API-12 acceptance criteria",
+      "No BLOCKER/MAJOR unresolved issues for API-12"
+    ],
+    "functions_to_call": ["fn:run-required-tests"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Executed required API-12 verification with zig build test (exit 0). API-12 acceptance criteria are covered by passing tests for /health/live and /health/ready success/degraded behavior, including pool exhausted and DB failure variants, plus API-09 trace compatibility.",
+    "artifacts_out": [
+      "tests/reports/API-12-test-report.md",
+      "docs/issue-reports/WF02-api12-20260523-step-04-test-runner-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-23T14:28:34.290648Z"
+}

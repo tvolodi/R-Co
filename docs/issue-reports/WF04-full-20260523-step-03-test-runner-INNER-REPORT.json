@@ -1,0 +1,67 @@
+{
+  "report_id": "WF04-full-20260523-step-03-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF04-full-20260523",
+  "step": "03",
+  "created_at": "2026-05-23T06:23:29Z",
+  "summary": "WF-04 Step 3 Integration Tests \u2014 FAIL. zig build test-integration: 125 pass, 21 fail (146 total), 2 memory leaks. Root causes: DuplicateNameVersion (14 tests), GraphValidationFailed (3 tests), PostgreSQL ServerError on cancelInstance (3 tests), pool connection ADDRESS_ALREADY_EXISTS (1 test), AlreadyActive not returned (1 test with 2 leaks). 16 BLOCKER + 5 MAJOR. Requires WF-03 ISSUE-FIXER.",
+  "files_created": [
+    "tests/reports/WF04-full-20260523-step03-integration.md"
+  ],
+  "files_modified": [
+    "src/definition/snapshot.zig",
+    "handoffs/WF04-full-20260523/step-03-test-runner.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test-integration (all integration test files)",
+      "status": "fail",
+      "detail": "125 pass, 21 fail (146 total), 2 leaks. Exit code 1."
+    }
+  ],
+  "issues_found": [
+    {
+      "id": "ISSUE-INT-001",
+      "severity": "BLOCKER",
+      "description": "DuplicateNameVersion on DefinitionStore.create() \u2014 14 tests in PD-08, EE-09, EE-10 fail because (name, version) already exists in DB",
+      "affected_requirement": "PD-08"
+    },
+    {
+      "id": "ISSUE-INT-002",
+      "severity": "BLOCKER",
+      "description": "GraphValidationFailed on EE-10 error-test graphs \u2014 3 tests (TC-EE-10-01,02,03) rejected by graph validator",
+      "affected_requirement": "EE-10"
+    },
+    {
+      "id": "ISSUE-INT-003",
+      "severity": "BLOCKER",
+      "description": "ADDRESS_ALREADY_EXISTS during pool connection in TC-EE-01-06 \u2014 pool exhaustion or Windows socket collision",
+      "affected_requirement": "EE-01"
+    },
+    {
+      "id": "ISSUE-INT-004",
+      "severity": "MAJOR",
+      "description": "AlreadyActive error not returned in TC-API-02-29 \u2014 activate() returns success instead of error; also leaks 2 allocations",
+      "affected_requirement": "API-02"
+    },
+    {
+      "id": "ISSUE-INT-005",
+      "severity": "MAJOR",
+      "description": "PgError.ServerError during cancelInstance() in TC-API-03-05,15,18 \u2014 3 tests fail on instance cancellation",
+      "affected_requirement": "API-03"
+    },
+    {
+      "id": "ISSUE-INT-006",
+      "severity": "MAJOR",
+      "description": "tasks.len assertion failed in TC-API-03-01 \u2014 getById did not return expected tasks",
+      "affected_requirement": "API-03"
+    }
+  ],
+  "next_steps": [
+    "Route to ORCH for WF-03 ISSUE-FIXER workflow"
+  ],
+  "blockers": [
+    "16 BLOCKER failures must be resolved before integration tests can pass"
+  ]
+}

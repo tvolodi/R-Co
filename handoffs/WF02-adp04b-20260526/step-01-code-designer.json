@@ -1,0 +1,70 @@
+{
+  "handoff_id": "20260526-041",
+  "run_id": "WF02-adp04b-20260526",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-adp04b-20260526/step-01-code-designer.json",
+  "created_at": "2026-05-26T04:54:00Z",
+  "started_at": "2026-05-26T04:54:20Z",
+  "completed_at": "2026-05-26T05:06:36Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-04b"
+    ],
+    "related_handoff_ids": [
+      "20260526-022",
+      "20260526-023",
+      "20260526-024",
+      "20260526-025",
+      "20260526-028",
+      "20260526-029",
+      "20260526-030",
+      "20260526-031",
+      "20260526-032",
+      "20260526-033",
+      "20260526-038",
+      "20260526-039",
+      "20260526-040"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/addon-1/03-extension-adaptations.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "docs/status/implementation_order.md",
+      "docs/status/requirement_status.json"
+    ]
+  },
+  "task": {
+    "description": "Produce a backend design artefact for ADP-04b at src/design/adp-04b-tenant-realm-binding.md. Define additive tenant schema updates for realm binding: tenant.idp_realm_id TEXT NULL with migration behavior that sets the default tenant (00000000-0000-0000-0000-000000000000) to bpm-default while preserving existing rows. Specify create/update service and repository contracts that require idp_realm_id for non-default tenant creation once OIDC is enabled, including validation boundaries and failure modes. Include invariants linking tenant realm ownership to ADP-04a external identity linkage and OIDC-12/OIDC-14 realm lifecycle behavior. Design only; no implementation edits.",
+    "acceptance_criteria": [
+      "Design defines additive ADP-04b schema column semantics with backward compatibility",
+      "Migration/backfill behavior for default tenant realm assignment is explicit and testable",
+      "Tenant creation/update contracts define when idp_realm_id is required and how validation errors surface",
+      "Traceability maps ADP-04b behavior to ADP-04, ADP-04a, OIDC-12, and OIDC-14",
+      "Design includes concrete testability notes for default-tenant regression and OIDC-enabled tenant creation rules"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for ADP-04b tenant realm binding with additive schema semantics, explicit default-tenant migration/backfill behavior, OIDC-enabled tenant create/update validation boundaries, and ADP-04a/OIDC lifecycle invariants.",
+    "artifacts_out": [
+      "src/design/adp-04b-tenant-realm-binding.md",
+      "docs/issue-reports/WF02-adp04b-20260526-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

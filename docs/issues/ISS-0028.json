@@ -1,0 +1,54 @@
+{
+  "issue_id": "ISS-0028",
+  "title": "WF03 ADP-09 test signal blocker: service-task warning logs polluted Zig --listen output and produced false nested failed-command evidence",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "D_TEST_ERROR",
+  "run_id": "WF03-adp09-testfix-20260526",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260526-084",
+  "requirement_ids": [
+    "ADP-09"
+  ],
+  "summary": "Resolved the ADP-09 WF-02 Step 04 evidence blocker by removing parser-side warning log emissions that contaminated Zig test runner protocol output. `zig build test` and `zig build test-integration` now report deterministic success summaries without spurious `failed command: ... --listen=-` markers.",
+  "root_cause": {
+    "type": "test_signal_contamination_from_runtime_logging",
+    "details": "`src/engine/service_task.zig` emitted warning logs during config parsing in test paths. Under Zig 0.16 listen-mode execution, these warning emissions produced misleading `failed command: ... test.exe --listen=-` output even while all test steps succeeded and command exit codes remained 0. The prior test report treated this noisy marker as a real failure, creating non-deterministic acceptance evidence."
+  },
+  "resolution": {
+    "strategy": "REMOVE_PARSER_LOG_SIDE_EFFECTS_KEEP_STRUCTURED_WARNING",
+    "changes": [
+      "Removed inline `std.log.warn` calls from `parseConfigFromNodeAttributes` in `src/engine/service_task.zig`.",
+      "Preserved structured warning semantics through `ServiceTaskConfig.warning` so callers/tests still receive warning metadata without stdout/stderr side effects in parser execution paths.",
+      "Revalidated deterministic command signaling using build/test/integration commands with explicit summaries."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "zig build",
+        "result": "PASS",
+        "evidence": "No output; command completed successfully."
+      },
+      {
+        "command": "zig build test --summary all",
+        "result": "PASS",
+        "evidence": "Build Summary: 64/64 steps succeeded; no `failed command: ... --listen=-` lines."
+      },
+      {
+        "command": "cmd /c \"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& zig build test-integration --summary all\"",
+        "result": "PASS",
+        "evidence": "Build Summary: 4/4 steps succeeded; 296/303 tests passed (7 skipped); no nested failed-command marker."
+      }
+    ]
+  },
+  "files_changed": [
+    "src/engine/service_task.zig"
+  ],
+  "created_at": "2026-05-26T12:58:06Z",
+  "resolved_at": "2026-05-26T12:58:06Z",
+  "prevention": [
+    "Keep configuration parsing functions side-effect free; surface warnings as structured return metadata rather than log output in hot test paths.",
+    "When validating Zig test outcomes, prefer `--summary all` build summaries as the source of truth over isolated `failed command` substrings."
+  ]
+}

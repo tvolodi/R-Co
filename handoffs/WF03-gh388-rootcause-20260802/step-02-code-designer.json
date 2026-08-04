@@ -1,0 +1,46 @@
+{
+  "handoff_id": "WF03-gh388-rootcause-20260802-step02",
+  "run_id": "WF03-gh388-rootcause-20260802",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-02T18:33:01Z",
+  "started_at": "2026-08-02T18:33:01Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Fix design",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh388-rootcause-20260802-step01"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/WF03-gh388-rootcause-20260802-step-01-issue-fixer-INNER-REPORT.yaml",
+      "src/audit/chain.zig",
+      "tests/integration/audit_chain_utf8_test.zig",
+      "migrations/1109_iss0122_audit_chain_utf8.sql",
+      "migrations/1110_iss0122_chain_validator.sql"
+    ]
+  },
+  "task": {
+    "description": "Step 2 of WF-03 ISS-0122 root cause: produce fix design.\n\nTwo fixes identified:\n\n**Fix A \u2014 TC-03 trace_id hash mismatch**:\n- The chain validator stored procedure (migrations/1110) hashes trace_id from its input parameter (currently NULL).\n- The trigger (migrations/1109) hashes `NEW.trace_id` (from the actual row).\n- These must match. Migration must re-create `bpm_audit_validate_chain` to pass `r.trace_id` rather than NULL.\n\n**Fix B \u2014 TC-04 ambiguous parameter**:\n- Test's INSERT uses `$1` for two different positions: `tenant_id = $1::uuid` and `resource_id = $1::text || '-i%d'`.\n- PostgreSQL can't infer `$1`'s type.\n- Test must use `$1` for tenant_id and a separate parameter (e.g. `$2`) for the suffix index, OR cast the constant separately.\n\nProcedure:\n\n1. `git branch --show-current` \u2014 confirm `feature/WF03-gh388-rootcause-20260802`.\n\n2. Read the inner report and the audit chain files.\n\n3. Write a Type E design artefact at `src/design/iss0122_chain_hash_fix.md` with these sections:\n   - `## Purpose` \u2014 fix TC-03/TC-04 audit chain failures\n   - `## Errors` \u2014 list the new error variants or note 'no new errors'\n   - `## API contract` \u2014 show the new stored procedure signature and the new test INSERT\n   - `## Fix A \u2014 chain validator trace_id` \u2014 describe the migration\n   - `## Fix B \u2014 test resource_id parameter` \u2014 describe the test edit\n   - `## Files to change`\n     - NEW: `migrations/1111_iss0122_validator_pass_trace_id.sql`\n     - EDIT: `tests/integration/audit_chain_utf8_test.zig` (TC-04 only)\n   - `## Acceptance criteria`\n     - [ ] `zig build test-integration-iss0122` exits 0 with all 4 TCs passing\n     - [ ] `zig build` exits 0\n     - [ ] `zig build test` exits 0\n     - [ ] No regression in other audit-chain tests (e.g. iss202, iss601)\n   - `## Out of scope` \u2014 TC-01/TC-02 (already PASS); migration 1109/1110 logic\n   - `## Risks & mitigations` \u2014 at least 3 rows:\n     - Tenant-schema stored procs | Re-create in public AND every tenant_* schema\n     - Hash reproducibility | Test must use deterministic strings, not per-test UUIDs\n     - Migration order | New migration must run AFTER 1110\n\n4. Run `python tools/lint_design_artefact.py src/design/iss0122_chain_hash_fix.md` \u2014 must exit 0.\n\n5. Update handoff file `handoffs/WF03-gh388-rootcause-20260802/step-02-code-designer.json`:\n   - status = COMPLETED\n   - result.status = PASS\n   - result.summary = brief\n   - result.artifacts_out = [\"src/design/iss0122_chain_hash_fix.md\"]\n   - result.issues = []\n   - result.next_action = \"Route to CODE-DESIGN-VALIDATOR (Step 2b)\"\n   - completed_at = (Get-Date).ToUniversalTime().ToString(\"yyyy-MM-ddTHH:mm:ssZ\") \u2014 exact output\n\n6. Update handoffs/registry.json.\n\nReturn: lint exit code, total lines.",
+    "acceptance_criteria": [
+      "Design artefact at src/design/iss0122_chain_hash_fix.md",
+      "lint_design_artefact.py exits 0",
+      "All sections present",
+      "Risks table has \u22653 rows"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E fix design for ISS-0122/GH#388: migration 1111 re-creates per-tenant bpm_audit_validate_chain passing r.trace_id to bpm_audit_compute_chain_hash; audit_chain_utf8_test.zig TC-04 drops the ::text reuse so each placeholder has one inferred type.",
+    "artifacts_out": [
+      "src/design/iss0122_chain_hash_fix.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-02T18:34:45Z"
+}

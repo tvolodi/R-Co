@@ -1,0 +1,28 @@
+{
+  "report_id": "WF02-adp03-20260526-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-adp03-20260526",
+  "step": "01",
+  "created_at": "2026-05-26T01:50:34Z",
+  "summary": "Produced the backend design artefact for ADP-03 at src/design/adp-03-tenant-context-resolution-api.md. The design defines deterministic tenant resolution from bearer token claims with default-tenant fallback, strict request-scope tenant isolation invariants, middleware/service/repository boundary contracts, validation and error outcomes for missing or invalid tenant context, and explicit traceability to API-08, OIDC-13, ADP-01, and ADP-02.",
+  "files_created": [
+    "src/design/adp-03-tenant-context-resolution-api.md",
+    "docs/issue-reports/WF02-adp03-20260526-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-adp03-20260526/step-01-code-designer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "design completeness and acceptance traceability review",
+      "status": "pass",
+      "detail": "Verified required sections (purpose, interfaces, data flow, error taxonomy, state transitions, dependencies, open questions) and mapped all handoff acceptance criteria to explicit design sections."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)."
+  ],
+  "blockers": []
+}

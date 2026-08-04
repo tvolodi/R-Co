@@ -1,0 +1,58 @@
+{
+  "handoff_id": "20260526-102",
+  "run_id": "WF02-adp12-20260526",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-adp12-20260526/step-01-code-designer.json",
+  "created_at": "2026-05-26T17:49:20Z",
+  "started_at": "2026-05-26T17:49:40Z",
+  "completed_at": "2026-05-26T17:51:31Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-12"
+    ],
+    "related_handoff_ids": [
+      "20260526-101"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/addon-1/03-extension-adaptations.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "docs/status/implementation_order.md",
+      "docs/status/requirement_status.json"
+    ]
+  },
+  "task": {
+    "description": "Produce a backend design artefact for ADP-12 at src/design/adp-12-default-tenant-regression-suite.md. Design an automated regression suite that executes Stage 1-6 default-tenant endpoint coverage before and after the adaptation migration and enforces zero-diff response invariants (status, body, and headers excluding explicitly allowed informational fields). Define capture/canonicalization strategy, deterministic comparison rules, flaky-signal controls, fixture/data seeding assumptions, migration boundary orchestration, and CI/report artifact format. Include exact mapping from ADP-12 acceptance criteria to executable tests and identify backend touchpoints required for implementation. Design only; no implementation edits.",
+    "acceptance_criteria": [
+      "Design defines pre-migration and post-migration execution phases with deterministic orchestration",
+      "Canonical diff rules specify exactly what is compared and what is excluded",
+      "Coverage matrix maps Stage 1-6 endpoints and default-tenant execution paths",
+      "Design includes report format and pass/fail criteria for byte-equal response validation",
+      "Design provides acceptance-to-test traceability for ADP-12"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for ADP-12 default-tenant regression suite, including deterministic pre/post migration orchestration, canonical diff policy, Stage 1-6 endpoint coverage matrix, report format, flaky controls, and acceptance-to-test traceability.",
+    "artifacts_out": [
+      "src/design/adp-12-default-tenant-regression-suite.md",
+      "docs/issue-reports/WF02-adp12-20260526-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

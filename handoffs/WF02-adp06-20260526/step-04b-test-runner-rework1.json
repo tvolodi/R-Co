@@ -1,0 +1,60 @@
+{
+  "handoff_id": "20260526-065",
+  "run_id": "WF02-adp06-20260526",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-adp06-20260526/step-04b-test-runner-rework1.json",
+  "created_at": "2026-05-26T08:45:14Z",
+  "started_at": "2026-05-26T08:45:14Z",
+  "completed_at": "2026-05-26T08:54:20Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-06"
+    ],
+    "related_handoff_ids": [
+      "20260526-062",
+      "20260526-063",
+      "20260526-064"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-adp06-20260526/step-04-test-runner.json",
+      "handoffs/WF03-adp06-testfix-20260526/step-01-issue-fixer.json",
+      "handoffs/WF03-adp06-testfix-20260526/step-02-test-runner.json",
+      "tests/reports/report-20260526T084514Z-WF03-adp06-testfix-20260526-step02.json",
+      "tests/specs/ADP-06.md"
+    ]
+  },
+  "task": {
+    "description": "Execute WF-02 Step 04 rework validation for ADP-06 after successful WF-03 fix loop. Re-run ADP-06 validation from tests/specs/ADP-06.md and confirm original WF02 blockers are resolved while ADP-06 acceptance criteria remain fully satisfied. Produce structured test report and return PASS only if no BLOCKER/MAJOR issues remain.",
+    "acceptance_criteria": [
+      "ADP-06 acceptance criteria pass under rework validation",
+      "Previously failing WF02 blocker tests now pass",
+      "No BLOCKER/MAJOR unresolved issues remain",
+      "Structured report is written with traceability"
+    ],
+    "functions_to_call": [
+      "fn:run-zig-build",
+      "fn:run-zig-test",
+      "fn:run-zig-test-integration",
+      "fn:write-test-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Executed WF-02 Step 04b ADP-06 rework validation from tests/specs/ADP-06.md with required build, unit, integration, and focused blocker-test re-runs; all validations passed and prior WF02 blockers are resolved.",
+    "artifacts_out": [
+      "tests/reports/report-20260526T085420Z-WF02-adp06-20260526-step04b.json",
+      "docs/issue-reports/WF02-adp06-20260526-step-04b-test-runner-rework1-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR for WF-02 Step 05."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

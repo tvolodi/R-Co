@@ -1,0 +1,33 @@
+{
+  "handoff_id": "e6f7a8b9-c0d1-2345-e6f7-a8b9c0d12345",
+  "run_id": "WF03-uat-onboarding-realm-sync-20260616",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-16T02:41:45Z",
+  "started_at": "2026-06-16T02:41:45Z",
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 05 — TEST-RUNNER for ISS-0071 fixes",
+    "requirement_ids": [],
+    "related_handoff_ids": ["c4d5e6f7-a8b9-0123-c4d5-e6f7a8b90123"],
+    "artifacts_in": [
+      "tests/integration/onboarding_realm_guard_test.zig",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 05: Run the test suite for ISS-0071 fixes on branch feature/WF03-uat-onboarding-realm-sync-20260616.\n\nPre-flight checks:\n1. docker-compose ps — keycloak and db must be healthy\n2. curl http://localhost:8081/health/ready → must be 200\n3. psql $BPM_TEST_DB_URL -c 'SELECT 1'\nIf any fails: STOP, return FAIL BLOCKER.\n\nTest runs:\n1. zig build test  (all unit tests) — must exit 0\n2. zig build test-integration-iss0071 (or the integration target registered by TEST-DESIGNER) with BPM_TEST_DB_URL set — must exit 0\n3. cd web && npm run type-check — must exit 0\n\nWrite report to tests/reports/report-2026-06-16-WF03-uat-onboarding-realm-sync-20260616-step-05.yaml\n\nPASS: all pass. FAIL: list failing tests with root cause.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "ISS-0071 integration tests pass",
+      "npm run type-check exits 0",
+      "Report written"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2
+}

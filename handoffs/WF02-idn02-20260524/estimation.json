@@ -1,0 +1,27 @@
+{
+  "run_id": "WF02-idn02-20260524",
+  "created_at": "2026-05-24T05:31:40Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "IDN-02"
+  ],
+  "difficulty": 3,
+  "difficulty_rationale": "Group management adds a new identity schema plus task-claim integration and test coverage, matching the standard schema + API + test feature profile.",
+  "steps": [
+    "code-designer",
+    "backend-dev",
+    "test-designer",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 5,
+    "backend-dev": 7,
+    "test-designer": 3,
+    "test-runner": 7,
+    "release-validator": 70,
+    "doc-updater": 2,
+    "total": 94
+  }
+}

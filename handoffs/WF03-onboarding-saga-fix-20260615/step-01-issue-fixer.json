@@ -1,0 +1,36 @@
+{
+  "handoff_id": "e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7081",
+  "run_id": "WF03-onboarding-saga-fix-20260615",
+  "step": "0.5-1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-06-15T15:05:40Z",
+  "started_at": "2026-06-15T15:05:40Z",
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving — New Cycle (backend saga bug)",
+    "requirement_ids": [],
+    "related_handoff_ids": ["d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f70"],
+    "artifacts_in": [
+      "tests/reports/report-2026-06-15-WF03-onboarding-e2e-fix-20260614-step-04-test-runner.yaml",
+      "src/api/routes/onboarding.zig",
+      "src/identity/onboarding.zig",
+      "web/src/pages/admin/onboarding/OnboardingProgressPage.tsx"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 0.5 + 1 (combined): Register and diagnose new issue ISS-0070 — Onboarding saga stuck in pending state.\n\nEVIDENCE (from WF03-onboarding-e2e-fix-20260614 Step 04 TEST-RUNNER):\n- POST /api/v1/onboarding inserts a 'pending' row in tenant_default.onboarding_registry and returns 201.\n- The background saga thread (runSagaBackground in src/api/routes/onboarding.zig, spawned via std.Thread.spawn + thread.detach()) should call onboarding_mod.executeSaga then persistOnboardingResult to update the row to 'completed' or 'failed'.\n- THIS NEVER HAPPENS — 20/20 rows remain state='pending', response_status=201, completed_at=NULL indefinitely.\n- Blocks 3 onboarding E2E tests (onb-ui-03 saga terminal, onb-ui-04 result + page-reload) and the real onboarding user journey.\n- Keycloak (localhost:8081) and DB (localhost:5433) are healthy during the test run.\n\nDB query confirming the bug:\n  SELECT onboarding_id, state, response_status, created_at, completed_at FROM tenant_default.onboarding_registry ORDER BY created_at DESC;\n  -- All rows: state='pending', response_status=201, completed_at=NULL\n\nStep 0.5: Register issue ISS-0070 in docs/issues/ (create docs/issues/ISS-0070.json, update docs/issues/issue_index.json next_issue_id to 71). Severity BLOCKER. Category: backend logic error (NOT test code).\n\nStep 1: Diagnose root cause. Focus areas:\n  1. runSagaBackground in src/api/routes/onboarding.zig (lines ~247-270) — detached thread may panic silently before persistOnboardingResult.\n  2. executeSaga in src/identity/onboarding.zig — may deadlock on identity_provider.manager (Keycloak realm creation) or fail to reach the persist call.\n  3. The err branch in runSagaBackground calls persistOnboardingResult(..., .failed) — if a panic happens BEFORE that branch, no update occurs.\n  4. migrations_dir path may be invalid in detached context causing early return.\n\nDiagnosis method: add stderr logging at entry/exit of runSagaBackground and at each step of executeSaga; run a single POST /api/v1/onboarding via curl with real inputs; observe stderr and check whether persistOnboardingResult is reached. Do NOT change production behavior yet — this step is diagnosis + issue registration only.\n\nProduce diagnosis report at docs/issue-reports/report-2026-06-15-WF03-onboarding-saga-fix-20260615-step-01-issue-fixer.yaml with: root cause category, suspected failure point, files to modify, and recommended fix approach (high-level, no implementation code).",
+    "acceptance_criteria": [
+      "ISS-0070.json created in docs/issues/",
+      "issue_index.json updated (next_issue_id=71)",
+      "Root cause category identified (deadlock / panic / path error / other)",
+      "Suspected failure point pinpointed with file:line",
+      "Recommended fix approach documented (no implementation code)"
+    ],
+    "functions_to_call": ["fn:register-issue", "fn:search-issues", "fn:diagnose"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,51 @@
+{
+  "handoff_id": "e4f5a6b7-c8d9-0123-e4f5-a6b7c8d90123",
+  "run_id": "WF01-tenant-dashboard-20260616",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "REQ-VALIDATOR",
+  "created_at": "2026-06-15T21:48:39Z",
+  "started_at": "2026-06-15T21:48:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-01 Step 2 — Validate drafted requirements TD-UI-01, TD-UI-02, TD-UI-03",
+    "requirement_ids": ["TD-UI-01", "TD-UI-02", "TD-UI-03"],
+    "related_handoff_ids": ["c2d3e4f5-a6b7-8901-c2d3-e4f5a6b78901"],
+    "artifacts_in": [
+      "docs/BPM_Platform_Frontend_Requirements.md",
+      "docs/issue-reports/WF01-tenant-dashboard-20260616-step-01-req-analyst-INNER-REPORT.yaml"
+    ]
+  },
+  "task": {
+    "description": "WF-01 Step 2: Validate the three requirements drafted by REQ-ANALYST for the per-tenant dashboard feature (TD-UI-01, TD-UI-02, TD-UI-03).\n\nRun completeness and consistency checks per WF-01 protocol:\n1. Each requirement has a unique ID, title, priority, description, and acceptance criteria\n2. Acceptance criteria are TESTABLE — each must be verifiable by a Playwright GUI screenshot\n3. No conflicts with existing requirements\n4. MUST requirements have unambiguous acceptance criteria (no 'should work' or 'may show')\n5. Cross-references (OIDC-F-02, OIDC-F-06, etc.) are valid — they refer to real requirement IDs\n6. TD-UI-03 is SHOULD (not MUST) — confirm this is appropriate given the business need\n\nReturn PASS if all checks pass, FAIL with specific issues if not.",
+    "acceptance_criteria": [
+      "All 3 requirements pass completeness check",
+      "Acceptance criteria are GUI-testable",
+      "No conflicts with existing requirements",
+      "Cross-references are valid"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "TD-UI-01 and TD-UI-02 PASS all checks. TD-UI-03 FAIL: summary table description uses normative 'SHALL' in a SHOULD-priority requirement (RFC 2119 conflict). One MINOR AC testability gap also noted.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "requirement_id": "TD-UI-03",
+        "severity": "MAJOR",
+        "description": "Normative language conflict: the summary table description for TD-UI-03 uses 'SHALL' ('The frontend SHALL detect...', 'No manual tenant selection step...SHALL be presented...') while the priority column is SHOULD. RFC 2119 defines SHALL as equivalent to MUST. An implementor reading only the table would treat this as a mandatory requirement, contradicting the stated priority and the detail-section prose which correctly uses SHOULD throughout. Fix: replace both 'SHALL' occurrences in the TD-UI-03 table description with 'SHOULD'."
+      },
+      {
+        "requirement_id": "TD-UI-03",
+        "severity": "MINOR",
+        "description": "Acceptance criterion 3 states 'completed before the first authenticated route renders (no flash of generic or untitled workspace)'. A transient flash is not reliably verifiable by a static Playwright screenshot. Suggest rephrasing to: 'A Playwright screenshot taken on the first authenticated route after callback completion shows the correct tenant display_name — no untitled or generic placeholder text is present.' This makes the criterion unambiguously screenshot-verifiable."
+      }
+    ],
+    "next_action": "Route back to REQ-ANALYST (WF-01 rework cycle 1): fix TD-UI-03 table description — replace 'SHALL' with 'SHOULD' (×2) and tighten AC3 wording."
+  },
+  "completed_at": "2026-06-15T21:51:08Z",
+  "rework_count": 0,
+  "max_rework": 2
+}

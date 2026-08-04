@@ -1,0 +1,42 @@
+{
+  "handoff_id": "a0700001-2605-4000-8007-202605230001",
+  "workflow_id": "WF02-api07-20260523",
+  "sequence": 1,
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-23T03:53:09Z",
+  "started_at": "2026-05-23T03:54:03Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4 — API Layer",
+    "requirement_ids": ["API-07"],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/requirements/API-07.md",
+      "docs/requirements/API-01.md",
+      "docs/BPM_Platform_Backend_Architecture.md"
+    ]
+  },
+  "task": {
+    "description": "Produce a design artefact for API-07 (Input validation) at src/design/api-validation.md.\n\nAPI-07 requires a general input validation layer for the platform. Design the module interface, types, and integration points:\n\n1. Define a ValidationError type (field path, constraint, actual value) that maps to RFC 9457 Problem Details `errors` array\n2. Define a Validator interface/factory that accepts a schema definition and returns parsed+validated data or a list of errors\n3. Specify which request fields/routes need validation schemas (event append payloads, definition graphs, instance start, task operations, etc.)\n4. Describe integration: validation runs before any business logic in the middleware/route layer; no writes occur for invalid requests\n5. Edge case handling: malformed JSON → HTTP 400, valid JSON with violations → HTTP 422 with ALL errors listed\n6. The design must reference the existing error types in src/api/errors.zig and response helpers in src/api/response.zig (established in API-01)\n\nPer the backend developer guide §6 format: include Module name, Zig source files, Public types, Public functions, Error types, and Integration notes.",
+    "acceptance_criteria": [
+      "Design artefact src/design/api-validation.md is created",
+      "Covers all acceptance criteria from API-07 requirement",
+      "References existing src/api/errors.zig and src/api/response.zig",
+      "Defines module interface: types, functions, error handling",
+      "Addresses all edge cases: malformed JSON, empty required fields, all errors listed"
+    ],
+    "functions_to_call": ["fn:read-backend-conventions"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for api-validation (API-07 Input validation): defines ValidationError type, Schema(T) validation engine, RFC 9457 errors array extension, middleware integration, and per-endpoint schema definitions. Non-breaking extension of errors.zig via ValidationProblemDetails wrapper.",
+    "artifacts_out": ["src/design/api-validation.md"],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) for implementation"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-23T03:57:49Z"
+}

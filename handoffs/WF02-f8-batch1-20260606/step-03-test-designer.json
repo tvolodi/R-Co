@@ -1,0 +1,57 @@
+{
+  "handoff_id": "wf02-f8-b1-20260606-003",
+  "run_id": "WF02-f8-batch1-20260606",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-06T06:22:23Z",
+  "started_at": "2026-06-06T06:23:04Z",
+  "completed_at": "2026-06-06T06:52:20Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F8 \u2014 Tenant Management GUI (Batch 1: TM-01, TM-02, TM-03)",
+    "requirement_ids": [
+      "TM-01",
+      "TM-02",
+      "TM-03"
+    ],
+    "related_handoff_ids": [
+      "wf02-f8-b1-20260606-002a",
+      "wf02-f8-b1-20260606-002b"
+    ],
+    "artifacts_in": [
+      "src/api/routes/identity.zig",
+      "src/identity/service.zig",
+      "web/src/pages/admin/tenants/TenantsPage.tsx",
+      "web/src/pages/admin/tenants/EditTenantPage.tsx",
+      "web/src/api/tenants.ts",
+      "docs/BPM_Platform_Functional_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "Write test specs and test code for TM-01, TM-02, and TM-03.\n\n## DIRECTIVE T-1 (hard rule)\nNo mocks, stubs, in-memory fakes, or stub return values in any test file. All tests connect to the real running backend and real database.\n\n## DIRECTIVE T-2 (hard rule for frontend tests)\nNo MSW, no axios-mock-adapter, no HTTP-level mocking. E2E tests go against the real running backend.\n\n## Tests to write\n\n### Backend integration tests (Zig)\n\n**tests/specs/TM-01.md** \u2014 Test spec for TM-01 and TM-03\n\n**tests/integration/tm01_tenant_list_test.zig** (or add to existing admin test file if present):\n- TC-TM-01-01: PLATFORM_ADMIN can list tenants \u2014 GET /api/v1/tenants returns 200 with {items, total}\n- TC-TM-01-02: non-PLATFORM_ADMIN gets 403 from GET /api/v1/tenants\n- TC-TM-01-03: pagination works \u2014 limit/offset returns correct slice\n- TC-TM-03-01: PLATFORM_ADMIN can PATCH display_name \u2014 returns 200 with updated tenant\n- TC-TM-03-02: PATCH with slug in body returns 422\n- TC-TM-03-03: PATCH with idp_realm_id in body returns 422\n- TC-TM-03-04: PATCH on non-existent slug returns 404\n\nAll tests must:\n- Use BPM_TEST_DB_URL for DB connection\n- Use BPM_TEST_URL for HTTP calls\n- Clean up any test data they create (use per-test UUIDs for test tenant slugs)\n- Skip cleanly with error.SkipZigTest if BPM_TEST_DB_URL is absent\n\n### Frontend E2E tests (Playwright)\n\n**web/tests/e2e/tenants.e2e.spec.ts**:\n- TC-TM-UI-01: PLATFORM_ADMIN navigates to /admin/tenants and sees tenant list\n- TC-TM-UI-02: non-admin is redirected away from /admin/tenants\n- TC-TM-UI-03: Edit button navigates to /admin/tenants/:slug/edit\n- TC-TM-UI-04: EditTenantPage shows slug and idp_realm_id as read-only\n- TC-TM-UI-05: EditTenantPage allows editing display_name and saving\n- TC-TM-UI-06: 'Register New Tenant' button navigates to /admin/onboarding/new\n- TC-TM-UI-07: 'Tenants' nav link is hidden from non-PLATFORM_ADMIN\n\nEach E2E test verdict must be based on visual screen inspection (screenshot + assertion on visible content), not just absence of error.\n\nAdd new tests to main_test.zig import if needed.\n\nnext_action: 'Route to TEST-DESIGN-VALIDATOR (Step 3b)'",
+    "acceptance_criteria": [
+      "tests/specs/TM-01.md written",
+      "Integration test file exists with TC-TM-01-01 through TC-TM-03-04",
+      "All integration tests use real DB, clean up after themselves, skip if BPM_TEST_DB_URL absent",
+      "E2E test file exists with TC-TM-UI-01 through TC-TM-UI-07",
+      "E2E verdicts are visual (screenshot-based), not just no-error",
+      "No mocks or stubs of any kind"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test files created: tests/specs/TM-01.md, tests/integration/tm01_tenant_list_test.zig, web/tests/e2e/tenants.e2e.spec.ts",
+    "artifacts_out": [
+      "tests/specs/TM-01.md",
+      "tests/integration/tm01_tenant_list_test.zig",
+      "web/tests/e2e/tenants.e2e.spec.ts"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

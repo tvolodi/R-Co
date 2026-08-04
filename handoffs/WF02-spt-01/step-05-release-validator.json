@@ -1,0 +1,47 @@
+{
+  "handoff_id": "ada87627-7f86-428f-817f-986634ba1471",
+  "run_id": "WF02-spt-01",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "created_at": "2026-06-05T07:56:37Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration \u2014 SPT-01: provisioning infrastructure",
+    "requirement_ids": [
+      "SPT-01"
+    ],
+    "related_handoff_ids": [
+      "50d3f076-75ea-45ec-b9c6-6f30e364f305"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260605-WF02-spt-01.yaml"
+    ]
+  },
+  "task": {
+    "description": "Run NFR benchmarks (zig build bench) and perform release decision for SPT-01. Verify no performance regression on existing endpoints. Write release decision to docs/status/release-spt-01-20260605.yaml.",
+    "acceptance_criteria": [
+      "zig build bench exits 0",
+      "No NFR regression",
+      "docs/status/release-spt-01-20260605.yaml written"
+    ],
+    "functions_to_call": [
+      "fn:run-benchmarks"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "NFR benchmarks passed with large margins; all 8 SPT-01 test cases passed. Release APPROVED.",
+    "artifacts_out": [
+      "docs/status/release-spt-01-20260605.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (Step 06)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-06-05T09:18:56Z"
+}

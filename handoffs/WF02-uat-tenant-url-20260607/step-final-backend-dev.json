@@ -1,0 +1,46 @@
+{
+  "handoff_id": "5b5f902d-2e6b-42df-bbc5-c7789e10cba2",
+  "run_id": "WF02-uat-tenant-url-20260607",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-uat-tenant-url-20260607/step-final-backend-dev.json",
+  "created_at": "2026-06-07T06:18:15Z",
+  "started_at": "2026-06-07T06:18:15Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "UAT Tenant URL",
+    "requirement_ids": [
+      "UAT-TM-01",
+      "UAT-TM-02",
+      "UAT-TM-03",
+      "UAT-TM-04"
+    ],
+    "related_handoff_ids": [
+      "8838a0b5-8791-4666-a568-98f089c0f302"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-uat-tenant-url-20260607/step-06-doc-updater.json",
+      "CHANGELOG.md",
+      "docs/status/requirement_status.yaml"
+    ]
+  },
+  "task": {
+    "description": "Execute Step Final fn:git-merge protocol. Ensure PR exists, checks pass, merge to main with squash, delete remote feature branch, return local repo to clean main. Record PR number and merge commit SHA in artifacts_out/result summary.",
+    "acceptance_criteria": [
+      "PR merged to main",
+      "remote feature branch deleted",
+      "local branch switched to main and clean",
+      "handoff PASS with PR and commit evidence"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

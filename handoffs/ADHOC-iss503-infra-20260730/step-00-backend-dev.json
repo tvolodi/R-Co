@@ -1,0 +1,90 @@
+{
+  "handoff_id": "806fe147-3ed0-4fd8-85d2-ea617ffc68b0",
+  "run_id": "ADHOC-iss503-infra-20260730",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-07-30T08:26:56Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "ADHOC infra unblock for WF02-iss503-continuation-20260730",
+    "requirement_ids": [
+      "ISS-503"
+    ],
+    "related_handoff_ids": [
+      "handoffs/WF02-iss503-continuation-20260730/step-03-test-designer.json"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "TEST-DESIGNER for ISS-503 reported that Docker Desktop is not running in this environment (docker version / docker ps fail with daemon-unreachable; com.docker.service is Stopped). This blocks tests/integration/test_iss503_rls_removal.zig from getting a real pass/fail run -- all 4 test cases compiled clean but failed with error.ConnectionFailed. Start Docker Desktop / the Docker service, then bring up backend services: docker-compose up -d db db_test keycloak. Wait for health checks: docker-compose ps (all services must show healthy). Verify: GET http://localhost:8081/health/ready (Keycloak), psql $BPM_TEST_DB_URL -c \"SELECT 1\" (test DB). Run zig build migrate to apply any pending migrations. Note: docs/metrics/retrospectives/WF02-iss502-continuation-20260730.yaml documents that db_test may be mapped to host port 5434 rather than the docker-compose.yml-declared 5433 in this environment -- reconcile BPM_TEST_DB_URL accordingly if needed. Return PASS only when all services are healthy and zig build migrate exits 0.\n\nADDITIONAL SCOPE (Unblock-Everything): zig build test-integration (the umbrella suite covering ALL integration tests) failed to compile with 52 errors in files unrelated to ISS-503 (src/entities/validator.zig, src/engine/reconstruction.zig, idn0*_test.zig, exp201_202/exp401_exp402 test files, sch02_timer_polling_test.zig, svc04_admin_api_test.zig) -- Zig-0.16 std-library API drift. Fix each root cause; do not weaken or delete tests to make them compile. Then validate: zig build exits 0, zig build test-integration compiles with zero errors, zig build test-integration-iss503 runs against the live DB, zig build test-integration-tm still passes (no regressions). Do NOT touch tests/integration/test_iss503_rls_removal.zig itself unless a bug is found in it; if so, describe it in result.issues instead of patching it under this ADHOC handoff.",
+    "acceptance_criteria": [
+      "docker-compose ps shows db, db_test, keycloak all healthy",
+      "Keycloak health/ready endpoint returns success",
+      "psql against BPM_TEST_DB_URL succeeds",
+      "zig build migrate exits 0",
+      "zig build exits 0",
+      "zig build test-integration compiles with zero errors",
+      "zig build test-integration-iss503 runs against the live DB and reports real pass/fail per case",
+      "zig build test-integration-tm still passes (no regressions introduced by the compile fixes)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Docker Desktop and all backend services (db, db_test, keycloak, keycloak_gateway) are healthy. zig build migrate exits 0 against both bpm_dev and a freshly recreated bpm_test (93/93 migrations applied). Root-caused and fixed all 52 pre-existing Zig-0.16 compile errors in the test-integration umbrella suite plus 3 more of the same class that surfaced once compilation got further (55 total): std.ArrayList(T).init()->.empty API drift (validator.zig), std.json.Value.array needing the managed std.json.Array type not the new unmanaged default (reconstruction.zig), const-bound locals calling *Self-receiver .deinit() needing to be var (reconstruction.zig + iss601_state_snapshots_test.zig, 6 sites), std.crypto.random removal (exp401_exp402_comp_restore_test.zig, fixed via the existing fillRandom() OS-entropy convention), AuthContext's ISS-403 `principal` field missing from 4 test fixture builders (idn01/02/03/04), scheduler.advisoryLockKey removed by ISS-301 in favour of a plain FOR UPDATE row lock (sch02_timer_polling_test.zig), and a genuine missing join_counters field in one InstanceState{} literal in reconstruction.zig (ISS-105 field, present at 3 of 4 call sites, missing at the 4th). zig build and zig build test-integration now both compile with zero errors (verified across 3 repeat full-suite runs). Also root-caused and fixed a genuine (non-Zig-version) hang: concurrent_instances_test.zig's TC-EE-12-02/04 held a DB transaction open forever because its worker thread never set bpm.api_tenant_context and never called TestHarness.init(), so its queries against tenant-scoped tables failed silently and completeTask() never returned control to worker.join() -- fixed by adopting the same TestHarness.init() + per-thread api_tenant_context.set(DEFAULT_TENANT_ID) convention already used in iss102_claim_test.zig. zig build test-integration-tm (regression gate): 14/14 PASS, exit 0 -- zero regressions. zig build test (unit suite): 84/84 build steps succeeded, 574/658 tests pass, 84 pre-existing skips, 0 fail -- unchanged from the ISS-502 retrospective baseline. zig build test-integration-iss503 (ISS-503-specific step, run in isolation against a freshly migrated bpm_test): TC-ISS503-01 PASSES. TC-ISS503-02, TC-ISS503-03, and TC-ISS503-04 FAIL, but root-cause analysis (see issues below) shows all three failures are pre-existing bugs in test_iss503_rls_removal.zig's own assertion/fixture code, not in GBL-084, pool.zig, or reconstruction.zig -- per handoff scope this file was left untouched and the bugs are reported below for ISSUE-FIXER/TEST-DESIGNER routing rather than patched here. Status is PARTIAL rather than FAIL because the explicit compile-error and infra-unblock acceptance criteria (services healthy, migrate exits 0, zig build test-integration compiles with zero errors, no regression in test-integration-tm) are all fully met; it is PARTIAL rather than PASS because the ISS-503 test suite itself does not yet show a clean 4/4 pass -- that requires TEST-DESIGNER/ISSUE-FIXER changes to the test file, outside this handoff's authority.",
+    "artifacts_out": [
+      "src/engine/reconstruction.zig",
+      "src/entities/validator.zig",
+      "tests/integration/concurrent_instances_test.zig",
+      "tests/integration/exp201_202_entities_test.zig",
+      "tests/integration/exp401_exp402_comp_restore_test.zig",
+      "tests/integration/idn01_user_registry_test.zig",
+      "tests/integration/idn02_group_management_test.zig",
+      "tests/integration/idn03_role_access_test.zig",
+      "tests/integration/idn04_api_token_management_test.zig",
+      "tests/integration/iss601_state_snapshots_test.zig",
+      "tests/integration/sch02_timer_polling_test.zig",
+      "tests/integration/svc04_admin_api_test.zig",
+      "build.zig",
+      ".gitignore",
+      "docker-compose.override.yml (untracked, git-ignored, local-machine port remap for db=5442/db_test=5434 due to unrelated projects occupying 5432/5433 on this host)"
+    ],
+    "issues": [
+      {
+        "id": "ISS-503-TESTBUG-01",
+        "severity": "MAJOR",
+        "description": "tests/integration/test_iss503_rls_removal.zig's countEffectiveTenantIdFunction() (line ~198) runs `SELECT count(*) FROM pg_proc WHERE proname = 'bpm_effective_tenant_id'` with no pronamespace/schema filter, unlike its sibling assertions countRlsPolicies() (filters schemaname = 'public') and countTenantIdColumns() (filters table_schema = 'public') in the same file. Because SCHEMA-mode tenant schemas (e.g. tenant_default) legitimately retain their own per-schema copy of bpm_effective_tenant_id() after GBL-084 removes only the public-schema copy, this unscoped count returns >0 in any environment where at least one tenant schema has been provisioned -- which is always true once any other test in the suite has run TestHarness.init(). This causes TC-ISS503-02 and TC-ISS503-03 to fail with 'expected 0, found 1' even when GBL-084 behaved perfectly correctly. Fix: add `AND pronamespace = 'public'::regnamespace` (or join pg_namespace and filter nspname = 'public') to match the other two count helpers' convention.",
+        "affected_requirement": "ISS-503"
+      },
+      {
+        "id": "ISS-503-TESTBUG-02",
+        "severity": "MAJOR",
+        "description": "TC-ISS503-04 (line ~501) inserts into process_definitions using columns (id, key, name, version, status, bpmn_xml), but the real tenant_default.process_definitions schema has no `key` or `bpmn_xml` columns -- it uses `name` (text), `graph` (jsonb), `created_by`, `stage`, etc. This is a stale/incorrect column list in the test's INSERT statement, not a GBL-084 or pool.zig defect (confirmed via \\d tenant_default.process_definitions against the live schema). Fix: update the INSERT to use the actual column set (id, name, version, status, graph, created_by).",
+        "affected_requirement": "ISS-503"
+      },
+      {
+        "id": "ISS-503-INFRA-01",
+        "severity": "MINOR",
+        "description": "The umbrella `zig build test-integration` step runs all 47 test binaries with the build system's default parallelism against one shared bpm_test database. Even from a freshly migrated baseline, this produces ~120 runtime failures (deadlocks, duplicate-key/trigger-already-exists errors, cross-test tenant-row pollution) that do not reproduce when the same binaries are run individually or via -j1. This is a pre-existing test-isolation gap across many files (not something introduced by this handoff's compile fixes) already partially documented in docs/metrics/retrospectives/WF02-iss502-continuation-20260730.yaml's prevention_notes. Recommend a follow-up WF-03 (or a dedicated test-infra epic) to either serialize DB-touching integration steps in build.zig or give each test binary its own ephemeral schema/database. Not fixed here: it is a systemic, cross-cutting redesign, not a mechanical compile fix within this ADHOC's scope.",
+        "affected_requirement": null
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/ADHOC-iss503-infra-20260730",
+      "commit_sha_list": [
+        "cc1dff7"
+      ],
+      "remote_branch": "origin/feature/ADHOC-iss503-infra-20260730",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to ORCH: redispatch TEST-RUNNER for WF02-iss503-continuation-20260730's Step 4 now that infra is healthy and the umbrella suite compiles; separately, route ISS-503-TESTBUG-01 and ISS-503-TESTBUG-02 to ISSUE-FIXER (or back to TEST-DESIGNER for rework) so test_iss503_rls_removal.zig can reach a clean 4/4 pass. ISS-503-INFRA-01 is a candidate for a separate, lower-priority WF-03 on test-suite isolation."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-07-30T08:26:56Z",
+  "completed_at": "2026-07-30T10:18:11Z"
+}

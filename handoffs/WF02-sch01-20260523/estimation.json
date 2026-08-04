@@ -1,0 +1,18 @@
+{
+  "run_id": "WF02-sch01-20260523",
+  "created_at": "2026-05-23T15:44:20Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["SCH-01"],
+  "difficulty": 4,
+  "difficulty_rationale": "Durable timer creation crosses transition logic, transactional persistence guarantees, and scheduler integration semantics, requiring coordinated multi-module design and validation.",
+  "steps": ["code-designer", "backend-dev", "test-designer", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 10,
+    "backend-dev": 17,
+    "test-designer": 11,
+    "test-runner": 7,
+    "release-validator": 2,
+    "doc-updater": 7,
+    "total": 54
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "handoff_id": "ee020002b-2605-4000-8002-202605220002",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee02-20260522",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-22T08:00:00Z",
+  "started_at": "2026-05-22T08:00:00Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 3 — Execution Engine",
+    "requirement_ids": ["EE-02"],
+    "related_handoff_ids": ["ee020002a-2605-4000-8002-202605220002"],
+    "artifacts_in": [
+      "src/engine/transition.zig",
+      "src/main.zig",
+      "tests/unit/engine_test.zig",
+      "docs/guides/backend_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "REWORK 2: The transition.zig tests are not being run because transition.zig is NOT imported from src/main.zig. Fix this and resolve any resulting compile errors.\n\n## Root cause\n\n`src/main.zig` does not import `src/engine/transition.zig`. Because Zig only compiles files reachable from the module root, `zig build test` never sees the tests in `transition.zig`. The TEST-RUNNER reports them as skipped (they are actually invisible to the build).\n\n## What to do\n\n### Step 1: Wire transition.zig into the build\n\nAdd this line to `src/main.zig` after the existing engine_instance import:\n```zig\npub const engine_transition = @import(\"engine/transition.zig\");\n```\n\nAlso update `tests/unit/engine_test.zig` to actually import transition.zig so the `zig build test-engine` step also picks up the tests:\n```zig\n// tests/unit/engine_test.zig\nconst std = @import(\"std\");\nconst transition = @import(\"../../src/engine/transition.zig\");\n_ = transition; // ensure all tests in the module are compiled\n```\nWait — engine_test.zig uses imports from vendor_imports, not direct relative paths. Check how other engine tests are structured. For the main.zig import approach, that alone should be sufficient for `zig build test`.\n\n### Step 2: Run zig build to find compile errors\n\n```\nzig build\n```\n\nThere will almost certainly be compile errors in transition.zig because some Zig APIs are used incorrectly. Fix every error:\n\nKnown issues to look for:\n- `std.json.ObjectMap` is actually `std.StringArrayHashMap(std.json.Value)`. It does NOT have a `.merge()` method. To merge variables, iterate over the source ObjectMap and insert each key-value into the destination.\n- Format string: `\"%s/%s/%d\"` is C-style, wrong for Zig. Use `\"{s}/{s}/{d}\"` with `std.fmt.allocPrint`.\n- `state.instance_id` is `Uuid` which is `[16]u8`. To format as a string, use `std.fmt.allocPrint(allocator, \"{x:0>32}\", .{std.fmt.fmtSliceHexLower(&state.instance_id)})` or similar.\n- Any `const` declared but not modified should use `var` if it is modified, or be truly const.\n- `const new_tokens = std.ArrayList(Token).init(allocator);` without `var` — ArrayList must be `var`.\n- Any `try new_tokens.append(...)` where `new_tokens` is `const` — should be `var`.\n- The `new_state.tokens[token_idx.?].node_id = ...` line in task_completed branch: the copied tokens slice is mutable but assigned to a const field. Restructure as needed.\n\n### Step 3: Run zig build test\n\n```\nzig build test\n```\n\nVerify that TC-EE-02-01 through TC-EE-02-11 actually run and pass (look for them in the test output). If any test fails, fix it.\n\n### Step 4: Complete\n\nBoth `zig build` and `zig build test` must exit 0, and the TC-EE-02-xx tests must actually execute.\n\nComplete the handoff when done.",
+    "acceptance_criteria": [
+      "src/main.zig imports engine/transition.zig",
+      "zig build exits 0",
+      "zig build test exits 0 with TC-EE-02-01 through TC-EE-02-11 actually running"
+    ],
+    "functions_to_call": ["fn:check-zig-build", "fn:complete-handoff"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "transition.zig is now imported from main.zig; all TC-EE-02-01 through TC-EE-02-11 tests are executed and pass; build is clean. Migrations require BPM_DB_URL but this is not a regression from this change.",
+    "artifacts_out": [
+      "src/main.zig",
+      "src/engine/transition.zig",
+      "tests/unit/engine_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 2,
+  "max_rework": 3,
+  "completed_at": "2026-05-21T23:59:00Z"
+}

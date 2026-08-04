@@ -1,0 +1,61 @@
+{
+  "issue_id": "ISS-0063",
+  "title": "OIDC login redirect loop: Keycloak URL port mismatch + InMemoryWebStorage state loss + tenant-config 127.0.0.1 fallback",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "MIXED_A_E",
+  "run_id": "WF03-login-redirect-loop-20260601",
+  "workflow_id": "WF-03",
+  "handoff_id": "d4d751ab-80f4-46c3-a920-adc7db264522",
+  "requirement_ids": [],
+  "summary": "User reports inability to log into the application. After Keycloak authentication, the browser enters an endless redirect loop between the frontend and Keycloak. Three root causes identified: (1) nginx gateway proxy_set_header Host $host strips port 8081, causing Keycloak to generate redirect URLs on port 80; (2) OIDC InMemoryWebStorage loses PKCE state on page reload during callback, causing signinRedirectCallback to fail and re-trigger login; (3) tenant-config endpoint returns http://127.0.0.1:8081 instead of http://localhost:8081, creating an origin mismatch with the browser's localhost:5173 origin.",
+  "root_cause": {
+    "type": "oidc_redirect_loop_multi_surface_regression",
+    "details": "The redirect loop is maintained by three coupled defects in the login path. The nginx Keycloak gateway forwarded Host without the exposed port, so Keycloak generated redirect URLs on port 80 instead of 8081. The frontend OIDC manager kept PKCE/state in in-memory storage, so a callback reload or remount discarded the verifier and made signinRedirectCallback fail, which restarted login. The tenant-config endpoint returned a 127.0.0.1 authority fallback instead of the browser-visible localhost origin, so the configured authority did not match the page origin and kept the dynamic OIDC setup on the wrong base URL."
+  },
+  "resolution": {
+    "summary": "Closed the login redirect loop by preserving the exposed port in the Keycloak gateway Host header, persisting OIDC callback state across reloads, and normalizing the tenant-config authority to the browser-visible localhost origin.",
+    "changes": [
+      "Updated infrastructure/keycloak/gateway/nginx.conf to forward the exposed port in the Host header to Keycloak.",
+      "Updated web/src/auth/OidcManager.ts to persist OIDC callback state across redirects instead of relying on in-memory storage.",
+      "Updated src/api/routes/tenant_config.zig to return the localhost authority used by the browser-facing OIDC flow."
+    ],
+    "verification": [
+      "tests/reports/report-20260531-WF03-login-redirect-loop-20260601.yaml",
+      "docs/status/release-WF03-login-redirect-loop-2026-06-01.json"
+    ]
+  },
+  "files_to_change": [
+    "infrastructure/keycloak/gateway/nginx.conf",
+    "web/src/auth/OidcManager.ts",
+    "src/api/routes/tenant_config.zig"
+  ],
+  "occurrences": [
+    {
+      "occurred_at": "2026-06-01T21:04:20Z",
+      "run_id": "WF03-login-redirect-loop-20260601",
+      "handoff_id": "d4d751ab-80f4-46c3-a920-adc7db264522",
+      "trigger": "user_report",
+      "context": "User reported: 'Unable to login into the system. Redirect url to keycloak http://localhost/realms/bpm-default/login-actions/authenticate...' showing port 80 instead of 8081. After initial fix, 'the application goes into endless loop' after Keycloak login."
+    },
+    {
+      "occurred_at": "2026-05-31T21:13:12Z",
+      "run_id": "WF03-login-redirect-loop-20260601",
+      "handoff_id": "d4d751ab-80f4-46c3-a920-adc7db264522",
+      "trigger": "user_report",
+      "context": "WF-03 Step 0.5 issue registry update confirmed canonical match to ISS-0063 using affected files and symptom: OIDC callback redirect loop after Keycloak login, with login flow returning to signin repeatedly."
+    }
+  ],
+  "files_changed": [
+    "infrastructure/keycloak/gateway/nginx.conf",
+    "web/src/auth/OidcManager.ts",
+    "src/api/routes/tenant_config.zig"
+  ],
+  "created_at": "2026-06-01T21:04:55Z",
+  "resolved_at": "2026-05-31T21:45:52Z",
+  "prevention": [
+    "Preserve the externally visible port when Keycloak is fronted by a gateway so generated login redirects stay on the browser-facing authority.",
+    "Do not rely on in-memory-only OIDC callback state for flows that can reload during redirect handling.",
+    "Keep tenant-config authorities aligned with the browser origin used by local OIDC sessions."
+  ]
+}

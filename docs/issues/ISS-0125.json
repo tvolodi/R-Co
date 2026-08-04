@@ -1,0 +1,41 @@
+{
+  "id": "ISS-0125",
+  "title": "process_definitions DELETE blocked by orphan FK references in instance_definition_snapshots",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "code-defect / cleanup-cascade-order",
+  "run_id": "WF03-gh391-20260801",
+  "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+  "affected_areas": [
+    "migrations/004_definitions.sql",
+    "migrations/GBL-106_instance_definition_snapshots_cascade.sql",
+    "tests/integration/helpers.zig",
+    "tests/integration/iss202_merge_atomicity_test.zig",
+    "tests/integration/iss203_idempotency_keys_test.zig",
+    "tests/integration/iss601_state_snapshots_test.zig",
+    "tests/unit/event_store_test.zig",
+    "scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log"
+  ],
+  "created_at": "2026-08-01T12:09:25Z",
+  "resolved_at": null,
+  "notes": "Cluster N from Step 5c. 43 POSTGRES ERROR C23503 'update or delete on table process_definitions violates foreign key constraint instance_definition_snapshots_definition_id_fkey on table instance_definition_snapshots' errors. The FK requires that instance_definition_snapshots rows be deleted before process_definitions rows can be removed; when the test cleanup runs in the wrong order, the DELETE fails. Surfacing tests: TC-ISS-202-02/05, TC-ISS-203-03/04/05, TC-ISS-601-01..09, TC-EE-08-04, TC-EE-10-04/05, TC-EE-10-06, TC-EXP-202-01/02/03, TC-ES-03-01. Evidence: scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log offsets 1480582, 1480767 (and many more). The tests share a single db_test container, so the orphan rows in instance_definition_snapshots persist across test boundaries when one test fails partway through and doesn't clean up. Closely related to ISS-0107 (concurrent DDL deadlock) but the root cause here is FK-ordering not lock contention. Rerouted from WF03-gh375-20260801 to WF03-gh391-20260801 for fresh WF-03 processing. Diagnosis performed under WF03-gh391-20260801: GBL-085 is unrelated; migration 004 owns the FK, the shared reset order is already child-before-parent, and bespoke cleanup remains non-atomic because SQL errors are swallowed.",
+  "root_cause": {
+    "type": "code-defect",
+    "details": "migrations/004_definitions.sql:50-57 defines instance_definition_snapshots.definition_id as a NOT NULL foreign key to process_definitions.id without ON DELETE CASCADE, so PostgreSQL applies NO ACTION and rejects a parent DELETE while any child snapshot remains. migrations/GBL-085_state_snapshots.sql:1-31 is unrelated: it creates instance_state_snapshots only. tests/integration/helpers.zig:310-325 already truncates instance_definition_snapshots before process_definitions with TRUNCATE ... CASCADE, so its current order is not the direct violation. The fragile paths are tests/integration/iss202_merge_atomicity_test.zig:130-152 and tests/integration/iss203_idempotency_keys_test.zig:130-149: child and parent cleanup are separate best-effort helpers that swallow every SQL error, allowing an incomplete child delete to be followed by DELETE FROM process_definitions and C23503. tests/integration/iss601_state_snapshots_test.zig:171-178,617-624,838-846,990-997 deletes instance children in FK order but leaves process_definitions for later shared cleanup, increasing cross-binary exposure. The requested tests/integration/event_store_test.zig does not exist; tests/unit/event_store_test.zig is SkipZigTest-only and has no DB cleanup."
+  },
+  "candidate_resolution": "Recommended strategy C: add append-only migration GBL-106_instance_definition_snapshots_cascade.sql to replace instance_definition_snapshots_definition_id_fkey with ON DELETE CASCADE, and harden shared/bespoke cleanup to retain explicit child-before-parent order while no longer swallowing a child-delete failure before attempting the parent DELETE. Add a schema contract test for the cascade and focused repeated integration coverage for ISS-202, ISS-203, ISS-601, and event-store idempotency.",
+  "resolution": null,
+  "files_to_change": [
+    "migrations/GBL-106_instance_definition_snapshots_cascade.sql",
+    "tests/integration/helpers.zig",
+    "tests/integration/iss202_merge_atomicity_test.zig",
+    "tests/integration/iss203_idempotency_keys_test.zig",
+    "tests/integration/iss601_state_snapshots_test.zig",
+    "tests/integration/schema_contracts/iss0125_definition_snapshot_cascade_test.zig"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/391",
+  "prevention": [
+    "Add a per-test cleanup contract to TestHarness.init() that registers a deadline-cleanup so unfinished test data doesn't survive across test boundaries.",
+    "Make each test setup explicitly assert its snapshot count is zero before running, then clean up unconditionally."
+  ]
+}

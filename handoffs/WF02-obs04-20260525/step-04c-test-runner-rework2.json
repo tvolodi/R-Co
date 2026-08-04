@@ -1,0 +1,63 @@
+{
+  "handoff_id": "20260525-022",
+  "run_id": "WF02-obs04-20260525",
+  "workflow_id": "WF-02",
+  "step": "04c",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-obs04-20260525/step-04c-test-runner-rework2.json",
+  "created_at": "2026-05-25T13:55:00Z",
+  "started_at": "2026-05-25T13:55:20Z",
+  "completed_at": "2026-05-25T03:26:50Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-04"
+    ],
+    "related_handoff_ids": [
+      "20260525-021",
+      "20260525-020",
+      "20260525-019"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-obs04-runtime-20260525/step-01-backend-dev.json",
+      "src/main.zig",
+      "web/tests/e2e/obs04.timeline.e2e.spec.ts",
+      "tests/specs/OBS-04.md"
+    ]
+  },
+  "task": {
+    "description": "Re-run OBS-04 WF-02 Step 04 validation after runtime server persistence fix. Verify backend/frontend suites and re-check browser E2E execution path. Confirm whether release blocker OBS04-TEST-GAP-001 is now closed or remains blocking, with concrete evidence from commands and report artifacts.",
+    "acceptance_criteria": [
+      "Backend and frontend validation commands executed with evidence",
+      "OBS-04 E2E execution status is explicitly verified",
+      "Blocker status for OBS04-TEST-GAP-001 is clearly resolved or justified",
+      "Updated report and traceability produced"
+    ],
+    "functions_to_call": [
+      "fn:run-validation-suite",
+      "fn:collect-test-evidence",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Backend and frontend validation suites were re-run with concrete command evidence. Core backend/frontend checks passed, but OBS-04 browser E2E remained non-executable in this run because the Playwright scenario was skipped due to missing runtime E2E credentials/prerequisites. Release blocker OBS04-TEST-GAP-001 remains open.",
+    "artifacts_out": [
+      "tests/reports/report-20260525T032650Z-WF02-obs04-step04c-rework2.json"
+    ],
+    "issues": [
+      {
+        "id": "OBS04-TEST-GAP-001",
+        "severity": "BLOCKER",
+        "description": "OBS-04 E2E command executed and discovered the scenario, but execution was skipped (1 skipped) so browser-level UI->API->DB evidence is still missing for MUST requirement closure.",
+        "affected_requirement": "OBS-04"
+      }
+    ],
+    "next_action": "Route to ORCH for E2E execution prerequisites completion and then re-run TEST-RUNNER validation for OBS-04."
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

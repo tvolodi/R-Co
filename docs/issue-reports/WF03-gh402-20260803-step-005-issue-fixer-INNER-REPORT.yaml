@@ -1,0 +1,254 @@
+# WF03-gh402-20260803 — Step 005 (ISSUE-FIXER) Inner Report
+# Workflow: WF-03 Issue Resolving (Step 0.5 registry lookup + Step 1 diagnose, combined)
+# Agent: ISSUE-FIXER
+# Mode: read-only diagnosis — NO source or test files modified
+# GitHub cross-reference: https://github.com/tvolodi/R-Co/issues/402
+# Local ISS registry entry: docs/issues/ISS-0121.json (status: RESOLVED-PARTIAL)
+# Sync-ref on GH body: rco-sync-ref: ISS-0121-residual-29
+
+report_id: WF03-gh402-20260803-step-005-issue-fixer
+agent_id: ISSUE-FIXER
+run_id: WF03-gh402-20260803
+step: "005"
+created_at: "2026-08-02T21:11:09Z"
+branch: feature/WF03-gh402-20260803
+related_handoff_ids:
+  - f880dbd3-fb0c-454b-9b6b-c0578a8f131e   # Step 00 (BACKEND-DEV, git-setup)
+
+summary: >
+  Confirmed and refined the diagnosis for the residual ISS-0121 / T010 hardcoded-UUID
+  migration tracked by GitHub issue #402. The local knowledge-base entry
+  docs/issues/ISS-0121.json already exists and is in RESOLVED-PARTIAL state — GH
+  #402 is the formal continuation issue, NOT a duplicate. No new ISS file was
+  created and no GitHub issue was filed (per the no-duplicate rule). The live
+  lint now reports BLOCKER=0 MAJOR=174 MINOR=0 across 29 unique affected test
+  files (not the 17-file inventory in src/design/iss0121_per_test_uuids.md, and
+  not the 24-figure cited in the GH #402 body — that body was drafted before
+  the latest design and undershoots the on-disk residual). 11 of the 29 are
+  carry-overs from the original ISS-0121 list (still flagging despite the
+  PR #403 follow-up batch); 18 are NEW files not previously tracked under
+  ISS-0121 that have surfaced because more integration tests have been added
+  since the original diagnosis. Root cause is unchanged — every flag is a
+  hardcoded 16-byte/36-char UUID literal in a SQL fixture rather than a call
+  to TestHarness.newUuid() / newUuidString() (helpers.zig:467 / 479, the API
+  added in PR #399 / ISS-0121 part 1). T010 promotion to BLOCKER remains the
+  deferred goal of this run; it must NOT happen until MAJOR < 10 is achieved
+  on-disk.
+
+files_created:
+  - docs/issue-reports/WF03-gh402-20260803-step-005-issue-fixer-INNER-REPORT.yaml
+
+files_modified:
+  - docs/issues/ISS-0121.json
+  - docs/issues/issue_index.json
+  - handoffs/WF03-gh402-20260803/step-005-issue-fixer.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+
+tests_run: []   # ISSUE-FIXER does not run tests; TEST-RUNNER runs them in Step 5
+
+issues_found:
+  - severity: MINOR
+    description: >
+      The on-disk residual figure (29 files, 174 MAJOR findings) is now LARGER
+      than the figure cited in the GitHub #402 body ("24 still carry T010").
+      The body was drafted against an earlier 17→24 mental model. CODE-DESIGNER
+      must inventory against the live 29-file list, not the 24 figure quoted
+      on the issue.
+  - severity: MINOR
+    description: >
+      ISS-0121.json files_to_change currently lists 22 entries (18 integration
+      test files + helpers.zig + onboarding_realm_guard_test.zig +
+      svc02_plugin_dispatch_scope_test.zig + the linter + the baseline), of
+      which 11 still carry T010 findings today. CODE-DESIGNER should treat
+      files_to_change as a *legacy* inventory and trust the live lint output
+      for current scope; the residual file list is appended to ISS-0121.affected_areas
+      in this step.
+  - severity: MINOR
+    description: >
+      docs/issues/issue_index.json entry for ISS-0121 still shows status=OPEN
+      even though docs/issues/ISS-0121.json shows status=RESOLVED-PARTIAL with
+      resolved_at stamped. The two-track divergence was pre-existing and is
+      corrected in this step to RESOLVED-PARTIAL to match the JSON file (the
+      authoritative source per AGENT_SYSTEM.md §4.6).
+  - severity: MINOR
+    description: >
+      GitHub #402 title contains "ISS-0121-residual-29: drive T010
+      hardcoded-UUID MAJOR from 174 to <10". The "residual-29" suffix in the
+      title is consistent with the live inventory (29 affected files) even
+      though the body prose references 24. No change to GH #402 is required;
+      the title is the authoritative count for this continuation.
+
+next_steps:
+  - "ORCH routes to CODE-DESIGNER (WF-03 Step 2) — produce a fix design (Type E prose or Type A parameter file under src/design/) that batches the 29 residual files into ≤ 4 BACKEND-DEV-friendly PRs of ~7 files each (consistent with the WF-02 batch cap and prior PR #403 follow-up precedent). The design MUST cite helpers.zig:467/479 as the migration API and MUST NOT propose any new helper. Acceptance criteria: lint MAJOR < 10 after migration; zig build test green; full integration suite green; T010 promoted from MAJOR to BLOCKER in tools/lint_test_isolation.py once MAJOR < 10."
+  - "ORCH routes the design to CODE-DESIGN-VALIDATOR (WF-03 Step 2b — hard gate). Implementation MUST NOT begin before the validator returns PASS."
+  - "After fix lands and lint MAJOR < 10, ISSUE-FIXER Step 3 will return to this entry and update ISS-0121.json: status=RESOLVED, resolution=full migration of N files, prevention=T010 promoted to BLOCKER, resolved_at=now, github_issue kept as #402 (the continuation reference; #387 is the original PR)."
+
+blockers: []
+
+# ---------------------------------------------------------------------------
+# Detailed diagnosis payload (consumed by CODE-DESIGNER)
+# ---------------------------------------------------------------------------
+
+knowledge_base_lookup:
+  search_input:
+    keywords: ["hardcoded UUID", "T010", "per-test UUIDs", "TestHarness.newUuid"]
+    affected_areas_prefix: "tests/integration/"
+    error_snippet: "hardcoded UUID `00000000-0000-0000-0000-000000000099`"
+  matches:
+    - issue_id: ISS-0121
+      title: "Hardcoded UUID violations (T010) across 100+ integration test files"
+      status: "RESOLVED-PARTIAL"
+      severity: MAJOR
+      github_issue: "https://github.com/tvolodi/R-Co/issues/387"   # original; #402 is the continuation
+      root_cause_match: EXACT
+      resolution_applicable: "PARTIAL — adds newUuid/newUuidString helpers (done in PR #399) and migrated 17+? files (PR #403). This run continues the incremental migration on the remaining 29 files."
+      prevention: "Promote T010 to BLOCKER in lint_test_isolation.py once MAJOR < 10."
+      decision: "CONTINUE the existing ISS-0121 entry. Do NOT file a new local issue. GH #402 is the user-visible continuation issue (file against the existing ISS-0121 record); no `gh issue create` was performed in this step."
+  collision_check:
+    performed: true
+    method: "gh issue list --search 'ISS-0121' --state all"
+    result: >
+      GH #387 (original PR), #399 (PR — ISS-0121 part 1), #402 (ISS-0121 residual
+      continuation, sync-ref ISS-0121-residual-29), #403 (PR — ISS-0121 part 2),
+      #404 (PR — ISS-0122 unrelated). No local-naming collision. Local ISS-0121
+      numbering does not collide with any other GH issue number; the "ISS-0121"
+      suffix on GH #402 is a sync-ref tag, not a GH-number claim.
+  final_action: "Reuse ISS-0121.json; append GH #402 as the active continuation; append this run's file inventory to affected_areas."
+
+github_issue_402:
+  url: "https://github.com/tvolodi/R-Co/issues/402"
+  state: OPEN
+  labels: ["bug"]
+  title: "ISS-0121-residual-29: drive T010 hardcoded-UUID MAJOR from 174 to <10"
+  sync_ref_on_body: "rco-sync-ref: ISS-0121-residual-29"
+  acceptance_criteria_from_body:
+    - "python3 tools/lint_test_isolation.py tests/integration -> MAJOR < 10 (currently 174)"
+    - "All 24 residual test files migrated to TestHarness.newUuid*"
+    - "zig build test and full integration suite remain green"
+    - "T010 promoted from MAJOR to BLOCKER in tools/lint_test_isolation.py"
+
+live_lint_run:
+  command: "python tools/lint_test_isolation.py tests/integration"
+  ran_at: "2026-08-02T21:11:09Z"
+  summary:
+    BLOCKER: 0
+    MAJOR: 174
+    MINOR: 0
+    total_findings: 174
+    unique_files: 29
+
+residual_29_files:
+  description: >
+    Files carrying at least one T010 finding on the live branch
+    (feature/WF03-gh402-20260803 at 6cc92ec). Each entry shows the literal
+    count returned by the linter. Allocation to BACKEND-DEV-friendly batches
+    is CODE-DESIGNER's call; this list is the authoritative scope.
+  inventory:
+    - { file: "tests/integration/adp06_pipeline_run_correlation_test.zig",   count:  8, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/adp07_agent_role_reserved_usernames_test.zig", count: 4, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/adp09_tamper_evident_audit_chain_test.zig", count: 6, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/concurrent_instances_test.zig",            count:  2, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/db_integration_test.zig",                   count:  5, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/entity_subsystem_test.zig",                 count:  7, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/env01_test.zig",                            count:  1, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/env03_test.zig",                            count:  6, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/exp103_instance_waits_test.zig",            count: 17, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/exp401_exp402_comp_restore_test.zig",       count:  1, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/exp601_tier_quota_test.zig",                count: 25, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/ext01_service_task_test.zig",               count:  1, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/ext02_webhook_dispatch_test.zig",           count: 20, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/ext03_plugin_integration_test.zig",         count:  1, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/idn02_group_management_test.zig",           count:  2, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/idn03_role_access_test.zig",                count:  1, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/idn04_api_token_management_test.zig",       count:  1, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/instance_error_test.zig",                   count:  3, batch: "?", already_in_iss0121: false }
+    - { file: "tests/integration/iss207_error_retry_test.zig",               count:  9, batch: "?", already_in_iss0121: true }
+    - { file: "tests/integration/iss208_task_guard_test.zig",                count:  8, batch: "?", already_in_iss0121: true }
+    - { file: "tests/integration/iss601_state_snapshots_test.zig",           count:  2, batch: "?", already_in_iss0121: true }
+    - { file: "tests/integration/obs06_alerts_test.zig",                     count:  9, batch: "?", already_in_iss0121: true }
+    - { file: "tests/integration/onboarding_realm_guard_test.zig",           count:  1, batch: "?", already_in_iss0121: true }
+    - { file: "tests/integration/sch02_timer_polling_test.zig",              count:  2, batch: "?", already_in_iss0121: true }
+    - { file: "tests/integration/sch303_timer_dlq_test.zig",                 count:  9, batch: "?", already_in_iss0121: true }
+    - { file: "tests/integration/svc01_service_catalog_scope_test.zig",      count: 12, batch: "?", already_in_iss0121: true }
+    - { file: "tests/integration/svc02_plugin_dispatch_scope_test.zig",      count:  1, batch: "?", already_in_iss0121: true }
+    - { file: "tests/integration/svc03_definition_activation_scope_test.zig",count:  7, batch: "?", already_in_iss0121: true }
+    - { file: "tests/integration/tm01_tenant_list_test.zig",                 count:  2, batch: "?", already_in_iss0121: true }
+  summary:
+    total_files: 29
+    carry_over_from_iss0121: 11
+    new_since_iss0121: 18
+
+linter_t010_rule:
+  file: "tools/lint_test_isolation.py"
+  rule_code: "T010"
+  severity_current: MAJOR
+  target_severity_after_fix: BLOCKER
+  pattern: "UUID_LITERAL regex (case-insensitive 8-4-4-4-12 hex); ALL_ZEROS_UUID is excluded as the conventional 'no value' sentinel"
+  suppression_via: "tools/lint_test_isolation.baseline.json (currently suppresses 195 findings)"
+  promotion_constraint: >
+    Promote MAJOR → BLOCKER in tools/lint_test_isolation.py ONLY AFTER
+    `python3 tools/lint_test_isolation.py tests/integration` reports
+    MAJOR < 10 on disk. Promoting earlier would block the build before the
+    migration can finish.
+
+helpers_api:
+  file: "tests/integration/helpers.zig"
+  newUuid:
+    line: 467
+    returns: "bpm.uuid.Uuid (16 raw bytes)"
+    failure_mode: "infallible; uses bpm.uuid.generateUuidV4BytesInto"
+    use_for: "raw [16]u8 INSERT parameters and created_by/created_by_id columns"
+  newUuidString:
+    line: 479
+    returns: "![]u8 (canonical 36-byte hyphenated lowercase string, caller-owned)"
+    caller_must: "defer allocator.free(id)"
+    use_for: "textual SQL parameters (e.g. ::text casts, parameterized pg queries, JSON bodies)"
+
+root_cause:
+  category: "test-fixture-quality"
+  statement: >
+    Integration test files INSERT hardcoded 16-byte/36-byte UUID literals
+    directly into SQL fixture statements. When two test files (or two test
+    blocks within a file) reuse the same literal in the same shared
+    bpm_test database, the second INSERT collides via unique-constraint
+    23505 or overwrites prior data, contaminating the test environment.
+    Per INV-TI-3, all test fixtures must use per-test UUIDs generated
+    fresh at the start of each test block.
+  evidence_samples:
+    - file: "tests/integration/db_integration_test.zig"
+      literals_seen: ["db0301aa-0000-0000-0000-000000000001", "db0301bb-0000-0000-0000-000000000001", "db0302cc-0000-0000-0000-000000000001", "db0302dd-0000-0000-0000-000000000001", "acac0000-0000-0000-0000-000000000002"]
+    - file: "tests/integration/ext02_webhook_dispatch_test.zig"
+      literals_seen: ["00000000-0000-0000-0000-00000000e201", "00000000-0000-0000-0000-00000000e202", "00000000-0000-0000-0000-00000000e203", "00000000-0000-0000-0000-000000000999", "00000000-0000-0000-0000-00000000e204", "11111111-1111-1111-1111-111111111111"]
+    - file: "tests/integration/exp103_instance_waits_test.zig"
+      literals_seen: ["e1030100-0000-0000-0000-000000000001", "e1030100-0000-0000-0000-000000000000", "e1030100-0000-0000-0000-000000000002", "e1030200-0000-0000-0000-000000000001", "e1030200-0000-0000-0000-000000000000", "e1030200-0000-0000-0000-000000000002"]
+  already_fixed_pattern:
+    pr: 403
+    merged_at: "2026-08-02 (squash merged as ef42a06)"
+    branch: "feature/WF03-gh387-followup-20260802"
+    files_migrated: 17
+    lint_drop: "MAJOR 243 → 174 (-69)"
+
+constraints_for_code_designer:
+  - "MUST cite helpers.zig:467 (newUuid) and helpers.zig:479 (newUuidString) as the migration API. No new helper, no wrapper, no new module."
+  - "MUST NOT modify tools/lint_test_isolation.py to weaken the rule (e.g. add more exclusions). The only acceptable lint-side edit is the post-fix MAJOR → BLOCKER promotion at tools/lint_test_isolation.py:167 once MAJOR < 10."
+  - "MUST NOT refresh tools/lint_test_isolation.baseline.json to mask new violations. Baseline refresh only after a fix batch lands."
+  - "MUST keep the all-zero UUID sentinel (00000000-0000-0000-0000-000000000000) where the API contract requires it (e.g. system/default tenant, NULL marker); the linter already excludes this case."
+  - "MUST keep the all-zero default-tenant sentinel in helpers.zig and any file that uses it as a NULL marker."
+  - "MUST keep helpers.zig and tests/integration/helpers.zig as the single source of the per-test UUID API."
+  - "MUST NOT touch any test that has no T010 finding. The migration is scoped to the 29-file list above."
+  - "MUST ensure `zig build test` and the full integration suite stay green between batches; do not assume the migration is purely additive (some INSERTs may have downstream assertions that hardcoded the literal value — those need updating too)."
+
+suggested_batching_for_code_designer:
+  description: "CODE-DESIGNER may revise; this is the suggested split mirroring the WF-02 batch cap (≤ 4 PRs of roughly equal size)."
+  batch_A_8: ["exp103_instance_waits_test.zig", "iss207_error_retry_test.zig", "iss208_task_guard_test.zig", "iss601_state_snapshots_test.zig", "sch303_timer_dlq_test.zig", "svc01_service_catalog_scope_test.zig", "svc03_definition_activation_scope_test.zig", "tm01_tenant_list_test.zig"]
+  batch_B_8: ["exp601_tier_quota_test.zig", "ext02_webhook_dispatch_test.zig", "db_integration_test.zig", "obs06_alerts_test.zig", "entity_subsystem_test.zig", "env03_test.zig", "sch02_timer_polling_test.zig", "instance_error_test.zig"]
+  batch_C_8: ["adp06_pipeline_run_correlation_test.zig", "adp07_agent_role_reserved_usernames_test.zig", "adp09_tamper_evident_audit_chain_test.zig", "idn02_group_management_test.zig", "idn03_role_access_test.zig", "idn04_api_token_management_test.zig", "ext01_service_task_test.zig", "ext03_plugin_integration_test.zig"]
+  batch_D_5: ["concurrent_instances_test.zig", "onboarding_realm_guard_test.zig", "svc02_plugin_dispatch_scope_test.zig", "env01_test.zig", "exp401_exp402_comp_restore_test.zig"]
+
+acceptance_for_step_2:
+  - "A src/design/ artefact (Type E prose preferred for cross-cutting batches, per docs/agents/workflows/WF-03_issue_resolving.md §Step 2) listing each of the 29 files, the UUID literals to replace, and the replacement call (newUuid vs newUuidString) per occurrence."
+  - "Batching recommendation with rationale."
+  - "Per-file per-call replacement strategy; the design should be unambiguous enough that BACKEND-DEV can apply it mechanically."
+  - "Explicit defer allocator.free(id) instruction for every newUuidString call."
+  - "Explicit post-fix verification recipe: `python3 tools/lint_test_isolation.py tests/integration` shows MAJOR < 10, `zig build test` exits 0, full integration suite exits 0."

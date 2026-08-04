@@ -1,0 +1,33 @@
+{
+  "report_id": "ADHOC-registry-split-20260523-step-02-doc-updater",
+  "agent_id": "DOC-UPDATER",
+  "run_id": "ADHOC-registry-split-20260523",
+  "step": "02",
+  "created_at": "2026-05-23T14:51:45Z",
+  "summary": "Updated the orchestration documentation and handoff function specs to describe the split registry model with an active index in handoffs/registry.json and per-run archives in handoffs/<run_id>/registry.json. Also completed the DOC-UPDATER handoff metadata and registry entry.",
+  "files_created": [
+    "docs/issue-reports/ADHOC-registry-split-20260523-step-02-doc-updater-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "docs/agents/AGENT_SYSTEM.md",
+    "docs/agents/ORCHESTRATOR.md",
+    "docs/agents/functions/fn-register-handoff.md",
+    "docs/agents/functions/fn-create-handoff.md",
+    "docs/agents/functions/fn-load-handoff.md",
+    "docs/agents/functions/fn-complete-handoff.md",
+    "handoffs/registry.json",
+    "handoffs/ADHOC-registry-split-20260523/step-02-doc-updater.json"
+  ],
+  "tests_run": [
+    {
+      "name": "Documentation review only",
+      "status": "skip",
+      "detail": "No executable tests apply to this documentation-only handoff."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "ORCH can use the updated docs as the contract for active-registry writes and per-run archival behavior."
+  ],
+  "blockers": []
+}

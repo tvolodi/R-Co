@@ -1,0 +1,54 @@
+{
+  "handoff_id": "903efcc2-ccdf-4165-b408-7580924e0168",
+  "run_id": "WF03-onboarding-e2e-fix-20260614",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-onboarding-e2e-fix-20260614/step-02-code-designer.json",
+  "created_at": "2026-06-14T19:01:00Z",
+  "started_at": "2026-06-14T19:01:00Z",
+  "completed_at": "2026-06-14T19:04:32Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 fix design",
+    "requirement_ids": [
+      "sys-tenant-onboarding"
+    ],
+    "related_handoff_ids": [
+      "ed0b5d20-67f6-4486-9951-c1814c5c6d5f"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-onboarding-e2e-fix-20260614/step-01-issue-fixer.json",
+      "docs/issue-reports/report-2026-06-14-WF03-onboarding-e2e-fix-20260614-step-01-issue-fixer.yaml",
+      "docs/issues/ISS-0069.json",
+      "web/tests/e2e/pipeline.ts",
+      "web/tests/e2e/tenants.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "Produce a fix design artefact for WF-03 Step 2. Category E (test code error). Root cause: navigateSpa in web/tests/e2e/pipeline.ts (lines ~171-179) uses history.pushState + synthetic popstate which races with React Router v6.4 createBrowserRouter reconciliation, causing AppShell/nav never to mount and execution context destruction. Design: rewrite navigateSpa to use page.goto (proven pattern in web/tests/e2e/tenants.e2e.spec.ts:74-79). loginWithToken's addInitScript already re-runs on every page.goto so authenticated state is preserved. Write the design to src/design/onboarding-e2e-nav-fix.md per backend_developer_guide \u00a76 (Type E prose). Cover: function signature change, behavior, why page.goto is correct, backward compatibility for existing navigateSpa callers, and acceptance criteria. NO implementation code.",
+    "acceptance_criteria": [
+      "Design artefact at src/design/onboarding-e2e-nav-fix.md",
+      "Covers navigateSpa rewrite with page.goto",
+      "No implementation code",
+      "Lists all callers of navigateSpa and confirms compatibility",
+      "Error/edge-case handling documented"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E prose design for ISS-0069 (Category E: test-harness SPA nav race). Single-file rewrite spec for navigateSpa in web/tests/e2e/pipeline.ts: replace history.pushState + synthetic popstate with page.goto + page.waitForURL (proven pattern from tenants.e2e.spec.ts:74-79). Auth preserved via addInitScript re-run on every goto. Audited 50+ call sites across 8 importing files; signature unchanged so all callers remain backward compatible. 6 local-shadow copies in other spec files left out of scope. Linter PASS. No implementation code.",
+    "artifacts_out": [
+      "src/design/onboarding-e2e-nav-fix.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

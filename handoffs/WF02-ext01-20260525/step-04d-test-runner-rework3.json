@@ -1,0 +1,62 @@
+{
+  "handoff_id": "20260525-057",
+  "run_id": "WF02-ext01-20260525",
+  "workflow_id": "WF-02",
+  "step": "04d",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-ext01-20260525/step-04d-test-runner-rework3.json",
+  "created_at": "2026-05-25T21:20:00Z",
+  "started_at": "2026-05-25T21:20:20Z",
+  "completed_at": "2026-05-25T10:16:48Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-01"
+    ],
+    "related_handoff_ids": [
+      "20260525-053",
+      "20260525-054",
+      "20260525-055",
+      "20260525-056"
+    ],
+    "artifacts_in": [
+      "tests/specs/EXT-01.md",
+      "handoffs/WF03-ext01-intfix-20260525/step-01c-issue-fixer-rework2.json",
+      "tests/integration/ext01_service_task_test.zig",
+      "tests/integration/obs05_dlq_test.zig",
+      "src/engine/service_task.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 3 (final): Execute the full EXT-01 validation pass after WF03 integration fixes. Run unit and integration suites and confirm all EXT-01-related cases pass without compile/runtime stalls. Produce a fresh structured report with explicit EXT-01 coverage evidence. If any blocker remains, classify with severity and clear root cause.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-integration exits 0",
+      "EXT-01 cases pass in unit and integration layers",
+      "Structured test report is generated and linked",
+      "Handoff result is complete with PASS/FAIL/PARTIAL"
+    ],
+    "functions_to_call": [
+      "fn:run-ext01-tests",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Final EXT-01 rework validation passed. Unit and integration suites exited 0, with EXT-01 coverage evidenced in unit and integration test sources and structured report artifacts.",
+    "artifacts_out": [
+      "tests/reports/report-20260525-wf02-ext01-step-04d-test-runner-rework3.json",
+      "tests/reports/WF02-ext01-20260525-step-04d-zig-build-test.log",
+      "tests/reports/WF02-ext01-20260525-step-04d-zig-build-test-integration.log",
+      "docs/issue-reports/WF02-ext01-20260525-step-04d-test-runner-rework3-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 3,
+  "max_rework": 3
+}

@@ -1,0 +1,47 @@
+{
+  "handoff_id": "c27937cf-e914-4d5b-a33a-0a6d4432989c",
+  "run_id": "ADHOC-svc04-server-20260610",
+  "workflow_id": "ADHOC",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/ADHOC-svc04-server-20260610/step-01-backend-dev.json",
+  "created_at": "2026-06-10T19:13:06Z",
+  "started_at": "2026-06-10T19:13:06Z",
+  "completed_at": "2026-06-10T19:16:53Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 13",
+    "requirement_ids": [
+      "SVC-04"
+    ],
+    "related_handoff_ids": [
+      "4841baa5"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Start bpm-platform server for E2E tests. Port 8080 may be occupied by Docker Desktop.\n\nSteps:\n1. Run: netstat -aon | findstr :8080 \u2014 identify what is using port 8080\n2. Attempt to start: Start-Job { zig-out/bin/bpm-platform } (if binary exists) OR zig build followed by start\n3. If port 8080 is truly blocked by Docker Desktop: start on port 18080 with BPM_PORT=18080\n   Then update BPM_TEST_URL to http://127.0.0.1:18080 for the E2E run\n4. Wait for health check: curl http://127.0.0.1:8080/health/ready (or :18080 if alternate port)\n5. Return PASS with the actual server URL when health check responds 200\n\nNote: zig-out/bin/bpm-platform needs BPM_DB_URL, BPM_IDP_BASE_URL, BPM_KEYCLOAK_SECRET env vars from .env\nUse: =postgres://bpm:bpm@localhost:5442/bpm_dev; http://127.0.0.1:8081=http://localhost:8081; =admin",
+    "acceptance_criteria": [
+      "bpm-platform server responds at /health/ready (200)",
+      "result.server_url contains the actual URL used"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "bpm-platform server started on http://127.0.0.1:18080 (port 8080 occupied by bilimbaga-api-1 Docker container). DB at localhost:5432. Health check /health/ready returns HTTP 200 with db_latency_ms=2. BPM_TEST_URL must be set to http://127.0.0.1:18080 for E2E runs.",
+    "server_url": "http://127.0.0.1:18080",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": ".env BPM_DB_URL points to port 5442 (bilimbaga-db-1), but actual BPM database (my-fab-db-1) is at port 5432. Server started with corrected BPM_DB_URL=postgres://bpm:bpm@localhost:5432/bpm_dev."
+      }
+    ],
+    "next_action": "E2E tests can now run with BPM_TEST_URL=http://127.0.0.1:18080"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

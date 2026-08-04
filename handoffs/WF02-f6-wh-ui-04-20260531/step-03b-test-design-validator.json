@@ -1,0 +1,40 @@
+{
+  "handoff_id": "2bcc6439-4006-4502-bc06-32a7347696d9",
+  "run_id": "WF02-f6-wh-ui-04-20260531",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-05-31T16:12:47Z",
+  "started_at": "2026-05-31T16:12:52Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F6 - Webhook Delivery Log",
+    "requirement_ids": ["WH-UI-04"],
+    "related_handoff_ids": ["7836b86e-ae57-4958-a730-b6a7136d42ce"],
+    "artifacts_in": [
+      "tests/specs/WH-UI-04.md",
+      "web/tests/e2e/f6-webhooks.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "Validate the WH-UI-04 test design as the hard Step 03b gate. Confirm the spec exists, runnable E2E coverage is present for the requirement, and there is no deferred work left in the test surface.",
+    "acceptance_criteria": [
+      "Test design validator returns PASS or FAIL with issues",
+      "If PASS, next action routes to TEST-RUNNER step 04"
+    ],
+    "functions_to_call": ["fn:validate-wh-ui-04-tests"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated WH-UI-04 test design: the requirement spec exists, focused Playwright coverage for TC-WH-UI-04-01..03 is runnable, and no deferred work remains on the test surface.",
+    "artifacts_out": [
+      "docs/issue-reports/WF02-f6-wh-ui-04-20260531-step-03b-test-design-validator-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-31T16:14:36Z"
+}

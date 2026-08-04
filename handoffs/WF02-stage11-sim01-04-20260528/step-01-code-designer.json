@@ -1,0 +1,53 @@
+{
+  "handoff_id": "7800d98d-f172-4217-b6c0-bf2b34fcf5e3",
+  "run_id": "WF02-stage11-sim01-04-20260528",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-stage11-sim01-04-20260528/step-01-code-designer.json",
+  "created_at": "2026-05-28T15:00:10Z",
+  "started_at": "2026-05-28T15:00:30Z",
+  "completed_at": "2026-05-28T15:03:58Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04"
+    ],
+    "related_handoff_ids": [
+      "3aa84b0a-81a8-4bc3-b8ec-e3145a70ce6b"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/status/implementation_order.md"
+    ]
+  },
+  "task": {
+    "description": "Produce a Stage 11 design artifact for SIM-01..SIM-04 at src/design/stage11_sim01_04.md. Cover simulation tenant model, deterministic service mocking strategy, controllable simulation time abstraction, and deterministic UUID strategy. Include module boundaries, public function signatures, error taxonomy, and dependencies. No implementation code.",
+    "acceptance_criteria": [
+      "Design artifact created at src/design/stage11_sim01_04.md",
+      "All acceptance criteria for SIM-01..SIM-04 are mapped to design elements",
+      "Public function signatures and error taxonomy are explicit",
+      "No implementation code appears in the design artifact"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for Stage 11 simulation core (SIM-01 through SIM-04)",
+    "artifacts_out": [
+      "src/design/stage11_sim01_04.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

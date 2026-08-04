@@ -1,0 +1,61 @@
+{
+  "handoff_id": "f7c1670d-6d78-442c-ba59-b4c79be4bcaf",
+  "run_id": "WF02-idn04-20260524",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-idn04-20260524/step-04-test-runner.json",
+  "created_at": "2026-05-24T08:29:00Z",
+  "started_at": "2026-05-24T08:29:20Z",
+  "completed_at": "2026-05-24T08:32:46Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": [
+      "IDN-04"
+    ],
+    "related_handoff_ids": [
+      "e8938798-3a07-4da5-b880-68fb4f0867de",
+      "6c699f89-36c2-47cc-b9f3-2b21f9e4e37e"
+    ],
+    "artifacts_in": [
+      "tests/specs/IDN-04.md",
+      "tests/integration/idn04_api_token_management_test.zig",
+      "tests/unit/test_api08_auth.zig",
+      "tests/integration/main_test.zig",
+      "src/identity/service.zig",
+      "src/api/routes/identity.zig",
+      "src/api/middleware/auth.zig",
+      "migrations/019_idn04_api_token_management.sql"
+    ]
+  },
+  "task": {
+    "description": "Run the IDN-04 test suite and affected regression coverage. Execute unit and integration tests relevant to token issuance, listing, revocation, and auth middleware validation of revoked/expired tokens. Produce a structured test report with pass/fail status, coverage notes, and explicit requirement traceability for IDN-04 test cases.",
+    "acceptance_criteria": [
+      "IDN-04 targeted tests pass",
+      "No blocker regressions in affected auth/identity flows",
+      "A test report is written with clear PASS/FAIL outcome"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:check-code-coverage",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All required IDN-04 test layers passed, including targeted unit/auth regressions and integration coverage for issuance, listing, revocation, and revoked/expired token middleware validation.",
+    "artifacts_out": [
+      "tests/reports/WF02-idn04-20260524-run-01.md",
+      "docs/issue-reports/WF02-idn04-20260524-step-04-test-runner-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

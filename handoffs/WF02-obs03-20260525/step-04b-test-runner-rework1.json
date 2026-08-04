@@ -1,0 +1,69 @@
+{
+  "handoff_id": "20260525-006",
+  "run_id": "WF02-obs03-20260525",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-obs03-20260525/step-04b-test-runner-rework1.json",
+  "created_at": "2026-05-25T10:22:00Z",
+  "started_at": "2026-05-25T10:22:20Z",
+  "completed_at": "2026-05-25T10:25:30Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-03"
+    ],
+    "related_handoff_ids": [
+      "20260525-004",
+      "20260525-005"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-obs03-20260525/step-04-test-runner.json",
+      "handoffs/WF03-obs03-intfix-20260525/step-01-issue-fixer.json",
+      "tests/specs/OBS-03.md",
+      "tests/integration/obs03_audit_log_test.zig",
+      "src/obs/audit.zig",
+      "tests/reports/WF03-obs03-intfix-20260525-final3-integration.log"
+    ]
+  },
+  "task": {
+    "description": "Re-run WF-02 Step 04 verification for OBS-03 after WF-03 runtime fixes. Execute full verification commands with restored Zig environment and fixed tests: zig build, zig build test, zig build migrate, zig build test-integration (with BPM_TEST_DB_URL), and targeted OBS-03 assertions per tests/specs/OBS-03.md. Produce a new test report under tests/reports with command outcomes and requirement traceability. If pass, return PASS and recommend release validation. If fail, include precise blocker issues and affected requirement IDs for further routing.",
+    "acceptance_criteria": [
+      "All required verification commands are executed and outcomes captured",
+      "OBS-03 test cases are reported with pass/fail traceability",
+      "Structured test report artifact is produced",
+      "Result status and issues are actionable and accurate"
+    ],
+    "functions_to_call": [
+      "fn:run-backend-tests",
+      "fn:run-integration-tests",
+      "fn:register-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Required verification commands were rerun, but OBS-03 HTTP integration assertions remained blocked by missing BPM_TEST_URL in the test environment. PASS cannot be asserted because MUST requirement evidence for OBS-03 is incomplete.",
+    "artifacts_out": [
+      "tests/reports/report-20260524T222307Z-WF02-obs03-20260525-step04b-rework1.json",
+      "tests/reports/WF02-obs03-20260525-20260524T222307Z-zig-build.log",
+      "tests/reports/WF02-obs03-20260525-20260524T222307Z-zig-build-test.log",
+      "tests/reports/WF02-obs03-20260525-20260524T222307Z-zig-build-migrate.log",
+      "tests/reports/WF02-obs03-20260525-20260524T222307Z-zig-build-test-integration.log",
+      "tests/reports/WF02-obs03-20260525-20260524T222307Z-obs03-assertions.log"
+    ],
+    "issues": [
+      {
+        "id": "ISS-WF02-OBS03-TR-R1-001",
+        "severity": "BLOCKER",
+        "description": "OBS-03 integration assertions are skipped when BPM_TEST_URL is unset, so TC-OBS-03-INT-01..06 are not executable in this run.",
+        "affected_requirement": "OBS-03"
+      }
+    ],
+    "next_action": "Route to ORCH for environment setup or WF-03 follow-up, then rerun TEST-RUNNER OBS-03 verification with HTTP integration prerequisites present."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

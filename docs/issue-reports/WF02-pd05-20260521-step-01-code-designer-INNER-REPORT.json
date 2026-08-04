@@ -1,0 +1,52 @@
+{
+  "report_id": "WF02-pd05-20260521-step-01-code-designer-INNER-REPORT",
+  "handoff_id": "55100001-2605-4000-8005-202605202600",
+  "run_id": "WF02-pd05-20260521",
+  "step": "01",
+  "agent": "CODE-DESIGNER",
+  "created_at": "2026-05-21T23:59:00Z",
+  "status": "PASS",
+  "summary": "Design artefact extended for PD-05 (Node types). Shared-type definitions updated; PD-05 section appended to src/design/definition.md.",
+  "acceptance_criteria_check": [
+    {
+      "criterion": "src/design/definition.md has been extended (not replaced) with a PD-05 section",
+      "status": "PASS",
+      "evidence": "PD-05 section appended after PD-03 traceability table; no existing sections removed or modified beyond the shared-type updates mandated by the task."
+    },
+    {
+      "criterion": "Updated NodeType enum (HUMAN_TASK and TIMER) is documented, replacing USER_TASK and SCRIPT_TASK",
+      "status": "PASS",
+      "evidence": "Shared-types NodeType enum updated in place (USER_TASK→HUMAN_TASK, SCRIPT_TASK→TIMER with explanatory comment). PD-05 section includes before/after enum comparison and documents all downstream rename impacts (graph.zig, definition_test.zig, JSON serialisation, OpenAPI spec, stored JSONB data)."
+    },
+    {
+      "criterion": "Updated GraphNode struct with optional attributes field is documented",
+      "status": "PASS",
+      "evidence": "Shared-types GraphNode struct updated with `attributes: ?[]const u8` field. PD-05 section restates the struct definition and explains the memory ownership contract."
+    },
+    {
+      "criterion": "validateNodeAttributes function signature is documented with full memory contract",
+      "status": "PASS",
+      "evidence": "PD-05 section includes the full function signature, docstring, and explicit memory contract (mirrors the validateGraph contract): allocation, freeing on success, freeing on failure, OutOfMemory guarantee of no allocation."
+    },
+    {
+      "criterion": "Attribute validation rules for all 7 node types are documented",
+      "status": "PASS",
+      "evidence": "Attribute validation rules table covers all 7 NodeType variants: START (none), END (none), HUMAN_TASK (role), SERVICE_TASK (endpoint+timeout_ms), EXCLUSIVE_GATEWAY (none), PARALLEL_GATEWAY (none), TIMER (duration_iso8601). Violation codes listed for each."
+    },
+    {
+      "criterion": "ISO 8601 duration validation rules for TIMER are documented",
+      "status": "PASS",
+      "evidence": "ISO 8601 duration validation rules table documents: P prefix required, at least one designator required, P0D permitted, integer-only components, T prefix for time section, TIMER_MISSING_DURATION vs TIMER_INVALID_DURATION distinction."
+    },
+    {
+      "criterion": "All PD-05 acceptance criteria are traceable to design elements",
+      "status": "PASS",
+      "evidence": "Traceability table maps all 9 PD-05 acceptance criteria (6 main + 3 edge cases: timeout_ms=0 rejected, P0D permitted, extra attributes ignored) to specific design elements."
+    }
+  ],
+  "issues": [],
+  "open_questions": [],
+  "artifacts_out": [
+    "src/design/definition.md"
+  ]
+}

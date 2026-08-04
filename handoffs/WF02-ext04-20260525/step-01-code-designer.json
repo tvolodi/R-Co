@@ -1,0 +1,64 @@
+{
+  "handoff_id": "20260525-075",
+  "run_id": "WF02-ext04-20260525",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-ext04-20260525/step-01-code-designer.json",
+  "created_at": "2026-05-25T14:55:00Z",
+  "started_at": "2026-05-25T14:55:20Z",
+  "completed_at": "2026-05-25T14:55:22Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-04"
+    ],
+    "related_handoff_ids": [
+      "20260525-067",
+      "20260525-068",
+      "20260525-069",
+      "20260525-072",
+      "20260525-073",
+      "20260525-074"
+    ],
+    "artifacts_in": [
+      "docs/requirements/EXT-04.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "src/design/ext-03-plugin-interface.md",
+      "src/engine/plugin_interface.zig",
+      "src/engine/plugin_registry.zig"
+    ]
+  },
+  "task": {
+    "description": "Produce a backend design artefact for EXT-04 at src/design/ext-04-variable-transformer.md. Define support for CEL-based edge transformer expressions that run when tokens traverse edges. Specify data model and validation rules for optional edge transform expression, including activation-time syntax validation (PD-02/PD-06 path), runtime evaluation context parity with EE-05, execution order constraints (after EE-09 task output merge and before next-node activation), and transform result contract requiring JSON object output. Define error semantics for non-object result or runtime CEL evaluation errors mapped to EE-10. Specify empty transform handling as no-op. Include module boundaries and implementation touchpoints across definition validation, engine transition/traversal, CEL evaluation utilities, and variable merge/error handling. Include complete requirement traceability matrix for EXT-04 acceptance criteria and edge cases with required unit/integration tests. Design only; do not modify implementation code.",
+    "acceptance_criteria": [
+      "Design fully maps all EXT-04 acceptance criteria and edge cases to concrete behavior",
+      "Activation-time validation and runtime evaluation ordering are explicit and testable",
+      "Transform result object-only contract and EE-10 error mapping are precisely defined",
+      "Empty transform no-op semantics are clearly specified",
+      "Traceability matrix identifies implementation modules and verification hooks"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for EXT-04 variable transformer completed at src/design/ext-04-variable-transformer.md, defining optional edge transform CEL expressions with activation-time validation, EE-05 context parity, strict post-EE-09/pre-activation ordering, object-only output contract merged through EE-09, EE-10 mapping for runtime and non-object failures, explicit empty-transform no-op semantics, and full module/test traceability.",
+    "artifacts_out": [
+      "src/design/ext-04-variable-transformer.md",
+      "docs/issue-reports/WF02-ext04-20260525-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

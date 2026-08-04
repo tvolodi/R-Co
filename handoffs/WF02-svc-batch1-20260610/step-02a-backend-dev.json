@@ -1,0 +1,71 @@
+{
+  "handoff_id": "60b2d749-c229-4453-a2cd-0f58b6eb405d",
+  "run_id": "WF02-svc-batch1-20260610",
+  "workflow_id": "WF-02",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-svc-batch1-20260610/step-02a-backend-dev.json",
+  "created_at": "2026-06-10T14:04:25Z",
+  "started_at": "2026-06-10T14:36:18Z",
+  "completed_at": "2026-06-10T15:07:31Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 13",
+    "requirement_ids": [
+      "SVC-01",
+      "SVC-02",
+      "SVC-03"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/svc-01-04-service-scope.md",
+      "docs/requirements/SVC-01.md",
+      "docs/requirements/SVC-02.md",
+      "docs/requirements/SVC-03.md",
+      "docs/requirements/SVC-04.md"
+    ]
+  },
+  "task": {
+    "description": "Implement SVC-01 through SVC-04 backend per src/design/svc-01-04-service-scope.md. Tasks: (1) Write migration GBL-078_svc01_service_catalog_scope.sql: add scope TEXT NOT NULL DEFAULT global CHECK, owner_tenant_id UUID NULL REFERENCES public.tenant(id) ON DELETE CASCADE, the compound CHECK constraint, and backfill existing rows to scope=global; (2) SVC-01: update GET /api/v1/services to filter by caller tenant (global + owned scoped); (3) SVC-02: extend PluginRegistration struct with scope: PluginScope and owner_tenant_id: ?Uuid; add dispatch filter in plugin registry; add duplicate check in freezePluginRegistry; (4) SVC-03: add service+plugin availability validation in process definition activation (DRAFT->ACTIVE and DEPRECATED->ACTIVE); atomic rejection; (5) SVC-04 backend: implement POST /api/v1/admin/services, PATCH /api/v1/admin/services/:id, DELETE /api/v1/admin/services/:id, GET /api/v1/admin/services. All must use prepared statements. zig build, zig build test, zig build migrate must all exit 0. Commit to feature/WF02-svc-batch1-20260610.",
+    "acceptance_criteria": [
+      "Migration GBL-078 applied: service_catalog has scope, owner_tenant_id columns and CHECK constraints",
+      "Existing service_catalog rows have scope=global, owner_tenant_id=NULL after migration",
+      "GET /api/v1/services returns only global + caller-tenant-owned scoped entries",
+      "PluginRegistration has scope and owner_tenant_id fields; dispatch filters by tenant",
+      "freezePluginRegistry rejects duplicate (node_type, owner_tenant_id) pairs",
+      "Definition activation rejects cross-tenant service/plugin references with HTTP 422",
+      "POST/PATCH/DELETE/GET /api/v1/admin/services endpoints implemented",
+      "zig build exits 0 with no error-set warnings",
+      "zig build test exits 0",
+      "zig build migrate exits 0"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:check-error-sets"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented SVC-01 through SVC-04: (1) Migration GBL-078_svc01_service_catalog_scope.sql adds scope+owner_tenant_id columns with CHECK constraint to service_catalog; (2) SVC-01: service_catalog.zig extended with ServiceScope enum, listServicesForTenant/getServiceForTenant methods for tenant-scoped filtering; (3) SVC-02: plugin_registry.zig extended with PluginScope enum, tenant_entries list, resolvePluginHandlerForTenant, scope validation in registerPluginHandler; (4) SVC-03: new definition/service_scope_validator.zig + activateForTenant() hook in definition/store.zig; (5) SVC-04: new api/routes/services.zig with GET/POST/PATCH/DELETE handlers, admin routes wired in main.zig.",
+    "artifacts_out": [
+      "migrations/GBL-078_svc01_service_catalog_scope.sql",
+      "src/repository/service_catalog.zig",
+      "src/engine/plugin_registry.zig",
+      "src/definition/service_scope_validator.zig",
+      "src/definition/store.zig",
+      "src/api/routes/services.zig",
+      "src/api/authorization.zig",
+      "src/main.zig",
+      "tests/integration/svc01_service_catalog_scope_test.zig",
+      "tests/integration/main_test.zig",
+      "templates/specs/svc-01-scope-migration.migration.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

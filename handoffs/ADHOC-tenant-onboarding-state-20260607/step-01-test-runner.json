@@ -1,0 +1,54 @@
+{
+  "handoff_id": "adhoc-tenant-onboarding-state-20260607-001",
+  "run_id": "ADHOC-tenant-onboarding-state-20260607",
+  "workflow_id": "ADHOC",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-07T00:33:23Z",
+  "started_at": "2026-06-07T00:33:48Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Operational tenant onboarding state verification",
+    "requirement_ids": [
+      "ONB-UI-01",
+      "ONB-UI-02",
+      "ONB-UI-03",
+      "ONB-UI-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+      "tests/specs/PIPELINE-onboarding-wizard.md"
+    ]
+  },
+  "task": {
+    "description": "Run onboarding-wizard pipeline to verify new tenant creation state and tenant object visibility. Confirm whether result screen shows tenant slug and OIDC authority on success, or explicit failure reason on failure. Capture screenshots and produce a YAML test report with PASS/FAIL and evidence.",
+    "acceptance_criteria": [
+      "Pipeline executes end-to-end against running backend and Keycloak",
+      "Report states tenant object state outcome (slug/oidc_authority visibility or failure reason)",
+      "Report file written under tests/reports/ in YAML format",
+      "Handoff updated with PASS or FAIL and artifacts_out"
+    ],
+    "functions_to_call": [
+      "fn:run-playwright-onboarding-wizard",
+      "fn:write-test-report-yaml"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Onboarding wizard result screen displayed successful tenant creation state with slug and OIDC authority visible.",
+    "artifacts_out": [
+      "tests/reports/report-20260607-ADHOC-tenant-onboarding-state-20260607.yaml",
+      "web/tests/screenshots/pipelines/onboarding-wizard-01--platform-admin-sees-register-tenant-nav-entry.png",
+      "web/tests/screenshots/pipelines/onboarding-wizard-02--fill-and-submit-registration-form.png",
+      "web/tests/screenshots/pipelines/onboarding-wizard-03--progress-screen-shows-spinner.png",
+      "web/tests/screenshots/pipelines/onboarding-wizard-04--saga-completes---result-screen-shows-slug.png"
+    ],
+    "issues": []
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-07T00:40:10Z"
+}

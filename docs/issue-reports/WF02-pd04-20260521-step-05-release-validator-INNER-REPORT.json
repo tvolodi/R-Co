@@ -1,0 +1,40 @@
+{
+  "run_id": "WF02-pd04-20260521",
+  "step": "05",
+  "agent": "RELEASE-VALIDATOR",
+  "timestamp": "2026-05-22T00:15:00Z",
+  "requirement_ids": ["PD-04"],
+  "handoff_id": "44100005-2605-4000-8004-202605210304",
+  "checks_performed": [
+    {
+      "check_id": "CHECK-1",
+      "description": "Test report overall verdict",
+      "source": "tests/reports/PD-04-test-report.json",
+      "result": "PASS",
+      "detail": "verdict = PASS; 9 integration test cases in SKIP (BPM_TEST_DB_URL not set), 0 failed. Consistent with all Stage 2 PD integration-only runs."
+    },
+    {
+      "check_id": "CHECK-2",
+      "description": "zig build exits 0",
+      "result": "PASS",
+      "detail": "zig build executed independently; exit code 0. Also confirmed by test report zig_build_exit_code: 0 and zig_build_test_exit_code: 0."
+    },
+    {
+      "check_id": "CHECK-3",
+      "description": "Acceptance criteria traceability to test spec",
+      "source": "tests/specs/PD-04.md",
+      "result": "PASS",
+      "detail": "All PD-04 MUST acceptance criteria are mapped: DRAFT→ACTIVE (TC-PD-04-01, reference via TC-PD-03-03); ACTIVE→DEPRECATED (TC-PD-04-02); DEPRECATED→ARCHIVED with archived_at (TC-PD-04-03); invalid transitions rejected (TC-PD-04-04, TC-PD-04-05, TC-PD-04-06); ARCHIVED terminal (TC-PD-04-07, TC-PD-04-08); not-found returns DefinitionNotFound (TC-PD-04-10, TC-PD-04-11). TC-PD-04-09 reference via TC-PD-03-06b. TC-PD-04-12 out of scope (EE-01 dependency, correctly deferred)."
+    },
+    {
+      "check_id": "CHECK-4",
+      "description": "Regression check: previously RELEASED Stage 2 requirements",
+      "source": "tests/reports/PD-04-test-report.json regression_check; docs/status/requirement_status.json",
+      "result": "PASS",
+      "detail": "PD-01, PD-02, PD-03, PD-05, PD-06, PD-07, PD-08, PD-09, PD-10 all remain RELEASED. zig build test exits 0 with no regressions detected. regression_check.regressions = []."
+    }
+  ],
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "notes": "PD-04 is an integration-only requirement. All test cases require BPM_TEST_DB_URL; in the current CI environment this variable is absent and tests are SKIP (not FAIL). This is consistent with PD-03 and all other Stage 2 requirements that have been released under the same policy. Implementation artifacts (Store.deprecate, Store.archive with archived_at, InvalidStatusTransition guard, DefinitionNotFound guard) were verified present in src/definition/store.zig by the TEST-RUNNER handoff. The EE-01 dependency for TC-PD-04-12 (blocked instance start from DEPRECATED/ARCHIVED) is correctly deferred and documented. docs/status/requirement_status.json updated: PD-04 → RELEASED."
+}

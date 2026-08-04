@@ -1,0 +1,27 @@
+report_id: WF02-tenant-onboarding-boaccept-r2-20260607-step-01-code-designer
+agent_id: CODE-DESIGNER
+run_id: WF02-tenant-onboarding-boaccept-r2-20260607
+step: "01"
+created_at: "2026-06-07T15:25:07Z"
+summary: >-
+  Classified ONB-UI-03, ONB-UI-04, OIDC-12, OIDC-13, and OIDC-14 as Type E
+  due to cross-cutting onboarding completion semantics spanning backend saga
+  status evaluation, tenant visibility probe, OIDC authority/token claim
+  readiness, schema materialization readiness, and UI polling/result gating.
+  Produced a single cohesive design artifact that defines interface contracts,
+  completion-gate semantics, error taxonomy, state transitions, and dependency
+  boundaries without implementation code.
+files_created:
+  - src/design/onboarding-completion-gate-boaccept-r2.md
+  - docs/issue-reports/WF02-tenant-onboarding-boaccept-r2-20260607-step-01-code-designer-INNER-REPORT.yaml
+files_modified:
+  - handoffs/WF02-tenant-onboarding-boaccept-r2-20260607/step-01-code-designer.json
+  - handoffs/registry.json
+tests_run:
+  - name: design artifact linter
+    status: pass
+    detail: "python tools/lint_design_artefact.py src/design/onboarding-completion-gate-boaccept-r2.md exited 0 with no issues."
+issues_found: []
+next_steps:
+  - Route to CODE-DESIGN-VALIDATOR (Step 1b)
+blockers: []

@@ -1,0 +1,59 @@
+{
+  "handoff_id": "a65cda97-9d5b-43ff-930a-893f0fd341a8",
+  "workflow_id": "WF-03",
+  "run_id": "WF03-sch02-fix-20260523",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-sch02-fix-20260523/step-01-issue-fixer.json",
+  "created_at": "2026-05-23T17:40:06Z",
+  "started_at": "2026-05-23T17:41:28Z",
+  "completed_at": "2026-05-23T17:59:51Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": [
+      "SCH-02"
+    ],
+    "related_handoff_ids": [
+      "20260523-008"
+    ],
+    "artifacts_in": [
+      "tests/reports/WF02-sch02-20260523-run-01.md",
+      "tests/integration/sch02_timer_polling_test.zig",
+      "src/scheduler/scheduler.zig"
+    ]
+  },
+  "task": {
+    "description": "Fix the SCH-02 integration test compile blockers reported by the SCH-02 test run.\n\nPrimary diagnostics to address:\n- tests/integration/sch02_timer_polling_test.zig:174:9 local variable is never mutated; use const\n- tests/integration/sch02_timer_polling_test.zig:202:34 expected '*Scheduler', found '*const Scheduler'\n- tests/integration/sch02_timer_polling_test.zig:278:42 expected '*Scheduler', found '*const Scheduler'\n- tests/integration/sch02_timer_polling_test.zig:385:18 expected '*Scheduler', found '*const Scheduler'\n\nAdjust the test code and any necessary scheduler API typing to remove the const mismatch without regressing SCH-02 behavior. Keep the fix minimal and focused.\n\nValidation requirements:\n- zig build exits 0\n- zig build test exits 0\n- zig build test-integration exits 0",
+    "acceptance_criteria": [
+      "SCH-02 integration tests compile and run",
+      "const mismatch diagnostics are resolved",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build test-integration exits 0"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:check-zig-build",
+      "fn:check-zig-test",
+      "fn:check-zig-test-integration",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Resolved the SCH-02 integration blockers by making the scheduler/task cancellation API const-correct, fixing the SCH-02 test locals, and stopping the scheduler from spinning forever on a skipped advisory-locked timer. zig build, zig build test, and zig build test-integration all exit 0.",
+    "artifacts_out": [
+      "tests/integration/sch02_timer_polling_test.zig",
+      "src/scheduler/scheduler.zig",
+      "src/engine/instance.zig",
+      "src/tasks/store.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "run_id": "WF02-stage11-sim05-08-rerun1-20260529",
+  "entries": [
+    {
+      "handoff_id": "f168d2f6-2488-4537-b60c-4f9a1afefc7b",
+      "file": "handoffs/WF02-stage11-sim05-08-rerun1-20260529/step-05-release-validator.json",
+      "run_id": "WF02-stage11-sim05-08-rerun1-20260529",
+      "workflow_id": "WF-02",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "RELEASE-VALIDATOR",
+      "created_at": "2026-05-29T12:21:37Z",
+      "started_at": "2026-05-29T12:21:40Z",
+      "completed_at": "2026-05-29T12:23:39Z",
+      "status": "COMPLETED",
+      "stage": "Stage 11 - Test Runner and Simulation Mode"
+    },
+    {
+      "handoff_id": "2ea13308-8506-41a6-ba35-e188030696e4",
+      "file": "handoffs/WF02-stage11-sim05-08-rerun1-20260529/step-06-doc-updater.json",
+      "run_id": "WF02-stage11-sim05-08-rerun1-20260529",
+      "workflow_id": "WF-02",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-05-29T12:24:56Z",
+      "started_at": "2026-05-29T12:25:00Z",
+      "completed_at": "2026-05-29T12:27:02Z",
+      "status": "COMPLETED",
+      "stage": "Stage 11 - Test Runner and Simulation Mode",
+      "last_updated": "2026-05-29T12:27:02Z"
+    },
+    {
+      "handoff_id": "9a63c096-1ca4-4a97-b780-7b8f329df70d",
+      "file": "handoffs/WF02-stage11-sim05-08-rerun1-20260529/step-00-backend-dev.json",
+      "run_id": "WF02-stage11-sim05-08-rerun1-20260529",
+      "workflow_id": "WF-02",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-29T12:10:50Z",
+      "started_at": "2026-05-29T12:10:54Z",
+      "completed_at": "2026-05-29T12:13:08Z",
+      "status": "COMPLETED",
+      "stage": "Stage 11 - Test Runner and Simulation Mode"
+    },
+    {
+      "handoff_id": "f5f173c2-8181-44d4-bf96-53001c4fdb4c",
+      "file": "handoffs/WF02-stage11-sim05-08-rerun1-20260529/step-3b-test-design-validator.json",
+      "run_id": "WF02-stage11-sim05-08-rerun1-20260529",
+      "workflow_id": "WF-02",
+      "step": "3b",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-05-29T12:14:22Z",
+      "started_at": "2026-05-29T12:14:37Z",
+      "completed_at": "2026-05-29T12:16:48Z",
+      "status": "COMPLETED",
+      "stage": "Stage 11 - Test Runner and Simulation Mode"
+    },
+    {
+      "handoff_id": "5be28322-0132-4643-8a1a-b89bd95886ea",
+      "file": "handoffs/WF02-stage11-sim05-08-rerun1-20260529/step-04-test-runner.json",
+      "run_id": "WF02-stage11-sim05-08-rerun1-20260529",
+      "workflow_id": "WF-02",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-05-29T12:17:49Z",
+      "started_at": "2026-05-29T12:17:53Z",
+      "completed_at": "2026-05-29T12:21:12Z",
+      "status": "COMPLETED",
+      "stage": "Stage 11 - Test Runner and Simulation Mode"
+    }
+  ]
+}

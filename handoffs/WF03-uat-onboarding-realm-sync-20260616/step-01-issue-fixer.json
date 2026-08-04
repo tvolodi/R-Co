@@ -1,0 +1,53 @@
+{
+  "handoff_id": "d3e4f5a6-b7c8-9012-d3e4-f5a6b7c89012",
+  "run_id": "WF03-uat-onboarding-realm-sync-20260616",
+  "step": "0.5-1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-06-15T21:48:39Z",
+  "started_at": "2026-06-15T21:48:39Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 0.5+1 \u2014 Register and diagnose ISSUE-EO003",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "b1c2d3e4-f5a6-7890-b1c2-d3e4f5a67890",
+      "a0b1c2d3-e4f5-6789-a0b1-c2d3e4f56789"
+    ],
+    "artifacts_in": [
+      "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui.yaml",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+      "src/api/routes/onboarding.zig",
+      "src/identity/onboarding.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 0.5 + 1: Register and diagnose ISSUE-EO003 from UAT run WF05-swiftroute-onboarding-gui-20260616.\n\nBusiness finding (from UAT report): After the onboarding wizard completed and the result screen showed success, Alice Bauer could not log into the SwiftRoute workspace because the Keycloak realm for that workspace was missing. The platform showed the tenant as created but the identity provider had no matching realm.\n\nThis breaks the core business promise of the onboarding process: that Alice can log in immediately after the result screen confirms success.\n\nStep 0.5 \u2014 Register the issue:\n- Create docs/issues/ISS-00XX.json (use issue_index.json to find next ID)\n- Update docs/issues/issue_index.json (increment next_issue_id)\n- Severity: BLOCKER\n- Category: backend logic error OR test harness error (determine which)\n\nStep 1 \u2014 Diagnose root cause:\n\nInvestigate TWO possible explanations:\n\nA) PIPELINE TEST SLUG MISMATCH: The Playwright pipeline test (web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts) generates a random slug for each run (per per-test UUID isolation rules). The UAT scenario specifies slug='swiftroute' but the pipeline test used slug='pl-f8db07e7'. This means:\n  - The pipeline test created a realm 'pl-f8db07e7' (not 'swiftroute')\n  - When Alice tried to log into realm 'swiftroute', it didn't exist\n  - This is a TEST HARNESS issue: the pipeline test ignores scenario input values and uses its own random slug\n  - Fix: the pipeline test (or UAT-RUNNER's invocation of it) must accept scenario input values (slug, admin_username) as parameters\n\nB) ONBOARDING COMPENSATION: The DB had a swiftroute tenant record (leftover from a previous manual onboarding) with no matching Keycloak realm. This is the inconsistent state issue from the ISS-0070 era. The cleanup script may have missed a row.\n\nCheck which explanation matches:\n1. Read the pipeline test to see if it accepts external slug input or generates its own\n2. Check the UAT report screenshot evidence \u2014 what slug does the result screen show?\n3. Check bpm_dev DB for any tenant with slug='swiftroute'\n\nWrite diagnosis report to docs/issue-reports/report-2026-06-16-WF03-uat-onboarding-realm-sync-20260616-step-01-issue-fixer.yaml\n\nRecommend fix approach (high-level only \u2014 no implementation code):\n- If A: pipeline test needs parameterisation so UAT scenarios can pass specific input values\n- If B: cleanup script needs to be atomic (delete DB + Keycloak realm in the same operation)\n- If both: address both\n\nBranch: feature/WF03-uat-onboarding-realm-sync-20260616 (already created in Step 00)",
+    "acceptance_criteria": [
+      "ISS-00XX.json created, issue_index.json updated",
+      "Root cause identified (A or B or both)",
+      "Diagnosis report written",
+      "Recommended fix approach documented (no implementation code)"
+    ],
+    "functions_to_call": [
+      "fn:register-issue",
+      "fn:search-issues",
+      "fn:diagnose"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Registered ISS-0071: dual root cause \u2014 (A) pipeline test hardcodes random slug, cannot verify canonical scenario slug; (B) orphaned swiftroute DB record without matching Keycloak realm. Diagnosis report written. No implementation code produced.",
+    "artifacts_out": [
+      "docs/issues/ISS-0071.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/report-2026-06-15-WF03-uat-onboarding-realm-sync-20260616-step-0.5-1-issue-fixer.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 02) \u2014 design fix for ISS-0071 root cause A (pipeline slug injection) and root cause B (saga compensation robustness after ISS-0070 fix)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-15T21:53:31Z"
+}

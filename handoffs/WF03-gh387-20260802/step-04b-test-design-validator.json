@@ -1,0 +1,55 @@
+{
+  "handoff_id": "WF03-gh387-20260802-step04b",
+  "run_id": "WF03-gh387-20260802",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-08-02T11:40:54Z",
+  "started_at": "2026-08-02T11:40:54Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Test design validation (Step 4b)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh387-20260802-step04"
+    ],
+    "artifacts_in": [
+      "tests/specs/ISS-0121.md",
+      "tests/integration/iss0121_uuid_helpers_test.zig",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate the ISS-0121 test design (hard gate before Step 5).\n\nHard-gate checks per CLAUDE.md \u00a7TEST-DESIGN-VALIDATOR:\n1. Every MUST requirement has a runnable integration test. (ISS-0121 has no formal MUST requirement entry, but the handoff defines 7 TC cases; all must be implemented.)\n2. No `error.SkipZigTest` on any test block in tests/integration/iss0121_uuid_helpers_test.zig.\n3. All fixtures use per-test UUIDs (the helper itself IS the fixture-generation mechanism).\n4. Tests clean up after themselves (defer blocks present).\n5. Tests fail clearly if BPM_TEST_DB_URL is absent.\n\nAdditional MAJOR \u2014 does not block PASS but must be noted:\n6. ISS-0121 affects 17+ files; the regression suite tests the helper API but does NOT test the per-file migration end-to-end. Note this as MAJOR.\n7. Pipeline check: ISS-0121 is NOT a sequential UI action requiring a pl.step(); note that this is N/A.\n\nConcretely:\n\n  python3 tools/lint_test_isolation.py tests/integration\n\nVerify exit code and confirm the new test file `iss0121_uuid_helpers_test.zig` produces 0 new T010 violations.\n\nConfirm `zig build test-integration-iss0121` exit code by reading the spec or by simulating compilation: `zig build` (exit 0) ensures compile-only is fine; the test target was added in build.zig.\n\nInspect the spec file's content for GIVEN/WHEN/THEN style for all 7 TC cases.\n\nReturn PASS or FAIL with concrete issues.",
+    "acceptance_criteria": [
+      "All 7 TC cases in ISS-0121.md have a corresponding `test \"TC-ISS-0121-NN:` block in iss0121_uuid_helpers_test.zig",
+      "Zero new T010 violations introduced by the new test file",
+      "No `error.SkipZigTest` and no `test.skip`",
+      "`zig build` exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0121 test design validated. All 7 TC cases (TC-ISS-0121-01..-07) are present in tests/specs/ISS-0121.md with GIVEN/WHEN/THEN structure, and all 7 corresponding test blocks are implemented in tests/integration/iss0121_uuid_helpers_test.zig with try testing.expect* assertions and no error.SkipZigTest. Lint baseline: 122 files checked, 0 new T010 findings attributable to iss0121_uuid_helpers_test.zig (BLOCKER=0 / MAJOR=243 baseline inherited from other test files / MINOR=0). zig build exits 0. SQL param-type lint: 0 BLOCKER, 0 MAJOR, 0 MINOR. Per-test isolation: TC-01..TC-06 use an uninitialised TestHarness (helpers _=self so it is safe); TC-07 uses TestHarness.init() which propagates error.MissingTestDatabaseUrl rather than swallowing it. Cleanup: defer alloc.free on every newUuidString result; defer h.deinit() on TC-07 rolls back the transaction.",
+    "artifacts_out": [
+      "tests/specs/ISS-0121.md",
+      "tests/integration/iss0121_uuid_helpers_test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0121 affects 17+ migration files; the new regression suite pins the TestHarness helper API but does NOT execute an end-to-end migration of every affected file. Acceptable for the helper-API contract gate; the per-file end-to-end coverage is the responsibility of each subsequent file's dedicated integration test (which is also expected to migrate to the helper)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "ISS-0121 is a backend refactor with no user-visible sequential UI action; Playwright pipeline pl.step() is N/A (per docs/guides/test_developer_guide.md \u00a711.10). No pipeline file action required."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-02T11:42:18Z"
+}

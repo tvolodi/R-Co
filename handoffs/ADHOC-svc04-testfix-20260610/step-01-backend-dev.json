@@ -1,0 +1,40 @@
+{
+  "handoff_id": "8616470e-140a-4b27-963f-6a851f0917aa",
+  "run_id": "ADHOC-svc04-testfix-20260610",
+  "workflow_id": "ADHOC",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/ADHOC-svc04-testfix-20260610/step-01-backend-dev.json",
+  "created_at": "2026-06-10T17:54:56Z",
+  "started_at": "2026-06-10T17:54:56Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 13",
+    "requirement_ids": [
+      "SVC-04"
+    ],
+    "related_handoff_ids": [
+      "4841baa5"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml",
+      "tests/integration/svc04_admin_api_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Fix SVC-04 test failures and start bpm-platform server. ISSUE A: svc04_admin_api_test.zig fixture inserts fail with QueryFailed (onboarding_registry constraint from TNT-04). Fix: update tenant fixture inserts to match Stage 12 pattern (direct INSERT without provisioning trigger). Also fix HTTP 422 on POST /api/v1/admin/services in handleAdminRegisterService. ISSUE B: Run git status; commit any uncommitted SVC files to feature/WF02-svc-batch1-20260610. ISSUE C: Build and start bpm-platform server, wait for http://127.0.0.1:8080/health/ready 200. Verify: zig build test-integration exits 0 for all SVC tests. Return PASS only when all 12 SVC-04 integration tests green and server is healthy.",
+    "acceptance_criteria": [
+      "svc04_admin_api_test.zig all 12 tests green",
+      "POST /api/v1/admin/services returns 201",
+      "all changes committed to feature branch",
+      "bpm-platform healthy at /health/ready"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

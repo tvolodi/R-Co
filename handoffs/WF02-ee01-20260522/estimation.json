@@ -1,0 +1,18 @@
+{
+  "run_id": "WF02-ee01-20260522",
+  "created_at": "2026-05-22T00:30:00Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["EE-01"],
+  "difficulty": 4,
+  "difficulty_rationale": "Multi-module feature requiring new process_instances migration, instance store, correlation-key uniqueness, definition snapshot integration (PD-08), execution token placement, and cross-module integration with the engine layer.",
+  "steps": ["code-designer", "backend-dev", "test-designer", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 25,
+    "backend-dev": 60,
+    "test-designer": 25,
+    "test-runner": 18,
+    "release-validator": 18,
+    "doc-updater": 15,
+    "total": 161
+  }
+}

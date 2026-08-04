@@ -1,0 +1,62 @@
+{
+  "handoff_id": "bb23f45f-d422-4f6a-b8a2-20a559f8d7cf",
+  "run_id": "WF02-exp3-async-effects-20260613",
+  "step": "03-rework",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "workflow_id": "WF-02",
+  "created_at": "2026-06-13T08:39:02Z",
+  "started_at": "2026-06-13T08:39:25Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Epic 3 — Async Outbound Effects",
+    "requirement_ids": [
+      "EXP-301",
+      "EXP-302",
+      "EXP-303"
+    ],
+    "related_handoff_ids": [
+      "ea37ff75-43f8-4335-b15a-c3b7d376a370",
+      "cf19a860-6c8d-49d1-8e47-66232a861864"
+    ],
+    "artifacts_in": [
+      "tests/specs/EXP-301.md",
+      "tests/specs/EXP-302.md",
+      "tests/specs/EXP-303.md",
+      "tests/integration/effects_subsystem_test.zig",
+      "docs/issue-reports/WF02-exp3-async-effects-20260613-step-03b-test-design-validator-INNER-REPORT.yaml"
+    ]
+  },
+  "task": {
+    "description": "REWORK for Test Design (Step 03) — Address hard-gate BLOCKER issues from TEST-DESIGN-VALIDATOR.\n\nValidation returned FAIL with 4 BLOCKER + MAJOR issues:\n\n1. **EXP-302 has zero runnable tests.** The spec defines TC-EXP-302-01 through TC-EXP-302-08, but tests/integration/effects_subsystem_test.zig contains no matching test blocks. Write full integration test coverage for:\n   - Path A: SERVICE_TASK emits effect_emitted event, instance transitions RUNNING→EFFECT_WAIT\n   - Path B: sync_inline:true path routes to synchronous delivery\n   - Response capture: effect_completed/effect_failed re-entry\n\n2. **EXP-301 is only partially exercised.** Several test cases are placeholders or weak assertions:\n   - TC-EXP-301-05: Currently verifies only literal constants; expand to test full backoff schedule\n   - TC-EXP-301-07: Check literal HTTP header injection (not just struct field assignment)\n   - TC-EXP-301-08: Do not compare identical string literals; test actual idempotency via repeated append\n   - TC-EXP-301-09: Currently no email adapter call; verify adapter receives spec\n\n3. **EXP-303 is missing most required cases.** Only TC-EXP-303-01, 02, 06, 08 are present. Add the remaining cases from the spec:\n   - TC-EXP-303-03: Counter isolation between kinds\n   - TC-EXP-303-04: Recorded map isolation\n   - TC-EXP-303-05: Failure response configuration\n   - TC-EXP-303-07: Determinism verification\n   - TC-EXP-303-09: Reset via idempotency key\n   - TC-EXP-303-10, -11: Additional edge cases\n\n4. **Fixture isolation is weak.** Several tests use hardcoded instance or effect IDs instead of fresh per-test UUIDs:\n   - Use generateTestId() for each tenant ID, instance ID, effect ID\n   - Each test should establish its own cleanup state\n   - No shared state between tests\n\nUpdate artifacts_out to include all revised test files. Run validation:\n- Verify all spec test case IDs have matching test blocks in integration file\n- Verify zig build exits 0\n- Commit rework to feature branch with message: 'test(WF02-exp3): expand integration tests to cover EXP-302, EXP-301 weak cases, EXP-303 missing cases'",
+    "acceptance_criteria": [
+      "EXP-302 has full integration test coverage (TC-EXP-302-01 through -08 present and runnable)",
+      "EXP-301 tests are no longer placeholders: real backoff schedule assertion, HTTP header injection, idempotency append, email adapter call",
+      "EXP-303 has all required test cases (TC-EXP-303-01 through -11, or per spec requirement)",
+      "All tests use fresh per-test UUIDs for isolation",
+      "zig build exits 0 with no errors",
+      "All test files committed to feature branch",
+      "Ready for TEST-DESIGN-VALIDATOR re-validation"
+    ],
+    "functions_to_call": [
+      "fn:read-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Added runnable EXP-302 integration coverage and strengthened EXP-301/EXP-303 test cases.",
+    "artifacts_out": [
+      "tests/integration/effects_subsystem_test.zig",
+      "tests/specs/EXP-301.md",
+      "tests/specs/EXP-302.md",
+      "tests/specs/EXP-303.md",
+      "docs/issue-reports/WF02-exp3-async-effects-20260613-step-03-test-designer-rework-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "rework_count": 1,
+  "max_rework": 2,
+  "completed_at": "2026-06-13T08:56:35Z"
+}

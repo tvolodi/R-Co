@@ -1,0 +1,38 @@
+{
+  "report_id": "WF02-adp11-20260526-step-03-test-designer",
+  "agent_id": "TEST-DESIGNER",
+  "run_id": "WF02-adp11-20260526",
+  "step": "03",
+  "created_at": "2026-05-26T16:37:10Z",
+  "summary": "Produced ADP-11 test specification and extended integration coverage to include replay-safe protected-family archive/queryability invariants, while preserving deterministic structured-error and non-protected configurability checks.",
+  "files_created": [
+    "tests/specs/ADP-11.md",
+    "docs/issue-reports/WF02-adp11-20260526-step-03-test-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "tests/integration/event_store_integration_test.zig",
+    "handoffs/WF02-adp11-20260526/step-03-test-designer.json"
+  ],
+  "tests_run": [
+    {
+      "name": "fn:validate-completeness",
+      "status": "pass",
+      "detail": "Validated ADP-11 acceptance coverage against handoff criteria: protected-family hard-delete rejection (including INSTANCE_STARTED), deterministic structured error semantics, non-protected hard-delete behavior compatibility, and protected archive/queryability invariants."
+    },
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "Command executed successfully after ADP-11 test artifact updates."
+    },
+    {
+      "name": "zig build test-integration",
+      "status": "pass",
+      "detail": "Command executed with BPM_TEST_DB_URL set; output captured INTEGRATION_EXIT_CODE=0."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-02 Step 4) to execute ADP-11 mapped integration tests."
+  ],
+  "blockers": []
+}

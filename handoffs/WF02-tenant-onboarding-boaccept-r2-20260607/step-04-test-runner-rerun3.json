@@ -1,0 +1,72 @@
+{
+  "handoff_id": "wf02-tenant-onboarding-boaccept-r2-20260607-004-r3",
+  "run_id": "WF02-tenant-onboarding-boaccept-r2-20260607",
+  "workflow_id": "WF-02",
+  "step": "04-r3",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-tenant-onboarding-boaccept-r2-20260607/step-04-test-runner-rerun3.json",
+  "created_at": "2026-06-07T19:20:16Z",
+  "started_at": "2026-06-07T19:20:26Z",
+  "completed_at": "2026-06-07T19:50:23Z",
+  "status": "ESCALATED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-02 Step 4 test execution rerun 3 (FINAL, rework=3/3)",
+    "requirement_ids": [
+      "ONB-UI-03",
+      "ONB-UI-04",
+      "OIDC-12",
+      "OIDC-13",
+      "OIDC-14"
+    ],
+    "related_handoff_ids": [
+      "wf02-tenant-onboarding-boaccept-r2-20260607-004-r2",
+      "wf03-tenant-onboarding-e2e-saga-20260607-005-r2"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-tenant-onboarding-e2e-saga-20260607/step-05-issue-fixer-rerun2.json",
+      "src/api/routes/onboarding.zig",
+      "src/identity/onboarding.zig",
+      "web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "FINAL rerun of WF-02 Step 4 after ISSUE-FIXER identified and fixed root cause: async background thread hang (std.Thread.spawn + detach + smp_allocator on Windows). Fix: synchronous saga execution in request thread \u2014 saga completes before API response returns.\n\nExecute: pre-checks, integration tests, all onboarding E2E tests, unit tests.",
+    "acceptance_criteria": [
+      "All onboarding E2E tests pass",
+      "Integration tests pass",
+      "Unit tests pass",
+      "Report: tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607-rerun3.yaml"
+    ],
+    "functions_to_call": [
+      "fn:run-integration-tests",
+      "fn:run-e2e-tests"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "FINAL rerun (3/3). Saga hangs \u2014 executeSaga never returns. Integration: 388/396 pass. E2E onboarding: 9 pass, 4 fail, 4 hung. Report: tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607-rerun3.yaml",
+    "artifacts_out": [
+      "tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607-rerun3.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Onboarding saga (executeSaga) hangs, never returns. Entries stuck in pending state. Blocks ONB-UI-02 submission, ONB-UI-03, ONB-UI-04 E2E tests."
+      },
+      {
+        "severity": "MINOR",
+        "description": "TC-DB-01-02 migration idempotency count mismatch (expected 71, found 84) \u2014 pre-existing."
+      },
+      {
+        "severity": "INFO",
+        "description": "Test DB had to be recreated mid-run (2232 duplicate migration rows). After reset, integration tests improved from 175 to 388 passes."
+      }
+    ],
+    "next_action": "ESCALATE \u2014 max rework reached. Saga hang requires deeper investigation (possible Keycloak admin API blocking or allocator issue)."
+  },
+  "rework_count": 3,
+  "max_rework": 3
+}

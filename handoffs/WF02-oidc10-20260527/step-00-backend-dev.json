@@ -1,0 +1,52 @@
+{
+  "handoff_id": "20260527-001",
+  "run_id": "WF02-oidc10-20260527",
+  "workflow_id": "WF-02",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-oidc10-20260527/step-00-backend-dev.json",
+  "created_at": "2026-05-27T20:02:41Z",
+  "started_at": "2026-05-27T20:03:12Z",
+  "completed_at": "2026-05-27T20:04:14Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": ["OIDC-10"],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_SETUP.md",
+      "docs/guides/backend_developer_guide.md"
+    ],
+    "branch_name": "feature/WF02-oidc10-20260527"
+  },
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md. Create and push a feature branch for OIDC-10 (attribute synchronisation). Branch name: feature/WF02-oidc10-20260527. Base off main, push the branch to origin.",
+    "acceptance_criteria": [
+      "Branch feature/WF02-oidc10-20260527 exists on origin, based on latest main",
+      "git_evidence.branch_name == 'feature/WF02-oidc10-20260527'",
+      "git_evidence.push_status == 'ok'"
+    ],
+    "functions_to_call": ["fn:git-setup"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Git setup for OIDC-10: created and pushed feature branch feature/WF02-oidc10-20260527 from latest main",
+    "artifacts_out": ["branch: feature/WF02-oidc10-20260527"],
+    "issues": [],
+    "next_action": "ORCH routes to next step per active workflow",
+    "git_evidence": {
+      "branch_name": "feature/WF02-oidc10-20260527",
+      "base_branch": "main",
+      "git_pull_exit_code": 0,
+      "git_push_exit_code": 0,
+      "push_status": "ok",
+      "remote_url": "https://github.com/tvolodi/My-Fab"
+    }
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-27T20:03:12Z",
+  "completed_at": "2026-05-27T20:04:14Z"
+}

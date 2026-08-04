@@ -1,0 +1,36 @@
+{
+  "run_id": "WF02-shf1a-20260528",
+  "created_at": "2026-05-28T06:42:08Z",
+  "rules_version": "1.1",
+  "requirement_ids": [
+    "SH-01",
+    "SH-02",
+    "SH-03",
+    "SH-04"
+  ],
+  "difficulty": 3,
+  "difficulty_rationale": "Frontend shell rewrite: auth flow change, token storage security fix, role-aware nav for 4 roles, user display in header",
+  "integration_surface": "medium",
+  "integration_surface_rationale": "Touches auth/, api/client.ts, components/layout/AppShell, pages/LoginPage, router.tsx \u2014 5 files in web/src",
+  "steps": [
+    "code-designer",
+    "code-design-validator",
+    "frontend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 32,
+    "code-design-validator": 15,
+    "frontend-dev": 44,
+    "test-designer": 8,
+    "test-design-validator": 22,
+    "test-runner": 4,
+    "release-validator": 10,
+    "doc-updater": 2,
+    "total": 137
+  }
+}

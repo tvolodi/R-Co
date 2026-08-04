@@ -1,0 +1,79 @@
+{
+  "handoff_id": "a7b8c9d0-0007-4000-8000-202605201700",
+  "workflow_id": "WF-02",
+  "sequence": 3,
+  "run_id": "WF02-stage1-20260520",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-20T17:00:00Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 1 \u2014 Foundation (event store + database)",
+    "requirement_ids": [
+      "DB-01",
+      "DB-02",
+      "DB-03",
+      "DB-04",
+      "ES-01",
+      "ES-02",
+      "ES-03",
+      "ES-04",
+      "ES-05",
+      "ES-06",
+      "ES-07",
+      "ES-08"
+    ],
+    "related_handoff_ids": [
+      "e5f6a7b8-0005-4000-8000-202605201500",
+      "f6a7b8c9-0006-4000-8000-202605201600"
+    ],
+    "artifacts_in": [
+      "src/design/db.md",
+      "src/design/event_store.md",
+      "src/db/pool.zig",
+      "src/db/migrations.zig",
+      "src/event_store/store.zig",
+      "src/event_store/registry.zig",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/test_developer_guide.md",
+      "migrations/013_event_archive_idempotency.sql"
+    ]
+  },
+  "task": {
+    "description": "Produce test specifications and test source stubs for all Stage 1 requirements (DB-01..DB-04, ES-01..ES-08).\n\nRead the test developer guide in full before starting. Read the design artefacts and implemented source files to understand the exact interfaces you are testing.\n\n## Required outputs\n\n### 1. Test spec files (one per requirement group)\n- `tests/specs/DB-01-04.md` \u2014 covering DB-01 (schema init), DB-02 (connection pool), DB-03 (transactional integrity), DB-04 (health check)\n- `tests/specs/ES-01-08.md` \u2014 covering ES-01 (append), ES-02 (ordered read), ES-03 (idempotency), ES-04 (global stream), ES-05 (type registry), ES-06 (point-in-time), ES-07 (retention/archival), ES-08 (metadata)\n\nEach spec MUST follow the format in the test developer guide and include:\n- Test case ID (e.g. TC-DB-01-01)\n- Requirement ID traced\n- Preconditions\n- Steps\n- Expected result (verifiable, no vague language)\n- Test type: unit or integration\n\n### 2. Test source stubs\n- `tests/unit/db_test.zig` \u2014 unit test file with one `test` block per test case in DB-01-04.md marked as skipped/TODO\n- `tests/unit/event_store_test.zig` \u2014 unit test file with one `test` block per test case in ES-01-08.md marked as skipped/TODO\n- `tests/integration/db_integration_test.zig` \u2014 integration test stubs for DB-03 (transaction rollback), DB-04 (health check)\n- `tests/integration/event_store_integration_test.zig` \u2014 integration test stubs for ES-01 append round-trip, ES-03 idempotency deduplication, ES-04 global stream ordering\n\n### 3. Update tests/integration/main_test.zig\nAdd comptime-import references to the new integration test files so `zig build test-integration` picks them up when a real DB is available.\n\n## Constraints\n- Do NOT implement test logic \u2014 stubs only (each test block calls `return error.SkipZigTest` or similar)\n- Every test case ID in the spec must have a corresponding named `test` block in the source stub\n- No `anyerror` \u2014 unit test stubs must compile clean\n- Run `zig build test` after creating stubs to confirm they compile (skipped tests still compile)\n\n## Acceptance criteria\n- tests/specs/DB-01-04.md exists with at least 6 test cases covering all 4 DB requirements\n- tests/specs/ES-01-08.md exists with at least 12 test cases covering all 8 ES requirements\n- All 4 test source stubs exist and are referenced by the build\n- `zig build test` exits 0 after stubs are added\n- No vague language in expected results",
+    "acceptance_criteria": [
+      "tests/specs/DB-01-04.md exists with \u22656 test cases, all 4 DB req IDs traced",
+      "tests/specs/ES-01-08.md exists with \u226512 test cases, all 8 ES req IDs traced",
+      "tests/unit/db_test.zig compiles clean",
+      "tests/unit/event_store_test.zig compiles clean",
+      "tests/integration/db_integration_test.zig compiles clean",
+      "tests/integration/event_store_integration_test.zig compiles clean",
+      "zig build test exits 0"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-test-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Produced test specs and test source stubs for all Stage 1 requirements (DB-01..DB-04, ES-01..ES-08). tests/specs/DB-01-04.md: 13 test cases covering all 4 DB requirements. tests/specs/ES-01-08.md: 22 test cases covering all 8 ES requirements. All 4 test source stubs created and wired into build. zig build test exits 0 with all stubs compiling cleanly (skipped).",
+    "artifacts_out": [
+      "tests/specs/DB-01-04.md",
+      "tests/specs/ES-01-08.md",
+      "tests/unit/db_test.zig",
+      "tests/unit/event_store_test.zig",
+      "tests/integration/db_integration_test.zig",
+      "tests/integration/event_store_integration_test.zig",
+      "tests/integration/main_test.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-20T14:49:30.194948Z"
+}

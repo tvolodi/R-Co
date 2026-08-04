@@ -1,0 +1,51 @@
+{
+  "handoff_id": "20260523-004",
+  "run_id": "WF02-sch01-20260523",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-sch01-20260523/step-04-test-runner.json",
+  "created_at": "2026-05-23T16:16:20Z",
+  "started_at": "2026-05-23T16:16:21Z",
+  "completed_at": "2026-05-23T16:24:08Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": ["SCH-01"],
+    "related_handoff_ids": ["20260523-001", "20260523-002", "20260523-003"],
+    "artifacts_in": [
+      "tests/specs/SCH-01.md",
+      "tests/integration/sch01_timer_creation_test.zig",
+      "handoffs/WF02-sch01-20260523/step-03-test-designer.json",
+      "src/scheduler/store.zig",
+      "src/engine/instance.zig"
+    ]
+  },
+  "task": {
+    "description": "Execute SCH-01 test run and produce a structured report.\n\nRequired execution:\n- Run SCH-01 relevant unit/integration tests and any required companion suites to verify no regressions.\n- Validate AC coverage from tests/specs/SCH-01.md.\n- Record any failures with severity classification and root-cause hints.\n\nOutput:\n- Write test report artifact under tests/reports/ for this run.\n- If failures are unrelated pre-existing issues, identify them explicitly and classify impact on SCH-01 verdict.",
+    "acceptance_criteria": [
+      "SCH-01 targeted tests executed",
+      "Report written with pass/fail details",
+      "Result status reflects blocking vs non-blocking failures",
+      "Issues list includes severity and affected requirement when known"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Executed SCH-01 test run with required companion suites. Unit and integration layers passed (unit: 266 pass, 102 skip, 0 fail; integration: 151 pass, 6 skip, 0 fail). SCH-01 acceptance criteria AC-1 through AC-5 are covered by TC-SCH-01-01..05 and passed.",
+    "artifacts_out": [
+      "tests/reports/WF02-sch01-20260523-test-report.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

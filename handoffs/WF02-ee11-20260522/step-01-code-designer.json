@@ -1,0 +1,60 @@
+{
+  "handoff_id": "ee110001-2605-4000-8011-202605220001",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee11-20260522",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-22T12:43:52Z",
+  "started_at": "2026-05-22T12:46:15Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 \u2014 Execution Engine",
+    "requirement_ids": [
+      "EE-11"
+    ],
+    "related_handoff_ids": [
+      "ee020001-2605-4000-8002-202605220001",
+      "ee090001-2605-4000-8009-202605220001",
+      "ee100001-2605-4000-8010-202605220001"
+    ],
+    "artifacts_in": [
+      "docs/requirements/EE-11.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/backend_developer_guide.md",
+      "src/design/engine.md",
+      "src/engine/transition.zig",
+      "src/engine/instance.zig",
+      "src/event_store/store.zig",
+      "src/bpm.zig",
+      "migrations/003_event_archive.sql"
+    ]
+  },
+  "task": {
+    "description": "Produce a design artefact for EE-11 (State reconstruction). Append a dedicated EE-11 section to src/design/engine.md, after the existing EE-10 section. The design MUST cover ALL of the following:\n\n1. reconstructInstance function signature: define a function in src/engine/instance.zig (or a new src/engine/reconstruction.zig) with signature `fn reconstructInstance(allocator: Allocator, db: *pg.Pool, instance_id: Uuid) !InstanceState`. This function:\n   a. Fetches all events for the instance from the `events` table ordered by sequence_number ASC.\n   b. Fetches all archived events for the instance from the `events_archive` table ordered by sequence_number ASC.\n   c. Merges the two ordered streams into one complete ordered event list.\n   d. Replays each event through the pure transition function (EE-02: applyEvent) starting from the initial state.\n   e. Returns the final InstanceState.\n\n2. Initial state: define what the initial InstanceState is for replay (token on START node, empty variable map, ACTIVE status, empty task set). Reference the same initial state used by instance creation (EE-01).\n\n3. Event retrieval query design: exact SQL for fetching events from both `events` and `events_archive` (use UNION ALL or two sequential queries), ordered by `sequence_number ASC`. The design MUST specify how to handle the case where `events_archive` table does not exist or is empty (graceful fallback).\n\n4. Event replay loop: describe the loop that calls `applyEvent(state, event)` for each event in sequence. Specify how EXECUTION_ERROR events are handled during replay (they set status = ERROR and halt progression, matching EE-10).\n\n5. Optional write-back: after successful reconstruction, the platform MAY write the result back to instance_projections. Design the write-back path as an optional parameter (e.g. `write_back: bool`). Document that write-back MUST use the same atomic UPDATE used by normal projection updates.\n\n6. API endpoint: define a new HTTP endpoint `POST /instances/{id}/reconstruct` that:\n   a. Calls reconstructInstance with write_back=true.\n   b. Returns HTTP 200 with the reconstructed InstanceState as JSON.\n   c. Returns HTTP 404 if the instance has no events (does not exist).\n   d. Returns HTTP 409 if the instance is currently being modified (lock contention).\n   e. Requires operator-level authorization.\n\n7. NFR-04 compliance path: describe how the replay loop meets NFR-04 (\u22645 seconds for 10,000 events). Note that applyEvent is O(1) per event in the pure transition function and no DB writes occur during the replay loop itself \u2014 only one final optional write-back.\n\n8. Edge cases:\n   a. Instance with 0 events: return initial state (token on START, empty vars, ACTIVE).\n   b. Event log contains EXECUTION_ERROR: reconstructed status = ERROR.\n   c. Reconstruction that spans both tables produces identical results to pre-archival reconstruction.\n   d. Read-model (projection table) is corrupt or absent: reconstruction still succeeds using only the event log.\n\n9. Traceability table: map each EE-11 acceptance criterion to the design element that satisfies it.\n\n10. Implementation notes for BACKEND-DEV: list which source files are created or modified (reconstruction.zig or instance.zig, src/api/handler.zig or routes file), which existing functions are called (applyEvent from transition.zig, event query functions from event_store/store.zig), what new error types are added.\n\nFollow the same structure and formatting conventions as the EE-10 section in engine.md (just appended above). Do NOT modify any existing sections.",
+    "acceptance_criteria": [
+      "src/design/engine.md has a dedicated EE-11 section with: reconstructInstance function signature, initial state definition, event retrieval query design for both events and events_archive tables, event replay loop with EXECUTION_ERROR handling, optional write-back path, POST /instances/{id}/reconstruct API endpoint, NFR-04 compliance reasoning, edge cases, traceability table, and implementation notes",
+      "Design covers all EE-11 acceptance criteria from docs/requirements/EE-11.md",
+      "Design is consistent with EE-02 (applyEvent), EE-10 (EXECUTION_ERROR during replay), and ES-07 (archive table)",
+      "No new migration is required (events_archive table already exists in migrations/003_event_archive.sql)",
+      "Design clearly documents what constitutes 'initial state' for replay (matching EE-01 instance creation)"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-design-format"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Designed EE-11 State Reconstruction: appended Section EE-11 to src/design/engine.md covering reconstructInstance function signature, initial state, UNION ALL event retrieval query (events + events_archive), EXECUTION_ERROR-aware replay loop, optional write_back path, POST /instances/{id}/reconstruct endpoint, NFR-04 compliance reasoning, 4 edge cases, traceability table, and BACKEND-DEV implementation notes.",
+    "artifacts_out": [
+      "src/design/engine.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T12:54:01Z"
+}

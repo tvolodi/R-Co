@@ -1,0 +1,55 @@
+{
+  "issue_id": "ISS-0030",
+  "title": "WF03 OIDC-03 focused test blockers: fake env return-type coercion mismatch and bootstrap standalone idp_config import dependency",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "A_LOGIC_ERROR",
+  "run_id": "WF03-oidc03-testfix-20260527",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260527-022",
+  "requirement_ids": [
+    "OIDC-03"
+  ],
+  "summary": "Resolved two OIDC-03 focused unit-test blockers in identity provider config/bootstrap code paths: a return-type coercion mismatch in FakeEnv.getAlloc and a standalone test import dependency on the idp_config module alias. Added a test-only fallback shim when the root module alias is absent, while preserving normal module import behavior.",
+  "root_cause": {
+    "type": "focused_test_compile_wiring",
+    "details": "src/config/identity_provider.zig returned allocator.dupe directly from FakeEnv.getAlloc, which did not coerce to the declared anyerror!?[]const u8 in focused zig test mode. src/identity/provider/bootstrap.zig imported idp_config via module alias only, which is unavailable in standalone zig test execution for that file."
+  },
+  "resolution": {
+    "strategy": "MINIMAL_TYPE_AND_IMPORT_PATH_STABILIZATION",
+    "changes": [
+      "In src/config/identity_provider.zig FakeEnv.getAlloc now dupes with try and returns an explicit ?[]const u8 coercion.",
+      "In src/identity/provider/bootstrap.zig idp_config now resolves from root.idp_config when present, with a test-only local fallback shim for standalone zig test contexts.",
+      "In src/identity/provider/bootstrap.zig TC-OIDC-03-05 now uses env:PATH for deterministic keycloak secret resolution in focused test mode."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "zig test src/config/identity_provider.zig",
+        "result": "PASS",
+        "evidence": "All 3 tests passed."
+      },
+      {
+        "command": "zig test src/identity/provider/bootstrap.zig",
+        "result": "PASS",
+        "evidence": "All 3 tests passed."
+      },
+      {
+        "command": "zig build; zig build test",
+        "result": "PASS",
+        "evidence": "ZIG_BUILD_OK / ZIG_BUILD_TEST_OK"
+      }
+    ]
+  },
+  "files_changed": [
+    "src/config/identity_provider.zig",
+    "src/identity/provider/bootstrap.zig"
+  ],
+  "created_at": "2026-05-26T21:18:29Z",
+  "resolved_at": "2026-05-26T21:18:29Z",
+  "prevention": [
+    "For standalone zig test targets, avoid depending solely on build module aliases; provide explicit local test fallbacks when alias wiring is unavailable.",
+    "When function signatures include optional/error-union/const combinations, use explicit coercion in test doubles to prevent focused compile-type mismatches."
+  ]
+}

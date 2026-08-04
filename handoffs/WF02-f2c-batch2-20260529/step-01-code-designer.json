@@ -1,0 +1,55 @@
+{
+  "handoff_id": "f2c-step01-002",
+  "run_id": "WF02-f2c-batch2-20260529",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-29T10:09:48Z",
+  "started_at": "2026-05-29T10:11:56Z",
+  "completed_at": "2026-05-29T10:16:22Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 \u2014 Process Definitions",
+    "requirement_ids": [
+      "PD-09",
+      "PD-10",
+      "PD-UI-07",
+      "PD-UI-08"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/requirements/PD-09.md",
+      "docs/requirements/PD-10.md",
+      "docs/requirements/PD-UI-07.md",
+      "docs/requirements/PD-UI-08.md",
+      "templates/lego-catalog.md",
+      "docs/guides/backend_developer_guide.md",
+      "docs/guides/frontend_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Design the following four requirements for Batch F2c. Classify per lego-catalog.md:\n\n1. **PD-09 (backend, SHOULD)** \u2014 Definition import/export: GET /definitions/{id}/export and POST /definitions/import endpoints. Export returns self-contained JSON with bpm_export_schema_version. Import creates new DRAFT with new UUID. Validate graph on import.\n\n2. **PD-10 (backend, COULD)** \u2014 Definition search: GET /definitions/search?q={query} with full-text search, ranked results, case-insensitive, partial word matching.\n\n3. **PD-UI-07 (frontend, SHOULD)** \u2014 Export button on definition editor, Import button on definition list view.\n\n4. **PD-UI-08 (frontend, COULD)** \u2014 Debounced search bar on definition list, querying PD-10 endpoint.",
+    "acceptance_criteria": [
+      "All requirements classified per lego-catalog",
+      "Design covers API signatures, request/response shapes, validation rules",
+      "No implementation code in design"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for PD-09 (Type E), PD-10 (Type A), PD-UI-07 (Type E), PD-UI-08 (Type E)",
+    "artifacts_out": [
+      "src/design/pd09-export-import.md",
+      "templates/specs/pd10-definition-search.crud-endpoint.yaml",
+      "src/design/pdui07-export-import-buttons.md",
+      "src/design/pdui08-debounced-search.md"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to CODE-DESIGN-VALIDATOR (Step 1b re-validation)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

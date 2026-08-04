@@ -1,0 +1,84 @@
+{
+  "handoff_id": "a73a7220-c8e0-4518-96b9-73fc33a30d51",
+  "run_id": "WF02-oidc11-15-20260528",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-oidc11-15-20260528/step-04b-test-runner-rework1.json",
+  "created_at": "2026-05-27T21:22:11Z",
+  "started_at": "2026-05-27T21:22:27Z",
+  "completed_at": "2026-05-27T21:23:52Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-11",
+      "OIDC-12",
+      "OIDC-13",
+      "OIDC-14",
+      "OIDC-15"
+    ],
+    "related_handoff_ids": [
+      "c194e311-29ee-4546-84c5-3689346f3215",
+      "0b3b27c4-f199-4351-8f06-58d8ab184642",
+      "88977c88-2af3-45c0-b1d5-5828694cfc72",
+      "6a005c01-f91a-4eac-a2f5-c4a8f7821491",
+      "fb976178-968e-421b-9aeb-4036bc97de69",
+      "d0d87904-0d8f-4f3c-8d31-943ef2afc56b"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-05-27-WF02-oidc11-15.json",
+      "handoffs/WF02-oidc11-15-20260528/step-02b-backend-dev-rework1.json"
+    ]
+  },
+  "task": {
+    "description": "RE-TEST after rework: Execute the integration test suites for OIDC-11 through OIDC-15 to verify the fixes.\n\nThe following issues were fixed in BACKEND-DEV rework iteration 1:\n- Fixed RealmOwnershipMismatch in JIT provisioning identity stability check (added cleanupTenantById helper)\n- Fixed PostgreSQL ServerError in markUsersInactiveByRealm UPDATE (test isolation fix)\n- Fixed memory leaks in realm_deletion.zig (allocPrint strings never freed)\n\nRun:\n1. zig build test (unit tests) - must exit 0\n2. zig build test-integration (with BPM_TEST_DB_URL) - must exit 0\n\nCollect results and write a structured test report to tests/reports/.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-integration exits 0",
+      "Test report written to tests/reports/"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Unit tests PASS (exit 0). Integration tests FAIL (exit 1): 385/395 passed, 3 failed, 7 skipped. Three integration test failures detected: (1) TC-OIDC-09-02 RealmOwnershipMismatch persists in JIT provisioning, (2) TC-OIDC-15-07 PostgreSQL ServerError persists in markUsersInactiveByRealm, (3) TC-DB-01-01 migration ServerError in test database setup.",
+    "artifacts_out": [
+      "tests/reports/report-2026-05-27-WF02-oidc11-15-rework1.json"
+    ],
+    "issues": [
+      {
+        "test_id": "TC-OIDC-09-02",
+        "layer": "integration",
+        "file": "tests/integration/oidc09_jit_provisioning_test.zig",
+        "error_message": "RealmOwnershipMismatch in assertRealmOwnedByTenant at src/identity/service.zig:1089",
+        "severity": "BLOCKER",
+        "requirement_id": "OIDC-09"
+      },
+      {
+        "test_id": "TC-OIDC-15-07",
+        "layer": "integration",
+        "file": "tests/integration/oidc15_realm_deletion_test.zig",
+        "error_message": "PgError.ServerError in markUsersInactiveByRealm UPDATE at vendor/pg/pg.zig:306",
+        "severity": "BLOCKER",
+        "requirement_id": "OIDC-15"
+      },
+      {
+        "test_id": "TC-DB-01-01",
+        "layer": "integration",
+        "file": "tests/integration/db_integration_test.zig",
+        "error_message": "runMigrations failed with error.ServerError at helpers.zig:89",
+        "severity": "BLOCKER",
+        "requirement_id": "DB-01"
+      }
+    ],
+    "next_action": "Route back to BACKEND-DEV for rework"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

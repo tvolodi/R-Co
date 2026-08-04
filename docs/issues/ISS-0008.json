@@ -1,0 +1,34 @@
+{
+  "id": "ISS-0008",
+  "title": "WF03 OBS-02 integration blocker: TC-SCH-04-02 hang persists with orphaned integration runner test processes",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "workflow": "WF-03",
+  "run_id": "WF03-obs02-intfix-20260524",
+  "handoff_id": "90c7fba9-b9d8-4c4e-ab07-3eb1f3c69bd7",
+  "created_at": "2026-05-24T17:40:40.739538Z",
+  "updated_at": "2026-05-24T17:50:46Z",
+  "resolved_at": "2026-05-24T17:50:46Z",
+  "failure_report": "handoffs/WF02-obs02-20260524/step-02-backend-dev.json",
+  "root_cause": {
+    "category": "A — Logic error",
+    "description": "Integration runs were blocking at TC-SCH-04-02 due to logger stdout writes during zig test execution. Under the integration harness, direct streaming writes from scheduler hot paths could stall the test protocol stream and leave orphaned test.exe workers."
+  },
+  "resolution": {
+    "summary": "Added a test-build safeguard in the logger to skip stdout emission when `builtin.is_test` is true, removing the blocking write path while preserving runtime production logging behavior.",
+    "files_modified": [
+      "src/obs/logger.zig"
+    ],
+    "verification": [
+      "zig build (task: zig-build-check)",
+      "zig build test (task: zig-build-and-test)",
+      "zig build -j1 test-integration with BPM_TEST_DB_URL set (INTEGRATION_J1_EXIT_CODE=0)"
+    ]
+  },
+  "prevention": {
+    "actions": [
+      "Avoid direct stdout streaming from noisy paths in test builds; use `builtin.is_test` guards where test harness transport can block.",
+      "When diagnosing hangs, clear orphaned test.exe workers before reruns to prevent stale harness interference."
+    ]
+  }
+}

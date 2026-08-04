@@ -1,0 +1,55 @@
+{
+  "handoff_id": "ee050001-2605-4000-8005-202605220001",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee05-20260522",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-22T05:08:49Z",
+  "started_at": "2026-05-22T05:12:28Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 — Execution Engine",
+    "requirement_ids": ["EE-05"],
+    "related_handoff_ids": [
+      "ee010001-2605-4000-8001-202605220001",
+      "ee020001-2605-4000-8002-202605220001",
+      "ee030001-2605-4000-8003-202605220001",
+      "ee040001-2605-4000-8004-202605220001"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/backend_developer_guide.md",
+      "src/design/engine.md",
+      "src/engine/transition.zig",
+      "vendor/cel/cel.zig"
+    ]
+  },
+  "task": {
+    "description": "Append an EE-05 design section to `src/design/engine.md` for Exclusive Gateway — CEL integration.\n\nEE-05 requirement summary:\n- When the execution token reaches an EXCLUSIVE_GATEWAY, the platform SHALL evaluate outgoing edge CEL conditions in declared order and follow the first edge whose condition evaluates to `true`.\n- One edge MAY be designated as the default edge (`is_default = true`). The default edge is evaluated last regardless of declared order and carries no condition expression.\n- If no condition matches and no default edge exists → instance transitions to ERROR status per EE-10.\n- A CEL runtime error (type mismatch, undefined variable, etc.) on a condition MUST be treated as `false` for that condition.\n- Exactly one outgoing edge is followed; never zero, never more than one.\n\nFirst read `src/design/engine.md` in full. The file already contains:\n- An EE-02 section with §6.4 (EXCLUSIVE_GATEWAY algorithm pseudocode) and §7 (CEL evaluation pattern).\n- These sections describe the transition logic and the ideal CEL call pattern with a fully-capable evaluator.\n\nAlso read `src/engine/transition.zig` to understand the current EXCLUSIVE_GATEWAY implementation, which has a CEL stub at the condition evaluation step (only handles literal string `\"true\"`).\n\nAlso read `vendor/cel/cel.zig` which is currently an empty stub (one comment line).\n\nThe new EE-05 design section MUST cover:\n\n1. **`cel.evaluate` function API** (`vendor/cel/cel.zig`):\n\n   ```zig\n   pub const CelError = error{ ParseError, EvalError, OutOfMemory };\n\n   /// Evaluate a CEL expression string against a variable map.\n   ///\n   /// - expression: a CEL expression string (e.g. \"variables.amount > 1000\")\n   /// - variables: the instance variable map; bound as identifier `variables` in the\n   ///   CEL environment. Only the top-level keys of the ObjectMap are accessible as\n   ///   `variables.<key>`. Nested access (e.g. `variables.a.b`) is NOT required for\n   ///   this milestone.\n   /// - Returns true if the expression evaluates to boolean true; false if false.\n   /// - Returns CelError.ParseError if the expression cannot be parsed.\n   /// - Returns CelError.EvalError if evaluation produces a non-boolean result or a\n   ///   runtime type error.\n   /// - Returns CelError.OutOfMemory if the allocator fails during evaluation.\n   ///\n   /// Per EE-05 AC: callers MUST catch all CelError variants and treat them as `false`\n   /// (not abort the transition).\n   pub fn evaluate(\n       allocator: std.mem.Allocator,\n       expression: []const u8,\n       variables: std.json.ObjectMap,\n   ) CelError!bool\n   ```\n\n   **CEL subset for this milestone:** BACKEND-DEV SHALL implement a minimal evaluator covering:\n   - Boolean literals: `true`, `false`\n   - Integer literals: decimal integers (e.g., `42`, `-7`)\n   - String literals: double-quoted strings (e.g., `\"pending\"`)\n   - Variable access: `variables.<key>` where `<key>` is a top-level key in the ObjectMap. Value types supported: bool, integer (f64 JSON number), string.\n   - Comparison operators: `==`, `!=`, `<`, `>`, `<=`, `>=` (numeric and string comparison)\n   - Boolean operators: `&&`, `||`, `!`\n   - Parentheses for grouping\n   - Any expression that references a key not present in `variables` returns `CelError.EvalError` (treated as `false` by caller).\n   - Any expression with a type mismatch (e.g. string compared with integer) returns `CelError.EvalError`.\n\n   **Implementation approach:** A hand-written recursive descent parser (Pratt parser) is the recommended approach for this subset. The design section SHALL describe the grammar:\n   ```\n   expr     := or_expr\n   or_expr  := and_expr ('||' and_expr)*\n   and_expr := not_expr ('&&' not_expr)*\n   not_expr := '!' not_expr | cmp_expr\n   cmp_expr := primary (('==' | '!=' | '<' | '>' | '<=' | '>=') primary)?\n   primary  := 'true' | 'false' | INTEGER | STRING | 'variables' '.' IDENT | '(' expr ')'\n   ```\n\n2. **Updated `transition.zig` EXCLUSIVE_GATEWAY handler** — replace the current stub with a real `cel.evaluate` call:\n\n   The updated EXCLUSIVE_GATEWAY handler in `processNodeEntry` SHALL:\n   a. For each non-default edge (in snapshot order): call `cel.evaluate(allocator, edge.condition.?, new_state.variables) catch false`.\n   b. If `cel.evaluate` returns `true` → set `chosen = edge` and break.\n   c. If `cel.evaluate` returns an error → treat as `false`; continue to next edge.\n   d. If no non-default edge matched and `defaults.items.len > 0` → `chosen = defaults.items[0]`.\n   e. If still null → return `TransitionError.NoMatchingEdge`.\n   f. Advance the token and call `processNodeEntry` on the target node.\n\n   The import of `vendor/cel/cel.zig` in `transition.zig` SHALL use:\n   ```zig\n   const cel = @import(\"../../vendor/cel/cel.zig\");\n   ```\n   (adjust relative path based on actual file location).\n\n3. **New unit tests for EE-05** in `transition.zig`:\n\n   The existing tests TC-EE-02-04 through TC-EE-02-06 test gateway routing using the stub (`\"true\"` / `\"false\"` string literals). These tests SHALL be updated to use real CEL expressions once the evaluator is in place.\n\n   Additional tests to add:\n   - TC-EE-05-01: Condition `variables.amount > 1000` with `amount = 1500` → follows matching edge.\n   - TC-EE-05-02: Condition `variables.status == \"approved\"` with `status = \"approved\"` → follows matching edge.\n   - TC-EE-05-03: CEL runtime error (undefined variable) → treated as `false`; default edge followed.\n   - TC-EE-05-04: All conditions false, no default → `TransitionError.NoMatchingEdge` returned.\n   - TC-EE-05-05: Conditions evaluated in declared order; first true condition wins.\n\n4. **Traceability table** — map each EE-05 acceptance criterion to the design element:\n   | AC | Design element |\n   |---|---|\n   | Token at EXCLUSIVE_GATEWAY: first true CEL condition followed | `cel.evaluate` in EXCLUSIVE_GATEWAY handler; declared-order iteration |\n   | Default edge (`is_default=true`) followed when no non-default matches | Default-edge fallback in handler |\n   | No match, no default → ERROR per EE-10 | `TransitionError.NoMatchingEdge` returned; caller sets ERROR |\n   | CEL runtime error treated as `false` | `catch false` pattern in handler |\n   | Exactly one edge followed | Break-on-first-true; single chosen edge |\n\nAppend the new section as `## Section EE-05: Exclusive Gateway — CEL Integration` after the `## Section EE-04` section in `src/design/engine.md`.\n\nDo NOT write any Zig implementation code — design only.\nDo NOT modify existing EE-01 through EE-04 sections.\n\nBefore completing this handoff, verify all 4 design elements above are present and the traceability table covers all 5 EE-05 acceptance criteria, then complete the handoff.",
+    "acceptance_criteria": [
+      "src/design/engine.md contains an EE-05 section covering all 4 design elements",
+      "cel.evaluate function API is fully specified including CelError variants and CEL grammar",
+      "EXCLUSIVE_GATEWAY handler update is specified with the catch-false pattern",
+      "Traceability table maps all 5 EE-05 acceptance criteria",
+      "No Zig implementation code in the design file",
+      "Existing EE-01 through EE-04 sections are not modified"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact EE-05 appended to src/design/engine.md: cel.evaluate API (CelError variants, CEL grammar, Pratt parser approach), updated EXCLUSIVE_GATEWAY handler pseudocode with catch-false pattern, five new TC-EE-05-xx unit test specifications, and full traceability table covering all 5 EE-05 acceptance criteria.",
+    "artifacts_out": ["src/design/engine.md"],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T05:17:41Z"
+}

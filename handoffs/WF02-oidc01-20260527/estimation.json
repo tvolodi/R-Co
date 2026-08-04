@@ -1,0 +1,31 @@
+{
+  "run_id": "WF02-oidc01-20260527",
+  "created_at": "2026-05-27T00:00:00Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "OIDC-01"
+  ],
+  "difficulty": 4,
+  "difficulty_rationale": "Introduces a provider-agnostic identity contract that becomes the integration seam for token verification, provisioning, and tenant/realm operations used by multiple modules.",
+  "integration_surface": "high",
+  "integration_surface_rationale": "Touches auth subsystem boundaries, provider adapters, and API-auth call paths while enforcing strict decoupling from Keycloak specifics.",
+  "steps": [
+    "git-setup",
+    "code-designer",
+    "backend-dev",
+    "test-designer",
+    "test-runner",
+    "release-validator",
+    "doc-updater",
+    "git-merge"
+  ],
+  "estimated_minutes": {
+    "code-designer": 182,
+    "backend-dev": 9,
+    "test-designer": 6,
+    "test-runner": 11,
+    "release-validator": 2,
+    "doc-updater": 2,
+    "total": 212
+  }
+}

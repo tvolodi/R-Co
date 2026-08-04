@@ -1,0 +1,50 @@
+{
+  "handoff_id": "2c3d541c-4bbf-4719-8455-312ff0d282b5",
+  "run_id": "WF03-iss0107-20260731",
+  "workflow_id": "WF-03",
+  "step": "02-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-iss0107-20260731/step-02-rework2-code-designer.json",
+  "created_at": "2026-07-31T19:57:12Z",
+  "started_at": "2026-07-31T19:57:53Z",
+  "completed_at": "2026-07-31T19:59:30Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "e2db9724-a63b-46c0-bb1f-1a10d3fa7bff"
+    ],
+    "artifacts_in": [
+      "src/design/fix-ISS-0107.md",
+      "docs/issues/ISS-0107.json",
+      "tests/integration/helpers.zig"
+    ],
+    "branch_name": "feature/WF03-iss0107-20260731"
+  },
+  "task": {
+    "description": "REWORK 2 of src/design/fix-ISS-0107.md. CODE-DESIGN-VALIDATOR FAILED your rework-1 revision (a lock_timeout scoping fix for the 55P03 finding) due to a specific, narrow internal contradiction -- NOT a fundamental flaw in the overall approach. Everything else in the revision was independently verified correct: line numbers, the SET-vs-SET-LOCAL reasoning (conn.begin() genuinely happens at line 516, after the widened critical section, confirmed correct), the connection-pooling concern (ruled out -- Conn is a raw single-socket struct, not pool-backed, so SET on the same conn pointer is guaranteed to apply to the immediately-following pg_advisory_lock() call on the same session), the 90s value rationale, the non-workaround analysis, fix scope, and non-regression of the original widened-lock fix. Only ONE thing needs fixing: \\n\\nThe design's \"Required change\" section describes an EXPLICIT SEQUENTIAL RESTORE (\"the very next statement after line 473, before configureTestSearchPath() runs\") but the later \"Failure-path correctness\" section instead instructs a DEFER-based restore (registered right after the raise, matching this file's existing defer idiom at lines 100/145). These are NOT equivalent in Zig: a defer registered after the raise fires at TestHarness.init()'s function-scope EXIT (i.e., after conn.begin() at line 516), not immediately before configureTestSearchPath(). If BACKEND-DEV followed the defer instruction literally, lock_timeout would stay stuck at 90s through the rest of init() and into the per-test transaction -- directly undermining the design's own \"tighter, more defensible scope\" claim.\\n\\nCODE-DESIGN-VALIDATOR also checked whether the defer's stated rationale (guard against the acquire itself failing, leaving lock_timeout stuck at 90s) is even necessary, and found it is NOT: errdefer conn.close() at line 431 already tears down the ENTIRE connection on any init() failure path (including a failure of the widened-lock acquire itself), which makes a deferred lock_timeout restore redundant for correctness on the failure path (the connection is discarded either way) while actively breaking the intended tight scoping on the SUCCESS path.\\n\\nYOUR JOB: resolve this single contradiction. The validator's explicit recommendation is: keep the EXPLICIT SEQUENTIAL RESTORE (the version in \"Required change\") and REMOVE or CORRECT the defer instruction in \"Failure-path correctness\" -- since errdefer conn.close() already handles the failure path, there is no need for a separate deferred timeout-restore at all. Update the design to have ONE single, internally consistent restore mechanism (the explicit sequential SET restore, immediately after the widened critical section completes and before configureTestSearchPath()), and either delete the \"Failure-path correctness\" section's defer instruction entirely (if errdefer conn.close() truly makes it unnecessary -- confirm this reasoning explicitly in the design) or replace it with an accurate description of why no separate failure-path handling is needed.",
+    "acceptance_criteria": [
+      "Design has exactly ONE restore mechanism described, with no contradiction between sections",
+      "The chosen mechanism is the explicit sequential SET restore (not defer), placed immediately after the widened critical section and before configureTestSearchPath()",
+      "Design explicitly confirms/explains why errdefer conn.close() at line 431 already handles the failure-path concern, making a separate deferred restore unnecessary",
+      "All other previously-verified content (SET vs SET LOCAL, 90s value, non-workaround analysis, fix scope, non-regression) remains intact -- do not needlessly rewrite what already passed"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Resolved the single internal contradiction CODE-DESIGN-VALIDATOR found in src/design/fix-ISS-0107.md rework 1: the design previously described two different restore mechanisms for the lock_timeout bracket around helpers.zig's line-473 acquire -- an explicit sequential SET restore in 'Required change' and a defer-based restore in 'Failure-path correctness'. Kept the explicit sequential SET restore (immediately after the widened critical section's acquire succeeds, before configureTestSearchPath() runs) as the ONLY restore mechanism -- this section was not touched. Rewrote 'Failure-path correctness' to explain why no separate failure-path handling is needed: errdefer conn.close() at line 431 already discards the entire connection -- including whatever session-level lock_timeout value was in effect -- on any error path within init() (including a failure of the raise statement, the acquire itself, or anything later in init()), so there is nothing left to restore on failure; the plain sequential restore only needs to run on the success path, which is exactly what it does. Also corrected two other stale references to the removed defer mechanism that would otherwise have reintroduced the same contradiction: the 'Error taxonomy changes' section (previously said the restore uses a 'defer ... catch {}' idiom matching line 505's release -- corrected to say both new SET statements use the plain try conn.exec(...) idiom, with errdefer conn.close() covering the failure path) and the closing line of 'Open questions' (previously referenced 'B's try/defer pair' -- corrected to 'two plain sequential try conn.exec(...) statements', explicitly noting neither is defer-guarded). No other section was rewritten: SET vs SET LOCAL reasoning, the 90s value rationale, the non-workaround analysis, fix scope, and non-regression of the original widened-lock fix are all unchanged from the version CODE-DESIGN-VALIDATOR already verified as sound.",
+    "artifacts_out": [
+      "src/design/fix-ISS-0107.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR Step 2b (rework 2 re-validation)"
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

@@ -1,0 +1,59 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-003b",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-06T21:48:22Z",
+  "started_at": "2026-06-06T21:48:33Z",
+  "completed_at": "2026-06-06T21:49:41Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 test design validation",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": ["wf02-f8-b2-20260607-003"],
+    "artifacts_in": [
+      "tests/specs/TM-04.md",
+      "tests/specs/TM-05.md",
+      "tests/integration/tm01_tenant_list_test.zig",
+      "web/tests/e2e/tenants.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "Validate test design completeness for TM-04/TM-05. Hard gate before TEST-RUNNER. Confirm every MUST requirement has runnable integration/E2E coverage, no deferred tests, and lifecycle flows are fully asserted (authz, idempotency, UI state actions).",
+    "acceptance_criteria": [
+      "PASS if TM-04/TM-05 test design is complete and runnable",
+      "FAIL with concrete gaps if missing coverage"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Test design validation failed for TM-04/TM-05: MUST coverage exists, but hard-gate checks failed on env-missing skip behavior, fixture UUID isolation, and hardcoded credentials in E2E tests.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "TDV-TM04TM05-001",
+        "severity": "BLOCKER",
+        "description": "Integration tests covering MUST requirements use error.SkipZigTest when BPM_TEST_DB_URL is absent, which violates the hard-gate requirement that env-missing must fail clearly (not skip). Evidence: tests/integration/tm01_tenant_list_test.zig lines 21-24.",
+        "affected_requirement": "TM-04"
+      },
+      {
+        "id": "TDV-TM04TM05-002",
+        "severity": "BLOCKER",
+        "description": "Integration fixtures for TM-04/TM-05 use static slugs (e.g., tc-tm-04-01, tc-tm-05-01) instead of per-test UUID-based identifiers, violating fixture isolation requirements. Evidence: tests/integration/tm01_tenant_list_test.zig lines 397, 423, 500, 530, 560.",
+        "affected_requirement": "TM-04"
+      },
+      {
+        "id": "TDV-TM04TM05-003",
+        "severity": "MAJOR",
+        "description": "E2E test file contains hardcoded fallback credentials (admin-user/admin-pass), violating test security rules that forbid hardcoded credentials. Evidence: web/tests/e2e/tenants.e2e.spec.ts lines 45-46.",
+        "affected_requirement": "TM-05"
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER for rework (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

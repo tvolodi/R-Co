@@ -1,0 +1,42 @@
+run_id: WF03-gh387-20260802
+step: "01"
+agent: ISSUE-FIXER
+executed_at: "2026-08-02T10:55:42Z"
+status: PASS
+summary: >-
+  Fresh verification confirms ISS-0121's diagnosis: the integration-test isolation linter finds 258 active MAJOR violations, predominantly T010 hardcoded non-zero UUID literals, while 195 findings are suppressed by the current baseline. The T010 implementation matches quoted UUID literals and exempts only the all-zero sentinel. TestHarness has no newUuid, genUuid, random_uuid, or uuid_v4 helper, and all five representative files contain matching fixed UUIDs. GitHub issue #387 exists and is OPEN.
+lint_counts:
+  blocked: 0
+  major_active: 258
+  major_suppressed_in_baseline: 195
+  minor: 0
+affected_files_count: 22
+representative_samples:
+  - file: tests/integration/adp02_tenant_scope_test.zig
+    example_line: 150
+    example_uuid: "00000000-0000-0000-0000-000000000123"
+  - file: tests/integration/iss202_merge_atomicity_test.zig
+    example_line: 195
+    example_uuid: "00000000-0000-0000-0000-000000000099"
+  - file: tests/integration/iss205_webhook_outbox_test.zig
+    example_line: 79
+    example_uuid: "e0205001-0000-0000-0000-000000000001"
+  - file: tests/integration/obs05_dlq_test.zig
+    example_line: 191
+    example_uuid: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+  - file: tests/integration/svc04_admin_api_test.zig
+    example_line: 205
+    example_uuid: "eeeeeeee-0000-0000-0000-000000000001"
+root_cause: >-
+  Integration tests embed reusable non-zero UUID literals directly in fixtures. T010 detects double-quoted UUID literals and excludes only 00000000-0000-0000-0000-000000000000 as the conventional no-value sentinel. Because TestHarness provides no per-test UUID generator, repeated and concurrent runs can reuse primary and foreign keys, causing unique-constraint collisions and cross-test contamination. The baseline contains 297 T010 records in total, of which 195 findings across all rules matched and were suppressed during this fresh run.
+migration_strategy:
+  - "Add a `newUuid() std.uuid.Uuid` method on TestHarness using std.crypto.random"
+  - "Replace every hardcoded UUID literal in the 20 files_to_change listed in ISS-0121.json"
+  - "Confirm `zig build` exits 0"
+  - "Confirm `python tools/lint_test_isolation.py tests/integration` BLOCKER=0, MAJOR<=10 (some baseline residual only), MINOR=0"
+  - "Update lint_test_isolation.baseline.json to suppress only the legitimately re-flagged-but-accepted residuals; do NOT mask new violations"
+github_issue: https://github.com/tvolodi/R-Co/issues/387
+github_issue_state: OPEN
+prevention:
+  - "Add a CI hook that fails the build on any new T010 finding"
+  - "Document the per-test UUID pattern in tests/integration/README.md"

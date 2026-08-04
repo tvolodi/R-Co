@@ -1,0 +1,29 @@
+{
+  "report_id": "WF02-obs05-20260525-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-obs05-20260525",
+  "step": "01",
+  "created_at": "2026-05-25T05:15:29Z",
+  "summary": "Produced the backend design artefact for OBS-05 dead letter queue at src/design/obs-05-dead-letter-queue.md. The design defines end-to-end DLQ architecture and API contract for exhausted-retry SERVICE_TASK/webhook/timer processing, full-context DLQ schema, deterministic GET /dlq pagination and filtering, POST retry/discard semantics with idempotency and transaction guarantees, CANCELLED-instance 409 conflict plus discard behavior, mandatory OBS-03 audit append on discard, security and failure semantics, and full requirement-to-design traceability mapped to implementation and test hooks.",
+  "files_created": [
+    "src/design/obs-05-dead-letter-queue.md",
+    "docs/issue-reports/WF02-obs05-20260525-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-obs05-20260525/step-01-code-designer.json",
+    "handoffs/WF02-obs05-20260525/registry.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "design completeness and traceability review",
+      "status": "pass",
+      "detail": "Validated all OBS-05 acceptance criteria and edge cases against explicit design sections, route contracts, DLQ lifecycle semantics, and traceability rows with module and test obligations."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)."
+  ],
+  "blockers": []
+}

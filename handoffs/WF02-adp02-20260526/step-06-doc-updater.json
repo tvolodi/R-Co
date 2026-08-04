@@ -1,0 +1,62 @@
+{
+  "handoff_id": "20260526-015",
+  "run_id": "WF02-adp02-20260526",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-adp02-20260526/step-06-doc-updater.json",
+  "created_at": "2026-05-26T01:58:00Z",
+  "started_at": "2026-05-26T01:58:20Z",
+  "completed_at": "2026-05-25T21:56:25Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-02"
+    ],
+    "related_handoff_ids": [
+      "20260526-010",
+      "20260526-011",
+      "20260526-012",
+      "20260526-013",
+      "20260526-014"
+    ],
+    "artifacts_in": [
+      "docs/status/release-ADP-02-20260525.json",
+      "docs/metrics/estimation_rules.json",
+      "handoffs/WF02-adp02-20260526/estimation.json"
+    ]
+  },
+  "task": {
+    "description": "Finalize WF02-adp02-20260526 documentation updates. Update docs/status/requirement_status.json to mark ADP-02 as RELEASED with implementation/test/release metadata from this run, and update CHANGELOG.md with an ADP-02 release entry. Perform retrospective calculations for this run per docs/agents/metrics.md and write docs/metrics/retrospectives/WF02-adp02-20260526.json; if estimation calibration criteria are met, update docs/metrics/estimation_rules.json accordingly.",
+    "acceptance_criteria": [
+      "ADP-02 status is updated to RELEASED with run traceability in requirement_status.json",
+      "CHANGELOG.md includes ADP-02 implementation/release note",
+      "Retrospective file exists at docs/metrics/retrospectives/WF02-adp02-20260526.json",
+      "Any estimation rule adjustments are applied only when retrospective criteria are met"
+    ],
+    "functions_to_call": [
+      "fn:update-requirement-status",
+      "fn:update-changelog",
+      "fn:run-retrospective",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated ADP-02 to RELEASED with implementation/test/release metadata, added changelog release notes, and generated retrospective output with no rule calibration changes.",
+    "artifacts_out": [
+      "docs/status/requirement_status.json",
+      "CHANGELOG.md",
+      "docs/metrics/retrospectives/WF02-adp02-20260526.json",
+      "docs/issue-reports/WF02-adp02-20260526-step-06-doc-updater-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Workflow complete for this stage / cycle"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

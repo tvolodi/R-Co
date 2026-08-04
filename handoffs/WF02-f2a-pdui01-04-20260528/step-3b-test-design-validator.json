@@ -1,0 +1,56 @@
+{
+  "handoff_id": "f2a-step3b-006",
+  "run_id": "WF02-f2a-pdui01-04-20260528",
+  "workflow_id": "WF-02",
+  "step": "3b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-f2a-pdui01-04-20260528/step-3b-test-design-validator.json",
+  "created_at": "2026-05-28T15:22:27Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F2",
+    "branch_name": "feature/WF02-f2a-pdui01-04-20260528",
+    "requirement_ids": ["PD-UI-01", "PD-UI-02", "PD-UI-03", "PD-UI-04"],
+    "related_handoff_ids": ["f2a-step00-001", "f2a-step01-002", "f2a-step1b-003", "f2a-step2b-004", "f2a-step03-005"],
+    "artifacts_in": [
+      "tests/specs/PD-UI-01-04.md",
+      "web/tests/e2e/f2-definition-list.e2e.spec.ts",
+      "docs/BPM_Platform_Frontend_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "Validate the test design produced by TEST-DESIGNER (Step 03) for requirements PD-UI-01 through PD-UI-04. This is a HARD GATE — FAIL immediately if any check fails.\n\nVerify:\n1. Every MUST requirement has a runnable integration test file\n2. No test.skip on MUST tests without a counterpart integration test\n3. All fixtures use per-test UUIDs\n4. Tests clean up after themselves\n5. Tests fail clearly if backend is unavailable\n6. No MSW, no HTTP mocking (T-2 directive)\n7. Visual verification included (T-3 directive)",
+    "acceptance_criteria": [
+      "Every MUST requirement (PD-UI-01 through PD-UI-04) has a Playwright E2E test",
+      "No test.skip decorators on MUST requirement tests",
+      "Per-test UUID isolation",
+      "Tests clean up after themselves",
+      "No MSW or HTTP mocking present",
+      "Screenshots or visual assertions included"
+    ],
+    "functions_to_call": ["fn:validate-test-design"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test design validation PASSED for PD-UI-01 through PD-UI-04. All 7 verification checks passed.",
+    "artifacts_out": [
+      "web/tests/e2e/f2-definition-list.e2e.spec.ts",
+      "tests/specs/PD-UI-01-04.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Test spec defines TC-PDUI02-03 (multi-select) and TC-PDUI03-02 (multiple versions), TC-PDUI03-03 (Open link), TC-PDUI03-05 (loading state), TC-PDUI01-04 (pagination) which are not yet implemented in the test file. Each MUST requirement still has at least one covering test — no blocking issue."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-05-28T15:23:40Z"
+}

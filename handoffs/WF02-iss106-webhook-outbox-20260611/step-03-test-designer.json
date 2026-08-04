@@ -1,0 +1,54 @@
+{
+  "handoff_id": "iss106-test-designer-03",
+  "run_id": "WF02-iss106-webhook-outbox-20260611",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-iss106-webhook-outbox-20260611/step-03-test-designer.json",
+  "created_at": "2026-06-11T13:42:56Z",
+  "started_at": "2026-06-11T13:42:56Z",
+  "completed_at": "2026-06-11T13:47:06Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "ISS-106",
+    "stage": "Step 03 \u2014 Test design",
+    "requirement_ids": [
+      "ISS-106"
+    ],
+    "artifacts_in": [
+      "src/design/iss-106-webhook-outbox.md",
+      "migrations/085_iss106_webhook_deliveries_outbox.sql",
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md"
+    ]
+  },
+  "task": {
+    "description": "Design and write the integration test for ISS-106 (the webhook_deliveries outbox table formalization). ISS-106 is a schema/migration requirement; its test must verify the migration produces the correct table shape against REAL PostgreSQL (BPM_TEST_DB_URL). Write a spec at tests/specs/ISS-106.md and an integration test (Zig) under tests/integration/ that asserts, in a fresh per-test schema/UUID fixture: (1) webhook_deliveries has the attempt column (INTEGER NOT NULL DEFAULT 0); (2) inserting a row with status in (PENDING,DELIVERED,FAILED,RETRYING) succeeds; (3) inserting a row with an out-of-domain status (e.g. 'BOGUS' or legacy 'pending') is REJECTED by the CHECK constraint; (4) the index idx_wd_status_next_attempt exists on (status, next_attempt_at); (5) a row with the full ISS-106 contract columns (delivery_id/id, subscription_id, event_id, status, attempt, next_attempt_at, last_error, created_at) round-trips. The transactional-outbox insert path and worker claim (FOR UPDATE SKIP LOCKED) are ISS-205 \u2014 do NOT test them here; the backlog explicitly defers the claim path to ISS-205. Follow docs/guides/test_developer_guide.md. Use per-test UUIDs; the test must fail clearly if BPM_TEST_DB_URL is absent; clean up via defer. Place DB-backed tests in tests/integration/ (NOT tests/unit/). Wire the new test into the integration test target if required.",
+    "acceptance_criteria": [
+      "tests/specs/ISS-106.md exists and maps each assertion to an ISS-106 acceptance criterion",
+      "A runnable integration test exists under tests/integration/ covering attempt column, status CHECK accept+reject, index presence, and contract round-trip",
+      "No error.SkipZigTest on the ISS-106 coverage",
+      "Per-test UUID fixtures; cleanup via defer; clear failure if BPM_TEST_DB_URL absent",
+      "ISS-205 claim/outbox path explicitly NOT included"
+    ],
+    "functions_to_call": [
+      "fn:write-test-spec",
+      "fn:write-integration-test"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Designed and wrote the ISS-106 integration test verifying the migration-085 webhook_deliveries outbox table shape against real PostgreSQL. 5 assertions: attempt column type/nullability/default, valid status domain accept, out-of-domain (BOGUS + legacy lowercase pending) reject via CHECK, worker-claim index presence on (status,next_attempt_at), full-contract row round-trip. Per-test tenant-schema fixtures with random UUIDs; defer cleanup; clear failure if BPM_TEST_DB_URL absent. ISS-205 outbox-insert/claim path NOT tested.",
+    "artifacts_out": [
+      "tests/specs/ISS-106.md",
+      "tests/integration/iss106_webhook_outbox_test.zig",
+      "tests/integration/main_test.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

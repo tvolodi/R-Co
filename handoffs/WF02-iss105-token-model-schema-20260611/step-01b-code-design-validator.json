@@ -1,0 +1,39 @@
+﻿{
+    "handoff_id":  "c6a41131-ff55-457c-8ee9-6c462cbe0321",
+    "run_id":  "WF02-iss105-token-model-schema-20260611",
+    "step":  "01b",
+    "from_agent":  "ORCH",
+    "to_agent":  "CODE-DESIGN-VALIDATOR",
+    "created_at":  "2026-06-12T02:44:19Z",
+    "status":  "COMPLETED",
+    "priority":  "NORMAL",
+    "context":  {
+                    "stage":  "EPIC-1 / ISS-105",
+                    "requirement_ids":  [
+                                            "ISS-105"
+                                        ],
+                    "related_handoff_ids":  [
+                                                "c513ac85-fb1d-4a47-a4da-24a6fbfe898c"
+                                            ],
+                    "artifacts_in":  [
+                                         "src/design/iss105_token_model_schema.md"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Validate src/design/iss105_token_model_schema.md for ISS-105. Hard gate.",
+                 "acceptance_criteria":  [
+                                             "All ISS-105 acceptance criteria have design elements",
+                                             "Migration is additive (no destructive changes in same migration)",
+                                             "Backfill approach for existing rows described",
+                                             "No implementation code"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:lint-design-artefact"
+                                       ]
+             },
+    "result":  "{\"summary\":\"Design validated: lint exits 0, all 6 ISS-105 acceptance criteria covered, migration additive, backfill described, no implementation code\",\"status\":\"PASS\",\"issues\":[],\"artifacts_out\":[],\"next_action\":\"Route to BACKEND-DEV (Step 02a)\"}",
+    "rework_count":  0,
+    "max_rework":  3,
+    "started_at":  "2026-06-12T02:44:19Z",
+    "completed_at":  "2026-06-12T02:48:09Z"
+}

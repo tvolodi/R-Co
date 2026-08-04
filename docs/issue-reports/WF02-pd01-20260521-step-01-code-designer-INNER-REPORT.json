@@ -1,0 +1,28 @@
+{
+  "report_id": "WF02-pd01-20260521-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-pd01-20260521",
+  "step": "01",
+  "created_at": "2026-05-21T14:00:00Z",
+  "summary": "Produced design artefact src/design/definition.md covering PD-01 (Create definition) and PD-02 (Graph validation). The artefact specifies the two-file module layout (store.zig for DB-backed CRUD, graph.zig for pure structural validation), all shared data types (NodeType, DefinitionStatus, GraphNode, GraphEdge, DefinitionGraph, Definition), full public function signatures with parameter and return types, eight named PD-02 validation checks (CHK-01 through CHK-08) with violation codes and a DFS algorithm outline for cycle detection, database column mapping to migrations/004_definitions.sql, concurrency safety analysis for the HTTP 409 path, error taxonomy with HTTP status codes, state transition diagram, dependency constraints, and a full PD-01/PD-02 acceptance criteria traceability table. No implementation code was written. All three acceptance criteria are met.",
+  "files_created": [
+    "src/design/definition.md",
+    "docs/issue-reports/WF02-pd01-20260521-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-pd01-20260521/step-01-code-designer.json"
+  ],
+  "tests_run": [],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Naming discrepancy between backend_developer_guide.md §2 (which names the definition files 'registry.zig' and 'validator.zig') and the handoff task description (which specifies 'store.zig' and 'graph.zig'). Design artefact follows the handoff task. BACKEND-DEV should confirm final file names before implementing."
+    }
+  ],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) to implement src/definition/store.zig and src/definition/graph.zig per the design artefact.",
+    "A separate CODE-DESIGNER handoff is needed for PD-04 (lifecycle transition rules), PD-05 (node-type attribute validation), and PD-06 (edge condition CEL syntax) before those requirements can be implemented.",
+    "A separate CODE-DESIGNER handoff is needed for PD-08 (instance definition snapshot write path) when the engine/instance module is designed."
+  ],
+  "blockers": []
+}

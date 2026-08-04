@@ -1,0 +1,59 @@
+{
+  "handoff_id": "f2b-step04b-011",
+  "run_id": "WF02-f2b-shoulds-20260529",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-05-29T08:11:03Z",
+  "started_at": "2026-05-29T08:11:03Z",
+  "completed_at": "2026-05-29T08:12:26Z",
+  "status": "FAILED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 \u2014 Process Designer UI",
+    "requirement_ids": [
+      "PD-UI-16",
+      "PD-UI-17",
+      "PD-UI-18",
+      "PD-UI-19"
+    ],
+    "related_handoff_ids": [
+      "f2b-step04-007",
+      "bench-env-001"
+    ],
+    "artifacts_in": [
+      "web/tests/e2e/"
+    ]
+  },
+  "task": {
+    "description": "RE-TEST after bench env fix. Run the full E2E test suite on branch feature/WF02-f2b-shoulds-20260529. The bench env has been fixed \u2014 zig build bench now exits 0.\n\nFirst verify: zig build bench 2>&1 | head -5\nThen: Start backend, start frontend (cd web && npx vite --port 4173), run: cd web && npx playwright test\nWrite results to tests/reports/ per the test guide.",
+    "acceptance_criteria": [
+      "zig build bench exits 0",
+      "All existing E2E tests pass",
+      "New Batch F2b E2E tests pass",
+      "Test report written to tests/reports/"
+    ],
+    "functions_to_call": [
+      "fn:run-e2e-tests"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Benchmark environment pre-check failed: zig build bench exited with code 1, output contains BENCHMARK_SETUP_ERROR referencing source=BPM_DB_URL. All NFR benchmarks passed (p99_read=0.935ms, p99_write=2.222ms, throughput=86886eps, replay=37ms) but setup error indicates environment issue.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "test_id": "BENCH-ENV",
+        "layer": "bench",
+        "file": "",
+        "error_message": "zig build bench exit code 1 - BENCHMARK_SETUP_ERROR with source=BPM_DB_URL",
+        "severity": "BLOCKER",
+        "requirement_id": "PD-UI-16"
+      }
+    ],
+    "next_action": "ORCH creates ADHOC BACKEND-DEV handoff to fix bench environment"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

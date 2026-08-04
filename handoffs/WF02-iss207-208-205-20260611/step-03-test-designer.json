@@ -1,0 +1,60 @@
+{
+  "handoff_id": "bbac0dbb-bf50-4297-8905-5124e9a800ec",
+  "run_id": "WF02-iss207-208-205-20260611",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-11T23:48:28Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-2 / ISS-207+208+205",
+    "requirement_ids": [
+      "ISS-207",
+      "ISS-208",
+      "ISS-205"
+    ],
+    "related_handoff_ids": [
+      "e12200e8-d1db-4862-9d5b-dd900f8df7a8"
+    ],
+    "artifacts_in": [
+      "src/design/iss207_error_retry_convergence.md",
+      "src/design/iss208_guard_task_completion.md",
+      "src/design/iss205_webhook_transactional_outbox.md"
+    ]
+  },
+  "task": {
+    "description": "Write integration tests for ISS-207, ISS-208, ISS-205.\n\nFiles to write:\n- tests/specs/ISS-207.md + tests/integration/iss207_error_retry_test.zig\n- tests/specs/ISS-208.md + tests/integration/iss208_task_guard_test.zig\n- tests/specs/ISS-205.md + tests/integration/iss205_webhook_outbox_test.zig\n\nISS-207 cases: (1) bare retry of error instance rejected with hint; (2) retry-with-input advances instance; (3) discard cancels instance.\nISS-208 cases: (1) cancel instance then attempt task completion \u2192 409, no events appended; (2) race-safe: concurrent cancel+complete only one wins.\nISS-205 cases: (1) event committed \u2192 webhook_deliveries row exists in same tx; (2) kill-after-commit: worker delivers on restart; (3) back-off ladder: 5 failures \u2192 subscription paused + OBS-06 emitted.\n\nAll: real PostgreSQL, per-test UUIDs, no SkipZigTest, no mocks.",
+    "acceptance_criteria": [
+      "All 3 spec files written covering listed cases",
+      "All 3 integration test files runnable",
+      "Real PostgreSQL only, per-test UUIDs, no mocks"
+    ],
+    "functions_to_call": [
+      "fn:read-test-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Wrote test specs and integration tests for ISS-207 (convergent retry), ISS-208 (task guard), ISS-205 (webhook outbox). All 6 files created. Build exits 0. 14 pre-existing test failures on branch are from ISS-103 work (definition_retrieval_test + test_api08_auth, provisioning schema issue); my changes do not introduce new failures.",
+    "artifacts_out": [
+      "tests/specs/ISS-207.md",
+      "tests/integration/iss207_error_retry_test.zig",
+      "tests/specs/ISS-208.md",
+      "tests/integration/iss208_task_guard_test.zig",
+      "tests/specs/ISS-205.md",
+      "tests/integration/iss205_webhook_outbox_test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "14 pre-existing unit test failures on ISS-103 branch (definition_retrieval_test x9, test_api08_auth x5) due to provisionTenantSchema returning MigrationFailed. Unrelated to ISS-207/208/205 implementation. Build exits 0, all 6 new test files compile cleanly."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 03b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-11T23:48:28Z",
+  "completed_at": "2026-06-12T00:35:20Z"
+}

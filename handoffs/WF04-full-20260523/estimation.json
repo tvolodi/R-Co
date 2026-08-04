@@ -1,0 +1,20 @@
+{
+  "run_id": "WF04-full-20260523",
+  "created_at": "2026-05-23T06:00:00Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["all-Stage1-thru-Stage4"],
+  "difficulty": 4,
+  "difficulty_rationale": "Full test run across all 4 implemented stages (ES, PD, EE, API) — multi-module scope with integration and E2E tests",
+  "steps": ["test-runner", "test-runner", "test-runner", "test-runner", "test-runner", "release-validator", "test-runner", "test-runner"],
+  "estimated_minutes": {
+    "test-runner-step1": 7,
+    "test-runner-step2": 7,
+    "test-runner-step3": 7,
+    "test-runner-step4": 7,
+    "test-runner-step5": 7,
+    "release-validator-step6": 25,
+    "test-runner-step7": 7,
+    "test-runner-step8": 7,
+    "total": 74
+  }
+}

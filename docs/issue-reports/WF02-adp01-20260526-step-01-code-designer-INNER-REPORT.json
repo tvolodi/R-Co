@@ -1,0 +1,28 @@
+{
+  "report_id": "WF02-adp01-20260526-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-adp01-20260526",
+  "step": "01",
+  "created_at": "2026-05-25T20:13:42Z",
+  "summary": "Produced the backend design artefact for ADP-01 at src/design/adp-01-tenant-column-event-store.md. The design specifies additive tenant_id introduction for events/events_archive, default-tenant backfill compatibility, tenant-scoped append/read/global stream contracts, index strategy, API-context-to-storage propagation assumptions, deterministic failure behavior for missing/invalid tenant context, and explicit traceability to ADP-01 plus impacted ES-01/02/04/06/07 with ADP-11 interaction.",
+  "files_created": [
+    "src/design/adp-01-tenant-column-event-store.md",
+    "docs/issue-reports/WF02-adp01-20260526-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-adp01-20260526/step-01-code-designer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "design completeness and acceptance traceability review",
+      "status": "pass",
+      "detail": "Verified all handoff acceptance criteria are explicitly mapped to schema/index behavior, read/write/query contracts, failure modes, and prior-requirement regression points."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)."
+  ],
+  "blockers": []
+}

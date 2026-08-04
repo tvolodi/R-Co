@@ -1,0 +1,48 @@
+{
+  "handoff_id": "3ab4c5d6-e7f8-9012-3ab4-c5d6e7f89012",
+  "run_id": "WF03-oidc-callback-realm-20260616",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-16T05:54:11Z",
+  "started_at": "2026-06-16T05:54:11Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 02b \u2014 hard gate: validate ISS-0073 design",
+    "requirement_ids": [
+      "OIDC-F-02"
+    ],
+    "related_handoff_ids": [
+      "2fa3b4c5-d6e7-8901-2fa3-b4c5d6e78901"
+    ],
+    "artifacts_in": [
+      "src/design/iss-0073-oidc-callback-realm.md"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss-0073-oidc-callback-realm.md. Run lint. Check: (1) fix location documented (ProtectedRoute.tsx, AuthProvider.tsx), (2) buildRedirectArgs design present, (3) no implementation code, (4) security note, (5) Fix B (no change to OidcCallbackPage) rationale. Return PASS or FAIL.",
+    "acceptance_criteria": [
+      "lint exits 0",
+      "all 5 checks pass"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact iss-0073-oidc-callback-realm.md validated \u2014 all 5 checks pass, lint exits 0 (0 BLOCKER, 0 MAJOR, 1 MINOR)",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "E060: requirement id OIDC-F-02 does not match <PREFIX>-<NN>[a-z]? format (lint warning only, does not block)"
+      }
+    ],
+    "next_action": "Route to FRONTEND-DEV (Step 03)"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "completed_at": "2026-06-16T05:55:35Z"
+}

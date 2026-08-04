@@ -1,0 +1,68 @@
+report_id: WF02-exp3-async-effects-20260613-step-03b-revalidation-test-design-validator
+agent_id: TEST-DESIGN-VALIDATOR
+run_id: WF02-exp3-async-effects-20260613
+step: "03b-revalidation"
+created_at: "2026-06-13T08:59:47Z"
+status: FAIL
+summary: >-
+  Revalidation did not clear every hard gate blocker. EXP-302 and EXP-303 are
+  now fully present, but TC-EXP-301-05 still only checks the helper table
+  rather than proving end-to-end retry rows and DLQ behavior, and the repo-wide
+  Zig test target still fails on existing PostgreSQL migration issues outside
+  this file.
+files_reviewed:
+  - handoffs/WF02-exp3-async-effects-20260613/step-03b-revalidation-test-design-validator.json
+  - tests/specs/EXP-301.md
+  - tests/specs/EXP-302.md
+  - tests/specs/EXP-303.md
+  - tests/integration/effects_subsystem_test.zig
+  - docs/issue-reports/WF02-exp3-async-effects-20260613-step-03-test-designer-rework-INNER-REPORT.yaml
+checks_run:
+  - name: EXP-302 runnable coverage
+    status: pass
+    detail: >-
+      TC-EXP-302-01 through TC-EXP-302-08 are present in the integration file
+      and use fresh per-test UUID fixtures plus TestHarness setup/teardown.
+  - name: EXP-301 strengthened coverage
+    status: fail
+    detail: >-
+      TC-EXP-301-05 still only asserts computeEffectBackoffMs() values for the
+      backoff table. It does not create effects for attempt counts 0-4, verify
+      next_retry_at across those rows, or prove dlq_at on attempt 5.
+  - name: EXP-303 completeness
+    status: pass
+    detail: >-
+      All 11 TC-EXP-303 cases are present, and the reset/counter/isolation
+      checks are implemented with direct executor state assertions.
+  - name: fixture isolation
+    status: pass
+    detail: >-
+      The file uses generateTestUuid() for fresh per-test UUIDs and each test
+      initializes its own TestHarness or executor instance with cleanup.
+  - name: build and integration execution
+    status: fail
+    detail: >-
+      zig build test exits 1 because unrelated unit tests in
+      tests/unit/test_api08_auth.zig hit existing PostgreSQL migration errors.
+      The narrower zig build test-integration-tm target exits 0.
+issues_found:
+  - severity: BLOCKER
+    description: >-
+      EXP-301 still has a weak backoff test. TC-EXP-301-05 validates helper
+      literals only and does not prove the runtime effect-row behavior required
+      by the hard-gate revalidation checklist.
+    evidence:
+      - tests/integration/effects_subsystem_test.zig#L438
+      - tests/integration/effects_subsystem_test.zig#L442
+      - tests/integration/effects_subsystem_test.zig#L444
+  - severity: BLOCKER
+    description: >-
+      The repository-wide Zig test target is still red, so the acceptance
+      criterion requiring zig build test to exit 0 is not satisfied.
+    evidence:
+      - tests/unit/test_api08_auth.zig#L368
+      - tests/unit/test_api08_auth.zig#L445
+      - tests/unit/test_api08_auth.zig#L522
+      - tests/unit/test_api08_auth.zig#L606
+next_steps:
+  - Escalate to ORCH — max_rework exceeded

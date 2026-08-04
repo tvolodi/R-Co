@@ -1,0 +1,38 @@
+{
+  "handoff_id": "exp103-tdv-3b",
+  "run_id": "WF02-exp103-instance-waits-20260612",
+  "step": "3b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-12T15:28:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "EXP-103",
+    "upstream_step": "03",
+    "stage": "Hard gate"
+  },
+  "task": {
+    "description": "Validate EXP-103 test coverage: all 5 atomicity tests present, no MUST skips, per-test UUIDs, real PostgreSQL.",
+    "acceptance_criteria": [
+      "All MUST criteria covered",
+      "No skipped tests",
+      "Isolation via UUIDs"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test design for EXP-103 validated \u2014 all 5 MUST criteria (TC-EXP-103-01 through TC-EXP-103-05) have runnable integration tests, fixtures use per-test UUID prefixes (e1030100-e1030500), tenant_context.set/clear pattern in every test, defer cleanup blocks present, no SkipZigTest on any MUST test, build.zig includes test-integration-exp103 step, zig build exits 0.",
+    "artifacts_out": [
+      "tests/specs/EXP-103-instance-waits.md",
+      "tests/integration/exp103_instance_waits_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 04)"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "started_at": "2026-06-12T16:05:00Z",
+  "completed_at": "2026-06-12T16:16:55Z"
+}

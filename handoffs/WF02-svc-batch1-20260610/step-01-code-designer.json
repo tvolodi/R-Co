@@ -1,0 +1,61 @@
+{
+  "handoff_id": "862c93fc-05ac-4ea6-a69e-e701371eb77b",
+  "run_id": "WF02-svc-batch1-20260610",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-svc-batch1-20260610/step-01-code-designer.json",
+  "created_at": "2026-06-10T14:04:25Z",
+  "started_at": "2026-06-10T14:29:43Z",
+  "completed_at": "2026-06-10T14:30:29Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 13",
+    "requirement_ids": [
+      "SVC-01",
+      "SVC-02",
+      "SVC-03",
+      "SVC-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/requirements/SVC-01.md",
+      "docs/requirements/SVC-02.md",
+      "docs/requirements/SVC-03.md",
+      "docs/requirements/SVC-04.md"
+    ]
+  },
+  "task": {
+    "description": "Produce a design artefact for SVC-01 through SVC-04 (Stage 13 \u2014 service catalog scope + plugin scope + activation validation + admin API/UI). Classify each requirement per templates/lego-catalog.md and produce the appropriate artefact(s): SVC-01 involves a schema migration + API filtering (Type C + Type E); SVC-02 is in-process plugin registry struct change (Type E); SVC-03 is activation validation cross-module logic (Type E); SVC-04 is new API endpoints + frontend admin page (Type A for API + Type B for UI page). Write artefacts to src/design/svc-01-04-service-scope.md. No implementation code. All public function signatures, error taxonomy, data-flow for cross-module validation, and dependency order must be present.\n\nREWORK 1:\n- [MAJOR] templates/specs/svc-04-services-admin-page.list-page.yaml create_form.fields is missing request_schema (textarea, required) and response_schema (textarea, required). Add both fields to the form spec and resubmit.",
+    "acceptance_criteria": [
+      "SVC-01 migration design: new columns scope and owner_tenant_id on service_catalog, CHECK constraint, ON DELETE CASCADE, backfill of existing rows to scope=global",
+      "SVC-01 API: GET /api/v1/services filters by caller tenant \u2014 only global + owned scoped services returned",
+      "SVC-02 plugin struct: PluginScope enum, owner_tenant_id nullable field, dispatch filter logic, freezePluginRegistry duplicate check",
+      "SVC-03 activation validator: service catalog lookup + plugin registry check, atomic rejection, runs at DRAFT->ACTIVE and DEPRECATED->ACTIVE",
+      "SVC-04 API: POST/PATCH/DELETE /api/v1/admin/services (platform-admin), GET /api/v1/services (tenant-scoped), GET /api/v1/admin/services (platform-admin all)",
+      "SVC-04 UI: admin Services page design with columns and role-based Register button",
+      "python tools/lint_design_artefact.py src/design/svc-01-04-service-scope.md exits 0 (no BLOCKER/MAJOR)"
+    ],
+    "functions_to_call": [
+      "fn:classify-requirements",
+      "fn:write-design-artefact",
+      "fn:run-lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1: Added request_schema (textarea, required) and response_schema (textarea, required) to create_form.fields in svc-04-services-admin-page.list-page.yaml",
+    "artifacts_out": [
+      "templates/specs/svc-04-services-admin-page.list-page.yaml",
+      "templates/specs/svc-01-service-catalog-scope.migration.yaml",
+      "templates/specs/svc-04-services-admin-api.crud-endpoint.yaml",
+      "src/design/svc-01-04-service-scope.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 01b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

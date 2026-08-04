@@ -1,0 +1,46 @@
+{
+  "report_id": "WF02-sch04-20260523-step-04-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF02-sch04-20260523",
+  "step": "04",
+  "created_at": "2026-05-23T20:13:26Z",
+  "summary": "Executed the SCH-04 rework validation slice after WF03-sch04-fix-20260523. `zig build` and `zig build test` passed, the local test database was available, and the SCH-04 integration cases now execute successfully. The previously used `zig build test-integration -- --test-filter SCH-04` wrapper remains unusable on the current Zig/test-step wiring, so the generated integration test executable was used to confirm the SCH-04 cases directly.",
+  "files_created": [
+    "tests/reports/WF02-sch04-20260523-run-02.md",
+    "tests/reports/WF02-sch04-20260523-run-02.direct.log",
+    "docs/issue-reports/WF02-sch04-20260523-step-04-test-runner-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-sch04-20260523/step-04-test-runner.json",
+    "handoffs/registry.json",
+    "handoffs/WF02-sch04-20260523/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "Command completed successfully (exit 0)."
+    },
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "Command completed successfully (exit 0)."
+    },
+    {
+      "name": "zig build test-integration -- --test-filter SCH-04",
+      "status": "fail",
+      "detail": "The current build-step wiring forwards `--test-filter` to the generated Zig test runner, which rejects that runtime flag, so this wrapper command cannot be used as reliable focused evidence on Zig 0.16."
+    },
+    {
+      "name": ".\\.zig-cache\\o\\8bb8771c84e55968d2b1457a72ffb22d\\test.exe",
+      "status": "pass",
+      "detail": "The direct integration executable showed `TC-SCH-04-01`, `TC-SCH-04-02`, and the implemented cancellation test for the completion-before-fire case all reporting `OK`; the full executable still exits 1 because of unrelated non-SCH-04 integration failures."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to RELEASE-VALIDATOR for WF-02 Step 5 with SCH-04 marked tested in this focused slice.",
+    "Keep the note that the legacy `zig build test-integration -- --test-filter SCH-04` wrapper is not a usable focused command on the current Zig/test-step wiring."
+  ],
+  "blockers": []
+}

@@ -1,0 +1,47 @@
+{
+  "handoff_id": "5ef6a7b8-c9d0-1234-5ef6-a7b8c9d01234",
+  "run_id": "WF03-oidc-tenant-config-20260616",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-06-16T04:51:08Z",
+  "started_at": "2026-06-16T04:51:08Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 03b — FRONTEND-DEV implements Fix 2 + Fix 3",
+    "requirement_ids": ["OIDC-F-06"],
+    "related_handoff_ids": ["3cd4e5f6-a7b8-9012-3cd4-e5f6a7b89012"],
+    "artifacts_in": [
+      "src/design/iss-0072-realm-override.md",
+      "web/src/auth/tenantConfig.ts",
+      "web/src/pages/admin/onboarding/OnboardingResultPage.tsx"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 03b: Implement Fix 2 (frontend URL param) and Fix 3 (result page link) per src/design/iss-0072-realm-override.md.\n\nFix 2 — web/src/auth/tenantConfig.ts:\nAdd function resolveRealmFromUrl(): string | null\n  Priority chain:\n  1. Check sessionStorage.getItem('bpm_realm_slug') — if present, return it\n  2. Check new URLSearchParams(window.location.search).get('realm') — if present, sessionStorage.setItem('bpm_realm_slug', value), return value\n  3. Return null (fall through to hostname lookup)\n\nIn fetchTenantConfig (or the function that builds the API URL):\n  const realmSlug = resolveRealmFromUrl()\n  if (realmSlug) {\n    call GET /api/tenant-config?realm={realmSlug}\n  } else {\n    call GET /api/tenant-config?host={hostname}   (existing path)\n  }\n\nFix 3 — web/src/pages/admin/onboarding/OnboardingResultPage.tsx:\nIn the completed result section (where slug and oidc_authority are shown), add a link:\n  <a href={`${window.location.origin}/?realm=${result.slug}`}>Open {result.displayName ?? result.slug} workspace</a>\n  (or a Button if the page uses Button components)\n  Only render this when result.slug is defined and result.state === 'completed'.\n\nNo production API changes — all API calls go through web/src/api/client.ts as usual.\n\nValidation:\n  python tools/lint_frontend_conventions.py web/src (exits 0)\n  cd web && npm run type-check (exits 0)\n  cd web && npm run lint (exits 0)\n  cd web && npm run build (exits 0)\n\nCommit:\n  git add -A\n  git commit -m 'fix(WF03): realm URL param + workspace link on result screen (ISS-0072 Fix 2+3)'\n  git push origin feature/WF03-oidc-tenant-config-20260616",
+    "acceptance_criteria": [
+      "resolveRealmFromUrl() added to tenantConfig.ts",
+      "sessionStorage key bpm_realm_slug used",
+      "fetchTenantConfig uses ?realm= when resolveRealmFromUrl returns non-null",
+      "Workspace link on OnboardingResultPage for completed state",
+      "All validation exits 0",
+      "Committed and pushed"
+    ],
+    "functions_to_call": ["fn:read-frontend-conventions", "fn:lint-frontend-conventions"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented Fix 2 (resolveRealmFromUrl + ?realm= in fetchTenantConfig) and Fix 3 (workspace link on OnboardingResultPage). Fixed pre-existing unused-var lint error in uat-alice-login.e2e.spec.ts.",
+    "artifacts_out": [
+      "web/src/auth/tenantConfig.ts",
+      "web/src/pages/admin/onboarding/OnboardingResultPage.tsx",
+      "web/tests/e2e/uat-alice-login.e2e.spec.ts"
+    ],
+    "issues": [],
+    "commit_sha": "696f07c50550cf2656535c917acb2ba5c567e7c6",
+    "next_action": "Route to TEST-DESIGNER (WF-03 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-16T04:54:34Z"

@@ -1,0 +1,120 @@
+report_id: WF03-gh388-20260802-step-02-code-designer
+agent_id: CODE-DESIGNER
+run_id: WF03-gh388-20260802
+workflow_id: WF-03
+step: "02"
+created_at: 2026-08-02T07:00:00Z
+handoff_id: WF03-gh388-step-02
+github_issue: https://github.com/tvolodi/R-Co/issues/388
+local_issue: ISS-0122
+branch: feature/WF03-gh388-20260802
+classification:
+  type: E
+  type_name: Novel / cross-cutting (audit subsystem + 4 migrations + 1 new test file + 1 helper sweep)
+  rationale: >-
+    The fix touches four existing migrations (035, 051, GBL-081, GBL-082), one
+    new corrective migration, one new integration test, and one test-helper
+    cleanup sweep. It changes the signature of two PL/pgSQL functions and
+    the body of one trigger. Per templates/lego-catalog.md selection rules,
+    Types A-D do not match; Type E captures the existing prose-artefact
+    shape required.
+design_artefact:
+  path: src/design/audit_chain_text_resource_id.md
+  status: created, lint-clean
+  lint: exit 0 (tools/lint_design_artefact.py)
+  covers:
+    - Module purpose / summary
+    - Affected files table with line ranges and one-line change descriptions
+    - Schema / migration changes (design-level, no DDL)
+    - Public interface (function signatures in pseudo-SQL)
+    - Error taxonomy (PL/pgSQL EXCEPTION block per SQLSTATE)
+    - Test contract (TC-EE-10-06, TC-EXT-01-INT-07, TC-SCH-02-02, new TC-AUDIT-UTF8)
+    - Migration safety (non-destructive reasoning, idempotency, ordering)
+    - Open questions (Q1 log-rate-cap, Q2 resource_info passthrough, Q3 schema)
+  non_solutions_listed:
+    - No DROP TABLE / DROP COLUMN
+    - No widening of chain_hash / prev_chain_hash column types
+    - No change to bpm_audit_validate_chain signature
+    - No deviation from the existing p_resource_id TEXT signature introduced by GBL-082
+  migration_number:
+    method: scratch/_list_last_migration_number.py scans migrations/*.sql for
+      leading \\d+ prefix; max=1106 (1106_iss0125_instance_definition_snapshots_cascade.sql);
+      next=1107
+    new_migration_filename: migrations/1107_fix_audit_chain_text_resource_id.sql
+files_created:
+  - src/design/audit_chain_text_resource_id.md
+files_modified: []
+files_to_change_list:
+  - migrations/035_adp09_tamper_evident_audit_chain.sql
+  - migrations/051_xc02_audit_immutability.sql
+  - migrations/GBL-081_iss103_audit_resource_id_text.sql
+  - migrations/GBL-082_fix_audit_chain_resource_id_text.sql
+  - migrations/1107_fix_audit_chain_text_resource_id.sql
+  - tests/integration/helpers.zig
+  - tests/integration/audit_chain_utf8_test.zig
+scratch_files:
+  - scratch/_list_last_migration_number.py
+  - scratch/WF03-gh388-20260802/issue-fixer-step1/diagnosis.md
+  - scratch/WF03-gh388-20260802/issue-fixer-step1/diagnosis.yaml
+design_validation_summary:
+  design_matches_diagnosis: true
+  mismatches: []
+  deviations: []
+  gaps: []
+  rationale: >-
+    The design directly implements the recommended fix strategy from
+    scratch/WF03-gh388-20260802/issue-fixer-step1/diagnosis.{md,yaml}:
+    primary fix (replace bpm_audit_compute_chain_hash to accept TEXT and
+    drop implicit UUID cast; adjust bpm_audit_chain_canonical_payload)
+    combined with the secondary safer-diff approach (UTF-8 validation in
+    bpm_audit_apply_chain_hash and a placeholder normaliser, wrapped in
+    EXCEPTION WHEN OTHERS to keep audit writes non-blocking). All four
+    acceptance criteria from the ISSUE-FIXER Step 1 diagnosis are mapped
+    to a design element (zig build / test / test-integration, the three
+    failing TCs, the C22021 count drop, and the new TC-AUDIT-UTF8
+    regression test).
+required_revalidation_actions:
+  - action: "Run tools/lint_design_artefact.py on the new artefact"
+    reason: CODE-DESIGN-VALIDATOR hard gate
+    expected_outcome: exit 0 (already verified)
+  - action: "BACKEND-DEV Step 3: implement the 4-DDL-block migration + 2 function replacements + 1 trigger swap"
+    reason: fix implementation per design
+    expected_outcome: zig build / zig build test / zig build migrate all exit 0
+  - action: "BACKEND-DEV Step 3: write tests/integration/audit_chain_utf8_test.zig per §6"
+    reason: regression test for the exact non-UTF-8 byte path
+    expected_outcome: TC-AUDIT-UTF8 passes in isolation AND in the full integration run
+  - action: "TEST-RUNNER Step 5: re-run TC-EE-10-06, TC-EXT-01-INT-07, TC-SCH-02-02"
+    reason: confirm the three pre-fix failing TCs now pass
+    expected_outcome: PASS each; C22021 count in their log windows drops to 0
+  - action: "TEST-RUNNER Step 5: confirm bpm_audit_validate_chain still produces empty issues[] for the affected tenant"
+    reason: confirm tamper-evident chain validation is not weakened
+    expected_outcome: issues[] = [] for tenant_default after the new migration
+tests_run:
+  - name: tools/lint_design_artefact.py src/design/audit_chain_text_resource_id.md
+    status: pass
+    detail: "exit 0; BLOCKER=0 MAJOR=0 MINOR=0"
+  - name: scratch/_list_last_migration_number.py
+    status: pass
+    detail: "last_number=1106, last_file=1106_iss0125_instance_definition_snapshots_cascade.sql, next=1107"
+issues_found:
+  - severity: MINOR
+    description: >-
+      Q1 in §8 of the design notes that audit-chain-skip WARNING rate could be
+      capped per tenant to avoid log-spam under heavy shared-DB-state
+      contamination. Out of scope for this fix; surface as a follow-up
+      MINOR issue if it appears during validation.
+  - severity: MINOR
+    description: >-
+      bpm_audit_resource_info's table-by-table branches still cast src->>'id'::uuid
+      for some tables; if any of those branches fires against a TEXT-keyed parent
+      row, the C22P02 happens BEFORE the audit row INSERT and therefore before
+      the trigger runs. The design calls for downgrading the cast in the same
+      corrective migration, but BACKEND-DEV must verify every branch of the
+      dispatcher and not just the 'ELSE fallback' branch.
+next_steps:
+  - "ORCH: route to CODE-DESIGN-VALIDATOR (Step 2b hard gate)."
+  - "After Step 2b PASS: route to BACKEND-DEV (Step 3) to implement the migration
+     and the new test per src/design/audit_chain_text_resource_id.md."
+  - "After Step 3 PASS: route to TEST-RUNNER (Step 5) to confirm the three
+     pre-fix failing TCs pass and TC-AUDIT-UTF8 is green."
+blockers: []

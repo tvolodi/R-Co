@@ -1,0 +1,46 @@
+﻿{
+    "handoff_id":  "WF03-gh387-followup-20260802-step04b",
+    "run_id":  "WF03-gh387-followup-20260802",
+    "step":  "4b",
+    "from_agent":  "ORCH",
+    "to_agent":  "TEST-DESIGN-VALIDATOR",
+    "created_at":  "2026-08-02T17:12:06Z",
+    "started_at":  "2026-08-02T17:12:06Z",
+    "status":  "COMPLETED",
+    "priority":  "NORMAL",
+    "context":  {
+                    "stage":  "Test design validation (hard gate)",
+                    "requirement_ids":  [
+
+                                        ],
+                    "related_handoff_ids":  [
+                                                "WF03-gh387-followup-20260802-step04"
+                                            ],
+                    "artifacts_in":  [
+                                         "tests/specs/ISS-0121-followup.md",
+                                         "tests/integration/iss0121_uuid_helpers_test.zig"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Step 4b of WF-03 follow-up: validate the test design.\n\nProcedure:\n\n1. `git branch --show-current` — confirm `feature/WF03-gh387-followup-20260802`.\n\n2. Read `tests/specs/ISS-0121-followup.md`.\n\n3. Run `python tools/lint_design_artefact.py tests/specs/ISS-0121-followup.md` — must exit 0.\n\n4. Per-spec checks:\n   - (a) Spec describes migration approach (replacement rule, batches, expected lint delta).\n   - (b) Spec references existing helper API regression tests.\n   - (c) No MUST requirement is left without a runnable test (the migration does not introduce new MUSTs).\n   - (d) All fixtures use per-test UUIDs (verified by Step 3 PARTIAL outcome).\n\n5. Update handoff file `handoffs/WF03-gh387-followup-20260802/step-04b-test-design-validator.json`:\n   - status = COMPLETED\n   - result.status = PASS or FAIL\n   - result.summary = brief description\n   - result.issues = [] or list\n   - result.next_action = \"Route to TEST-RUNNER (Step 5)\" on PASS\n   - completed_at = (Get-Date).ToUniversalTime().ToString(\"yyyy-MM-ddTHH:mm:ssZ\") — exact output\n\n6. Update handoffs/registry.json: set status for handoff_id WF03-gh387-followup-20260802-step04b to COMPLETED.\n\nReturn: pass/fail, lint exit code.",
+                 "acceptance_criteria":  [
+                                             "Lint exit 0 with no BLOCKER/MAJOR",
+                                             "Spec covers migration approach",
+                                             "Hard gate cleared for TEST-RUNNER"
+                                         ]
+             },
+    "result":  {
+                   "status":  "PASS",
+                   "summary":  "ISS-0121 follow-up test design validated; migration approach, helper regression coverage, and per-test UUID isolation are documented and lint passed.",
+                   "artifacts_out":  [
+                                         "docs/issue-reports/WF03-gh387-followup-20260802-step-4b-test-design-validator-INNER-REPORT.yaml"
+                                     ],
+                   "issues":  [
+
+                              ],
+                   "next_action":  "Route to TEST-RUNNER (Step 5)"
+               },
+    "rework_count":  0,
+    "max_rework":  3,
+    "completed_at":  "2026-08-02T17:13:30Z"
+}

@@ -1,0 +1,58 @@
+{
+  "handoff_id": "20260525-037",
+  "run_id": "WF02-obs06-20260525",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-obs06-20260525/step-03-test-designer.json",
+  "created_at": "2026-05-25T17:35:00Z",
+  "started_at": "2026-05-25T17:35:20Z",
+  "completed_at": "2026-05-25T06:39:01Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-06"
+    ],
+    "related_handoff_ids": [
+      "20260525-035",
+      "20260525-036"
+    ],
+    "artifacts_in": [
+      "docs/requirements/OBS-06.md",
+      "src/design/obs-06-alerting-hooks.md",
+      "handoffs/WF02-obs06-20260525/step-02-backend-dev.json"
+    ]
+  },
+  "task": {
+    "description": "Design comprehensive tests for OBS-06 alerting hooks. Produce test specification and concrete test files that verify all acceptance criteria and edge cases: ERROR-duration trigger behavior, DLQ threshold crossing one-shot/re-arm semantics, scheduler lag trigger behavior, deterministic payload fields/correlation ID, and delivery retry policy (3 attempts exponential backoff with terminal structured logging). Include negative and regression cases to prevent duplicate firing while above threshold and to verify re-fire after recovery and re-cross. Ensure tests align with implemented modules introduced by BACKEND-DEV and are runnable by TEST-RUNNER.",
+    "acceptance_criteria": [
+      "A complete OBS-06 test spec is created with traceability to requirement acceptance criteria",
+      "Test cases cover all trigger types, threshold crossing behavior, retries/backoff, and terminal failure logging",
+      "Test artifacts are placed in the correct test directories and reference existing harness conventions",
+      "Result clearly identifies execution targets for TEST-RUNNER"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-test-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and test code for OBS-06 are implemented with deterministic, requirement-traceable coverage for ERROR-duration triggers, DLQ/scheduler threshold crossing one-shot re-arm semantics, deterministic payload/correlation fields, bounded retry behavior, and DB-visible alert state/depth paths.",
+    "artifacts_out": [
+      "tests/specs/OBS-06.md",
+      "tests/integration/obs06_alerts_test.zig",
+      "tests/integration/main_test.zig",
+      "docs/issue-reports/WF02-obs06-20260525-step-03-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

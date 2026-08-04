@@ -1,0 +1,41 @@
+{
+  "handoff_id": "exp103-cdv-1b",
+  "run_id": "WF02-exp103-instance-waits-20260612",
+  "step": "1b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-12T15:28:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "EXP-103",
+    "upstream_step": "01",
+    "stage": "Hard gate",
+    "artifacts_in": [
+      "src/design/instance-waits-persistence.md"
+    ]
+  },
+  "task": {
+    "description": "Validate EXP-103 design: schema covers all 3 kinds, atomicity guaranteed, integration points precise, migration idempotent.",
+    "acceptance_criteria": [
+      "All 3 wait kinds covered",
+      "Atomicity specified",
+      "Integration points named",
+      "No implementation code"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artifact for instance-waits-persistence validated \u2014 all acceptance criteria covered. Lint clean, all 3 wait kinds in schema, atomicity specified, 6 integration points verified in source, Public Interface and Error Taxonomy sections present, no implementation code, 5 test scenarios in \u00a78.",
+    "artifacts_out": [
+      "src/design/instance-waits-persistence.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a)"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "started_at": "2026-06-12T15:47:00Z",
+  "completed_at": "2026-06-12T15:50:35Z"
+}

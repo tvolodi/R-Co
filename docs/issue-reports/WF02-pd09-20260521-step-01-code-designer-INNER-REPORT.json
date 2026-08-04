@@ -1,0 +1,72 @@
+{
+  "report_id": "WF02-pd09-20260521-step-01-code-designer",
+  "handoff_id": "99100001-2605-4000-8009-202605210800",
+  "run_id": "WF02-pd09-20260521",
+  "step": "01",
+  "agent": "CODE-DESIGNER",
+  "created_at": "2026-05-21T17:45:00Z",
+  "status": "PASS",
+  "summary": "PD-09 design artefact appended to src/design/definition.md. All 10 acceptance criteria satisfied.",
+  "acceptance_criteria_results": [
+    {
+      "criterion": "src/design/definition.md contains a new PD-09 section",
+      "result": "PASS",
+      "notes": "## PD-09 section appended at end of file; does not modify any prior section."
+    },
+    {
+      "criterion": "EXPORT_SCHEMA_VERSION constant with value bpm/definition/v1 is specified",
+      "result": "PASS",
+      "notes": "pub const EXPORT_SCHEMA_VERSION: []const u8 = \"bpm/definition/v1\"; with rationale documented."
+    },
+    {
+      "criterion": "ExportDocument struct with all 7 fields is specified",
+      "result": "PASS",
+      "notes": "All 7 fields documented: bpm_export_schema_version, id, name, version, description, graph, exported_at. Field summary table included."
+    },
+    {
+      "criterion": "ExportImportError error set with all 6 values and HTTP status mappings is specified",
+      "result": "PASS",
+      "notes": "All 6 errors: DefinitionNotFound(404), NameVersionConflict(409), UnknownSchemaVersion(422), InvalidGraph(422), PoolExhausted(503), DatabaseError(500). HTTP mapping table provided."
+    },
+    {
+      "criterion": "ExportImportStore.exportDefinition() function signature is specified",
+      "result": "PASS",
+      "notes": "Full signature with doc comment covering any-status query, DefinitionNotFound behaviour, and security note on parameterised SQL."
+    },
+    {
+      "criterion": "ExportImportStore.importDefinition() 4-step algorithm is specified",
+      "result": "PASS",
+      "notes": "Steps 1-4 fully described: schema version check, name+version uniqueness check, graph re-validation (validateGraph/validateNodeAttributes/validateEdgeConditions in sequence), Store.create() call with DRAFT status."
+    },
+    {
+      "criterion": "HTTP handler signatures for handleExport and handleImport are specified",
+      "result": "PASS",
+      "notes": "Both handler signatures documented with full error mapping tables. Routes: GET /api/v1/definitions/:id/export and POST /api/v1/definitions/import."
+    },
+    {
+      "criterion": "CEL re-validation via validateEdgeConditions() is specified",
+      "result": "PASS",
+      "notes": "importDefinition() Step 3 explicitly calls validateEdgeConditions() which runs isValidCelSyntax() (CHK-EC-06) on all non-default EXCLUSIVE_GATEWAY edge conditions. InvalidGraph maps to HTTP 422."
+    },
+    {
+      "criterion": "Traceability table covers all 4 PD-09 acceptance criteria",
+      "result": "PASS",
+      "notes": "All 4 PD-09 ACs traced: self-contained export, DRAFT import on no-conflict, HTTP 409 on name+version conflict, HTTP 422 on invalid CEL."
+    },
+    {
+      "criterion": "bpm.zig export_import export is specified",
+      "result": "PASS",
+      "notes": "pub const export_import = @import(\"definition/export_import.zig\"); documented with full updated bpm.zig listing."
+    }
+  ],
+  "artifacts_out": ["src/design/definition.md"],
+  "issues": [],
+  "open_questions": [
+    {
+      "id": "OQ-01",
+      "description": "violations detail passthrough from ExportImportStore.importDefinition() to handleImport(): the existing Store.lastViolations() accessor is on Store, not on ExportImportStore. BACKEND-DEV must decide whether to expose a lastViolations() on ExportImportStore or pass violations via a side channel.",
+      "severity": "LOW",
+      "blocking": false
+    }
+  ]
+}

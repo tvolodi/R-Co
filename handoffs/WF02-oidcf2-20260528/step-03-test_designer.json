@@ -1,0 +1,46 @@
+{
+  "handoff_id": "44c52797-d7fb-445f-a3dd-a636df8af668",
+  "run_id": "WF02-oidcf2-20260528",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-28T10:20:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F1.6 - Subdomain Tenant Routing",
+    "requirement_ids": [
+      "OIDC-F-05",
+      "OIDC-F-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/",
+      "web/tests/e2e/",
+      "src/design/oidcf2-subdomain-routing.md"
+    ]
+  },
+  "task": {
+    "description": "Write test spec tests/specs/OIDC-F-05-06.md and E2E test web/tests/e2e/oidcf2-subdomain.e2e.spec.ts. Test cases: (1) GET /api/tenant-config?host=acme1.localhost returns acme1 realm config (backend integration or Playwright API call); (2) GET /api/tenant-config?host=unknown returns default config; (3) Frontend: when visited at acme1.localhost, SSO button redirects to acme1 realm Keycloak URL; (4) Frontend: when /api/tenant-config returns 500, login page still renders with default realm SSO button. No MSW.",
+    "acceptance_criteria": [
+      "All OIDC-F-05 MUST criteria have test cases",
+      "All OIDC-F-06 MUST criteria have test cases",
+      "No test.skip on MUST tests"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Wrote test spec tests/specs/OIDC-F-05-06.md and E2E test web/tests/e2e/oidcf2-subdomain.e2e.spec.ts covering TC-OIDCF2-01 through TC-OIDCF2-04 for OIDC-F-05 and OIDC-F-06.",
+    "artifacts_out": [
+      "tests/specs/OIDC-F-05-06.md",
+      "web/tests/e2e/oidcf2-subdomain.e2e.spec.ts"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-28T10:43:41Z",
+  "completed_at": "2026-05-28T10:45:30Z"
+}

@@ -1,0 +1,64 @@
+{
+  "handoff_id": "c12eb6c0-a7b1-4ce0-b77a-018a67a16ea3",
+  "run_id": "WF02-iss601-602-epic6-20260612",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-12T13:13:55Z",
+  "started_at": "2026-06-12T14:03:32Z",
+  "completed_at": "2026-06-12T14:04:37Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Epic 6 test validation",
+    "requirement_ids": [
+      "ISS-601",
+      "ISS-602"
+    ],
+    "related_handoff_ids": [
+      "58ebaa50-dcf5-49fd-a053-f4776e8beecf",
+      "bc80f005-3e65-4edb-86a0-65374e45129b"
+    ],
+    "artifacts_in": [
+      "tests/specs/ISS-601.md",
+      "tests/specs/ISS-602.md",
+      "tests/integration/iss601_state_snapshots_test.zig",
+      "tests/differential/differential_test.zig",
+      "tests/bench/bench.zig",
+      "tests/differential/corpus/conditions_v1.json"
+    ],
+    "owned_modules": []
+  },
+  "task": {
+    "description": "Validate test designs from Step 03 REWORK 1. The TEST-DESIGNER has addressed all 6 issues from the previous review. Verify: (1) every MUST requirement now has a runnable integration test file, (2) no error.SkipZigTest on MUST tests without counterpart integration test, (3) all fixtures use per-test UUIDs, (4) tests clean up after themselves, (5) tests fail clearly if BPM_TEST_DB_URL is absent. Hard gate -- TEST-RUNNER cannot start until PASS.",
+    "acceptance_criteria": [
+      "All ISS-601 MUST requirements have runnable integration tests (including TC-601-02, TC-601-05, TC-601-08 full path)",
+      "All ISS-602 MUST requirements have runnable tests (including TC-602-03, TC-602-06)",
+      "ISS-601 NFR-04 snapshot-assisted benchmark exists",
+      "No error.SkipZigTest on MUST tests without counterpart",
+      "All fixtures use per-test UUIDs",
+      "Tests are self-sufficient and fail clearly without BPM_TEST_DB_URL"
+    ],
+    "functions_to_call": [
+      "fn:validate-test-coverage",
+      "fn:lint-test-isolation"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 6 issues from the previous review are resolved. BLOCKER: TC-ISS-601-02 (delta reconstruction at seq 25) exists and validates snapshot-assisted delta path vs full replay. BLOCKER: TC-ISS-601-05 (overflow payload COALESCE join) creates event_payloads_overflow table, seeds large payload, takes snapshot at seq 1, reconstructs via delta. MAJOR: TC-ISS-602-03 (cutover gate regression) verifies no expr import on engine path via @embedFile static analysis. MAJOR: TC-ISS-602-06 (unsupported features) tests has(), all(), exists(), size(), matches(), int(), string(), list comprehensions, map literals, ternary -- all return null. MAJOR: ISS-601 NFR-04 benchmark measures 100k-event snapshot-assisted delta replay with target <=1s via measureReplayWithSnapshotsMs. MINOR: TC-ISS-601-08 (multi-boundary) creates 2500 events with snapshots at seq 1000 and 2000. All tests use per-test UUIDs, have defer cleanup, and fail clearly when BPM_TEST_DB_URL is absent. No error.SkipZigTest on MUST tests without counterpart.",
+    "artifacts_out": [
+      "tests/specs/ISS-601.md",
+      "tests/specs/ISS-602.md",
+      "tests/integration/iss601_state_snapshots_test.zig",
+      "tests/differential/differential_test.zig",
+      "tests/differential/corpus/conditions_v1.json",
+      "tests/bench/bench.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 04)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

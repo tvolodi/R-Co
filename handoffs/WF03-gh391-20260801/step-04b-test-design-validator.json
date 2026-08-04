@@ -1,0 +1,49 @@
+{
+  "handoff_id": "WF03-gh391-step04b",
+  "run_id": "WF03-gh391-20260801",
+  "workflow_id": "WF-03",
+  "step": "4b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-08-01T17:36:29Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 4b",
+    "requirement_ids": [],
+    "related_handoff_ids": ["WF03-gh391-step04"],
+    "artifacts_in": [
+      "tests/specs/ISS-0125.md",
+      "tests/integration/iss0125_cascade_test.zig"
+    ],
+    "issue_ref": "ISS-0125 / GitHub tvolodi/R-Co#391"
+  },
+  "task": {
+    "description": "Step 4b — validate the test design artefact for ISS-0125. HARD GATE: TEST-RUNNER cannot start until PASS.\n\nRun per-artefact checks (mandatory):\n  python tools/lint_test_isolation.py tests/integration/iss0125_cascade_test.zig   # exit 0, no BLOCKER\n\nThen verify (manual hard-gate checks):\n1. Every MUST requirement of ISS-0125 has a runnable integration test file (not a deferred test, not a placeholder).\n2. No `error.SkipZigTest` on any test in iss0125_cascade_test.zig. (A skipped MUST test = requirement stays PENDING.)\n3. All fixtures use per-test UUIDs (grep the file — confirm no hardcoded tenant IDs / process_definition IDs).\n4. Tests clean up after themselves (use defer h.deinit() pattern; TestHarness rollback-on-deinit isolation).\n5. Tests fail clearly if BPM_TEST_DB_URL is absent (the file checks the env var and reports a clear error, OR it relies on TestHarness.init which already does this — confirm either way).\n6. (MAJOR — does not block PASS, but must be noted) Pipeline step: check `docs/guides/test_developer_guide.md §11.10` for the pipeline inventory. If any of the surfacing tests (TC-ISS-202-02/05, TC-ISS-203-03/04/05, TC-ISS-601-01..09, TC-EE-08-04, TC-EE-10-04/05/06, TC-EXP-202-01/02/03, TC-ES-03-01) has a UI-flow counterpart that requires pl.step(), confirm it. (Most are backend tests with no UI pipeline.)\n\nIf all 5 hard checks pass AND no BLOCKER/MAJOR from lint: PASS.\nIf any hard check fails: FAIL with precise list.",
+    "acceptance_criteria": [
+      "python tools/lint_test_isolation.py exits 0",
+      "All 5 hard checks pass",
+      "No BLOCKER or MAJOR"
+    ],
+    "functions_to_call": ["fn:lint-test-isolation"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PASS — lint exited 0 with no isolation issues. Hard check 1 PASS: all four ISS-0125 MUST acceptance criteria map one-to-one to runnable TC-ISS-0125-01 through TC-ISS-0125-04 test blocks. Hard check 2 PASS: no error.SkipZigTest. Hard check 3 PASS: fixture IDs use per-test std.crypto.random UUIDs, with no hardcoded UUID or process_definition ID. Hard check 4 PASS: all four tests immediately register defer h.deinit(), whose rollback-on-deinit provides cleanup. Hard check 5 PASS: every test calls requireTestDatabaseUrl, which prints a clear message and returns error.MissingTestDatabaseUrl; TestHarness.init independently enforces the same contract. Pipeline assessment: the listed surfacing tests are backend integration tests and no current UI-flow pipeline applies.",
+    "artifacts_out": [
+      "tests/specs/ISS-0125.md",
+      "tests/integration/iss0125_cascade_test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "No UI-flow pipeline applies to ISS-0125 or its listed backend integration surfacing tests under the current pipeline inventory."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-01T17:36:29Z",
+  "completed_at": "2026-08-01T17:38:15Z"
+}

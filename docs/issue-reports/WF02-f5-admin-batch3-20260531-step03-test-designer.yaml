@@ -1,0 +1,32 @@
+run_id: WF02-f5-admin-batch3-20260531
+handoff_id: 989f60e1-dc24-48d5-9b0d-9dc878f7b180
+workflow_id: WF-02
+step: "03-rework1"
+agent: TEST-DESIGNER
+timestamp_utc: 2026-05-30T21:15:59Z
+status: FAIL
+summary: ADM-UI-09 and ADM-UI-10 E2E checks pass; ADM-UI-11 remains blocked because the audit UI fetches /audit while the backend route is /api/v1/audit.
+requirements:
+  - id: ADM-UI-09
+    outcome: PASS
+    evidence:
+      - web/tests/e2e/f5-admin-observability.e2e.spec.ts (TC-ADM-UI-09-01)
+  - id: ADM-UI-10
+    outcome: PASS
+    evidence:
+      - web/tests/e2e/f5-admin-observability.e2e.spec.ts (TC-ADM-UI-10-01)
+  - id: ADM-UI-11
+    outcome: BLOCKED
+    evidence:
+      - web/tests/e2e/f5-admin-observability.e2e.spec.ts (TC-ADM-UI-11-01)
+      - "Playwright error context shows: Failed to load audit entries for the selected filters."
+      - "UI source web/src/api/audit.ts calls client.get('/audit', ...), but backend serves GET /api/v1/audit."
+blockers:
+  - severity: BLOCKER
+    area: audit-viewer
+    description: Audit page fails initial load because frontend audit client requests /audit, which returns 404 from backend (expected route is /api/v1/audit).
+    suggested_owner: FRONTEND-DEV
+    suggested_action: Update web/src/api/audit.ts to call /api/v1/audit, then redispatch TEST-DESIGNER for ADM-UI-11 rerun.
+validation:
+  command: npx playwright test tests/e2e/f5-admin-observability.e2e.spec.ts
+  result: "2 passed, 1 failed"

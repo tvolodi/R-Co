@@ -1,0 +1,56 @@
+{
+  "handoff_id": "20260525-065",
+  "run_id": "WF03-ext02-auditfix-20260525",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-ext02-auditfix-20260525/step-01-issue-fixer.json",
+  "created_at": "2026-05-25T12:30:00Z",
+  "started_at": "2026-05-25T12:30:20Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-02"
+    ],
+    "related_handoff_ids": [
+      "20260525-064",
+      "20260525-063",
+      "20260525-061"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-ext02-20260525/step-03b-test-designer-rework1.json",
+      "tests/reports/report-20260525T120011Z-WF02-ext02-20260525.json",
+      "docs/issue-reports/WF02-ext02-20260525-step-04-test-runner-INNER-REPORT.json",
+      "tests/integration/ext02_webhook_dispatch_test.zig",
+      "src/api/routes/webhooks.zig",
+      "src/webhook/subscription_store.zig",
+      "src/webhook/dispatcher.zig",
+      "src/obs/alerts.zig"
+    ]
+  },
+  "task": {
+    "description": "Diagnose and fix the EXT-02 integration blocker reported by TEST-DESIGNER / TEST-RUNNER: webhook subscription seeding fails with AuditWriteFailed during createSubscription, preventing TC-EXT-02-INT-01..08 from completing. Determine whether the root cause is in subscription persistence, OBS-03 audit writes, transaction handling, or seeded test setup, then apply the minimal backend fix so createSubscription can succeed under integration setup and the EXT-02 integration suite can run end-to-end. Preserve prepared statements and existing API/authz behavior. Touch at most 5 source files. If the issue is actually in the test setup or fixtures rather than source code, fix that instead. Do not change the requirement spec.\n\nREWORK ITERATION 1:\n- [BLOCKER] `createSubscription` still fails with `AuditWriteFailed` after the first backend fix attempt.\n- [BLOCKER] The integration suite in `tests/integration/ext02_webhook_dispatch_test.zig` can seed the admin actor, but the OBS-03 audit insert path inside `src/webhook/subscription_store.zig` still aborts the transaction.\n- [BLOCKER] Compare the webhook create/delete audit transaction flow against the canonical OBS-03 contract in `src/obs/audit.zig` and the audit module design before changing behavior.\n- [BLOCKER] Keep the next attempt focused on the minimal backend fix; do not expand the test scope or requirement spec.",
+    "acceptance_criteria": [
+      "Root cause of AuditWriteFailed is identified and fixed",
+      "EXT-02 integration setup can seed subscriptions successfully",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build test-integration exits 0",
+      "No new regressions are introduced"
+    ],
+    "functions_to_call": [
+      "fn:load-handoff",
+      "fn:load-requirements",
+      "fn:check-zig-build",
+      "fn:run-unit-tests",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": null,
+  "rework_count": 1,
+  "max_rework": 3
+}

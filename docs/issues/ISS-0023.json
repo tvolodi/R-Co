@@ -1,0 +1,55 @@
+{
+  "issue_id": "ISS-0023",
+  "title": "WF03 ADP01/ES07 blocker: archive INSERT used SELECT * after tenant_id migration and silently skipped policy archival",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "A_LOGIC_ERROR",
+  "run_id": "WF03-adp01-es07fix-20260526",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260526-005",
+  "requirement_ids": [
+    "ES-07",
+    "ADP-01"
+  ],
+  "summary": "Resolved TC-ES-07-01 integration blocker by fixing archive SQL in src/event_store/store.zig to explicitly map events columns into events_archive after ADP-01 added tenant_id, and by including the boundary timestamp in keep_days/fallback cutoff comparisons for deterministic immediate archival when keep_days=0.",
+  "root_cause": {
+    "type": "column_mapping_regression_after_additive_schema_change",
+    "details": "migrations/027_adp01_event_store_tenant.sql added tenant_id to events_archive, but Store.archive still inserted with SELECT * , NOW(). Column order no longer aligned, so INSERT attempted invalid mapping and failed. Each archival SQL path swallowed the failure via catch continue, leaving TC-ES-07-01 with zero archived rows."
+  },
+  "resolution": {
+    "strategy": "EXPLICIT_ARCHIVE_COLUMN_MAPPING_AND_BOUNDARY_SAFE_CUTOFF",
+    "changes": [
+      "Replaced all archive INSERT SELECT * statements with explicit events_archive column lists and explicit SELECT projections including tenant_id and NOW() AS archived_at.",
+      "Changed keep_days and fallback retention predicates from < to <= to include boundary timestamps and remove immediate-archive timing flakiness in ES-07 tests."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "zig build",
+        "result": "PASS",
+        "evidence": "BUILD_EXIT_CODE=0"
+      },
+      {
+        "command": "zig build test",
+        "result": "PASS",
+        "evidence": "UNIT_EXIT_CODE=0"
+      },
+      {
+        "command": "zig build test-integration",
+        "result": "PASS",
+        "evidence": "INTEGRATION_EXIT_CODE=0"
+      }
+    ]
+  },
+  "files_changed": [
+    "src/event_store/store.zig"
+  ],
+  "created_at": "2026-05-25T20:54:30Z",
+  "resolved_at": "2026-05-25T20:54:30Z",
+  "prevention": [
+    "Do not use INSERT INTO ... SELECT * across tables that may diverge via additive migrations; always specify target columns and source projections explicitly.",
+    "In retention/archive paths, avoid silent catch continue on SQL execution failures for required archival operations; surface or track failures to prevent hidden data-path regressions.",
+    "When adding tenant columns to event-store tables, re-run ES-07 archival integration tests to verify schema-evolution compatibility."
+  ]
+}

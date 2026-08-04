@@ -1,0 +1,29 @@
+{
+  "run_id": "WF02-obs02-20260524",
+  "created_at": "2026-05-24T15:12:00Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "OBS-02"
+  ],
+  "difficulty": 4,
+  "difficulty_rationale": "Prometheus metrics is a cross-cutting observability feature spanning API exposure, request instrumentation, DB and event latency measurement, and runtime-safe scrape behavior.",
+  "integration_surface": "high",
+  "integration_surface_rationale": "OBS-02 touches API routes/middleware plus event store and DB instrumentation and requires non-blocking runtime metrics collection.",
+  "steps": [
+    "code-designer",
+    "backend-dev",
+    "test-designer",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 182,
+    "backend-dev": 11,
+    "test-designer": 8,
+    "test-runner": 11,
+    "release-validator": 3,
+    "doc-updater": 2,
+    "total": 217
+  }
+}

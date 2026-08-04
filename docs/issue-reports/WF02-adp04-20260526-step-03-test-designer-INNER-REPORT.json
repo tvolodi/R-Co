@@ -1,0 +1,38 @@
+{
+  "report_id": "WF02-adp04-20260526-step-03-test-designer",
+  "agent_id": "TEST-DESIGNER",
+  "run_id": "WF02-adp04-20260526",
+  "step": "03",
+  "created_at": "2026-05-26T03:00:08Z",
+  "summary": "Completed ADP-04 test design deliverables by creating a dedicated ADP-04 spec and extending integration coverage for tenant-bound user creation, legacy default-tenant compatibility/backfill semantics, and tenant isolation in identity/group membership and claim flows, aligned to ADP-04 acceptance criteria.",
+  "files_created": [
+    "tests/specs/ADP-04.md",
+    "docs/issue-reports/WF02-adp04-20260526-step-03-test-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "tests/integration/adp04_user_tenant_binding_test.zig"
+  ],
+  "tests_run": [
+    {
+      "name": "fn:validate-completeness",
+      "status": "pass",
+      "detail": "ADP-04 acceptance criteria are covered by executable test cases mapped in tests/specs/ADP-04.md and implemented in integration tests for default-tenant compatibility, positive same-tenant behavior, and negative cross-tenant isolation scenarios."
+    },
+    {
+      "name": "zig build test-integration",
+      "status": "partial",
+      "detail": "ADP-04 tests compile and execute within suite run, but suite is blocked by pre-existing failure outside ADP-04 scope: TC-IDN-02-03 in tests/integration/idn02_group_management_test.zig (duplicate add-member idempotency expected 200, got internal_error)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MEDIUM",
+      "description": "Pre-existing deterministic integration blocker outside ADP-04 slice: TC-IDN-02-03 fails in IDN-02 suite during full test-integration run.",
+      "classification": "Pre-existing blocker"
+    }
+  ],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-02 Step 4)"
+  ],
+  "blockers": []
+}

@@ -1,0 +1,74 @@
+{
+    "run_id":  "WF02-lua06-16-20260528",
+    "handoff_id":  "7023cc77-dee1-47b1-a077-dbc7c3bfe408",
+    "workflow_id":  "WF-02",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "All implementations in src/lua/ following design document §6 module structure",
+                                             "zig build exits 0 with zero \u0027error set\u0027 warnings",
+                                             "zig build test passes all unit and integration tests",
+                                             "zig build migrate applies all Lua-related schema changes (if any)",
+                                             "Feature branch committed with implementation",
+                                             "No SQL string interpolation or unsafe I/O in transition.zig",
+                                             "All error sets properly typed and propagated"
+                                         ],
+                 "description":  "Implement Lua capability enforcement and resource limits (LUA-06..LUA-16): capability manifest validation, instruction/memory/timeout limits, variable operations, service calls, logging, time source, structured failure handling, and runtime error capture.",
+                 "functions_to_call":  [
+                                           "fn:read-backend-conventions",
+                                           "fn:check-zig-build"
+                                       ]
+             },
+    "max_rework":  3,
+    "created_at":  "2026-05-28T03:34:46Z",
+    "rework_count":  0,
+    "started_at":  null,
+    "from_agent":  "ORCH",
+    "step":  "02",
+    "to_agent":  "BACKEND-DEV",
+    "context":  {
+                    "upstream_design_handoff":  "handoffs/WF02-lua06-16-20260528/step-01-code-designer.json",
+                    "requirement_ids":  [
+                                            "LUA-06",
+                                            "LUA-07",
+                                            "LUA-08",
+                                            "LUA-09",
+                                            "LUA-10",
+                                            "LUA-11",
+                                            "LUA-12",
+                                            "LUA-13",
+                                            "LUA-14",
+                                            "LUA-15",
+                                            "LUA-16"
+                                        ],
+                    "owned_modules":  [
+                                          "src/lua/"
+                                      ],
+                    "stage":  "Stage 8 - Lua Script Execution",
+                    "artifacts_in":  [
+                                         "src/design/lua-integration.md"
+                                     ]
+                },
+    "priority":  "NORMAL",
+    "status":  "COMPLETED",
+    "completed_at":  "2026-05-28T03:43:31Z",
+    "result":  {
+                   "summary":  "Implemented Lua capabilities and resource limits (LUA-06..16): capability manifest validation, instruction/memory/timeout limits, variable operations, service calls, logging, time source, structured failure handling, and runtime error capture.",
+                   "status":  "PASS",
+                   "issues":  [
+
+                              ],
+                   "artifacts_out":  [
+                                         "src/lua/manifest.zig",
+                                         "src/lua/instruction_limiter.zig",
+                                         "src/lua/memory_limiter.zig",
+                                         "src/lua/timeout.zig",
+                                         "src/lua/time_source.zig",
+                                         "src/lua/structured_logger.zig",
+                                         "src/lua/service_catalog.zig",
+                                         "src/lua/events.zig",
+                                         "src/lua/host_api/now.zig",
+                                         "src/lua/host_api/fail.zig"
+                                     ],
+                   "next_action":  "Route to TEST-DESIGNER"
+               }
+}

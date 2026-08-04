@@ -1,0 +1,12 @@
+run_id: WF01-f8-batch2-20260607
+workflow_id: WF-01
+step: '01'
+agent: REQ-ANALYST
+handoff_id: wf01-f8-b2-20260607-001
+status: PASS
+summary: Drafted and restored TM-04 and TM-05 in canonical requirements and seeded VALIDATED status entries.
+artifacts_out:
+  - docs/BPM_Platform_Functional_Requirements.md
+  - docs/status/requirement_status.yaml
+issues: []
+next_action: Route to REQ-VALIDATOR (WF-01 Step 2)

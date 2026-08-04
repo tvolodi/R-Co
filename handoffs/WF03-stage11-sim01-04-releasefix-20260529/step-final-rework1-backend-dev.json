@@ -1,0 +1,64 @@
+{
+  "handoff_id": "19f79f18-f407-4c9a-87c2-01fdf680f9e5",
+  "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+  "workflow_id": "WF-03",
+  "step": "final-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-stage11-sim01-04-releasefix-20260529/step-final-rework1-backend-dev.json",
+  "created_at": "2026-05-29T08:01:33Z",
+  "started_at": "2026-05-29T08:01:36Z",
+  "completed_at": "2026-05-29T08:03:58Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04"
+    ],
+    "related_handoff_ids": [
+      "7981de8e-67f8-4ff8-b49f-6f90c4059e6b"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-stage11-sim01-04-releasefix-20260529/step-final-backend-dev.json"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: complete fn:git-merge for WF03-stage11-sim01-04-releasefix-20260529 from required branch feature/WF03-stage11-sim01-04-releasefix-20260529. Prior attempt failed because current branch was main. Execute full GIT_MERGE protocol, record git_evidence, and return PASS only when push_status=ok.",
+    "acceptance_criteria": [
+      "Branch precondition satisfied",
+      "fn:git-merge completed",
+      "push_status is ok with PR metadata"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Completed fn:git-merge on required branch feature/WF03-stage11-sim01-04-releasefix-20260529: committed final artifacts, pushed branch, created and squash-merged PR #44, and deleted feature branch.",
+    "artifacts_out": [
+      "branch: feature/WF03-stage11-sim01-04-releasefix-20260529 (squash-merged into main, branch deleted)",
+      "PR #44: https://github.com/tvolodi/My-Fab/pull/44",
+      "merge_commit: 607c0a95ac4af43ac12d63c104a95ba45b6c4034"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-stage11-sim01-04-releasefix-20260529",
+      "commit_sha_list": [
+        "bd355716813f210370545e3970dfe585746553d5",
+        "607c0a95ac4af43ac12d63c104a95ba45b6c4034"
+      ],
+      "remote_branch": "origin/feature/WF03-stage11-sim01-04-releasefix-20260529",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/My-Fab/pull/44",
+      "pr_create_error": null
+    },
+    "next_action": "Route to ORCH for run completion."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

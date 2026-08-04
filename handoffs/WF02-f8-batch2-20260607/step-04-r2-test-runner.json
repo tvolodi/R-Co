@@ -1,0 +1,63 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-004-r2",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "04-r2",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-06T23:06:24Z",
+  "started_at": "2026-06-06T23:06:36Z",
+  "completed_at": "2026-06-06T23:08:05Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 test execution rerun 2 after WF-03 fixes",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": [
+      "wf03-f8-b2-r1-20260607-005",
+      "wf02-f8-b2-20260607-004-r1"
+    ],
+    "artifacts_in": [
+      "tests/integration/helpers.zig",
+      "web/tests/e2e/helpers.ts",
+      "web/tests/e2e/tenants.e2e.spec.ts",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "Re-run Step 4 after ISSUE-FIXER PASS (ISS-0067).\n\nExecute full prechecks, then:\n- TM-scoped integration run (using updated test-integration-tm path)\n- TM lifecycle E2E (includes UI-08/UI-09 and previously failing UI-04/UI-05)\n\nWrite report: tests/reports/report-20260607-WF02-f8-batch2-20260607-rerun2.yaml\n\nIf PASS: next_action Route to RELEASE-VALIDATOR (Step 5).",
+    "acceptance_criteria": [
+      "Prechecks pass",
+      "TM integration and TM E2E pass",
+      "Report generated"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Prechecks passed and TM integration passed, but TM E2E failed due to missing required env vars BPM_E2E_ADMIN_USERNAME and BPM_E2E_ADMIN_PASSWORD.",
+    "artifacts_out": [
+      "tests/reports/report-20260607-WF02-f8-batch2-20260607-rerun2.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "TC-TM-UI-04 failed: Missing required env vars for tenants E2E: BPM_E2E_ADMIN_USERNAME and BPM_E2E_ADMIN_PASSWORD"
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "TC-TM-UI-05 failed: Missing required env vars for tenants E2E: BPM_E2E_ADMIN_USERNAME and BPM_E2E_ADMIN_PASSWORD"
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "TC-TM-UI-08 failed: Missing required env vars for tenants E2E: BPM_E2E_ADMIN_USERNAME and BPM_E2E_ADMIN_PASSWORD"
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "TC-TM-UI-09 failed: Missing required env vars for tenants E2E: BPM_E2E_ADMIN_USERNAME and BPM_E2E_ADMIN_PASSWORD"
+      }
+    ],
+    "next_action": "Route to ORCH for WF-03 issue handling of TM E2E environment configuration blocker."
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

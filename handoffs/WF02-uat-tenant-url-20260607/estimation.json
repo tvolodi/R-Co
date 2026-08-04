@@ -1,0 +1,36 @@
+{
+  "run_id": "WF02-uat-tenant-url-20260607",
+  "created_at": "2026-06-07T05:13:36.489437Z",
+  "rules_version": "1.1",
+  "requirement_ids": [
+    "UAT-TM-01",
+    "UAT-TM-02",
+    "UAT-TM-03",
+    "UAT-TM-04"
+  ],
+  "difficulty": 3,
+  "difficulty_rationale": "New feature: pipeline.ts parameterisation + UAT Runner doc update + doc-only schema changes.",
+  "integration_surface": "medium",
+  "integration_surface_rationale": "Touches pipeline.ts (shared E2E helpers), UAT_RUNNER.md, scenario schema doc.",
+  "steps": [
+    "code-designer",
+    "code-design-validator",
+    "backend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 32,
+    "code-design-validator": 15,
+    "backend-dev": 12,
+    "test-designer": 8,
+    "test-design-validator": 10,
+    "test-runner": 4,
+    "release-validator": 2,
+    "doc-updater": 2,
+    "total": 85
+  }
+}

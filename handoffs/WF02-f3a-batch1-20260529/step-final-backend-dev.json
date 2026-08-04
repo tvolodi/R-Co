@@ -1,0 +1,49 @@
+{
+  "handoff_id": "f3a-stepfinal-017",
+  "run_id": "WF02-f3a-batch1-20260529",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-f3a-batch1-20260529/step-final-backend-dev.json",
+  "created_at": "2026-05-30T02:12:58Z",
+  "started_at": "2026-05-30T02:12:58Z",
+  "completed_at": "2026-05-30T02:17:13Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F3 - Instance monitoring",
+    "requirement_ids": ["IN-UI-01", "IN-UI-02", "IN-UI-03", "IN-UI-04"],
+    "related_handoff_ids": ["f3a-step06-016"],
+    "artifacts_in": [
+      "docs/status/requirement_status.yaml",
+      "docs/status/release-stage-F3-batch1-2026-05-30.json",
+      "CHANGELOG.md"
+    ]
+  },
+  "task": {
+    "description": "Execute fn:git-merge for WF02-f3a-batch1-20260529. The original feature branch (feature/WF02-f3a-batch1-20260529) was already created and pushed in Step 00. Since the implementation was done on that branch and all intervening WF-03 fixes were merged to main, you need to: 1) Create a new feature branch from current main, 2) Commit all pending changes (status docs, test reports, handoffs, changelog), 3) Create a PR, 4) Merge with squash, 5) Delete branch. Follow docs/agents/protocols/GIT_MERGE.md.",
+    "acceptance_criteria": [
+      "All pending changes committed and pushed",
+      "PR created and merged via squash",
+      "Feature branch deleted from GitHub",
+      "push_status: ok in result"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Git merge completed for WF02-f3a-batch1-20260529. PR #55 squash-merged to main, feature branch deleted.",
+    "artifacts_out": [
+      "PR #55: https://github.com/tvolodi/My-Fab/pull/55",
+      "Merge commit: d22c132"
+    ],
+    "issues": [],
+    "branch_name": "feature/WF02-f3a-batch1-final-20260530",
+    "commit_sha": "d22c132",
+    "pr_url": "https://github.com/tvolodi/My-Fab/pull/55",
+    "push_status": "ok"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

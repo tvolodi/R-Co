@@ -1,0 +1,46 @@
+{
+  "handoff_id": "wf03-iss0100-step-02e",
+  "run_id": "WF03-iss0100-20260731",
+  "step": "02e",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-07-31T13:58:48Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 issue resolving — design fix for ISS-0105 (blocks final closure of #357)",
+    "requirement_ids": ["ISS-0100", "ISS-0105"],
+    "related_handoff_ids": ["wf03-iss0100-step-05b"],
+    "artifacts_in": [
+      "docs/issues/ISS-0105.json",
+      "tests/integration/test_iss503_rls_removal.zig",
+      "migrations/GBL-084_rls_removal.sql",
+      "migrations/GBL-102_iss503_guard_tenant_type_scope.sql",
+      "migrations/GBL-103_iss0100_guard_tc_slug_scope.sql"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/363"
+  },
+  "task": {
+    "description": "Design a fix for ISS-0105 (GitHub #363, BLOCKER): db_integration_test.zig's TC-DB-01-01/TC-DB-01-02 (the original #357 symptom) still fail under concurrent `zig build test-integration` because tests/integration/test_iss503_rls_removal.zig's TC-ISS503-01/02/03 deliberately re-execute GBL-084_rls_removal.sql's RAW, UNSCOPED guard SQL directly via conn.simpleQuery() (bypassing the normal gated migration-runner path entirely, by design, per that file's own header comment — this is necessary to test GBL-084's own guard/DDL behavior independent of whether it's already recorded as applied). GBL-102/GBL-103 only scope the guard used by the GATED path (src/db/migrations.zig's Migrations.run()); they never touch GBL-084's own file content, so this raw re-execution is completely unaffected by either. Additionally, TC-ISS503-02/03 issue an UNQUALIFIED, TABLE-WIDE `UPDATE public.tenant SET storage_mode = 'SCHEMA' WHERE storage_mode = 'LEGACY_RLS'` inside their own uncommitted transaction — affecting every LEGACY_RLS row in the shared table, not just rows they own — before rolling back. Under zig build test-integration's default concurrent execution (~24 binaries against one shared bpm_test DB), this collides with db_integration_test.zig's own TestHarness.init() calls at exactly the moments ISS-0100's fix was trying to protect. Read docs/issues/ISS-0105.json in full for the complete evidence trail (TEST-RUNNER's schema_migrations timestamp forensics, etc.). Design a fix implementing candidate resolution (a) from that issue: scope GBL-084's OWN raw guard clause the same way GBL-102/GBL-103 scope the gated path's guard (add the same tenant_type='production' AND slug NOT LIKE 'tc-%' narrowing, or determine if a different scoping is more appropriate for THIS file specifically, e.g. since this file's own TC-ISS503-01 deliberately creates a row via createTenantRow() with a slug that may or may not be tc-prefixed — check it). Since GBL-084's file is directly read from disk and re-executed as raw SQL text (not through the migration runner's applied-tracking), editing migrations/GBL-084_rls_removal.sql IN PLACE is actually the correct approach here (unlike GBL-102/103's own 'never edit an applied migration in place' reasoning, which applies to the GATED path — this file is read fresh from disk every time TC-ISS503-01/02/03 call readGbl084Sql(), so an in-place edit DOES take effect immediately for this test, and does NOT need a new migration file, since GBL-084's normal gated-path behavior is unaffected either way once GBL-102/103 already handle that path). Verify this asymmetry carefully — it may seem inconsistent with GBL-102/103's own file-history but is justified by the different execution mechanism. If in-place editing GBL-084 is deemed unsafe for some reason you discover, propose the alternative. Also determine whether TC-ISS503-01's own createTenantRow()-created tenant needs its slug adjusted to remain tc-prefixed so the scoped guard still fires as TC-ISS503-01 expects (it specifically tests that the guard BLOCKS when a LEGACY_RLS tenant exists — if that tenant's slug becomes exempt by the new scoping, TC-ISS503-01 itself would break). Read the actual test code and reason through this carefully — do not just add the scoping and assume the test still passes conceptually.",
+    "acceptance_criteria": [
+      "Fix scopes GBL-084's raw guard clause consistently with GBL-102/GBL-103's scoping logic (tenant_type='production' AND slug NOT LIKE 'tc-%', or a justified variant)",
+      "Explicit reasoning for in-place edit vs new file, specific to this raw-re-read execution mechanism (different from GBL-102/103's own migration-runner-gated reasoning)",
+      "TC-ISS503-01/02/03's own test logic is checked for continued correctness given the new scoping — if their own fixture tenant slugs would now be exempted, the design specifies exactly how to adjust them so the tests still validate real guard-blocking behavior",
+      "Confirms no regression to the already-shipped GBL-102/GBL-103/lint/iss107 fixes",
+      "File count estimate — likely 1-2 files (GBL-084 SQL edit + possibly the test file if slugs need adjusting)",
+      "No implementation code — prose design"
+    ],
+    "functions_to_call": ["fn:read-backend-conventions"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Designed the ISS-0105 fix: scope migrations/GBL-084_rls_removal.sql's own raw pre-flight guard clause in place, adding the same tenant_type='production' AND slug NOT LIKE 'tc-%' narrowing GBL-102/GBL-103 already apply to the gated migration-runner path's effective guard. Decision: in-place edit (not a new GBL-1xx file), because GBL-084's file is consumed via two distinct mechanisms — the gated runner (schema_migrations-tracked, applied-filename skip logic, which is why GBL-102/103 had to be new files) and test_iss503_rls_removal.zig's readGbl084Sql()+simpleQuery() raw re-execution (no applied-tracking at all, reads the file fresh from disk on every test run). Only the raw-execution mechanism is exposed to the unscoped guard today; an in-place edit takes effect immediately for it and does not disturb the gated path, which GBL-102/103 already fully handle independent of GBL-084's own guard content. Verified TC-ISS503-01's createTenantRow() fixture (slug 'iss503-<suffix>', tenant_type omitted -> defaults to 'production') is NOT exempted by the new scoping (not tc-prefixed, is tenant_type='production'), so the guard still fires and TC-ISS503-01 needs no change. Verified TC-ISS503-02/03's countLegacyRlsTenants() is intentionally unscoped (sanity-checks their own unscoped table-wide UPDATE) and their post-UPDATE guard pass-path is unaffected by the new scoping since the UPDATE already zeroes every LEGACY_RLS row, scoped subset included. Confirmed no regression to GBL-102, GBL-103, tools/lint_test_isolation.py (T060 — statically scans test source, does not read migration files; test_iss503_rls_removal.zig's createTenantRow() slug is a $2 placeholder so was never T060-flagged and remains unflagged), or the already-shipped iss107_tenant_storage_mode_test.zig cleanup fix.",
+    "artifacts_out": ["src/design/iss0105-gbl084-raw-guard-scoping.md"],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-07-31T13:58:48Z",
+  "completed_at": "2026-07-31T14:02:43Z"
+}

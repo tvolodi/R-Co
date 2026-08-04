@@ -1,0 +1,44 @@
+{
+  "handoff_id": "WF03-gh388-rootcause-20260802-step02b",
+  "run_id": "WF03-gh388-rootcause-20260802",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-02T18:35:09Z",
+  "started_at": "2026-08-02T18:35:09Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Design validation (hard gate)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh388-rootcause-20260802-step02"
+    ],
+    "artifacts_in": [
+      "src/design/iss0122_chain_hash_fix.md"
+    ]
+  },
+  "task": {
+    "description": "Step 2b of WF-03 ISS-0122 root cause: validate the design.\n\nProcedure:\n\n1. `git branch --show-current` \u2014 confirm `feature/WF03-gh388-rootcause-20260802`.\n\n2. Read design at `src/design/iss0122_chain_hash_fix.md`.\n\n3. Run `python tools/lint_design_artefact.py src/design/iss0122_chain_hash_fix.md` \u2014 must exit 0.\n\n4. Per-artefact checks:\n   - All required sections present (Purpose, Errors, API contract, Fix A, Fix B, Files to change, Acceptance criteria, Out of scope, Risks & mitigations)\n   - Risks table has \u22653 rows\n   - Acceptance criteria includes specific pass/fail commands\n   - No implementation code (only schemas and test snippets)\n\n5. Update handoff file `handoffs/WF03-gh388-rootcause-20260802/step-02b-code-design-validator.json`:\n   - status = COMPLETED\n   - result.status = PASS or FAIL\n   - result.summary = brief\n   - result.next_action = \"Route to BACKEND-DEV (Step 3)\" on PASS\n   - completed_at = (Get-Date).ToUniversalTime().ToString(\"yyyy-MM-ddTHH:mm:ssZ\") \u2014 exact output\n\n6. Update handoffs/registry.json.\n\nReturn: pass/fail, lint exit code.",
+    "acceptance_criteria": [
+      "Lint exit 0",
+      "All sections present",
+      "Hard gate cleared"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/iss0122_chain_hash_fix.md validated. lint_design_artefact.py exit 0 (0 BLOCKER, 0 MAJOR, 1 MINOR). All 9 required sections present (Purpose, Errors, API contract, Fix A, Fix B, Files to change, Acceptance criteria, Out of scope, Risks & mitigations). Risks table has 6 rows (>=3 required). Acceptance criteria lists 9 verifiable items including zig build, zig build test-integration-iss0122, and lint_sql_param_types.py. No implementation code present -- only function signatures, SQL templates for migration 1111, and TC-04 Zig snippet illustrating the $1::text removal. Branch confirmed: feature/WF03-gh388-rootcause-20260802.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Line 176 references information_schema.check_constraints; lint flagged as E030 unqualified-name preference. Non-blocking -- informational only, mentions the preflight query that confirms no CHECK constraint exists on resource_id."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-02T18:35:43Z"
+}

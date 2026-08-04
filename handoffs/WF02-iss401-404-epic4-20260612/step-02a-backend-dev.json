@@ -1,0 +1,53 @@
+{
+  "handoff_id": "4a19e114-03ee-4518-80a7-0bc51ba1e82a",
+  "run_id": "WF02-iss401-404-epic4-20260612",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-12T12:17:42Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-4 / ISS-401..404",
+    "requirement_ids": [
+      "ISS-401",
+      "ISS-402",
+      "ISS-403",
+      "ISS-404"
+    ],
+    "related_handoff_ids": [
+      "e53e30fe-964f-40e2-aa3b-8fefd8645a22"
+    ],
+    "artifacts_in": [
+      "src/design/iss401_shared_rate_limiter.md",
+      "src/design/iss402_oidc_cache_revocation.md",
+      "src/design/iss403_oidc_rate_limit_keying.md",
+      "src/design/iss404_token_role_snapshot.md",
+      "src/api/middleware/auth.zig",
+      "src/oidc/",
+      "src/identity/service.zig",
+      "src/config/"
+    ]
+  },
+  "task": {
+    "description": "Implement ISS-401..404 on branch feature/WF02-iss401-404-epic4-20260612. Follow design docs exactly.\n\nISS-401 (src/api/middleware/rate_limit.zig, src/config/*):\n- Sliding-window rate limiter middleware using PostgreSQL (BPM_RATE_LIMIT_BACKEND=postgres)\n- Table: CREATE TABLE IF NOT EXISTS rate_limit_buckets (key TEXT, window_start BIGINT, count INT, PRIMARY KEY(key, window_start))\n- Logic: on each request, prune old windows; count current window; if over limit \u2192 429 + Retry-After\n- Config: BPM_RATE_LIMIT_MAX_RPM, BPM_RATE_LIMIT_BACKEND validated at startup\n- Key = concat(tenant_id, ':', principal)\n\nISS-402 (src/oidc/jwks.zig, src/api/middleware/auth.zig):\n- OIDC token validation: fetch JWKS from issuer, verify signature, extract claims\n- Cache valid tokens in LRU keyed by (realm, jti) with TTL = min(exp - now, 5min)\n- Revocation: jti denylist (std.StringHashMap with timestamp), entries expire after token.exp\n- On realm logout: add all active jti for that realm to denylist\n\nISS-403 (src/api/middleware/rate_limit.zig):\n- After OIDC auth succeeds: principal = concat(realm, ':', sub)\n- After local token auth: principal = api_token.id (as string)\n- Rate-limit key = concat(tenant_id, ':', principal)\n\nISS-404 (src/identity/service.zig):\n- Token issuance: copy user_roles into api_tokens.roles[] at creation time\n- Token validation: read roles from api_tokens.roles[] (token snapshot), never from user_roles\n- Document: changing user_roles does not retroactively alter issued tokens\n- Test: issue token, change user_roles, verify token roles unchanged\n\nRun: zig build (exit 0), zig build test (exit 0), zig build 2>&1 | grep -i 'error set' (must be empty).\nNo I/O in transition.zig. No SQL string interpolation. Commit and push.",
+    "acceptance_criteria": [
+      "ISS-401: rate limiter middleware, sliding window in postgres, 429+Retry-After, config validation",
+      "ISS-402: OIDC JWKS validation, (realm,jti) cache, jti denylist, realm logout revocation",
+      "ISS-403: OIDC principal rate-limit keying integrated with ISS-401/402",
+      "ISS-404: token roles snapshot at issuance, validation reads from token not user_roles",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "No I/O in transition.zig"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-12T12:17:42Z",
+  "completed_at": null
+}

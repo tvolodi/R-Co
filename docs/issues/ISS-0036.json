@@ -1,0 +1,30 @@
+{
+  "issue_id": "ISS-0036",
+  "title": "EE-03 TaskStore has zero integration test coverage — all unit tests unconditionally skip",
+  "status": "OPEN",
+  "severity": "CRITICAL",
+  "category": "C_TEST_COVERAGE",
+  "run_id": "AUDIT-test-20260527",
+  "workflow_id": null,
+  "handoff_id": null,
+  "requirement_ids": [
+    "EE-03"
+  ],
+  "summary": "tests/unit/test_tasks_store.zig contains 10 test cases (including TC-EE-03-07, TC-EE-03-08, STC-01 through STC-04) but every single one unconditionally returns error.SkipZigTest. The file's header comment says these are 'stubbed with error.SkipZigTest until TEST-RUNNER executes them against PostgreSQL'. No integration test file covering TaskStore operations (TaskStore.createInTx, TaskStore.list) exists anywhere in tests/integration/. The DB schema, create-in-transaction, and list-with-filters logic for EE-03 tasks are completely untested against a real database.",
+  "root_cause": {
+    "type": "test_implementation_deferred_indefinitely",
+    "details": "Unit test stubs were created as placeholders when TEST-DESIGNER initially wrote the test spec. The intent was to convert them to integration tests, but no subsequent handoff to TEST-DESIGNER created the integration test file. Because unit tests skip silently with exit 0, the gap was invisible."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [
+    "tests/integration/tasks_store_test.zig",
+    "tests/integration/main_test.zig"
+  ],
+  "created_at": "2026-05-27T12:00:00Z",
+  "resolved_at": null,
+  "prevention": [
+    "Any test file that returns error.SkipZigTest unconditionally for ALL test cases must be treated as a critical coverage gap, not a passing test, and flagged immediately.",
+    "Each requirement's acceptance criteria should include 'integration test file exists in tests/integration/ and is wired in main_test.zig' as a mandatory check."
+  ]
+}

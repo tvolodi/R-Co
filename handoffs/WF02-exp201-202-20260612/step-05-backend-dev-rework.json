@@ -1,0 +1,58 @@
+{
+  "handoff_id": "exp201-202-backend-dev-05-rework",
+  "run_id": "WF02-exp201-202-20260612",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-12T20:48:09Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Epic 2 Run 1 Rework (Fix Schema References)",
+    "requirement_ids": ["EXP-201", "EXP-202"],
+    "artifacts_in": [
+      "src/entities/commands.zig",
+      "tests/integration/exp201_202_entities_test.zig",
+      "handoffs/WF02-exp201-202-20260612/step-04-test-runner.json"
+    ],
+    "branch_name": "feature/WF02-exp201-202-20260612"
+  },
+  "task": {
+    "description": "Fix table reference errors in src/entities/commands.zig found during integration tests.\n\n1. Search for unqualified table references 'process_events', 'event_store', 'dlq', and 'entity_record_latest'.\n2. Note that these tables now reside in tenant-specific schemas (e.g., 'tenant_default'). Since the search_path is set to 'tenant_default', check if the SQL queries need explicit schema qualification or if the connection configuration is dropping the search_path.\n3. Fix the 'Relation \"process_events\" does not exist' error in updateProjection and createRecord.\n4. Investigate why 'zig build migrate' is skipping migrations on the test database (bpm_test).\n5. Verify EXP-201/202 integration tests in tests/integration/exp201_202_entities_test.zig pass.",
+    "acceptance_criteria": [
+      "All unqualified table references are resolved (either via search_path or explicit schema)",
+      "Integration tests pass without PgError.ServerError (Relation missing)",
+      "Migration skip issue identified and resolved"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Implemented and pushed tenant-schema SQL fixes for entity commands and integration harness migration-path fix; stale test-path expectation was replaced with tests/integration/exp201_202_entities_test.zig for branch alignment.",
+    "artifacts_out": [
+      "src/entities/commands.zig",
+      "tests/integration/helpers.zig"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Original handoff referenced a missing test file on feature/WF02-exp201-202-20260612; use tests/integration/exp201_202_entities_test.zig for EXP-201/202 integration verification."
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF02-exp201-202-20260612",
+      "commit_sha_list": [
+        "7ea563d925ce3c9bf58644910b143757137b3ad4"
+      ],
+      "remote_branch": "origin/feature/WF02-exp201-202-20260612",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to ORCH for branch/test-artifact alignment before rerun"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-06-14T04:35:45Z",
+  "completed_at": "2026-06-14T04:49:24Z"
+}

@@ -1,0 +1,52 @@
+{
+  "handoff_id": "wf03-spt01-schema-20260607-004",
+  "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
+  "workflow_id": "WF-03",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-07T01:36:31Z",
+  "started_at": "2026-06-07T01:36:31Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — SPT-01 onboarding schema provisioning gap (test design)",
+    "requirement_ids": ["SPT-01"],
+    "related_handoff_ids": ["wf03-spt01-schema-20260607-003"],
+    "artifacts_in": [
+      "src/design/iss-0068-onboarding-schema-provisioning.md",
+      "docs/issues/ISS-0068.json",
+      "src/identity/onboarding.zig",
+      "src/db/provisioning.zig",
+      "migrations/069_retroactive_tenant_schema_provision.sql",
+      "migrations/070_retroactive_tenant_schema_provision_backfill_fix.sql"
+    ]
+  },
+  "task": {
+    "description": "Write test specs and integration test(s) for the ISS-0068 fix (SPT-01 onboarding schema provisioning wiring).\n\nSPEC FILE: tests/specs/SPT-01-iss0068-onboarding-schema.md\n\nTest cases required:\n\nTC-SPT-01-ISS68-01: After executeSaga() completes for a new tenant, public.tenant_schemas contains exactly one row for that tenant's UUID, and information_schema.schemata contains the matching schema name.\n  - Setup: provision a fresh test tenant via provisionTenantSchema() directly (or execute the full saga if the test harness permits; prefer direct provisionTenantSchema call for isolation).\n  - Gate: verify tenant_schemas count > 0 for the tenant_id.\n  - Teardown: clean up the tenant schema and registry row.\n\nTC-SPT-01-ISS68-02: The retroactive migration (069/070) provisions schemas for tenants that pre-existed the fix — i.e. any tenant in public.tenant that had no row in public.tenant_schemas before migration was run. Since migration 069/070 has already run, verify that public.tenant_schemas count equals public.tenant count.\n  - Setup: none (migration already applied).\n  - Assert: SELECT count(*) FROM tenant_schemas = SELECT count(*) FROM tenant.\n  - Assert: schema 'tenant_default' exists in information_schema.schemata.\n\nTC-SPT-01-ISS68-03: provisionTenantSchema() is idempotent — calling it twice for the same tenant_id does not raise an error and results in exactly one row in tenant_schemas.\n\nAll test cases MUST:\n- Connect to a real PostgreSQL DB via BPM_TEST_DB_URL\n- Use per-test UUIDs (no hardcoded slugs)\n- Clean up their own schemas and registry rows on completion (pass or fail)\n- Never use error.SkipZigTest\n\nTest source file: tests/integration/spt01_iss0068_onboarding_schema_test.zig\n\nSet next_action: 'Route to TEST-DESIGN-VALIDATOR (Step 4b)'",
+    "acceptance_criteria": [
+      "tests/specs/SPT-01-iss0068-onboarding-schema.md created",
+      "tests/integration/spt01_iss0068_onboarding_schema_test.zig created",
+      "All test cases connect to real PostgreSQL",
+      "All test cases clean up on both pass and fail",
+      "No error.SkipZigTest",
+      "All tests added to build.zig test-integration step"
+    ],
+    "functions_to_call": ["fn:read-test-guide"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and integration tests for SPT-01 ISS-0068 onboarding schema provisioning wiring implemented and wired into test-integration.",
+    "artifacts_out": [
+      "tests/specs/SPT-01-iss0068-onboarding-schema.md",
+      "tests/integration/spt01_iss0068_onboarding_schema_test.zig",
+      "build.zig",
+      "docs/issue-reports/WF03-spt01-onboarding-schema-missing-20260607-step-04-test-designer-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 4b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-07T01:39:32Z"
+}

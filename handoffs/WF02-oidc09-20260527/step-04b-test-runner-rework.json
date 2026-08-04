@@ -1,0 +1,58 @@
+{
+  "handoff_id": "20260527-019",
+  "run_id": "WF02-oidc09-20260527",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-oidc09-20260527/step-04b-test-runner-rework.json",
+  "created_at": "2026-05-27T19:32:37Z",
+  "started_at": "2026-05-27T19:39:15Z",
+  "completed_at": "2026-05-27T19:39:43Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-09"
+    ],
+    "related_handoff_ids": [
+      "20260527-013",
+      "20260527-014",
+      "20260527-015",
+      "20260527-016",
+      "20260527-017",
+      "20260527-018"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-WF02-oidc09-20260527-step04.json",
+      "tests/integration/oidc09_jit_provisioning_test.zig",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "RE-RUN: Run the OIDC-09 integration tests now that the module conflict is fixed in build.zig.\n\nCommands:\n1. zig build (must exit 0)\n2. zig build test (must exit 0)\n3. zig build test-integration-oidc09 (must exit 0) \u2014 use BPM_TEST_DB_URL env var\n\nWrite updated test report to tests/reports/report-WF02-oidc09-20260527-step04b.json.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build test-integration-oidc09 exits 0",
+      "Test report written to tests/reports/"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "OIDC-09 re-run: zig build, zig build test, zig build test-integration-oidc09 all passed. Module conflict resolved.",
+    "artifacts_out": [
+      "tests/reports/report-WF02-oidc09-20260527-step04b.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

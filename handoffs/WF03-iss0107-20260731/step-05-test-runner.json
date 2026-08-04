@@ -1,0 +1,64 @@
+{
+  "handoff_id": "e281591d-eee1-40b8-a397-151bc6277c4c",
+  "run_id": "WF03-iss0107-20260731",
+  "workflow_id": "WF-03",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-iss0107-20260731/step-05-test-runner.json",
+  "created_at": "2026-07-31T20:32:03Z",
+  "started_at": "2026-07-31T20:32:41Z",
+  "completed_at": "2026-07-31T20:53:13Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "b708c267-4acb-45b7-8320-ca32a499125b"
+    ],
+    "artifacts_in": [
+      "tests/integration/helpers.zig",
+      "docs/issues/ISS-0107.json",
+      "docs/issues/ISS-0108.json"
+    ],
+    "branch_name": "feature/WF03-iss0107-20260731"
+  },
+  "task": {
+    "description": "WF-03 Step 5 (Verify) for ISS-0107 / GitHub #366, after 2 rounds of design rework. BACKEND-DEV's final implementation (tests/integration/helpers.zig) widens the bpm_test_migrations_public advisory-lock scope to cover resetTestData()/applyCompatibilityShims() AND scopes lock_timeout to 90s around just the widened acquire (restored to 5s immediately after). Across 2 full zig build test-integration runs, BACKEND-DEV confirmed: zero 40P01 deadlocks, zero 55P03 lock-timeout-cancellations at the widened acquire specifically (1 unrelated 55P03 elsewhere in each run, in sch02_timer_polling_test.zig, not connected to this fix). Pass counts: run1 544 passed/92 failed/645 total; run2 573 passed/82 failed/664 total -- both better than the original 103-failed baseline. HOWEVER TC-DB-01-01/TC-DB-01-02 still FAIL in both runs, root-caused to a SEPARATE, already-filed issue: ISS-0108 (GitHub #368) -- an unqualified `schema_migrations` reference in db_integration_test.zig resolves to a stray, actively-recreated tenant_default.schema_migrations shadow table (recreated by sibling binaries' own tenant-schema provisioning during the SAME run, not just a one-time historical artifact), PLUS a second, distinct defect where TC-DB-01-01's table-list assertion checks for tables that migration GBL-073 intentionally relocated out of public. Your job: run the standard Step 5 verification pass and produce an authoritative report, similar in spirit to the ISS-0106 verification you did earlier in this session. Do NOT attempt to fix ISS-0108 -- it is out of scope, already filed, and has 2 distinct sub-causes that need their own diagnosis. Focus your verdict on: (1) does this fix (the widened lock + scoped timeout) introduce any regression, (2) is the specific 40P01/55P03 mechanism this issue targets genuinely eliminated in your own independent run, (3) explicitly attribute remaining TC-DB-01-01/02 failures to ISS-0108, not to ISS-0107 remaining unfixed.",
+    "acceptance_criteria": [
+      "fn:run-unit-tests full suite executed, no new regressions vs baseline",
+      "fn:run-integration-tests full suite executed (zig build test-integration)",
+      "Report explicitly states whether 40P01 deadlocks and 55P03-at-the-widened-acquire are both confirmed absent in this run",
+      "Report explicitly attributes any TC-DB-01-01/02 failure to ISS-0108, not to ISS-0107",
+      "Test report written to tests/reports/report-<date>-WF03-iss0107-20260731-step05-verify.yaml"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Independent verification of ISS-0107/#366 fix (rework 1) in tests/integration/helpers.zig. Ran zig build (PASS, exit 0), zig build test (PASS, exit 0, 667 tests, no regressions -- after correcting BPM_TEST_DB_URL from the ambient stale port 5433 to the actually-running container's port 5434), and zig build test-integration TWICE (results looked ambiguous after run 1's high failure count, so a second confirmation run was executed per task instructions). Run 1: 563 passed/93 failed/9 skipped/665 total, 1 deadlock (40P01, confirmed unrelated to the widened critical section -- traces to a plain query in iss0091_harness_tracker_unification_test.zig, not helpers.zig:486-488), 2x 55P03 (1 at the pre-existing, un-widened runMigrations() acquire at helpers.zig:99; 1 unrelated row-lock wait in sch02_timer_polling_test.zig). Run 2: 537 passed/69 failed/9 skipped/615 total, 0 deadlocks, 1x 55P03 (the same unrelated sch02_timer_polling_test.zig row-lock). Zero 40P01/55P03 occurrences in either run trace to the widened advisory-lock acquire (helpers.zig:486-488) that this fix targets -- confirmed via explicit grep for those line numbers against both full logs (zero matches). TC-DB-01-01/TC-DB-01-02 still fail in both runs with the exact ISS-0108 (GitHub #368) signature (unqualified schema_migrations reference resolving to a tenant-schema shadow table, confirmed via 'relation \"tenant_<uuid>.schema_migrations\" does not exist' immediately preceding each failure) -- not a new or different mechanism. Both runs' pass/fail totals are in the same improvement range as BACKEND-DEV's own 2 runs and a substantial improvement over the original 103-failed/22-deadlock baseline.",
+    "artifacts_out": [
+      "tests/reports/report-20260731-WF03-iss0107-20260731-step05-verify.yaml"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0107-VERIFIED-NO-REGRESSION",
+        "severity": "INFO",
+        "description": "40P01 deadlock mechanism and 55P03-at-the-widened-acquire both confirmed absent/eliminated across 2 independent zig build test-integration runs. No regression to zig build or zig build test."
+      },
+      {
+        "id": "TC-DB-01-STILL-FAILING-VIA-ISS-0108",
+        "severity": "BLOCKER",
+        "description": "TC-DB-01-01/TC-DB-01-02 still fail overall due to ISS-0108 (GitHub #368, unqualified schema_migrations reference resolving to a tenant shadow schema) -- expected, out of ISS-0107's scope, and already separately tracked. Recommend ORCH proceed to Step 7 for ISS-0107 specifically; continue ISS-0108 under its own track."
+      }
+    ],
+    "next_action": "Recommend ORCH proceed to Step 7 (Doc Update) for ISS-0107; TC-DB-01-01/02 remain blocked by separately-tracked ISS-0108"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

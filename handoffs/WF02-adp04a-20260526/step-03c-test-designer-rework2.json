@@ -1,0 +1,73 @@
+{
+  "handoff_id": "20260526-037",
+  "run_id": "WF02-adp04a-20260526",
+  "workflow_id": "WF-02",
+  "step": "03c",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-adp04a-20260526/step-03c-test-designer-rework2.json",
+  "created_at": "2026-05-26T04:34:00Z",
+  "started_at": "2026-05-26T04:34:20Z",
+  "completed_at": "2026-05-26T04:42:23Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-04a"
+    ],
+    "related_handoff_ids": [
+      "20260526-001",
+      "20260526-010",
+      "20260526-016",
+      "20260526-022",
+      "20260526-023",
+      "20260526-024",
+      "20260526-025",
+      "20260526-026",
+      "20260526-027",
+      "20260526-028",
+      "20260526-029",
+      "20260526-030",
+      "20260526-031",
+      "20260526-032",
+      "20260526-033",
+      "20260526-034",
+      "20260526-035",
+      "20260526-036"
+    ],
+    "artifacts_in": [
+      "tests/specs/ADP-04a.md",
+      "tests/reports/WF02-adp04a-20260526-step-04-test-runner.md",
+      "tests/integration/adp04a_external_identity_linkage_test.zig",
+      "tests/reports/WF02-adp04a-20260526-step-04-test-runner.log"
+    ]
+  },
+  "task": {
+    "description": "REWORK 2:\n- [MAJOR] TC-ADP-04a-06 still lacks a dedicated automated case. The rerun confirms the integration suite passes, but the current test source does not contain a specific case proving NULL-linkage coexistence plus duplicate non-NULL realm/sub rejection and index/backfill proof.\n\nChange approach: add or extend automated test code under tests/integration so TC-ADP-04a-06 is implemented as a concrete test case, not only documented in the spec. Cover all of these in code: 1) multiple internal users with NULL external linkage coexist without conflict; 2) duplicate non-NULL (external_realm, external_id) rejection; 3) unique index shape or metadata proof if needed; and 4) any legacy migration/backfill fixture required to prove compatibility. Keep scope limited to test source and spec artifacts; do not touch implementation code.",
+    "acceptance_criteria": [
+      "TC-ADP-04a-06 is implemented as a concrete automated test case",
+      "The test source covers duplicate non-NULL rejection and multiple NULL coexistence",
+      "Any migration/backfill fixture needed to prove compatibility is included",
+      "No implementation code is modified",
+      "Output remains ready for TEST-RUNNER"
+    ],
+    "functions_to_call": [
+      "fn:read-test-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented TC-ADP-04a-06 as a concrete integration test with NULL-linkage coexistence, duplicate external identity rejection, and unique index metadata proof.",
+    "artifacts_out": [
+      "tests/integration/adp04a_external_identity_linkage_test.zig",
+      "docs/issue-reports/WF02-adp04a-20260526-step-03c-test-designer-rework2-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

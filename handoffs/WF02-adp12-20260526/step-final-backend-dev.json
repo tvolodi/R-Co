@@ -1,0 +1,75 @@
+{
+  "handoff_id": "20260526-111",
+  "run_id": "WF02-adp12-20260526",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-adp12-20260526/step-final-backend-dev.json",
+  "created_at": "2026-05-26T18:45:00Z",
+  "started_at": "2026-05-26T18:45:20Z",
+  "completed_at": "2026-05-26T18:50:42Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-12"
+    ],
+    "related_handoff_ids": [
+      "20260526-101",
+      "20260526-102",
+      "20260526-103",
+      "20260526-104",
+      "20260526-105",
+      "20260526-108",
+      "20260526-109",
+      "20260526-110"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_MERGE.md",
+      "handoffs/WF02-adp12-20260526/step-06-doc-updater.json",
+      "docs/status/release-ADP-12-20260526.json"
+    ]
+  },
+  "task": {
+    "description": "Execute WF-02 final git wrapper gate for run WF02-adp12-20260526 by performing fn:git-merge exactly per docs/agents/protocols/GIT_MERGE.md. Rebase feature/WF02-adp12-20260526 onto origin/main, push, create PR (or record PR creation error), merge via approved workflow, and capture full git evidence fields.",
+    "acceptance_criteria": [
+      "Result status is PASS",
+      "result.git_evidence.branch_name is feature/WF02-adp12-20260526",
+      "result.git_evidence.commit_sha_list is non-empty",
+      "result.git_evidence.remote_branch is non-empty",
+      "result.git_evidence.push_status is ok",
+      "result.git_evidence includes pr_url or pr_create_error"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Executed fn:git-merge for WF02-adp12-20260526: rebased feature branch on origin/main, pushed, created PR #2, squash-merged, and cleaned up to main.",
+    "artifacts_out": [
+      "branch: feature/WF02-adp12-20260526 (squash-merged into main, branch deleted)",
+      "pr: https://github.com/tvolodi/My-Fab/pull/2"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-adp12-20260526",
+      "commit_sha_list": [
+        "18ecf14",
+        "7b8afbd"
+      ],
+      "remote_branch": "origin/feature/WF02-adp12-20260526",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/My-Fab/pull/2",
+      "merge_status": "ok",
+      "post_merge_branch": "main",
+      "post_merge_pull_ff_only": "ok",
+      "post_merge_branch_delete": "ok"
+    },
+    "next_action": "ORCH marks run COMPLETED and releases owned_modules lock"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,45 @@
+{
+  "handoff_id": "a0b1c2d3-e4f5-4a6b-8c7d-9e0f1a2b3c4d",
+  "run_id": "WF03-sch05-escalation-fix-20260523",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-sch05-escalation-fix-20260523/step-01-issue-fixer.json",
+  "created_at": "2026-05-23T21:03:11Z",
+  "started_at": "2026-05-23T21:03:11Z",
+  "completed_at": "2026-05-23T21:04:52Z",
+  "status": "COMPLETED",
+  "priority": "LOW",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": ["SCH-05"],
+    "related_handoff_ids": ["f2a3b4c5-d6e7-4f8a-9b0c-1d2e3f4a5b6c"],
+    "artifacts_in": [
+      "src/scheduler/scheduler.zig",
+      "src/design/sch05-missed-timer-recovery.md"
+    ]
+  },
+  "task": {
+    "description": "Fix: ESCALATION events now include fired_late flag.\n\nThe SCH-05 implementation added fired_late detection to TIMER_FIRED events but the escalation timer branch (timer_type == \"human_task_escalation\") in processNextDueTimer was not updated. The ESCALATION event payload lacks fired_late, scheduled_fire_at, and actual_fire_at fields.\n\nChanges needed in src/scheduler/scheduler.zig:\n\n1. In processNextDueTimer (escalation branch, around line 131):\n   Before calling fireEscalationTimerInTx, query NOW() as epoch microseconds (same pattern as the else branch):\n   \\\\SELECT (EXTRACT(EPOCH FROM NOW())::bigint * 1000000)::text\n   Compute fired_late using isFiredLate(fires_at_epoch_us, actual_fire_at_us, poll_interval_us, is_startup_sweep).\n   Then call fireEscalationTimerInTx with the extra params: fires_at_epoch_us, actual_fire_at_us, fired_late.\n\n2. In fireEscalationTimerInTx signature (around line 184):\n   Add params: fires_at_epoch_us: i64, actual_fire_at_us: i64, fired_late: bool\n   Pass them through to appendEscalationEventInTx.\n\n3. In appendEscalationEventInTx (around line 392):\n   Add params: fired_late: bool, scheduled_fire_at_us: i64, actual_fire_at_us: i64\n   Pass them to buildEscalationEventPayload.\n\n4. In buildEscalationEventPayload (around line 563):\n   Add params: fired_late: bool, scheduled_fire_at_us: i64, actual_fire_at_us: i64\n   Append \"fired_late\":<bool>,\"scheduled_fire_at\":<i64>,\"actual_fire_at\":<i64> to the JSON output.\n   The existing fields (timer_id, task_id, task_node_id, previous_assignee_type, previous_assignee_ref, reassign_to) must remain unchanged.\n\nValidate: zig build must exit 0, zig build test must exit 0.",
+    "acceptance_criteria": [
+      "ESCALATION event payload includes fired_late, scheduled_fire_at, actual_fire_at",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "Existing TIMER_FIRED fired_late behaviour unchanged",
+      "No schema changes"
+    ],
+    "functions_to_call": ["fn:check-zig-build"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed Category A (logic error) in scheduler.zig: ESCALATION event payload now includes fired_late, scheduled_fire_at, and actual_fire_at fields",
+    "artifacts_out": ["src/scheduler/scheduler.zig"],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}

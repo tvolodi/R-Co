@@ -1,0 +1,18 @@
+report_id: WF02-exp3-async-effects-20260613-step-03-test-designer-rework
+agent_id: TEST-DESIGNER
+run_id: WF02-exp3-async-effects-20260613
+step: "03-rework"
+created_at: "2026-06-13T08:56:35Z"
+status: PASS
+summary: >-
+  Added runnable EXP-302 integration coverage and strengthened the EXP-301 and
+  EXP-303 cases in tests/integration/effects_subsystem_test.zig.
+validation:
+  - name: zig build test-integration-tm
+    status: pass
+    detail: "INTEGRATION_EXIT_CODE=0"
+artifacts:
+  - tests/integration/effects_subsystem_test.zig
+  - tests/specs/EXP-301.md
+  - tests/specs/EXP-302.md
+  - tests/specs/EXP-303.md

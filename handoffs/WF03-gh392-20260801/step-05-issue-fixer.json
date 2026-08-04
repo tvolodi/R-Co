@@ -1,0 +1,48 @@
+{
+  "handoff_id": "wf03-gh392-20260801-step-05-issue-fixer",
+  "run_id": "WF03-gh392-20260801",
+  "workflow_id": "WF-03",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-01T14:50:50Z",
+  "started_at": "2026-08-01T14:52:21Z",
+  "completed_at": "2026-08-01T14:53:05Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "stage": "WF-03 Step 0.5/1 — Issue registry + root-cause diagnosis for ISS-0126",
+  "context": {
+    "stage": "Step 0.5 (registry) + Step 1 (diagnose) combined — root cause already validated by ORCH",
+    "issue_id": "ISS-0126",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/392",
+    "related_handoff_ids": ["wf03-gh392-20260801-step-00"],
+    "artifacts_in": [
+      "docs/issues/ISS-0126.json",
+      "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
+      "migrations/042_oidc16_26_agent_lifecycle_foundations.sql",
+      "scratch/WF03-gh392-20260801/diag5_output.txt"
+    ],
+    "diagnosis_summary": "Category E — test code error. The test SQL in TC-OIDC-22-01 (line 224) joins pg_constraint -> pg_class but does NOT JOIN pg_namespace. Migration 042 (non-GBL) is applied to BOTH public schema AND tenant_default (and every other tenant_* schema), creating an identical CHECK constraint on agent_bootstrap_audit in each schema. The query finds both copies and returns 2 instead of 1. Adding `JOIN pg_namespace n ON n.oid = t.relnamespace AND n.nspname = 'public'` to the constraint query makes it return 1 (matches test expectation). The first part of the test (line 213-215) already correctly filters by `table_schema = 'public'` via information_schema.tables, confirming the test author's intent. The very next test TC-OIDC-23-01 follows the same correct pattern using pg_indexes with `schemaname = 'public'`."
+  },
+  "task": {
+    "description": "Step 0.5 + Step 1 — Issue registry and diagnosis.\n\n1. Confirm ISS-0126 already exists in docs/issues/ISS-0126.json (it does).\n2. Update the ISS file's category, root_cause (already done by ORCH — verify it is accurate), and severity. Category should be 'test-code-error' (Category E per WF-03 taxonomy).\n3. Append a new occurrence entry under occurrences if not already present.\n4. Confirm github_issue field is set (https://github.com/tvolodi/R-Co/issues/392).\n5. Confirm prevention guidance is recorded (JOIN pg_namespace + filter for schema-aware introspection queries).\n6. Return PASS.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0126.json has category 'test-code-error' (not 'code-defect / ...')",
+      "docs/issues/ISS-0126.json has files_to_change listing only the test file and helpers.zig",
+      "github_issue URL preserved",
+      "severity stays MAJOR (test infrastructure bug, blocks 1 integration test)"
+    ],
+    "functions_to_call": ["fn:search-issues", "fn:register-issue or fn:update-issue", "fn:register-inner-report"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Confirmed ISS-0126 as a Category E test-code error caused by schema-agnostic system-catalog introspection, verified the issue index and GitHub linkage, and added discovery and confirmation occurrences plus explicit pg_namespace prevention guidance.",
+    "artifacts_out": [
+      "docs/issues/ISS-0126.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2) for fix design"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

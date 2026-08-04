@@ -1,0 +1,63 @@
+{
+  "handoff_id": "8f5a6ad6-6980-47fd-8d4e-e2ca8f6f3818",
+  "run_id": "WF02-obs02-20260524",
+  "workflow_id": "WF-02",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-obs02-20260524/step-02b-backend-dev-rework1.json",
+  "created_at": "2026-05-24T17:51:10Z",
+  "started_at": "2026-05-24T17:51:30Z",
+  "completed_at": "2026-05-24T17:54:52.056939Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-02"
+    ],
+    "related_handoff_ids": [
+      "3fb06e5f-e8c6-4d8f-9470-6d70e5ed5db2",
+      "90c7fba9-b9d8-4c4e-ab07-3eb1f3c69bd7"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-obs02-20260524/step-02-backend-dev.json",
+      "handoffs/WF03-obs02-intfix-20260524/step-01-issue-fixer.json",
+      "docs/requirements/OBS-02.md",
+      "src/design/obs-02-prometheus-metrics.md"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: Previous OBS-02 backend attempt failed only because zig build test-integration could not complete due to external blocker ISS-OBS02-INT-HANG-001. That blocker has now been resolved by WF03-obs02-intfix-20260524. Continue and finalize OBS-02 implementation: ensure all required metrics endpoint and instrumentation changes are complete, incorporate any necessary adjustments from the issue-fixer changes, and rerun full validations. Required commands must all succeed before completion: zig build, zig build test, zig build test-integration. Update handoff result with final OBS-02 implementation summary and all artifacts produced across this rework iteration.",
+    "acceptance_criteria": [
+      "OBS-02 required /metrics endpoint and metric families are fully implemented",
+      "All required labels and histogram semantics are present",
+      "Non-blocking scrape behavior is preserved",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build test-integration exits 0"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:check-zig-test",
+      "fn:check-zig-test-integration",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Finalized OBS-02 implementation and revalidated after WF03 hang fix integration. Confirmed required /metrics Prometheus exposition and instrumentation coverage for active instances, task completions, event append latency histogram, DB query latency histogram with query_type labels, and HTTP request/error counters. Validation commands succeeded: zig build, zig build test, zig build test-integration.",
+    "artifacts_out": [
+      "src/obs/metrics.zig",
+      "src/api/routes/metrics.zig",
+      "src/db/pool.zig",
+      "src/event_store/store.zig",
+      "src/engine/instance.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

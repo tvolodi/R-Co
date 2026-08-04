@@ -1,0 +1,39 @@
+{
+  "id": "ISS-0004",
+  "title": "WF03 IDN-01/SCH-07 blocker set: missing IDN integration entrypoint wiring and SCH recurring startup/payload assertion regressions",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "workflow": "WF-03",
+  "run_id": "WF03-idn01-testfix-20260524",
+  "handoff_id": "2c3b6739-5af4-4fca-8d06-ab51c18d358f",
+  "created_at": "2026-05-24T02:54:16Z",
+  "updated_at": "2026-05-24T02:54:16Z",
+  "resolved_at": "2026-05-24T02:54:16Z",
+  "failure_report": "tests/reports/report-2026-05-24T02-42-16Z-WF02-idn01-rework1.json",
+  "root_cause": {
+    "category": "A/D — Logic and test robustness",
+    "description": "IDN-01 integration tests were not compiled by the integration entrypoint, and SCH recurring/startup integration checks were blocked by recurring re-arm startup behavior plus brittle payload-string assertions tied to jsonb text formatting."
+  },
+  "resolution": {
+    "summary": "Imported IDN-01 integration tests into the integration entrypoint, aligned module wiring for IDN integration imports, changed recurring re-arm base timestamp to actual fire time to prevent startup catch-up over-firing, and hardened SCH payload assertions to tolerate jsonb spacing while preserving fired_late field verification.",
+    "files_modified": [
+      "tests/integration/main_test.zig",
+      "tests/integration/idn01_user_registry_test.zig",
+      "src/bpm.zig",
+      "src/scheduler/scheduler.zig",
+      "tests/integration/sch02_timer_polling_test.zig"
+    ],
+    "verification": [
+      "zig build (exit 0)",
+      "zig build test (exit 0)",
+      "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration (exit 0)"
+    ]
+  },
+  "prevention": {
+    "actions": [
+      "When adding a new integration suite file, always import it in tests/integration/main_test.zig before claiming coverage.",
+      "For jsonb payload assertions in integration tests, avoid strict whitespace-sensitive substring checks.",
+      "For recurring timers on startup, base re-arm scheduling on actual fire timestamp to avoid catch-up burst firing in one sweep."
+    ]
+  }
+}

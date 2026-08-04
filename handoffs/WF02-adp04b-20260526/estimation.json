@@ -1,0 +1,29 @@
+{
+  "run_id": "WF02-adp04b-20260526",
+  "created_at": "2026-05-26T04:54:00Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "ADP-04b"
+  ],
+  "difficulty": 3,
+  "difficulty_rationale": "ADP-04b extends tenant schema with realm binding and requires creation-time enforcement for new tenants while preserving default-tenant compatibility.",
+  "integration_surface": "medium",
+  "integration_surface_rationale": "Touches tenant schema and tenant creation/validation paths without engine or scheduler signature changes.",
+  "steps": [
+    "code-designer",
+    "backend-dev",
+    "test-designer",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 7,
+    "backend-dev": 8,
+    "test-designer": 3,
+    "test-runner": 8,
+    "release-validator": 89,
+    "doc-updater": 2,
+    "total": 117
+  }
+}

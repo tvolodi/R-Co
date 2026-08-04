@@ -1,0 +1,51 @@
+{
+  "handoff_id": "WF03-gh388-rootcause-20260802-stepFinal",
+  "run_id": "WF03-gh388-rootcause-20260802",
+  "step": "Final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-02T20:34:28Z",
+  "started_at": "2026-08-02T20:34:28Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "PR + merge to main",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh388-rootcause-20260802-step07"
+    ],
+    "artifacts_in": [
+      "migrations/1111_iss0122_validator_pass_trace_id.sql",
+      "tests/integration/audit_chain_utf8_test.zig",
+      "tests/specs/ISS-0122-rootcause.md",
+      "CHANGELOG.md",
+      "docs/issues/ISS-0122.json"
+    ]
+  },
+  "task": {
+    "description": "Step Final of WF-03 ISS-0122 root cause: commit doc updates, open PR, squash-merge, delete branch.\n\nProcedure:\n\n1. `git branch --show-current` \u2014 must be `feature/WF03-gh388-rootcause-20260802`.\n\n2. Stage doc updates:\n```\ngit add CHANGELOG.md docs/issues/ISS-0122.json handoffs/orchestrator.log handoffs/registry.json handoffs/WF03-gh388-rootcause-20260802/ docs/issue-reports/WF03-gh388-rootcause-20260802-step-01-issue-fixer-INNER-REPORT.yaml src/design/iss0122_chain_hash_fix.md tests/specs/ISS-0122-rootcause.md\ngit -c user.email=\"orch@r-co.local\" -c user.name=\"ORCH\" commit -m \"docs(ISS-0122): resolve root cause; CHANGELOG + spec + handoffs\"\n```\n\n3. Push:\n```\ngit push origin feature/WF03-gh388-rootcause-20260802\n```\n\n4. Open PR:\n```\ngh pr create --base main --head feature/WF03-gh388-rootcause-20260802 --title \"fix(ISS-0122): validator pass trace_id + TC-04 unambiguous parameter (GH #388 root cause)\" --body \"Resolves GH #388.\n\nRoot cause: TC-ISS-0122-03 failed because migration 1110's per-tenant validator passed NULL for trace_id to bpm_audit_compute_chain_hash, while the trigger bpm_audit_apply_chain_hash hashes NEW.trace_id. TC-ISS-0122-04 failed because the test INSERT reused $1 inside a concat expression, raising 42P08 ambiguous parameter.\n\nFix: migration 1111 re-creates bpm_audit_validate_chain in every tenant_* schema passing r.trace_id (matches the trigger's NEW.trace_id). The TC-04 INSERT now uses distinct parameter positions.\n\nValidation: zig build test-integration-iss0122 reports 4/4 tests passed; zig build and zig build test exit 0; no regressions.\"\ngh pr merge --squash --delete-branch\n```\nCapture the PR number from `gh pr create` output.\n\n5. After merge, sync main:\n```\ngit checkout main\ngit pull --ff-only\ngit branch -D feature/WF03-gh388-rootcause-20260802\ngit push origin --delete feature/WF03-gh388-rootcause-20260802 2>&1 || true\n```\n\n6. Final regression sweep on main:\n```\nzig build ; echo BUILD_EXIT=$LASTEXITCODE\nzig build test ; echo TEST_EXIT=$LASTEXITCODE\n```\nBoth must exit 0.\n\n7. Update handoff file `handoffs/WF03-gh388-rootcause-20260802/step-final-backend-dev.json`:\n   - status = COMPLETED\n   - result.status = PASS or FAIL\n   - result.summary = brief (include PR number)\n   - result.artifacts_out = [PR number, commit hashes]\n   - result.next_action = \"WF-03 complete; no further action\"\n   - completed_at = `[DateTime]::UtcNow.ToString(\"yyyy-MM-ddTHH:mm:ssZ\")` \u2014 exact output\n\n8. Update handoffs/registry.json with final entry.\n\nReturn: PR number, final commit hash on main, branch deletion status.",
+    "acceptance_criteria": [
+      "PR opened, squash-merged, branch deleted",
+      "main updated and clean",
+      "zig build + zig build test exit 0 on main"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PR #404 squash-merged into main as commit 6cc92ec. Branch feature/WF03-gh388-rootcause-20260802 deleted locally and remotely. main is now at 6cc92ec, ahead of origin/main. Final regression: zig build exit 0, zig build test exit 0.",
+    "artifacts_out": [
+      "PR #404",
+      "commit 6cc92ec on main",
+      "migrations/1111_iss0122_validator_pass_trace_id.sql",
+      "tests/integration/audit_chain_utf8_test.zig",
+      "tests/specs/ISS-0122-rootcause.md",
+      "CHANGELOG.md (ISS-0122 entry)",
+      "docs/issues/ISS-0122.json (RESOLVED)"
+    ],
+    "issues": [],
+    "next_action": "WF-03 ISS-0122 root cause COMPLETE"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-02T20:35:54Z"
+}

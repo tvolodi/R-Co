@@ -1,0 +1,76 @@
+{
+  "handoff_id": "20260525-004",
+  "run_id": "WF02-obs03-20260525",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-obs03-20260525/step-04-test-runner.json",
+  "created_at": "2026-05-25T09:40:00Z",
+  "started_at": "2026-05-25T09:40:20Z",
+  "completed_at": "2026-05-25T09:44:55Z",
+  "status": "FAILED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-03"
+    ],
+    "related_handoff_ids": [
+      "20260525-002",
+      "20260525-003",
+      "39e61176-57f9-4ecf-8311-cd4a459e8e04"
+    ],
+    "artifacts_in": [
+      "docs/requirements/OBS-03.md",
+      "tests/specs/OBS-03.md",
+      "tests/integration/obs03_audit_log_test.zig",
+      "src/obs/audit.zig",
+      "src/api/routes/audit.zig",
+      "migrations/020_obs03_audit_entries.sql"
+    ]
+  },
+  "task": {
+    "description": "Recheck workflow execution after Zig reinstall and run full OBS-03 verification. Execute required backend validation commands and targeted OBS-03 tests, including integration tests with BPM_TEST_DB_URL configured. Minimum required checks: zig build, zig build test, zig build migrate, zig build test-integration, plus targeted OBS-03 test assertions from tests/specs/OBS-03.md. Produce a structured test report under tests/reports/ capturing command outputs, pass/fail status, and requirement traceability. If any test fails, provide exact blocker issues with severity and affected requirement so ORCH can route WF-03 rework.",
+    "acceptance_criteria": [
+      "Zig toolchain execution is revalidated through successful command execution or explicit failure evidence",
+      "OBS-03 requirement test cases are executed and mapped to results",
+      "A test report is written in tests/reports with reproducible command outcomes",
+      "result.status accurately reflects PASS/FAIL/PARTIAL with actionable issues"
+    ],
+    "functions_to_call": [
+      "fn:run-backend-tests",
+      "fn:run-integration-tests",
+      "fn:register-test-report"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Zig reinstall health checks passed for build/unit/migrate, but OBS-03 integration verification is blocked by compile errors in tests/integration/obs03_audit_log_test.zig.",
+    "artifacts_out": [
+      "tests/reports/report-2026-05-24-WF02-obs03-step04-recheck.json",
+      "tests/reports/WF02-obs03-20260525-step04-zig-build.log",
+      "tests/reports/WF02-obs03-20260525-step04-zig-build-test.log",
+      "tests/reports/WF02-obs03-20260525-step04-zig-build-migrate.log",
+      "tests/reports/WF02-obs03-20260525-step04-zig-build-test-integration.log",
+      "tests/reports/WF02-obs03-20260525-step04-zig-build-test-integration-obs03-filter.log"
+    ],
+    "issues": [
+      {
+        "id": "ISS-OBS03-TR-001",
+        "severity": "BLOCKER",
+        "description": "Integration build fails in tests/integration/obs03_audit_log_test.zig:98 due to return type mismatch in extractJsonStringField (expected !?[]u8, found error{OutOfMemory}![]u8).",
+        "affected_requirement": "OBS-03"
+      },
+      {
+        "id": "ISS-OBS03-TR-002",
+        "severity": "BLOCKER",
+        "description": "Integration build fails in tests/integration/obs03_audit_log_test.zig:220 due to incompatible optional/string expression types in first[0] orelse \"\" assertion.",
+        "affected_requirement": "OBS-03"
+      }
+    ],
+    "next_action": "Route to WF-03 for compile-fix rework, then rerun WF-02 Step 04."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

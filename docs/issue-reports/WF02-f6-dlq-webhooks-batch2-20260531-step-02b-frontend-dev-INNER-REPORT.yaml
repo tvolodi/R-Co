@@ -1,0 +1,48 @@
+report_id: WF02-f6-dlq-webhooks-batch2-20260531-step-02b-frontend-dev
+agent_id: FRONTEND-DEV
+run_id: WF02-f6-dlq-webhooks-batch2-20260531
+step: 02b
+created_at: '2026-05-31T05:43:19Z'
+summary: >-
+  Implemented Stage F6 batch2 frontend requirements DLQ-UI-05 and WH-UI-01..03:
+  added DLQ pending-depth badge severity in the shell, upgraded Webhooks UI to
+  use subscription endpoint contracts, added create flow with multi-select event
+  types and one-time secret reveal panel, and wired pause/resume status actions.
+files_created:
+  - docs/issue-reports/WF02-f6-dlq-webhooks-batch2-20260531-step-02b-frontend-dev-INNER-REPORT.yaml
+files_modified:
+  - web/src/components/layout/AppShell.tsx
+  - web/src/pages/dlq/WebhooksPage.tsx
+  - web/src/api/dlq.ts
+  - web/src/api/queryKeys.ts
+  - web/src/types/api.ts
+  - handoffs/WF02-f6-dlq-webhooks-batch2-20260531/step-02b-frontend-dev.json
+  - handoffs/registry.json
+tests_run:
+  - name: python tools/lint_frontend_conventions.py
+    status: pass
+    detail: OK — 113 file(s) checked, no convention issues.
+  - name: python tools/lint_test_isolation.py tests/integration
+    status: pass
+    detail: OK — 76 file(s) checked, no isolation issues (baseline suppression active).
+  - name: npm run type-check
+    status: pass
+    detail: TypeScript noEmit check passed.
+  - name: npm run lint
+    status: pass
+    detail: ESLint passed with zero errors; TypeScript support warning from eslint parser only.
+  - name: npm run test
+    status: pass
+    detail: Vitest passed (3 files, 22 tests).
+  - name: npm run build
+    status: pass
+    detail: Vite production build succeeded.
+  - name: npx playwright test
+    status: pass
+    detail: 126 passed, 1 flaky retried and passed; final run completed successfully.
+issues_found:
+  - severity: minor
+    description: Generated Type B scaffold file contained invalid nested comment syntax and non-existent imports in this repository setup; file was removed after extracting implementation intent.
+next_steps:
+  - Route to TEST-DESIGNER (WF-02 Step 3).
+blockers: []

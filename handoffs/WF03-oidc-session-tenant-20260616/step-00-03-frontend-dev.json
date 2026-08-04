@@ -1,0 +1,49 @@
+{
+  "handoff_id": "9ab0c1d2-e3f4-5678-9ab0-c1d2e3f45678",
+  "run_id": "WF03-oidc-session-tenant-20260616",
+  "step": "00-03",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-06-16T08:20:08Z",
+  "started_at": "2026-06-16T08:20:08Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 FAST-TRACK — ISS-0074 + MINOR pipeline display_name fix",
+    "requirement_ids": ["OIDC-F-02"],
+    "related_handoff_ids": ["8fa9b0c1-d2e3-4567-8fa9-b0c1d2e34567"],
+    "artifacts_in": [
+      "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v5.yaml",
+      "web/src/pages/OidcCallbackPage.tsx",
+      "web/src/auth/AuthProvider.tsx",
+      "web/src/auth/tenantConfig.ts",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "WF-03 FAST-TRACK: Two targeted fixes from UAT v5.\n\nFix 1 (MAJOR) — OidcCallbackPage does not populate tenant context after OIDC code exchange:\nAfter signinRedirectCallback() succeeds, OidcCallbackPage must populate tenant_slug and tenant_display_name in the session.\nLook at how AuthProvider.tsx does it after login (it calls resolveTenantSlug + fetchTenantConfig + sets session fields). OidcCallbackPage must do the same after the code exchange.\n\nRead OidcCallbackPage.tsx first to understand the current flow:\n1. It calls getOidcManager() → signinRedirectCallback()\n2. On success it gets a UserResult → calls setSession()\n3. BUG: it calls setSession() WITHOUT tenant_slug/tenant_display_name, so they default to null\n\nFix: After successful callback, before calling setSession():\n  const config = await fetchTenantConfig(window.location.hostname) // or use resolveRealmFromUrl\n  const slug = config.oidc_authority comes from swiftroute realm → extract slug from oidc_authority\n  const tenantResp = await tenantsApi.getBySlug(slug)\n  then include tenant_slug and tenant_display_name in setSession() call\n\nActually: the slug is already in sessionStorage['bpm_realm_slug'] from the ISS-0072 fix (resolveRealmFromUrl writes it there). So the fix is:\n  const realmSlug = resolveRealmFromUrl() || sessionStorage.getItem('bpm_realm_slug')\n  if (realmSlug) {\n    const tenantData = await tenantsApi.getBySlug(realmSlug).catch(() => null)\n    // then add tenant_slug: realmSlug, tenant_display_name: tenantData?.display_name ?? null to setSession\n  }\n\nFix 2 (MINOR) — Pipeline test display_name env var:\nIn web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts:\nAdd two more env var constants near INJECTED_SLUG:\n  const INJECTED_DISPLAY_NAME   = process.env.ONBOARDING_PIPELINE_DISPLAY_NAME\n  const INJECTED_ADMIN_DISPLAY  = process.env.ONBOARDING_PIPELINE_ADMIN_DISPLAY_NAME\nUpdate the form fills for #display_name and #admin_display_name to use injected values with fallback:\n  await page.locator('#display_name').fill(INJECTED_DISPLAY_NAME ?? `Pipeline Tenant ${uid}`)\n  await page.locator('#admin_display_name').fill(INJECTED_ADMIN_DISPLAY ?? `PL Admin ${uid}`)\n\nBranch workflow:\n  git checkout main\n  git pull --ff-only origin main\n  git checkout -b feature/WF03-oidc-session-tenant-20260616\n  git push origin feature/WF03-oidc-session-tenant-20260616\n\nAfter implementation:\n  python tools/lint_frontend_conventions.py web/src (exits 0)\n  cd web && npm run type-check (exits 0)\n  cd web && npm run lint (exits 0)\n  cd web && npm run build (exits 0)\n\nCommit:\n  git add -A\n  git commit -m 'fix(WF03): populate tenant context after OIDC callback + display_name injection (ISS-0074)'\n  git push origin feature/WF03-oidc-session-tenant-20260616\n\nThen: rebase, create PR, squash-merge, delete branch.\n  PR title: 'fix(WF03): tenant context populated in OIDC callback + pipeline display_name injection (ISS-0074)'\n  gh pr merge --squash --delete-branch\n  git checkout main\n  git pull --ff-only origin main",
+    "acceptance_criteria": [
+      "OidcCallbackPage populates tenant_slug and tenant_display_name after code exchange",
+      "Pipeline test uses ONBOARDING_PIPELINE_DISPLAY_NAME env var",
+      "All validation exits 0",
+      "PR merged to main"
+    ],
+    "functions_to_call": ["fn:read-frontend-conventions", "fn:git-setup", "fn:git-merge"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fix 1: OidcCallbackPage.tsx now resolves realmSlug (via resolveRealmFromUrl/sessionStorage) and fetches tenant display_name via tenantsApi.getBySlug() after OIDC code exchange, populating tenant_slug and tenant_display_name in setSession(). Fix 2: onboarding-wizard pipeline adds INJECTED_DISPLAY_NAME and INJECTED_ADMIN_DISPLAY env var constants with fallback. Pre-existing lint error (unused BPM_URL in uat-eo-003-004-v5) also fixed.",
+    "artifacts_out": [
+      "web/src/pages/OidcCallbackPage.tsx",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+      "web/tests/e2e/uat-eo-003-004-v5.e2e.spec.ts"
+    ],
+    "issues": [],
+    "pr_url": "https://github.com/tvolodi/My-Fab/pull/111",
+    "merge_sha": "2a0e307",
+    "next_action": "COMPLETED — PR #111 merged and branch deleted"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-16T08:24:17Z"
+}

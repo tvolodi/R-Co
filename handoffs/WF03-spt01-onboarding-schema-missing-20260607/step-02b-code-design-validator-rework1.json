@@ -1,0 +1,57 @@
+{
+  "handoff_id": "wf03-spt01-schema-20260607-002b-r1",
+  "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-07T01:15:46Z",
+  "started_at": "2026-06-07T01:15:46Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — SPT-01 onboarding schema provisioning gap (hard gate rework 1)",
+    "requirement_ids": ["SPT-01"],
+    "related_handoff_ids": ["wf03-spt01-schema-20260607-002-r1"],
+    "artifacts_in": [
+      "src/design/iss-0068-onboarding-schema-provisioning.md"
+    ]
+  },
+  "task": {
+    "description": "Re-validate src/design/iss-0068-onboarding-schema-provisioning.md after rework. Apply same checklist as previous attempt. Confirm: (1) no code block > 40 lines, (2) no implementation code bodies, (3) no public. prefixes, (4) all function signatures present with error sets, (5) invariants stated, (6) error taxonomy complete.",
+    "acceptance_criteria": [
+      "No fenced code block exceeds 40 lines",
+      "No public. schema-qualified names",
+      "All previous passing items still pass",
+      "PASS result produced"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Design artefact re-validation failed. One prior MAJOR remains unresolved (fenced block > 40 lines) and implementation code bodies are still present. Previously passing checklist items still pass, and the prior public. schema-qualification issue is resolved.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "code": "E050",
+        "location": "src/design/iss-0068-onboarding-schema-provisioning.md:167",
+        "description": "Fenced code block exceeds 40 lines. tools/lint_design_artefact.py reports E050 and exits non-zero, so the hard gate fails."
+      },
+      {
+        "severity": "MAJOR",
+        "location": "src/design/iss-0068-onboarding-schema-provisioning.md:265",
+        "description": "Implementation code body present in Type E design (example: fn dropTenantSchemaInDb(...) includes executable statements), violating prose-plus-interface-only expectation."
+      },
+      {
+        "severity": "MAJOR",
+        "location": "src/design/iss-0068-onboarding-schema-provisioning.md:301",
+        "description": "Implementation SQL bodies are embedded (CREATE OR REPLACE FUNCTION ... BEGIN ... END and DO $$ ... BEGIN ... END), which is implementation detail rather than interface-level design."
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER (Step 02) for rework. Keep interface signatures, invariants, migration intent, and error taxonomy, but reduce to sketch-level snippets and remove executable bodies."
+  },
+  "rework_count": 1,
+  "max_rework": 2,
+  "completed_at": "2026-06-07T01:23:47Z"
+}

@@ -1,0 +1,37 @@
+{
+  "run_id": "WF02-f5-admin-batch1-20260530",
+  "created_at": "2026-05-30T12:24:55Z",
+  "rules_version": "1.1",
+  "requirement_ids": [
+    "ADM-UI-01",
+    "ADM-UI-02",
+    "ADM-UI-03",
+    "ADM-UI-04"
+  ],
+  "difficulty": 3,
+  "difficulty_rationale": "Core administration user-management UI with list, create, edit, and deactivate flows.",
+  "integration_surface": "medium",
+  "integration_surface_rationale": "Touches admin pages, API client hooks, route guards, and E2E tests.",
+  "steps": [
+    "code-designer",
+    "code-design-validator",
+    "frontend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "release-validator",
+    "doc-updater",
+    "total"
+  ],
+  "estimated_minutes": {
+    "code-designer": 32,
+    "code-design-validator": 15,
+    "frontend-dev": 44,
+    "test-designer": 8,
+    "test-design-validator": 12,
+    "test-runner": 4,
+    "release-validator": 6,
+    "doc-updater": 2,
+    "total": 123
+  }
+}

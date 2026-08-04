@@ -1,0 +1,52 @@
+{
+  "handoff_id": "4002b000-0000-0000-0000-000000000000",
+  "run_id": "WF03-gh400-20260804",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-03T21:24:55Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Hard Gate",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/400",
+    "issue_title": "ISS-0205: webhook_deliveries.status written lowercase but CHECK requires UPPERCASE",
+    "iss_id": "ISS-0205",
+    "branch_name": "feature/WF03-gh400-20260804",
+    "related_handoff_ids": [
+      "40010000-0000-0000-0000-000000000000",
+      "40020000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss205-webhook-status-case.md",
+      "migrations/085_iss106_webhook_deliveries_outbox.sql",
+      "src/webhook/dispatcher.zig"
+    ]
+  },
+  "task": {
+    "description": "Step 2b \u2014 validate the design artefact before implementation. Run mandatory checks: (1) python tools/lint_design_artefact.py src/design/iss205-webhook-status-case.md (exit 0, no BLOCKER/MAJOR). (2) Confirm the design is Type E (prose) \u2014 no parameter file, so skip the codegen --dry-run step. (3) Verify every acceptance criterion from GH #400 is covered by a design element: a) 'src/webhook/dispatcher.zig INSERT uses uppercase status', b) 'zig build test-integration-iss205 \u2192 3/3 PASS', c) 'No regression in iss106/iss205/iss601 webhook tests'. (4) Verify NO implementation code is present in the design (it must be prose). (5) Verify all 8 SQL sites from the diagnosis are listed in the design. (6) Verify error taxonomy / failure modes are discussed (status mapping rationale + out-of-scope list). HARD GATE: any failure = FAIL.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR",
+      "All 3 GH #400 acceptance criteria covered by design",
+      "All 8 SQL sites from Step-1 diagnosis appear in the design's edit table",
+      "No Zig implementation code in the design file",
+      "result.next_action: 'Route to BACKEND-DEV (Step 3)'"
+    ],
+    "functions_to_call": [
+      "fn:validate-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design validated: 8 SQL edits enumerated, 3/3 GH acceptance criteria covered, no out-of-scope edits, no implementation code",
+    "artifacts_out": [
+      "src/design/iss205-webhook-status-case.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": null,
+  "completed_at": "2026-08-03T21:25:52Z"
+}

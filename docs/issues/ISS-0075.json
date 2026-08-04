@@ -1,0 +1,28 @@
+{
+  "issue_id": "ISS-0075",
+  "title": ".env.example omits Keycloak, BPM_UAT_TOKEN and BPM_API_URL",
+  "status": "RESOLVED",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/290",
+  "severity": "MINOR",
+  "category": "onboarding / environment documentation drift",
+  "run_id": "WF03-iss0075-env-example-20260730",
+  "workflow_id": "WF-03",
+  "handoff_id": null,
+  "requirement_ids": [],
+  "summary": "Also known as ISS-BRW-02 in docs/workflows.yaml and the ASCOA borrow audit report (Borrowing_From_ASCOA-GO.20260729.md §5.2). A fresh clone could not derive the full environment needed to run the platform or the UAT agents from .env.example alone: README.md requires Keycloak on :8081 and documents test-account credentials, and CLAUDE.md's UAT-RUNNER agent section invokes BPM_UAT_TOKEN and BPM_API_URL directly in curl commands, but none of BPM_IDP_PROVIDER_TYPE, BPM_IDP_BASE_URL, BPM_IDP_ADMIN_CREDENTIALS_REF, BPM_KEYCLOAK_SECRET, BPM_IDP_DEFAULT_REALM_OR_TENANT, BPM_API_URL, or BPM_UAT_TOKEN appeared in .env.example.",
+  "root_cause": {
+    "type": "documentation-drift",
+    "details": "src/config/identity_provider.zig's loadIdentityProviderConfig() reads BPM_IDP_PROVIDER_TYPE/BASE_URL/ADMIN_CREDENTIALS_REF/DEFAULT_REALM_OR_TENANT as required env vars (server exits with a ConfigLoadError if any is unset), and BPM_KEYCLOAK_SECRET is the conventional target of the env:BPM_KEYCLOAK_SECRET credentials-ref. Separately, docs/agents/functions/fn-run-uat-scenarios.md and CLAUDE.md's UAT-RUNNER section hard-code BPM_API_URL/BPM_UAT_TOKEN in curl calls. .env.example was only ever populated with DB/server/bootstrap vars and was never updated as the identity-provider config module and UAT-RUNNER agent were added."
+  },
+  "files_to_change": [
+    ".env.example",
+    "README.md"
+  ],
+  "resolution": "Added an IDENTITY PROVIDER / KEYCLOAK section to .env.example covering BPM_IDP_PROVIDER_TYPE, BPM_IDP_BASE_URL, BPM_IDP_ADMIN_CREDENTIALS_REF, BPM_KEYCLOAK_SECRET, and BPM_IDP_DEFAULT_REALM_OR_TENANT (all required — src/config/identity_provider.zig fails server startup with a typed ConfigLoadError if any is unset), plus commented-out optional overrides (BPM_IDP_ADMIN_REALM, BPM_IDP_EXPECTED_AUDIENCE, BPM_IDP_EXPECTED_ISSUER, BPM_IDP_REQUEST_TIMEOUT_MS, BPM_IDP_CONNECT_TIMEOUT_MS) documented with their code-level defaults. Added a FRONTEND E2E / UAT section covering BPM_API_URL and BPM_UAT_TOKEN (consumed by UAT-RUNNER's curl evidence collection per docs/agents/functions/fn-run-uat-scenarios.md and CLAUDE.md) and BPM_E2E_ADMIN_USERNAME/PASSWORD (consumed by web/tests/e2e/*.e2e.spec.ts, falls back to admin-user/admin-pass in most specs). Each entry documents its consuming file and its behaviour when unset, per the issue's acceptance criteria. Also updated README.md's 'Environment variables (backend)' table to list the newly-required identity-provider and UAT variables and point to .env.example as the authoritative full list. Scoped to variables actually needed to run the platform end-to-end (server startup + UAT agent + E2E login) per the issue's own root-cause citation of README.md and CLAUDE.md; did not add internal test-only vars (e.g. per-role BPM_TEST_TOKEN_* used only inside zig build test-integration) since those are not part of the documented fresh-clone setup path and adding them would re-introduce the same drift risk this fix addresses.",
+  "created_at": "2026-07-30T00:00:00Z",
+  "resolved_at": "2026-07-30T00:00:00Z",
+  "prevention": [
+    "When adding a new required env var to a config-loading module (e.g. src/config/*.zig) or a new agent doc that invokes an env var directly (CLAUDE.md, docs/agents/*.md), add it to .env.example in the same change.",
+    "Treat .env.example as the single source of truth for 'what does a fresh clone need to set' and link to it from README.md rather than maintaining a second, easily-stale table."
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "handoff_id": "20260526-032",
+  "run_id": "WF02-adp04a-20260526",
+  "workflow_id": "WF-02",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-adp04a-20260526/step-02-backend-dev.json",
+  "created_at": "2026-05-26T03:37:00Z",
+  "started_at": "2026-05-26T03:37:20Z",
+  "completed_at": "2026-05-26T04:19:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-04a"
+    ],
+    "related_handoff_ids": [
+      "20260526-001",
+      "20260526-010",
+      "20260526-016",
+      "20260526-022",
+      "20260526-023",
+      "20260526-024",
+      "20260526-025",
+      "20260526-026",
+      "20260526-027",
+      "20260526-028",
+      "20260526-029",
+      "20260526-030",
+      "20260526-031"
+    ],
+    "artifacts_in": [
+      "src/design/adp-04a-external-identity-linkage-user.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/addon-1/03-extension-adaptations.md",
+      "docs/BPM_Platform_Backend_Architecture.md"
+    ]
+  },
+  "task": {
+    "description": "Implement ADP-04a in backend code and migrations according to src/design/adp-04a-external-identity-linkage-user.md. Add user schema fields external_id, external_realm, auth_source with backward-compatible defaults, add uniqueness enforcement over (external_realm, external_id), preserve existing internal-user behavior with NULL externals, and implement repository/service lookup paths for realm+sub identity resolution used by OIDC JIT provisioning. Ensure tenant isolation invariants are preserved and no cross-tenant identity collisions occur. Update/extend backend tests covering migration defaults, internal-user compatibility, OIDC-user linkage population, and unique lookup semantics.",
+    "acceptance_criteria": [
+      "Schema/migration changes for external identity linkage are additive and backward-compatible",
+      "Existing internal users retain auth_source=internal with NULL external fields after migration",
+      "Realm+sub lookup path is implemented and enforces unique local mapping",
+      "Tenant isolation and collision boundaries are preserved for identity resolution",
+      "zig build, zig build test, and zig build migrate all exit 0"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:check-zig-test",
+      "fn:check-zig-build-migrate",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Verified the ADP-04a backend slice already present in the repository, including the additive external-identity user migration, tenant-scoped realm+sub lookup, and OIDC JIT provisioning path. No source edits were required in this run; validation passed and the closeout report was recorded.",
+    "artifacts_out": [
+      "migrations/030_adp04a_external_identity_linkage.sql",
+      "src/identity/registry.zig",
+      "src/identity/service.zig",
+      "tests/integration/adp04a_external_identity_linkage_test.zig",
+      "docs/issue-reports/WF02-adp04a-20260526-step-02-backend-dev-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

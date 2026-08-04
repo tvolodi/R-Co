@@ -1,0 +1,56 @@
+{
+  "handoff_id": "77100001-2605-4000-8007-202605210600",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-pd07-20260521",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-21T06:00:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 — Process Definition",
+    "requirement_ids": ["PD-07"],
+    "related_handoff_ids": [
+      "66100001-2605-4000-8006-202605210500",
+      "66100002-2605-4000-8006-202605210501"
+    ],
+    "artifacts_in": [
+      "docs/requirements/PD-07.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/backend_developer_guide.md",
+      "src/design/definition.md",
+      "src/definition/store.zig",
+      "src/definition/graph.zig",
+      "migrations/004_definitions.sql",
+      "web/src/api/definitions.ts",
+      "web/src/types/api.ts"
+    ]
+  },
+  "task": {
+    "description": "Extend the design artefact at `src/design/definition.md` to cover PD-07 (Definition retrieval).\n\nRead `docs/requirements/PD-07.md` (authoritative per-requirement spec) and `docs/BPM_Platform_Functional_Requirements.md` §PD-07 before designing. Also read the current `src/definition/store.zig` to understand what is already implemented.\n\n---\n\n### Current state of the codebase (read before designing)\n\n- `Store.getById(allocator, id)` is already implemented in `src/definition/store.zig`. It SELECTs by UUID and returns `DefinitionError.DefinitionNotFound` for missing rows.\n- `Store.list(allocator, opts)` is already implemented. It supports `name`, `status`, and cursor-based pagination (`after_created`, `limit`). It does NOT yet support a `?stage=` filter.\n- `Store.getActiveByName` does NOT yet exist in `store.zig`.\n- The `process_definitions` table (see `migrations/004_definitions.sql`) has NO `stage` column.\n- No HTTP route handlers exist yet (`src/api/routes/` is empty).\n\n---\n\n### Design decisions required\n\n**Decision 1: `?stage=` filter**\n\nThe per-requirement file `docs/requirements/PD-07.md` specifies a `?stage=` query-parameter filter. The main requirements doc (`BPM_Platform_Functional_Requirements.md` §PD-07) does NOT mention it — only `?name=` and `?status=`. The `process_definitions` table has no `stage` column.\n\nDesign decision: **Add a `stage` TEXT column to `process_definitions`** via a new migration `migrations/014_definition_stage.sql`. This column is nullable (existing rows will be NULL). This enables `?stage=` filtering as specified in PD-07.md. The `ListOpts` struct must gain a `stage: ?[]const u8` field.\n\nIf the column is deemed too broad, document the decision clearly; however, the authoritative PD-07.md AC says `?stage=` MUST be supported, so the column must be added.\n\n**Decision 2: HTTP route handlers**\n\nPD-07 explicitly requires HTTP endpoints (`GET /definitions/:id`, `GET /definitions`, `GET /definitions/active/:name`). However, no HTTP framework is wired in `main.zig` yet, and no routes exist for PD-01 through PD-06 either. **Design handler signatures in `src/api/routes/definitions.zig`** using the `vendor/http` framework (read `vendor/http/http.zig` to understand the handler interface). If the vendor library is too minimal to wire real handlers, the design MUST still specify the function signatures and their mapping to Store methods so BACKEND-DEV can implement them.\n\n**Decision 3: Cursor encoding for API-06**\n\nAPI-06 requires opaque base64-encoded cursors. The existing `Store.list()` uses `after_created: ?i64` internally. The HTTP layer must base64-encode the `created_at` µs timestamp as the cursor, and decode it on subsequent requests. Design the encoding/decoding approach in the HTTP handler.\n\n---\n\n### The design extension MUST add a new PD-07 section to `src/design/definition.md` covering:\n\n1. **New `getActiveByName` function signature** in `store.zig`:\n   ```zig\n   /// Retrieve the currently ACTIVE version of a definition by name.\n   /// Returns DefinitionNotFound if no ACTIVE version exists for the given name.\n   ///\n   /// Security: name binds as $1 — no SQL string interpolation.\n   pub fn getActiveByName(\n       self: *Store,\n       allocator: std.mem.Allocator,\n       name: []const u8,\n   ) DefinitionError!Definition;\n   ```\n\n2. **Updated `ListOpts` struct** to include the `stage` field:\n   ```zig\n   pub const ListOpts = struct {\n       name:          ?[]const u8,\n       status:        ?DefinitionStatus,\n       stage:         ?[]const u8,   // NEW — filter by process stage label\n       after_created: ?i64,\n       limit:         u8,\n   };\n   ```\n\n3. **Migration file specification** for `014_definition_stage.sql`:\n   ```sql\n   ALTER TABLE process_definitions ADD COLUMN IF NOT EXISTS stage TEXT;\n   CREATE INDEX IF NOT EXISTS idx_def_stage ON process_definitions(stage) WHERE stage IS NOT NULL;\n   ```\n\n4. **HTTP handler function signatures** for `src/api/routes/definitions.zig`:\n   - `handleGetById(req, res)` — maps to `Store.getById`; returns 200 or 404\n   - `handleList(req, res)` — maps to `Store.list`; parses `?name=`, `?status=`, `?stage=`, `?cursor=`, `?page_size=`; validates page_size per API-06; encodes next cursor in response body\n   - `handleGetActiveByName(req, res)` — maps to `Store.getActiveByName`; returns 200 or 404\n   Include the cursor encoding scheme: base64(created_at_microseconds_decimal_string).\n\n5. **API-06 cursor contract** for the `GET /definitions` endpoint:\n   - Response body shape: `{ \"items\": [...], \"cursor\": \"<base64>\" | null }`\n   - Cursor is absent (null) when fewer than `page_size` rows were returned.\n   - Cursor decoding failure → HTTP 422 with message \"invalid cursor\".\n   - `page_size` ≤ 0 or > 200 → HTTP 422 with message \"page_size must be between 1 and 200\".\n\n6. **Error mapping table** for HTTP responses:\n   | DefinitionError | HTTP status | Notes |\n   |---|---|---|\n   | DefinitionNotFound | 404 | GET /definitions/:id and /definitions/active/:name |\n   | PoolExhausted | 503 | |\n   | TransactionFailed | 500 | |\n   | InvalidStatus (unrecognised ?status= value) | 422 | Validated at HTTP layer before calling Store |\n\n7. **`?status=` validation rule** (edge case from PD-07.md):\n   Before calling `Store.list()`, the HTTP handler MUST validate that the `?status=` value (if present) is one of DRAFT, ACTIVE, DEPRECATED, ARCHIVED. Unknown values MUST be rejected with HTTP 422.\n\n8. **Traceability table** mapping each PD-07 acceptance criterion to the design element:\n   | AC | Design element |\n   |---|---|\n   | GET /definitions/{id} → 200 + full definition | `getById` store fn + `handleGetById` handler |\n   | GET /definitions/{id} unknown UUID → 404 | `DefinitionNotFound` → HTTP 404 |\n   | GET /definitions paginated per API-06 | cursor encoding in `handleList`, `ListOpts.limit` |\n   | ?name=, ?status=, ?stage= filters | `ListOpts` fields; handler param parsing |\n   | ?status= unrecognised value → 422 | handler-level validation before store call |\n   | GET /definitions empty → 200 + empty array | `Store.list` returns [] → handler returns {items:[], cursor:null} |\n   | GET /definitions/active/{name} ACTIVE exists → 200 | `getActiveByName` store fn + `handleGetActiveByName` |\n   | GET /definitions/active/{name} no ACTIVE → 404 | `DefinitionNotFound` → HTTP 404 |\n   | pagination page_size validated per API-06 | handler rejects ≤0 or >200 with HTTP 422 |\n\nDo NOT rewrite or remove any existing sections. Only append the new PD-07 section.",
+    "acceptance_criteria": [
+      "src/design/definition.md contains a new PD-07 section",
+      "getActiveByName() function signature is fully specified",
+      "Updated ListOpts struct shows the stage field",
+      "Migration 014_definition_stage.sql schema is specified",
+      "HTTP handler signatures for all 3 endpoints are specified",
+      "Cursor encoding scheme for API-06 compliance is documented",
+      "Error mapping table covers all DefinitionError values",
+      "Traceability table covers all PD-07 acceptance criteria"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for PD-07 (Definition retrieval) appended to src/design/definition.md. Added: getActiveByName() function signature, updated ListOpts with stage field, migration 014_definition_stage.sql schema, HTTP handler signatures for all 3 endpoints (handleGetById, handleList, handleGetActiveByName), base64 cursor encoding scheme for API-06, full error mapping table, ?status= handler-level validation rule, and traceability table covering all 9 PD-07 acceptance criteria.",
+    "artifacts_out": [
+      "src/design/definition.md",
+      "docs/issue-reports/WF02-pd07-20260521-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-21T06:10:00Z"
+}

@@ -1,0 +1,87 @@
+{
+  "handoff_id": "40070000-0000-0000-0000-000000000000",
+  "run_id": "WF03-gh400-20260804",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-03T21:56:51Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Step 7 (Documentation Update)",
+    "github_issue": "https://github.com/tvolofi/R-Co/issues/400",
+    "issue_title": "ISS-0205: webhook_deliveries.status written lowercase but CHECK requires UPPERCASE",
+    "iss_id": "ISS-0205",
+    "branch_name": "feature/WF03-gh400-20260804",
+    "related_handoff_ids": [
+      "40030000-0000-0000-0000-000000000000",
+      "40050000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "CHANGELOG.md",
+      "docs/status/requirement_status.yaml"
+    ],
+    "scope_note": "GH #400 fix is verifiably correct: zig build test-integration-iss205 TC1+TC2 PASS with the fix; both fail with C23514 (CHECK constraint violation) on main. TC3 fails on pre-existing schema/code mismatch (column s.secret_ref does not exist, C42703) \u2014 webhook_subscriptions.secret_ref is referenced in src/webhook/dispatcher.zig but the migration GBL-128 ADD COLUMN block is guarded by to_regclass(webhook_subscriptions) which returns NULL in the public schema where the migration runs (webhook_subscriptions lives in per-tenant schemas). This pre-existing issue is tracked at GitHub issue #375 (ISS-0112 \u2014 schema drift cluster) and is NOT in scope for GH #400 case-alignment fix."
+  },
+  "task": {
+    "description": "Step 7 \u2014 DOC-UPDATER. Update CHANGELOG.md with the GH #400 fix. Mark the related requirement(s) as RELEASED via reqctl.py (do NOT hand-edit requirement_status.yaml \u2014 it is generated). Use python3 tools/reqctl.py set-status <ID> RELEASED --implemented-in src/webhook/dispatcher.zig. Then run python3 tools/reqctl.py render-status to regenerate docs/status/requirement_status.yaml. Then create the GitHub PR via gh pr create and merge via gh pr merge --squash --delete-branch. After merge, verify on main with clean working tree per CLAUDE.md 'Return to main \u2014 MANDATORY after Step Final'. The branch is feature/WF03-gh400-20260804, currently 6 commits ahead of main, all pushed to origin. Last commit: 13bd19a (close step-3+5 handoffs).",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with entry for GH #400 (ISS-0205) under current stage",
+      "python3 tools/reqctl.py set-status <relevant IDs> RELEASED exits 0",
+      "python3 tools/reqctl.py render-status regenerates requirement_status.yaml",
+      "gh pr create produces a PR URL",
+      "gh pr merge --squash --delete-branch exits 0",
+      "git branch -r | grep feature/WF03-gh400 shows nothing (branch deleted)",
+      "git checkout main && git pull --ff-only origin main: branch is main, working tree clean",
+      "Next action: 'Route to BACKEND-DEV (Step Final)' OR if Step Final is folded into this handoff, return that the merge and main checkout succeeded"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:set-requirement-status",
+      "fn:render-status",
+      "fn:create-pr",
+      "fn:merge-pr",
+      "fn:verify-clean-main"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "DOC-UPDATER step complete. CHANGELOG.md updated with [Unreleased] 2026-08-04 entry for GH #400 (ISS-0205). reqctl set-status: EXT-02 -> RELEASED (last_updated=2026-08-03T21:58:32Z), ISS-106 -> RELEASED (last_updated=2026-08-03T21:58:33Z). reqctl render-status: regenerated docs/status/requirement_status.yaml (350 entries). PR #412 created. PR #412 squash-merged as commit bfd0e98 on main. Feature branch feature/WF03-gh400-20260804 deleted locally and remotely (verified via git ls-remote and git remote prune). Currently on main with clean working tree. HEAD is bfd0e98 (squash-merge commit). TC3 failure in test-integration-iss205 is pre-existing and tracked separately at GitHub #375 (ISS-0112 schema drift cluster) \u2014 out of scope for GH #400 fix.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml",
+      "docs/issue-reports/WF03-gh400-20260804-step-5-test-runner-INNER-REPORT.yaml",
+      "handoffs/WF03-gh400-20260804/step-7-doc-updater.json",
+      "scratch/gh400_pr_body.md",
+      "PR #412 (https://github.com/tvolodi/R-Co/pull/412)",
+      "merge commit bfd0e98"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh400-20260804",
+      "commit_sha_list": [
+        "98dff26",
+        "6d40475",
+        "e373a4c",
+        "fe2ece0",
+        "f5e13f2",
+        "9af552d",
+        "13bd19a",
+        "7f417c7"
+      ],
+      "remote_branch": "feature/WF03-gh400-20260804 (deleted from remote after merge)",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/412",
+      "pr_create_error": null,
+      "merge_commit_sha": "bfd0e98",
+      "merge_method": "squash",
+      "post_merge_state": "main branch, working tree clean, bfd0e98 (HEAD)"
+    },
+    "next_action": "Workflow complete - return to ORCH that WF03-gh400-20260804 is finished."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-03T21:57:36Z",
+  "completed_at": "2026-08-03T22:05:59Z"
+}

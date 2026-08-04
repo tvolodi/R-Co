@@ -1,0 +1,91 @@
+{
+  "report_id": "WF02-pd06-20260521-step-05-release-validator-INNER-REPORT",
+  "handoff_id": "66100005-2605-4000-8006-202605210504",
+  "run_id": "WF02-pd06-20260521",
+  "step": "05",
+  "agent": "RELEASE-VALIDATOR",
+  "generated_at": "2026-05-21T23:59:59Z",
+  "requirement_ids": ["PD-06"],
+  "overall_status": "PASS",
+
+  "checklist": {
+    "ac_coverage": {
+      "status": "PASS",
+      "detail": "All 5 acceptance criteria and 2 documented edge cases in PD-06 are covered by at least one passing test case.",
+      "mapping": {
+        "AC1 — invalid CEL rejected": ["TC-PD-06-01","TC-PD-06-11","TC-PD-06-12","TC-PD-06-13","TC-PD-06-14","TC-PD-06-15","TC-PD-06-18"],
+        "AC2 — is_default + condition coexist rejected": ["TC-PD-06-09"],
+        "AC3 — at most one default per EXCLUSIVE_GATEWAY": ["TC-PD-06-10"],
+        "AC4 — non-EG edges must not carry conditions or is_default": ["TC-PD-06-03","TC-PD-06-04","TC-PD-06-05","TC-PD-06-06","TC-PD-06-17"],
+        "AC5 — CEL validated at definition creation (pure function path)": ["TC-PD-06-01","TC-PD-06-02","TC-PD-06-19"],
+        "Edge case — empty string condition on non-default EG edge": ["TC-PD-06-08"],
+        "Edge case — null condition on non-default EG edge": ["TC-PD-06-07"],
+        "Non-early-exit (all violations collected)": ["TC-PD-06-16"]
+      },
+      "chk_ec_coverage": {
+        "CHK-EC-01": ["TC-PD-06-03","TC-PD-06-04","TC-PD-06-17"],
+        "CHK-EC-02": ["TC-PD-06-05","TC-PD-06-06"],
+        "CHK-EC-03": ["TC-PD-06-07","TC-PD-06-08"],
+        "CHK-EC-04": ["TC-PD-06-09"],
+        "CHK-EC-05": ["TC-PD-06-10"],
+        "CHK-EC-06": ["TC-PD-06-11","TC-PD-06-12","TC-PD-06-13","TC-PD-06-14","TC-PD-06-18"]
+      }
+    },
+
+    "test_report": {
+      "status": "PASS",
+      "verdict": "PASS",
+      "total": 19,
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "source": "tests/reports/WF02-pd06-20260521-test-report.json",
+      "detail": "All 19 TC-PD-06-01 through TC-PD-06-19 passed. No failed or skipped tests."
+    },
+
+    "build": {
+      "status": "PASS",
+      "zig_build_exit_code": 0,
+      "zig_build_test_exit_code": 0,
+      "detail": "zig build and zig build test both exit 0 per test report."
+    },
+
+    "regressions": {
+      "status": "PASS",
+      "graph_test.zig": "PASS — zig build test exit 0; no regressions detected",
+      "graph_node_attributes_test.zig": "PASS — zig build test exit 0; no regressions detected",
+      "detail": "No regression in any previously-passing graph validation test suite."
+    },
+
+    "security": {
+      "status": "PASS",
+      "findings": [],
+      "detail": "Both validateEdgeConditions() and isValidCelSyntax() confirmed pure functions. Verified by source code inspection of src/definition/graph.zig.",
+      "checks": {
+        "isValidCelSyntax_pure": {
+          "verdict": "PASS",
+          "evidence": "Function docstring states 'Pure function: no allocations, no I/O.' Implementation verified: iterates over input slice only, uses only stack-local counters (paren_depth, bracket_depth, in_single_quote, in_double_quote, has_non_ws, i). No std.fs, std.net, std.posix, pg, or any I/O import used."
+        },
+        "validateEdgeConditions_pure": {
+          "verdict": "PASS",
+          "evidence": "Function docstring states 'Pure function: no I/O, no DB calls, no clock reads.' Implementation verified: accepts allocator + DefinitionGraph, uses stack arrays bounded by MAX_NODES/MAX_EDGES, calls only addViolation() (allocation only) and isValidCelSyntax() (stack-only). No SQL interpolation. No file or network calls."
+        },
+        "no_sql_interpolation": {
+          "verdict": "PASS",
+          "evidence": "validateEdgeConditions() constructs no SQL strings. All violation messages are human-readable text formatted with std.fmt.allocPrint — no database interaction."
+        }
+      }
+    },
+
+    "graph_edge_is_default_field": {
+      "status": "PASS",
+      "detail": "GraphEdge.is_default: bool = false confirmed present in src/definition/graph.zig. Docstring: 'When true, this edge is the default (fallback) route from an EXCLUSIVE_GATEWAY. MUST NOT coexist with a non-null condition. At most one outgoing edge per EXCLUSIVE_GATEWAY may be default.'"
+    }
+  },
+
+  "blocking_issues": [],
+
+  "decision": "APPROVED",
+  "approved_requirements": ["PD-06"],
+  "next_action": "Route to DOC-UPDATER to set PD-06 status to RELEASED in requirement_status.json and update CHANGELOG.md"
+}

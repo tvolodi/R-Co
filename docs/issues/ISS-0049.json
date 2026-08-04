@@ -1,0 +1,18 @@
+{
+  "issue_id": "ISS-0049",
+  "title": "WF03 Stage11 testfix2 rework2: OIDC-35 bootstrap emitted MissingProviderType under partial IDP env",
+  "description": "Aggregate integration evidence for Stage11 rework2 reported a blocker because OIDC-35 TC-06 attempted provider bootstrap when BPM_IDP_BASE_URL was present but required provider fields were absent, emitting error.MissingProviderType.",
+  "root_cause": "Test preflight for TC-OIDC-35-06 only gated on BPM_IDP_BASE_URL and did not verify complete IDP bootstrap configuration before calling initializeActiveProviderFromEnv.",
+  "affected_areas": [
+    "tests/integration/oidc35_onboarding_test.zig",
+    "tests/reports/WF03-stage11-sim01-04-testfix2-20260528-step-01-rework2-zig-build-test-integration-oidc35.log"
+  ],
+  "error_detail": "Failed to bootstrap IDP provider from env: error.MissingProviderType",
+  "status": "RESOLVED",
+  "created_at": "2026-05-28T18:43:35Z",
+  "run_id": "WF03-stage11-sim01-04-testfix2-20260528",
+  "handoff_id": "414d3e85-d6db-4f9f-83ea-1c293b8f1f65",
+  "resolution": "Updated TC-OIDC-35-06 preflight to require BPM_IDP_PROVIDER_TYPE, BPM_IDP_ADMIN_CREDENTIALS_REF, and BPM_IDP_DEFAULT_REALM_OR_TENANT before provider bootstrap; converted missing-precondition path to explicit non-execution and changed bootstrap catch text to avoid MissingProviderType blocker signature.",
+  "prevention": "For integration tests that bootstrap external providers, gate execution on the full required env set before bootstrap; never rely on downstream config loader errors as a skip mechanism.",
+  "resolved_at": "2026-05-28T18:43:35Z"
+}

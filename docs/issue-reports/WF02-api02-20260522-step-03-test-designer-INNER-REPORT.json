@@ -1,0 +1,87 @@
+{
+  "report_id": "WF02-api02-20260522-step-03-TEST-DESIGNER",
+  "agent_id": "TEST-DESIGNER",
+  "run_id": "WF02-api02-20260522",
+  "step": "03",
+  "created_at": "2026-05-22T17:01:31Z",
+  "summary": "Wrote test spec tests/specs/API-02.md with 35 test cases covering all 7 API-02 routes (POST /definitions, GET /definitions, GET /definitions/:id, PUT /definitions/:id, PATCH /definitions/:id, DELETE /definitions/:id, POST /definitions/:id/activate) and all HTTP status codes from the acceptance criteria. Created tests/unit/api02_handler_test.zig with 10 pure input-validation unit tests (no DB required) covering malformed UUID and invalid parameter early-exit paths. Created tests/integration/api02_crud_test.zig with 22 integration test cases covering happy paths and all documented error cases for Store methods (create, list, getById, update, hardDelete, activate, deprecate, archive). Registered the integration test in tests/integration/main_test.zig and the unit test in build.zig. Fixed a pre-existing blocker: clearLastViolations() in src/definition/store.zig was not marked pub but was called from src/api/routes/definitions.zig::handleActivate — this caused a compile error blocking the entire test suite. Made the method pub to unblock compilation. zig build test exits 0.",
+  "files_created": [
+    "tests/specs/API-02.md",
+    "tests/unit/api02_handler_test.zig",
+    "tests/integration/api02_crud_test.zig"
+  ],
+  "files_modified": [
+    "build.zig",
+    "tests/integration/main_test.zig",
+    "src/definition/store.zig"
+  ],
+  "tests_run": [
+    {
+      "name": "TC-API-02-06: handleList — invalid status returns HTTP 422",
+      "status": "pass",
+      "detail": "Unit test — pure input-validation path"
+    },
+    {
+      "name": "TC-API-02-07: handleList — page_size=0 returns HTTP 422",
+      "status": "pass",
+      "detail": "Unit test — pure input-validation path"
+    },
+    {
+      "name": "TC-API-02-07b: handleList — page_size=201 returns HTTP 422",
+      "status": "pass",
+      "detail": "Unit test — pure input-validation path"
+    },
+    {
+      "name": "TC-API-02-08: handleList — invalid base64url cursor returns HTTP 422",
+      "status": "pass",
+      "detail": "Unit test — pure input-validation path"
+    },
+    {
+      "name": "TC-API-02-11: handleGetById — malformed UUID returns HTTP 422",
+      "status": "pass",
+      "detail": "Unit test — pure input-validation path"
+    },
+    {
+      "name": "TC-API-02-11b: handleGetById — UUID too short returns HTTP 422",
+      "status": "pass",
+      "detail": "Unit test — pure input-validation path"
+    },
+    {
+      "name": "TC-API-02-16: handlePut — malformed UUID returns HTTP 422",
+      "status": "pass",
+      "detail": "Unit test — pure input-validation path"
+    },
+    {
+      "name": "TC-API-02-20: handlePatch — malformed UUID returns HTTP 422",
+      "status": "pass",
+      "detail": "Unit test — pure input-validation path"
+    },
+    {
+      "name": "TC-API-02-27: handleDelete — malformed UUID returns HTTP 422",
+      "status": "pass",
+      "detail": "Unit test — pure input-validation path"
+    },
+    {
+      "name": "TC-API-02-33: handleActivate — malformed UUID returns HTTP 422",
+      "status": "pass",
+      "detail": "Unit test — pure input-validation path"
+    },
+    {
+      "name": "Integration tests (TC-API-02-01 through TC-API-02-30)",
+      "status": "skip",
+      "detail": "Skipped — BPM_TEST_DB_URL not set in this environment. Will execute in zig build test-integration when DB is available."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "BLOCKER",
+      "description": "src/definition/store.zig: clearLastViolations() was declared as a private method (fn, not pub fn) but was called from src/api/routes/definitions.zig::handleActivate across module boundaries. This caused a compile error blocking the entire zig build test step. Fixed by making the method pub."
+    }
+  ],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-02 Step 4) to execute integration tests with a real PostgreSQL instance",
+    "TEST-RUNNER should run: zig build test-integration (requires BPM_TEST_DB_URL)",
+    "TC-API-02-34 and TC-API-02-35 (role guard / middleware tests) require the full running server stack — TEST-RUNNER should note these as pending E2E/middleware tests"
+  ],
+  "blockers": []
+}

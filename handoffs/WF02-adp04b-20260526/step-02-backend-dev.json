@@ -1,0 +1,63 @@
+{
+  "handoff_id": "20260526-042",
+  "run_id": "WF02-adp04b-20260526",
+  "workflow_id": "WF-02",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-adp04b-20260526/step-02-backend-dev.json",
+  "created_at": "2026-05-26T05:07:00Z",
+  "started_at": "2026-05-26T05:07:20Z",
+  "completed_at": "2026-05-26T05:22:38Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-04b"
+    ],
+    "related_handoff_ids": [
+      "20260526-041"
+    ],
+    "artifacts_in": [
+      "src/design/adp-04b-tenant-realm-binding.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/addon-1/03-extension-adaptations.md",
+      "docs/status/implementation_order.md"
+    ]
+  },
+  "task": {
+    "description": "Implement ADP-04b per src/design/adp-04b-tenant-realm-binding.md. Additive changes only: add tenant.idp_realm_id TEXT NULL with migration that backfills default tenant idp_realm_id=bpm-default; enforce idp_realm_id requirement for non-default tenant creation when OIDC is enabled while preserving compatibility for existing/default tenant behavior. Update repository/service/API layers and tests needed for deterministic validation of default-tenant backfill, tenant creation validation boundaries, and realm-binding invariants with ADP-04a/OIDC-12. Run full backend validation required by BACKEND-DEV workflow before completing handoff.",
+    "acceptance_criteria": [
+      "Schema migration adds tenant.idp_realm_id with default-tenant backfill to bpm-default",
+      "Non-default tenant creation validation enforces idp_realm_id when OIDC mode is active",
+      "Existing/default tenant flows remain backward compatible",
+      "Relevant unit/integration tests for ADP-04b pass and demonstrate acceptance criteria",
+      "zig build, zig build test, and zig build migrate exit 0"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:check-zig-test",
+      "fn:check-zig-migrate",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ADP-04b tenant realm binding with additive migration/backfill, tenant create validation for OIDC mode, API handler support, and integration coverage for backfill, validation boundaries, and ADP-04a realm ownership invariants.",
+    "artifacts_out": [
+      "migrations/031_adp04b_tenant_realm_binding.sql",
+      "src/identity/registry.zig",
+      "src/identity/service.zig",
+      "src/api/routes/identity.zig",
+      "tests/integration/adp04a_external_identity_linkage_test.zig",
+      "tests/integration/adp04b_tenant_realm_binding_test.zig",
+      "tests/integration/main_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,67 @@
+{
+  "handoff_id": "3f56f3e8-8b7e-44e8-a4f0-652f7f6aaf2f",
+  "run_id": "WF02-obs02-20260524",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-obs02-20260524/step-04-test-runner.json",
+  "created_at": "2026-05-24T18:01:20Z",
+  "started_at": "2026-05-24T18:01:40Z",
+  "completed_at": "2026-05-24T18:05:31.508240Z",
+  "status": "FAILED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-02"
+    ],
+    "related_handoff_ids": [
+      "8f5a6ad6-6980-47fd-8d4e-e2ca8f6f3818",
+      "8ca1312d-7ed3-41ea-8d7b-b2dbfdb9ff42"
+    ],
+    "artifacts_in": [
+      "tests/specs/OBS-02.md",
+      "src/obs/metrics.zig",
+      "src/api/routes/metrics.zig",
+      "tests/integration/obs02_metrics_test.zig",
+      "tests/integration/main_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Execute the OBS-02 test coverage from implementation and test-design steps. Run relevant unit and integration scopes and produce a structured test report under tests/reports/ for WF02-obs02-20260524. Confirm /metrics contract, required metric families/labels, and DB-outage behavior in executed results. If failures occur, record them with severity and affected requirement detail in the handoff result.",
+    "acceptance_criteria": [
+      "Relevant OBS-02 unit and integration tests are executed",
+      "A test report for WF02-obs02-20260524 is written under tests/reports/",
+      "Handoff result records PASS or FAIL with any issues and affected requirement IDs"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Executed the requested OBS-02 unit and integration scopes. Unit scope passed, but OBS-02 integration checks were skipped because BPM_TEST_URL was unreachable (CONNECTION_REFUSED), so /metrics contract, required metric families/labels, and runtime scrape behavior were not validated in executable integration results.",
+    "artifacts_out": [
+      "tests/reports/report-2026-05-24-WF02-obs02-step04.json",
+      "tests/reports/WF02-obs02-20260524-step04-unit.log",
+      "tests/reports/WF02-obs02-20260524-step04-integration.log",
+      "tests/reports/WF02-obs02-20260524-step04-integration-obs02.log",
+      "docs/issue-reports/WF02-obs02-20260524-step-04-test-runner-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-WF02-OBS02-TR-001",
+        "severity": "BLOCKER",
+        "description": "TC-OBS-02-INT-01/02/03 were skipped due CONNECTION_REFUSED for BPM_TEST_URL=http://127.0.0.1:8080, preventing required integration validation of GET /metrics contract and metric output behavior.",
+        "affected_requirement": "OBS-02"
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (WF-03) to provide a reachable OBS-02 HTTP integration target and rerun TEST-RUNNER step 04."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

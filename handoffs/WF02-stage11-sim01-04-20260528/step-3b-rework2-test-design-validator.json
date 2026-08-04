@@ -1,0 +1,62 @@
+{
+  "handoff_id": "2961066c-afaf-44a4-a4f6-207309e0d0b7",
+  "run_id": "WF02-stage11-sim01-04-20260528",
+  "workflow_id": "WF-02",
+  "step": "3b-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-stage11-sim01-04-20260528/step-3b-rework2-test-design-validator.json",
+  "created_at": "2026-05-28T16:19:30Z",
+  "started_at": "2026-05-28T16:19:50Z",
+  "completed_at": "2026-05-28T16:21:33Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04"
+    ],
+    "related_handoff_ids": [
+      "8cd7d585-f4ed-4e5a-9bf4-9142e005f954",
+      "ee34f66e-9d15-4d07-9530-26be33ec80f6"
+    ],
+    "artifacts_in": [
+      "tests/specs/SIM-01.md",
+      "tests/specs/SIM-02.md",
+      "tests/specs/SIM-03.md",
+      "tests/specs/SIM-04.md",
+      "tests/integration/sim01_04_simulation_mode_test.zig",
+      "tests/integration/helpers.zig"
+    ]
+  },
+  "task": {
+    "description": "Post-WF03 re-validation: verify SIM-01..SIM-04 test design and test sources are still compliant and gate-ready before Step 4 re-run.",
+    "acceptance_criteria": [
+      "MUST coverage remains complete and runnable",
+      "No deferred/skip behavior violating directives",
+      "Fixture isolation and cleanup remain valid"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Test design validation failed for SIM-01..SIM-04: fixture cleanup hard-gate violation detected in SIM-01 integration tests.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "Fixture cleanup check failed: TC-SIM-01-01 and TC-SIM-01-02 insert and append persistent DB fixtures through pooled connections without explicit teardown/rollback equivalent for those writes; defer blocks release resources but do not remove inserted rows.",
+        "files": [
+          "tests/integration/sim01_04_simulation_mode_test.zig",
+          "tests/integration/helpers.zig"
+        ]
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER (Step 3) for rework"
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

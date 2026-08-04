@@ -1,0 +1,17 @@
+schema_version: '1.0'
+run_id: WF02-f6-wh-ui-04-20260531
+handoff_id: 699f1aef-453f-48ea-a2e2-324c2ce27d85
+agent: RELEASE-VALIDATOR
+step: '05'
+status: PASS
+timestamp: 2026-05-31T16:25:33Z
+summary: >-
+  Release APPROVED for Stage F6 - Webhook Delivery Log. The focused Step 04
+  report passed all three WH-UI-04 Playwright cases, and a fresh zig build bench
+  run passed NFR-01, NFR-02, and NFR-04 with substantial margin.
+artifacts_out:
+  - docs/status/release-stage-f6-wh-ui-04-2026-05-31.json
+notes:
+  - Step 04 report recorded 3 passed, 0 failed, 0 skipped for TC-WH-UI-04-01..03.
+  - zig build bench passed with p99_read_ms=1.000, p99_write_ms=2.797, append_throughput_eps=76418.437, replay_10000_ms=41.743.
+  - docs/status/requirement_status.yaml does not yet contain WH-UI-04; DOC-UPDATER should insert the requirement entry before marking it RELEASED.

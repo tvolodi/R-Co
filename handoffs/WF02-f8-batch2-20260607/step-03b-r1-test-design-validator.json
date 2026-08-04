@@ -1,0 +1,50 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-003b-r1",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "03b-r1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-06T21:58:12Z",
+  "started_at": "2026-06-06T21:58:26Z",
+  "completed_at": "2026-06-06T21:59:16Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 test design validation rerun",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": ["wf02-f8-b2-20260607-003-r1"],
+    "artifacts_in": [
+      "tests/specs/TM-04.md",
+      "tests/specs/TM-05.md",
+      "tests/integration/tm01_tenant_list_test.zig",
+      "web/tests/e2e/tenants.e2e.spec.ts",
+      "handoffs/WF02-f8-batch2-20260607/step-03-r1-test-designer.json"
+    ]
+  },
+  "task": {
+    "description": "Rerun test design validation after rework. Confirm previous blockers are resolved: no env-missing skip on MUST tests, UUID fixtures for TM-04/TM-05 integration tests, and no hardcoded e2e credentials.",
+    "acceptance_criteria": [
+      "PASS with no BLOCKER test-design issues",
+      "If FAIL, provide exact residual gaps"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Validation rerun failed for TM-04/TM-05: lifecycle integration fixtures still use hardcoded static slug IDs instead of per-test runtime UUID fixtures.",
+    "artifacts_out": [
+      "docs/issue-reports/WF02-f8-batch2-20260607-step-03b-r1-test-design-validator-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "id": "TDV-TM-04-05-UUID-001",
+        "severity": "BLOCKER",
+        "description": "Integration lifecycle tests for TM-04/TM-05 use hardcoded slug values with static UUID-like suffixes instead of per-test runtime-generated UUID fixture identifiers.",
+        "affected_requirement": "TM-04"
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER for rework (replace static lifecycle slugs with runtime per-test UUID fixture IDs), then rerun TEST-DESIGN-VALIDATOR."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

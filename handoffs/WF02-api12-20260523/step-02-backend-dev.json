@@ -1,0 +1,62 @@
+{
+  "handoff_id": "a1200002-2605-4000-8012-202605231416",
+  "run_id": "WF02-api12-20260523",
+  "step": "02",
+  "from_agent": "CODE-DESIGNER",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-23T14:16:27.506428Z",
+  "started_at": "2026-05-23T14:22:16.822256Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4 — API Layer",
+    "requirement_ids": [
+      "API-12"
+    ],
+    "related_handoff_ids": [
+      "a1200001-2605-4000-8012-202605231410"
+    ],
+    "artifacts_in": [
+      "src/design/api-health.md",
+      "docs/requirements/API-12.md",
+      "src/db/pool.zig",
+      "src/api/api_mod.zig",
+      "src/api/errors.zig",
+      "src/api/response.zig",
+      "src/api/routes/",
+      "src/main.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement API-12 (Health endpoints) according to src/design/api-health.md.\n\nRequired outcomes:\n- Add unauthenticated GET /health/live endpoint that returns HTTP 200 with {\"status\":\"ok\"} while process is running\n- Add unauthenticated GET /health/ready endpoint that returns HTTP 200 with {\"status\":\"ok\",\"db_latency_ms\":N} only when DB connectivity and required subsystems are ready\n- /health/ready MUST call DB-04 (Pool.healthCheck) to verify connectivity\n- On readiness failure, return HTTP 503 with structured response identifying failing subsystem (including pool exhausted handling)\n- Ensure health endpoints remain unauthenticated while still flowing through API-09 trace assignment\n- Keep handler execution bounded to satisfy the <1s API-12 response target\n\nValidation required in this handoff:\n- zig build\n- zig build test\n- Confirm /health/live and /health/ready routes are public and reachable through the API router\n\nUpdate this handoff result with all touched artifacts and any issues.",
+    "acceptance_criteria": [
+      "GET /health/live exists and returns HTTP 200 with status ok",
+      "GET /health/ready uses DB-04 health check and returns db_latency_ms on readiness success",
+      "Readiness failures return HTTP 503 with failing subsystem details",
+      "Health endpoints do not require authentication",
+      "zig build exits 0",
+      "zig build test exits 0"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented API-12 health endpoints with unauthenticated /health/live and /health/ready handlers, DB-04-backed readiness checks, structured 503 degraded responses (including pool exhausted mapping), and OpenAPI route registration confirming public reachability.",
+    "artifacts_out": [
+      "src/api/routes/health.zig",
+      "src/api/health/readiness.zig",
+      "src/api/health/subsystems.zig",
+      "src/api/openapi/builder.zig",
+      "src/api/routes/openapi.zig",
+      "src/main.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-23T14:22:16.822976Z"
+}

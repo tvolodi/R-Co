@@ -1,0 +1,60 @@
+{
+  "handoff_id": "20260525-035",
+  "run_id": "WF02-obs06-20260525",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-obs06-20260525/step-01-code-designer.json",
+  "created_at": "2026-05-25T17:20:00Z",
+  "started_at": "2026-05-25T17:20:20Z",
+  "completed_at": "2026-05-25T06:20:50Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-06"
+    ],
+    "related_handoff_ids": [
+      "20260525-001",
+      "20260525-013",
+      "20260525-028"
+    ],
+    "artifacts_in": [
+      "docs/requirements/OBS-06.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "src/design/obs-03-audit-log.md",
+      "src/design/obs-05-dead-letter-queue.md"
+    ]
+  },
+  "task": {
+    "description": "Produce a backend design artefact for OBS-06 at src/design/obs-06-alerting-hooks.md. Define a configurable alerting-hook architecture for webhook notifications on three triggers: (1) instance stuck in ERROR for > N minutes, (2) DLQ depth threshold crossing, and (3) scheduler lag threshold breach. Specify configuration schema (enabled hooks, thresholds, destination URL, auth headers/secrets handling, retry policy) and clear state-machine semantics for one-shot threshold crossing behavior (fire once above threshold, re-arm only after recovery below threshold). Define payload contracts per alert type with deterministic fields and correlation IDs. Design delivery guarantees and failure handling: 3 retries with exponential backoff, structured logging on terminal failure (OBS-01), and no unbounded retry loops. Include module boundaries, data flows, idempotency safeguards, and integration points with OBS-05, SCH-02, and EXT-02. Provide a full requirement traceability matrix mapping all OBS-06 acceptance criteria and edge cases to concrete modules/functions plus test obligations. Design only; do not modify implementation code.",
+    "acceptance_criteria": [
+      "All OBS-06 acceptance criteria and edge cases map to explicit design elements",
+      "Alert trigger semantics are concrete for ERROR duration, DLQ threshold crossing/re-arm, and scheduler lag",
+      "Webhook payload and configuration contracts are specified with security handling and deterministic fields",
+      "Retry/backoff and terminal-failure logging behavior are testable and aligned with OBS-01",
+      "Traceability matrix identifies implementation modules and verification hooks for backend and integration tests"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for OBS-06 alerting hooks completed at src/design/obs-06-alerting-hooks.md, including configurable hook schema, one-shot threshold crossing and re-arm semantics for ERROR/DLQ/scheduler lag triggers, deterministic payload contracts with correlation IDs, bounded retry/backoff and OBS-01 terminal logging behavior, idempotency safeguards, and complete requirement traceability.",
+    "artifacts_out": [
+      "src/design/obs-06-alerting-hooks.md",
+      "docs/issue-reports/WF02-obs06-20260525-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

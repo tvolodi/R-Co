@@ -1,0 +1,66 @@
+{
+  "handoff_id": "f2a3b4c5-0011-4000-8000-202605202100",
+  "workflow_id": "WF-02",
+  "sequence": 2,
+  "run_id": "WF02-stage1-integration-20260520",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-20T21:00:00Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 1 — real integration tests (replace SkipZigTest stubs)",
+    "requirement_ids": [
+      "DB-01", "DB-02", "DB-03", "DB-04",
+      "ES-01", "ES-02", "ES-03", "ES-04",
+      "ES-05", "ES-06", "ES-07", "ES-08"
+    ],
+    "related_handoff_ids": [
+      "a7b8c9d0-0007-4000-8000-202605201700",
+      "e1f2a3b4-0010-4000-8000-202605202000"
+    ],
+    "artifacts_in": [
+      "tests/integration/helpers.zig",
+      "tests/integration/db_integration_test.zig",
+      "tests/integration/event_store_integration_test.zig",
+      "tests/specs/DB-01-04.md",
+      "tests/specs/ES-01-08.md",
+      "src/db/pool.zig",
+      "src/db/migrations.zig",
+      "src/event_store/store.zig",
+      "src/event_store/registry.zig",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Replace all `error.SkipZigTest` stubs in the Stage 1 integration test files with real assertions against a live PostgreSQL database. Read the test developer guide §1 Core Testing Directives before starting — DIRECTIVE T-1 is absolute.\n\n## Current state (to be replaced)\n\nBoth integration test files currently contain only stubs returning `error.SkipZigTest`. Under DIRECTIVE T-1 these do NOT count as passing tests and do NOT advance requirement status.\n\n## What to produce\n\nReplace the stubs in the following files with full test implementations:\n\n### tests/integration/db_integration_test.zig\n\nImplement ALL test cases from tests/specs/DB-01-04.md that are marked as integration tests:\n\n- **TC-DB-01-***: Schema initialisation — verify migrations apply and schema_migrations table is populated; verify running twice is idempotent; verify migrations are applied in numeric order.\n- **TC-DB-03-***: Transactional integrity — verify a transaction that errors rolls back cleanly; verify concurrent writes do not corrupt data (write from two connections, verify isolation).\n- **TC-DB-04-***: Health check — Pool.healthCheck() returns a HealthResult with latency_ms > 0; verify it returns an error when the DB is unreachable (test by using an invalid URL in a separate pool).\n\nEach test MUST use `TestHarness` from `tests/integration/helpers.zig`. The `defer h.deinit()` pattern guarantees rollback.\n\n### tests/integration/event_store_integration_test.zig\n\nImplement ALL test cases from tests/specs/ES-01-08.md that are marked as integration tests:\n\n- **TC-ES-01-***: Append — insert an event, verify all fields are persisted; verify InstanceNotFound for unknown instance_id; verify ActorIdMissing when actor_id is empty.\n- **TC-ES-02-***: Ordered read — append 3 events, verify they are returned in sequence_number order; verify empty list for unknown instance.\n- **TC-ES-03-***: Idempotency — append twice with same idempotency_key, verify second call returns the original event (is_duplicate=true) with the same event_id.\n- **TC-ES-04-***: Global stream — append to two different instances, verify readGlobal returns both in sequence order.\n- **TC-ES-05-***: Type registry — registerType, then append an event of that type; verify UnknownEventType for an unregistered type.\n- **TC-ES-06-***: Point-in-time — append 3 events with different timestamps, query before the 3rd, verify only first 2 returned.\n- **TC-ES-07-***: Retention/archival — append events, call archive() with 0 days (archives all), verify events are in archive table.\n- **TC-ES-08-***: Metadata — append event with metadata map, verify metadata is persisted and retrievable.\n\n## Constraints (DIRECTIVE T-1)\n\n- No `error.SkipZigTest` in any test case for a MUST requirement\n- Every test uses real PostgreSQL via TestHarness\n- No mocks, stubs, or fake return values\n- All SQL parameters use $1/$2/... placeholders (no interpolation)\n- Each test is isolated by TestHarness.deinit() rolling back the transaction\n\n## Test spec updates\n\nIf any test case in the spec needs adjusting to match the actual implemented API (field names, error types), update the spec file accordingly. Spec and implementation must be in sync.\n\n## Validate\n\nDo NOT run the tests yourself (TEST-RUNNER does that). Run only:\n- `zig build test` — must exit 0 (unit tests unaffected)\n- `zig build test-integration` — must COMPILE (link errors are blockers; runtime failures are expected until TEST-RUNNER runs with a live DB)\n\n## Acceptance criteria\n- No error.SkipZigTest in db_integration_test.zig or event_store_integration_test.zig on MUST requirement test cases\n- Every TC-DB-* and TC-ES-* from the specs has a corresponding implemented test block\n- zig build test exits 0\n- zig build test-integration compiles without errors",
+    "acceptance_criteria": [
+      "No error.SkipZigTest on MUST requirement tests in integration test files",
+      "All TC-DB-* integration cases from spec implemented with real assertions",
+      "All TC-ES-* integration cases from spec implemented with real assertions",
+      "zig build test exits 0",
+      "zig build test-integration compiles without link errors"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-test-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All integration test files compile. zig build test exits 0. zig build test-integration compiles and links. 16 non-stub test cases implemented across db_integration_test.zig (5 tests) and event_store_integration_test.zig (11 tests). No error.SkipZigTest on MUST requirement test cases.",
+    "artifacts_out": [
+      "tests/integration/db_integration_test.zig",
+      "tests/integration/event_store_integration_test.zig",
+      "tests/integration/helpers.zig",
+      "tests/specs/DB-01-04.md",
+      "tests/specs/ES-01-08.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER for live database execution"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-20T19:10:02Z"
+}

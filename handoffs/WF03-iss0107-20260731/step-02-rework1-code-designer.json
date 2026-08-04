@@ -1,0 +1,50 @@
+{
+  "handoff_id": "1992dcc2-c3a2-4515-b89c-adffd2011da9",
+  "run_id": "WF03-iss0107-20260731",
+  "workflow_id": "WF-03",
+  "step": "02-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-iss0107-20260731/step-02-rework1-code-designer.json",
+  "created_at": "2026-07-31T19:44:51Z",
+  "started_at": "2026-07-31T19:45:38Z",
+  "completed_at": "2026-07-31T19:50:17Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "aef0e7e1-4757-4d1e-aff3-8e0bc729ca2f"
+    ],
+    "artifacts_in": [
+      "src/design/fix-ISS-0107.md",
+      "docs/issues/ISS-0107.json",
+      "tests/integration/helpers.zig",
+      "handoffs/WF03-iss0107-20260731/step-03-backend-dev.json"
+    ],
+    "branch_name": "feature/WF03-iss0107-20260731"
+  },
+  "task": {
+    "description": "REWORK 1 of src/design/fix-ISS-0107.md. BACKEND-DEV implemented the original design exactly as specified (widening the bpm_test_migrations_public advisory lock to cover resetTestData()/applyCompatibilityShims()) and ran 3 full zig build test-integration verification runs. RESULT: the original 40P01 deadlock storm (22 deadlocks baseline) IS eliminated by the widened lock -- deadlock count trended 22 -> 1 -> 2 -> 0 across 3 runs, with the 1-2 residual deadlocks confirmed via relation-OID/stack-trace inspection to be in UNRELATED business-logic code, not the widened critical section. HOWEVER a new failure mode was surfaced that this design did not anticipate: serializing ~19+ binaries through the widened critical section increases queue depth for the lock, and the PRE-EXISTING lock_timeout='5s' session setting (set earlier in the same TestHarness.init() via configureSessionTimeouts(), BEFORE the advisory-lock acquire this fix widened) now cancels later waiters' own pg_advisory_lock() acquire statement with Postgres error 55P03 (\"canceling statement due to lock timeout\") before the lock is ever granted to them. The 55P03 count trended 1 -> 4 -> 16 across the same 3 runs -- inversely correlated with the deadlock count, showing the same underlying contention is being converted from one Postgres error code to another, not eliminated. TC-DB-01-01/02 still did not pass in any of the 3 runs. Full detail in handoffs/WF03-iss0107-20260731/step-03-backend-dev.json result.summary and result.issues[0], and in docs/issues/ISS-0107.json (BACKEND-DEV appended verification findings there too). Your job: revise the design to account for this interaction. This repo has an established convention against retry/timeout workarounds for root-cause fixes (see WF-03's general design philosophy and ISS-0106's own explicit rejection of retry/sleep/timeout approaches) -- so before reaching for \"just raise lock_timeout\" as the fix, consider whether that specific choice here is actually principled (not a symptom-masking workaround) given what lock_timeout is FOR: it exists to catch genuinely-stuck/hung sessions, not to bound normal, expected queueing behind an intentionally-serializing structural fix. A revised design should reason explicitly about this distinction. Options to evaluate (not exhaustive -- use your judgement, choose one and justify): (a) scope lock_timeout='5s' to NOT apply to the widened advisory-lock acquire call specifically (e.g. temporarily SET LOCAL lock_timeout = 0 or a much higher value just around that one acquire, restoring the normal timeout immediately after, since normal queueing behind ~19+ serialized binaries during test bootstrap is expected/intended by this fix's own design, not a hang to catch); (b) reduce the width of the critical section so total queue depth/wait time per binary stays well under 5s (e.g. only lock around resetTestData(), leaving applyCompatibilityShims() to use a different, narrower mitigation -- but note ISSUE-FIXER's diagnosis found DDL-vs-DDL contention in BOTH sections, so re-verify whether a narrower lock would actually still close the original deadlock window before choosing this); (c) some other structural approach not yet considered. Whichever is chosen, the revised design MUST explicitly address why it does not just convert the problem back into another form of failure, and should reference BACKEND-DEV's actual run data (55P03 trending inversely with 40P01) as evidence the chosen approach closes the gap.",
+    "acceptance_criteria": [
+      "Revised src/design/fix-ISS-0107.md explicitly addresses the lock_timeout/55P03 interaction found by BACKEND-DEV",
+      "Design explains WHY its chosen approach is not a symptom-masking workaround, with reference to what lock_timeout is actually meant to protect against",
+      "If lock_timeout scoping is chosen: design specifies exactly where/how it is scoped (which statement(s), old value restored how, so unrelated code paths keep the original protective 5s timeout)",
+      "Design does not regress the original ISS-0107 deadlock fix (the widened critical section's coverage of resetTestData()/applyCompatibilityShims() must remain, unless the design explicitly justifies and re-verifies a narrower alternative still closes the DDL-vs-DDL race both operations were diagnosed with)",
+      "Fix scope <= 5 files, still expected to be tests/integration/helpers.zig only unless justified otherwise"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Revised src/design/fix-ISS-0107.md: kept the original widened-lock-scope fix (bpm_test_migrations_public advisory lock covering resetTestData()/applyCompatibilityShims(), unchanged and confirmed effective at eliminating the 40P01 deadlock storm) and added a precisely-scoped lock_timeout bracket around exactly the one new acquire statement at helpers.zig:473 that surfaced 55P03: raise lock_timeout to '90s' immediately before that acquire, restore to '5s' immediately after it succeeds (via the file's existing try/defer-catch idiom), leaving the ambient 5s untouched everywhere else in the file (lines 99, 144, and everything after conn.begin() at line 516). Read the current post-rework-1 helpers.zig directly (git diff vs origin/main) to confirm the widened acquire runs on a plain autocommit pg.Conn with no open transaction until line 516, which rules out SET LOCAL (its scoping relies on a transaction boundary that does not exist here) in favor of a plain SET/SET restore pair -- the same idiom configureSessionTimeouts() already uses. Argued explicitly why this is not a symptom-masking workaround (the wait is a finite, expected queue behind ~21 other binaries' worth of the same short critical section -- the fix's own intended tradeoff -- not an unbounded hang lock_timeout exists to catch) and why 90s (not 0/disabled) is the right value: it is many times larger than the estimated worst-case queue-drain time while remaining finite, and the untouched statement_timeout='60s' independently backstops the same statement regardless, so no real safety net is removed.",
+    "artifacts_out": ["src/design/fix-ISS-0107.md"],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR Step 2b (rework re-validation)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

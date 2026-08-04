@@ -1,0 +1,59 @@
+{
+  "report_id": "WF04-full-rerun-20260523-step-02-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF04-full-rerun-20260523",
+  "step": "02",
+  "created_at": "2026-05-23T15:35:07Z",
+  "summary": "Diagnosed category A logic error and resolved both WF04 rerun failures: API-03 integration leak path and frontend no-tests command failure. Verification commands completed with exit code 0.",
+  "files_created": [
+    "docs/issues/issue_index.json",
+    "docs/issues/ISS-0001.json",
+    "docs/issue-reports/WF04-full-rerun-20260523-step-02-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "src/engine/instance.zig",
+    "src/definition/snapshot.zig",
+    "tests/integration/instance_error_test.zig",
+    "tests/integration/ee09_merge_variables_test.zig",
+    "web/package.json",
+    "handoffs/WF04-full-rerun-20260523/step-02-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "exit 0"
+    },
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "exit 0"
+    },
+    {
+      "name": "zig build test-integration",
+      "status": "pass",
+      "detail": "exit 0"
+    },
+    {
+      "name": "cd web && npm run type-check",
+      "status": "pass",
+      "detail": "exit 0"
+    },
+    {
+      "name": "cd web && npm run build",
+      "status": "pass",
+      "detail": "exit 0"
+    },
+    {
+      "name": "cd web && npm run test",
+      "status": "pass",
+      "detail": "exit 0"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-03 Step 3) for rerun confirmation."
+  ],
+  "blockers": []
+}

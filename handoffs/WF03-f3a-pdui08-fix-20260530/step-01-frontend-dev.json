@@ -1,0 +1,44 @@
+{
+  "handoff_id": "wf03-pdui08-step01-002",
+  "run_id": "WF03-f3a-pdui08-fix-20260530",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-29T20:57:15Z",
+  "started_at": null,
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Fix",
+    "requirement_ids": ["PD-UI-08"],
+    "related_handoff_ids": ["f3a-step04r3-013"],
+    "artifacts_in": [
+      "tests/reports/report-2026-05-29-WF02-f3a-batch1-20260529-step04-rework3.json",
+      "web/tests/e2e/pdui08-debounced-search.e2e.spec.ts",
+      "web/src/pages/definitions/DefinitionListPage.tsx"
+    ]
+  },
+  "task": {
+    "description": "Fix TC-PDUI08-03 E2E test failure: 'Empty search bar shows regular definition list'.\n\n## Failure Details\n\nTest: web/tests/e2e/pdui08-debounced-search.e2e.spec.ts — TC-PDUI08-03\nError: expect(locator).toBeVisible() failed for def-name-<uuid>; empty search did not show regular definition row within 5000ms\nSeverity: BLOCKER\nRequirement: PD-UI-08\n\n## Root Cause Analysis\n\nThe test flow:\n1. Creates a definition via API\n2. Logs in, navigates to /definitions\n3. Asserts `def-name-${def.id}` is visible (initial list view) — THIS PASSES\n4. Types 'something' into search, waits 1500ms\n5. Clears search (fills ''), waits 1500ms\n6. Asserts `def-name-${def.id}` is visible again — THIS FAILS\n\nThe bug is in DefinitionListPage.tsx:\n- Line 49: `const { data, isLoading } = useDefinitions({ status, name: debouncedSearch || undefined })`\n- When user clears search, `search` becomes '' immediately, but `debouncedSearch` still holds 'something' for 300ms\n- After debounce fires, `debouncedSearch` becomes '' and `useDefinitions` gets `{ status, name: undefined }`\n- However, `isSearching = debouncedSearch.trim().length > 0` controls which data source to use\n- There's a race condition: the list query may be stale or refetching when the assertion runs\n- Also, the `name` parameter in `useDefinitions` is unnecessary since search is now handled by `useDefinitionSearch` — this dual-path causes confusion\n\n## Fix Required\n\nIn `web/src/pages/definitions/DefinitionListPage.tsx`:\n1. Remove `name: debouncedSearch || undefined` from the `useDefinitions` call — the list query should NOT be filtered by name; search is handled by the dedicated search endpoint\n2. Change line 49 to: `const { data, isLoading } = useDefinitions({ status })`\n3. This ensures the regular list view always fetches all definitions (filtered only by status), and search is exclusively handled by `useDefinitionSearch`\n\nIn the E2E test (if needed for timing robustness):\n- The 1500ms wait after clearing is already generous, but ensure the assertion has adequate timeout\n\n## Validation\n\nAfter the fix:\n1. cd web && npm run type-check — must exit 0\n2. cd web && npm run lint — must exit 0\n3. cd web && npm run build — must exit 0\n4. cd web && npx playwright test tests/e2e/pdui08-debounced-search.e2e.spec.ts — TC-PDUI08-03 must pass\n\n## Commit\n\ngit add -A\ngit commit -m 'fix(pdui08): remove stale name filter from useDefinitions to fix empty-search fallback (TC-PDUI08-03)'\ngit push origin feature/WF03-f3a-pdui08-fix-20260530",
+    "acceptance_criteria": [
+      "TC-PDUI08-03 passes: empty search bar shows regular definition list",
+      "npm run type-check exits 0",
+      "npm run lint exits 0",
+      "npm run build exits 0",
+      "All other PDUI08 E2E tests still pass (TC-PDUI08-01 through 06)",
+      "Fix committed and pushed to feature branch"
+    ],
+    "functions_to_call": ["fn:fix-pdui08-empty-search-fallback"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Removed stale name filter from useDefinitions call in DefinitionListPage.tsx. The regular list query now fetches all definitions filtered only by status, while search is exclusively handled by useDefinitionSearch. This fixes the race condition where debouncedSearch held a stale value after clearing the search bar.",
+    "artifacts_out": ["web/src/pages/definitions/DefinitionListPage.tsx"],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 2) to verify TC-PDUI08-03 passes"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-05-29T21:24:13Z"
+}

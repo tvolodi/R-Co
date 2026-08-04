@@ -1,0 +1,85 @@
+{
+    "handoff_id":  "20260527-retest-integration-001",
+    "run_id":  "ADHOC-retest-integration-20260527",
+    "step":  "04",
+    "from_agent":  "ORCH",
+    "to_agent":  "TEST-RUNNER",
+    "created_at":  "2026-05-27T22:08:03Z",
+    "started_at":  "2026-05-27T22:08:03Z",
+    "status":  "COMPLETED",
+    "priority":  "CRITICAL",
+    "context":  {
+                    "notes":  "Rerun integration tests after fixes to database isolation and DSL test specifications. Previous run had 37 failures (28 DuplicateNameVersion + 5 DSL expression issues + 4 other). Fixes applied: (1) clean_test_db.py updated to use TRUNCATE CASCADE, (2) DSL-08 test specs corrected for millisecond precision.",
+                    "stage":  "Test Infrastructure",
+                    "requirement_ids":  [
+
+                                        ],
+                    "related_handoff_ids":  [
+                                                "20260527-full-test-001",
+                                                "20260528-db-isolation-fix",
+                                                "20260528-dsl-expr-fix"
+                                            ],
+                    "artifacts_in":  [
+                                         "tests/reports/ADHOC-full-test-20260528-integration-results.json"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Rerun backend integration tests after infrastructure and test specification fixes. Previous run had 37 failures; expect significant improvement or all tests passing. Run: set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test \u0026\u0026 zig build test-integration. Verify: (1) No DuplicateNameVersion errors (database isolation fixed), (2) DSL-08 tests now pass (specs corrected), (3) Overall failure count drops to zero or near-zero, (4) Generate comprehensive report.",
+                 "acceptance_criteria":  [
+                                             "zig build test-integration exits 0",
+                                             "Zero DuplicateNameVersion errors (database isolation fixed)",
+                                             "Zero DSL expression evaluation errors (test specs corrected)",
+                                             "Total failed tests \u003c= 5 (down from 37)",
+                                             "Report written to tests/reports/ADHOC-retest-integration-20260527.json showing all results"
+                                         ],
+                 "functions_to_call":  [
+
+                                       ]
+             },
+    "result":  {
+                   "artifacts_out":  [
+                                         "tests/reports/ADHOC-retest-integration-20260527.json"
+                                     ],
+                   "failure_breakdown":  {
+                                             "DSL_Expression":  0,
+                                             "AuditPersistenceMismatch":  1,
+                                             "DuplicateNameVersion":  28
+                                         },
+                   "next_action":  "Route to ISSUE-FIXER for investigation of DuplicateNameVersion root cause in store.zig and audit isolation issue",
+                   "summary":  "Integration tests rerun after database isolation and DSL spec fixes. DuplicateNameVersion errors (28) persist despite TRUNCATE CASCADE fix. DSL expression failures (5) resolved. 1 new audit isolation issue detected.",
+                   "test_statistics":  {
+                                           "pass_rate_percent":  87.1,
+                                           "skipped":  7,
+                                           "total_tests":  340,
+                                           "failed":  37,
+                                           "passed":  296
+                                       },
+                   "status":  "FAILED",
+                   "issues":  [
+                                  {
+                                      "title":  "DuplicateNameVersion persistent - database isolation fix ineffective",
+                                      "description":  "28 tests fail with DefinitionError.DuplicateNameVersion from store.zig:272. TRUNCATE CASCADE cleanup did not resolve root cause. Root cause is in application logic (INSERT ... ON CONFLICT), not database cleanup.",
+                                      "id":  "ISSUE-001",
+                                      "affected_count":  28,
+                                      "severity":  "CRITICAL"
+                                  },
+                                  {
+                                      "title":  "Audit table isolation - audit_entries not properly cleaned",
+                                      "description":  "TC-ADP-02-05 fails with expected 1 audit entry but found 5. New failure indicating audit_entries is not isolated between tests.",
+                                      "id":  "ISSUE-002",
+                                      "affected_count":  1,
+                                      "severity":  "MAJOR"
+                                  },
+                                  {
+                                      "title":  "DSL expression failures fixed",
+                                      "description":  "5 DSL-related test failures (date_add, date_diff, dot_path) from previous run are now resolved. DSL-08 test spec corrections worked.",
+                                      "id":  "RESOLVED-001",
+                                      "affected_count":  0,
+                                      "severity":  "CRITICAL"
+                                  }
+                              ]
+               },
+    "rework_count":  0,
+    "max_rework":  1,
+    "completed_at":  "2026-05-27T22:13:54Z"
+}

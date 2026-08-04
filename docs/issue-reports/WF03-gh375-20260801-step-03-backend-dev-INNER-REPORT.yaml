@@ -1,0 +1,142 @@
+issue_id: ISS-0112
+run_id: WF03-gh375-20260801
+step: 3
+agent: BACKEND-DEV
+handoff_id: 67e35468-383a-4a31-a122-9cffa55c26b6
+reported_at: '2026-08-01T10:31:35Z'
+summary: >-
+  Implemented all 5 changes from src/design/fix-iss0112.md §6. Created corrective
+  migration GBL-105 with -- reapply_on_drift: true header and 97-row ledger backfill;
+  added force_reconcile param to Migrations.runForSchema; refactored helpers.zig to
+  remove leaked SVC fixtures and add per-test cleanup helper; added --include-fixtures
+  flag to clean_test_db.py; created verify_schema_baseline.py. zig build, zig build test,
+  zig build migrate, verify_schema_baseline.py (with and without --check-tenants) all
+  exit 0. lint_test_isolation.py BLOCKER=0 with no new helpers.zig findings. Commit
+  178436a pushed to origin/feature/WF03-gh375-20260801.
+implementation:
+  change_1:
+    name: Corrective migration GBL-105
+    file: migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    notes: >-
+      Header `-- reapply_on_drift: true` enables the change-2 applier guard.
+      DO block backfills public.schema_migrations rows for 96 prior files
+      (GBL-104 down to 001_event_store.sql) + adds a row for GBL-105 itself
+      (98 total). For each tenant_* schema, conditionally inserts per-file
+      ledger rows for non-GBL-prefixed migrations (the apply guard skips GBL
+      rows for per-tenant schemas). ALTER TABLE statements add
+      webhook_subscriptions.secret_ref, public.tenant_realm_binding table,
+      per-tenant entity_type_instances table. CHECK constraint upgrades
+      (webhook_deliveries_status_check, tenant_storage_mode_check) are
+      guarded by a pg_constraint existence check so re-running the
+      migration is idempotent.
+  change_2:
+    name: Applier guard
+    files:
+      - src/db/migrations.zig
+      - src/db/provisioning.zig
+    notes: >-
+      Migrations.runForSchema() now takes a 5th parameter `force_reconcile: bool`.
+      Before checking `applied.contains(filename)`, it reads the first 1 KiB
+      of the file via `dir.readFileAlloc(pool.io, filename, allocator,
+      std.Io.Limit.limited(1024))` and parses the bytes for the substring
+      `-- reapply_on_drift: true`. On parse error the file is treated as a
+      normal migration (`catch break :blk false`). When reapply_on_drift is
+      true and force_reconcile is false, a heuristic log line is emitted
+      if a later migration has already been applied — this prevents
+      cascading re-applies of every prior migration just because one was
+      marked drift-corrected. When force_reconcile is true, the heuristic
+      is bypassed and the migration is unconditionally re-applied. The
+      call site in provisioning.zig:112 was updated to pass `false`.
+  change_3:
+    name: Per-test isolation refactor
+    file: tests/integration/helpers.zig
+    notes: >-
+      ensureDefaultOidcSeeds() canonical 'default' tenant INSERT now includes
+      `tenant_type='test'` in the column list. The ON CONFLICT DO UPDATE clause
+      was extended with `tenant_type = 'test'` so the persistent fixture row
+      is forced to test type even if a prior harness wrote it without the
+      column (pre-GBL-080 behavior). The 9-row SVC-01..04 fixture INSERT
+      block was REMOVED; a comment now requires each SVC test to own its
+      fixtures via `try h.conn.exec(...)` + `defer cleanupTestTenant(...)`.
+      A new pub fn cleanupTestTenant(conn: *pg.Conn, tenant_id: []const u8)
+      void issues a best-effort DELETE FROM public.tenant WHERE id=$1
+      AND tenant_type='test'; never returns an error so it can be called
+      from `defer` blocks safely.
+  change_4:
+    name: Cleanup flag
+    file: tools/clean_test_db.py
+    notes: >-
+      Added argparse + --include-fixtures flag (off by default). When set,
+      3 extra DELETEs run: (a) slug LIKE 'tc-%' OR slug LIKE 'svc-test-%'
+      OR slug = 'legacy-fixture'; (b) storage_mode='LEGACY_RLS' AND
+      tenant_type='production' AND slug != 'default' (catches pre-GBL-080
+      fixtures). After the DELETEs, drop_orphaned_tenant_schemas() is
+      re-invoked to remove any tenant_* schemas whose parent tenant row
+      no longer exists. Without --include-fixtures the script's behavior
+      is unchanged.
+  change_5:
+    name: Baseline verifier
+    file: tools/verify_schema_baseline.py
+    notes: >-
+      NEW psycopg2-based tool. CLI: --check-tenants (strict mode; verify
+      every public.tenant storage_mode=SCHEMA row has a Postgres schema),
+      --auto-fix (re-apply GBL-105 SQL when drift detected), --migrations-dir
+      (default ./migrations), --db-url (default $BPM_TEST_DB_URL). Exit
+      codes: 0 healthy / 1 drift / 2 bad invocation. 4 check functions:
+      check_migration_ledger_count (compares count(*) to len(migrations/)),
+      check_per_migration_row_present (per-filename SELECT), 
+      check_tenant_schemas_consistent (when --check-tenants), and
+      check_expected_check_constraints (webhook_deliveries_status_check,
+      tenant_storage_mode_check).
+files_changed:
+  - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+  - src/db/migrations.zig
+  - src/db/provisioning.zig
+  - tests/integration/helpers.zig
+  - tools/clean_test_db.py
+  - tools/verify_schema_baseline.py
+  - docs/issues/ISS-0112.json
+validation:
+  zig_build: EXIT_CODE=0
+  zig_build_test: EXIT_CODE=0
+  zig_build_migrate: EXIT_CODE=0
+  migration_applied: GBL-105_iss0112_schema_ledger_reconcile.sql
+  total_migrations: 98
+  verify_schema_baseline_py: EXIT_CODE=0 (3 checks PASS; ledger=98 files=98)
+  verify_schema_baseline_py_check_tenants: EXIT_CODE=0 (4 checks PASS)
+  lint_test_isolation_py:
+    blocker: 0
+    major_active: 63
+    major_suppressed: 195
+    helpers_zig_findings: 0
+  error_set_check: no matches (clean)
+git_evidence:
+  branch_name: feature/WF03-gh375-20260801
+  commit_sha: '178436a'
+  preceding_sha: '1a8a869'
+  remote_branch: origin/feature/WF03-gh375-20260801
+  push_status: ok
+  push_evidence: '1a8a869..178436a  feature/WF03-gh375-20260801 -> feature/WF03-gh375-20260801'
+severity: BLOCKER
+requirement_ids:
+  - TC-EXT-02
+  - TC-TNT-01
+  - TC-TNT-02
+  - TC-TNT-03
+  - TC-ISS-503
+  - TC-ADP-02
+  - TC-ADP-04a
+  - TC-ADP-04b
+  - TC-ADP-05
+  - TC-ADP-06
+  - TC-ADP-09
+  - TC-ADP-10
+  - TC-EXP-201
+  - TC-EXP-202
+  - TC-SVC-01
+  - TC-SVC-04
+  - TC-ENV-01
+  - TC-ENV-02
+next_action: Route to TEST-RUNNER Step 5 (verify) — pure regression fix (corrective migration + applier guard + test infrastructure), no business logic added/modified, so Step 4 test design is not required.
+handoff_status: COMPLETED
+completed_at: '2026-08-01T10:31:35Z'

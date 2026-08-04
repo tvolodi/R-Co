@@ -1,0 +1,84 @@
+{
+  "handoff_id": "20260525-051",
+  "run_id": "WF02-ext01-20260525",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-ext01-20260525/step-04b-test-runner-rework1.json",
+  "created_at": "2026-05-25T20:20:00Z",
+  "started_at": "2026-05-25T20:20:20Z",
+  "completed_at": "2026-05-25T08:49:47Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-01"
+    ],
+    "related_handoff_ids": [
+      "20260525-049",
+      "20260525-050"
+    ],
+    "artifacts_in": [
+      "tests/specs/EXT-01.md",
+      "tests/integration/ext01_service_task_test.zig",
+      "tests/integration/main_test.zig",
+      "tests/unit/service_task_test.zig",
+      "tests/unit/graph_node_attributes_test.zig",
+      "tests/reports/WF02-ext01-20260525-step-04-test-runner.json"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: Re-run EXT-01 test execution after TEST-DESIGNER coverage additions. Execute unit and integration tests that cover the previously missing cases: header rendering rejection, zero-retry single-shot behavior, trace/idempotency propagation, 2xx object merge, invalid 2xx body rejection, and the dedicated seven integration scenarios from tests/specs/EXT-01.md. Produce a new structured test report under tests/reports/ with explicit per-case execution outcomes and requirement traceability. Classify any remaining gaps or failures with severity and actionable next step.",
+    "acceptance_criteria": [
+      "Updated EXT-01 unit and integration cases are executed explicitly",
+      "Coverage gap from step 04 is resolved or precisely reported",
+      "New test report is written under tests/reports/",
+      "Handoff result includes PASS/FAIL/PARTIAL with issue severities",
+      "Handoff status and completed_at are updated"
+    ],
+    "functions_to_call": [
+      "fn:run-ext01-tests",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Executed EXT-01 rework test run. Unit command failed at compile time in tests/unit/service_task_test.zig, so integration execution was stopped per fail-fast policy.",
+    "artifacts_out": [
+      "tests/reports/WF02-ext01-20260525-step-04b-test-runner-rework1.json",
+      "docs/issue-reports/WF02-ext01-20260525-step-04b-test-runner-rework1-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "id": "EXT01-UNIT-COMPILE-001",
+        "severity": "BLOCKER",
+        "description": "tests/unit/service_task_test.zig imports bpm.definition_graph, but src/bpm.zig has no such member.",
+        "affected_requirement": "EXT-01"
+      },
+      {
+        "id": "EXT01-UNIT-COMPILE-002",
+        "severity": "BLOCKER",
+        "description": "tests/unit/service_task_test.zig uses try request.respond() inside a function returning void, causing a compile-time error.",
+        "affected_requirement": "EXT-01"
+      },
+      {
+        "id": "EXT01-UNIT-COMPILE-003",
+        "severity": "BLOCKER",
+        "description": "tests/unit/service_task_test.zig calls request.head.iterateHeaders(), which is unavailable in the current Zig stdlib HTTP API.",
+        "affected_requirement": "EXT-01"
+      },
+      {
+        "id": "EXT01-INTEGRATION-NOT-RUN-001",
+        "severity": "BLOCKER",
+        "description": "Integration layer was not executed in this handoff because unit compilation failed and fail-fast policy applies.",
+        "affected_requirement": "EXT-01"
+      }
+    ],
+    "next_action": "Route to ORCH for WF-03 ISSUE-FIXER/BACKEND-DEV compile-fix handoff, then rerun WF-02 Step 04b."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

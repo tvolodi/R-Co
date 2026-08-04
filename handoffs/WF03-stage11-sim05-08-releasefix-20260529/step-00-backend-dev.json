@@ -1,0 +1,65 @@
+{
+  "handoff_id": "fbb5b605-4286-4db8-a7ab-bf84373e9bcb",
+  "run_id": "WF03-stage11-sim05-08-releasefix-20260529",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-stage11-sim05-08-releasefix-20260529/step-00-backend-dev.json",
+  "created_at": "2026-05-29T11:54:17Z",
+  "started_at": "2026-05-29T11:54:23Z",
+  "completed_at": "2026-05-29T11:57:11Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-05",
+      "SIM-06",
+      "SIM-07",
+      "SIM-08"
+    ],
+    "related_handoff_ids": [
+      "1fb71a0a-95ef-4fde-8f6a-0dd041b8a23f"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-stage11-sim05-08-20260529/step-04-rework3-test-runner.json",
+      "tests/reports/report-20260529T113250Z-WF02-stage11-sim05-08-20260529-step04-rework3.json",
+      "handoffs/escalations.json"
+    ],
+    "branch_name": "feature/WF03-stage11-sim05-08-releasefix-20260529"
+  },
+  "task": {
+    "description": "Execute git setup hard-gate for WF03-stage11-sim05-08-releasefix-20260529: create/switch feature branch feature/WF03-stage11-sim05-08-releasefix-20260529 from up-to-date main, push with upstream tracking, and return git_evidence with push_status=ok.",
+    "acceptance_criteria": [
+      "Current branch is feature/WF03-stage11-sim05-08-releasefix-20260529",
+      "Remote tracking branch exists",
+      "push_status is ok"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Completed fn:git-setup for WF03-stage11-sim05-08-releasefix-20260529: synced main, created/switched to feature branch, and pushed with upstream tracking.",
+    "artifacts_out": [
+      "branch: feature/WF03-stage11-sim05-08-releasefix-20260529",
+      "remote: origin/feature/WF03-stage11-sim05-08-releasefix-20260529"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-stage11-sim05-08-releasefix-20260529",
+      "commit_sha_list": [
+        "a63aa9a7f1325a6faa24c3fa2c41889db9c8b662"
+      ],
+      "remote_branch": "origin/feature/WF03-stage11-sim05-08-releasefix-20260529",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to ISSUE-FIXER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

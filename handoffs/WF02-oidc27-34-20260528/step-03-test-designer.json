@@ -1,0 +1,82 @@
+{
+  "handoff_id": "742a4b17-c5be-45c9-bfd0-bb10dd86884a",
+  "run_id": "WF02-oidc27-34-20260528",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-oidc27-34-20260528/step-03-test-designer.json",
+  "created_at": "2026-05-28T02:21:40Z",
+  "started_at": "2026-05-28T02:21:50Z",
+  "completed_at": "2026-05-28T02:22:21Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-27",
+      "OIDC-28",
+      "OIDC-29",
+      "OIDC-30",
+      "OIDC-31",
+      "OIDC-32",
+      "OIDC-33",
+      "OIDC-34"
+    ],
+    "related_handoff_ids": [
+      "2d826593-8e53-48f8-92e7-7f6d2f4e1dbb",
+      "6c4b3009-805f-48d4-abcc-f6f18bc44d57",
+      "8f5f08c7-8e1d-409d-83be-83f60fbfcb37"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "handoffs/WF02-oidc27-34-20260528/step-02-backend-dev.json",
+      "src/design/oidc-27-token-verification-performance-envelope.md",
+      "src/design/oidc-28-local-development-realm.md",
+      "src/design/oidc-29-realm-seed-versioned-artifact.md",
+      "src/design/oidc-30-test-token-issuance-helper.md",
+      "src/design/oidc-31-end-to-end-authentication-test-suite.md",
+      "src/design/oidc-32-agent-test-identities-lifecycle-policy.md",
+      "src/design/oidc-33-coexistence-period-authentication-behavior.md",
+      "src/design/oidc-34-migration-helper-transition-rollout-backout.md"
+    ],
+    "branch_name": "feature/WF02-oidc27-34-20260528"
+  },
+  "task": {
+    "description": "Design and add test specifications/cases for OIDC-27 through OIDC-34 based on implemented artifacts from Step 02. Cover unit and integration surfaces and ensure MUST requirements have executable coverage plans.\n\nRequired outputs:\n- tests/specs/OIDC-27.md through tests/specs/OIDC-34.md (or consolidated spec that maps each requirement unambiguously)\n- Any required test-source additions/updates in tests/unit and tests/integration for uncovered paths\n\nCoverage priorities:\n- OIDC-31 must verify end-to-end auth flows against real backend + DB + IDP setup path\n- OIDC-33 must include coexistence-path acceptance conditions\n- OIDC-28/29/30/32/34 must include tooling/seed/migration helper behavior checks\n- OIDC-27 should include measurable verification-performance assertion boundaries\n\nNo mocking shortcuts for integration requirements; align with test guide directives.",
+    "acceptance_criteria": [
+      "Each OIDC-27..34 requirement is mapped to explicit test cases",
+      "MUST requirements include executable test paths",
+      "Specs reference concrete test files and commands",
+      "Test plan reflects real-environment constraints for OIDC-31",
+      "No unresolved ambiguity on pass/fail conditions"
+    ],
+    "functions_to_call": [
+      "fn:map-tests-to-requirements"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and executable test-source coverage were added for OIDC-27 through OIDC-34, including unit coverage for local realm and agent identity artifacts, integration preflight for OIDC-31 real backend+DB+IDP path, and integration candidate-list coverage for OIDC-34 migration helper behavior.",
+    "artifacts_out": [
+      "tests/specs/OIDC-27.md",
+      "tests/specs/OIDC-28.md",
+      "tests/specs/OIDC-29.md",
+      "tests/specs/OIDC-30.md",
+      "tests/specs/OIDC-31.md",
+      "tests/specs/OIDC-32.md",
+      "tests/specs/OIDC-33.md",
+      "tests/specs/OIDC-34.md",
+      "tests/unit/test_oidc28_local_dev_realm.zig",
+      "tests/unit/test_oidc32_agent_test_identities.zig",
+      "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
+      "tests/integration/oidc34_migration_helper_test.zig",
+      "build.zig",
+      "docs/issue-reports/WF02-oidc27-34-20260528-step-03-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

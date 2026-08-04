@@ -1,0 +1,75 @@
+{
+  "handoff_id": "20260525-053",
+  "run_id": "WF02-ext01-20260525",
+  "workflow_id": "WF-02",
+  "step": "04c",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-ext01-20260525/step-04c-test-runner-rework2.json",
+  "created_at": "2026-05-25T20:40:00Z",
+  "started_at": "2026-05-25T20:40:20Z",
+  "completed_at": "2026-05-25T09:05:50Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-01"
+    ],
+    "related_handoff_ids": [
+      "20260525-051",
+      "20260525-052",
+      "20260525-050"
+    ],
+    "artifacts_in": [
+      "tests/specs/EXT-01.md",
+      "tests/reports/WF02-ext01-20260525-step-04b-test-runner-rework1.json",
+      "handoffs/WF03-ext01-testfix-20260525/step-01-issue-fixer.json",
+      "tests/unit/service_task_test.zig",
+      "tests/integration/ext01_service_task_test.zig",
+      "tests/integration/main_test.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 2: Re-run EXT-01 unit and integration tests after WF03-ext01-testfix-20260525 compile/runtime fixes. Execute all EXT-01 cases explicitly, including previously blocked compilation points and all dedicated integration scenarios. Produce a new structured report under tests/reports/ with per-case outcomes and requirement traceability. If any failures remain, classify with severity and precise remediation scope.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-integration exits 0",
+      "All EXT-01 specified unit and integration cases are executed",
+      "Report is written with PASS/FAIL/PARTIAL and issue severities",
+      "Handoff result fields are complete"
+    ],
+    "functions_to_call": [
+      "fn:run-ext01-tests",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Rework iteration 2 executed: zig build test passed, but zig build test-integration failed at compile time in tests/integration/ext01_service_task_test.zig, blocking EXT-01 integration case execution.",
+    "artifacts_out": [
+      "tests/reports/report-20260525-wf02-ext01-step-04c-test-runner-rework2.json",
+      "tests/reports/WF02-ext01-20260525-step-04c-zig-build-test.log",
+      "tests/reports/WF02-ext01-20260525-step-04c-zig-build-test-integration.log",
+      "docs/issue-reports/WF02-ext01-20260525-step-04c-test-runner-rework2-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "id": "EXT01-INT-COMPILE-001",
+        "severity": "BLOCKER",
+        "description": "tests/integration/ext01_service_task_test.zig:204 uses request.head.iterateHeaders(), which is unsupported for Request.Head in the current Zig stdlib HTTP API.",
+        "affected_requirement": "EXT-01"
+      },
+      {
+        "id": "EXT01-INT-COMPILE-002",
+        "severity": "BLOCKER",
+        "description": "tests/integration/ext01_service_task_test.zig:250 uses try request.respond(...) in LocalHttpServer.run() returning void, causing error-type mismatch compile failure.",
+        "affected_requirement": "EXT-01"
+      }
+    ],
+    "next_action": "Route to ORCH for WF-03 ISSUE-FIXER to resolve integration compile blockers, then rerun WF-02 Step 04c."
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

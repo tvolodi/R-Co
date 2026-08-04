@@ -1,0 +1,47 @@
+{
+  "handoff_id": "07f8a630-7a13-4de5-b138-8da0cc82326a",
+  "run_id": "WF03-xc02-06-testfix-20260528",
+  "workflow_id": "WF-03",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-xc02-06-testfix-20260528/step-final-backend-dev.json",
+  "created_at": "2026-05-28T14:32:49Z",
+  "started_at": "2026-05-28T14:32:53Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "CRITICAL",
+  "context": {
+    "stage": "Cross-Cutting Requirements XC remediation",
+    "requirement_ids": [
+      "XC-02",
+      "XC-03",
+      "XC-04",
+      "XC-05",
+      "XC-06"
+    ],
+    "related_handoff_ids": [
+      "f2c86c94-38fd-41a1-a4f4-5e1d93d7e5a9",
+      "79e4fc3f-0d5a-4b62-9ea1-9e56f180ca30"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-xc02-06-testfix-20260528/step-03b-test-runner-rework1.json",
+      "tests/reports/report-20260528-wf03-xc02-06-testfix-20260528-step-03b-rework1.json"
+    ],
+    "branch_name": "feature/WF03-xc02-06-testfix-20260528"
+  },
+  "task": {
+    "description": "WF-03 Step Final (git-merge). Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md for feature/WF03-xc02-06-testfix-20260528.\n\nRequirements:\n1) Rebase branch on latest origin/main.\n2) Ensure build verification remains green after rebase.\n3) Push branch.\n4) Create PR and merge via squash with branch deletion.\n5) Record full git evidence in result.git_evidence including branch, commit list, push_status, and PR URL (or explicit pr_create_error if tooling/auth blocks).",
+    "acceptance_criteria": [
+      "Final handoff result status is PASS",
+      "result.git_evidence.push_status is ok",
+      "PR merge result is recorded and branch cleanup status is explicit"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

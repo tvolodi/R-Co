@@ -1,0 +1,41 @@
+{
+  "handoff_id": "20260527-011",
+  "run_id": "WF02-dsl08-20260527",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-dsl08-20260527/step-01-code-designer.json",
+  "created_at": "2026-05-27T16:42:48Z",
+  "started_at": "2026-05-27T16:53:11Z",
+  "completed_at": "2026-05-27T16:56:32Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-08"],
+    "related_handoff_ids": ["20260527-010"],
+    "artifacts_in": ["src/expr/mod.zig", "src/expr/ast.zig"],
+    "branch_name": "feature/WF02-dsl08-20260527"
+  },
+  "task": {
+    "description": "Design the purity contract for DSL-08 (Function Purity).\n\nRequirement DSL-08: Every built-in function MUST be pure: same inputs yield same outputs, no side effects, no I/O. Exception: now() is inherently impure.\n\nExisting built-in functions (already implemented in src/expr/mod.zig):\n- length(str) → int (pure)\n- lower(str) → str (pure)\n- upper(str) → str (pure)\n- trim(str) → str (pure)\n- contains(haystack, needle) → bool (pure)\n- startsWith(haystack, prefix) → bool (pure)\n- endsWith(haystack, suffix) → bool (pure)\n- coalesce(...) → any (pure)\n- now() → timestamp (impure — explicitly exempted)\n\nThe acceptance criteria from the requirement: \"Each built-in's tests verify determinism by calling twice with identical inputs and comparing outputs.\"\n\nProduce a design artefact at src/design/dsl-08-function-purity.md covering:\n1. Purity contract – what purity means for each function\n2. Determinism test strategy – for each pure function, how to verify: call twice with same inputs, assert identical outputs\n3. Any necessary code changes to enforce purity (compile-time checks, assertions)\n4. How the now() exception is documented and handled\n5. Test matrix – which functions need determinism tests\n\nSee also: DSL-07 (function whitelist — these are the functions to verify), EE-02 (purity requirement mirrors the pure transition function).",
+    "acceptance_criteria": [
+      "Design artefact created at src/design/dsl-08-function-purity.md",
+      "Purity contract clearly defined for each built-in function",
+      "Determinism test strategy covers all pure built-in functions",
+      "now() exception explicitly documented",
+      "No acceptance criterion from DSL-08 left unaddressed"
+    ],
+    "functions_to_call": ["fn:read-backend-conventions", "fn:load-requirements", "fn:register-inner-report"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for DSL-08 (Function Purity) created at src/design/dsl-08-function-purity.md. Covers: purity contract for all 11 built-in functions (10 pure, 1 impure), determinism test strategy (24 test cases for 10 pure functions), enforcement mechanisms, now() exemption documentation, test matrix, data flow diagram, error taxonomy, and dependencies. All 5 acceptance criteria met.",
+    "artifacts_out": ["src/design/dsl-08-function-purity.md", "docs/issue-reports/WF02-dsl08-20260527-step-01-code-designer-INNER-REPORT.json"],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) to add DSL-08 determinism tests to src/expr/mod.zig"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

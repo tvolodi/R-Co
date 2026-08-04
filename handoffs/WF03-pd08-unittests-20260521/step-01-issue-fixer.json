@@ -1,0 +1,45 @@
+{
+  "handoff_id": "88300001-2605-4000-8008-202605210900",
+  "workflow_id": "WF-03",
+  "run_id": "WF03-pd08-unittests-20260521",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-05-21T10:00:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 — Process Definition",
+    "requirement_ids": ["PD-08"],
+    "related_handoff_ids": [
+      "88100004-2605-4000-8008-202605210703"
+    ],
+    "artifacts_in": [
+      "src/definition/snapshot.zig",
+      "tests/unit/test_snapshot.zig",
+      "tests/reports/WF02-pd08-20260521-run-01.md"
+    ]
+  },
+  "task": {
+    "description": "Add passing unit tests to `src/definition/snapshot.zig` for the pure helper functions, so that `zig build test` reports at least 3 PASS results for PD-08.\n\n### Background\n\n`snapshot.zig` has two internal pure (no-DB) helper functions:\n- `parseGraphJson(allocator, json_str)` — parses a JSONB text string into a `DefinitionGraph`\n- `duplicateGraph(allocator, src)` — deep-copies a `DefinitionGraph`\n\nThese are private (`fn`, not `pub fn`). In Zig, `test` blocks in the same file CAN call private functions. Add `test` blocks AT THE BOTTOM of `src/definition/snapshot.zig` to test these functions.\n\n### Tests to add (at the bottom of `src/definition/snapshot.zig`)\n\n```zig\n// ---------------------------------------------------------------------------\n// Unit tests (pure — no DB required)\n// ---------------------------------------------------------------------------\n\nconst testing = std.testing;\n\ntest \"parseGraphJson: valid empty graph\" {\n    const allocator = testing.allocator;\n    const json = \"{\\\"nodes\\\":[],\\\"edges\\\":[]}\"\n    const result = try parseGraphJson(allocator, json);\n    defer {\n        allocator.free(result.nodes);\n        allocator.free(result.edges);\n    }\n    try testing.expectEqual(@as(usize, 0), result.nodes.len);\n    try testing.expectEqual(@as(usize, 0), result.edges.len);\n}\n\ntest \"parseGraphJson: invalid json returns error\" {\n    const allocator = testing.allocator;\n    const result = parseGraphJson(allocator, \"not-json\");\n    try testing.expectError(error.InvalidGraph, result);\n}\n\ntest \"parseGraphJson: empty string returns error\" {\n    const allocator = testing.allocator;\n    const result = parseGraphJson(allocator, \"\");\n    try testing.expectError(error.InvalidGraph, result);\n}\n\ntest \"duplicateGraph: independent copy\" {\n    const allocator = testing.allocator;\n    const node = graph_mod.GraphNode{\n        .id = \"n1\",\n        .node_type = .START,\n        .label = null,\n        .attributes = null,\n    };\n    const src = graph_mod.DefinitionGraph{\n        .nodes = &[_]graph_mod.GraphNode{node},\n        .edges = &.{},\n    };\n    const copy = try duplicateGraph(allocator, src);\n    defer {\n        allocator.free(copy.nodes[0].id);\n        allocator.free(copy.nodes);\n        allocator.free(copy.edges);\n    }\n    try testing.expectEqual(@as(usize, 1), copy.nodes.len);\n    try testing.expectEqualStrings(\"n1\", copy.nodes[0].id);\n    try testing.expectEqual(graph_mod.NodeType.START, copy.nodes[0].node_type);\n    // Verify it's a distinct allocation (not the same pointer)\n    try testing.expect(copy.nodes[0].id.ptr != node.id.ptr);\n}\n```\n\n**Important notes:**\n- Write the actual test blocks carefully matching the real Zig syntax for `snapshot.zig`'s types\n- Read `src/definition/snapshot.zig` first to understand exact function signatures and return types before writing the tests\n- Read `src/definition/graph.zig` to confirm `GraphNode`, `DefinitionGraph`, `NodeType` types\n- The tests must be inside the `snapshot.zig` file itself (not in a separate file) so they can access the private `parseGraphJson` and `duplicateGraph` functions\n- The `graph_mod` alias is already declared at the top of `snapshot.zig`\n\n### Validation\n\n```bash\nzig build test\n```\nMust exit 0 with at least 3 tests PASS (the new parseGraphJson/duplicateGraph tests) plus the existing stubs still compiling.\n\nAlso run:\n```bash\nzig build test-integration\n```\nMust still exit 0.",
+    "acceptance_criteria": [
+      "src/definition/snapshot.zig has at least 3 new test blocks for parseGraphJson and duplicateGraph",
+      "zig build test exits 0 with at least 3 PASS results for PD-08 pure functions",
+      "zig build test-integration exits 0",
+      "No regressions in any other test suite"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Added 4 passing unit tests to src/definition/snapshot.zig for the pure helper functions parseGraphJson (3 tests) and duplicateGraph (1 test). Also added `pub const definition_snapshot = @import(\"definition/snapshot.zig\");` to src/main.zig so the unit_tests binary compiles and runs the inline test blocks. zig build test exits 0; zig build test-integration exits 0 (skips without BPM_TEST_DB_URL, as expected).",
+    "artifacts_out": [
+      "src/definition/snapshot.zig",
+      "src/main.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-21T10:45:00Z"
+}

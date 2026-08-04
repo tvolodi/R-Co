@@ -1,0 +1,40 @@
+{
+  "handoff_id": "exp103-final",
+  "run_id": "WF02-exp103-instance-waits-20260612",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-12T15:28:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "EXP-103",
+    "upstream_step": "06",
+    "workflow_complete_after_this_step": true
+  },
+  "task": {
+    "description": "Merge feature/WF02-exp103-instance-waits-20260612 to main via GitHub PR. Squash merge, delete branch, return to main clean state.",
+    "acceptance_criteria": [
+      "PR merged",
+      "Branch deleted",
+      "Repo on main clean"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PR #97 squash-merged to main (commit 1469367). Branch feature/WF02-exp103-instance-waits-20260612 deleted. Repo on main, clean state.",
+    "artifacts_out": [
+      "PR #97",
+      "merge commit 1469367"
+    ],
+    "issues": [],
+    "next_action": "Workflow complete — EXP-103 RELEASED"
+  },
+  "rework_count": 0,
+  "max_rework": 0,
+  "started_at": "2026-06-12T16:20:00Z",
+  "completed_at": "2026-06-12T16:41:13Z"
+}

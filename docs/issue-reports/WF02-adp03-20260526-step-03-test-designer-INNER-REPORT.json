@@ -1,0 +1,27 @@
+{
+  "report_id": "WF02-adp03-20260526-step-03-test-designer",
+  "agent_id": "TEST-DESIGNER",
+  "run_id": "WF02-adp03-20260526",
+  "step": "03",
+  "created_at": "2026-05-26T02:19:25Z",
+  "summary": "Completed ADP-03 test design deliverables by creating a dedicated ADP-03 test spec and augmenting integration coverage for deterministic tenant resolution, tenant-scoped request behavior, cross-tenant read and write rejection paths, invalid tenant claim rejection, and legacy default-tenant compatibility with explicit dependency traceability to API-08, OIDC-13, ADP-01, and ADP-02.",
+  "files_created": [
+    "tests/specs/ADP-03.md",
+    "docs/issue-reports/WF02-adp03-20260526-step-03-test-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "tests/integration/adp03_tenant_context_resolution_test.zig"
+  ],
+  "tests_run": [
+    {
+      "name": "fn:validate-completeness",
+      "status": "pass",
+      "detail": "Handoff acceptance criteria are fully covered by ADP-03 spec and integration test updates: deterministic resolution with/without tenant_id claim, tenant-scoped behavior, cross-tenant rejection paths, default-tenant compatibility for legacy tokens, and actionable TEST-RUNNER execution details with dependency traceability."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-02 Step 4)"
+  ],
+  "blockers": []
+}

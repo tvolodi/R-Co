@@ -1,0 +1,38 @@
+﻿{
+    "integration_surface":  "high",
+    "difficulty":  3,
+    "rules_version":  "1.0",
+    "difficulty_rationale":  "Cross-cutting validation and architectural constraints; moderate scope combining observability, audit, config, determinism checks",
+    "created_at":  "2026-05-28T07:28:31Z",
+    "steps":  [
+                  "code-designer",
+                  "code-design-validator",
+                  "backend-dev",
+                  "test-designer",
+                  "test-design-validator",
+                  "test-runner",
+                  "release-validator",
+                  "doc-updater"
+              ],
+    "estimated_minutes":  {
+                              "total":  430,
+                              "test-runner":  60,
+                              "backend-dev":  180,
+                              "test-designer":  45,
+                              "code-design-validator":  20,
+                              "code-designer":  45,
+                              "release-validator":  30,
+                              "test-design-validator":  20,
+                              "doc-updater":  30
+                          },
+    "requirement_ids":  [
+                            "XC-01",
+                            "XC-02",
+                            "XC-03",
+                            "XC-04",
+                            "XC-05",
+                            "XC-06"
+                        ],
+    "run_id":  "WF02-xc01-06-20260528",
+    "integration_surface_rationale":  "Touches event store, audit log, config repo, scheduler, transition engine, and API layers"
+}

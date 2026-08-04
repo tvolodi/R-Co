@@ -1,0 +1,59 @@
+{
+  "report_id": "WF03-ext01-intfix-20260525-step-01-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-ext01-intfix-20260525",
+  "step": "01",
+  "created_at": "2026-05-25T09:32:46Z",
+  "summary": "Diagnosed EXT-01 WF-03 handoff as Category D (integration test harness compile/API mismatch), fixed the two reported compile blockers, then encountered a runtime stall during required integration validation.",
+  "diagnosis": {
+    "category": "D_TEST_ERROR",
+    "failing_test_file": "tests/integration/ext01_service_task_test.zig",
+    "source_file_under_test": "tests/integration/ext01_service_task_test.zig and src/engine/service_task.zig (runtime interaction)",
+    "prior_issue_matches": [
+      "ISS-0021 (adjacent EXT-01 API drift pattern)"
+    ],
+    "root_cause": "Integration test harness used stale Zig HTTP request APIs and invalid try usage in a void function. After compile recovery, the affected suite advances and then stalls at TC-EXT-01-INT-03 during execution."
+  },
+  "files_created": [
+    "docs/issues/ISS-0022.json",
+    "docs/issue-reports/WF03-ext01-intfix-20260525-step-01-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "tests/integration/ext01_service_task_test.zig",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-ext01-intfix-20260525/step-01-issue-fixer.json",
+    "handoffs/WF03-ext01-intfix-20260525/registry.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "exit code 0"
+    },
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "exit code 0"
+    },
+    {
+      "name": "zig build test-integration",
+      "status": "fail",
+      "detail": "stalls at ext01_service_task_test.TC-EXT-01-INT-03 before completion"
+    }
+  ],
+  "issues_found": [
+    {
+      "id": "EXT01-INT-RUNTIME-003",
+      "severity": "BLOCKER",
+      "description": "integration runtime stall after compile blocker resolution",
+      "affected_requirement": "EXT-01"
+    }
+  ],
+  "next_steps": [
+    "Route to TEST-RUNNER for focused runtime reproduction/evidence capture on TC-EXT-01-INT-03."
+  ],
+  "blockers": [
+    "test-integration does not currently complete, so acceptance criterion zig build test-integration exits 0 is not met."
+  ]
+}

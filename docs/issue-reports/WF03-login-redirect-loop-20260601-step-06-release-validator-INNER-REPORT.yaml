@@ -1,0 +1,18 @@
+schema_version: '1.0'
+run_id: WF03-login-redirect-loop-20260601
+handoff_id: f1032c9d-52fa-460b-8580-a4c2b8231daf
+agent: RELEASE-VALIDATOR
+step: '06'
+status: FAIL
+timestamp: 2026-05-31T21:43:00Z
+summary: >-
+  Release validation is blocked. The saved regression report passed and a fresh
+  zig build bench run satisfied NFR-01, NFR-02, and NFR-04, but the issue
+  record ISS-0063 remains OPEN with BLOCKER severity, so the release cannot be
+  approved.
+artifacts_out:
+  - docs/status/release-WF03-login-redirect-loop-2026-06-01.json
+notes:
+  - Regression report tests/reports/report-20260531-WF03-login-redirect-loop-20260601.yaml reports PASS.
+  - zig build bench returned overall_passed=true with p99_read_ms=1.112, p99_write_ms=3.029, append_throughput_eps=61035.014, replay_10000_ms=36.447.
+  - docs/issues/ISS-0063.json still reports status OPEN and severity BLOCKER.

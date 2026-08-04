@@ -1,0 +1,67 @@
+{
+  "handoff_id": "20260527-909",
+  "run_id": "WF02-oidc07-20260527",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-oidc07-20260527/step-final-backend-dev.json",
+  "created_at": "2026-05-27T16:06:30Z",
+  "started_at": "2026-05-27T16:06:50Z",
+  "completed_at": "2026-05-27T16:09:29Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-07"
+    ],
+    "related_handoff_ids": [
+      "20260527-901",
+      "20260527-902",
+      "20260527-903",
+      "20260527-904",
+      "20260527-905",
+      "20260527-906",
+      "20260527-907",
+      "20260527-908"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-oidc07-20260527/step-06-doc-updater.json"
+    ]
+  },
+  "task": {
+    "description": "Execute Step Final git wrapper: run fn:git-merge for WF02-oidc07-20260527 according to docs/agents/protocols/GIT_MERGE.md. Rebase feature branch, create and merge PR with squash, verify push_status=ok, and provide git evidence.",
+    "acceptance_criteria": [
+      "result.git_evidence.branch_name is feature/WF02-oidc07-20260527",
+      "result.git_evidence.push_status is ok",
+      "result.git_evidence.commit_sha_list has at least one sha",
+      "result.git_evidence.pr_url populated or pr_create_error provided"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Executed fn:git-merge for WF02-oidc07-20260527: committed final artifacts, rebased on origin/main, validated build/unit tests, pushed feature branch, created and squash-merged PR #16, and cleaned up local branch.",
+    "artifacts_out": [
+      "branch: feature/WF02-oidc07-20260527 (squash-merged into main, branch deleted)",
+      "docs/issue-reports/WF02-oidc07-20260527-step-final-backend-dev-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "ORCH marks run COMPLETED and releases owned_modules lock.",
+    "git_evidence": {
+      "branch_name": "feature/WF02-oidc07-20260527",
+      "commit_sha_list": [
+        "f3238a5780ec86cf213a28cfd3eef0fa81d0f8c2",
+        "20be69721e681be728610e22b046b460515c1f0e"
+      ],
+      "remote_branch": "origin/feature/WF02-oidc07-20260527 (deleted after merge)",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/My-Fab/pull/16"
+    }
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

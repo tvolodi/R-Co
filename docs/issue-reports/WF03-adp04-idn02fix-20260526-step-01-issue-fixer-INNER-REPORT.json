@@ -1,0 +1,40 @@
+{
+  "report_id": "WF03-adp04-idn02fix-20260526-step-01-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-adp04-idn02fix-20260526",
+  "step": "01",
+  "created_at": "2026-05-26T03:12:22Z",
+  "summary": "Diagnosed TC-IDN-02-03 as Category A (logic error) in the source path. Duplicate membership insertion hit ON CONFLICT and then executed a fallback read path that returned PersistenceFailed/internal_error on the idempotency path. Implemented a minimal tenant-scoped fallback query fix in src/identity/registry.zig and validated zig build, zig build test, and integration suite pass with BPM_TEST_DB_URL.",
+  "files_created": [
+    "docs/issues/ISS-0024.json",
+    "docs/issue-reports/WF03-adp04-idn02fix-20260526-step-01-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "src/identity/registry.zig",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-adp04-idn02fix-20260526/step-01-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "BUILD_EXIT_CODE=0"
+    },
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "UNIT_EXIT_CODE=0"
+    },
+    {
+      "name": "zig build test-integration",
+      "status": "pass",
+      "detail": "INTEGRATION_EXIT_CODE=0"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-03 Step 3)"
+  ],
+  "blockers": []
+}

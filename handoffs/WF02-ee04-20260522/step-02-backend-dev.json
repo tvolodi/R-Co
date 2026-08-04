@@ -1,0 +1,56 @@
+{
+  "handoff_id": "ee040002-2605-4000-8004-202605220002",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee04-20260522",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-22T01:17:17Z",
+  "started_at": "2026-05-22T01:24:15Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 — Execution Engine",
+    "requirement_ids": ["EE-04"],
+    "related_handoff_ids": ["ee040001-2605-4000-8004-202605220001"],
+    "artifacts_in": [
+      "src/design/engine.md",
+      "src/tasks/store.zig",
+      "src/engine/instance.zig",
+      "src/engine/transition.zig",
+      "src/api/routes/tasks.zig",
+      "migrations/006_tasks.sql"
+    ]
+  },
+  "task": {
+    "description": "Implement EE-04 (Complete Task) per the design in `src/design/engine.md §EE-04`.\n\nRead the EE-04 section of the design file in full before writing any code.\n\nFiles to modify:\n1. `src/tasks/store.zig` — add `AlreadyTerminated` to `TaskError`; add `getById`; add `completeInTx`.\n2. `src/engine/instance.zig` — add `CompleteTaskError` error set; add `InstanceStore.completeTask`.\n3. `src/api/routes/tasks.zig` — add `handleComplete` handler.\n\nValidation:\n- `zig build` exits 0\n- `zig build test` exits 0\n\nSecurity checklist:\n- No SQL string interpolation of user-supplied data\n- All SQL values bound via $N parameters\n- No secrets in source\n- No `catch unreachable` on realistic failure paths",
+    "acceptance_criteria": [
+      "TaskStore.getById implemented and returns TaskError.NotFound on miss",
+      "TaskStore.completeInTx implemented with status=PENDING guard (UPDATE ... WHERE status='PENDING')",
+      "TaskError.AlreadyTerminated added",
+      "InstanceStore.completeTask implemented with CompleteTaskError set",
+      "handleComplete HTTP handler added to src/api/routes/tasks.zig",
+      "zig build exits 0",
+      "zig build test exits 0"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:check-zig-test",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented EE-04 (Complete Task): added AlreadyTerminated to TaskError, getById and completeInTx to TaskStore, CompleteTaskError and completeTask to InstanceStore, handleComplete to tasks route handler",
+    "artifacts_out": [
+      "src/tasks/store.zig",
+      "src/engine/instance.zig",
+      "src/api/routes/tasks.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T01:40:55Z"
+}

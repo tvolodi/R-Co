@@ -1,0 +1,48 @@
+{
+  "handoff_id": "20260527-024",
+  "run_id": "WF02-dsl01-20260527",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-dsl01-20260527/step-06-doc-updater.json",
+  "created_at": "2026-05-26T21:48:56Z",
+  "started_at": "2026-05-26T21:49:27Z",
+  "completed_at": "2026-05-26T21:51:06Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-01"],
+    "related_handoff_ids": ["20260527-023"],
+    "artifacts_in": [
+      "docs/status/release-DSL-01-20260526.json",
+      "docs/agents/FUNCTIONS.md",
+      "handoffs/WF02-dsl01-20260527/estimation.json"
+    ]
+  },
+  "task": {
+    "description": "Update documentation after DSL-01 RELEASED.\n\n1. Update CHANGELOG.md using fn:update-changelog:\n   - Add entry for DSL-01 (Grammar conformance) under Stage 7 — Expression DSL\n   - Note: new src/expr/ module implementing a hand-written recursive descent parser for the BPM expression DSL; zero external dependencies; grammar covers 9 productions with all built-in functions whitelisted at lex time\n\n2. Verify DSL-01 in docs/status/requirement_status.json is already RELEASED (RELEASE-VALIDATOR set it) — no change needed if correct.\n\n3. Run the WF-02/WF-04 retrospective using handoffs/WF02-dsl01-20260527/estimation.json:\n   - Read docs/agents/metrics.md §6 for the retrospective procedure\n   - Compute actual work time per step from started_at/completed_at in each step handoff\n   - Compare estimated vs actual, compute variance_pct per step\n   - Write docs/metrics/retrospectives/WF02-dsl01-20260527.json\n\n4. Write an inner report to docs/issue-reports/WF02-dsl01-20260527-doc-updater-INNER-REPORT.json",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with DSL-01 entry",
+      "DSL-01 status is RELEASED in requirement_status.json",
+      "docs/metrics/retrospectives/WF02-dsl01-20260527.json written",
+      "Inner report written to docs/issue-reports/"
+    ],
+    "functions_to_call": ["fn:update-changelog", "fn:update-requirement-status"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "DSL-01 documentation update complete. CHANGELOG.md updated with Stage 7 Expression DSL section and DSL-01 entry. DSL-01 status verified as RELEASED in requirement_status.json (no change needed — RELEASE-VALIDATOR set it correctly). Retrospective written to docs/metrics/retrospectives/WF02-dsl01-20260527.json: estimated 78 min, actual 39.2 min (-49.7% overall). One rule adjustment applied: code-designer D4 estimate reduced 62→32 based on 2 consecutive qualifying D4 under-runs. estimation_rules.json updated. Inner report written.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/metrics/retrospectives/WF02-dsl01-20260527.json",
+      "docs/metrics/estimation_rules.json",
+      "docs/issue-reports/WF02-dsl01-20260527-doc-updater-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV step-final git-merge"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

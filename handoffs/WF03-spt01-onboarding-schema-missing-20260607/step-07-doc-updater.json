@@ -1,0 +1,49 @@
+{
+  "handoff_id": "wf03-spt01-schema-20260607-007",
+  "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
+  "workflow_id": "WF-03",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-06-07T01:46:44Z",
+  "started_at": "2026-06-07T01:46:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — SPT-01 onboarding schema provisioning gap (doc update + git merge)",
+    "requirement_ids": ["SPT-01"],
+    "related_handoff_ids": ["wf03-spt01-schema-20260607-005tr"],
+    "artifacts_in": [
+      "tests/reports/report-20260607-WF03-spt01-onboarding-schema-missing-20260607-step05.yaml",
+      "docs/issues/ISS-0068.json"
+    ]
+  },
+  "task": {
+    "description": "1. Update CHANGELOG.md with an entry for the ISS-0068 fix under today's date (2026-06-07):\n   - Section: Fixes\n   - Entry: '[ISS-0068] Fixed missing tenant schema provisioning in onboarding saga — after tenant registration, PostgreSQL schemas (tenant_default, tenant_<uuid>) are now created correctly. Retroactive migration (069/070) provisions schemas for pre-existing tenants.'\n\n2. Mark ISS-0068 RESOLVED in docs/issues/ISS-0068.json:\n   - Set status to 'RESOLVED'\n   - Set resolved_at to current UTC timestamp from shell\n   - Set resolution to 'Fixed in WF03-spt01-onboarding-schema-missing-20260607'\n\n3. Update docs/issues/issue_index.json to set ISS-0068 status to 'RESOLVED'.\n\n4. fn:git-merge — merge feature/WF03-spt01-onboarding-schema-missing-20260607 to main:\n   - Commit all new doc/report/handoff artifacts\n   - gh pr create --base main --title 'fix(SPT-01/ISS-0068): wire tenant schema provisioning into onboarding saga'\n   - gh pr merge --squash --delete-branch\n   - git checkout main; git pull --ff-only origin main\n   - Verify branch is deleted\n   - Return PASS with PR number and merge commit SHA\n\n5. Update handoff and registry for this step.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with ISS-0068 fix entry",
+      "ISS-0068.json status RESOLVED",
+      "issue_index.json updated",
+      "Feature branch merged to main and deleted",
+      "Repo on clean main after merge"
+    ],
+    "functions_to_call": ["fn:update-changelog", "fn:update-issue", "fn:git-merge"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated changelog and issue tracking for ISS-0068, merged feature/WF03-spt01-onboarding-schema-missing-20260607 to main, and deleted the feature branch.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0068.json",
+      "docs/issues/issue_index.json",
+      "handoffs/registry.json",
+      "PR #73",
+      "merge_commit:805c08e846dba8fd214a09ff8b7cdec9870dba7c"
+    ],
+    "issues": [],
+    "next_action": "Workflow complete for this cycle"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-07T01:48:40Z"
+}

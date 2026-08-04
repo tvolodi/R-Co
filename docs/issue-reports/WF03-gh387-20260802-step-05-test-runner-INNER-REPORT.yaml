@@ -1,0 +1,93 @@
+report_id: WF03-gh387-20260802-step-05-test-runner
+agent_id: TEST-RUNNER
+run_id: WF03-gh387-20260802
+step: "5"
+created_at: 2026-08-02T11:46:46Z
+summary: |
+  Ran the WF03-gh387-20260802 (ISS-0121 / GitHub #387 — Hardcoded UUID violations)
+  test suite as dispatched in step-05-test-runner.json. All 7 ISS-0121
+  regression tests PASS against the isolated BPM_TEST_DB_URL (port 5434).
+  zig build exits 0, zig build test exits 0 (247/247 unit tests pass),
+  python tools/lint_test_isolation.py shows 0 BLOCKER / 0 new MAJOR
+  attributable to the new test file. The previously-merged ISS-0122
+  audit chain UTF-8 tests TC-03 and TC-04 fail; this was confirmed to
+  be pre-existing on origin/main (the same two tests fail when running
+  against the unchanged main commit) so it is not a regression caused
+  by the ISS-0121 branch. Documented as a MAJOR out-of-scope issue for
+  awareness so ORCH can decide whether to spawn a follow-up WF-03.
+
+files_created:
+  - tests/reports/report-2026-08-02-WF03-gh387-step5.yaml
+  - docs/issue-reports/WF03-gh387-20260802-step-05-test-runner-INNER-REPORT.yaml
+  - scratch/_db_check.py
+  - scratch/_iss0121_run.log
+  - scratch/_iss0122_run.log
+  - scratch/_main_iss0122_run.log
+  - scratch/_unit_run.log
+  - scratch/_lint_run.log
+  - scratch/_build_run.log
+
+files_modified:
+  - handoffs/WF03-gh387-20260802/step-05-test-runner.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+
+tests_run:
+  - name: "TC-ISS-0121-01: newUuid returns a non-zero UUID"
+    status: pass
+    detail: "asserts UUID bytes != all_zero"
+  - name: "TC-ISS-0121-02: newUuid called twice returns distinct UUIDs"
+    status: pass
+    detail: "compares two consecutive calls"
+  - name: "TC-ISS-0121-03: newUuid is RFC 4122 v4 compliant"
+    status: pass
+    detail: "verifies byte 6 high nibble == 0x40 and byte 8 top two bits == 0b10"
+  - name: "TC-ISS-0121-04: newUuidString returns 36-byte hyphenated lowercase string"
+    status: pass
+    detail: "length, dash positions, lowercase hex, version '4' at pos 14, variant '8'..'b' at pos 19"
+  - name: "TC-ISS-0121-05: newUuidString called twice returns distinct strings"
+    status: pass
+    detail: "compares two consecutive string calls"
+  - name: "TC-ISS-0121-06: 1000 successive newUuid calls are pairwise distinct"
+    status: pass
+    detail: "499 500 pairwise comparisons, all distinct"
+  - name: "TC-ISS-0121-07: newUuidString round-trips through audit_entries.resource_id"
+    status: pass
+    detail: "INSERT then SELECT-back resource_id, octet_length == 36"
+  - name: "TC-ISS-0122-03: bpm_audit_validate_chain returns empty issues[]"
+    status: fail
+    detail: "TestExpectedEqual — fails identically on origin/main (pre-existing, not caused by this branch)"
+    pre_existing: true
+  - name: "TC-ISS-0122-04: concurrent non-UTF-8 inserts do not fork the chain"
+    status: fail
+    detail: "Postgres 42P08 inconsistent types deduced for parameter; 25P02 transaction aborted downstream. Fails identically on origin/main."
+    pre_existing: true
+  - name: "zig build test (all 14 unit binaries)"
+    status: pass
+    detail: "247/247 across 10+3+2+7+6+7+2+1+17+15+5+33+15+124 = 247 unit tests"
+
+issues_found:
+  - severity: MAJOR
+    description: |
+      ISS-0122 audit chain UTF-8 tests TC-03 and TC-04 fail. Pre-existing on
+      origin/main — verified by `git checkout main && zig build test-integration-iss0122`
+      which produces the same 2/4 failure. The ISS-0121 branch does not modify
+      tests/integration/audit_chain_utf8_test.zig. The root cause appears to be
+      a parameter-type ambiguity (42P08) in the audit chain trigger, causing a
+      25P02 transaction-aborted state that cascades into TC-03's equality
+      assertion failure. Out of scope for this ISS-0121 fix but a real open
+      issue; recommend ORCH spawn a separate WF-03 for ISS-0122 follow-up
+      after this workflow completes.
+  - severity: MINOR
+    description: |
+      lint_test_isolation.py reports 243 MAJOR T010 (hardcoded UUID) findings
+      — all are pre-existing in the baseline. The new test file
+      tests/integration/iss0121_uuid_helpers_test.zig introduces 0 new
+      T010 findings. No action required for this workflow.
+
+next_steps:
+  - "Route to DOC-UPDATER (Step 7) to mark ISS-0121 as TESTED and update CHANGELOG."
+  - "ORCH: after DOC-UPDATER completes, consider whether to dispatch a separate WF-03 for the pre-existing ISS-0122 audit chain failures (TC-03 and TC-04)."
+  - "RELEASE-VALIDATOR: this report's overall `status` is FAIL only because of the out-of-scope ISS-0122 failures; the ISS-0121 in-scope work is 7/7 PASS with 0 regressions attributable to the new code."
+
+blockers: []

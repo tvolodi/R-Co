@@ -1,0 +1,67 @@
+{
+  "handoff_id": "20260525-061",
+  "run_id": "WF02-ext02-20260525",
+  "workflow_id": "WF-02",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-ext02-20260525/step-02-backend-dev.json",
+  "created_at": "2026-05-25T11:44:00Z",
+  "started_at": "2026-05-25T11:44:20Z",
+  "completed_at": "2026-05-25T11:53:33Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-02"
+    ],
+    "related_handoff_ids": [
+      "20260525-060",
+      "20260525-044",
+      "20260525-034"
+    ],
+    "artifacts_in": [
+      "docs/requirements/EXT-02.md",
+      "src/design/ext-02-webhook-event-dispatch.md",
+      "src/design/obs-03-audit-log.md",
+      "src/design/obs-06-alerting-hooks.md",
+      "docs/BPM_Platform_Functional_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "Implement EXT-02 backend behavior according to src/design/ext-02-webhook-event-dispatch.md. Add PLATFORM_ADMIN-protected webhook subscription APIs: POST/GET/DELETE /webhooks/subscriptions with storage for target_url, event_types, optional secret, status, and retry metadata. Implement event fan-out dispatch for instance started/completed/errored and task activated/completed with independent per-subscription delivery state. Deliver outbound HTTP POST payloads with required headers, including optional X-BPM-Signature HMAC-SHA256 over request body when secret is configured. Enforce at-least-once delivery with exponential backoff retries up to 5 attempts for non-2xx/timeouts. On 5 consecutive failures, pause subscription and trigger OBS-06 alert emission. Ensure create/delete operations emit OBS-03 audit records. Treat any 2xx response as success regardless of body format. Keep SQL security guarantees (prepared statements only), avoid catch unreachable on realistic failures, and preserve no-I/O rule in src/engine/transition.zig.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build migrate exits 0",
+      "No error-set propagation gaps remain (zig build stderr has no error-set warnings)",
+      "EXT-02 acceptance criteria and edge cases are implemented as designed"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:check-zig-tests",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented EXT-02 webhook backend: added PLATFORM_ADMIN-protected POST/GET/DELETE subscription handlers, subscription persistence with OBS-03 create/delete audit writes, dispatch fan-out queueing and due-delivery processing with optional HMAC signature header, exponential retry/backoff with pause-on-exhaustion, OBS-06 paused-subscription alert emission integration, and schema migration for retry metadata/state fields.",
+    "artifacts_out": [
+      "migrations/023_ext02_webhook_event_dispatch.sql",
+      "src/webhook/signing.zig",
+      "src/webhook/subscription_store.zig",
+      "src/webhook/dispatcher.zig",
+      "src/api/routes/webhooks.zig",
+      "src/api/authorization.zig",
+      "src/obs/alerts.zig",
+      "src/main.zig",
+      "src/bpm.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

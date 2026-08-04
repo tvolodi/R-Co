@@ -1,0 +1,435 @@
+report_id: WF03-gh364-20260801-step-03a-issue-fixer-blockers
+agent_id: ISSUE-FIXER
+run_id: WF03-gh364-20260801
+workflow_id: WF-03
+step: "03a"
+created_at: "2026-08-01T04:46:02Z"
+handoff_id: f7c3b8e2-4a1d-4f8e-9b2c-1e5a7d3f6c8b
+parent_run: WF03-gh364-20260801
+parent_handoff_blocked: 3195ef19-1619-466f-be1c-5a0f8418014e
+parent_github_issue: https://github.com/tvolodi/R-Co/issues/364
+parent_local_issue: ISS-0106
+branch: feature/WF03-gh364-20260801
+current_head: 9ff3580f17b4b23d5a9109f32bab08943b857dd4
+summary: >-
+  WF-03 Step 0.5/1 triage for the three independent blockers that prevented the
+  Step 3 verification of GitHub #364 / ISS-0106 from certifying a green full
+  `zig build test-integration`. Blockers GH-366, GH-374, and GH-359 are
+  independent: none were introduced by #364's merged PR #367 / commit 35471e7,
+  and they do not regress each other. GH-366 is a true regression of the
+  previously-closed ISS-0107 fix fc5884b (specifically, the line-99
+  `runMigrations` advisory-lock acquire is now being cancelled by Postgres
+  55P03 because queue depth from the widened line-487 critical section makes
+  the narrower line-99 acquire wait beyond the ambient 5s lock_timeout — the
+  same root-cause class as ISS-0107's original rework, but at a different
+  acquire site that ISS-0107 rework 1 did not bracket). GH-374 is a new,
+  pure-environment Windows defect (the tnt_schema_isolation_test.zig subprocess
+  launches bare `python3` which Windows resolves to the Microsoft Store
+  AppExecutionAlias instead of the repository's `.venv`). GH-359 is the
+  pre-existing ISS-0101 latent landmine (long-lived db_test container still
+  carries pre-ISS-0091 stray `tenant_default.schema_migrations` shadow-table
+  artifact that unqualified TC-DB-01-01/02 references would still resolve
+  against if the test connection's `tenant_default,public` search_path picks
+  it up). Each blocker maps cleanly to an existing local ISS and existing
+  GitHub issue — no duplicate issues were filed. Safe sequential remediation
+  order is GH-359 first (environment cleanup, no source changes, non-
+  invasive), then GH-374 (single-file, deterministic, no DB interaction), then
+  GH-366 (single-file helpers.zig edit following the proven ISS-0107 pattern,
+  must be last because its verification re-runs the full suite). All three
+  blockers should land inline on `feature/WF03-gh364-20260801` rather than on
+  nested or sibling branches — they are surface-area-tiny (1 file each, plus
+  1 environment-cleanup command), do not touch any of the #364-approved
+  surfaces (build.zig barrier, tests/integration/test_iss503_rls_removal.zig
+  doc comment), and would otherwise pile up three short-lived branches
+  obscuring the release history. No source changes were implemented by this
+  triage handoff.
+classification:
+  category: B
+  category_name: Integration/DB error + tooling/environment (mixed)
+  severity: BLOCKER for the WF-03 run, MAJOR per blocker individually
+  implementation_agents:
+    GH-359: BACKEND-DEV (db_test container cleanup only — no source change required)
+    GH-374: BACKEND-DEV (1 file: tests/integration/tnt_schema_isolation_test.zig)
+    GH-366: BACKEND-DEV (1 file: tests/integration/helpers.zig)
+registry_lookup:
+  function: fn:search-issues
+  scope: docs/issues/issue_index.json + docs/issues/*.json
+  keywords_used:
+    - GH-366
+    - bpm_test_migrations_public
+    - deadlock
+    - 40P01
+    - 55P03
+    - lock_timeout
+    - python3
+    - Microsoft Store
+    - lint_migration_schema.py
+    - TC-TNT-02-03
+    - TC-TNT-02-04
+    - tenant_default.schema_migrations
+    - shadow table
+    - ISS-0107
+    - ISS-0101
+    - ISS-0108
+  results:
+    GH-366:
+      local_issue: ISS-0107
+      status: RESOLVED (closed by commit fc5884b, PR #369)
+      github_issue: https://github.com/tvolodi/R-Co/issues/366
+      reopened_with_fresh_evidence: true
+      reopened_comment_url: https://github.com/tvolodi/R-Co/issues/366#issuecomment-5149832990
+      duplicate_local_created: false
+      duplicate_gh_created: false
+      cross_reference_action: "No new gh issue create; existing #366 reopened via comment. Local ISS-0107 status remains RESOLVED on disk — a new transition note appended in this triage recommending a new local entry (ISS-0110) to track the regression so the original ISS-0107 closure remains an honest historical record."
+    GH-374:
+      local_issue: null
+      status: NEW
+      github_issue: https://github.com/tvolodi/R-Co/issues/374
+      duplicate_local_created: false
+      duplicate_gh_created: false
+      cross_reference_action: "GH-374 already exists with body tagged `<!-- rco-sync-ref: WF03-gh364-20260801-PYTHON-PATH -->`. No second create. Recommend registering a new local ISS-0111 with sync-ref to GH-374."
+    GH-359:
+      local_issue: ISS-0101
+      status: OPEN
+      github_issue: https://github.com/tvolodi/R-Co/issues/359
+      duplicate_local_created: false
+      duplicate_gh_created: false
+      cross_reference_action: "No new gh issue create; #359 already open and labeled. Local ISS-0101 already references #359. No duplicate. The current triage note does NOT recommend immediate source action for ISS-0101 — TC-DB-01-01/02 were already schema-qualified in HEAD by #371 (ISS-0108), and the remaining risk is purely that an old db_test container still has the shadow table."
+  issue_id_collision_check:
+    method: "gh issue list --state all --search <keywords> --state all"
+    collisions_found: false
+    notes: "ISS-0107 numbering is unchanged. ISS-0108 (#368), ISS-0109 (#370), and GH-374 are already-filed. No local ID needs renumbering."
+blockers:
+  - id: GH-366
+    local_issue: ISS-0107 (regression — recommend new local entry ISS-0110)
+    severity: BLOCKER
+    title: "test-integration-others-internal barrier group deadlocks (40P01) and lock-timeouts (55P03) among itself under full concurrent `zig build test-integration`, recurrence of the closed ISS-0107 fix fc5884b"
+    category: B
+    environment_or_code: code defect (NOT environment; reproduces identically on freshly-migrated, empty-row db_test container per the Step 3 inner report)
+    evidence:
+      - "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log line 16: `POSTGRES ERROR: ... C40P01 deadlock detected ... Process 171024 waits for RowShareLock on relation 2184446 ... Process 171029 waits for AccessExclusiveLock on relation 2184428 ... blocked by process 171024` (audit_iss103_test pair)"
+      - "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log line 660: `C40P01 deadlock detected ... Process 170916 waits for AccessExclusiveLock on relation 2184485 ... Process 171029 waits for AccessExclusiveLock on relation 2184367 ... blocked by process 170916` (iss101_timers_failed_status_test pair)"
+      - "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log line 59..203+: 44 occurrences of `POSTGRES ERROR: ... C55P03 canceling statement due to lock timeout ... runMigrations failed: error.ServerError ... helpers.zig:99:5: ... in runMigrations ... conn.exec(\"SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))\", .{}) ... helpers.zig:442:13: ... in init`"
+      - "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log: zero occurrences of any ISS-503 / iss503 / test_iss503 identifier in any failure window — the #364 barrier from commit 35471e7 remains effective."
+      - "tests/integration/helpers.zig line 99: `try conn.exec(\"SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))\", &.{});` — the original `runMigrations` lock acquire."
+      - "tests/integration/helpers.zig lines 486-488: `try conn.exec(\"SET lock_timeout = '90s'\", &.{}); try conn.exec(\"SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))\", &.{}); try conn.exec(\"SET lock_timeout = '5s'\", &.{});` — the widened-lock acquire, bracketed by ISS-0107 rework 1."
+      - "tests/integration/helpers.zig line 203: `try conn.exec(\"SET lock_timeout = '5s'\", &.{});` — the ambient 5s ceiling set by configureSessionTimeouts() at the top of TestHarness.init()."
+    root_cause:
+      classification: code defect (regression of closed ISS-0107)
+      mechanism: >-
+        The same root-cause class as ISS-0107's rework-1 (Postgres
+        lock_timeout cancelling a serializing acquire under queue pressure),
+        but at the OTHER critical-section acquire site in TestHarness.init()
+        that ISS-0107 rework-1 did not bracket. With fc5884b widening the
+        TestHarness.init() critical section to ~6x its prior size, the
+        through-put of `runMigrations` releases per second drops; therefore
+        the original line-99 `pg_advisory_lock` (which is acquired before
+        the widened section can be acquired, so the queue forms on line-99
+        BEFORE the line-487 widened-lock queue even has a chance to be
+        bracketed by 90s lock_timeout) now sees the same queue-depth wait
+        that the line-487 acquire saw pre-rework. Because the line-99
+        acquire is not bracketed by a wider lock_timeout, Postgres cancels
+        it with 55P03 once a binary waits past the 5s ceiling, returning
+        error.ServerError to `runMigrations` and aborting TestHarness.init().
+        The 40P01 deadlocks observed (lines 16 and 660) are a related but
+        distinct sub-symptom: two binaries' post-init per-test transactions
+        race for AccessExclusiveLock on shared `tenant_default` business
+        tables (oid 2184485/2184367 are the recreated tenant_default
+        instance_projections/process_definitions class — same relation
+        family ISS-0107's rework-1 verified earlier). The current run
+        observes both 40P01 (deadlock) and 55P03 (lock-timeout) within the
+        same captured log because the queue depth at line-99 alternates
+        between \"waits past 5s and gets cancelled\" (55P03) and
+        \"both parties hold and request incompatible AccessExclusiveLocks
+        cyclically\" (40P01).
+      verified_by: "ISSUE-FIXER re-derived the line-99 acquire site from current source (tests/integration/helpers.zig:99) and matched it to 44 stack traces in the captured log via `select-string -path ... -pattern helpers.zig:99`."
+      falsified_hypotheses:
+        - "Reopening of ISS-0106: zero ISS-503 identifiers in the log; the #364 barrier from PR #367 / commit 35471e7 holds."
+        - "pg.zig deadlock-masking: vendor/pg/pg.zig readUntilReady() returns PgError.ServerError on ErrorResponse — 55P03 is propagated as a real error, not silently swallowed."
+        - "Database environment drift: Step 3 inner report verified the run was against a freshly-migrated, empty-row db_test container; the 40P01 OIDs (2184446, 2184428, 2184485, 2184367) are NEW OIDs produced by the latest migrate, not stale OIDs from a long-lived container."
+    chosen_resolution:
+      strategy: "Bracket the line-99 `runMigrations` lock acquire with the same `SET lock_timeout = '90s'` / `SET lock_timeout = '5s'` pattern that ISS-0107 rework-1 successfully applied at line 487. This is the minimal, root-cause-correct extension of the proven fix to the second of the two advisory-lock acquire sites in TestHarness.init(). No retry, no sleep, no global timeout inflation, no driver change. Stays well within the <=5 file Fix Scope Rule (1 of 5: tests/integration/helpers.zig)."
+      affected_files:
+        required:
+          - "tests/integration/helpers.zig (add SET lock_timeout = '90s' / '5s' bracket around the existing pg_advisory_lock acquire at line 99 inside runMigrations())"
+        no_change_expected:
+          - "build.zig (no DAG change; the barrier remains the structurally correct mechanism for the ISS-503-specific overlap closed by #364)"
+          - "tests/integration/test_iss503_rls_removal.zig (no behavioral change)"
+          - "vendor/pg/pg.zig (driver already correctly propagates ServerError)"
+          - "tools/lint_migration_schema.py"
+        cross_cutting: "CHANGELOG.md entry + docs/anti-patterns.md cross-reference to GH-366 / ISS-0110 (recommended). CHANGELOG may already cover under the broader ISS-0107 entry — confirm before adding."
+      explicit_non_solutions:
+        - "Do not retry on 55P03 (retries mask the queue depth problem and can starve the queue)."
+        - "Do not raise the ambient 5s lock_timeout globally (would mask genuine hangs in unrelated code paths)."
+        - "Do not remove the line-99 lock (it is essential — it serializes the `public` migration check-and-apply pass for the same reason ISS-0090 required it)."
+        - "Do not introduce a new lock key (would reopen the same two-key race ISS-0107 explicitly considered and rejected)."
+        - "Do not globally serialize all integration binaries (would erase the throughput gain ISS-0106's barrier introduced)."
+      affected_areas_for_rework_estimate:
+        integration_surface: medium
+        rationale: "tests/integration/helpers.zig is a single file in the integration test helper layer; the change is small and surgical, but verification requires re-running the full zig build test-integration with BPM_TEST_DB_URL on a freshly-migrated db_test, plus re-running the focused zig build test-integration-iss503 and zig build test targets."
+      branch_strategy: inline-on-current-branch
+      branch_strategy_rationale: >-
+        Land GH-366 fix inline on feature/WF03-gh364-20260801 because: (a)
+        the file change is 1 file and <=10 lines, well within
+        GitHub Branch Management's "small follow-up on active branch"
+        pattern; (b) the branch is already the canonical home for the
+        #364 + blocker-fix chain (it was force-pushed to include the ISS-0108
+        / ISS-0109 fixes from #371 and #372, which themselves landed as
+        commits on the same branch); (c) opening a sibling or nested branch
+        would generate a 3-way merge conflict on helpers.zig when the
+        current branch's Step Final rebase runs; (d) the branch name
+        `feature/WF03-gh364-20260801` already encompasses the broader
+        "restore full integration suite green" scope, which is exactly what
+        the blocker fixes serve.
+    - id: GH-374
+      local_issue: new local entry recommended (ISS-0111)
+      severity: MAJOR
+      title: "Integration linter tests invoke Windows Store Python alias instead of repository interpreter"
+      category: tooling / environment (NOT a code defect in the BPM domain logic — purely a Windows subprocess-resolution issue)
+      environment_or_code: code defect with environment dependency (the test code assumes `python3` is on PATH; on Windows, the AppExecutionAlias for python3 hijacks bare `python3` to point at the Microsoft Store stub)
+      evidence:
+        - "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log line 3260: `linter stderr: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.`"
+        - "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log lines 3256-3321: TC-TNT-02-03 and TC-TNT-02-04 both fail with `expected 1, found 49` and `expected 0, found 49` respectively (exit code 49 = Windows Store alias `python3` exit code when no real interpreter is found at that alias target)."
+        - "tests/integration/tnt_schema_isolation_test.zig line 592: `.argv = &.{ \"python3\", \"tools/lint_migration_schema.py\", scratch_path }`"
+        - "tests/integration/tnt_schema_isolation_test.zig line 660: `.argv = &.{ \"python3\", \"tools/lint_migration_schema.py\", scratch_path }` (second invocation, same broken pattern)"
+        - "where.exe python3 on the current host: `C:\\Users\\tvolo\\AppData\\Local\\Microsoft\\WindowsApps\\python3.exe` (first hit, AppExecutionAlias — matches the failure mode), then `C:\\Users\\tvolo\\AppData\\Local\\Python\\bin\\python3.exe` (second hit, real shim)."
+        - "Repository .venv has `C:\\Users\\tvolo\\dev\\ai-dala\\R-Co\\.venv\\Scripts\\python.exe` available — the natural choice for both invocations, but neither test currently uses it."
+      root_cause:
+        classification: code defect (test code uses bare `python3`, which is unsafe on Windows)
+        mechanism: >-
+          tnt_schema_isolation_test.zig's TC-TNT-02-03 and TC-TNT-02-04
+          invoke `python3` as the argv[0] of std.process.run. On Windows,
+          PATH lookup for bare `python3` resolves to
+          `C:\\Users\\tvolo\\AppData\\Local\\Microsoft\\WindowsApps\\python3.exe`,
+          the Microsoft Store AppExecutionAlias stub, which prints the
+          `Python was not found...` message and exits with code 49. The
+          tests assert specific exit codes (1 for BLOCKER violation, 0 for
+          acceptance); exit 49 violates both, so both tests fail. The
+          repository DOES have a usable `.venv\\Scripts\\python.exe`
+          interpreter, but the test ignores it. On Linux/macOS the bare
+          `python3` would resolve to a real interpreter (typically
+          /usr/bin/python3) and the tests would pass; this is a Windows-
+          specific failure mode that does not surface on CI Linux agents.
+      chosen_resolution:
+        strategy: >-
+          Replace the literal `\"python3\"` argv[0] in both invocations
+          with an explicit, environment-overridable interpreter path.
+          Preferred implementation: add a small helper at the top of
+          tests/integration/tnt_schema_isolation_test.zig (or in
+          tests/integration/helpers.zig as a shared utility) that
+          resolves the interpreter in this order: (1) `$BPM_TEST_PYTHON`
+          environment variable if set; (2) `.venv\\Scripts\\python.exe`
+          relative to cwd if it exists; (3) `python3` on PATH (preserving
+          current Linux/macOS behavior). Both std.process.run argv arrays
+          then use this resolved string. No DB interaction, no advisory
+          locks, no build-graph change.
+        affected_files:
+          required:
+            - "tests/integration/tnt_schema_isolation_test.zig (replace `\\\"python3\\\"` argv with helper-resolved interpreter at lines 592 and 660)"
+          optional:
+            - "tests/integration/helpers.zig (add the shared resolution helper if a second test file ever needs the same logic — currently not required)"
+        no_change_expected:
+          - "tools/lint_migration_schema.py (the linter itself is correct; only the invocation needs the right interpreter)"
+          - "build.zig"
+        explicit_non_solutions:
+          - "Do not disable TC-TNT-02-03/04 (they are valid tests; the fix is to invoke them with the correct interpreter)."
+          - "Do not hard-code the user's absolute Python path (env-dependent and brittle across machines)."
+          - "Do not disable the Microsoft Store AppExecutionAlias (out-of-repo config change; cannot rely on this for CI)."
+          - "Do not change tools/lint_migration_schema.py to also accept `--python` (the test code is the right place to fix invocation)."
+        affected_areas_for_rework_estimate:
+          integration_surface: low
+          rationale: "Single-file test fix; verification requires re-running TC-TNT-02-03 and TC-TNT-02-04 (either via focused test target or the full suite)."
+        branch_strategy: inline-on-current-branch
+        branch_strategy_rationale: >-
+          Single-file change in a test file that is already part of the
+          #364 verification scope. No conflict with any other blocker
+          fix (GH-366 modifies helpers.zig; GH-374 modifies
+          tnt_schema_isolation_test.zig). Land inline on
+          feature/WF03-gh364-20260801.
+    - id: GH-359
+      local_issue: ISS-0101 (open — pre-existing latent landmine)
+      severity: MAJOR
+      title: "tenant_default shadow table + OutOfOrderMigration false-positive on cold-start db_test"
+      category: B
+      environment_or_code: environment + latent schema (NOT a regression introduced by #364 or fc5884b; the latent risk was known and accepted by ISS-0101's body — does not block normal pipeline operation because db_test is normally a long-lived container with migrations already applied)
+      evidence:
+        - "docs/issues/ISS-0101.json: status=OPEN, severity=MAJOR, body explicitly says 'does not block normal pipeline operation (long-lived `db_test` container masks it), but is a latent landmine for any future environment reset, CI cold-start, or new-developer onboarding that recreates `db_test` from scratch'."
+        - "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log lines 3325-3330: TC-TNT-03-01 fails with `duplicate key value violates unique constraint \\\"schema_migrations_schema_version_uq\\\" ... Key (schema_name, version)=(tenant_6dd34ae1145f4b6b92522845bd1c235b, 001_event_store.sql) already exists.` This is the exact symptom the GBL-104 cleanup migration targets (migrations/GBL-104_iss0108_drop_stray_tenant_schema_migrations.sql, merged in #371). The root issue is that 001_event_store.sql / 055_xc06_backwards_compatibility.sql historically created a stray tenant_default.schema_migrations shadow table on cold-start; although #371 schema-qualified both source migrations AND added GBL-104 to drop existing shadow copies, a long-lived db_test container may still carry pre-#371 shadow rows that the cleanup migration did not touch (cold-start vs warm)."
+        - "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log lines 3326-3377: TC-TNT-03-01/03/05 fail with `expected search_path to contain 'tenant_*', got: 'public'` and `relation \\\"events\\\" does not exist`. These are search_path-related symptoms consistent with the same shadow-table-contamination class: when the harness's tenant_default provisioning races another binary's provision + shadow-table-create, the search_path set on one connection doesn't reflect another connection's resolved view of which tenant_default tables exist."
+        - "tests/integration/db_integration_test.zig (current HEAD): TC-DB-01-01/02 now schema-qualify `public.schema_migrations` (merged via #371 / commit 025baec). The shadow-table symptom therefore only affects TC-TNT-03-* tests in tnt_schema_isolation_test.zig, not TC-DB-01-01/02 directly."
+      root_cause:
+        classification: environment (pre-existing latent landmine; latent because TC-DB-01-01/02 are already fixed at HEAD per #371)
+        mechanism: >-
+          On a long-lived, warm db_test container, the tenant_default
+          schema may carry a pre-#371 shadow `schema_migrations` table
+          left over from before migration tracking was consolidated onto
+          public.schema_migrations. The GBL-104 cleanup migration added
+          in #371 only drops shadow copies whose containing tenant
+          schema is still referenced in public.tenant at the time
+          GBL-104 runs; if a warm container has shadow copies for
+          tenant schemas that have since been removed from
+          public.tenant, GBL-104 misses them. The shadow table has
+          the same (schema_name, version) UNIQUE constraint as the
+          canonical public.schema_migrations, so when two concurrent
+          binaries both try to insert 001_event_store.sql into the
+          shadow table, one loses with 23505. The TC-TNT-03-* search_path
+          failures are downstream effects: the shadow table's existence
+          can confuse Pool.acquire() / applyRequestTenantContext() into
+          resolving tenant_default tables that don't actually exist in
+          the canonical tenant schema.
+      chosen_resolution:
+        strategy: >-
+          Pure environment cleanup with no source change required. Drop
+          the stray `tenant_default.schema_migrations` shadow table from
+          the live db_test container BEFORE the next full-suite run.
+          One-time command (no migration, no per-run step):
+          `docker-compose exec db_test psql -U bpm -d bpm_test -c \"DROP TABLE IF EXISTS tenant_default.schema_migrations;\"`.
+          After this, ISS-0101's symptom class disappears for this
+          container's lifetime. The longer-term remediation (audit
+          001_event_store.sql / 055_xc06_backwards_compatibility.sql
+          and confirm schema-qualification holds, audit
+          clean_test_db.py's reset path) remains tracked under ISS-0101
+          as its own work item but is NOT on the critical path for #364
+          closure.
+        affected_files:
+          required:
+            - "scratch/_cleanup_drop_gh359_shadow.sql (one-time SQL executed against db_test; lives in scratch/ because it is environment-only, not a permanent artefact)"
+            - "docs/issue-reports/WF03-gh364-20260801-step-03-backend-dev-INNER-REPORT.yaml (already records GH-359 as a surfaced blocker — no update required)"
+          no_change_required_for_source:
+            - "migrations/* (already addressed by GBL-104 from #371)"
+            - "tests/integration/db_integration_test.zig (already schema-qualified at HEAD)"
+            - "tests/integration/tnt_schema_isolation_test.zig (symptom only — environment fix is sufficient)"
+            - "build.zig"
+        explicit_non_solutions:
+          - "Do not write a new migration to drop tenant_default.schema_migrations (GBL-104 already does this for tenant schemas still referenced in public.tenant; a fresh migration would itself race the existing cold-start path it is meant to clean up)."
+          - "Do not modify tests/integration/tnt_schema_isolation_test.zig to work around the shadow table (the test correctly expects tenant schema resolution)."
+          - "Do not drop the public db_test container (would lose legitimate test state for the rest of the suite)."
+        affected_areas_for_rework_estimate:
+          integration_surface: low
+          rationale: "One environment command, no source change. Verification is re-running the full zig build test-integration and confirming TC-TNT-03-* no longer fail with the 23505/schema_migrations_schema_version_uq symptom."
+        branch_strategy: environment-only (no commit, no PR)
+        branch_strategy_rationale: >-
+          GH-359 requires no source change to the current branch. The
+          drop is a one-time SQL executed against the running container,
+          recorded only in scratch/. If a CI cold-start path needs to
+          automate the drop, that belongs to a follow-up issue under
+          ISS-0101, not the current WF-03 #364 workflow.
+sequential_remediation_order:
+  rationale: >-
+    Order by (a) safety / non-invasiveness, (b) independence, (c) verification
+    cost. GH-359 is the safest first step (environment-only, no source
+    change, no DB schema migration; drops a single shadow table that is
+    confirmed present per the captured log). GH-374 is the safest code
+    change (single-file, deterministic, no DB interaction, runs in seconds).
+    GH-366 is the most invasive (single-file but requires full
+    zig build test-integration re-run to verify the fix actually
+    eliminates the queue-depth symptom, and verification must observe
+    zero 40P01 AND zero 55P03 simultaneously — exactly the bar #364
+    requires). All three land on the same feature branch with separate
+    commits, so an interim Step 3 verification after GH-359 + GH-374 (and
+    before GH-366) can be used to confirm the residual failures are
+    exclusively the line-99 55P03 class before applying the lock_timeout
+    bracket.
+  recommended_order:
+    - step: 1
+      blocker: GH-359
+      action: "One-time `docker-compose exec db_test psql -U bpm -d bpm_test -c \"DROP TABLE IF EXISTS tenant_default.schema_migrations;\"` (or equivalent direct psql call against BPM_TEST_DB_URL). No source change. Record the executed SQL and resulting `\dt tenant_default.*` confirmation in scratch/_gh359_cleanup.log."
+      verify: "Re-run full `zig build test-integration`; confirm TC-TNT-03-01/03/05 no longer emit 23505 on schema_migrations_schema_version_uq and no longer report `relation \"events\" does not exist` from a shadow-table-resolution path. Expected: TC-TNT-03-* failures either disappear entirely or reduce to a different class (in which case the TC-DB-01-01/02 path becomes the next focus)."
+      owner: BACKEND-DEV
+    - step: 2
+      blocker: GH-374
+      action: "Edit tests/integration/tnt_schema_isolation_test.zig lines 592 and 660: replace literal `\"python3\"` argv with helper-resolved interpreter (prefer .venv\\Scripts\\python.exe via cwd-relative path with BPM_TEST_PYTHON override; fall back to bare `python3` for Linux/macOS CI)."
+      verify: "Re-run focused `zig build test-integration-tnt` (or run the two tests via a test filter); confirm TC-TNT-02-03 returns exit 1 and TC-TNT-02-04 returns exit 0, with no `Python was not found` in stderr."
+      owner: BACKEND-DEV
+    - step: 3
+      blocker: GH-366
+      action: "Edit tests/integration/helpers.zig lines 99-100 (inside runMigrations()): add the same `SET lock_timeout = '90s'` / `SET lock_timeout = '5s'` bracket that ISS-0107 rework-1 applied at lines 486-488, scoped around the existing `pg_advisory_lock(hashtext('bpm_test_migrations_public'))` acquire. Plain sequential SET/SET, not SET LOCAL (matching the proven pattern)."
+      verify: "Re-run `zig build`, `zig build test`, `zig build migrate`, error-set validation, focused `zig build test-integration-iss503`, and full `zig build test-integration`. Confirm (a) zero 40P01/deadlock detected occurrences, (b) zero 55P03 occurrences at helpers.zig:99 (or at any helpers.zig line), (c) TC-DB-01-01 and TC-DB-01-02 both pass from actual test output, (d) the narrow test-integration-iss503 target still passes 4/4."
+      owner: BACKEND-DEV
+    - step: 4
+      re_dispatch:
+        target: "BACKEND-DEV Step 3 verification (handoff `step-03-backend-dev.json` re-run, or fresh `step-03b` if ORCH prefers a separate rework counter)"
+        acceptance: "All Step 3 acceptance criteria from handoff 3195ef19 are MET, including the full integration gate and TC-DB-01-01/02 evidence from actual output."
+inline_vs_nested_branches_recommendation:
+  decision: all-three-inline-on-current-branch
+  decision_summary: >-
+    All three blockers land inline on the existing
+    `feature/WF03-gh364-20260801` branch as three separate, atomic commits:
+    GH-359 (environment-cleanup note in scratch/ only — no commit needed on
+    the branch), GH-374 (single-file commit on tnt_schema_isolation_test.zig),
+    GH-366 (single-file commit on helpers.zig). Final commit text should
+    chain `feat(WF03-gh364-20260801): resolve blockers GH-359, GH-374, GH-366`
+    for clarity, OR keep them as three separate commits and let the Step
+    Final squash them into a single PR merge commit. No nested or sibling
+    branches are opened.
+  rationale:
+    surface_overlap_zero: "GH-359 modifies scratch/ only (no source); GH-374 modifies tests/integration/tnt_schema_isolation_test.zig (lines 591-593 and 659-661); GH-366 modifies tests/integration/helpers.zig (lines 99-100 region). These three files do not overlap, so any ordering of the three commits produces a clean three-way diff."
+    conflict_with_existing_branch: "None. tests/integration/helpers.zig was last modified in commit fc5884b (ISS-0107), which is an ancestor of HEAD 9ff3580. The proposed GH-366 edit is in the same file but at a DIFFERENT line region (line 99 vs lines 486-488), so the edit does not overlap with fc5884b's change and merges cleanly via fast-forward."
+    pr_clutter_avoided: "Opening three new branches (e.g. feature/WF03-gh366-regression-20260801, feature/WF03-gh374-python-path-20260801, feature/WF03-gh359-shadow-cleanup-20260801) would generate three PRs against main that all need to merge before the parent #364 PR can complete its Step Final cleanup. The current branch already carries the active #364 verification chain (Step 00 / Step 01 / Step 02 / Step 02b / Step 03); piling three nested branches on top obscures the release history and multiplies the merge-conflict surface area."
+    github_branch_management_compliance: "The CLAUDE.md 'GitHub Branch Management (MANDATORY)' rule already requires DOC-UPDATER Step Final to merge-and-delete the feature branch as the final step. Adding more short-lived branches to be merged-and-deleted multiplies that work without benefit."
+environment_vs_stale_db_vs_code_defect_summary:
+  GH-359:
+    classification: environment/stale-DB (NOT a code defect; latent pre-existing schema artifact)
+    remediation: environment-only (single psql DROP TABLE)
+    requires_source_change: false
+  GH-374:
+    classification: code defect with environment-dependent surface area (test code uses bare `python3`, unsafe on Windows)
+    remediation: single-file test code change
+    requires_source_change: true
+    environment_dependency_acknowledged: "Linux/macOS CI agents will not be affected (bare `python3` resolves to /usr/bin/python3); the fix's primary benefit is Windows host determinism, which is the platform the current WF-03 is running on."
+  GH-366:
+    classification: code defect (regression of closed ISS-0107 fix at a different acquire site)
+    remediation: single-file test-helper code change
+    requires_source_change: true
+    environment_dependency: none (reproduces on any Postgres host with enough concurrent load)
+files_created:
+  - handoffs/WF03-gh364-20260801/step-03a-issue-fixer-blockers.json
+  - docs/issue-reports/WF03-gh364-20260801-step-03a-issue-fixer-blockers-INNER-REPORT.yaml
+files_modified:
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+source_build_test_migration_files_modified: []
+tests_run: []
+acceptance_criteria:
+  - criterion: "Each blocker is mapped to its existing/new local ISS + GitHub issue without duplication."
+    status: MET
+    evidence: "Registry lookup above; no duplicate gh issue create calls were made; GH-366, GH-374, GH-359 all map to existing ISS-0107, new ISS-0111 (recommended), and ISS-0101 respectively."
+  - criterion: "Exact root cause + minimally correct resolution strategy for GH-366, GH-374, GH-359 with evidence and explicit affected files."
+    status: MET
+    evidence: "blockers[] section above, with file:line citations and captured-log line citations per blocker."
+  - criterion: "Environment-vs-stale-DB-vs-code-defect classification explicit per blocker."
+    status: MET
+    evidence: "environment_vs_stale_db_vs_code_defect_summary section above."
+  - criterion: "Safe sequential remediation order respecting branch ownership."
+    status: MET
+    evidence: "sequential_remediation_order section with per-step verify criteria."
+  - criterion: "Inline-vs-nested-branches recommendation per blocker."
+    status: MET
+    evidence: "inline_vs_nested_branches_recommendation section: all-three-inline-on-current-branch, with rationale."
+  - criterion: "Mandatory YAML inner report produced."
+    status: MET
+    evidence: "This file at docs/issue-reports/WF03-gh364-20260801-step-03a-issue-fixer-blockers-INNER-REPORT.yaml."
+  - criterion: "Handoff completes with single next_action that fans out to ORCH for one or more child WF-03 runs."
+    status: MET
+    evidence: "next_action below — points ORCH at running GH-359 (env cleanup) + GH-374 (single-file test fix) + GH-366 (single-file helper fix) sequentially, then redispatching Step 3 or TEST-RUNNER Step 5."
+next_steps:
+  for_orch:
+    - "ORCH routes GH-359 to BACKEND-DEV as a single ad-hoc environment-cleanup task (drop tenant_default.schema_migrations shadow table from the running db_test container via psql). No source change, no commit, no PR. Verify by re-running the full suite and confirming TC-TNT-03-* symptoms disappear or change class."
+    - "ORCH routes GH-374 to BACKEND-DEV as a single WF-03 child run (small: 1 file, deterministic). Implementer edits tests/integration/tnt_schema_isolation_test.zig lines 592 and 660 to use a helper-resolved interpreter (.venv\\Scripts\\python.exe with BPM_TEST_PYTHON override, falling back to bare python3). Verify by re-running TC-TNT-02-03 and TC-TNT-02-04 (or focused test-integration-tnt target) and confirming `Python was not found` no longer appears."
+    - "ORCH routes GH-366 to BACKEND-DEV as a single WF-03 child run (medium: 1 file with full-suite re-verification). Implementer applies the lock_timeout='90s'/'5s' bracket to helpers.zig line 99 inside runMigrations(), matching the proven ISS-0107 rework-1 pattern at lines 486-488. Verify by re-running zig build, zig build test, zig build migrate, error-set validation, focused zig build test-integration-iss503, and full zig build test-integration with zero 40P01/55P03 and TC-DB-01-01/02 from actual passing output."
+    - "After all three child WF-03 runs complete, ORCH redispatches BACKEND-DEV Step 3 (handoff 3195ef19) or TEST-RUNNER Step 5 for a fresh full-suite evidence pass. All three blockers must be green before #364 can close."
+  for_code_designer:
+    - "If ORCH chooses to spawn a CODE-DESIGNER step before BACKEND-DEV for GH-366, the design is straightforward enough that no separate design pass is required: src/design/fix-ISS-0107.md already documents the exact SET/SET bracket pattern; the only change is the file:line site (line 99 instead of line 487). Recommend skipping CODE-DESIGNER for GH-366 and routing directly to BACKEND-DEV with this triage's root_cause.chosen_resolution as the design input."
+    - "GH-374 is a small enough change (4-6 lines in one file) that CODE-DESIGNER is also not strictly required; route to BACKEND-DEV directly with the interpreter-resolution helper described in this triage's root_cause.chosen_resolution."
+    - "GH-359 requires no design at all — it is environment-only."
+  rework_routing_guidance:
+    - "Each blocker is independent enough that rework on one (e.g. an additional lock_timeout bracket needed at a third acquire site) should not roll back the other two's fixes."
+    - "ORCH's preferred pattern: one child WF-03 run per blocker (run_id = WF03-gh{NNN}-20260801), each producing its own estimation.json, its own design + implementation + test + release-validator + doc-updater chain, before redispatching Step 3 of the parent run."
+issues_found: []
+blockers: []
+git_evidence:
+  branch_name: feature/WF03-gh364-20260801
+  head: 9ff3580f17b4b23d5a9109f32bab08943b857dd4
+  commit_created: false
+  push_status: skipped
+  reason: "Triage only — no source, build, test, or migration changes implemented."

@@ -1,0 +1,59 @@
+{
+  "report_id": "WF02-ee10-20260522-step-04-TEST-RUNNER",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF02-ee10-20260522",
+  "step": "04",
+  "created_at": "2026-05-22T12:28:01Z",
+  "summary": "Ran EE-10 test suite for WF-02. Discovered and fixed a BLOCKER: engine_test.zig used relative @import paths that escape the Zig 0.16 module root, causing the test-engine step to fail with compile errors. Fixed by: (1) updating engine_test.zig to import via named bpm module using @import(\"bpm\").engine and @import(\"bpm\").tasks, removing the unused routes import; (2) moving bpm_src_mod declaration before engine_tests in build.zig; (3) removing the duplicate bpm_src_mod declaration in the integration tests section; (4) adding run_engine_tests to the main test step. After the fix: zig build exits 0, zig build test passes 100/189 tests (89 skipped integration tests), zig build test-engine passes all 15 engine unit tests including 12 EE-10-specific type/struct/error-mapping tests. Integration tests TC-EE-10-01 through TC-EE-10-06 are properly implemented in tests/integration/instance_error_test.zig but skip without BPM_TEST_DB_URL in this environment.",
+  "files_created": [
+    "tests/reports/EE-10-test-run.json",
+    "docs/issue-reports/WF02-ee10-20260522-step-04-test-runner-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "tests/unit/engine_test.zig",
+    "build.zig",
+    "handoffs/WF02-ee10-20260522/step-04-test-runner.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "Compilation successful, exit 0"
+    },
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "35/35 steps succeeded; 100/189 tests passed, 89 skipped (integration tests without DB)"
+    },
+    {
+      "name": "zig build test-engine",
+      "status": "pass",
+      "detail": "15/15 engine unit tests pass including all 12 EE-10-specific tests"
+    },
+    {
+      "name": "zig build test-integration",
+      "status": "skip",
+      "detail": "BPM_TEST_DB_URL not set; TC-EE-10-01 through TC-EE-10-06 all skipped; 4 non-DB integration tests pass"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "BLOCKER",
+      "description": "engine_test.zig imported src/ files via relative paths (../../src/...) that exceed the module root, causing compile errors under Zig 0.16 module system. test-engine step failed with 3 compilation errors before fix.",
+      "resolution": "Updated engine_test.zig to use @import(\"bpm\") pattern; reconfigured build.zig engine_tests step to use bpm_src_mod; removed duplicate bpm_src_mod declaration; added engine_tests to main test step."
+    },
+    {
+      "severity": "MAJOR",
+      "description": "TC-EE-10-01 through TC-EE-10-06 (integration layer) could not be executed: BPM_TEST_DB_URL is not set in this environment. All 6 EE-10 integration tests are properly implemented and skip gracefully but cannot be verified. Per test guide §8, skipped MUST-requirement tests do not advance the requirement to TESTED status.",
+      "resolution": "PENDING — requires BPM_TEST_DB_URL to be configured and zig build test-integration re-run."
+    }
+  ],
+  "next_steps": [
+    "Route to RELEASE-VALIDATOR only after BPM_TEST_DB_URL integration tests are confirmed passing. Current state: unit tests PASS, integration tests SKIPPED (no DB).",
+    "Alternatively, if the project environment guarantees integration tests run in CI with a test DB, ORCH may proceed to RELEASE-VALIDATOR with a note that integration verification is deferred to CI.",
+    "The build.zig fix (engine_test.zig module path correction) should be preserved in all future runs."
+  ],
+  "blockers": [
+    "BPM_TEST_DB_URL not available — TC-EE-10-01 through TC-EE-10-06 (all EE-10 integration tests) cannot run and remain SKIPPED."
+  ]
+}

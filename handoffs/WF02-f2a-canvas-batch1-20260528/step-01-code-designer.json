@@ -1,0 +1,67 @@
+{
+  "handoff_id": "95d95e43-0554-4c24-b276-a58149fdeaa9",
+  "run_id": "WF02-f2a-canvas-batch1-20260528",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-28T18:53:14Z",
+  "started_at": "2026-05-28T18:53:14Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F2 \u2014 Batch 1: Canvas Foundation",
+    "requirement_ids": [
+      "PD-UI-09",
+      "PD-UI-10",
+      "PD-UI-11",
+      "PD-UI-12"
+    ],
+    "related_handoff_ids": [
+      "bda11b76-24e9-4a2b-816e-a383be323ef4"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Frontend_Requirements.md",
+      "docs/guides/frontend_developer_guide.md",
+      "docs/guides/frontend_design_system.md",
+      "docs/status/implementation_order.md"
+    ]
+  },
+  "task": {
+    "description": "Design the React Flow visual canvas component architecture for Stage F2 Batch 1. Requirements: PD-UI-09 (Visual graph canvas using React Flow), PD-UI-10 (Node palette with drag-and-drop add/delete), PD-UI-11 (Edge creation by dragging between handles), PD-UI-12 (Node properties panel on click). Produce design files in src/design/ covering: - React Flow integration approach (which library version, what plugins) - Component tree: canvas, node palette, property panel - Data flow: how graph JSON from API maps to React Flow nodes/edges - Custom node renderers for each NodeType (START, END, HUMAN_TASK, SERVICE_TASK, EXCLUSIVE_GATEWAY, PARALLEL_GATEWAY, TIMER, SUB_PROCESS) - Edge creation workflow (drag from handle, CEL condition prompt) - Property panel: click node -> slide/edit panel -> save to local state - Save workflow: serialize React Flow graph back to DefinitionGraph JSON -> PUT /definitions/:id - How the existing JSON textarea fallback co-exists with the canvas - State management: local graph state vs API sync",
+    "acceptance_criteria": [
+      "Every MUST acceptance criterion maps to a design element",
+      "Component tree and data-flow diagram present",
+      "Custom node types defined for each NodeType enum value",
+      "Property panel design includes all node attributes",
+      "Edge creation design includes CEL condition prompt",
+      "No implementation code in design files",
+      "Cross-module dependencies documented",
+      "Open questions listed (if any)"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-frontend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for React Flow visual canvas (F2 Batch 1): coverage of React Flow integration, component tree, data flow, 8 custom node types, edge creation with CEL condition prompt, property panel, save workflow, JSON textarea fallback coexistence, and state management strategy.",
+    "artifacts_out": [
+      "src/design/canvas-f2-batch1.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Requirement ID mismatch: handoff uses PD-UI-03/04/05/06 for canvas features but requirements doc assigns those IDs to F2-A list view. Canvas reqs are PD-UI-09/10/11/12. Needs clarification before TEST-DESIGNER writes test specs."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Dagre auto-layout dependency: Batch 1 may need hardcoded fallback positions for the 2-node starter graph if @dagrejs/dagre is deferred to Batch 2 (PD-UI-18)."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b) then BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-28T18:55:41Z"
+}

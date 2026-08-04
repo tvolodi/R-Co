@@ -1,0 +1,77 @@
+{
+  "handoff_id": "3f6f5088-3f90-4f42-bf55-aa05f6f89192",
+  "run_id": "WF02-oidc27-34-20260528",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-oidc27-34-20260528/step-final-backend-dev.json",
+  "created_at": "2026-05-28T03:58:00Z",
+  "started_at": "2026-05-28T03:58:20Z",
+  "completed_at": "2026-05-28T04:02:25Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-27",
+      "OIDC-28",
+      "OIDC-29",
+      "OIDC-30",
+      "OIDC-31",
+      "OIDC-32",
+      "OIDC-33",
+      "OIDC-34"
+    ],
+    "related_handoff_ids": [
+      "2d826593-8e53-48f8-92e7-7f6d2f4e1dbb",
+      "6c4b3009-805f-48d4-abcc-f6f18bc44d57",
+      "8f5f08c7-8e1d-409d-83be-83f60fbfcb37",
+      "742a4b17-c5be-45c9-bfd0-bb10dd86884a",
+      "bc2e115f-c230-46e9-9652-b945206c9563",
+      "aa9f56fb-bf81-4bbd-b39d-2dc4c43a5f62",
+      "f0c0a52f-f89b-4ec3-81e0-d4621b9e6f4c",
+      "1fd6629b-8dbf-4dd9-a544-43afedffb5ea"
+    ],
+    "artifacts_in": [
+      "docs/status/release-OIDC-27-34-20260528.json",
+      "docs/metrics/retrospectives/WF02-oidc27-34-20260528.json"
+    ],
+    "branch_name": "feature/WF02-oidc27-34-20260528"
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md. Rebase feature branch on origin/main, create PR, squash-merge, delete branch as protocol allows, and provide git evidence including push_status and pr_url/pr_create_error.",
+    "acceptance_criteria": [
+      "Result includes branch_name, commit_sha_list, remote_branch, push_status",
+      "PR URL recorded when available (or explicit pr_create_error)",
+      "push_status is ok"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rebased feature branch on origin/main, pushed final artifacts, created PR #27, and squash-merged to main with branch cleanup.",
+    "artifacts_out": [
+      "branch: feature/WF02-oidc27-34-20260528 (squash-merged into main, branch deleted)"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-oidc27-34-20260528",
+      "commit_sha_list": [
+        "03d4c905ebdc1c2a603c6a8c6b5166829d2b6aa5",
+        "5f764b86c36aeff0ca53c735ba9f5f29a18f577f",
+        "b536f0ba0c64f2d14e03ff9aedf91e3fe50d45aa",
+        "02878e6659e29539d09acb86b16ed339055241d3"
+      ],
+      "remote_branch": "origin/feature/WF02-oidc27-34-20260528",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/My-Fab/pull/27",
+      "pr_create_error": null
+    },
+    "next_action": "ORCH marks run COMPLETED and releases owned_modules lock"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,88 @@
+run_id: WF03-onboarding-e2e-fix-20260614
+workflow_id: WF-03
+step: "02b"
+agent: CODE-DESIGN-VALIDATOR
+handoff_id: b9c0d1e2-3f4a-5b6c-7d8e-9f0a1b2c3d4e
+issue_id: ISS-0069
+artefact_validated: src/design/onboarding-e2e-nav-fix.md
+classification: Type E (novel / cross-cutting prose design)
+created_at: 2026-06-14T19:08:39Z
+verdict: PASS
+
+mandatory_checks:
+  - id: lint-design-artefact
+    command: python tools/lint_design_artefact.py src/design/onboarding-e2e-nav-fix.md
+    exit_code: 0
+    stdout: "OK — 1 file(s) checked, no issues."
+    blockers: 0
+    majors: 0
+    result: PASS
+  - id: coverage-iss-0069-acceptance-criteria
+    description: Every ISS-0069 acceptance criterion has a corresponding design element
+    result: PASS
+    coverage_map:
+      rewrite_to_page_goto: "Behavioural contract items 1-2; 'Why page.goto is correct' section"
+      mirror_tenants_e2e_pattern: "'Why this is a faithful mirror of the proven pattern' section; key invariant #6"
+      addInitScript_session_preservation: "'Authenticated state is preserved automatically' section; data-flow dashed edge"
+      single_file_change: "Header 'Files touched by the fix'; key invariant #1; acceptance criterion #1"
+      signature_unchanged_backward_compat: "'Signature (unchanged — backward compatible)' section; acceptance criterion #3"
+      all_callers_audited: "'All callers' section (A)+(B); grep-verified 8 importers match"
+      no_source_code_changes: "'What NOT to do' section; key invariants #7,#8"
+      no_timeout_increase_no_retries: "'What NOT to do' section; key invariant #9"
+      role_guards_correct_redirect_logic_in_caller: "Edge-case row 'Navigate redirect fires'; error taxonomy"
+      optional_role_guard_out_of_scope: "'Open questions' section; 'What NOT to do' section"
+  - id: no-implementation-code
+    description: Type E prose only — no function bodies, SQL DDL, or JSX
+    result: PASS
+    note: >
+      Design quotes CURRENT-BROKEN code (clearly labelled as the bug under fix)
+      and quotes the existing local helper in tenants.e2e.spec.ts as evidence
+      of the proven pattern. The body for the implementer is specified as a
+      behavioural contract, not as copy-paste source. No SQL, no JSX, no Zig.
+  - id: navigateSpa-signature-unchanged
+    description: navigateSpa signature listed and unchanged
+    result: PASS
+    design_signature: "export async function navigateSpa(page: Page, targetPath: string): Promise<void>"
+    actual_signature_in_pipeline_ts_line_171: "export async function navigateSpa(page: Page, targetPath: string): Promise<void>"
+    match: true
+  - id: all-callers-enumerated
+    description: All callers of navigateSpa identified
+    result: PASS
+    importers_section_A_count: 8
+    importers_grep_verified_count: 8
+    importers_match: true
+    local_shadow_section_B_count: 6
+    note: >
+      Section (A) lists 8 files importing the shared helper from pipeline.ts.
+      Independent grep for 'navigateSpa,' import lines returns exactly those 8
+      files. Section (B) lists 6 files with local shadowing definitions and
+      correctly marks them as OUT OF SCOPE for this fix.
+  - id: type-e-classification
+    description: Classification as Type E is correct (single-file test-harness rewrite)
+    result: PASS
+    rationale: >
+      Selection rules in templates/lego-catalog.md fall through: not Type C
+      (no migration), not Type A (no HTTP route), not Type D (no React Flow
+      node), not Type B (no admin list page). Single-file test-harness helper
+      rewrite is novel/cross-cutting prose = Type E.
+
+completeness_checks:
+  module_purpose_one_paragraph: PASS
+  public_function_signatures_listed: PASS
+  error_taxonomy_section: PASS
+  dependencies_listed: PASS
+  data_flow_diagram: PASS
+
+correctness_checks:
+  no_db_schema_decisions: PASS
+  ambiguous_requirements_flagged: PASS
+  classification_per_lego_catalog: PASS
+
+security_checks:
+  user_input_validation: N/A
+  access_control_checks: N/A
+  note: Test-harness helper only; no user input or data access in scope.
+
+issues: []
+
+next_action: Route to FRONTEND-DEV (Step 03)

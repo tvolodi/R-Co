@@ -1,0 +1,75 @@
+{
+  "handoff_id": "20260525-009",
+  "run_id": "WF03-obs03-queryfix-20260525",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-obs03-queryfix-20260525/step-01-issue-fixer.json",
+  "created_at": "2026-05-25T10:43:00Z",
+  "started_at": "2026-05-25T10:43:20Z",
+  "completed_at": "2026-05-25T10:49:33Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-03"
+    ],
+    "related_handoff_ids": [
+      "20260525-008",
+      "20260525-007"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-obs03-20260525/step-04c-test-runner-rework2.json",
+      "tests/reports/report-20260524T223936Z-WF02-obs03-step-04c.json",
+      "tests/reports/WF02-obs03-20260525-step-04c-20260524T223936Z-zig-build-test-integration-obs03.log",
+      "tests/integration/obs03_audit_log_test.zig",
+      "src/obs/audit.zig",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "Fix remaining OBS-03 verification blockers from WF02 step 04c. Resolve PoolError.QueryFailed failures in TC-OBS-03-INT-04 (immutability validation) and TC-OBS-03-INT-05 (filtered pagination/ordering validation) within tests/integration/obs03_audit_log_test.zig and/or supporting implementation in src/obs/audit.zig. Also address remaining full integration noise where the aggregate zig build test-integration path still logs BPM_TEST_URL skip messages, if feasible without regressing deterministic dedicated OBS-03 coverage. Run zig build, zig build test, zig build test-integration-obs03, and zig build test-integration; if aggregate path still contains unrelated skip noise but dedicated OBS-03 path passes cleanly, document that precisely. Update issue records with root cause and resolution.",
+    "acceptance_criteria": [
+      "TC-OBS-03-INT-04 and TC-OBS-03-INT-05 pass",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build test-integration-obs03 exits 0 with explicit OBS-03 pass evidence",
+      "Any remaining aggregate integration skip noise is either fixed or clearly scoped as unrelated/non-blocking with evidence"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:run-backend-tests",
+      "fn:register-issue",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed D_TEST_ERROR in OBS-03 integration fixtures: TC-OBS-03-INT-04/05 QueryFailed was caused by fixed UUID fixture collisions against immutable audit_entries across reruns. Replaced fixed IDs with per-run DB-generated UUIDs and made pagination ordering deterministic via explicit timestamp offsets.",
+    "artifacts_out": [
+      "tests/integration/obs03_audit_log_test.zig",
+      "tests/reports/WF03-obs03-queryfix-20260525-zig-build.log",
+      "tests/reports/WF03-obs03-queryfix-20260525-zig-build-test.log",
+      "tests/reports/WF03-obs03-queryfix-20260525-zig-build-test-integration-obs03.log",
+      "tests/reports/WF03-obs03-queryfix-20260525-zig-build-test-integration.log",
+      "tests/reports/WF03-obs03-queryfix-20260525-obs03-int04.log",
+      "tests/reports/WF03-obs03-queryfix-20260525-obs03-int05.log",
+      "docs/issues/ISS-0013.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-obs03-queryfix-20260525-step-01-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "id": "OBS03-HTTP-ENV-SKIP-NOISE",
+        "severity": "MINOR",
+        "description": "Aggregate zig build test-integration still logs unrelated BPM_TEST_URL skip messages from HTTP integration tests, but command exits 0 and dedicated OBS-03 verification passes.",
+        "affected_requirement": "OBS-03"
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

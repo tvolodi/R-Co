@@ -1,0 +1,65 @@
+{
+  "handoff_id": "d68cb6dd-1060-4767-82e0-088635c3e33a",
+  "run_id": "WF02-iss503-continuation-20260730",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-07-30T11:11:13Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Epic 5 continuation -- ISS-503 finalize",
+    "requirement_ids": [
+      "ISS-503"
+    ],
+    "related_handoff_ids": [
+      "handoffs/WF02-iss503-continuation-20260730/step-05-release-validator.json",
+      "handoffs/WF02-iss503-continuation-20260730/step-03b-r2-test-design-validator.json"
+    ],
+    "artifacts_in": [
+      "docs/status/release-iss503-20260730.yaml",
+      "tests/reports/report-20260730-WF02-iss503-continuation-20260730.yaml"
+    ]
+  },
+  "task": {
+    "description": "ISS-503 (GitHub issue #203, \"Remove legacy tenant_id/RLS predicates (SPT-03)\") has passed RELEASE-VALIDATOR (docs/status/release-iss503-20260730.yaml) and, after a flake-fix rework round, re-passed TEST-DESIGN-VALIDATOR. All work lives on branch feature/ADHOC-iss503-infra-20260730, currently 1 commit ahead of origin (commit d7aa615, the TEST-DESIGNER flake fix -- push it first). IMPORTANT: migrations/GBL-084_rls_removal.sql itself was already merged to main earlier (PR #95/#99, commit 01cf924) as part of WF02-iss501-504-epic5-20260612 -- this run's new contribution is the previously-missing integration test file tests/integration/test_iss503_rls_removal.zig, plus 55 unrelated Zig 0.16 compile-drift fixes across the test-integration suite (zero regressions), plus a genuine hang fix in concurrent_instances_test.zig. Steps: 1. Push feature/ADHOC-iss503-infra-20260730 to origin. 2. Run python3 tools/reqctl.py set-status ISS-503 RELEASED --implemented-in migrations/GBL-084_rls_removal.sql src/db/pool.zig tests/integration/test_iss503_rls_removal.zig 3. Run python3 tools/reqctl.py render-status to regenerate docs/status/requirement_status.yaml. 4. Update CHANGELOG.md describing: missing ISS-503 integration test coverage added; pre-existing Zig 0.16 compile-drift in test suite fixed; concurrent_instances_test.zig hang fixed. 5. Run the retrospective procedure (docs/agents/metrics.md §6) using handoffs/WF02-iss503-continuation-20260730/estimation.json -- write docs/metrics/retrospectives/WF02-iss503-continuation-20260730.yaml. 6. Create a GitHub PR (base main) for feature/ADHOC-iss503-infra-20260730, ensure CI/checks pass, squash-merge and delete the branch. 7. Return to main, verify clean state.",
+    "acceptance_criteria": [
+      "Feature branch pushed to origin",
+      "ISS-503 status set to RELEASED via reqctl.py, requirement_status.yaml regenerated",
+      "CHANGELOG.md updated",
+      "Retrospective written",
+      "PR created, checks green, squash-merged, branch deleted from GitHub",
+      "Local repo returned to main, clean working tree"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Pushed feature/ADHOC-iss503-infra-20260730 (commit d7aa615) to origin. Set ISS-503 to RELEASED via reqctl.py (implemented_in: migrations/GBL-084_rls_removal.sql, src/db/pool.zig, tests/integration/test_iss503_rls_removal.zig) and regenerated docs/status/requirement_status.yaml (released_at 2026-07-30T11:13:21Z, real tool timestamp). Verified the actual diff vs origin/main before writing anything: GBL-084_rls_removal.sql was already merged to main (PR #95/#99, commit 01cf924); this branch's real contribution is the new tests/integration/test_iss503_rls_removal.zig (4 cases), 55 unrelated Zig 0.16 compile-drift fixes across the test-integration suite, a genuine hang fix in concurrent_instances_test.zig, and build.zig/.gitignore wiring for the new test target (docker-compose.override.yml correctly excluded, git-ignored). Updated CHANGELOG.md with a new dated entry describing the test-coverage completion, the compile-drift fixes, and the hang fix. Wrote the retrospective per docs/agents/metrics.md §6 to docs/metrics/retrospectives/WF02-iss503-continuation-20260730.yaml, following the WF02-iss502-continuation-20260730 template: no valid prior same-scope estimation.json exists in this lineage (rules_version 'n/a'), so actual step durations are reported directly rather than computing estimation_rules.json adjustments from a non-comparable batch estimate. rule_adjustments left empty, consistent with that precedent. Created PR #333, squash-merged (merge commit 47b9e87d55d62a1d376719e90dc55d90b4d5f8b4), deleted the remote feature branch, verified deletion via git fetch --prune (showed [deleted]) and the GitHub API (404 Branch not found), and returned the local repo to a clean main (git branch --show-current -> main, git status clean, HEAD == merge commit).",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/status/requirement_status.yaml",
+      "docs/metrics/retrospectives/WF02-iss503-continuation-20260730.yaml",
+      "PR #333",
+      "merge_commit_sha:47b9e87d55d62a1d376719e90dc55d90b4d5f8b4"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/ADHOC-iss503-infra-20260730",
+      "commit_sha_list": [
+        "d7aa615",
+        "fc8ae5e",
+        "47b9e87"
+      ],
+      "remote_branch": "origin/feature/ADHOC-iss503-infra-20260730",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/333",
+      "pr_create_error": null
+    },
+    "next_action": "ISS-503 RELEASED. ORCH to close GitHub issue #203 separately. ISS-503-TESTISO-01 already resolved (REWORK 2). ISS-503-INFRA-01 (MINOR, test-integration umbrella parallel-run isolation) remains open for a future dedicated test-infra workflow."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-07-30T11:11:13Z",
+  "completed_at": "2026-07-30T11:18:32Z"
+}

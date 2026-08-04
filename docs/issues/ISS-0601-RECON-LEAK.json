@@ -1,0 +1,16 @@
+{
+  "issue_id": "ISS-0601-RECON-LEAK",
+  "title": "Memory leaks in src/engine/reconstruction.zig deserializeInstanceState",
+  "created_at": "2026-08-03T14:15:00Z",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "affected_areas": [
+    "src/engine/reconstruction.zig"
+  ],
+  "symptom": "6,976 memory leaks during event replay in reconstruction functions. Leaks occur at lines 707, 709, 752 in deserializeInstanceState when allocating ObjectMap keys and values from JSON.",
+  "impact": "Test suite exits with code 1 due to leak detection, though functional tests pass. Memory accumulation during reconstruction of instances with large event histories.",
+  "root_cause": "ObjectMap keys and nested JsonValue objects allocated during deserializeInstanceState are not freed. This is separate from the ISS-0601-LEAK-001 (parseGraphJson) issue which was successfully resolved.",
+  "related_issues": ["ISS-0601-LEAK-001"],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/409",
+  "notes": "Discovered during WF03-gh406-20260803 rework iterations. Arena allocator attempts (rework 2/3) introduced massive regressions (131-142 test failures). Decision made to accept rework 1 state (core parseGraphJson leak fixed) and address reconstruction leaks separately."
+}

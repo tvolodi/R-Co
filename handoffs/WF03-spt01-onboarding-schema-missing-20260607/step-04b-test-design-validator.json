@@ -1,0 +1,43 @@
+{
+  "handoff_id": "wf03-spt01-schema-20260607-004b",
+  "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
+  "workflow_id": "WF-03",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-07T01:41:05Z",
+  "started_at": "2026-06-07T01:41:05Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — SPT-01 onboarding schema provisioning gap (test design hard gate)",
+    "requirement_ids": ["SPT-01"],
+    "related_handoff_ids": ["wf03-spt01-schema-20260607-004"],
+    "artifacts_in": [
+      "tests/specs/SPT-01-iss0068-onboarding-schema.md",
+      "tests/integration/spt01_iss0068_onboarding_schema_test.zig"
+    ]
+  },
+  "task": {
+    "description": "HARD GATE — validate test spec and test source for ISS-0068 schema provisioning fix.\n\nVerify:\n1. Every MUST acceptance criterion from ISS-0068 has a runnable integration test.\n2. No error.SkipZigTest on MUST test cases.\n3. All fixtures use per-test UUIDs (no hardcoded slugs or IDs).\n4. Tests clean up after themselves (schema drop + registry row delete) on both pass and fail.\n5. Tests fail clearly if BPM_TEST_DB_URL is absent.\n6. Tests are wired into build.zig test-integration step.",
+    "acceptance_criteria": [
+      "All ISS-0068 MUST criteria have runnable tests",
+      "No SkipZigTest on MUST tests",
+      "Per-test UUID fixtures",
+      "Cleanup on pass and fail",
+      "Fails clearly without BPM_TEST_DB_URL",
+      "Wired into build.zig"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated ISS-0068 test design hard gate: all MUST criteria mapped to runnable integration tests, no SkipZigTest usage, per-test UUID fixtures, defer-based cleanup, clear BPM_TEST_DB_URL failure behavior, and build.zig wiring into test-integration.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 05)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-07T01:42:13Z"
+}

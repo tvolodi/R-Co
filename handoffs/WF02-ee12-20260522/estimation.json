@@ -1,0 +1,27 @@
+{
+  "run_id": "WF02-ee12-20260522",
+  "created_at": "2026-05-22T13:32:18Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "EE-12"
+  ],
+  "difficulty": 3,
+  "difficulty_rationale": "Multi-module concurrency hardening: row-level locking validation, HTTP 409 for same-instance contention, and concurrent load test \u2014 touches db, engine, tasks, and tests layers",
+  "steps": [
+    "code-designer",
+    "backend-dev",
+    "test-designer",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 9,
+    "backend-dev": 20,
+    "test-designer": 9,
+    "test-runner": 12,
+    "release-validator": 4,
+    "doc-updater": 3,
+    "total": 57
+  }
+}

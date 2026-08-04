@@ -1,0 +1,61 @@
+{
+  "handoff_id": "f4010250-0000-0000-0000-000000000000",
+  "run_id": "WF03-gh401-20260803",
+  "workflow_id": "WF-03",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-gh401-20260803/step-02b-code-design-validator.json",
+  "created_at": "2026-08-03T14:41:29Z",
+  "started_at": "2026-08-03T14:49:54Z",
+  "completed_at": "2026-08-03T09:51:23Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Step 2b (CODE-DESIGN-VALIDATOR: HARD GATE)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f4010000-0000-0000-0000-000000000000",
+      "f4010050-0000-0000-0000-000000000000",
+      "f4010100-0000-0000-0000-000000000000",
+      "f4010200-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss601-test-baseline-snapshot-fix.md",
+      "docs/issues/ISS-0601.json",
+      "docs/issue-reports/ISS-0601-step1.yaml",
+      "tests/integration/iss601_state_snapshots_test.zig",
+      "tests/integration/helpers.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2b (DESIGN VALIDATION \u2014 HARD GATE). Verify the design artefact `src/design/iss601-test-baseline-snapshot-fix.md` covers the full root cause and acceptance criteria, contains no implementation code, and is complete enough for BACKEND-DEV to implement without ambiguity. ANY FAIL HERE BLOCKS Step 3.\n\n## Mandatory Checks\n\n### Check 1: Design artefact passes lint\n```bash\npython tools/lint_design_artefact.py src/design/iss601-test-baseline-snapshot-fix.md\n```\nExpected: exit 0, no BLOCKER/MAJOR.\n\n### Check 2: Coverage of acceptance criteria\nThe GitHub issue #401 acceptance criteria are:\n1. `zig build test-integration-iss601` \u2192 9/9 PASS (or 8/9 with TC-09 skipped)\n2. Investigation notes recorded in `docs/issues/ISS-0601.json`\n3. No regression in `iss601`/state-snapshot business journeys\n\nVerify the design addresses each:\n- For criterion 1: the design must specify exact assertion changes in TC-01, TC-02, TC-05, TC-08 v2\n- For criterion 2: the design should reference `docs/issues/ISS-0601.json`\n- For criterion 3: the design should explicitly state `InstanceStore.create()` baseline-at-seq-1 is OUT OF SCOPE for change\n\n### Check 3: No implementation code\nThe design must NOT contain Zig source code beyond small inline citations. Specifically, the design must not contain full function bodies or INSERT/UPDATE statements beyond the snippets already in `src/engine/instance.zig` and `src/engine/snapshot_writer.zig`.\n\n### Check 4: Public function signatures\nFor Type E prose: all public function signatures touched must be listed. Verify no business-logic signatures change (test signature changes are NOT business logic).\n\n### Check 5: Error taxonomy\nVerify the design states no new error variants.\n\n### Check 6: Dependencies\nVerify the design states no new modules.\n\n### Check 7: Correct classification per lego-catalog.md\nThis is a test-only fix (assertion updates + optional helpers.zig cleanup). It is NOT a CRUD endpoint, NOT a list page, NOT a migration, NOT a React Flow node. It is Type E prose (no parameter file).\n\n### Check 8: Test files affected are exactly the ones listed\n- `tests/integration/iss601_state_snapshots_test.zig` (4 test cases updated)\n- `tests/integration/helpers.zig` (optional secondary cleanup)\n- No other files.\n\n## Decision\n\nIf all 8 checks pass: complete with PASS, set `next_action: \"Route to BACKEND-DEV (Step 3)\"`.\nIf any check fails: complete with FAIL and list each failure as an issue with severity BLOCKER (lint BLOCKER) or MAJOR (other gaps).\n\nREWORK 1 from CODE-DESIGNER: AC2 cross-reference to docs/issues/ISS-0601.json added in \u00a71 and \u00a710; TC-02 internal inconsistency resolved by exhaustive 4-subsection treatment in \u00a74.2 (A1-A6 assertion inventory, \u00a74.2.3 explicit DELETE before reconstructInstanceWithSnapshot to clear seq=1 baseline for parity checks A4/A5). Re-validate.",
+    "acceptance_criteria": [
+      "Lint exits 0 with no BLOCKER/MAJOR",
+      "All 3 GitHub acceptance criteria are addressed in the design",
+      "Design contains no implementation code beyond inline citations",
+      "Public function signatures section states no changes",
+      "Error taxonomy section states no new variants",
+      "Dependencies section states no new modules",
+      "Classification: Type E prose, no parameter file",
+      "Only 2 files affected: `tests/integration/iss601_state_snapshots_test.zig` and (optional) `tests/integration/helpers.zig`",
+      "Handoff result filled with PASS or FAIL, summary, issues, completed_at"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validation of iss601-test-baseline-snapshot-fix.md passed after rework. Lint exit 0; ISS-0601.json cross-referenced in \u00a71 and \u00a710; \u00a74.2 rewritten into 4 subsections with A1-A6 inventory, A3 fix via WHERE snapshot_seq=25 filter, A4/A5 fix via DELETE seq=1 before reconstruction. All 10 checks PASS. Routing to BACKEND-DEV (Step 3).",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-gh401-20260803-step-2b-design-validator-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 1,
+  "max_rework": 2
+}

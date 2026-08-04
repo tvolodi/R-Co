@@ -1,0 +1,32 @@
+report_id: WF02-f6-dlq-webhooks-batch1-20260531-step-01-code-designer
+agent_id: CODE-DESIGNER
+run_id: WF02-f6-dlq-webhooks-batch1-20260531
+step: "01"
+created_at: "2026-05-31T01:14:11Z"
+summary: >-
+  Classified Stage F6 batch1 DLQ requirements using lego-catalog rules: DLQ-UI-01
+  as Type B list-page baseline and DLQ-UI-02..04 as Type E custom interaction
+  design. Added one list-page parameter file and one prose design artefact that
+  together cover list columns, detail panel payloads, retry/discard semantics,
+  and confirmation requirements.
+files_created:
+  - templates/specs/dlq-items.list-page.yaml
+  - src/design/f6-dlq-ui-batch1.md
+  - docs/issue-reports/WF02-f6-dlq-webhooks-batch1-20260531-step-01-code-designer-INNER-REPORT.yaml
+files_modified:
+  - handoffs/WF02-f6-dlq-webhooks-batch1-20260531/step-01-code-designer.json
+  - handoffs/registry.json
+tests_run:
+  - name: python tools/lint_design_artefact.py templates/specs/dlq-items.list-page.yaml
+    status: pass
+    detail: "OK — 1 file(s) checked, no issues."
+  - name: python tools/codegen_list_page.py templates/specs/dlq-items.list-page.yaml --dry-run
+    status: pass
+    detail: "Dry-run completed without errors."
+  - name: python tools/lint_design_artefact.py src/design/f6-dlq-ui-batch1.md
+    status: pass
+    detail: "OK — 1 file(s) checked, no issues."
+issues_found: []
+next_steps:
+  - Route to CODE-DESIGN-VALIDATOR (Step 1b)
+blockers: []

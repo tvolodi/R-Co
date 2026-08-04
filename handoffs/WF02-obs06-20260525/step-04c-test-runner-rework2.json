@@ -1,0 +1,60 @@
+{
+  "handoff_id": "20260525-042",
+  "run_id": "WF02-obs06-20260525",
+  "workflow_id": "WF-02",
+  "step": "04c",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-obs06-20260525/step-04c-test-runner-rework2.json",
+  "created_at": "2026-05-25T18:20:00Z",
+  "started_at": "2026-05-25T18:20:20Z",
+  "completed_at": "2026-05-25T07:21:29Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-06"
+    ],
+    "related_handoff_ids": [
+      "20260525-040",
+      "20260525-041"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-obs06-20260525/step-04b-test-runner-rework1.json",
+      "handoffs/WF03-obs06-testenv-20260525/step-01-issue-fixer.json",
+      "tests/specs/OBS-06.md",
+      "tests/integration/obs06_alerts_test.zig",
+      "tests/integration/main_test.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 2: Re-run OBS-06 WF-02 Step 04 after WF03-obs06-testenv-20260525 environment/harness fix. Execute zig build test and zig build test-integration; produce a fresh report with explicit evidence that OBS-06 integration cases execute without precondition-skip gaps. If failures persist, classify severity and indicate whether additional WF-03 remediation is required.",
+    "acceptance_criteria": [
+      "Updated test report is written under tests/reports",
+      "OBS-06 can be marked PASS when full required integration evidence is present",
+      "Any failures or skips are clearly classified with requirement impact",
+      "Handoff next_action is explicit for WF-02 progression"
+    ],
+    "functions_to_call": [
+      "zig build test",
+      "zig build test-integration",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework iteration 2 completed: zig build test and zig build test-integration both exited 0 with fresh evidence logs and no skip-precondition markers in integration evidence.",
+    "artifacts_out": [
+      "tests/reports/report-20260525-wf02-obs06-step-04c-test-runner-rework2.json",
+      "tests/reports/WF02-obs06-20260525-step-04c-zig-build-test.log",
+      "tests/reports/WF02-obs06-20260525-step-04c-zig-build-test-integration.log",
+      "docs/issue-reports/WF02-obs06-20260525-step-04c-test-runner-rework2-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to ORCH for WF-02 Step 05 (RELEASE-VALIDATOR)."
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

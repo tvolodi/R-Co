@@ -1,0 +1,57 @@
+{
+  "handoff_id": "20260527-002",
+  "run_id": "WF02-oidc01-20260527",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-oidc01-20260527/step-01-code-designer.json",
+  "created_at": "2026-05-26T19:09:00Z",
+  "started_at": "2026-05-26T19:09:20Z",
+  "completed_at": "2026-05-26T19:12:20Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-01"
+    ],
+    "related_handoff_ids": [
+      "20260527-001"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "docs/status/implementation_order.md",
+      "docs/status/requirement_status.json"
+    ]
+  },
+  "task": {
+    "description": "Produce a backend design artefact for OIDC-01 at src/design/oidc-01-pluggable-provider-interface.md. Define a provider-agnostic IdentityProvider contract that cleanly isolates Keycloak specifics in adapter packages. Specify module boundaries, interface methods (token verification, user lookup, realm/tenant provisioning, user provisioning, role grant management, client provisioning, IDP federation management, audit event retrieval), error taxonomy, data contracts, dependency inversion points, and migration-safe coexistence with existing IDN token path. Include explicit traceability from OIDC-01 acceptance criteria to design sections and identify backend touchpoints for implementation and tests. Design only; no implementation edits.",
+    "acceptance_criteria": [
+      "Design defines a concrete IdentityProvider contract and module/package boundaries",
+      "Design ensures no Keycloak-specific coupling outside adapter package",
+      "Design maps OIDC-01 acceptance criteria to implementable test points",
+      "Design identifies auth subsystem call paths that must depend only on interface",
+      "Design includes implementation touchpoints and rollback-safe rollout notes"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for OIDC-01 completed: provider-agnostic IdentityProvider contract, module boundaries isolating Keycloak specifics, error taxonomy, data contracts, dependency inversion points, migration-safe coexistence with existing IDN token path, acceptance traceability, and implementation/test touchpoints.",
+    "artifacts_out": [
+      "src/design/oidc-01-pluggable-provider-interface.md",
+      "docs/issue-reports/WF02-oidc01-20260527-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,109 @@
+issue_id: ISS-0112
+run_id: WF03-gh375-20260801
+step: 2
+agent: CODE-DESIGNER
+handoff_id: e53c8008-a98d-4689-ba64-028fee9df964
+reported_at: 2026-08-01T10:13:57Z
+summary: |
+  Produced src/design/fix-iss0112.md — a 5-change Type E design that
+  reconciles the test-infrastructure drift identified by Step 1. The five
+  interlocking changes are: (1) a corrective migration
+  migrations/GBL-105_iss0112_schema_ledger_reconcile.sql that idempotently
+  back-fills the public.schema_migrations ledger and per-tenant-schema
+  ledgers, plus adds the missing webhook_subscriptions.secret_ref column,
+  public.tenant_realm_binding table, tenant.entity_type_instances table,
+  and the tenant_storage_mode_check / webhook_deliveries_status_check
+  constraint upgrades observed in the failing clusters A/D/E; (2) an
+  applier guard in src/db/migrations.zig::Migrations.runForSchema that
+  introduces a force_reconcile flag and a per-migration
+  `reapply_on_drift: true` header comment convention so corrective
+  migrations are recorded rather than silently skipped when the ledger
+  is missing the row but the target objects are present (the same
+  idempotent pattern GBL-104 used); (3) a smaller-blast-radius per-test
+  isolation change in tests/integration/helpers.zig::ensureDefaultOidcSeeds
+  that sets tenant_type='test' on the canonical 'default' tenant row
+  and relocates the 9 SVC-* fixture INSERTs out of the shared helper
+  into each consuming test file with defer cleanup; (4) a CLI flag
+  broadening tools/clean_test_db.py with --include-fixtures so operators
+  can drop leaked LEGACY_RLS fixture tenants that default to
+  tenant_type='production' (off by default; byte-for-byte today's
+  behavior without the flag); (5) a new tools/verify_schema_baseline.py
+  that mechanically enforces docs/guides/test_infrastructure_guide.md §6
+  (the four INV-TI-1 checks plus the expected CHECK constraint list),
+  with --check-tenants strict mode and --auto-fix one-shot reconcile
+  mode, exit codes 0/1/2. The design flags the 6-file touch surface as
+  exceeding the WF-03 §Fix size constraint and provides rationale per
+  the closed-circuit justification (each change is meaningless without
+  its companions). Type E is justified per templates/lego-catalog.md
+  rule 5; the Type C lego was considered and rejected for the
+  corrective migration because it is a multi-statement ledger reconcile
+  that does not match the single-table DDL shape codegen_migration.py
+  keys on, matching the precedent set by GBL-101/GBL-102/GBL-104. Five
+  acceptance criteria enumerated for Step 3 to validate against.
+files_changed:
+  - src/design/fix-iss0112.md
+no_code_changes: true
+classification: Type E
+artifact_paths:
+  - src/design/fix-iss0112.md
+acceptance_criteria_for_step3:
+  - id: AC-1
+    description: |
+      python3 tools/verify_schema_baseline.py --check-tenants exits 0 after
+      zig build migrate on a clean DB and after a second run (idempotent).
+      SELECT count(*) FROM public.schema_migrations WHERE schema_name='public'
+      returns 97 in both invocations.
+  - id: AC-2
+    description: |
+      python3 tools/lint_test_isolation.py tests/integration exits 0
+      (Anti-pattern T060 no longer triggered).
+  - id: AC-3
+    description: |
+      zig build test-integration exits 0 with no failures from Clusters
+      A-E (any unrelated test failure is a separate ISS, not a blocker).
+  - id: AC-4
+    description: |
+      tools/clean_test_db.py --include-fixtures reduces
+      SELECT count(*) FROM public.tenant WHERE storage_mode='LEGACY_RLS'
+      to 0 on the contaminated db_test from
+      scratch/WF03-gh364-20260801-step03e/tenant_rows.txt.
+  - id: AC-5
+    description: |
+      Ledger-size invariant: psql $BPM_TEST_DB_URL -c "SELECT count(*)
+      FROM public.schema_migrations WHERE schema_name='public'" returns 97.
+reference_precedents:
+  - migrations/GBL-101_exp501_secrets_corrective.sql
+  - migrations/GBL-102_iss503_guard_tenant_type_scope.sql
+  - migrations/GBL-104_iss0108_drop_stray_tenant_schema_migrations.sql
+  - src/design/fix-ISS-0110.md
+  - src/design/fix-ISS-0111.md
+  - docs/guides/test_infrastructure_guide.md
+scope_oversize_flag:
+  touched_files: 6
+  rule: "WF-03 §Fix size constraint ≤ 5 source files"
+  rationale: |
+    The 5 changes form a closed circuit: the corrective migration (1)
+    is meaningless without the applier guard (2); the applier guard
+    (2) is meaningless without the baseline verifier (5); the per-test
+    isolation (3) is meaningless without cleanup broadening (4); and
+    cleanup broadening (4) is meaningless without the baseline verifier
+    (5) to confirm convergence. Splitting into multiple WF-03
+    iterations would replay ISS-0106/ISS-0107/ISS-0110/ISS-0111's churn.
+  recommendation: |
+    Treat the 6-file touch surface as a documented exception (mirroring
+    the precedent set in fix-ISS-0111.md's per-file rationale pattern).
+    ORCH may escalate to a Phase-2 architectural fix if desired, but the
+    closed-circuit argument is the primary defense for keeping this as a
+    single WF-03.
+next_steps:
+  - Route to CODE-DESIGN-VALIDATOR Step 2b for hard-gate validation.
+  - On PASS, route to BACKEND-DEV Step 3 for implementation per the 5
+    changes enumerated above.
+  - BACKEND-DEV must enumerate the on-disk migrations/*.sql filenames
+    at write-time to populate the 96-row ledger backfill INSERT block
+    in GBL-105; the design enumerates the shape, not the rows.
+  - BACKEND-DEV must grep -rl "svc-t1|svc-t2|svc04-" tests/integration/
+    to find every test file that consumes one of the 9 relocated SVC
+    fixture rows; the design enumerates the relocation pattern, not the
+    specific files.
+blockers: []
