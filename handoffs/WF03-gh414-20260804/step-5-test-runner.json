@@ -1,10 +1,10 @@
 {
-  "handoff_id": "41450000-0000-0000-0000-000000000000",
+  "handoff_id": "41450001-0000-0000-0000-000000000000",
   "run_id": "WF03-gh414-20260804",
   "step": "5",
   "from_agent": "ORCH",
   "to_agent": "TEST-RUNNER",
-  "created_at": "2026-08-04T08:06:39Z",
+  "created_at": "2026-08-04T09:07:39Z",
   "status": "COMPLETED",
   "priority": "BLOCKER",
   "context": {
@@ -26,7 +26,7 @@
     ]
   },
   "task": {
-    "description": "Step 5 \u2014 execute integration tests for ISS-0602 fix. Run: zig build test-integration-iss0602-cross and zig build test-integration-iss0602-same. Both must PASS. If either fails, classify failures by root cause (schema issue, SQL error, assertion failure, timeout) and report with BLOCKER/MAJOR severity. Write test report to tests/reports/report-20260804-WF03-gh414.yaml per test guide \u00a79 format.",
+    "description": "Step 5 (RETRY after rework 1) \u2014 execute integration tests for ISS-0602 fix. BACKEND-DEV rework 1 (commit 5b52a46) fixed compilation errors: Tag type simplified to []const u8, all @ptrCast calls removed, pg.PgError propagates correctly. Run: zig build test-integration-iss0602-cross and zig build test-integration-iss0602-same. Both must PASS at runtime. If runtime failures occur (DB connection, SQL error, assertion failure), classify by root cause and report severity. Write test report to tests/reports/report-20260804-WF03-gh414-r1.yaml.",
     "acceptance_criteria": [
       "zig build test-integration-iss0602-cross exits 0 with all tests PASS",
       "zig build test-integration-iss0602-same exits 0 with all tests PASS",
@@ -40,31 +40,32 @@
   },
   "result": {
     "status": "FAIL",
-    "summary": "All integration tests fail at compilation with exit code 3. The Zig compiler is not displaying the actual error message. This is a BLOCKER affecting the entire integration test suite, not specific to ISS-0602. Pre-flight checks (services, DB, migrations) all passed. The failure is a compilation error in test code, likely in tests/integration/helpers.zig modifications from commit b8163cb.",
+    "summary": "Both targets exit non-zero. Compilation errors from rework 0 FULLY RESOLVED by commit 5b52a46 (Tag type simplified to []const u8, @ptrCast removed). BACKEND-DEV SQL fix (commit b8163cb, scope killIdleConnections by per-process owner tag) is VERIFIED WORKING against the real Postgres database. Two new runtime issues surfaced: (1) BLOCKER \u2014 TC-ISS-0602-cross-01 test logic defect: the test deliberately parks a sibling-tagged connection, but the defensive cross-owner check inside killIdleConnections then flags that same sibling as unexpected and returns error.OwnerTagMismatch; (2) MAJOR \u2014 DebugAllocator leak in TestHarness.init via generateOwnerTag (16-byte tag storage kept in file-scope tag_repr_storage for process lifetime, not freed on harness deinit). The leak is pre-existing and was masked previously by compilation failures; affects every TestHarness-based test.",
     "artifacts_out": [
-      "tests/reports/report-20260804-WF03-gh414.yaml",
-      "scratch/test-iss0602-cross.txt",
-      "scratch/test-iss0602-cross-retry.txt",
-      "scratch/test-iss0602-same.txt"
+      "tests/reports/report-20260804-WF03-gh414-r1.yaml"
     ],
     "issues": [
       {
+        "id": "BLOCKER-1",
         "severity": "BLOCKER",
-        "category": "compilation_error",
-        "description": "All integration tests fail to compile with exit code 3. Zig compiler does not display error message. Affects all integration test targets, not just ISS-0602. Recent changes in commit b8163cb modified helpers.zig to add per-process owner tagging. Code appears syntactically correct but runtime compiler rejects it. Blocks both acceptance criteria: zig build test-integration-iss0602-cross and test-integration-iss0602-same cannot run.",
-        "affected_files": [
-          "tests/integration/iss0602_cross_process_isolation_test.zig",
-          "tests/integration/iss0602_same_process_isolation_test.zig",
-          "tests/integration/helpers.zig",
-          "ALL integration test files (systemic issue)"
-        ],
-        "suggested_fix": "Check helpers.zig for type mismatches, verify function signatures, check opaque type usage for Zig 0.16.0, run manual zig test with verbose output in clean shell, consider reverting b8163cb to confirm it is the cause"
+        "category": "TEST_LOGIC_DEFECT",
+        "summary": "TC-ISS-0602-cross-01 fails: defensive cross-owner check flags test-introduced sibling",
+        "location": "tests/integration/iss0602_cross_process_isolation_test.zig:76",
+        "description": "Test parks sibling-tagged connection (uid_siblingtag00) in idle-in-tx, then calls helpers.killIdleConnections(&h.conn, h.tag). Kill predicate correctly excludes sibling (application_name differs). Defensive check at end of killIdleConnections then queries pg_stat_activity for idle-in-tx connections with application_name <> tag, finds count=1 (the parked sibling the test itself created), returns error.OwnerTagMismatch. The SQL fix itself is correct; the regression test has order-dependent logic that contradicts the defensive post-check invariant."
+      },
+      {
+        "id": "MAJOR-1",
+        "severity": "MAJOR",
+        "category": "TEST_INFRASTRUCTURE_LEAK",
+        "summary": "DebugAllocator leak in TestHarness.init via generateOwnerTag",
+        "location": "tests/integration/helpers.zig:390 (generateOwnerTag) and :755 (TestHarness.init)",
+        "description": "generateOwnerTag allocates 16 bytes (TEST_OWNER_TAG_PREFIX.len=4 + TEST_OWNER_TAG_HEX_CHARS=12) and stores slice in file-scope tag_repr_storage (intentional process-lifetime). TestHarness does not track this allocator/storage, so h.deinit() cannot free it. DebugAllocator reports the still-live allocation as a leak and exits 1 even when test assertions pass. Affects every TestHarness-based test across the integration suite."
       }
     ],
-    "next_action": "Route to ISSUE-FIXER for rework. Compilation error must be diagnosed and fixed before integration tests can run."
+    "next_action": "FAIL \u2192 Route to ISSUE-FIXER (rework 2). Open two new sub-issues: ISS-0602-A (TC-ISS-0602-cross-01 test logic defect) and ISS-0602-B (TestHarness.init / generateOwnerTag leak). The BACKEND-DEV SQL fix on commit b8163cb is verified working \u2014 no further backend changes are required for the SQL contract; all remaining work is test-side and infrastructure."
   },
   "rework_count": 0,
   "max_rework": 3,
-  "started_at": "2026-08-04T08:07:04Z",
-  "completed_at": "2026-08-04T08:14:23Z"
+  "started_at": "2026-08-04T09:07:59Z",
+  "completed_at": "2026-08-04T09:15:58Z"
 }
