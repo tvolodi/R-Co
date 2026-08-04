@@ -46,3 +46,4 @@ completeness:
     - criterion: All workflow artifacts committed
       status: PENDING_COMMIT
       evidence: Commit will be created before handoff completion
+
