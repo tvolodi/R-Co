@@ -1,0 +1,30 @@
+{
+  "report_id": "WF03-gh376-20260804-step-02b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF03-gh376-20260804",
+  "step": "02b",
+  "created_at": "2026-08-04T04:04:10Z",
+  "summary": "Design validation FAILED on lint check E010 (MAJOR). The design artefact src/design/iss-0113-fix.md is missing a required 'Public Interface' or 'Interface' section. All other validation criteria passed: root cause coverage complete, GitHub issue acceptance criteria addressed, no implementation code present, design is comprehensive and actionable, all affected files specified, lint rule T011 is actionable. Function signatures are present but scattered across sections 1.2 and 2.3 instead of consolidated in a dedicated interface section.",
+  "files_created": [],
+  "files_modified": [
+    "handoffs/WF03-gh376-20260804/step-02b-code-design-validator.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "code": "E010",
+      "description": "Design artefact missing required Interface section. Lint tool requires one of: 'Public Interface', 'Interface', or 'API'. Function signatures exist but are scattered across Resolution Strategy sections instead of consolidated."
+    }
+  ],
+  "next_steps": [
+    "Route back to CODE-DESIGNER for rework",
+    "CODE-DESIGNER must add a dedicated 'Public Interface' section after 'Module Purpose'",
+    "Interface section should consolidate: (1) TestHarness.newUuid() usage pattern from section 1.2, (2) helpers.cleanupInstance() signature from section 2.3",
+    "After rework, rework_count will increment to 1 and validation will re-run"
+  ],
+  "blockers": [
+    "Implementation (BACKEND-DEV Step 3) cannot proceed until design passes validation"
+  ]
+}
