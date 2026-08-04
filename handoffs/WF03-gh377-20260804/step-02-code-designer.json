@@ -1,0 +1,54 @@
+{
+  "handoff_id": "1e33a003-45e4-466c-be03-fff5d10fe41e",
+  "run_id": "WF03-gh377-20260804",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-gh377-20260804/step-02-code-designer.json",
+  "created_at": "2026-08-04T16:34:38Z",
+  "started_at": "2026-08-04T16:35:01Z",
+  "completed_at": "2026-08-04T16:37:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 2 \u2014 Solution Design",
+    "issue_id": "ISS-0114",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/377",
+    "related_handoff_ids": [
+      "0def6af4-60b4-4256-9c99-4eacab5685f7",
+      "dba38f9c-1881-4af3-b765-41fed454dfef",
+      "67053652-55eb-4771-b9c8-e335c00bf6b5"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0114-WF03-gh377-20260804.yaml",
+      "docs/issues/ISS-0114.json"
+    ]
+  },
+  "task": {
+    "description": "Produce a fix design artefact for ISS-0114 \u2014 Tenant schema and search_path state causes GH-359-class failures.\n\nRoot cause (from Step 1 diagnosis, in docs/issue-reports/ISS-0114-WF03-gh377-20260804.yaml):\n- src/db/pool.zig::applyRequestStorageRouting (lines 173-208) defaults to LEGACY_RLS when SELECT storage_mode FROM public.tenant WHERE id = $1::uuid returns 0 rows.\n- For freshly-provisioned tenants (via bpm_provision_tenant_schema()), no public.tenant row exists \u2014 only public.tenant_schemas.\n- Sticky threadlocal _storage_mode = LEGACY_RLS \u2192 SET search_path TO public \u2192 unqualified queries fail or hit public shadows.\n- Affected tests: TC-TNT-01-01, TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-01, TC-TNT-03-03, TC-TNT-03-05, TC-DB-03-01.\n- Secondary cause: ISS-0112-era schema_migrations drift can amplify C23505 violations on schema_migrations_schema_version_uq.\n\nResolution strategy (3-layer fix from the diagnosis):\n1. applyRequestStorageRouting: When public.tenant has 0 rows but public.tenant_schemas has a row for tenant_id \u2192 treat as SCHEMA mode (defensive fallback). Only fall back to LEGACY_RLS when BOTH queries return 0 rows.\n2. provisionTenantSchema: After bpm_provision_tenant_schema() succeeds, idempotently INSERT INTO public.tenant (id, storage_mode) VALUES ($1, 'SCHEMA') ON CONFLICT DO NOTHING (authoritative path).\n3. One-shot backfill migration for existing tenant_schemas-only fixtures: INSERT INTO public.tenant SELECT tenant_id, 'SCHEMA' FROM public.tenant_schemas ts WHERE NOT EXISTS (SELECT 1 FROM public.tenant WHERE id = ts.tenant_id).\n4. Test fixture hardening: explicit tenant_context.clear() in TestHarness.init() or pool fixture setup to reset the sticky threadlocal cache.\n5. migrations.zig::runForSchema: post-condition SHOW search_path assertion \u2192 MigrationError.SchemaSetupFailed if not set correctly.\n\nYour task:\nProduce a Type E prose design artefact at src/design/iss-0114-fix.md that specifies:\n- Public Interface section consolidating:\n  * applyRequestStorageRouting signature change (or new helper) in src/db/pool.zig\n  * provisionTenantSchema modifications in src/db/provisioning.zig\n  * New helper tenant_context_mod.clear() (if not already present) in src/api/tenant_context.zig\n- Error taxonomy: which error variants are added/changed in PoolError, MigrationError, ProvisionError\n- Each design change tied to the acceptance criterion it implements:\n  * AC1: applyRequestStorageRouting no longer defaults to LEGACY_RLS when tenant_schemas row exists \u2192 TC-TNT-02-02, TC-TNT-03-01, TC-TNT-03-03, TC-TNT-03-05\n  * AC2: provisionTenantSchema inserts public.tenant with storage_mode=SCHEMA \u2192 TC-TNT-01-01, TC-TNT-01-03\n  * AC3: Backfill migration reconciles tenant_schemas-only tenants \u2192 TC-DB-03-01 (after backfill applied)\n  * AC4: regression tests added per affected TC (already specified in diagnosis)\n  * AC5: SHOW search_path post-condition in runForSchema \u2192 defensive guard\n- Migration filename proposal: e.g. 1135_iss0114_backfill_public_tenant_storage_mode.sql. Include the SQL DDL sketch (NOT full implementation, but enough that a BACKEND-DEV can implement without ambiguity).\n- Lint rule consideration: should there be a T012 rule forbidding `SET search_path TO public` outside Pool.release()/resetConnectionSearchPath? Document the proposal.\n\nThe design must NOT contain implementation code \u2014 only function signatures, before/after patterns, and pseudocode. SQL DDL sketch is permitted because it is the contract for the backfill migration.\n\nAfter writing the design:\n1. Run: python tools/lint_design_artefact.py src/design/iss-0114-fix.md (must exit 0, no BLOCKER/MAJOR)\n2. Stage and commit on the feature branch:\n   git add src/design/iss-0114-fix.md\n   git commit -m \"design(WF03-gh377): fix design artefact for ISS-0114 tenant-schema routing\"\n   git push origin feature/WF03-gh377-20260804\n3. Update handoffs/registry.json to mark this handoff COMPLETED.\n4. Write result into the handoff file with status=COMPLETED, result.status=PASS, result.summary, result.artifacts_out, result.issues (empty if clean), next_action=\"Route to CODE-DESIGN-VALIDATOR (Step 2b)\", completed_at=<current UTC>.\n\nReturn PASS with the design artefact committed and pushed.",
+    "acceptance_criteria": [
+      "Design artefact created at src/design/iss-0114-fix.md",
+      "Public Interface section consolidating all changed/new function signatures",
+      "Each change tied to a specific acceptance criterion and TC test ID",
+      "Migration DDL sketch for backfill migration",
+      "No implementation code (function bodies) in the design",
+      "python tools/lint_design_artefact.py exits 0",
+      "Design committed to feature/WF03-gh377-20260804 and pushed"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fix design artefact produced for ISS-0114 (tenant-schema and search_path state). Three-layer fix specified: (1) applyRequestStorageRouting fallback to public.tenant_schemas when public.tenant returns 0 rows; (2) provisionTenantSchema idempotent INSERT of public.tenant (id, storage_mode='SCHEMA') plus tenant_context.setStorageMode(.SCHEMA) priming; (3) one-shot backfill migration 1135_iss0114_backfill_public_tenant_storage_mode.sql. Plus test harness fixture tenant_context.clear() reset and migrations.runForSchema SHOW search_path post-condition assertion. All 5 design changes mapped to the 7 affected TC test IDs (TC-TNT-01-01, TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-01, TC-TNT-03-03, TC-TNT-03-05, TC-DB-03-01). Error taxonomy extended with ProvisionError.SchemaPromotionFailed. Lint Rule T012 documented as proposal only (out of scope). lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0). Committed (8905cbc) and pushed to feature/WF03-gh377-20260804.",
+    "artifacts_out": [
+      "src/design/iss-0114-fix.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

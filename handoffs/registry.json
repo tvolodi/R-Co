@@ -641,6 +641,115 @@
       "status": "COMPLETED",
       "stage": "WF-03 Step Final",
       "completed_at": "2026-08-04T09:46:55Z"
+    },
+    {
+      "handoff_id": "0def6af4-60b4-4256-9c99-4eacab5685f7",
+      "file": "handoffs/WF03-gh377-20260804/step-00-backend-dev.json",
+      "run_id": "WF03-gh377-20260804",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-04T10:14:41Z",
+      "completed_at": "2026-08-04T10:16:15Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "dba38f9c-1881-4af3-b765-41fed454dfef",
+      "file": "handoffs/WF03-gh377-20260804/step-005-issue-fixer.json",
+      "run_id": "WF03-gh377-20260804",
+      "step": "005",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-04T10:17:37Z",
+      "started_at": "2026-08-04T10:18:55Z",
+      "completed_at": "2026-08-04T10:19:30Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "67053652-55eb-4771-b9c8-e335c00bf6b5",
+      "file": "handoffs/WF03-gh377-20260804/step-01-issue-fixer.json",
+      "run_id": "WF03-gh377-20260804",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-04T10:21:40Z",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-04T12:16:45Z",
+      "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "1e33a003-45e4-466c-be03-fff5d10fe41e",
+      "file": "handoffs/WF03-gh377-20260804/step-02-code-designer.json",
+      "run_id": "WF03-gh377-20260804",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-04T16:34:38Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving",
+      "completed_at": "2026-08-04T16:37:16Z"
+    },
+    {
+      "handoff_id": "5142a191-93fe-4045-88af-2da3134eade3",
+      "file": "handoffs/WF03-gh377-20260804/step-02b-code-design-validator.json",
+      "run_id": "WF03-gh377-20260804",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-04T16:39:30Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 2b",
+      "completed_at": "2026-08-04T16:56:10Z"
+    },
+    {
+      "handoff_id": "d851a76f-2c67-477c-8bcc-134ff71582c5",
+      "file": "handoffs/WF03-gh377-20260804/step-03-backend-dev.json",
+      "run_id": "WF03-gh377-20260804",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-04T17:38:32Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 3",
+      "completed_at": "2026-08-04T18:05:39Z"
+    },
+    {
+      "handoff_id": "c080be91-6230-40ca-8365-46cd7873f07c",
+      "file": "handoffs/WF03-gh377-20260804/step-05-test-runner.json",
+      "run_id": "WF03-gh377-20260804",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-04T17:43:57Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 5",
+      "started_at": "2026-08-04T18:05:30Z",
+      "completed_at": "2026-08-04T18:11:43Z",
+      "result": "FAIL",
+      "result_summary": "Step 6a slug defect FULLY RESOLVED at commit 9905927. 3 of 7 ISS-0114 TCs PASS (TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-05); 4 of 7 still fail on different non-ISS-0114 defects. Build Summary: 560/116 pass/fail (was 525/151 prior). No new regressions."
+    },
+    {
+      "handoff_id": "e64f5d9b-6b40-4cbb-abd0-b1b5dc41208a",
+      "file": "handoffs/WF03-gh377-20260804/step-07-doc-updater.json",
+      "run_id": "WF03-gh377-20260804",
+      "step": "07",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-04T18:14:52Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 7"
+    },
+    {
+      "handoff_id": "eef200b1-5564-4a8c-a828-87ba3e83e09e",
+      "file": "handoffs/WF03-gh377-20260804/step-final-backend-dev.json",
+      "run_id": "WF03-gh377-20260804",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-04T18:20:31Z",
+      "status": "PENDING",
+      "stage": "WF-03 Step Final"
     }
   ]
 }

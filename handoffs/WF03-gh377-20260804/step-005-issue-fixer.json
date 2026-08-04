@@ -1,0 +1,58 @@
+{
+  "handoff_id": "dba38f9c-1881-4af3-b765-41fed454dfef",
+  "run_id": "WF03-gh377-20260804",
+  "workflow_id": "WF-03",
+  "step": "005",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-gh377-20260804/step-005-issue-fixer.json",
+  "created_at": "2026-08-04T10:17:37Z",
+  "started_at": "2026-08-04T10:18:55Z",
+  "completed_at": "2026-08-04T10:19:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 0.5 \u2014 Issue Registry Lookup & GitHub Filing",
+    "issue_id": "ISS-0114",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/377",
+    "related_handoff_ids": [
+      "0def6af4-60b4-4256-9c99-4eacab5685f7"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0114.json",
+      "docs/issue-reports/ISS-0112-step-1-WF03-gh375-20260801.yaml"
+    ]
+  },
+  "task": {
+    "description": "Step 0.5 \u2014 Issue Registry Lookup and GitHub Filing for ISS-0114 (GitHub issue #377).\n\nThe local registry entry docs/issues/ISS-0114.json already exists (registered 2026-08-01). Your tasks:\n\n1. Read docs/issues/ISS-0114.json and confirm it accurately reflects the current symptom, root-cause hypothesis, and acceptance criteria from GitHub issue #377.\n\n2. Search existing ISS-*.json files for prior related issues (use read_file on docs/issues/issue_index.json if it exists, plus grep for 'tenant schema', 'search_path', 'provisionTenantSchema', 'schemaNameForTenant' across docs/issues/ and docs/issue-reports/). The most directly related prior issue is ISS-0112 (RESOLVED via WF03-gh375-20260804) which addressed public.schema_migrations drift but did NOT touch the per-tenant schema isolation path. Verify that #377 is genuinely new work, not a duplicate of #359 / #375.\n\n3. Check for GitHub issue #377 collision:\n   gh issue list --search \"ISS-0114\" --state all\n   gh issue list --search \"tenant schema search_path\" --state all\n   If the local ISS-0114 ID collides with an unrelated GitHub issue, renumber the local entry (choose ISS-0114A or next free ISS-NNNN).\n\n4. File (or re-confirm) the issue on GitHub if it has not been filed yet:\n   gh issue create --title \"ISS-0114 \u2014 Tenant schema and search_path state causes GH-359-class failures\" --body \"<mirror local ISS body + acceptance criteria>\" --label \"bug,integration\"\n   The body must include the <!-- rco-sync-ref: ISS-0114 --> marker at the top, mirroring the existing local file.\n\n5. Update docs/issues/ISS-0114.json with:\n   - handoff_id = <this handoff's id>\n   - run_id = WF03-gh377-20260804\n   - github_issue = https://github.com/tvolodi/R-Co/issues/377 (already set; verify)\n   - If GitHub issue was newly created, write the returned URL into the github_issue field.\n\n6. Stage and commit any registry changes:\n   git add docs/issues/ISS-0114.json handoffs/registry.json\n   git commit -m \"chore(WF03-gh377): register ISS-0114 in registry and confirm GitHub filing\"\n\nReturn PASS when:\n- Local ISS-0114.json is up to date\n- GitHub issue #377 exists with the sync-ref marker\n- Registry is committed on the feature branch\n\nSet next_action to \"Route to ISSUE-FIXER (Step 1 \u2014 Root Cause Diagnosis)\".",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0114.json updated with handoff_id and run_id",
+      "GitHub issue #377 exists with <!-- rco-sync-ref: ISS-0114 --> marker",
+      "github_issue field in ISS-0114.json reflects the canonical URL",
+      "Registry commit applied on feature/WF03-gh377-20260804"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:update-issue",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 0.5 (registry lookup + GitHub filing) for ISS-0114 / GitHub #377 complete. Local registry entry docs/issues/ISS-0114.json already exists and now carries handoff_id=dba38f9c-1881-4af3-b765-41fed454dfef and run_id=WF03-gh377-20260804; github_issue field already pointed to https://github.com/tvolodi/R-Co/issues/377. GitHub issue #377 exists with the required <!-- rco-sync-ref: ISS-0114 --> marker on the first line of its body and its current body matches the local ISS-0114.json notes/root_cause hypothesis. No ID collision — the only GitHub result for the search 'ISS-0114' is #377 itself, and the topic search 'tenant schema search_path' returns only loosely related historical issues (#201, #263, #335, #338, #349, #353, #355, #359, #368, #370, #392, #343) none of which duplicate the seven TC-TNT-* / TC-DB-03-01 cluster that ISS-0114 owns. ISS-0114 is genuinely new work: it complements ISS-0112 (RESOLVED via WF03-gh375-20260804, addressed public.schema_migrations drift) by targeting the per-connection checkout-time search_path and per-tenant fixture provisioning gaps. No new GitHub issue created, no comment posted (existing issue already carries the sync-ref marker). Registry commit staged on feature/WF03-gh377-20260804.",
+    "artifacts_out": [
+      "docs/issues/ISS-0114.json",
+      "handoffs/registry.json",
+      "handoffs/WF03-gh377-20260804/step-005-issue-fixer.json"
+    ],
+    "issues": [
+      {
+        "severity": "INFO",
+        "description": "ISS-0114 sits on a heavily-trafficked surface. Prior related issues found by grep: ISS-0068 (provisionTenantSchema never called in onboarding saga), ISS-0070 (runSagaBackground thread does not inherit tenant_context), ISS-0076 (migration scoping / search_path defect), ISS-0089 (unqualified SQL in svc01 resolves to tenant_default), ISS-0090 (long-lived shared db_test container accumulates orphaned tenant schemas), ISS-0091 (two independent migration-tracking tables), ISS-0094 (GBL migrations blanket-skip non-public schemas), ISS-0095 (makePool() never sets tenant context), ISS-0097 (worker threads don't inherit threadlocal tenant context), ISS-0098 (spt01 TC-SPT-01-07 expects empty ctx -> tenant_default), ISS-0099 (applyRequestStorageRouting falls back to public for unprovisioned tenant), ISS-0101 (tenant_default shadow table + OutOfOrderMigration false-positive), ISS-0107 (test-integration-others-internal barrier group deadlock), ISS-0108 (TC-DB-01-01/02 unqualified schema_migrations), ISS-0112 (RESOLVED — public.schema_migrations drift). Step 1 (Root Cause Diagnosis) must read every one of these before hypothesising, and any fix must be additive rather than conflicting with ISS-0112/0114's already-merged reconciliation work."
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (Step 1 — Root Cause Diagnosis)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -102,6 +102,29 @@ pub const Migrations = struct {
         ) catch return MigrationError.SchemaSetupFailed;
         conn.exec(search_path_sql, &.{}) catch return MigrationError.SchemaSetupFailed;
 
+        // ISS-0114 / GH-377: post-condition assertion.
+        // After setting search_path, verify SHOW search_path returns a value
+        // that includes the tenant schema name. This guards against any future
+        // regression where applyRequestStorageRouting()'s LEGACY_RLS fallback
+        // (or any other code path) overwrites the migration runner's
+        // search_path before the runner has finished its work.
+        var sp_result = conn.query(
+            allocator,
+            "SHOW search_path",
+            &.{},
+        ) catch return MigrationError.SchemaSetupFailed;
+        defer sp_result.deinit();
+
+        if (sp_result.rows.len == 0 or sp_result.rows[0].len == 0 or
+            sp_result.rows[0][0] == null)
+        {
+            return MigrationError.SchemaSetupFailed;
+        }
+        const sp_val = sp_result.rows[0][0].?;
+        if (std.mem.indexOf(u8, sp_val, schema_name) == null) {
+            return MigrationError.SchemaSetupFailed;
+        }
+
         // Ensure schema_migrations table exists (idempotent bootstrap).
         // Always qualified as public.schema_migrations so this works regardless
         // of the current search_path.

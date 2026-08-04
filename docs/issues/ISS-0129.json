@@ -1,0 +1,37 @@
+{
+  "iss_id": "ISS-0129",
+  "title": "Migration 1135 DROP TRIGGER deadlock C40P01 on TC-TNT-01-01 re-provisioning",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "migration / lock-contention-under-concurrent-DDL",
+  "reporter": "TEST-RUNNER (WF-03 gh377)",
+  "run_id": "WF03-gh377-20260804",
+  "handoff_id": null,
+  "affected_areas": [
+    "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql"
+  ],
+  "created_at": "2026-08-04T18:15:39Z",
+  "resolved_at": null,
+  "notes": "Follow-up D3 from the WF03-gh377-20260804 rework-1 retry: TC-TNT-01-01 re-provisions an existing tenant and hits C40P01 deadlock on DROP TRIGGER while another transaction holds the trigger row. Test then aborts mid-way.",
+  "root_cause": "Likely: the migration runs DROP TRIGGER (or TRUNCATE-style statement) without NOWAIT, blocking on a long-running concurrent insert in TC-TNT-03-01 and TC-TNT-03-03. Need either advisory locking around the migration's trigger work, or reordering so TRUNCATE happens before concurrent test acquires the row.",
+  "repro_steps": [
+    "1. Run zig build migrate",
+    "2. zig build test-integration",
+    "3. TC-TNT-01-01 hangs/deadlocks on DROP TRIGGER in 1135 migration"
+  ],
+  "candidate_resolution": "Acquire pg_advisory_xact_lock around the DROP TRIGGER block in migration 1135; or reorder so the per-tenant DROP TRIGGER happens before any concurrent test acquires the row. Verify deadlock-free under concurrent zig build test-integration.",
+  "resolution": null,
+  "files_to_change": [
+    "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql"
+  ],
+  "acceptance_criteria": [
+    "TC-TNT-01-01 passes with no deadlock",
+    "Migration 1135 acquires pg_advisory_xact_lock for its DROP TRIGGER block",
+    "No regression in already-passing migrations"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/419",
+  "prevention": [
+    "Migration DDL that touches per-tenant triggers must acquire pg_advisory_xact_lock before DROP/CREATE.",
+    "Migration deadlock tests should run under the full concurrent zig build test-integration target, not sequentially."
+  ]
+}

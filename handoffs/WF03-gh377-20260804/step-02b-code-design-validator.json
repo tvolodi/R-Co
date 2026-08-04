@@ -1,0 +1,56 @@
+{
+  "handoff_id": "5142a191-93fe-4045-88af-2da3134eade3",
+  "run_id": "WF03-gh377-20260804",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-04T16:39:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 2b",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "1e33a003-45e4-466c-be03-fff5d10fe41e"
+    ],
+    "artifacts_in": [
+      "src/design/iss-0114-fix.md",
+      "docs/issue-reports/ISS-0114-WF03-gh377-20260804.yaml",
+      "handoffs/WF03-gh377-20260804/step-02-code-designer.json"
+    ]
+  },
+  "task": {
+    "description": "Validate the design artefact produced by CODE-DESIGNER at src/design/iss-0114-fix.md. Hard gate: any BLOCKER/MAJOR = FAIL.",
+    "acceptance_criteria": [
+      "python tools/lint_design_artefact.py src/design/iss-0114-fix.md exits 0 with no BLOCKER/MAJOR",
+      "Every acceptance criterion from the ISS-0114 diagnosis YAML is covered by a design element",
+      "No implementation code in the design (Type E prose)",
+      "All public function signatures listed (Public Interface section)",
+      "Error taxonomy present and complete",
+      "Dependencies documented",
+      "All 7 affected TC IDs (TC-TNT-01-01, TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-01, TC-TNT-03-03, TC-TNT-03-05, TC-DB-03-01) have a corresponding design element"
+    ],
+    "functions_to_call": [
+      "fn:lint_design_artefact",
+      "fn:check_design_coverage"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/iss-0114-fix.md validated \u2014 all hard-gate checks pass. lint_design_artefact.py exits 0 with BLOCKER=0 MAJOR=0 (37 MINOR E030 entries are stylistic 'schema-qualified names in prose' which is a documentation convention, not a defect). Type E prose rules upheld: no function bodies, no SQL DDL outside the explicit 'Migration DDL sketch' reference to migrations/1135_*. All four required public signatures present (applyRequestStorageRouting, provisionTenantSchema, Migrations.runForSchema, tenant_context.clear()). Error taxonomy complete: PoolError.QueryFailed (reused), ProvisionError.SchemaPromotionFailed (NEW), MigrationError.SchemaSetupFailed (extended). Dependencies documented for all four changed files plus migration 1135 and test fixtures. All 7 affected TC IDs (TC-TNT-01-01, TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-01, TC-TNT-03-03, TC-TNT-03-05, TC-DB-03-01) are explicitly mapped to design elements in the 'Acceptance criteria coverage' table. Three-layer fix architecture (resolver fallback in pool.zig, authoritative promotion in provisioning.zig, backfill migration 1135) plus test-harness clear() hardening and runForSchema post-condition assertion is complete and consistent with the diagnosis report. Ready for BACKEND-DEV (Step 3).",
+    "artifacts_out": [
+      "src/design/iss-0114-fix.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "37 E030 findings: schema-qualified names (public.tenant, public.tenant_schemas, public.schema_migrations) appear in design prose. The E030 rule is intended for migration DDL bodies and the design uses these names as documentation references to existing tables and to the migration DDL sketch. Not blocking, but the design could be tightened by replacing 'public.tenant' with 'the tenant registry' and 'public.tenant_schemas' with 'the per-tenant schema registry' in the narrative text. Leaving to BACKEND-DEV or DOC-UPDATER discretion \u2014 not worth a rework cycle."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T16:39:41Z",
+  "completed_at": "2026-08-04T16:56:10Z"
+}

@@ -1,0 +1,122 @@
+{
+  "handoff_id": "c080be91-6230-40ca-8365-46cd7873f07c",
+  "run_id": "WF03-gh377-20260804",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-04T17:43:57Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 5",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "1e33a003-45e4-466c-be03-fff5d10fe41e",
+      "5142a191-93fe-4045-88af-2da3134eade3",
+      "d851a76f-2c67-477c-8bcc-134ff71582c5"
+    ],
+    "artifacts_in": [
+      "src/design/iss-0114-fix.md",
+      "docs/issue-reports/ISS-0114-WF03-gh377-20260804.yaml",
+      "src/db/pool.zig",
+      "src/db/provisioning.zig",
+      "src/db/migrations.zig",
+      "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql",
+      "tests/integration/helpers.zig",
+      "handoffs/WF03-gh377-20260804/step-03-backend-dev.json"
+    ]
+  },
+  "task": {
+    "description": "Verify ISS-0114 fix. Run integration tests for the 7 affected TC IDs and ensure all PASS. Write structured report to tests/reports/report-<date>-WF03-gh377.yaml.",
+    "acceptance_criteria": [
+      "Backend services health check passes (Keycloak at :8081, test DB at :5433, BPM at :8080)",
+      "zig build migrate exits 0 (1135 migration applies successfully)",
+      "TC-TNT-01-01 passes",
+      "TC-TNT-01-03 passes",
+      "TC-TNT-02-02 passes",
+      "TC-TNT-03-01 passes",
+      "TC-TNT-03-03 passes",
+      "TC-TNT-03-05 passes",
+      "TC-DB-03-01 passes",
+      "No regressions in previously passing tests",
+      "Report written to tests/reports/"
+    ],
+    "functions_to_call": [
+      "fn:check-services",
+      "fn:run-infrastructure-checks",
+      "fn:check-bench-env",
+      "fn:run-integration-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Step 6a slug/NOT-NULL defect FULLY RESOLVED at commit 9905927 (0 slug violations across retry log; was 97 prior). 3 of 7 ISS-0114-affected TCs now PASS for the first time (TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-05). 4 of 7 still fail on different non-ISS-0114 defects (TC-TNT-01-01 deadlock on DROP TRIGGER, TC-TNT-03-01/03 LEGACY_RLS resolver fallthrough / C23505 schema_migrations dup key, TC-DB-03-01 StoreError.InstanceNotFound) that were not in scope for REWORK 1 and require separate WF-03 runs. Build Summary: 560/686 pass / 116 fail / 9 skip / 1 crash (was 525/151 prior); net +35 passes / -35 fails. Per the user's strict acceptance criterion, this retry is FAIL on the literal criterion (only 3/7 PASS).",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-04-WF03-gh377.yaml",
+      "scratch/_impl_integ_retry.log",
+      "scratch/_impl_lint_retry.log",
+      "scratch/_impl_migrate_retry.log"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "code": "ISS-0114-PRIMARY-RESOLVED-CARRIED-OVER-DEFECTS-REMAIN",
+        "description": "Step 6a INSERT NOW populates all 7 NOT NULL columns of public.tenant (verified). However, 4 of 7 originally affected TCs continue to fail on different defects: TC-TNT-01-01 (deadlock on DROP TRIGGER), TC-TNT-03-01+03 (LEGACY_RLS resolver fallthrough / schema_migrations dup key), TC-DB-03-01 (store.append() InstanceNotFound). These were not in scope for REWORK 1; each requires a separate WF-03 run (D1, D2, D3)."
+      },
+      {
+        "severity": "BLOCKER",
+        "code": "LINT-BASELINE-DRIFT",
+        "description": "lint_test_isolation.py exits 1 with 222 BLOCKERs and 19 MAJORs across 126 files. Identical to prior run. None introduced by ISS-0114 REWORK 1 (commit 9905927 modifies only src/db/provisioning.zig, migrations/1135*.sql, handoffs/). Pre-existing baseline drift; out of scope for ISS-0114. Logged as MAJOR non-blocking per orchestrator's INFRA_CHECK pattern."
+      },
+      {
+        "severity": "MAJOR",
+        "code": "PROVIDING-CASCADE-REDUCED-97-TO-0",
+        "description": "0 occurrences of 'null value in column slug' in scratch/_impl_integ_retry.log (was 97 prior). Slug cascade FULLY GONE."
+      },
+      {
+        "severity": "MAJOR",
+        "code": "RESOLVER-LEGACY-RLS-FALLTHROUGH-CARRIED-OVER",
+        "description": "src/db/pool.zig resolver falls through to LEGACY_RLS for TC-TNT-03-01+03 (minted-UUID tests with no provisionTenantSchema call). Carried over from prior run D1. Out of scope for ISS-0114."
+      },
+      {
+        "severity": "MAJOR",
+        "code": "STORE-INSTANCE-NOT-FOUND-CARRIED-OVER",
+        "description": "TC-DB-03-01 still hits StoreError.InstanceNotFound at src/event_store/store.zig:337 because store connection's resolver returns LEGACY_RLS. Carried over from prior run D2."
+      },
+      {
+        "severity": "MAJOR",
+        "code": "MIGRATIONS-DROP-TRIGGER-DEADLOCK-NEW",
+        "description": "TC-TNT-01-01 hit POSTGRES C40P01 deadlock on DROP TRIGGER trg_bpm_audit_apply_chain_hash during runForSchema at src/db/migrations.zig:309. NEW symptom (was slug/NOT NULL prior). Different defect from ISS-0114; cross-test lock contention."
+      }
+    ],
+    "tc_results": {
+      "TC-TNT-01-01": "FAIL",
+      "TC-TNT-01-03": "PASS",
+      "TC-TNT-02-02": "PASS",
+      "TC-TNT-03-01": "FAIL",
+      "TC-TNT-03-03": "FAIL",
+      "TC-TNT-03-05": "PASS",
+      "TC-DB-03-01": "FAIL"
+    },
+    "test_totals": {
+      "pass": 560,
+      "skip": 9,
+      "fail": 116,
+      "crash": 1,
+      "total": 686
+    },
+    "test_totals_diff_vs_prior": {
+      "pass_delta": 35,
+      "fail_delta": -35,
+      "slug_NOT_NULL_violations_prior": 97,
+      "slug_NOT_NULL_violations_retry": 0
+    },
+    "regression_check": "PARTIAL_PASS_NO_NEW_REGRESSIONS \u2014 3/7 ISS-0114 TCs PASS for the first time; 4/7 fail on different non-ISS-0114 defects; no NEW regressions introduced by commit 9905927.",
+    "next_action": "Route back to ORCH (not BACKEND-DEV) for D1+D2+D3 separate WF-03 spawns. Step 6a code is correct; ISS-0114 primary defect is verified FIXED."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T18:05:30Z",
+  "completed_at": "2026-08-04T18:11:43Z"
+}
