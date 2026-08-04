@@ -1,0 +1,104 @@
+{
+  "handoff_id": "c080be91-6230-40ca-8365-46cd7873f07c",
+  "run_id": "WF03-gh377-20260804",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-04T17:43:57Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 5",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "1e33a003-45e4-466c-be03-fff5d10fe41e",
+      "5142a191-93fe-4045-88af-2da3134eade3",
+      "d851a76f-2c67-477c-8bcc-134ff71582c5"
+    ],
+    "artifacts_in": [
+      "src/design/iss-0114-fix.md",
+      "docs/issue-reports/ISS-0114-WF03-gh377-20260804.yaml",
+      "src/db/pool.zig",
+      "src/db/provisioning.zig",
+      "src/db/migrations.zig",
+      "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql",
+      "tests/integration/helpers.zig",
+      "handoffs/WF03-gh377-20260804/step-03-backend-dev.json"
+    ]
+  },
+  "task": {
+    "description": "Verify ISS-0114 fix. Run integration tests for the 7 affected TC IDs and ensure all PASS. Write structured report to tests/reports/report-<date>-WF03-gh377.yaml.",
+    "acceptance_criteria": [
+      "Backend services health check passes (Keycloak at :8081, test DB at :5433, BPM at :8080)",
+      "zig build migrate exits 0 (1135 migration applies successfully)",
+      "TC-TNT-01-01 passes",
+      "TC-TNT-01-03 passes",
+      "TC-TNT-02-02 passes",
+      "TC-TNT-03-01 passes",
+      "TC-TNT-03-03 passes",
+      "TC-TNT-03-05 passes",
+      "TC-DB-03-01 passes",
+      "No regressions in previously passing tests",
+      "Report written to tests/reports/"
+    ],
+    "functions_to_call": [
+      "fn:check-services",
+      "fn:run-infrastructure-checks",
+      "fn:check-bench-env",
+      "fn:run-integration-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "All 7 ISS-0114-affected TCs FAIL with the original symptom (search_path='public' instead of tenant_<uuid>). Root cause: src/db/provisioning.zig Step 6a INSERT INTO public.tenant is missing 5 NOT NULL columns (slug, display_name, created_at, updated_at, tenant_type). 97 'slug' NOT NULL violations appear in the integration log; the defect cascades to 107 total integration test failures. Additionally: 222 pre-existing lint BLOCKERs + 19 MAJORs in tests/integration (predate ISS-0114, out of scope). Pre-flight: services healthy, KC=200, DB_OK, zig build migrate exits 0 (1135 applied), zig build bench exits 0 with all NFRs passed.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-04-WF03-gh377.yaml",
+      "scratch/_impl_integ.log",
+      "scratch/_preflight_migrate.log",
+      "scratch/_preflight_lint_full.log",
+      "scratch/_lint_affected.log",
+      "scratch/_check_tenant_cols.py",
+      "scratch/_tenant_cols.txt"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "code": "ISS-0114-NOT-FIXED",
+        "description": "All 7 affected TCs FAIL. Step 6a INSERT INTO public.tenant in src/db/provisioning.zig omits NOT NULL columns slug, display_name, created_at, updated_at, tenant_type. Provisioning aborts at SchemaPromotionFailed before the SCHEMA routing branch can fire. TC-TNT-03-01/03/05 acquire against a fresh UUID with no public.tenant_schemas row either, so resolver returns LEGACY_RLS. Fix needs Step 6a INSERT to populate all NOT NULL columns."
+      },
+      {
+        "severity": "BLOCKER",
+        "code": "LINT-BASELINE-DRIFT",
+        "description": "lint_test_isolation.py exits 1 with 222 BLOCKERs and 19 MAJORs across 126 files. None introduced by ISS-0114 (verified via git blame). Pre-existing baseline drift; orchestrator's INFRA_CHECK at 17:44:35Z cleared infra. Out of scope for ISS-0114."
+      },
+      {
+        "severity": "MAJOR",
+        "code": "PROVIDING-CASCADE-107",
+        "description": "97 occurrences of 'null value in column slug of relation tenant' in scratch/_impl_integ.log. Same Step 6a defect cascades into all tests that transitively call provisionTenantSchema."
+      }
+    ],
+    "tc_results": {
+      "TC-TNT-01-01": "FAIL",
+      "TC-TNT-01-03": "FAIL",
+      "TC-TNT-02-02": "FAIL",
+      "TC-TNT-03-01": "FAIL",
+      "TC-TNT-03-03": "FAIL",
+      "TC-TNT-03-05": "FAIL",
+      "TC-DB-03-01": "FAIL"
+    },
+    "test_totals": {
+      "pass": 428,
+      "skip": 7,
+      "fail": 107,
+      "crash": 1,
+      "total": 543
+    },
+    "regression_check": "REGRESSION_PRESENT \u2014 7 ISS-0114-target TCs all FAIL with same symptom (search_path=public) as before fix.",
+    "next_action": "Route back to BACKEND-DEV (Step 3) for rework"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T17:44:08Z",
+  "completed_at": "2026-08-04T18:00:03Z"
+}

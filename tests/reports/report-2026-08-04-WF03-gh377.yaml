@@ -1,0 +1,327 @@
+# Integration Test Run Report — WF-03-gh377 / ISS-0114
+# Date:     2026-08-04
+# Agent:    TEST-RUNNER
+# Run ID:   WF03-gh377-20260804
+# Handoff:  handoffs/WF03-gh377-20260804/step-05-test-runner.json
+# Verdict:  FAIL — ISS-0114 fix did NOT resolve the 7 affected TCs
+
+# =============================================================================
+# Pre-flight summary
+# =============================================================================
+preflight:
+  docker_compose_ps:
+    r-co-db-1: healthy_on_5442
+    r-co-db_test-1: healthy_on_5434
+    r-co-keycloak-1: healthy_internal_8080
+    r-co-keycloak_gateway-1: healthy_on_8081
+  keycloak_health_ready: HTTP_200_ok
+  test_db_select_1: 1_row_returned
+  zig_build_migrate:
+    exit_code: 0
+    migrations_applied: 1135_iss0114_backfill_public_tenant_storage_mode.sql
+    migrations_total_files_on_disk: 106
+    schema_migrations_rows: 189    # composite (schema, version) key
+    note: >-
+      The schema_migrations row count exceeds file count because rows are
+      keyed by (schema_name, version) — many tenant-specific migrations
+      are recorded under their per-tenant schema. This is expected and not
+      a mismatch.
+  zig_build_bench:
+    exit_code: 0
+    nfr_overall_passed: true
+    note: BENCHMARK_SETUP_INFO + NFR_RESULT lines present; no setup error.
+  lint_test_isolation:
+    exit_code: 1                # NON-ZERO — pre-existing repo-wide findings
+    full_repo_findings:
+      BLOCKER: 222
+      MAJOR: 19
+      MINOR: 0
+      suppressed_by_baseline: 30
+    affected_files_findings:
+      - tests/integration/db_integration_test.zig:379  # BLOCKER T010 hardcoded UUID (predates ISS-0114, blame=c4e66ca from 2026-05-21)
+      - tests/integration/helpers.zig:343,348,349       # MAJOR T020 module-level mutable vars (predates ISS-0114)
+    verdict_on_lint: >-
+      All 222 BLOCKERs and 19 MAJORs are pre-existing repository violations.
+      ISS-0114 commit 8c8a0c0 added ONLY a single line to helpers.zig
+      (bpm.api_tenant_context.clear();) which introduces no new findings.
+      Git blame confirms the db_integration_test.zig:379 hardcoded UUID
+      was authored in commit c4e66ca (2026-05-21) — predates the ISS-0114
+      branch by ~2.5 months. Lint failure is NOT caused by ISS-0114; it
+      is repository baseline drift. Orchestrator's INFRA_CHECK at
+      17:44:35Z explicitly cleared infra. Test-Runner proceeded with the
+      integration test execution to verify the actual ISS-0114 fix.
+
+# =============================================================================
+# Integration test execution summary
+# =============================================================================
+test_execution:
+  command: zig build test-integration
+  env:
+    BPM_TEST_DB_URL: postgres://bpm:bpm@localhost:5434/bpm_test
+    BPM_TEST_URL: http://127.0.0.1:8080
+    BPM_IDP_BASE_URL: http://localhost:8081
+    BPM_DB_URL: postgres://bpm:bpm@localhost:5434/bpm_test
+  totals:
+    pass: 428
+    skip: 7
+    fail: 107
+    crash: 1
+    total: 543
+    leaks: 69
+  build_summary: "44/65 steps succeeded (18 failed); 525/686 tests passed (9 skipped, 151 failed, 1 crashed)"
+  log_file: scratch/_impl_integ.log
+
+# =============================================================================
+# Per-TC verdict for the 7 affected TC IDs
+# =============================================================================
+result: FAIL
+run_id: WF03-gh377-20260804
+date: '2026-08-04'
+
+tcs:
+
+  - id: TC-TNT-01-01
+    title: all 21 business tables exist in tenant schema after provisioning
+    file: tests/integration/tnt_schema_isolation_test.zig:191
+    status: FAIL
+    evidence: >-
+      provisionTenantSchema call at line 207 fails with PostgreSQL error
+      SERRORVERRORCXX000M tuple concurrently updated during step 4
+      (runForSchema inside tenant_<uuid>). The provisioning call cannot
+      complete because the post-provision INSERT into public.tenant fails
+      with NOT NULL violation on column 'slug', which aborts the txn.
+
+  - id: TC-TNT-01-03
+    title: cross-tenant isolation — tenant A events not visible from tenant B
+    file: tests/integration/tnt_schema_isolation_test.zig:300
+    status: FAIL
+    evidence: >-
+      Same root cause: provisioning at line 322 fails with
+      "null value in column 'slug' of relation 'tenant' violates not-null
+      constraint" on the INSERT issued at src/db/provisioning.zig Step 6a.
+      Failing row: (80b918a0-9cfe-43c9-8af6-8e37714cf9b2, null, null,
+      ACTIVE, null, ..., SCHEMA, production, null).
+
+  - id: TC-TNT-02-02
+    title: connection after runForSchema has tenant schema in search_path
+    file: tests/integration/tnt_schema_isolation_test.zig:525
+    status: FAIL
+    evidence: >-
+      provisionTenantSchema at line 534 fails. Provisioning aborts at
+      Step 6a INSERT (src/db/provisioning.zig:155-167): the statement
+      "INSERT INTO public.tenant (id, storage_mode) VALUES ($1::uuid, 'SCHEMA')
+      ON CONFLICT (id) DO UPDATE SET storage_mode = 'SCHEMA' ..." omits
+      mandatory columns slug, display_name, status, created_at, updated_at,
+      tenant_type — all NOT NULL per information_schema.columns. Schema
+      returns SchemaPromotionFailed; runForSchema never completes; pool
+      routing never observes the SCHEMA mode.
+
+  - id: TC-TNT-03-01
+    title: pool checkout for resolved tenant includes tenant schema in search_path
+    file: tests/integration/tnt_schema_isolation_test.zig:868
+    status: FAIL
+    evidence: >-
+      "expected search_path to contain 'tenant_302e7128aa10494398
+      04b23eb25e7520', got: 'public'". Test mints a fresh UUID, sets
+      tenant_context, and acquires a pool connection. The connection's
+      applyRequestStorageRouting() resolver hits BOTH the public.tenant
+      lookup (0 rows — no row was ever inserted for this fresh UUID) AND
+      the new public.tenant_schemas fallback (also 0 rows — test never
+      called provisionTenantSchema). Resolver returns LEGACY_RLS;
+      search_path is set to public.
+
+  - id: TC-TNT-03-03
+    title: two concurrent connections for different tenants have independent search_paths
+    file: tests/integration/tnt_schema_isolation_test.zig:969
+    status: FAIL
+    evidence: >-
+      "conn_a search_path: 'public' (expected tenant_a5a2fa237181
+      481b8f4858547b173a0d, not tenant_1473a6f41aca...)". Same as
+      TC-TNT-03-01: both freshly-minted tenant UUIDs have no row in
+      public.tenant_schemas either, so resolver returns LEGACY_RLS for
+      both connections. Neither receives the SCHEMA branch.
+
+  - id: TC-TNT-03-05
+    title: unqualified table query on tenant connection resolves to tenant schema
+    file: tests/integration/tnt_schema_isolation_test.zig:1075
+    status: FAIL
+    evidence: >-
+      "null value in column 'slug' of relation 'tenant' violates not-null
+      constraint" on row (a1c63381-21b7-47fe-b717-263994c02161, ...).
+      Same root cause as TC-TNT-01-03 — the resolver returns LEGACY_RLS
+      and the test's setup provisioning dies on the slug-NOT-NULL INSERT.
+
+  - id: TC-DB-03-01
+    title: successful transaction commits both event row and state update atomically
+    file: tests/integration/db_integration_test.zig:251
+    status: FAIL
+    evidence: >-
+      "StoreError.InstanceNotFound" raised at src/event_store/store.zig:337
+      during store.append(). The TestHarness.init() in helpers.zig now
+      invokes bpm.api_tenant_context.clear() (the ISS-0114 helpers change),
+      but the underlying pool routing still produces LEGACY_RLS for any
+      test that does not pre-populate public.tenant. With search_path=public
+      and instance_projections either absent from public (per GBL-073) or
+      protected by tenant RLS predicates, the lookup before append cannot
+      find the instance — InstanceNotFound.
+
+# =============================================================================
+# Root cause (why the fix failed)
+# =============================================================================
+root_cause_analysis:
+  primary_defect:
+    location: src/db/provisioning.zig
+    function: provisionTenantSchema
+    block: "Step 6a (lines 146-167)"
+    description: >-
+      The Step 6a INSERT statement populates only (id, storage_mode) for
+      public.tenant. The table schema (verified via information_schema.columns
+      in test DB) requires 7 NOT NULL columns:
+        id           uuid        NOT NULL
+        slug         text        NOT NULL
+        display_name text        NOT NULL
+        status       text        NOT NULL
+        created_at   timestamptz NOT NULL
+        updated_at   timestamptz NOT NULL
+        storage_mode text        NOT NULL
+        tenant_type  text        NOT NULL
+      The INSERT therefore fails with C23502 'null value in column "slug"
+      of relation "tenant"' — every call to provisionTenantSchema for a
+      brand-new tenant returns SchemaPromotionFailed.
+    count_in_log: 97        # 97 occurrences of "slug" NOT NULL violation in scratch/_impl_integ.log
+    cascade_impact: >-
+      Because provisionTenantSchema fails AFTER it has already called
+      bpm_provision_tenant_schema() (Step 4) and runForSchema (Step 5),
+      tenant_<uuid> schemas are CREATED but no public.tenant row exists.
+      Subsequent pool.acquire() calls see the schema is provisioned in
+      public.tenant_schemas (the new Step 2 fallback in the resolver
+      SHOULD catch this) — but the resolver's two-query chain also fails
+      silently if the connection's storage_mode cache is poisoned, AND
+      tests that acquire before any provision (TC-TNT-03-01/03/05) have
+      no tenant_schemas row at all.
+
+  secondary_defects:
+    - id: D1
+      location: src/db/pool.zig::resolveAndCacheStorageMode
+      description: >-
+        The new Step 2 fallback (public.tenant_schemas check) is dead
+        code for tests that never call provisionTenantSchema (TC-TNT-03-01
+        mints a UUID and calls pool.acquire() with no provisioning). The
+        fallback is useful only when provisioning succeeded — but Step 6a
+        of provisioning is broken, so the fallback never triggers in
+        practice for fresh tenants in integration tests. Net: routing
+        still falls through to LEGACY_RLS.
+
+    - id: D2
+      location: tests/integration/helpers.zig
+      description: >-
+        bpm.api_tenant_context.clear() in TestHarness.init() is correct in
+        isolation but insufficient: it clears the cache for the new test
+        thread, but if the underlying DB still has a poisoned
+        search_path connection in the pool, the first pool.acquire() in
+        the test re-runs the resolver and gets LEGACY_RLS because
+        public.tenant_schemas is empty for a fresh UUID. The clear()
+        addresses the cache-poisoning symptom but not the root cause.
+
+    - id: D3
+      location: tests/integration/db_integration_test.zig:379
+      description: >-
+        Pre-existing hardcoded UUID (predates ISS-0114 per git blame
+        c4e66ca 2026-05-21). Lint BLOCKER; not introduced by this fix.
+        Listed for context but out of scope for ISS-0114.
+
+# =============================================================================
+# Regression analysis
+# =============================================================================
+regression_check:
+  status: REGRESSION_PRESENT
+  description: >-
+    Baseline pre-ISS-0114 integration runs (before commit 8c8a0c0) on
+    this code base had ~150 failures; the post-fix run shows 107 fails
+    (slight reduction attributable to the helpers.zig clear() change).
+    However, the 7 ISS-0114-targeted TCs continue to fail with the SAME
+    symptom (search_path=public instead of tenant_<uuid>) they had before
+    the fix. The fix did not regress anything NEW but did not repair the
+    defect either. Net result on the targeted TC set: 0/7 PASS, 7/7 FAIL.
+
+# =============================================================================
+# Issues list
+# =============================================================================
+issues:
+  - severity: BLOCKER
+    code: ISS-0114-NOT-FIXED
+    title: ISS-0114 fix did not resolve the 7 affected TCs
+    description: >-
+      All 7 affected TCs (TC-TNT-01-01, TC-TNT-01-03, TC-TNT-02-02,
+      TC-TNT-03-01, TC-TNT-03-03, TC-TNT-03-05, TC-DB-03-01) FAIL with
+      the original symptom: search_path is 'public' instead of
+      'tenant_<uuid>'. Root cause: src/db/provisioning.zig Step 6a INSERT
+      statement is missing 5 NOT NULL columns (slug, display_name,
+      created_at, updated_at, tenant_type). The fix added a public.tenant
+      lookup fallback but the INSERT that should populate public.tenant
+      rows in the first place is broken.
+    recommended_remediation: >-
+      Fix Step 6a in src/db/provisioning.zig to include all required
+      NOT NULL columns. For example:
+        INSERT INTO public.tenant (id, slug, display_name, status,
+                                   storage_mode, created_at, updated_at,
+                                   tenant_type)
+        VALUES ($1::uuid, 't-' || substr($1::text, 1, 8), 'auto-provisioned',
+                'ACTIVE', 'SCHEMA', NOW(), NOW(), 'production')
+        ON CONFLICT (id) DO UPDATE SET storage_mode='SCHEMA' WHERE ...
+      Alternative: change public.tenant schema to make slug/display_name/
+      status/created_at/updated_at/tenant_type nullable or have defaults.
+      Also update the corresponding INSERT in migration 1135.
+
+  - severity: BLOCKER
+    code: LINT-BASELINE-DRIFT
+    title: Pre-existing lint failures (222 BLOCKER / 19 MAJOR) not in scope
+    description: >-
+      python tools/lint_test_isolation.py tests/integration exits 1 with
+      222 BLOCKERs and 19 MAJORs across 126 files. None introduced by
+      ISS-0114. Repository baseline drift. ORCH INFRA_CHECK at 17:44:35Z
+      cleared infra. Test-Runner proceeded with execution to verify the
+      fix. Out of scope for ISS-0114; flagged for a future WF-03 pass.
+    affected_files: 124
+    sample_BLOCKER: tests/integration/db_integration_test.zig:379 — hardcoded UUID acac0000-... (predates ISS-0114)
+    sample_MAJOR: tests/integration/helpers.zig:343,348,349 — module-level mutable vars (predates ISS-0114)
+
+  - severity: MAJOR
+    code: PROVIDING-CASCADE-107
+    title: 107 integration tests fail with same slug-NOT-NULL root cause
+    description: >-
+      97 occurrences of the "null value in column 'slug' of relation
+      'tenant'" error in scratch/_impl_integ.log. The Step 6a INSERT
+      defect cascades into all tests that call provisionTenantSchema
+      (directly or transitively). Out of scope for ISS-0114 but caused
+      by the same defect.
+
+# =============================================================================
+# Routing decision
+# =============================================================================
+next_action: Route back to BACKEND-DEV (Step 3) for rework
+
+# =============================================================================
+# Artifacts
+# =============================================================================
+artifacts_out:
+  - tests/reports/report-2026-08-04-WF03-gh377.yaml
+  - scratch/_impl_integ.log
+  - scratch/_preflight_migrate.log
+  - scratch/_preflight_lint_full.log
+  - scratch/_lint_affected.log
+  - scratch/_check_tenant_cols.py
+  - scratch/_tenant_cols.txt
+  - scratch/_fix_stat.txt
+  - scratch/_db_integ_blame.txt
+  - scratch/_diff_iss0114.txt
+
+# =============================================================================
+# Handoff update (for registry)
+# =============================================================================
+handoff_update:
+  handoff_id: c080be91-6230-40ca-8365-46cd7873f07c
+  status: COMPLETED
+  result_status: FAIL
+  next_action: Route back to BACKEND-DEV (Step 3) for rework
+  completed_at: '2026-08-04T18:00:03Z'   # real UTC clock from (Get-Date).ToUniversalTime()
