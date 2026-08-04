@@ -4,7 +4,11 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-04
 
-### Fixed (ISS-0205 / GitHub #400 — webhook_deliveries.status case alignment)
+### Fixed
+
+**ISS-0112** (GitHub #375) — Fixed missing webhook_subscriptions.secret_ref and secret_key_id columns in SCHEMA-mode tenant schemas. Migration 1134 adds these columns to all tenant schemas, resolving EXT-02 webhook dispatch test failures. Root cause: GBL-128 only added columns to public schema (which was later dropped by GBL-073), and GBL-133 reconciliation missed per-tenant schemas.
+
+**ISS-0205** (GitHub #400 — webhook_deliveries.status case alignment)
 - **Closes GitHub #400 (ISS-0205)**: `src/webhook/dispatcher.zig` was writing `webhook_deliveries.status` in lowercase (`pending`, `failed`, `delivered`, `retrying`) but the CHECK constraint defined in `migrations/085_iss106_webhook_deliveries_outbox.sql` requires UPPERCASE values (`PENDING`, `FAILED`, `DELIVERED`, `RETRYING`). Every INSERT in the dispatcher failed with `C23514 webhook_deliveries_status_check`.
 - **Fix**: 8 INSERT/UPDATE sites in `src/webhook/dispatcher.zig` (lines 88, 172, 207, 251, 295, 371, 406, 440) aligned to UPPERCASE status literals. The `PAUSED` literal at line 419 and the 5 `ACTIVE` sites were left unchanged (they already match the constraint).
 - **Test fixtures aligned**: `tests/integration/iss205_webhook_outbox_test.zig` (TC1 line 194 `pending`→`PENDING`, TC2 line 278 `failed`→`FAILED`) and `tests/integration/iss106_webhook_outbox_test.zig` / `tests/integration/ext02_webhook_dispatch_test.zig` SELECT queries updated to match UPPERCASE.
