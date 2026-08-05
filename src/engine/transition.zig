@@ -1792,16 +1792,19 @@ test "TC-EE-02-01: instance_started event places token on first non-START node" 
         .{ .id = "e1", .source = "start", .target = "task1", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_1 = [_]Token{};
+    var __pending_task_nodes_2 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_1,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_2,
         .error_detail = null,
     };
-    var initial_vars = std.json.ObjectMap.init(allocator);
-    defer initial_vars.deinit();
+    var initial_vars = try std.json.ObjectMap.init(allocator, &.{}, &.{});
+    defer initial_vars.deinit(allocator);
     const event = TransitionEvent{ .instance_started = .{
         .initial_variables = initial_vars,
         .start_node_id = "start",
@@ -1827,16 +1830,19 @@ test "TC-EE-02-02: task_completed on HUMAN_TASK advances to next node" {
         .{ .id = "e2", .source = "task1", .target = "end", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_3 = [_]Token{.{ .node_id = "task1", .branch_id = "b" }};
+    var __pending_task_nodes_4 = [_][]const u8{"task1"};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "task1", .branch_id = "b" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{"task1"},
+        .tokens = &__tokens_3,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_4,
         .error_detail = null,
     };
-    var output_vars = std.json.ObjectMap.init(allocator);
-    defer output_vars.deinit();
+    var output_vars = try std.json.ObjectMap.init(allocator, &.{}, &.{});
+    defer output_vars.deinit(allocator);
     const event = TransitionEvent{ .task_completed = .{
         .task_node_id = "task1",
         .output_variables = output_vars,
@@ -1862,18 +1868,21 @@ test "TC-EE-02-03: token reaches END → status becomes COMPLETED" {
         .{ .id = "e2", .source = "task1", .target = "end", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_5 = [_]Token{.{ .node_id = "end", .branch_id = "b" }};
+    var __pending_task_nodes_6 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "end", .branch_id = "b" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_5,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_6,
         .error_detail = null,
     };
     // event is unused in this test
     // Directly test processNodeEntry for END
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "end", &events) catch unreachable;
     try std.testing.expect(result.status == .COMPLETED);
 }
@@ -1893,15 +1902,18 @@ test "TC-SCH-01-01: entering TIMER emits timer_created pending effect" {
         .{ .id = "e1", .source = "start", .target = "timer1", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
-    var initial_vars = std.json.ObjectMap.init(allocator);
-    defer initial_vars.deinit();
+    var initial_vars = try std.json.ObjectMap.init(allocator, &.{}, &.{});
+    defer initial_vars.deinit(allocator);
 
+    var __tokens_7 = [_]Token{};
+    var __pending_task_nodes_8 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_7,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_8,
         .error_detail = null,
     };
     const event = TransitionEvent{ .instance_started = .{
@@ -1935,16 +1947,19 @@ test "TC-EE-02-04: EXCLUSIVE_GATEWAY follows first true CEL condition" {
         .{ .id = "e3", .source = "gw", .target = "t2", .condition = "false", .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_9 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
+    var __pending_task_nodes_10 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_9,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_10,
         .error_detail = null,
     };
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
     // Should follow first true (t1)
     try std.testing.expect(result.tokens.len == 1);
@@ -1966,16 +1981,19 @@ test "TC-EE-02-05: EXCLUSIVE_GATEWAY with no true condition and no default → N
         .{ .id = "e3", .source = "gw", .target = "t2", .condition = "false", .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_11 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
+    var __pending_task_nodes_12 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_11,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_12,
         .error_detail = null,
     };
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw", &events);
     try std.testing.expectError(TransitionError.NoMatchingEdge, result);
 }
@@ -1997,16 +2015,19 @@ test "TC-EE-02-06: EXCLUSIVE_GATEWAY default edge fallback" {
         .{ .id = "e4", .source = "gw", .target = "t3", .condition = null, .is_default = true },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_13 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
+    var __pending_task_nodes_14 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_13,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_14,
         .error_detail = null,
     };
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
     try std.testing.expect(result.tokens.len == 1);
     try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "t3"));
@@ -2027,16 +2048,19 @@ test "TC-EE-02-07: PARALLEL_GATEWAY split creates N tokens" {
         .{ .id = "e2", .source = "gw", .target = "t2", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_15 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
+    var __pending_task_nodes_16 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_15,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_16,
         .error_detail = null,
     };
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
     // Should have two tokens, one on t1, one on t2
     try std.testing.expect(result.tokens.len == 2);
@@ -2067,30 +2091,36 @@ test "TC-EE-02-08: PARALLEL_GATEWAY join waits until all tokens arrive, then mer
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     // Only one token has arrived
+    var __tokens_17 = [_]Token{.{ .node_id = "gw", .branch_id = "b1" }};
+    var __pending_task_nodes_18 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b1" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_17,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_18,
         .error_detail = null,
     };
     // Not all arrived, should park
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result1 = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
     try std.testing.expect(result1.tokens.len == 1);
     // Now both tokens arrive
+    var __tokens_19 = [_]Token{ .{ .node_id = "gw", .branch_id = "b1" }, .{ .node_id = "gw", .branch_id = "b2" } };
+    var __pending_task_nodes_20 = [_][]const u8{};
     const state2 = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{ .{ .node_id = "gw", .branch_id = "b1" }, .{ .node_id = "gw", .branch_id = "b2" } },
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_19,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_20,
         .error_detail = null,
     };
-    var events2 = std.ArrayList(PendingEvent).init(allocator);
-    defer events2.deinit();
+    var events2 = std.ArrayList(PendingEvent).empty;
+    defer events2.deinit(allocator);
     const result2 = processNodeEntry(allocator, graph, state2, "gw", &events2) catch unreachable;
     // Should merge to one token on t3
     try std.testing.expect(result2.tokens.len == 1);
@@ -2106,12 +2136,15 @@ test "TC-EE-02-09: unknown event type → UnknownEventType error" {
     };
     const edges = [_]graph_mod.GraphEdge{};
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_21 = [_]Token{};
+    var __pending_task_nodes_22 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_21,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_22,
         .error_detail = null,
     };
     const event = TransitionEvent{ .unknown = .{ .event_type = "foo" } };
@@ -2129,16 +2162,19 @@ test "TC-EE-02-10: token on missing node → TokenOnMissingNode error" {
     };
     const edges = [_]graph_mod.GraphEdge{};
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_23 = [_]Token{.{ .node_id = "missing", .branch_id = "b" }};
+    var __pending_task_nodes_24 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "missing", .branch_id = "b" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_23,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_24,
         .error_detail = null,
     };
     const event = TransitionEvent{ .instance_started = .{
-        .initial_variables = std.json.ObjectMap.init(allocator),
+        .initial_variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .start_node_id = "start",
     } };
     const result = transition(allocator, graph, state, event, 1);
@@ -2158,16 +2194,19 @@ test "TC-EE-02-11: same inputs called twice → identical output (determinism)" 
         .{ .id = "e1", .source = "start", .target = "task1", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_25 = [_]Token{};
+    var __pending_task_nodes_26 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_25,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_26,
         .error_detail = null,
     };
-    var initial_vars = std.json.ObjectMap.init(allocator);
-    defer initial_vars.deinit();
+    var initial_vars = try std.json.ObjectMap.init(allocator, &.{}, &.{});
+    defer initial_vars.deinit(allocator);
     const event = TransitionEvent{ .instance_started = .{
         .initial_variables = initial_vars,
         .start_node_id = "start",
@@ -2197,16 +2236,19 @@ test "TC-EE-06-01: PARALLEL_GATEWAY split with 2 edges creates 2 tokens and 1 PA
         .{ .id = "e2", .source = "gw", .target = "t2", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_27 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
+    var __pending_task_nodes_28 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_27,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_28,
         .error_detail = null,
     };
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
     try std.testing.expect(result.tokens.len == 2);
     try std.testing.expect(events.items.len == 1);
@@ -2227,16 +2269,19 @@ test "TC-EE-06-02: PARALLEL_GATEWAY split with 3 edges creates 3 tokens with uni
         .{ .id = "e3", .source = "gw", .target = "t3", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_29 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
+    var __pending_task_nodes_30 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_29,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_30,
         .error_detail = null,
     };
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
     try std.testing.expect(result.tokens.len == 3);
     try std.testing.expect(!std.mem.eql(u8, result.tokens[0].branch_id, result.tokens[1].branch_id));
@@ -2256,16 +2301,19 @@ test "TC-EE-06-03: original arriving token removed after parallel split" {
         .{ .id = "e2", .source = "gw", .target = "t2", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_31 = [_]Token{.{ .node_id = "gw", .branch_id = "arriving" }};
+    var __pending_task_nodes_32 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "arriving" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_31,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_32,
         .error_detail = null,
     };
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
     // 1 arriving token → 2 split tokens (not 3)
     try std.testing.expect(result.tokens.len == 2);
@@ -2287,16 +2335,19 @@ test "TC-EE-06-04: each new token targets correct next node per definition edges
         .{ .id = "e2", .source = "gw", .target = "tb", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_33 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
+    var __pending_task_nodes_34 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_33,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_34,
         .error_detail = null,
     };
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
     try std.testing.expect(result.tokens.len == 2);
     var found_ta = false;
@@ -2320,16 +2371,19 @@ test "TC-EE-06-05: PARALLEL_SPLIT event records correct source_node_id and edge_
         .{ .id = "e2", .source = "gw2", .target = "n2", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var __tokens_35 = [_]Token{.{ .node_id = "gw2", .branch_id = "b" }};
+    var __pending_task_nodes_36 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "gw2", .branch_id = "b" }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_35,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_36,
         .error_detail = null,
     };
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw2", &events) catch unreachable;
     try std.testing.expect(events.items.len == 1);
     const payload = events.items[0].parallel_split;
@@ -2384,19 +2438,23 @@ test "TC-EE-07-01: join waits when one branch cancelled, fires when remaining ac
     const branch_1 = "abababababababababababababababababab/split_gw/1"; // active, arrived
 
     // State: branch_0 is cancelled, branch_1's token is on join_gw.
+    var __tokens_37 = [_]Token{.{ .node_id = "join_gw", .branch_id = branch_1 }};
+    var __pending_task_nodes_38 = [_][]const u8{};
+    var __cbi_1 = [_][]const u8{branch_0};
     const state = InstanceState{
         .instance_id = instance_id,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "join_gw", .branch_id = branch_1 }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_37,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_38,
         .error_detail = null,
-        .cancelled_branch_ids = &[_][]const u8{branch_0},
+        .cancelled_branch_ids = &__cbi_1,
     };
 
     // processNodeEntry: expected_count = 2 - 1 = 1, arrived = 1 → FIRE.
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = try processNodeEntry(allocator, graph, state, "join_gw", &events);
 
     // After firing: one merged token on t3.
@@ -2432,19 +2490,22 @@ test "TC-EE-07-02: join still waits when only 1 of 2 active branches has arrived
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
     const branch_0 = "abababababababababababababababababab/split_gw/0";
+    var __tokens_39 = [_]Token{.{ .node_id = "join_gw", .branch_id = branch_0 }};
+    var __pending_task_nodes_40 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0xAB} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "join_gw", .branch_id = branch_0 }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_39,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_40,
         .error_detail = null,
         .cancelled_branch_ids = &[_][]const u8{}, // no cancellations
     };
 
     // expected_count = 2, arrived = 1 → wait (park).
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = try processNodeEntry(allocator, graph, state, "join_gw", &events);
     try std.testing.expect(result.tokens.len == 1);
     try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "join_gw"));
@@ -2474,18 +2535,22 @@ test "TC-EE-07-03: all-branches-cancelled path → INSTANCE_CANCELLED event, sta
 
     // Both branches cancelled, EE-08 places a stray token on join_gw to trigger
     // re-evaluation. Step f detects expected_count == 0 and cascades to CANCELLED.
+    var __tokens_41 = [_]Token{.{ .node_id = "join_gw", .branch_id = branch_0 }};
+    var __pending_task_nodes_42 = [_][]const u8{};
+    var __cbi_2 = [_][]const u8{ branch_0, branch_1 };
     const state_with_stray = InstanceState{
         .instance_id = [_]u8{0xAB} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "join_gw", .branch_id = branch_0 }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_41,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_42,
         .error_detail = null,
-        .cancelled_branch_ids = &[_][]const u8{ branch_0, branch_1 },
+        .cancelled_branch_ids = &__cbi_2,
     };
 
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = try processNodeEntry(allocator, graph, state_with_stray, "join_gw", &events);
 
     // Status must be CANCELLED, tokens must be empty.
@@ -2524,21 +2589,25 @@ test "TC-EE-07-04: PARALLEL_JOIN event records branch_id with edge_index 0 as ou
     const branch_0 = "abababababababababababababababababab/split_gw/0";
     const branch_1 = "abababababababababababababababababab/split_gw/1";
 
+    var __pending_task_nodes_43 = [_][]const u8{};
+    var __tokens_join_pair = [_]Token{
+        .{ .node_id = "join_gw", .branch_id = branch_1 }, // arrived first (stored first)
+        .{ .node_id = "join_gw", .branch_id = branch_0 }, // arrived second
+    };
+    var __cbi_3 = [_][]const u8{ branch_0, branch_1 };
     const state = InstanceState{
         .instance_id = [_]u8{0xAB} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{
-            .{ .node_id = "join_gw", .branch_id = branch_1 }, // arrived first (stored first)
-            .{ .node_id = "join_gw", .branch_id = branch_0 }, // arrived second
-        },
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_join_pair,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_43,
         .error_detail = null,
-        .cancelled_branch_ids = &[_][]const u8{},
+        .cancelled_branch_ids = &__cbi_3,
     };
 
-    var events = std.ArrayList(PendingEvent).init(allocator);
-    defer events.deinit();
+    var events = std.ArrayList(PendingEvent).empty;
+    defer events.deinit(allocator);
     const result = try processNodeEntry(allocator, graph, state, "join_gw", &events);
 
     // One merged token on t3.
@@ -2568,18 +2637,22 @@ test "TC-EXT-05-UT-01: entering SUB_PROCESS emits sub_process_start pending even
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
+    var __tokens_44 = [_]Token{};
+    var __pending_task_nodes_45 = [_][]const u8{};
+    var __cbi_4 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0x11} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_44,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_45,
         .error_detail = null,
-        .cancelled_branch_ids = &[_][]const u8{},
+        .cancelled_branch_ids = &__cbi_4,
     };
 
-    var init_vars = std.json.ObjectMap.init(allocator);
-    defer init_vars.deinit();
+    var init_vars = try std.json.ObjectMap.init(allocator, &.{}, &.{});
+    defer init_vars.deinit(allocator);
 
     const tr = try transition(allocator, graph, state, .{
         .instance_started = .{
@@ -2606,18 +2679,22 @@ test "TC-EXT-05-UT-02: sub_process_completed advances waiting token" {
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
+    var __pending_task_nodes_46 = [_][]const u8{};
+    var __tokens_sp1 = [_]Token{.{
+        .node_id = "sp1",
+        .branch_id = "b1",
+        .waiting_child_instance_id = "123e4567-e89b-12d3-a456-426614174001",
+    }};
+    var __cbi_5 = [_][]const u8{};
     const state = InstanceState{
         .instance_id = [_]u8{0x22} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{
-            .node_id = "sp1",
-            .branch_id = "b1",
-            .waiting_child_instance_id = "123e4567-e89b-12d3-a456-426614174001",
-        }},
-        .variables = std.json.ObjectMap.init(allocator),
-        .pending_task_nodes = &[_][]const u8{},
+        .tokens = &__tokens_sp1,
+        .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
+        .pending_task_nodes = &__pending_task_nodes_46,
         .error_detail = null,
-        .cancelled_branch_ids = &[_][]const u8{},
+        .cancelled_branch_ids = &__cbi_5,
     };
 
     const tr = try transition(allocator, graph, state, .{
@@ -2639,9 +2716,9 @@ test "TC-EXP-102-01: evaluateGatewayCondition returns true for matching conditio
     const testing = std.testing;
     const alloc = testing.allocator;
 
-    var vars = std.json.ObjectMap.init(alloc);
-    defer vars.deinit();
-    try vars.put("order_total", .{ .integer = 1500 });
+    var vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
+    defer vars.deinit(alloc);
+    try vars.put(alloc, "order_total", .{ .integer = 1500 });
 
     const result = evaluateGatewayCondition(alloc, "variables.order_total > 1000", vars);
     try testing.expect(result == true);
@@ -2651,9 +2728,9 @@ test "TC-EXP-102-02: evaluateGatewayCondition returns false for non-matching con
     const testing = std.testing;
     const alloc = testing.allocator;
 
-    var vars = std.json.ObjectMap.init(alloc);
-    defer vars.deinit();
-    try vars.put("order_total", .{ .integer = 500 });
+    var vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
+    defer vars.deinit(alloc);
+    try vars.put(alloc, "order_total", .{ .integer = 500 });
 
     const result = evaluateGatewayCondition(alloc, "variables.order_total > 1000", vars);
     try testing.expect(result == false);
@@ -2663,9 +2740,75 @@ test "TC-EXP-102-03: evaluateGatewayCondition returns false on syntax error (no 
     const testing = std.testing;
     const alloc = testing.allocator;
 
-    var vars = std.json.ObjectMap.init(alloc);
-    defer vars.deinit();
+    var vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
+    defer vars.deinit(alloc);
 
     const result = evaluateGatewayCondition(alloc, "variables.INVALID !!! syntax", vars);
     try testing.expect(result == false);
+}
+
+// ---------------------------------------------------------------------------
+// ISS-0132 — allocation-failure coverage
+//
+// The memory-leak signature recurred across 18 pipeline runs (2026-05-28 ->
+// 2026-08-05) because the leaks live on *allocation-failure* paths that the
+// ordinary tests never reach: `zig build test-engine` exercises happy paths,
+// passes clean, and the leak only surfaces when a full integration run happens
+// to trip an error path. Each run patched the one site it hit; none added the
+// coverage that finds the class.
+//
+// `std.testing.checkAllAllocationFailures` re-invokes the function once per
+// allocation index, failing that allocation and asserting the call both
+// propagates error.OutOfMemory and leaks nothing. That turns a
+// non-deterministic leak into a deterministic test failure.
+//
+// When adding a function that allocates more than once before returning, add
+// it here too.
+// ---------------------------------------------------------------------------
+
+fn allocFailureParseTimerConfig(allocator: std.mem.Allocator, raw: []const u8) !void {
+    const cfg = try parseTimerConfig(allocator, raw);
+    allocator.free(cfg.duration_iso8601);
+    if (cfg.repeat_expression) |r| allocator.free(r);
+}
+
+test "TC-ISS-0132-01: parseTimerConfig leaks nothing on any allocation failure" {
+    // Both fields present: duration_iso8601 and repeat_expression are duped
+    // separately, so a failure on the second must still free the first.
+    const raw = "{\"duration_iso8601\":\"PT30M\",\"repeat_expression\":\"R3/PT10M\"}";
+    try std.testing.checkAllAllocationFailures(
+        std.testing.allocator,
+        allocFailureParseTimerConfig,
+        .{raw},
+    );
+}
+
+test "TC-ISS-0132-02: parseTimerConfig leaks nothing when only duration is present" {
+    const raw = "{\"duration_iso8601\":\"PT30M\"}";
+    try std.testing.checkAllAllocationFailures(
+        std.testing.allocator,
+        allocFailureParseTimerConfig,
+        .{raw},
+    );
+}
+
+fn allocFailureCloneJsonValue(allocator: std.mem.Allocator, raw: []const u8) !void {
+    var parsed = try std.json.parseFromSlice(std.json.Value, allocator, raw, .{
+        .allocate = .alloc_always,
+    });
+    defer parsed.deinit();
+
+    const cloned = try cloneJsonValueSafe(allocator, parsed.value);
+    freeJsonValueSafe(allocator, cloned);
+}
+
+test "TC-ISS-0132-03: cloneJsonValueSafe leaks nothing on any allocation failure" {
+    // Nested object + array + multiple string values, so the clone performs
+    // many allocations and a failure can land mid-structure.
+    const raw = "{\"a\":\"alpha\",\"b\":[\"x\",\"y\",\"z\"],\"c\":{\"d\":\"delta\",\"e\":\"epsilon\"},\"f\":42}";
+    try std.testing.checkAllAllocationFailures(
+        std.testing.allocator,
+        allocFailureCloneJsonValue,
+        .{raw},
+    );
 }

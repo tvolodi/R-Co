@@ -1,0 +1,25 @@
+{
+  "issue_id": "ISS-0132",
+  "title": "Allocation-failure paths leak across engine/definition; no checkAllAllocationFailures coverage",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/427",
+  "registered_at": "2026-08-05T06:41:44Z",
+  "registered_by": "Pipeline audit follow-up (Step 3 root-cause)",
+  "related_to": [
+    "ISS-0601",
+    "ISS-0601-LEAK-001",
+    "ISS-0601-RECON-LEAK"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "scope": "Root cause of the memory-leak signature recurring across 18 distinct pipeline runs (2026-05-28 -> 2026-08-05).",
+  "symptom": "DebugAllocator reports leaks during integration runs. Named sites: transition.zig cloneJsonValueSafe/processNodeEntry (TC-EE-10-06), transition.zig parseTimerConfig (31 leaks), definition/store.zig parseGraphJson (GH #406, closed 08-03, recurred).",
+  "reproduction": "Non-deterministic by nature: an error path leaks only when a run happens to trigger it. zig build test-engine passes clean because unit tests exercise happy paths only.",
+  "root_cause_analysis": "Leaks are on allocation-failure/error paths that no test exercises. transition.zig has 51 allocation sites but only 12 errdefer guards. std.testing.checkAllAllocationFailures and FailingAllocator are used nowhere in the repo, so no error path is systematically exercised. Each of the 18 runs patched the one site it hit; none added the coverage that would find the class.",
+  "acceptance_criteria": [
+    "checkAllAllocationFailures tests exist for cloneJsonValueSafe/cloneObjectMapSafe, parseTimerConfig, parseGraphJson",
+    "Those tests fail against pre-fix main and pass after the fix",
+    "zig build test exits 0 with no DebugAllocator leak output",
+    "Tests wired into zig build test so coverage cannot lapse"
+  ],
+  "evidence_file": "Audit corpus: 18 runs with leak FAILs, most recent WF03-gh419-20260805"
+}

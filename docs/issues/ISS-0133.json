@@ -1,0 +1,25 @@
+{
+  "issue_id": "ISS-0133",
+  "title": "transition.zig's 26 in-file tests wired into no build target; never ran and rotted",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/428",
+  "registered_at": "2026-08-05T07:18:59Z",
+  "registered_by": "Pipeline audit Step 3 (discovered while adding ISS-0132 alloc-failure harness)",
+  "related_to": [
+    "ISS-0132",
+    "ISS-0102"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "scope": "Engine unit-test coverage. No production impact; zig build / test / integration all green.",
+  "symptom": "src/engine/transition.zig has 26 test blocks that never executed: build.zig referenced the file only as an imported module (transition_mod), never as an addTest root. Once wired, 26 compile errors surfaced from drift against a Zig stdlib upgrade and InstanceState/slice refactors. After fixing compilation: 23/30 pass, 5 leak, 2 crash.",
+  "reproduction": "zig build test-transition",
+  "root_cause_analysis": "Leaks are test-side: processNodeEntry returns an owned InstanceState that production callers free via freeInstanceState but these tests do not. Adding defer freeInstanceState naively regresses 23->22 passing because fixtures build InstanceState from string literals, so the free double-frees (source of the two exit-code-3 crashes). Each test needs individual fixture-ownership rework. TC-EE-02-02 is an assertion failure, possibly a genuine engine defect.",
+  "acceptance_criteria": [
+    "All 30 transition.zig tests pass with no DebugAllocator leaks",
+    "Fixture ownership reworked per test so freeInstanceState is safe",
+    "TC-EE-02-02 triaged: genuine defect vs stale expectation",
+    "test_engine_step.dependOn(&run_transition_tests.step) re-enabled in build.zig",
+    "A check exists that fails when a file's test blocks are wired into no build target"
+  ],
+  "evidence_file": "GH #428 contains the full per-test failure table"
+}

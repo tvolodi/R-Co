@@ -718,6 +718,39 @@ pub fn build(b: *std.Build) void {
     const test_engine_step = b.step("test-engine", "Run engine unit tests");
     test_engine_step.dependOn(&run_engine_tests.step);
 
+    // ISS-0132: src/engine/transition.zig contains 26 in-file tests (plus the
+    // allocation-failure harness) that never executed — the file was only ever
+    // referenced as an imported module (`transition_mod`), never as the root of
+    // an addTest, so `zig build test` compiled it but ran none of its tests.
+    // Same class as ISS-0102 (test files wired into no build target), in the
+    // engine's purest and most safety-critical module.
+    // Rooted at src/transition_test_root.zig — see that file for why neither
+    // transition.zig nor bpm.zig works as the root here.
+    const transition_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/transition_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "expr", .module = expr_mod },
+            },
+        }),
+    });
+    const run_transition_tests = b.addRunArtifact(transition_tests);
+    const test_transition_step = b.step(
+        "test-transition",
+        "Run src/engine/transition.zig in-file unit tests (incl. ISS-0132 alloc-failure harness)",
+    );
+    test_transition_step.dependOn(&run_transition_tests.step);
+    // NOT yet wired into `test-engine` / `test`: 7 of these 30 tests currently
+    // fail (5 leak, 2 crash) — see GH #428 / ISS-0133. They were inert for
+    // months and rotted against ownership-model changes; the leaks are
+    // test-side (the tests never free the InstanceState that processNodeEntry
+    // returns), not production defects — `zig build`, `zig build test`, and the
+    // integration suite are all green. Run `zig build test-transition` to see
+    // them. Re-enable this line when GH #428 closes:
+    //     test_engine_step.dependOn(&run_transition_tests.step);
+
     // ISS-0074: secrets/crypto.zig envelope-encryption unit tests (pure — no DB, no network)
     const secrets_crypto_mod = b.createModule(.{
         .root_source_file = b.path("src/secrets/crypto.zig"),
