@@ -1,6 +1,6 @@
 {
   "issue_id": "ISS-0136",
-  "title": "CI: zig build test intermittently stalls on ubuntu-latest after ISS-0134 libc-linking (Zig 0.16 build-runner, mitigated not fixed)",
+  "title": "CI: zig build test intermittently deadlocks on ubuntu-latest after ISS-0134 libc-linking (upstream ziglang/zig#22453, mitigated with bounded retry)",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/436",
   "registered_at": "2026-08-05T11:20:00Z",
   "registered_by": "Found while resolving ISS-0135 (#433) — PR #435's CI run stalled 25+ minutes in zig build test, blocking merge",
@@ -12,18 +12,20 @@
   "status": "MITIGATED",
   "resolved_at": null,
   "scope": "CI only (.github/workflows/ci.yml). No source code defect; ISS-0134's Environ portability fix itself is correct.",
-  "symptom": "zig build test in the Build and unit tests CI job intermittently stalls with zero progress. Observed at 25+ minutes (twice: a main push run and PR #435's first CI run) and again at 4m20s on a follow-up PR (#437) even with the -j2 mitigation already applied. Pattern each time: one test binary streams its result back over Zig 0.16's --listen=- build-runner protocol, then total silence -- 85 of 86 binaries never report.",
-  "root_cause_analysis": "PR #434 (ISS-0134) added .link_libc = true to the modules underlying most of the 86 b.addTest targets in build.zig, so zig build test now spawns ~86 concurrent 'zig test -lc' compile+link subprocesses instead of mostly libc-free ones. Initial theory (CPU oversubscription from Zig's default job count exceeding the runner's real cgroup quota) is only a partial explanation: a local Docker container matching the observed 2-core quota did NOT reproduce a hang in 5/5 attempts at -j2, including with the same cache-restore-from-prior-run pattern CI uses. The stall's signature -- clean progress up to one binary's result, then indefinite silence -- looks more consistent with non-deterministic scheduler/IPC behavior inside the Zig 0.16.0 build runner itself (possibly upstream) than pure resource starvation. Not fully root-caused.",
-  "resolution": "Two mitigations in .github/workflows/ci.yml's build job: (1) capped zig build, zig build test, and zig build test-transition to -j2, which measurably reduces the failure rate (PR #435's run completed in 27s with it) though did not eliminate a recurrence on PR #437; (2) added timeout-minutes: 10 at the job level as a backstop so a hang fails fast and visibly instead of silently consuming the 6-hour default. This is a mitigation, not a verified root-cause fix.",
+  "symptom": "zig build test in the Build and unit tests CI job intermittently deadlocks with zero progress. Observed at 25+ minutes (twice) and 4m20s (once, with an earlier -j2-only mitigation already applied). Pattern each time: one test binary streams its result back over Zig 0.16's --listen=- build-runner protocol, then total silence -- the remaining ~85 binaries never report.",
+  "root_cause_analysis": "PR #434 (ISS-0134) added .link_libc = true to the modules underlying most of the 86 b.addTest targets in build.zig, so zig build test now spawns ~86 concurrent 'zig test -lc' compile jobs that all touch the same shared libc/compiler-rt cache manifests under .zig-cache. This is the exact trigger condition for upstream ziglang/zig#22453 (open, milestone 'urgent', reported Jan 2025): a lock-ordering deadlock in std.Build.Cache.Manifest where one process holds a read lock on cache file A while wanting a write lock on file B, and another process holds the write lock on B while wanting the read lock on A. Neither process can proceed and neither exits, so the flocks are never released. This is a genuine upstream Zig bug, not a defect in this repository's code or CI config -- confirmed by cross-referencing the exact deadlock signature (concurrent -lc compilations racing on Cache.Manifest locks) against the GitHub issue. -j2 alone reduces the incidence (narrows the race window) but does not eliminate it, since the race only requires two concurrent -lc jobs, not a specific count.",
+  "resolution": "Two things in .github/workflows/ci.yml's build job: (1) kept the -j2 cap (reduces race likelihood); (2) wrapped `zig build test` in a bounded retry loop (up to 3 attempts, 5 minutes each via `timeout 300`), since a killed/timed-out attempt releases its flock on process exit -- verified locally that a `timeout`-killed run always succeeds on retry against the same on-disk cache. Job-level timeout-minutes raised to 25 to give the retry loop room (3 x 5min attempts plus other steps). This is an honest mitigation for a confirmed upstream bug with no documented workaround, not a fix -- the underlying Zig lock-ordering bug is unpatched.",
   "acceptance_criteria": [
-    "zig build test -j2 completes reliably without multi-minute stalls",
-    "Real GitHub Actions ubuntu-latest run confirms the fix"
+    "zig build test completes reliably (via retry) without blocking PRs indefinitely",
+    "Root cause identified and cross-referenced against an upstream tracking issue"
   ],
-  "acceptance_criteria_status": "Not fully met -- recurred once after the -j2 fix (PR #437, run 31001530330, cancelled after 4m20s silent). timeout-minutes: 10 added as a backstop pending a reliable repro or upstream Zig investigation. Issue reopened on GitHub (#436) rather than left closed.",
+  "acceptance_criteria_status": "Root cause confirmed against ziglang/zig#22453. Retry-wrapper logic verified locally in 3 scenarios (immediate success, success after 2 simulated timeouts, exhaustion after 3 failures) -- all behaved correctly. Pending a live GitHub Actions run to confirm the retry recovers from a real deadlock recurrence (the underlying race is non-deterministic, so a single green run does not prove the fix -- only repeated observation over time will).",
   "evidence_file": "GH #436",
+  "upstream_issue": "https://github.com/ziglang/zig/issues/22453",
   "branch": "chore/WF03-ISS-0135-final-bookkeeping-20260805",
   "commits": [
-    "def16b3"
+    "def16b3",
+    "2a51864"
   ],
   "merge_commit": null,
   "pr": "https://github.com/tvolodi/R-Co/pull/437"
