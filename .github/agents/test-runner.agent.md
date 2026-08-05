@@ -55,10 +55,15 @@ psql "$BPM_TEST_DB_URL" -c "SELECT 1" > /dev/null 2>&1 && echo "DB_OK" || echo "
 ### 2. Benchmark environment check
 
 ```bash
-zig build bench 2>&1 | head -5
+zig build test-env-verify     # exit 0 = healthy, exit 1 = unhealthy
 ```
-- If output shows benchmark numbers and exits 0: proceed.
-- If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: STOP. Complete handoff with `status: FAIL`, issue severity BLOCKER, description: `"Benchmark environment unavailable: <exact error line>"`. ORCH will create an ADHOC BACKEND-DEV handoff to fix the environment, then redispatch you.
+- **Exit 0:** proceed to run tests.
+- **Exit 1:** STOP. Complete the handoff with `status: FAIL`, issue severity BLOCKER,
+  description: `"Test infrastructure unhealthy: <failed check names from the output>"`.
+  ORCH will create an ADHOC BACKEND-DEV handoff to fix the environment, then redispatch you.
+
+Judge this gate by the **exit code only** — never by whether particular words appear in
+the output.
 
 Do NOT proceed past either check if it fails.
 

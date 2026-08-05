@@ -9,8 +9,6 @@ const REPLAY_SNAPSHOT_TARGET_MS = 1000.0;
 const REPLAY_SNAPSHOT_EVENT_COUNT: usize = 100_000;
 const REPLAY_SNAPSHOT_INTERVAL: usize = 1_000;
 
-const DEFAULT_BENCH_DB_URL = "postgres://bpm:bpm@localhost:5433/bpm_test";
-
 const LATENCY_ITERATIONS: usize = 200;
 const THROUGHPUT_SECONDS: f64 = 2.0;
 const THROUGHPUT_BATCH_SIZE: usize = 64;
@@ -205,9 +203,16 @@ fn resolveDbUrl(init: std.process.Init) error{MissingDbUrl}!ResolvedDbUrl {
         return .{ .url = url, .source = .test_db };
     }
 
-    // Local bench pre-check fallback used by workflow validation when
-    // benchmark env vars are not exported in the invoking shell.
-    return .{ .url = DEFAULT_BENCH_DB_URL, .source = .test_db };
+    // No DB URL anywhere. This MUST remain reachable: it is the only way the
+    // benchmark can report a missing environment.
+    //
+    // A previous fix silently returned a hardcoded default URL here so that
+    // the pre-check's stdout grep would stop matching. That made MissingDbUrl
+    // unreachable, so a degraded run reported success and the benchmark could
+    // no longer report a missing DB URL at all. Do not reintroduce a fallback
+    // — `zig build test-env-verify` now owns the health decision, and it reads
+    // an exit code rather than this function's output.
+    return error.MissingDbUrl;
 }
 
 /// Read a single key's value from .env in the current working directory.
@@ -258,11 +263,18 @@ fn parseDotEnvValue(allocator: std.mem.Allocator, contents: []const u8, key: []c
     return null;
 }
 
+/// Names the environment variable the DB URL actually came from.
+///
+/// These labels were once deliberately obfuscated (`bench_env`, `primary_env`,
+/// `test_db_env`) so that ORCH's stdout grep for the literal `BPM_DB_URL` would
+/// stop matching. The health decision no longer depends on this text — it is a
+/// diagnostic for humans reading a bench log — so the labels name the real
+/// variable again.
 fn dbUrlSourceLabel(source: DbUrlSource) []const u8 {
     return switch (source) {
-        .bench => "bench_env",
-        .primary => "primary_env",
-        .test_db => "test_db_env",
+        .bench => "BPM_BENCH_DB_URL",
+        .primary => "BPM_DB_URL",
+        .test_db => "BPM_TEST_DB_URL",
     };
 }
 

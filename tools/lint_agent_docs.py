@@ -24,6 +24,7 @@ Checks:
   A003  MAJOR    agent file re-states a shared rule inline instead of referencing it
   A004  MAJOR    referenced shared file does not exist
   A005  MINOR    agent file has malformed frontmatter
+  A006  BLOCKER  agent file defines a pipeline gate as a match on command output
 
 Usage:
     python3 tools/lint_agent_docs.py [--quiet]
@@ -43,6 +44,7 @@ SHARED_DIR = "docs/agents/shared"
 SHARED_PROTOCOL = f"{SHARED_DIR}/HANDOFF_PROTOCOL.md"
 
 AGENT_GLOBS = (
+    ".claude/agents/*.md",
     ".github/agents/*.agent.md",
     ".github/instructions/*.instructions.md",
 )
@@ -75,6 +77,20 @@ SHARED_RULES = (
 
 # A file may mention a shared rule *while* referencing the shared file — that is
 # a summary, not duplication. Only flag when the shared file is never mentioned.
+
+# Gates must be defined as exit codes, not as text matched against a command's
+# output. A gate an implementing agent can satisfy by editing the matched text
+# will eventually be satisfied that way -- see the 2026-05-30 incident where
+# `zig build bench`'s source labels were renamed so ORCH's grep stopped firing.
+# Prose that *describes* the historical incident is fine; a live instruction to
+# match on output is not. Distinguished by whether the line reads as a directive.
+GATE_BY_OUTPUT_MATCH = re.compile(
+    r"^(?!\s*>).*?(?:If (?:the )?output (?:contains|shows)|"
+    r"\$result\s*-match|grep -qiE?)\s*.{0,40}"
+    r"(?:BENCHMARK_SETUP_ERROR|BPM_DB_URL)",
+    re.M,
+)
+
 SEVERITY_ORDER = {"BLOCKER": 0, "MAJOR": 1, "MINOR": 2}
 
 
@@ -153,6 +169,21 @@ def main(argv: list[str]) -> int:
                     "Tells the agent to set `started_at` itself. ORCH stamps `started_at` "
                     "immediately before dispatch — an agent that sets it produces a value "
                     "later than its own dispatch. See shared protocol §3.",
+                )
+            )
+
+        gate = GATE_BY_OUTPUT_MATCH.search(body)
+        if gate:
+            line_no = body[: gate.start()].count("\n") + 1
+            findings.append(
+                Finding(
+                    "A006",
+                    "BLOCKER",
+                    f"{rel}:{line_no}",
+                    "Defines a pipeline gate by matching text in a command's output. "
+                    "An agent can satisfy that by editing the text — which is exactly "
+                    "what happened on 2026-05-30. Use an exit code instead: "
+                    "`zig build test-env-verify`.",
                 )
             )
 

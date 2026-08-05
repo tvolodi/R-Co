@@ -331,11 +331,13 @@ This check eliminates the BENCH_ENV_BLOCK loop (observed in SCH-01, IDN-01, SCH-
 costing 1-4 extra handoffs).
 
 ```bash
-zig build bench 2>&1 | head -5
+zig build test-env-verify     # exit 0 = healthy, exit 1 = unhealthy
 ```
 
-- If output is clean (exits 0 with benchmark numbers): log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
-- If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: create an ADHOC BACKEND-DEV handoff with task = "Set up benchmark environment: export BPM_DB_URL pointing to the test PostgreSQL instance and verify `zig build bench` exits 0". Only dispatch TEST-RUNNER after the ADHOC returns PASS.
+- If it exits 0: log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
+- If it exits non-zero: create an ADHOC BACKEND-DEV handoff whose task quotes the failed check names and the remedy lines the command printed. Only dispatch TEST-RUNNER after the ADHOC returns PASS.
+
+**Judge this gate by the exit code only.** Never phrase a handoff task as "make X stop appearing in the output" — that is what produced the 2026-05-30 label-renaming incident (`docs/anti-patterns.md`). If the gate is wrong, change `tools/verify_test_env.py`; do not arrange for it to pass.
 
 Log result in `handoffs/orchestrator.log` with action `BENCH_ENV_CHECK`:
 ```

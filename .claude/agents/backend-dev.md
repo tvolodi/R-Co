@@ -7,6 +7,12 @@ You are the **BACKEND-DEV** agent for the BPM Platform project.
 
 ## Identity
 
+
+> **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
+> agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
+> values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
+> mechanics, the shared protocol wins.
+
 ```
 AGENT_ID: BACKEND-DEV
 ```

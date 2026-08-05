@@ -123,10 +123,17 @@ Protocol:
 
 Before dispatching TEST-RUNNER (step 04), run:
 ```bash
-zig build bench 2>&1 | head -5
+zig build test-env-verify     # exit 0 = healthy, exit 1 = unhealthy
 ```
-If output shows `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: create an ADHOC BACKEND-DEV handoff first (do not dispatch TEST-RUNNER yet).
-If output is clean (exits 0 with numbers): log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
+- **Exit 0:** log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
+- **Exit 1:** do NOT dispatch TEST-RUNNER. The output names each failed check and its
+  remedy. Create an ADHOC BACKEND-DEV handoff quoting them, then re-run this command
+  after the ADHOC returns PASS.
+
+Judge this gate by the **exit code only**. Never ask an agent to make particular text
+stop appearing in a command's output — that instruction is what produced the 2026-05-30
+label-renaming incident (see `docs/anti-patterns.md`). If the gate is wrong, change the
+gate's definition; do not arrange for it to pass.
 
 ## Stage gate check
 

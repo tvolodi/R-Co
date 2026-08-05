@@ -142,7 +142,8 @@ zig build migrate 2>&1   # must exit 0
 zig build bench 2>&1 | head -5
 ```
 - If `zig build migrate` fails: create ADHOC BACKEND-DEV handoff to reconcile schema. See `docs/guides/test_infrastructure_guide.md §3`.
-- If bench shows `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: create ADHOC BACKEND-DEV handoff. Re-run after ADHOC returns PASS.
+- If `zig build test-env-verify` exits non-zero: create an ADHOC BACKEND-DEV handoff quoting
+  the failed check names. Re-run after the ADHOC returns PASS. Judge by exit code only.
 - If both pass: log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
 
 Log:
