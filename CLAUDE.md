@@ -871,7 +871,7 @@ python tools/codegen_react_flow_node.py <spec>   # Type D → web/src/components
 ```
 Before validating, run lints:
 ```bash
-python tools/lint_frontend_conventions.py web/src
+python tools/lint_frontend_conventions.py
 python tools/lint_test_isolation.py tests/integration
 ```
 Any BLOCKER = STOP. Any MAJOR = fix before completing the handoff.
@@ -899,7 +899,7 @@ All must pass before completing.
 - [ ] Role-based UI hides elements (does not just disable them)
 - [ ] No secrets or tokens in source files
 - [ ] `npm run type-check` exits 0
-- [ ] `python tools/lint_frontend_conventions.py web/src` exits 0 (no BLOCKER/MAJOR)
+- [ ] `python tools/lint_frontend_conventions.py` exits 0 (no BLOCKER/MAJOR)
 - [ ] If the handoff used a Type B/D parameter file: only `{/* CUSTOM: ... */}` blocks were edited; the YAML was committed alongside the generated artefact
 
 **5. Commit implementation to the feature branch** (mandatory — do this before completing the handoff):

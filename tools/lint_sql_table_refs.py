@@ -55,6 +55,18 @@ EXEMPT_PATH_PREFIXES = (
     "src/design/",
 )
 
+# Individual files exempt for the same reason a spell-checker's own word list
+# is exempt: they must contain the literal in order to search for it.
+#
+# iss0123_regression_test.zig is the runnable counterpart of this linter — a
+# canary that walks the tree asserting the legacy literal is absent. It has to
+# name `dead_letter_queue` to look for it, so scanning it flags the check
+# itself. Without this exemption the linter reports 5 BLOCKERs against its own
+# regression test and can never pass, which is the same shape of defect as
+# ISS-0109 for lint_migration_schema.py (prose that merely *mentions* a
+# forbidden pattern tripping the same BLOCKER as a real violation).
+EXEMPT_FILES = ("tests/integration/iss0123_regression_test.zig",)
+
 # File extensions to scan.
 SCAN_EXTENSIONS = (".zig",)
 
@@ -84,6 +96,8 @@ class Issue:
 
 def _is_exempt(rel_path: str) -> bool:
     rel = rel_path.replace("\\", "/")
+    if rel in EXEMPT_FILES:
+        return True
     return any(rel.startswith(prefix) for prefix in EXEMPT_PATH_PREFIXES)
 
 
