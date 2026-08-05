@@ -90,10 +90,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # setup-zig@v1 resolves 0.16.0 through community mirrors, which returned
+      # 404/503 on the first run of this workflow. v2 is current, and the direct
+      # download from ziglang.org is kept as a fallback so a mirror outage
+      # cannot fail a build for reasons unrelated to the change under test.
       - name: Install Zig
-        uses: mlugg/setup-zig@v1
+        id: setup_zig
+        continue-on-error: true
+        uses: mlugg/setup-zig@v2
         with:
           version: 0.16.0
+
+      - name: Install Zig (direct fallback)
+        if: steps.setup_zig.outcome != 'success'
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 --retry-delay 5 \
+            https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz \
+            -o /tmp/zig.tar.xz
+          mkdir -p /opt/zig
+          tar -xJf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
+          echo "/opt/zig" >> "$GITHUB_PATH"
+
+      - name: Confirm Zig is on PATH
+        run: zig version
 
       - name: zig build
         run: zig build
