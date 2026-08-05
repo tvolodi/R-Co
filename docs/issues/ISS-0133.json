@@ -9,8 +9,8 @@
     "ISS-0102"
   ],
   "severity": "MAJOR",
-  "status": "OPEN",
-  "scope": "Engine unit-test coverage. No production impact; zig build / test / integration all green.",
+  "status": "RESOLVED",
+  "scope": "Engine unit-test coverage. No production impact from the original dead-test defect; however the fix uncovered and corrected genuine production ownership/leak bugs in src/engine/transition.zig itself (see resolution).",
   "symptom": "src/engine/transition.zig has 26 test blocks that never executed: build.zig referenced the file only as an imported module (transition_mod), never as an addTest root. Once wired, 26 compile errors surfaced from drift against a Zig stdlib upgrade and InstanceState/slice refactors. After fixing compilation: 23/30 pass, 5 leak, 2 crash.",
   "reproduction": "zig build test-transition",
   "root_cause_analysis": "Leaks are test-side: processNodeEntry returns an owned InstanceState that production callers free via freeInstanceState but these tests do not. Adding defer freeInstanceState naively regresses 23->22 passing because fixtures build InstanceState from string literals, so the free double-frees (source of the two exit-code-3 crashes). Each test needs individual fixture-ownership rework. TC-EE-02-02 is an assertion failure, possibly a genuine engine defect.",
@@ -21,5 +21,18 @@
     "test_engine_step.dependOn(&run_transition_tests.step) re-enabled in build.zig",
     "A check exists that fails when a file's test blocks are wired into no build target"
   ],
-  "evidence_file": "GH #428 contains the full per-test failure table"
+  "evidence_file": "GH #428 contains the full per-test failure table",
+  "resolution": {
+    "resolved_at": "2026-08-05T16:31:04Z",
+    "summary": "All 30 tests pass with zero leaks/crashes. Fixed by: (1) crash fixtures (TC-EE-02-04/06) rebuilt to use heap-owned token strings instead of literals, via new dupeTokenSlice helper; (2) leak fixtures (TC-EE-02-07/08, TC-EE-06-01..05, TC-EE-07-01..04) given defer freeInstanceState/freeTransitionResult/freePendingEvents cleanup, with new helpers (dupeTokenSlice, emptyOwnedStrSlice, freePendingEventPayload) since stack-array fields crash if freed like heap slices; (3) TC-EE-02-02 was a stale assertion, not an engine defect -- fixed to match TC-EE-02-03's already-correct expectation that the last token reaching END clears tokens and sets COMPLETED; (4) TC-EE-07-04 was a fixture bug (wrong cancelled_branch_ids); (5) fixing the END/cancel/join-fire leak paths uncovered and fixed four genuine production defects in transition.zig: transition()'s token clone silently dropping waiting_child_instance_id on every call, three processNodeEntry paths (END completion, ALL_BRANCHES_CANCELLED, PARALLEL_GATEWAY join fire) leaking discarded tokens on every real instance completion/cancellation/join, parseTimerConfig/parseSubProcessConfig collapsing OutOfMemory into domain errors (defeating checkAllAllocationFailures), and a latent use-after-free in the PARALLEL_GATEWAY split's recursive per-token loop (fixed by snapshotting target node_ids before recursing) -- caught by a previously-passing, unrelated test once the transition suite was wired into zig build test.",
+    "build_zig_change": "test_engine_step.dependOn(&run_transition_tests.step) re-enabled at build.zig; transition.zig tests now run under zig build test-engine and zig build test.",
+    "wiring_check_tool": "tools/lint_test_wiring.py, exposed as `zig build test-wiring-check`. Scans src/**/*.zig and tests/**/*.zig for test blocks, cross-references against build.zig addTest roots with one level of @import shim resolution. Verified via negative control (temporarily un-wiring transition_test_root.zig and confirming detection). Not wired as a dependency of `test`/`build` because it surfaced 55 pre-existing unrelated unwired files (filed as ISS-0137 / GH #439) that would turn the Green-Main Gate red for a condition this fix did not cause.",
+    "verification": "zig build test-transition: 30/30 pass. zig build test-engine: 46/46 pass. zig build: exit 0, no 'error set' output. zig build test: 617/701 pass, 0 failed, 84 skipped (unchanged baseline) -- independently re-run and confirmed, not just taken from the implementing agent's report.",
+    "follow_up_issues_filed": [
+      "ISS-0137 / GH #439 -- 55 pre-existing unwired test-bearing files found by the new tool, deliberately not fixed here (out of scope)",
+      "ISS-0138 / GH #440 -- zig build test-env-verify and test-wiring-check fail on Windows when python3 resolves to the WindowsApps App Execution Alias stub instead of a real interpreter (pre-existing condition, unrelated to this fix's correctness, found during independent re-verification)"
+    ],
+    "branch": "feature/WF03-gh428-transition-tests",
+    "commit": "6902fb5e9fedc3f2460bb86fa56a1b1b6c4b4761"
+  }
 }
