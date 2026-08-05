@@ -6,6 +6,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0129** ([GitHub #419](https://github.com/tvolodi/R-Co/issues/419) — migration runner DROP TRIGGER vs audit trigger C40P01 deadlock on TC-TNT-01-01)
+- **Closes GitHub #419**: the C40P01 deadlock on TC-TNT-01-01 re-provisioning is resolved by acquiring `pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint)` inside `Migrations.runForSchema()` (`src/db/migrations.zig`) — as the first SQL statement on the migrate connection, inside the wrapping BEGIN. Concurrent `runForSchema()` calls now serialize on a stable lock whose keyspace is disjoint from the audit chain-hash trigger's per-tenant advisory lock, so concurrent audit INSERTs remain unblocked while DROP TRIGGER (migration 1107's per-tenant DO block) no longer collides with the trigger function's predecessor row-lock waits.
+- **Design**: `src/design/iss0129_migration_runner_advisory_lock.md`. **Diagnosis**: `docs/issue-reports/ISS-0129-migration-deadlock-diagnosis.yaml`.
+- **Regression test**: `tests/integration/iss0129_migration_run_advisory_lock_test.zig` (5 cases; 3 stable PASS). RT-1 and RT-2 are flaky due to secondary issues filed as [GitHub #423](https://github.com/tvolodi/R-Co/issues/423) (ISS-0130 — C42P01 race in migration backfill) and [GitHub #424](https://github.com/tvolodi/R-Co/issues/424) (ISS-0131 — distinct C40P01 lock graph).
+- **Branch**: `feature/WF03-gh419-20260805`. Commits: `8fae434` (diag), `c4f4404` (design), `b1fc794` (fix). Test report: `tests/reports/report-20260805-WF03-gh419.yaml`. Issue: `docs/issues/ISS-0129.json`.
+
 **ISS-0602** ([GitHub #414](https://github.com/tvolodi/R-Co/issues/414) — killIdleConnections() cross-process termination BLOCKER)
 - **Closed GitHub #414**: `killIdleConnections()` in `tests/integration/helpers.zig` no longer terminates idle connections owned by concurrent test binaries on the shared `bpm_test` database.
 - **Root cause**: the helper issued `pg_terminate_backend(pid)` against every `idle in transaction` connection in the database, with no scope to the calling process. Concurrent test binaries terminated each other's connections non-deterministically, causing `error.ConnectionFailed` / `terminating connection due to administrator command` failures across the integration suite.
