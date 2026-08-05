@@ -1,0 +1,63 @@
+{
+  "handoff_id": "3a9c5b8e-2f41-4d7a-9e6b-1c4f8d3a5e92",
+  "run_id": "WF03-gh419-20260805",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-05T10:37:22Z",
+  "started_at": "2026-08-05T10:37:22Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "3f8a91c4-2b17-4e0a-9d3f-5e2c7a8b4d61",
+      "7c2e8a91-6f3d-4b5e-a1c8-2d9f7e4b6a03",
+      "9b4d6e82-1c5a-4f78-9e3b-6a2c8d4f1e07",
+      "a5e3c7f4-8b21-4d6a-bf9c-3e8d1a6f4c92",
+      "c8f4e2a7-6d93-4e15-8b1f-2a9c5d8e4b73",
+      "d2a8b1c5-4f7e-4a3d-9b6c-1e8f5d2a7c34",
+      "f9c2a1e8-7b54-4d3a-bf6e-2c8d5a1e9f47",
+      "b4c7a5f3-9e21-4d8a-8b6c-3e1f5d2a7c84",
+      "1d8e7a4f-6c52-4b89-9e1d-5f3a8b2c4d97",
+      "8e6a4d2f-1b95-4c3e-9f7a-5d8b2c1e6f43"
+    ],
+    "artifacts_in": [
+      "feature/WF03-gh419-20260805 branch",
+      "CHANGELOG.md",
+      "src/db/migrations.zig",
+      "tests/integration/iss0129_migration_run_advisory_lock_test.zig",
+      "src/design/iss0129_migration_runner_advisory_lock.md"
+    ],
+    "issue_id": "ISS-0129",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/419"
+  },
+  "task": {
+    "description": "WF-03 Step Final \u2014 BACKEND-DEV: Git merge to main (mandatory per CLAUDE.md \"GitHub Branch Management (MANDATORY)\")\n\nThe fix for ISS-0129 / GH-419 is verified and documented. All step handoffs are COMPLETED. Your final job is to merge the feature branch to main and clean up.\n\nProcedure per docs/agents/protocols/GIT_MERGE.md and CLAUDE.md \"GitHub Branch Management (MANDATORY)\":\n\n1. **Create the PR** (if not already created):\n   ```bash\n   gh pr create --base main --title \"fix(WF03-gh419): pg_advisory_xact_lock in Migrations.runForSchema (ISS-0129)\" --body \"Resolves GH #419.\n\n   The C40P01 deadlock on TC-TNT-01-01 re-provisioning is fixed by acquiring pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint) inside Migrations.runForSchema(), so concurrent per-tenant migration runs serialize on a stable key.\n\n   Design: src/design/iss0129_migration_runner_advisory_lock.md\n   Diagnosis: docs/issue-reports/ISS-0129-migration-deadlock-diagnosis.yaml\n   Regression test: tests/integration/iss0129_migration_run_advisory_lock_test.zig (5 cases, 3 stable pass; RT-1/RT-2 are flaky due to secondary issues filed as GH-423 / ISS-0130 and GH-424 / ISS-0131)\n\n   Verified: 172 integration tests pass with zero C40P01 deadlocks. TC-TNT-01-01 passes.\n\n   Secondary issues:\n   - GH-423 / ISS-0130: C42P01 race on stale search_path post-GBL-112\n   - GH-424 / ISS-0131: different C40P01 lock graph under full-suite concurrency\n   \"\n   ```\n\n2. **Verify CI checks pass** (or skip if no CI configured for this repo):\n   ```bash\n   gh pr checks --watch   # optional; max wait 5 minutes\n   ```\n\n3. **Squash-merge and delete branch**:\n   ```bash\n   gh pr merge --squash --delete-branch\n   ```\n\n4. **Verify branch deletion**:\n   ```bash\n   git fetch origin\n   git branch -r | grep feature/WF03-gh419-20260805 || echo \"Branch deleted\"\n   ```\n\n5. **Return to main and clean up locally**:\n   ```bash\n   git checkout main\n   git pull --ff-only origin main\n   git branch -d feature/WF03-gh419-20260805\n   git branch --show-current   # must output: main\n   git status                  # must be clean\n   git log --oneline -3        # confirm squash-merge commit visible\n   ```\n\n6. **Record in handoff result**:\n   - artifacts_out: include PR number (e.g., `PR #425`) and merge commit SHA\n   - summary: \"Merged PR #XXX to main via squash. Branch feature/WF03-gh419-20260805 deleted from remote and locally.\"\n\nWhen done:\n- Handoff JSON: status=COMPLETED, result.status=PASS, completed_at=exact Get-Date output\n- artifacts_out = [\"PR #<number>\", \"<merge-commit-sha>\"]\n- result.next_action = \"WF-03 complete \u2014 issue closed, branch merged\"\n- Update `handoffs/registry.json` (entry status COMPLETED)\n- Append to `handoffs/orchestrator.log`: `<completed_at> | COMPLETE | WF03-gh419-20260805 | 3a9c5b8e | BACKEND-DEV | PASS \u2014 squash-merged PR #<num> to main, branch deleted`\n- Append to `handoffs/orchestrator.log`: `<completed_at> | WF03_COMPLETE | WF03-gh419-20260805 | --- | ORCH | Issue GH-419 resolved, 2 secondary issues filed (GH-423, GH-424)`\n\nPowerShell stderr false positive note: `gh pr create` and `gh pr merge` may print to stderr; check for the URL/merge-commit SHA in output and treat as success if present.\n\nReturn brief: PASS/FAIL, PR number, merge SHA, final branch state.",
+    "acceptance_criteria": [
+      "PR created and merged to main via squash",
+      "Feature branch deleted from remote",
+      "Local repo on main with clean working tree",
+      "git log shows squash-merge commit",
+      "harness log: PENDING \u2192 COMPLETED with final completion entry"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Squash-merged PR #425 to main. Branch feature/WF03-gh419-20260805 deleted from remote and locally. Local repo on main with clean working tree. Verified: git branch --show-current = main; git log shows squash-merge commit ab58e5e.",
+    "artifacts_out": [
+      "PR #425",
+      "ab58e5e"
+    ],
+    "issues": [],
+    "next_action": "WF-03 complete \u2014 issue GH-419 closed, branch merged, 2 secondary issues filed (GH-423, GH-424)"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "completed_at": "2026-08-05T10:49:05Z"
+}
