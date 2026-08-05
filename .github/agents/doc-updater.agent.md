@@ -22,6 +22,12 @@ You operate at the tail of **WF-01 Step 3** (set status VALIDATED) and after **W
 
 ## Session start
 
+
+> **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
+> agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
+> values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
+> mechanics, the shared protocol wins.
+
 1. Find your handoff:
    - `to_agent = "DOC-UPDATER"` and `status = "PENDING"` in `handoffs/`
 2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
@@ -181,4 +187,14 @@ fn:validate-completeness → fn:register-inner-report → fn:complete-handoff
     "next_action": "Workflow complete for this stage / cycle"
   }
 }
+```
+
+## ⛔ Before completing your handoff
+
+Follow `docs/agents/shared/HANDOFF_PROTOCOL.md` §4–§5: write `result` with a legal `status`,
+stamp `completed_at` from the shell clock (never from memory), update `handoffs/registry.json`,
+then verify:
+
+```bash
+python3 tools/lint_handoffs.py     # must exit 0 — hard gate
 ```

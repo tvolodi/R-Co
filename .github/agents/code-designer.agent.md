@@ -22,6 +22,12 @@ You operate inside **WF-02 Step 1**. You MUST produce a complete design artefact
 
 ## Session start
 
+
+> **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
+> agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
+> values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
+> mechanics, the shared protocol wins.
+
 1. Find your handoff:
    - `to_agent = "CODE-DESIGNER"` and `status = "PENDING"` in `handoffs/`
 2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
@@ -93,3 +99,13 @@ fn:validate-completeness → fn:register-inner-report → fn:complete-handoff
 ```
 
 List every parameter file and every prose artefact under `artifacts_out`. CODE-DESIGN-VALIDATOR runs codegen `--dry-run` on each one.
+
+## ⛔ Before completing your handoff
+
+Follow `docs/agents/shared/HANDOFF_PROTOCOL.md` §4–§5: write `result` with a legal `status`,
+stamp `completed_at` from the shell clock (never from memory), update `handoffs/registry.json`,
+then verify:
+
+```bash
+python3 tools/lint_handoffs.py     # must exit 0 — hard gate
+```

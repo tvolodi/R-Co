@@ -22,12 +22,18 @@ You operate inside **WF-01 Step 2**. A PASS from you is the gate that allows WF-
 
 ## Session start
 
+
+> **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
+> agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
+> values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
+> mechanics, the shared protocol wins.
+
 1. Find your handoff:
    - `to_agent = "REQ-VALIDATOR"` and `status = "PENDING"` in `handoffs/`
 2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
 3. Read `docs/agents/workflows/WF-01_requirement_development.md` (Step 2 section)
 3. Read the requirements listed in `context.artifacts_in`
-4. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
+4. Set handoff status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps it before dispatch)
 
 ## Automated validation (run first)
 
@@ -80,4 +86,14 @@ fn:validate-completeness → fn:register-inner-report → fn:complete-handoff
     "next_action": "Route to DOC-UPDATER (WF-01 Step 3) to set status VALIDATED"
   }
 }
+```
+
+## ⛔ Before completing your handoff
+
+Follow `docs/agents/shared/HANDOFF_PROTOCOL.md` §4–§5: write `result` with a legal `status`,
+stamp `completed_at` from the shell clock (never from memory), update `handoffs/registry.json`,
+then verify:
+
+```bash
+python3 tools/lint_handoffs.py     # must exit 0 — hard gate
 ```
