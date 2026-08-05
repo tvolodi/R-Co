@@ -1,1 +1,0 @@
-{"slug":"acme1","display_name":"Acme1 Corp","admin_email":"admin@acme1.com","admin_username":"acme1-admin","admin_display_name":"Acme1 Admin","hostname":"acme1.localhost","client_config":{"redirect_uris":["http://acme1.localhost:5173/*","http://acme1.localhost/*","https://acme1.localhost/*"]}}

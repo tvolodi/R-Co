@@ -1,1 +1,0 @@
-{"clientId":"bpm-admin","name":"BPM Admin Client","enabled":true,"clientAuthenticatorType":"client-secret","secret":"admin","serviceAccountsEnabled":true,"publicClient":false,"standardFlowEnabled":false,"directAccessGrantsEnabled":false}
