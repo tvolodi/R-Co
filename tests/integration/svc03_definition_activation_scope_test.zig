@@ -218,7 +218,9 @@ test "svc03: activation passes for global service reference" {
     });
     defer freeServiceRecord(alloc, rec);
 
-    const any_tenant = try parseUuid36("10000000-0000-0000-0000-000000000001");
+    // Per-test-generated UUID (see docs/guides/test_infrastructure_guide.md §9 / ISS-0121).
+    var any_tenant: [16]u8 = undefined;
+    fillRandom(&any_tenant);
     var validator = ServiceScopeValidator.init(alloc, &catalog, &registry);
 
     const graph = try buildServiceTaskGraph(alloc, "N1", svc_id, null);
@@ -370,7 +372,9 @@ test "svc03: activation rejected for unregistered service reference" {
     defer registry.deinit();
     plugin_registry.freezePluginRegistry(&registry);
 
-    const any_tenant = try parseUuid36("40000000-0000-0000-0000-000000000001");
+    // Per-test-generated UUID (see docs/guides/test_infrastructure_guide.md §9 / ISS-0121).
+    var any_tenant: [16]u8 = undefined;
+    fillRandom(&any_tenant);
     var validator = ServiceScopeValidator.init(alloc, &catalog, &registry);
 
     const graph = try buildServiceTaskGraph(alloc, "N1", "svc-does-not-exist-at-all", null);

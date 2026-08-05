@@ -50,3 +50,4 @@
 2026-08-05T19:23:20Z | ROUTE | WF03-gh445-flaky-pd07-20260805 | b47ef24b | ORCH -> BACKEND-DEV | GIT_SETUP_COMPLETE branch=feature/WF03-gh445-flaky-pd07-20260805
 2026-08-05T19:21:55Z | GIT_MERGE | WF03-gh445-flaky-pd07-20260805 | b47ef24b | BACKEND-DEV | PR #451 squash-merged to main (fdfe739); branch deleted; GH #445 auto-closed
 2026-08-05T19:32:29Z | DONE | WF03-gh445-flaky-pd07-20260805 | b47ef24b | BACKEND-DEV | ISS-0141 RESOLVED; docs follow-up PR #452 open
+2026-08-05T20:04:25Z | COMPLETE | WF03-gh446-lint-baseline-20260805 | c39a5ff3 | BACKEND-DEV | git-setup PASS; fixed 41/48 genuinely-new T010/T020/T050 findings, regenerated baseline (225 entries), lint_test_isolation.py exits 0, test-env-verify C5 PASS; filed ISS-0144/GH#454 for unrelated pre-existing test-integration concurrency flakiness

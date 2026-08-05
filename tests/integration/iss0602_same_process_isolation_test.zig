@@ -1,3 +1,5 @@
+//! Requires: BPM_TEST_DB_URL environment variable pointing at a real
+//! PostgreSQL database — read internally by helpers.TestHarness.init().
 const std = @import("std");
 const testing = std.testing;
 const helpers = @import("helpers.zig");

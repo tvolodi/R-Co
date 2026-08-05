@@ -25,9 +25,20 @@ const TaskStore = bpm.tasks.TaskStore;
 const TimerStore = bpm.scheduler;
 const Scheduler = bpm.scheduler_poller.Scheduler;
 
-/// Fixed UUIDs used across tests.
-const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
-const actor_id_str = "87654321-4321-8765-4321-876543218765";
+/// Per-test-run UUIDs — generated fresh instead of fixed literals so these
+/// fixtures follow the per-test-UUID isolation convention (see
+/// docs/guides/test_infrastructure_guide.md §9 / ISS-0121).
+fn makeCreatorUuid() [16]u8 {
+    var bytes: bpm.uuid.Uuid = undefined;
+    bpm.uuid.generateUuidV4BytesInto(&bytes);
+    return bytes;
+}
+
+/// Allocates a fresh canonical UUID string for use as an actor id. Caller
+/// owns the returned slice.
+fn makeActorIdStr(allocator: std.mem.Allocator) ![]const u8 {
+    return bpm.uuid.newUuidV4(allocator);
+}
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env = portable_env.globalEnviron();
@@ -176,7 +187,7 @@ fn createAndActivateDefinition(
     name: []const u8,
     graph: DefinitionGraph,
 ) ![16]u8 {
-    const created_by = try parseUuid(creator_uuid_str);
+    const created_by = makeCreatorUuid();
     const draft = try def_store.create(allocator, CreateParams{
         .name = name,
         .version = "1.0",
@@ -582,6 +593,8 @@ test "TC-SCH-02-02: scheduler skips locked timers and does not fire CANCELLED ti
     );
     try std.testing.expectEqual(@as(i64, 1), pending_before_cancel);
 
+    const actor_id_str = try makeActorIdStr(allocator);
+    defer allocator.free(actor_id_str);
     try inst_store.cancelInstance(allocator, &task_store, inst.instance_id, actor_id_str);
 
     const post_cancel_summary = try scheduler.pollDueTimers(allocator);
@@ -872,6 +885,8 @@ test "TC-SCH-03-02: cancelling an instance atomically cancels all pending timers
     try std.testing.expectEqual(@as(i64, 2), pending_before_cancel);
     try std.testing.expectEqual(@as(i64, 1), fired_before_cancel);
 
+    const actor_id_str = try makeActorIdStr(allocator);
+    defer allocator.free(actor_id_str);
     try inst_store.cancelInstance(allocator, &task_store, inst.instance_id, actor_id_str);
 
     const pending_after_cancel = try countInt(
@@ -956,6 +971,8 @@ test "TC-SCH-03-03: fire-before-cancel outcome keeps timer FIRED (first-commit-w
     const fired_summary = try scheduler.pollDueTimers(allocator);
     try std.testing.expectEqual(@as(u32, 1), fired_summary.fired);
 
+    const actor_id_str = try makeActorIdStr(allocator);
+    defer allocator.free(actor_id_str);
     try inst_store.cancelInstance(allocator, &task_store, inst.instance_id, actor_id_str);
 
     const fired_after_cancel = try countInt(
@@ -1017,6 +1034,8 @@ test "TC-SCH-03-04: cancel-before-fire outcome keeps timer CANCELLED and prevent
     defer allocator.free(inst_id_hex);
     defer cleanupInstance(&pool, inst_id_hex);
 
+    const actor_id_str = try makeActorIdStr(allocator);
+    defer allocator.free(actor_id_str);
     try inst_store.cancelInstance(allocator, &task_store, inst.instance_id, actor_id_str);
 
     var scheduler = Scheduler.init(&pool, .{});
@@ -1980,6 +1999,8 @@ test "TC-SCH-07-04: cancelling instance cancels recurring chain and prevents fur
         "-1 second",
     );
 
+    const actor_id_str = try makeActorIdStr(allocator);
+    defer allocator.free(actor_id_str);
     try inst_store.cancelInstance(allocator, &task_store, inst.instance_id, actor_id_str);
 
     var scheduler = Scheduler.init(&pool, .{});

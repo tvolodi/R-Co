@@ -9,6 +9,9 @@
 //! other child's backend, so child B's connection must survive.
 //!
 //! Exits 0 with `CROSS_PROCESS_A_OK` on stdout when all assertions pass.
+//!
+//! Requires: BPM_TEST_DB_URL environment variable pointing at a real
+//! PostgreSQL database — read internally by helpers.TestHarness.init().
 
 const std = @import("std");
 const testing = std.testing;

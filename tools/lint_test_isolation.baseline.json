@@ -1,3598 +1,1556 @@
 {
-  "version": 1,
-  "generated_at": "2026-05-29T16:26:29Z",
+  "version": 2,
+  "generated_at": "2026-08-05T19:17:41Z",
   "source": "tools/lint_test_isolation.py --no-baseline --json tests/integration",
+  "regenerated_by": "WF03-gh446-lint-baseline-20260805 (GitHub #446 / ISS-0142)",
+  "regeneration_note": "Regenerated against tests/integration/ current file/line state. 218 of 225 entries are line-number-shifted restatements of findings already present in the 2026-05-29T16:26:29Z baseline (same file+code+message, different line -- legitimate baseline maintenance per docs/issues/ISS-0142.json). The remaining 7 are newly-triaged and judged non-actionable this session; see ISS-0142.json 'progress' field and the WF03-gh446 commit message for per-finding rationale. 48 other genuinely-new findings discovered in this same scan were fixed in source rather than baselined -- see the same commit.",
   "issues": [
     {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 143,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000123` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 145,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 216,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 218,
-      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333333` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 219,
-      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333334` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 220,
-      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333335` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 221,
-      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333336` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 311,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 313,
-      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444440` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 314,
-      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444441` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 315,
-      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444442` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 316,
-      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444443` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 317,
-      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444444` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 318,
-      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444445` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 319,
-      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444446` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 452,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 453,
-      "message": "hardcoded UUID `55555555-5555-5555-5555-555555555551` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp02_tenant_scope_test.zig",
-      "line": 454,
-      "message": "hardcoded UUID `55555555-5555-5555-5555-555555555552` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp03_tenant_context_resolution_test.zig",
-      "line": 11,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp03_tenant_context_resolution_test.zig",
-      "line": 117,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000123` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp03_tenant_context_resolution_test.zig",
-      "line": 208,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000124` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp03_tenant_context_resolution_test.zig",
-      "line": 280,
-      "message": "hardcoded UUID `55555555-5555-5555-5555-555555555550` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp03_tenant_context_resolution_test.zig",
-      "line": 281,
-      "message": "hardcoded UUID `55555555-5555-5555-5555-555555555551` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp03_tenant_context_resolution_test.zig",
-      "line": 118,
-      "message": "module-level mutable var `id_a` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp03_tenant_context_resolution_test.zig",
-      "line": 120,
-      "message": "module-level mutable var `id_b` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp03_tenant_context_resolution_test.zig",
-      "line": 209,
-      "message": "module-level mutable var `id_b` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp04_user_tenant_binding_test.zig",
-      "line": 14,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp04_user_tenant_binding_test.zig",
       "line": 15,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp04_user_tenant_binding_test.zig",
-      "line": 34,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "line": 16,
+      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp04_user_tenant_binding_test.zig",
-      "line": 44,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/adp04a_external_identity_linkage_test.zig",
-      "line": 11,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
+      "file": "tests/integration/adp04_user_tenant_binding_test.zig",
+      "line": 35,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp04a_external_identity_linkage_test.zig",
       "line": 12,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/adp04a_external_identity_linkage_test.zig",
+      "line": 13,
+      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp04b_tenant_realm_binding_test.zig",
-      "line": 39,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` — generate per-test UUIDs instead"
+      "line": 40,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp04b_tenant_realm_binding_test.zig",
-      "line": 30,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp05_instance_artifact_hash_test.zig",
-      "line": 23,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000ad05` — generate per-test UUIDs instead"
+      "line": 24,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000ad05` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp05_instance_artifact_hash_test.zig",
-      "line": 57,
-      "message": "module-level mutable var `compact` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp05_instance_artifact_hash_test.zig",
-      "line": 58,
-      "message": "module-level mutable var `idx` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp05_instance_artifact_hash_test.zig",
-      "line": 66,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp05_instance_artifact_hash_test.zig",
-      "line": 110,
-      "message": "module-level mutable var `digest` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "line": 126,
-      "message": "hardcoded UUID `ad060000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "line": 127,
-      "message": "hardcoded UUID `ad060000-0000-0000-0000-0000000000d1` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "line": 128,
-      "message": "hardcoded UUID `ad060000-0000-0000-0000-0000000000a1` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "line": 129,
-      "message": "hardcoded UUID `11111111-2222-3333-4444-555555555555` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "line": 232,
-      "message": "hardcoded UUID `ad060000-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "line": 233,
-      "message": "hardcoded UUID `ad060000-0000-0000-0000-0000000000d2` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "line": 234,
-      "message": "hardcoded UUID `ad060000-0000-0000-0000-0000000000a2` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "line": 235,
-      "message": "hardcoded UUID `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "line": 33,
-      "message": "module-level mutable var `compact` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "line": 34,
-      "message": "module-level mutable var `idx` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "line": 42,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
-      "line": 29,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "line": 37,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
-      "line": 38,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
+      "line": 47,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
-      "line": 206,
-      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333333` — generate per-test UUIDs instead"
+      "line": 216,
+      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333333` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
-      "line": 212,
-      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333333` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-      "line": 166,
-      "message": "hardcoded UUID `a9000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-      "line": 167,
-      "message": "hardcoded UUID `b9000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-      "line": 265,
-      "message": "hardcoded UUID `c9000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-      "line": 312,
-      "message": "hardcoded UUID `c9000000-0000-0000-0000-000000000102` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-      "line": 314,
-      "message": "hardcoded UUID `c9000000-0000-0000-0000-000000000103` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-      "line": 323,
-      "message": "hardcoded UUID `d9000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "line": 222,
+      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333333` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
+      "line": 308,
+      "message": "hardcoded UUID `c9000000-0000-0000-0000-000000000102` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
+      "line": 310,
+      "message": "hardcoded UUID `c9000000-0000-0000-0000-000000000103` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
+      "code": "T050",
+      "file": "tests/integration/adp10_agent_io_capture_audit_test.zig",
+      "line": 1,
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
+    },
+    {
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp10_agent_io_capture_audit_test.zig",
       "line": 49,
-      "message": "hardcoded UUID `a1000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `a1000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp10_agent_io_capture_audit_test.zig",
       "line": 170,
-      "message": "hardcoded UUID `a1000000-0000-0000-0000-000000000101` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `a1000000-0000-0000-0000-000000000101` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp10_agent_io_capture_audit_test.zig",
       "line": 181,
-      "message": "hardcoded UUID `a1000000-0000-0000-0000-000000000102` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T050",
-      "file": "tests/integration/adp10_agent_io_capture_audit_test.zig",
-      "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp12_default_tenant_regression_test.zig",
-      "line": 48,
-      "message": "module-level mutable var `seen` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/adp12_default_tenant_regression_test.zig",
-      "line": 57,
-      "message": "module-level mutable var `stage` shared across test blocks"
+      "message": "hardcoded UUID `a1000000-0000-0000-0000-000000000102` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/adp12_default_tenant_regression_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/api02_crud_test.zig",
-      "line": 110,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
+      "line": 111,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/api02_crud_test.zig",
-      "line": 397,
-      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` — generate per-test UUIDs instead"
+      "line": 398,
+      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/api02_crud_test.zig",
-      "line": 541,
-      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-fffffffffff2` — generate per-test UUIDs instead"
+      "line": 542,
+      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-fffffffffff2` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/api02_crud_test.zig",
-      "line": 741,
-      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-fffffffffff3` — generate per-test UUIDs instead"
+      "line": 742,
+      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-fffffffffff3` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/api02_crud_test.zig",
-      "line": 1075,
-      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-fffffffffff4` — generate per-test UUIDs instead"
+      "line": 1076,
+      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-fffffffffff4` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/api02_crud_test.zig",
-      "line": 76,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/api02_crud_test.zig",
-      "line": 77,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/api02_crud_test.zig",
-      "line": 85,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/api03_instance_read_test.zig",
-      "line": 61,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
+      "line": 62,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/api03_instance_read_test.zig",
-      "line": 63,
-      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` — generate per-test UUIDs instead"
+      "line": 64,
+      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/api03_instance_read_test.zig",
-      "line": 65,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/api03_instance_read_test.zig",
-      "line": 979,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/api03_instance_read_test.zig",
-      "line": 1021,
-      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/api03_instance_read_test.zig",
-      "line": 108,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/api03_instance_read_test.zig",
-      "line": 109,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/api03_instance_read_test.zig",
-      "line": 117,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/api03_instance_read_test.zig",
-      "line": 484,
-      "message": "module-level mutable var `instance_ids` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/api03_instance_read_test.zig",
-      "line": 738,
-      "message": "module-level mutable var `instance_ids` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/concurrent_instances_test.zig",
-      "line": 263,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/concurrent_instances_test.zig",
-      "line": 375,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/concurrent_instances_test.zig",
-      "line": 78,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/concurrent_instances_test.zig",
-      "line": 79,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/concurrent_instances_test.zig",
-      "line": 87,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/concurrent_instances_test.zig",
-      "line": 226,
-      "message": "module-level mutable var `attempts` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/concurrent_instances_test.zig",
-      "line": 283,
-      "message": "module-level mutable var `ctxs` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/concurrent_instances_test.zig",
-      "line": 284,
-      "message": "module-level mutable var `inst_hexes` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/concurrent_instances_test.zig",
-      "line": 309,
-      "message": "module-level mutable var `threads` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/concurrent_instances_test.zig",
-      "line": 395,
-      "message": "module-level mutable var `inst_id_hex` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/db_integration_test.zig",
-      "line": 247,
-      "message": "hardcoded UUID `db0301aa-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/db_integration_test.zig",
-      "line": 248,
-      "message": "hardcoded UUID `db0301bb-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/db_integration_test.zig",
-      "line": 328,
-      "message": "hardcoded UUID `db0302cc-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/db_integration_test.zig",
-      "line": 329,
-      "message": "hardcoded UUID `db0302dd-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/db_integration_test.zig",
-      "line": 349,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/db_integration_test.zig",
-      "line": 268,
-      "message": "module-level mutable var `inst_uuid` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/db_integration_test.zig",
-      "line": 270,
-      "message": "module-level mutable var `actor_uuid` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/definition_test.zig",
-      "line": 91,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/definition_test.zig",
-      "line": 57,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/definition_test.zig",
-      "line": 58,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/definition_test.zig",
       "line": 66,
-      "message": "module-level mutable var `out` shared across test blocks"
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/api03_instance_read_test.zig",
+      "line": 980,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/api03_instance_read_test.zig",
+      "line": 1022,
+      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/concurrent_instances_test.zig",
+      "line": 287,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/concurrent_instances_test.zig",
+      "line": 406,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/db_integration_test.zig",
+      "line": 380,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/definition_test.zig",
+      "line": 92,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ee01_start_instance_test.zig",
-      "line": 43,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
+      "line": 44,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ee01_start_instance_test.zig",
-      "line": 45,
-      "message": "hardcoded UUID `00000000-0000-4000-8000-000000000000` — generate per-test UUIDs instead"
+      "line": 46,
+      "message": "hardcoded UUID `00000000-0000-4000-8000-000000000000` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee01_start_instance_test.zig",
-      "line": 88,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee01_start_instance_test.zig",
-      "line": 89,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee01_start_instance_test.zig",
-      "line": 97,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ee03_ee04_tasks_api_test.zig",
-      "line": 35,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ee03_ee04_tasks_api_test.zig",
-      "line": 236,
-      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ee03_ee04_tasks_api_test.zig",
-      "line": 310,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ee03_ee04_tasks_api_test.zig",
-      "line": 373,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee03_ee04_tasks_api_test.zig",
-      "line": 75,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee03_ee04_tasks_api_test.zig",
-      "line": 76,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee03_ee04_tasks_api_test.zig",
-      "line": 84,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ee03_task_store_test.zig",
       "line": 36,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/ee03_ee04_tasks_api_test.zig",
+      "line": 237,
+      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/ee03_ee04_tasks_api_test.zig",
+      "line": 311,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/ee03_ee04_tasks_api_test.zig",
+      "line": 374,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
       "file": "tests/integration/ee03_task_store_test.zig",
-      "line": 76,
-      "message": "module-level mutable var `buf` shared across test blocks"
+      "line": 37,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee03_task_store_test.zig",
-      "line": 77,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee03_task_store_test.zig",
-      "line": 85,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee03_task_store_test.zig",
-      "line": 302,
-      "message": "module-level mutable var `nonexistent_id` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ee08_cancel_instance_test.zig",
+      "line": 44,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/ee08_cancel_instance_test.zig",
+      "line": 46,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/ee08_cancel_instance_test.zig",
+      "line": 48,
+      "message": "hardcoded UUID `00000000-0000-4000-8000-000000000000` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/ee09_merge_variables_test.zig",
       "line": 43,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/ee08_cancel_instance_test.zig",
-      "line": 45,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "file": "tests/integration/env01_test.zig",
+      "line": 129,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/ee08_cancel_instance_test.zig",
-      "line": 47,
-      "message": "hardcoded UUID `00000000-0000-4000-8000-000000000000` — generate per-test UUIDs instead"
+      "file": "tests/integration/env01_test.zig",
+      "line": 463,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee08_cancel_instance_test.zig",
-      "line": 93,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee08_cancel_instance_test.zig",
-      "line": 94,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee08_cancel_instance_test.zig",
-      "line": 102,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ee09_merge_variables_test.zig",
-      "line": 42,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee09_merge_variables_test.zig",
-      "line": 66,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee09_merge_variables_test.zig",
-      "line": 67,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee09_merge_variables_test.zig",
-      "line": 75,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ee09_merge_variables_test.zig",
-      "line": 384,
-      "message": "module-level mutable var `def_id_hex_buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 60,
-      "message": "hardcoded UUID `aabbccdd-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "line": 61,
+      "message": "hardcoded UUID `aabbccdd-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/event_store_integration_test.zig",
-      "line": 131,
-      "message": "hardcoded UUID `e5010000-0001-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 132,
-      "message": "hardcoded UUID `defdef00-0001-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5010000-0001-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 137,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "line": 133,
+      "message": "hardcoded UUID `defdef00-0001-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 197,
-      "message": "hardcoded UUID `e5020000-0002-0000-0000-000000000002` — generate per-test UUIDs instead"
+      "line": 138,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 198,
-      "message": "hardcoded UUID `defdef00-0002-0000-0000-000000000002` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5020000-0002-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 203,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
+      "line": 199,
+      "message": "hardcoded UUID `defdef00-0002-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 251,
-      "message": "hardcoded UUID `e5020000-0003-0000-0000-000000000003` — generate per-test UUIDs instead"
+      "line": 204,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 252,
-      "message": "hardcoded UUID `defdef00-0003-0000-0000-000000000003` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5020000-0003-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 257,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000003` — generate per-test UUIDs instead"
+      "line": 253,
+      "message": "hardcoded UUID `defdef00-0003-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 333,
-      "message": "hardcoded UUID `e5030000-0003-0000-0000-000000000003` — generate per-test UUIDs instead"
+      "line": 258,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 334,
-      "message": "hardcoded UUID `defdef00-0003-0000-0000-000000000003` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5030000-0003-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 339,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000004` — generate per-test UUIDs instead"
+      "line": 335,
+      "message": "hardcoded UUID `defdef00-0003-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 406,
-      "message": "hardcoded UUID `e5040000-0004-0000-0000-00000000000a` — generate per-test UUIDs instead"
+      "line": 340,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000004` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 407,
-      "message": "hardcoded UUID `e5040000-0004-0000-0000-00000000000b` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5040000-0004-0000-0000-00000000000a` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 408,
-      "message": "hardcoded UUID `defdef00-0004-0000-0000-00000000000a` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5040000-0004-0000-0000-00000000000b` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 409,
-      "message": "hardcoded UUID `defdef00-0004-0000-0000-00000000000b` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `defdef00-0004-0000-0000-00000000000a` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 417,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000005` — generate per-test UUIDs instead"
+      "line": 410,
+      "message": "hardcoded UUID `defdef00-0004-0000-0000-00000000000b` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 497,
-      "message": "hardcoded UUID `e504c0b0-0004-0000-0000-000000000004` — generate per-test UUIDs instead"
+      "line": 418,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000005` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 498,
-      "message": "hardcoded UUID `defdef00-0004-0000-0000-000000000004` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e504c0b0-0004-0000-0000-000000000004` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 506,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000006` — generate per-test UUIDs instead"
+      "line": 499,
+      "message": "hardcoded UUID `defdef00-0004-0000-0000-000000000004` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 571,
-      "message": "hardcoded UUID `e5050000-0005-0000-0000-000000000005` — generate per-test UUIDs instead"
+      "line": 507,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000006` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 572,
-      "message": "hardcoded UUID `defdef00-0005-0000-0000-000000000005` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5050000-0005-0000-0000-000000000005` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 577,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000007` — generate per-test UUIDs instead"
+      "line": 573,
+      "message": "hardcoded UUID `defdef00-0005-0000-0000-000000000005` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 631,
-      "message": "hardcoded UUID `e5060000-0006-0000-0000-000000000006` — generate per-test UUIDs instead"
+      "line": 578,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000007` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 632,
-      "message": "hardcoded UUID `defdef00-0006-0000-0000-000000000006` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5060000-0006-0000-0000-000000000006` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 639,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000008` — generate per-test UUIDs instead"
+      "line": 633,
+      "message": "hardcoded UUID `defdef00-0006-0000-0000-000000000006` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 732,
-      "message": "hardcoded UUID `e506b000-0006-0000-0000-000000000006` — generate per-test UUIDs instead"
+      "line": 640,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000008` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 733,
-      "message": "hardcoded UUID `defdef00-0006-0000-0000-000000000006` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e506b000-0006-0000-0000-000000000006` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 741,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000009` — generate per-test UUIDs instead"
+      "line": 734,
+      "message": "hardcoded UUID `defdef00-0006-0000-0000-000000000006` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 807,
-      "message": "hardcoded UUID `e5070000-0007-0000-0000-000000000007` — generate per-test UUIDs instead"
+      "line": 742,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000009` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 808,
-      "message": "hardcoded UUID `defdef00-0007-0000-0000-000000000007` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5070000-0007-0000-0000-000000000007` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 820,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000010` — generate per-test UUIDs instead"
+      "line": 809,
+      "message": "hardcoded UUID `defdef00-0007-0000-0000-000000000007` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 925,
-      "message": "hardcoded UUID `ad110000-0002-0000-0000-000000000002` — generate per-test UUIDs instead"
+      "line": 821,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000010` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 926,
-      "message": "hardcoded UUID `defdef00-ad11-0000-0000-000000000002` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `ad110000-0002-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 939,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000031` — generate per-test UUIDs instead"
+      "line": 927,
+      "message": "hardcoded UUID `defdef00-ad11-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1001,
-      "message": "hardcoded UUID `ad110000-0003-0000-0000-000000000003` — generate per-test UUIDs instead"
+      "line": 940,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000031` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 1002,
-      "message": "hardcoded UUID `defdef00-ad11-0000-0000-000000000003` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `ad110000-0003-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1013,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000032` — generate per-test UUIDs instead"
+      "line": 1003,
+      "message": "hardcoded UUID `defdef00-ad11-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1081,
-      "message": "hardcoded UUID `e5080000-0008-0000-0000-000000000008` — generate per-test UUIDs instead"
+      "line": 1014,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000032` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 1082,
-      "message": "hardcoded UUID `defdef00-0008-0000-0000-000000000008` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5080000-0008-0000-0000-000000000008` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1087,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000011` — generate per-test UUIDs instead"
+      "line": 1083,
+      "message": "hardcoded UUID `defdef00-0008-0000-0000-000000000008` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1129,
-      "message": "hardcoded UUID `ad010000-0001-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "line": 1088,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000011` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 1130,
-      "message": "hardcoded UUID `defdef00-ad01-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `ad010000-0001-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1135,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000021` — generate per-test UUIDs instead"
+      "line": 1131,
+      "message": "hardcoded UUID `defdef00-ad01-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1200,
-      "message": "hardcoded UUID `ad010000-0002-0000-0000-000000000002` — generate per-test UUIDs instead"
+      "line": 1136,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000021` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 1201,
-      "message": "hardcoded UUID `defdef00-ad01-0000-0000-000000000002` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `ad010000-0002-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1206,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000022` — generate per-test UUIDs instead"
+      "line": 1202,
+      "message": "hardcoded UUID `defdef00-ad01-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 1207,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000022` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1349,
-      "message": "hardcoded UUID `ad010000-0004-0000-0000-000000000004` — generate per-test UUIDs instead"
+      "line": 1208,
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 1350,
-      "message": "hardcoded UUID `defdef00-ad01-0000-0000-000000000004` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `ad010000-0004-0000-0000-000000000004` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1355,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000024` — generate per-test UUIDs instead"
+      "line": 1351,
+      "message": "hardcoded UUID `defdef00-ad01-0000-0000-000000000004` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1410,
-      "message": "hardcoded UUID `e5010500-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "line": 1356,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000024` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1445,
-      "message": "hardcoded UUID `e5010600-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "line": 1411,
+      "message": "hardcoded UUID `e5010500-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 1446,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000025` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5010600-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1479,
-      "message": "hardcoded UUID `e5030200-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "line": 1447,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000025` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 1480,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000026` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5030200-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1513,
-      "message": "hardcoded UUID `e5030300-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "line": 1481,
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000026` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 1514,
-      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000027` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `e5030300-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/event_store_integration_test.zig",
-      "line": 63,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/event_store_integration_test.zig",
-      "line": 64,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/event_store_integration_test.zig",
-      "line": 72,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/event_store_integration_test.zig",
-      "line": 463,
-      "message": "module-level mutable var `prev_seq` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/event_store_integration_test.zig",
-      "line": 507,
-      "message": "module-level mutable var `results` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/event_store_integration_test.zig",
-      "line": 662,
-      "message": "module-level mutable var `cutoff` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1411,
-      "message": "module-level mutable var `nil_actor` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
+      "severity": "BLOCKER",
+      "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
       "line": 1515,
-      "message": "module-level mutable var `long_key_arr` shared across test blocks"
+      "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000027` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 34,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 56,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 57,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 65,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 211,
-      "message": "module-level mutable var `client` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 217,
-      "message": "module-level mutable var `attempt` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 258,
-      "message": "module-level mutable var `client` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 295,
-      "message": "module-level mutable var `bind_attempt` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 314,
-      "message": "module-level mutable var `recv_buffer` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 316,
-      "message": "module-level mutable var `send_buffer` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 319,
-      "message": "module-level mutable var `http_server` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext01_service_task_test.zig",
-      "line": 365,
-      "message": "module-level mutable var `location_buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 289,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e201` — generate per-test UUIDs instead"
+      "line": 410,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000999` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 325,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e202` — generate per-test UUIDs instead"
+      "line": 462,
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 363,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e203` — generate per-test UUIDs instead"
+      "line": 526,
+      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 380,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000999` — generate per-test UUIDs instead"
+      "line": 571,
+      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333333` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 416,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e204` — generate per-test UUIDs instead"
+      "line": 626,
+      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444444` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 431,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
+      "line": 733,
+      "message": "hardcoded UUID `55555555-5555-5555-5555-555555555555` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 472,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e205` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 494,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 523,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e206` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 538,
-      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333333` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 577,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e207` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 592,
-      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444444` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 621,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e208` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 685,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e209` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 691,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e209` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 696,
-      "message": "hardcoded UUID `55555555-5555-5555-5555-555555555555` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 740,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e210` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 746,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e210` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 747,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-00000000e211` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 753,
-      "message": "hardcoded UUID `66666666-6666-6666-6666-666666666666` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 180,
-      "message": "module-level mutable var `client` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 183,
-      "message": "module-level mutable var `attempt_idx` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 214,
-      "message": "module-level mutable var `client` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 233,
-      "message": "module-level mutable var `bind_attempt` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 248,
-      "message": "module-level mutable var `recv_buffer` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 250,
-      "message": "module-level mutable var `send_buffer` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 253,
-      "message": "module-level mutable var `http_server` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 597,
-      "message": "module-level mutable var `idx` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
-      "line": 759,
-      "message": "module-level mutable var `attempt_idx` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 29,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000199` — generate per-test UUIDs instead"
+      "line": 793,
+      "message": "hardcoded UUID `66666666-6666-6666-6666-666666666666` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 39,
+      "line": 49,
       "message": "module-level mutable var `g_plugin_mode` shared across test blocks"
     },
     {
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 41,
+      "line": 50,
       "message": "module-level mutable var `g_handler_invoked` shared across test blocks"
     },
     {
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 42,
+      "line": 51,
       "message": "module-level mutable var `g_last_node_type` shared across test blocks"
     },
     {
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 43,
+      "line": 52,
       "message": "module-level mutable var `g_last_node_type_len` shared across test blocks"
     },
     {
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 44,
+      "line": 53,
       "message": "module-level mutable var `g_last_node_config` shared across test blocks"
     },
     {
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 45,
+      "line": 54,
       "message": "module-level mutable var `g_last_node_config_len` shared across test blocks"
     },
     {
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 46,
+      "line": 55,
       "message": "module-level mutable var `g_last_instance_vars` shared across test blocks"
     },
     {
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 47,
+      "line": 56,
       "message": "module-level mutable var `g_last_instance_vars_len` shared across test blocks"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 93,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 94,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext03_plugin_integration_test.zig",
-      "line": 102,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ext04_variable_transformer_test.zig",
-      "line": 23,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
+      "line": 24,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext04_variable_transformer_test.zig",
-      "line": 44,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext04_variable_transformer_test.zig",
-      "line": 45,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext04_variable_transformer_test.zig",
-      "line": 53,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/ext05_sub_process_support_test.zig",
-      "line": 20,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/ext05_sub_process_support_test.zig",
       "line": 21,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
+      "severity": "BLOCKER",
+      "code": "T010",
       "file": "tests/integration/ext05_sub_process_support_test.zig",
-      "line": 42,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext05_sub_process_support_test.zig",
-      "line": 43,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/ext05_sub_process_support_test.zig",
-      "line": 51,
-      "message": "module-level mutable var `out` shared across test blocks"
+      "line": 22,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/helpers.zig",
-      "line": 34,
-      "message": "module-level mutable var `names` shared across test blocks"
+      "line": 344,
+      "message": "module-level mutable var `cached_owner_tag` shared across test blocks"
     },
     {
       "severity": "MAJOR",
+      "code": "T020",
+      "file": "tests/integration/helpers.zig",
+      "line": 349,
+      "message": "module-level mutable var `tag_repr_storage` shared across test blocks"
+    },
+    {
+      "severity": "MAJOR",
+      "code": "T020",
+      "file": "tests/integration/helpers.zig",
+      "line": 350,
+      "message": "module-level mutable var `tag_repr_lock` shared across test blocks"
+    },
+    {
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/idn01_user_registry_test.zig",
-      "line": 33,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/idn02_group_management_test.zig",
-      "line": 37,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/idn02_group_management_test.zig",
-      "line": 145,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/idn02_group_management_test.zig",
-      "line": 400,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/idn02_group_management_test.zig",
-      "line": 123,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/idn02_group_management_test.zig",
-      "line": 124,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/idn02_group_management_test.zig",
-      "line": 132,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/idn03_role_access_test.zig",
       "line": 34,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/idn02_group_management_test.zig",
+      "line": 47,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/idn02_group_management_test.zig",
+      "line": 409,
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/idn03_role_access_test.zig",
-      "line": 176,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/idn03_role_access_test.zig",
-      "line": 162,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/idn03_role_access_test.zig",
-      "line": 163,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/idn03_role_access_test.zig",
-      "line": 171,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/idn04_api_token_management_test.zig",
-      "line": 30,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/idn04_api_token_management_test.zig",
-      "line": 39,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/idn04_api_token_management_test.zig",
-      "line": 112,
-      "message": "module-level mutable var `digest` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/instance_error_test.zig",
-      "line": 41,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/instance_error_test.zig",
       "line": 44,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/idn04_api_token_management_test.zig",
+      "line": 31,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/idn04_api_token_management_test.zig",
+      "line": 41,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/instance_error_test.zig",
-      "line": 740,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "line": 761,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/instance_error_test.zig",
-      "line": 70,
-      "message": "module-level mutable var `buf` shared across test blocks"
+      "code": "T060",
+      "file": "tests/integration/iss107_tenant_storage_mode_test.zig",
+      "line": 194,
+      "message": "production-defaulting tenant creation with slug \"iss107-t4\" does not start with an allowlisted test-fixture prefix ('tc-',) \u2014 will not be excluded by the GBL-103 ISS-503 guard scope"
     },
     {
       "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/instance_error_test.zig",
-      "line": 71,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/instance_error_test.zig",
-      "line": 79,
-      "message": "module-level mutable var `out` shared across test blocks"
+      "code": "T060",
+      "file": "tests/integration/iss107_tenant_storage_mode_test.zig",
+      "line": 271,
+      "message": "production-defaulting tenant creation with slug \"iss107-t5\" does not start with an allowlisted test-fixture prefix ('tc-',) \u2014 will not be excluded by the GBL-103 ISS-503 guard scope"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/main_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/obs02_metrics_test.zig",
-      "line": 30,
-      "message": "module-level mutable var `fixture` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/obs02_metrics_test.zig",
-      "line": 43,
-      "message": "module-level mutable var `fixture` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/obs02_metrics_test.zig",
-      "line": 73,
-      "message": "module-level mutable var `fixture` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/obs02_metrics_test.zig",
-      "line": 76,
-      "message": "module-level mutable var `i` shared across test blocks"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/obs02_metrics_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 196,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
+      "file": "tests/integration/obs06_alerts_test.zig",
+      "line": 100,
+      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 285,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-0000000000a1` — generate per-test UUIDs instead"
+      "file": "tests/integration/obs06_alerts_test.zig",
+      "line": 100,
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 286,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-0000000000b1` — generate per-test UUIDs instead"
+      "file": "tests/integration/obs06_alerts_test.zig",
+      "line": 101,
+      "message": "hardcoded UUID `bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 333,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000199` — generate per-test UUIDs instead"
+      "file": "tests/integration/obs06_alerts_test.zig",
+      "line": 101,
+      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 380,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000199` — generate per-test UUIDs instead"
+      "file": "tests/integration/obs06_alerts_test.zig",
+      "line": 164,
+      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 407,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000301` — generate per-test UUIDs instead"
+      "file": "tests/integration/obs06_alerts_test.zig",
+      "line": 164,
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 408,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000302` — generate per-test UUIDs instead"
+      "file": "tests/integration/obs06_alerts_test.zig",
+      "line": 391,
+      "message": "hardcoded UUID `a1111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 623,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000601` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 624,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000602` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 30,
-      "message": "module-level mutable var `compact` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 31,
-      "message": "module-level mutable var `j` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/obs03_audit_log_test.zig",
-      "line": 39,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 186,
-      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 203,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 204,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 205,
-      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333333` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 206,
-      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444444` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 207,
-      "message": "hardcoded UUID `55555555-5555-5555-5555-555555555555` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 222,
-      "message": "hardcoded UUID `aaaaaaaa-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 235,
-      "message": "hardcoded UUID `aaaaaaaa-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 248,
-      "message": "hardcoded UUID `aaaaaaaa-0000-0000-0000-000000000003` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 260,
-      "message": "hardcoded UUID `aaaaaaaa-0000-0000-0000-000000000004` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 287,
-      "message": "hardcoded UUID `aaaaaaaa-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 288,
-      "message": "hardcoded UUID `aaaaaaaa-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 289,
-      "message": "hardcoded UUID `aaaaaaaa-0000-0000-0000-000000000003` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 290,
-      "message": "hardcoded UUID `aaaaaaaa-0000-0000-0000-000000000004` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 306,
-      "message": "hardcoded UUID `66666666-6666-6666-6666-666666666666` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 307,
-      "message": "hardcoded UUID `77777777-7777-7777-7777-777777777777` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 308,
-      "message": "hardcoded UUID `88888888-8888-8888-8888-888888888888` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 317,
-      "message": "hardcoded UUID `bbbbbbbb-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 318,
-      "message": "hardcoded UUID `bbbbbbbb-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 319,
-      "message": "hardcoded UUID `bbbbbbbb-0000-0000-0000-000000000003` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 349,
-      "message": "hardcoded UUID `bbbbbbbb-0000-0000-0000-000000000003` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 350,
-      "message": "hardcoded UUID `bbbbbbbb-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 351,
-      "message": "hardcoded UUID `bbbbbbbb-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 363,
-      "message": "hardcoded UUID `99999999-9999-9999-9999-999999999999` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 364,
-      "message": "hardcoded UUID `abababab-abab-abab-abab-abababababab` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 365,
-      "message": "hardcoded UUID `cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcdcd` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 366,
-      "message": "hardcoded UUID `dededede-dede-dede-dede-dededededede` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 367,
-      "message": "hardcoded UUID `efefefef-efef-efef-efef-efefefefefef` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 380,
-      "message": "hardcoded UUID `cccccccc-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 381,
-      "message": "hardcoded UUID `cccccccc-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs04_timeline_test.zig",
-      "line": 382,
-      "message": "hardcoded UUID `cccccccc-0000-0000-0000-000000000003` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 184,
-      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 210,
-      "message": "hardcoded UUID `bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 236,
-      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 241,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 247,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000112` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 276,
-      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 296,
-      "message": "hardcoded UUID `cccccccc-cccc-cccc-cccc-cccccccccccc` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 297,
-      "message": "hardcoded UUID `dddddddd-dddd-dddd-dddd-dddddddddddd` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 298,
-      "message": "hardcoded UUID `eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 308,
-      "message": "hardcoded UUID `11111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 309,
-      "message": "hardcoded UUID `22222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 314,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000121` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 320,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000122` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 384,
-      "message": "hardcoded UUID `33333333-cccc-cccc-cccc-cccccccccccc` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 385,
-      "message": "hardcoded UUID `44444444-dddd-dddd-dddd-dddddddddddd` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
+      "file": "tests/integration/obs06_alerts_test.zig",
       "line": 392,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000131` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `b2222222-2222-2222-2222-222222222222` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs05_dlq_test.zig",
-      "line": 398,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000132` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/obs06_alerts_test.zig",
-      "line": 92,
-      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs06_alerts_test.zig",
-      "line": 92,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs06_alerts_test.zig",
-      "line": 93,
-      "message": "hardcoded UUID `bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs06_alerts_test.zig",
-      "line": 93,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs06_alerts_test.zig",
-      "line": 156,
-      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs06_alerts_test.zig",
-      "line": 156,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs06_alerts_test.zig",
-      "line": 383,
-      "message": "hardcoded UUID `a1111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs06_alerts_test.zig",
-      "line": 384,
-      "message": "hardcoded UUID `b2222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/obs06_alerts_test.zig",
-      "line": 385,
-      "message": "hardcoded UUID `c3333333-3333-3333-3333-333333333333` — generate per-test UUIDs instead"
+      "line": 393,
+      "message": "hardcoded UUID `c3333333-3333-3333-3333-333333333333` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/oidc07_claim_validation_auth_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/oidc09_jit_provisioning_test.zig",
-      "line": 28,
-      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc09_jit_provisioning_test.zig",
       "line": 29,
-      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc09_jit_provisioning_test.zig",
       "line": 30,
-      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa05` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc09_jit_provisioning_test.zig",
       "line": 31,
-      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa06` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa05` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc09_jit_provisioning_test.zig",
       "line": 32,
-      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa07` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa06` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/oidc10_attribute_sync_test.zig",
-      "line": 27,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
+      "file": "tests/integration/oidc09_jit_provisioning_test.zig",
+      "line": 33,
+      "message": "hardcoded UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa07` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc10_attribute_sync_test.zig",
       "line": 28,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/oidc11_identity_stability_test.zig",
-      "line": 27,
-      "message": "hardcoded UUID `51111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
+      "file": "tests/integration/oidc10_attribute_sync_test.zig",
+      "line": 29,
+      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc11_identity_stability_test.zig",
       "line": 28,
-      "message": "hardcoded UUID `53333333-3333-3333-3333-333333333333` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `51111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc11_identity_stability_test.zig",
       "line": 29,
-      "message": "hardcoded UUID `54444444-4444-4444-4444-444444444444` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `53333333-3333-3333-3333-333333333333` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc11_identity_stability_test.zig",
       "line": 30,
-      "message": "hardcoded UUID `58888888-8888-8888-8888-888888888888` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `54444444-4444-4444-4444-444444444444` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/oidc11_identity_stability_test.zig",
+      "line": 31,
+      "message": "hardcoded UUID `58888888-8888-8888-8888-888888888888` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc12_realm_tenant_binding_test.zig",
-      "line": 25,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
+      "line": 26,
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc12_realm_tenant_binding_test.zig",
-      "line": 214,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-ffffffffffff` — generate per-test UUIDs instead"
+      "line": 215,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-ffffffffffff` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
+      "code": "T050",
+      "file": "tests/integration/oidc13_tenant_claim_source_test.zig",
+      "line": 1,
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
+    },
+    {
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc13_tenant_claim_source_test.zig",
       "line": 94,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc13_tenant_claim_source_test.zig",
       "line": 105,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
-      "file": "tests/integration/oidc13_tenant_claim_source_test.zig",
+      "file": "tests/integration/oidc14_realm_provisioning_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc14_realm_provisioning_test.zig",
       "line": 26,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc14_realm_provisioning_test.zig",
       "line": 45,
-      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333333` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `33333333-3333-3333-3333-333333333333` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc14_realm_provisioning_test.zig",
       "line": 97,
-      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444444` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `44444444-4444-4444-4444-444444444444` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/oidc15_realm_deletion_test.zig",
+      "line": 26,
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/oidc15_realm_deletion_test.zig",
+      "line": 124,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/oidc15_realm_deletion_test.zig",
+      "line": 166,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/oidc15_realm_deletion_test.zig",
+      "line": 274,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/oidc15_realm_deletion_test.zig",
+      "line": 364,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/oidc15_realm_deletion_test.zig",
+      "line": 429,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
-      "file": "tests/integration/oidc14_realm_provisioning_test.zig",
+      "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/oidc15_realm_deletion_test.zig",
-      "line": 25,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/oidc15_realm_deletion_test.zig",
-      "line": 123,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/oidc15_realm_deletion_test.zig",
-      "line": 165,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/oidc15_realm_deletion_test.zig",
-      "line": 273,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/oidc15_realm_deletion_test.zig",
-      "line": 363,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/oidc15_realm_deletion_test.zig",
-      "line": 428,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
       "line": 46,
-      "message": "hardcoded UUID `10000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `10000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
       "line": 62,
-      "message": "hardcoded UUID `10000000-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `10000000-0000-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
       "line": 76,
-      "message": "hardcoded UUID `20000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `20000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
       "line": 129,
-      "message": "hardcoded UUID `40000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `40000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
       "line": 171,
-      "message": "hardcoded UUID `40000000-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `40000000-0000-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
       "line": 189,
-      "message": "hardcoded UUID `70000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `70000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
       "line": 193,
-      "message": "hardcoded UUID `20000000-0000-0000-0000-000000000011` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `20000000-0000-0000-0000-000000000011` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
       "line": 202,
-      "message": "hardcoded UUID `70000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `70000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T050",
-      "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
-      "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
-      "line": 40,
-      "message": "module-level mutable var `client` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
-      "line": 48,
-      "message": "module-level mutable var `redirect_buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/oidc34_migration_helper_test.zig",
-      "line": 15,
-      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc34_migration_helper_test.zig",
       "line": 16,
-      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc35_onboarding_test.zig",
-      "line": 69,
-      "message": "module-level mutable var `raw` shared across test blocks"
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/oidc34_migration_helper_test.zig",
+      "line": 17,
+      "message": "hardcoded UUID `22222222-2222-2222-2222-222222222222` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc35_onboarding_test.zig",
-      "line": 79,
-      "message": "module-level mutable var `out_idx` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc35_onboarding_test.zig",
-      "line": 80,
-      "message": "module-level mutable var `raw_idx` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc35_onboarding_test.zig",
-      "line": 132,
-      "message": "module-level mutable var `digest` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc35_onboarding_test.zig",
-      "line": 169,
-      "message": "module-level mutable var `digest` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc35_onboarding_test.zig",
-      "line": 231,
-      "message": "module-level mutable var `digest1` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc35_onboarding_test.zig",
-      "line": 237,
-      "message": "module-level mutable var `digest2` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc35_onboarding_test.zig",
-      "line": 310,
-      "message": "module-level mutable var `digest` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc35_onboarding_test.zig",
-      "line": 361,
-      "message": "module-level mutable var `digest` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc35_onboarding_test.zig",
-      "line": 590,
-      "message": "module-level mutable var `dummy_service` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/oidc35_onboarding_test.zig",
-      "line": 627,
-      "message": "module-level mutable var `dummy_service` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/pd03_version_test.zig",
-      "line": 108,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
+      "line": 109,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd03_version_test.zig",
-      "line": 57,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd03_version_test.zig",
-      "line": 58,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd03_version_test.zig",
-      "line": 66,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/pd04_lifecycle_test.zig",
-      "line": 92,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/pd04_lifecycle_test.zig",
-      "line": 95,
-      "message": "hardcoded UUID `00000000-0000-4000-8000-000000000000` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd04_lifecycle_test.zig",
-      "line": 58,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd04_lifecycle_test.zig",
-      "line": 59,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd04_lifecycle_test.zig",
-      "line": 67,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/pd05_node_types_test.zig",
       "line": 93,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/pd04_lifecycle_test.zig",
+      "line": 96,
+      "message": "hardcoded UUID `00000000-0000-4000-8000-000000000000` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
       "file": "tests/integration/pd05_node_types_test.zig",
-      "line": 55,
-      "message": "module-level mutable var `buf` shared across test blocks"
+      "line": 94,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd05_node_types_test.zig",
-      "line": 56,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd05_node_types_test.zig",
-      "line": 64,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/pd10_search_test.zig",
-      "line": 42,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
+      "line": 43,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd10_search_test.zig",
-      "line": 84,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd10_search_test.zig",
-      "line": 85,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd10_search_test.zig",
-      "line": 93,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd10_search_test.zig",
-      "line": 335,
-      "message": "module-level mutable var `dummy_pool` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd10_search_test.zig",
-      "line": 354,
-      "message": "module-level mutable var `dummy_pool` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd10_search_test.zig",
-      "line": 358,
-      "message": "module-level mutable var `long_query_arr` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/pd10_search_test.zig",
-      "line": 624,
-      "message": "module-level mutable var `dummy_pool` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/repository_test.zig",
-      "line": 35,
-      "message": "module-level mutable var `uuid` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/repository_test.zig",
-      "line": 42,
-      "message": "module-level mutable var `buffer` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/repository_test.zig",
-      "line": 251,
-      "message": "module-level mutable var `version_ids` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/repository_test.zig",
-      "line": 253,
-      "message": "module-level mutable var `version_hashes` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/repository_test.zig",
-      "line": 1007,
-      "message": "module-level mutable var `version_ids` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/repository_test.zig",
-      "line": 1125,
-      "message": "module-level mutable var `version_ids` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/sch01_timer_creation_test.zig",
-      "line": 27,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/sch01_timer_creation_test.zig",
       "line": 28,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/sch01_timer_creation_test.zig",
-      "line": 472,
-      "message": "hardcoded UUID `00000000-0000-4000-8000-000000000123` — generate per-test UUIDs instead"
+      "line": 29,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sch01_timer_creation_test.zig",
-      "line": 49,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sch01_timer_creation_test.zig",
-      "line": 50,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sch01_timer_creation_test.zig",
-      "line": 58,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
-      "file": "tests/integration/sch02_timer_polling_test.zig",
-      "line": 23,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/sch02_timer_polling_test.zig",
-      "line": 24,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sch02_timer_polling_test.zig",
-      "line": 45,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sch02_timer_polling_test.zig",
-      "line": 46,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sch02_timer_polling_test.zig",
-      "line": 54,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sch02_timer_polling_test.zig",
-      "line": 1791,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sim01_04_simulation_mode_test.zig",
-      "line": 38,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sim01_04_simulation_mode_test.zig",
-      "line": 39,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sim01_04_simulation_mode_test.zig",
-      "line": 47,
-      "message": "module-level mutable var `out` shared across test blocks"
+      "file": "tests/integration/sch01_timer_creation_test.zig",
+      "line": 473,
+      "message": "hardcoded UUID `00000000-0000-4000-8000-000000000123` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
       "code": "T030",
       "file": "tests/integration/sim01_04_simulation_mode_test.zig",
-      "line": 297,
+      "line": 298,
       "message": "test \"TC-SIM-03-01: scenario-controlled clock advances deterministically\" allocates but has no `defer` cleanup"
     },
     {
       "severity": "MAJOR",
       "code": "T030",
       "file": "tests/integration/sim01_04_simulation_mode_test.zig",
-      "line": 305,
+      "line": 306,
       "message": "test \"TC-SIM-03-02: programmatic time set and advance are respected\" allocates but has no `defer` cleanup"
     },
     {
       "severity": "MAJOR",
       "code": "T030",
       "file": "tests/integration/sim01_04_simulation_mode_test.zig",
-      "line": 317,
+      "line": 318,
       "message": "test \"TC-SIM-04-01: same seed yields identical UUID sequence\" allocates but has no `defer` cleanup"
     },
     {
       "severity": "MAJOR",
       "code": "T030",
       "file": "tests/integration/sim01_04_simulation_mode_test.zig",
-      "line": 330,
+      "line": 331,
       "message": "test \"TC-SIM-04-02: different seeds yield different UUID sequence\" allocates but has no `defer` cleanup"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sim05_08_scenario_runner_test.zig",
-      "line": 22,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sim05_08_scenario_runner_test.zig",
-      "line": 23,
-      "message": "module-level mutable var `out_idx` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sim05_08_scenario_runner_test.zig",
-      "line": 44,
-      "message": "module-level mutable var `digest` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sim05_08_scenario_runner_test.zig",
-      "line": 47,
-      "message": "module-level mutable var `uuid_bytes` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sim05_08_scenario_runner_test.zig",
-      "line": 116,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/sim05_08_scenario_runner_test.zig",
-      "line": 693,
-      "message": "module-level mutable var `sequential_elapsed` shared across test blocks"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/sim05_08_scenario_runner_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/stage11_sim_xc04_aggregate_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/support/migration_window_orchestrator.zig",
-      "line": 114,
-      "message": "module-level mutable var `mismatches` shared across test blocks"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/support/migration_window_orchestrator.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/support/regression_matrix.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/support/report_writer.zig",
-      "line": 40,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/support/report_writer.zig",
-      "line": 63,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/support/report_writer.zig",
-      "line": 106,
-      "message": "module-level mutable var `mismatch_count` shared across test blocks"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/support/report_writer.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/support/response_canonicalizer.zig",
-      "line": 65,
-      "message": "module-level mutable var `digest` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/support/response_canonicalizer.zig",
-      "line": 68,
-      "message": "module-level mutable var `digest_hex` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/support/response_canonicalizer.zig",
-      "line": 90,
-      "message": "module-level mutable var `canonical` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/support/response_canonicalizer.zig",
-      "line": 150,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/support/response_canonicalizer.zig",
-      "line": 152,
-      "message": "module-level mutable var `idx` shared across test blocks"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/support/response_canonicalizer.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/test_export_import_integration.zig",
-      "line": 43,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
+      "line": 44,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/test_export_import_integration.zig",
-      "line": 46,
-      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/test_export_import_integration.zig",
-      "line": 134,
-      "message": "module-level mutable var `buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/test_export_import_integration.zig",
-      "line": 135,
-      "message": "module-level mutable var `i` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/test_export_import_integration.zig",
-      "line": 143,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/test_snapshot_integration.zig",
-      "line": 42,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/test_snapshot_integration.zig",
-      "line": 45,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000801` — generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T010",
-      "file": "tests/integration/test_snapshot_integration.zig",
       "line": 47,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000802` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/test_snapshot_integration.zig",
-      "line": 49,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000803` — generate per-test UUIDs instead"
+      "line": 43,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000099` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/test_snapshot_integration.zig",
-      "line": 51,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000804` — generate per-test UUIDs instead"
+      "line": 46,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000801` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/test_snapshot_integration.zig",
-      "line": 53,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000805` — generate per-test UUIDs instead"
+      "line": 48,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000802` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/test_snapshot_integration.zig",
-      "line": 55,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000806` — generate per-test UUIDs instead"
+      "line": 50,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000803` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/test_snapshot_integration.zig",
-      "line": 57,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000807` — generate per-test UUIDs instead"
+      "line": 52,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000804` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/test_snapshot_integration.zig",
+      "line": 54,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000805` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/test_snapshot_integration.zig",
+      "line": 56,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000806` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/test_snapshot_integration.zig",
       "line": 58,
-      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000808` — generate per-test UUIDs instead"
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000807` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
+      "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/test_snapshot_integration.zig",
-      "line": 61,
-      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` — generate per-test UUIDs instead"
+      "line": 59,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000808` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
+      "severity": "BLOCKER",
+      "code": "T010",
       "file": "tests/integration/test_snapshot_integration.zig",
-      "line": 127,
-      "message": "module-level mutable var `buf` shared across test blocks"
+      "line": 62,
+      "message": "hardcoded UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/test_snapshot_integration.zig",
-      "line": 128,
-      "message": "module-level mutable var `i` shared across test blocks"
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/tm01_tenant_list_test.zig",
+      "line": 45,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/test_snapshot_integration.zig",
-      "line": 136,
-      "message": "module-level mutable var `out` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/trace_test.zig",
-      "line": 82,
-      "message": "module-level mutable var `client` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/trace_test.zig",
-      "line": 93,
-      "message": "module-level mutable var `redirect_buffer` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/trace_test.zig",
-      "line": 100,
-      "message": "module-level mutable var `trace_id_header` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/trace_test.zig",
-      "line": 113,
-      "message": "module-level mutable var `transfer_buffer` shared across test blocks"
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/tm01_tenant_list_test.zig",
+      "line": 57,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/trace_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/xc01_trace_propagation_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc02_audit_immutability_test.zig",
-      "line": 323,
-      "message": "module-level mutable var `audit_ids` shared across test blocks"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/xc02_audit_immutability_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/xc03_configuration_repository_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc04_kernel_determinism_test.zig",
-      "line": 30,
-      "message": "module-level mutable var `hash1` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc04_kernel_determinism_test.zig",
-      "line": 35,
-      "message": "module-level mutable var `hash2` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc04_kernel_determinism_test.zig",
-      "line": 60,
-      "message": "module-level mutable var `hash1` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc04_kernel_determinism_test.zig",
-      "line": 65,
-      "message": "module-level mutable var `hash2` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc04_kernel_determinism_test.zig",
-      "line": 135,
-      "message": "module-level mutable var `first_order` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc04_kernel_determinism_test.zig",
-      "line": 186,
-      "message": "module-level mutable var `hashes` shared across test blocks"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/xc04_kernel_determinism_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
@@ -3610,66 +1568,17 @@
     },
     {
       "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc05_deterministic_replay_test.zig",
-      "line": 50,
-      "message": "module-level mutable var `seq_buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc05_deterministic_replay_test.zig",
-      "line": 143,
-      "message": "module-level mutable var `seq_buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc05_deterministic_replay_test.zig",
-      "line": 171,
-      "message": "module-level mutable var `states` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc05_deterministic_replay_test.zig",
-      "line": 306,
-      "message": "module-level mutable var `seq_buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T020",
-      "file": "tests/integration/xc05_deterministic_replay_test.zig",
-      "line": 425,
-      "message": "module-level mutable var `seq_buf` shared across test blocks"
-    },
-    {
-      "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/xc05_deterministic_replay_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
       "code": "T050",
       "file": "tests/integration/xc06_backwards_compatibility_test.zig",
       "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T060",
-      "file": "tests/integration/iss107_tenant_storage_mode_test.zig",
-      "line": 193,
-      "message": "production-defaulting tenant creation with slug \"iss107-t4\" does not start with an allowlisted test-fixture prefix ('tc-',) — will not be excluded by the GBL-103 ISS-503 guard scope"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T060",
-      "file": "tests/integration/iss107_tenant_storage_mode_test.zig",
-      "line": 270,
-      "message": "production-defaulting tenant creation with slug \"iss107-t5\" does not start with an allowlisted test-fixture prefix ('tc-',) — will not be excluded by the GBL-103 ISS-503 guard scope"
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     }
   ]
 }

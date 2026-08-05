@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-05T19:23:20Z",
+  "last_updated": "2026-08-05T20:00:21Z",
   "next_issue_id": 130,
   "issues": [
     {
@@ -1558,17 +1558,17 @@
     {
       "id": "ISS-0142",
       "title": "lint_test_isolation T010 BLOCKER count is 217 across 127 files, baseline suppression file is stale",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MINOR",
       "category": "test-isolation / stale-lint-baseline",
-      "run_id": "WF03-gh443-20260805",
-      "handoff_id": null,
+      "run_id": "WF03-gh446-lint-baseline-20260805",
+      "handoff_id": "c39a5ff3-206e-424b-be37-35e446fc5e3d",
       "affected_areas": [
         "tools/lint_test_isolation.baseline.json",
         "tests/integration/*.zig"
       ],
       "created_at": "2026-08-05T18:00:44Z",
-      "resolved_at": null,
+      "resolved_at": "2026-08-05T20:00:21Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/446"
     },
     {
@@ -1585,6 +1585,24 @@
       "created_at": "2026-08-05T18:15:31Z",
       "resolved_at": "2026-08-05T18:15:31Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/448"
+    },
+    {
+      "id": "ISS-0144",
+      "title": "tests/integration suite has widespread non-deterministic failures when run concurrently (schema drift, cross-binary races)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "test-infrastructure / concurrency-race",
+      "run_id": "WF03-gh446-lint-baseline-20260805",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/integration/*.zig",
+        "build.zig",
+        "tools/verify_test_env.py",
+        "tools/verify_schema_baseline.py"
+      ],
+      "created_at": "2026-08-05T19:58:51Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/454"
     }
   ]
 }

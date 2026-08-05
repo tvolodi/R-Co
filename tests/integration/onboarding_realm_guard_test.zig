@@ -101,7 +101,9 @@ fn freeBody(alloc: std.mem.Allocator, body: []const u8) void {
 // function pointers return error.NotImplemented — the handler does not call them.
 
 // Shared dummy context (no state needed; the adapters are stateless).
-var dummy_ctx_byte: u8 = 0;
+// `const` (not `var`) since the value is never mutated — only its address is
+// taken as an opaque context pointer.
+const dummy_ctx_byte: u8 = 0;
 
 fn notImplVerify(_: *anyopaque, _: std.mem.Allocator, _: provider_types.VerifyTokenInput) provider_errors.ProviderError!provider_types.VerifiedPrincipal {
     return error.NotImplemented;
@@ -159,7 +161,7 @@ fn checkRealmPresentFn(_: *anyopaque, _: std.mem.Allocator, _: provider_types.Ch
 /// Build a Manager whose provider returns realmExists=false.
 fn makeMissingRealmManager() provider_manager.Manager {
     const provider = provider_interface.IdentityProvider{
-        .ctx = @ptrCast(&dummy_ctx_byte),
+        .ctx = @constCast(@ptrCast(&dummy_ctx_byte)),
         .verifyTokenFn = notImplVerify,
         .lookupUserFn = notImplLookupUser,
         .provisionRealmFn = notImplProvisionRealm,
@@ -189,7 +191,7 @@ fn makeMissingRealmManager() provider_manager.Manager {
 /// Build a Manager whose provider returns realmExists=true.
 fn makePresentRealmManager() provider_manager.Manager {
     const provider = provider_interface.IdentityProvider{
-        .ctx = @ptrCast(&dummy_ctx_byte),
+        .ctx = @constCast(@ptrCast(&dummy_ctx_byte)),
         .verifyTokenFn = notImplVerify,
         .lookupUserFn = notImplLookupUser,
         .provisionRealmFn = notImplProvisionRealm,

@@ -1,0 +1,25 @@
+{
+  "issue_id": "ISS-0144",
+  "title": "tests/integration suite has widespread non-deterministic failures when run concurrently (schema drift, cross-binary races) -- svc01/svc03/tnt_schema_isolation and ~100+ others",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/454",
+  "registered_at": "2026-08-05T19:58:51Z",
+  "registered_by": "WF-03 GH #446 / ISS-0142 fix verification",
+  "related_to": [
+    "ISS-0106",
+    "ISS-0107",
+    "ISS-0142"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "scope": "tests/integration/ as a whole, when run via `zig build test-integration` (the aggregated concurrent suite of ~19+ independent test binaries). Discovered while verifying GH #446 / ISS-0142's lint-baseline fix: running the full integration suite to confirm the T010 fixes didn't regress anything surfaced a much larger, pre-existing, unrelated pattern of non-deterministic failures.",
+  "symptom": "Three consecutive `zig build test-integration --summary all` runs on the same tree produced 163, 156, and 107 failed tests (of ~672-679 total), with the specific SET of failing tests differing substantially between runs (confirmed by sorting and diffing the `error: '<test name>' failed:` lines from two consecutive runs -- dozens of tests present in one run's failure list and absent from the other's, and vice versa). Representative failure signatures: `POSTGRES ERROR: C42703 column \"scope\" does not exist` in svc01_service_catalog_scope_test.zig/svc03_definition_activation_scope_test.zig (even though `public.service_catalog.scope` provably exists via direct information_schema query); `C23505 duplicate key value violates unique constraint \"schema_migrations_schema_version_uq\"` plus search_path mismatches in tnt_schema_isolation_test.zig (TC-TNT-03-01, TC-TNT-03-03); cross-process connection-tagging assertion failures in iss0602_cross_process_isolation_test.zig. Additionally, `zig build test-env-verify`'s C4 (schema baseline) check intermittently fails after a test-integration run because failed/interrupted tests leave `public.tenant` rows with storage_mode='SCHEMA' but no matching Postgres schema (observed twice in one session, 2 orphaned rows each time).",
+  "reproduction": "docker-compose up -d db_test; export BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test BPM_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test; zig build test-integration --summary all -- run twice in a row and diff the sorted list of `error: '...' failed:` lines between runs.",
+  "root_cause_analysis": "Not yet fully root-caused to a single mechanism. Two plausible, non-exclusive contributors, both with documented precedent in this repo: (1) Cross-binary concurrency -- build.zig's test-integration step runs many independent test binaries as concurrent sibling Steps by default (same class of bug as GH #364/ISS-0106's cross-binary AccessExclusiveLock deadlock and GH #366/ISS-0107's widened-lock-vs-stale-timeout interaction); some binaries provision/migrate tenant schemas mid-run, and without a sufficiently broad advisory lock one binary can observe another's schema mid-creation (missing column) or race the schema_migrations ledger insert. (2) Leaked fixture rows from prior failed/interrupted runs -- once a test fails mid-provisioning it can leave a public.tenant row with storage_mode='SCHEMA' and no matching Postgres schema, which later tests or verify_test_env's C4 check then observe as drift. VERIFIED PRE-EXISTING (not introduced by GH #446's changes): the exact svc01_service_catalog_scope_test.zig failure (registerService stores scope and owner_tenant_id correctly / C42703 column scope does not exist) was reproduced against the UNMODIFIED main-branch version of that file (temporarily restored via `git show main:... >` for an isolated A/B comparison run on the same live db_test container), confirming the failure is environmental/infrastructure and not caused by GH #446's UUID-literal fixes.",
+  "acceptance_criteria": [
+    "Root-cause the specific mechanism (concurrency race vs. schema-provisioning bug vs. advisory-lock gap) using the same evidence-gathering approach as ISS-0106/ISS-0107 (targeted reproduction under controlled concurrency, not just re-running the full suite)",
+    "zig build test-integration produces the same pass/fail result across multiple consecutive runs on an otherwise-unchanged tree (determinism)",
+    "zig build test-env-verify's C4 does not regress after a normal test-integration run -- either fix the leak (ensure failed/interrupted tests clean up their SCHEMA-mode tenant row even on early failure) or make C4 correctly distinguish genuine drift from in-flight test state",
+    "Document whichever fix is applied in docs/anti-patterns.md given the precedent set by ISS-0106/ISS-0107 for this exact class of shared-database concurrency bug"
+  ],
+  "evidence_file": "N/A -- see symptom/root_cause_analysis fields; raw run logs were captured to scratch/ during WF03-gh446-lint-baseline-20260805 investigation (not committed; regenerate via the reproduction command above)"
+}

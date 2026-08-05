@@ -36,8 +36,14 @@ const reconstruction_mod = bpm.reconstruction;
 const transition_mod = bpm.transition;
 const snapshot_writer_mod = bpm.snapshot_writer;
 
-/// Fixed "created_by" UUID used across tests.
-const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
+/// Per-test-run "created_by" UUID — generated fresh instead of a fixed
+/// literal so this fixture follows the per-test-UUID isolation convention
+/// (see docs/guides/test_infrastructure_guide.md §9 / ISS-0121).
+fn makeCreatorUuid() [16]u8 {
+    var bytes: bpm.uuid.Uuid = undefined;
+    bpm.uuid.generateUuidV4BytesInto(&bytes);
+    return bytes;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -204,7 +210,7 @@ test "TC-ISS-601-01: reconstructInstanceWithSnapshot falls back to full replay w
     var def_store = DefinitionStore.init(alloc, &pool);
     defer def_store.deinit();
 
-    const created_by = try parseUuid(creator_uuid_str);
+    const created_by = makeCreatorUuid();
 
     const draft = def_store.create(alloc, CreateParams{
         .name = "TC-ISS-601-01 Process",
@@ -692,7 +698,7 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
     var def_store = DefinitionStore.init(alloc, &pool);
     defer def_store.deinit();
 
-    const created_by = try parseUuid(creator_uuid_str);
+    const created_by = makeCreatorUuid();
 
     const draft = def_store.create(alloc, CreateParams{
         .name = "TC-ISS-601-02 Process",
@@ -949,7 +955,7 @@ test "TC-ISS-601-05: overflow payload join reconstructs full payloads" {
     var def_store = DefinitionStore.init(alloc, &pool);
     defer def_store.deinit();
 
-    const created_by = try parseUuid(creator_uuid_str);
+    const created_by = makeCreatorUuid();
 
     const draft = def_store.create(alloc, CreateParams{
         .name = "TC-ISS-601-05 Process",
@@ -1110,7 +1116,7 @@ test "TC-ISS-601-08: reconstructInstanceWithSnapshot uses latest of multiple sna
     var def_store = DefinitionStore.init(alloc, &pool);
     defer def_store.deinit();
 
-    const created_by = try parseUuid(creator_uuid_str);
+    const created_by = makeCreatorUuid();
 
     const draft = def_store.create(alloc, CreateParams{
         .name = "TC-ISS-601-08 Process",

@@ -3,6 +3,9 @@
 //! Uses a real PostgreSQL database and isolated tenant fixtures. Each test
 //! provisions its own tenant schema, seeds only the rows it needs, and relies on
 //! the shared quota-policy and quota-enforcement modules rather than stubs.
+//!
+//! Requires: BPM_TEST_DB_URL environment variable pointing at a real
+//! PostgreSQL database — read internally by helpers.TestHarness.init().
 const std = @import("std");
 const testing = std.testing;
 
@@ -62,8 +65,13 @@ test "TC-EXP-601-01: quota policy resolves the effective profile from the active
     try harness.provisionTenant(tenant_without_policy);
     harness.setTenant(tenant_with_policy);
 
-    try insertQuotaPolicyArtifact(&harness.conn, "e6010000-0000-0000-0000-000000000010", "e6010000-0000-0000-0000-000000000011", generousQuotaPolicyJson());
-    try ensureQuotaPolicyActivation(&harness.conn, tenant_with_policy, "e6010000-0000-0000-0000-000000000011");
+    const artifact_id = try harness.newUuidString(alloc);
+    defer alloc.free(artifact_id);
+    const version_id = try harness.newUuidString(alloc);
+    defer alloc.free(version_id);
+
+    try insertQuotaPolicyArtifact(&harness.conn, artifact_id, version_id, generousQuotaPolicyJson());
+    try ensureQuotaPolicyActivation(&harness.conn, tenant_with_policy, version_id);
 
     harness.setTenant(tenant_with_policy);
     const with_profile = try quota_policy.loadEffectiveQuotaProfile(alloc, &harness.pool, tenant_with_policy);
@@ -89,9 +97,18 @@ test "TC-EXP-601-02: quota middleware rejects entity writes when entity limits a
     try harness.provisionTenant(tenant_id);
     harness.setTenant(tenant_id);
 
-    try insertQuotaPolicyArtifact(&harness.conn, "e6010000-0000-0000-0000-000000000020", "e6010000-0000-0000-0000-000000000021", zeroQuotaPolicyJson());
-    try ensureQuotaPolicyActivation(&harness.conn, tenant_id, "e6010000-0000-0000-0000-000000000021");
-    try harness.conn.exec("INSERT INTO instance_projections (instance_id, definition_id) VALUES ($1::uuid, $2::uuid)", &.{ "e6010000-0000-0000-0000-000000002011", "e6010000-0000-0000-0000-000000002012" });
+    const artifact_id = try harness.newUuidString(alloc);
+    defer alloc.free(artifact_id);
+    const version_id = try harness.newUuidString(alloc);
+    defer alloc.free(version_id);
+    const instance_id = try harness.newUuidString(alloc);
+    defer alloc.free(instance_id);
+    const definition_id = try harness.newUuidString(alloc);
+    defer alloc.free(definition_id);
+
+    try insertQuotaPolicyArtifact(&harness.conn, artifact_id, version_id, zeroQuotaPolicyJson());
+    try ensureQuotaPolicyActivation(&harness.conn, tenant_id, version_id);
+    try harness.conn.exec("INSERT INTO instance_projections (instance_id, definition_id) VALUES ($1::uuid, $2::uuid)", &.{ instance_id, definition_id });
 
     try quota_middleware.init(alloc);
     defer quota_middleware.deinit();
@@ -124,8 +141,17 @@ test "TC-EXP-601-03: quota middleware rejects file writes when file limits are e
     try harness.provisionTenant(tenant_id);
     harness.setTenant(tenant_id);
 
-    try insertQuotaPolicyArtifact(&harness.conn, "e6010000-0000-0000-0000-000000000030", "e6010000-0000-0000-0000-000000000031", zeroQuotaPolicyJson());
-    try ensureQuotaPolicyActivation(&harness.conn, tenant_id, "e6010000-0000-0000-0000-000000000031");
+    const artifact_id = try harness.newUuidString(alloc);
+    defer alloc.free(artifact_id);
+    const version_id = try harness.newUuidString(alloc);
+    defer alloc.free(version_id);
+    const file_artifact_id = try harness.newUuidString(alloc);
+    defer alloc.free(file_artifact_id);
+    const file_version_id = try harness.newUuidString(alloc);
+    defer alloc.free(file_version_id);
+
+    try insertQuotaPolicyArtifact(&harness.conn, artifact_id, version_id, zeroQuotaPolicyJson());
+    try ensureQuotaPolicyActivation(&harness.conn, tenant_id, version_id);
     try harness.conn.exec(
         \\INSERT INTO repository_artifacts (
         \\  content_hash, content_type, byte_size,
@@ -138,7 +164,7 @@ test "TC-EXP-601-03: quota middleware rejects file writes when file limits are e
         \\  $1::uuid, $2::uuid, 'file', 'exp601-file',
         \\  $3::jsonb, NULL, NOW()
         \\)
-    , &.{ "e6010000-0000-0000-0000-000000002021", "e6010000-0000-0000-0000-000000002022", "{\"kind\":\"file\"}" });
+    , &.{ file_artifact_id, file_version_id, "{\"kind\":\"file\"}" });
 
     try quota_middleware.init(alloc);
     defer quota_middleware.deinit();
@@ -171,10 +197,21 @@ test "TC-EXP-601-04: quota middleware rejects sandbox allocation and agent retri
     try harness.provisionTenant(tenant_id);
     harness.setTenant(tenant_id);
 
-    try insertQuotaPolicyArtifact(&harness.conn, "e6010000-0000-0000-0000-000000000040", "e6010000-0000-0000-0000-000000000041", zeroQuotaPolicyJson());
-    try ensureQuotaPolicyActivation(&harness.conn, tenant_id, "e6010000-0000-0000-0000-000000000041");
-    try harness.conn.exec("INSERT INTO instance_waits (instance_id, kind, ref_id, node_id, fire_at) VALUES ($1::uuid, 'sandbox', $2::uuid, 'EXP601_NODE', NOW()) ON CONFLICT (instance_id, ref_id) DO NOTHING", &.{ "e6010000-0000-0000-0000-000000002031", "e6010000-0000-0000-0000-000000002032" });
-    try harness.conn.exec("INSERT INTO dead_letter_items (id, tenant_id, retry_count, created_at, updated_at) VALUES ($1::uuid, $2::uuid, 1, NOW(), NOW())", &.{ "e6010000-0000-0000-0000-000000002041", tenant_id });
+    const artifact_id = try harness.newUuidString(alloc);
+    defer alloc.free(artifact_id);
+    const version_id = try harness.newUuidString(alloc);
+    defer alloc.free(version_id);
+    const wait_instance_id = try harness.newUuidString(alloc);
+    defer alloc.free(wait_instance_id);
+    const wait_ref_id = try harness.newUuidString(alloc);
+    defer alloc.free(wait_ref_id);
+    const dlq_id = try harness.newUuidString(alloc);
+    defer alloc.free(dlq_id);
+
+    try insertQuotaPolicyArtifact(&harness.conn, artifact_id, version_id, zeroQuotaPolicyJson());
+    try ensureQuotaPolicyActivation(&harness.conn, tenant_id, version_id);
+    try harness.conn.exec("INSERT INTO instance_waits (instance_id, kind, ref_id, node_id, fire_at) VALUES ($1::uuid, 'sandbox', $2::uuid, 'EXP601_NODE', NOW()) ON CONFLICT (instance_id, ref_id) DO NOTHING", &.{ wait_instance_id, wait_ref_id });
+    try harness.conn.exec("INSERT INTO dead_letter_items (id, tenant_id, retry_count, created_at, updated_at) VALUES ($1::uuid, $2::uuid, 1, NOW(), NOW())", &.{ dlq_id, tenant_id });
 
     try quota_middleware.init(alloc);
     defer quota_middleware.deinit();

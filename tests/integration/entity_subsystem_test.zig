@@ -5,14 +5,15 @@
 //!
 //! Design artefact: src/design/entities.md
 //! Test spec: tests/specs/EXP-201.md, tests/specs/EXP-202.md
+//!
+//! Requires: BPM_TEST_DB_URL environment variable pointing at a real
+//! PostgreSQL database — read internally by helpers.TestHarness.init().
 
 const std = @import("std");
 const pg = @import("pg");
 const bpm = @import("bpm");
 const helpers = @import("helpers.zig");
 const entities = bpm.entities;
-
-var global_test_counter: usize = 1000;
 
 /// Generate a random UUID-based tenant ID to avoid collisions across test runs.
 /// Previous deterministic counter-based IDs (e.g., 000003e9-...) would reuse the
@@ -49,8 +50,14 @@ fn fillRandom(buf: []u8) void {
 }
 
 fn generateIdempKey(allocator: std.mem.Allocator) ![]u8 {
-    global_test_counter += 1;
-    return std.fmt.allocPrint(allocator, "idemp-{x}", .{global_test_counter});
+    // Per-test random suffix instead of a module-level shared counter — a
+    // module-level `var` mutated across test blocks is itself a fixture-
+    // isolation violation (T020; see docs/anti-patterns.md's
+    // "Shared mutable tenant or fixture state across integration test blocks"
+    // entry) since test blocks may interleave or run out of order.
+    var bytes: [8]u8 = undefined;
+    fillRandom(&bytes);
+    return std.fmt.allocPrint(allocator, "idemp-{x}", .{std.fmt.fmtSliceHexLower(&bytes)});
 }
 
 test "EXP-201: Valid entity definition validation" {
