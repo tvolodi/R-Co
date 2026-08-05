@@ -1,0 +1,51 @@
+{
+  "handoff_id": "7c2e8a91-6f3d-4b5e-a1c8-2d9f7e4b6a03",
+  "run_id": "WF03-gh419-20260805",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-05T07:39:45Z",
+  "started_at": null,
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "3f8a91c4-2b17-4e0a-9d3f-5e2c7a8b4d61"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0129.json",
+      "https://github.com/tvolodi/R-Co/issues/419"
+    ],
+    "issue_id": "ISS-0129",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/419"
+  },
+  "task": {
+    "description": "WF-03 Step 0.5 \u2014 ISSUE-FIXER: registry lookup + GitHub filing verification\n\nISS-0129 is already filed on GitHub as tvolodi/R-Co#419 (confirmed via `gh issue view 419`). Your job in this step:\n\n1. **Confirm ID collision check.** `gh issue list --search \"1135 deadlock TC-TNT-01-01\" --state all` \u2014 verify the only match is #419 itself. (Local ISS-0129 numbering must not collide with an unrelated existing GitHub issue; we already saw only #419 matches, but confirm in case other issues share keywords.)\n\n2. **Verify the local ISS-0129 record has github_issue set.** Read `docs/issues/ISS-0129.json` and confirm `\"github_issue\": \"https://github.com/tvolodi/R-Co/issues/419\"` is set. If not, write it in (preserve all other fields exactly). If it IS already set, no write needed.\n\n3. **Cross-check the issue_index** at `docs/issues/issue_index.json` (if it exists) for any existing entry referencing #419 or ISS-0129. If absent, add one. If present, leave it.\n\n4. **Verify the GitHub issue is still OPEN** and labels include `bug`. Run `gh issue view 419 --json state,labels`. If labels are missing `bug`, do NOT add labels \u2014 that's outside this agent's scope (file a separate note if you observe a discrepancy).\n\n5. **Do NOT modify issue body content.** This step is verification only. The diagnosis + fix design will be in subsequent handoffs.\n\nReturn PASS with a short report:\n  - gh issue 419 state and labels\n  - whether docs/issues/ISS-0129.json needed github_issue written in (yes/no)\n  - whether docs/issues/issue_index.json needed updating (yes/no, and what you wrote)\n  - any MINOR observations (e.g., the candidate_resolution in the issue body is technically incorrect \u2014 see Step 1)",
+    "acceptance_criteria": [
+      "Local ISS-0129 record has github_issue=https://github.com/tvolodi/R-Co/issues/419",
+      "issue_index.json is consistent with this ISS",
+      "No ID collision with unrelated GitHub issues",
+      "harness log: PENDING \u2192 COMPLETED"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Verified GH #419 is OPEN, labeled bug, and tagged <!-- rco-sync-ref: ISS-0129 -->. No ID collision: only #419 matches the '1135 deadlock TC-TNT-01-01' search on GitHub. Local docs/issues/ISS-0129.json already had github_issue set; no write needed. docs/issues/issue_index.json already lists ISS-0129 with github_issue pointing at #419; no update needed. MINOR observation: the GitHub body mirrors the original ISS JSON snapshot (which had github_issue=null at filing time); the local file has since been corrected but the GitHub body is stale on that single field. No action this step (per task: do NOT modify issue body content).",
+    "artifacts_out": [
+      "docs/issues/ISS-0129.json (verified, no edit)",
+      "docs/issues/issue_index.json (verified, no edit)"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (WF-03 Step 1 \u2014 diagnosis)"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "completed_at": "2026-08-05T07:41:32Z"
+}
