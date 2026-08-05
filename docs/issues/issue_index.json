@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-04T18:15:39Z",
+  "last_updated": "2026-08-05T16:53:36Z",
   "next_issue_id": 130,
   "issues": [
     {
@@ -1492,6 +1492,52 @@
       "created_at": "2026-08-04T18:15:39Z",
       "resolved_at": null,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/419"
+    },
+    {
+      "id": "ISS-0138",
+      "title": "zig build test-env-verify / test-wiring-check fail on Windows when python3 resolves to the WindowsApps App Execution Alias stub",
+      "status": "RESOLVED",
+      "severity": "MINOR",
+      "category": "build.zig / interpreter-selection-windows-path",
+      "run_id": "WF03-gh440-20260805",
+      "handoff_id": null,
+      "affected_areas": [
+        "build.zig"
+      ],
+      "created_at": "2026-08-05T16:31:04Z",
+      "resolved_at": "2026-08-05T16:53:36Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/440"
+    },
+    {
+      "id": "ISS-0139",
+      "title": "adp03_tenant_context_resolution_test.zig:12 uses hardcoded UUID (T010) instead of per-test generation",
+      "status": "OPEN",
+      "severity": "MINOR",
+      "category": "test-isolation / hardcoded-uuid-residual",
+      "run_id": "WF03-gh440-20260805",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/integration/adp03_tenant_context_resolution_test.zig"
+      ],
+      "created_at": "2026-08-05T16:53:36Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/442"
+    },
+    {
+      "id": "ISS-0140",
+      "title": "verify_schema_baseline reports drift: 2 tenant schemas missing Postgres schema objects",
+      "status": "OPEN",
+      "severity": "MINOR",
+      "category": "schema-baseline / tenant-provisioning-drift",
+      "run_id": "WF03-gh440-20260805",
+      "handoff_id": null,
+      "affected_areas": [
+        "tools/verify_schema_baseline.py",
+        "bpm_dev tenant registry"
+      ],
+      "created_at": "2026-08-05T16:53:36Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/443"
     }
   ]
 }

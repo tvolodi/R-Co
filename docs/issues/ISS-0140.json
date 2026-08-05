@@ -1,0 +1,23 @@
+{
+  "issue_id": "ISS-0140",
+  "title": "verify_schema_baseline reports drift: 2 tenant schemas missing Postgres schema objects (tenant_277f51cc..., tenant_a319e29d...)",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/443",
+  "registered_at": "2026-08-05T16:53:36Z",
+  "registered_by": "ORCH (WF-03 GH #440 / ISS-0138 fix verification)",
+  "related_to": [
+    "ISS-0101",
+    "ISS-0090"
+  ],
+  "severity": "MINOR",
+  "status": "OPEN",
+  "scope": "Local/shared db (bpm_dev) tenant schema state only. Discovered as a byproduct of re-running zig build test-env-verify (checks C3/C4) while validating the ISS-0138 python3->python fix; unrelated to that fix.",
+  "symptom": "`python tools/verify_schema_baseline.py --check-tenants` reports: '[FAIL] check_tenant_schemas_consistent: missing Postgres schemas for 2 tenant(s): 277f51cc-6878-445c-b010-ec648fcf95fc -> tenant_277f51cc6878445cb010ec648fcf95fc, a319e29d-ca2a-4255-bc52-aa2d987f2649 -> tenant_a319e29dca2a4255bc52aa2d987f2649'. This keeps `zig build test-env-verify` checks C3 and C4 failing, so the gate cannot report HEALTHY until resolved.",
+  "reproduction": "BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev python tools/verify_schema_baseline.py --check-tenants  (or) zig build test-env-verify",
+  "root_cause_analysis": "Two tenant rows exist in the tenant registry table without a corresponding Postgres schema having been provisioned (or the schema was later dropped without deregistering the tenant row). Likely related to the same class of tenant-provisioning/migration-tracking desync documented in ISS-0101 (tenant_default shadow table) and ISS-0090 (orphaned tenant schemas from long-lived shared bpm_test container) but affecting bpm_dev rather than bpm_test, and the opposite direction (missing schema rather than orphaned schema).",
+  "acceptance_criteria": [
+    "Either the 2 tenant schemas are provisioned (tools/verify_schema_baseline.py --auto-fix or equivalent), or the orphaned tenant registry rows are removed if the tenants are stale",
+    "python tools/verify_schema_baseline.py --check-tenants reports no drift",
+    "zig build test-env-verify C3/C4 pass (assuming other checks are independently healthy)"
+  ],
+  "evidence_file": "N/A -- see symptom field for exact CLI output"
+}
