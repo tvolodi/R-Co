@@ -8,15 +8,16 @@
     "ISS-0121"
   ],
   "severity": "MINOR",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "scope": "tests/integration/adp03_tenant_context_resolution_test.zig only. Discovered by tools/lint_test_isolation.py (check C5) as a byproduct of re-running zig build test-env-verify while validating the ISS-0138 python3->python fix; unrelated to that fix.",
   "symptom": "tools/lint_test_isolation.py reports a BLOCKER T010 violation: tests/integration/adp03_tenant_context_resolution_test.zig:12 declares `const tenant_b = \"22222222-2222-2222-2222-222222222222\";` as a hardcoded UUID rather than generating one per test run. This keeps `zig build test-env-verify` C5 (test isolation lint) permanently failing, so the gate can never report HEALTHY on any machine until this is fixed.",
   "reproduction": "python tools/lint_test_isolation.py tests/integration  (or) zig build test-env-verify",
-  "root_cause_analysis": "ISS-0121 / GH #387 and its follow-up #402 drove T010 hardcoded-UUID violations down from 174 to <10 across the integration test suite, but this file was one of the residual instances not covered by that cleanup.",
+  "root_cause_analysis": "ISS-0121 / GH #387 and its follow-up #402 drove T010 hardcoded-UUID violations down from 174 to <10 across the integration test suite, but this file was one of the residual instances not covered by that cleanup. Full re-scan found 5 hardcoded UUID literals in this file, not just the one at line 12 the gate's truncated summary showed: the module-level tenant_b constant (line 12, reused across 6 of the file's 7 tests as both a JWT claim value and a DB tenant-scoping value), plus per-test actor/definition_id/instance_id literals in TC-ADP-03-05/06/07.",
+  "resolution": "Removed the module-level `tenant_b` constant. Each DB-touching test (TC-ADP-03-03/05/06/07) now generates its own tenant_b/actor/definition_id/instance_id via TestHarness.newUuidString(alloc), matching the established per-test-UUID pattern used elsewhere in the suite (tests/integration/helpers.zig::TestHarness.newUuid/newUuidString, added by ISS-0121). TC-ADP-03-02, which is a pure test with no DB dependency, generates tenant_b via bpm.uuid.newUuidV4(alloc) directly instead of going through TestHarness.init() -- TestHarness.init() opens a real Postgres connection (requires BPM_TEST_DB_URL), which would have silently converted a previously-pure test into a DB-dependent one merely to obtain a random UUID.",
   "acceptance_criteria": [
-    "tests/integration/adp03_tenant_context_resolution_test.zig generates tenant_b (and any other fixture UUIDs) per-test instead of using a fixed literal",
-    "python tools/lint_test_isolation.py tests/integration reports zero BLOCKER findings for this file",
-    "zig build test-env-verify C5 passes (assuming other checks are independently healthy)"
+    "tests/integration/adp03_tenant_context_resolution_test.zig generates tenant_b (and any other fixture UUIDs) per-test instead of using a fixed literal -- DONE, all 5 instances fixed",
+    "python tools/lint_test_isolation.py tests/integration reports zero BLOCKER findings for this file -- DONE, verified: 'OK -- 1 file(s) checked, no isolation issues.'",
+    "zig build test-env-verify C5 passes (assuming other checks are independently healthy) -- DONE"
   ],
   "evidence_file": "N/A -- see symptom field for exact lint output"
 }

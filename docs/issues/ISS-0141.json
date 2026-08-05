@@ -1,0 +1,22 @@
+{
+  "issue_id": "ISS-0141",
+  "title": "definition_retrieval_test.zig TC-PD-07-* tests fail non-deterministically depending on --seed (shared fixture state across test blocks)",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/445",
+  "registered_at": "2026-08-05T17:58:22Z",
+  "registered_by": "WF-03 GH #443 / ISS-0140 fix verification",
+  "related_to": [
+    "ISS-0113"
+  ],
+  "severity": "MINOR",
+  "status": "OPEN",
+  "scope": "tests/unit/definition_retrieval_test.zig only. Discovered as a byproduct of running `zig build test` twice in a row (different random --seed each run) while verifying the ISS-0140/ISS-0139 fix (GH #443/#442); unrelated to that fix -- no file in either fix touches src/definition/ or tests/unit/.",
+  "symptom": "`zig build test` fails a different TC-PD-07-* test case depending on the test runner's `--seed` value (which controls execution order): one run failed `TC-PD-07-05: list -- stage filter null returns all` (tests/unit/definition_retrieval_test.zig:325), a second run on unmodified code failed `TC-PD-07-01: getActiveByName -- ACTIVE version exists` (tests/unit/definition_retrieval_test.zig:162, propagating from src/definition/store.zig:1196 DefinitionError.DefinitionNotFound). Both runs reported 616/701 (or 617/701) tests passed with exactly 1 failure -- consistent with order-dependent shared state, not a fixed broken assertion.",
+  "reproduction": "zig build test   (run 2-3 times in a row; a different TC-PD-07-* case fails each time due to --seed randomization)",
+  "root_cause_analysis": "Not yet root-caused in depth. Working hypothesis: TC-PD-07-01 through TC-PD-07-08/12/14-20 are DB-guarded tests (per the file's own header comment) that share fixture rows/state across test blocks within definition_retrieval_test.zig, similar in class to the leaked/shared-fixture issues already catalogued for integration tests (ISS-0113, ISS-0100) but occurring here in the tests/unit/ layer against a DB-backed store (src/definition/store.zig). The file's own header notes it is DB-guarded despite living under tests/unit/ -- itself a placement anti-pattern already documented in docs/anti-patterns.md ('Placing DB-backed tests in the unit test layer'), though that entry describes the general risk (false CI failures on machines with no DB) rather than this specific order-dependent flakiness.",
+  "acceptance_criteria": [
+    "Root-cause which TC-PD-07-* test(s) leave state that a sibling test depends on or collides with",
+    "zig build test passes deterministically across at least 5 consecutive runs with different --seed values",
+    "Consider whether this file's DB-guarded tests should move to tests/integration/ per the existing anti-pattern entry, as a separate follow-up if warranted"
+  ],
+  "evidence_file": "N/A -- see symptom field for exact zig build test output from both runs"
+}

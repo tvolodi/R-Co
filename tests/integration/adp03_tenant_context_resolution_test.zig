@@ -9,7 +9,6 @@ const PoolConfig = bpm.pool.PoolConfig;
 const auth = bpm.api_auth;
 
 const default_tenant = "00000000-0000-0000-0000-000000000000";
-const tenant_b = "22222222-2222-2222-2222-222222222222";
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env = portable_env.globalEnviron();
@@ -51,7 +50,14 @@ test "TC-ADP-03-01: legacy token without tenant claim resolves deterministically
 
 test "TC-ADP-03-02: tenant_id claim resolves deterministically to claim tenant" {
     const alloc = std.testing.allocator;
-    const token = try makeJwtLikeToken(alloc, "{\"tenant_id\":\"22222222-2222-2222-2222-222222222222\"}");
+    // Pure test — no DB required. Generate the UUID directly instead of via
+    // TestHarness.init(), which opens a real Postgres connection.
+    const tenant_b = try bpm.uuid.newUuidV4(alloc);
+    defer alloc.free(tenant_b);
+
+    const claim = try std.fmt.allocPrint(alloc, "{{\"tenant_id\":\"{s}\"}}", .{tenant_b});
+    defer alloc.free(claim);
+    const token = try makeJwtLikeToken(alloc, claim);
     defer alloc.free(token);
 
     const resolved_first = try auth.resolveTenantContext(alloc, token);
@@ -67,6 +73,8 @@ test "TC-ADP-03-03: tenant_id claim scopes DB session tenant context" {
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
+    const tenant_b = try h.newUuidString(alloc);
+    defer alloc.free(tenant_b);
 
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -74,7 +82,9 @@ test "TC-ADP-03-03: tenant_id claim scopes DB session tenant context" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const token = try makeJwtLikeToken(alloc, "{\"tenant_id\":\"22222222-2222-2222-2222-222222222222\"}");
+    const claim = try std.fmt.allocPrint(alloc, "{{\"tenant_id\":\"{s}\"}}", .{tenant_b});
+    defer alloc.free(claim);
+    const token = try makeJwtLikeToken(alloc, claim);
     defer alloc.free(token);
 
     const resolved = try auth.resolveTenantContext(alloc, token);
@@ -107,6 +117,10 @@ test "TC-ADP-03-05: cross-tenant reads are blocked within a request tenant scope
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
+    const tenant_b = try h.newUuidString(alloc);
+    defer alloc.free(tenant_b);
+    const actor = try h.newUuidString(alloc);
+    defer alloc.free(actor);
 
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -115,7 +129,6 @@ test "TC-ADP-03-05: cross-tenant reads are blocked within a request tenant scope
     defer pool.deinit();
 
     const name = "adp03-tenant-isolation-def";
-    const actor = "00000000-0000-0000-0000-000000000123";
 
     var id_a: [64]u8 = undefined;
     var id_b: [64]u8 = undefined;
@@ -198,6 +211,10 @@ test "TC-ADP-03-06: cross-tenant mutation attempts are rejected by tenant-scoped
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
+    const tenant_b = try h.newUuidString(alloc);
+    defer alloc.free(tenant_b);
+    const actor = try h.newUuidString(alloc);
+    defer alloc.free(actor);
 
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -206,7 +223,6 @@ test "TC-ADP-03-06: cross-tenant mutation attempts are rejected by tenant-scoped
     defer pool.deinit();
 
     const name = "adp03-tenant-mutation-def";
-    const actor = "00000000-0000-0000-0000-000000000124";
 
     var id_b: [64]u8 = undefined;
 
@@ -268,6 +284,12 @@ test "TC-ADP-03-07: legacy default-tenant compatibility is preserved for request
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
+    const definition_id = try h.newUuidString(alloc);
+    defer alloc.free(definition_id);
+    const instance_id = try h.newUuidString(alloc);
+    defer alloc.free(instance_id);
+    const tenant_b = try h.newUuidString(alloc);
+    defer alloc.free(tenant_b);
 
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -277,9 +299,6 @@ test "TC-ADP-03-07: legacy default-tenant compatibility is preserved for request
 
     const conn = try pool.acquire();
     defer pool.release(conn);
-
-    const definition_id = "55555555-5555-5555-5555-555555555550";
-    const instance_id = "55555555-5555-5555-5555-555555555551";
 
     const resolved = try auth.resolveTenantContext(alloc, "legacy-opaque-token");
     try std.testing.expectEqualStrings(default_tenant, resolved.tenant_id[0..]);
