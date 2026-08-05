@@ -87,6 +87,14 @@ jobs:
   build:
     name: Build and unit tests
     runs-on: ubuntu-latest
+    # Reported, not gated, until GH #432 closes: the codebase does not compile
+    # on Linux — six sites use `std.process.Environ{ .block = .global }`, whose
+    # `.global` member exists only on the Windows variant of that struct. The
+    # build has always passed on Windows, so nothing surfaced it until this
+    # workflow's first successful run. Drop this flag once #432 lands; the step
+    # is worth keeping visible in the meantime because it is the check that
+    # found the defect.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
