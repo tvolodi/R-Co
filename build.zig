@@ -400,9 +400,14 @@ pub fn build(b: *std.Build) void {
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
         },
     });
-    const api_conventions_tests = b.addTest(.{
+    // API-01/API-06/API-07/API-09/OIDC-01 unit tests, aggregated into one
+    // compile unit via tests/unit/api_test_root.zig. Part of the ISS-0136
+    // mitigation (see graph_test_root.zig for the full rationale): this
+    // group's api_mod is libc-linked, so collapsing 6 targets into 1
+    // directly reduces the concurrent -lc compile-job count.
+    const api_tests = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/api_conventions_test.zig"),
+            .root_source_file = b.path("tests/unit/api_test_root.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
@@ -410,7 +415,9 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
-    const run_api_conventions_tests = b.addRunArtifact(api_conventions_tests);
+    const run_api_tests = b.addRunArtifact(api_tests);
+    const test_api_step = b.step("test-api", "Run API-01/06/07/09 and OIDC-01 unit tests only");
+    test_api_step.dependOn(&run_api_tests.step);
 
     // API-02: Process definition CRUD handler unit tests (pure input-validation — no DB)
     const api02_handler_tests = b.addTest(.{
@@ -464,33 +471,8 @@ pub fn build(b: *std.Build) void {
     });
     const run_obs04_timeline_tests = b.addRunArtifact(obs04_timeline_tests);
 
-    // API-06: Pagination module unit tests (pure functions — no DB)
-    // Uses the api_mod shim (src/api/api_mod.zig) to import pagination.zig
-    const api06_pagination_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_api06_pagination.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "api", .module = api_mod },
-            },
-        }),
-    });
-    const run_api06_pagination_tests = b.addRunArtifact(api06_pagination_tests);
-
-    // API-07: Input validation module unit tests (pure functions — no DB)
-    // Uses the api_mod shim (src/api/api_mod.zig) to import validation.zig
-    const api07_validation_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_api07_validation.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "api", .module = api_mod },
-            },
-        }),
-    });
-    const run_api07_validation_tests = b.addRunArtifact(api07_validation_tests);
+    // API-06 and API-07 unit tests are part of the api_tests aggregator
+    // (tests/unit/api_test_root.zig) declared above.
 
     // API-08: Bearer token auth middleware unit tests (pure early-return paths — no DB)
     // Uses the api_mod shim (src/api/api_mod.zig) to import auth.zig.
@@ -535,45 +517,8 @@ pub fn build(b: *std.Build) void {
     });
     const run_api08_auth_tests = b.addRunArtifact(api08_auth_tests);
 
-    // API-09: Request tracing middleware unit tests (pure functions — no DB, no network)
-    // Uses the api_mod shim (src/api/api_mod.zig) to import trace.zig and trace_context.zig.
-    const api09_tracing_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_api09_tracing.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "api", .module = api_mod },
-            },
-        }),
-    });
-    const run_api09_tracing_tests = b.addRunArtifact(api09_tracing_tests);
-
-    // OIDC-01: provider boundary checks (build-level static assertions)
-    const oidc01_provider_boundary_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_oidc01_provider_boundary.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "api", .module = api_mod },
-            },
-        }),
-    });
-    const run_oidc01_provider_boundary_tests = b.addRunArtifact(oidc01_provider_boundary_tests);
-
-    // OIDC-01: provider interface contract checks (runtime-level unit assertions)
-    const oidc01_provider_stub_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_oidc01_provider_stub.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "api", .module = api_mod },
-            },
-        }),
-    });
-    const run_oidc01_provider_stub_tests = b.addRunArtifact(oidc01_provider_stub_tests);
+    // API-09 and OIDC-01 (both boundary and stub) unit tests are part of the
+    // api_tests aggregator (tests/unit/api_test_root.zig) declared above.
 
     const oidc02_keycloak_adapter_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -824,17 +769,12 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_engine_ee09_tests.step);
     test_step.dependOn(&run_engine_ee11_tests.step);
     test_step.dependOn(&run_engine_tests.step);
-    test_step.dependOn(&run_api_conventions_tests.step);
+    test_step.dependOn(&run_api_tests.step);
     test_step.dependOn(&run_api02_handler_tests.step);
     test_step.dependOn(&run_api03_handler_tests.step);
     test_step.dependOn(&run_api05_history_tests.step);
     test_step.dependOn(&run_obs04_timeline_tests.step);
-    test_step.dependOn(&run_api06_pagination_tests.step);
-    test_step.dependOn(&run_api07_validation_tests.step);
     test_step.dependOn(&run_api08_auth_tests.step);
-    test_step.dependOn(&run_api09_tracing_tests.step);
-    test_step.dependOn(&run_oidc01_provider_boundary_tests.step);
-    test_step.dependOn(&run_oidc01_provider_stub_tests.step);
     test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);
     test_step.dependOn(&run_sch05_unit_tests.step);
     test_step.dependOn(&run_sch06_unit_tests.step);
