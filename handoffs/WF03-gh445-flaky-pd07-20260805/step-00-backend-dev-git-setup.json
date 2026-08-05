@@ -1,0 +1,57 @@
+{
+  "handoff_id": "b47ef24b-4cdd-4b33-8c97-520f7f6c2717",
+  "run_id": "WF03-gh445-flaky-pd07-20260805",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-gh445-flaky-pd07-20260805/step-00-backend-dev-git-setup.json",
+  "created_at": "2026-08-05T18:57:41Z",
+  "started_at": "2026-08-05T18:57:41Z",
+  "completed_at": "2026-08-05T19:32:29Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0141.json"
+    ]
+  },
+  "task": {
+    "description": "fn:git-setup for run_id=WF03-gh445-flaky-pd07-20260805, branch feature/WF03-gh445-flaky-pd07-20260805. Then diagnose and fix GH #445 / ISS-0141 (order-dependent flaky tests in tests/unit/definition_retrieval_test.zig).",
+    "acceptance_criteria": [
+      "git-setup completes",
+      "root cause of order-dependent flakiness identified",
+      "zig build test passes deterministically across 5 consecutive runs with different seeds"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:search-issues"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root-caused and fixed GH #445 / ISS-0141. The original --seed/order-dependent hypothesis was incorrect (Zig's std.testing runner does not reorder test blocks on --seed). Actual root cause: every TC-PD-07-* fixture in tests/unit/definition_retrieval_test.zig used a hardcoded literal name/version against the shared BPM_TEST_DB_URL. Reproduced deterministically by launching 3-5 truly parallel `zig build test-bpm-main` OS processes: the second process's create() INSERT ... ON CONFLICT DO NOTHING no-ops on the uq_definition_tenant_version unique constraint (DuplicateNameVersion), and activate()'s deprecate step (scoped only by name, not row id) lets one process deprecate a different process's freshly-activated row before that process's own getActiveByName() reads it back (DefinitionNotFound) -- reproducing both symptoms in the original report exactly. Fixed by adding a uniqueName() helper (fresh UUID v4 via bpm.api_trace.generateUuidV4) applied to every fixture name. Verified with 6 consecutive full `zig build test` runs (617/701 passing, 0 failures) plus 8 truly-concurrent zig build test-bpm-main invocations (3-way + 5-way parallel), all clean post-fix vs reliable failures pre-fix under identical 3-way parallel launch.",
+    "artifacts_out": [
+      "tests/unit/definition_retrieval_test.zig",
+      "docs/issues/ISS-0141.json",
+      "docs/issues/issue_index.json",
+      "docs/anti-patterns.md",
+      "CHANGELOG.md"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh445-flaky-pd07-20260805",
+      "commit_sha_list": ["defa155"],
+      "remote_branch": "origin/feature/WF03-gh445-flaky-pd07-20260805 (deleted after merge)",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/451",
+      "pr_create_error": null
+    },
+    "next_action": "Docs/changelog follow-up completed via PR #452 (feature/WF03-gh445-flaky-pd07-docs-20260805). GH #445 closed. No further action -- run complete."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -911,7 +911,49 @@
       "created_at": "2026-08-05T10:32:41Z",
       "status": "COMPLETED",
       "stage": null
+    },
+    {
+      "handoff_id": "c39a5ff3-206e-424b-be37-35e446fc5e3d",
+      "file": "handoffs/WF03-gh446-lint-baseline-20260805/step-00-backend-dev-git-setup.json",
+      "run_id": "WF03-gh446-lint-baseline-20260805",
+      "workflow_id": "WF-03",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-05T18:55:48Z",
+      "started_at": null,
+      "completed_at": null,
+      "status": "PENDING",
+      "stage": null
+    },
+    {
+      "handoff_id": "c39a5ff3-206e-424b-be37-35e446fc5e3d",
+      "file": "handoffs/WF03-gh446-lint-baseline-20260805/step-00-backend-dev-git-setup.json",
+      "run_id": "WF03-gh446-lint-baseline-20260805",
+      "workflow_id": "WF-03",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-05T18:55:48Z",
+      "started_at": null,
+      "completed_at": null,
+      "status": "PENDING",
+      "stage": null
+    },
+    {
+      "handoff_id": "b47ef24b-4cdd-4b33-8c97-520f7f6c2717",
+      "file": "handoffs/WF03-gh445-flaky-pd07-20260805/step-00-backend-dev-git-setup.json",
+      "run_id": "WF03-gh445-flaky-pd07-20260805",
+      "workflow_id": "WF-03",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-05T18:57:41Z",
+      "started_at": "2026-08-05T18:57:41Z",
+      "completed_at": "2026-08-05T19:32:29Z",
+      "status": "COMPLETED",
+      "stage": null
     }
   ],
-  "last_updated": "2026-08-05T11:25:55Z"
+  "last_updated": "2026-08-05T19:32:29Z"
 }
