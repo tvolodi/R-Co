@@ -2,6 +2,10 @@ const std = @import("std");
 const builtin = @import("builtin");
 const root = @import("root");
 const manager_mod = @import("manager.zig");
+// Named build module, not a relative @import: this file's module root
+// (src/identity/provider/, per identity_provider_mod in build.zig) does not
+// contain src/env.zig, so a relative path would escape the module root.
+const env = @import("env");
 const idp_config = if (@hasDecl(root, "idp_config"))
     root.idp_config
 else if (builtin.is_test)
@@ -259,7 +263,7 @@ const EnvSecretResolver = struct {
             const env_name = secret_ref[4..];
             if (env_name.len == 0) return error.UnsupportedSecretReference;
 
-            const environ: std.process.Environ = .{ .block = .global };
+            const environ = env.globalEnviron();
             return environ.getAlloc(allocator, env_name) catch |err| switch (err) {
                 error.EnvironmentVariableMissing => error.SecretNotFound,
                 error.OutOfMemory => error.OutOfMemory,

@@ -1,4 +1,12 @@
 const std = @import("std");
+// Named build module (not a relative @import): this file's module root
+// (src/config/) does not contain src/env.zig, so a relative path would escape
+// the module root, which Zig 0.16 forbids. See build.zig's idp_config_mod.
+//
+// Aliased as `portable_env`, not `env`: this file uses `env`/`env_name`
+// pervasively as parameter and local-variable names for its own EnvReader
+// abstraction (see processGetAlloc below, and the FakeEnv test double).
+const portable_env = @import("portable_env");
 
 pub const PROVIDER_TYPE_ENV = "BPM_IDP_PROVIDER_TYPE";
 pub const BASE_URL_ENV = "BPM_IDP_BASE_URL";
@@ -116,7 +124,7 @@ pub fn loadIdentityProviderConfig(
 }
 
 fn processGetAlloc(_: *anyopaque, allocator: std.mem.Allocator, name: []const u8) anyerror!?[]const u8 {
-    const environ: std.process.Environ = .{ .block = .global };
+    const environ = portable_env.globalEnviron();
     return environ.getAlloc(allocator, name) catch |err| switch (err) {
         error.EnvironmentVariableMissing => null,
         error.OutOfMemory => error.OutOfMemory,

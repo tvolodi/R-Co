@@ -48,17 +48,36 @@ pub fn build(b: *std.Build) void {
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
         },
     });
+    // env_mod: src/env.zig, the portable environment-variable helper (ISS-0134).
+    // Given as a named module — not a relative @import — anywhere it is needed
+    // outside the main src/ module tree: Zig 0.16 forbids an @import that
+    // escapes the importing file's module root, and both idp_config_mod and
+    // identity_provider_mod below are rooted deeper than src/env.zig.
+    const env_mod = b.createModule(.{
+        .root_source_file = b.path("src/env.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
     const idp_config_mod = b.createModule(.{
         .root_source_file = b.path("src/config/identity_provider.zig"),
         .target = target,
         .optimize = optimize,
+        // ISS-0134: identity_provider.zig reads env vars via src/env.zig,
+        // which needs libc's `environ` extern on non-Windows targets.
+        .link_libc = true,
+        .imports = &.{
+            .{ .name = "portable_env", .module = env_mod },
+        },
     });
     const identity_provider_mod = b.createModule(.{
         .root_source_file = b.path("src/identity/provider/mod.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
         .imports = &.{
             .{ .name = "idp_config", .module = idp_config_mod },
+            .{ .name = "env", .module = env_mod },
         },
     });
 
@@ -88,6 +107,8 @@ pub fn build(b: *std.Build) void {
         .{ .name = "tenant_context", .module = tenant_context_mod },
         .{ .name = "pipeline_context", .module = pipeline_context_mod },
         .{ .name = "obs_metrics", .module = obs_metrics_mod },
+        // ISS-0134: portable environment-variable access (src/env.zig).
+        .{ .name = "env", .module = env_mod },
     };
 
     // ---------------------------------------------------------------------------
@@ -100,6 +121,10 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = vendor_imports,
+            // ISS-0134: src/main.zig transitively reaches src/env.zig (via
+            // src/config.zig, src/admin/tenant_migration.zig, and others),
+            // which needs libc's `environ` extern on non-Windows targets.
+            .link_libc = true,
         }),
     });
     b.installArtifact(exe);
@@ -184,12 +209,16 @@ pub fn build(b: *std.Build) void {
     const bpm_main_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .imports = vendor_imports,
+        // ISS-0134: transitively reaches src/env.zig; see the exe definition above.
+        .link_libc = true,
     });
 
     // bpm_src_mod: src/bpm.zig re-export shim used by engine unit tests and
     // integration tests.  Exports .engine, .tasks, .pool, .definition, etc.
     const bpm_src_mod = b.createModule(.{
         .root_source_file = b.path("src/bpm.zig"),
+        // ISS-0134: transitively reaches src/env.zig; see the exe definition above.
+        .link_libc = true,
         .imports = &.{
             .{ .name = "pg", .module = pg_mod },
             .{ .name = "cel", .module = cel_mod },
@@ -201,6 +230,8 @@ pub fn build(b: *std.Build) void {
             // identity_provider added so integration tests can call route handlers
             // that reference auth.getIdentityProviderManager() (e.g. handlePatchTenant).
             .{ .name = "identity_provider", .module = identity_provider_mod },
+            // ISS-0134: portable environment-variable access (src/env.zig).
+            .{ .name = "env", .module = env_mod },
         },
     });
 

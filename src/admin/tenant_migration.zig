@@ -17,6 +17,7 @@ const std = @import("std");
 const pool_mod = @import("pool");
 const Pool = pool_mod.Pool;
 const PoolError = pool_mod.PoolError;
+const env = @import("env");
 
 // ---------------------------------------------------------------------------
 // Error set
@@ -70,7 +71,7 @@ fn errorBody(allocator: std.mem.Allocator, status: u16, title: []const u8, detai
 /// Returns empty string when the variable is absent or on error.
 /// Caller must free the returned slice when len > 0.
 fn getEnvVar(allocator: std.mem.Allocator, name: []const u8) []const u8 {
-    const environ: std.process.Environ = .{ .block = .global };
+    const environ = env.globalEnviron();
     return environ.getAlloc(allocator, name) catch |err| switch (err) {
         error.EnvironmentVariableMissing => "",
         error.OutOfMemory => "",
