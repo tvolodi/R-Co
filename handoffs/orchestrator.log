@@ -1,4 +1,4 @@
-2026-08-04T10:19:30Z | ROUTE | WF03-gh377-20260804 | dba38f9c | ISSUE-FIXER (Step 0.5 — registry updated; GH #377 already exists with sync-ref marker)
+﻿2026-08-04T10:19:30Z | ROUTE | WF03-gh377-20260804 | dba38f9c | ISSUE-FIXER (Step 0.5 — registry updated; GH #377 already exists with sync-ref marker)
 2026-08-04T10:21:40Z | ROUTE | WF03-gh377-20260804 | 67053652 | ORCH -> ISSUE-FIXER | PENDING
 2026-08-04T10:21:40Z | STARTED | WF03-gh377-20260804 | 67053652 | ISSUE-FIXER | step-01
 2026-08-04T16:34:38Z | ROUTE | WF03-gh377-20260804 | 1e33a003 | ORCH -> CODE-DESIGNER | PENDING
@@ -35,3 +35,5 @@
 2026-08-05T08:55:00Z | REWORK | WF03-gh419-20260805 | e7b5f3a9 | TEST-DESIGNER | subagent returned empty response, re-dispatching
 2026-08-05T09:46:39Z | REWORK | WF03-gh419-20260805 | b4c7a5f3 | ORCH -> TEST-DESIGNER | re-dispatched with Option C guidance
 2026-08-05T05:16:18Z | COMPLETE | WF03-gh419-20260805 | b4c7a5f3 | TEST-DESIGNER | FAIL - RT-1/RT-2 simplified per user task; flaky C42P01 secondary issue prevents 5/5 PASS; advisory lock fix verified correct
+2026-08-05T10:17:01Z | ROUTE | WF03-gh419-20260805 | 1d8e7a4f | ORCH -> TEST-RUNNER | PENDING
+2026-08-05T05:25:27Z | COMPLETE | WF03-gh419-20260805 | 1d8e7a4f | TEST-RUNNER | PASS — C40P01 fix verified, 691 tests in full suite, 1 unrelated C40P01 at TC-TNT-01-01 (filed ISS-0131/GH #424), original GH-419 deadlock gone
