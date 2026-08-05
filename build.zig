@@ -1517,7 +1517,7 @@ pub fn build(b: *std.Build) void {
     // cannot be satisfied by renaming a label.
     // ---------------------------------------------------------------------------
     const run_env_verify = b.addSystemCommand(&.{
-        "python3",
+        "python",
         "tools/verify_test_env.py",
     });
     run_env_verify.setCwd(b.path("."));
@@ -1543,7 +1543,7 @@ pub fn build(b: *std.Build) void {
     // backlog is cleared; see the filed issue for the file list.
     // ---------------------------------------------------------------------------
     const run_wiring_check = b.addSystemCommand(&.{
-        "python3",
+        "python",
         "tools/lint_test_wiring.py",
     });
     run_wiring_check.setCwd(b.path("."));

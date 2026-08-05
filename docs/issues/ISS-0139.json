@@ -1,0 +1,22 @@
+{
+  "issue_id": "ISS-0139",
+  "title": "adp03_tenant_context_resolution_test.zig:12 uses hardcoded UUID (T010) instead of per-test generation",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/442",
+  "registered_at": "2026-08-05T16:53:36Z",
+  "registered_by": "ORCH (WF-03 GH #440 / ISS-0138 fix verification)",
+  "related_to": [
+    "ISS-0121"
+  ],
+  "severity": "MINOR",
+  "status": "OPEN",
+  "scope": "tests/integration/adp03_tenant_context_resolution_test.zig only. Discovered by tools/lint_test_isolation.py (check C5) as a byproduct of re-running zig build test-env-verify while validating the ISS-0138 python3->python fix; unrelated to that fix.",
+  "symptom": "tools/lint_test_isolation.py reports a BLOCKER T010 violation: tests/integration/adp03_tenant_context_resolution_test.zig:12 declares `const tenant_b = \"22222222-2222-2222-2222-222222222222\";` as a hardcoded UUID rather than generating one per test run. This keeps `zig build test-env-verify` C5 (test isolation lint) permanently failing, so the gate can never report HEALTHY on any machine until this is fixed.",
+  "reproduction": "python tools/lint_test_isolation.py tests/integration  (or) zig build test-env-verify",
+  "root_cause_analysis": "ISS-0121 / GH #387 and its follow-up #402 drove T010 hardcoded-UUID violations down from 174 to <10 across the integration test suite, but this file was one of the residual instances not covered by that cleanup.",
+  "acceptance_criteria": [
+    "tests/integration/adp03_tenant_context_resolution_test.zig generates tenant_b (and any other fixture UUIDs) per-test instead of using a fixed literal",
+    "python tools/lint_test_isolation.py tests/integration reports zero BLOCKER findings for this file",
+    "zig build test-env-verify C5 passes (assuming other checks are independently healthy)"
+  ],
+  "evidence_file": "N/A -- see symptom field for exact lint output"
+}

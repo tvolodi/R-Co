@@ -8,7 +8,10 @@
     "ISS-0133"
   ],
   "severity": "MINOR",
-  "status": "OPEN",
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-05T16:53:36Z",
+  "resolution": "Changed both addSystemCommand calls in build.zig (test-env-verify at ~line 1519, test-wiring-check at ~line 1545) from \"python3\" to \"python\", matching the existing convention used by lint_test_table_refs and clean_test_db. No change to either script's detection logic. Verified: both steps now invoke the correct interpreter and produce real tool output (no more 'Python was not found' App Execution Alias error) on this Windows machine. Two unrelated pre-existing environment defects were surfaced during verification and filed separately: ISS-0139 (GH #442, hardcoded UUID in adp03_tenant_context_resolution_test.zig) and ISS-0140 (GH #443, tenant schema baseline drift).",
+  "prevention": "Convention: all Python-invoking addSystemCommand calls in build.zig must use \"python\", not \"python3\", for consistency and to avoid the Windows python3 App Execution Alias stub trap.",
   "scope": "build.zig verification steps only (test-env-verify, test-wiring-check). No effect on the underlying scripts' correctness.",
   "symptom": "On a Windows machine where python3.exe resolves to the WindowsApps App Execution Alias stub before a real interpreter, `zig build test-env-verify` and `zig build test-wiring-check` fail immediately with 'Python was not found ... error code 49', even though the underlying scripts are correct and run fine via `python tools/verify_test_env.py` / `python tools/lint_test_wiring.py` directly.",
   "reproduction": "On a Windows machine with a broken python3 App Execution Alias ahead of a working interpreter on PATH: zig build test-env-verify (or test-wiring-check)",
