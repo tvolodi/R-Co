@@ -4,7 +4,14 @@
 **Trigger:** Pre-release gate, scheduled CI run, or explicit operator request  
 **Owner:** `ORCH`
 
-**Git protocol:** When WF-04 spawns WF-03 or routes directly to BACKEND-DEV/FRONTEND-DEV/TEST-DESIGNER for fixes, those sub-workflows ALWAYS use the git protocols — feature branch creation is mandatory for all agent work. ORCH wraps each sub-workflow with Step 00 (`docs/agents/protocols/GIT_SETUP.md`) and Step Final (`docs/agents/protocols/GIT_MERGE.md`).
+**Git protocol:** WF-04 itself runs Step 00 (`docs/agents/protocols/GIT_SETUP.md`) exactly
+once, at the start, and Step Final (`docs/agents/protocols/GIT_MERGE.md`) exactly once, at
+the end. Every failure any step surfaces — unit, integration, frontend, E2E, NFR,
+coverage — is **enqueued** onto this one run's `handoffs/<run_id>/issue_queue.json` and
+drained via WF-03 Steps 1–7 **on this same branch**, per
+`docs/agents/protocols/ISSUE_QUEUE.md` (§8c of `ORCHESTRATOR.md`). WF-03 is never
+re-entered at its own Step 00 from inside a WF-04 run — see **WF-03 Spawning Rule**
+below, which now describes queueing, not nested branching.
 
 ---
 
@@ -26,6 +33,14 @@ Step workflow chain template:
           │
           ▼
 ┌─────────────────────────┐
+│  STEP 00: GIT SETUP     │ ← BACKEND-DEV
+│  pull → branch → push   │   fn:git-setup; creates handoffs/<run_id>/issue_queue.json
+│  Runs ONCE for the       │   (empty) immediately after PASS
+│  whole WF-04 run         │
+└──────────┬──────────────┘
+          │ PASS
+          ▼
+┌─────────────────────────┐
 │  STEP 1: BUILD CHECK    │ ← TEST-RUNNER
 │  Compile backend +      │
 │  frontend               │
@@ -40,7 +55,7 @@ Step workflow chain template:
 │  STEP 2: UNIT TESTS     │ ← TEST-RUNNER
 └──────────┬──────────────┘
            │
-     PASS? ├── NO ──► Spawn WF-03; on WF-03 PASS: return to STEP 2
+     PASS? ├── NO ──► Enqueue + drain (WF-03 Steps 1-7, same branch); return to STEP 2
            │
           YES
            │
@@ -50,7 +65,7 @@ Step workflow chain template:
 │  TESTS                  │
 └──────────┬──────────────┘
            │
-     PASS? ├── NO ──► Spawn WF-03; on WF-03 PASS: return to STEP 3
+     PASS? ├── NO ──► Enqueue + drain (WF-03 Steps 1-7, same branch); return to STEP 3
            │
           YES
            │
@@ -59,7 +74,7 @@ Step workflow chain template:
 │  STEP 4: FRONTEND TESTS │ ← TEST-RUNNER
 └──────────┬──────────────┘
            │
-     PASS? ├── NO ──► Spawn WF-03; on WF-03 PASS: return to STEP 4
+     PASS? ├── NO ──► Enqueue + drain (WF-03 Steps 1-7, same branch); return to STEP 4
            │
           YES
            │
@@ -68,7 +83,7 @@ Step workflow chain template:
 │  STEP 5: E2E TESTS      │ ← TEST-RUNNER
 └──────────┬──────────────┘
            │
-     PASS? ├── NO ──► Spawn WF-03; on WF-03 PASS: return to STEP 5
+     PASS? ├── NO ──► Enqueue + drain (WF-03 Steps 1-7, same branch); return to STEP 5
            │
           YES
            │
@@ -96,8 +111,37 @@ Step workflow chain template:
 └──────────┬──────────────┘
            │
            ▼
-[OUTPUT: Consolidated test report; release decision]
+┌─────────────────────────┐
+│  QUEUE CHECK            │ ← ORCH — any QUEUED items left in issue_queue.json?
+└──────────┬──────────────┘
+           │
+    MORE QUEUED? ── YES ──► Drain oldest (WF-03 Steps 1-7, same branch); re-check
+           │
+           NO
+           │
+           ▼
+┌─────────────────────────┐
+│  STEP FINAL: GIT MERGE  │ ← BACKEND-DEV — same agent as Step 00
+│  rebase → PR → merge    │   fn:git-merge; runs ONCE, after queue is empty
+└──────────┬──────────────┘
+           │ PASS
+           ▼
+[OUTPUT: Consolidated test report; release decision; feature/<run-id> squash-merged]
 ```
+
+---
+
+## Step 00 — Git Setup
+
+**Agent:** `BACKEND-DEV`
+**Protocol:** `docs/agents/protocols/GIT_SETUP.md`
+**Runs exactly once per WF-04 run**, before Step 1.
+
+ORCH supplies `context.branch_name = "feature/WF04-<stage>-<timestamp>"`. Follow
+GIT_SETUP.md exactly. On PASS, ORCH creates `handoffs/<run_id>/issue_queue.json`
+(`items: []`) per `docs/agents/protocols/ISSUE_QUEUE.md`, then routes to Step 1. Every
+failure surfaced anywhere in Steps 1–8 is drained onto this one queue and this one
+branch — see **Issue Queue Draining Rule** below.
 
 ---
 
@@ -130,7 +174,8 @@ Step workflow chain template:
    - MINOR: other
 3. If BLOCKER or MAJOR failures: status = FAIL
 4. → fn:complete-handoff
-   On FAIL: ORCH spawns WF-03 with the failure list; WF-03 must resolve before WF-04 continues
+   On FAIL: ORCH enqueues the failure list (ISSUE_QUEUE.md) and drains it via WF-03
+   Steps 1-7 on this run's existing branch; WF-04 resumes at this step once drained
 ```
 
 ---
@@ -149,7 +194,7 @@ PRE-CONDITION: Test PostgreSQL database running; migrations applied
    - Transaction atomicity (DB-03)
    - Concurrency tests (EE-12, scheduler)
 4. → fn:complete-handoff (PASS/FAIL)
-   On FAIL: ORCH spawns WF-03
+   On FAIL: ORCH enqueues (ISSUE_QUEUE.md) and drains via WF-03 Steps 1-7, same branch
 ```
 
 ### Test-database lifecycle policy (ISS-0090)
@@ -172,7 +217,7 @@ PRE-CONDITION: Test PostgreSQL database running; migrations applied
 1. → fn:run-frontend-unit-tests (no path filter — run all)
 2. Classify failures
 3. → fn:complete-handoff (PASS/FAIL)
-   On FAIL: ORCH spawns WF-03
+   On FAIL: ORCH enqueues (ISSUE_QUEUE.md) and drains via WF-03 Steps 1-7, same branch
 ```
 
 ---
@@ -190,8 +235,9 @@ ORCH is responsible for verifying the stack is up before routing to this step.
 2. A failing E2E test is BLOCKER only if it covers a critical journey listed in
    test_developer_guide.md §7.1 for the stage under test
 3. → fn:complete-handoff (PASS/FAIL)
-   On FAIL: ORCH spawns WF-03 (E2E failures may be frontend or backend — include
-             Playwright screenshots in artifacts_out for diagnosis)
+   On FAIL: ORCH enqueues (ISSUE_QUEUE.md) and drains via WF-03 Steps 1-7, same branch
+             (E2E failures may be frontend or backend — include Playwright screenshots
+             in artifacts_out for diagnosis)
 ```
 
 ---
@@ -270,35 +316,69 @@ ORCH is responsible for verifying the stack is up before routing to this step.
 
 ---
 
-## WF-03 Spawning Rule
+## Queue Check (between Step 8 and Step Final)
 
-When any step in WF-04 fails and the failure is a code/test issue (not a config issue), `ORCH` spawns WF-03 as a sub-workflow:
+**Owner:** `ORCH`
+
+```
+1. Read handoffs/<run_id>/issue_queue.json.
+2. If any item has status QUEUED: pop the oldest, set IN_PROGRESS, stamp started_at, and
+   drain it via WF-03 Steps 1-7 on THIS run's existing branch (no new Step 00). Resume
+   WF-04 at whichever step the drained issue came from once it reaches DRAINED.
+3. If no QUEUED items remain: proceed to Step Final.
+```
+
+Full mechanism: `docs/agents/protocols/ISSUE_QUEUE.md`.
+
+---
+
+## Step Final — Git Merge
+
+**Agent:** `BACKEND-DEV` — same agent as Step 00
+**Protocol:** `docs/agents/protocols/GIT_MERGE.md`
+**Runs exactly once**, after the Queue Check above finds no QUEUED items remaining.
+
+Use the RELEASE-VALIDATOR Step 8 decision summary as the commit and PR one-line summary.
+List every `ISS-NNNN` drained during the run in the PR body alongside the release
+decision. Follow GIT_MERGE.md exactly.
+
+---
+
+## Issue Queue Draining Rule (formerly "WF-03 Spawning Rule")
+
+When any step in WF-04 fails and the failure is a code/test issue (not a config issue),
+`ORCH` no longer spawns WF-03 as a separate branched sub-workflow. Instead it enqueues
+the failure onto **this WF-04 run's own** `handoffs/<run_id>/issue_queue.json` (created
+once, at WF-04's own Step 00) and drains it in place:
 
 ```
 ORCH:
-  1. Create WF-03 handoff with:
-       workflow_id = "WF03-<timestamp>"
-       context.related_handoff_ids = [failing WF-04 handoff id]
-       task.description = "Fix the following failures: <failure list>"
-  
-  2. Launch WF-03 (always includes git protocol steps):
-       a. Create WF-03 Step 00 handoff (git-setup) first
-       b. Run WF-03 Steps 00 → 1 → 2 → 3 → Final
-  
-  3. On WF-03 PASS: resume WF-04 at the step that failed
-  4. On WF-03 ESCALATED: pause WF-04; surface for human review
+  1. File the issue (ISS file + mandatory GitHub issue, per WF-03 Step 0.5 — unchanged)
+     and → fn:enqueue-issue onto handoffs/<run_id>/issue_queue.json.
+
+  2. Drain per docs/agents/protocols/ISSUE_QUEUE.md: re-enter WF-03 at Step 1 (Diagnose)
+     for this issue, on WF-04's EXISTING branch — WF-03's own Step 00 does NOT run.
+     Run WF-03 Steps 1 → 2 → 2b → 3 → (4 → 4b) → 5 → 6 → 7.
+
+  3. On drain PASS (item reaches DRAINED): resume WF-04 at the step that failed.
+  4. On rework exhaustion (item reaches ESCALATED): pause WF-04; surface for human review.
+  5. Repeat for every item the drain itself surfaces (any depth) before resuming WF-04.
 ```
 
-The WF-04 step counter does NOT reset when WF-03 is run. WF-04 resumes at the exact step it left.
+The WF-04 step counter does NOT reset when an issue is drained. WF-04 resumes at the
+exact step it left, once the queue has no QUEUED/IN_PROGRESS items blocking that step.
 
-**Direct routing to dev agents (Steps 6, 7):** When WF-04 routes directly to BACKEND-DEV (NFR performance fixes) or TEST-DESIGNER (coverage gaps), ORCH wraps those with Step 00 → work → Step Final using the git protocols. Branch naming for these cases:
+**Direct routing to dev agents (Steps 6, 7):** NFR performance fixes (Step 6) and
+coverage gaps (Step 7) are enqueued and drained the same way — **not** wrapped with their
+own Step 00/Step Final. They land as ordinary commits on WF-04's one branch, same as any
+other drained issue. (The `feature/WF04-nfr-*` / `feature/WF04-cov-*` branch-naming
+convention that previously existed for these is retired — there is only ever the one
+`feature/<run-id>` branch for the whole WF-04 run.)
 
-```
-feature/WF04-nfr-<run-id>-<timestamp>   (NFR fix routed to BACKEND-DEV)
-feature/WF04-cov-<run-id>-<timestamp>   (coverage gap routed to TEST-DESIGNER)
-```
-
-ORCH records `owned_modules` for these branches and enforces no-overlap with any concurrent WF-02 or WF-03 run (see ORCHESTRATOR.md §10 Parallel-Host Coordination). If a WF-04-spawned fix run and a concurrent WF-03 run would touch the same modules, ORCH serialises them: the second run is deferred to PENDING until the first reaches Step Final PASS.
+`owned_modules` for the WF-04 run is recorded once, at its own Step 00, and covers every
+issue drained during the run — see ISSUE_QUEUE.md "owned_modules — no new lock per queue
+item" and ORCHESTRATOR.md §10. Deconfliction against a *separate, concurrent* WF-02 run
+(a different top-level run entirely) is unchanged.
 
 ---
 

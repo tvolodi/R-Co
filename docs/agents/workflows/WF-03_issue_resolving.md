@@ -1,8 +1,23 @@
 # WF-03 — Issue Resolving
 
-**Version:** 0.4 · 2026-06-01  
-**Trigger:** Bug report / user request, test failure, DLQ escalation, or regression detected during WF-02/WF-04  
+**Version:** 0.5 · 2026-08-05
+**Trigger:** Bug report / user request, test failure, DLQ escalation, or regression detected during WF-02/WF-04
 **Owner:** `ORCH`
+
+---
+
+## ⛔ Entry mode: top-level vs. queued (read this before Step 00)
+
+WF-03 now runs in one of two modes. Check which one applies before doing anything else:
+
+| Mode | When | Step 00 | Step Final |
+|---|---|---|---|
+| **Top-level** | WF-03 is the FIRST workflow entered for this run (e.g. user directly reports a bug with no other workflow already active) | Runs normally (this doc's Step 00) | Runs normally (this doc's Step Final), once, after the issue queue is fully drained |
+| **Queued** | WF-03 is being entered to drain one item from `handoffs/<run_id>/issue_queue.json` — the run already has a branch from some other workflow's (or WF-03's own) Step 00 | **SKIPPED** — reuse `context.branch_name` from the top-level run; do not create a new branch | **SKIPPED** — the queue-draining loop returns control to whichever step is draining the queue; Step Final runs once, only when the queue is empty (see `docs/agents/protocols/ISSUE_QUEUE.md`) |
+
+**In Queued mode, WF-03 begins at Step 0.5** (Issue Registry) and ends at Step 7 (Doc Update). Steps 00 and Final are not repeated. See `docs/agents/protocols/ISSUE_QUEUE.md` for the full draining loop, the queue file schema, and how newly-discovered issues found *while* draining get appended rather than triggering a nested branch.
+
+If you are unsure which mode applies: check whether `handoffs/<run_id>/issue_queue.json` already exists for this `run_id`. If it does, you are in Queued mode.
 
 ---
 
@@ -17,32 +32,42 @@ Step workflow chain template:
 
 ---
 
-## When to launch WF-03
+## When to enter WF-03
 
-WF-03 is launched by ORCH in **two distinct situations**:
+WF-03 is entered by ORCH in **two distinct situations** — one top-level (own Step
+00/Final), one queued (drains onto an already-active run's branch; see **Entry mode**
+above):
 
-### Situation A — Internal: triggered by TEST-RUNNER failure
+### Situation A — Queued: triggered by a failure inside an already-active run
 
-WF-03 is launched when TEST-RUNNER in WF-02 Step 4 returns FAIL **and** the failure is NOT eligible for inline fix.
+WF-03 is entered in **queued mode** when TEST-RUNNER (or RELEASE-VALIDATOR, or any other
+step) inside an ALREADY-ACTIVE WF-02/WF-03/WF-04/WF-05 run returns FAIL **and** the
+failure is NOT eligible for inline fix. This is the common case — most issues are found
+while doing something else, not reported cold by a user.
 
-**Launch WF-03 when:**
+**Enqueue-and-drain when:**
 - Failure is a logic error, DB error, or assertion failure (not a pure compile error)
 - Compile failure touches > 2 files
 - Compile failure requires a logic, schema, or API contract change
-- TEST-RUNNER's inline fix attempt failed
+- The step's own inline fix attempt failed
 
-**Do not launch WF-03 when:**
-- TEST-RUNNER resolved a compile-only blocker inline and resubmitted PASS
+**Do not enqueue when:**
+- The step resolved a compile-only blocker inline and resubmitted PASS
 
-### Situation B — External: triggered by user-reported issue or bug description
+### Situation B — Top-level: triggered by user-reported issue or bug description
 
-WF-03 is launched when the user describes a bug, problem, or defect — even without a failing test. Trigger phrases include: "fix this", "there is a problem with", "the X is broken", "resolve this issue".
+WF-03 is entered in **top-level mode** (its own Step 00/Final) only when no other
+workflow is already active for this task — e.g. the user describes a bug, problem, or
+defect with nothing else in flight. Trigger phrases include: "fix this", "there is a
+problem with", "the X is broken", "resolve this issue".
 
-ORCH classifies the prompt as a WF-03 trigger when:
+ORCH classifies the prompt as a WF-03 top-level trigger when:
 - The user describes unexpected behaviour in the running system
 - The user describes a defect found during manual testing
 - The user reports an error or crash not yet captured by the test suite
 - The prompt implies finding and fixing a root cause (not adding new functionality)
+- AND no other workflow is already active (if one is, this is Situation A instead —
+  enqueue onto its existing queue rather than starting a new top-level run)
 
 If unsure whether a prompt is WF-03 (issue fix) or WF-02 (new requirement): WF-03 is correct if the expected behaviour already exists in the requirements spec; WF-02 is correct if the feature has not been specified yet.
 
@@ -57,6 +82,11 @@ If unsure whether a prompt is WF-03 (issue fix) or WF-02 (new requirement): WF-0
 ┌───────────────────────────────┐
 │  STEP 00: GIT SETUP           │ ← BACKEND-DEV (backend) or FRONTEND-DEV (frontend)
 │  pull → branch → push         │   fn:git-setup  (see docs/agents/protocols/GIT_SETUP.md)
+│  TOP-LEVEL MODE ONLY —        │
+│  skipped when draining the    │
+│  issue queue of an already-   │
+│  branched run (see            │
+│  ISSUE_QUEUE.md)              │
 └──────────────┬────────────────┘
                │ PASS
                ▼
@@ -158,8 +188,23 @@ If unsure whether a prompt is WF-03 (issue fix) or WF-02 (new requirement): WF-0
                │ PASS
                ▼
 ┌───────────────────────────────┐
+│  QUEUE CHECK                  │ ← ORCH — see ISSUE_QUEUE.md "Draining order"
+│  Any QUEUED items left in     │
+│  handoffs/<run_id>/           │
+│  issue_queue.json?            │
+└──────────────┬────────────────┘
+               │
+        MORE QUEUED? ── YES ──► Pop oldest QUEUED item → back to Step 1 (Diagnose)
+               │                 for that item (Step 00 NOT repeated)
+               NO
+               │
+               ▼
+┌───────────────────────────────┐
 │  STEP FINAL: GIT MERGE        │ ← same agent as Step 00
 │  rebase → PR → merge          │   fn:git-merge  (see docs/agents/protocols/GIT_MERGE.md)
+│  TOP-LEVEL MODE ONLY — runs   │
+│  exactly once, after the      │
+│  queue is fully drained       │
 └──────────────┬────────────────┘
                │ PASS
                ▼
@@ -170,10 +215,15 @@ If unsure whether a prompt is WF-03 (issue fix) or WF-02 (new requirement): WF-0
 
 ## Step 00 — Git Setup
 
-**Agent:** `BACKEND-DEV` (backend fixes) or `FRONTEND-DEV` (frontend fixes)  
+**Agent:** `BACKEND-DEV` (backend fixes) or `FRONTEND-DEV` (frontend fixes)
 **Protocol:** `docs/agents/protocols/GIT_SETUP.md`
+**Runs ONLY in top-level mode.** In queued mode (draining `issue_queue.json` for a run
+that already has a branch), this step is skipped entirely — reuse the existing
+`context.branch_name`. See `docs/agents/protocols/ISSUE_QUEUE.md`.
 
-ORCH supplies `context.branch_name = "feature/WF03-<issue-id>-<timestamp>"` in this handoff.  
+ORCH supplies `context.branch_name = "feature/WF03-<issue-id>-<timestamp>"` in this handoff
+(top-level mode only). Immediately after this step returns PASS, ORCH creates
+`handoffs/<run_id>/issue_queue.json` with `items: []` per ISSUE_QUEUE.md.
 Follow GIT_SETUP.md exactly. On PASS, ORCH routes to Step 0.5.
 
 ---
@@ -312,6 +362,14 @@ Every issue must be logged before diagnosis begins. This step is separate from S
                            next_action: "Route to CODE-DESIGNER Step 2",
                            artifacts_out: ["docs/issues/ISS-<NNNN>.json"])
 ```
+
+### Incidental discovery during diagnosis
+
+If, while reading the source/tests to diagnose THIS issue, ISSUE-FIXER notices a
+**separate, unrelated** defect (not the root cause of the issue it's diagnosing): do not
+diagnose or fix it here. File it (`fn:register-issue` + mandatory GitHub issue, same as
+Step 0.5) and `fn:enqueue-issue` it per `docs/agents/protocols/ISSUE_QUEUE.md`. Continue
+diagnosing the current issue without interruption.
 
 ---
 
@@ -482,6 +540,12 @@ If any service is down: STOP. Return FAIL with severity BLOCKER. ORCH handles in
 6. If all three conditions met: status = PASS
 7. If new failures introduced (regression):
    status = FAIL; include regression list in result.issues
+7a. If the full-suite run surfaces failures UNRELATED to the issue this pass is fixing
+    (pre-existing failures the fix didn't cause and doesn't need to fix to pass its own
+    acceptance criteria): file each (`fn:register-issue` + mandatory GitHub issue) and
+    `fn:enqueue-issue` it per ISSUE_QUEUE.md. This does NOT change this step's own
+    PASS/FAIL verdict — the current issue's fix is judged only against conditions 1-3
+    above and the regression check in step 7.
 8. → fn:register-inner-report
 9. → fn:complete-handoff (status: PASS/FAIL,
                            artifacts_out: ["tests/reports/report-<date>-<run_id>-step05-verify.yaml"],
@@ -515,14 +579,41 @@ Run NFR benchmarks and perform the release check per `docs/agents/workflows/WF-0
 
 ---
 
+## Queue Check (between Step 7 and Step Final)
+
+**Owner:** `ORCH`
+**Runs after EVERY pass through Step 7**, whether this pass was the top-level task or a
+queued item.
+
+```
+1. Read handoffs/<run_id>/issue_queue.json.
+2. If any item has status QUEUED: pop the oldest one, set IN_PROGRESS, stamp started_at,
+   and re-enter this document at Step 1 (Diagnose) for that item — WITHOUT running
+   Step 00 again. The branch, and everything committed on it so far, carries forward.
+3. If no QUEUED items remain: proceed to Step Final below.
+```
+
+Full detail, including how issues found mid-drain get appended (not nested) and the
+FIFO drain order: `docs/agents/protocols/ISSUE_QUEUE.md`.
+
+---
+
 ## Step Final — Git Merge
 
-**Agent:** `BACKEND-DEV` (backend fixes) or `FRONTEND-DEV` (frontend fixes) — same agent as Step 00  
+**Agent:** `BACKEND-DEV` (backend fixes) or `FRONTEND-DEV` (frontend fixes) — same agent as Step 00
 **Protocol:** `docs/agents/protocols/GIT_MERGE.md`
+**Runs ONLY in top-level mode, exactly once, after the Queue Check above finds no
+QUEUED items remaining.** In queued mode this step never runs directly — control
+returns to whichever run's Queue Check invoked this drain pass.
 
-ORCH supplies `context.branch_name` in this handoff.  
-Use ISSUE-FIXER's Step 1 `result.summary` and the ISS file title as the commit and PR one-line summary.  
-Use commit prefix `fix` instead of `feat`.  
+ORCH supplies `context.branch_name` in this handoff.
+Use the ORIGINAL top-level task's summary (not any one queued issue's) as the commit
+and PR one-line summary — the PR represents everything landed on the branch, including
+every drained issue. List every `ISS-NNNN` resolved during the run (top-level fix plus
+all drained items) in the PR body.
+Use commit prefix `fix` instead of `feat` if the top-level task was itself an issue fix;
+`feat` if the top-level task was a WF-02 requirement (WF-03 was entered only to drain
+issues found along the way).
 Follow GIT_MERGE.md exactly.
 
 ---
@@ -560,8 +651,8 @@ When `ISSUE-FIXER` completes Step 1, it classifies severity to help `ORCH` prior
 
 | Step | Agent | Condition | Gate |
 |---|---|---|---|
-| 00 | BACKEND-DEV / FRONTEND-DEV | Always | Hard gate |
-| 0.5 | ISSUE-FIXER | Always | — |
+| 00 | BACKEND-DEV / FRONTEND-DEV | **Top-level mode only** — skipped when draining the queue | Hard gate |
+| 0.5 | ISSUE-FIXER | Always (every pass — top-level or queued) | — |
 | 1 | ISSUE-FIXER | Always | — |
 | 2 | CODE-DESIGNER | Always | — |
 | **2b** | **CODE-DESIGN-VALIDATOR** | **Always** | **Hard gate** |
@@ -570,5 +661,8 @@ When `ISSUE-FIXER` completes Step 1, it classifies severity to help `ORCH` prior
 | **4b** | **TEST-DESIGN-VALIDATOR** | **Business logic changed** | **Hard gate** |
 | 5 | TEST-RUNNER | Always | — |
 | 6 | RELEASE-VALIDATOR | BLOCKER severity only | — |
-| 7 | DOC-UPDATER | Always | — |
-| Final | BACKEND-DEV / FRONTEND-DEV | Always | Hard gate |
+| 7 | DOC-UPDATER | Always (every pass) | — |
+| *Queue Check* | ORCH | Always, after every Step 7 | Loops to Step 1 if items QUEUED |
+| Final | BACKEND-DEV / FRONTEND-DEV | **Top-level mode only**, once queue is drained | Hard gate |
+
+See `docs/agents/protocols/ISSUE_QUEUE.md` for the full draining mechanism.

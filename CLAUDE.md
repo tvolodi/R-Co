@@ -55,6 +55,15 @@ When running as **ORCH**, the Zero Manual Work directive is fulfilled by running
 - Keep looping: TEST-RUNNER → detect failure → route to BACKEND-DEV → fix → TEST-RUNNER retests → repeat until all tests PASS.
 - Cycle completes only when: all tests pass OR max rework iterations exhausted → escalate.
 
+**How the loop avoids repeated workspace setup/teardown:** every blocker or unrelated
+failure found this way is enqueued onto the CURRENT run's `handoffs/<run_id>/issue_queue.json`
+and drained via WF-03 Steps 1–7 **on the run's existing branch** — git-setup (workspace
+prepare) and git-merge (commit/push/merge) each happen exactly once per run, not once per
+blocker. See `docs/agents/protocols/ISSUE_QUEUE.md` and ORCHESTRATOR.md §8c. This is what
+makes "fix everything, however many issues that takes" affordable: the loop is steps
+2 (diagnose) through 6 (overall check) repeating, not steps 1 (prepare) through 9
+(merge) repeating.
+
 **Only exception:** a destructive or irreversible change to unrelated functionality (e.g. dropping a production table). Flag those for Orchestrator escalation instead.
 
 ### ⛔ No Issue Left Local-Only
@@ -66,6 +75,8 @@ Any NEW issue discovered by any agent — whether it is the task the user asked 
 Before filing, check for an ID collision: local `ISS-NNNN` numbering and GitHub issue numbering are different sequences, and a local ID can coincide with an unrelated existing GitHub issue. Search first (`gh issue list --search "<keywords>" --state all`); renumber the local entry if the ID is already spoken for on GitHub.
 
 "Out of scope for the current fix" is a reason to file the finding as its own issue — never a reason to leave it undocumented outside `docs/issues/`. See the ISSUE-FIXER section (`Step 0.5`) below for the exact procedure.
+
+**Filing is not the same as fixing.** Once filed, a NEW issue discovered during an active workflow run is also enqueued onto that run's `handoffs/<run_id>/issue_queue.json` and resolved before the run's one Step Final (git-merge) — it is not deferred to some future run just because it was "incidental." See `docs/agents/protocols/ISSUE_QUEUE.md`. The only issues that stay OPEN/unfixed after a run are ones explicitly deemed out of the queue's severity/scope by ORCH (documented as such), never ones simply forgotten.
 
 ### ⛔ No Speculation
 
@@ -516,8 +527,8 @@ Backend services (PostgreSQL, Keycloak) are a **standard runtime requirement** �
 
 | Step | Agent | Gate |
 |---|---|---|
-| **00a** | **TEST-RUNNER** | **Hard gate — Green-Main Gate: all existing tests must pass on `main` before any implementation starts. If any test fails, dispatch WF-03 per failure cluster and hold WF-02 until WF-03 returns PASS. See `docs/guides/test_infrastructure_guide.md §4`.** |
-| 00 | BACKEND-DEV / FRONTEND-DEV | Hard gate — git-setup |
+| **00a** | **TEST-RUNNER** | **Hard gate — Green-Main Gate: all existing tests must pass on `main` before any implementation starts. If any test fails, enqueue per failure cluster onto this run's `issue_queue.json` and drain via WF-03 Steps 1-7 on this run's branch before implementation starts. See `docs/guides/test_infrastructure_guide.md §4` and `docs/agents/protocols/ISSUE_QUEUE.md`.** |
+| 00 | BACKEND-DEV / FRONTEND-DEV | Hard gate — git-setup (runs ONCE; creates `handoffs/<run_id>/issue_queue.json`) |
 | 1 | CODE-DESIGNER | — |
 | **1b** | **CODE-DESIGN-VALIDATOR** | **Hard gate — BACKEND-DEV cannot start until PASS** |
 | 2a/2b | BACKEND-DEV / FRONTEND-DEV | — |
@@ -526,11 +537,14 @@ Backend services (PostgreSQL, Keycloak) are a **standard runtime requirement** �
 | 4 | TEST-RUNNER | Infrastructure Health Checklist (§3 of test_infrastructure_guide.md) THEN bench env checked; both required before any test binary runs |
 | 5 | RELEASE-VALIDATOR | — |
 | 6 | DOC-UPDATER | — |
-| Final | BACKEND-DEV / FRONTEND-DEV | Hard gate |
+| *Queue Check* | ORCH | Drain any remaining `QUEUED` items (WF-03 Steps 1-7, same branch) before Step Final |
+| Final | BACKEND-DEV / FRONTEND-DEV | Hard gate — git-merge (runs ONCE, after queue is empty) |
 
-**WF-03 trigger recognition (issue resolving):**
+**WF-03 trigger recognition (issue resolving) — one branch, drain-the-queue model:**
 
-Launch WF-03 when the user prompt describes a bug, defect, or problem with existing behaviour — even without a failing test. Trigger phrases: "fix this", "there is a problem with", "X is broken", "resolve this issue", "something is wrong with". Also launch WF-03 when TEST-RUNNER in WF-02/WF-04 returns FAIL and the failure is not eligible for inline fix. Also launch WF-03 when Step 00a of WF-02 detects pre-existing failures on `main` (one WF-03 per failure cluster).
+A WF-03 **top-level** run (its own Step 00 git-setup + Step Final git-merge) is launched only when no other workflow is already active for this task — e.g. the user directly reports a bug with nothing else in flight. Trigger phrases: "fix this", "there is a problem with", "X is broken", "resolve this issue", "something is wrong with".
+
+When TEST-RUNNER in WF-02/WF-04 returns FAIL, or Step 00a of WF-02 detects pre-existing failures on `main`, or any other step of an already-active run surfaces an issue: **do not launch a new top-level WF-03.** Instead, file the issue (ISS file + mandatory GitHub issue, unchanged) and enqueue it onto the active run's `handoffs/<run_id>/issue_queue.json`. Drain it by re-entering WF-03 at **Step 1 (Diagnose)** through Step 7 (Doc Update) **on the active run's existing branch** — no new Step 00, no new PR. Any issue discovered while draining (found while fixing a found issue) is appended to the same queue and drained the same way before Step Final, at any depth, FIFO order. Only after the queue is fully empty does the active run proceed to its own single Step Final. See `docs/agents/protocols/ISSUE_QUEUE.md` and ORCHESTRATOR.md §8c for the full mechanism.
 
 WF-03 vs WF-02 rule: if the expected behaviour is already in the requirements spec → WF-03. If the feature has not been specified yet → WF-02.
 
@@ -547,26 +561,27 @@ WF-05 vs WF-04 rule: WF-04 asks _"does the code work?"_. WF-05 asks _"does the s
 
 | Step | Agent | Gate | Description |
 |---|---|---|---|
-| 00 | BACKEND-DEV | Hard gate | `fn:git-setup` (only if fixes expected; may be skipped for read-only UAT) |
+| 00 | BACKEND-DEV | Hard gate | `fn:git-setup` (only if fixes expected; may be skipped for read-only UAT). Creates `issue_queue.json` on PASS. |
 | 1 | UAT-RUNNER | — | Pre-flight + all scenarios + UAT report |
 | 2a-sr | BO-SWIFTROUTE | — | SwiftRoute domain sign-off (parallel with 2a-vx, 2a-mc) |
 | 2a-vx | BO-VORTEX | — | Vortex domain sign-off (parallel) |
 | 2a-mc | BO-MERIDIAN | — | Meridian domain sign-off + quorum vote (parallel) |
 | **2b** | **PRODUCT-OWNER** | **Hard gate** | Cross-tenant coherence + MUST coverage + release recommendation |
-| 2c | ORCH | Routing gate | APPROVED → Step 3; BLOCKED → WF-03 per issue, re-run Step 1 |
+| 2c | ORCH | Routing gate | APPROVED → Step 3; BLOCKED → enqueue each issue, drain via WF-03 Steps 1-7 on this run's branch, re-run Step 1 |
 | 3 | RELEASE-VALIDATOR | — | NFR + UAT combined sign-off |
 | 4 | DOC-UPDATER | — | Mark UAT-verified requirements; update changelog |
-| Final | BACKEND-DEV | Hard gate | `fn:git-merge` (skipped if Step 00 was skipped) |
+| *Queue Check* | ORCH | — | Drain any remaining `QUEUED` items before Step Final |
+| Final | BACKEND-DEV | Hard gate | `fn:git-merge` (skipped if Step 00 was skipped; runs ONCE, after queue is empty) |
 
 Steps 2a-sr, 2a-vx, and 2a-mc **run in parallel**. ORCH dispatches all three simultaneously.
 Step 2b waits for all three sign-offs before running.
 
-**WF-03 pipeline (issue resolving):**
+**WF-03 pipeline (issue resolving) — top-level mode (own Step 00/Final) vs. queued mode (draining another run's queue):**
 
 | Step | Agent | Condition | Gate |
 |---|---|---|---|
-| 00 | BACKEND-DEV / FRONTEND-DEV | Always | Hard gate |
-| 0.5 | ISSUE-FIXER | Always — registry lookup + create/update ISS file | — |
+| 00 | BACKEND-DEV / FRONTEND-DEV | **Top-level mode only** — skipped when draining a queue | Hard gate |
+| 0.5 | ISSUE-FIXER | Always (every pass) — registry lookup + create/update ISS file | — |
 | 1 | ISSUE-FIXER | Always — root cause diagnosis | — |
 | 2 | CODE-DESIGNER | Always — fix design artefact | — |
 | **2b** | **CODE-DESIGN-VALIDATOR** | **Always** | **Hard gate — Fix cannot start until PASS** |
@@ -575,8 +590,11 @@ Step 2b waits for all three sign-offs before running.
 | **4b** | **TEST-DESIGN-VALIDATOR** | **Business logic added/modified** | **Hard gate** |
 | 5 | TEST-RUNNER | Always | — |
 | 6 | RELEASE-VALIDATOR | BLOCKER severity only | — |
-| 7 | DOC-UPDATER | Always | — |
-| Final | BACKEND-DEV / FRONTEND-DEV | Always | Hard gate |
+| 7 | DOC-UPDATER | Always (every pass) | — |
+| *Queue Check* | ORCH | Always, after every Step 7 | Loop to Step 1 if items `QUEUED`; else proceed |
+| Final | BACKEND-DEV / FRONTEND-DEV | **Top-level mode only**, once queue is drained | Hard gate |
+
+Any issue found incidentally during Steps 1-7 (not the thing currently being fixed) is filed and enqueued per `docs/agents/protocols/ISSUE_QUEUE.md` — it does not spawn a nested WF-03 branch. See that doc and ORCHESTRATOR.md §8c for the full draining loop.
 
 ### ORCH execution style
 
@@ -1136,6 +1154,13 @@ keywords = []  # extract from the failure: module names, error type, etc.
 # fn:update-issue — mark RESOLVED with resolution + prevention text
 ```
 
+**4a. Incidental discovery.** If diagnosing or fixing THIS issue turns up a separate,
+unrelated defect, do not scope-creep into fixing it here. File it the same way (Step 5
+below applies to it too) and `fn:enqueue-issue` it onto this run's
+`handoffs/<run_id>/issue_queue.json` per `docs/agents/protocols/ISSUE_QUEUE.md`. ORCH
+drains it via WF-03 Steps 1-7 on this run's existing branch once the current issue
+finishes — it does not get a separate branch or PR.
+
 **5. File it on GitHub — mandatory for every NEW issue (Step 0.5 "no matching issue found" case):**
 
 `docs/issues/*.json` is an internal working registry, not a visible record. A defect that exists only there is invisible to the human unless they already know to look. Before completing Step 0.5, if this is a newly-registered issue (not a recurrence of an existing one):
@@ -1394,7 +1419,8 @@ git push / git commit  # never modify the repo
 | MAJOR | An important business rule is violated (wrong actor, wrong SLA, wrong routing) |
 | MINOR | Edge-case deviation that does not block the core journey |
 
-ORCH spawns WF-03 for every BLOCKER and MAJOR issue.
+ORCH enqueues and drains (via WF-03 Steps 1-7, on the active run's existing branch —
+see `docs/agents/protocols/ISSUE_QUEUE.md`) for every BLOCKER and MAJOR issue.
 MINOR issues are logged but do not block the release.
 
 ---
@@ -1566,7 +1592,9 @@ rationale. You never approve a release with any open BLOCKER.**
 **Step 3:** Write `tests/uat-reports/po-signoff-<run_id>.yaml`.
 
 **Step 4:** `release_recommendation: APPROVED` → ORCH routes to RELEASE-VALIDATOR.
-`release_recommendation: BLOCKED` → ORCH spawns WF-03 per issue, then re-runs WF-05.
+`release_recommendation: BLOCKED` → ORCH enqueues each issue onto this WF-05 run's
+`issue_queue.json` and drains via WF-03 Steps 1-7 on the run's existing branch (see
+`docs/agents/protocols/ISSUE_QUEUE.md`), then re-runs WF-05 Step 1.
 
 **report language rule:** `release_rationale` must be suitable for a product
 changelog or stakeholder communication. No stack traces. No test IDs. No
