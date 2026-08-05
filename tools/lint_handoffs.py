@@ -22,7 +22,16 @@ Checks (BLOCKER unless noted):
   H013  timestamps within one run disagree by a whole-hour offset (local-as-UTC)
 
 Usage:
-    python3 tools/lint_handoffs.py [handoffs_dir] [--quiet] [--max-severity=LEVEL]
+    python3 tools/lint_handoffs.py [handoffs_dir] [--quiet]
+    python3 tools/lint_handoffs.py --changed         # only files changed vs origin/main
+
+`--changed` is the CI mode. The corpus carries ~260 pre-existing BLOCKERs from
+before these checks existed (inverted timestamps, BOMs, hand-edited JSON). Those
+are frozen history: gating every pull request on them would fail every build for
+defects the author did not introduce, and the predictable response to a gate
+that always fails is to stop believing it. `--changed` restricts findings to
+handoff files the branch actually touched, so CI blocks new defects while the
+backlog is worked separately.
 
 Exit codes: 0 = no BLOCKER/MAJOR, 1 = findings, 2 = usage error.
 """
@@ -360,10 +369,51 @@ def lint_orchestrator_log(log_path: str, findings: list[Finding]) -> None:
         )
 
 
+def changed_handoff_files(base: str = "origin/main") -> set[str] | None:
+    """Handoff files this branch touched, relative to `base`.
+
+    Returns None when git cannot answer (no repo, missing ref, git absent), so
+    the caller falls back to scanning everything rather than silently checking
+    nothing — a gate that quietly passes is worse than no gate at all.
+    """
+    for ref in (base, "HEAD~1"):
+        try:
+            proc = subprocess.run(
+                ["git", "diff", "--name-only", f"{ref}...HEAD"],
+                capture_output=True,
+                timeout=30,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if proc.returncode != 0:
+            continue
+        names = proc.stdout.decode("utf-8", "replace").splitlines()
+        return {
+            n.strip().replace("\\", "/")
+            for n in names
+            if n.strip().startswith("handoffs/") and n.strip().endswith(".json")
+        }
+    return None
+
+
 def main(argv: list[str]) -> int:
     args = [a for a in argv[1:] if not a.startswith("--")]
     flags = {a for a in argv[1:] if a.startswith("--")}
     quiet = "--quiet" in flags
+
+    only_changed: set[str] | None = None
+    if "--changed" in flags:
+        only_changed = changed_handoff_files()
+        if only_changed is None:
+            print(
+                "lint_handoffs: --changed requested but git could not report changed "
+                "files; scanning the full corpus instead.",
+                file=sys.stderr,
+            )
+        elif not only_changed:
+            print("lint_handoffs: no handoff files changed on this branch — nothing to check.")
+            return 0
 
     handoffs_dir = args[0] if args else "handoffs"
     if not os.path.isdir(handoffs_dir):
@@ -382,6 +432,8 @@ def main(argv: list[str]) -> int:
                 continue
             path = os.path.join(root, name)
             rel = os.path.relpath(path).replace(os.sep, "/")
+            if only_changed is not None and rel not in only_changed:
+                continue
             total += 1
             parsed = lint_handoff_file(path, rel, findings)
             if parsed is None:

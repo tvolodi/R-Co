@@ -88,7 +88,7 @@ Then edit only `{/* CUSTOM: ... */}` blocks. Do NOT edit the auto-generated impo
 
 **Run frontend lints before validating:**
 ```bash
-python tools/lint_frontend_conventions.py web/src
+python tools/lint_frontend_conventions.py
 python tools/lint_test_isolation.py tests/integration
 ```
 Any BLOCKER = STOP. Any MAJOR = fix before completing the handoff.
@@ -114,7 +114,7 @@ Fix all errors before proceeding. Do not mark a handoff PASS if any command fail
 - [ ] Role-based UI hides elements (not disables)
 - [ ] No secrets or tokens in source files
 - [ ] `npm run type-check` exits 0
-- [ ] `python tools/lint_frontend_conventions.py web/src` exits 0 (no BLOCKER/MAJOR)
+- [ ] `python tools/lint_frontend_conventions.py` exits 0 (no BLOCKER/MAJOR)
 - [ ] If the handoff used a parameter file: only `{/* CUSTOM: ... */}` blocks were edited; the YAML was committed alongside the generated artefact
 
 ### 5. Commit implementation to the feature branch (mandatory)
