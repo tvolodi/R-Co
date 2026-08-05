@@ -682,9 +682,18 @@ fn fillRandom(buf: []u8) void {
             _ = adv.SystemFunction036(@ptrCast(buf.ptr), @intCast(buf.len));
         },
         else => {
-            const ts: u64 = @truncate(@as(u128, @intCast(std.time.nanoTimestamp())));
+            // std.time has no timestamp API in this Zig version (nanoTimestamp moved
+            // behind std.Io.Clock, which needs an Io instance we don't have here).
+            // Mix a monotonically-increasing call counter with the thread id and the
+            // buffer's address for a seed; this fallback branch only runs on platforms
+            // without a dedicated CSPRNG path above (Linux and Windows do).
+            const S = struct {
+                var counter: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+            };
+            const seq = S.counter.fetchAdd(1, .monotonic);
+            const tid: u64 = @intCast(std.Thread.getCurrentId());
             const addr: u64 = @truncate(@intFromPtr(buf.ptr));
-            var prng = std.Random.DefaultPrng.init(ts ^ addr);
+            var prng = std.Random.DefaultPrng.init(seq ^ tid ^ addr);
             prng.random().bytes(buf);
         },
     }
