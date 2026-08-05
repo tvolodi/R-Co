@@ -15,7 +15,26 @@ web/.vite/
 # ── Environment ──────────────────────────────────────────────────────────────
 .env
 *.env
+.env.*
 !.env.example
+
+# ── Secrets (never commit — see SECURITY.md) ─────────────────────────────────
+# Note: .gitignore does not untrack files already committed. If one of these
+# lands in a commit, `git rm --cached` it before pushing.
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+credentials.json
+service-account*.json
+*-secrets.yaml
+*-secrets.yml
 
 # ── Docker volumes & generated files ─────────────────────────────────────────
 postgres-data/

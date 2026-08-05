@@ -1,1 +1,0 @@
-{"type":"https://bpm.example.com/problems/unauthorized","title":"Unauthorized","status":401,"detail":"service unavailable","trace_id":"9d87f297-3588-48e1-9c06-35f0e8585b24"}
