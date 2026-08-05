@@ -8,13 +8,20 @@
     "ISS-0134"
   ],
   "severity": "MINOR",
-  "status": "OPEN",
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-05T10:32:41Z",
   "scope": "macOS cross-compilation only. No impact on Linux CI or Windows development.",
   "symptom": "zig build -Dtarget=x86_64-macos fails with 2 errors: std.time.nanoTimestamp has no member on this target, in src/admin/tenant_migration.zig:685 and src/api/routes/onboarding.zig:24. Both are @intCast(std.time.nanoTimestamp()) in the non-Windows fallback branch of a PRNG seed helper. Confirmed this is macOS-specific, not a general POSIX gap: -Dtarget=x86_64-linux-gnu and -Dtarget=aarch64-linux-gnu both compile the identical lines cleanly.",
-  "root_cause_analysis": "Not yet investigated in depth -- found incidentally while cross-compile-verifying the ISS-0134 fix across x86_64-linux-gnu, aarch64-linux-gnu, and x86_64-macos. Filed separately rather than folded into ISS-0134 since it is a distinct stdlib API gap unrelated to Environ.",
+  "root_cause_analysis": "std.time has no timestamp API at all in Zig 0.16.0 (verified against the installed toolchain's lib/std/time.zig — only duration constants remain). Timestamps moved behind std.Io.Clock.now(io, clock), which requires an Io instance neither fillRandom() helper has access to. Both call sites are in the platform-fallback branch of a UUID/random-byte generator; Linux and Windows both take dedicated CSPRNG paths above this branch, so the fallback (and therefore the missing API) is only reachable on other targets such as macOS.",
+  "resolution": "Replaced std.time.nanoTimestamp() at both call sites with a portable seed: a per-process monotonically-increasing atomic counter (std.atomic.Value(u64)) mixed with std.Thread.getCurrentId() and the destination buffer's address. No timestamp or Io instance is needed. Verified: zig build, zig build test, and cross-compile for x86_64-macos, aarch64-macos, x86_64-linux-gnu, aarch64-linux-gnu all exit 0.",
   "acceptance_criteria": [
     "zig build -Dtarget=x86_64-macos exits 0",
     "zig build -Dtarget=aarch64-macos exits 0 (not yet checked either way)"
   ],
-  "evidence_file": "GH #433"
+  "acceptance_criteria_status": "Both met — verified via zig build -Dtarget=x86_64-macos and -Dtarget=aarch64-macos, both exit 0 with no output.",
+  "evidence_file": "GH #433",
+  "branch": "feature/WF03-ISS-0135-macos-nanotimestamp",
+  "commits": [
+    "751ec9c"
+  ]
 }

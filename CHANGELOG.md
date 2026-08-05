@@ -2,9 +2,16 @@
 
 All notable changes to the BPM Platform are documented here.
 
-## [Unreleased] — 2026-08-04
+## [Unreleased] — 2026-08-05
 
 ### Fixed
+
+**ISS-0135** ([GitHub #433](https://github.com/tvolodi/R-Co/issues/433) — std.time.nanoTimestamp missing on x86_64-macos target)
+- **Closes GitHub #433**: `zig build -Dtarget=x86_64-macos` and `-Dtarget=aarch64-macos` now compile cleanly.
+- **Root cause**: `std.time` has no timestamp API in Zig 0.16.0 — it moved behind `std.Io.Clock.now(io, clock)`, which needs an `Io` instance unavailable in the two affected helpers. The missing call (`std.time.nanoTimestamp()`) only sat in the platform-fallback branch of a UUID/random-byte generator, reachable only on targets without a dedicated CSPRNG path (Linux and Windows both take one above the fallback).
+- **Fix**: `fillRandom()` in `src/admin/tenant_migration.zig` and `src/api/routes/onboarding.zig` now seeds its fallback PRNG from a per-process atomic call counter mixed with `std.Thread.getCurrentId()` and the destination buffer's address — no timestamp or `Io` instance required.
+- **Verification**: `zig build`, `zig build test` exit 0. Cross-compile exits 0 (no output) for `x86_64-macos`, `aarch64-macos`, `x86_64-linux-gnu`, `aarch64-linux-gnu`.
+- Branch: `feature/WF03-ISS-0135-macos-nanotimestamp`. Commit: `751ec9c`. Issue: `docs/issues/ISS-0135.json`.
 
 **ISS-0129** ([GitHub #419](https://github.com/tvolodi/R-Co/issues/419) — migration runner DROP TRIGGER vs audit trigger C40P01 deadlock on TC-TNT-01-01)
 - **Closes GitHub #419**: the C40P01 deadlock on TC-TNT-01-01 re-provisioning is resolved by acquiring `pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint)` inside `Migrations.runForSchema()` (`src/db/migrations.zig`) — as the first SQL statement on the migrate connection, inside the wrapping BEGIN. Concurrent `runForSchema()` calls now serialize on a stable lock whose keyspace is disjoint from the audit chain-hash trigger's per-tenant advisory lock, so concurrent audit INSERTs remain unblocked while DROP TRIGGER (migration 1107's per-tenant DO block) no longer collides with the trigger function's predecessor row-lock waits.

@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0136",
+  "title": "CI: zig build test stalls 25min+ on ubuntu-latest after ISS-0134 libc-linking (job-count oversubscription)",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/436",
+  "registered_at": "2026-08-05T11:20:00Z",
+  "registered_by": "Found while resolving ISS-0135 (#433) — PR #435's CI run stalled 25+ minutes in zig build test, blocking merge",
+  "related_to": [
+    "ISS-0134",
+    "ISS-0135"
+  ],
+  "severity": "MAJOR",
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-05T11:20:00Z",
+  "scope": "CI only (.github/workflows/ci.yml). No source code defect; ISS-0134's Environ portability fix itself is correct.",
+  "symptom": "zig build test in the Build and unit tests CI job stalled indefinitely (25+ min, zero progress) on both the main push run triggered by PR #434's merge and PR #435's own CI run. Last known-good run (pre-#434) completed zig build test in 21s.",
+  "root_cause_analysis": "PR #434 (ISS-0134) added .link_libc = true to the modules underlying most of the 86 b.addTest targets in build.zig, so zig build test now spawns ~86 concurrent 'zig test -lc' compile+link subprocesses instead of mostly libc-free ones. Zig's default build-job parallelism derives from the visible CPU count, which on a cgroup-quota-limited runner can badly over-report versus the real quota (reproduced locally: nproc reports 16 in a container capped to a 2-core cgroup quota). Reproduced the stall locally (90s+ vs ~20-40s baseline) under that mismatch using Docker with a matching CPU quota; -j2 eliminated it across repeated trials.",
+  "resolution": "Capped all three zig build invocations in .github/workflows/ci.yml's build job (zig build, zig build test, zig build test-transition) to -j2. Verified locally: cold-cache zig build test -j2 completes in ~80s (one-time, not a hang); warm-cache runs complete in 3-40s consistently across 4+ trials with no stalls.",
+  "acceptance_criteria": [
+    "zig build test -j2 completes reliably without multi-minute stalls",
+    "Real GitHub Actions ubuntu-latest run confirms the fix"
+  ],
+  "acceptance_criteria_status": "First criterion verified locally (4+ trials, no hangs). Second pending live CI run on PR #435 with this fix applied.",
+  "evidence_file": "GH #436",
+  "branch": "feature/WF03-ISS-0135-macos-nanotimestamp",
+  "commits": []
+}
