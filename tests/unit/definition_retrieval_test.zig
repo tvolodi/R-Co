@@ -111,6 +111,34 @@ fn cleanupDefinition(pool: *Pool, name: []const u8, version: []const u8) void {
     ) catch {};
 }
 
+// ISS-0141 / GH #445: every TC-PD-07-* fixture name below used to be a fixed
+// string literal (e.g. "TC-PD-07-01-def"). Two `zig build test` invocations
+// running concurrently against the same shared BPM_TEST_DB_URL — which is
+// exactly what happens when `test-bpm-main`'s binary and sibling Zig build
+// Steps race, or when a developer/CI re-triggers a build before a prior run's
+// process has exited — both insert the same (tenant_id, name, version) row.
+// The second INSERT's `ON CONFLICT DO NOTHING` (store.zig create()) leaves
+// insert_rows empty, so create() returns DuplicateNameVersion; and because
+// activate()'s deprecate-step is scoped only by name ("UPDATE ... WHERE
+// name = $1 AND status = 'ACTIVE'"), one process's activate() can deprecate
+// the other process's freshly-activated row before that process's own
+// getActiveByName() reads it back — reproducing the exact DefinitionNotFound
+// / list-filter mismatches this issue reported. Appending a fresh UUID v4 to
+// every fixture name (the same per-test-isolation pattern as
+// TestHarness.newUuid/newUuidString in tests/integration/helpers.zig) makes
+// concurrent runs use disjoint rows, eliminating the collision at its root
+// instead of masking it with retries or serialization.
+//
+// Uses bpm.api_trace.generateUuidV4 (already re-exported from src/main.zig,
+// which this file compiles against as the "bpm" module) rather than
+// std.crypto.random — Zig 0.16 removed std.crypto.random, and this file does
+// not otherwise depend on src/bpm.zig's separate uuid re-export.
+fn uniqueName(alloc: std.mem.Allocator, base: []const u8) ![]u8 {
+    var uuid_buf: [bpm.api_trace.UUID_V4_LEN]u8 = undefined;
+    bpm.api_trace.generateUuidV4(&uuid_buf);
+    return std.fmt.allocPrint(alloc, "{s}-{s}", .{ base, uuid_buf });
+}
+
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
 const minimal_nodes_def = [_]GraphNode{
@@ -138,7 +166,8 @@ test "TC-PD-07-01: getActiveByName — ACTIVE version exists" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const name = "TC-PD-07-01-def";
+    const name = try uniqueName(alloc, "TC-PD-07-01-def");
+    defer alloc.free(name);
     const version = "1.0.0";
     defer cleanupDefinition(&pool, name, version);
 
@@ -201,8 +230,12 @@ test "TC-PD-07-04: list — stage filter narrows results" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const name_a = "TC-PD-07-04-stg-A";
-    const name_b = "TC-PD-07-04-no-stg";
+    const name_a = try uniqueName(alloc, "TC-PD-07-04-stg-A");
+    defer alloc.free(name_a);
+    const name_b = try uniqueName(alloc, "TC-PD-07-04-no-stg");
+    defer alloc.free(name_b);
+    const stage_a = try uniqueName(alloc, "stg-07-04-A");
+    defer alloc.free(stage_a);
     const version = "1.0.0";
     defer cleanupDefinition(&pool, name_a, version);
     defer cleanupDefinition(&pool, name_b, version);
@@ -218,7 +251,7 @@ test "TC-PD-07-04: list — stage filter narrows results" {
         .description = null,
         .graph = minimal_graph_def,
         .created_by = creator,
-        .stage = "stg-07-04-A",
+        .stage = stage_a,
     });
     freeDefinition(alloc, def_a);
 
@@ -235,7 +268,7 @@ test "TC-PD-07-04: list — stage filter narrows results" {
     const defs = try def_store.list(alloc, store_mod.ListOpts{
         .name = null,
         .status = null,
-        .stage = "stg-07-04-A",
+        .stage = stage_a,
         .after_created = null,
         .limit = 50,
     });
@@ -244,10 +277,10 @@ test "TC-PD-07-04: list — stage filter narrows results" {
         alloc.free(defs);
     }
 
-    // All returned definitions must have stage = "stg-07-04-A"
+    // All returned definitions must have stage = stage_a
     for (defs) |d| {
         try testing.expect(d.stage != null);
-        try testing.expectEqualStrings("stg-07-04-A", d.stage.?);
+        try testing.expectEqualStrings(stage_a, d.stage.?);
     }
 
     // The name_a definition must be present
@@ -273,8 +306,12 @@ test "TC-PD-07-05: list — stage filter null returns all" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const name_with = "TC-PD-07-05-with-stg";
-    const name_without = "TC-PD-07-05-no-stg";
+    const prefix = try uniqueName(alloc, "TC-PD-07-05");
+    defer alloc.free(prefix);
+    const name_with = try std.fmt.allocPrint(alloc, "{s}-with-stg", .{prefix});
+    defer alloc.free(name_with);
+    const name_without = try std.fmt.allocPrint(alloc, "{s}-no-stg", .{prefix});
+    defer alloc.free(name_without);
     const version = "1.0.0";
     defer cleanupDefinition(&pool, name_with, version);
     defer cleanupDefinition(&pool, name_without, version);
@@ -305,7 +342,7 @@ test "TC-PD-07-05: list — stage filter null returns all" {
     freeDefinition(alloc, def_without);
 
     const defs = try def_store.list(alloc, store_mod.ListOpts{
-        .name = "TC-PD-07-05",
+        .name = prefix,
         .status = null,
         .stage = null,
         .after_created = null,
@@ -333,7 +370,8 @@ test "TC-PD-07-06: list — combined name + status filter" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const name = "TC-PD-07-06-combined";
+    const name = try uniqueName(alloc, "TC-PD-07-06-combined");
+    defer alloc.free(name);
     const version_draft = "1.0.0";
     const version_active = "2.0.0";
     defer cleanupDefinition(&pool, name, version_draft);
@@ -412,7 +450,8 @@ test "TC-PD-07-07: list — combined name + stage filter" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const name = "TC-PD-07-07-stg-filter";
+    const name = try uniqueName(alloc, "TC-PD-07-07-stg-filter");
+    defer alloc.free(name);
     const version = "1.0.0";
     defer cleanupDefinition(&pool, name, version);
 
@@ -467,7 +506,8 @@ test "TC-PD-07-08: handleList — valid cursor round-trip" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const name = "TC-PD-07-08-cursor-rt";
+    const name = try uniqueName(alloc, "TC-PD-07-08-cursor-rt");
+    defer alloc.free(name);
     const version = "1.0.0";
     defer cleanupDefinition(&pool, name, version);
 
@@ -718,7 +758,8 @@ test "TC-PD-07-16: handleGetById — valid UUID, definition exists returns HTTP 
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const name = "TC-PD-07-16-get-by-id";
+    const name = try uniqueName(alloc, "TC-PD-07-16-get-by-id");
+    defer alloc.free(name);
     const version = "1.0.0";
     defer cleanupDefinition(&pool, name, version);
 
@@ -767,7 +808,8 @@ test "TC-PD-07-18: handleGetActiveByName — ACTIVE version exists returns HTTP 
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const name = "TC-PD-07-18-active-by-name";
+    const name = try uniqueName(alloc, "TC-PD-07-18-active-by-name");
+    defer alloc.free(name);
     const version = "1.0.0";
     defer cleanupDefinition(&pool, name, version);
 
@@ -816,8 +858,12 @@ test "TC-PD-07-20: list — cursor pagination second page does not overlap first
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const name_a = "TC-PD-07-20-page-A";
-    const name_b = "TC-PD-07-20-page-B";
+    const prefix = try uniqueName(alloc, "TC-PD-07-20");
+    defer alloc.free(prefix);
+    const name_a = try std.fmt.allocPrint(alloc, "{s}-page-A", .{prefix});
+    defer alloc.free(name_a);
+    const name_b = try std.fmt.allocPrint(alloc, "{s}-page-B", .{prefix});
+    defer alloc.free(name_b);
     const version = "1.0.0";
     defer cleanupDefinition(&pool, name_a, version);
     defer cleanupDefinition(&pool, name_b, version);
@@ -845,9 +891,9 @@ test "TC-PD-07-20: list — cursor pagination second page does not overlap first
     });
     freeDefinition(alloc, def_b);
 
-    // First page: page_size=1 with name prefix filter "TC-PD-07-20"
+    // First page: page_size=1 with name prefix filter (unique per test run)
     const params1 = definitions.ListQueryParams{
-        .name = "TC-PD-07-20",
+        .name = prefix,
         .status = null,
         .stage = null,
         .cursor = null,
@@ -879,7 +925,7 @@ test "TC-PD-07-20: list — cursor pagination second page does not overlap first
 
     // Second page: use cursor from page 1
     const params2 = definitions.ListQueryParams{
-        .name = "TC-PD-07-20",
+        .name = prefix,
         .status = null,
         .stage = null,
         .cursor = cursor_str,
