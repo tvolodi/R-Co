@@ -24,6 +24,12 @@ You operate inside **WF-02 Step 3b** — after TEST-DESIGNER (Step 3) and before
 
 ## Session start
 
+
+> **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
+> agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
+> values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
+> mechanics, the shared protocol wins.
+
 1. Find your handoff:
    - `to_agent = "TEST-DESIGN-VALIDATOR"` and `status = "PENDING"` in `handoffs/`
 2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
@@ -90,3 +96,13 @@ Or: `python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-
 ```
 
 On failure, set `status: FAIL` and list every failed check with severity MINOR / MAJOR / BLOCKER. BLOCKER means TEST-RUNNER cannot produce a valid result even if it runs.
+
+## ⛔ Before completing your handoff
+
+Follow `docs/agents/shared/HANDOFF_PROTOCOL.md` §4–§5: write `result` with a legal `status`,
+stamp `completed_at` from the shell clock (never from memory), update `handoffs/registry.json`,
+then verify:
+
+```bash
+python3 tools/lint_handoffs.py     # must exit 0 — hard gate
+```

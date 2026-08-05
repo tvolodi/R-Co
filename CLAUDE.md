@@ -134,6 +134,62 @@ These files are the audit trail of the project. Leaving them uncommitted means l
 
 **Forbidden:** Leaving any scratch file in the project root. If the file cannot go in a tracked directory and is not one of the permanent root files listed above, it belongs in `scratch/`.
 
+### ⛔ Bookkeeping Is Not Optional (applies to ALL agents)
+
+> **Canonical source: [`docs/agents/shared/HANDOFF_PROTOCOL.md`](docs/agents/shared/HANDOFF_PROTOCOL.md).**
+> That file is shared by every agent under both harnesses (Claude Code `.github/agents/`, Copilot `.github/instructions/`). Read it once at session start. If it and this section ever disagree on handoff mechanics, **the shared protocol wins** — and the disagreement is itself a defect worth reporting.
+
+The 2026-08-05 pipeline audit measured every directive in this file against 1963 handoffs. The result was unambiguous: **directives about the work product were followed; directives about recording the work were not** (log 44%→0.4%, registry 3.4%, timestamps 8.6% impossible). The rules below are summarised here because they bind *every* agent — not only ORCH. Do not skip them because the code sample that implements them appears in another agent's section.
+
+**1. `handoffs/orchestrator.log` is append-only.** Every agent that routes, completes, reworks, validates, or merges appends one line. Open it with mode `"a"` — **never** `"w"`, and never rewrite it wholesale.
+
+```python
+# The ONLY correct way to write the log, from any agent:
+with open("handoffs/orchestrator.log", "a", encoding="utf-8") as f:
+    f.write(f"{ts} | {event} | {run_id} | {handoff_id[:8]} | {agent} | {detail}\n")
+```
+
+On Windows, **never** use PowerShell `>>` to append to this file — it writes UTF-16 into a UTF-8 file and corrupts the line. (This already happened: `  R O U T E  ` appears 17 times in the historical log.) If you must append from PowerShell, use `Out-File -Encoding utf8 -Append`.
+
+A commit that reduces the line count of `orchestrator.log` is a defect, not a cleanup. On 2026-08-04 a single squash-merge destroyed 1340 lines of audit history (`84fe72e` 1357 lines → `ba8f3b9` 17 lines); `registry.json` lost 714 entries the same way. Both were recoverable only from git blobs.
+
+**2. Read and write handoff JSON with BOM tolerance.** 88 handoff files in this repo carry a UTF-8 BOM, and a bare `json.load(open(f))` raises on every one of them — making those handoffs invisible to whoever reads them.
+
+```python
+with open(path, encoding="utf-8-sig") as f:   # utf-8-sig, not utf-8
+    handoff = json.load(f)
+```
+
+**3. Timestamps come from the clock, never from memory or session context.** Run the command, use its exact output:
+
+```powershell
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+```
+
+`completed_at` must never precede `started_at`. 148 handoffs currently violate this — one by 30 hours — which silently corrupts every retrospective built on step durations.
+
+**4. Verify before completing any handoff:**
+
+```bash
+python3 tools/lint_handoffs.py
+```
+
+Exit 0 is required. This checks schema conformance, timestamp monotonicity, orphaned steps, registry coverage, encoding defects, and log truncation. If it reports a BLOCKER against a file you touched, fix it before completing — the same way you would fix a failing `zig build`.
+
+### ⛔ Never Satisfy a Gate by Editing What It Measures
+
+If a gate blocks you, fix the condition it is detecting. **Never make the detector stop reporting.**
+
+Forbidden, regardless of how the task is phrased:
+- Renaming or reformatting output tokens so a string-matching gate stops matching.
+- Deleting, defaulting, or making unreachable the error path a gate looks for.
+- Redirecting diagnostic output away from where the gate reads it.
+- Wrapping a failing command so its exit code or output is masked.
+
+This has already happened in this repo. ORCH's benchmark pre-check greps `zig build bench` output for `BPM_DB_URL` / `BENCHMARK_SETUP_ERROR` / `missing`. On 2026-05-30 the ADHOC task was written as *"no BPM_DB_URL/missing/BENCHMARK_SETUP_ERROR token in head output"*, and BACKEND-DEV complied by **renaming the labels** (`tests/bench/bench.zig` `dbUrlSourceLabel`) rather than fixing the environment. `resolveDbUrl` later gained a hardcoded fallback that made its `MissingDbUrl` error unreachable — so the benchmark can no longer report a missing DB URL at all. Nine separate ADHOC runs chased this symptom; none fixed the cause.
+
+**If a gate is wrong, escalate to change the gate's definition** — do not quietly satisfy it. And when writing a gate: prefer an exit code over a string match, because an agent cannot satisfy an exit code by renaming a label.
+
 ### ⛔ Output File Format Rules
 
 **YAML is the required format for all agent-produced output artefacts.** JSON is only used for handoff files (which agents read/write as structured data via Python/shell). Everything else must be YAML.
@@ -203,7 +259,7 @@ cat handoffs/registry.json
 ```bash
 python3 -c "
 import json
-with open('handoffs/registry.json') as f:
+with open('handoffs/registry.json', encoding="utf-8-sig") as f:
     reg = json.load(f)
 active = [e for e in reg['entries'] if e['status'] in ('PENDING','IN_PROGRESS','FAILED','ESCALATED')]
 for e in active:
@@ -251,10 +307,10 @@ handoff = {
     "completed_at": None
 }
 
-with open(filename, "w") as f:
+with open(filename, "w", encoding="utf-8") as f:
     json.dump(handoff, f, indent=2)
 
-with open("handoffs/registry.json") as f:
+with open("handoffs/registry.json", encoding="utf-8-sig") as f:
     registry = json.load(f)
 registry["entries"].append({
     "handoff_id": handoff_id, "file": filename,
@@ -263,10 +319,10 @@ registry["entries"].append({
     "created_at": handoff["created_at"],
     "status": "PENDING", "stage": "Stage 3"
 })
-with open("handoffs/registry.json", "w") as f:
+with open("handoffs/registry.json", "w", encoding="utf-8") as f:
     json.dump(registry, f, indent=2)
 
-with open("handoffs/orchestrator.log", "a") as f:
+with open("handoffs/orchestrator.log", "a", encoding="utf-8") as f:
     f.write(f"{handoff['created_at']} | ROUTE | {run_id} | {handoff_id[:8]} | ORCH → {to_agent} | PENDING\n")
 
 print(f"Handoff created: {filename}\nID: {handoff_id}")
@@ -281,11 +337,11 @@ Or: `python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-
 Then write the exact output as `started_at`:
 ```python
 import json, subprocess
-with open(filename) as f:
+with open(filename, encoding="utf-8-sig") as f:
     h = json.load(f)
 # Use exact output of the shell command above — do NOT use datetime.utcnow() here
 h["started_at"] = "<exact output of the shell command>"
-with open(filename, "w") as f:
+with open(filename, "w", encoding="utf-8") as f:
     json.dump(h, f, indent=2)
 ```
 
@@ -307,7 +363,7 @@ surcharge    = {"low": 0.0, "medium": 0.25, "high": 0.50}[surface]
 steps = ["code-designer", "code-design-validator", "backend-dev", "test-designer",
          "test-design-validator", "test-runner", "release-validator", "doc-updater"]
 
-with open("docs/metrics/estimation_rules.json") as f:
+with open("docs/metrics/estimation_rules.json", encoding="utf-8-sig") as f:
     rules = json.load(f)
 
 idx = difficulty - 1
@@ -327,10 +383,10 @@ estimation = {
     "steps": steps,
     "estimated_minutes": estimated
 }
-with open(f"handoffs/{run_id}/estimation.json", "w") as f:
+with open(f"handoffs/{run_id}/estimation.json", "w", encoding="utf-8") as f:
     json.dump(estimation, f, indent=2)
 
-with open("handoffs/orchestrator.log", "a") as f:
+with open("handoffs/orchestrator.log", "a", encoding="utf-8") as f:
     ts = datetime.datetime.utcnow().isoformat() + "Z"
     req_str = ", ".join(estimation["requirement_ids"]) or "(none)"
     f.write(f"{ts} | ESTIMATE | {run_id} | D{difficulty}/{surface} | ~{estimated['total']}min | {req_str}\n")
@@ -340,7 +396,7 @@ with open("handoffs/orchestrator.log", "a") as f:
 ```python
 import json, datetime
 
-with open("handoffs/<failing-handoff>.json") as f:
+with open("handoffs/<failing-handoff>.json", encoding="utf-8-sig") as f:
     h = json.load(f)
 
 issues = h["result"]["issues"]
@@ -350,19 +406,19 @@ h["result"] = None
 h["task"]["description"] += f"\n\nREWORK {h['rework_count']}:\n"
 h["task"]["description"] += "\n".join(f"- [{i['severity']}] {i['description']}" for i in issues)
 
-with open("handoffs/<failing-handoff>.json", "w") as f:
+with open("handoffs/<failing-handoff>.json", "w", encoding="utf-8") as f:
     json.dump(h, f, indent=2)
 
-with open("handoffs/registry.json") as f:
+with open("handoffs/registry.json", encoding="utf-8-sig") as f:
     reg = json.load(f)
 for e in reg["entries"]:
     if e["handoff_id"] == h["handoff_id"]:
         e["status"] = "PENDING"
-with open("handoffs/registry.json", "w") as f:
+with open("handoffs/registry.json", "w", encoding="utf-8") as f:
     json.dump(reg, f, indent=2)
 
 ts = datetime.datetime.utcnow().isoformat() + "Z"
-with open("handoffs/orchestrator.log", "a") as f:
+with open("handoffs/orchestrator.log", "a", encoding="utf-8") as f:
     f.write(f"{ts} | REWORK | {h['workflow_id']} | {h['handoff_id'][:8]} | {h['to_agent']} | REWORK({h['rework_count']}/{h['max_rework']})\n")
 ```
 
@@ -370,14 +426,14 @@ with open("handoffs/orchestrator.log", "a") as f:
 ```python
 import json, datetime
 
-with open("handoffs/<failing-handoff>.json") as f:
+with open("handoffs/<failing-handoff>.json", encoding="utf-8-sig") as f:
     h = json.load(f)
 h["status"] = "ESCALATED"
-with open("handoffs/<failing-handoff>.json", "w") as f:
+with open("handoffs/<failing-handoff>.json", "w", encoding="utf-8") as f:
     json.dump(h, f, indent=2)
 
 try:
-    with open("handoffs/escalations.json") as f:
+    with open("handoffs/escalations.json", encoding="utf-8-sig") as f:
         esc = json.load(f)
 except FileNotFoundError:
     esc = {"escalations": []}
@@ -388,7 +444,7 @@ esc["escalations"].append({
     "last_issues": h["result"]["issues"] if h.get("result") else [],
     "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
 })
-with open("handoffs/escalations.json", "w") as f:
+with open("handoffs/escalations.json", "w", encoding="utf-8") as f:
     json.dump(esc, f, indent=2)
 print("ESCALATED — human review required. See handoffs/escalations.json.")
 ```
@@ -396,7 +452,7 @@ print("ESCALATED — human review required. See handoffs/escalations.json.")
 **Stage gate check** before launching WF-02 for a new stage:
 ```python
 import yaml
-with open("docs/status/requirement_status.yaml") as f:
+with open("docs/status/requirement_status.yaml", encoding="utf-8-sig") as f:
     status = yaml.safe_load(f)
 must_ids = []  # fill from the requirements doc for the stage
 blocking = [f"{r}: {status['requirements'].get(r, {}).get('status', 'MISSING')}"
@@ -676,7 +732,7 @@ Use the exact string printed by the command as `completed_at`.
 Then update the handoff file:
 ```python
 import json, subprocess
-with open("handoffs/<your-handoff>.json") as f:
+with open("handoffs/<your-handoff>.json", encoding="utf-8-sig") as f:
     h = json.load(f)
 h["status"] = "COMPLETED"
 h["result"] = {
@@ -688,7 +744,7 @@ h["result"] = {
 }
 # completed_at must come from the shell command above, not from Python datetime in the LLM
 h["completed_at"] = "<exact output of the shell command>"
-with open("handoffs/<your-handoff>.json", "w") as f:
+with open("handoffs/<your-handoff>.json", "w", encoding="utf-8") as f:
     json.dump(h, f, indent=2)
 ```
 Also update the `status` field in `handoffs/registry.json` for this handoff.
@@ -911,6 +967,18 @@ grep -rl '"to_agent": "TEST-DESIGNER"' handoffs/ | xargs grep -l '"status": "PEN
 ```
 
 Write test spec files to `tests/specs/<REQ-ID>.md` and test source files to the appropriate layer under `tests/` or `web/src/` per the test guide. **⛔ NO DEFERRED WORK.** Every MUST requirement must have a fully implemented integration test. No `error.SkipZigTest` on MUST tests without a separately passing integration test. All integration test fixtures use per-test UUIDs. Tests are self-sufficient (start required services or fail clearly if unavailable). Complete your handoff using the same pattern as BACKEND-DEV. Set `next_action: "Route to TEST-DESIGN-VALIDATOR (Step 3b)"`.
+
+**Mandatory pre-handoff lint (run this before completing — not optional):**
+```bash
+python3 tools/lint_test_isolation.py tests/integration   # must exit 0, no BLOCKER
+python3 tools/lint_handoffs.py                           # must exit 0
+```
+
+The 2026-08-05 audit measured TEST-DESIGN-VALIDATOR's failures: **11 of 21 were fixture-isolation / per-test-UUID violations and 6 were `error.SkipZigTest` on MUST tests** — both of which `lint_test_isolation.py` already detects. These violations reached the gate for 2.5 months (2026-05-23 → 2026-08-02) only because this linter was never run before handoff. Running it here eliminates roughly 17 of 21 validator rejections before the gate sees them.
+
+The other recurring rejections are not lint-detectable — check them by hand:
+- **Spec/implementation case-count mismatch** (6 of 21): if the spec defines N test cases, the test file must implement N. Count them.
+- **Hardcoded credentials in test source** (4 of 21): no `admin-pass`, `task-worker-pass`, or literal Keycloak passwords — read them from env.
 
 ### Pipeline test responsibilities
 

@@ -148,3 +148,13 @@ zig build bench                    # NFR benchmarks
 ```
 
 You may NOT run: `git push --force`, `git push origin main`, `git reset --hard`, `DROP TABLE`, `rm -rf`.
+
+## ⛔ Before completing your handoff
+
+Follow `docs/agents/shared/HANDOFF_PROTOCOL.md` §4–§5: write `result` with a legal `status`,
+stamp `completed_at` from the shell clock (never from memory), update `handoffs/registry.json`,
+then verify:
+
+```bash
+python3 tools/lint_handoffs.py     # must exit 0 — hard gate
+```

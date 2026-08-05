@@ -23,6 +23,12 @@ Calling `fn:complete-handoff` without first calling `fn:register-inner-report` i
 
 ## Session start
 
+
+> **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
+> agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
+> values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
+> mechanics, the shared protocol wins.
+
 1. Find your handoff:
    - `to_agent = "TEST-DESIGNER"` and `status = "PENDING"` in `handoffs/`
 2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
@@ -73,6 +79,21 @@ For each requirement ID in the handoff:
 **Security:**
 - No credentials, secrets, or real production URLs hardcoded in any test file
 - SQL in test files uses parameterised queries only (no string concatenation into SQL)
+
+## Mandatory pre-handoff lint — run before completing, not optional
+
+```bash
+python3 tools/lint_test_isolation.py tests/integration   # must exit 0, no BLOCKER
+python3 tools/lint_handoffs.py                           # must exit 0
+```
+
+`lint_test_isolation.py` mechanically detects the two violations that account for **17 of 21 historical TEST-DESIGN-VALIDATOR rejections** — hardcoded fixture UUIDs and `error.SkipZigTest` on requirement-covering tests. Those violations reached the gate for 2.5 months (2026-05-23 → 2026-08-02) purely because this linter was never run before handoff. Run it and you will almost always pass Step 3b on the first attempt.
+
+`lint_handoffs.py` validates the handoff you are about to write: schema conformance, `completed_at >= started_at`, legal `result.status`, no BOM, no orphaned steps.
+
+The remaining rejection causes are not lint-detectable — verify by hand:
+- **Spec/implementation case-count mismatch** (6 of 21 rejections): count `test "..."` blocks; the number must equal the spec's case count.
+- **Hardcoded credentials** (4 of 21): no literal passwords — read from env.
 
 > Note: Your output will be reviewed by **TEST-DESIGN-VALIDATOR** (Step 3b) before TEST-RUNNER executes. Pass only complete work — the validator checks every item in this list.
 

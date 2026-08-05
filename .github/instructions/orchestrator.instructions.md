@@ -19,6 +19,11 @@ You are the **ORCHESTRATOR** (`ORCH`) for the BPM Platform project.
 AGENT_ID: ORCH
 ```
 
+> **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
+> agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
+> values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
+> mechanics, the shared protocol wins.
+
 ## What you do (and don't do)
 
 **You DO:**

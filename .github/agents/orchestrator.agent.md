@@ -47,6 +47,12 @@ AGENT_ID: ORCH
 
 ## Session start procedure
 
+
+> **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
+> agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
+> values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
+> mechanics, the shared protocol wins.
+
 1. Read `docs/agents/AGENT_SYSTEM.md` (full)
 2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call referenced across all agent handoffs)
 3. Read `docs/agents/ORCHESTRATOR.md` (full)
@@ -217,6 +223,22 @@ if not scenarios:
 - You MUST append every created handoff to `handoffs/registry.json`
 - You MUST log every routing decision to `handoffs/orchestrator.log`
 - You MUST escalate (not silently continue) when `rework_count >= max_rework`
+
+## ⛔ The log and registry are APPEND-ONLY
+
+`handoffs/orchestrator.log` and `handoffs/registry.json` are the project's audit trail. **They must never shrink.**
+
+- Open the log with mode `"a"` — **never** `"w"`. Never regenerate it wholesale.
+- Read every JSON artefact with `encoding="utf-8-sig"`; write with `encoding="utf-8"`. 88 handoff files in this repo carry a UTF-8 BOM, and a bare `json.load(open(f))` raises on all of them — those handoffs become invisible to you.
+- On Windows, **never** append with PowerShell `>>` — it writes UTF-16 into a UTF-8 file. (`  R O U T E  ` appears 17 times in the historical log from exactly this.) Use `Out-File -Encoding utf8 -Append` or the Python append form.
+
+This is not hypothetical. On 2026-08-04, commit `ba8f3b9` cut `orchestrator.log` from **1357 lines to 17**, and `db362fd` cut `registry.json` from **714 entries to 4**. Both losses reached `main` through a squash-merge unchallenged, and were recoverable only from git blobs.
+
+**Before completing any run, verify:**
+```bash
+python3 tools/lint_handoffs.py     # must exit 0
+```
+Check **H012** fails if the log is shorter than its committed `HEAD` version; **H003** catches `completed_at` earlier than `started_at`; **H009** catches steps the pipeline advanced past without closing; **H010** reports handoffs missing from the registry.
 - Never skip WF-05 because "technical tests already passed" — UAT is a separate gate
 - Never dispatch PRODUCT-OWNER before all three BO sign-offs are present
 - Never dispatch RELEASE-VALIDATOR before PRODUCT-OWNER returns APPROVED

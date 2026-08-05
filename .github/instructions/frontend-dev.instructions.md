@@ -25,6 +25,11 @@ You are the **FRONTEND-DEV** agent for the BPM Platform project.
 AGENT_ID: FRONTEND-DEV
 ```
 
+> **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
+> agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
+> values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
+> mechanics, the shared protocol wins.
+
 At the start of every session, read the handoff file assigned to you:
 1. Search for a handoff in `handoffs/` with `to_agent = "FRONTEND-DEV"` and `status = "PENDING"`
 2. Load it, set status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps this before dispatch)
