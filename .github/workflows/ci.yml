@@ -95,6 +95,20 @@ jobs:
     # Environ errors were cleared. Both are fixed; this job is now a hard gate.
     # The `transition.zig in-file tests` step below stays non-blocking on its
     # own terms (GH #428, unrelated to this fix).
+    #
+    # GH #436: since #434 (ISS-0134) made most test binaries libc-linked,
+    # `zig build test` intermittently stalls indefinitely on ubuntu-latest —
+    # observed twice at 25+ minutes with zero step progress, and once more at
+    # 4m20s even with -j2 applied, immediately after one test binary's result
+    # streamed back over Zig 0.16's `--listen=-` build-runner protocol and
+    # nothing further happened. Not reproduced deterministically in a matched
+    # local container (5/5 local attempts under the same -j2 cap succeeded in
+    # 3-32s); this looks like non-deterministic scheduler/IPC behavior in the
+    # Zig 0.16.0 build runner itself rather than something under this repo's
+    # control. -j2 measurably reduces (but did not eliminate) the failure
+    # rate. The 10-minute job timeout below is the backstop: a hang now fails
+    # fast and visibly instead of silently consuming the six-hour default.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
