@@ -14,6 +14,7 @@
 //! a separately passing integration test for that requirement.
 
 const std = @import("std");
+const portable_env = @import("env");
 const build_options = @import("build_options");
 const testing = std.testing;
 const bpm = @import("bpm");
@@ -30,7 +31,7 @@ const onboarding_routes = bpm.onboarding_routes;
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set — skipping integration test\n", .{});
@@ -398,7 +399,7 @@ test "TC-OIDC-35-06: onboarding saga creates tenant and binds hostname" {
     const alloc = testing.allocator;
 
     // Check Keycloak availability.
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     const idp_base_url = env.getAlloc(alloc, "BPM_IDP_BASE_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_IDP_BASE_URL not set — skipping TC-06 (requires Keycloak)\n", .{});
@@ -509,7 +510,7 @@ test "TC-OIDC-35-07: saga compensation cleans up tenant on failure" {
 
     // This test requires Keycloak to be UNAVAILABLE so that the saga fails
     // at the realm provisioning step and triggers compensation.
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     const idp_check = env.getAlloc(alloc, "BPM_IDP_BASE_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => "",
         else => |e| return e,

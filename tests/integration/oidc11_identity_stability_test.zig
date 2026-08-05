@@ -9,6 +9,7 @@
 //! DIRECTIVE T-3: No error.SkipZigTest on MUST requirement tests.
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 
 const bpm = @import("bpm");
@@ -34,7 +35,7 @@ const tenant_oidc11_08 = "58888888-8888-8888-8888-888888888888";
 // ---------------------------------------------------------------------------
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set — skipping integration test\n", .{});

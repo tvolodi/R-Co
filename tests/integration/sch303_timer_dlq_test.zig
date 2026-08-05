@@ -20,6 +20,7 @@
 //!   ISS-301 → TC-SCH-301-03: SKIP LOCKED prevents double-fire
 //!   ISS-302 → TC-SCH-302-03: lock-not-acquired → sweep skipped gracefully
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 const pg = @import("pg");
 const bpm = @import("bpm");
@@ -37,7 +38,7 @@ const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 const STARTUP_LOCK_ID_STR = "5863412975429063421";
 
 fn getTestDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set — skipping EPIC-3 scheduler integration tests\n", .{});

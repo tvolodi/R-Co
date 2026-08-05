@@ -13,6 +13,7 @@
 //!   ENV-05 → TC-ENV-05-01 .. TC-ENV-05-06
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 const build_options = @import("build_options");
 
@@ -33,7 +34,7 @@ const null_idp_manager = bpm.identity_provider.manager.Manager{};
 // ---------------------------------------------------------------------------
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print(

@@ -255,6 +255,8 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "bpm", .module = bpm_main_mod },
                 .{ .name = "build_options", .module = build_options_mod },
+                // ISS-0134: testDbUrl() helper uses env.globalEnviron().
+                .{ .name = "env", .module = env_mod },
             },
         }),
     });
@@ -540,6 +542,8 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "provisioning", .module = provisioning_mod_api08 },
                 .{ .name = "migrations", .module = migrations_mod_api08 },
                 .{ .name = "build_options", .module = build_options.createModule() },
+                // ISS-0134: testDbUrl() helper uses env.globalEnviron().
+                .{ .name = "env", .module = env_mod },
             },
         }),
     });
@@ -899,6 +903,13 @@ pub fn build(b: *std.Build) void {
         .{ .name = "pool", .module = pool_root_mod },
         .{ .name = "bpm", .module = bpm_src_mod },
         .{ .name = "build_options", .module = build_options_mod },
+        // ISS-0134: ~90 tests/integration/*.zig files (plus tests/unit/
+        // test_api08_auth.zig and definition_retrieval_test.zig) each carry
+        // their own copy-pasted testDbUrl() helper using
+        // std.process.Environ{ .block = .global }. That literal only
+        // type-checks on Windows/WASI/freestanding; it fails every one of
+        // these files on Linux. All are rewritten to call env.globalEnviron().
+        .{ .name = "env", .module = env_mod },
     };
 
     const integration_tests = b.addTest(.{

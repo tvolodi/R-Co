@@ -2,6 +2,7 @@
 //! These tests run against real PostgreSQL using BPM_TEST_DB_URL.
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 
 const helpers = @import("helpers.zig");
@@ -70,7 +71,7 @@ fn newFixture(allocator: std.mem.Allocator, prefix: []const u8) !TestFixture {
 }
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is required for EXP-201/202 integration tests\n", .{});

@@ -9,6 +9,7 @@
 //   - Legacy rows (pre-migration) default to scope='global'.
 
 const std = @import("std");
+const portable_env = @import("env");
 const pg = @import("pg");
 const helpers = @import("helpers.zig");
 
@@ -312,7 +313,7 @@ test "svc01: listServicesForTenant filters correctly via store API" {
     const ServiceCatalog = bpm.service_catalog.ServiceCatalog;
     const RegisterServiceParams = bpm.service_catalog.RegisterServiceParams;
 
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set — skipping svc01 store API test\n", .{});
@@ -431,7 +432,7 @@ test "svc01: getServiceForTenant returns ServiceNotFound for cross-tenant servic
     const RegisterServiceParams = bpm.service_catalog.RegisterServiceParams;
     const CatalogError = bpm.service_catalog.CatalogError;
 
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set — skipping\n", .{});
@@ -500,7 +501,7 @@ test "svc01: registerService stores scope and owner_tenant_id correctly" {
     const ServiceCatalog = bpm.service_catalog.ServiceCatalog;
     const RegisterServiceParams = bpm.service_catalog.RegisterServiceParams;
 
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set — skipping\n", .{});
@@ -569,7 +570,7 @@ test "svc01: registerService rejects scope=global with owner_tenant_id" {
     const RegisterServiceParams = bpm.service_catalog.RegisterServiceParams;
     const CatalogError = bpm.service_catalog.CatalogError;
 
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set — skipping\n", .{});
@@ -626,7 +627,7 @@ test "svc01: listServicesForTenant with nil tenant returns all entries" {
     const ServiceCatalog = bpm.service_catalog.ServiceCatalog;
     const RegisterServiceParams = bpm.service_catalog.RegisterServiceParams;
 
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set — skipping\n", .{});

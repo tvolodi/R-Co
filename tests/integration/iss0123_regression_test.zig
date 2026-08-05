@@ -19,6 +19,7 @@
 //!   ISS-0123 → TC-ISS-0123-01: no `dead_letter_queue` literal in source/test
 //!   ISS-0123 → TC-ISS-0123-02: normal audit INSERT succeeds after obs05 savepoint
 const std = @import("std");
+const portable_env = @import("env");
 const builtin = @import("builtin");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
@@ -54,7 +55,7 @@ fn fillRandom(buf: []u8) void {
 /// `error.SkipZigTest` is FORBIDDEN here — the project rule is that
 /// a skipped MUST test = requirement stays PENDING. We fail instead.
 fn requireTestDatabaseUrl(allocator: std.mem.Allocator) !void {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     const url = env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is required for ISS-0123 integration tests (test infrastructure unavailable)\n", .{});

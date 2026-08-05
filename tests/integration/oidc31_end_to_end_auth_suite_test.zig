@@ -10,6 +10,7 @@
 //! Optional role-token preflight checks are executed when role tokens are provided.
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 const pool_mod = @import("pool");
 
@@ -21,7 +22,7 @@ fn freeRow(allocator: std.mem.Allocator, row: []?[]u8) void {
 }
 
 fn getEnvOrSkip(allocator: std.mem.Allocator, key: []const u8) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, key) catch |err| switch (err) {
         error.EnvironmentVariableMissing => return error.SkipZigTest,
         else => return err,
@@ -29,7 +30,7 @@ fn getEnvOrSkip(allocator: std.mem.Allocator, key: []const u8) ![]u8 {
 }
 
 fn getEnvOrNull(allocator: std.mem.Allocator, key: []const u8) !?[]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, key) catch |err| switch (err) {
         error.EnvironmentVariableMissing => null,
         else => return err,

@@ -8,6 +8,7 @@
 //! Requirement traceability:
 //!   EE-03 → TC-EE-03-01 through TC-EE-03-06
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
@@ -55,7 +56,7 @@ const minimal_graph = DefinitionGraph{ .nodes = &minimal_nodes, .edges = &minima
 // ---------------------------------------------------------------------------
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set — skipping integration test\n", .{});

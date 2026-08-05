@@ -19,6 +19,7 @@
 // Per-test UUID fixtures. Defer cleanup. No SkipZigTest on MUST tests.
 
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
@@ -101,7 +102,7 @@ const test_graph = DefinitionGraph{ .nodes = &test_nodes, .edges = &test_edges }
 
 /// Read BPM_TEST_DB_URL. Fails with a clear error if absent (DIRECTIVE: no SkipZigTest).
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is required for ISS-102 integration tests\n", .{});

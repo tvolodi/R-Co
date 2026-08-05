@@ -1,6 +1,7 @@
 //! Integration tests for ADP-06 -- pipeline run correlation on audit and events.
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 
 const helpers = @import("helpers.zig");
@@ -19,7 +20,7 @@ const Store = bpm.store.Store;
 const AppendParams = bpm.store.AppendParams;
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set - skipping integration test\n", .{});

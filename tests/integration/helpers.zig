@@ -10,6 +10,7 @@
 //!
 //! Requirement traceability: DB-01, DB-02, DB-03
 const std = @import("std");
+const portable_env = @import("env");
 const pg = @import("pg");
 const root = @import("root");
 const build_options = @import("build_options");
@@ -37,7 +38,7 @@ const bpm = @import("bpm");
 // ---------------------------------------------------------------------------
 
 fn resolveMigrationsDir(allocator: std.mem.Allocator) !struct { dir: []const u8, owned: ?[]u8 } {
-    const environ: std.process.Environ = .{ .block = .global };
+    const environ = portable_env.globalEnviron();
     const env_migrations_dir = environ.getAlloc(allocator, "BPM_MIGRATIONS_DIR") catch |err| switch (err) {
         error.EnvironmentVariableMissing => null,
         error.OutOfMemory => return error.OutOfMemory,
@@ -742,7 +743,7 @@ pub const TestHarness = struct {
 
         // Read BPM_TEST_DB_URL using the Zig 0.16.0 cross-platform environ API.
         // On Windows Environ.Block = GlobalBlock (.global reads from the PEB).
-        const env: std.process.Environ = .{ .block = .global };
+        const env = portable_env.globalEnviron();
         const url = env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
             error.EnvironmentVariableMissing => {
                 std.debug.print("BPM_TEST_DB_URL is required for integration tests\n", .{});

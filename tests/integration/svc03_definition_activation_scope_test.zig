@@ -14,6 +14,7 @@
 //   - First violation stops validation atomically (fail-fast)
 
 const std = @import("std");
+const portable_env = @import("env");
 const bpm = @import("bpm");
 const helpers = @import("helpers.zig");
 
@@ -86,7 +87,7 @@ fn freeServiceRecord(alloc: std.mem.Allocator, rec: bpm.service_catalog.ServiceC
 }
 
 fn testDbUrl(alloc: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set — skipping SVC-03 integration test\n", .{});

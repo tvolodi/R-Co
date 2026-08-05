@@ -10,6 +10,7 @@
 //! All fixtures use per-test UUID-derived slugs with cleanup on defer.
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
@@ -40,7 +41,7 @@ fn fillRandom(buf: []u8) void {
 // ---------------------------------------------------------------------------
 
 fn testDbUrl(alloc: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is required for ISS-0072 tenant-config realm integration tests\n", .{});

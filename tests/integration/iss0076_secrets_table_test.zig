@@ -19,6 +19,7 @@
 // migrations (including the GBL-101 corrective migration) before each test.
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 const helpers = @import("helpers.zig");
 const build_options = @import("build_options");
@@ -29,7 +30,7 @@ const PoolConfig = bpm.pool.PoolConfig;
 const secrets = bpm.secrets;
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is required for ISS-0076 integration tests\n", .{});

@@ -14,6 +14,7 @@
 //!   PD-05 → TC-PD-05-01, TC-PD-05-02, TC-PD-05-04, TC-PD-05-05,
 //!            TC-PD-05-10, TC-PD-05-12, TC-PD-05-19
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
@@ -34,7 +35,7 @@ const DefinitionGraph = bpm.definition.DefinitionGraph;
 // ---------------------------------------------------------------------------
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set — skipping integration test\n", .{});

@@ -25,6 +25,7 @@
 //! SQL contract that the cross-process test ultimately depends on.
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 const pg = @import("pg");
 const helpers = @import("helpers.zig");
@@ -44,7 +45,7 @@ test "TC-ISS-0602-cross-01: killIdleConnections with caller tag does not termina
     // Open a second connection stamped with a different application_name,
     // park it in 'idle in transaction'. This simulates a sibling process's
     // parked backend. The kill on h.tag must not affect this row.
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     const url_b = try env.getAlloc(alloc, "BPM_TEST_DB_URL");
     defer alloc.free(url_b);
     var conn_b = try pg.Conn.connectUrl(std.testing.io, alloc, url_b);

@@ -5,6 +5,7 @@
 //!
 //! DIRECTIVE T-1: real DB only, no mocks/stubs.
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
@@ -28,7 +29,7 @@ const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 const actor_id_str = "00000000-0000-0000-0000-000000000001";
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set — skipping SCH-01 integration tests\n", .{});

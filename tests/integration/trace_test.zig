@@ -23,13 +23,14 @@
 //! Run with: zig build test-integration
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 /// Read BPM_TEST_URL from the environment; skip if absent.
 fn testServerUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => return error.SkipZigTest,
         error.OutOfMemory => return error.OutOfMemory,
@@ -39,7 +40,7 @@ fn testServerUrl(allocator: std.mem.Allocator) ![]u8 {
 
 /// Read BPM_TEST_TOKEN from the environment; skip if absent.
 fn testAuthToken(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_TOKEN") catch |err| switch (err) {
         error.EnvironmentVariableMissing => return error.SkipZigTest,
         error.OutOfMemory => return error.OutOfMemory,
@@ -49,7 +50,7 @@ fn testAuthToken(allocator: std.mem.Allocator) ![]u8 {
 
 /// Read BPM_TEST_LOG_FILE from the environment; skip if absent.
 fn testLogFilePath(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_LOG_FILE") catch |err| switch (err) {
         error.EnvironmentVariableMissing => return error.SkipZigTest,
         error.OutOfMemory => return error.OutOfMemory,

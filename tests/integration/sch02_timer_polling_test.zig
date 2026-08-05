@@ -1,5 +1,6 @@
 //! Integration tests for SCH-02 — Timer polling and firing.
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
@@ -29,7 +30,7 @@ const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
 const actor_id_str = "87654321-4321-8765-4321-876543218765";
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set — skipping SCH-02 integration tests\n", .{});
