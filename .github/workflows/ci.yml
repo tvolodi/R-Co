@@ -95,6 +95,27 @@ jobs:
     # Environ errors were cleared. Both are fixed; this job is now a hard gate.
     # The `transition.zig in-file tests` step below stays non-blocking on its
     # own terms (GH #428, unrelated to this fix).
+    #
+    # GH #436: since #434 (ISS-0134) made most test binaries libc-linked,
+    # `zig build test` intermittently deadlocks on ubuntu-latest. Root-caused
+    # against upstream ziglang/zig#22453 ("deadlock when running multiple c
+    # compilations in parallel", open, milestone "urgent" as of this fix): a
+    # lock-ordering bug in std.Build.Cache.Manifest — one process holds a read
+    # lock on cache file A wanting a write lock on file B while another holds
+    # the write lock on B wanting the read lock on A. `zig build test` now
+    # spawns ~86 concurrent `zig test -lc` jobs that all touch the same
+    # shared libc/compiler-rt cache manifests, so this race is reachable even
+    # at -j2 (observed once at 4m20s with -j2 already applied) — the flock
+    # each side holds is only released when its process exits, which never
+    # happens on its own once both sides are waiting on each other.
+    # No workaround is documented upstream. Locally, a run that hung under
+    # `timeout` always succeeded on retry against the same cache afterward
+    # (the SIGKILL releases the flock as soon as the process exits), so this
+    # is mitigated with a bounded retry instead of a single hard gate: each
+    # attempt gets its own timeout, and only exhausting every attempt fails
+    # the job. This trades a slower worst case for not blocking every PR on
+    # a timing race in someone else's lock manager.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -127,18 +148,29 @@ jobs:
         run: zig build -j2
 
       - name: zig build test
-        # -j2: GH #436. ISS-0134 (#434) added `link_libc = true` to the
-        # modules underlying most of the 86 `b.addTest` targets here, so this
-        # step now spawns ~86 concurrent `zig test -lc` compile+link
-        # processes instead of mostly-libc-free ones. Zig's default job count
-        # comes from the visible CPU count, which on a cgroup-quota-limited
-        # runner can far exceed the actual quota (observed 16 visible vs. a
-        # 2-core quota in a matching container), causing severe scheduling
-        # contention that stalled this step for 25+ minutes on both this PR
-        # and a `main` push run. Capping to -j2 reproduced a reliable ~30-40s
-        # completion locally; uncapped, the same container hung intermittently
-        # for 90s-plus on a step that normally takes ~20s.
-        run: zig build test -j2
+        # Bounded retry for GH #436 / upstream ziglang/zig#22453 — see the
+        # job-level comment above. Each attempt gets 5 minutes (the step
+        # normally completes in well under a minute; 5 is generous slack, not
+        # a tuned deadlock threshold). A `timeout`-killed attempt releases its
+        # flock on exit, so the next attempt starts from a clean lock state
+        # even though it reuses the same on-disk cache.
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3; do
+            echo "::group::zig build test — attempt $attempt/3"
+            timeout 300 zig build test -j2
+            status=$?
+            echo "::endgroup::"
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+            echo "zig build test attempt $attempt failed or timed out (exit $status)."
+            if [ "$attempt" -lt 3 ]; then
+              echo "Likely ziglang/zig#22453 (concurrent -lc cache-lock deadlock) — retrying."
+            fi
+          done
+          echo "zig build test failed on all 3 attempts."
+          exit 1
 
       - name: transition.zig in-file tests
         # 7 of these 30 fail (5 leak, 2 crash) — GH #428. They were inert for

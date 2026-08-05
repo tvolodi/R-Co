@@ -20,8 +20,10 @@
   ],
   "acceptance_criteria_status": "Both met — verified via zig build -Dtarget=x86_64-macos and -Dtarget=aarch64-macos, both exit 0 with no output.",
   "evidence_file": "GH #433",
-  "branch": "feature/WF03-ISS-0135-macos-nanotimestamp",
+  "branch": "feature/WF03-ISS-0135-macos-nanotimestamp (merged, deleted)",
   "commits": [
     "751ec9c"
-  ]
+  ],
+  "merge_commit": "f25e7d9",
+  "pr": "https://github.com/tvolodi/R-Co/pull/435"
 }

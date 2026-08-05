@@ -1,6 +1,6 @@
 {
   "issue_id": "ISS-0136",
-  "title": "CI: zig build test stalls 25min+ on ubuntu-latest after ISS-0134 libc-linking (job-count oversubscription)",
+  "title": "CI: zig build test intermittently deadlocks on ubuntu-latest after ISS-0134 libc-linking (upstream ziglang/zig#22453, mitigated with bounded retry)",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/436",
   "registered_at": "2026-08-05T11:20:00Z",
   "registered_by": "Found while resolving ISS-0135 (#433) — PR #435's CI run stalled 25+ minutes in zig build test, blocking merge",
@@ -9,18 +9,24 @@
     "ISS-0135"
   ],
   "severity": "MAJOR",
-  "status": "RESOLVED",
-  "resolved_at": "2026-08-05T11:20:00Z",
+  "status": "MITIGATED",
+  "resolved_at": null,
   "scope": "CI only (.github/workflows/ci.yml). No source code defect; ISS-0134's Environ portability fix itself is correct.",
-  "symptom": "zig build test in the Build and unit tests CI job stalled indefinitely (25+ min, zero progress) on both the main push run triggered by PR #434's merge and PR #435's own CI run. Last known-good run (pre-#434) completed zig build test in 21s.",
-  "root_cause_analysis": "PR #434 (ISS-0134) added .link_libc = true to the modules underlying most of the 86 b.addTest targets in build.zig, so zig build test now spawns ~86 concurrent 'zig test -lc' compile+link subprocesses instead of mostly libc-free ones. Zig's default build-job parallelism derives from the visible CPU count, which on a cgroup-quota-limited runner can badly over-report versus the real quota (reproduced locally: nproc reports 16 in a container capped to a 2-core cgroup quota). Reproduced the stall locally (90s+ vs ~20-40s baseline) under that mismatch using Docker with a matching CPU quota; -j2 eliminated it across repeated trials.",
-  "resolution": "Capped all three zig build invocations in .github/workflows/ci.yml's build job (zig build, zig build test, zig build test-transition) to -j2. Verified locally: cold-cache zig build test -j2 completes in ~80s (one-time, not a hang); warm-cache runs complete in 3-40s consistently across 4+ trials with no stalls.",
+  "symptom": "zig build test in the Build and unit tests CI job intermittently deadlocks with zero progress. Observed at 25+ minutes (twice) and 4m20s (once, with an earlier -j2-only mitigation already applied). Pattern each time: one test binary streams its result back over Zig 0.16's --listen=- build-runner protocol, then total silence -- the remaining ~85 binaries never report.",
+  "root_cause_analysis": "PR #434 (ISS-0134) added .link_libc = true to the modules underlying most of the 86 b.addTest targets in build.zig, so zig build test now spawns ~86 concurrent 'zig test -lc' compile jobs that all touch the same shared libc/compiler-rt cache manifests under .zig-cache. This is the exact trigger condition for upstream ziglang/zig#22453 (open, milestone 'urgent', reported Jan 2025): a lock-ordering deadlock in std.Build.Cache.Manifest where one process holds a read lock on cache file A while wanting a write lock on file B, and another process holds the write lock on B while wanting the read lock on A. Neither process can proceed and neither exits, so the flocks are never released. This is a genuine upstream Zig bug, not a defect in this repository's code or CI config -- confirmed by cross-referencing the exact deadlock signature (concurrent -lc compilations racing on Cache.Manifest locks) against the GitHub issue. -j2 alone reduces the incidence (narrows the race window) but does not eliminate it, since the race only requires two concurrent -lc jobs, not a specific count.",
+  "resolution": "Two things in .github/workflows/ci.yml's build job: (1) kept the -j2 cap (reduces race likelihood); (2) wrapped `zig build test` in a bounded retry loop (up to 3 attempts, 5 minutes each via `timeout 300`), since a killed/timed-out attempt releases its flock on process exit -- verified locally that a `timeout`-killed run always succeeds on retry against the same on-disk cache. Job-level timeout-minutes raised to 25 to give the retry loop room (3 x 5min attempts plus other steps). This is an honest mitigation for a confirmed upstream bug with no documented workaround, not a fix -- the underlying Zig lock-ordering bug is unpatched.",
   "acceptance_criteria": [
-    "zig build test -j2 completes reliably without multi-minute stalls",
-    "Real GitHub Actions ubuntu-latest run confirms the fix"
+    "zig build test completes reliably (via retry) without blocking PRs indefinitely",
+    "Root cause identified and cross-referenced against an upstream tracking issue"
   ],
-  "acceptance_criteria_status": "First criterion verified locally (4+ trials, no hangs). Second pending live CI run on PR #435 with this fix applied.",
+  "acceptance_criteria_status": "Root cause confirmed against ziglang/zig#22453. Retry-wrapper logic verified locally in 3 scenarios (immediate success, success after 2 simulated timeouts, exhaustion after 3 failures) -- all behaved correctly. Pending a live GitHub Actions run to confirm the retry recovers from a real deadlock recurrence (the underlying race is non-deterministic, so a single green run does not prove the fix -- only repeated observation over time will).",
   "evidence_file": "GH #436",
-  "branch": "feature/WF03-ISS-0135-macos-nanotimestamp",
-  "commits": []
+  "upstream_issue": "https://github.com/ziglang/zig/issues/22453",
+  "branch": "chore/WF03-ISS-0135-final-bookkeeping-20260805",
+  "commits": [
+    "def16b3",
+    "2a51864"
+  ],
+  "merge_commit": null,
+  "pr": "https://github.com/tvolodi/R-Co/pull/437"
 }
