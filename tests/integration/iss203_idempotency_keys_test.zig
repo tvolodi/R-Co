@@ -9,6 +9,7 @@
 //! Requirement traceability: ISS-203 → TC-ISS-203-01 through TC-ISS-203-05
 
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
@@ -37,7 +38,7 @@ const InstanceStore = bpm.engine.InstanceStore;
 /// Read BPM_TEST_DB_URL; return a hard error if missing (not SkipZigTest —
 /// ISS-203 tests are MUST requirements and may not be deferred).
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print(

@@ -1,6 +1,7 @@
 //! Integration tests for ADP-07 agent role and reserved usernames.
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 
 const bpm = @import("bpm");
@@ -14,7 +15,7 @@ const identity_service = bpm.identity_service;
 pub const api_tenant_context = bpm.api_tenant_context;
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set - skipping integration test\n", .{});

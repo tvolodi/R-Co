@@ -8,6 +8,7 @@
 //!   EXT-04 → TC-EXT-04-INT-01
 const std = @import("std");
 
+const portable_env = @import("env");
 const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
@@ -23,7 +24,7 @@ const DefinitionGraph = bpm.definition.DefinitionGraph;
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set — skipping EXT-04 integration tests\n", .{});

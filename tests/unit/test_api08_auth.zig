@@ -21,6 +21,7 @@
 //! Run with: zig build test
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 const api = @import("api");
 const auth = api.auth;
@@ -46,7 +47,7 @@ fn freeHandlerBody(alloc: std.mem.Allocator, body: []const u8) void {
 }
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => return error.SkipZigTest,
         else => return err,

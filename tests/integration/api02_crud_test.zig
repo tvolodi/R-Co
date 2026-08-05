@@ -21,6 +21,7 @@
 //!             TC-API-02-26, TC-API-02-28, TC-API-02-29, TC-API-02-30
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
@@ -53,7 +54,7 @@ const DefinitionStatus = bpm.definition.DefinitionStatus;
 
 /// Read BPM_TEST_DB_URL from the environment.
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set — skipping integration test\n", .{});

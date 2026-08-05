@@ -10,6 +10,7 @@ const std = @import("std");
 const db_pool = @import("pool");
 const response = @import("../response.zig");
 const logger = @import("../../obs/logger.zig");
+const env = @import("env");
 
 pub const HandlerResult = response.HandlerResult;
 
@@ -29,7 +30,7 @@ pub const TenantConfigResponse = struct {
 
 /// Read an environment variable; returns default if not set or on error.
 fn getEnvVar(allocator: std.mem.Allocator, name: []const u8, default: []const u8) []const u8 {
-    const environ: std.process.Environ = .{ .block = .global };
+    const environ = env.globalEnviron();
     return (environ.getAlloc(allocator, name) catch null) orelse default;
 }
 

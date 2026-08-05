@@ -5,6 +5,7 @@
 //! DIRECTIVE T-1: Uses real PostgreSQL via BPM_TEST_DB_URL.
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 
 const bpm = @import("bpm");
@@ -16,7 +17,7 @@ const tenant_a = "11111111-1111-1111-1111-111111111111";
 const tenant_b = "22222222-2222-2222-2222-222222222222";
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => return error.SkipZigTest,
         else => return err,

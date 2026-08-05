@@ -627,9 +627,16 @@ fn currentMicrosecondTimestamp() i64 {
         return @divTrunc(unix_100ns, 10);
     }
 
-    var ts: std.posix.timespec = undefined;
-    std.posix.clock_gettime(std.posix.CLOCK.REALTIME, &ts) catch return 0;
-    return ts.tv_sec * 1_000_000 + @divTrunc(ts.tv_nsec, 1_000);
+    // ISS-0134: std.posix.clock_gettime does not exist as a free function in
+    // this Zig stdlib (wall-clock access moved to std.Io.Clock.now, which
+    // needs an Io handle this function does not have). std.c.clock_gettime is
+    // the raw libc extern binding — a c_int return code, not an error union —
+    // and requires linking libc, which this module already does for
+    // src/env.zig (see build.zig). Verified by cross-compiling for
+    // x86_64-linux-gnu, aarch64-linux-gnu, and x86_64-macos.
+    var ts: std.c.timespec = undefined;
+    if (std.c.clock_gettime(.REALTIME, &ts) != 0) return 0;
+    return ts.sec * 1_000_000 + @divTrunc(ts.nsec, 1_000);
 }
 
 test "EXT-02 retry backoff is exponential and capped" {

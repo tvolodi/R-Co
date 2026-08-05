@@ -28,6 +28,7 @@
 //! sequence lands in the same column family that was crashing pre-fix.
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 
 const pg = @import("pg");
@@ -302,7 +303,7 @@ test "TC-ISS-0122-04: concurrent non-UTF-8 inserts do not fork the chain" {
     }
 
     // Get the connection URL once for both the seed and conn_b.
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => return error.MissingTestDatabaseUrl,
         else => return err,

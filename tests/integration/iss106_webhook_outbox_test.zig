@@ -20,6 +20,7 @@
 // Cleanup via defer (DROP SCHEMA) — no shared state between tests.
 
 const std = @import("std");
+const portable_env = @import("env");
 const pg = @import("pg");
 const helpers = @import("helpers.zig");
 const build_options = @import("build_options");
@@ -35,7 +36,7 @@ const schemaNameForTenant = bpm.pool.schemaNameForTenant;
 // ---------------------------------------------------------------------------
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is required for ISS-106 integration tests\n", .{});

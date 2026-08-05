@@ -12,6 +12,7 @@
 //! Requirement traceability:
 //!   SPT-01 → TC-SPT-01-01 .. TC-SPT-01-08
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 const build_options = @import("build_options");
@@ -39,7 +40,7 @@ const root = @import("root");
 /// Returns error.MissingTestDatabaseUrl when the variable is absent so that
 /// the test fails clearly with a named error (not a silent skip).
 fn testDbUrl(allocator: std.mem.Allocator) (error{MissingTestDatabaseUrl} || std.mem.Allocator.Error || error{EnvironmentVariableMissing} || error{InvalidWtf8})![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set — SPT-01 integration tests FAILED (env var required)\n", .{});

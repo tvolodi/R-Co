@@ -3,6 +3,7 @@ const auth = @import("../middleware/auth.zig");
 const identity_service = @import("../../identity/service.zig");
 const identity_registry = @import("../../identity/registry.zig");
 const pool_mod = @import("pool");
+const env = @import("env");
 
 pub const HandlerResult = struct {
     status_code: u16,
@@ -1167,8 +1168,8 @@ fn errorResult(allocator: std.mem.Allocator, status_code: u16, code: []const u8)
 }
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
-    return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
+    const environ = env.globalEnviron();
+    return environ.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => return error.SkipZigTest,
         else => return err,
     };

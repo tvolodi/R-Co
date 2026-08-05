@@ -10,6 +10,7 @@
 //!   ISS-207 → TC2: retry-with-input corrected payload → RETRYING
 //!   ISS-207 → TC3: discard → CANCELLED + dead_letter_items deleted
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 
 const bpm = @import("bpm");
@@ -48,7 +49,7 @@ fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
 
 /// Skip if BPM_TEST_DB_URL is absent — avoids SkipZigTest on MUST-requirement tests.
 fn getTestDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set — skipping ISS-207 integration tests\n", .{});

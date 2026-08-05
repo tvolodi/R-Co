@@ -3,6 +3,7 @@
 //! Requires a real PostgreSQL database through BPM_TEST_DB_URL. Each test uses
 //! TestHarness transaction rollback and per-test random UUID fixtures.
 const std = @import("std");
+const portable_env = @import("env");
 const builtin = @import("builtin");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
@@ -22,7 +23,7 @@ fn fillRandom(buf: []u8) void {
 }
 
 fn requireTestDatabaseUrl(allocator: std.mem.Allocator) !void {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     const url = env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is required for ISS-0125 integration tests\n", .{});

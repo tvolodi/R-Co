@@ -9,6 +9,7 @@
 //!   ISS-208 → TC1: cancel instance then complete task → 409 INSTANCE_NOT_ACTIVE, no events
 //!   ISS-208 → TC2: complete task on COMPLETED instance → 409 INSTANCE_NOT_ACTIVE
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 
 const bpm = @import("bpm");
@@ -22,7 +23,7 @@ const Actor = bpm.task_routes.Actor;
 // ---------------------------------------------------------------------------
 
 fn getTestDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set — skipping ISS-208 integration tests\n", .{});

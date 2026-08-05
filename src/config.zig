@@ -1,6 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const logger = @import("obs/logger.zig");
+const env = @import("env");
 
 /// All configuration read from environment variables at startup.
 pub const Config = struct {
@@ -31,7 +32,7 @@ pub const ConfigError = error{
 };
 
 fn getEnvAlloc(allocator: std.mem.Allocator, name: []const u8) ConfigError!?[]const u8 {
-    const environ: std.process.Environ = .{ .block = .global };
+    const environ = env.globalEnviron();
     return environ.getAlloc(allocator, name) catch |err| switch (err) {
         error.EnvironmentVariableMissing => null,
         error.OutOfMemory => error.OutOfMemory,

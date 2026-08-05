@@ -11,6 +11,7 @@
 //! All fixtures use per-test UUID prefixes (e103xxxx-...) for isolation.
 //! Defer blocks clean up all fixtures even when tests fail.
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
@@ -24,7 +25,7 @@ const tenant_context = bpm.api_tenant_context;
 const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
 fn getTestDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set — EXP-103 instance_waits integration tests require it\n", .{});

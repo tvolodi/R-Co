@@ -1,6 +1,7 @@
 //! Integration tests for ADP-05 -- instance definition artifact hash behavior.
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 
 const helpers = @import("helpers.zig");
@@ -36,7 +37,7 @@ const minimal_edges = [_]GraphEdge{
 const minimal_graph = DefinitionGraph{ .nodes = &minimal_nodes, .edges = &minimal_edges };
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set - skipping integration test\n", .{});

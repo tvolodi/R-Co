@@ -31,6 +31,7 @@
 //! Requirement traceability:
 //!   ISS-0129 → RT-1 .. RT-5
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 const build_options = @import("build_options");
@@ -46,7 +47,7 @@ const schemaNameForTenant = bpm.pool.schemaNameForTenant;
 // ---------------------------------------------------------------------------
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set — ISS-0129 integration tests FAILED (env var required)\n", .{});

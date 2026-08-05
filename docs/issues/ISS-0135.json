@@ -1,0 +1,20 @@
+{
+  "issue_id": "ISS-0135",
+  "title": "std.time.nanoTimestamp missing on x86_64-macos target (2 call sites)",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/433",
+  "registered_at": "2026-08-05T09:38:45Z",
+  "registered_by": "Found while fixing ISS-0134 (Linux Environ portability); verified via cross-compile",
+  "related_to": [
+    "ISS-0134"
+  ],
+  "severity": "MINOR",
+  "status": "OPEN",
+  "scope": "macOS cross-compilation only. No impact on Linux CI or Windows development.",
+  "symptom": "zig build -Dtarget=x86_64-macos fails with 2 errors: std.time.nanoTimestamp has no member on this target, in src/admin/tenant_migration.zig:685 and src/api/routes/onboarding.zig:24. Both are @intCast(std.time.nanoTimestamp()) in the non-Windows fallback branch of a PRNG seed helper. Confirmed this is macOS-specific, not a general POSIX gap: -Dtarget=x86_64-linux-gnu and -Dtarget=aarch64-linux-gnu both compile the identical lines cleanly.",
+  "root_cause_analysis": "Not yet investigated in depth -- found incidentally while cross-compile-verifying the ISS-0134 fix across x86_64-linux-gnu, aarch64-linux-gnu, and x86_64-macos. Filed separately rather than folded into ISS-0134 since it is a distinct stdlib API gap unrelated to Environ.",
+  "acceptance_criteria": [
+    "zig build -Dtarget=x86_64-macos exits 0",
+    "zig build -Dtarget=aarch64-macos exits 0 (not yet checked either way)"
+  ],
+  "evidence_file": "GH #433"
+}

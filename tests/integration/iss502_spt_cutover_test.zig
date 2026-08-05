@@ -29,6 +29,7 @@
 //!   ISS-502 → TC-ISS502-01 .. TC-ISS502-04
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 const helpers = @import("helpers.zig");
 const build_options = @import("build_options");
@@ -85,7 +86,7 @@ const POPULATED_TABLES = [_][]const u8{ "process_definitions", "events", "tasks"
 // ---------------------------------------------------------------------------
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is required for ISS-502 integration tests\n", .{});

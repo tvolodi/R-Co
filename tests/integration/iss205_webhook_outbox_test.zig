@@ -15,6 +15,7 @@
 //!   ISS-205 → TC2: FOR UPDATE SKIP LOCKED worker picks up orphaned deliveries
 //!   ISS-205 → TC3: 5 failures → subscription PAUSED
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 
 const bpm = @import("bpm");
@@ -26,7 +27,7 @@ const sub_store = bpm.webhook_subscription_store;
 // ---------------------------------------------------------------------------
 
 fn getTestDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set — skipping ISS-205 integration tests\n", .{});

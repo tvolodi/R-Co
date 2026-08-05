@@ -11,6 +11,7 @@
 //! - No mocks/stubs
 //! - Per-test UUID isolation
 const std = @import("std");
+const portable_env = @import("env");
 const builtin = @import("builtin");
 const testing = std.testing;
 const bpm = @import("bpm");
@@ -51,7 +52,7 @@ const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
 
 fn getTestDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL not set - EXP-401/402 integration tests require it\n", .{});

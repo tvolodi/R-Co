@@ -2,6 +2,7 @@
 //! All tests require a real PostgreSQL database via BPM_TEST_DB_URL.
 
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 const build_options = @import("build_options");
@@ -13,7 +14,7 @@ const provisionTenantSchema = bpm.provisioning.provisionTenantSchema;
 const schemaNameForTenant = bpm.pool.schemaNameForTenant;
 
 fn testDbUrl(allocator: std.mem.Allocator) (error{MissingTestDatabaseUrl} || std.mem.Allocator.Error || error{EnvironmentVariableMissing} || error{InvalidWtf8})![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is required for ISS-0068 integration tests\n", .{});

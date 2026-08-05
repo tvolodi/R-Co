@@ -13,6 +13,7 @@
 //!            TC-PD-04-11
 //!   (TC-PD-04-01 and TC-PD-04-09 are covered by PD-03 tests; TC-PD-04-12 is OUT OF SCOPE)
 const std = @import("std");
+const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
@@ -35,7 +36,7 @@ const Definition = bpm.definition.Definition;
 
 /// Read BPM_TEST_DB_URL from the environment.
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set — skipping integration test\n", .{});

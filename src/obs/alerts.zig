@@ -1,6 +1,7 @@
 const std = @import("std");
 const db = @import("pool");
 const logger = @import("logger.zig");
+const env = @import("env");
 
 pub const AlertType = enum {
     instance_error_stuck,
@@ -811,7 +812,7 @@ fn readU32Env(allocator: std.mem.Allocator, name: []const u8, default_value: u32
 }
 
 fn getEnvAlloc(allocator: std.mem.Allocator, name: []const u8) AlertError!?[]const u8 {
-    const environ: std.process.Environ = .{ .block = .global };
+    const environ = env.globalEnviron();
     return environ.getAlloc(allocator, name) catch |err| switch (err) {
         error.EnvironmentVariableMissing => null,
         else => error.OutOfMemory,

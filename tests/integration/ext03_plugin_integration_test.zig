@@ -4,6 +4,7 @@
 //!   EXT-03 -> TC-EXT-03-INT-01 through TC-EXT-03-INT-10
 
 const std = @import("std");
+const portable_env = @import("env");
 const testing = std.testing;
 
 const helpers = @import("helpers.zig");
@@ -77,7 +78,7 @@ fn ext03Handler(ctx: plugin_interface.PluginExecutionContext) plugin_interface.P
 }
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
-    const env: std.process.Environ = .{ .block = .global };
+    const env = portable_env.globalEnviron();
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
             std.debug.print("BPM_TEST_DB_URL is not set - skipping integration test\n", .{});
