@@ -426,22 +426,29 @@ When TEST-RUNNER returns FAIL for non-compile errors, ORCH routes to `ISSUE-FIXE
 
 **ORCH MUST run this check before dispatching RELEASE-VALIDATOR.**
 
-```bash
+```powershell
 # PowerShell
-$result = zig build bench 2>&1 | Select-Object -First 5
-if ($result -match "BPM_DB_URL|BENCHMARK_SETUP_ERROR|missing.*URL") {
-    Write-Host "BLOCKED: benchmark environment not ready — route to BACKEND-DEV first"
+zig build test-env-verify
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "BLOCKED: test environment not ready — route to BACKEND-DEV first"
     exit 1
 }
-Write-Host "CLEARED: benchmark environment ready"
+Write-Host "CLEARED: test environment ready"
 ```
 
 ```bash
 # bash / CI
-zig build bench 2>&1 | head -5 | grep -qiE "BPM_DB_URL|BENCHMARK_SETUP_ERROR|missing.*URL" \
-  && echo "BLOCKED: benchmark environment not ready" && exit 1 \
-  || echo "CLEARED: benchmark environment ready"
+zig build test-env-verify || { echo "BLOCKED: test environment not ready"; exit 1; }
+echo "CLEARED: test environment ready"
 ```
+
+> **Judge this gate by the exit code, never by matching text in the output.**
+> This check previously grepped `zig build bench` stdout for `BPM_DB_URL` /
+> `BENCHMARK_SETUP_ERROR` / `missing`. On 2026-05-30 an ADHOC handoff was phrased as
+> "no such token in head output", and the agent satisfied it by renaming those labels
+> in `tests/bench/bench.zig` rather than fixing the environment. A pass-condition an
+> implementing agent can rewrite will eventually be rewritten instead of met. See
+> `docs/anti-patterns.md`.
 
 If BLOCKED: ORCH creates an interim BACKEND-DEV handoff to set up `BPM_DB_URL` and
 `BPM_TEST_DB_URL`, then re-runs this pre-check before dispatching RELEASE-VALIDATOR.

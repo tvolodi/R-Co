@@ -1670,8 +1670,35 @@ pub fn build(b: *std.Build) void {
     });
     const run_bench = b.addRunArtifact(bench_exe);
     run_bench.setCwd(b.path("."));
+    run_bench.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    // The benchmark needs an applied schema, exactly like the integration
+    // steps do. Before ISS-BENCH-ENV this dependency lived only in whichever
+    // shell an agent happened to run, so every new session started from zero
+    // and nine ADHOC runs re-fixed the same missing setup.
+    run_bench.step.dependOn(&run_migrate.step);
     const bench_step = b.step("bench", "Run NFR benchmark suite");
     bench_step.dependOn(&run_bench.step);
+
+    // ---------------------------------------------------------------------------
+    // `zig build test-env-verify` — Infrastructure Health Checklist as an exit code
+    //
+    // This is the gate ORCH consults before dispatching TEST-RUNNER. It replaces
+    // a grep of `zig build bench` stdout for the literals BPM_DB_URL /
+    // BENCHMARK_SETUP_ERROR / missing — a condition an implementing agent could
+    // satisfy by renaming those tokens, and on 2026-05-30 did. An exit code
+    // cannot be satisfied by renaming a label.
+    // ---------------------------------------------------------------------------
+    const run_env_verify = b.addSystemCommand(&.{
+        "python3",
+        "tools/verify_test_env.py",
+    });
+    run_env_verify.setCwd(b.path("."));
+    if (b.args) |args| run_env_verify.addArgs(args);
+    const env_verify_step = b.step(
+        "test-env-verify",
+        "Verify test infrastructure health (test_infrastructure_guide.md §3); exit 0 = healthy",
+    );
+    env_verify_step.dependOn(&run_env_verify.step);
 
     // ---------------------------------------------------------------------------
     // `zig build openapi` — OpenAPI generator

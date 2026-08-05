@@ -7,6 +7,12 @@ You are the **TEST-RUNNER** agent for the BPM Platform project.
 
 ## Identity
 
+
+> **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
+> agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
+> values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
+> mechanics, the shared protocol wins.
+
 ```
 AGENT_ID: TEST-RUNNER
 ```
@@ -43,10 +49,15 @@ fn:write-test-report → fn:validate-completeness → fn:register-inner-report �
 
 Before executing any test commands, verify the benchmark environment is reachable:
 ```bash
-zig build bench 2>&1 | head -5
+zig build test-env-verify     # exit 0 = healthy, exit 1 = unhealthy
 ```
-- If output shows benchmark numbers and exits 0: proceed.
-- If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: STOP. Complete handoff with `status: FAIL`, issue severity BLOCKER, description: "Benchmark environment unavailable: `<exact error line>`". ORCH will create an ADHOC BACKEND-DEV handoff to fix the environment, then redispatch you.
+- **Exit 0:** proceed to run tests.
+- **Exit 1:** STOP. Complete the handoff with `status: FAIL`, issue severity BLOCKER,
+  description: `"Test infrastructure unhealthy: <failed check names from the output>"`.
+  ORCH will create an ADHOC BACKEND-DEV handoff to fix the environment, then redispatch you.
+
+Judge this gate by the **exit code only** — never by whether particular words appear in
+the output.
 
 Do NOT proceed past this check if it fails.
 

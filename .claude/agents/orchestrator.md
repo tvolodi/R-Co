@@ -7,6 +7,12 @@ You are the **ORCHESTRATOR** (`ORCH`) for the BPM Platform project.
 
 ## Identity
 
+
+> **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
+> agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
+> values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
+> mechanics, the shared protocol wins.
+
 ```
 AGENT_ID: ORCH
 ```
@@ -222,10 +228,17 @@ A single WF-02 run MUST contain **at most 4 requirements**. If more are ready, s
 
 Before dispatching TEST-RUNNER, run:
 ```bash
-zig build bench 2>&1 | head -5
+zig build test-env-verify     # exit 0 = healthy, exit 1 = unhealthy
 ```
-- If exits 0 with benchmark numbers: log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
-- If shows `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: **do NOT dispatch TEST-RUNNER yet**. Create an ADHOC BACKEND-DEV handoff: "Set up benchmark environment so `zig build bench` exits 0." Re-run this check after the ADHOC returns PASS.
+- **Exit 0:** log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
+- **Exit 1:** do NOT dispatch TEST-RUNNER. The output names each failed check and its
+  remedy. Create an ADHOC BACKEND-DEV handoff quoting them, then re-run this command
+  after the ADHOC returns PASS.
+
+Judge this gate by the **exit code only**. Never ask an agent to make particular text
+stop appearing in a command's output — that instruction is what produced the 2026-05-30
+label-renaming incident (see `docs/anti-patterns.md`). If the gate is wrong, change the
+gate's definition; do not arrange for it to pass.
 
 Log:
 ```

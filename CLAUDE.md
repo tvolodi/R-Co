@@ -462,18 +462,22 @@ print("BLOCKED:" if blocking else "CLEARED")
 for b in blocking: print(f"  {b}")
 ```
 
-**Benchmark environment pre-check** BEFORE dispatching TEST-RUNNER (Step 4) — run every time, NOT after TEST-RUNNER completes:
+**Test environment pre-check** BEFORE dispatching TEST-RUNNER (Step 4) — run every time, NOT after TEST-RUNNER completes:
 ```bash
-zig build bench 2>&1 | head -5
+zig build test-env-verify     # exit 0 = healthy, exit 1 = unhealthy
 ```
-If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`:
+This runs the Infrastructure Health Checklist (`docs/guides/test_infrastructure_guide.md §3`) and reports a single exit code.
+
+If it exits non-zero:
 - Do NOT dispatch TEST-RUNNER yet.
-- Create an interim BACKEND-DEV handoff: "Set up benchmark environment so `zig build bench` exits 0."
+- Create an interim BACKEND-DEV handoff quoting the failed check names and the remedy lines the command printed.
 - Log: `<ts> | BENCH_ENV_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for env setup`
 - Re-run this check after BACKEND-DEV completes.
 
-If output is clean (exits 0 with benchmark numbers): proceed to dispatch TEST-RUNNER.
+If it exits 0: proceed to dispatch TEST-RUNNER.
 Log: `<ts> | BENCH_ENV_CHECK | <run-id> | --- | ORCH | CLEARED`
+
+**Judge this gate by the exit code only.** Never write a handoff task asking an agent to make particular text stop appearing in some command's output — that phrasing is what produced the 2026-05-30 label-renaming incident described in `docs/anti-patterns.md`. If the gate itself is wrong, change its definition in `tools/verify_test_env.py`; do not arrange for it to pass.
 
 **Service startup — ADHOC BACKEND-DEV, fully autonomous (NO user interaction):**
 
@@ -1090,11 +1094,11 @@ python3 tools/lint_test_isolation.py tests/integration   # must exit 0, no BLOCK
 ```
 If any check fails: STOP. Return FAIL with severity BLOCKER, message: `"Test infrastructure unhealthy: <which check failed>. See docs/guides/test_infrastructure_guide.md §3."` Do NOT run any test binaries until the infrastructure is healthy.
 
-**3. Benchmark environment check:**
+**3. Test environment check:**
 ```bash
-zig build bench 2>&1 | head -5
+zig build test-env-verify     # exit 0 = healthy, exit 1 = unhealthy
 ```
-If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: STOP. Return FAIL with severity BLOCKER.
+If it exits non-zero: STOP. Return FAIL with severity BLOCKER, quoting the failed check names from the output. Judge by the exit code only — never by whether particular words appear in the output.
 
 If all pre-checks pass: proceed to run tests. Write results to `tests/reports/report-<date>-<run_id>.yaml` per the test guide §9 format. Complete your handoff with a full issue list and severity classification.
 
