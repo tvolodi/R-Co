@@ -241,20 +241,28 @@ pub fn build(b: *std.Build) void {
     const test_bpm_src_step = b.step("test-bpm-src", "Run db/EE-11/scheduler/EXT-01/EXT-03/effects unit tests only");
     test_bpm_src_step.dependOn(&run_bpm_src_tests.step);
 
-    const definition_retrieval_tests = b.addTest(.{
+    // bpm_main_mod unit test group, aggregated into one compile unit via
+    // tests/unit/bpm_main_test_root.zig. Part of the ISS-0136 mitigation
+    // (see graph_test_root.zig commit for full rationale): bpm_main_mod is
+    // libc-linked, so collapsing 12 targets into 1 directly reduces the
+    // concurrent -lc compile-job count — this is the largest group.
+    const bpm_main_tests = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/definition_retrieval_test.zig"),
+            .root_source_file = b.path("tests/unit/bpm_main_test_root.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "bpm", .module = bpm_main_mod },
                 .{ .name = "build_options", .module = build_options_mod },
-                // ISS-0134: testDbUrl() helper uses env.globalEnviron().
+                // ISS-0134: definition_retrieval_test.zig's testDbUrl() helper
+                // uses env.globalEnviron().
                 .{ .name = "env", .module = env_mod },
             },
         }),
     });
-    const run_definition_retrieval_tests = b.addRunArtifact(definition_retrieval_tests);
+    const run_bpm_main_tests = b.addRunArtifact(bpm_main_tests);
+    const test_bpm_main_step = b.step("test-bpm-main", "Run PD-07/export-import/PD-10/EE-03/05/07/09/API-02/03/05/OBS-04 unit tests only");
+    test_bpm_main_step.dependOn(&run_bpm_main_tests.step);
 
     const snapshot_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -265,43 +273,9 @@ pub fn build(b: *std.Build) void {
     });
     const run_snapshot_tests = b.addRunArtifact(snapshot_tests);
 
-    const export_import_unit_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_export_import.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_main_mod },
-            },
-        }),
-    });
-    const run_export_import_unit_tests = b.addRunArtifact(export_import_unit_tests);
-
-    // PD-10 definition search handler tests (input validation — no DB required).
-    const pd10_search_unit_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/pd10_search_unit_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_main_mod },
-            },
-        }),
-    });
-    const run_pd10_search_unit_tests = b.addRunArtifact(pd10_search_unit_tests);
-
-    // EE-03: pure transition tests (no DB) — TC-EE-03-01 through TC-EE-03-05
-    const engine_apply_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_engine_apply.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_main_mod },
-            },
-        }),
-    });
-    const run_engine_apply_tests = b.addRunArtifact(engine_apply_tests);
+    // export-import, PD-10, and EE-03 apply tests are part of the
+    // bpm_main_tests aggregator (tests/unit/bpm_main_test_root.zig)
+    // declared above.
 
     // EE-03: TaskStore stubs (DB tests — all SkipZigTest until test-integration)
     const tasks_store_tests = b.addTest(.{
@@ -313,57 +287,8 @@ pub fn build(b: *std.Build) void {
     });
     const run_tasks_store_tests = b.addRunArtifact(tasks_store_tests);
 
-    // EE-03: GET /tasks handler — pure input-validation paths + DB stubs
-    const tasks_api_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_tasks_api.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_main_mod },
-            },
-        }),
-    });
-    const run_tasks_api_tests = b.addRunArtifact(tasks_api_tests);
-
-    // EE-05: Exclusive Gateway CEL integration tests (pure transition — no DB)
-    const engine_ee05_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_engine_ee05.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_main_mod },
-            },
-        }),
-    });
-    const run_engine_ee05_tests = b.addRunArtifact(engine_ee05_tests);
-
-    // EE-07: Parallel Gateway join tests (TC-EE-07-05 — 3-branch join via public API)
-    const engine_ee07_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_ee07_parallel_join.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_main_mod },
-            },
-        }),
-    });
-    const run_engine_ee07_tests = b.addRunArtifact(engine_ee07_tests);
-
-    // EE-09: Variable merge — pure json_schema validator and mergeVariables fast-path
-    const engine_ee09_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_ee09_merge_variables.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_main_mod },
-            },
-        }),
-    });
-    const run_engine_ee09_tests = b.addRunArtifact(engine_ee09_tests);
+    // EE-03 tasks API, EE-05, EE-07, and EE-09 are part of the
+    // bpm_main_tests aggregator declared above.
 
     // EE-11 (reconstruction_test.zig) is part of the bpm_src_tests
     // aggregator (tests/unit/bpm_src_test_root.zig) declared above.
@@ -417,57 +342,8 @@ pub fn build(b: *std.Build) void {
     const test_api_step = b.step("test-api", "Run API-01/06/07/09 and OIDC-01 unit tests only");
     test_api_step.dependOn(&run_api_tests.step);
 
-    // API-02: Process definition CRUD handler unit tests (pure input-validation — no DB)
-    const api02_handler_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/api02_handler_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_main_mod },
-            },
-        }),
-    });
-    const run_api02_handler_tests = b.addRunArtifact(api02_handler_tests);
-
-    // API-03: Instance management handler unit tests (pure input-validation — no DB)
-    const api03_handler_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/api03_handler_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_main_mod },
-            },
-        }),
-    });
-    const run_api03_handler_tests = b.addRunArtifact(api03_handler_tests);
-
-    // API-05: History endpoint handler unit tests (pure input-validation — no DB)
-    const api05_history_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_api05_history.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_main_mod },
-            },
-        }),
-    });
-    const run_api05_history_tests = b.addRunArtifact(api05_history_tests);
-
-    // OBS-04: timeline endpoint handler unit tests (input validation — no DB)
-    const obs04_timeline_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/test_obs04_timeline.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_main_mod },
-            },
-        }),
-    });
-    const run_obs04_timeline_tests = b.addRunArtifact(obs04_timeline_tests);
+    // API-02, API-03, API-05, and OBS-04 are part of the bpm_main_tests
+    // aggregator declared above.
 
     // API-06 and API-07 unit tests are part of the api_tests aggregator
     // (tests/unit/api_test_root.zig) declared above.
@@ -688,22 +564,11 @@ pub fn build(b: *std.Build) void {
 
     test_step.dependOn(&run_event_store_tests.step);
     test_step.dependOn(&run_graph_tests.step);
-    test_step.dependOn(&run_definition_retrieval_tests.step);
+    test_step.dependOn(&run_bpm_main_tests.step);
     test_step.dependOn(&run_snapshot_tests.step);
-    test_step.dependOn(&run_export_import_unit_tests.step);
-    test_step.dependOn(&run_pd10_search_unit_tests.step);
-    test_step.dependOn(&run_engine_apply_tests.step);
     test_step.dependOn(&run_tasks_store_tests.step);
-    test_step.dependOn(&run_tasks_api_tests.step);
-    test_step.dependOn(&run_engine_ee05_tests.step);
-    test_step.dependOn(&run_engine_ee07_tests.step);
-    test_step.dependOn(&run_engine_ee09_tests.step);
     test_step.dependOn(&run_engine_tests.step);
     test_step.dependOn(&run_api_tests.step);
-    test_step.dependOn(&run_api02_handler_tests.step);
-    test_step.dependOn(&run_api03_handler_tests.step);
-    test_step.dependOn(&run_api05_history_tests.step);
-    test_step.dependOn(&run_obs04_timeline_tests.step);
     test_step.dependOn(&run_api08_auth_tests.step);
     test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);
     test_step.dependOn(&run_sch303_unit_tests.step);
