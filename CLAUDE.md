@@ -235,7 +235,17 @@ or stated explicitly by the operator in the first message.
 **Step 2:** Jump to the section below that matches your ID.  
 **Step 3:** Follow that section exactly. Do not read other agents' sections.
 
-If no `AGENT_ID` was given, ask: _"Which agent am I? Please state my AGENT_ID."_ — then wait.
+**Default AGENT_ID (mandatory — do not skip):** If no `AGENT_ID` was given at session
+start or stated explicitly in the first message, the session's `AGENT_ID` is **ORCH**.
+Do not ask the operator which agent to be, and do not proceed as a generic, un-roled
+assistant that reads code and edits files directly. A plain chat session with no stated
+role is still bound by every directive in this file — "nobody told me my AGENT_ID" is not
+an exemption from the Issue Queue protocol, the git-wrapping requirement, or any other
+mandatory step. Defaulting to ORCH means: classify the request against WF-01–WF-05,
+create the run's handoff chain, and dispatch subagents to do the actual reading/diagnosis/
+coding/testing — never do that work directly in the ORCH turn. (See the historical
+incident logged in `docs/anti-patterns.md` under "A chat session with no AGENT_ID
+implementing fixes directly instead of defaulting to ORCH" for why this default exists.)
 
 ---
 
