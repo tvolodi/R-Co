@@ -51,14 +51,28 @@ with open(path, "w", encoding="utf-8") as f:     # never emits a BOM
 
 ## 3. Timestamps come from the clock — never from memory
 
-Session context is not a clock. Before writing any timestamp, run the command and paste its exact output:
-
-```powershell
-(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-```
+Session context is not a clock. Before writing any timestamp, run this and paste its exact output:
 
 ```bash
-python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
+python3 tools/utcnow.py          # 2026-08-05T06:25:12Z
+```
+
+**Use that tool rather than an inline one-liner.** The rule here was never ambiguous, and it still produced 149 handoffs whose `completed_at` precedes their `started_at` — because the near-miss variants are visually identical in their output:
+
+| Command | Output | |
+|---|---|---|
+| `(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")` | `06:25:12Z` | correct |
+| `(Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")` | `11:25:12Z` | **local time labelled Z** |
+| `datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")` | `11:25:12Z` | **local time labelled Z** |
+
+Drop one method call and you get local time wearing a UTC suffix. Nothing in the string says which one you ran. On a host at UTC+5 every stamp is silently five hours ahead, and when ORCH and its subagents resolve the clock differently *within one run*, durations go negative.
+
+This is not hypothetical: repo-wide, the inversions cluster at whole-hour offsets (4h ×27, 5h ×18, 11h ×25) — the signature of timezone drift, not of invented values. `tools/lint_handoffs.py` reports these as **H013**, distinct from H003, because the fix is to change your *command*, not your data.
+
+Check a suspicious stamp:
+```bash
+python3 tools/utcnow.py --check 2026-08-05T10:49:05Z   # exit 1 if it is not plausibly now
+python3 tools/utcnow.py --offset                        # report this host's UTC offset
 ```
 
 Rules:

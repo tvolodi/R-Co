@@ -297,8 +297,7 @@ pub const Migrations = struct {
                     break :blk has_it;
                 };
                 if (has_late_row) {
-                    conn.exec("SELECT 'MigrationLedgerSync: ' || $1 || ': row missing but later migrations applied, skipping re-apply to avoid duplicate DDL.'",
-                        &.{filename}) catch {};
+                    conn.exec("SELECT 'MigrationLedgerSync: ' || $1 || ': row missing but later migrations applied, skipping re-apply to avoid duplicate DDL.'", &.{filename}) catch {};
                     continue;
                 }
             }

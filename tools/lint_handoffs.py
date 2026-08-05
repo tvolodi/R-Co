@@ -19,6 +19,7 @@ Checks (BLOCKER unless noted):
   H010  handoff absent from registry.json                              (MINOR)
   H011  orchestrator.log contains UTF-16-interleaved lines
   H012  orchestrator.log shorter than its committed HEAD version (truncation)
+  H013  timestamps within one run disagree by a whole-hour offset (local-as-UTC)
 
 Usage:
     python3 tools/lint_handoffs.py [handoffs_dir] [--quiet] [--max-severity=LEVEL]
@@ -28,6 +29,7 @@ Exit codes: 0 = no BLOCKER/MAJOR, 1 = findings, 2 = usage error.
 
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import re
@@ -219,6 +221,56 @@ def lint_orphans(runs: dict[str, list[tuple[str, dict]]], findings: list[Finding
                 )
 
 
+def lint_clock_skew(
+    runs: dict[str, list[tuple[str, dict]]], findings: list[Finding]
+) -> None:
+    """Detect local-time-labelled-as-UTC within a single run.
+
+    A handoff whose completed_at precedes its started_at by very close to a
+    whole number of hours is not a fabricated timestamp -- it is a real clock
+    read through the wrong timezone. Dropping `.ToUniversalTime()` (PowerShell)
+    or using `datetime.now()` instead of the UTC form yields a string that is
+    byte-identical in shape and wrong by exactly the host's UTC offset.
+
+    Repo-wide these inversions cluster at whole hours (4h, 5h, 11h), which is
+    the signature of timezone drift rather than of invented values. Reporting
+    it separately from H003 tells the agent to fix its *command*, not its data.
+    """
+    for run_id, entries in runs.items():
+        for rel, handoff in entries:
+            started = handoff.get("started_at")
+            completed = handoff.get("completed_at")
+            if not (isinstance(started, str) and isinstance(completed, str)):
+                continue
+            if not (ISO_Z.match(started) and ISO_Z.match(completed)):
+                continue
+            if completed >= started:
+                continue
+
+            try:
+                a = datetime.datetime.strptime(started, "%Y-%m-%dT%H:%M:%SZ")
+                b = datetime.datetime.strptime(completed, "%Y-%m-%dT%H:%M:%SZ")
+            except ValueError:
+                continue
+
+            gap_hours = (a - b).total_seconds() / 3600.0
+            nearest = round(gap_hours)
+            # Within 6 minutes of a whole hour, and at least half an hour off.
+            if nearest >= 1 and abs(gap_hours - nearest) <= 0.1:
+                findings.append(
+                    Finding(
+                        "H013",
+                        "BLOCKER",
+                        rel,
+                        f"completed_at is {gap_hours:.1f}h before started_at — very close to "
+                        f"a whole-hour offset ({nearest}h). This is local time labelled 'Z', "
+                        "not a fabricated value: `(Get-Date).ToString(...)` without "
+                        "`.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, "
+                        "produces exactly this. Use `python3 tools/utcnow.py`.",
+                    )
+                )
+
+
 def lint_registry(
     registry_path: str, all_ids: set[str], findings: list[Finding], total: int
 ) -> None:
@@ -341,8 +393,19 @@ def main(argv: list[str]) -> int:
             runs[run_id].append((rel, parsed))
 
     lint_orphans(runs, findings)
-    lint_registry(os.path.join(handoffs_dir, "registry.json"), all_ids, findings, total)
-    lint_orchestrator_log(os.path.join(handoffs_dir, "orchestrator.log"), findings)
+    lint_clock_skew(runs, findings)
+
+    # The registry and log live at the handoffs/ root, not inside a run dir.
+    # When invoked on a single run (the common case for an agent checking its
+    # own work), look for them one level up rather than reporting them missing.
+    root = handoffs_dir
+    if not os.path.exists(os.path.join(root, "registry.json")):
+        parent = os.path.dirname(os.path.abspath(handoffs_dir))
+        if os.path.exists(os.path.join(parent, "registry.json")):
+            root = parent
+
+    lint_registry(os.path.join(root, "registry.json"), all_ids, findings, total)
+    lint_orchestrator_log(os.path.join(root, "orchestrator.log"), findings)
 
     findings.sort(key=lambda f: (SEVERITY_ORDER.get(f.severity, 9), f.code, f.path))
 

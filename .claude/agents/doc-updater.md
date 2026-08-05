@@ -129,6 +129,11 @@ Include `handoffs/registry.json` and `handoffs/<run_id>/registry.json` in `artif
 (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 ```
 
+**Prefer `python3 tools/utcnow.py`** — it cannot be silently downgraded to local time.
+`(Get-Date).ToString(...)` without `.ToUniversalTime()`, and `datetime.now()` without the
+UTC form, both emit **local time labelled `Z`**: identical in shape, wrong by the host's
+offset. That is the cause of 149 inverted timestamps in this repo (`lint_handoffs.py` H013).
+
 **On Linux/macOS:**
 ```bash
 python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
