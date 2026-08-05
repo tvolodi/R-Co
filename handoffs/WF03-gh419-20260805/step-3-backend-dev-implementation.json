@@ -1,0 +1,51 @@
+{
+  "handoff_id": "d2a8b1c5-4f7e-4a3d-9b6c-1e8f5d2a7c34",
+  "run_id": "WF03-gh419-20260805",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-05T08:01:34Z",
+  "started_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "3f8a91c4-2b17-4e0a-9d3f-5e2c7a8b4d61",
+      "7c2e8a91-6f3d-4b5e-a1c8-2d9f7e4b6a03",
+      "9b4d6e82-1c5a-4f78-9e3b-6a2c8d4f1e07",
+      "a5e3c7f4-8b21-4d6a-bf9c-3e8d1a6f4c92",
+      "c8f4e2a7-6d93-4e15-8b1f-2a9c5d8e4b73"
+    ],
+    "artifacts_in": [
+      "src/design/iss0129_migration_runner_advisory_lock.md",
+      "src/db/migrations.zig",
+      "src/db/provisioning.zig",
+      "tests/integration/iss0129_migration_run_advisory_lock_test.zig",
+      "docs/issue-reports/ISS-0129-migration-deadlock-diagnosis.yaml",
+      "templates/lego-catalog.md",
+      "docs/guides/backend_developer_guide.md"
+    ],
+    "issue_id": "ISS-0129",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/419"
+  },
+  "task": {
+    "description": "WF-03 Step 3 \u2014 BACKEND-DEV: Implement the fix for ISS-0129 / GitHub #419\n\nDesign approved in `src/design/iss0129_migration_runner_advisory_lock.md` (validated in Step 2b). Implementation target:\n\n**Primary change** \u2014 `src/db/migrations.zig`:\n- Add a module-level constant:\n  ```zig\n  pub const MIGRATIONS_LOCK_KEY_SQL =\n      \"SELECT pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint)\";\n  ```\n- Insert `conn.exec(MIGRATIONS_LOCK_KEY_SQL, &.{})` immediately after `BEGIN` and before any `simpleQuery` call in `runForSchema` (around lines 301-307 per the diagnosis). The lock is auto-released at COMMIT/ROLLBACK.\n- If `runForSchema` ALSO has a separate top-level path that issues its own BEGIN, ensure the lock is acquired in BOTH paths.\n\n**Secondary check** \u2014 `src/db/provisioning.zig`:\n- Confirm `provisionTenantSchema` (and any sibling functions) call into `Migrations.runForSchema()` \u2014 they MUST go through the locked path. If there is a separate code path that bypasses `runForSchema`, also lock it (or refactor to call `runForSchema`).\n\n**Tertiary check** \u2014 `src/tools/migrate.zig`:\n- The `zig build migrate` boot path uses `Migrations.run()` (public schema). Defensively wrap it in the same advisory lock so concurrent `zig build migrate` invocations on different CI workers don't fight each other.\n\n**Regression test** \u2014 create `tests/integration/iss0129_migration_run_advisory_lock_test.zig` with 5 test cases (RT-1 through RT-5) per the design:\n- RT-1: Concurrent `runForSchema` calls serialize (two pool instances, same schema, verify second waits for first via `pg_locks`)\n- RT-2: Existing TNT-01 / TNT-03 tests still pass \u2014 embed a copy of TC-TNT-01-01 here to demonstrate the fix\n- RT-3: Lock keyspace disjoint from trigger function's `bpm.audit.chain.<tenant>` lock (insert audit row in one connection, run migration in another, verify NO deadlock within 60s)\n- RT-4: 60-second wall-clock budget \u2014 full concurrent run completes within timeout\n- RT-5: Source assertion on the constant prefix `'bpm.migrations.runForSchema'` (regression-prevention)\n\n**Build validation (mandatory, run before self-review):**\n```bash\nzig build                                  # exit 0\nzig build 2>&1 | grep -i \"error set\"       # empty\npython3 tools/lint_sql_param_types.py src tests   # exit 0, no BLOCKER/MAJOR\nzig build test                             # exit 0\nzig build test-integration                 # exit 0 (or run the new test file directly first to iterate)\n```\n\nIf `zig build test-integration` fails because of pre-existing test issues unrelated to your change, note them in `result.issues` with severity MINOR but DO NOT block the handoff on them. The new test file MUST pass cleanly.\n\n**Self-review checklist:**\n- [ ] No SQL string interpolation of user data\n- [ ] All allocating functions accept `std.mem.Allocator`\n- [ ] `src/engine/transition.zig` unchanged\n- [ ] Error types in per-module error sets\n- [ ] `lint_sql_param_types.py` exits 0\n- [ ] `zig build` exits 0 with no error-set output\n- [ ] No mocks / stubs / in-memory fakes in tests\n- [ ] No `error.SkipZigTest` on any MUST test\n- [ ] All integration tests connect to real PostgreSQL via `BPM_TEST_DB_URL`\n- [ ] Per-test UUIDs in fixtures\n\n**Commit + push** to `feature/WF03-gh419-20260805`:\n- Single commit `feat(WF03-gh419): pg_advisory_xact_lock in Migrations.runForSchema (ISS-0129)` containing all source changes + regression test\n- Then a separate commit stamping the handoff COMPLETED (optional but tidy)\n\nWhen done:\n- Set handoff JSON status=COMPLETED, result.status=PASS\n- completed_at=exact Get-Date output\n- artifacts_out = list of all files touched\n- result.next_action = \"Route to TEST-RUNNER (Step 5)\"\n- result.issues = any MINOR observations (NOT BLOCKER/MAJOR \u2014 would force rework)\n- Update `handoffs/registry.json` (entry status COMPLETED)\n- Append to `handoffs/orchestrator.log`\n\nReturn PASS only if `zig build` AND `zig build test` AND the new regression test file all exit 0.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "tests/integration/iss0129_migration_run_advisory_lock_test.zig exists with 5 tests, all pass",
+      "src/db/migrations.zig has MIGRATIONS_LOCK_KEY_SQL constant + lock acquisition in runForSchema",
+      "python3 tools/lint_sql_param_types.py src tests exits 0",
+      "Implementation committed and pushed to feature/WF03-gh419-20260805",
+      "harness log: PENDING \u2192 COMPLETED"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": null
+}

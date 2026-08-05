@@ -1248,6 +1248,25 @@ pub fn build(b: *std.Build) void {
     run_iss0121_integration_tests.setCwd(b.path("."));
     run_iss0121_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    // ISS-0129 / GitHub #419: migration-runner pg_advisory_xact_lock
+    // regression. Verifies that concurrent runForSchema() / provisionTenantSchema
+    // calls serialize via the canonical migrate-step advisory lock
+    // (`bpm.migrations.runForSchema`), that the lock keyspace is disjoint from
+    // the audit-trigger's per-tenant advisory lock, and that the lock-key
+    // prefix remains stable in src/db/migrations.zig. See
+    // src/design/iss0129_migration_runner_advisory_lock.md.
+    const iss0129_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0129_migration_run_advisory_lock_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0129_integration_tests = b.addRunArtifact(iss0129_integration_tests);
+    run_iss0129_integration_tests.setCwd(b.path("."));
+    run_iss0129_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     // ISS-0602 / GitHub #414: per-process owner tag for killIdleConnections().
     // Single-process regression verifying the tag is set on every TestHarness
     // connection, that the cache is per-process, and that the
@@ -1518,6 +1537,14 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss0121_step = b.step("test-integration-iss0121", "Run ISS-0121 TestHarness UUID-helper regression tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0121_step.dependOn(&clean_test_db.step);
     test_integration_iss0121_step.dependOn(&run_iss0121_integration_tests.step);
+
+    const test_integration_iss0129_step = b.step("test-integration-iss0129", "Run ISS-0129 migration-runner advisory-lock regression tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0129_step.dependOn(&clean_test_db.step);
+    test_integration_iss0129_step.dependOn(&run_iss0129_integration_tests.step);
+    // ISS-0106: this binary provisions fresh tenant schemas and exercises
+    // concurrent migrate-step calls — it must run via the barrier, not
+    // directly on test_integration_step.
+    test_integration_others_step.dependOn(&run_iss0129_integration_tests.step);
 
     const test_integration_iss0602_same_step = b.step("test-integration-iss0602-same", "Run ISS-0602 single-process owner-tag isolation tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0602_same_step.dependOn(&clean_test_db.step);
