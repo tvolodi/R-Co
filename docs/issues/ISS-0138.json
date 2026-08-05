@@ -1,0 +1,22 @@
+{
+  "issue_id": "ISS-0138",
+  "title": "zig build test-env-verify / test-wiring-check fail on Windows when python3 resolves to the WindowsApps App Execution Alias stub",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/440",
+  "registered_at": "2026-08-05T16:31:04Z",
+  "registered_by": "ORCH (WF-03 GH #428 independent re-verification)",
+  "related_to": [
+    "ISS-0133"
+  ],
+  "severity": "MINOR",
+  "status": "OPEN",
+  "scope": "build.zig verification steps only (test-env-verify, test-wiring-check). No effect on the underlying scripts' correctness.",
+  "symptom": "On a Windows machine where python3.exe resolves to the WindowsApps App Execution Alias stub before a real interpreter, `zig build test-env-verify` and `zig build test-wiring-check` fail immediately with 'Python was not found ... error code 49', even though the underlying scripts are correct and run fine via `python tools/verify_test_env.py` / `python tools/lint_test_wiring.py` directly.",
+  "reproduction": "On a Windows machine with a broken python3 App Execution Alias ahead of a working interpreter on PATH: zig build test-env-verify (or test-wiring-check)",
+  "root_cause_analysis": "build.zig's addSystemCommand for these two steps hardcodes \"python3\" as the executable name. Every other Python-invoking step in build.zig (lint_test_table_refs, clean_test_db) uses \"python\" instead. On this dev machine, python3 has two resolutions on PATH: the broken WindowsApps stub (first) and a working AppData\\Local\\Python\\bin\\python3.exe (second) -- the stub wins.",
+  "acceptance_criteria": [
+    "zig build test-env-verify succeeds on a Windows machine with an unresolved python3 App Execution Alias stub, assuming underlying infra is healthy",
+    "zig build test-wiring-check succeeds under the same condition",
+    "No change to either script's detection logic -- interpreter selection only"
+  ],
+  "evidence_file": "GH #440 has full reproduction and suggested fix (switch to \"python\" for consistency with existing build.zig convention)"
+}

@@ -502,14 +502,32 @@ pub fn build(b: *std.Build) void {
     const test_engine_step = b.step("test-engine", "Run engine unit tests");
     test_engine_step.dependOn(&run_engine_tests.step);
 
-    // ISS-0132: src/engine/transition.zig contains 26 in-file tests (plus the
-    // allocation-failure harness) that never executed — the file was only ever
-    // referenced as an imported module (`transition_mod`), never as the root of
-    // an addTest, so `zig build test` compiled it but ran none of its tests.
-    // Same class as ISS-0102 (test files wired into no build target), in the
-    // engine's purest and most safety-critical module.
-    // Rooted at src/transition_test_root.zig — see that file for why neither
-    // transition.zig nor bpm.zig works as the root here.
+    // ISS-0132 / GH #428: src/engine/transition.zig contains 30 in-file tests
+    // (plus the allocation-failure harness) that were inert for months — the
+    // file was only ever referenced as an imported module (`transition_mod`),
+    // never as the root of an addTest, so `zig build test` compiled it but ran
+    // none of its tests. Same class as ISS-0102 (test files wired into no
+    // build target), in the engine's purest and most safety-critical module.
+    //
+    // transition.zig cannot be its own addTest root: it reaches
+    // ../definition/graph.zig by relative path, and Zig 0.16 rejects an
+    // @import that escapes the module root. bpm.zig doesn't work either —
+    // Zig only runs test blocks in files reachable through *analyzed*
+    // declarations, and bpm.zig has neither a `test` block nor
+    // std.testing.refAllDecls, so that target would compile and silently run
+    // zero tests. src/transition_test_root.zig is a thin shim sitting at
+    // src/ (not src/engine/) specifically to satisfy the module-root
+    // constraint while still calling refAllDecls on the transition module —
+    // see that file's own doc comment for the full explanation.
+    //
+    // All 30 tests now pass with zero leaks and zero crashes (fixed under
+    // GH #428: two production ownership bugs — transition()'s token
+    // deep-clone dropped waiting_child_instance_id, and three
+    // processNodeEntry paths (END completion, ALL_BRANCHES_CANCELLED
+    // cascade, PARALLEL_GATEWAY join fire) discarded tokens without freeing
+    // them — plus one stale test assertion and a batch of test fixtures that
+    // built InstanceState from string literals/stack arrays instead of
+    // allocator-owned memory).
     const transition_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/transition_test_root.zig"),
@@ -526,14 +544,7 @@ pub fn build(b: *std.Build) void {
         "Run src/engine/transition.zig in-file unit tests (incl. ISS-0132 alloc-failure harness)",
     );
     test_transition_step.dependOn(&run_transition_tests.step);
-    // NOT yet wired into `test-engine` / `test`: 7 of these 30 tests currently
-    // fail (5 leak, 2 crash) — see GH #428 / ISS-0133. They were inert for
-    // months and rotted against ownership-model changes; the leaks are
-    // test-side (the tests never free the InstanceState that processNodeEntry
-    // returns), not production defects — `zig build`, `zig build test`, and the
-    // integration suite are all green. Run `zig build test-transition` to see
-    // them. Re-enable this line when GH #428 closes:
-    //     test_engine_step.dependOn(&run_transition_tests.step);
+    test_engine_step.dependOn(&run_transition_tests.step);
 
     // ISS-0074: secrets/crypto.zig envelope-encryption unit tests (pure — no DB, no network)
     const secrets_crypto_mod = b.createModule(.{
@@ -568,6 +579,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_snapshot_tests.step);
     test_step.dependOn(&run_tasks_store_tests.step);
     test_step.dependOn(&run_engine_tests.step);
+    test_step.dependOn(&run_transition_tests.step);
     test_step.dependOn(&run_api_tests.step);
     test_step.dependOn(&run_api08_auth_tests.step);
     test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);
@@ -1515,6 +1527,32 @@ pub fn build(b: *std.Build) void {
         "Verify test infrastructure health (test_infrastructure_guide.md §3); exit 0 = healthy",
     );
     env_verify_step.dependOn(&run_env_verify.step);
+
+    // ---------------------------------------------------------------------------
+    // `zig build test-wiring-check` — no test-bearing file is wired into no
+    // build target (prevents ISS-0102 / GH #428 recurrence)
+    //
+    // Not made a dependency of `test` or `build`: as of the GH #428 fix this
+    // tool found 55 PRE-EXISTING test-bearing files (unrelated to
+    // transition.zig) that were already unreachable from any addTest root —
+    // filed separately rather than fixed here, since fixing 55 unrelated
+    // files is out of scope for the transition.zig leak/crash fix this step
+    // was added alongside. Wiring this into `test` today would turn the
+    // Green-Main Gate red for a pre-existing condition this change didn't
+    // cause. Run it manually (or from CI as its own check) until that
+    // backlog is cleared; see the filed issue for the file list.
+    // ---------------------------------------------------------------------------
+    const run_wiring_check = b.addSystemCommand(&.{
+        "python3",
+        "tools/lint_test_wiring.py",
+    });
+    run_wiring_check.setCwd(b.path("."));
+    if (b.args) |args| run_wiring_check.addArgs(args);
+    const wiring_check_step = b.step(
+        "test-wiring-check",
+        "Verify every test-bearing file is reachable from an addTest root; exit 0 = none unwired",
+    );
+    wiring_check_step.dependOn(&run_wiring_check.step);
 
     // ---------------------------------------------------------------------------
     // `zig build openapi` — OpenAPI generator

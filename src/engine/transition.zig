@@ -654,10 +654,24 @@ pub fn transition(
         if (t.token_id) |tid| {
             token_id_copy = try allocator.dupe(u8, tid);
         }
+        // GH #428: waiting_child_instance_id was previously dropped here,
+        // silently discarding a token's "parked waiting on child sub-process"
+        // state on every transition() call (not just sub_process_completed) —
+        // any token waiting on a SUB_PROCESS child could never be matched by
+        // the sub_process_completed handler below (token_idx would always be
+        // null) because the field was reset to its default (null) instead of
+        // being carried over. See freeInstanceState (line ~161), which frees
+        // it, and the sub_process_completed handler (line ~866), which reads
+        // it — both assume it survives the clone.
+        var waiting_child_copy: ?[]const u8 = null;
+        if (t.waiting_child_instance_id) |w| {
+            waiting_child_copy = try allocator.dupe(u8, w);
+        }
         new_state.tokens[i] = Token{
             .node_id = try allocator.dupe(u8, t.node_id),
             .branch_id = try allocator.dupe(u8, t.branch_id),
             .token_id = token_id_copy,
+            .waiting_child_instance_id = waiting_child_copy,
         };
     }
     for (state.pending_task_nodes, 0..) |n, i| {
@@ -1258,10 +1272,27 @@ fn processNodeEntry(
                 }
             }
             var new_state = state;
-            new_state.tokens = try new_tokens.toOwnedSlice(allocator);
             if (!active) {
+                // GH #428: every token here is being discarded — the one
+                // that just arrived at this END node was filtered out of
+                // new_tokens above, and everything still in new_tokens.items
+                // is (per the `active` check) itself parked on some END node
+                // too and about to be replaced with an empty slice. Free the
+                // full original state.tokens set (which per the ISS-0601
+                // ownership contract is always allocator-owned) before
+                // discarding, or every field on every token leaks whenever
+                // an instance completes with more than zero tokens present.
+                for (state.tokens) |t| {
+                    allocator.free(t.node_id);
+                    allocator.free(t.branch_id);
+                    if (t.token_id) |tid| allocator.free(tid);
+                    if (t.waiting_child_instance_id) |w| allocator.free(w);
+                }
+                allocator.free(state.tokens);
                 new_state.status = .COMPLETED;
                 new_state.tokens = &[_]Token{};
+            } else {
+                new_state.tokens = try new_tokens.toOwnedSlice(allocator);
             }
             return new_state;
         },
@@ -1459,10 +1490,35 @@ fn processNodeEntry(
                 try events.append(allocator, split_event);
                 var new_state = state;
                 new_state.tokens = try new_tokens.toOwnedSlice(allocator);
-                // Recursively process each new token
+
+                // GH #428: snapshot the target node_ids to visit BEFORE
+                // recursing, and iterate that snapshot — not new_state.tokens
+                // directly. `for (new_state.tokens) |t|` captures the slice
+                // header once at loop entry; each processNodeEntry call below
+                // can return a brand-new InstanceState (different .tokens
+                // backing array) and, since the GH #428 END/join-fire fixes,
+                // may now genuinely free the previous one. Continuing to read
+                // `t` from the original (now-freed) slice on the next
+                // iteration was a real use-after-free — TC-EE-03-05 (a
+                // 2-branch split where both branches terminate at END)
+                // caught it: processing the first branch could complete the
+                // instance and free the whole original token array,
+                // including the second branch's still-unvisited node_id.
+                // These strings must be dupe'd, not just referenced, because
+                // the very InstanceState that owns the original t.node_id
+                // memory (`new_state` before the first processNodeEntry call)
+                // is exactly what gets superseded/freed by that call.
+                var visit_targets = std.ArrayList([]const u8).empty;
+                defer {
+                    for (visit_targets.items) |vt| allocator.free(vt);
+                    visit_targets.deinit(allocator);
+                }
                 for (new_state.tokens) |t| {
                     if (std.mem.eql(u8, t.node_id, node_id)) continue;
-                    new_state = try processNodeEntry(allocator, snapshot, new_state, t.node_id, events);
+                    try visit_targets.append(allocator, try allocator.dupe(u8, t.node_id));
+                }
+                for (visit_targets.items) |target_node_id| {
+                    new_state = try processNodeEntry(allocator, snapshot, new_state, target_node_id, events);
                 }
                 return new_state;
             } else if (incoming_count > 1) {
@@ -1535,6 +1591,22 @@ fn processNodeEntry(
                         },
                     };
                     try events.append(allocator, cancel_event);
+
+                    // GH #428: the stray/arrived tokens on the join node are
+                    // being discarded here (replaced with an empty slice) —
+                    // free them first, or every token parked on a join that
+                    // cascades to ALL_BRANCHES_CANCELLED leaks in production.
+                    // join_state.tokens is state.tokens at this point (never
+                    // reassigned above), and state.tokens is always allocator-
+                    // owned per the ISS-0601 ownership contract (transition()
+                    // deep-clones every token before calling processNodeEntry).
+                    for (join_state.tokens) |t| {
+                        allocator.free(t.node_id);
+                        allocator.free(t.branch_id);
+                        if (t.token_id) |tid| allocator.free(tid);
+                        if (t.waiting_child_instance_id) |w| allocator.free(w);
+                    }
+                    allocator.free(join_state.tokens);
 
                     var new_state_f = join_state;
                     new_state_f.status = .CANCELLED;
@@ -1612,6 +1684,35 @@ fn processNodeEntry(
                 };
                 try events.append(allocator, join_event);
 
+                // GH #428: every token that WAS on join_state.tokens has now
+                // either been merged away or (tokens not on this join node)
+                // copied by value into new_tokens. join_state.tokens itself
+                // — the original outer slice — is fully superseded here and
+                // must be freed, or every token that arrives at a firing
+                // PARALLEL_GATEWAY join leaks (fields + outer array).
+                //
+                // branch_id is the one exception: arrived_ids captured each
+                // consumed token's branch_id BY REFERENCE (not a dupe — see
+                // `try arrived_ids.append(allocator, t.branch_id)` above),
+                // and that array is now owned by join_event.parallel_join.
+                // branch_ids_arrived, which outlives this function. Freeing
+                // t.branch_id here would leave branch_ids_arrived pointing
+                // at freed memory — ownership of that specific string
+                // transfers to the event instead of being freed with the
+                // token. node_id/token_id/waiting_child_instance_id were
+                // never captured anywhere else, so those are safe to free.
+                for (join_state.tokens) |t| {
+                    if (std.mem.eql(u8, t.node_id, node_id)) {
+                        allocator.free(t.node_id);
+                        if (t.token_id) |tid| allocator.free(tid);
+                        if (t.waiting_child_instance_id) |w| allocator.free(w);
+                    }
+                    // Tokens NOT on this join node were copied by value into
+                    // new_tokens (same pointers) — do not free their fields,
+                    // only the stale outer array below.
+                }
+                allocator.free(join_state.tokens);
+
                 var new_state = join_state;
                 new_state.tokens = try new_tokens.toOwnedSlice(allocator);
                 return try processNodeEntry(allocator, snapshot, new_state, next_node_id, events);
@@ -1660,8 +1761,14 @@ fn parseTimerConfig(
     const raw = node_attrs orelse return error.InvalidTimerConfig;
     if (raw.len == 0) return error.InvalidTimerConfig;
 
-    const parsed = std.json.parseFromSlice(std.json.Value, allocator, raw, .{ .allocate = .alloc_always }) catch {
-        return error.InvalidTimerConfig;
+    // GH #428: must not collapse OutOfMemory into InvalidTimerConfig — a
+    // caller (e.g. std.testing.checkAllAllocationFailures) that specifically
+    // needs to see OutOfMemory propagate would otherwise get a misleading
+    // "invalid config" error on an allocation failure that had nothing to do
+    // with the JSON being malformed.
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, raw, .{ .allocate = .alloc_always }) catch |err| switch (err) {
+        error.OutOfMemory => return error.OutOfMemory,
+        else => return error.InvalidTimerConfig,
     };
     defer parsed.deinit();
 
@@ -1675,6 +1782,10 @@ fn parseTimerConfig(
         if (repeat_val != .string or repeat_val.string.len == 0) return error.InvalidTimerConfig;
         repeat_expression = try allocator.dupe(u8, repeat_val.string);
     }
+    // GH #428: if repeat_expression was duped above and the duration_iso8601
+    // dupe below then fails (OutOfMemory), repeat_expression was leaked —
+    // TC-ISS-0132-01 catches exactly this via checkAllAllocationFailures.
+    errdefer if (repeat_expression) |r| allocator.free(r);
 
     return .{
         .duration_iso8601 = try allocator.dupe(u8, duration_val.string),
@@ -1689,8 +1800,11 @@ fn parseSubProcessConfig(
     const raw = node_attrs orelse return error.InvalidSubProcessConfig;
     if (raw.len == 0) return error.InvalidSubProcessConfig;
 
-    const parsed = std.json.parseFromSlice(std.json.Value, allocator, raw, .{ .allocate = .alloc_always }) catch {
-        return error.InvalidSubProcessConfig;
+    // GH #428: same OutOfMemory-preservation fix as parseTimerConfig above —
+    // do not collapse an allocation failure into a "config is invalid" error.
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, raw, .{ .allocate = .alloc_always }) catch |err| switch (err) {
+        error.OutOfMemory => return error.OutOfMemory,
+        else => return error.InvalidSubProcessConfig,
     };
     defer parsed.deinit();
 
@@ -1777,6 +1891,170 @@ fn extractBranchSegment(branch_id: []const u8, seg_idx: usize) []const u8 {
 }
 
 // ---------------------------------------------------------------------------
+// GH #428 test-fixture helper
+//
+// processNodeEntry()/transition() free or reallocate token/state fields they
+// don't need to keep unchanged (see freeInstanceState above and the
+// ISS-0601 doc comment on it) — production callers always pass allocator-
+// owned InstanceState because it always originates from a prior transition()
+// call or a DB row deserialization. Test fixtures that build tokens from
+// string literals instead (`.node_id = "gw"`) violate that assumption: a
+// literal is never safe to pass to allocator.free, so any code path that
+// replaces-and-frees a token field (e.g. EXCLUSIVE_GATEWAY advancing
+// `tokens[i].node_id`) segfaults on a literal-backed fixture.
+//
+// It is not enough to heap-dupe each Token's *fields* — the outer `[]Token`
+// slice itself must also come from the allocator. A fixture written as
+// `var __toks = [_]Token{...}; state.tokens = &__toks;` puts a pointer to a
+// *stack* array in state.tokens: several processNodeEntry paths return that
+// same pointer unchanged (EXCLUSIVE_GATEWAY mutates it in place; the join
+// "park" path returns it untouched), and freeInstanceState unconditionally
+// calls `allocator.free(state.tokens)`. Freeing a stack address panics with
+// "Invalid free" (DebugAllocator canary check) because the allocator never
+// handed that address out. dupeTokenSlice() below allocates the outer slice
+// with the allocator so that free is always valid — use it instead of a
+// `var __toks = [_]Token{...}` array wherever the result will be passed to
+// freeInstanceState.
+//
+// The identical trap applies to `pending_task_nodes` (and, when non-empty,
+// `cancelled_branch_ids`): freeInstanceState/processNodeEntry free those
+// outer slices unconditionally or pass them through unchanged too. A
+// fixture built as `var __x = [_][]const u8{};` is a stack-local array —
+// syntactically it looks like the struct's own zero-length default
+// (`&[_][]const u8{}`), but only the latter is a compile-time-constant that
+// Zig's allocator special-cases as safe to "free" as a no-op (see
+// Allocator.allocBytesWithAlignment: byte_count == 0 returns a sentinel
+// pointer that free() recognizes and skips). emptyOwnedStrSlice() below
+// allocates a genuine (if zero-length) heap slice so the free is always
+// valid regardless of which special case applies.
+//
+// dupeTokenSlice/emptyOwnedStrSlice give tests a one-line way to build
+// heap-owned fixtures so `defer freeInstanceState(allocator, result)` is
+// always safe to call on whatever processNodeEntry/transition returns. This
+// is a test-fixture-only convenience — it changes nothing about
+// processNodeEntry's or transition's own ownership contract.
+// ---------------------------------------------------------------------------
+const TokenSpec = struct { node_id: []const u8, branch_id: []const u8 };
+
+/// Allocate a heap-owned []Token (both the outer slice and every token's
+/// node_id/branch_id) from a comptime-known list of (node_id, branch_id)
+/// pairs. Free with freeOwnedTokenSlice, or implicitly via freeInstanceState
+/// once the slice has been installed as an InstanceState.tokens field and
+/// passed through processNodeEntry/transition.
+fn dupeTokenSlice(allocator: std.mem.Allocator, specs: []const TokenSpec) ![]Token {
+    const toks = try allocator.alloc(Token, specs.len);
+    errdefer allocator.free(toks);
+    for (specs, 0..) |spec, i| {
+        toks[i] = Token{
+            .node_id = try allocator.dupe(u8, spec.node_id),
+            .branch_id = try allocator.dupe(u8, spec.branch_id),
+        };
+    }
+    return toks;
+}
+
+/// A genuinely heap-allocated (if zero-length) []const u8 slice-of-slices,
+/// safe to hand to a field that freeInstanceState frees unconditionally
+/// (pending_task_nodes) — see the doc comment above for why a plain `var
+/// __x = [_][]const u8{}` stack array is NOT safe there.
+fn emptyOwnedStrSlice(allocator: std.mem.Allocator) ![][]const u8 {
+    return allocator.alloc([]const u8, 0);
+}
+
+/// Free every heap allocation inside a single PendingEvent payload. Mirrors
+/// (and is the missing counterpart to) freeInstanceState, scoped to the
+/// PendingEvent union — see src/engine/instance.zig's freeOwnedTransitionState
+/// for the production analogue, which currently frees only the outer
+/// EmittedEvent.idempotency_key and does not walk into payload internals.
+/// Test-only: kept local to this file's test section.
+fn freePendingEventPayload(allocator: std.mem.Allocator, payload: PendingEvent) void {
+    switch (payload) {
+        .parallel_split => |p| {
+            allocator.free(p.source_node_id);
+            // GH #428: token_ids[i] and target_node_ids[i] are the SAME
+            // pointers as the split-created result.tokens[i].branch_id/
+            // node_id (processNodeEntry appends the identical branch_id/
+            // target allocation to both the new Token and this event's
+            // tracking arrays — see the PARALLEL_GATEWAY split case around
+            // line 1454). freeInstanceState(result) already frees those
+            // strings via the token fields; freeing them again here via the
+            // outer arrays' elements would double-free. Only the two outer
+            // slices (the arrays of pointers) belong to this payload alone.
+            allocator.free(p.token_ids);
+            allocator.free(p.target_node_ids);
+            var vars = p.variables_snapshot;
+            freeJsonValueSafe(allocator, std.json.Value{ .object = vars });
+            _ = &vars;
+        },
+        .parallel_join => |p| {
+            allocator.free(p.join_node_id);
+            // GH #428: unlike parallel_split's token_ids/target_node_ids
+            // (which alias the *merged* token's fields, freed via
+            // freeInstanceState), branch_ids_arrived[i] alias the *consumed*
+            // tokens' branch_id — tokens that no longer exist in any
+            // InstanceState after the join fires (processNodeEntry's
+            // PARALLEL_GATEWAY join STEP e frees their node_id but
+            // deliberately leaves branch_id owned by this event — see that
+            // fix's comment). So here, unlike the split case, the elements
+            // DO need freeing individually, not just the outer array.
+            for (p.branch_ids_arrived) |b| allocator.free(b);
+            allocator.free(p.branch_ids_arrived);
+            allocator.free(p.branch_ids_cancelled);
+            allocator.free(p.outgoing_token_id);
+        },
+        .instance_cancelled => |p| {
+            if (p.join_node_id) |j| allocator.free(j);
+            allocator.free(p.branch_ids_cancelled);
+        },
+        .timer_created => |p| {
+            allocator.free(p.timer_node_id);
+            // GH #428: duration_iso8601/repeat_expression are moved directly
+            // from parseTimerConfig's return value into this payload (not
+            // re-duped, not aliased with anything else in state) — the
+            // payload is their sole owner. Missing this was the specific
+            // leak TC-SCH-01-01 caught.
+            allocator.free(p.duration_iso8601);
+            if (p.repeat_expression) |r| allocator.free(r);
+            allocator.free(p.token_branch_id);
+            allocator.free(p.payload_json);
+        },
+        .sub_process_start => |p| {
+            allocator.free(p.parent_node_id);
+            allocator.free(p.parent_branch_id);
+            // GH #428: child_definition_id is moved directly from
+            // parseSubProcessConfig's return value — this payload is its
+            // sole owner. Missing this was the leak TC-EXT-05-UT-01 caught.
+            allocator.free(p.child_definition_id);
+        },
+        .effect_emitted => |p| {
+            allocator.free(p.node_id);
+            allocator.free(p.token_id);
+            allocator.free(p.correlation_key);
+            allocator.free(p.spec_json);
+        },
+    }
+}
+
+/// Free every PendingEvent in a raw events list collected directly from
+/// processNodeEntry (as opposed to the EmittedEvent-wrapped list transition()
+/// returns — see freeEmittedEvents below for that case).
+fn freePendingEvents(allocator: std.mem.Allocator, events: []const PendingEvent) void {
+    for (events) |ev| freePendingEventPayload(allocator, ev);
+}
+
+/// Free a transition()-returned TransitionResult in full: state (via
+/// freeInstanceState) plus every EmittedEvent's idempotency_key and payload,
+/// plus the emitted_events slice itself.
+fn freeTransitionResult(allocator: std.mem.Allocator, result: TransitionResult) void {
+    for (result.emitted_events) |ev| {
+        allocator.free(ev.idempotency_key);
+        freePendingEventPayload(allocator, ev.payload);
+    }
+    allocator.free(result.emitted_events);
+    freeInstanceState(allocator, result.state);
+}
+
+// ---------------------------------------------------------------------------
 // Unit tests (TC-EE-02-01 through TC-EE-02-11)
 // ---------------------------------------------------------------------------
 test "TC-EE-02-01: instance_started event places token on first non-START node" {
@@ -1810,6 +2088,7 @@ test "TC-EE-02-01: instance_started event places token on first non-START node" 
         .start_node_id = "start",
     } };
     const result = transition(allocator, graph, state, event, 1) catch unreachable;
+    defer freeTransitionResult(allocator, result);
     // Should have one token on HUMAN_TASK
     try std.testing.expect(result.state.tokens.len == 1);
     try std.testing.expect(std.mem.eql(u8, result.state.tokens[0].node_id, "task1"));
@@ -1848,9 +2127,16 @@ test "TC-EE-02-02: task_completed on HUMAN_TASK advances to next node" {
         .output_variables = output_vars,
     } };
     const result = transition(allocator, graph, state, event, 1) catch unreachable;
-    // Should have token on END
-    try std.testing.expect(result.state.tokens.len == 1);
-    try std.testing.expect(std.mem.eql(u8, result.state.tokens[0].node_id, "end"));
+    defer freeTransitionResult(allocator, result);
+    // GH #428: this assertion was stale — it predates (or never actually ran
+    // against) the END-node completion behavior that TC-EE-02-03 verifies
+    // directly: when a token reaches END and no other active (non-END) token
+    // remains, processNodeEntry clears tokens to empty and sets status to
+    // COMPLETED rather than leaving a token parked on "end". The task_completed
+    // event here is the only token in the instance, its edge leads straight to
+    // END, so the instance completes: 0 tokens, status COMPLETED.
+    try std.testing.expect(result.state.tokens.len == 0);
+    try std.testing.expect(result.state.status == .COMPLETED);
 }
 
 test "TC-EE-02-03: token reaches END → status becomes COMPLETED" {
@@ -1868,15 +2154,21 @@ test "TC-EE-02-03: token reaches END → status becomes COMPLETED" {
         .{ .id = "e2", .source = "task1", .target = "end", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
-    var __tokens_5 = [_]Token{.{ .node_id = "end", .branch_id = "b" }};
-    var __pending_task_nodes_6 = [_][]const u8{};
+    // GH #428: allocator-owned — the END-node "all tokens discarded, status
+    // -> COMPLETED" path now frees state.tokens (fields + outer slice)
+    // before replacing it with &[_]Token{}, matching the ISS-0601 ownership
+    // contract (state.tokens is always allocator-owned in production, since
+    // it always originates from transition()'s deep-clone). See the fix's
+    // comment in processNodeEntry's .END case for the leak this closes.
+    const __tokens_5 = try dupeTokenSlice(allocator, &.{.{ .node_id = "end", .branch_id = "b" }});
+    const __pending_task_nodes_6 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_5,
+        .tokens = __tokens_5,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_6,
+        .pending_task_nodes = __pending_task_nodes_6,
         .error_detail = null,
     };
     // event is unused in this test
@@ -1884,6 +2176,7 @@ test "TC-EE-02-03: token reaches END → status becomes COMPLETED" {
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "end", &events) catch unreachable;
+    defer freeInstanceState(allocator, result);
     try std.testing.expect(result.status == .COMPLETED);
 }
 
@@ -1922,6 +2215,7 @@ test "TC-SCH-01-01: entering TIMER emits timer_created pending effect" {
     } };
 
     const tr = try transition(allocator, graph, state, event, 1);
+    defer freeTransitionResult(allocator, tr);
     try std.testing.expect(tr.state.tokens.len == 1);
     try std.testing.expect(std.mem.eql(u8, tr.state.tokens[0].node_id, "timer1"));
     try std.testing.expect(tr.emitted_events.len == 1);
@@ -1947,20 +2241,35 @@ test "TC-EE-02-04: EXCLUSIVE_GATEWAY follows first true CEL condition" {
         .{ .id = "e3", .source = "gw", .target = "t2", .condition = "false", .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
-    var __tokens_9 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
-    var __pending_task_nodes_10 = [_][]const u8{};
+    // GH #428: must be allocator-owned (both the outer slice AND each
+    // token's fields), not a string literal or a stack array — the
+    // EXCLUSIVE_GATEWAY path below replaces tokens[idx].node_id in place and
+    // frees the previous value (allocator.free(old_tok_node_id)); freeing a
+    // literal segfaults (see dupeTokenSlice doc comment above). Note:
+    // EXCLUSIVE_GATEWAY mutates state.tokens in place and returns the same
+    // backing slice (new_state = state is a shallow copy), so `result.tokens`
+    // here *is* `__tokens_9` — freeing via freeInstanceState(result) below is
+    // the only free needed; a second free of __tokens_9 would double-free.
+    const __tokens_9 = try dupeTokenSlice(allocator, &.{.{ .node_id = "gw", .branch_id = "b" }});
+    // GH #428: heap-allocated (even though zero-length) — freeInstanceState
+    // unconditionally frees pending_task_nodes with no length guard, and a
+    // stack-local `var [_][]const u8{}` is not the same safe-to-free address
+    // as the struct's own zero-length default. See emptyOwnedStrSlice's doc
+    // comment above for the full explanation.
+    const __pending_task_nodes_10 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_9,
+        .tokens = __tokens_9,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_10,
+        .pending_task_nodes = __pending_task_nodes_10,
         .error_detail = null,
     };
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
+    defer freeInstanceState(allocator, result);
     // Should follow first true (t1)
     try std.testing.expect(result.tokens.len == 1);
     try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "t1"));
@@ -2015,20 +2324,23 @@ test "TC-EE-02-06: EXCLUSIVE_GATEWAY default edge fallback" {
         .{ .id = "e4", .source = "gw", .target = "t3", .condition = null, .is_default = true },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
-    var __tokens_13 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
-    var __pending_task_nodes_14 = [_][]const u8{};
+    // GH #428: allocator-owned — see TC-EE-02-04's comment for why (this is
+    // the other EXCLUSIVE_GATEWAY test that segfaulted on a literal node_id).
+    const __tokens_13 = try dupeTokenSlice(allocator, &.{.{ .node_id = "gw", .branch_id = "b" }});
+    const __pending_task_nodes_14 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_13,
+        .tokens = __tokens_13,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_14,
+        .pending_task_nodes = __pending_task_nodes_14,
         .error_detail = null,
     };
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
+    defer freeInstanceState(allocator, result);
     try std.testing.expect(result.tokens.len == 1);
     try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "t3"));
 }
@@ -2048,20 +2360,26 @@ test "TC-EE-02-07: PARALLEL_GATEWAY split creates N tokens" {
         .{ .id = "e2", .source = "gw", .target = "t2", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    // PARALLEL_GATEWAY split filters the arriving token out of the new token
+    // array by value (doesn't free/reuse its fields), so a literal here is
+    // safe from a crash standpoint — but the *new* split tokens are freshly
+    // allocator.dupe'd and must be freed via freeInstanceState below.
     var __tokens_15 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
-    var __pending_task_nodes_16 = [_][]const u8{};
+    const __pending_task_nodes_16 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &__tokens_15,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_16,
+        .pending_task_nodes = __pending_task_nodes_16,
         .error_detail = null,
     };
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
+    defer freeInstanceState(allocator, result);
+    defer freePendingEvents(allocator, events.items);
     // Should have two tokens, one on t1, one on t2
     try std.testing.expect(result.tokens.len == 2);
     var found1 = false;
@@ -2090,38 +2408,50 @@ test "TC-EE-02-08: PARALLEL_GATEWAY join waits until all tokens arrive, then mer
         .{ .id = "e3", .source = "gw", .target = "t3", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
-    // Only one token has arrived
-    var __tokens_17 = [_]Token{.{ .node_id = "gw", .branch_id = "b1" }};
-    var __pending_task_nodes_18 = [_][]const u8{};
+    // GH #428: allocator-owned tokens — the "park and wait" path returns
+    // join_state with state.tokens unchanged (aliased, not reallocated), so
+    // freeInstanceState(result1) below would try to free literal strings if
+    // these weren't heap-owned.
+    const __tokens_17 = try dupeTokenSlice(allocator, &.{.{ .node_id = "gw", .branch_id = "b1" }});
+    const __pending_task_nodes_18 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_17,
+        .tokens = __tokens_17,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_18,
+        .pending_task_nodes = __pending_task_nodes_18,
         .error_detail = null,
     };
     // Not all arrived, should park
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
     const result1 = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
+    defer freeInstanceState(allocator, result1);
     try std.testing.expect(result1.tokens.len == 1);
     // Now both tokens arrive
-    var __tokens_19 = [_]Token{ .{ .node_id = "gw", .branch_id = "b1" }, .{ .node_id = "gw", .branch_id = "b2" } };
-    var __pending_task_nodes_20 = [_][]const u8{};
+    const __tokens_19 = try dupeTokenSlice(allocator, &.{
+        .{ .node_id = "gw", .branch_id = "b1" },
+        .{ .node_id = "gw", .branch_id = "b2" },
+    });
+    const __pending_task_nodes_20 = try emptyOwnedStrSlice(allocator);
     const state2 = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_19,
+        .tokens = __tokens_19,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_20,
+        .pending_task_nodes = __pending_task_nodes_20,
         .error_detail = null,
     };
     var events2 = std.ArrayList(PendingEvent).empty;
+    // defer executes LIFO: register deinit first so freePendingEvents (which
+    // needs events2.items still populated) runs before the backing buffer
+    // is freed.
     defer events2.deinit(allocator);
+    defer freePendingEvents(allocator, events2.items);
     const result2 = processNodeEntry(allocator, graph, state2, "gw", &events2) catch unreachable;
+    defer freeInstanceState(allocator, result2);
     // Should merge to one token on t3
     try std.testing.expect(result2.tokens.len == 1);
     try std.testing.expect(std.mem.eql(u8, result2.tokens[0].node_id, "t3"));
@@ -2212,7 +2542,9 @@ test "TC-EE-02-11: same inputs called twice → identical output (determinism)" 
         .start_node_id = "start",
     } };
     const result1 = transition(allocator, graph, state, event, 1) catch unreachable;
+    defer freeTransitionResult(allocator, result1);
     const result2 = transition(allocator, graph, state, event, 1) catch unreachable;
+    defer freeTransitionResult(allocator, result2);
     // Should be identical
     try std.testing.expect(result1.state.tokens.len == result2.state.tokens.len);
     try std.testing.expect(std.mem.eql(u8, result1.state.tokens[0].node_id, result2.state.tokens[0].node_id));
@@ -2237,19 +2569,21 @@ test "TC-EE-06-01: PARALLEL_GATEWAY split with 2 edges creates 2 tokens and 1 PA
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     var __tokens_27 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
-    var __pending_task_nodes_28 = [_][]const u8{};
+    const __pending_task_nodes_28 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &__tokens_27,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_28,
+        .pending_task_nodes = __pending_task_nodes_28,
         .error_detail = null,
     };
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
+    defer freePendingEvents(allocator, events.items);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
+    defer freeInstanceState(allocator, result);
     try std.testing.expect(result.tokens.len == 2);
     try std.testing.expect(events.items.len == 1);
     _ = events.items[0].parallel_split; // asserts active tag is .parallel_split
@@ -2270,19 +2604,21 @@ test "TC-EE-06-02: PARALLEL_GATEWAY split with 3 edges creates 3 tokens with uni
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     var __tokens_29 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
-    var __pending_task_nodes_30 = [_][]const u8{};
+    const __pending_task_nodes_30 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &__tokens_29,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_30,
+        .pending_task_nodes = __pending_task_nodes_30,
         .error_detail = null,
     };
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
+    defer freePendingEvents(allocator, events.items);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
+    defer freeInstanceState(allocator, result);
     try std.testing.expect(result.tokens.len == 3);
     try std.testing.expect(!std.mem.eql(u8, result.tokens[0].branch_id, result.tokens[1].branch_id));
     try std.testing.expect(!std.mem.eql(u8, result.tokens[0].branch_id, result.tokens[2].branch_id));
@@ -2302,19 +2638,21 @@ test "TC-EE-06-03: original arriving token removed after parallel split" {
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     var __tokens_31 = [_]Token{.{ .node_id = "gw", .branch_id = "arriving" }};
-    var __pending_task_nodes_32 = [_][]const u8{};
+    const __pending_task_nodes_32 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &__tokens_31,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_32,
+        .pending_task_nodes = __pending_task_nodes_32,
         .error_detail = null,
     };
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
+    defer freePendingEvents(allocator, events.items);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
+    defer freeInstanceState(allocator, result);
     // 1 arriving token → 2 split tokens (not 3)
     try std.testing.expect(result.tokens.len == 2);
     // No token should remain on gateway node
@@ -2336,19 +2674,21 @@ test "TC-EE-06-04: each new token targets correct next node per definition edges
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     var __tokens_33 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
-    var __pending_task_nodes_34 = [_][]const u8{};
+    const __pending_task_nodes_34 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &__tokens_33,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_34,
+        .pending_task_nodes = __pending_task_nodes_34,
         .error_detail = null,
     };
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
+    defer freePendingEvents(allocator, events.items);
     const result = processNodeEntry(allocator, graph, state, "gw", &events) catch unreachable;
+    defer freeInstanceState(allocator, result);
     try std.testing.expect(result.tokens.len == 2);
     var found_ta = false;
     var found_tb = false;
@@ -2372,19 +2712,21 @@ test "TC-EE-06-05: PARALLEL_SPLIT event records correct source_node_id and edge_
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     var __tokens_35 = [_]Token{.{ .node_id = "gw2", .branch_id = "b" }};
-    var __pending_task_nodes_36 = [_][]const u8{};
+    const __pending_task_nodes_36 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &__tokens_35,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_36,
+        .pending_task_nodes = __pending_task_nodes_36,
         .error_detail = null,
     };
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
+    defer freePendingEvents(allocator, events.items);
     const result = processNodeEntry(allocator, graph, state, "gw2", &events) catch unreachable;
+    defer freeInstanceState(allocator, result);
     try std.testing.expect(events.items.len == 1);
     const payload = events.items[0].parallel_split;
     try std.testing.expect(std.mem.eql(u8, payload.source_node_id, "gw2"));
@@ -2438,24 +2780,35 @@ test "TC-EE-07-01: join waits when one branch cancelled, fires when remaining ac
     const branch_1 = "abababababababababababababababababab/split_gw/1"; // active, arrived
 
     // State: branch_0 is cancelled, branch_1's token is on join_gw.
-    var __tokens_37 = [_]Token{.{ .node_id = "join_gw", .branch_id = branch_1 }};
-    var __pending_task_nodes_38 = [_][]const u8{};
-    var __cbi_1 = [_][]const u8{branch_0};
+    // GH #428: processNodeEntry (unlike transition()) never reallocates
+    // cancelled_branch_ids — it passes the outer slice through unchanged.
+    // freeInstanceState always frees that outer slice (never the strings
+    // inside it — see its doc comment), so the outer slice itself must be
+    // heap-owned here, not a stack-local array, or freeInstanceState(result)
+    // below would free stack memory. The join-fire path also now frees
+    // every token consumed by the merge (see the fix in processNodeEntry's
+    // PARALLEL_GATEWAY join STEP e), so __tokens_37's fields must be
+    // heap-owned too, not literal-backed.
+    const __tokens_37 = try dupeTokenSlice(allocator, &.{.{ .node_id = "join_gw", .branch_id = branch_1 }});
+    const __pending_task_nodes_38 = try emptyOwnedStrSlice(allocator);
+    const __cbi_1 = try allocator.dupe([]const u8, &[_][]const u8{branch_0});
     const state = InstanceState{
         .instance_id = instance_id,
         .status = .ACTIVE,
-        .tokens = &__tokens_37,
+        .tokens = __tokens_37,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_38,
+        .pending_task_nodes = __pending_task_nodes_38,
         .error_detail = null,
-        .cancelled_branch_ids = &__cbi_1,
+        .cancelled_branch_ids = __cbi_1,
     };
 
     // processNodeEntry: expected_count = 2 - 1 = 1, arrived = 1 → FIRE.
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
+    defer freePendingEvents(allocator, events.items);
     const result = try processNodeEntry(allocator, graph, state, "join_gw", &events);
+    defer freeInstanceState(allocator, result);
 
     // After firing: one merged token on t3.
     try std.testing.expect(result.tokens.len == 1);
@@ -2490,15 +2843,18 @@ test "TC-EE-07-02: join still waits when only 1 of 2 active branches has arrived
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
     const branch_0 = "abababababababababababababababababab/split_gw/0";
-    var __tokens_39 = [_]Token{.{ .node_id = "join_gw", .branch_id = branch_0 }};
-    var __pending_task_nodes_40 = [_][]const u8{};
+    // GH #428: allocator-owned — the "park" path returns state.tokens
+    // unchanged (aliased), so freeInstanceState(result) below needs these
+    // heap-owned, not literal.
+    const __tokens_39 = try dupeTokenSlice(allocator, &.{.{ .node_id = "join_gw", .branch_id = branch_0 }});
+    const __pending_task_nodes_40 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0xAB} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_39,
+        .tokens = __tokens_39,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_40,
+        .pending_task_nodes = __pending_task_nodes_40,
         .error_detail = null,
         .cancelled_branch_ids = &[_][]const u8{}, // no cancellations
     };
@@ -2507,6 +2863,7 @@ test "TC-EE-07-02: join still waits when only 1 of 2 active branches has arrived
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
     const result = try processNodeEntry(allocator, graph, state, "join_gw", &events);
+    defer freeInstanceState(allocator, result);
     try std.testing.expect(result.tokens.len == 1);
     try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "join_gw"));
     try std.testing.expect(events.items.len == 0);
@@ -2535,23 +2892,31 @@ test "TC-EE-07-03: all-branches-cancelled path → INSTANCE_CANCELLED event, sta
 
     // Both branches cancelled, EE-08 places a stray token on join_gw to trigger
     // re-evaluation. Step f detects expected_count == 0 and cascades to CANCELLED.
-    var __tokens_41 = [_]Token{.{ .node_id = "join_gw", .branch_id = branch_0 }};
-    var __pending_task_nodes_42 = [_][]const u8{};
-    var __cbi_2 = [_][]const u8{ branch_0, branch_1 };
+    // GH #428: tokens must be allocator-owned — the ALL_BRANCHES_CANCELLED
+    // cascade path (STEP f in processNodeEntry) now frees join_state.tokens
+    // (the stray token(s) being discarded) internally before replacing them
+    // with &[_]Token{}, matching the ISS-0601 ownership contract that
+    // state.tokens is always allocator-owned. cancelled_branch_ids must also
+    // be a heap-owned outer slice — see TC-EE-07-01's comment for why.
+    const __tokens_41 = try dupeTokenSlice(allocator, &.{.{ .node_id = "join_gw", .branch_id = branch_0 }});
+    const __pending_task_nodes_42 = try emptyOwnedStrSlice(allocator);
+    const __cbi_2 = try allocator.dupe([]const u8, &[_][]const u8{ branch_0, branch_1 });
     const state_with_stray = InstanceState{
         .instance_id = [_]u8{0xAB} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_41,
+        .tokens = __tokens_41,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_42,
+        .pending_task_nodes = __pending_task_nodes_42,
         .error_detail = null,
-        .cancelled_branch_ids = &__cbi_2,
+        .cancelled_branch_ids = __cbi_2,
     };
 
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
+    defer freePendingEvents(allocator, events.items);
     const result = try processNodeEntry(allocator, graph, state_with_stray, "join_gw", &events);
+    defer freeInstanceState(allocator, result);
 
     // Status must be CANCELLED, tokens must be empty.
     try std.testing.expect(result.status == .CANCELLED);
@@ -2589,26 +2954,37 @@ test "TC-EE-07-04: PARALLEL_JOIN event records branch_id with edge_index 0 as ou
     const branch_0 = "abababababababababababababababababab/split_gw/0";
     const branch_1 = "abababababababababababababababababab/split_gw/1";
 
-    var __pending_task_nodes_43 = [_][]const u8{};
-    var __tokens_join_pair = [_]Token{
+    const __pending_task_nodes_43 = try emptyOwnedStrSlice(allocator);
+    // GH #428: heap-owned — the join-fire path frees every token consumed by
+    // the merge (see the fix in processNodeEntry's PARALLEL_GATEWAY join
+    // STEP e), so literal-backed tokens would crash on free.
+    const __tokens_join_pair = try dupeTokenSlice(allocator, &.{
         .{ .node_id = "join_gw", .branch_id = branch_1 }, // arrived first (stored first)
         .{ .node_id = "join_gw", .branch_id = branch_0 }, // arrived second
-    };
-    var __cbi_3 = [_][]const u8{ branch_0, branch_1 };
+    });
+    // GH #428: both branches have arrived tokens on join_gw above, so neither
+    // can also be cancelled — listing both here (as a prior version of this
+    // fixture did) is self-contradictory and makes expected_count collapse to
+    // 0, driving processNodeEntry into the ALL_BRANCHES_CANCELLED path
+    // instead of the merge/fire path this test actually exercises. No branch
+    // is cancelled in this scenario.
+    const __cbi_3 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0xAB} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_join_pair,
+        .tokens = __tokens_join_pair,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
-        .pending_task_nodes = &__pending_task_nodes_43,
+        .pending_task_nodes = __pending_task_nodes_43,
         .error_detail = null,
-        .cancelled_branch_ids = &__cbi_3,
+        .cancelled_branch_ids = __cbi_3,
     };
 
     var events = std.ArrayList(PendingEvent).empty;
     defer events.deinit(allocator);
+    defer freePendingEvents(allocator, events.items);
     const result = try processNodeEntry(allocator, graph, state, "join_gw", &events);
+    defer freeInstanceState(allocator, result);
 
     // One merged token on t3.
     try std.testing.expect(result.tokens.len == 1);
@@ -2660,6 +3036,7 @@ test "TC-EXT-05-UT-01: entering SUB_PROCESS emits sub_process_start pending even
             .start_node_id = "start",
         },
     }, 1);
+    defer freeTransitionResult(allocator, tr);
 
     try std.testing.expect(tr.state.tokens.len == 1);
     try std.testing.expect(std.mem.eql(u8, tr.state.tokens[0].node_id, "sp1"));
@@ -2703,6 +3080,7 @@ test "TC-EXT-05-UT-02: sub_process_completed advances waiting token" {
             .child_instance_id = "123e4567-e89b-12d3-a456-426614174001",
         },
     }, 1);
+    defer freeTransitionResult(allocator, tr);
 
     try std.testing.expect(tr.state.status == .COMPLETED);
     try std.testing.expect(tr.state.tokens.len == 0);
