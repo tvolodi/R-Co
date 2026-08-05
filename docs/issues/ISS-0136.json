@@ -19,8 +19,12 @@
     "zig build test -j2 completes reliably without multi-minute stalls",
     "Real GitHub Actions ubuntu-latest run confirms the fix"
   ],
-  "acceptance_criteria_status": "First criterion verified locally (4+ trials, no hangs). Second pending live CI run on PR #435 with this fix applied.",
+  "acceptance_criteria_status": "Both verified. PR #435's CI run 31001126327 completed Build and unit tests in 1m0s (vs. 25+ min stall pre-fix). Post-merge main run 31001281398 completed the same job in 56s.",
   "evidence_file": "GH #436",
-  "branch": "feature/WF03-ISS-0135-macos-nanotimestamp",
-  "commits": []
+  "branch": "feature/WF03-ISS-0135-macos-nanotimestamp (merged, deleted)",
+  "commits": [
+    "def16b3"
+  ],
+  "merge_commit": "f25e7d9",
+  "pr": "https://github.com/tvolodi/R-Co/pull/435"
 }
