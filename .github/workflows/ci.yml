@@ -124,10 +124,21 @@ jobs:
         run: zig version
 
       - name: zig build
-        run: zig build
+        run: zig build -j2
 
       - name: zig build test
-        run: zig build test
+        # -j2: GH #436. ISS-0134 (#434) added `link_libc = true` to the
+        # modules underlying most of the 86 `b.addTest` targets here, so this
+        # step now spawns ~86 concurrent `zig test -lc` compile+link
+        # processes instead of mostly-libc-free ones. Zig's default job count
+        # comes from the visible CPU count, which on a cgroup-quota-limited
+        # runner can far exceed the actual quota (observed 16 visible vs. a
+        # 2-core quota in a matching container), causing severe scheduling
+        # contention that stalled this step for 25+ minutes on both this PR
+        # and a `main` push run. Capping to -j2 reproduced a reliable ~30-40s
+        # completion locally; uncapped, the same container hung intermittently
+        # for 90s-plus on a step that normally takes ~20s.
+        run: zig build test -j2
 
       - name: transition.zig in-file tests
         # 7 of these 30 fail (5 leak, 2 crash) — GH #428. They were inert for
@@ -135,7 +146,7 @@ jobs:
         # test-side, not production defects. Reported, not gated, until #428
         # closes; then drop continue-on-error and wire it into `zig build test`.
         continue-on-error: true
-        run: zig build test-transition
+        run: zig build test-transition -j2
 
   # ---------------------------------------------------------------------------
   # Frontend. Skipped entirely when web/ is untouched.
