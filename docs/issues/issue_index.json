@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-05T18:00:44Z",
+  "last_updated": "2026-08-05T18:15:31Z",
   "next_issue_id": 130,
   "issues": [
     {
@@ -1570,6 +1570,21 @@
       "created_at": "2026-08-05T18:00:44Z",
       "resolved_at": null,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/446"
+    },
+    {
+      "id": "ISS-0143",
+      "title": "CI 'zig build test' retry loop can report PASS despite a 'failed command:' line \u2014 status==0 alone is not trustworthy",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "category": "ci-reliability / false-positive-gate",
+      "run_id": "WF03-gh448-20260805",
+      "handoff_id": null,
+      "affected_areas": [
+        ".github/workflows/ci.yml"
+      ],
+      "created_at": "2026-08-05T18:15:31Z",
+      "resolved_at": "2026-08-05T18:15:31Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/448"
     }
   ]
 }

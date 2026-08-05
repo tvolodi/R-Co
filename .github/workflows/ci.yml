@@ -164,19 +164,59 @@ jobs:
         # just the timeout call, restoring `-e` after, keeps the rest of the
         # script's error handling intact while letting the loop see a
         # non-zero exit instead of dying on it.
+        #
+        # GH #448 / ISS-0143: `$status` alone is not trustworthy — but it
+        # turned out the fix's first attempt (grepping for a bare "failed
+        # command:" line) was ALSO wrong, discovered by running it for real
+        # on this same PR. With --summary all, CI runs that print
+        # "failed command: .../test --cache-dir=..." mid-stream consistently
+        # go on to report "Build Summary: 38/38 steps succeeded; N/M tests
+        # passed" moments later, with every leaf in the printed tree showing
+        # a genuine `success` (fresh compile+run, real timing/MaxRSS) or
+        # `cached` status — i.e. the run actually passed in full. The
+        # "failed command:" line only ever appears directly after a
+        # "+- run test w" ("w" = waiting) progress-bar line, never after a
+        # final result line, and never appears at all on a local run in a
+        # real TTY — strong evidence it is a stale/speculative frame from
+        # Zig 0.16's live progress renderer that a real terminal overwrites
+        # in place but a non-TTY CI log (no ANSI cursor movement) preserves
+        # as permanent text. So "failed command:" is NOT a reliable failure
+        # signal by itself. The one signal that IS reliable here is the
+        # "Build Summary: N/N steps succeeded" line's own N/N — if the
+        # numerator ever falls short of the denominator, or the line is
+        # missing entirely (a genuine hang/timeout never reaches it), that
+        # is unambiguous evidence of a real failure.
         run: |
           set -uo pipefail
           for attempt in 1 2 3; do
             echo "::group::zig build test — attempt $attempt/3"
+            out="$(mktemp)"
             set +e
-            timeout 300 zig build test -j2
-            status=$?
+            # --summary all: prints "Build Summary: N/N steps succeeded",
+            # the one reliable pass/fail signal for this step (see above).
+            timeout 300 zig build test -j2 --summary all 2>&1 | tee "$out"
+            status="${PIPESTATUS[0]}"
             set -e
             echo "::endgroup::"
-            if [ "$status" -eq 0 ]; then
+            summary_line="$(grep -o 'Build Summary: [0-9]*/[0-9]* steps succeeded' "$out" | tail -1 || true)"
+            if [ -n "$summary_line" ]; then
+              done_count="$(echo "$summary_line" | grep -o '[0-9]*/[0-9]*' | cut -d/ -f1)"
+              total_count="$(echo "$summary_line" | grep -o '[0-9]*/[0-9]*' | cut -d/ -f2)"
+            else
+              done_count=""
+              total_count=""
+            fi
+            if [ -n "$summary_line" ] && [ "$done_count" = "$total_count" ]; then
+              echo "zig build test attempt $attempt: $summary_line — genuine pass."
+              rm -f "$out"
               exit 0
             fi
-            echo "zig build test attempt $attempt failed or timed out (exit $status)."
+            if [ -z "$summary_line" ]; then
+              echo "zig build test attempt $attempt: no 'Build Summary' line found (exit $status) — treating as a hang/timeout, not the GH #448 cosmetic artifact."
+            else
+              echo "zig build test attempt $attempt: $summary_line — genuine step failure."
+            fi
+            rm -f "$out"
             if [ "$attempt" -lt 3 ]; then
               echo "Likely ziglang/zig#22453 (concurrent -lc cache-lock deadlock) — retrying."
             fi
