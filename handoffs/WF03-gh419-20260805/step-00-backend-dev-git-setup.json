@@ -1,0 +1,49 @@
+{
+  "handoff_id": "3f8a91c4-2b17-4e0a-9d3f-5e2c7a8b4d61",
+  "run_id": "WF03-gh419-20260805",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-05T07:36:39Z",
+  "started_at": "2026-08-05T07:37:04Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "19515745-a803-4912-87b7-65d7e4e3135c"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0129.json",
+      "https://github.com/tvolodi/R-Co/issues/419"
+    ],
+    "issue_id": "ISS-0129",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/419"
+  },
+  "task": {
+    "description": "WF-03 Step 00: Git Setup for Issue Resolving \u2014 Issue #419 / ISS-0129\n\nCreate the feature branch from main, push it, and report the branch name back.\n\nProcedure per docs/agents/protocols/GIT_SETUP.md:\n  1. git checkout main\n  2. git pull --ff-only origin main\n  3. git checkout -b feature/WF03-gh419-20260805\n  4. git push origin feature/WF03-gh419-20260805\n  5. Verify: git branch --show-current == feature/WF03-gh419-20260805\n\nDo NOT edit any source files in this step \u2014 only branch creation and push.\n\nBackground: GitHub issue tvolodi/R-Co#419 reports a C40P01 deadlock during\nTC-TNT-01-01 re-provisioning. The issue's candidate_resolution points to\nmigration 1135 having a DROP TRIGGER \u2014 this is incorrect: migration 1135\ncontains only an INSERT...SELECT backfill of public.tenant and has no\nDROP TRIGGER. The real deadlock source is migration 1107 / 1109 running\nDROP TRIGGER IF EXISTS trg_bpm_audit_apply_chain_hash against an audit_entries\nrow currently held by a concurrent TC-TNT-03-01/03-03 insert. Step 1\ndiagnosis will pin this down precisely, but the feature branch must\nalready exist so Step 3 (implementation) commits to it.\n\nReturn PASS with the branch name, the SHA of the upstream main you based on,\nand confirmation the push succeeded (look for '* [new branch]' in output).",
+    "acceptance_criteria": [
+      "git branch --show-current == feature/WF03-gh419-20260805",
+      "git push succeeds (visible 'new branch' on remote)",
+      "No source files modified in this step",
+      "harness log: PENDING \u2192 COMPLETED"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created and pushed feature/WF03-gh419-20260805 from upstream main @ a40bd2ddf2b09ee682a7782e8d3b618387fa0503. Push confirmed via git ls-remote (refs/heads/feature/WF03-gh419-20260805 present). No source files modified.",
+    "artifacts_out": [
+      "feature/WF03-gh419-20260805"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to Step 0.5/1 (ISSUE-FIXER root-cause diagnosis) per WF-03"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "completed_at": "2026-08-05T07:38:10Z"
+}

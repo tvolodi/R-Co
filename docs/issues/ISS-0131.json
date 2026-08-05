@@ -1,0 +1,20 @@
+{
+  "issue_id": "ISS-0131",
+  "title": "Full-suite C40P01 at TC-TNT-01-01 between provisionTenantSchema and concurrent migrations race (different lock graph than ISS-0129)",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/424",
+  "registered_at": "2026-08-05T05:25:27Z",
+  "registered_by": "TEST-RUNNER (handoff WF03-gh419-20260805 step-5b)",
+  "related_to": ["ISS-0129", "ISS-0130"],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "scope": "Out of scope for ISS-0129 (GH #419) fix verification. Filed during 5b re-verification.",
+  "symptom": "zig build test-integration exhibits ONE C40P01 deadlock at TC-TNT-01-01 (provisionTenantSchema) under full-suite concurrency. Different lock graph than ISS-0129/GH-419.",
+  "reproduction": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test BPM_TEST_URL=http://127.0.0.1:8080 BPM_IDP_BASE_URL=http://localhost:8081 zig build test-integration",
+  "evidence_file": "tests/reports/report-20260805-WF03-gh419.yaml section 8 (5b re-verification)",
+  "root_cause_analysis": "AccessShareLock on relation 3635649 vs ShareLock on transaction 2054720 between concurrent provisionTenantSchema calls and another connection's open transaction. The advisory lock pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint) from b1fc794 does not serialize open transactions held by provisionTenantSchema callers' sibling connections.",
+  "acceptance_criteria": [
+    "zig build test-integration exits 0 with zero C40P01 occurrences in 3 consecutive runs",
+    "TC-TNT-01-01 passes under full-suite concurrency",
+    "Fix does not regress ISS-0129 fix (verified by RT-3/4/5 of tests/integration/iss0129_migration_run_advisory_lock_test.zig)"
+  ]
+}

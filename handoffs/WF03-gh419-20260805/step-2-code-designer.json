@@ -1,0 +1,55 @@
+{
+  "handoff_id": "a5e3c7f4-8b21-4d6a-bf9c-3e8d1a6f4c92",
+  "run_id": "WF03-gh419-20260805",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-05T07:51:52Z",
+  "started_at": null,
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "3f8a91c4-2b17-4e0a-9d3f-5e2c7a8b4d61",
+      "7c2e8a91-6f3d-4b5e-a1c8-2d9f7e4b6a03",
+      "9b4d6e82-1c5a-4f78-9e3b-6a2c8d4f1e07"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0129-migration-deadlock-diagnosis.yaml",
+      "src/db/migrations.zig",
+      "src/db/provisioning.zig",
+      "tests/integration/tnt_schema_isolation_test.zig",
+      "tests/integration/helpers.zig",
+      "templates/lego-catalog.md",
+      "docs/guides/backend_developer_guide.md"
+    ],
+    "issue_id": "ISS-0129",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/419"
+  },
+  "task": {
+    "description": "WF-03 Step 2 \u2014 CODE-DESIGNER: Fix design artefact for ISS-0129 / GitHub #419\n\n**Goal:** Design the implementation of a pg_advisory_xact_lock around `Migrations.runForSchema()` so that concurrent per-tenant migration runs serialize, eliminating the C40P01 deadlock against `trg_bpm_audit_apply_chain_hash`.\n\n**Classification per templates/lego-catalog.md:** This is a **Type E** design \u2014 a novel cross-cutting change to the migration runner. The fix touches the lock-acquisition surface of `Migrations.runForSchema`, which is shared by every tenant provisioning path AND by the global `zig build migrate` boot path. A Type A/B/C/D parameter file is not appropriate.\n\n**Read all artefacts in `context.artifacts_in` first.**\n\n**Required output:** Write a prose design artefact to `src/design/iss0129_migration_runner_advisory_lock.md` per `docs/guides/backend_developer_guide.md \u00a76` (Type E format). It MUST contain:\n\n1. **Problem statement** \u2014 one paragraph, summarise the C40P01 deadlock from the diagnosis.\n\n2. **Affected files** \u2014 exact paths and line ranges:\n   - `src/db/migrations.zig` \u2014 function `runForSchema` (target line ~78\u2013327 per the diagnosis)\n   - `src/db/provisioning.zig` \u2014 call site to `runForSchema` (verify it goes through the same path)\n   - `tests/integration/tnt_schema_isolation_test.zig` \u2014 TC-TNT-01-01 (line ~187), TC-TNT-03-01, TC-TNT-03-03 (find them)\n\n3. **Public API surface** \u2014 what changes (if anything) to `Migrations.runForSchema`'s signature, what new helpers (if any), and what stays the same.\n\n4. **Lock key derivation** \u2014 define a stable constant:\n   ```zig\n   const MIGRATIONS_LOCK_KEY_SQL = \"SELECT pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint)\";\n   ```\n   Argue why this keyspace is **disjoint** from the trigger function's keyspace `hashtext('bpm.audit.chain.' || tenant_id::text)::bigint` (different prefix string \u2192 hashtext collisions are astronomically improbable; both code paths have to actively cooperate to deadlock). Confirm no other production code path uses a key starting with `'bpm.migrations.'`.\n\n5. **Lock acquisition site** \u2014 show the exact transaction-wrap pattern (pseudo-Zig, not real implementation code):\n   ```\n   runForSchema(allocator, pool, dir, schema, force_reconcile):\n       conn = pool.acquire()\n       defer conn: release\n       conn.exec(\"BEGIN\")\n       defer conn.exec(\"ROLLBACK\")  // safe even if COMMIT already issued\n       conn.exec(MIGRATIONS_LOCK_KEY_SQL)\n       // existing migration apply loop here, reusing the same conn\n       for migration in pending:\n           applyMigration(conn, migration)  // already takes its own internal txn? verify\n       conn.exec(\"COMMIT\")\n   ```\n   Critical: verify that the existing `runForSchema` does NOT already wrap each migration in its own transaction. If it does, the outer `BEGIN/COMMIT` is wrong \u2014 instead, acquire the advisory lock OUTSIDE any transaction (use `pg_advisory_lock` instead of `pg_advisory_xact_lock`) OR restructure so the lock lives in the same transaction as the DDL. Decide based on the actual code, not on the pseudo-code.\n\n6. **Error taxonomy** \u2014 define error additions. The existing `MigrationError` set is the surface; do NOT add a new error unless a new failure mode is introduced (it shouldn't be \u2014 `pg_advisory_xact_lock` either succeeds or fails with a known SQLSTATE).\n\n7. **Test strategy** \u2014 add a regression test:\n   - File: `tests/integration/iss0129_migration_run_advisory_lock_test.zig`\n   - Test cases:\n     - TC-ISS-0129-01: `runForSchema` against a fresh test DB schema acquires and releases the lock (verify with `pg_locks` snapshot inside the test \u2014 should show `locktype=advisory`).\n     - TC-ISS-0129-02: Two concurrent `runForSchema` calls against the same schema serialize \u2014 second waits for first to release. Use two Pool instances on the same DB.\n     - TC-ISS-0129-03: Concurrent audit INSERT into `tenant_<uuid>.audit_entries` while another connection runs `runForSchema` does NOT deadlock (test must run in <60s). Re-run the original TC-TNT-01-01 path here to demonstrate the fix.\n     - TC-ISS-0129-04: `pg_advisory_xact_lock` failure (e.g. statement_timeout) does not corrupt migration state \u2014 the connection rolls back cleanly.\n   - All tests use per-test UUIDs (per `lint_test_isolation.py`).\n   - All tests connect to real PostgreSQL via `BPM_TEST_DB_URL`.\n   - No mocks, no in-memory fakes.\n\n8. **Backwards compatibility** \u2014 what other callers of `Migrations.runForSchema` exist? Search the codebase. The lock is transparent to callers; the only observable behaviour change is that concurrent `runForSchema` calls now serialize. This is the desired behaviour.\n\n9. **Edge cases**:\n   - Pool exhaustion: if `pg_advisory_xact_lock` blocks for >statement_timeout, the connection is killed. Document the timeout setting (BPM_TEST_DB_URL should have `?statement_timeout=30s` or similar; verify).\n   - Nested calls: if `runForSchema` is called from inside another migration's apply (it isn't today, but document the assumption), the same Postgres session re-acquiring the same advisory lock is a no-op (PostgreSQL allows recursive session-level advisory locks \u2014 confirm pg docs).\n   - Crash safety: `pg_advisory_xact_lock` is auto-released at txn end (COMMIT or ROLLBACK), so a backend crash leaves no orphan lock. \u2713 safe.\n\n10. **Acceptance criteria** for the implementer:\n    - `zig build` exits 0\n    - `zig build test` exits 0\n    - `zig build test-integration` exits 0 with all TNT-01 / TNT-03 tests green\n    - Regression test file `tests/integration/iss0129_migration_run_advisory_lock_test.zig` passes\n    - No `error.SkipZigTest` on any test in the regression file\n    - Implementation committed to `feature/WF03-gh419-20260805`\n\n11. **Validation plan** \u2014 list the exact `zig build` / lint commands to run.\n\n12. **Open questions** \u2014 anything you can't decide unilaterally (e.g. should the lock also be acquired in `Migrations.run` for the public-schema boot path? My read: yes, defensively \u2014 but it's a separate decision the implementer can confirm.)\n\n**Anti-patterns to avoid** (per `docs/anti-patterns.md`):\n- No mocks / stubs / in-memory fakes in tests\n- No `error.SkipZigTest` on MUST tests\n- No I/O in pure-function modules\n- No SQL string interpolation of user data\n- No `catch unreachable` on realistic failure paths\n\nReturn PASS once `src/design/iss0129_migration_runner_advisory_lock.md` is committed and pushed to `feature/WF03-gh419-20260805`. Set `result.next_action = \"Route to CODE-DESIGN-VALIDATOR (Step 2b)\"`.",
+    "acceptance_criteria": [
+      "src/design/iss0129_migration_runner_advisory_lock.md exists with all 12 sections",
+      "Design specifies exact transaction-wrap pattern (verified against actual runForSchema code)",
+      "Design includes regression test plan with 4 test cases",
+      "Design committed and pushed to feature/WF03-gh419-20260805",
+      "harness log: PENDING \u2192 COMPLETED"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for ISS-0129 fix - Type E prose artefact at src/design/iss0129_migration_runner_advisory_lock.md. Specifies pg_advisory_xact_lock(hashtext(bpm.migrations.runForSchema)::bigint) wrap between src/db/migrations.zig BEGIN (line 301) and simpleQuery (line 307), auto-released at COMMIT/ROLLBACK (line 323). Lock keyspace disjoint from the audit-trigger per-tenant lock; concurrent audit INSERTs remain unblocked. 12 sections per backend_developer_guide.md sec 6 + E-format. Includes RT-1..RT-5 regression test plan. Lint_design_artefact.py exits 0; lint_handoffs.py exits 0.",
+    "artifacts_out": [
+      "src/design/iss0129_migration_runner_advisory_lock.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-08-05T02:57:08Z"
+}

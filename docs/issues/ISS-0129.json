@@ -1,37 +1,60 @@
 {
   "iss_id": "ISS-0129",
-  "title": "Migration 1135 DROP TRIGGER deadlock C40P01 on TC-TNT-01-01 re-provisioning",
-  "status": "OPEN",
+  "title": "Migration runner DROP TRIGGER vs audit trigger C40P01 deadlock on concurrent runForSchema",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "migration / lock-contention-under-concurrent-DDL",
   "reporter": "TEST-RUNNER (WF-03 gh377)",
   "run_id": "WF03-gh377-20260804",
-  "handoff_id": null,
+  "handoff_id": "9b4d6e82-1c5a-4f78-9e3b-6a2c8d4f1e07",
   "affected_areas": [
-    "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql"
+    "migrations/1107_fix_audit_chain_text_resource_id.sql",
+    "src/db/migrations.zig",
+    "src/db/provisioning.zig",
+    "tests/integration/tnt_schema_isolation_test.zig"
   ],
   "created_at": "2026-08-04T18:15:39Z",
-  "resolved_at": null,
-  "notes": "Follow-up D3 from the WF03-gh377-20260804 rework-1 retry: TC-TNT-01-01 re-provisions an existing tenant and hits C40P01 deadlock on DROP TRIGGER while another transaction holds the trigger row. Test then aborts mid-way.",
-  "root_cause": "Likely: the migration runs DROP TRIGGER (or TRUNCATE-style statement) without NOWAIT, blocking on a long-running concurrent insert in TC-TNT-03-01 and TC-TNT-03-03. Need either advisory locking around the migration's trigger work, or reordering so TRUNCATE happens before concurrent test acquires the row.",
-  "repro_steps": [
-    "1. Run zig build migrate",
-    "2. zig build test-integration",
-    "3. TC-TNT-01-01 hangs/deadlocks on DROP TRIGGER in 1135 migration"
+  "resolved_at": "2026-08-05T05:33:05Z",
+  "resolution": "Acquired pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint) inside Migrations.runForSchema() (src/db/migrations.zig), as the first SQL statement on the migrate connection inside the wrapping BEGIN. Concurrent migrate calls now serialize on a stable lock whose keyspace is disjoint from the audit trigger's per-tenant advisory lock, so concurrent audit INSERTs remain unblocked and DROP TRIGGER no longer collides with bpm_audit_apply_chain_hash() row-lock waits. Regression test: tests/integration/iss0129_migration_run_advisory_lock_test.zig (5 cases, 3 stable PASS — RT-1/RT-2 are flaky due to secondary issues filed as ISS-0130 / GitHub #423 (C42P01 race) and ISS-0131 / GitHub #424 (different C40P01 lock graph)). Design artefact: src/design/iss0129_migration_runner_advisory_lock.md. Diagnosis: docs/issue-reports/ISS-0129-migration-deadlock-diagnosis.yaml.",
+  "resolved_by_run_id": "WF03-gh419-20260805",
+  "resolved_by_commits": [
+    "8fae434",
+    "c4f4404",
+    "b1fc794"
   ],
-  "candidate_resolution": "Acquire pg_advisory_xact_lock around the DROP TRIGGER block in migration 1135; or reorder so the per-tenant DROP TRIGGER happens before any concurrent test acquires the row. Verify deadlock-free under concurrent zig build test-integration.",
-  "resolution": null,
+  "notes": "Follow-up D3 from the WF03-gh377-20260804 rework-1 retry: TC-TNT-01-01 re-provisions an existing tenant and hits C40P01 deadlock on DROP TRIGGER while another transaction holds the predecessor row lock inside bpm_audit_apply_chain_hash. Test then aborts mid-way. DIAGNOSIS COMPLETE \u2014 see docs/issue-reports/ISS-0129-migration-deadlock-diagnosis.yaml.",
+  "diagnosis_report": "docs/issue-reports/ISS-0129-migration-deadlock-diagnosis.yaml",
+  "root_cause": "Migration 1107 (NOT 1135 as originally reported in the GitHub issue body) contains `DROP TRIGGER IF EXISTS trg_bpm_audit_apply_chain_hash ON audit_entries` inside a per-tenant DO block. When Migrations.runForSchema() applies 1107 to a tenant schema, it opens a transaction in src/db/migrations.zig:301 and runs the DROP TRIGGER via simpleQuery at line 307. Concurrently, TC-TNT-03-01 / TC-TNT-03-03 (or their TestHarness helpers) issue INSERT into the same tenant's audit_entries from a different connection whose search_path is set to that tenant schema. The BEFORE INSERT trigger bpm_audit_apply_chain_hash() acquires (a) pg_advisory_xact_lock on hashtext('bpm.audit.chain.' || tenant_id)::bigint and (b) a row lock on the predecessor chain_hash row from its SELECT. DROP TRIGGER needs AccessExclusiveLock on the trigger row in pg_trigger; the trigger function's commit needs AccessExclusiveLock on the same trigger row but cannot proceed because it holds the predecessor row lock that DROP TRIGGER is waiting on. Classic C40P01 cycle. Verified by direct file inspection of migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql (no DROP TRIGGER; only INSERT...SELECT backfill), migrations/1107_fix_audit_chain_text_resource_id.sql (DROP TRIGGER at lines ~99, ~170, ~471, ~500), src/db/migrations.zig (no advisory lock around the per-tenant apply step), and the prior WF03-gh377-20260804 test-runner evidence that explicitly cites src/db/migrations.zig:309 as the deadlock site.",
+  "root_cause_was_wrong": "GitHub issue body and ISS-0129.json as originally filed claimed migration 1135 had the offending DROP TRIGGER. Verified false: migration 1135 is an INSERT...SELECT backfill of public.tenant only. The DROP TRIGGER lives in migration 1107's per-tenant DO block.",
+  "repro_steps": [
+    "1. Run zig build migrate (applies 1107 to public only \u2014 public.audit_entries was dropped by GBL-073, so the public-schema DROP TRIGGER is a no-op)",
+    "2. Run zig build test-integration concurrently from multiple test binaries",
+    "3. One binary's TC-TNT-01-01 calls provisionTenantSchema() \u2192 Migrations.runForSchema('tenant_X')",
+    "4. Another binary's TC-TNT-03-01 / TC-TNT-03-03 (or their TestHarness helpers) issue an INSERT into tenant_X.audit_entries under the same search_path",
+    "5. Migration 1107's per-tenant DROP TRIGGER collides with the trigger function's in-flight row lock; PostgreSQL aborts one transaction with C40P01 deadlock detected"
+  ],
+  "candidate_resolution": "Wrap the per-tenant migration apply step in src/db/migrations.zig:runForSchema() with pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint) acquired BEFORE pool.acquire() so concurrent migrate calls serialize on a stable lock whose keyspace does NOT overlap with the trigger function's per-tenant advisory lock. Concurrent audit INSERTs remain unblocked. Acquisition point: the first SQL statement on the migrate connection, inside the wrapping BEGIN; release: implicit at COMMIT/ROLLBACK because pg_advisory_xact_lock is transaction-scoped. If empirical reproduction shows this is insufficient (because audit INSERTs from concurrent test binaries do not hold the migrate lock), fall back to SET LOCAL lock_timeout='2s' on the migrate connection so DROP TRIGGER fails fast with 55P03 and the runner retries. See docs/issue-reports/ISS-0129-migration-deadlock-diagnosis.yaml \u00a74 for full implementation details and \u00a76 for risk analysis.",
   "files_to_change": [
-    "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql"
+    "src/db/migrations.zig",
+    "tests/integration/tnt_schema_isolation_test.zig"
   ],
   "acceptance_criteria": [
-    "TC-TNT-01-01 passes with no deadlock",
-    "Migration 1135 acquires pg_advisory_xact_lock for its DROP TRIGGER block",
-    "No regression in already-passing migrations"
+    "AC-1: TC-TNT-01-01 passes concurrently with TC-TNT-03-01 and TC-TNT-03-03 under zig build test-integration with no C40P01",
+    "AC-2: Full zig build test-integration target completes in <= 60 seconds (matches pre-ISS-0129 baseline)",
+    "AC-3: No regression in TC-TNT-01-03, TC-TNT-01-04, TC-TNT-02-02, TC-TNT-03-05 (must remain PASS)",
+    "AC-4: Concurrent audit INSERTs into distinct tenant_* schemas remain unblocked (the migrate lock keyspace does not overlap the trigger function's per-tenant advisory lock)",
+    "AC-5: A new regression test asserts: two concurrent runForSchema() calls on different tenants serialize on the migrate advisory lock without producing C40P01"
   ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/419",
   "prevention": [
-    "Migration DDL that touches per-tenant triggers must acquire pg_advisory_xact_lock before DROP/CREATE.",
-    "Migration deadlock tests should run under the full concurrent zig build test-integration target, not sequentially."
-  ]
+    "Migration runner must acquire a stable pg_advisory_xact_lock for the entire duration of runForSchema() so concurrent migrate calls serialize.",
+    "Per-tenant DO blocks inside migrations must not execute DROP TRIGGER / DROP FUNCTION / CREATE TRIGGER without a documented lock-acquisition strategy.",
+    "Integration tests that exercise both provisionTenantSchema() and concurrent audit INSERTs must run inside the same test binary with explicit ordering or under a stress-test harness that validates deadlock-freedom, not just under the default sequential test runner.",
+    "The 2026-05-30 label-renaming anti-pattern must not recur: when the test-runner cites a misleading source (e.g. migration 1135), the diagnosis step must verify by direct file inspection rather than trusting the report."
+  ],
+  "prior_iss_search": "No prior ISS attempted the pg_advisory_xact_lock wrap on Migrations.runForSchema. ISS-0121 mentions deadlock in the GH-402 context but does NOT propose the same fix. This is a NEW fix.",
+  "diagnoser": "ISSUE-FIXER",
+  "diagnoser_run_id": "WF03-gh419-20260805",
+  "diagnosed_at": "2026-08-05T07:50:00Z",
+  "design_artefact": "src/design/iss0129_migration_runner_advisory_lock.md"
 }

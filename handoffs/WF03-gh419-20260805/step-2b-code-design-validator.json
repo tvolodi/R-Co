@@ -1,0 +1,53 @@
+{
+  "handoff_id": "c8f4e2a7-6d93-4e15-8b1f-2a9c5d8e4b73",
+  "run_id": "WF03-gh419-20260805",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-05T07:57:45Z",
+  "started_at": null,
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "3f8a91c4-2b17-4e0a-9d3f-5e2c7a8b4d61",
+      "7c2e8a91-6f3d-4b5e-a1c8-2d9f7e4b6a03",
+      "9b4d6e82-1c5a-4f78-9e3b-6a2c8d4f1e07",
+      "a5e3c7f4-8b21-4d6a-bf9c-3e8d1a6f4c92"
+    ],
+    "artifacts_in": [
+      "src/design/iss0129_migration_runner_advisory_lock.md",
+      "docs/issue-reports/ISS-0129-migration-deadlock-diagnosis.yaml",
+      "docs/issues/ISS-0129.json"
+    ],
+    "issue_id": "ISS-0129",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/419"
+  },
+  "task": {
+    "description": "WF-03 Step 2b \u2014 CODE-DESIGN-VALIDATOR: hard gate\n\nVerify the design artefact at `src/design/iss0129_migration_runner_advisory_lock.md` is complete enough for BACKEND-DEV to implement without ambiguity. This is a HARD GATE \u2014 BACKEND-DEV cannot start Step 3 until this returns PASS.\n\n**Run mandatory checks:**\n1. `python tools/lint_design_artefact.py src/design/iss0129_migration_runner_advisory_lock.md` \u2014 must exit 0 with no BLOCKER/MAJOR.\n2. Manual review per `docs/agents/protocols/` and the WF-03 step-2b gate criteria:\n\n**Coverage check** \u2014 every acceptance criterion from `docs/issues/ISS-0129.json` is addressed in the design:\n   - \"TC-TNT-01-01 passes with no deadlock\" \u2192 addressed by lock-acquisition + RT-1/RT-4\n   - \"Migration 1135 acquires pg_advisory_xact_lock for its DROP TRIGGER block\" \u2192 design should CLARIFY that 1135 is NOT the offending migration; the lock is in `Migrations.runForSchema` to serialize all per-tenant migrations including 1107/1109. **If the design still focuses on migration 1135, FAIL.**\n   - \"No regression in already-passing migrations\" \u2192 RT-2 covers this\n\n**Implementation-ready checks:**\n   - Lock SQL string specified verbatim\n   - Insertion site identified with file:line\n   - Lock keyspace disjointness argued (compare prefix string vs trigger function prefix string)\n   - Error taxonomy: does it add an error variant? If yes, justified. If no, also fine \u2014 confirm.\n   - Regression test plan lists \u22653 test cases with explicit names and assertions\n   - Each regression test uses per-test UUIDs and connects to real PostgreSQL\n   - No mocks / stubs / in-memory fakes specified\n   - No `error.SkipZigTest` on MUST tests\n   - Anti-patterns checklist from `docs/anti-patterns.md` is honoured\n\n**Classification check:** This is Type E (novel cross-cutting). Confirm `lego-catalog.md` rules \u2014 could it have been a Type A (CRUD endpoint)? No. Type C (migration)? No \u2014 the fix isn't a new migration, it's a runtime lock in the migration runner. Type E is correct.\n\n**Backwards-compat check:** List every caller of `Migrations.runForSchema` (search the codebase). Confirm the lock is transparent to all callers.\n\nReturn PASS or FAIL. On PASS, set `result.next_action = \"Route to BACKEND-DEV (Step 3)\"`. On FAIL, list each issue with severity (BLOCKER / MAJOR / MINOR).\n\nAlso update `docs/issues/ISS-0129.json` \u2014 add a `design_artefact` field with the design file path if not already present.",
+    "acceptance_criteria": [
+      "tools/lint_design_artefact.py exits 0",
+      "All 3 acceptance criteria from ISS-0129.json are addressed (with correct attribution, NOT claiming 1135 has the DROP TRIGGER)",
+      "Lock SQL string is specified verbatim",
+      "Insertion site has file:line citation",
+      "Regression test plan \u22653 cases, all using per-test UUIDs and real PostgreSQL",
+      "harness log: PENDING \u2192 COMPLETED"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for ISS-0129 / GH-419 validated. All 5 acceptance criteria (AC-1..AC-5) mapped 1-to-1 to RT-1..RT-4 (+RT-5 source-assertion). Lock SQL verbatim. Insertion site at src/db/migrations.zig between lines 301 (BEGIN) and 307 (simpleQuery). Keyspace disjointness argued from audit-trigger prefix string. Root-cause attribution CORRECTED: design identifies migration 1107 (per-tenant DO block at lines 170 and 500) as the DROP TRIGGER source \u2014 NOT migration 1135 (verified to contain only INSERT...SELECT backfill). Type E classification correct per lego-catalog.md rule 5 (novel cross-cutting change to migration runner; not a CRUD endpoint or new migration). Regression test plan lists 5 cases (RT-1..RT-5), all using per-test randomUuidStr and connecting to real PostgreSQL via BPM_TEST_DB_URL; no mocks/stubs/SkipZigTest. lint_design_artefact.py exit 0.",
+    "artifacts_out": [
+      "src/design/iss0129_migration_runner_advisory_lock.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "completed_at": "2026-08-05T02:59:10Z"
+}

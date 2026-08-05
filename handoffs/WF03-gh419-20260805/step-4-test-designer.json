@@ -1,0 +1,49 @@
+{
+  "handoff_id": "e7b5f3a9-4c81-4e6d-9a2f-1d8b6e5c4a92",
+  "run_id": "WF03-gh419-20260805",
+  "step": "4",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-08-05T08:48:44Z",
+  "started_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "3f8a91c4-2b17-4e0a-9d3f-5e2c7a8b4d61",
+      "7c2e8a91-6f3d-4b5e-a1c8-2d9f7e4b6a03",
+      "9b4d6e82-1c5a-4f78-9e3b-6a2c8d4f1e07",
+      "a5e3c7f4-8b21-4d6a-bf9c-3e8d1a6f4c92",
+      "c8f4e2a7-6d93-4e15-8b1f-2a9c5d8e4b73",
+      "d2a8b1c5-4f7e-4a3d-9b6c-1e8f5d2a7c34",
+      "f9c2a1e8-7b54-4d3a-bf6e-2c8d5a1e9f47"
+    ],
+    "artifacts_in": [
+      "tests/integration/iss0129_migration_run_advisory_lock_test.zig",
+      "tests/reports/report-20260805-WF03-gh419.yaml",
+      "src/design/iss0129_migration_runner_advisory_lock.md",
+      "src/db/migrations.zig"
+    ],
+    "issue_id": "ISS-0129",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/419"
+  },
+  "task": {
+    "description": "WF-03 Step 4 \u2014 TEST-DESIGNER: Fix the regression test defects surfaced by TEST-RUNNER\n\n**Context:** TEST-RUNNER (handoff f9c2a1e8) confirmed the production fix is correct \u2014 172 integration tests pass with zero C40P01 deadlocks, TC-TNT-01-01 passes. The new regression test file `tests/integration/iss0129_migration_run_advisory_lock_test.zig` has 2 defects that prevent 3/5 tests from succeeding. The fix code itself is verified correct.\n\n**Defect 1 \u2014 Silent thread joins:** `t1.join()` and `t2.join()` discard the spawned thread's error. When the concurrent `provisionTenantSchema` call fails inside the worker thread, the failure is swallowed and the main thread sees only a successful join, masking real errors. Fix: capture errors via shared state.\n\nPattern (apply to all concurrent test cases):\n```zig\nconst Result = struct { err: ?anyerror = null };\nvar result1 = Result{};\nvar result2 = Result{};\n\nconst t1 = try std.Thread.spawn(.{}, struct {\n    fn run(r: *Result) void {\n        r.err = concurrent_provision_fn() catch |e| { r.err = e; };\n    }\n}.run, .{&result1});\n\n// ... do other work in main thread ...\n\nt1.join();\nt2.join();\n\ntry testing.expect(result1.err == null);\ntry testing.expect(result2.err == null);\n```\n\n**Defect 2 \u2014 Fresh-schema C42P01 \"relation users does not exist\":** RT-1 / RT-2 try to provision a tenant and immediately INSERT into `tenant_<uuid>.users` in a second connection. But `provisionTenantSchema` itself takes the migration advisory lock \u2014 so the second connection's INSERT runs against a half-migrated schema where `users` hasn't been created yet. The proper sequencing: EITHER\n  - (a) wait for both provisionTenantSchema calls to complete (the lock serialises them) BEFORE doing the cross-tenant INSERT, OR\n  - (b) instead of INSERT into users, INSERT into `audit_entries` which is created by an early migration, OR\n  - (c) use the trigger function's existing advisory lock pattern as the contention source rather than a fresh INSERT.\n\nChoose option (a) \u2014 it's the cleanest match to what the design promised (concurrent provisionTenantSchema serialization).\n\n**What to deliver:**\n\n1. Read the test file. Identify RT-1, RT-2, RT-3, RT-4, RT-5.\n\n2. For each test that uses `std.Thread.spawn`, apply the shared-state pattern above to capture worker errors.\n\n3. For RT-1 (concurrent provisionTenantSchema): the test should\n   - Spawn thread A: `provisionTenantSchema(schema_A)` on pool 1\n   - Spawn thread B: `provisionTenantSchema(schema_B)` on pool 2 (different schema, same lock contention)\n   - Wait for both joins with error capture\n   - Verify both completed without error\n   - Verify the schema_migrations table shows the expected version\n   - DO NOT try to INSERT into users from the main thread while A or B is still running\n\n4. For RT-3 (lock keyspace disjointness demo): the test should\n   - Connect on conn1, INSERT into `public.audit_entries` (or a pre-migrated tenant's audit_entries) to fire the trigger's advisory lock\n   - Connect on conn2, call `Migrations.runForSchema(...)` (which acquires the migration lock)\n   - Verify NO deadlock \u2014 both complete within 60s\n   - To pre-migrate a tenant, run `provisionTenantSchema` first serially, then run this test\n\n5. For RT-4 (60s wall-clock budget): simplify to running RT-1 + RT-3 in sequence with a `std.time.Timer` measuring total elapsed; assert \u226460s.\n\n6. For RT-5 (source assertion): no change needed (this test passed in the previous run).\n\n7. For RT-2 (idempotent re-run): verify it passes \u2014 if it does, leave it alone.\n\n**Validation:**\n```bash\nzig build\nzig build test\nzig build test-integration-iss0129   # MUST show 5/5 PASS now\npython3 tools/lint_test_isolation.py tests/integration   # 0 BLOCKER, 0 MAJOR on the iss0129 file\npython3 tools/lint_handoffs.py\n```\n\n**Commit + push** to `feature/WF03-gh419-20260805`:\n```\ngit add -A\ngit commit -m \"test(WF03-gh419): fix silent-join and fresh-schema defects in iss0129 regression test\"\ngit push origin feature/WF03-gh419-20260805\n```\n\nWhen done:\n- Handoff JSON: status=COMPLETED, result.status=PASS, completed_at=exact Get-Date output\n- artifacts_out = [\"tests/integration/iss0129_migration_run_advisory_lock_test.zig\"]\n- result.next_action = \"Route to TEST-RUNNER for re-verification (Step 5b)\"\n- Update `handoffs/registry.json` (entry status COMPLETED)\n- Append to `handoffs/orchestrator.log`\n\nReturn a brief final message: PASS/FAIL, the failing tests that now pass, test count after fix.",
+    "acceptance_criteria": [
+      "tests/integration/iss0129_migration_run_advisory_lock_test.zig: 5/5 PASS",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "lint_test_isolation.py: 0 BLOCKER/MAJOR on iss0129 file",
+      "Implementation committed and pushed to feature/WF03-gh419-20260805",
+      "harness log: PENDING \u2192 COMPLETED"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": null
+}

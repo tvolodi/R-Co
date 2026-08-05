@@ -12,6 +12,24 @@ const Pool = pool_mod.Pool;
 const PoolError = pool_mod.PoolError;
 
 // ---------------------------------------------------------------------------
+// ISS-0129 / GH-419 advisory lock SQL (acquired inside the per-migration
+// transaction in runForSchema, auto-released on COMMIT/ROLLBACK).
+// ---------------------------------------------------------------------------
+//
+// ISS-0129: stable advisory-lock SQL. Acquired at the start of every
+// per-migration transaction inside `runForSchema` and auto-released on
+// COMMIT/ROLLBACK. Keyspace disjoint from the audit-trigger's per-tenant
+// pg_advisory_xact_lock(hashtext('bpm.audit.chain.' || tenant_id::text))
+// — see src/design/iss0129_migration_runner_advisory_lock.md.
+//
+// Single key for all tenants: every concurrent migrate-step caller
+// (regardless of `schema_name`) queues on this one advisory lock. The
+// audit-INSERT path uses a completely different keyspace, so concurrent
+// audit inserts remain unblocked.
+const MIGRATIONS_LOCK_KEY_SQL =
+    "SELECT pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint)";
+
+// ---------------------------------------------------------------------------
 // Public error set
 // ---------------------------------------------------------------------------
 
@@ -299,6 +317,26 @@ pub const Migrations = struct {
 
             // BEGIN transaction.
             conn.exec("BEGIN", &.{}) catch return MigrationError.MigrationFailed;
+
+            // ISS-0129 / GH-419: Acquire the canonical migration-runner
+            // advisory lock immediately after BEGIN so concurrent migrate-step
+            // callers serialize on this key for the duration of this
+            // transaction. The lock is transaction-scoped (auto-released on
+            // COMMIT/ROLLBACK), so it never leaks across pool-release
+            // boundaries and never requires explicit cleanup.
+            //
+            // Keyspace is disjoint from the audit-trigger's per-tenant
+            // pg_advisory_xact_lock(hashtext('bpm.audit.chain.' || tenant_id
+            // ::text)) — see src/design/iss0129_migration_runner_advisory_lock.md.
+            //
+            // On any lock-acquisition failure: ROLLBACK so the lock is
+            // released by the surrounding transaction semantics, then
+            // return MigrationFailed (the migration will be retried on the
+            // next runForSchema call).
+            conn.exec(MIGRATIONS_LOCK_KEY_SQL, &.{}) catch {
+                conn.exec("ROLLBACK", &.{}) catch {};
+                return MigrationError.MigrationFailed;
+            };
 
             // Execute the migration SQL via the simple query protocol.
             // Migration files contain multi-statement DDL separated by semicolons;

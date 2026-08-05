@@ -1,0 +1,57 @@
+{
+  "handoff_id": "8e6a4d2f-1b95-4c3e-9f7a-5d8b2c1e6f43",
+  "run_id": "WF03-gh419-20260805",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-05T10:32:20Z",
+  "started_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "3f8a91c4-2b17-4e0a-9d3f-5e2c7a8b4d61",
+      "7c2e8a91-6f3d-4b5e-a1c8-2d9f7e4b6a03",
+      "9b4d6e82-1c5a-4f78-9e3b-6a2c8d4f1e07",
+      "a5e3c7f4-8b21-4d6a-bf9c-3e8d1a6f4c92",
+      "c8f4e2a7-6d93-4e15-8b1f-2a9c5d8e4b73",
+      "d2a8b1c5-4f7e-4a3d-9b6c-1e8f5d2a7c34",
+      "f9c2a1e8-7b54-4d3a-bf6e-2c8d5a1e9f47",
+      "b4c7a5f3-9e21-4d8a-8b6c-3e1f5d2a7c84",
+      "1d8e7a4f-6c52-4b89-9e1d-5f3a8b2c4d97"
+    ],
+    "artifacts_in": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0129.json",
+      "docs/issues/ISS-0130.json",
+      "docs/issues/ISS-0131.json",
+      "docs/requirements.yaml",
+      "src/db/migrations.zig",
+      "src/design/iss0129_migration_runner_advisory_lock.md",
+      "tests/integration/iss0129_migration_run_advisory_lock_test.zig",
+      "tests/reports/report-20260805-WF03-gh419.yaml"
+    ],
+    "issue_id": "ISS-0129",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/419"
+  },
+  "task": {
+    "description": "WF-03 Step 7 \u2014 DOC-UPDATER: Update changelog, requirement status, mark ISS-0129 resolved\n\nThe fix for ISS-0129 / GH-419 is verified correct and ready for release. Update the project documentation:\n\n**1. Update CHANGELOG.md:**\nAdd a new entry under the next unreleased version section:\n```\n### Fixed\n- Resolved C40P01 deadlock on TC-TNT-01-01 re-provisioning (GH #419 / ISS-0129).\n  The deadlock between the per-tenant migration DROP TRIGGER (migration 1107) and\n  the audit chain-hash trigger's per-tenant advisory lock is now prevented by\n  acquiring `pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint)`\n  inside `Migrations.runForSchema()`. Concurrent migrate steps now serialize on\n  a stable key whose keyspace is disjoint from the audit-trigger's per-tenant\n  advisory lock, leaving concurrent audit INSERTs unblocked. Regression test:\n  `tests/integration/iss0129_migration_run_advisory_lock_test.zig` (5 cases,\n  3 stable pass \u2014 RT-1/RT-2 are flaky due to secondary issues filed as\n  GH #423 / ISS-0130 and GH #424 / ISS-0131).\n```\n\n**2. Mark ISS-0129 resolved:**\nUpdate `docs/issues/ISS-0129.json`:\n- Set `\"status\": \"RESOLVED\"`\n- Set `\"resolved_at\"` to the current UTC timestamp (use exact `Get-Date -UFormat` output, do NOT invent)\n- Add a `\"resolution\"` field describing the fix\n- Add `\"resolved_by_run_id\": \"WF03-gh419-20260805\"`\n- Add `\"resolved_by_commits\"`: list of commit SHAs from feature/WF03-gh419-20260805\n\n**3. Close GH-419:**\n```\ngh issue close 419 --comment \"Resolved by pg_advisory_xact_lock in Migrations.runForSchema (commit b1fc794). See PR (or feature branch) for details. Secondary issues filed: GH-423 (C42P01 race) and GH-424 (different C40P01 lock graph).\"\n```\n\n**4. Retrospective (WF-02 and WF-04 runs only \u2014 this is WF-03, skip):**\nNo estimation.json was created for this run (it's a WF-03 issue resolution), so no retrospective is required.\n\n**5. Update docs/status/requirement_status.yaml if any requirement IDs are involved:**\nThis is an issue resolution, not a requirement implementation \u2014 no requirement status changes needed unless the requirements doc explicitly tracks migration-related fixes. Verify by reading docs/requirements.yaml; if no migration-related requirement IDs are in scope, skip this step.\n\nWhen done:\n- Handoff JSON: status=COMPLETED, result.status=PASS, completed_at=exact Get-Date output\n- artifacts_out = [\"CHANGELOG.md\", \"docs/issues/ISS-0129.json\"]\n- result.next_action = \"Route to BACKEND-DEV (Step Final - git-merge)\"\n- Update `handoffs/registry.json` (entry status COMPLETED)\n- Append to `handoffs/orchestrator.log`\n- Commit + push to `feature/WF03-gh419-20260805`:\n  ```\n  git add -A\n  git commit -m \"docs(WF03-gh419): changelog + resolve ISS-0129 + close GH-419\"\n  git push origin feature/WF03-gh419-20260805\n  ```\n\nReturn brief: PASS/FAIL, what you updated, current state of GH-419.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with GH-#419 fix entry",
+      "docs/issues/ISS-0129.json marked RESOLVED with timestamp + resolution",
+      "GH issue #419 closed via gh issue close",
+      "Changes committed and pushed to feature/WF03-gh419-20260805",
+      "harness log: PENDING \u2192 COMPLETED"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 1,
+  "completed_at": null
+}

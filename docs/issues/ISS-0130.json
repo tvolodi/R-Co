@@ -1,0 +1,48 @@
+{
+  "iss_id": "ISS-0130",
+  "title": "Concurrent provisionTenantSchema races on stale search_path \u2192 C42P01 \"relation X does not exist\" (post-GBL-112)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "migration / connection-pool-state-race",
+  "reporter": "TEST-DESIGNER (WF03-gh419-20260805)",
+  "run_id": "WF03-gh419-20260805",
+  "handoff_id": null,
+  "affected_areas": [
+    "migrations/008_tnt01_tenant_tables.sql",
+    "migrations/017_tnt01_tenant_tables_more.sql",
+    "migrations/040_tnt03_user_roles.sql",
+    "migrations/GBL-112_tnt01_drop_legacy_public_business_tables.sql",
+    "src/db/migrations.zig",
+    "tests/integration/iss0129_migration_run_advisory_lock_test.zig (RT-1, RT-2)"
+  ],
+  "created_at": "2026-08-05T10:17:01Z",
+  "resolved_at": null,
+  "notes": "Discovered while implementing the regression test for ISS-0129 (C40P01 deadlock fix). After GBL-112 dropped public.users/public.user_roles, migration 008's CREATE TABLE IF NOT EXISTS users races against a pool connection whose search_path is stale. Tests RT-1 / RT-2 in tests/integration/iss0129_migration_run_advisory_lock_test.zig intermittently fail with C42P01 'relation users does not exist' / 'relation user_roles does not exist' during the FIRST concurrent pass, even though the underlying lock fix (Migrations.runForSchema pg_advisory_xact_lock) is verified correct by 172-test integration suite run with zero C40P01 deadlocks. The lock serializes concurrent migrate steps correctly; the C42P01 is a separate pool-state race. Out of scope for ISS-0129 \u2014 the original deadlock is fixed.",
+  "root_cause": "Pool connection reused after a prior transaction commits. The tenant schema's search_path was set via SET search_path TO <schema>, public (session-level), but when a SECOND pool.acquire() returns a connection that last served a public-schema migration (search_path=public), the unqualified CREATE TABLE users lands in public \u2014 which doesn't exist for new tenants after GBL-112 dropped it. Migration 008 then fails because migration 040 references users/user_roles BEFORE its CREATE TABLE. Fix options: (a) schema-qualify the CREATE TABLE in 008/017/040 (tenant_<uuid>.users), (b) force SET LOCAL search_path inside the migration runner before each simpleQuery call, (c) force pool reset between connections.",
+  "repro_steps": [
+    "1. zig build migrate (clean DB)",
+    "2. zig build test-integration-iss0129",
+    "3. RT-1 / RT-2 fail intermittently with C42P01 'relation users does not exist'"
+  ],
+  "candidate_resolution": "Schema-qualify the CREATE TABLE statements in migrations 008, 017, and 040 to use the current schema name (e.g. CREATE TABLE tenant_<uuid>.users). Alternatively, force SET LOCAL search_path TO <schema>, public at the start of each per-migration transaction in Migrations.runForSchema. Verify RT-1/RT-2 in iss0129 regression suite pass deterministically.",
+  "resolution": null,
+  "files_to_change": [
+    "migrations/008_tnt01_tenant_tables.sql",
+    "migrations/017_tnt01_tenant_tables_more.sql",
+    "migrations/040_tnt03_user_roles.sql",
+    "src/db/migrations.zig (optional: SET LOCAL search_path hardening)"
+  ],
+  "acceptance_criteria": [
+    "RT-1 and RT-2 in tests/integration/iss0129_migration_run_advisory_lock_test.zig pass deterministically (5/5 stable)",
+    "Existing integration test suite still passes",
+    "No regression in already-passing migrations"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/423",
+  "prevention": [
+    "After GBL-112 dropped public.users/user_roles, all per-tenant migration DDL that touches these tables MUST be schema-qualified OR the migration runner MUST SET LOCAL search_path at the start of each per-migration transaction.",
+    "Add a regression test that runs N concurrent provisionTenantSchema calls back-to-back and verifies deterministic completion within timeout."
+  ],
+  "related_issues": [
+    "ISS-0129"
+  ]
+}
