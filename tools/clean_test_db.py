@@ -187,6 +187,23 @@ def main() -> None:
     run_psql("DELETE FROM public.tenant WHERE tenant_type = 'test' AND slug != 'default'")
     run_psql("DELETE FROM public.tenant WHERE tenant_type = 'production' AND slug != 'default'")
 
+    # GH-443 (ISS-0140): provisionTenantSchema() (src/db/provisioning.zig) writes
+    # the public.tenant row (storage_mode='SCHEMA', Step 6a) in a separate
+    # statement AFTER bpm_provision_tenant_schema() + tenant_schemas registration
+    # (Step 4). A test run that races against this cleanup sweep (or is
+    # killed/times out between steps) can leave a public.tenant row claiming
+    # storage_mode='SCHEMA' with no corresponding tenant_schemas row and no
+    # Postgres schema ever created. The sweep above only removes rows by
+    # tenant_type/slug, so this half-provisioned row survives every cleanup and
+    # trips verify_schema_baseline.py's check_tenant_schemas_consistent forever.
+    # Delete any SCHEMA-mode tenant row with no matching tenant_schemas entry —
+    # it is never a fully-provisioned tenant, so it is always safe to remove.
+    run_psql(
+        "DELETE FROM public.tenant t WHERE t.storage_mode = 'SCHEMA' "
+        "AND t.slug != 'default' "
+        "AND NOT EXISTS (SELECT 1 FROM public.tenant_schemas ts WHERE ts.tenant_id = t.id)"
+    )
+
     # ISS-0090: drop orphaned per-tenant schemas (tests that crash, time out, or
     # get killed mid-run skip their `defer cleanupTenant()` and leak a real
     # Postgres schema + a public.tenant_schemas row). Sweep every registered

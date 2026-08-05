@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-05T16:53:36Z",
+  "last_updated": "2026-08-05T18:00:44Z",
   "next_issue_id": 130,
   "issues": [
     {
@@ -1511,7 +1511,7 @@
     {
       "id": "ISS-0139",
       "title": "adp03_tenant_context_resolution_test.zig:12 uses hardcoded UUID (T010) instead of per-test generation",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MINOR",
       "category": "test-isolation / hardcoded-uuid-residual",
       "run_id": "WF03-gh440-20260805",
@@ -1520,13 +1520,13 @@
         "tests/integration/adp03_tenant_context_resolution_test.zig"
       ],
       "created_at": "2026-08-05T16:53:36Z",
-      "resolved_at": null,
+      "resolved_at": "2026-08-05T17:53:00Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/442"
     },
     {
       "id": "ISS-0140",
       "title": "verify_schema_baseline reports drift: 2 tenant schemas missing Postgres schema objects",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MINOR",
       "category": "schema-baseline / tenant-provisioning-drift",
       "run_id": "WF03-gh440-20260805",
@@ -1536,8 +1536,40 @@
         "bpm_dev tenant registry"
       ],
       "created_at": "2026-08-05T16:53:36Z",
-      "resolved_at": null,
+      "resolved_at": "2026-08-05T17:53:00Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/443"
+    },
+    {
+      "id": "ISS-0141",
+      "title": "definition_retrieval_test.zig TC-PD-07-* tests fail non-deterministically depending on --seed (shared fixture state across test blocks)",
+      "status": "OPEN",
+      "severity": "MINOR",
+      "category": "test-flakiness / order-dependent-shared-state",
+      "run_id": "WF03-gh443-20260805",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/unit/definition_retrieval_test.zig",
+        "src/definition/store.zig"
+      ],
+      "created_at": "2026-08-05T17:58:22Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/445"
+    },
+    {
+      "id": "ISS-0142",
+      "title": "lint_test_isolation T010 BLOCKER count is 217 across 127 files, baseline suppression file is stale",
+      "status": "OPEN",
+      "severity": "MINOR",
+      "category": "test-isolation / stale-lint-baseline",
+      "run_id": "WF03-gh443-20260805",
+      "handoff_id": null,
+      "affected_areas": [
+        "tools/lint_test_isolation.baseline.json",
+        "tests/integration/*.zig"
+      ],
+      "created_at": "2026-08-05T18:00:44Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/446"
     }
   ]
 }

@@ -1,0 +1,23 @@
+{
+  "issue_id": "ISS-0142",
+  "title": "lint_test_isolation.py T010 BLOCKER count is 217 across 127 files, far above ISS-0121/GH#387+#402's reported '<10' — baseline suppression file is stale (dated 2026-05-29, 524 entries) and no longer matches current line numbers/content",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/446",
+  "registered_at": "2026-08-05T18:00:44Z",
+  "registered_by": "WF-03 GH #443 / ISS-0139 fix verification",
+  "related_to": [
+    "ISS-0121"
+  ],
+  "severity": "MINOR",
+  "status": "OPEN",
+  "scope": "tests/integration/*.zig (127 files scanned, 217 BLOCKER + 25 MAJOR findings). Discovered while re-running zig build test-env-verify's C5 check after fixing ISS-0139's single-file adp03 violation and seeing C5 immediately fail again on a DIFFERENT file (adp04_user_tenant_binding_test.zig). Unrelated to ISS-0139/ISS-0140 (GH #442/#443), which are scoped to the tenant-schema-drift issue and its single-file T010 companion finding.",
+  "symptom": "`python tools/lint_test_isolation.py tests/integration` reports `127 file(s) checked. BLOCKER=217 MAJOR=25 MINOR=0`, with `tools/lint_test_isolation.baseline.json` suppressing 24 additional known findings. This means `zig build test-env-verify` check C5 can never report HEALTHY on this codebase in its current state -- fixing one file (as ISS-0139 did for adp03_tenant_context_resolution_test.zig) simply surfaces the linter's next unsuppressed finding, since the check only prints the FIRST blocking violation it hits rather than the full count.",
+  "reproduction": "python tools/lint_test_isolation.py tests/integration    (or) zig build test-env-verify, check C5",
+  "root_cause_analysis": "GH #387 (ISS-0121) and its follow-up GH #402 claimed to drive T010 hardcoded-UUID MAJOR findings from 174 down to <10 across the integration suite (per CHANGELOG.md's ISS-0138 entry cross-reference and gh issue title for #402). However: (1) tools/lint_test_isolation.baseline.json -- the suppression file that lets already-known legacy findings not block the gate -- is dated 2026-05-29T16:26:29Z, predating both #387's and #402's work, and contains 524 entries matched by exact (file, line, message) key; any file edited since baseline generation (including by unrelated changes that shift line numbers) silently drops out of suppression and reappears as a fresh BLOCKER even though the underlying finding was already known/accepted at the time. (2) It is not yet established whether the reported '<10' figure in #402 was measured with or without --no-baseline, or whether large amounts of new test code were added after #402 closed without following the per-test-UUID convention. Both mechanisms would produce exactly today's symptom: a linter that reports 217 current BLOCKERs despite an issue history claiming near-zero.",
+  "acceptance_criteria": [
+    "Determine why the current BLOCKER count (217) is so much higher than #402's reported outcome (<10) -- stale baseline, severity reclassification, new unconvention-following code, or some combination",
+    "Either regenerate tools/lint_test_isolation.baseline.json against current tests/integration/ content (if the 217 findings are legacy/already-accepted), or file per-file/per-cluster follow-up issues and fix them (if they are genuine new violations)",
+    "zig build test-env-verify check C5 passes cleanly (BLOCKER=0) OR the baseline is regenerated to correctly suppress all currently-known legacy findings",
+    "Document in this issue (or a follow-up) whether a CI step should regenerate/validate the baseline automatically so it cannot silently go stale again"
+  ],
+  "evidence_file": "N/A -- see symptom field for exact lint output; full BLOCKER list available via `python tools/lint_test_isolation.py tests/integration`"
+}

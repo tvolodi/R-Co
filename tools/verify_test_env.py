@@ -186,14 +186,30 @@ def check_migrate() -> Check:
     if code != 0:
         tail = "\n         ".join(out.splitlines()[-4:]) or "non-zero exit"
         return Check("C3 zig build migrate", BAD, tail, "resolve the migration failure above")
-    # The guide treats these substrings as baseline drift even on exit 0.
-    lowered = out.lower()
-    for marker in ("already exists", "error", "failed"):
-        if marker in lowered:
+    # The guide treats these as baseline drift even on exit 0. Match only
+    # genuine std.log error/warning lines (which always start with the
+    # "error:"/"warning:" level prefix) or an explicit "already exists" DB
+    # error — not any line that merely *contains* these words as a substring.
+    # GH-443 (ISS-0140): migration filenames like
+    # "081_iss101_timers_failed_status.sql" and
+    # "092_iss303_timer_fire_error_count.sql" contain "failed"/"error" in
+    # their own name, so a bare substring match flagged every clean
+    # "info:   skip  <filename>" line as baseline drift — a permanent false
+    # positive on every healthy run once those files existed.
+    for line in out.splitlines():
+        stripped = line.strip().lower()
+        if stripped.startswith("error:") or stripped.startswith("warning:"):
             return Check(
                 "C3 zig build migrate",
                 BAD,
-                f"exit 0 but output contains {marker!r} — baseline drift",
+                f"exit 0 but output contains a log error/warning — baseline drift: {line.strip()!r}",
+                "python3 tools/verify_schema_baseline.py --auto-fix",
+            )
+        if "already exists" in stripped:
+            return Check(
+                "C3 zig build migrate",
+                BAD,
+                f"exit 0 but output contains 'already exists' — baseline drift: {line.strip()!r}",
                 "python3 tools/verify_schema_baseline.py --auto-fix",
             )
     return Check("C3 zig build migrate", OK, "exit 0, clean output")
