@@ -164,19 +164,37 @@ jobs:
         # just the timeout call, restoring `-e` after, keeps the rest of the
         # script's error handling intact while letting the loop see a
         # non-zero exit instead of dying on it.
+        #
+        # GH #448 / ISS-0143: `$status` alone is not trustworthy. Observed on
+        # PR #447: attempt 2 printed the same "failed command: .../test
+        # --cache-dir=..." build-graph failure line as the timed-out attempt
+        # 1, but `zig build`'s own top-level exit code came back 0 under the
+        # same -j2 contention #436 documents — so the loop declared PASS and
+        # moved on despite the visible failure line in its own output. Every
+        # attempt's combined stdout/stderr is now captured to a file and
+        # scanned for "failed command:" (the marker Zig's build runner always
+        # prints when any child Run step fails) as an independent check —
+        # `$status == 0` is necessary but no longer sufficient for PASS.
         run: |
           set -uo pipefail
           for attempt in 1 2 3; do
             echo "::group::zig build test — attempt $attempt/3"
+            out="$(mktemp)"
             set +e
-            timeout 300 zig build test -j2
-            status=$?
+            timeout 300 zig build test -j2 2>&1 | tee "$out"
+            status="${PIPESTATUS[0]}"
             set -e
             echo "::endgroup::"
-            if [ "$status" -eq 0 ]; then
+            if [ "$status" -eq 0 ] && ! grep -q "failed command:" "$out"; then
+              rm -f "$out"
               exit 0
             fi
-            echo "zig build test attempt $attempt failed or timed out (exit $status)."
+            if [ "$status" -eq 0 ]; then
+              echo "zig build test attempt $attempt reported exit 0 but its output contains 'failed command:' — treating as a failure (GH #448 / ISS-0143)."
+            else
+              echo "zig build test attempt $attempt failed or timed out (exit $status)."
+            fi
+            rm -f "$out"
             if [ "$attempt" -lt 3 ]; then
               echo "Likely ziglang/zig#22453 (concurrent -lc cache-lock deadlock) — retrying."
             fi
