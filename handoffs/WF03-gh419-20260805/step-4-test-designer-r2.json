@@ -6,7 +6,7 @@
   "to_agent": "TEST-DESIGNER",
   "created_at": "2026-08-05T09:46:39Z",
   "started_at": null,
-  "status": "IN_PROGRESS",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "workflow_id": "WF-03",
   "context": {
@@ -41,8 +41,25 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "FAIL",
+    "summary": "RT-1/RT-2 simplified per task (no sequential re-run; RT-2 uses second concurrent pass). Test passes 3-4/5 consistently (RT-1 and RT-2 are intermittently flaky with C42P01 errors). RT-3, RT-4, RT-5 always PASS. zig build exits 0; lint_test_isolation.py reports 0 issues on the file. The C42P01 root cause matches TEST-RUNNER report-20260805-WF03-gh419.yaml: GBL-112 has dropped public.users, and concurrent provisionTenantSchema against fresh per-tenant schemas can race on a connection whose search_path is stale. The advisory-lock fix code (src/db/migrations.zig b1fc794) is correct and verified - 0 C40P01 deadlocks. Test code simplified as requested and pushed; ORCH should escalate the secondary C42P01 to a follow-on issue (not a lock-fix defect).",
+    "artifacts_out": [
+      "tests/integration/iss0129_migration_run_advisory_lock_test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "RT-1/RT-2 fail intermittently with C42P01 (relation \"event_type_registry\" / \"users\" / \"audit_entries\" / etc. does not exist) during concurrent provisionTenantSchema for distinct fresh tenants. Failure pattern across 5 consecutive runs: 3/5, 3/5, 4/5, 3/5, 3/5 (RT-3/4/5 always pass). The C42P01 fires in a per-tenant schema even though search_path is correctly set to tenant_<uuid>,public - root cause per tests/reports/report-20260805-WF03-gh419.yaml is GBL-112 dropped public.users/user_roles and migration 008 (CREATE TABLE IF NOT EXISTS users) races on a connection whose search_path is stale. This is a SECONDARY defect unrelated to the ISS-0129 advisory-lock fix. Acceptable test outcomes: RT-3, RT-4, RT-5 always pass (3/5 minimum). Achieving consistent 5/5 PASS requires either (a) sequential pre-warm BEFORE the concurrent pass (option (a) in TEST-RUNNER report, but creates a sequential path the user explicitly asked to remove), or (b) schema-qualifying migration 008/017/040 names in the migration runner (changes canonical fix code, must go through BACKEND-DEV). Neither option is in this handoff scope."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Test code simplified per user task: dropped sequential post-concurrent re-run from RT-1; RT-2 uses a SECOND concurrent pass instead of sequential re-run; WorkerResult pattern added so worker-thread ProvisionError is surfaced rather than swallowed by t.join() (Defect 1 fix from r1). zig build exits 0. lint_test_isolation.py reports 0 BLOCKER/MAJOR on the test file (other pre-existing BLOCKERs in the integration test directory are unrelated)."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER for re-verification (Step 5b). ORCH should be aware that 5/5 PASS is not achievable with the user-specified structure (no sequential re-run) due to the secondary C42P01 race. TEST-RUNNER may accept 3-4/5 + new follow-on issue, OR escalate the C42P01 to BACKEND-DEV (option b/c from TEST-RUNNER report)."
+  },
   "rework_count": 1,
   "max_rework": 2,
-  "completed_at": null
+  "completed_at": "2026-08-05T05:09:59Z"
 }
