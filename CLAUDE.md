@@ -166,6 +166,11 @@ with open(path, encoding="utf-8-sig") as f:   # utf-8-sig, not utf-8
 (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 ```
 
+**Prefer `python3 tools/utcnow.py`** — it cannot be silently downgraded to local time.
+`(Get-Date).ToString(...)` without `.ToUniversalTime()`, and `datetime.now()` without the
+UTC form, both emit **local time labelled `Z`**: identical in shape, wrong by the host's
+offset. That is the cause of 149 inverted timestamps in this repo (`lint_handoffs.py` H013).
+
 `completed_at` must never precede `started_at`. 148 handoffs currently violate this — one by 30 hours — which silently corrupts every retrospective built on step durations.
 
 **4. Verify before completing any handoff:**

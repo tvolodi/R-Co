@@ -5,8 +5,8 @@
   "from_agent": "ORCH",
   "to_agent": "TEST-DESIGNER",
   "created_at": "2026-08-05T08:48:44Z",
-  "started_at": null,
-  "status": "IN_PROGRESS",
+  "started_at": "2026-08-05T08:48:44Z",
+  "status": "CANCELLED",
   "priority": "NORMAL",
   "workflow_id": "WF-03",
   "context": {
@@ -42,8 +42,14 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "SKIPPED",
+    "summary": "Subagent returned an empty response; ORCH re-dispatched the step as step-4-test-designer-r2.json (handoff b4c7a5f3), which completed. This handoff was superseded and is closed for audit completeness. NOTE: timestamps in this run were written on a local-time-labelled-Z clock (+5h from true UTC); this closure uses the same timebase for internal consistency. See docs/anti-patterns.md (H013).",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Superseded by step-4-test-designer-r2.json \u2014 no further action"
+  },
   "rework_count": 0,
   "max_rework": 2,
-  "completed_at": null
+  "completed_at": "2026-08-05T09:46:00Z"
 }
