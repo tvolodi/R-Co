@@ -154,12 +154,24 @@ jobs:
         # a tuned deadlock threshold). A `timeout`-killed attempt releases its
         # flock on exit, so the next attempt starts from a clean lock state
         # even though it reuses the same on-disk cache.
+        #
+        # GitHub Actions runs `run:` blocks as `bash -e {0}` by default. The
+        # first version of this loop only set `-uo pipefail`, inheriting `-e`
+        # — so `timeout 300 zig build test -j2` returning 124 aborted the
+        # whole script on that line, `status=$?` never ran, and the retry
+        # never fired (confirmed on PR #438: attempt 1 hung, timed out, and
+        # the job failed immediately with no attempt 2). `set +e` around
+        # just the timeout call, restoring `-e` after, keeps the rest of the
+        # script's error handling intact while letting the loop see a
+        # non-zero exit instead of dying on it.
         run: |
           set -uo pipefail
           for attempt in 1 2 3; do
             echo "::group::zig build test — attempt $attempt/3"
+            set +e
             timeout 300 zig build test -j2
             status=$?
+            set -e
             echo "::endgroup::"
             if [ "$status" -eq 0 ]; then
               exit 0
