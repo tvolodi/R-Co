@@ -2,7 +2,8 @@
 //
 // These tests exercise the in-process PluginRegistry with the scope and
 // owner_tenant_id fields added by Stage 13. No database connection is required —
-// all tests operate against an in-memory PluginRegistry.
+// all tests operate against an in-memory PluginRegistry (no BPM_TEST_DB_URL
+// dependency by design; see obs02_metrics_test.zig for the same pattern).
 //
 // Tests (TC-SVC-02-01 through TC-SVC-02-06):
 //   - registerPluginHandler rejects scope=tenant with null owner_tenant_id

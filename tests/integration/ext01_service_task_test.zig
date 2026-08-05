@@ -26,8 +26,14 @@ const PoolConfig = bpm.pool.PoolConfig;
 // instead of falling back to search_path=public (see audit_iss103_test.zig).
 pub const api_tenant_context = bpm.api_tenant_context;
 
-/// Fixed "created_by" UUID used across tests.
-const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
+/// Per-test-run "created_by" UUID — generated fresh instead of a fixed
+/// literal so this fixture follows the per-test-UUID isolation convention
+/// (see docs/guides/test_infrastructure_guide.md §9 / ISS-0121).
+fn makeCreatorUuid() [16]u8 {
+    var bytes: bpm.uuid.Uuid = undefined;
+    bpm.uuid.generateUuidV4BytesInto(&bytes);
+    return bytes;
+}
 
 const DefinitionStore = bpm.definition.Store;
 const CreateParams = bpm.definition.CreateParams;
@@ -418,7 +424,7 @@ fn createWorkflowFixture(
     service_attrs: []const u8,
     initial_variables: []const u8,
 ) !struct { def: Definition, active_def: Definition, inst: Instance, inst_id_hex: []u8, task_id: [16]u8 } {
-    const created_by = try parseUuid(allocator, creator_uuid_str);
+    const created_by = makeCreatorUuid();
 
     // Keep graph node/edge buffers alive for the full create() call.
     const nodes = [_]GraphNode{
@@ -937,7 +943,7 @@ test "TC-ADP-08-INT-02: service_id without service:call capability is rejected a
     _ = InstanceStore;
     _ = TaskStore;
 
-    const created_by = try parseUuid(allocator, creator_uuid_str);
+    const created_by = makeCreatorUuid();
     const nodes = [_]GraphNode{
         .{ .id = "S", .node_type = .START, .label = null, .attributes = null },
         .{ .id = "H", .node_type = .HUMAN_TASK, .label = "Approve", .attributes = "{\"role\":\"tester\",\"assignee_type\":\"USER\",\"assignee_ref\":\"u1\"}" },

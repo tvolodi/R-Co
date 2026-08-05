@@ -94,7 +94,7 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     return pool;
 }
 
-/// Parse a UUID string like "e1030100-0000-0000-0000-000000000001" into raw [16]u8.
+/// Parse a canonical hyphenated UUID string into raw [16]u8.
 fn parseUuid(s: []const u8) ![16]u8 {
     var buf: [32]u8 = undefined;
     var i: usize = 0;

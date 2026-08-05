@@ -29,8 +29,14 @@ const plugin_registry = bpm.plugin_registry;
 
 const valid_service_attrs = "{\"url\":\"http://127.0.0.1:19999/ext03\",\"method\":\"POST\",\"timeout_ms\":1000,\"retry_limit\":1}";
 
-/// Fixed "created_by" UUID used across tests.
-const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
+/// Per-test-run "created_by" UUID — generated fresh instead of a fixed
+/// literal so this fixture follows the per-test-UUID isolation convention
+/// (see docs/guides/test_infrastructure_guide.md §9 / ISS-0121).
+fn makeCreatorUuid() [16]u8 {
+    var bytes: bpm.uuid.Uuid = undefined;
+    bpm.uuid.generateUuidV4BytesInto(&bytes);
+    return bytes;
+}
 
 const PluginMode = enum {
     complete_empty,
@@ -189,7 +195,7 @@ fn createWorkflowFixture(
     service_attrs: []const u8,
     initial_variables: []const u8,
 ) !struct { def: Definition, active_def: Definition, inst: Instance, inst_id_hex: []u8, task_id: [16]u8 } {
-    const created_by = try parseUuid(allocator, creator_uuid_str);
+    const created_by = makeCreatorUuid();
 
     const nodes = [_]GraphNode{
         .{ .id = "S", .node_type = .START, .label = null, .attributes = null },

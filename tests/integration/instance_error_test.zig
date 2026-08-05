@@ -42,9 +42,20 @@ const ErrorType = bpm.engine.ErrorType;
 
 const TaskStore = bpm.tasks.TaskStore;
 
-/// Fixed "created_by" and "actor_id" UUIDs used across tests.
-const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
-const actor_id_str = "87654321-4321-8765-4321-876543218765";
+/// Per-test-run "created_by"/"actor_id" UUIDs — generated fresh instead of
+/// fixed literals so these fixtures follow the per-test-UUID isolation
+/// convention (see docs/guides/test_infrastructure_guide.md §9 / ISS-0121).
+fn makeCreatorUuid() [16]u8 {
+    var bytes: bpm.uuid.Uuid = undefined;
+    bpm.uuid.generateUuidV4BytesInto(&bytes);
+    return bytes;
+}
+
+/// Allocates a fresh canonical UUID string for use as an actor id. Caller
+/// owns the returned slice.
+fn makeActorIdStr(allocator: std.mem.Allocator) ![]const u8 {
+    return bpm.uuid.newUuidV4(allocator);
+}
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -158,7 +169,7 @@ test "TC-EE-10-01: gateway no-match triggers ERROR; EXECUTION_ERROR event append
     };
     const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const created_by = try parseUuid(allocator, creator_uuid_str);
+    const created_by = makeCreatorUuid();
     const def = try def_store.create(allocator, CreateParams{
         .name = "EE10-TC01",
         .version = "1.0",
@@ -288,7 +299,7 @@ test "TC-EE-10-02: schema violation triggers ERROR; merge not applied" {
     };
     const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const created_by = try parseUuid(allocator, creator_uuid_str);
+    const created_by = makeCreatorUuid();
     const def = try def_store.create(allocator, CreateParams{
         .name = "EE10-TC02",
         .version = "1.0",
@@ -431,7 +442,7 @@ test "TC-EE-10-03: ERROR instance rejects task completion with InstanceInError" 
     };
     const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const created_by = try parseUuid(allocator, creator_uuid_str);
+    const created_by = makeCreatorUuid();
     const def = try def_store.create(allocator, CreateParams{
         .name = "EE10-TC03",
         .version = "1.0",
@@ -473,6 +484,8 @@ test "TC-EE-10-03: ERROR instance rejects task completion with InstanceInError" 
     const task_id = tasks_list[0].task_id;
 
     // Force the instance to ERROR status directly via setInstanceError.
+    const actor_id_str_1 = try makeActorIdStr(allocator);
+    defer allocator.free(actor_id_str_1);
     try inst_store.setInstanceError(allocator, SetInstanceErrorArgs{
         .instance_id = inst.instance_id,
         .error_type = .NO_MATCHING_EDGE,
@@ -481,7 +494,7 @@ test "TC-EE-10-03: ERROR instance rejects task completion with InstanceInError" 
         .reason = "forced to ERROR for TC-EE-10-03",
         .variable_state = "{}",
         .evaluated_conditions = null,
-        .actor_id = actor_id_str,
+        .actor_id = actor_id_str_1,
     });
 
     // Verify instance is now in ERROR status before attempting completion.
@@ -574,7 +587,7 @@ test "TC-EE-10-04: ERROR transition is atomic — both event and projection visi
     };
     const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const created_by = try parseUuid(allocator, creator_uuid_str);
+    const created_by = makeCreatorUuid();
     const def = try def_store.create(allocator, CreateParams{
         .name = "EE10-TC04",
         .version = "1.0",
@@ -607,6 +620,8 @@ test "TC-EE-10-04: ERROR transition is atomic — both event and projection visi
     defer allocator.free(inst_id_hex);
 
     // Set instance to ERROR.
+    const actor_id_str_2 = try makeActorIdStr(allocator);
+    defer allocator.free(actor_id_str_2);
     try inst_store.setInstanceError(allocator, SetInstanceErrorArgs{
         .instance_id = inst.instance_id,
         .error_type = .NO_MATCHING_EDGE,
@@ -615,7 +630,7 @@ test "TC-EE-10-04: ERROR transition is atomic — both event and projection visi
         .reason = "atomicity test",
         .variable_state = "{\"k\":\"v\"}",
         .evaluated_conditions = null,
-        .actor_id = actor_id_str,
+        .actor_id = actor_id_str_2,
     });
 
     // After setInstanceError returns, use a fresh pool connection to verify
@@ -682,7 +697,7 @@ test "TC-EE-10-05: concurrent ERROR race — exactly one EXECUTION_ERROR event" 
     };
     const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const created_by = try parseUuid(allocator, creator_uuid_str);
+    const created_by = makeCreatorUuid();
     const def = try def_store.create(allocator, CreateParams{
         .name = "EE10-TC05",
         .version = "1.0",
@@ -825,7 +840,7 @@ test "TC-EE-10-06: EXECUTION_ERROR payload contains all required fields" {
     };
     const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const created_by = try parseUuid(allocator, creator_uuid_str);
+    const created_by = makeCreatorUuid();
     const def = try def_store.create(allocator, CreateParams{
         .name = "EE10-TC06",
         .version = "1.0",
@@ -858,6 +873,8 @@ test "TC-EE-10-06: EXECUTION_ERROR payload contains all required fields" {
     defer allocator.free(inst_id_hex);
 
     // Call setInstanceError with all required fields populated.
+    const actor_id_str_3 = try makeActorIdStr(allocator);
+    defer allocator.free(actor_id_str_3);
     try inst_store.setInstanceError(allocator, SetInstanceErrorArgs{
         .instance_id = inst.instance_id,
         .error_type = .NO_MATCHING_EDGE,
@@ -866,7 +883,7 @@ test "TC-EE-10-06: EXECUTION_ERROR payload contains all required fields" {
         .reason = "No outgoing edge condition matched and no default edge defined",
         .variable_state = "{\"foo\":\"bar\"}",
         .evaluated_conditions = null,
-        .actor_id = actor_id_str,
+        .actor_id = actor_id_str_3,
     });
 
     // Retrieve and inspect the EXECUTION_ERROR event payload.

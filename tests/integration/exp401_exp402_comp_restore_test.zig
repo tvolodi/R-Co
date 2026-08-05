@@ -48,8 +48,6 @@ const reconstruction_mod = bpm.reconstruction;
 
 const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
-/// Fixed "created_by" UUID used across tests.
-const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
 
 fn getTestDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env = portable_env.globalEnviron();
@@ -101,8 +99,15 @@ fn hasCode(violations: []const Violation, code: []const u8) bool {
     return false;
 }
 
+/// Per-test-run "created_by" UUID — generated fresh instead of a fixed
+/// literal so this fixture follows the per-test-UUID isolation convention
+/// (see docs/guides/test_infrastructure_guide.md §9 / ISS-0121).
 fn makeCreatorUuid() ![16]u8 {
-    return parseUuid(creator_uuid_str);
+    var raw: [16]u8 = undefined;
+    fillRandom(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40;
+    raw[8] = (raw[8] & 0x3f) | 0x80;
+    return raw;
 }
 
 fn makeFixtureUuidString(allocator: std.mem.Allocator) ![]u8 {

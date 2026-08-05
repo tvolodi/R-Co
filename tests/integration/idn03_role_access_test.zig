@@ -15,8 +15,14 @@ const snapshot_mod = bpm.snapshot;
 const instance_mod = bpm.engine;
 const task_mod = bpm.tasks;
 
-/// Fixed "created_by" UUID used across tests.
-const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
+/// Per-test-run "created_by" UUID — generated fresh instead of a fixed
+/// literal so this fixture follows the per-test-UUID isolation convention
+/// (see docs/guides/test_infrastructure_guide.md §9 / ISS-0121).
+fn makeCreatorUuid() [16]u8 {
+    var bytes: bpm.uuid.Uuid = undefined;
+    bpm.uuid.generateUuidV4BytesInto(&bytes);
+    return bytes;
+}
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env = portable_env.globalEnviron();
@@ -196,7 +202,7 @@ fn makeTaskFixture(
     };
     const graph = definition_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const created_by = try parseUuid(creator_uuid_str);
+    const created_by = makeCreatorUuid();
     const def = try def_store.create(allocator, .{
         .name = def_name,
         .version = "1.0",

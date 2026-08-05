@@ -1,0 +1,81 @@
+{
+  "handoff_id": "c39a5ff3-206e-424b-be37-35e446fc5e3d",
+  "run_id": "WF03-gh446-lint-baseline-20260805",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-gh446-lint-baseline-20260805/step-00-backend-dev-git-setup.json",
+  "created_at": "2026-08-05T18:55:48Z",
+  "started_at": "2026-08-05T18:56:41Z",
+  "completed_at": "2026-08-05T20:04:25Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0142.json"
+    ]
+  },
+  "task": {
+    "description": "fn:git-setup for run_id=WF03-gh446-lint-baseline-20260805, branch feature/WF03-gh446-lint-baseline-20260805",
+    "acceptance_criteria": [
+      "git pull --ff-only exits 0",
+      "git branch --show-current == feature/WF03-gh446-lint-baseline-20260805",
+      "git push -u origin feature/WF03-gh446-lint-baseline-20260805 exits 0"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "git-setup completed (branch feature/WF03-gh446-lint-baseline-20260805 created and pushed). Diagnosed and resolved GH #446 / ISS-0142: diffed the current --no-baseline lint_test_isolation.py scan (266 findings) against the stale 2026-05-29 baseline by (file, code, message), finding 218/266 (82%) were line-number drift on already-known findings (legitimate baseline maintenance) and only 48 were genuinely new. Fixed 41 of the 48 in source (per-test UUID generation across 12 test files, one T020 module-var fix, T050 doc-comment fixes for 5 TestHarness-based files). Triaged 7 as legitimate non-fixes (in-memory actor markers never persisted to DB, a deliberate validation-sentinel, and an already-precedented synchronized process-cache in helpers.zig) and included them in the regenerated baseline (225 entries) with full rationale recorded. python tools/lint_test_isolation.py tests/integration now exits 0 (BLOCKER=0, MAJOR=0). zig build test-env-verify reports all 7 checks PASS (HEALTHY), including target check C5. Also fixed an incidental C4 schema-baseline failure (2 leaked pre-existing tenant fixture rows, unrelated to this task) per Unblock-Everything. Discovered and filed a new, separate issue (ISS-0144 / GH #454) for a large pre-existing pattern of non-deterministic zig build test-integration failures across the whole suite when run concurrently -- confirmed pre-existing via an isolated A/B comparison against unmodified main-branch test files -- left OPEN as out of scope for this lint-baseline fix.",
+    "artifacts_out": [
+      "tools/lint_test_isolation.baseline.json",
+      "tests/integration/entity_subsystem_test.zig",
+      "tests/integration/exp103_instance_waits_test.zig",
+      "tests/integration/exp401_exp402_comp_restore_test.zig",
+      "tests/integration/exp601_tier_quota_test.zig",
+      "tests/integration/ext01_service_task_test.zig",
+      "tests/integration/ext03_plugin_integration_test.zig",
+      "tests/integration/idn02_group_management_test.zig",
+      "tests/integration/idn03_role_access_test.zig",
+      "tests/integration/instance_error_test.zig",
+      "tests/integration/iss0602_cross_process_child_a.zig",
+      "tests/integration/iss0602_cross_process_child_b.zig",
+      "tests/integration/iss0602_same_process_isolation_test.zig",
+      "tests/integration/iss601_state_snapshots_test.zig",
+      "tests/integration/onboarding_realm_guard_test.zig",
+      "tests/integration/sch02_timer_polling_test.zig",
+      "tests/integration/svc01_service_catalog_scope_test.zig",
+      "tests/integration/svc02_plugin_dispatch_scope_test.zig",
+      "tests/integration/svc03_definition_activation_scope_test.zig",
+      "docs/issues/ISS-0142.json",
+      "docs/issues/ISS-0144.json",
+      "docs/issues/issue_index.json",
+      "CHANGELOG.md"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0144",
+        "severity": "MAJOR",
+        "description": "zig build test-integration's ~19-binary concurrent suite has widespread non-deterministic failures from cross-binary schema/tenant races, unrelated to this fix; filed as GitHub #454, left OPEN.",
+        "affected_requirement": null
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh446-lint-baseline-20260805",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-gh446-lint-baseline-20260805",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Commit work to feature branch, then Step Final (fn:git-merge): create PR referencing GH #446, verify CI, squash-merge, delete branch, return to clean main."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -592,8 +592,11 @@ test "svc01: registerService rejects scope=global with owner_tenant_id" {
     var svc_id_buf: [28]u8 = undefined;
     const svc_id = try std.fmt.bufPrint(&svc_id_buf, "svc-bad2-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
 
-    // Parsing a fixed UUID for the spurious owner.
-    const some_tid = try parseUuid36("b3dd1111-0000-0000-0000-000000000001");
+    // Per-test-generated UUID for the spurious owner (see
+    // docs/guides/test_infrastructure_guide.md §9 / ISS-0121 — hardcoded
+    // literals are forbidden even for "doesn't matter" fixture values).
+    var some_tid: [16]u8 = undefined;
+    fillRandom(&some_tid);
 
     try std.testing.expectError(
         CatalogError.InvalidScopeConstraint,
