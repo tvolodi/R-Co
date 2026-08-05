@@ -221,9 +221,15 @@ pub fn build(b: *std.Build) void {
         },
     });
 
-    const db_tests = b.addTest(.{
+    // bpm_src_mod unit test group, aggregated into one compile unit via
+    // tests/unit/bpm_src_test_root.zig. Part of the ISS-0136 mitigation
+    // (see graph_test_root.zig commit for full rationale): bpm_src_mod is
+    // libc-linked, so collapsing 8 targets into 1 directly reduces the
+    // concurrent -lc compile-job count. engine_test.zig also uses
+    // bpm_src_mod but is kept standalone — see bpm_src_test_root.zig for why.
+    const bpm_src_tests = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/db_test.zig"),
+            .root_source_file = b.path("tests/unit/bpm_src_test_root.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
@@ -231,7 +237,9 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
-    const run_db_tests = b.addRunArtifact(db_tests);
+    const run_bpm_src_tests = b.addRunArtifact(bpm_src_tests);
+    const test_bpm_src_step = b.step("test-bpm-src", "Run db/EE-11/scheduler/EXT-01/EXT-03/effects unit tests only");
+    test_bpm_src_step.dependOn(&run_bpm_src_tests.step);
 
     const definition_retrieval_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -357,18 +365,8 @@ pub fn build(b: *std.Build) void {
     });
     const run_engine_ee09_tests = b.addRunArtifact(engine_ee09_tests);
 
-    // EE-11: Reconstruction — compile-time structural checks (no DB required)
-    const engine_ee11_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/reconstruction_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_src_mod },
-            },
-        }),
-    });
-    const run_engine_ee11_tests = b.addRunArtifact(engine_ee11_tests);
+    // EE-11 (reconstruction_test.zig) is part of the bpm_src_tests
+    // aggregator (tests/unit/bpm_src_test_root.zig) declared above.
 
     // API-01: REST conventions unit tests (pure functions — no DB, no network)
     // Single-module root avoids "file exists in two modules" conflicts
@@ -529,46 +527,13 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc02_keycloak_adapter_tests = b.addRunArtifact(oidc02_keycloak_adapter_tests);
 
-    // SCH-05: Missed timer recovery — pure function unit tests (no DB)
-    const sch05_unit_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/sch05_missed_timer_recovery_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_src_mod },
-            },
-        }),
-    });
-    const run_sch05_unit_tests = b.addRunArtifact(sch05_unit_tests);
-
-    // SCH-06: Timer jitter — pure function unit tests (no DB)
-    const sch06_unit_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/sch06_timer_jitter_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_src_mod },
-            },
-        }),
-    });
-    const run_sch06_unit_tests = b.addRunArtifact(sch06_unit_tests);
-
-    // SCH-302: Startup sweep advisory lock — pure function unit tests (no DB)
-    const sch302_unit_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/sch302_startup_sweep_lock_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_src_mod },
-            },
-        }),
-    });
-    const run_sch302_unit_tests = b.addRunArtifact(sch302_unit_tests);
+    // SCH-05/SCH-06/SCH-302 are part of the bpm_src_tests aggregator
+    // (tests/unit/bpm_src_test_root.zig) declared above.
 
     // SCH-303: Timer DLQ unit tests (migration file presence + source inspection, no DB)
+    // NOT part of the bpm_src_tests aggregator: this file has no imports at
+    // all (unlike the rest of the group, which all import bpm_src_mod) and
+    // needs setCwd — structurally different, kept standalone.
     const sch303_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/unit/sch303_timer_dlq_unit_test.zig"),
@@ -580,31 +545,8 @@ pub fn build(b: *std.Build) void {
     const run_sch303_unit_tests = b.addRunArtifact(sch303_unit_tests);
     run_sch303_unit_tests.setCwd(b.path("."));
 
-    // EXT-01: service task config/retry helper unit tests (pure, no DB)
-    const service_task_unit_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/service_task_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_src_mod },
-            },
-        }),
-    });
-    const run_service_task_unit_tests = b.addRunArtifact(service_task_unit_tests);
-
-    // EXT-03: plugin interface and registry unit tests (pure, no DB)
-    const ext03_plugin_unit_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/ext03_plugin_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_src_mod },
-            },
-        }),
-    });
-    const run_ext03_plugin_unit_tests = b.addRunArtifact(ext03_plugin_unit_tests);
+    // EXT-01 (service_task_test.zig) and EXT-03 (ext03_plugin_test.zig) are
+    // part of the bpm_src_tests aggregator declared above.
 
     // EXP-701: static sandbox threat model document gate checks (no DB, no network)
     const exp701_doc_embed_mod = b.createModule(.{
@@ -739,21 +681,10 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run all unit tests");
     test_step.dependOn(&run_unit_tests.step);
-    test_step.dependOn(&run_db_tests.step);
+    test_step.dependOn(&run_bpm_src_tests.step);
     test_step.dependOn(&run_crypto_iss0074_tests.step);
-    // EXP-301/302/303: Effects subsystem unit tests (pure — no DB, no network)
-    const effects_unit_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/effects/test_effects.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_src_mod },
-            },
-        }),
-    });
-    const run_effects_unit_tests = b.addRunArtifact(effects_unit_tests);
-    test_step.dependOn(&run_effects_unit_tests.step);
+    // EXP-301/302/303 (effects/test_effects.zig) is part of the
+    // bpm_src_tests aggregator declared above.
 
     test_step.dependOn(&run_event_store_tests.step);
     test_step.dependOn(&run_graph_tests.step);
@@ -767,7 +698,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_engine_ee05_tests.step);
     test_step.dependOn(&run_engine_ee07_tests.step);
     test_step.dependOn(&run_engine_ee09_tests.step);
-    test_step.dependOn(&run_engine_ee11_tests.step);
     test_step.dependOn(&run_engine_tests.step);
     test_step.dependOn(&run_api_tests.step);
     test_step.dependOn(&run_api02_handler_tests.step);
@@ -776,12 +706,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_obs04_timeline_tests.step);
     test_step.dependOn(&run_api08_auth_tests.step);
     test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);
-    test_step.dependOn(&run_sch05_unit_tests.step);
-    test_step.dependOn(&run_sch06_unit_tests.step);
-    test_step.dependOn(&run_sch302_unit_tests.step);
     test_step.dependOn(&run_sch303_unit_tests.step);
-    test_step.dependOn(&run_service_task_unit_tests.step);
-    test_step.dependOn(&run_ext03_plugin_unit_tests.step);
     test_step.dependOn(&run_exp701_sandbox_threatmodel_tests.step);
     test_step.dependOn(&run_dsl01_parser_tests.step);
     test_step.dependOn(&run_expr_error_recovery_tests.step);
