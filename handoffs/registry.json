@@ -889,6 +889,29 @@
       "status": "COMPLETED",
       "stage": "Issue Resolving",
       "completed_at": "2026-08-05T10:49:05Z"
+    },
+    {
+      "handoff_id": "deae22e5-be17-4b98-adc5-a480afbbd0ca",
+      "file": "handoffs/WF03-ISS-0135-macos-nanotimestamp/step-01-issue-fixer.json",
+      "run_id": "WF03-ISS-0135-macos-nanotimestamp",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-05T10:32:41Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "6ea7d234-a010-44f9-b523-6e72f7a53807",
+      "file": "handoffs/WF03-ISS-0135-macos-nanotimestamp/step-02-backend-dev.json",
+      "run_id": "WF03-ISS-0135-macos-nanotimestamp",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-05T10:32:41Z",
+      "status": "COMPLETED",
+      "stage": null
     }
-  ]
+  ],
+  "last_updated": "2026-08-05T10:32:41Z"
 }
