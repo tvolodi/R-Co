@@ -181,7 +181,12 @@ jobs:
             echo "::group::zig build test — attempt $attempt/3"
             out="$(mktemp)"
             set +e
-            timeout 300 zig build test -j2 2>&1 | tee "$out"
+            # --summary all: on failure, names which addTest target actually
+            # failed (GH #448 / ISS-0143 found that the default 'failures'
+            # summary mode prints only a bare "failed command: .../test ..."
+            # with no indication of which of the ~15 aggregated test binaries
+            # it was, or what the underlying error was).
+            timeout 300 zig build test -j2 --summary all 2>&1 | tee "$out"
             status="${PIPESTATUS[0]}"
             set -e
             echo "::endgroup::"
