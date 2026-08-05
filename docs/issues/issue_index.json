@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-05T18:15:31Z",
+  "last_updated": "2026-08-05T19:23:20Z",
   "next_issue_id": 130,
   "issues": [
     {
@@ -1542,7 +1542,7 @@
     {
       "id": "ISS-0141",
       "title": "definition_retrieval_test.zig TC-PD-07-* tests fail non-deterministically depending on --seed (shared fixture state across test blocks)",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MINOR",
       "category": "test-flakiness / order-dependent-shared-state",
       "run_id": "WF03-gh443-20260805",
@@ -1552,7 +1552,7 @@
         "src/definition/store.zig"
       ],
       "created_at": "2026-08-05T17:58:22Z",
-      "resolved_at": null,
+      "resolved_at": "2026-08-05T19:23:20Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/445"
     },
     {
