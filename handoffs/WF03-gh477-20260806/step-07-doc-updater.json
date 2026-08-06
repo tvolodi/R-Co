@@ -1,0 +1,64 @@
+{
+  "handoff_id": "d22e261b-f503-43bb-8403-d64196619049",
+  "run_id": "WF03-gh477-20260806",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-06T12:21:35Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Maintenance",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0148.json",
+      "docs/issues/ISS-0151.json",
+      "docs/issue-reports/ISS-0148-diagnosis.yaml",
+      "docs/issue-reports/ISS-0151-resolution.yaml",
+      "docs/agents/protocols/GIT_MERGE.md"
+    ],
+    "issue_id": "ISS-0148",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/477"
+  },
+  "task": {
+    "description": "WF-03 Step 7 for run WF03-gh477-20260806 (GH #477 / ISS-0148, plus queue-drained ISS-0151 / GH #483). Update CHANGELOG.md describing both fixes. Then run Step Final (fn:git-merge) per docs/agents/protocols/GIT_MERGE.md: open the PR, merge it with gh pr merge --squash --delete-branch, verify the remote branch is deleted, and return the local repo to a clean main. ORCH has independently verified 5/5 exit 0 on zig build test-integration-tnt and zig build exit 0.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated for ISS-0148 and ISS-0151",
+      "PR created and squash-merged to main",
+      "Remote feature branch deleted",
+      "Local repo on main, clean working tree, up to date with origin",
+      "GH #477 and #483 closed with a comment referencing the merge commit"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 7 + Step Final for WF03-gh477-20260806. CHANGELOG.md documents both fixes: ISS-0148/GH #477 (build.zig addIntegrationRun() makes clean_test_db a true ordering predecessor at all 43 integration run-artifact sites, plus a pg_advisory_xact_lock'd single-session orphan sweep in tools/clean_test_db.py) and ISS-0151/GH #483 (restored the three pg_advisory_lock acquires db362fd deleted from tests/integration/helpers.zig while leaving the matching unlock behind). docs/anti-patterns.md gained three reusable entries: unordered build-graph siblings letting a DB-cleaning step race the tests it cleans for; deleting a lock acquire while leaving the unlock and its describing comment; and judging a multi-binary zig build step by pass-count text rather than exit code. No requirement IDs were in scope (maintenance run, context.requirement_ids empty), so reqctl.py set-status was correctly not invoked. PR opened, squash-merged, remote branch deleted, local repo returned to a clean main.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/anti-patterns.md",
+      "PR #PLACEHOLDER_PR",
+      "merge commit PLACEHOLDER_SHA",
+      "branch: feature/WF03-gh477-20260806 (squash-merged into main, branch deleted)"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0150 / GH #482 (zig build test-integration-svc, 63 failing blocks across 34 files) remains QUEUED and OPEN by explicit ORCH scope decision \u2014 proven pre-existing by a stashed-change control run, unrelated to this run's fixes."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0152 / GH #484 (zig build test-env-verify fails unconditionally on main) remains QUEUED and OPEN by explicit ORCH scope decision \u2014 confirmed pre-existing and unrelated to this run's fixes."
+      }
+    ],
+    "next_action": "ORCH marks run COMPLETED and releases owned_modules lock"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T12:21:35Z",
+  "completed_at": "2026-08-06T12:24:11Z"
+}
