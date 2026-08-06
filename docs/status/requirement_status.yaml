@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-06T12:41:22Z'
+last_updated: '2026-08-06T18:30:18Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -167,7 +167,7 @@ requirements:
     priority: MUST
     title: Tenant column on definition, instance, and audit tables
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-02.md
     test_run: tests/reports/report-20260525T215115Z-WF02-adp02-20260526-step04.json
     tested_at: '2026-05-25'
@@ -212,7 +212,7 @@ requirements:
     priority: MUST
     title: External identity linkage for users
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-04a.md
     test_run: tests/reports/WF02-adp04a-20260526-step-04-test-runner.md
     tested_at: '2026-05-26'
@@ -226,7 +226,7 @@ requirements:
     priority: MUST
     title: Tenant realm binding for OIDC foundations
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-04b.md
     test_run: tests/reports/report-20260526T055349Z-WF02-adp04b-20260526-step04b-rework1.json
     tested_at: '2026-05-26'
@@ -240,7 +240,7 @@ requirements:
     priority: MUST
     title: Artifact hash reference on instance
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-05.md
     test_run: tests/reports/report-20260526T070227Z-WF02-adp05-20260526-step04b.json
     tested_at: '2026-05-26'
@@ -254,7 +254,7 @@ requirements:
     priority: SHOULD
     title: Pipeline run correlation on audit and events
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-06.md
     test_run: tests/reports/report-20260526T085420Z-WF02-adp06-20260526-step04b.json
     tested_at: '2026-05-26'
@@ -305,7 +305,7 @@ requirements:
     priority: MUST
     title: Tamper-evident audit chain
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-09.md
     test_run: tests/reports/report-20260526T132149Z-WF02-adp09-20260526-step04b-rework1.json
     tested_at: '2026-05-26'
@@ -319,7 +319,7 @@ requirements:
     priority: MUST
     title: Agent IO capture audit
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-10.md
     test_run: tests/reports/report-20260526T151827Z-WF02-adp10-20260526-step04.json
     tested_at: '2026-05-26'
@@ -394,7 +394,7 @@ requirements:
     title: Instance management
     implemented_in:
     - src/api/routes/instances.zig
-    - src/instance/store.zig
+    - src/engine/instance.zig
     test_spec: tests/specs/API-03.md
     test_run: tests/reports/WF02-api03-20260522-test-report.json
     tested_at: '2026-05-22'
@@ -1010,14 +1010,13 @@ requirements:
     stage: 14
     priority: MUST
     title: Process definition promotion from test tenant to production tenant
-    implemented_in:
-    - WF02-env-batch1-20260610
     test_spec: tests/specs/ENV-03.md
     test_run: tests/reports/report-20260611-WF02-env-batch1-20260610.yaml
     tested_at: '2026-06-11'
     released_at: '2026-06-11T00:00:00Z'
     release_run: WF02-env-batch1-20260610
     release_decision: docs/status/release-stage14-env-batch1-20260611.yaml
+    note: Implemented in run WF02-env-batch1-20260610; source files not individually tracked.
   ENV-04:
     status: PENDING
     stage: 14
@@ -1032,14 +1031,13 @@ requirements:
     stage: 14
     priority: SHOULD
     title: Test tenant lifecycle management
-    implemented_in:
-    - WF02-env-batch1-20260610
     test_spec: tests/specs/ENV-05.md
     test_run: tests/reports/report-20260611-WF02-env-batch1-20260610.yaml
     tested_at: '2026-06-11'
     released_at: '2026-06-11T00:00:00Z'
     release_run: WF02-env-batch1-20260610
     release_decision: docs/status/release-stage14-env-batch1-20260611.yaml
+    note: Implemented in run WF02-env-batch1-20260610; source files not individually tracked.
   ES-01:
     status: RELEASED
     stage: 1
@@ -1169,7 +1167,7 @@ requirements:
     stage: Expansion
     title: Entity definition format + Repository artifact
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     - tools/verify_schema_baseline.py
     test_spec: tests/specs/EXP-201.md
     test_run: tests/reports/report-2026-06-14-WF02-exp201-202-20260612-step04-rework.yaml
@@ -1183,7 +1181,7 @@ requirements:
     stage: Expansion
     title: Entity command API -> event family
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/EXP-202.md
     test_run: tests/reports/report-2026-06-14-WF02-exp201-202-20260612-step04-rework.yaml
     tested_at: '2026-06-14'
@@ -1547,8 +1545,8 @@ requirements:
     status: TESTED
     title: Change `audit_log.resource_id` to `TEXT`
     implemented_in:
-    - migrations/GBL-081_iss103_audit_resource_id_text.sql
-    - migrations/GBL-082_fix_audit_chain_resource_id_text.sql
+    - migrations/GBL-120_iss103_audit_resource_id_text.sql
+    - migrations/GBL-121_fix_audit_chain_resource_id_text.sql
     - tests/integration/audit_iss103_test.zig
     note: 'Test coverage restored by ISS-0093 fix (removal of stale GBL-081 compatibility shim in tests/integration/helpers.zig
       that was disabling audit triggers). TC-ISS-103-INT-01..04 in tests/integration/audit_iss103_test.zig
@@ -1655,14 +1653,12 @@ requirements:
   ISS-204:
     status: RELEASED
     title: Write `audit_log` inside the state-change transaction
-    implemented_in: feature/WF02-iss204-206-20260611
   ISS-205:
     status: UNTRACKED
     title: Webhook transactional outbox (true at-least-once)
   ISS-206:
     status: RELEASED
     title: Engine token multiset + persisted parallel-join counters
-    implemented_in: feature/WF02-iss204-206-20260611
   ISS-207:
     status: UNTRACKED
     title: Convergent `EXECUTION_ERROR` retry (EE-10)
@@ -1675,7 +1671,7 @@ requirements:
     priority: MUST
     title: Remove redundant advisory lock from timer-claim path
     implemented_in:
-    - src/scheduler/timer.zig
+    - src/scheduler/scheduler.zig
     released_at: '2026-06-12'
     release_run: WF02-epic3-scheduler-20260612
     release_decision: docs/status/release-epic3-scheduler-20260612.yaml
@@ -1685,7 +1681,7 @@ requirements:
     priority: MUST
     title: Guard startup missed-timer sweep with advisory lock
     implemented_in:
-    - src/scheduler/timer.zig
+    - src/scheduler/scheduler.zig
     released_at: '2026-06-12'
     release_run: WF02-epic3-scheduler-20260612
     release_decision: docs/status/release-epic3-scheduler-20260612.yaml
@@ -1695,7 +1691,7 @@ requirements:
     priority: MUST
     title: Timer firing exhaustion routing to DLQ
     implemented_in:
-    - src/scheduler/timer.zig
+    - src/scheduler/scheduler.zig
     - migrations/092_iss303_timer_fire_error_count.sql
     released_at: '2026-06-12'
     release_run: WF02-epic3-scheduler-20260612
@@ -1736,7 +1732,7 @@ requirements:
     stage: Epic 5
     title: Remove legacy tenant_id/RLS predicates (SPT-03)
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     - tools/verify_schema_baseline.py
     test_spec: tests/specs/ISS-503.md
     released_at: '2026-07-30T11:13:21Z'
@@ -2313,7 +2309,7 @@ requirements:
     priority: MUST
     title: Attribute synchronisation
     implemented_in:
-    - src/oidc/attribute_sync.zig (inferred)
+    - src/oidc/jit_provisioning.zig
     test_spec: tests/specs/OIDC-10.md
     released_at: docs/status/release-OIDC-10-20260527.json
     release_run: WF02-oidc10-20260527
@@ -3077,7 +3073,7 @@ requirements:
     priority: MUST
     title: Create artifact
     implemented_in:
-    - src/api/routes/repository.zig
+    - src/api/routes/services.zig
     - src/repository/artifacts.zig
     test_spec: tests/specs/REPO-01-13.md
     released_at: '2026-05-28T07:05:58Z'
@@ -3089,7 +3085,7 @@ requirements:
     priority: MUST
     title: List versions
     implemented_in:
-    - src/api/routes/repository.zig
+    - src/api/routes/services.zig
     - src/repository/artifacts.zig
     test_spec: tests/specs/REPO-01-13.md
     released_at: '2026-05-28T07:05:58Z'
@@ -3101,7 +3097,7 @@ requirements:
     priority: MUST
     title: Tenant activations
     implemented_in:
-    - src/api/routes/repository.zig
+    - src/api/routes/services.zig
     - src/repository/activation.zig
     test_spec: tests/specs/REPO-01-13.md
     released_at: '2026-05-28T07:05:58Z'
@@ -3238,8 +3234,6 @@ requirements:
     stage: F1
     priority: MUST
     title: Login page
-    implemented_in:
-    - web/src/pages/LoginPage.tsx
     released_at: '2026-05-27'
     release_run: WF02-f1-shell
   SH-04:
@@ -3564,7 +3558,7 @@ requirements:
     priority: MUST
     title: Service catalog entries carry a scope and owner tenant
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     - tests/integration/helpers.zig
     test_spec: tests/specs/SVC-01.md
     test_run: tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml
@@ -3578,34 +3572,32 @@ requirements:
     stage: 13
     priority: MUST
     title: Plugin handlers declare scope and optional owner tenant at registration
-    implemented_in:
-    - WF02-svc-batch1-20260610
     test_spec: tests/specs/SVC-02.md
     test_run: tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml
     tested_at: '2026-06-10'
     released_at: '2026-06-11T00:00:00Z'
     release_run: WF02-svc-batch1-20260610
     release_decision: docs/status/release-stage13-svc-batch1-20260610.yaml
+    note: Implemented in run WF02-svc-batch1-20260610; source files not individually tracked.
   SVC-03:
     status: RELEASED
     stage: 13
     priority: MUST
     title: Definition activation validates service and plugin availability
-    implemented_in:
-    - WF02-svc-batch1-20260610
     test_spec: tests/specs/SVC-03.md
     test_run: tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml
     tested_at: '2026-06-10'
     released_at: '2026-06-11T00:00:00Z'
     release_run: WF02-svc-batch1-20260610
     release_decision: docs/status/release-stage13-svc-batch1-20260610.yaml
+    note: Implemented in run WF02-svc-batch1-20260610; source files not individually tracked.
   SVC-04:
     status: RELEASED
     stage: 13
     priority: MUST
     title: Admin UI and API for service catalog scope management
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     - tests/integration/helpers.zig
     test_spec: tests/specs/SVC-04.md
     test_run: tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml
@@ -3648,7 +3640,6 @@ requirements:
     title: Task detail panel display
     implemented_in:
     - web/src/pages/tasks/TaskInboxPage.tsx
-    - web/src/components/tasks/TaskDetailPanel.tsx
     test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
     test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
     tested_at: '2026-05-30'
@@ -3661,8 +3652,7 @@ requirements:
     priority: MUST
     title: Dynamic form schema rendering
     implemented_in:
-    - web/src/components/tasks/TaskDetailPanel.tsx
-    - web/src/components/tasks/DynamicForm.tsx
+    - web/src/components/forms/DynamicFormRenderer.tsx
     test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
     test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
     tested_at: '2026-05-30'
@@ -3706,7 +3696,6 @@ requirements:
     title: Reassign tasks (operator)
     implemented_in:
     - web/src/hooks/useTasks.ts
-    - web/src/components/tasks/ReassignDialog.tsx
     - src/api/routes/tasks.zig
     test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
     test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
@@ -3734,7 +3723,6 @@ requirements:
     priority: SHOULD
     title: Navigation badge count
     implemented_in:
-    - web/src/components/layout/Sidebar.tsx
     - web/src/hooks/useTasks.ts
     test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
     test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
@@ -3749,7 +3737,6 @@ requirements:
     title: Escalation indicator
     implemented_in:
     - web/src/pages/tasks/TaskInboxPage.tsx
-    - web/src/components/tasks/TaskDetailPanel.tsx
     test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
     test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
     tested_at: '2026-05-30'
@@ -3763,7 +3750,6 @@ requirements:
     title: Mobile responsive layout
     implemented_in:
     - web/src/pages/tasks/TaskInboxPage.tsx
-    - web/src/components/tasks/TaskDetailPanel.tsx
     test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
     test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
     tested_at: '2026-05-30'
@@ -3854,7 +3840,7 @@ requirements:
     priority: MUST
     title: Business tables migrated to per-tenant schemas
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/TNT-01.md
     test_run: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
     tested_at: '2026-06-10'
@@ -3869,7 +3855,7 @@ requirements:
     title: Migration runner enforces search_path isolation
     implemented_in:
     - src/db/migrations.zig
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/TNT-02.md
     test_run: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
     tested_at: '2026-06-10'
@@ -3884,7 +3870,7 @@ requirements:
     title: Connection pool sets search_path per tenant on checkout
     implemented_in:
     - src/db/provisioning.zig
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/TNT-03.md
     test_run: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
     tested_at: '2026-06-10'
@@ -3897,35 +3883,31 @@ requirements:
     stage: 12
     priority: MUST
     title: Platform startup audits public schema
-    implemented_in:
-    - WF02-tnt-batch1-20260609
     test_spec: tests/specs/TNT-04.md
     test_run: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
     tested_at: '2026-06-10'
     released_at: '2026-06-10T02:49:11Z'
     release_run: WF02-tnt-batch1-20260609
     release_decision: docs/status/release-stage12-tnt-batch1-20260610.yaml
+    note: Implemented in run WF02-tnt-batch1-20260609; source files not individually tracked.
   TNT-05:
     status: RELEASED
     stage: 12
     priority: MUST
     title: Backfill migration moves existing tenant data out of public schema
-    implemented_in:
-    - WF02-tnt-batch2-20260609
+    note: Implemented in run WF02-tnt-batch2-20260609; source files not individually tracked.
   TNT-06:
     status: RELEASED
     stage: 12
     priority: MUST
     title: Tenant schema export and import for server migration
-    implemented_in:
-    - WF02-tnt-batch2-20260609
+    note: Implemented in run WF02-tnt-batch2-20260609; source files not individually tracked.
   TNT-07:
     status: RELEASED
     stage: 12
     priority: MUST
     title: Remove RLS policies and tenant_id columns from public business tables
-    implemented_in:
-    - WF02-tnt-batch2-20260609
+    note: Implemented in run WF02-tnt-batch2-20260609; source files not individually tracked.
   UAT-TM-01:
     status: RELEASED
     stage: UAT Tenant URL

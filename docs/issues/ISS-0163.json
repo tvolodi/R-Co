@@ -1,13 +1,13 @@
 {
   "id": "ISS-0163",
   "title": "103 dangling implemented_in references in docs/requirements.yaml; reqctl validate never checks them",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/489",
   "discovered_at": "2026-08-06T12:40:50Z",
   "discovered_by": "DOC-UPDATER Step 7",
   "discovered_while_fixing": "ISS-0137",
-  "run_id": "WF03-gh439-testwiring-20260806",
+  "run_id": "WF03-ISS-0163-20260806",
   "affected_areas": [
     "docs/requirements.yaml",
     "tools/reqctl.py"
@@ -20,5 +20,11 @@
     "ISS-204/ISS-206 character-split entries repaired and the writer that produced them fixed",
     "python tools/reqctl.py validate exits 0 on the new check"
   ],
-  "notes": "Deferred out of run WF03-gh439-testwiring-20260806: it is a registry-wide data-quality sweep plus a new validator check, unrelated to that run's test-wiring scope. ENV-01's instance of cause (1) was fixed in that run because it was encountered directly."
+  "notes": [
+    "Deferred out of run WF03-gh439-testwiring-20260806: it is a registry-wide data-quality sweep plus a new validator check, unrelated to that run's test-wiring scope. ENV-01's instance of cause (1) was fixed in that run because it was encountered directly.",
+    "Correction to the filed report: the '103 dangling references' figure does not reproduce. Measured 41 on the commit where the fix began and 44 before PR #490; no point in git history shows 103. The three root causes described in the issue are all real and were confirmed independently. Additionally, the paths the issue described as 'genuinely deleted/moved source files' were verified to have ZERO commits in git history -- they never existed and were fabricated at write time, so they were dropped or repointed rather than traced to successors. The one genuine move was web/src/pages/LoginPage.tsx (6 commits, removed in 8e7ea86)."
+  ],
+  "resolved_at": "2026-08-06T18:32:13Z",
+  "resolution": "Fixed all three root causes. (1) reqctl.py cmd_set_status now routes implemented_in through coerce_path_list(), so a bare str can never be stored where a list belongs -- this was the writer bug behind ISS-204/ISS-206. (2) reqctl validate gained an implemented_in check: every entry must resolve on disk and must not be a run/branch identifier; reported BLOCKER for RELEASED requirements, MAJOR otherwise. (3) All 41 dangling references repaired: 17 renamed migrations repointed (GBL-105->133, GBL-081->120, GBL-082->121), 8 fabricated source paths repointed to the real implementing files, 10 run-IDs moved out of implemented_in into note, 7 frontend paths that never existed in git history dropped, 1 ' (inferred)' suffix removed. reqctl validate now reports 0 implemented_in findings and 0 BLOCKERs.",
+  "prevention": "reqctl validate now fails on any dangling implemented_in path, so this class cannot silently reaccumulate. A new `reqctl selftest` subcommand covers the coercion and run-ID-detection logic; it was mutation-checked (reintroducing the writer bug makes it exit 1)."
 }

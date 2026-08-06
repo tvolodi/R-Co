@@ -31,6 +31,8 @@ Usage:
   reqctl render-status                     Regenerate docs/status/requirement_status.yaml
   reqctl timestamp                         Print the real current UTC time (use this,
                                             never invent a timestamp)
+  reqctl selftest                          Regression checks for reqctl's own logic;
+                                            exit 1 on failure
 
 All commands operate on docs/requirements.yaml relative to the repo root
 (found by walking up from this script's location).
@@ -97,6 +99,70 @@ def save(data: dict) -> None:
 
 # ---------------------------------------------------------------- validate
 
+def coerce_path_list(value):
+    """Normalise an implemented_in value to a list[str].
+
+    A bare str must never reach the YAML writer: `e["implemented_in"] = "abc"`
+    round-trips as the string, but any consumer that iterates it yields one
+    character per entry. That is how ISS-204/ISS-206 came to hold
+    ['f','e','a','t','u','r','e',...] -- the string
+    "feature/WF02-iss204-206-20260611" iterated character-by-character
+    (see GH #489 / ISS-0163). argparse's nargs="*" gives a list, but
+    programmatic callers of cmd_set_status pass whatever they like.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return [value]
+    return [str(v) for v in value]
+
+
+# implemented_in values that are not file paths at all. A run identifier or a
+# branch name records WHERE the work happened, not WHAT implements the
+# requirement; it belongs in `note`, not in implemented_in (GH #489).
+NON_PATH_RE = re.compile(r"^(?:feature/)?(?:WF\d{2}|ADHOC)[-\w]*$")
+
+
+def cmd_selftest(args):
+    """Regression checks for reqctl's own logic. Exit 1 on any failure.
+
+    Covers the two defects behind GH #489 / ISS-0163: the writer storing a bare
+    string where a list belongs, and validate not noticing dangling paths.
+    """
+    failures = []
+
+    def check(name, got, want):
+        if got != want:
+            failures.append(f"{name}: got {got!r}, want {want!r}")
+
+    # The writer bug: a bare string must become a one-element list, never be
+    # left as a str for a consumer to iterate character-by-character.
+    check("coerce bare str", coerce_path_list("feature/WF02-iss204-206-20260611"),
+          ["feature/WF02-iss204-206-20260611"])
+    check("coerce list", coerce_path_list(["a.zig", "b.zig"]), ["a.zig", "b.zig"])
+    check("coerce None", coerce_path_list(None), None)
+    check("coerce empty", coerce_path_list([]), [])
+    # A single-char filename is legitimate and must not be mistaken for a split.
+    check("coerce single-char list", coerce_path_list(["a"]), ["a"])
+
+    # Run/branch identifiers are not paths.
+    for run in ["WF02-env-batch1-20260610", "feature/WF02-iss204-206-20260611",
+                "WF03-ISS-0163-20260806", "ADHOC-gh402-db-cleanup"]:
+        if not NON_PATH_RE.match(run):
+            failures.append(f"NON_PATH_RE should match run id {run!r}")
+    for path in ["src/engine/instance.zig", "migrations/GBL-133_x.sql",
+                 "web/src/components/forms/DynamicFormRenderer.tsx"]:
+        if NON_PATH_RE.match(path):
+            failures.append(f"NON_PATH_RE must not match real path {path!r}")
+
+    for f in failures:
+        print(f"FAIL  {f}")
+    if failures:
+        print(f"\n{len(failures)} selftest failure(s)")
+        sys.exit(1)
+    print("reqctl selftest: all checks passed")
+
+
 def cmd_validate(args):
     data = load()
     reqs = data["requirements"]
@@ -122,6 +188,35 @@ def cmd_validate(args):
             vague = VAGUE_WORDS.findall(body)
             if vague:
                 issues.append(("MAJOR", rid, f"vague language in body: {sorted(set(v.lower() for v in vague))}"))
+
+        # implemented_in must be a list of paths that actually resolve on disk.
+        # This is the only machine-readable link from a requirement to the code
+        # that satisfies it; when it dangles, traceability is silently broken and
+        # a RELEASED requirement can point at nothing (GH #489 / ISS-0163).
+        imp = e.get("implemented_in")
+        if imp is not None:
+            released = e.get("status") == "RELEASED"
+            sev = "BLOCKER" if released else "MAJOR"
+            if isinstance(imp, str):
+                issues.append((sev, rid,
+                               f"implemented_in is a bare string, not a list: {imp!r} "
+                               "(consumers iterating it yield one character per entry)"))
+                imp = [imp]
+            elif imp and all(isinstance(x, str) and len(x) == 1 for x in imp):
+                issues.append((sev, rid,
+                               "implemented_in looks character-split "
+                               f"(joins to {''.join(imp)!r}) -- a bare string was "
+                               "stored where a list was expected"))
+                imp = ["".join(imp)]
+            for p in imp:
+                if not isinstance(p, str):
+                    issues.append((sev, rid, f"implemented_in entry is not a string: {p!r}"))
+                elif NON_PATH_RE.match(p):
+                    issues.append((sev, rid,
+                                   f"implemented_in entry {p!r} is a run/branch identifier, "
+                                   "not a file path -- record it in `note` instead"))
+                elif not (REPO_ROOT / p).exists():
+                    issues.append((sev, rid, f"implemented_in path does not exist: {p}"))
 
         # cross-reference resolution: look for a "See:" line and check cited IDs exist
         body = e.get("body") or ""
@@ -190,7 +285,7 @@ def cmd_set_status(args):
     if args.note:
         e["note"] = args.note
     if args.implemented_in:
-        e["implemented_in"] = args.implemented_in
+        e["implemented_in"] = coerce_path_list(args.implemented_in)
     if args.status == "RELEASED":
         e.setdefault("released_at", now_utc())
     e["last_updated"] = now_utc()
@@ -313,6 +408,7 @@ def main():
     sub.add_parser("stats").set_defaults(func=cmd_stats)
     sub.add_parser("render-status").set_defaults(func=cmd_render_status)
     sub.add_parser("timestamp").set_defaults(func=cmd_timestamp)
+    sub.add_parser("selftest").set_defaults(func=cmd_selftest)
 
     args = p.parse_args()
     args.func(args)
