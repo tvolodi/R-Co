@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-gh439-testwiring-20260806/step-03-backend-dev.json",
   "created_at": "2026-08-06T05:49:58Z",
   "started_at": "2026-08-06T05:49:58Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-06T06:55:57Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": null,
@@ -49,7 +49,84 @@
       "fn:complete-handoff"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0137 / GH #439 cleared: all 55 unwired test-bearing files resolved (1 deleted duplicate, 54 wired) and tools/lint_test_wiring.py now exits 0 with all 252 test-bearing files reachable. zig build, zig build test and test-wiring-check all exit 0; test-integration compiles clean. 10 new addTest targets (design said 9; jit_provisioning needed its own because it imports claim_mapping by name, which cannot coexist with claim_mapping.zig as a relative member of the same compilation). C7 landed: test_step.dependOn(&run_wiring_check.step) added AND the obsolete explanatory paragraph replaced; gate verified to actually fire by temporarily emptying an aggregator. KEY DEVIATION FROM DESIGN (evidence-based, strengthens the fix): shims reach targets by RELATIVE path, not by named module as design section 1.2 mandated. Zig enrolls test blocks only from the ROOT MODULE own file set, so a named-module shim compiles, passes, and runs exactly ONE test (the synthetic container block) while reporting green - silently re-creating the very defect ISS-0137 exists to catch. Measured on test-core-modules: named reach 1/1 tests, relative reach 16/16. The GH #428 precedent shim (src/transition_test_root.zig) uses relative reach for this reason. Consequence: design improvement L-2 (teaching the linter named-module edges) was UNNECESSARY and not implemented - the linter existing relative-path BFS already sees every shim. No exclusion mechanism was needed (zero exclusions). Validator overrides A and B both applied. 8 real latent defects fixed (see issues[]); 2 separate pre-existing defect sets filed and enqueued (ISS-0149/GH #465, ISS-0150/GH #466). No error.SkipZigTest added, no test deleted or un-wired, no assertion weakened, no gate loosened.",
+    "artifacts_out": [
+      "build.zig",
+      "src/core_modules_test_root.zig",
+      "src/config_idp_test_root.zig",
+      "src/oidc_test_root.zig",
+      "src/oidc_jit_test_root.zig",
+      "src/repository_test_root.zig",
+      "src/simulation_test_root.zig",
+      "src/identity/provider/idp_test_root.zig",
+      "tests/unit/oidc_unit_test_root.zig",
+      "tests/unit/repository_unit_test_root.zig",
+      "tests/unit/misc_unit_test_root.zig",
+      "tests/integration/main_test.zig",
+      "tests/integration/helpers.zig",
+      "src/bpm.zig",
+      "src/oidc/jit_provisioning.zig",
+      "src/repository/artifacts.zig",
+      "tests/integration/repository_test.zig",
+      "tests/integration/exp601_tier_quota_test.zig",
+      "tests/integration/oidc35_onboarding_test.zig",
+      "tests/integration/effects_subsystem_test.zig",
+      "tests/integration/iss206_token_multiset_test.zig",
+      "tests/integration/env01_tenant_type_field_test.zig",
+      "docs/issues/ISS-0149.json",
+      "docs/issues/ISS-0150.json",
+      "handoffs/WF03-gh439-testwiring-20260806/issue_queue.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "FIXED (real production defect, surfaced by wiring). src/oidc/jit_provisioning.zig computeReconcileSets used the Zig 0.15 std.ArrayList.init(allocator)/deinit() API at 2 sites - removed in 0.16. The SAME function uses the current unmanaged .empty/.deinit(allocator) form 260 lines earlier, so this was half-migrated. The file had never compiled in a test context because it was declared as no module at all."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "FIXED (real production defect). src/oidc/jit_provisioning.zig ReconcileSets declared added/removed as []const []const u8 while handing the caller freshly allocated buffers the caller owns and frees. Beyond mis-stating ownership, the const-ness blocked the in-place sort TC-OIDC-10-12 performs for deterministic comparison. Changed to [][]const u8 (inner slices stay const - strings are reordered, never mutated)."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "FIXED (real production defect). src/repository/artifacts.zig ArtifactsError omitted InvalidBinary and NoSpaceLeft, both propagated from canonicaliser.hashContent() via try in create(). The declared error set was narrower than what the function can actually return, so the file did not compile in a test context. This is the CLAUDE.md error-set class; it survived because src/repository/ was reachable from no addTest root."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "FIXED (build-graph defect introduced mid-run and caught). Binding the SHARED env_mod under the extra name portable_env for config_idp_tests rewrote it for every other consumer, because Zig deduplicates modules by identity - turning every @import(env) in the integration suite into env=portable_env and breaking tests/integration/helpers.zig. Fixed with a private module instance. Recorded because the same trap will catch the next agent adding an alias to a shared module."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "FIXED (pre-existing latent defect). tests/integration/helpers.zig gained provisionTenant() and setTenant(). BOTH were called by exp601_tier_quota_test.zig and entity_subsystem_test.zig but existed on no type - the tests were written against a TestHarness API that was never implemented. Also made deinit() restore DEFAULT_TENANT_ID, since setTenant() mutates thread-local state that outlives the harness and would otherwise leak into the next test on the same thread."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "FIXED (pre-existing latent defect). iss601_integration_imports in build.zig omitted env, so tests/integration/iss601_state_snapshots_test.zig could not compile helpers.zig (which does @import(env), ISS-0134). Every other integration target inherits it from integration_imports; this hand-rolled slice did not. Also added build_options to bpm_src_mod for src/api/routes/onboarding.zig."
+      },
+      {
+        "severity": "MINOR",
+        "description": "FIXED (Zig 0.16 API rot across 3 files). std.crypto.random and std.io.fixedBufferStream were removed: repository_test.zig, effects_subsystem_test.zig, env01_tenant_type_field_test.zig all still referenced them. Rather than repair a fourth copy-pasted private implementation, fillRandom/randomUuidBytes/uuidBytesToString are now centralised in helpers.zig. Also: std.json ObjectMap.get returns a Value not a pointer (iss206); AuthContext.principal (ISS-403) and OnboardingInput.tenant_type/production_tenant_id (ENV-01) were missing in oidc35; bpm exports effects_mod not effects."
+      },
+      {
+        "severity": "MINOR",
+        "description": "FIXED (latent SQL defect). tests/integration/repository_test.zig passed usize and untyped null as pg parameters, which are uniformly []const u8, and encoded a SQL NULL as the literal string NULL through $N::uuid - which would raise PostgreSQL 22P02 at runtime rather than inserting NULL. Now empty-string plus NULLIF($N,'')::uuid. Also removed 3 dead locals and 2 unused loop captures."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "FILED + ENQUEUED, not fixed: ISS-0149 / GH #465. 33 failing/leaking test blocks across 10 already-wired tests/integration files. Confirmed PRE-EXISTING on origin/main by stashing this branch changes and re-running against the same healthy database - identical 10 files fail. Not a regression of this run and outside a build-graph fix scope (10 unrelated subsystems). iss202_merge_atomicity_test.zig contributes 8 leaking blocks, the subset most likely to be a real ownership bug. Does not affect this run acceptance criteria: the Green-Main Gate covers zig build test, which is service-free and green."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "FILED + ENQUEUED, not fixed: ISS-0150 / GH #466. Two tests that report green without testing anything. (A) env01_tenant_type_field_test.zig is an unfinished codegen scaffold: 9 test blocks, 20 CUSTOM placeholders, ZERO assertions. Repaired only to the point of COMPILING so it stays wired and visible rather than being deleted or excluded to make the gate pass - real ENV-01 coverage exists in env01_test.zig (12 blocks, 31 assertions). (B) entity_subsystem_test.zig is compiled into an addTest artifact whose Run step is attached to NO build step, so it is built and never executed - invisible to lint_test_wiring.py, which checks addTest reachability rather than whether the root is ever run. Suggested follow-up in the issue: extend the linter to require every test Run artifact be reachable from a b.step."
+      },
+      {
+        "severity": "MINOR",
+        "description": "OBSERVATION, no action taken. 5 pre-existing error.SkipZigTest blocks in src/oidc/{identity_stability,realm_deletion,realm_tenant_binding}.zig are now visible in test-oidc-src output (25/30 passed, 5 skipped). All 5 are DB-requiring placeholders correctly skipped on the service-free test target; their real coverage is in the tests/integration/oidc*.zig files this run wired up. Not added by this run and not modified."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }

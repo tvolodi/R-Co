@@ -24,6 +24,28 @@
       "discovered_while_fixing": "ISS-0137",
       "started_at": null,
       "completed_at": null
+    },
+    {
+      "issue_id": "ISS-0149",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/465",
+      "status": "QUEUED",
+      "severity": "MAJOR",
+      "discovered_at": "2026-08-06T06:51:49Z",
+      "discovered_by": "BACKEND-DEV Step 3",
+      "discovered_while_fixing": "ISS-0137",
+      "started_at": null,
+      "completed_at": null
+    },
+    {
+      "issue_id": "ISS-0150",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/466",
+      "status": "QUEUED",
+      "severity": "MAJOR",
+      "discovered_at": "2026-08-06T06:51:49Z",
+      "discovered_by": "BACKEND-DEV Step 3",
+      "discovered_while_fixing": "ISS-0137",
+      "started_at": null,
+      "completed_at": null
     }
   ]
 }
