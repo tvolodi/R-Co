@@ -1,0 +1,21 @@
+{
+  "id": "ISS-0153",
+  "title": "src/lua/ (14 files, LUA-01..16 all RELEASED) is unreferenced by the build graph and no longer compiles under Zig 0.16",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "dead-subsystem-visibility",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "handoff_id": "b0f95e04-5172-447d-9775-308273f0b2b5",
+  "affected_areas": [
+    "src/lua/",
+    "src/bpm.zig",
+    "src/main.zig",
+    "build.zig"
+  ],
+  "created_at": "2026-08-06T00:00:00Z",
+  "resolved_at": null,
+  "notes": "Discovered while resolving ISS-0147 / GH #463 (the src/wasm equivalent). src/lua/ is the sibling scripting subsystem and is in the identical unreferenced state, but with worse rot and a harder blocker.\n\nEVIDENCE OF UNREFERENCEDNESS:\n- No `b.createModule` in build.zig has any src/lua file as root (grep -n -i lua build.zig returns only unrelated expr/DSL lines plus the test-misc-unit step description).\n- Neither src/bpm.zig nor src/main.zig imports it.\n- No addTest root reaches it. It carries zero in-file `test` blocks, so tools/lint_test_wiring.py does NOT flag it (that linter only tracks test-bearing files) -- this is invisible to the existing gate, exactly as src/wasm was.\n- Single commit in history: 113bdb3 'Stage 9', never touched since.\n\nEVIDENCE OF ROT (would fail to compile the moment it is analysed):\n- `c_void` is used in src/lua/executor.zig:178, luajit_bindings.zig:40,66,83,121 and memory_limiter.zig:30. `c_void` was renamed to `anyopaque` in Zig 0.11; this repo is on Zig 0.16.\n- `callconv(.C)` is used in 12 places across executor.zig, instruction_limiter.zig, memory_limiter.zig, luajit_bindings.zig and all 8 host_api/*.zig files. Zig 0.16 made CallingConvention a tagged union whose C member is lowercase `.c`. This is the same defect fixed in src/wasm/wasmtime_bindings.zig:70 under ISS-0147.\n\nHARDER THAN ISS-0147 -- REAL EXTERNAL LINK REQUIRED:\nUnlike src/wasm (whose wasmtime_bindings.zig is pure `extern struct` layout types plus `inline fn` stubs, needing no link), src/lua/luajit_bindings.zig declares real `pub extern fn lua_*` symbols AND does `@cImport` of the LuaJIT headers. Wiring src/lua into a build target therefore requires an actual LuaJIT dependency (linkSystemLibrary or a vendored build), which is a genuine infrastructure decision -- not a mechanical wiring change. That is why this is filed separately rather than fixed inline alongside ISS-0147.\n\nRISK: 16 MUST requirements (LUA-01..16) are marked RELEASED in docs/requirements.yaml with `implemented_in` pointing at these files, but the code they point at cannot currently be compiled at all. The RELEASED status is not backed by anything executable.",
+  "candidate_resolution": "Decide liveness of src/lua the same way ISS-0147 decided it for src/wasm. If live: (a) resolve the LuaJIT link story (vendor it, or linkSystemLibrary behind a build flag defaulting off), (b) fix the c_void -> anyopaque and callconv(.C) -> callconv(.c) rot, (c) declare a lua module in build.zig and re-export it via src/bpm.zig by NAME (src/lua files reach siblings by relative path, so the Single-Owner Module Rule applies as it did for src/wasm), (d) add a reachability test mirroring tests/unit/wasm_reexport_test.zig. If NOT live: downgrade LUA-01..16 from RELEASED to a status that reflects reality, and delete or documented-exclude the directory. Either way the current state -- RELEASED requirements pointing at non-compiling unreferenced code -- must not persist.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/471",
+  "discovered_while_fixing": "ISS-0147"
+}

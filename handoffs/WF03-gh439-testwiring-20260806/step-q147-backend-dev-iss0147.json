@@ -1,0 +1,70 @@
+{
+  "handoff_id": "b0f95e04-5172-447d-9775-308273f0b2b5",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "q147",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-gh439-testwiring-20260806/step-q147-backend-dev-iss0147.json",
+  "created_at": "2026-08-06T07:20:53Z",
+  "started_at": "2026-08-06T07:20:53Z",
+  "completed_at": "2026-08-06T07:41:56Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "issue_ids": [
+      "ISS-0147"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/463",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "queue_drain": true,
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0147.json"
+    ]
+  },
+  "task": {
+    "description": "Queue-drain pass for ISS-0147 / GH #463: src/wasm/ (12 files) is reachable from no addTest root and re-exported by neither src/bpm.zig nor src/main.zig. Decide liveness by reading the code and its history, then act: if live, re-export via src/bpm.zig and give it an addTest root so its tests run; if prototype/dead, delete it or record a documented exclusion with reason+issue_ref. Note tests/unit/wasm_executor_test.zig is already wired by the GH #439 work -- do not un-wire it. Document the src/wasm/wasmtime_bindings.zig external-link situation either way (Step 2b established it is pure extern struct layout declarations needing no link).",
+    "acceptance_criteria": [
+      "Liveness decision for src/wasm made and justified from evidence",
+      "If live: reachable from an addTest root and its tests execute; if dead: removed or documented-excluded with reason+issue_ref",
+      "python tools/lint_test_wiring.py exits 0",
+      "zig build exits 0",
+      "zig build test exits 0"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:update-issue",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0147 resolved: src/wasm is LIVE, now wired. Evidence for liveness: WASM-01..14 (11 MUST + 2 SHOULD) are all RELEASED in docs/requirements.yaml and every one of the 12 files is named in a requirement implemented_in list. Wired by adding the wasm named module to bpm_src_mod in build.zig and pub const wasm = @import(\"wasm\") to src/bpm.zig -- BY NAME, not relative path, because src/wasm/*.zig reach siblings relatively and are therefore already owned by wasm_mod (Single-Owner Module Rule). src/wasm carries ZERO in-file test blocks, so a bare re-export would not be self-enforcing (Zig only analyses referenced decls); added tests/unit/wasm_reexport_test.zig, aggregated into bpm_src_test_root.zig, which references a decl from every file. That immediately exposed real rot: src/wasm/wasmtime_bindings.zig:70 used callconv(.C), removed in Zig 0.16 (CallingConvention is now a tagged union, member is lowercase .c) -- fixed. External-link question answered NO: zero @cImport, zero linkSystemLibrary; wasmtime_bindings.zig declares only extern struct/union TYPES (a layout qualifier, not a link-time symbol) and inline fn stubs returning failure sentinels. Documented in src/bpm.zig, build.zig and the new test header.",
+    "artifacts_out": [
+      "build.zig",
+      "src/bpm.zig",
+      "src/wasm/wasmtime_bindings.zig",
+      "tests/unit/wasm_reexport_test.zig",
+      "tests/unit/bpm_src_test_root.zig",
+      "docs/issues/ISS-0147.json",
+      "docs/issues/ISS-0153.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "NEW defect found while fixing ISS-0147, filed as ISS-0153 / GH #471, enqueued QUEUED, NOT fixed inline: src/lua/ (14 files, LUA-01..16 all RELEASED MUST) is in the identical unreferenced state and no longer compiles under Zig 0.16 (c_void removed in 0.11; callconv(.C) in 12 places). Harder than ISS-0147 because src/lua/luajit_bindings.zig has real pub extern fn lua_* symbols and @cImports LuaJIT headers, so it needs an actual LuaJIT link -- an infrastructure decision, not a mechanical wiring change. It is invisible to lint_test_wiring.py because it has zero in-file test blocks."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Not a defect, recorded for ORCH: during verification another agent had uncommitted in-flight edits to src/event_store/registry.zig, store.zig and tests/unit/event_store_test.zig (ISS-0148 work) that broke zig build with 'use of undeclared identifier validateRegisterParams'. Per the parallelism constraint I did not touch or revert them; I stashed them only to isolate my own verification, then restored them intact. My gates were verified green against that isolated state. ISS-0148 remains that agent's work."
+      }
+    ],
+    "next_action": "ORCH continues queue drain"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

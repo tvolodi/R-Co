@@ -281,12 +281,41 @@ pub fn build(b: *std.Build) void {
     });
     const run_unit_tests = b.addRunArtifact(unit_tests);
 
+    // ISS-0148: tests/unit/event_store_test.zig is a standalone test root, so it
+    // cannot reach src/event_store/*.zig by relative @import ("import of file
+    // outside module path"). Expose store.zig as a named module instead. Its own
+    // named imports (pool / pipeline_context / obs_metrics) must be supplied at
+    // this module's level; registry.zig is reached from store.zig by relative
+    // path and so is a plain member of this module.
+    const event_store_mod = b.createModule(.{
+        .root_source_file = b.path("src/event_store/store.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "pipeline_context", .module = pipeline_context_mod },
+            .{ .name = "obs_metrics", .module = obs_metrics_mod },
+        },
+    });
     const event_store_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/unit/event_store_test.zig"),
             .target = target,
             .optimize = optimize,
-            .imports = vendor_imports,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "http", .module = http_mod },
+                .{ .name = "expr", .module = expr_mod },
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "transition", .module = transition_mod },
+                .{ .name = "build_options", .module = build_options_mod },
+                .{ .name = "identity_provider", .module = identity_provider_mod },
+                .{ .name = "tenant_context", .module = tenant_context_mod },
+                .{ .name = "pipeline_context", .module = pipeline_context_mod },
+                .{ .name = "obs_metrics", .module = obs_metrics_mod },
+                .{ .name = "env", .module = env_mod },
+                .{ .name = "event_store", .module = event_store_mod },
+            },
         }),
     });
     const run_event_store_tests = b.addRunArtifact(event_store_tests);
@@ -352,6 +381,13 @@ pub fn build(b: *std.Build) void {
             .{ .name = "build_options", .module = build_options_mod },
             // ISS-0134: portable environment-variable access (src/env.zig).
             .{ .name = "env", .module = env_mod },
+            // ISS-0147 / GH #463: src/wasm (WASM-01..14, all RELEASED) was
+            // re-exported by neither bpm.zig nor main.zig, so no production
+            // build path compiled it. Passed BY NAME — src/wasm/*.zig reach
+            // each other by relative path and are therefore owned solely by
+            // wasm_mod; a relative @import from bpm.zig would trip the
+            // Single-Owner Module Rule. See the comment in src/bpm.zig.
+            .{ .name = "wasm", .module = wasm_mod },
         },
     });
 
