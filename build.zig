@@ -1094,6 +1094,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_dsl01_parser_tests.step);
     test_step.dependOn(&run_expr_error_recovery_tests.step);
     test_step.dependOn(&run_dsl04_eval_tests.step);
+
     // ISS-0137 / GH #439 — the nine backlog-clearing targets declared above.
     test_step.dependOn(&run_core_modules_tests.step);
     test_step.dependOn(&run_config_idp_tests.step);
@@ -1116,6 +1117,15 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    // ISS-0157 / GH #476: TC-ISS-602-03's static import gate needs
+    // src/engine/transition.zig's source bytes. `@embedFile` cannot reach
+    // outside the embedding module's root, so the bytes come through a shim
+    // colocated with the file (same pattern as docs/exp701_doc_embed.zig).
+    const transition_source_embed_mod = b.createModule(.{
+        .root_source_file = b.path("src/engine/transition_source_embed.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
     const differential_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/differential/differential_test.zig"),
@@ -1124,6 +1134,7 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "cel", .module = cel_mod },
                 .{ .name = "expr", .module = expr_diff_mod },
+                .{ .name = "transition_source_embed", .module = transition_source_embed_mod },
             },
         }),
     });
@@ -1133,7 +1144,14 @@ pub fn build(b: *std.Build) void {
     run_differential_tests.setCwd(b.path("."));
     const test_differential_step = b.step("test-differential", "Run CEL/expr differential corpus tests (ISS-602)");
     test_differential_step.dependOn(&run_differential_tests.step);
-
+    // ISS-0157 / GH #476: the ISS-602 CEL/expr differential corpus was attached
+    // only to the narrow `test-differential` step, so its 3 blocks never ran
+    // under `zig build test` — and in fact never compiled (the @embedFile path
+    // fix is in src/engine/transition_source_embed.zig). It is service-free
+    // (pure CEL/expr evaluation plus a static source-text gate), so it belongs
+    // on `test` rather than `test-integration` and keeps the Green-Main Gate's
+    // no-services-required property intact.
+    test_step.dependOn(&run_differential_tests.step);
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)
     // ---------------------------------------------------------------------------
@@ -1184,6 +1202,8 @@ pub fn build(b: *std.Build) void {
     const run_integration_tests = b.addRunArtifact(integration_tests);
     run_integration_tests.setCwd(b.path("."));
     run_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
+
 
     const xc04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1771,6 +1791,11 @@ pub fn build(b: *std.Build) void {
     // attached-and-left-red or quietly excluded.
     test_integration_others_step.dependOn(&run_xc04_integration_tests.step);
     test_integration_others_step.dependOn(&run_stage11_sim_xc04_integration_tests.step);
+    // ISS-0157 / GH #476: the two remaining finds, now fixed and attached, which
+    // empties the KNOWN_UNATTACHED ledger in tools/lint_test_wiring.py.
+    // iss105_token_model_test passes 4/4 as written — its GIN-index assertion
+    // creates the index it then asserts on, so it was never the real defect.
+    test_integration_others_step.dependOn(&run_iss105_integration_tests.step);
 
     // ISS-0106: force ISS-503 to run only after the barrier above (i.e. after
     // every other test-integration sibling has finished), then re-attach it

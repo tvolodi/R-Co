@@ -9,6 +9,9 @@
 const std = @import("std");
 const cel = @import("cel");
 const expr_mod = @import("expr");
+// ISS-0157 / GH #476: supplies src/engine/transition.zig's source bytes to the
+// static import gate below. See src/engine/transition_source_embed.zig.
+const transition_source_embed = @import("transition_source_embed");
 
 // ---------------------------------------------------------------------------
 // Corpus types
@@ -491,7 +494,14 @@ fn freeCorpusEntries(allocator: std.mem.Allocator, entries: []CorpusEntry) void 
 test "TC-ISS-602-03: transition.zig imports expr post-cutover, cel is retired from engine path" {
     // Verified statically via @embedFile so the assertion is a compile-time-resolved
     // string search against the embedded source bytes. No allocator needed.
-    const transition_src = @embedFile("../../src/engine/transition.zig");
+    // ISS-0157 / GH #476: `@embedFile` cannot escape the embedding module's
+    // root, so the former `@embedFile("../../src/engine/transition.zig")` here
+    // failed to compile ("embed of file outside package path") and this whole
+    // binary never ran. The bytes now arrive through a shim colocated with the
+    // embedded file (`src/engine/transition_source_embed.zig`), the same pattern
+    // `docs/exp701_doc_embed.zig` already uses. Still the real transition.zig
+    // source, still resolved at compile time — only the path changes.
+    const transition_src = transition_source_embed.transition_source;
 
     // Assert expr IS imported — cutover is complete (EXP-102).
     const has_expr_import = std.mem.indexOf(u8, transition_src, "@import(\"expr\")") != null;

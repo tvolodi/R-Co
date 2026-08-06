@@ -1,0 +1,46 @@
+{
+  "handoff_id": "70cf4a61-3c35-4094-9e8f-61f6a8ea727a",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "q157",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-06T12:29:40Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "issue_ids": [
+      "ISS-0157",
+      "ISS-0158"
+    ],
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "queue_drain": true,
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0157.json",
+      "docs/issues/ISS-0158.json",
+      "tools/lint_test_wiring.py",
+      "tests/differential/differential_test.zig",
+      "tests/integration/effects_subsystem_test.zig",
+      "src/engine/transition.zig"
+    ]
+  },
+  "task": {
+    "description": "Queue-drain pass covering ISS-0157 (GH #476) and ISS-0158 (GH #479).",
+    "acceptance_criteria": [
+      "zig build exits 0 with no 'error set' output",
+      "python tools/lint_test_wiring.py exits 0 with an EMPTY KNOWN_UNATTACHED ledger",
+      "zig build test-differential passes",
+      "effects_subsystem_test EXP-302 blocks pass"
+    ],
+    "functions_to_call": [
+      "fn:update-issue",
+      "fn:enqueue-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T12:29:40Z",
+  "completed_at": null
+}

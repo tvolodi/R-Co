@@ -77,6 +77,20 @@ fn parseUuid(allocator: std.mem.Allocator, s: []const u8) ![16]u8 {
     return out;
 }
 
+/// ISS-0158 / GH #479: generate a fresh instance UUID as raw bytes, freeing the
+/// intermediate hex string.
+///
+/// Six TC-EXP-302 blocks wrote `parseUuid(alloc, try generateTestUuid(alloc))`,
+/// which leaks: `generateTestUuid` allocates the 36-byte hex form and nothing
+/// holds a reference to free it once `parseUuid` has converted it. Those blocks
+/// were reported as "leaked 1 allocations" by the test runner. Callers that
+/// also need the hex form keep the two-step spelling with its own `defer free`.
+fn generateInstanceUuidBytes(allocator: std.mem.Allocator) ![16]u8 {
+    const hex = try generateTestUuid(allocator);
+    defer allocator.free(hex);
+    return try parseUuid(allocator, hex);
+}
+
 fn makeObjectMap(allocator: std.mem.Allocator) std.json.ObjectMap {
     return std.json.ObjectMap.init(allocator, &.{}, &.{}) catch unreachable;
 }
@@ -120,7 +134,27 @@ fn freeTransitionResult(allocator: std.mem.Allocator, result: transition_mod.Tra
     freeInstanceState(allocator, result.state);
 }
 
-fn makeServiceTaskGraph(attrs: ?[]const u8) graph_mod.DefinitionGraph {
+/// ISS-0158 / GH #479: `attrs` MUST stay `comptime`.
+///
+/// `&[_]GraphNode{...}` yields a pointer to a temporary. When every field is
+/// comptime-known, Zig promotes that temporary to static (const) memory and the
+/// pointer outlives the function. The moment ONE field is a runtime value — as
+/// `attrs` was — the array becomes a stack local instead, and the returned
+/// slice dangles the instant this function returns.
+///
+/// That is exactly what produced the "transition() emits nothing on
+/// SERVICE_TASK entry" symptom this issue was filed for. Reading the returned
+/// graph showed `svc` and `end` with empty ids and BOTH reporting
+/// `node_type == .START` — reclaimed stack bytes, not the nodes written here.
+/// `processNodeEntry` therefore never saw a `.SERVICE_TASK` node and never
+/// reached the emit branch, so `emitted_events` came back empty and the
+/// assertions indexed `emitted_events[0]` on a zero-length slice.
+///
+/// Production `transition()` was never at fault: a graph built inline with a
+/// comptime-known attrs literal emits exactly one `effect_emitted` and parks
+/// the token on `svc`, as EXP-302 requires. Marking `attrs` comptime restores
+/// full comptime-known-ness so the nodes live in static memory again.
+fn makeServiceTaskGraph(comptime attrs: ?[]const u8) graph_mod.DefinitionGraph {
     const nodes = &[_]graph_mod.GraphNode{
         .{ .id = "start", .node_type = .START, .label = null, .attributes = null },
         .{ .id = "svc", .node_type = .SERVICE_TASK, .label = null, .attributes = attrs },
@@ -1252,7 +1286,7 @@ test "TC-EXP-302-02: SERVICE_TASK transition leaves a parked token and persisted
 // ---------------------------------------------------------------------------
 
 test "TC-EXP-302-03: EFFECT_COMPLETED re-entry advances the token and merges response body" {
-    const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
+    const instance_id = try generateInstanceUuidBytes(testing.allocator);
     const state = makeInitialState(testing.allocator, instance_id);
     defer freeSeedState(testing.allocator, state);
 
@@ -1290,7 +1324,7 @@ test "TC-EXP-302-03: EFFECT_COMPLETED re-entry advances the token and merges res
 // ---------------------------------------------------------------------------
 
 test "TC-EXP-302-04: EFFECT_FAILED re-entry marks the instance ERROR" {
-    const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
+    const instance_id = try generateInstanceUuidBytes(testing.allocator);
     const state = makeInitialState(testing.allocator, instance_id);
     defer freeSeedState(testing.allocator, state);
 
@@ -1328,7 +1362,7 @@ test "TC-EXP-302-04: EFFECT_FAILED re-entry marks the instance ERROR" {
 // ---------------------------------------------------------------------------
 
 test "TC-EXP-302-05: sync_inline true suppresses async effect emission" {
-    const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
+    const instance_id = try generateInstanceUuidBytes(testing.allocator);
     const state = makeInitialState(testing.allocator, instance_id);
     defer freeSeedState(testing.allocator, state);
 
@@ -1356,7 +1390,7 @@ test "TC-EXP-302-05: sync_inline true suppresses async effect emission" {
 // ---------------------------------------------------------------------------
 
 test "TC-EXP-302-06: response body is available after EFFECT_COMPLETED re-entry" {
-    const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
+    const instance_id = try generateInstanceUuidBytes(testing.allocator);
     const state = makeInitialState(testing.allocator, instance_id);
     defer freeSeedState(testing.allocator, state);
 
@@ -1393,7 +1427,7 @@ test "TC-EXP-302-06: response body is available after EFFECT_COMPLETED re-entry"
 // ---------------------------------------------------------------------------
 
 test "TC-EXP-302-07: sequential SERVICE_TASK nodes emit distinct effects" {
-    const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
+    const instance_id = try generateInstanceUuidBytes(testing.allocator);
     const state = makeInitialState(testing.allocator, instance_id);
     defer freeSeedState(testing.allocator, state);
 
@@ -1431,7 +1465,7 @@ test "TC-EXP-302-07: sequential SERVICE_TASK nodes emit distinct effects" {
 // ---------------------------------------------------------------------------
 
 test "TC-EXP-302-08: parallel SERVICE_TASK branches emit isolated effects" {
-    const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
+    const instance_id = try generateInstanceUuidBytes(testing.allocator);
     const state = makeInitialState(testing.allocator, instance_id);
     defer freeSeedState(testing.allocator, state);
 

@@ -116,13 +116,17 @@ STEP_BINDING_DECL = re.compile(r'\bconst\s+(\w+)\s*=\s*b\.step\(\s*"([^"]+)"')
 # ledger, not a suppression list: entries are reported on every run (as KNOWN),
 # and adding one without an accompanying issue defeats the check's purpose.
 #
-# Both entries below FAIL when executed for the first time — which is the whole
-# point of the check — so they cannot simply be attached to the barrier without
-# first fixing what they report. See docs/issues/ISS-0157.json.
-KNOWN_UNATTACHED: dict[str, str] = {
-    "iss105_integration_tests": "ISS-0157",
-    "differential_tests": "ISS-0157",
-}
+# EMPTY, and that is the intended steady state. The ledger's two ISS-0157
+# entries (`iss105_integration_tests`, `differential_tests`) were both fixed and
+# attached to aggregate steps:
+#   * differential_tests never compiled — `@embedFile("../../src/engine/
+#     transition.zig")` cannot escape the embedding module's root. The bytes now
+#     arrive via src/engine/transition_source_embed.zig; 3/3 tests pass.
+#   * iss105_integration_tests' GIN-index assertion passes; 4/4 tests pass.
+#
+# Adding an entry here is a temporary, visible record while a specific issue is
+# open — never a way to keep a failing binary out of the aggregate steps.
+KNOWN_UNATTACHED: dict[str, str] = {}
 
 # Steps that CI / the pipeline actually invoke. A test Run artifact reachable
 # only from some other narrow, opt-in step is effectively unexecuted: that is

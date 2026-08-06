@@ -116,24 +116,26 @@
     {
       "issue_id": "ISS-0157",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/476",
-      "status": "QUEUED",
+      "status": "DRAINED",
       "severity": "MAJOR",
       "discovered_at": "2026-08-06T08:30:25Z",
       "discovered_by": "BACKEND-DEV step q150",
       "discovered_while_fixing": "ISS-0150",
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-08-06T12:35:02Z"
     },
     {
       "issue_id": "ISS-0158",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/479",
-      "status": "QUEUED",
+      "status": "DEFERRED",
       "severity": "MAJOR",
       "discovered_at": "2026-08-06T09:54:16Z",
       "discovered_by": "BACKEND-DEV step q149",
       "discovered_while_fixing": "ISS-0149",
       "started_at": null,
-      "completed_at": null
+      "completed_at": null,
+      "deferred_reason": "EXP-302 SERVICE_TASK effect-emission contract requires a production-behaviour decision (does transition() emit on entry, or does the effects dispatcher?) -- transition.zig must stay pure/zero-I/O, so this needs its own CODE-DESIGNER pass rather than a wiring-run fix.",
+      "deferred_at": "2026-08-06T12:35:02Z"
     },
     {
       "issue_id": "ISS-0159",
@@ -160,24 +162,30 @@
     {
       "issue_id": "ISS-0161",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/485",
-      "status": "QUEUED",
+      "status": "DEFERRED",
       "severity": "MAJOR",
       "discovered_at": "2026-08-06T11:50:48Z",
       "discovered_by": "BACKEND-DEV Step q153",
       "discovered_while_fixing": "ISS-0153",
       "started_at": null,
-      "completed_at": null
+      "completed_at": null,
+      "deferred_reason": "Actually linking LuaJIT is an infrastructure/vendoring decision (no lua.h, no libluajit on disk, not in build.zig.zon or docker-compose). LUA-01..16 correctly downgraded RELEASED -> IN_PROGRESS in the meantime.",
+      "deferred_at": "2026-08-06T12:35:02Z"
     },
     {
       "issue_id": "ISS-0162",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/486",
-      "status": "QUEUED",
+      "status": "DEFERRED",
       "severity": "MAJOR",
       "discovered_at": "2026-08-06T11:52:18Z",
       "discovered_by": "BACKEND-DEV Step q159",
       "discovered_while_fixing": "ISS-0159",
       "started_at": null,
-      "completed_at": null
+      "completed_at": null,
+      "deferred_reason": "Pre-existing cross-binary harness races (schema_migrations 23505 on tenant_default; resetTestData deleting a live test's instance_projections). Reproduces with this run's changes stashed; belongs with GH #366/#454 suite-isolation work.",
+      "deferred_at": "2026-08-06T12:35:02Z"
     }
-  ]
+  ],
+  "closed_at": "2026-08-06T12:35:02Z",
+  "close_note": "Queue closed by ORCH at run end. 11 items DRAINED (ISS-0147..0157, ISS-0159, ISS-0160). Remaining items are DEFERRED, not forgotten: each has a GitHub issue and an ISS file, and each needs a decision or infrastructure change outside a build-graph run's scope."
 }
