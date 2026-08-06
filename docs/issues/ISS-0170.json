@@ -1,0 +1,27 @@
+{
+  "id": "ISS-0170",
+  "title": "CI jobs cancelled after 15min waiting for a runner, showing red on PRs indistinguishable from real failures",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/497",
+  "discovered_at": "2026-08-06T21:23:19Z",
+  "discovered_by": "ORCH investigating run 31127727011",
+  "discovered_while_fixing": null,
+  "run_id": null,
+  "affected_areas": [
+    ".github/workflows/ci.yml"
+  ],
+  "symptom": "Jobs queue, are never assigned a runner, and are cancelled ~15min later, surfacing as a red X identical to a genuine failure.",
+  "root_cause": "Runner starvation (capacity/scheduling), compounded by cancel-in-progress cancelling runs that never acquired a runner. Not a code defect.",
+  "acceptance_criteria": [
+    "Document runner capacity/policy",
+    "Add per-job timeout-minutes so starvation fails fast and legibly",
+    "Distinguish 'never scheduled' from 'failed' in the PR view",
+    "Confirm over 10 runs that red means a real failure"
+  ],
+  "notes": [
+    "Measured: last 40 runs = 31 success, 6 cancelled, 3 failure. Only 3 are genuine code failures.",
+    "run 31125795191 had 4/4 jobs never start; 31127727011 had 2/4.",
+    "Separate from the continue-on-error masking defect (ISS-0171), which hides real failures rather than fabricating false ones."
+  ]
+}

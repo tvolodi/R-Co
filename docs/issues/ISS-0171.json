@@ -1,0 +1,29 @@
+{
+  "id": "ISS-0171",
+  "title": "Two stale continue-on-error steps in ci.yml mask real failures; stated exit conditions already met",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/498",
+  "discovered_at": "2026-08-06T21:24:12Z",
+  "discovered_by": "ORCH investigating run 31127727011",
+  "discovered_while_fixing": null,
+  "run_id": "WF03-ISS-0171-20260807",
+  "affected_areas": [
+    ".github/workflows/ci.yml",
+    "tools/lint_test_isolation.baseline.json"
+  ],
+  "symptom": "Two continue-on-error steps remain after their documented exit conditions were met, so failures are reported and ignored. Source linters reports success via API while its log contains exit code 1.",
+  "root_cause": "(1) GH #428 closed and test-transition now passes, but its mask was never removed. (2) lint_test_isolation baseline keys on line number via issue_key(); PR #490 shifted helpers.zig lines 388/393/394 -> 432/437/438 without regenerating the baseline, so 3 entries stopped matching.",
+  "acceptance_criteria": [
+    "Re-point 3 drifted baseline entries",
+    "Remove continue-on-error from Test isolation",
+    "Remove continue-on-error from transition tests",
+    "Keep Install Zig fallback",
+    "Correct inaccurate BLOCKER count",
+    "Document issue_key line fragility"
+  ],
+  "notes": [
+    "Install Zig's continue-on-error is legitimate: fallback pair, Confirm Zig is on PATH hard-fails if both routes fail.",
+    "Distinct from ISS-0170 (runner starvation), which fabricates false red rather than hiding real red."
+  ]
+}

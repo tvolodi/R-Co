@@ -73,11 +73,19 @@ jobs:
         run: python3 tools/lint_migration_schema.py
 
       - name: Test isolation
-        # 222 pre-existing BLOCKERs (hardcoded fixture UUIDs across 127 files)
-        # are tracked separately; this step reports them without failing the
-        # build so the signal stays visible without blocking unrelated work.
-        # Flip to a hard gate once that backlog is cleared.
-        continue-on-error: true
+        # HARD GATE (ISS-0171 / GH #498). This was continue-on-error until
+        # 2026-08-07, on the stated grounds that a backlog of pre-existing
+        # findings had to be cleared first. That was inaccurate: the backlog
+        # (184 BLOCKER + 41 MAJOR) is already suppressed by
+        # tools/lint_test_isolation.baseline.json, so it was never what made
+        # this step fail. The step failed on 3 findings whose LINE NUMBERS had
+        # drifted out of sync with the baseline, and the mask meant nobody saw
+        # it. Baseline resynced; the step now exits 0 and gates for real.
+        #
+        # If this starts failing on a finding you believe is already known,
+        # the cause is almost certainly line drift, not a new defect --
+        # issue_key() is "severity|code|file|line|message". See the
+        # regeneration_note in the baseline file before touching this step.
         run: python3 tools/lint_test_isolation.py tests/integration
 
   # ---------------------------------------------------------------------------
@@ -225,11 +233,16 @@ jobs:
           exit 1
 
       - name: transition.zig in-file tests
-        # 7 of these 30 fail (5 leak, 2 crash) — GH #428. They were inert for
-        # months and rotted against ownership-model changes; the leaks are
-        # test-side, not production defects. Reported, not gated, until #428
-        # closes; then drop continue-on-error and wire it into `zig build test`.
-        continue-on-error: true
+        # HARD GATE (ISS-0171 / GH #498). This was continue-on-error while 7 of
+        # 30 tests failed under GH #428. #428 is now CLOSED and
+        # `zig build test-transition` exits 0, so the stated exit condition
+        # ("drop continue-on-error once #428 closes") has been met. The mask
+        # simply outlived it.
+        #
+        # This gate matters more than most: src/engine/transition.zig is the
+        # pure-function core that CLAUDE.md forbids all I/O in. A regression
+        # here being reported-and-ignored is exactly the failure this repo
+        # cannot afford.
         run: zig build test-transition -j2
 
   # ---------------------------------------------------------------------------
