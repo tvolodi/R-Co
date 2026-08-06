@@ -22,6 +22,32 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Platform status (ISS-0170 / GH #497).
+  #
+  # On 2026-08-06 GitHub Actions went into major_outage at 15:22Z with webhook
+  # triggers throttled: runs stopped being created, and queued jobs were never
+  # assigned a runner and were cancelled ~15 min later. On a PR that renders as
+  # a red X indistinguishable from a failed test. 12/12 runs before the incident
+  # succeeded; every cancellation and failure that day came after it opened —
+  # yet nothing in the pipeline said so, and the outage was found only because
+  # someone opened the status page by hand.
+  #
+  # This job attaches that explanation to the run automatically. It is
+  # DIAGNOSTIC ONLY and always exits 0: a check that could fail here would add
+  # a second way for the platform to redden a healthy PR, and one that could
+  # pass a build during an outage would mask real failures. Nothing depends on
+  # it (`needs:` is deliberately absent) so it cannot delay or gate anything.
+  # ---------------------------------------------------------------------------
+  platform_status:
+    name: Platform status
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: GitHub Actions platform status
+        run: python3 tools/check_github_status.py --github
+
+  # ---------------------------------------------------------------------------
   # Bookkeeping — the checks that did not exist when the audit ran.
   # Fast, no toolchain needed, so they fail early and cheaply.
   # ---------------------------------------------------------------------------
