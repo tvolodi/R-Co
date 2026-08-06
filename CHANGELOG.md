@@ -6,6 +6,17 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0163** ([GitHub #489](https://github.com/tvolodi/R-Co/issues/489) — dangling `implemented_in` references in `docs/requirements.yaml`; `reqctl validate` never checked them)
+
+- **Writer bug fixed.** `reqctl set-status` routed `--implemented-in` straight into the YAML entry with no type coercion, so a programmatic caller passing a bare `str` stored a string where a list belongs — any consumer iterating it then yielded one character per entry. That is the origin of `ISS-204`/`ISS-206`'s character-split values. `cmd_set_status` now routes through `coerce_path_list()`.
+- **Detection added.** `reqctl validate` now checks every `implemented_in` entry: it must resolve to a real path on disk and must not be a run/branch identifier. Reported **BLOCKER** for `RELEASED` requirements (a released requirement pointing at nothing is the harm this class causes), **MAJOR** otherwise. This is what makes the class non-recurring.
+- **41 dangling references repaired**: 17 renamed migrations repointed (`GBL-105`→`133`, `GBL-081`→`120`, `GBL-082`→`121`), 8 fabricated source paths repointed to the real implementing files, 10 run-IDs moved out of `implemented_in` into `note` (they record *where the work happened*, not *what implements the requirement*), 7 frontend paths dropped, 1 stray `" (inferred)"` suffix removed. `reqctl validate` now reports **0** `implemented_in` findings and **0** BLOCKERs (was 43).
+- **Regression cover**: new `reqctl selftest` subcommand exercises the coercion and run-ID detection. It was mutation-checked — reintroducing the writer bug makes it exit 1 — rather than merely observed to pass.
+- **Two corrections to the filed report**, both verified rather than assumed:
+  - The **"103 dangling references"** figure does not reproduce at any point in git history: 41 at the commit where this fix began, 44 before PR #490. The three root causes described in the issue are all real and were each confirmed independently; only the count was wrong.
+  - The paths the issue described as *"genuinely deleted/moved source files"* (`src/instance/store.zig`, `src/scheduler/timer.zig`, `src/api/routes/repository.zig`, several `web/src/components/tasks/*.tsx`) have **zero commits in git history** — they never existed and were fabricated at write time. They were therefore dropped or repointed at the real implementing file, not traced to a successor. The one genuine move was `web/src/pages/LoginPage.tsx` (6 commits, removed in `8e7ea86`).
+- Requirement bodies, titles, statuses, and IDs are byte-identical; the change touches only `implemented_in` and `note`. `docs/status/requirement_status.yaml` regenerated via `reqctl render-status`.
+
 **ISS-0137** ([GitHub #439](https://github.com/tvolodi/R-Co/issues/439) — 55 test-bearing `.zig` files were reachable from no `b.addTest(...)` root; ~350 test blocks had never executed) — plus 12 further defects drained from this run's issue queue
 
 - **Closes GitHub #439**: all 55 unreachable test-bearing files are now wired into a build target. `zig build test` executed test blocks went from **701 → 865 (+164)**, measured by TEST-RUNNER before and after on the same machine.
