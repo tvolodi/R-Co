@@ -1,0 +1,35 @@
+{
+  "id": "ISS-0604",
+  "title": "migrate: circular dependency blocks fresh-DB bootstrap — public-only migration 1135 runs in per-tenant pass and needs GBL-119, which is gated behind GBL-116's tenant-ready pre-flight",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "migration-ordering",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/470",
+  "run_id": "WF03-gh467-20260806",
+  "discovered_by": "ISSUE-FIXER during WF03-gh467-20260806 (ISS-0603 verification)",
+  "affected_areas": [
+    "src/tools/migrate.zig",
+    "src/db/migrations.zig",
+    "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql",
+    "migrations/GBL-116_tnt07_rls_cleanup.sql"
+  ],
+  "created_at": "2026-08-06T07:12:57Z",
+  "notes": "Discovered while verifying the ISS-0603 apply-order fix against a genuinely empty database. ISS-0603 is fixed and necessary, but NOT sufficient for a from-empty bootstrap: a separate circular dependency remains and `zig build migrate` still exits 1 on a fresh database.\n\nOBSERVED (fresh_check scratch DB on localhost:5452, post-ISS-0603-fix): migrate applies public migrations correctly in the new order, then the ISS-502 default-tenant provisioning hook in src/tools/migrate.zig fires immediately before the first GBL- file. That hook calls Migrations.runForSchema() for schema tenant_default. Per-tenant passes deliberately SKIP every GBL-* file, so that pass reaches 1135_iss0114_backfill_public_tenant_storage_mode.sql without GBL-119 having run, and dies with C42703 'column \"tenant_type\" of relation \"tenant\" does not exist'. Because that pass failed, public.tenant_schemas.migrations_applied_at stays NULL for the default tenant, so GBL-116_tnt07_rls_cleanup.sql's TNT-07 pre-flight then aborts with 'TNT-07 pre-flight failed. Unready tenants: 00000000-0000-0000-0000-000000000000'. Migration stops permanently at 86/106 public migrations and does NOT converge across repeated runs (verified: 4 consecutive `zig build migrate` passes all stop at exactly 86).\n\nThe cycle: tenant_default pass needs 1135 -> 1135 needs public.tenant.tenant_type -> that column comes from GBL-119 -> GBL-119 is ordered after GBL-116 -> GBL-116's pre-flight requires the tenant_default pass to have completed.\n\nPROOF THE CYCLE IS THE ONLY REMAINING BLOCKER: applying GBL-119 by hand to the public schema and re-running migrate drove the database to 106/106 public migrations applied, and the next run reported 'No new migrations to apply.' with exit 0. So once the cycle is broken, the ISS-0603 ordering fix carries a fresh database all the way to completion.",
+  "root_cause": "Migration 1135_iss0114_backfill_public_tenant_storage_mode.sql is entirely public-schema work — every table it touches is fully qualified (INSERT INTO public.tenant ... FROM public.tenant_schemas ... WHERE NOT EXISTS (SELECT 1 FROM public.tenant ...)). It has no per-tenant effect at all, yet it is a non-GBL file, so per-tenant migration passes execute it anyway. There is currently no way to mark a numeric (non-GBL) migration as public-schema-only; the GBL- prefix is the only such marker, and 1135 cannot simply be renamed to GBL- because that would change its migrationOrder() and its position relative to the tenant-schema DDL chain.",
+  "candidate_resolution": "Introduce an explicit public-only marker for non-GBL migrations (e.g. a '-- scope: public' header convention parsed by the applier, mirroring the existing '-- reapply_on_drift: true' header) and mark 1135 with it, so per-tenant passes skip it the same way they skip GBL- files. Alternative: move the ISS-502 default-tenant provisioning hook to run after ALL public migrations complete rather than immediately before the first GBL- file — but that risks re-breaking the GBL-077/GBL-084 gating that the hook's current placement was specifically introduced to satisfy, so the header-marker route is preferred. Either fix needs verification from a genuinely empty database.",
+  "files_to_change": [
+    "src/db/migrations.zig",
+    "src/tools/migrate.zig",
+    "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql"
+  ],
+  "acceptance_criteria": [
+    "zig build migrate exits 0 against a completely empty database in a single invocation",
+    "zig build migrate is a no-op (exits 0) when re-run on the resulting database",
+    "public-only migrations are skipped in per-tenant passes via an explicit, documented marker",
+    "default tenant ends with public.tenant_schemas.migrations_applied_at IS NOT NULL after a from-empty bootstrap",
+    "no regression for pre-existing databases (bpm_dev on localhost:5452)"
+  ],
+  "related_issues": [
+    "ISS-0603"
+  ]
+}

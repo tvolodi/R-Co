@@ -1,7 +1,9 @@
 //! Migration runner — DB-01, DB-03
 //!
 //! Discovers numbered SQL files in a migrations directory, applies each in
-//! lexicographic order, and records successful application in the
+//! migrationOrder() order (numeric prefix, with "GBL-" prefixed files offset by
+//! +1000 so they interleave with the 1xxx_ series rather than sorting after
+//! them — ISS-0603 / GH-467), and records successful application in the
 //! schema_migrations table.  Each migration runs in its own transaction.
 //!
 //! Design artefact: src/design/db.md
@@ -60,11 +62,12 @@ pub const Migrations = struct {
     /// backward compatibility.  All callers are unaffected.
     ///
     /// Algorithm (DB-01, DB-03):
-    ///  1. List all *.sql files in migrations_dir; sort lexicographically.
+    ///  1. List all *.sql files in migrations_dir; sort by migrationOrder(),
+    ///     with the filename as a deterministic tiebreak (ISS-0603 / GH-467).
     ///  2. Query schema_migrations for already-applied versions (schema='public').
     ///  3. For each file in sorted order:
     ///     - If already in schema_migrations → skip (idempotent).
-    ///     - If any version M > this file's N is in schema_migrations →
+    ///     - If a HIGHER-ordered migration was already walked past in this pass →
     ///       return OutOfOrderMigration.
     ///     - Otherwise: BEGIN; execute file; INSERT INTO schema_migrations;
     ///       COMMIT.  On any error: ROLLBACK; return MigrationFailed.
@@ -181,9 +184,33 @@ pub const Migrations = struct {
             };
         }
 
-        // Sort lexicographically (zero-padded NNN_ prefix ensures numeric order).
+        // ISS-0603 / GH-467: Order by migrationOrder(), NOT by raw filename bytes.
+        //
+        // This sort previously used a plain std.mem.lessThan on the filename and
+        // was commented "zero-padded NNN_ prefix ensures numeric order". That
+        // stopped being true the moment GBL- prefixed migrations were introduced:
+        // '1' (0x31) sorts before 'G' (0x47), so EVERY GBL-* file was applied
+        // after EVERY 1xxx_* file. GBL-119_env01_tenant_type_field.sql adds
+        // public.tenant.tenant_type, which 1135_iss0114_backfill_public_tenant_
+        // storage_mode.sql writes to — so bootstrapping any fresh database died
+        // with C42703 'column "tenant_type" of relation "tenant" does not exist'.
+        //
+        // migrationOrder() already encoded the INTENDED ordering (strip "GBL-",
+        // add a 1000 offset => GBL-119 -> 1119, correctly before 1135) and was
+        // already used by the out-of-order detection check below. The sort and
+        // the detection check disagreed, and the sort governed execution.
+        // Both now agree: migrationOrder() is the single ordering authority.
+        //
+        // Filename is the tiebreak when two files share an order, so the
+        // sequence is fully deterministic (e.g. 050_tenant_hostnames.sql and
+        // 050_xc01_trace_id_audit.sql, and 056_onboarding_registry.sql and
+        // 056_xc03_configuration_repository_fix.sql, are real duplicate-order
+        // pairs in migrations/).
         std.sort.block([]u8, names.items, {}, struct {
             fn lessThan(_: void, a: []u8, b: []u8) bool {
+                const oa = migrationOrder(a);
+                const ob = migrationOrder(b);
+                if (oa != ob) return oa < ob;
                 return std.mem.lessThan(u8, a, b);
             }
         }.lessThan);
@@ -222,17 +249,31 @@ pub const Migrations = struct {
             }
         }
 
-        // Determine the highest already-applied numeric order for out-of-order detection.
-        var max_applied: []const u8 = "";
-        var max_applied_order: u32 = 0;
-        var applied_iter = applied.keyIterator();
-        while (applied_iter.next()) |k| {
-            const order = migrationOrder(k.*);
-            if (order > max_applied_order) {
-                max_applied_order = order;
-                max_applied = k.*;
-            }
-        }
+        // ISS-0603 / GH-467: Establish the pre-existing-database baseline.
+        //
+        // Before this fix the apply sort ran in raw filename order, so every
+        // GBL-* file was applied AFTER every 1xxx_* file. Databases provisioned
+        // under that old order therefore legitimately contain ledger rows whose
+        // migrationOrder() is *lower* than a previously applied one — e.g. a DB
+        // with 1134 applied but GBL-112..GBL-133 (orders 1112..1133) still
+        // pending, which is exactly the state this workspace's bpm_dev is in.
+        //
+        // Judging those pending files against the global `max_applied_order`
+        // watermark would return OutOfOrderMigration and permanently brick every
+        // such environment — a fix that bootstraps fresh databases but breaks
+        // every existing developer database is not an acceptable fix.
+        //
+        // So the out-of-order check below is scoped to genuine NEW inversions:
+        // a file is only rejected when a HIGHER-ordered migration was applied
+        // that this run has already walked past in sorted order. Migrations that
+        // were left pending by the old, wrong sort are grandfathered in and are
+        // simply applied now, in their correct relative order.
+        //
+        // `walked_order` is the highest migrationOrder() this run has already
+        // passed while walking `names.items` in correctly-sorted order. It starts
+        // at 0 and only advances, so it measures inversions *within this pass*
+        // rather than against the whole historical ledger.
+        var walked_order: u32 = 0;
 
         // Apply pending migrations in order.
         for (names.items) |filename| {
@@ -249,7 +290,18 @@ pub const Migrations = struct {
             }
 
             // Skip already-applied migrations (idempotent).
-            if (applied.contains(filename)) continue;
+            //
+            // ISS-0603 / GH-467: walking past an applied file advances
+            // `walked_order`. This is what gives the out-of-order check below its
+            // meaning: an applied migration only constrains files that come AFTER
+            // it in correct sort order. A pending file that sorts BEFORE every
+            // applied one (the legacy GBL backlog) is never compared against it,
+            // so pre-existing databases apply their backlog instead of erroring.
+            if (applied.contains(filename)) {
+                const applied_order = migrationOrder(filename);
+                if (applied_order > walked_order) walked_order = applied_order;
+                continue;
+            }
 
             // ISS-0112 applier guard (Change 2 of src/design/fix-iss0112.md).
             // Read the migration file's first 1 KiB to detect the
@@ -304,8 +356,21 @@ pub const Migrations = struct {
 
             // Out-of-order check: a lower numeric migration order cannot be applied
             // after a higher order has already been recorded for this schema.
+            //
+            // ISS-0603 / GH-467: compared against `walked_order` — the highest
+            // order this run has already passed in correctly-sorted order — and
+            // not against the raw global `max_applied_order` watermark. Because
+            // `names.items` is now sorted by migrationOrder(), reaching a pending
+            // file whose order is below something we already walked past is a
+            // genuine inversion (a newly authored migration numbered beneath the
+            // existing chain), which is what this check is for.
+            //
+            // Applied migrations that sort ABOVE the whole pending backlog are
+            // the legacy artefact of the old lexicographic sort (see the
+            // `walked_order` rationale above) and must NOT trip this check,
+            // or every database provisioned before this fix would fail forever.
             const file_order = migrationOrder(filename);
-            if (max_applied.len > 0 and file_order < max_applied_order) {
+            if (walked_order > 0 and file_order < walked_order) {
                 return MigrationError.OutOfOrderMigration;
             }
 
@@ -367,10 +432,7 @@ pub const Migrations = struct {
             };
             if (already_applied_under_lock) {
                 conn.exec("COMMIT", &.{}) catch return MigrationError.MigrationFailed;
-                if (file_order > max_applied_order) {
-                    max_applied_order = file_order;
-                    max_applied = filename;
-                }
+                if (file_order > walked_order) walked_order = file_order;
                 continue;
             }
 
@@ -397,15 +459,19 @@ pub const Migrations = struct {
             conn.exec("COMMIT", &.{}) catch return MigrationError.MigrationFailed;
 
             // Update local tracking so subsequent out-of-order checks are accurate.
-            if (file_order > max_applied_order) {
-                max_applied_order = file_order;
-                max_applied = filename;
-            }
+            if (file_order > walked_order) walked_order = file_order;
         }
     }
 };
 
-fn migrationOrder(filename: []const u8) u32 {
+/// The single ordering authority for migration application (ISS-0603 / GH-467).
+///
+/// Both the apply sort in `runForSchema` and its out-of-order detection check
+/// use this function. Made public so the ordering contract is directly testable
+/// — see TC-DB-01-03 / TC-DB-01-06 in tests/unit/db_test.zig. Keeping the sort
+/// and the detection check on two different notions of "order" is precisely the
+/// defect ISS-0603 fixed; do not reintroduce a second ordering rule.
+pub fn migrationOrder(filename: []const u8) u32 {
     // GBL-NNN_... files: skip "GBL-" prefix then parse the numeric part.
     // We add an offset (1000) for GBL migrations so they don't clash with
     // regular NNN prefix migrations numerically.
