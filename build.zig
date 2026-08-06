@@ -348,6 +348,30 @@ pub fn build(b: *std.Build) void {
     });
     const run_json_schema_tests = b.addRunArtifact(json_schema_tests);
 
+    // ISS-0160 / GH #481: src/entities/ is reached from src/main.zig only via
+    // api/routes/entities.zig, which imports definition.zig and commands.zig
+    // directly — validator.zig's own test blocks were therefore in NO addTest
+    // root's file set and never ran. Verified with a deliberately-failing
+    // canary test: `zig build test` stayed green at 63/63 with it present,
+    // which is precisely the ISS-0133 failure mode.
+    //
+    // validator.zig is its own root rather than mod.zig: mod.zig transitively
+    // reaches ../repository/canonicaliser.zig (via definition.zig), which
+    // escapes the src/entities/ module path and makes it unusable as a test
+    // root ("import of file outside module path"). validator.zig is pure and
+    // needs only json_schema, so it stands alone.
+    const entities_validator_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/entities/validator.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "json_schema", .module = json_schema_mod },
+            },
+        }),
+    });
+    const run_entities_tests = b.addRunArtifact(entities_validator_tests);
+
     const graph_mod = b.createModule(.{
         .root_source_file = b.path("src/definition/graph.zig"),
         .target = target,
@@ -1055,6 +1079,7 @@ pub fn build(b: *std.Build) void {
 
     test_step.dependOn(&run_event_store_tests.step);
     test_step.dependOn(&run_json_schema_tests.step);
+    test_step.dependOn(&run_entities_tests.step); // ISS-0160 / GH #481
     test_step.dependOn(&run_graph_tests.step);
     test_step.dependOn(&run_bpm_main_tests.step);
     test_step.dependOn(&run_snapshot_tests.step);
@@ -1146,6 +1171,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "realm_deletion", .module = realm_deletion_mod },
         .{ .name = "oidc_migration_helper", .module = oidc_migration_helper_mod },
     };
+
 
     const integration_tests = b.addTest(.{
         .root_module = b.createModule(.{

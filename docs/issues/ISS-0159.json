@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0159",
   "title": "createRecord ignores its idempotency replay result: on duplicate it looks up a freshly-minted record_id instead of the original event's, returning InvalidRecord/TransactionFailed",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "discovered_at": "2026-08-06T10:28:00Z",
   "discovered_by": "BACKEND-DEV",
@@ -21,5 +21,8 @@
     "ISS-0156",
     "ISS-0160"
   ],
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/480"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/480",
+  "resolved_at": "2026-08-06T12:09:10Z",
+  "resolution": "Fixed in src/entities/commands.zig, two coupled defects in the same branch.\n\n(1) Wrong lookup key. createRecord's duplicate branch now recovers the ORIGINAL record_id from the replayed event rather than using the freshly-minted one. A new private helper extractRecordId(allocator, payload) parses record_id out of append_res.record.payload (the first call's ENTITY_RECORD_CREATED payload built by events_mod.buildCreatedPayload) and fetchRecordResult is called with THAT id. It falls back to the local record_id when the payload is absent/unparseable/lacks the key, so a replay degrades rather than hard-failing.\n\n(2) Leak. store.append() returns an EventRecord with asymmetric ownership: on a duplicate, rowToEventRecord() dupes event_type/payload/metadata with the caller's allocator (3 allocations); on a fresh append, duplicateFromParams() borrows and sets those three fields to empty strings. EventRecord.deinit guards each on .len > 0, so a single 'var append_record = append_res.record; defer append_record.deinit(allocator);' is correct for BOTH shapes. Added to createRecord, updateRecord, and deleteRecord - the leak existed in all three, not only the duplicate path.\n\nResult: tests/integration/entity_subsystem_test.zig 12/12 with ZERO leaks (was 10/12 with 3 leaks). The 3 leaked allocations map exactly to rowToEventRecord's 3 dupes.\n\nMutation-verified (both directions, independently):\n  - reverting the lookup to 'const lookup_id = record_id;' -> 'EXP-202: Create record idempotency' fails at fetchRecordResult with error.InvalidRecord (11/12), the exact reported signature.\n  - removing the createRecord deinit -> 'leaked 3 allocations' returns (12/12 pass but 3 leaks), the exact baseline count.",
+  "prevention": "When a function mints an identifier BEFORE learning whether the operation is a replay, the minted value is only valid on the non-replay path - the replay path must read the identifier back from whatever the idempotency layer returned. Note updateRecord/deleteRecord had the identical branch shape but were benign because they take record_id as an input parameter; 'the same bug exists here but is currently harmless' is worth a comment, since a later refactor that makes those functions mint ids would silently reintroduce it.\n\nFor the leak: when an API returns a struct whose fields are allocator-owned on SOME paths and borrowed on others, check whether its deinit is written to tolerate both (here it is, via .len > 0 guards) and then free unconditionally on every path. An ownership contract that varies by branch is the trap - the fix is one unconditional defer immediately after the call, not a free inside each branch."
 }

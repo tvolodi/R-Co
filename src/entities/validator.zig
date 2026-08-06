@@ -5,10 +5,25 @@
 //! queried+json exclusion, index coverage, FK coverage, enum/decimal
 //! validation, and cardinality limits.
 //!
+//! ISS-0160 / GH #481 adds the second, previously-absent half: validation of
+//! entity RECORDS (instances) against the definition that governs them, via
+//! `validateRecordPayload`. Everything above `validateDefinition` concerns the
+//! schema; everything under "Record payload validation" concerns the data.
+//!
 //! Design artefact: src/design/entities.md (Validation rules section)
 
 const std = @import("std");
-const entities_mod = @import("mod.zig");
+// NOTE: this file deliberately does NOT import mod.zig. It never used any
+// declaration from it, and staying free of that import keeps validator.zig
+// self-contained enough to serve as its own addTest root (build.zig
+// `entities_validator_tests`) — mod.zig transitively reaches
+// ../repository/canonicaliser.zig, which escapes the src/entities/ module
+// path and cannot be a test root at all. See ISS-0160 / GH #481.
+// ISS-0160 / GH #481: reuse the shared JSON Schema validator rather than
+// growing a second one here. `json_schema` is a named module (build.zig) for
+// exactly this reason — src/tools/json_schema.zig is outside the entities
+// module path and cannot be reached by relative @import.
+const json_schema = @import("json_schema");
 
 // ---------------------------------------------------------------------------
 // Public error set
@@ -494,8 +509,357 @@ fn isFieldQueried(fields: []const std.json.Value, field_name: []const u8) bool {
 }
 
 // ---------------------------------------------------------------------------
+// Record payload validation — EXP-202 (ISS-0160 / GH #481)
+//
+// `validateDefinition` above validates a SCHEMA. This section validates a
+// RECORD against that schema — the half `createRecord` carried as a literal
+// `// TODO` while `EntityCommandError.InvalidPayload` sat declared and
+// unreachable, so any payload was accepted and durably persisted into the
+// event log.
+//
+// Implementation note: this deliberately does NOT hand-roll a second
+// constraint engine. The entity definition's `fields` array is translated into
+// an equivalent JSON Schema document, and `json_schema.validateCollect`
+// (src/tools/json_schema.zig, extended under ISS-0155 / GH #473 with `type`,
+// `required`, `properties`, `enum`, `minimum`, `maximum`, `minLength`,
+// `maxLength`, and `additionalProperties: false`) does the actual checking —
+// the same path `src/event_store/registry.zig::validatePayloadAgainstSchema`
+// takes for ES-05.
+// ---------------------------------------------------------------------------
+
+/// One record-payload constraint violation, located by an RFC 6901 pointer
+/// into the submitted `field_values` document.
+///
+/// `path` and `actual` are owned by the allocator passed to
+/// `validateRecordPayload`; `constraint` is a static string literal.
+/// Free a returned slice with `deinitRecordViolations`.
+pub const RecordViolation = struct {
+    /// RFC 6901 pointer to the failing location, e.g. "/f1". "/" is the root.
+    path: []const u8,
+    /// The constraint that failed: "required", "type", "enum", "maxLength",
+    /// "minimum", "maximum", "additionalProperties", ...
+    constraint: []const u8,
+    /// The serialised actual value at `path`; "null" when the location is absent.
+    actual: []const u8,
+};
+
+/// Free a slice returned by `validateRecordPayload`.
+pub fn deinitRecordViolations(allocator: std.mem.Allocator, violations: []RecordViolation) void {
+    for (violations) |v| {
+        allocator.free(v.path);
+        allocator.free(v.actual);
+    }
+    allocator.free(violations);
+}
+
+/// Validate an entity record's `field_values` against the entity definition
+/// that governs it.
+///
+/// Returns an allocator-owned slice of violations — EMPTY when the payload
+/// conforms. A non-conforming payload is never an error return; only a genuine
+/// fault (unparseable definition, OOM) is. That mirrors
+/// `registry.validatePayloadAgainstSchema`'s contract and lets the caller
+/// report every failure at once rather than only the first.
+///
+/// Enforced, derived from the definition's `fields` array:
+///   - presence   — every field with `"required": true` must be present
+///   - type       — each field's declared `type` mapped to its JSON counterpart
+///   - enum       — membership in `validation.values` for `type: "enum"`
+///   - maxLength  — `validation.max_length` for string-valued fields
+///   - minimum/maximum — `validation.min_value` / `max_value` for numerics
+///   - unknown fields — any key absent from the definition is rejected
+///
+/// A definition with no `fields` array imposes no constraints (the payload is
+/// only required to be a JSON object), matching how an empty schema behaves in
+/// `validatePayloadAgainstSchema`.
+pub fn validateRecordPayload(
+    allocator: std.mem.Allocator,
+    definition_json: []const u8,
+    field_values: []const u8,
+) EntityValidationError![]RecordViolation {
+    // Everything built for the translated schema lives and dies in this arena;
+    // only the returned violations are copied out to `allocator`.
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const aa = arena.allocator();
+
+    const parsed_def = std.json.parseFromSlice(
+        std.json.Value,
+        aa,
+        definition_json,
+        .{ .allocate = .alloc_always },
+    ) catch return EntityValidationError.OutOfMemory;
+
+    const parsed_payload = std.json.parseFromSlice(
+        std.json.Value,
+        aa,
+        field_values,
+        .{ .allocate = .alloc_always },
+    ) catch {
+        // Unparseable field_values is a payload failure, not a definition
+        // fault — report it as a root-level type violation so the caller
+        // rejects it the same way it rejects any other bad payload.
+        return singleViolation(allocator, "/", "type", field_values);
+    };
+
+    // A record's field_values must be a JSON object; anything else (array,
+    // scalar, null) cannot carry named fields at all.
+    if (parsed_payload.value != .object) {
+        return singleViolation(allocator, "/", "type", field_values);
+    }
+
+    const schema = buildRecordSchema(aa, parsed_def.value) catch
+        return EntityValidationError.OutOfMemory;
+
+    const violations = json_schema.validateCollect(aa, parsed_payload.value, schema) catch
+        return EntityValidationError.OutOfMemory;
+
+    // Copy out of the arena into caller-owned memory.
+    const out = allocator.alloc(RecordViolation, violations.len) catch
+        return EntityValidationError.OutOfMemory;
+    var filled: usize = 0;
+    errdefer {
+        deinitRecordViolations(allocator, out[0..filled]);
+        allocator.free(out[filled..]);
+    }
+    for (violations, 0..) |v, i| {
+        // json_schema renders the document root as ""; render it as "/" here
+        // for consistency with ValidationError.field_path elsewhere in this file.
+        const path_src = if (v.path.len == 0) "/" else v.path;
+        const path = allocator.dupe(u8, path_src) catch return EntityValidationError.OutOfMemory;
+        errdefer allocator.free(path);
+        const actual = allocator.dupe(u8, v.actual) catch return EntityValidationError.OutOfMemory;
+        out[i] = .{ .path = path, .constraint = v.constraint, .actual = actual };
+        filled = i + 1;
+    }
+    return out;
+}
+
+/// Allocate a one-element violation slice (used for whole-document failures).
+fn singleViolation(
+    allocator: std.mem.Allocator,
+    path: []const u8,
+    constraint: []const u8,
+    actual: []const u8,
+) EntityValidationError![]RecordViolation {
+    const out = allocator.alloc(RecordViolation, 1) catch return EntityValidationError.OutOfMemory;
+    errdefer allocator.free(out);
+    const p = allocator.dupe(u8, path) catch return EntityValidationError.OutOfMemory;
+    errdefer allocator.free(p);
+    const a = allocator.dupe(u8, actual) catch return EntityValidationError.OutOfMemory;
+    out[0] = .{ .path = p, .constraint = constraint, .actual = a };
+    return out;
+}
+
+/// Translate an entity definition document into the equivalent JSON Schema
+/// object. Everything allocated belongs to `aa` (an arena in the caller).
+fn buildRecordSchema(aa: std.mem.Allocator, def: std.json.Value) !std.json.Value {
+    var schema = try std.json.ObjectMap.init(aa, &.{}, &.{});
+    try schema.put(aa, "type", .{ .string = "object" });
+
+    if (def != .object) return .{ .object = schema };
+    const fields_val = def.object.get("fields") orelse return .{ .object = schema };
+    if (fields_val != .array) return .{ .object = schema };
+
+    var properties = try std.json.ObjectMap.init(aa, &.{}, &.{});
+    // std.json.Array is the *Managed* ArrayList variant (it carries its own
+    // allocator), unlike ObjectMap above — hence init(aa) / append(item).
+    var required = std.json.Array.init(aa);
+
+    for (fields_val.array.items) |field_val| {
+        if (field_val != .object) continue;
+        const field_obj = field_val.object;
+
+        const name_val = field_obj.get("name") orelse continue;
+        if (name_val != .string) continue;
+        const fname = name_val.string;
+
+        const type_val = field_obj.get("type") orelse continue;
+        if (type_val != .string) continue;
+        const ftype = parseFieldType(type_val.string) orelse continue;
+
+        const sub = try buildFieldSchema(aa, ftype, field_obj);
+        try properties.put(aa, fname, sub);
+
+        if (field_obj.get("required")) |req| {
+            if (req == .bool and req.bool) try required.append(.{ .string = fname });
+        }
+    }
+
+    try schema.put(aa, "properties", .{ .object = properties });
+    if (required.items.len > 0) try schema.put(aa, "required", .{ .array = required });
+    // A field absent from the definition has no declared type, no storage
+    // column, and no consumer contract — reject it rather than persisting it.
+    try schema.put(aa, "additionalProperties", .{ .bool = false });
+
+    return .{ .object = schema };
+}
+
+/// Build the JSON Schema subschema for one declared field.
+fn buildFieldSchema(
+    aa: std.mem.Allocator,
+    ftype: FieldType,
+    field_obj: std.json.ObjectMap,
+) !std.json.Value {
+    var sub = try std.json.ObjectMap.init(aa, &.{}, &.{});
+
+    // `json` fields are free-form by definition — no `type` constraint at all,
+    // so any JSON value is admitted there.
+    switch (ftype) {
+        .text, .date, .timestamp, .uuid => try sub.put(aa, "type", .{ .string = "string" }),
+        .integer => try sub.put(aa, "type", .{ .string = "integer" }),
+        .decimal => try sub.put(aa, "type", .{ .string = "number" }),
+        .boolean => try sub.put(aa, "type", .{ .string = "boolean" }),
+        // enum members are strings in every definition this subsystem accepts;
+        // the `enum` keyword below narrows them to the declared set.
+        .enum_type => try sub.put(aa, "type", .{ .string = "string" }),
+        .json => {},
+    }
+
+    const validation_val = field_obj.get("validation") orelse return .{ .object = sub };
+    if (validation_val != .object) return .{ .object = sub };
+    const v = validation_val.object;
+
+    if (ftype == .enum_type) {
+        if (v.get("values")) |vals| {
+            if (vals == .array and vals.array.items.len > 0) {
+                var allowed = std.json.Array.init(aa);
+                for (vals.array.items) |item| try allowed.append(item);
+                try sub.put(aa, "enum", .{ .array = allowed });
+            }
+        }
+    }
+
+    if (v.get("max_length")) |ml| {
+        if (ml == .integer) try sub.put(aa, "maxLength", ml);
+    }
+    if (v.get("min_value")) |mv| {
+        if (mv == .integer or mv == .float) try sub.put(aa, "minimum", mv);
+    }
+    if (v.get("max_value")) |mv| {
+        if (mv == .integer or mv == .float) try sub.put(aa, "maximum", mv);
+    }
+
+    return .{ .object = sub };
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+// ── Record payload validation (ISS-0160 / GH #481) ──────────────────────────
+
+/// The definition used by the record-payload tests below: one required text
+/// field, one optional integer, one constrained enum, one free-form json.
+const RECORD_TEST_DEF =
+    \\{
+    \\  "name": "widget",
+    \\  "display_name": "Widget",
+    \\  "fields": [
+    \\    {"name": "sku", "type": "text", "required": true, "validation": {"max_length": 8}},
+    \\    {"name": "qty", "type": "integer", "validation": {"min_value": 0, "max_value": 100}},
+    \\    {"name": "status", "type": "enum", "validation": {"values": ["new", "used"]}},
+    \\    {"name": "extra", "type": "json"}
+    \\  ]
+    \\}
+;
+
+/// Assert a payload conforms (produces zero violations).
+fn expectRecordAccepted(def: []const u8, payload: []const u8) !void {
+    const v = try validateRecordPayload(std.testing.allocator, def, payload);
+    defer deinitRecordViolations(std.testing.allocator, v);
+    if (v.len != 0) {
+        std.debug.print("expected acceptance, got {d} violation(s):\n", .{v.len});
+        for (v) |x| std.debug.print("  {s} {s} {s}\n", .{ x.path, x.constraint, x.actual });
+    }
+    try std.testing.expectEqual(@as(usize, 0), v.len);
+}
+
+/// Assert a payload is rejected, and that `constraint` is among the reasons.
+fn expectRecordRejected(def: []const u8, payload: []const u8, constraint: []const u8) !void {
+    const v = try validateRecordPayload(std.testing.allocator, def, payload);
+    defer deinitRecordViolations(std.testing.allocator, v);
+    try std.testing.expect(v.len > 0);
+    for (v) |x| {
+        if (std.mem.eql(u8, x.constraint, constraint)) return;
+    }
+    std.debug.print("expected a '{s}' violation, got:\n", .{constraint});
+    for (v) |x| std.debug.print("  {s} {s} {s}\n", .{ x.path, x.constraint, x.actual });
+    return error.TestUnexpectedResult;
+}
+
+test "validateRecordPayload accepts a conforming payload" {
+    try expectRecordAccepted(RECORD_TEST_DEF,
+        \\{"sku": "ZIG-123", "qty": 5, "status": "new", "extra": {"a": [1, 2]}}
+    );
+}
+
+test "validateRecordPayload accepts a payload omitting only optional fields" {
+    // `sku` is the sole required field; everything else may be absent.
+    try expectRecordAccepted(RECORD_TEST_DEF,
+        \\{"sku": "OK"}
+    );
+}
+
+test "validateRecordPayload rejects a missing required field" {
+    // The exact case EXP-202's integration block asserts, and the case that
+    // silently passed while createRecord carried the TODO.
+    try expectRecordRejected(RECORD_TEST_DEF, "{}", "required");
+}
+
+test "validateRecordPayload rejects a wrong-typed field" {
+    try expectRecordRejected(RECORD_TEST_DEF,
+        \\{"sku": "OK", "qty": "not-a-number"}
+    , "type");
+}
+
+test "validateRecordPayload rejects a value outside the declared enum set" {
+    try expectRecordRejected(RECORD_TEST_DEF,
+        \\{"sku": "OK", "status": "refurbished"}
+    , "enum");
+}
+
+test "validateRecordPayload rejects a field absent from the definition" {
+    try expectRecordRejected(RECORD_TEST_DEF,
+        \\{"sku": "OK", "undeclared": 1}
+    , "additionalProperties");
+}
+
+test "validateRecordPayload enforces validation.max_length and numeric bounds" {
+    try expectRecordRejected(RECORD_TEST_DEF,
+        \\{"sku": "WAY-TOO-LONG"}
+    , "maxLength");
+    try expectRecordRejected(RECORD_TEST_DEF,
+        \\{"sku": "OK", "qty": 1000}
+    , "maximum");
+    try expectRecordRejected(RECORD_TEST_DEF,
+        \\{"sku": "OK", "qty": -1}
+    , "minimum");
+}
+
+test "validateRecordPayload rejects a payload that is not a JSON object" {
+    try expectRecordRejected(RECORD_TEST_DEF, "[]", "type");
+    try expectRecordRejected(RECORD_TEST_DEF, "\"scalar\"", "type");
+    // Malformed JSON is a payload failure, not a definition fault.
+    try expectRecordRejected(RECORD_TEST_DEF, "{not json", "type");
+}
+
+test "validateRecordPayload reports every violation, not just the first" {
+    const v = try validateRecordPayload(std.testing.allocator, RECORD_TEST_DEF,
+        \\{"qty": "bad", "nope": 1}
+    );
+    defer deinitRecordViolations(std.testing.allocator, v);
+    // missing required `sku`, wrong-typed `qty`, undeclared `nope`.
+    try std.testing.expect(v.len >= 3);
+}
+
+test "validateRecordPayload treats a definition with no fields as unconstrained" {
+    try expectRecordAccepted(
+        \\{"name": "freeform", "display_name": "Freeform"}
+    ,
+        \\{"anything": "goes"}
+    );
+}
 
 test "isValidName accepts valid names" {
     try std.testing.expect(isValidName("customer"));

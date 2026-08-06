@@ -138,24 +138,24 @@
     {
       "issue_id": "ISS-0159",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/480",
-      "status": "QUEUED",
+      "status": "DRAINED",
       "severity": "MAJOR",
       "discovered_at": "2026-08-06T10:28:00Z",
       "discovered_by": "BACKEND-DEV step q156",
       "discovered_while_fixing": "ISS-0156",
-      "started_at": null,
-      "completed_at": null
+      "started_at": "2026-08-06T11:31:24Z",
+      "completed_at": "2026-08-06T12:09:10Z"
     },
     {
       "issue_id": "ISS-0160",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/481",
-      "status": "QUEUED",
+      "status": "DRAINED",
       "severity": "MAJOR",
       "discovered_at": "2026-08-06T10:28:00Z",
       "discovered_by": "BACKEND-DEV step q156",
       "discovered_while_fixing": "ISS-0156",
-      "started_at": null,
-      "completed_at": null
+      "started_at": "2026-08-06T11:31:24Z",
+      "completed_at": "2026-08-06T12:09:10Z"
     },
     {
       "issue_id": "ISS-0161",
