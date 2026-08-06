@@ -486,8 +486,24 @@ pub const Migrations = struct {
 
             // Record successful application with schema_name.
             // Uses $1, $2 placeholders — no string interpolation. (DB-03, security)
+            //
+            // ISS-0162 / GitHub #486: ON CONFLICT DO NOTHING. This was the only
+            // writer to public.schema_migrations in the whole system without a
+            // conflict guard — src/tools/migrate.zig, tests/integration/helpers.zig
+            // and GBL-133's two inserts all have one. The recheck-under-lock above
+            // is what prevents duplicate DDL; this is defence in depth for the
+            // ledger write itself. Without it, any residual race turns into a hard
+            // binary-wide failure: one C23505 here leaves the transaction aborted,
+            // and every later TestHarness.init() in the same binary then fails with
+            // error.OutOfOrderMigration, cascading a single race into five apparent
+            // test failures.
+            //
+            // Doing nothing on conflict is correct: the row's only meaning is
+            // "(schema_name, version) is applied". If a concurrent holder recorded
+            // it first, that end state already holds.
             conn.exec(
-                "INSERT INTO public.schema_migrations (schema_name, version) VALUES ($1, $2)",
+                "INSERT INTO public.schema_migrations (schema_name, version) VALUES ($1, $2)" ++
+                    " ON CONFLICT (schema_name, version) DO NOTHING",
                 &.{ schema_name, filename },
             ) catch {
                 conn.exec("ROLLBACK", &.{}) catch {};
