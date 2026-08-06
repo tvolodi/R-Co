@@ -1,0 +1,63 @@
+{
+  "handoff_id": "a1e457f1-0145-4c00-9145-000000000004",
+  "run_id": "WF03-gh457-20260806",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-06T04:07:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 3",
+    "requirement_ids": [],
+    "related_handoff_ids": ["a1e457f1-0145-4c00-9145-000000000003"],
+    "artifacts_in": ["src/design/fix-ISS-0145.md"]
+  },
+  "task": {
+    "description": "Implement the ISS-0145 fix per src/design/fix-ISS-0145.md across the 49 confirmed-affected tests/integration/*.zig files.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "No 'error set' output from zig build",
+      "python tools/lint_sql_param_types.py src tests exits 0",
+      "All 49 files receive the mechanical fix, matching each file's existing type/alias conventions"
+    ],
+    "functions_to_call": ["fn:check-zig-build"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Applied bpm.api_tenant_context.set(DEFAULT_TENANT_ID) (or the file's own tenant_context alias) as the first statement in makePool() across all 49 files. zig build exits 0, no error-set output, lint_sql_param_types.py exits 0 (0 BLOCKER/0 MAJOR/0 MINOR).",
+    "artifacts_out": [
+      "tests/integration/tenant_config_realm_test.zig", "tests/integration/iss601_state_snapshots_test.zig",
+      "tests/integration/idn03_role_access_test.zig", "tests/integration/idn02_group_management_test.zig",
+      "tests/integration/ext03_plugin_integration_test.zig", "tests/integration/adp03_tenant_context_resolution_test.zig",
+      "tests/integration/test_snapshot_integration.zig", "tests/integration/tm01_tenant_list_test.zig",
+      "tests/integration/test_iss504_migration_tracking.zig", "tests/integration/test_export_import_integration.zig",
+      "tests/integration/spt01_iss0068_onboarding_schema_test.zig", "tests/integration/sim01_04_simulation_mode_test.zig",
+      "tests/integration/pd10_search_test.zig", "tests/integration/sch01_timer_creation_test.zig",
+      "tests/integration/pd05_node_types_test.zig", "tests/integration/pd03_version_test.zig",
+      "tests/integration/pd04_lifecycle_test.zig", "tests/integration/obs04_timeline_test.zig",
+      "tests/integration/iss502_spt_cutover_test.zig", "tests/integration/iss208_task_guard_test.zig",
+      "tests/integration/iss205_webhook_outbox_test.zig", "tests/integration/iss202_merge_atomicity_test.zig",
+      "tests/integration/iss201_transition_result_test.zig", "tests/integration/iss107_tenant_storage_mode_test.zig",
+      "tests/integration/iss106_webhook_outbox_test.zig", "tests/integration/iss101_timers_failed_status_test.zig",
+      "tests/integration/idn04_api_token_management_test.zig", "tests/integration/idn01_user_registry_test.zig",
+      "tests/integration/ext05_sub_process_support_test.zig", "tests/integration/ext04_variable_transformer_test.zig",
+      "tests/integration/event_store_integration_test.zig", "tests/integration/env01_test.zig",
+      "tests/integration/ee09_merge_variables_test.zig", "tests/integration/ee08_cancel_instance_test.zig",
+      "tests/integration/ee03_task_store_test.zig", "tests/integration/ee03_ee04_tasks_api_test.zig",
+      "tests/integration/ee01_start_instance_test.zig", "tests/integration/definition_test.zig",
+      "tests/integration/db_integration_test.zig", "tests/integration/api03_instance_read_test.zig",
+      "tests/integration/api02_crud_test.zig", "tests/integration/adp04b_tenant_realm_binding_test.zig",
+      "tests/integration/adp05_instance_artifact_hash_test.zig", "tests/integration/adp04_user_tenant_binding_test.zig",
+      "tests/integration/adp04a_external_identity_linkage_test.zig", "tests/integration/adm_ui_09_health_test.zig",
+      "tests/integration/env02_test.zig", "tests/integration/env05_test.zig",
+      "tests/integration/iss0129_migration_run_advisory_lock_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T04:07:00Z",
+  "completed_at": "2026-08-06T04:20:00Z"
+}
