@@ -52,7 +52,7 @@ verified by UAT-RUNNER itself in its pre-flight check (Step 1).
 | **2a-vx** | `BO-VORTEX` | — | Domain sign-off: Vortex scenarios + authored fixes if needed |
 | **2a-mc** | `BO-MERIDIAN` | — | Domain sign-off: Meridian scenarios + quorum vote |
 | **2b** | `PRODUCT-OWNER` | **Hard gate** | Cross-tenant coherence + MUST coverage + final release recommendation |
-| **2c** | `ORCH` | Routing gate | APPROVED → Step 3; BLOCKED → enqueue each issue, drain via WF-03 Steps 1-7 on this run's branch, then re-run Step 1 |
+| **2c** | `ORCH` | Routing gate | APPROVED → Step 3; BLOCKED → file each issue + forward to the global queue, record in the report, then Step 3 (which gates the release on them) |
 | **3** | `RELEASE-VALIDATOR` | — | NFR + UAT combined sign-off check |
 | **4** | `DOC-UPDATER` | — | Update requirement status + changelog; mark UAT-verified requirements |
 | **Final** | `BACKEND-DEV` | Hard gate | `fn:git-merge` — PR, squash-merge, cleanup |
@@ -74,11 +74,13 @@ verified by UAT-RUNNER itself in its pre-flight check (Step 1).
 
 Standard git setup. Branch name: `feature/<run_id>` (e.g. `feature/WF05-uat-stage3`).
 
-Only required when UAT fixes are anticipated. Log the skip explicitly if omitted. When
-this step runs, ORCH creates `handoffs/<run_id>/issue_queue.json` (`items: []`) per
-`docs/agents/protocols/ISSUE_QUEUE.md` immediately after PASS — every BLOCKER/MAJOR
-issue Step 2c finds is drained onto this one queue and this one branch, not spawned as
-independent per-process WF-03 runs.
+Required when the run will commit UAT reports and sign-off artifacts (the normal case).
+Log the skip explicitly if omitted for a purely read-only run.
+
+WF-05 does **not** fix what it finds: every BLOCKER/MAJOR issue is filed and forwarded to
+the global queue per `docs/agents/protocols/ISSUE_QUEUE.md`, and fixed later in its own
+WF-03 run. This branch carries reports and sign-offs, not fixes. Do **not** create a
+`handoffs/<run_id>/issue_queue.json` — per-run issue queues were removed on 2026-08-06.
 
 ---
 
@@ -106,10 +108,9 @@ Handoff task:
 
 UAT-RUNNER result determines Step 2 routing:
 - `PASS` → proceed to Step 3
-- `FAIL` (any BLOCKER or MAJOR) → ORCH enqueues each failing scenario's issue and
-  drains via WF-03 Steps 1-7 on this run's branch (see Step 2 below)
-- `PARTIAL` → ORCH evaluates per-issue severity; BLOCKERs are enqueued and drained,
-  MINORs are logged and proceed to Step 3
+- `FAIL` (any BLOCKER or MAJOR) → ORCH files each failing scenario's issue and forwards
+  it to the global queue, then proceeds to Step 3 with the failures recorded (see Step 2)
+- `PARTIAL` → same handling per severity; MINORs are logged only
 
 ---
 
@@ -118,7 +119,7 @@ UAT-RUNNER result determines Step 2 routing:
 ORCH reads `tests/uat-reports/uat-<date>-<run_id>.yaml` and:
 
 ```python
-import yaml
+import subprocess, yaml
 
 with open(f"tests/uat-reports/uat-{date}-{run_id}.yaml") as f:
     report = yaml.safe_load(f)
@@ -127,28 +128,29 @@ blockers = [i for i in report.get("issues", []) if i["severity"] == "BLOCKER"]
 majors   = [i for i in report.get("issues", []) if i["severity"] == "MAJOR"]
 minors   = [i for i in report.get("issues", []) if i["severity"] == "MINOR"]
 
-if blockers or majors:
-    # Enqueue one issue per distinct affected_process onto THIS run's issue_queue.json
-    # (docs/agents/protocols/ISSUE_QUEUE.md) — file each (ISS file + GitHub issue) first.
-    processes = {i["affected_process"] for i in blockers + majors}
-    for proc in processes:
-        pass  # fn:register-issue + fn:enqueue-issue; see ISSUE_QUEUE.md
-    # Drain the queue: re-enter WF-03 at Step 1 (Diagnose) for each item, on THIS run's
-    # existing branch — WF-03's own Step 00 does NOT run again.
-else:
-    # Proceed to Step 3
-    pass
+# File one issue per distinct affected_process and FORWARD it to the global queue.
+# Each still needs its ISS file + GitHub issue first (fn:register-issue) - unchanged.
+for proc in {i["affected_process"] for i in blockers + majors}:
+    # fn:register-issue -> docs/issues/ISS-NNNN.json + gh issue create
+    subprocess.run(["python3", "tools/queue_add.py", "ISS-NNNN",
+                    "--severity", "BLOCKER",
+                    "--title", f"UAT failure in {proc}",
+                    "--github-issue", "<url>"])
+
+# WF-05 does NOT stop to fix these and does NOT re-run UAT-RUNNER.
+# It proceeds to Step 3 carrying the findings; the release decision there is still
+# BLOCKED while any BLOCKER is open.
 ```
 
-After every item enqueued from this UAT report reaches DRAINED (queue empty):
-re-dispatch UAT-RUNNER (Step 1) as a re-run. Increment `rework_count`. Cap at
-`max_rework: 2`.
+**No UAT re-run loop.** WF-05 runs its scenarios once. Fixes for what it finds happen in
+their own WF-03 runs later; the *next* WF-05 run verifies them. This is what removing the
+in-run drain loop means for UAT: a WF-05 run reports the business's verdict on the system
+as it is now, rather than iterating until the verdict is favourable.
 
 ORCH log entries:
 ```
 <ts> | UAT_PASS | <run_id> | --- | ORCH | All scenarios passed → routing to RELEASE-VALIDATOR
-<ts> | UAT_FAIL | <run_id> | --- | ORCH | <n> BLOCKER/MAJOR issues → enqueued for <process>
-<ts> | UAT_RERUN | <run_id> | --- | ORCH | Queue drained → re-dispatching UAT-RUNNER (rework <n>/<max>)
+<ts> | UAT_FAIL | <run_id> | --- | ORCH | <n> BLOCKER/MAJOR issues → forwarded to global queue
 ```
 
 ---
@@ -191,13 +193,13 @@ DOC-UPDATER:
 
 ### Step Final — Git merge (BACKEND-DEV, `fn:git-merge`)
 
-Standard squash merge. Only required if Step 00 ran (i.e. code changes were
-made during the WF-03 fixes triggered by UAT failures). If Step 00 was
-skipped (read-only UAT run), Step Final is also skipped.
+Standard squash merge. Only required if Step 00 ran. If Step 00 was skipped (read-only UAT
+run producing no committed artifacts), Step Final is also skipped.
 
-**Precondition when Step 00 ran:** `handoffs/<run_id>/issue_queue.json` has no
-`QUEUED`/`IN_PROGRESS` items — every UAT-driven issue has reached `DRAINED`. This
-step runs exactly once, covering every issue drained during the whole WF-05 run.
+**Runs exactly once**, directly after Step 4. There is no queue check between them. The
+branch carries this run's UAT reports, BO sign-offs, and requirement-status updates — not
+fixes for the issues the run found; those were forwarded to the global queue. List every
+forwarded `ISS-NNNN` in the PR body.
 
 Log: `<ts> | SKIP-FINAL | WF05 | --- | ORCH | Read-only UAT run — no merge needed`
 
@@ -231,7 +233,8 @@ one WF-05 run per company, all dispatched in parallel.
 
 ## 7. ORCH forbidden actions in WF-05
 
-- Marking a UAT issue as MINOR to avoid enqueueing/draining it
+- Marking a UAT issue as MINOR to avoid filing and forwarding it
+- Treating "the issue was forwarded to the queue" as grounds to call a BLOCKED release APPROVED
 - Skipping UAT-RUNNER because "the technical tests already passed"
 - Editing scenario YAML files to lower expectations and make scenarios pass
 - Treating a UAT PARTIAL result as a PASS without reading the per-outcome details

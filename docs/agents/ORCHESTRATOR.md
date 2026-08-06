@@ -28,12 +28,12 @@
 
 **FOUNDATIONAL RULE:** Every WF-01, WF-02, WF-03, WF-04, and ad-hoc workflow that produces code or migrations MUST be wrapped with git protocol steps. These are **not optional** and are treated as hard pipeline gates.
 
-**One wrapper per top-level run, not per issue.** Git-setup and git-merge wrap the
-**outer run** — the thing the user or a stage gate actually triggered. Any issue
-discovered during that run (a TEST-RUNNER regression, a RELEASE-VALIDATOR NFR failure, a
-defect an agent notices incidentally) is drained **on the same branch**, via the issue
-queue described in `docs/agents/protocols/ISSUE_QUEUE.md` — it does **not** get its own
-git-setup/git-merge pair. See §8c below.
+**One wrapper per run.** Git-setup and git-merge wrap the run — the thing the user or a
+stage gate actually triggered — and each runs exactly once. Any issue discovered during
+that run (a TEST-RUNNER regression, a RELEASE-VALIDATOR NFR failure, a defect an agent
+notices incidentally) is **filed and forwarded to the global queue**, to be fixed later as
+its own run with its own branch — it is **not** fixed on this run's branch. See §8c below
+and `docs/agents/protocols/ISSUE_QUEUE.md`.
 
 **Exception:** WF-01 (requirements only) skips git wrapper if changes are documentation-only (`docs/` only, no source code or migrations). All other workflows require git wrapping.
 
@@ -71,35 +71,39 @@ WF-01 (requirement drafting) may skip git wrapper steps because it writes only t
 
 ---
 
-## 8c. Issue Queue Draining (replaces "launch nested WF-03")
+## 8c. Forwarding Issues Found Mid-Run
 
 **Protocol:** `docs/agents/protocols/ISSUE_QUEUE.md`
 
 When any step of any workflow discovers an issue that is not the thing it was already
-asked to check, ORCH does **not** launch a new WF-03 run with its own Step 00/Step Final.
-Instead:
+asked to check, ORCH does **not** extend the current run to fix it, and does **not** launch
+a nested WF-03. Instead:
 
 1. The discovering agent files the issue as always (ISS file + mandatory GitHub issue —
-   unchanged), then appends it to `handoffs/<run_id>/issue_queue.json`.
+   unchanged), then adds it to the **global queue** (`handoffs/global_queue.json`) via
+   `python3 tools/queue_add.py`.
 2. The current step's own PASS/FAIL verdict is unaffected by an incidentally-discovered
    issue — only issues that ARE the current step's own failure drive that step's rework.
-3. After the current task's steps reach the point where Step Final would normally run,
-   ORCH checks the queue instead. If any item is QUEUED, ORCH re-enters WF-03 at **Step 1
-   (Diagnose)** for the oldest queued item — reusing the run's existing branch, no new
-   Step 00 — runs it through to Step 7 (Doc Update), and checks the queue again. This
-   repeats, FIFO, until the queue is empty, however many new issues get appended along
-   the way (any depth — an issue found while fixing an issue still gets drained before
-   Step Final).
-4. Only once the queue is empty does ORCH dispatch Step Final (git-merge), once, for the
-   whole run.
+3. The run continues to its own Step Final unchanged. There is **no queue check** and no
+   drain pass between the run's last normal step and Step Final.
+4. The forwarded issue is picked up later as its own WF-03 run, with its own branch and
+   PR — by this workspace's next loop iteration or by another workspace
+   (`docs/agents/protocols/LOOP_PROTOCOL.md`).
 
-This means a single top-level run's `orchestrator.log` shows exactly one `GIT_SETUP` and
-one `GIT_MERGE` line, regardless of how many issues were found and fixed in between —
-see the worked example in ISSUE_QUEUE.md.
+A run's `orchestrator.log` therefore shows exactly one `GIT_SETUP` and one `GIT_MERGE`
+line, with only the run's own steps in between.
 
-**Applies to:** WF-02 (Steps 4/5 on FAIL), WF-03 (self-nesting — an issue found while
-fixing an issue), WF-04 (each sub-run's failures), WF-05 (Step 2c BLOCKED verdict). WF-01
-is unaffected (no git wrapper, nothing to queue against).
+**Do not create `handoffs/<run_id>/issue_queue.json`.** The per-run drain loop was removed
+on 2026-08-06; existing files of that name under `handoffs/` are audit history from earlier
+runs and are not a signal to drain.
+
+**Boundary — forwarding vs. Unblock-Everything.** If a discovered defect *blocks this run
+from completing* (unrelated compile error stopping the build, broken migration blocking
+yours), fix it in this run per CLAUDE.md's Unblock-Everything directive. Forwarding is for
+defects that are merely adjacent to the run, not ones standing in its way.
+
+**Applies to:** WF-02 (Steps 4/5), WF-03, WF-04, WF-05 (Step 2c). WF-01 is unaffected
+(no git wrapper).
 
 ---
 
@@ -118,7 +122,8 @@ is unaffected (no git wrapper, nothing to queue against).
 |---|---|---|
 | GIT_SETUP | `fn:git-setup` — pull, branch, push | `docs/agents/protocols/GIT_SETUP.md` |
 | GIT_MERGE | `fn:git-merge` — rebase, PR, merge, cleanup | `docs/agents/protocols/GIT_MERGE.md` |
-| ISSUE_QUEUE | `fn:enqueue-issue`, `fn:drain-issue-queue` — drain issues found mid-run on the existing branch, without a nested git-setup/git-merge | `docs/agents/protocols/ISSUE_QUEUE.md` |
+| ISSUE_QUEUE | `fn:enqueue-issue` — file issues found mid-run and forward them to the global queue for their own later run | `docs/agents/protocols/ISSUE_QUEUE.md` |
+| LOOP | `fn:loop-mode` — claim one global-queue item at a time, one branch/PR per item | `docs/agents/protocols/LOOP_PROTOCOL.md` |
 
 ---
 
@@ -141,7 +146,7 @@ Splitting is cheap. Re-running one requirement due to blast radius from an unrel
 | 2b | FRONTEND-DEV | — | Rework |
 | 3 | TEST-DESIGNER | — | Rework |
 | **3b** | **TEST-DESIGN-VALIDATOR** | **Hard gate** | Rework TEST-DESIGNER; if infra → ADHOC BACKEND-DEV first |
-| 4 | TEST-RUNNER | — | Enqueue via ISSUE_QUEUE.md, drain in-branch (WF-03 Steps 1-7, no new git-setup); after drain, restart from Step 3b |
+| 4 | TEST-RUNNER | — | Failure of this run's own criteria → rework the responsible agent, then restart from Step 3b. Incidental findings → forward to global queue (§8c) |
 | 5 | RELEASE-VALIDATOR | — | Route to blocking agent |
 | 6 | DOC-UPDATER | — | Rework |
 | Final | BACKEND-DEV / FRONTEND-DEV | Hard gate | Do not write DONE log |
@@ -161,8 +166,7 @@ INPUT: trigger event
 │
 ├─ Is it a user-reported bug, defect, or problem with existing behaviour, AND no
 │  other workflow is already active for this run?
-│     └─► Launch WF-03 top-level  (Step 00 git-setup once, Step Final git-merge once,
-│           after its issue queue — see §8c — is fully drained)
+│     └─► Launch WF-03  (Step 00 git-setup once, Steps 0.5-7, Step Final git-merge once)
 │           WF-03 trigger phrases: "fix this", "there is a problem with",
 │           "X is broken", "resolve this issue", "something is wrong with"
 │           WF-03 vs WF-02 rule: if expected behaviour already exists in the
@@ -170,13 +174,15 @@ INPUT: trigger event
 │
 ├─ Is it a test failure or regression detected by TEST-RUNNER/RELEASE-VALIDATOR
 │  in an ALREADY-ACTIVE WF-02/WF-03/WF-04/WF-05 run?
-│     └─► Enqueue the issue on that run's queue (§8c, ISSUE_QUEUE.md) and drain it
-│           via WF-03 Steps 1-7 on the SAME branch. Do NOT launch a new top-level
-│           WF-03 — no new Step 00, no new Step Final.
+│     ├─ Is it the failing step's OWN acceptance criteria?
+│     │     └─► Rework the responsible agent within the active run (§4.2)
+│     └─ Is it an incidental finding alongside what the step was checking?
+│           └─► File it (ISS + GitHub) and forward to the global queue (§8c).
+│                 Do NOT extend this run to fix it; do NOT launch a nested WF-03.
 │
 ├─ Is it a pre-release gate or scheduled full test?
-│     └─► Launch WF-04 top-level  (its sub-runs' failures enqueue onto one shared
-│           queue and drain in-branch — see §8c)
+│     └─► Launch WF-04  (Step 00 once, Step Final once; incidental findings
+│           forwarded to the global queue — see §8c)
 │
 └─ Does not match any standard workflow?
       └─► Build ad-hoc workflow (see Section 5)
@@ -474,21 +480,20 @@ Creating the feature branch in Step 00 is the coordination signal: `git push ori
 4. Log `MODULE_FREE`.
 5. Check the PENDING queue — if a deferred run's `owned_modules` no longer conflicts, dispatch its Step 00.
 
-### Queued issues do not need serialising — they share one branch
+### Forwarded issues are separate runs — deconfliction applies
 
-Previously, when WF-04 (or WF-02) surfaced multiple failures, each spawned its own WF-03
-run with its own branch, and concurrent ones needed `owned_modules` deconfliction against
-each other. That no longer applies: per §8c / `docs/agents/protocols/ISSUE_QUEUE.md`,
-every issue found during a run is appended to that **one run's** `issue_queue.json` and
-drained **sequentially, on the run's existing branch** — there is no second branch to
-serialise against. The existing `owned_modules` lock for the run already covers every
-queued item; do not create a new lock entry per drained issue (expand the existing
-entry's module list instead, if a fix needs to touch something not originally declared —
-see ISSUE_QUEUE.md "owned_modules — no new lock per queue item").
+An issue forwarded to the global queue (§8c) becomes its own WF-03 run later, with its own
+branch and its own `owned_modules` lock. It is subject to the same deconfliction as any
+other run: when a loop iteration claims it, ORCH records its `owned_modules` at Step 00 and
+defers dispatch if they overlap an active run.
 
-`owned_modules` deconfliction still applies **across separate top-level runs** (e.g. two
-independent WF-02 runs started for different requirements) — that part of this section is
-unchanged.
+Because a run's scope no longer grows with discovered issues, a run's declared
+`owned_modules` should hold for its whole lifetime. If a fix the run legitimately needs
+touches a module outside the declared list, expand the entry and log `MODULE_LOCK` again
+with the expanded list.
+
+`owned_modules` deconfliction applies **across all runs** — two independent WF-02 runs for
+different requirements, or two workspaces each draining a different global-queue item.
 
 ### owned_modules check snippet
 

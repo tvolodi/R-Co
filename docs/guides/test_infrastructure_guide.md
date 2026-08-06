@@ -100,7 +100,7 @@ Step 00a procedure:
 2. Run the Infrastructure Health Checklist (§3).
 3. Run `zig build test` (unit tests) → must exit 0.
 4. Run `zig build test-integration` → must exit 0.
-5. If any step fails: classify failures into ISS entries, dispatch WF-03 per failure cluster, and hold WF-02 until all WF-03s return PASS.
+5. If any step fails: classify failures into ISS entries (each with its mandatory GitHub issue), forward each cluster to the global queue via `python3 tools/queue_add.py`, and hold WF-02 until those issues have been fixed by their own WF-03 runs and `main` is green again. Each cluster is its own run with its own branch and PR — see `docs/agents/protocols/ISSUE_QUEUE.md` and `docs/agents/protocols/LOOP_PROTOCOL.md`.
 6. Only after a clean run of steps 2–4 may ORCH stamp Step 00a PASS and proceed to Step 00 (git-setup).
 
 ---
@@ -188,7 +188,7 @@ Final     BACKEND-DEV         fn:git-merge
 
 **Step 00a is a hard gate.** ORCH MUST NOT dispatch Step 00 until Step 00a returns PASS.
 
-If Step 00a returns FAIL, ORCH routes to WF-03 for each failure cluster (using the same issue classification as any other regression) and redispatches Step 00a after WF-03 resolves.
+If Step 00a returns FAIL, ORCH files each failure cluster and forwards it to the global queue (using the same issue classification as any other regression). Each becomes its own WF-03 run. ORCH redispatches Step 00a once those runs have merged — WF-02 does not proceed on a red `main`, and it does not absorb the fixes into its own branch.
 
 ### WF-03: Issue Resolving
 
