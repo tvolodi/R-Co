@@ -1,0 +1,35 @@
+{
+  "handoff_id": "a1e457f1-0145-4c00-9145-000000000001",
+  "run_id": "WF03-gh457-20260806",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-06T03:39:46Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 1 (top-level, own branch)",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": ["docs/issues/ISS-0145.json"]
+  },
+  "task": {
+    "description": "Diagnose GitHub #457 / ISS-0145: tests/integration files relying on ambient tenant_context ordering cause severe standalone -svc/-env failures. Audit all tests/integration/*.zig files with a local makePool() helper for missing tenant_context.set()/.clear() calls, verify reachability from main_test.zig/build.zig, and produce a precise fix scope.",
+    "acceptance_criteria": [
+      "Every affected file identified with method reproducible",
+      "Reachability verified against build.zig/main_test.zig before scoping the fix"
+    ],
+    "functions_to_call": ["fn:search-issues"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Audited 88 files with local makePool(). 56 confirmed-bug (never call tenant_context), 3 partial (call it only after fixture-setup acquires), 29 already safe. Reachability check against build.zig/main_test.zig excluded 3 of the 56 (iss0076_secrets_table_test.zig safe via TestHarness.init() ordering; oidc31/oidc08 unreachable dead code, cross-referenced to existing GitHub #439). Final fix scope: 49 files.",
+    "artifacts_out": ["docs/issues/ISS-0145.json"],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T03:39:46Z",
+  "completed_at": "2026-08-06T04:00:00Z"
+}

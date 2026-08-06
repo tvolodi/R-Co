@@ -53,6 +53,9 @@ fn testDbUrl(alloc: std.mem.Allocator) ![]u8 {
 }
 
 fn makePool(alloc: std.mem.Allocator, url: []const u8) !Pool {
+    // Set the tenant context BEFORE Pool.init so that every pool.acquire()
+    // applies SET search_path TO tenant_default,public (schema isolation).
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     // ISS-0144 / GitHub #454: guarantee public/tenant_default schemas are
     // fully migrated before this binary's first query — see the doc comment
     // on helpers.ensureSchemaReady() for the full root-cause rationale.

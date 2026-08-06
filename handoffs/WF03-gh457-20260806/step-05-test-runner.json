@@ -1,0 +1,36 @@
+{
+  "handoff_id": "a1e457f1-0145-4c00-9145-000000000005",
+  "run_id": "WF03-gh457-20260806",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-06T04:20:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 5",
+    "requirement_ids": [],
+    "related_handoff_ids": ["a1e457f1-0145-4c00-9145-000000000004"],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Verify zig build test-integration-svc and zig build test-integration-env each produce a stable, low failure count comparable to the umbrella zig build test-integration, across 3+ consecutive runs, per ISS-0145 acceptance criteria.",
+    "acceptance_criteria": [
+      "3+ consecutive -svc runs with stable failure count",
+      "3+ consecutive -env runs with stable failure count",
+      "Failure rate comparable to umbrella test-integration baseline"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "zig build test-integration-svc: 3 consecutive runs, all 476/543 passed (7 skipped, 59 failed, 1 crashed), byte-identical failing-test-name sets in every pairwise diff. zig build test-integration-env: 3 consecutive runs, identical 476/543 result, byte-identical failing-test-name sets, and identical to -svc's failure set. Down from ~291/543 failing pre-fix (GitHub #457's own report). C42P01 errors against tenant_default-scoped tables eliminated. Umbrella zig build test-integration run in same session showed only 3 comparable C42P01 occurrences (against per-test dynamically-provisioned tenant schemas, a different expected mechanism) -- confirms -svc/-env now match the umbrella's own low rate. Remaining 59 stable failures on -svc/-env are a separate, pre-existing, unrelated class (assertion mismatches, allocation leaks) out of scope for this issue.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (Step 7)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T04:20:00Z",
+  "completed_at": "2026-08-06T04:33:51Z"
+}

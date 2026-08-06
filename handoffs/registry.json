@@ -1069,6 +1069,61 @@
       "created_at": "2026-08-06T02:34:39Z",
       "status": "COMPLETED",
       "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "a1e457f1-0145-4c00-9145-000000000001",
+      "file": "handoffs/WF03-gh457-20260806/step-01-issue-fixer-diagnose.json",
+      "run_id": "WF03-gh457-20260806",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-06T03:39:46Z",
+      "status": "COMPLETED",
+      "stage": "WF-03"
+    },
+    {
+      "handoff_id": "a1e457f1-0145-4c00-9145-000000000002",
+      "file": "handoffs/WF03-gh457-20260806/step-02-code-designer.json",
+      "run_id": "WF03-gh457-20260806",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-06T04:00:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03"
+    },
+    {
+      "handoff_id": "a1e457f1-0145-4c00-9145-000000000003",
+      "file": "handoffs/WF03-gh457-20260806/step-02b-code-design-validator.json",
+      "run_id": "WF03-gh457-20260806",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-06T04:05:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03"
+    },
+    {
+      "handoff_id": "a1e457f1-0145-4c00-9145-000000000004",
+      "file": "handoffs/WF03-gh457-20260806/step-03-backend-dev.json",
+      "run_id": "WF03-gh457-20260806",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-06T04:07:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03"
+    },
+    {
+      "handoff_id": "a1e457f1-0145-4c00-9145-000000000005",
+      "file": "handoffs/WF03-gh457-20260806/step-05-test-runner.json",
+      "run_id": "WF03-gh457-20260806",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-06T04:20:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03"
     }
   ],
   "last_updated": "2026-08-06T00:39:45Z"
