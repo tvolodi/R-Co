@@ -1932,15 +1932,17 @@ pub fn build(b: *std.Build) void {
     // `zig build test-wiring-check` — no test-bearing file is wired into no
     // build target (prevents ISS-0102 / GH #428 recurrence)
     //
-    // Not made a dependency of `test` or `build`: as of the GH #428 fix this
-    // tool found 55 PRE-EXISTING test-bearing files (unrelated to
-    // transition.zig) that were already unreachable from any addTest root —
-    // filed separately rather than fixed here, since fixing 55 unrelated
-    // files is out of scope for the transition.zig leak/crash fix this step
-    // was added alongside. Wiring this into `test` today would turn the
-    // Green-Main Gate red for a pre-existing condition this change didn't
-    // cause. Run it manually (or from CI as its own check) until that
-    // backlog is cleared; see the filed issue for the file list.
+    // ISS-0137 / GH #439 cleared the 55-file backlog that GH #428 discovered and
+    // filed rather than fixed, so this check is now ENFORCED: it is a dependency
+    // of `zig build test` (see test_step.dependOn below) and any file whose test
+    // blocks become unreachable from every addTest root turns the build red.
+    //
+    // That backlog was worth clearing rather than tolerating: those 55 files
+    // held ~350 test blocks that had never executed, and wiring them in
+    // surfaced real defects — two Zig-0.16 ArrayList API regressions and an
+    // incomplete error set in src/repository/artifacts.zig, plus a TestHarness
+    // API (provisionTenant/setTenant) that tests called but nothing
+    // implemented. Silent unreachability is what let all of it accumulate.
     // ---------------------------------------------------------------------------
     const run_wiring_check = b.addSystemCommand(&.{
         "python",
@@ -1953,6 +1955,11 @@ pub fn build(b: *std.Build) void {
         "Verify every test-bearing file is reachable from an addTest root; exit 0 = none unwired",
     );
     wiring_check_step.dependOn(&run_wiring_check.step);
+    // ISS-0137 / GH #439 closing condition: `zig build test` fails whenever any
+    // test-bearing file becomes unreachable from every addTest root. Attached
+    // here rather than beside the other test_step edges because
+    // run_wiring_check is declared in this section, far below test_step.
+    test_step.dependOn(&run_wiring_check.step);
 
     // ---------------------------------------------------------------------------
     // `zig build openapi` — OpenAPI generator
