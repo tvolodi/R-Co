@@ -5,7 +5,6 @@ Uses docker-compose exec to run DELETE statements via psql inside the
 db_test container.  Tables are deleted in FK-safe order.
 """
 import argparse
-import re
 import subprocess
 import sys
 import os
@@ -75,6 +74,51 @@ def run_psql_query(sql: str) -> list[str]:
     return [line for line in result.stdout.splitlines() if line.strip()]
 
 
+def run_psql_script(script: str) -> subprocess.CompletedProcess:
+    """Execute a MULTI-STATEMENT script in a SINGLE psql session.
+
+    ISS-0148 (GitHub #477): run_psql() and run_psql_query() each spawn a fresh
+    psql process, so every statement they run gets its own session and its own
+    implicit transaction. That makes them unusable for anything needing a
+    transaction-scoped advisory lock: a lock taken by one run_psql() call is
+    released the instant that process exits, before the next call even starts.
+    A naive "run_psql(SELECT pg_advisory_xact_lock(...)) then run_psql(DROP ...)"
+    therefore protects nothing at all.
+
+    This helper feeds the whole script to one psql invocation on stdin, so a
+    BEGIN ... COMMIT block inside it really is one transaction in one session,
+    and a pg_advisory_xact_lock() taken inside it is held continuously until
+    the COMMIT.
+
+    Returns the CompletedProcess so the caller can inspect returncode/stdout/stderr.
+    """
+    cmd = [
+        "docker-compose", "exec", "-T", "db_test",
+        "psql", "-U", USER, "-d", DB,
+        # -v ON_ERROR_STOP=1 so a failure inside the script aborts the
+        # transaction rather than silently continuing past it with the lock held.
+        "-v", "ON_ERROR_STOP=1",
+        "-t", "-A", "-f", "-",
+    ]
+    return subprocess.run(cmd, input=script, capture_output=True, text=True)
+
+
+# ISS-0148: the exact advisory-lock key expression used by the migration runner.
+# Verbatim from src/db/migrations.zig (MIGRATIONS_LOCK_KEY_SQL). Reusing this
+# EXACT key is what makes the guard correct: it is the same primitive
+# Migrations.runForSchema already holds, so the sweep and any in-flight
+# runForSchema transaction become mutually exclusive by construction. Inventing
+# a second key would serialize the sweep against nothing.
+#
+# The lock is transaction-scoped (pg_advisory_xact_lock), so it is released
+# automatically at COMMIT/ROLLBACK and can never leak across a failed sweep --
+# unlike the session-scoped pg_advisory_lock, which an aborted sweep could leak
+# and thereby block every subsequent migration on the database.
+MIGRATIONS_LOCK_SQL = (
+    "SELECT pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint)"
+)
+
+
 def drop_orphaned_tenant_schemas() -> None:
     """Drop every provisioned tenant schema except tenant_default, and clear
     their public.tenant_schemas / public.schema_migrations rows.
@@ -92,35 +136,118 @@ def drop_orphaned_tenant_schemas() -> None:
     test that creates a schema without registering it can leak a schema
     with no corresponding tenant_schemas row.
     """
-    # Union two sources: schemas registered in tenant_schemas (the normal case)
-    # and schemas that exist in Postgres but were never registered there (a
-    # provisioning race, or a test that created the schema directly instead of
-    # calling bpm_provision_tenant_schema). Either source can leak.
-    registered = run_psql_query(
-        "SELECT schema_name FROM public.tenant_schemas WHERE schema_name != 'tenant_default'"
-    )
-    unregistered = run_psql_query(
-        "SELECT schema_name FROM information_schema.schemata "
-        "WHERE schema_name LIKE 'tenant\\_%' AND schema_name != 'tenant_default'"
-    )
-    schema_names = sorted(set(registered) | set(unregistered))
-    if not schema_names:
-        return
+    # ISS-0148 (GitHub #477): the ENTIRE enumerate -> validate -> drop ->
+    # delete-ledger sequence is the critical section, and it runs as ONE
+    # transaction in ONE psql session while holding the migration runner's
+    # advisory lock.
+    #
+    # Enumeration happens UNDER the lock, not before it. An enumeration taken
+    # before acquisition could name a schema that a concurrent test provisions
+    # and starts migrating in the interval, reintroducing the race in miniature.
+    # This is the same "re-check under the lock" discipline ISS-0144 established
+    # for the migration runner's `applied` snapshot.
+    #
+    # The sweep BLOCKS on the lock; it does not skip and does not use the _try_
+    # variant. A sweep that gave up because a migration was in flight would
+    # return without cleaning and the run would proceed against a dirty
+    # database, reintroducing the ISS-0090 leak the sweep exists to prevent.
+    # The wait is bounded in practice: the runner takes this lock per migration
+    # FILE and releases it at each COMMIT, so the sweep waits at most for one
+    # per-file transaction, never for a whole ~80-file sequence.
+    #
+    # The name-shape validation (^tenant_[0-9a-f]{32}$) moves server-side with
+    # the enumeration as an equivalent pattern check. It is a SQL-injection
+    # guard on interpolated DDL and is NOT dropped on the grounds that "the
+    # names come from the database anyway". Names failing it are reported via
+    # the `skipped` channel below and are never interpolated into DDL.
+    #
+    # tenant_default is never dropped -- it is the harness's persistent fixture.
+    script = f"""
+BEGIN;
+{MIGRATIONS_LOCK_SQL};
 
-    # Schema names are always the fixed 'tenant_' + 32-hex-digit convention
-    # (see bpm_provision_tenant_schema in migrations/060). Validate before
-    # interpolating into DDL so a corrupt row can never inject SQL.
-    valid_name = re.compile(r"^tenant_[0-9a-f]{32}$")
+CREATE TEMP TABLE _sweep_candidates ON COMMIT DROP AS
+SELECT schema_name FROM public.tenant_schemas
+ WHERE schema_name <> 'tenant_default'
+UNION
+SELECT schema_name FROM information_schema.schemata
+ WHERE schema_name LIKE 'tenant\\_%' AND schema_name <> 'tenant_default';
+
+-- Server-side equivalent of the ^tenant_[0-9a-f]{{32}}$ guard. Anything failing
+-- it is reported and never reaches the DROP below.
+SELECT 'SKIPPED:' || schema_name FROM _sweep_candidates
+ WHERE schema_name !~ '^tenant_[0-9a-f]{{32}}$';
+
+DO $$
+DECLARE
+    s text;
+    n int := 0;
+BEGIN
+    FOR s IN
+        SELECT schema_name FROM _sweep_candidates
+         WHERE schema_name ~ '^tenant_[0-9a-f]{{32}}$'
+         ORDER BY schema_name
+    LOOP
+        BEGIN
+            -- format('%I') quotes the identifier; combined with the regex guard
+            -- above this makes DDL injection impossible.
+            EXECUTE format('DROP SCHEMA IF EXISTS %I CASCADE', s);
+            n := n + 1;
+        EXCEPTION WHEN OTHERS THEN
+            -- Best-effort posture preserved: one undroppable leaked schema
+            -- warns and continues rather than failing the whole run.
+            RAISE WARNING 'could not drop schema %: %', s, SQLERRM;
+        END;
+    END LOOP;
+    RAISE NOTICE 'DROPPED_COUNT:%', n;
+END $$;
+
+DELETE FROM public.tenant_schemas WHERE schema_name <> 'tenant_default';
+DELETE FROM public.schema_migrations
+ WHERE schema_name <> 'tenant_default' AND schema_name <> 'public';
+
+COMMIT;
+"""
+
+    result = run_psql_script(script)
+
+    # Lock acquisition / connection failure: the sweep could not establish
+    # exclusivity, so proceeding would be exactly the unguarded behaviour being
+    # removed here. Abort non-zero, following the precedent set by the initial
+    # TRUNCATE failure path in main().
+    if result.returncode != 0:
+        print(
+            "ERROR: orphaned-tenant-schema sweep failed under the migrations advisory "
+            f"lock; aborting integration run: {result.stderr.strip()}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    combined = (result.stdout or "") + (result.stderr or "")
+
+    for line in combined.splitlines():
+        if line.startswith("SKIPPED:"):
+            print(
+                f"WARNING: skipping unexpected tenant schema name: {line[len('SKIPPED:'):]!r}",
+                file=sys.stderr,
+            )
+
     dropped = 0
-    for schema_name in schema_names:
-        if not valid_name.match(schema_name):
-            print(f"WARNING: skipping unexpected tenant schema name: {schema_name!r}", file=sys.stderr)
-            continue
-        if run_psql(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE"):
-            dropped += 1
+    for line in combined.splitlines():
+        marker = "DROPPED_COUNT:"
+        if marker in line:
+            try:
+                dropped = int(line.split(marker, 1)[1].strip())
+            except ValueError:
+                pass
 
-    run_psql("DELETE FROM public.tenant_schemas WHERE schema_name != 'tenant_default'")
-    run_psql("DELETE FROM public.schema_migrations WHERE schema_name != 'tenant_default' AND schema_name != 'public'")
+    for line in combined.splitlines():
+        if "could not drop schema" in line:
+            print(f"WARNING: {line.strip()}", file=sys.stderr)
+
+    # Diagnostic output line retained verbatim: the ISS-0148 smoking-gun analysis
+    # depended on it, and CLAUDE.md forbids removing or rewording output to make
+    # a gate stop matching.
     print(f"Dropped {dropped} orphaned tenant schema(s).", flush=True)
 
 
