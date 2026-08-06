@@ -6,14 +6,16 @@
     {
       "issue_id": "ISS-0150",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/482",
-      "status": "QUEUED",
+      "status": "DEFERRED",
       "severity": "MAJOR",
       "discovered_at": "2026-08-06T10:45:25Z",
       "discovered_by": "BACKEND-DEV Step 03 (spot-check of unrelated test-integration-* steps)",
       "discovered_while_fixing": "ISS-0148",
       "started_at": null,
       "completed_at": null,
-      "note": "Pre-existing and independent of ISS-0148 \u2014 verified by a stashed-change control run producing an identical 63-block failure set. test-integration-svc exits 1 with 63 failing blocks across 34 files, dominated by 42P01 'relation tenant_<uuid>.schema_migrations does not exist'. Overlaps but does not duplicate ISS-0149 / GH #465."
+      "note": "Pre-existing and independent of ISS-0148 \u2014 verified by a stashed-change control run producing an identical 63-block failure set. test-integration-svc exits 1 with 63 failing blocks across 34 files, dominated by 42P01 'relation tenant_<uuid>.schema_migrations does not exist'. Overlaps but does not duplicate ISS-0149 / GH #465.\n\nDEFERRED BY EXPLICIT ORCH SCOPE DECISION at Step Final, not forgotten. Proven pre-existing on unmodified main by a control run and confirmed unrelated to this run's two fixes (ISS-0148/#477, ISS-0151/#483). Remains OPEN as its own GitHub issue for a future run; recorded as filed-but-not-fixed in CHANGELOG.md and in PR #487 (merge commit 996baa90b9071870481e64bfa5ea06ba00243b91).",
+      "deferred_at": "2026-08-06T12:29:02Z",
+      "deferred_by": "ORCH (WF03-gh477-20260806 Step Final scope decision)"
     },
     {
       "issue_id": "ISS-0151",
@@ -30,14 +32,18 @@
     {
       "issue_id": "ISS-0152",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/484",
-      "status": "QUEUED",
+      "status": "DEFERRED",
       "severity": "MAJOR",
       "discovered_at": "2026-08-06T11:18:04Z",
       "discovered_by": "TEST-RUNNER Step 05 (Infrastructure Health Checklist pre-checks)",
       "discovered_while_fixing": "ISS-0148",
       "started_at": null,
       "completed_at": null,
-      "note": "zig build test-env-verify exits 1 on C5 only (C1-C4,C6,C7 PASS). BLOCKER=88 MAJOR=6 identical on a clean origin/main worktree; branch touches none of C5's inputs. Pre-existing, unrelated to ISS-0148."
+      "note": "zig build test-env-verify exits 1 on C5 only (C1-C4,C6,C7 PASS). BLOCKER=88 MAJOR=6 identical on a clean origin/main worktree; branch touches none of C5's inputs. Pre-existing, unrelated to ISS-0148.\n\nDEFERRED BY EXPLICIT ORCH SCOPE DECISION at Step Final, not forgotten. Proven pre-existing on unmodified main by a control run and confirmed unrelated to this run's two fixes (ISS-0148/#477, ISS-0151/#483). Remains OPEN as its own GitHub issue for a future run; recorded as filed-but-not-fixed in CHANGELOG.md and in PR #487 (merge commit 996baa90b9071870481e64bfa5ea06ba00243b91).",
+      "deferred_at": "2026-08-06T12:29:02Z",
+      "deferred_by": "ORCH (WF03-gh477-20260806 Step Final scope decision)"
     }
-  ]
+  ],
+  "closed_at": "2026-08-06T12:29:02Z",
+  "closing_note": "Queue closed at Step Final. ISS-0151 was DRAINED on this run's existing branch per the issue-queue protocol (no new branch, no separate PR). ISS-0150 and ISS-0152 are DEFERRED by explicit ORCH scope decision - both proven pre-existing and unrelated - and stay OPEN as GitHub #482 and #484 respectively. Run merged as PR #487, squash commit 996baa90b9071870481e64bfa5ea06ba00243b91."
 }

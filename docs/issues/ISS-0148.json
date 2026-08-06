@@ -8,8 +8,8 @@
     "ISS-0147"
   ],
   "severity": "MAJOR",
-  "status": "DIAGNOSED",
-  "resolved_at": null,
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-06T12:29:02Z",
   "run_id": "WF03-gh477-20260806",
   "category": "test-infrastructure/concurrent-schema-drop-during-migration",
   "affected_areas": [
@@ -43,5 +43,14 @@
     "GBL-133_iss0112_schema_ledger_reconcile.sql Step 2 (lines 170-192) blind-inserts all 98 non-GBL filenames for SCHEMA-mode tenants and was evaluated as a candidate; ruled out because it is already recorded for 'public' (so skipped in the public pass), is GBL-prefixed (so skipped in every tenant pass), and the failing schemas showed applied_count=0 rather than 98."
   ],
   "diagnosed_by": "ISSUE-FIXER (WF03-gh477-20260806 Step 01)",
-  "diagnosed_at": "2026-08-06T09:48:48Z"
+  "diagnosed_at": "2026-08-06T09:48:48Z",
+  "resolved_by": "BACKEND-DEV (WF03-gh477-20260806 Step 03)",
+  "merged_in": {
+    "pr": 487,
+    "merge_commit": "996baa90b9071870481e64bfa5ea06ba00243b91",
+    "branch": "feature/WF03-gh477-20260806"
+  },
+  "resolution": "Two layers.\n\nLayer 1 (primary) - build.zig: new file-local addIntegrationRun() helper folds the repeated create/setCwd/BPM_MIGRATIONS_DIR shape and attaches clean_test_db as a true ordering PREDECESSOR, applied at all 43 integration run-artifact sites (run_bench excluded - not an integration test). The edge attaches to the run ARTIFACT, not the aggregating step: 30 binaries reach the umbrella only via the test-integration-others-internal barrier, which carries no clean_test_db edge, so a per-step fix would have missed them - dependOn edges are a global property of a Step, so an artifact edge holds on every path. This also closes a pre-existing gap where test-integration-iss0076 had NO cleanup edge at all. All 56 step names and every pre-existing dependOn edge preserved verbatim; the ISS-0106 barrier is intact.\n\nLayer 2 (defence in depth) - tools/clean_test_db.py: the orphan sweep now performs enumerate -> validate -> drop -> ledger-delete as ONE transaction in ONE psql session (new run_psql_script() helper), holding pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint) - the key verbatim from src/db/migrations.zig:31 - with enumeration performed UNDER the lock. The pre-existing run_psql spawns a fresh process per call, so a lock taken in one call is gone by the next; a naive 'lock then drop' would have protected nothing. The sweep blocks rather than skips. The ^tenant_[0-9a-f]{32}$ injection guard moves server-side alongside the enumeration, with format(%I) quoting.\n\nNo test was weakened, skipped, or deleted; no retry or sleep was added. No changes under tests/, migrations/, or src/db/migrations.zig.",
+  "verification": "Judged on exit code only, independently re-measured by ORCH rather than taken from the fixing agent's report. Baseline 3/3 FAIL (42P01 user_roles, 42703 realm_id - varying). Post-fix zig build test-integration-tnt: exit codes 0,0,0,0,0 across 5 consecutive runs; 8/8 steps succeeded; 34/34 tests passed; audit_entries 42P01 signature 0 occurrences in every run; total 42P01 occurrences 0. The sweep lock was proven non-no-op: with a competing session holding the same key for 12s, the sweep blocked, took 14s and exited 0. The sweep runs exactly once per invocation, before any test output. zig build exits 0 with no 'error set' output; zig build test exits 0; lint_sql_param_types.py exits 0. Regression spot-checks test-integration-iss0072/iss0076/iss101/iss102/iss107/iss0121 all exit 0. Note: reaching a fully green step ALSO required the separate ISS-0151 fix (GH #483), a distinct pre-existing defect sharing this same step.",
+  "prevention": "1. Sibling dependencies of the same Zig build Step carry NO ordering edge between one another - the build runner may schedule them concurrently. Any step that mutates shared state the tests depend on (a DB-cleaning sweep, a fixture loader) must be an explicit ordering PREDECESSOR via dependOn, never merely declared first.\n2. Attach such edges to the run ARTIFACT, not the aggregating step: dependOn is a global property of a Step, so an artifact-level edge holds on every path that reaches it, including through barrier steps that carry no edge of their own.\n3. Route every integration run artifact through one shared helper (addIntegrationRun) so a newly added binary cannot silently omit the edge - that omission is exactly how test-integration-iss0076 ended up with no cleanup edge at all.\n4. A destructive sweep whose selection predicate is purely name-shaped cannot distinguish a leaked resource from a live one. Either make it safe under concurrency (hold the producer's own advisory-lock key across the whole enumerate/drop sequence, with enumeration under the lock) or guarantee it never overlaps the producer.\n5. A symptom whose identity varies run to run (different migration file, different missing relation each time) is evidence of a randomly-timed external mutation, not of a bug in the code path that reports the error. Do not chase the varying detail; find what is landing at a random point in the sequence.\n6. Recorded in docs/anti-patterns.md under Test Infrastructure."
 }

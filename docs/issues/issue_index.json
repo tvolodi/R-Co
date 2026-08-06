@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-06T11:18:04Z",
+  "last_updated": "2026-08-06T12:29:02Z",
   "next_issue_id": 153,
   "issues": [
     {
@@ -1655,11 +1655,11 @@
     },
     {
       "id": "ISS-0148",
-      "title": "TC-TNT-01-01 fails intermittently: relation \"audit_entries\" does not exist during tenant schema provisioning (GH #477)",
-      "status": "OPEN",
+      "title": "TC-TNT-01-01 fails intermittently: relation \"audit_entries\" does not exist during tenant schema provisioning - clean_test_db swept an in-flight tenant schema because it was an unordered build-graph sibling of the tests (GH #477)",
+      "status": "RESOLVED",
       "severity": "MAJOR",
-      "category": "test-infrastructure/migration-ordering-or-residual-state",
-      "run_id": "WF03-gh374-20260806",
+      "category": "test-infrastructure/concurrent-schema-drop-during-migration",
+      "run_id": "WF03-gh477-20260806",
       "affected_areas": [
         "tests/integration/tnt_schema_isolation_test.zig",
         "src/db/migrations.zig",
@@ -1667,7 +1667,7 @@
       ],
       "github_issue": "https://github.com/tvolodi/R-Co/issues/477",
       "created_at": "2026-08-06T08:29:20Z",
-      "resolved_at": null
+      "resolved_at": "2026-08-06T12:29:02Z"
     },
     {
       "id": "ISS-0150",
@@ -1687,10 +1687,10 @@
     },
     {
       "id": "ISS-0151",
-      "title": "test-integration-tnt still flaky after ISS-0148: second independent race causes 23505 on schema_migrations_schema_version_uq (GH #483)",
-      "status": "OPEN",
+      "title": "test-integration-tnt still flaky after ISS-0148: GH-402 deleted all three pg_advisory_lock acquires from tests/integration/helpers.zig while leaving the matching pg_advisory_unlock behind (GH #483)",
+      "status": "RESOLVED",
       "severity": "MAJOR",
-      "category": "test-infrastructure/tenant-ledger-race",
+      "category": "test-infrastructure/deleted-advisory-lock-acquires",
       "run_id": "WF03-gh477-20260806",
       "affected_areas": [
         "tests/integration/tnt_schema_isolation_test.zig",
@@ -1700,7 +1700,8 @@
       ],
       "github_issue": "https://github.com/tvolodi/R-Co/issues/483",
       "created_at": "2026-08-06T11:18:04Z",
-      "discovered_by": "TEST-RUNNER (WF03-gh477-20260806 Step 05)"
+      "discovered_by": "TEST-RUNNER (WF03-gh477-20260806 Step 05)",
+      "resolved_at": "2026-08-06T12:12:19Z"
     },
     {
       "id": "ISS-0152",

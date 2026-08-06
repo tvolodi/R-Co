@@ -41,8 +41,8 @@
     "artifacts_out": [
       "CHANGELOG.md",
       "docs/anti-patterns.md",
-      "PR #PLACEHOLDER_PR",
-      "merge commit PLACEHOLDER_SHA",
+      "PR #487",
+      "merge commit 996baa90b9071870481e64bfa5ea06ba00243b91",
       "branch: feature/WF03-gh477-20260806 (squash-merged into main, branch deleted)"
     ],
     "issues": [
