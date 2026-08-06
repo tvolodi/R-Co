@@ -790,8 +790,14 @@ test "parseRolesJson: invalid JSON returns ConfigParseFailed" {
 ///   .added   = token_roles ∖ (oidc_slugs ∪ local_slugs)
 ///   .removed = oidc_slugs ∖ token_roles
 const ReconcileSets = struct {
-    added: []const []const u8,
-    removed: []const []const u8,
+    // Mutable slices: both buffers are freshly allocated by
+    // computeReconcileSets and handed to the caller, who owns and frees them.
+    // `[]const []const u8` would be a lie about that ownership and blocks
+    // callers from sorting the result in place for deterministic comparison —
+    // which is exactly what TC-OIDC-10-12 does. The inner []const u8 slices
+    // stay const: the strings themselves are not mutated, only reordered.
+    added: [][]const u8,
+    removed: [][]const u8,
 };
 
 fn computeReconcileSets(
@@ -815,11 +821,11 @@ fn computeReconcileSets(
     for (local_slugs) |s| try all_existing.put(s, {});
 
     // add_set = token_roles ∖ (oidc_slugs ∪ local_slugs)
-    var add_list = std.ArrayList([]const u8).init(allocator);
-    defer add_list.deinit();
+    var add_list = std.ArrayList([]const u8).empty;
+    defer add_list.deinit(allocator);
     for (token_roles) |slug| {
         if (!all_existing.contains(slug)) {
-            try add_list.append(slug);
+            try add_list.append(allocator, slug);
         }
     }
 
@@ -828,11 +834,11 @@ fn computeReconcileSets(
     defer token_set.deinit();
     for (token_roles) |s| try token_set.put(s, {});
 
-    var remove_list = std.ArrayList([]const u8).init(allocator);
-    defer remove_list.deinit();
+    var remove_list = std.ArrayList([]const u8).empty;
+    defer remove_list.deinit(allocator);
     for (oidc_slugs) |slug| {
         if (!token_set.contains(slug)) {
-            try remove_list.append(slug);
+            try remove_list.append(allocator, slug);
         }
     }
 

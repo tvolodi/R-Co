@@ -96,6 +96,136 @@ pub fn build(b: *std.Build) void {
             .{ .name = "expr", .module = expr_mod },
         },
     });
+
+    // ---------------------------------------------------------------------------
+    // ISS-0137 / GH #439 — OIDC + repository/wasm named modules (cluster C4a).
+    //
+    // These 15 modules existed only as file paths before this run: the OIDC
+    // production files carry 44 in-file test blocks and the tests/unit/
+    // test_oidc*.zig + tests/integration/oidc*.zig suites import them by the
+    // names below, but no `b.createModule` declared any of them — so those
+    // tests could not compile, and the production files' own tests were
+    // reachable from no addTest root (root cause RC-3 of ISS-0137).
+    //
+    // Every file below is a valid standalone module root: verified that no
+    // src/oidc/*.zig file reaches a sibling by relative path (all non-std
+    // imports in that directory are named modules). Consequently the
+    // Single-Owner Module Rule applies — src/oidc_test_root.zig must reach
+    // these seven files by NAME, never by relative path, or Zig rejects the
+    // compilation with "file exists in multiple modules".
+    //
+    // Declaration order matters: claim_mapping before jit_provisioning.
+    // ---------------------------------------------------------------------------
+    const claim_mapping_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/claim_mapping.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    const jit_provisioning_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/jit_provisioning.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "claim_mapping", .module = claim_mapping_mod },
+        },
+    });
+    const identity_stability_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/identity_stability.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    const realm_tenant_binding_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/realm_tenant_binding.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    const tenant_claim_source_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/tenant_claim_source.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const realm_provisioning_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/realm_provisioning.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const realm_deletion_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/realm_deletion.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    // migration_helper.zig imports pool (line 2) and identity_provider (line 3) —
+    // an empty .imports here would fail to compile.
+    const oidc_migration_helper_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/migration_helper.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "identity_provider", .module = identity_provider_mod },
+        },
+    });
+    // NOTE: src/identity/provider/oidc/jwks_cache.zig — NOT src/oidc/jwks.zig.
+    // Two different files; conflating them was an error in the diagnosis.
+    const jwks_cache_mod = b.createModule(.{
+        .root_source_file = b.path("src/identity/provider/oidc/jwks_cache.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const oidc_bench_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/verification_benchmark.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const realm_seed_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/realm_seed.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const oidc_test_token_helper_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/test_token_helper.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const oidc_coexistence_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/coexistence_auth.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    // repository/mod.zig is the ONLY repository file that becomes a module root:
+    // artifacts.zig and activation.zig reach canonicaliser.zig/artifacts.zig by
+    // relative path, so they must stay plain members of this module.
+    const repository_mod = b.createModule(.{
+        .root_source_file = b.path("src/repository/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    // src/wasm/ has zero @cImport and zero linkSystemLibrary; wasmtime_bindings.zig
+    // declares only `extern struct` layout types, which need no link-time symbol.
+    // So this module compiles and its tests run against pure-Zig stubs.
+    const wasm_mod = b.createModule(.{
+        .root_source_file = b.path("src/wasm/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const vendor_imports: []const std.Build.Module.Import = &.{
         .{ .name = "pg", .module = pg_mod },
         .{ .name = "http", .module = http_mod },
@@ -566,6 +696,228 @@ pub fn build(b: *std.Build) void {
     const test_crypto_iss0074_step = b.step("test-crypto-iss0074", "Run ISS-0074 secrets/crypto.zig unit tests");
     test_crypto_iss0074_step.dependOn(&run_crypto_iss0074_tests.step);
 
+    // ---------------------------------------------------------------------------
+    // ISS-0137 / GH #439 — nine targets clearing the unwired-test backlog.
+    //
+    // These wire in 141 test blocks that had never executed. Each group gets its
+    // own narrow `test-<name>` step, not just a `test` edge: when a batch of
+    // never-executed tests runs for the first time, failures must be attributable
+    // to one group rather than arriving as one unreadable red wall.
+    //
+    // Every target here is service-free — no Postgres, no Keycloak — so the
+    // Green-Main Gate (`zig build test` passes with no services up) holds. The
+    // DB/Keycloak half of ISS-0137's backlog is wired through
+    // tests/integration/main_test.zig instead, behind test-integration.
+    // ---------------------------------------------------------------------------
+    const core_modules_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/core_modules_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            // ISS-0134: src/env.zig needs libc's `environ` extern on non-Windows.
+            .link_libc = true,
+            // Deliberately NO .imports here: see the shim's doc comment. Passing
+            // tenant_context_mod/env_mod/etc. as named modules would put those
+            // files in a SECOND module alongside this one and Zig would reject
+            // the compilation with "file exists in multiple modules".
+        }),
+    });
+    const run_core_modules_tests = b.addRunArtifact(core_modules_tests);
+    const test_core_modules_step = b.step(
+        "test-core-modules",
+        "Run in-file tests of tenant_context, pipeline_context, obs/metrics and env",
+    );
+    test_core_modules_step.dependOn(&run_core_modules_tests.step);
+
+    const config_idp_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/config_idp_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                // identity_provider.zig's own named import. NOT idp_config_mod:
+                // that module is rooted at the very file whose tests this target
+                // collects, and supplying it would put the file in two modules.
+                .{ .name = "portable_env", .module = env_mod },
+            },
+        }),
+    });
+    const run_config_idp_tests = b.addRunArtifact(config_idp_tests);
+    const test_config_idp_step = b.step(
+        "test-config-idp",
+        "Run src/config/identity_provider.zig in-file unit tests",
+    );
+    test_config_idp_step.dependOn(&run_config_idp_tests.step);
+
+    const oidc_src_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/oidc_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            // Only `pool` — the six collected files' own named import. Passing
+            // claim_mapping_mod et al. would make those files members of two
+            // modules at once AND stop their tests being enrolled at all.
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_oidc_src_tests = b.addRunArtifact(oidc_src_tests);
+    const test_oidc_src_step = b.step(
+        "test-oidc-src",
+        "Run six src/oidc/*.zig production files' in-file unit tests",
+    );
+    test_oidc_src_step.dependOn(&run_oidc_src_tests.step);
+
+    // jit_provisioning.zig needs its own target: it imports `claim_mapping` by
+    // name, and claim_mapping.zig is a relative member of oidc_src_tests above.
+    // One compilation cannot hold both roles for the same file.
+    const oidc_jit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/oidc_jit_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "claim_mapping", .module = claim_mapping_mod },
+            },
+        }),
+    });
+    const run_oidc_jit_tests = b.addRunArtifact(oidc_jit_tests);
+    const test_oidc_jit_step = b.step(
+        "test-oidc-jit",
+        "Run src/oidc/jit_provisioning.zig in-file unit tests",
+    );
+    test_oidc_jit_step.dependOn(&run_oidc_jit_tests.step);
+
+    const repository_src_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/repository_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            // Only `pool`. repository_mod is rooted at the very mod.zig this
+            // shim reaches relatively; supplying it would put those files in two
+            // modules and stop their tests being enrolled.
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_repository_src_tests = b.addRunArtifact(repository_src_tests);
+    const test_repository_src_step = b.step(
+        "test-repository-src",
+        "Run src/repository/*.zig in-file unit tests",
+    );
+    test_repository_src_step.dependOn(&run_repository_src_tests.step);
+
+    const simulation_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/simulation_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            // simulation/types.zig and tenant_store.zig both reach
+            // ../event_store/store.zig by RELATIVE path, so store.zig is a plain
+            // member of this shim's own module — and its four named imports must
+            // therefore be supplied at this module's level, not inherited from
+            // anywhere. Design §2.5 anticipated exactly this ("BACKEND-DEV adds
+            // whatever named imports the compiler demands and records them");
+            // these four are the complete set demanded.
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "tenant_context", .module = tenant_context_mod },
+                .{ .name = "pipeline_context", .module = pipeline_context_mod },
+                .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            },
+        }),
+    });
+    const run_simulation_tests = b.addRunArtifact(simulation_tests);
+    const test_simulation_step = b.step(
+        "test-simulation",
+        "Run src/simulation/*.zig in-file unit tests",
+    );
+    test_simulation_step.dependOn(&run_simulation_tests.step);
+
+    const idp_bootstrap_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/identity/provider/idp_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "env", .module = env_mod },
+                .{ .name = "idp_config", .module = idp_config_mod },
+            },
+        }),
+    });
+    const run_idp_bootstrap_tests = b.addRunArtifact(idp_bootstrap_tests);
+    const test_idp_bootstrap_step = b.step(
+        "test-idp-bootstrap",
+        "Run src/identity/provider/bootstrap.zig in-file unit tests",
+    );
+    test_idp_bootstrap_step.dependOn(&run_idp_bootstrap_tests.step);
+
+    const oidc_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/oidc_unit_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "jwks_cache", .module = jwks_cache_mod },
+                .{ .name = "claim_mapping", .module = claim_mapping_mod },
+                .{ .name = "oidc_bench", .module = oidc_bench_mod },
+                .{ .name = "realm_seed", .module = realm_seed_mod },
+                .{ .name = "oidc_test_token_helper", .module = oidc_test_token_helper_mod },
+                .{ .name = "oidc_coexistence", .module = oidc_coexistence_mod },
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_oidc_unit_tests = b.addRunArtifact(oidc_unit_tests);
+    // REQUIRED: test_oidc28 and test_oidc32 read docker-compose.yml and
+    // infrastructure/keycloak/realms/*.json from disk via Dir.cwd().
+    run_oidc_unit_tests.setCwd(b.path("."));
+    const test_oidc_unit_step = b.step(
+        "test-oidc-unit",
+        "Run the eight tests/unit/test_oidc*.zig unit test files",
+    );
+    test_oidc_unit_step.dependOn(&run_oidc_unit_tests.step);
+
+    const repository_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/repository_unit_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "repository", .module = repository_mod },
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_repository_unit_tests = b.addRunArtifact(repository_unit_tests);
+    const test_repository_unit_step = b.step(
+        "test-repository-unit",
+        "Run tests/unit/repository_*.zig unit test files",
+    );
+    test_repository_unit_step.dependOn(&run_repository_unit_tests.step);
+
+    const misc_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/misc_unit_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "wasm", .module = wasm_mod },
+            },
+        }),
+    });
+    const run_misc_unit_tests = b.addRunArtifact(misc_unit_tests);
+    const test_misc_unit_step = b.step(
+        "test-misc-unit",
+        "Run tests/unit/lua_test.zig and wasm_executor_test.zig",
+    );
+    test_misc_unit_step.dependOn(&run_misc_unit_tests.step);
+
     const test_step = b.step("test", "Run all unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_bpm_src_tests.step);
@@ -588,6 +940,17 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_dsl01_parser_tests.step);
     test_step.dependOn(&run_expr_error_recovery_tests.step);
     test_step.dependOn(&run_dsl04_eval_tests.step);
+    // ISS-0137 / GH #439 — the nine backlog-clearing targets declared above.
+    test_step.dependOn(&run_core_modules_tests.step);
+    test_step.dependOn(&run_config_idp_tests.step);
+    test_step.dependOn(&run_oidc_src_tests.step);
+    test_step.dependOn(&run_oidc_jit_tests.step);
+    test_step.dependOn(&run_repository_src_tests.step);
+    test_step.dependOn(&run_simulation_tests.step);
+    test_step.dependOn(&run_idp_bootstrap_tests.step);
+    test_step.dependOn(&run_oidc_unit_tests.step);
+    test_step.dependOn(&run_repository_unit_tests.step);
+    test_step.dependOn(&run_misc_unit_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-differential` — ISS-602 CEL/expr differential harness
@@ -636,6 +999,21 @@ pub fn build(b: *std.Build) void {
         // type-checks on Windows/WASI/freestanding; it fails every one of
         // these files on Linux. All are rewritten to call env.globalEnviron().
         .{ .name = "env", .module = env_mod },
+        // ISS-0137 / GH #439 (cluster C4a): the nine tests/integration/oidc*.zig
+        // files reach these modules by name. Because integration_imports is
+        // shared by integration_tests, svc_integration_tests,
+        // env_integration_tests and the ~35 dedicated roots, appending here is
+        // the ONLY build.zig change those integration files need — no new
+        // dedicated addTest roots, which is what keeps the ISS-0106 DDL race
+        // eliminated by construction.
+        .{ .name = "claim_mapping", .module = claim_mapping_mod },
+        .{ .name = "jit_provisioning", .module = jit_provisioning_mod },
+        .{ .name = "identity_stability", .module = identity_stability_mod },
+        .{ .name = "realm_tenant_binding", .module = realm_tenant_binding_mod },
+        .{ .name = "tenant_claim_source", .module = tenant_claim_source_mod },
+        .{ .name = "realm_provisioning", .module = realm_provisioning_mod },
+        .{ .name = "realm_deletion", .module = realm_deletion_mod },
+        .{ .name = "oidc_migration_helper", .module = oidc_migration_helper_mod },
     };
 
     const integration_tests = b.addTest(.{
