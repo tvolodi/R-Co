@@ -1,0 +1,22 @@
+{
+  "issue_id": "ISS-0146",
+  "title": "tools/verify_schema_baseline.py --auto-fix references renamed migration GBL-105 (now GBL-133), auto-fix always fails and loops",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/458",
+  "registered_at": "2026-08-06T00:25:21Z",
+  "registered_by": "WF03-gh454-20260806 (ISS-0144 fix verification, C4 self-review step)",
+  "related_to": [
+    "ISS-0144",
+    "ISS-0088"
+  ],
+  "severity": "MINOR",
+  "status": "OPEN",
+  "scope": "tools/verify_schema_baseline.py",
+  "symptom": "`python tools/verify_schema_baseline.py --check-tenants --auto-fix`, when C4-style drift (orphaned public.tenant rows with storage_mode='SCHEMA' and no matching Postgres schema) is detected, attempts to re-apply migrations/GBL-105_iss0112_schema_ledger_reconcile.sql -- a file that no longer exists at that name (renamed to GBL-133_iss0112_schema_ledger_reconcile.sql). Auto-fix reports 'ERROR: ... GBL-105_iss0112_schema_ledger_reconcile.sql not found; cannot auto-fix', then loops (observed printing the same failing re-check + retry block 5 times in a single invocation) until Postgres connections were briefly exhausted (FATAL: sorry, too many clients already) during manual reproduction while verifying GH #454 / ISS-0144's C4 fix.",
+  "root_cause_analysis": "tools/verify_schema_baseline.py lines 18, 155-156, 166, 168, 186, 260 all hardcode the literal filename GBL-105_iss0112_schema_ledger_reconcile.sql. The actual current file on disk is migrations/GBL-133_iss0112_schema_ledger_reconcile.sql -- same anti-pattern class as ISS-0088/GH#337 (stale filename reference surviving a rename), just in a tool script rather than test cleanup code. Not yet determined whether GBL-133 is a straight rename of GBL-105's content or a different/superseding migration; needs verification before blindly updating the literal.",
+  "acceptance_criteria": [
+    "Update tools/verify_schema_baseline.py's hardcoded filename to the current GBL-133_iss0112_schema_ledger_reconcile.sql (after confirming it is the correct successor to GBL-105), or resolve it dynamically by content/purpose rather than a literal filename, to survive future renames.",
+    "Add a retry cap / backoff to the auto-fix loop so a genuinely unfixable condition fails fast with a clear error instead of looping and risking connection exhaustion.",
+    "Verify --auto-fix actually reconciles a deliberately-orphaned tenant row in a test run."
+  ],
+  "evidence_file": "N/A -- reproduced directly via `python tools/verify_schema_baseline.py --check-tenants --auto-fix` against db_test during WF03-gh454-20260806; the 2 orphaned rows in that run were cleaned up directly via SQL (DELETE FROM public.tenant WHERE id IN (...)) since the tool's own auto-fix path is broken."
+}

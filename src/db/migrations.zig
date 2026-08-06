@@ -337,6 +337,43 @@ pub const Migrations = struct {
                 return MigrationError.MigrationFailed;
             };
 
+            // ISS-0144 / GitHub #454: `applied` (used by the `if
+            // (applied.contains(filename)) continue;` check above) was
+            // captured by a single query BEFORE this loop began and BEFORE
+            // any lock was held. Two concurrent runForSchema() callers
+            // targeting the SAME schema_name (e.g. every test-integration
+            // binary that provisions "tenant_default") can both read
+            // `applied` as not-yet-containing this filename, both reach
+            // BEGIN, and then simply queue on the advisory lock above rather
+            // than being turned away — so the second caller, once granted
+            // the lock, would attempt this file's DDL and INSERT again after
+            // the first caller already committed it, producing C23505 on
+            // schema_migrations_schema_version_uq (observed live: GBL-084
+            // "tenant_<uuid>", 001_event_store.sql already exists"). Holding
+            // the lock is necessary but not sufficient — it only serializes
+            // the two transactions relative to each other, it does not
+            // un-stale the first transaction's read of `applied`. Re-check
+            // directly under lock protection, immediately before doing any
+            // work, and skip this file if a concurrent holder already
+            // recorded it while we were waiting.
+            const already_applied_under_lock = blk: {
+                var recheck = conn.query(
+                    allocator,
+                    "SELECT 1 FROM public.schema_migrations WHERE schema_name = $1 AND version = $2",
+                    &.{ schema_name, filename },
+                ) catch break :blk false;
+                defer recheck.deinit();
+                break :blk recheck.rows.len > 0;
+            };
+            if (already_applied_under_lock) {
+                conn.exec("COMMIT", &.{}) catch return MigrationError.MigrationFailed;
+                if (file_order > max_applied_order) {
+                    max_applied_order = file_order;
+                    max_applied = filename;
+                }
+                continue;
+            }
+
             // Execute the migration SQL via the simple query protocol.
             // Migration files contain multi-statement DDL separated by semicolons;
             // the extended query protocol (used by exec()) rejects multi-statement

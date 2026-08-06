@@ -1,0 +1,47 @@
+{
+  "handoff_id": "b1e2c3d4-0000-4a00-9000-000000000001",
+  "run_id": "WF03-gh454-20260806",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-gh454-20260806/step-00-backend-dev.json",
+  "created_at": "2026-08-05T22:17:05Z",
+  "started_at": "2026-08-05T22:19:58Z",
+  "completed_at": "2026-08-05T22:20:19Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": ["docs/issues/ISS-0144.json"]
+  },
+  "task": {
+    "description": "fn:git-setup for run WF03-gh454-20260806. Branch name: feature/WF03-gh454-20260806.",
+    "acceptance_criteria": [
+      "git pull --ff-only origin main exits 0",
+      "git branch --show-current outputs feature/WF03-gh454-20260806",
+      "git push -u origin feature/WF03-gh454-20260806 exits 0"
+    ],
+    "functions_to_call": ["fn:git-setup"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "git-setup complete for WF03-gh454-20260806: checked out main, fast-forward pulled origin/main, created feature/WF03-gh454-20260806, pushed to origin with upstream tracking.",
+    "artifacts_out": ["branch: feature/WF03-gh454-20260806"],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh454-20260806",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-gh454-20260806",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to ISSUE-FIXER Step 0.5 (issue registry already exists at docs/issues/ISS-0144.json) then Step 1 (Diagnose)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at_note": null
+}

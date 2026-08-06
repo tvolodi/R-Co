@@ -52,9 +52,56 @@ fn insertTenant(conn: *pg.Conn, id_hex: []const u8, slug: []const u8) !void {
     );
 }
 
+/// ISS-0144 / GitHub #454: several tests below register a scope=.tenant
+/// service via `ServiceCatalog.registerService()` (src/repository/service_catalog.zig),
+/// which requires `owner_tenant_id` to already exist as a row in
+/// public.tenant (it runs `SELECT id FROM public.tenant WHERE id =
+/// $1::uuid` and returns CatalogError.TenantNotFound otherwise). Those
+/// tests generated a random tenant UUID under a comment claiming it was a
+/// "pre-committed fixture tenant" but never actually inserted it, so every
+/// one of those calls deterministically hit TenantNotFound.
+///
+/// Unlike insertTenant() above (which writes via `h.conn` and is safe only
+/// when every later query in the SAME test also uses `h.conn`),
+/// insertTenantViaPool() writes via the SAME `*Pool` that
+/// ServiceCatalog.registerService() acquires connections from.
+/// TestHarness.init() holds h.conn inside an explicit transaction that is
+/// only ever rolled back in deinit() (by design, for per-test isolation) —
+/// an INSERT issued there is invisible to any other session under
+/// Postgres's default READ COMMITTED isolation, including a separate
+/// pool.acquire() connection. Use this helper (not insertTenant) whenever
+/// the test also calls registerService() against `pool`.
+fn insertTenantViaPool(alloc: std.mem.Allocator, pool: anytype, id_hex: []const u8, label: []const u8) !void {
+    // ISS-0144 rework: `slug` and `idp_realm_id` both carry UNIQUE indexes
+    // (idx_tenant_slug_unique, idx_tenant_idp_realm_id) in public.tenant.
+    // Because this INSERT commits immediately (via `pool`, not the
+    // TestHarness's rolled-back h.conn — see the doc comment above), a
+    // static per-test-name slug like "svc01-lst-a" collides with the SAME
+    // row left behind by every PRIOR run of this suite: `ON CONFLICT (id)
+    // DO NOTHING` only covers the `id` column, so the slug/idp_realm_id
+    // unique-index violation on the second and later runs was an uncaught
+    // Postgres error. Derive both from `id_hex` (already a fresh random
+    // UUID per test) so they are unique per call, forever, with no
+    // accumulation risk — matching the convention
+    // bpm_provision_tenant_schema() itself already uses
+    // ('tenant-' || replace(id::text, '-', '')).
+    const unique_slug = try std.fmt.allocPrint(alloc, "{s}-{s}", .{ label, id_hex });
+    defer alloc.free(unique_slug);
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    try conn.exec(
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $2, now(), 'test', $4::uuid)
+        \\ON CONFLICT (id) DO NOTHING
+    ,
+        &.{ id_hex, unique_slug, label, "00000000-0000-0000-0000-000000000000" },
+    );
+}
+
 fn insertGlobalService(conn: *pg.Conn, svc_id: []const u8) !void {
     try conn.exec(
-        \\INSERT INTO service_catalog
+        \\INSERT INTO public.service_catalog
         \\  (service_id, endpoint_url, request_schema, response_schema,
         \\   required_auth, timeout_ms, retry_policy, scope, owner_tenant_id)
         \\VALUES ($1, 'https://example.com', '{}', '{}', 'NONE', 5000, '{}', 'global', NULL)
@@ -66,7 +113,7 @@ fn insertGlobalService(conn: *pg.Conn, svc_id: []const u8) !void {
 
 fn insertScopedService(conn: *pg.Conn, svc_id: []const u8, owner_hex: []const u8) !void {
     try conn.exec(
-        \\INSERT INTO service_catalog
+        \\INSERT INTO public.service_catalog
         \\  (service_id, endpoint_url, request_schema, response_schema,
         \\   required_auth, timeout_ms, retry_policy, scope, owner_tenant_id)
         \\VALUES ($1, 'https://example.com', '{}', '{}', 'NONE', 5000, '{}', 'tenant', $2::uuid)
@@ -118,7 +165,7 @@ test "svc01: global service visible to any tenant" {
     const rows = try h.conn.query(
         std.testing.allocator,
         \\SELECT service_id, scope, owner_tenant_id
-        \\FROM service_catalog
+        \\FROM public.service_catalog
         \\WHERE service_id = $1
         \\  AND (scope = 'global' OR owner_tenant_id = $2::uuid)
     ,
@@ -137,7 +184,7 @@ test "svc01: global service visible to any tenant" {
     defer std.testing.allocator.free(tenant2_hex);
     const rows2 = try h.conn.query(
         std.testing.allocator,
-        \\SELECT service_id FROM service_catalog
+        \\SELECT service_id FROM public.service_catalog
         \\WHERE service_id = $1
         \\  AND (scope = 'global' OR owner_tenant_id = $2::uuid)
     ,
@@ -168,7 +215,7 @@ test "svc01: tenant-scoped service visible only to owner tenant" {
     // Visible to tenant A (the owner).
     const rows_a = try h.conn.query(
         std.testing.allocator,
-        \\SELECT service_id FROM service_catalog
+        \\SELECT service_id FROM public.service_catalog
         \\WHERE service_id = $1
         \\  AND (scope = 'global' OR owner_tenant_id = $2::uuid)
     ,
@@ -185,7 +232,7 @@ test "svc01: tenant-scoped service visible only to owner tenant" {
     defer std.testing.allocator.free(tenant_b_hex);
     const rows_b = try h.conn.query(
         std.testing.allocator,
-        \\SELECT service_id FROM service_catalog
+        \\SELECT service_id FROM public.service_catalog
         \\WHERE service_id = $1
         \\  AND (scope = 'global' OR owner_tenant_id = $2::uuid)
     ,
@@ -208,7 +255,7 @@ test "svc01: check constraint rejects scope=tenant with NULL owner" {
 
     // Attempt INSERT with scope='tenant', owner_tenant_id=NULL — should fail CHECK constraint.
     const result = h.conn.exec(
-        \\INSERT INTO service_catalog
+        \\INSERT INTO public.service_catalog
         \\  (service_id, endpoint_url, request_schema, response_schema,
         \\   required_auth, timeout_ms, retry_policy, scope, owner_tenant_id)
         \\VALUES ($1, 'https://bad.com', '{}', '{}', 'NONE', 5000, '{}', 'tenant', NULL)
@@ -242,7 +289,7 @@ test "svc01: on_delete_cascade removes scoped service when owner tenant deleted"
     // Verify it was inserted.
     const before = try h.conn.query(
         std.testing.allocator,
-        \\SELECT service_id FROM service_catalog WHERE service_id = $1
+        \\SELECT service_id FROM public.service_catalog WHERE service_id = $1
     ,
         &.{svc_id},
     );
@@ -261,7 +308,7 @@ test "svc01: on_delete_cascade removes scoped service when owner tenant deleted"
 
     const after = try h.conn.query(
         std.testing.allocator,
-        \\SELECT service_id FROM service_catalog WHERE service_id = $1
+        \\SELECT service_id FROM public.service_catalog WHERE service_id = $1
     ,
         &.{svc_id},
     );
@@ -277,9 +324,19 @@ test "svc01: existing rows default to scope=global" {
     defer h.deinit();
 
     // Any row in service_catalog should have a non-null scope column defaulting to 'global'.
+    // ISS-0144 / GitHub #454 (recurrence of ISS-0089 / GitHub #338): this
+    // query must be schema-qualified as public.service_catalog. GBL-117
+    // (formerly GBL-078) adds `scope`/`owner_tenant_id` only to
+    // public.service_catalog; TestHarness's search_path is
+    // "tenant_default,public", and tenant_default has its own
+    // service_catalog copy (created by an earlier, non-GBL migration, still
+    // lacking these columns) that an unqualified reference silently
+    // resolves to instead — producing a deterministic C42703 "column scope
+    // does not exist" that looks like a migration/concurrency bug but is
+    // actually this test querying the wrong schema's copy of the table.
     const rows = try h.conn.query(
         std.testing.allocator,
-        \\SELECT COUNT(*) FROM service_catalog WHERE scope IS NULL
+        \\SELECT COUNT(*) FROM public.service_catalog WHERE scope IS NULL
     ,
         &.{},
     );
@@ -345,11 +402,14 @@ test "svc01: listServicesForTenant filters correctly via store API" {
     var svc_other_id_buf: [28]u8 = undefined;
     const svc_other_id = try std.fmt.bufPrint(&svc_other_id_buf, "svc-lst-o-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
 
-    // Use pre-committed fixture tenants (visible to pool connections).
+    // Insert fixture tenants for real — see insertTenantViaPool()'s doc
+    // comment (ISS-0144 / GitHub #454).
     const tenant_a_hex = try randomUuidStr(alloc);
     defer alloc.free(tenant_a_hex);
     const tenant_b_hex = try randomUuidStr(alloc);
     defer alloc.free(tenant_b_hex);
+    try insertTenantViaPool(alloc, &pool, tenant_a_hex, "svc01-lst-a");
+    try insertTenantViaPool(alloc, &pool, tenant_b_hex, "svc01-lst-b");
 
     // Parse tenant UUIDs into [16]u8.
     const tid_a = try parseUuid36(tenant_a_hex);
@@ -454,11 +514,14 @@ test "svc01: getServiceForTenant returns ServiceNotFound for cross-tenant servic
     var svc_id_buf: [28]u8 = undefined;
     const svc_id = try std.fmt.bufPrint(&svc_id_buf, "svc-xscp-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
 
-    // Use pre-committed fixture tenants (visible to pool connections).
+    // Insert the owner fixture tenant for real — see insertTenantViaPool()'s
+    // doc comment (ISS-0144 / GitHub #454). tid_caller does not need a row:
+    // it is only passed to getServiceForTenant() as the requesting tenant.
     const owner_hex = try randomUuidStr(alloc);
     defer alloc.free(owner_hex);
     const caller_hex = try randomUuidStr(alloc);
     defer alloc.free(caller_hex);
+    try insertTenantViaPool(alloc, &pool, owner_hex, "svc01-xscp-owner");
 
     const tid_owner = try parseUuid36(owner_hex);
     const tid_caller = try parseUuid36(caller_hex);
@@ -523,11 +586,21 @@ test "svc01: registerService stores scope and owner_tenant_id correctly" {
     var svc_id_buf: [28]u8 = undefined;
     const svc_id = try std.fmt.bufPrint(&svc_id_buf, "svc-reg-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
 
-    // Use pre-committed fixture tenant (visible to pool connections).
+    // ISS-0144 / GitHub #454: insert the fixture tenant via `pool` (the same
+    // pool ServiceCatalog.registerService() below acquires connections
+    // from), not `h.conn`. TestHarness.init() holds h.conn inside an
+    // explicit transaction that is only ever rolled back in deinit(), so an
+    // INSERT issued there is invisible to any other session under Postgres's
+    // default READ COMMITTED isolation — including registerService()'s own
+    // pool.acquire() call, whose `SELECT id FROM public.tenant WHERE id =
+    // $1::uuid` existence check would otherwise always see zero rows and
+    // return CatalogError.TenantNotFound, exactly as observed here before
+    // this fix.
     const owner_hex = try randomUuidStr(alloc);
     defer alloc.free(owner_hex);
 
     const tid_owner = try parseUuid36(owner_hex);
+    try insertTenantViaPool(alloc, &pool, owner_hex, "svc01-reg");
 
     const rec = try catalog.registerService(alloc, RegisterServiceParams{
         .service_id = svc_id,
@@ -655,10 +728,12 @@ test "svc01: listServicesForTenant with nil tenant returns all entries" {
     var svc_b_id_buf: [28]u8 = undefined;
     const svc_b_id = try std.fmt.bufPrint(&svc_b_id_buf, "svc-all-s-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
 
-    // Use pre-committed fixture tenant (visible to pool connections).
+    // Insert the fixture tenant for real — see insertTenantViaPool()'s doc
+    // comment (ISS-0144 / GitHub #454).
     const tenant_all_hex = try randomUuidStr(alloc);
     defer alloc.free(tenant_all_hex);
     const tid_all = try parseUuid36(tenant_all_hex);
+    try insertTenantViaPool(alloc, &pool, tenant_all_hex, "svc01-all");
 
     const rec_a = try catalog.registerService(alloc, RegisterServiceParams{
         .service_id = svc_a_id,
