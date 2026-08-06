@@ -1,0 +1,79 @@
+{
+  "handoff_id": "005a07a5-2a72-4107-8208-924eb1822269",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "q148",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-06T07:50:11Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_ids": [
+      "ISS-0148"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/464",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "queue_drain": true,
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/unit/event_store_test.zig",
+      "docs/issues/ISS-0148.json",
+      "src/event_store/store.zig",
+      "src/event_store/registry.zig"
+    ]
+  },
+  "task": {
+    "description": "Replace the 25 error.SkipZigTest stub blocks in tests/unit/event_store_test.zig with real assertions against src/event_store/, or move coverage to named integration tests. No SkipZigTest may remain on a MUST-requirement block without a passing integration counterpart.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "python tools/lint_test_wiring.py exits 0",
+      "zig build exits 0 with no 'error set' output",
+      "zero error.SkipZigTest blocks remain in tests/unit/event_store_test.zig",
+      "every ES-01..ES-08 case ends with real coverage, or is filed as its own issue"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:register-issue",
+      "fn:enqueue-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Replaced all 25 error.SkipZigTest stubs in tests/unit/event_store_test.zig with 23 real, executing unit tests (verified by mutation: breaking one assertion yields '22 pass, 1 fail'). 9 stubs became real unit tests, 15 were confirmed already covered by NAMED integration tests and documented in an in-file coverage map, 5 had no coverage anywhere and were filed as ISS-0154/GH#472, 1 (TC-ES-05-02) is unimplementable because the production behaviour does not exist -- filed as ISS-0155/GH#473. Zero SkipZigTest blocks remain. The file also could not import src/event_store at all (its own header admitted this); fixed by exposing store.zig as a named 'event_store' module in build.zig. Pre-write validation was extracted into store.validateAppendParams / store.validateRetentionPolicyParams / registry.validateRegisterParams, which append(), upsertRetentionPolicy() and registerType() now CALL -- so the unit tests exercise production bytes, not a parallel copy (DIRECTIVE T-1: no mocks, stubs, or fakes).",
+    "artifacts_out": [
+      "tests/unit/event_store_test.zig",
+      "src/event_store/store.zig",
+      "src/event_store/registry.zig",
+      "build.zig",
+      "docs/issues/ISS-0154.json",
+      "docs/issues/ISS-0155.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "id": "ISS-0154",
+        "github_issue": "https://github.com/tvolodi/R-Co/issues/472",
+        "description": "TC-ES-01-02/03/04, TC-ES-05-04, TC-ES-07-02 have no coverage at unit OR integration level. All five require persisted state, so they belong in tests/integration/. Production code paths exist; only the tests are missing. Filed rather than silently dropped."
+      },
+      {
+        "severity": "MAJOR",
+        "id": "ISS-0155",
+        "github_issue": "https://github.com/tvolodi/R-Co/issues/473",
+        "description": "Registry.validatePayload discards the fetched schema ('_ = record;') and performs only an is-JSON-object check, and Registry.getType returns a placeholder with json_schema hardcoded to '{}'. ES-05 schema enforcement is therefore a no-op in production: any JSON object is accepted for any registered event type. TC-ES-05-02 is untestable until this is implemented. ES-05 is marked RELEASED, which overstates its true state."
+      }
+    ],
+    "verification": {
+      "zig build": "exit 0, no 'error set' output",
+      "zig build test": "exit 0 -- 59/59 steps, 801/865 passed; event_store target: 23 pass (23 total), 0 skipped",
+      "python tools/lint_test_wiring.py": "exit 0",
+      "python tools/lint_sql_param_types.py src tests": "0 BLOCKER, 0 MAJOR, 0 MINOR",
+      "mutation check": "deliberate assertion break produced '22 pass, 1 fail' -- proves assertions execute"
+    },
+    "next_action": "Return to ORCH: ISS-0148 DRAINED. ISS-0154 and ISS-0155 enqueued as new QUEUED items."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T07:50:11Z",
+  "completed_at": "2026-08-06T07:51:28Z"
+}

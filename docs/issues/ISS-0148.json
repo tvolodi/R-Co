@@ -1,7 +1,7 @@
 {
   "id": "ISS-0148",
   "title": "tests/unit/event_store_test.zig is 25 SkipZigTest stubs -- ES-01..ES-08 have zero real unit coverage but report green",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "false-green-test-coverage",
   "run_id": "WF03-gh439-testwiring-20260806",
@@ -11,9 +11,11 @@
     "docs/status/requirement_status.yaml"
   ],
   "created_at": "2026-08-06T05:32:56Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-06T07:51:28Z",
   "notes": "Incidental finding #5 of the WF-03 Step 1 diagnosis for GH #439 / ISS-0137. The file IS correctly wired, so this is not a #439 wiring defect -- the defect is that all 25 blocks are error.SkipZigTest, so ES-01..ES-08 report green with zero executing assertions. Surfaced while confirming tests/unit/event_store_test_orig.zig is a byte-identical duplicate safe to delete under #439 cluster C1 (it loses no coverage precisely because there was none).",
   "candidate_resolution": "Replace each SkipZigTest block with real assertions, or move coverage to named integration tests. Per CLAUDE.md TEST-DESIGNER directive no SkipZigTest may remain on a MUST-requirement block without a passing integration counterpart. Re-derive ES-01..ES-08 status in requirement_status.yaml afterwards.",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/464",
-  "discovered_while_fixing": "ISS-0137"
+  "discovered_while_fixing": "ISS-0137",
+  "resolution": "Replaced all 25 SkipZigTest stubs with 23 real executing unit tests. Root cause of the false-green was twofold: (1) the stubs were authored as placeholders and never implemented, and (2) the file physically COULD NOT import src/event_store -- its own header documented this ('Zig does not allow cross-module relative @import paths from a standalone root file'), so there was no path to a real assertion even if someone had tried. Fixed (2) by exposing src/event_store/store.zig as a named 'event_store' module in build.zig with its pool/pipeline_context/obs_metrics imports supplied at module level, plus a pub registry_module re-export so registry.zig is reachable. Fixed (1) by extracting append()'s pre-write validation block into pub validateAppendParams, upsertRetentionPolicy()'s into pub validateRetentionPolicyParams, and registerType()'s into pub validateRegisterParams -- each production function now CALLS its extracted validator, so unit tests exercise production bytes rather than a reimplementation. Outcome: 9 stubs -> real unit tests (ES-01 actor/payload/tenant, ES-03 key boundary, ES-05 name+schema boundary, ES-07 policy consistency + protected families, ES-08 all four metadata limits), plus 14 additional boundary/ordering cases the stubs never had. 15 stubs were confirmed already covered by NAMED integration tests and recorded in an in-file coverage map. 5 with no coverage anywhere -> ISS-0154 (GH #472). 1 unimplementable in production -> ISS-0155 (GH #473).",
+  "prevention": "Two enforceable lessons. (1) A test file that cannot import the code it names is not a test file -- lint_test_wiring.py verifies a file is reachable from an addTest root, but not that it imports anything under src/. Consider extending it to flag test files whose only import is std. (2) error.SkipZigTest is counted as a pass by Zig's runner, so a fully-stubbed file is indistinguishable from a green one in build output; only the per-target 'N skip' figure reveals it. A skip budget per target -- or a lint that fails when a file's skip count equals its test count -- would have caught this the day it was committed rather than after ES-01..ES-08 were marked RELEASED. Verifying new assertions by deliberately breaking one (mutation check) is what proved these 23 actually execute; adopt that as the standard proof when converting stubs."
 }

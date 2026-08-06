@@ -17,6 +17,11 @@ const Pool = db.Pool;
 const PoolError = db.PoolError;
 const registry_mod = @import("registry.zig");
 const Registry = registry_mod.Registry;
+/// Re-export so consumers importing this file as a named module (e.g. the
+/// `event_store` module used by tests/unit/event_store_test.zig) can reach
+/// registry.zig, which is otherwise only addressable by relative path from
+/// inside this module. (ISS-0148)
+pub const registry_module = registry_mod;
 const metrics = @import("obs_metrics");
 
 // ---------------------------------------------------------------------------
@@ -238,21 +243,9 @@ pub const Store = struct {
         const param_alloc = param_arena.allocator();
         // --- Pre-write validation (no DB writes below this line) ---
 
-        // ES-01: actor_id must be non-nil.
-        if (isNilUuid(params.actor_id)) return StoreError.ActorIdMissing;
-
-        // ES-03: idempotency_key constraints.
-        if (params.idempotency_key.len == 0) return StoreError.IdempotencyKeyMissing;
-        if (params.idempotency_key.len > 255) return StoreError.IdempotencyKeyTooLong;
-
-        if (params.tenant_id.len == 0) return StoreError.MissingTenantContext;
-
-        // ES-01: payload must be a JSON object (not null, array, or scalar).
-        if (!isJsonObject(params.payload)) return StoreError.PayloadInvalid;
-
-        // ES-08: metadata constraints (all validated before any SQL).
-        const metadata = params.metadata orelse "{}";
-        try validateMetadata(param_alloc, metadata);
+        // ES-01/ES-03/ES-08 pre-write validation. Shared with the unit tests via
+        // the public wrapper so both exercise identical bytes (ISS-0148).
+        const metadata = try validateAppendParams(param_alloc, params);
 
         const pipeline_run_id = params.pipeline_run_id orelse currentRequestPipelineRunId();
         if (pipeline_run_id.len > 0) {
@@ -868,12 +861,11 @@ pub const Store = struct {
         allocator: std.mem.Allocator,
         params: RetentionPolicyUpsertParams,
     ) StoreError!void {
-        if (params.event_type.len == 0) return StoreError.InvalidRetentionPolicyValue;
+        // ES-07/ADP-11 validation, shared with unit tests (ISS-0148).
+        try validateRetentionPolicyParams(allocator, params);
 
         const normalized_event_type = normalizeEventType(allocator, params.event_type) catch return StoreError.TransactionFailed;
         defer allocator.free(normalized_event_type);
-
-        try validateRetentionPolicyUpsert(normalized_event_type, params);
 
         const conn = self.pool.acquire() catch |err| switch (err) {
             PoolError.ExhaustedPool => return StoreError.PoolExhausted,
@@ -1322,6 +1314,62 @@ fn protectedFamilyLabel(event_type: []const u8) []const u8 {
     if (std.mem.startsWith(u8, event_type, "GATEWAY_")) return "GATEWAY_*";
     if (std.mem.startsWith(u8, event_type, "EXECUTION_")) return "EXECUTION_*";
     return "UNKNOWN";
+}
+
+// ---------------------------------------------------------------------------
+// Pre-write validation surface (ISS-0148)
+//
+// append() performs a block of purely in-process validation before it touches
+// the pool (Invariant #9: "all checks are in-process before any SQL").  Those
+// checks are the executable statement of ES-01/ES-03/ES-08's rejection rules,
+// but they lived behind private `fn`s, so the only way to reach them was an
+// append() call — which needs a live DB.  That is why ES-01/ES-03/ES-08's
+// unit-level cases sat as SkipZigTest stubs.
+//
+// validateAppendParams is not a reimplementation of those rules: append()
+// calls it, so a unit test that calls it exercises exactly the bytes that run
+// in production.  Anything requiring instance state, sequence assignment, or
+// idempotency lookup remains DB-bound and is covered in
+// tests/integration/event_store_integration_test.zig.
+// ---------------------------------------------------------------------------
+
+/// Run every pre-write validation append() applies before acquiring a
+/// connection, in append()'s exact order. Returns the effective metadata
+/// (params.metadata orelse "{}") on success — ES-08's default-to-{} rule.
+pub fn validateAppendParams(
+    allocator: std.mem.Allocator,
+    params: AppendParams,
+) StoreError![]const u8 {
+    // ES-01: actor_id must be non-nil.
+    if (isNilUuid(params.actor_id)) return StoreError.ActorIdMissing;
+
+    // ES-03: idempotency_key constraints.
+    if (params.idempotency_key.len == 0) return StoreError.IdempotencyKeyMissing;
+    if (params.idempotency_key.len > 255) return StoreError.IdempotencyKeyTooLong;
+
+    if (params.tenant_id.len == 0) return StoreError.MissingTenantContext;
+
+    // ES-01: payload must be a JSON object (not null, array, or scalar).
+    if (!isJsonObject(params.payload)) return StoreError.PayloadInvalid;
+
+    // ES-08: metadata constraints.
+    const metadata = params.metadata orelse "{}";
+    try validateMetadata(allocator, metadata);
+
+    return metadata;
+}
+
+/// Validate a retention policy upsert (ES-07 / ADP-11) without touching the DB.
+/// Normalises event_type the same way upsertRetentionPolicy does.
+pub fn validateRetentionPolicyParams(
+    allocator: std.mem.Allocator,
+    params: RetentionPolicyUpsertParams,
+) StoreError!void {
+    if (params.event_type.len == 0) return StoreError.InvalidRetentionPolicyValue;
+    const normalized = normalizeEventType(allocator, params.event_type) catch
+        return StoreError.TransactionFailed;
+    defer allocator.free(normalized);
+    try validateRetentionPolicyUpsert(normalized, params);
 }
 
 /// Validate metadata JSON object constraints (ES-08).

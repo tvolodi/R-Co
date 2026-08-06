@@ -1,0 +1,17 @@
+{
+  "id": "ISS-0155",
+  "title": "Registry.validatePayload never validates against the registered JSON Schema -- ES-05 schema enforcement is a no-op",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "unimplemented-requirement",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "affected_areas": [
+    "src/event_store/registry.zig"
+  ],
+  "created_at": "2026-08-06T07:48:10Z",
+  "resolved_at": null,
+  "notes": "Discovered while resolving ISS-0148 (GH #464). TC-ES-05-02 ('append with payload failing registered schema returns PayloadSchemaInvalid') could not be made a real test at EITHER unit or integration level, because the behaviour it asserts does not exist in production code.\n\nsrc/event_store/registry.zig Registry.validatePayload fetches the registered EventTypeRecord, immediately discards it (`_ = record;`), then performs only a structural is-JSON-object check and returns. It carries an explicit TODO: 'full JSON Schema draft-07 validation against record.json_schema when a JSON Schema validator is available.'\n\nConsequence: ES-05's core acceptance criterion -- 'WHEN a caller appends a payload that fails the registered schema, THEN the platform returns HTTP 422 with an RFC 9457 body listing every validation failure (field path, constraint violated, actual value)' -- is unenforced. Any JSON object payload is accepted for any registered event type regardless of its schema. The ValidationFailure struct and lastValidationFailures() accessor exist but are only ever populated with a single synthetic '/' + 'type' entry for non-object payloads.\n\nThis is a production gap, not a test gap. ES-05 is currently marked RELEASED in docs/status/requirement_status.yaml, which overstates its true state.",
+  "candidate_resolution": "Implement JSON Schema draft-07 validation in Registry.validatePayload against record.json_schema, populating last_failures with one ValidationFailure per violated constraint (field_path as RFC 6901 pointer, constraint keyword, serialised actual value). Then add TC-ES-05-02 as an integration test and re-derive ES-05's status. Note getType() also returns a placeholder record with json_schema hardcoded to '{}' rather than parsing the queried row -- that must be fixed first or schema validation will have nothing real to validate against.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/473",
+  "discovered_while_fixing": "ISS-0148"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "ISS-0154",
+  "title": "Five event-store test cases have no coverage at unit or integration level (TC-ES-01-02/03/04, TC-ES-05-04, TC-ES-07-02)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "missing-test-coverage",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "affected_areas": [
+    "tests/integration/event_store_integration_test.zig",
+    "src/event_store/store.zig",
+    "src/event_store/registry.zig"
+  ],
+  "created_at": "2026-08-06T07:48:10Z",
+  "resolved_at": null,
+  "notes": "Discovered while resolving ISS-0148 (GH #464), which replaced 25 SkipZigTest stubs in tests/unit/event_store_test.zig with real assertions. Of the 25 stubs, 15 already had named integration counterparts and 9 became real unit tests. These 5 had NEITHER, so removing the stub would have silently dropped the requirement's only trace. Each asserts a property of persisted state and so belongs in tests/integration/event_store_integration_test.zig:\n  TC-ES-01-02 append to non-existent instance -> InstanceNotFound (ES-01, HTTP 404)\n  TC-ES-01-03 append to COMPLETED instance -> InstanceTerminated (ES-01, HTTP 409)\n  TC-ES-01-04 append to CANCELLED instance -> InstanceTerminated (ES-01, HTTP 409)\n  TC-ES-05-04 registerType duplicate name+version -> DuplicateEventTypeVersion (ES-05, HTTP 409)\n  TC-ES-07-02 archive returns count of moved rows (ES-07)\nThe production code paths for all five exist in src/event_store/; only the tests are missing.",
+  "candidate_resolution": "Add five integration tests to tests/integration/event_store_integration_test.zig following the existing per-test-UUID fixture pattern in that file. TC-ES-01-03/04 need an instance_projections row seeded with status COMPLETED/CANCELLED. TC-ES-05-04 needs two registerType calls with the same (name, schema_version). TC-ES-07-02 needs the archive() return value asserted against a known row count.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/472",
+  "discovered_while_fixing": "ISS-0148"
+}

@@ -110,12 +110,8 @@ pub const Registry = struct {
         allocator: std.mem.Allocator,
         params: RegisterParams,
     ) RegistryError!EventTypeRecord {
-        // Validate name constraints.
-        if (params.name.len == 0) return RegistryError.EventTypeNameEmpty;
-        if (params.name.len > 128) return RegistryError.EventTypeNameTooLong;
-
-        // Validate json_schema is a JSON object (structural check).
-        if (!isJsonObject(params.json_schema)) return RegistryError.InvalidJsonSchema;
+        // ES-05 pre-write validation, shared with unit tests (ISS-0148).
+        try validateRegisterParams(params);
 
         var param_arena = std.heap.ArenaAllocator.init(allocator);
         defer param_arena.deinit();
@@ -276,6 +272,27 @@ pub const Registry = struct {
 // ---------------------------------------------------------------------------
 // Module-level helpers (not exported as public API)
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Pre-write validation surface (ISS-0148)
+//
+// registerType() validates the event type name and the schema document before
+// it acquires a connection.  Those checks are ES-05's rejection rules, but they
+// were inlined in registerType(), reachable only with a live DB — which is why
+// TC-ES-05-03 / TC-ES-05-04 were SkipZigTest stubs.  registerType() now calls
+// this function, so a unit test against it runs the production bytes.
+// ---------------------------------------------------------------------------
+
+/// Validate RegisterParams name and schema constraints (ES-05), no DB access.
+///
+/// Note: DuplicateEventTypeVersion is deliberately NOT checked here — it is a
+/// uniqueness property of persisted state, so it is only decidable against a
+/// real database.  See TC-ES-05-04 in tests/integration/.
+pub fn validateRegisterParams(params: RegisterParams) RegistryError!void {
+    if (params.name.len == 0) return RegistryError.EventTypeNameEmpty;
+    if (params.name.len > 128) return RegistryError.EventTypeNameTooLong;
+    if (!isJsonObject(params.json_schema)) return RegistryError.InvalidJsonSchema;
+}
 
 /// Return true if bytes is a non-empty JSON object (starts with '{').
 /// This is a lightweight structural guard, not a full JSON Schema validator.
