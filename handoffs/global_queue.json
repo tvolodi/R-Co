@@ -198,6 +198,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0174",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/502",
+      "title": "CapabilitySet.summary() does not compile under Zig 0.16 (uncalled public fn body, ISS-0172 blind spot, 3rd instance)",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-06T23:02:13Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

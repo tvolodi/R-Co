@@ -1,0 +1,31 @@
+{
+  "id": "ISS-0174",
+  "title": "CapabilitySet.summary() in src/lua/capabilities.zig does not compile under Zig 0.16 (stale std.ArrayList(u8).init) \u2014 a public, uncalled function body that `zig build test-lua` reports as green",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/502",
+  "discovered_at": "2026-08-06T23:01:29Z",
+  "discovered_by": "TEST-DESIGNER WF03-ISS-0169-20260806 Step 4",
+  "discovered_while_fixing": "ISS-0169",
+  "run_id": null,
+  "affected_areas": [
+    "src/lua/capabilities.zig",
+    "src/lua_test_root.zig"
+  ],
+  "symptom": "`src/lua/capabilities.zig:49` reads `var buf = std.ArrayList(u8).init(allocator);` inside `pub fn summary()`. `std.ArrayList(T)` has no `init` in Zig 0.16 (the type is unmanaged; the spelling is `std.ArrayList(u8).empty`, with the allocator passed to each append/deinit call). This is a hard compile error, yet `zig build test-lua` reports 71/71 tests passed and `zig build test` is green.\n\nVerified empirically, not inferred: adding a throwaway test rooted under src/ that calls `caps.summary(std.testing.allocator)` turns the target red with\n    src\\lua\\capabilities.zig:49:36: error: struct 'array_list.Aligned(u8,null)' has no member named 'init'\nRemoving that call restores green. The function's body is never analysed by any existing build path.\n\n`summary()` additionally has an unfixed API mismatch beneath the compile error: the doc comment and the ISS-0169 design (\u00a74.2) describe `summary()` as the renderer of the 'granted:' field in a capability-denial message, and `docs`/design reference `CapabilitySet.summary()` as rendering `\"(none)\"` for an empty set. Its `.deinit()` call on line 50 also uses the pre-0.16 no-allocator form, so migrating line 49 alone is not sufficient.",
+  "root_cause": "The ISS-0172 / GH #500 blind spot again, now in a third subsystem (after src/lua/instruction_limiter.zig + memory_limiter.zig in ISS-0172, and src/oidc/jwks.zig in ISS-0173). `src/lua_test_root.zig` pins this file with `_ = lua.capabilities.CapabilitySet;` \u2014 a bare TYPE reference. Zig resolves struct field types lazily and does not semantically analyse a `pub fn` body that no reachable code calls. `CapabilitySet.summary` has ZERO callers in the repository: `src/lua/host_context.zig` deliberately does NOT call it (ISS-0169 design \u00a74.4 / invariant ERR-2 \u2014 it allocates, and its result would be leaked across `lua_error`'s longjmp, so `writeGrants` renders the grant set into a fixed stack buffer instead). Removing the last caller is precisely what made the stale API call invisible.",
+  "acceptance_criteria": [
+    "src/lua/capabilities.zig compiles under Zig 0.16 with its function bodies genuinely analysed: `std.ArrayList(u8).init(allocator)` migrated to the unmanaged 0.16 API (`.empty` plus allocator-passing `appendSlice`/`toOwnedSlice`/`deinit`).",
+    "A build target CALLS `CapabilitySet.summary()` and asserts on its output \u2014 for an empty set (`\"(none)\"`) and for a multi-grant set (comma-separated) \u2014 rather than pinning the type (see ISS-0172).",
+    "Deliberate-mutation verification: inject a statement error into `summary`'s body and confirm `zig build test-lua` goes red.",
+    "A decision is recorded on whether `summary()` should exist at all: ISS-0169 removed its only intended caller by design (ERR-2). If it is dead code it should be deleted rather than repaired, since an uncalled allocating helper on a security type is a liability. If it is retained for host-side (non-longjmp) callers, that contract is documented on the function.",
+    "The census recommended by ISS-0173 is extended to cover public functions with zero callers, not only modules with zero callers \u2014 this instance is a function-level blind spot inside a file that IS otherwise reachable."
+  ],
+  "notes": [
+    "Filed and forwarded per CLAUDE.md 'Unblock-Everything' scope boundary and docs/agents/protocols/ISSUE_QUEUE.md. It does NOT block ISS-0169 tranche 1: nothing on the capability-enforcement path calls `summary()` (that is a deliberate design decision, ERR-2), and `zig build`, `zig build test` and `zig build test-lua` are all green on the WF03-ISS-0169-20260806 branch (71/71).",
+    "Discovered while writing the LUA-05/06/07 capability-enforcement tests: the same `std.ArrayList(u8).init` spelling was written into the new test file, the compiler rejected it there, and grepping the fix target surfaced the identical stale call surviving in capabilities.zig \u2014 where no compiler had ever looked.",
+    "Security-relevant in the same sense as ISS-0173: `capabilities.zig` is the authorization type for the Lua host API. A public method on it that has never been compiled cannot be assumed correct, and a future caller adding it back would hit a compile error attributed to their own change.",
+    "This is the THIRD instance of the ISS-0172 pattern found in two consecutive runs (ISS-0172, ISS-0173, ISS-0174). The recurrence rate is itself evidence that the type-pin idiom in the *_test_root.zig files is systematically unsafe and should be replaced repo-wide, not patched per-file.",
+    "Reproduce: append to src/lua_test_root.zig a test calling `var c = lua.capabilities.CapabilitySet.init(std.testing.allocator); defer c.deinit(); try c.add(\"variable:read\"); const s = try c.summary(std.testing.allocator); defer std.testing.allocator.free(s);` and run `zig build test-lua`."
+  ]
+}

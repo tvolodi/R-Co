@@ -1,0 +1,69 @@
+{
+  "handoff_id": "98aa0b7a-03e1-4446-afe5-1d622db87ed0",
+  "run_id": "WF03-ISS-0169-20260806",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-08-06T22:50:42Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [
+      "LUA-05",
+      "LUA-06",
+      "LUA-07"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/lua-capability-enforcement.md",
+      "src/lua/host_context.zig",
+      "docs/issue-reports/ISS-0169-diagnosis.yaml"
+    ]
+  },
+  "task": {
+    "description": "Write test specs and test source for LUA-05, LUA-06, LUA-07 against the newly implemented real capability enforcement. Business logic was added in Step 3, so this step is required.",
+    "acceptance_criteria": [
+      "Every MUST requirement LUA-05/06/07 has a runnable test file",
+      "No error.SkipZigTest on MUST tests",
+      "Spec case count matches implemented case count",
+      "No hardcoded credentials",
+      "lint_test_isolation.py exits 0",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:design-tests"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Wrote tests/specs/LUA-05.md (new) and rewrote tests/specs/LUA-06.md and tests/specs/LUA-07.md against the enforcement BACKEND-DEV actually implemented (d77b500, bdee0d5). Added src/lua/capability_enforcement_test.zig: 18 test blocks covering 18 specified cases (LUA-05 S01-S06, LUA-06 D01-D12, LUA-07 M01-M05) against the real vendored LuaJIT - no mocks, no stubs, no fakes (DIRECTIVE T-1). Wired into src/lua_test_root.zig so the blocks genuinely run. zig build test-lua: 71/71 pass (was 53). Full zig build test: 936/1000 pass, 64 pre-existing skips, 0 failures. zig build exits 0. Coverage added that did not exist before: per-function denial with a NON-EMPTY wrong grant (an empty set cannot distinguish a correct gate from a blanket refusal); the 6x6 cross-product proving one grant opens exactly one function and leaves the other five shut; fail-closed CAP-2 with an absent AND a wrong-type registry entry; call_service wildcard/prefix/over-long-id exactness; CAP-1 gate-before-arguments ordering asserted in both directions; SBX-1 asserted as an ORDERING invariant (safe base members present AND loaders absent in the SAME state) rather than a bare absence check; and the LUA-07 load-time path including parseManifest end-to-end and rejection-before-execution proven by error TYPE rather than assumed.",
+    "artifacts_out": [
+      "tests/specs/LUA-05.md",
+      "tests/specs/LUA-06.md",
+      "tests/specs/LUA-07.md",
+      "src/lua/capability_enforcement_test.zig",
+      "src/lua_test_root.zig",
+      "docs/issues/ISS-0174.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "NEW incidental defect, filed and forwarded, NOT fixed on this branch: ISS-0174 / GH #502 - CapabilitySet.summary() in src/lua/capabilities.zig does not compile under Zig 0.16 (stale std.ArrayList(u8).init on line 49, plus a pre-0.16 no-allocator .deinit() on line 50), yet zig build test-lua reports 71/71 green. Verified empirically with a throwaway probe test that calls summary(): the target turns red with 'capabilities.zig:49:36: error: struct array_list.Aligned(u8,null) has no member named init'. Root cause is the ISS-0172 / GH #500 blind spot at FUNCTION granularity: src/lua_test_root.zig pins the file with a bare type reference (_ = lua.capabilities.CapabilitySet;), and summary() has ZERO callers - host_context.zig deliberately does not call it (design ERR-2: it allocates and its result would leak across lua_error's longjmp). Third instance of this pattern in two consecutive runs (ISS-0172, ISS-0173, ISS-0174), which is itself evidence the type-pin idiom is systematically unsafe. Does NOT block this tranche: nothing on the capability-enforcement path calls summary(). Registered in docs/issues/ISS-0174.json, filed at https://github.com/tvolodi/R-Co/issues/502, and added to the global queue via tools/queue_add.py."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Scope-honesty note carried into tests/specs/LUA-07.md section 6, not a defect: LUA-07 acceptance criterion 2 ('the manifest hash appears in the execution audit record') is only PARTIALLY satisfied by this tranche. src/lua/ now PRODUCES the hash on ExecutionContext and ScriptResult (asserted by TC-LUA-07-M01 and M04), but the engine-side write into the persisted audit row belongs to the engine-integration run (design 6.4, follow-up 2 in section 11). Flagged so RELEASE-VALIDATOR and DOC-UPDATER do not mark LUA-07 fully RELEASED on the strength of these tests - that would repeat the ISS-0153 pattern this issue exists to correct."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Spec supersession recorded, no action needed: tests/specs/LUA-01-05.md retains ownership of LUA-01..04, but its LUA-05 section (TC-LUA-05-01..12) is superseded by the new tests/specs/LUA-05.md. The old section described an API surface that was registered but gated by nothing (diagnosis E9), and several old LUA-06/07 positive cases asserted EFFECTS (variable value returned, write staged, log appended, instance table returned) that belong to LUA-11/12/13 in tranches 2-3 and are explicitly out of scope here (design section 9) - a test asserting them today would fail against correct code. Both revised specs carry a revision note explaining what changed and why, and LUA-07.md section 5 maps every retained old case to where it is now implemented so nothing is silently dropped."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 4b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T22:50:42Z",
+  "completed_at": "2026-08-06T23:08:26Z"
+}

@@ -74,9 +74,18 @@ pub const lua = @import("lua/mod.zig");
 // reason above) and is not reachable via refAllDecls from mod.zig.
 pub const execution_test = @import("lua/execution_test.zig");
 
+// ISS-0169 / GH #495 tranche 1 — LUA-05/06/07 capability-enforcement tests.
+// Same module-boundary reason as execution_test above: it lives under src/lua/
+// and is not reachable via refAllDecls from mod.zig, so it is imported here
+// explicitly. Its `test` blocks CALL the gate, the registry channel and the
+// load-time manifest entry point against the real linked LuaJIT — deliberately
+// not a type pin, per the ISS-0172 caveat documented below.
+pub const capability_enforcement_test = @import("lua/capability_enforcement_test.zig");
+
 test {
     std.testing.refAllDecls(lua);
     std.testing.refAllDecls(execution_test);
+    std.testing.refAllDecls(capability_enforcement_test);
 }
 
 test "ISS-0153: every file in the src/lua subsystem is analysed" {

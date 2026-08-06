@@ -2,209 +2,256 @@
 
 **Requirement:** LUA-07 — On script load, the platform MUST validate the script's manifest against the script artifact. Manifest hash MUST be recorded with each execution.
 
-**Priority:** MUST  
-**Test layer:** unit, integration
+**Priority:** MUST
+**Test layer:** unit (real, statically linked LuaJIT — no mocks, no stubs)
+**Issue:** ISS-0169 / GH #495, tranche 1
+**Design:** `src/design/lua-capability-enforcement.md` §6
 
-## Acceptance Criteria Mapping
+---
 
-- A modified manifest without re-registration is rejected at load time.
-- The manifest hash appears in the execution audit record.
+## 1. Revision note — what changed and why
 
-## Test Cases
+**Revised 2026-08-06 (ISS-0169 tranche 1).** The May 2026 version of this spec described
+sixteen cases against a `validateManifest` that existed, compiled, and was **called by
+nothing** (evidence E12 — its only reference was a type pin in `src/lua_test_root.zig`).
+There was no load-time entry point at all: `executeScript` took raw source text and ran it,
+and neither `ExecutionContext` nor `ScriptResult` carried a manifest hash. **Both LUA-07
+acceptance criteria were unimplementable as the code stood.**
 
-### TC-LUA-07-01: valid manifest loads successfully
-**Given:** A script artifact with a valid manifest declaring capabilities `["variable:read"]` within safe limits (instructions: 100k, memory: 16MB, timeout: 30s).  
-**When:** The script is loaded for execution.  
-**Then:** The manifest is validated and the script proceeds to execution (no rejection).  
-**Layer:** unit  
-**Acceptance criterion mapped:** Valid manifest passes validation.
+The old spec also encoded three defects as if they were the specification:
 
-### TC-LUA-07-02: manifest with undeclared capability is rejected
-**Given:** A script manifest declaring capability `["service:call:unknown_service"]` but the script artifact is not registered with that capability.  
-**When:** The script is loaded.  
-**Then:** Manifest validation fails with error `UnauthorizedCapability`.  
-**Layer:** unit  
-**Acceptance criterion mapped:** Undeclared capability rejected at load time.
+1. **Its hash did not cover the script.** The old `computeManifestHash` factory (and the
+   implementation) hashed only limits and capability strings. A hash that ignores the
+   artifact cannot detect a manifest paired with a *different* script — which is precisely
+   what acceptance criterion 1 asks for. The canonical form now ends with the SHA-256
+   digest of the script source.
+2. **Its hash was order-dependent and separator-free.** Capabilities were hashed in
+   declaration order with no delimiter, so `["ab","c"]` and `["a","bc"]` collided and
+   reordering changed the hash — contradicting its own TC-LUA-07-13, which requires
+   logically identical manifests to hash identically. The canonical form now sorts the
+   strings and separates each with `0x00`.
+3. **Its "Script with capabilities in manifest" factory read a `__manifest__` table from
+   inside the script.** That is rejected outright (design §6.2): a manifest embedded in the
+   artifact and read from the artifact is self-asserted — a script would be grading its own
+   homework. The manifest is **caller-supplied**, in the serialised JSON form the script
+   repository stores. An embedded `__manifest__` table, if any script carries one, is
+   advisory only and is never the source of a grant.
 
-### TC-LUA-07-03: manifest instruction limit below minimum is rejected
-**Given:** A script manifest with `max_instructions = 500` (below minimum of 1000).  
-**When:** The manifest is validated.  
-**Then:** Validation fails with error `InstructionLimitTooLow`.  
-**Layer:** unit  
-**Acceptance criterion mapped:** Low instruction limit rejected.
+Cases TC-LUA-07-01..16 from the old spec are **retained** where they map onto real
+behaviour (they are covered by the in-file unit tests in `src/lua/manifest.zig`) and are
+cross-referenced in §5. The cases below are the additions that make the two acceptance
+criteria genuinely checkable through the load-time entry point.
 
-### TC-LUA-07-04: manifest instruction limit above maximum is rejected
-**Given:** A script manifest with `max_instructions = 50_000_000` (above maximum of 10M).  
-**When:** The manifest is validated.  
-**Then:** Validation fails with error `InstructionLimitTooHigh`.  
-**Layer:** unit  
-**Acceptance criterion mapped:** High instruction limit rejected.
+---
 
-### TC-LUA-07-05: manifest instruction limit at valid boundaries passes
-**Given:** Script manifests with `max_instructions = 1000` and another with `max_instructions = 10_000_000`.  
-**When:** Both manifests are validated.  
-**Then:** Both pass validation (inclusive boundaries).  
-**Layer:** unit  
-**Acceptance criterion mapped:** Boundary values are valid.
+## 2. Acceptance criteria mapping
 
-### TC-LUA-07-06: manifest memory limit below minimum is rejected
-**Given:** A script manifest with `max_memory_bytes = 500_000` (below minimum of 1MB = 1_048_576).  
-**When:** The manifest is validated.  
-**Then:** Validation fails with error `MemoryLimitTooLow`.  
-**Layer:** unit  
-**Acceptance criterion mapped:** Low memory limit rejected.
+| Acceptance criterion (verbatim from `docs/requirements.yaml`) | Test cases |
+|---|---|
+| A modified manifest without re-registration is rejected at load time | TC-LUA-07-M02 (three tamper vectors + a control), TC-LUA-07-M03 (rejection precedes execution), TC-LUA-07-M05 (the hash properties that make detection possible) |
+| The manifest hash appears in the execution audit record | TC-LUA-07-M01, TC-LUA-07-M04 — **partially**; see §6 |
 
-### TC-LUA-07-07: manifest memory limit above maximum is rejected
-**Given:** A script manifest with `max_memory_bytes = 500_000_000` (above maximum of 256MB = 268_435_456).  
-**When:** The manifest is validated.  
-**Then:** Validation fails with error `MemoryLimitTooHigh`.  
-**Layer:** unit  
-**Acceptance criterion mapped:** High memory limit rejected.
+---
 
-### TC-LUA-07-08: manifest timeout below minimum is rejected
-**Given:** A script manifest with `timeout_seconds = 0` (below minimum of 1).  
-**When:** The manifest is validated.  
-**Then:** Validation fails with error `TimeoutTooLow`.  
-**Layer:** unit  
-**Acceptance criterion mapped:** Low timeout rejected.
+## 3. What "load time" means here (design §6.4)
 
-### TC-LUA-07-09: manifest timeout above maximum is rejected
-**Given:** A script manifest with `timeout_seconds = 7200` (above maximum of 3600 seconds).  
-**When:** The manifest is validated.  
-**Then:** Validation fails with error `TimeoutTooHigh`.  
-**Layer:** unit  
-**Acceptance criterion mapped:** High timeout rejected.
+`executeScriptWithManifest` is the load-time entry point. Its ordering is the specification,
+and every early exit is a **rejection**:
 
-### TC-LUA-07-10: manifest timeout at valid boundaries passes
-**Given:** Script manifests with `timeout_seconds = 1` and another with `timeout_seconds = 3600`.  
-**When:** Both manifests are validated.  
-**Then:** Both pass validation (inclusive boundaries).  
-**Layer:** unit  
-**Acceptance criterion mapped:** Timeout boundaries are valid.
+1. **Reject bytecode** — must stay first, so a bytecode artifact can never be validated into
+   acceptance.
+2. **Verify the manifest hash** against the script source and the hash the repository
+   recorded at registration → mismatch rejects **before any Lua state is created**.
+3. **Validate the manifest** against the granted capability set and the `Limits` bounds →
+   any `ManifestError` rejects, still before state creation.
+4. Only then create the sandboxed state and run.
+5. Return a `ScriptResult` carrying the verified `manifest_hash`.
 
-### TC-LUA-07-11: manifest hash is computed and recorded
-**Given:** A script artifact with a specific manifest.  
-**When:** The manifest is validated and the script executes.  
-**Then:** The execution record includes a `manifest_hash` field containing the SHA-256 hash of the manifest.  
-**Layer:** integration  
-**Acceptance criterion mapped:** Hash is recorded with execution.
+`executeScript` is retained unchanged for callers that do not have a manifest (LUA-04's
+tests depend on it). It performs **no** manifest verification and honestly reports
+`manifest_hash = null` rather than a hash it never checked. It keeps the sandbox, the
+context installation and every capability gate — it must never become a way to bypass one.
 
-### TC-LUA-07-12: manifest hash mismatch is detected
-**Given:** A script artifact that was previously registered with manifest hash H1. The manifest content is now modified (different capabilities, limits, or declaration order) without re-registration.  
-**When:** The script is loaded with the new manifest.  
-**Then:** Validation fails with error `ManifestHashMismatch` because the artifact hash no longer matches the recorded hash.  
-**Layer:** integration  
-**Acceptance criterion mapped:** Tampering detected via hash mismatch.
+**Limits are validated, NOT enforced, in this tranche (design §6.5).** `max_instructions`,
+`max_memory_bytes` and `timeout_seconds` are checked against `Limits` bounds and carried;
+no limiter is installed. Tranche 2 (LUA-08/09/10) installs them. **No test in this spec
+asserts that a limit is enforced** — validating a bound and enforcing it are different
+claims, and conflating them is how this subsystem reached RELEASED while executing nothing.
 
-### TC-LUA-07-13: manifests with same content produce identical hashes
-**Given:** Two script artifacts with logically identical manifests (same capabilities, limits, and canonical form).  
-**When:** Both manifests are validated and hashed.  
-**Then:** Both produce the same SHA-256 hash.  
-**Layer:** unit  
-**Acceptance criterion mapped:** Hash is deterministic.
+---
 
-### TC-LUA-07-14: manifest with additional capabilities beyond granted set is rejected
-**Given:** A script manifest declaring capabilities `["variable:read", "service:call:billing"]` but the script artifact is only registered with `["variable:read"]`.  
-**When:** The manifest is validated.  
-**Then:** Validation fails because `service:call:billing` is undeclared.  
-**Layer:** unit  
-**Acceptance criterion mapped:** Superset of capabilities rejected.
+## 4. Test cases
 
-### TC-LUA-07-15: empty capabilities manifest is valid
-**Given:** A script manifest with an empty capabilities list `[]` (script uses only platform.now and platform.fail).  
-**When:** The manifest is validated.  
-**Then:** Validation passes (no capability is required).  
-**Layer:** unit  
-**Acceptance criterion mapped:** Empty capabilities allowed.
+### TC-LUA-07-M01: the registered pairing executes and records the verified hash
 
-### TC-LUA-07-16: malformed manifest is rejected
-**Given:** A script with a manifest field containing invalid JSON or missing required fields.  
-**When:** The manifest is parsed and validated.  
-**Then:** Validation fails with error `MalformedManifest`.  
-**Layer:** unit  
-**Acceptance criterion mapped:** Structural validation enforced.
+**Given:** A granted set `{variable:read}`, a script `platform.read_variable('amount') return 'ran'`, and a manifest declaring `["variable:read"]` with limits 100 000 / 8 388 608 / 30, registered via `validateManifest` against that exact script.
+**When:** `executeScriptWithManifest(ctx, script, &m, m.manifest_hash)` runs.
+**Then:** Execution succeeds and returns `"ran"` (so the script really ran, gates and all), and `result.manifest_hash` equals the registered hash byte for byte.
+**Layer:** unit
+**Acceptance criterion mapped:** "The manifest hash appears in the execution audit record" — the `src/lua/` half; see §6.
 
-## Test Data Factories
+### TC-LUA-07-M02: a manifest modified after registration is rejected at load time
 
-### Factory: Create valid manifest
-```zig
-fn createValidManifest(allocator: std.mem.Allocator, caps: []const []const u8) !ScriptManifest {
-    return ScriptManifest{
-        .capabilities = try allocator.dupe([]const u8, caps),
-        .max_instructions = 100_000,
-        .max_memory_bytes = 16_777_216,  // 16 MB
-        .timeout_seconds = 30,
-        .manifest_hash = try computeHash(caps, 100_000, 16_777_216, 30),
-    };
-}
-```
+**Given:** A granted set `{variable:read, audit:log}` and a manifest registered against `return 'unchanged'` declaring `["variable:read"]`, yielding hash `H`.
+**When / Then:** Four sub-cases:
 
-### Factory: Compute manifest hash
-```zig
-fn computeManifestHash(
-    allocator: std.mem.Allocator,
-    capabilities: []const []const u8,
-    max_instructions: u64,
-    max_memory_bytes: u64,
-    timeout_seconds: u32,
-) ![32]u8 {
-    var sha = std.crypto.hash.sha2.Sha256.init(.{});
-    
-    // Canonical form: sorted capabilities, then numeric limits
-    var sorted_caps = try allocator.alloc([]const u8, capabilities.len);
-    defer allocator.free(sorted_caps);
-    std.mem.copy([]const u8, sorted_caps, capabilities);
-    std.sort.insertion([]const u8, sorted_caps, {}, struct {
-        fn lessThan(_: void, a: []const u8, b: []const u8) bool {
-            return std.mem.lessThan(u8, a, b);
-        }
-    }.lessThan);
-    
-    for (sorted_caps) |cap| {
-        sha.update(cap);
-        sha.update("\0");  // Null separator
-    }
-    sha.update("\x00");  // Field separator
-    sha.update(std.fmt.bufPrint(..., "{}", .{max_instructions}));
-    sha.update("\x00");
-    sha.update(std.fmt.bufPrint(..., "{}", .{max_memory_bytes}));
-    sha.update("\x00");
-    sha.update(std.fmt.bufPrint(..., "{}", .{timeout_seconds}));
-    
-    var hash: [32]u8 = undefined;
-    sha.final(&hash);
-    return hash;
-}
-```
+| Sub-case | Tamper | Expected |
+|---|---|---|
+| (a) capability added | manifest re-declares `["variable:read","audit:log"]`, same script, verified against `H` | `ManifestHashMismatch` |
+| (b) limit raised | `max_instructions` 100 000 → 200 000, verified against `H` | `ManifestHashMismatch` |
+| (c) script substituted | original manifest, script `return 'substituted'`, verified against `H` | `ManifestHashMismatch` |
+| (d) **control** — untampered | original manifest, original script, `H` | **succeeds** |
 
-### Factory: Script with capabilities in manifest
-```lua
-return {
-    __manifest__ = {
-        capabilities = { "variable:read", "variable:write" },
-        max_instructions = 100000,
-        max_memory_bytes = 16777216,
-        timeout_seconds = 30
-    },
-    function main(x)
-        local val = platform.read_variable("status")
-        platform.write_variable("processed", true)
-        return val
-    end
-}
-```
+**Layer:** unit
+**Acceptance criterion mapped:** "A modified manifest without re-registration is rejected at load time."
+**Why (a) is the important one:** `audit:log` is legitimately held in the granted set, so
+`validateManifest` would happily accept the widened manifest. **Only the hash binding
+catches it.** That is the entire point of LUA-07 — without it, a script's declared
+capability list could be widened after registration to anything within the deployment's
+grant, undetected.
+**Why (d) is not optional:** without a passing control, (a)–(c) would also pass against an
+implementation that rejects everything.
 
-## Expected Outcomes
+### TC-LUA-07-M03: rejection happens BEFORE any script instruction runs
 
-- **Pass:** Valid manifest with all fields within safe ranges is accepted.
-- **Pass:** Manifest with invalid capabilities, limits, or format is rejected with specific error.
-- **Pass:** Manifest hash is computed deterministically and matches stored hash.
-- **Pass:** Hash mismatch (tampering) is detected at load time.
-- **Pass:** All 6 manifest validation checks (capabilities, instruction limit, memory limit, timeout, hash, format) function correctly.
+**Given:** A manifest registered against `return 'clean'`, and a substituted script
+`platform.write_variable('leaked','yes') return 'RAN'` which — with no `variable:write`
+granted — would raise a capability denial **if it executed**.
+**When:** `executeScriptWithManifest` is called with the substituted script.
+**Then:** It returns the Zig error `ManifestHashMismatch`, **not** a failed `ScriptResult`.
+**Layer:** unit
+**Acceptance criterion mapped:** "…rejected at load time" — the *load-time* half.
+**Why the error type is the assertion:** a capability denial raised during execution surfaces
+as a **failed `ScriptResult`**, never as a Zig error. Receiving `ManifestHashMismatch`
+therefore proves execution never began, rather than assuming it from code reading. This
+checks the design §6.4 ordering claim instead of trusting it.
+**And:** the same case confirms bytecode is rejected **first** (step 1, before any manifest
+work) — a bytecode artifact under a valid manifest reports the bytecode message as a failed
+`ScriptResult`, not a hash mismatch, so a bytecode artifact can never be validated into
+acceptance.
 
-## Traceability
+### TC-LUA-07-M04: parseManifest feeds the load-time path end to end
 
-- LUA-07 acceptance: TC-LUA-07-01 through TC-LUA-07-16.
-- LUA-06 (capability checks): TC-LUA-07-02, TC-LUA-07-14 (manifest declares which capabilities are checked).
-- REPO-05 through REPO-07 (artifact repository): Manifest hash recorded in artifact metadata.
-- EE-10 (instance error handling): Manifest validation failure treated as structured error.
+**Given:** A granted set `{variable:read, audit:log}` and the repository's serialised JSON form:
+`{"capabilities":["audit:log","variable:read"],"max_instructions":100000,"max_memory_bytes":8388608,"timeout_seconds":30}`.
+**When:** The manifest is parsed, its hash computed against the script `platform.log('info','audited') return 'done'`, and `executeScriptWithManifest` is called with that hash.
+**Then:** Parsing succeeds; the parsed `manifest_hash` is all-zero (a hash is only meaningful
+against a specific artifact, which parsing does not have); execution succeeds returning
+`"done"`; and `result.manifest_hash` equals the computed hash.
+**And:** A manifest declaring `["audit:log","variable:read","variable:write"]` — a **superset**
+of the deployment's grant — is rejected with `UnauthorizedCapability` even when its own
+hash is computed consistently.
+**Layer:** unit
+**Acceptance criterion mapped:** Both criteria — this is the path the script repository
+actually uses (design §6.2 trust direction: caller-supplied JSON, never scraped from the
+script text).
+
+### TC-LUA-07-M05: canonical hashing — order-independent, separator-safe, script-bound
+
+**Given / When / Then:** Five properties of `computeManifestHash`, each asserted directly:
+
+| # | Property | Assertion |
+|---|---|---|
+| (1) | **Declaration order does not change the hash** | `["audit:log","event:emit","variable:read"]` and its reverse hash **identically**; and neither caller slice is mutated as a side effect |
+| (2) | **The `0x00` separator removes concatenation ambiguity** | `["ab","c"]` and `["a","bc"]` hash **differently** — without the separator both render `abc` and two different capability sets would share one registration hash |
+| (3) | **The hash binds to the artifact** | same manifest over `return 1` vs `return 2` hashes differently; and a **one-byte** difference (`return 1` vs `return 1 `) suffices |
+| (4) | **Every limit participates** | changing `max_instructions`, `max_memory_bytes` or `timeout_seconds` by one each changes the hash |
+| (5) | **Deterministic** | identical input yields identical output |
+
+**Layer:** unit
+**Acceptance criterion mapped:** "A modified manifest without re-registration is rejected" —
+these are the properties without which detection is impossible. (1) is the old
+TC-LUA-07-13; (2) and (3) are the two defects the old spec's own factory encoded.
+**On constant-time comparison:** `verifyManifestHash` compares digests by accumulating
+differences rather than short-circuiting. This is a tamper-detection value, so a
+timing-variable comparison is a defect even where exploitation is impractical. The property
+is design-enforced and reviewed rather than timing-tested — a timing assertion in a unit
+test would be flaky and would prove nothing on a JIT-warmed, GC-scheduled host.
+
+---
+
+## 5. Retained cases from the May 2026 spec
+
+These map onto real behaviour and are implemented as in-file unit tests in
+`src/lua/manifest.zig`. They are listed so the mapping is auditable and so nothing is
+silently dropped.
+
+| Old case | Behaviour | Where implemented |
+|---|---|---|
+| TC-LUA-07-01 | valid manifest passes validation | `manifest.zig` — "parseManifest accepts a well-formed manifest…", and TC-LUA-07-M01 |
+| TC-LUA-07-02, -14 | manifest declaring an ungranted / superset capability → `UnauthorizedCapability` | `manifest.zig` — "a manifest declaring an ungranted capability is rejected"; TC-LUA-07-M04 |
+| TC-LUA-07-03, -04 | instruction limit below / above bounds | `manifest.zig` — "limit bounds are validated (but not enforced in this tranche)" |
+| TC-LUA-07-05, -10 | limits at inclusive boundaries pass | same block (100 000 / 8 388 608 / 30 used throughout as in-bounds values) |
+| TC-LUA-07-06, -07 | memory limit below / above bounds | same block |
+| TC-LUA-07-08, -09 | timeout below / above bounds | same block |
+| TC-LUA-07-11 | hash computed and recorded with the execution | **superseded** by TC-LUA-07-M01 — the old case asserted a hash "of the manifest"; it is now of the manifest **and** the artifact |
+| TC-LUA-07-12 | hash mismatch detected | `manifest.zig` — "verifyManifestHash rejects a tampered manifest"; strengthened by TC-LUA-07-M02 |
+| TC-LUA-07-13 | identical content → identical hash | `manifest.zig` — "capability declaration order does not change the hash"; TC-LUA-07-M05(1) |
+| TC-LUA-07-15 | empty capabilities manifest is valid | `manifest.zig` — the `none` slice used across the limit-bounds block |
+| TC-LUA-07-16 | malformed manifest → `MalformedManifest` | `manifest.zig` — seven malformed inputs: non-JSON, non-object, missing `capabilities`, `capabilities` not an array, non-string element, negative integer, non-integer type |
+
+Additionally, `manifest.zig` covers **`ScriptManifest.deinit` ownership** — it previously
+freed only the outer slice, leaking every duped capability string (design §6.1 defect 3).
+`std.testing.allocator` fails on leak, so that test *is* the check.
+
+---
+
+## 6. Honest scope note on acceptance criterion 2
+
+Criterion 2 reads "the manifest hash appears in the execution **audit record**".
+
+This tranche commits `src/lua/` to **producing** the value: `ExecutionContext` and
+`ScriptResult` both carry `manifest_hash: ?[32]u8`, and `executeScriptWithManifest` sets
+both from the verified hash. TC-LUA-07-M01 and M04 assert exactly that.
+
+**Writing that value into the persisted audit row is the engine's job, not the executor's.**
+`src/lua/executor.zig` performs no I/O, consistent with the `transition.zig` purity
+precedent. The engine-side write belongs to the engine-integration run and is recorded as
+design §11 follow-up 2.
+
+**Consequence, stated plainly: LUA-07 acceptance criterion 2 is only end-to-end satisfied
+when that engine-side write lands.** It is not satisfied by this tranche alone, and this
+spec does not claim otherwise. Marking LUA-07 fully RELEASED on the strength of these tests
+would repeat the ISS-0153 pattern this issue exists to correct.
+
+---
+
+## 7. Fixtures and isolation
+
+Each test block builds its own `CapabilitySet`, `ExecutionContext`, `ScriptManifest` and
+`lua_State`; nothing is shared. `std.testing.allocator` fails any test that leaks, which is
+what makes the `deinit` ownership test meaningful. Every manifest fixture is deinitialised
+by its own `defer` in the same block that created it.
+
+**No credentials appear in any test in this spec.** No Keycloak, no database, no network.
+
+---
+
+## 8. Case count and implementation
+
+**Specified cases: 5** — TC-LUA-07-M01, M02, M03, M04, M05.
+**Implemented: 5**, one Zig `test` block each, in `src/lua/capability_enforcement_test.zig`.
+
+Plus the retained coverage of §5: **8 `test` blocks** in `src/lua/manifest.zig` covering old
+cases TC-LUA-07-01..16, and **2 blocks** in `src/lua/execution_test.zig`
+(`executeScriptWithManifest` rejects a manifest bound to a different script; the plain
+`executeScript` path records no hash).
+
+**No `error.SkipZigTest` appears on any case in this spec.**
+
+---
+
+## 9. Traceability
+
+- LUA-07 acceptance criterion 1: TC-LUA-07-M02, M03, M05.
+- LUA-07 acceptance criterion 2: TC-LUA-07-M01, M04 — **partial**, see §6.
+- LUA-06 (capability checks): `tests/specs/LUA-06.md` — the manifest determines which
+  capabilities those gates find in the set.
+- LUA-05 (host functions registered): `tests/specs/LUA-05.md`.
+- LUA-04 (bytecode rejection): TC-LUA-07-M03 asserts bytecode rejection stays **first** in
+  the load-time order.
+- LUA-08 / LUA-09 / LUA-10 (resource limits): the manifest **carries** these limits and this
+  tranche validates their bounds. **No limiter is installed and no test here asserts
+  enforcement** (design §6.5). Tranche 2 owns that.
+- REPO-05 through REPO-07 (artifact repository): supplies the serialised manifest and the
+  registered hash. TC-LUA-07-M04 exercises that form.
