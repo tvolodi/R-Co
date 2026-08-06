@@ -45,14 +45,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/495",
       "title": "LUA-05..16 host API/limiter tests against real LuaJIT",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI-ws2-loop",
-        "locked_at": "2026-08-06T21:49:18Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-06T20:03:10Z",
       "started_at": "2026-08-06T21:49:18Z",
-      "completed_at": null,
+      "completed_at": "2026-08-06T23:42:06Z",
       "run_id": null,
       "deferred_reason": null
     },
