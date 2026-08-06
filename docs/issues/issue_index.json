@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-06T08:29:20Z",
+  "last_updated": "2026-08-06T09:10:24Z",
   "next_issue_id": 149,
   "issues": [
     {
@@ -1640,7 +1640,7 @@
     {
       "id": "ISS-0147",
       "title": "Integration linter tests invoke Windows Store Python alias instead of repository interpreter (GH #374)",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "test-infrastructure/interpreter-resolution",
       "run_id": "WF03-gh374-20260806",
@@ -1651,7 +1651,7 @@
       ],
       "github_issue": "https://github.com/tvolodi/R-Co/issues/374",
       "created_at": "2026-08-06T08:09:55Z",
-      "resolved_at": null
+      "resolved_at": "2026-08-06T09:10:24Z"
     },
     {
       "id": "ISS-0148",
