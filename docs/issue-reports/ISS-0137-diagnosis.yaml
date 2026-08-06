@@ -1,0 +1,1434 @@
+issue_id: ISS-0137
+github_issue: https://github.com/tvolodi/R-Co/issues/439
+run_id: WF03-gh439-testwiring-20260806
+handoff_id: d60e48f2-685b-48b6-9f3a-ffa362e52671
+step: "01"
+agent: ISSUE-FIXER
+workflow: WF-03
+report_type: root-cause-diagnosis
+diagnosis_only: true
+fix_applied: false
+
+summary: >-
+  55 test-bearing .zig files under src/ and tests/ are unreachable from every
+  b.addTest(...) root in build.zig, so their 350 test blocks have never
+  executed. They fall into exactly three mechanical causes, none of which is a
+  single "someone forgot one line" mistake -- each is a structural consequence
+  of how build.zig composes modules.
+
+# ---------------------------------------------------------------------------
+# ROOT CAUSE
+# ---------------------------------------------------------------------------
+root_cause:
+  statement: >-
+    Zig runs a file's `test` blocks only when the file is reachable from an
+    addTest root through *analyzed declarations*. build.zig composes almost
+    everything as named `b.createModule(...)` imports rather than as addTest
+    roots, and a named module that is only *imported* (never rooted, never
+    refAllDecls'd) is compiled but its test blocks are never discovered. Three
+    distinct mechanisms produce the 55:
+
+  mechanisms:
+    - id: RC-1
+      name: "Named-module-only production files (module != addTest root)"
+      count: 21
+      applies_to: "all 21 src/**/*.zig entries"
+      detail: >-
+        This is the exact ISS-0132 / GH #428 defect class, unfixed everywhere
+        except src/engine/transition.zig. Files like src/api/tenant_context.zig,
+        src/obs/metrics.zig, src/env.zig and src/config/identity_provider.zig
+        are handed to build.zig only as `tenant_context_mod`, `obs_metrics_mod`,
+        `env_mod`, `idp_config_mod` -- created with b.createModule, listed in
+        `vendor_imports`, consumed by the exe and by the `unit_tests` addTest
+        whose root is src/main.zig. Because main.zig reaches them by *named*
+        import ("tenant_context", "obs_metrics", "env"), and because a named
+        module is a separate compilation unit whose root is the module file
+        itself -- not a declaration analyzed from main.zig's root -- Zig never
+        discovers their test blocks. transition.zig had precisely this shape
+        and was fixed by adding src/transition_test_root.zig; the same fix was
+        never generalised to the other 21.
+      subcase_orphaned_trees:
+        note: >-
+          A stronger variant affects src/repository/{activation,artifacts,schemas}.zig
+          and all five src/simulation/*.zig files: these are not even reachable
+          by *any* path from src/main.zig. src/repository/mod.zig and
+          src/simulation/mod.zig (the aggregators that do re-export them) are
+          themselves unreachable -- main.zig imports only
+          repository/service_catalog.zig directly, and simulation/mod.zig is
+          re-exported only from src/bpm.zig, which is a module root for
+          bpm_src_mod but is NOT itself an addTest root and carries neither a
+          test block nor refAllDecls (exactly the failure mode
+          src/transition_test_root.zig's doc comment warns about in its point 2).
+        verified_by: "tools/lint_test_wiring.py BFS: src/bpm.zig, src/repository/mod.zig, src/simulation/mod.zig all report reachable=False"
+
+    - id: RC-2
+      name: "Integration tests never added to tests/integration/main_test.zig's import list"
+      count: 12
+      applies_to: >-
+        effects_subsystem_test, env01_tenant_type_field_test,
+        exp601_tier_quota_test, iss206_token_multiset_test, repository_test,
+        oidc31/oidc35, xc01/xc02/xc03/xc05/xc06
+      detail: >-
+        tests/integration/main_test.zig is the sole aggregator root for
+        `zig build test-integration` (plus ~35 sibling one-off addTest roots).
+        It pulls in ~90 test files by explicit `const x = @import("...")` lines.
+        These 12 files were written and committed but the corresponding import
+        line was never added, and no dedicated addTest root was created for
+        them either. Nothing fails when the line is omitted -- the suite still
+        compiles and reports green -- so the omission is invisible.
+
+    - id: RC-3
+      name: "Tests referencing named modules that do not exist in build.zig at all"
+      count: 22
+      applies_to: >-
+        all 8 oidc08..oidc15/oidc34 integration tests and 8 of the 13
+        tests/unit files (test_oidc06/08/27/29/30/33, repository_artifacts,
+        repository_canonicaliser, wasm_executor)
+      detail: >-
+        These files import named modules -- "claim_mapping", "jit_provisioning",
+        "identity_stability", "realm_tenant_binding", "tenant_claim_source",
+        "realm_provisioning", "realm_deletion", "oidc_migration_helper",
+        "repository", "jwks_cache", "oidc_bench", "realm_seed",
+        "oidc_test_token_helper", "oidc_coexistence", "wasm" -- and NOT ONE of
+        those 15 module names is declared anywhere in build.zig (verified by
+        grep for `.name = "<m>"`). These files therefore cannot even be
+        compiled today: wiring them requires *first* creating the missing
+        b.createModule declarations, not merely adding an import line. This is
+        the strictly hardest cluster and the reason ISS-0102's six files sat
+        unfixed for a week -- the previous diagnosis treated it as an
+        import-list omission (RC-2) when it is actually a missing-module
+        problem.
+
+  why_undetected_for_months: >-
+    None of the three mechanisms produces any error. `zig build test` and
+    `zig build test-integration` both exit 0 while silently running zero tests
+    from these files. tools/lint_test_wiring.py -- written under GH #428 -- is
+    the first mechanism in the repo that can observe the condition, and it is
+    deliberately NOT a dependency of `zig build test` (build.zig lines
+    1531-1544) precisely because turning it on today would fail the
+    Green-Main Gate for this pre-existing backlog.
+
+# ---------------------------------------------------------------------------
+# BUILD TARGETS: existing addTest roots -> build step names
+# ---------------------------------------------------------------------------
+build_targets:
+  linter_reported_root_count: 59
+  note: >-
+    The linter counts 59 `b.addTest(...)` occurrences whose root_source_file
+    resolves to an existing file. Several roots are reused across multiple Run
+    artifacts (tests/integration/main_test.zig is the root of integration_tests,
+    svc_integration_tests and env_integration_tests), so distinct root FILES
+    number fewer than 59.
+
+  unit_step_test:
+    step: test
+    description: "Run all unit tests -- the Green-Main Gate target. No live services."
+    roots:
+      - root: src/main.zig
+        var: unit_tests
+        kind: production-root
+      - root: tests/unit/event_store_test.zig
+        var: event_store_tests
+        kind: standalone
+      - root: tests/unit/graph_test_root.zig
+        var: graph_tests
+        kind: AGGREGATOR_SHIM
+        also_step: test-graph
+        imports_module: graph
+      - root: tests/unit/bpm_src_test_root.zig
+        var: bpm_src_tests
+        kind: AGGREGATOR_SHIM
+        also_step: test-bpm-src
+        imports_module: bpm (bpm_src_mod)
+      - root: tests/unit/bpm_main_test_root.zig
+        var: bpm_main_tests
+        kind: AGGREGATOR_SHIM
+        also_step: test-bpm-main
+        imports_module: bpm (bpm_main_mod), build_options, env
+      - root: tests/unit/api_test_root.zig
+        var: api_tests
+        kind: AGGREGATOR_SHIM
+        also_step: test-api
+        imports_module: api (api_mod)
+      - root: tests/unit/test_snapshot.zig
+        var: snapshot_tests
+        kind: standalone
+      - root: tests/unit/test_tasks_store.zig
+        var: tasks_store_tests
+        kind: standalone
+      - root: tests/unit/engine_test.zig
+        var: engine_tests
+        kind: standalone
+        also_step: test-engine
+      - root: src/transition_test_root.zig
+        var: transition_tests
+        kind: REFALLDECLS_SHIM
+        also_step: test-transition, test-engine
+        pattern_reference: true
+      - root: tests/unit/test_api08_auth.zig
+        var: api08_auth_tests
+        kind: standalone
+      - root: src/identity/provider/test_oidc02_keycloak_adapter.zig
+        var: oidc02_keycloak_adapter_tests
+        kind: standalone
+      - root: tests/unit/sch303_timer_dlq_unit_test.zig
+        var: sch303_unit_tests
+        kind: standalone (setCwd)
+      - root: tests/unit/exp701_sandbox_threatmodel_test.zig
+        var: exp701_sandbox_threatmodel_tests
+        kind: standalone
+      - root: src/expr/parser.zig
+        var: dsl01_parser_tests
+        kind: production-root
+        also_step: test-expr
+      - root: tests/unit/expr_error_recovery_test.zig
+        var: expr_error_recovery_tests
+        kind: standalone
+        also_step: test-expr
+      - root: src/expr/mod.zig
+        var: dsl04_eval_tests
+        kind: production-root
+        also_step: test-expr
+      - root: tests/unit/crypto_iss0074_test.zig
+        var: crypto_iss0074_tests
+        kind: standalone
+        also_step: test-crypto-iss0074
+
+  integration_step_test_integration:
+    step: test-integration
+    description: "Requires BPM_TEST_DB_URL. Gated behind clean_test_db + lint_test_table_refs."
+    barrier_note: >-
+      ISS-0106: every member except test_iss503_rls_removal.zig hangs off the
+      internal barrier step `test-integration-others-internal`; ISS-503 runs
+      last via its own second Run artifact. Any file newly added to this step
+      MUST be attached to the barrier (test_integration_others_step), not
+      directly to test_integration_step, or it will race ISS-503's DDL.
+    aggregator_root:
+      root: tests/integration/main_test.zig
+      kind: AGGREGATOR (explicit `const x = @import(...)` list, ~90 files)
+      reused_by: [integration_tests, svc_integration_tests, env_integration_tests]
+      steps: [test-integration, test-integration-svc, test-integration-env]
+    dedicated_roots_count: 35
+    dedicated_roots_examples:
+      - {root: tests/integration/xc04_kernel_determinism_test.zig, step: test-integration-xc04}
+      - {root: tests/integration/obs03_audit_log_test.zig, step: test-integration-obs03}
+      - {root: tests/integration/iss0129_migration_run_advisory_lock_test.zig, step: test-integration-iss0129}
+      - {root: tests/integration/iss601_state_snapshots_test.zig, step: test-integration-iss601}
+    shared_module_bundle: integration_imports
+    shared_module_bundle_members: [pg, http, cel, expr, pool, bpm, build_options, env]
+
+  other_steps:
+    - step: test-differential
+      root: tests/differential/differential_test.zig
+    - step: test-wiring-check
+      kind: system-command
+      command: "python tools/lint_test_wiring.py"
+      note: "Deliberately NOT a dependency of `test` or `build` -- see build.zig lines 1531-1544."
+    - step: test-env-verify
+      kind: system-command
+      command: "python tools/verify_test_env.py"
+
+  shim_pattern:
+    reference_file: src/transition_test_root.zig
+    two_variants:
+      - name: REFALLDECLS_SHIM
+        use_when: "Target is a PRODUCTION file whose tests must run; the file reaches siblings by relative path and cannot be its own module root."
+        body: 'pub const x = @import("path/to/file.zig"); test { std.testing.refAllDecls(x); }'
+        placement_rule: >-
+          The shim must sit at or above the shallowest directory the target's
+          relative @import chain escapes to. transition.zig reaches
+          ../definition/graph.zig, so its shim lives at src/, not src/engine/.
+      - name: AGGREGATOR_SHIM
+        use_when: "Several TEST files share one named module and have no colliding top-level test names."
+        body: 'test { _ = @import("a_test.zig"); _ = @import("b_test.zig"); }'
+        examples: [tests/unit/api_test_root.zig, tests/unit/bpm_src_test_root.zig, tests/unit/graph_test_root.zig, tests/unit/bpm_main_test_root.zig]
+
+# ---------------------------------------------------------------------------
+# DISPOSITIONS -- all 55 files
+# ---------------------------------------------------------------------------
+disposition_counts:
+  WIRE_INTO_EXISTING_ROOT: 12
+  NEW_ADDTEST_ROOT: 0
+  NEEDS_SHIM: 42
+  DELETE_OBSOLETE: 1
+  DOCUMENTED_EXCLUSION: 0
+  total: 55
+
+needs_live_services_counts:
+  requires_postgres_or_keycloak: 18
+  requires_keycloak_specifically: 2
+  pure_no_services: 37
+  note: >-
+    Counted per-file from the `needs_live_services` field on each disposition
+    entry below. The 18 are all under tests/integration/. The 37 pure files are
+    the 21 src/ production files, 13 tests/unit files, iss206_token_multiset_test,
+    oidc13_tenant_claim_source_test and oidc14_realm_provisioning_test -- the
+    last two live under tests/integration/ but touch no service, and are routed
+    to test-integration for cluster coherence rather than necessity (see
+    unit_vs_integration_split).
+
+dispositions:
+
+  # ==== CLUSTER 1: src/ production files, pure, no named-module gap ====
+  - file: src/api/tenant_context.zig
+    test_blocks: 4
+    disposition: NEEDS_SHIM
+    target: "NEW src/core_modules_test_root.zig -- refAllDecls over tenant_context, pipeline_context, obs_metrics, env"
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1. Exists only as `tenant_context_mod` (build.zig:25). Cannot be wired
+      by adding an import line to an existing root: main.zig reaches it by
+      NAMED import ("tenant_context"), which is a separate compilation unit, so
+      no declaration analyzed from main.zig's root can discover its tests. It
+      IS a valid standalone module root (imports only std), so a single
+      refAllDecls shim covering the four flat helper modules is the minimal fix.
+
+  - file: src/api/pipeline_context.zig
+    test_blocks: 3
+    disposition: NEEDS_SHIM
+    target: "NEW src/core_modules_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-1. Identical shape to tenant_context.zig -- `pipeline_context_mod`, imports only std. Same shim."
+
+  - file: src/obs/metrics.zig
+    test_blocks: 6
+    disposition: NEEDS_SHIM
+    target: "NEW src/core_modules_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1. `obs_metrics_mod` (build.zig:35). Imports only std; 6 pure
+      counter/histogram tests. Shim must sit at src/ so the relative import
+      "obs/metrics.zig" does not escape the module root.
+
+  - file: src/env.zig
+    test_blocks: 2
+    disposition: NEEDS_SHIM
+    target: "NEW src/core_modules_test_root.zig -- module needs .link_libc = true"
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1. `env_mod` (build.zig:56). Imports std + builtin only. The shim's
+      addTest module MUST set .link_libc = true -- env.zig uses libc's
+      `environ` extern on non-Windows (ISS-0134). Two tests, both pure.
+
+  - file: src/config/identity_provider.zig
+    test_blocks: 3
+    disposition: NEEDS_SHIM
+    target: "NEW src/config_idp_test_root.zig (separate from core shim -- needs the `portable_env` named import)"
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1. `idp_config_mod` (build.zig:62). Imports the NAMED module
+      "portable_env" (= env_mod), so its shim's addTest module must supply that
+      import and .link_libc = true. Cannot share core_modules_test_root unless
+      that root also declares "portable_env" -- harmless in Zig, so the two may
+      be merged at implementation time; kept separate here for clarity.
+
+  - file: src/identity/provider/bootstrap.zig
+    test_blocks: 3
+    disposition: NEEDS_SHIM
+    target: "NEW src/identity/provider/idp_test_root.zig -- refAllDecls over bootstrap.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1 with a twist. bootstrap.zig is re-exported by
+      src/identity/provider/mod.zig (line 5), which IS `identity_provider_mod`'s
+      root -- but that module is only *imported*, never rooted by an addTest, so
+      the re-export never gets analyzed. bootstrap.zig also does
+      `@import("root")` (line 3), which resolves to the addTest root file, so
+      the shim must be a real file that satisfies whatever bootstrap.zig expects
+      from `root` -- CODE-DESIGNER must confirm this compiles before BACKEND-DEV
+      commits to the shim placement. Shim goes at src/identity/provider/ so the
+      relative imports "manager.zig" / "adapters/keycloak/provider.zig" resolve;
+      named imports "env" and "idp_config" must be supplied.
+
+  # ==== CLUSTER 2: src/oidc/*.zig -- pure in-file tests, RC-1 ====
+  - file: src/oidc/claim_mapping.zig
+    test_blocks: 11
+    disposition: NEEDS_SHIM
+    target: "NEW src/oidc_test_root.zig -- refAllDecls over all 7 src/oidc/* files below"
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1 + RC-3 overlap. Referenced by tests as the named module
+      "claim_mapping", which does not exist in build.zig. All 11 test bodies are
+      pure (verified: zero Pool/Conn/query/http references in test bodies) even
+      though the file declares a `pool: *@import("pool").Pool` field in
+      non-test code -- so the shim's module must supply the `pool` named import
+      for compilation, but the tests themselves need no live DB.
+
+  - file: src/oidc/jit_provisioning.zig
+    test_blocks: 15
+    disposition: NEEDS_SHIM
+    target: "NEW src/oidc_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1. Largest in-file test count of the src/oidc group. Imports named
+      modules "pool" and "claim_mapping"; the latter must be created. All 15
+      test bodies are pure -- the DB references are in production code paths.
+
+  - file: src/oidc/identity_stability.zig
+    test_blocks: 3
+    disposition: NEEDS_SHIM
+    target: "NEW src/oidc_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-1. Imports named module `pool`; test bodies pure."
+
+  - file: src/oidc/realm_deletion.zig
+    test_blocks: 4
+    disposition: NEEDS_SHIM
+    target: "NEW src/oidc_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-1. Imports named module `pool`; test bodies pure."
+
+  - file: src/oidc/realm_tenant_binding.zig
+    test_blocks: 2
+    disposition: NEEDS_SHIM
+    target: "NEW src/oidc_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-1. Imports named module `pool`; test bodies pure."
+
+  - file: src/oidc/realm_provisioning.zig
+    test_blocks: 2
+    disposition: NEEDS_SHIM
+    target: "NEW src/oidc_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-1. Imports only std. Trivially shimmable."
+
+  - file: src/oidc/tenant_claim_source.zig
+    test_blocks: 7
+    disposition: NEEDS_SHIM
+    target: "NEW src/oidc_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1. Imports only std; all 7 tests are pure predicate checks
+      (rejectClientTenantIdOverride etc.). The earlier "network" signal was a
+      false positive from the identifier `ClientOverridesTenantId`.
+
+  # ==== CLUSTER 3: src/repository/*.zig -- orphaned tree ====
+  - file: src/repository/artifacts.zig
+    test_blocks: 3
+    disposition: NEEDS_SHIM
+    target: "NEW src/repository_test_root.zig -- refAllDecls over repository/mod.zig (which re-exports all 5)"
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1 orphaned-tree variant. src/repository/mod.zig re-exports artifacts,
+      schemas, activation, canonicaliser, service_catalog -- but mod.zig itself
+      is reachable from NO addTest root (verified). main.zig imports only
+      repository/service_catalog.zig directly. One shim over mod.zig fixes all
+      three unwired files at once. Needs the `pool` named import.
+
+  - file: src/repository/schemas.zig
+    test_blocks: 1
+    disposition: NEEDS_SHIM
+    target: "NEW src/repository_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-1 orphaned-tree. Covered by the same mod.zig refAllDecls shim."
+
+  - file: src/repository/activation.zig
+    test_blocks: 1
+    disposition: NEEDS_SHIM
+    target: "NEW src/repository_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-1 orphaned-tree. Covered by the same mod.zig refAllDecls shim."
+
+  # ==== CLUSTER 4: src/simulation/*.zig -- orphaned tree ====
+  - file: src/simulation/context.zig
+    test_blocks: 1
+    disposition: NEEDS_SHIM
+    target: "NEW src/simulation_test_root.zig -- refAllDecls over simulation/mod.zig (re-exports all 5)"
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1 orphaned-tree. simulation/mod.zig re-exports context, time_source,
+      uuid_source, mock_catalog, tenant_store -- but mod.zig is reachable only
+      via src/bpm.zig:51, and bpm.zig is a MODULE root, never an addTest root,
+      and has neither a test block nor refAllDecls. This is exactly the failure
+      mode src/transition_test_root.zig's doc comment point 2 documents. One
+      shim over simulation/mod.zig covers all five files.
+
+  - file: src/simulation/time_source.zig
+    test_blocks: 2
+    disposition: NEEDS_SHIM
+    target: "NEW src/simulation_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-1 orphaned-tree. Covered by the simulation/mod.zig shim. Pure clock tests."
+
+  - file: src/simulation/uuid_source.zig
+    test_blocks: 2
+    disposition: NEEDS_SHIM
+    target: "NEW src/simulation_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-1 orphaned-tree. Covered by the simulation/mod.zig shim. Pure deterministic-UUID tests."
+
+  - file: src/simulation/mock_catalog.zig
+    test_blocks: 1
+    disposition: NEEDS_SHIM
+    target: "NEW src/simulation_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-1 orphaned-tree. Covered by the simulation/mod.zig shim."
+
+  - file: src/simulation/tenant_store.zig
+    test_blocks: 1
+    disposition: NEEDS_SHIM
+    target: "NEW src/simulation_test_root.zig"
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1 orphaned-tree. Reaches ../event_store/store.zig by relative path, so
+      the shim MUST sit at src/ (not src/simulation/) or the import escapes the
+      module root -- the same constraint that forced src/transition_test_root.zig
+      to src/. Test body is pure.
+
+  # ==== CLUSTER 5: integration tests -- pure import-list omission (RC-2) ====
+  - file: tests/integration/xc01_trace_propagation_test.zig
+    test_blocks: 7
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const xc01_trace_propagation = @import("xc01_trace_propagation_test.zig");'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: >-
+      RC-2. Imports only std, bpm, helpers.zig -- all already in
+      integration_imports. Uses TestHarness (19 refs), so requires
+      BPM_TEST_DB_URL. Drop-in: one import line.
+
+  - file: tests/integration/xc02_audit_immutability_test.zig
+    test_blocks: 8
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const xc02_audit_immutability = @import("xc02_audit_immutability_test.zig");'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: "RC-2. std + bpm + helpers only. TestHarness (42 refs) => needs BPM_TEST_DB_URL."
+
+  - file: tests/integration/xc03_configuration_repository_test.zig
+    test_blocks: 9
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const xc03_configuration_repository = @import("xc03_configuration_repository_test.zig");'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: "RC-2. std + bpm + helpers only. TestHarness (49 refs) => needs BPM_TEST_DB_URL."
+
+  - file: tests/integration/xc05_deterministic_replay_test.zig
+    test_blocks: 8
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const xc05_deterministic_replay = @import("xc05_deterministic_replay_test.zig");'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: "RC-2. std + bpm + helpers only. TestHarness (46 refs) => needs BPM_TEST_DB_URL."
+
+  - file: tests/integration/xc06_backwards_compatibility_test.zig
+    test_blocks: 9
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const xc06_backwards_compatibility = @import("xc06_backwards_compatibility_test.zig");'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: "RC-2. std + bpm + helpers only. TestHarness (47 refs) => needs BPM_TEST_DB_URL."
+
+  - file: tests/integration/effects_subsystem_test.zig
+    test_blocks: 32
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const effects_subsystem = @import("effects_subsystem_test.zig");'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: >-
+      RC-2. std, builtin, helpers.zig, bpm -- all available. 32 test blocks, the
+      largest single unwired integration file. Highest coverage-per-line-changed
+      of the whole backlog. References BPM_TEST_DB_URL directly.
+
+  - file: tests/integration/repository_test.zig
+    test_blocks: 21
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const repository_integration = @import("repository_test.zig");'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: >-
+      RC-2. std, helpers.zig, bpm only. 21 test blocks covering REPO-01..REPO-14.
+      Note: bpm (bpm_src_mod, via src/bpm.zig) does NOT currently re-export
+      repository/mod.zig -- CODE-DESIGNER must confirm this file reaches the
+      repository API through an already-exported path (e.g. service_catalog) or
+      add the re-export to src/bpm.zig.
+
+  - file: tests/integration/env01_tenant_type_field_test.zig
+    test_blocks: 9
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const env01_tenant_type_field = @import("env01_tenant_type_field_test.zig");'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: "RC-2. std, pg, helpers.zig -- all in integration_imports. References BPM_TEST_DB_URL."
+
+  - file: tests/integration/iss206_token_multiset_test.zig
+    test_blocks: 3
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const iss206_token_multiset = @import("iss206_token_multiset_test.zig");'
+    build_step: test-integration
+    needs_live_services: false
+    services: []
+    rationale: >-
+      RC-2. Notable: despite living in tests/integration/, this file uses NO
+      TestHarness (0 refs) and no DB -- it only constructs
+      transition.InstanceState in memory and checks join_counter serialisation.
+      It references `bpm.engine_transition`, a symbol NOT currently exported by
+      src/bpm.zig (which exports `transition`, not `engine_transition`) -- this
+      file will FAIL to compile as written. Requires a one-symbol fix
+      (rename to bpm.transition, or add the alias) before wiring.
+    incidental_finding: true
+
+  - file: tests/integration/exp601_tier_quota_test.zig
+    test_blocks: 5
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const exp601_tier_quota = @import("exp601_tier_quota_test.zig");'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: >-
+      RC-2 with a caveat. Imports std, helpers.zig, bpm -- plus TWO relative
+      escapes: "../../src/config/quota_policy.zig" and
+      "../../src/api/middleware/quota_enforcement.zig". Those escape the
+      tests/integration module root and will be rejected by Zig 0.16. Must
+      either be rewritten to reach those symbols through the `bpm` named module,
+      or the two files must be added as re-exports in src/bpm.zig. Not a
+      drop-in; wire after that source edit.
+
+  - file: tests/integration/oidc31_end_to_end_auth_suite_test.zig
+    test_blocks: 2
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const oidc31_e2e_auth = @import("oidc31_end_to_end_auth_suite_test.zig");'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres, keycloak]
+    rationale: >-
+      RC-2. Imports std, env, pool -- all in integration_imports. 4 of its
+      blocks are error.SkipZigTest; the 2 live ones reference Keycloak at
+      localhost:8081. MUST NOT go on `zig build test`.
+
+  - file: tests/integration/oidc35_onboarding_test.zig
+    test_blocks: 13
+    disposition: WIRE_INTO_EXISTING_ROOT
+    target: 'tests/integration/main_test.zig -- add: const oidc35_onboarding = @import("oidc35_onboarding_test.zig");'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres, keycloak]
+    rationale: >-
+      RC-2. Imports std, env, build_options, bpm, helpers.zig -- all available.
+      8 Keycloak references + BPM_TEST_DB_URL. One of the 6 files ISS-0102
+      already flagged by hand. MUST NOT go on `zig build test`.
+
+  # ==== CLUSTER 6: OIDC integration tests -- MISSING NAMED MODULES (RC-3) ====
+  - file: tests/integration/oidc08_claim_mapping_config_test.zig
+    test_blocks: 3
+    disposition: NEEDS_SHIM
+    target: >-
+      NEW b.createModule name "claim_mapping" (root src/oidc/claim_mapping.zig,
+      imports: pool) added to integration_imports; then wire into
+      tests/integration/main_test.zig
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: >-
+      RC-3. Imports the named module "claim_mapping" which is declared NOWHERE in
+      build.zig. Cannot compile today. The prerequisite is a build.zig module
+      declaration, not an import line -- classified NEEDS_SHIM because the
+      module declaration IS the shim in build-graph terms.
+
+  - file: tests/integration/oidc09_jit_provisioning_test.zig
+    test_blocks: 10
+    disposition: NEEDS_SHIM
+    target: >-
+      NEW b.createModule name "jit_provisioning" (root src/oidc/jit_provisioning.zig,
+      imports: pool + claim_mapping) added to integration_imports; then wire into main_test.zig
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: >-
+      RC-3. Named module "jit_provisioning" absent from build.zig. One of the 6
+      ISS-0102 files. 2 SkipZigTest blocks. Depends transitively on the
+      "claim_mapping" module also being created.
+
+  - file: tests/integration/oidc10_attribute_sync_test.zig
+    test_blocks: 9
+    disposition: NEEDS_SHIM
+    target: 'NEW modules "jit_provisioning" + "claim_mapping"; then wire into main_test.zig'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: "RC-3. Needs BOTH missing modules. One of the 6 ISS-0102 files. 2 SkipZigTest blocks."
+
+  - file: tests/integration/oidc11_identity_stability_test.zig
+    test_blocks: 7
+    disposition: NEEDS_SHIM
+    target: 'NEW b.createModule name "identity_stability" (root src/oidc/identity_stability.zig, imports: pool); then wire into main_test.zig'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: "RC-3. Named module absent from build.zig. One of the 6 ISS-0102 files. 2 SkipZigTest blocks."
+
+  - file: tests/integration/oidc12_realm_tenant_binding_test.zig
+    test_blocks: 5
+    disposition: NEEDS_SHIM
+    target: 'NEW b.createModule name "realm_tenant_binding" (root src/oidc/realm_tenant_binding.zig, imports: pool); then wire into main_test.zig'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: "RC-3. Named module absent from build.zig. One of the 6 ISS-0102 files. 2 SkipZigTest blocks."
+
+  - file: tests/integration/oidc13_tenant_claim_source_test.zig
+    test_blocks: 7
+    disposition: NEEDS_SHIM
+    target: 'NEW b.createModule name "tenant_claim_source" (root src/oidc/tenant_claim_source.zig, no extra imports); then wire into main_test.zig'
+    build_step: test-integration
+    needs_live_services: false
+    services: []
+    rationale: >-
+      RC-3. Named module absent. Notable: this file uses NO DB and NO TestHarness
+      -- it tests pure predicates. It is the ONE file in the OIDC cluster that
+      could safely be routed to `zig build test` instead of test-integration.
+      Recommend keeping it on test-integration anyway for cluster coherence,
+      unless CODE-DESIGNER prefers a unit target.
+
+  - file: tests/integration/oidc14_realm_provisioning_test.zig
+    test_blocks: 5
+    disposition: NEEDS_SHIM
+    target: 'NEW b.createModule name "realm_provisioning" (root src/oidc/realm_provisioning.zig, no extra imports); then wire into main_test.zig'
+    build_step: test-integration
+    needs_live_services: false
+    services: []
+    rationale: >-
+      RC-3. Named module absent. Also DB-free (0 BPM_TEST_DB_URL refs, 1
+      SkipZigTest). Same unit-vs-integration judgement call as oidc13.
+
+  - file: tests/integration/oidc15_realm_deletion_test.zig
+    test_blocks: 9
+    disposition: NEEDS_SHIM
+    target: 'NEW b.createModule name "realm_deletion" (root src/oidc/realm_deletion.zig, imports: pool); then wire into main_test.zig'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: "RC-3. Named module absent. One of the 6 ISS-0102 files. 2 SkipZigTest blocks."
+
+  - file: tests/integration/oidc34_migration_helper_test.zig
+    test_blocks: 3
+    disposition: NEEDS_SHIM
+    target: 'NEW b.createModule name "oidc_migration_helper" (root src/oidc/migration_helper.zig); then wire into main_test.zig'
+    build_step: test-integration
+    needs_live_services: true
+    services: [postgres]
+    rationale: "RC-3. Named module absent from build.zig. 1 SkipZigTest block."
+
+  # ==== CLUSTER 7: tests/unit -- MISSING NAMED MODULES (RC-3) ====
+  - file: tests/unit/test_oidc06_jwks_cache.zig
+    test_blocks: 7
+    disposition: NEEDS_SHIM
+    target: >-
+      NEW b.createModule name "jwks_cache" (root
+      src/identity/provider/oidc/jwks_cache.zig) + NEW
+      tests/unit/oidc_unit_test_root.zig aggregator wired onto `test`
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-3. Named module "jwks_cache" absent from build.zig; the source file
+      exists at src/identity/provider/oidc/jwks_cache.zig (NOT at src/oidc/jwks.zig
+      -- two different files, do not conflate). Tests are pure cache-expiry logic.
+
+  - file: tests/unit/test_oidc08_claim_mapping.zig
+    test_blocks: 20
+    disposition: NEEDS_SHIM
+    target: 'NEW module "claim_mapping" (shared with the integration cluster) + tests/unit/oidc_unit_test_root.zig'
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-3. 20 pure test blocks -- the largest unit-test win in the backlog.
+      Reuses the same "claim_mapping" module the oidc08/09/10 integration tests
+      need, so create it once. The 10 "keycloak" string matches are literal
+      claim names in fixtures, not live calls.
+
+  - file: tests/unit/test_oidc27_verification_benchmark.zig
+    test_blocks: 1
+    disposition: NEEDS_SHIM
+    target: 'NEW b.createModule name "oidc_bench" (root src/oidc/verification_benchmark.zig) + tests/unit/oidc_unit_test_root.zig'
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-3. Named module absent. Single pure test."
+
+  - file: tests/unit/test_oidc29_realm_seed.zig
+    test_blocks: 2
+    disposition: NEEDS_SHIM
+    target: 'NEW b.createModule name "realm_seed" (root src/oidc/realm_seed.zig) + tests/unit/oidc_unit_test_root.zig'
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-3. Named module absent. Two pure tests."
+
+  - file: tests/unit/test_oidc30_test_token_helper.zig
+    test_blocks: 2
+    disposition: NEEDS_SHIM
+    target: 'NEW b.createModule name "oidc_test_token_helper" (root src/oidc/test_token_helper.zig) + tests/unit/oidc_unit_test_root.zig'
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-3. Named module absent. Two pure tests."
+
+  - file: tests/unit/test_oidc33_coexistence_auth.zig
+    test_blocks: 2
+    disposition: NEEDS_SHIM
+    target: 'NEW b.createModule name "oidc_coexistence" (root src/oidc/coexistence_auth.zig) + tests/unit/oidc_unit_test_root.zig'
+    build_step: test
+    needs_live_services: false
+    rationale: "RC-3. Named module absent. Two pure tests."
+
+  - file: tests/unit/test_oidc28_local_dev_realm.zig
+    test_blocks: 2
+    disposition: NEEDS_SHIM
+    target: 'tests/unit/oidc_unit_test_root.zig -- NO new module needed; the aggregator addTest must setCwd(b.path("."))'
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-1/RC-2 hybrid. Imports ONLY std -- no missing module. It reads
+      docker-compose.yml and infrastructure/keycloak/realms/*.json from disk via
+      Dir.cwd(), so the Run artifact needs setCwd (same treatment
+      sch303_timer_dlq_unit_test.zig already gets, build.zig:422). The 4
+      "keycloak" matches are file-content assertions, not live calls -- this
+      test needs NO running Keycloak.
+
+  - file: tests/unit/test_oidc32_agent_test_identities.zig
+    test_blocks: 2
+    disposition: NEEDS_SHIM
+    target: 'tests/unit/oidc_unit_test_root.zig -- NO new module needed; aggregator addTest must setCwd(b.path("."))'
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      Same shape as test_oidc28: std-only, reads realm seed JSON from disk,
+      asserts on service-account clients. Needs setCwd, not a running Keycloak.
+
+  - file: tests/unit/repository_canonicaliser_test.zig
+    test_blocks: 12
+    disposition: NEEDS_SHIM
+    target: >-
+      NEW b.createModule name "repository" (root src/repository/mod.zig,
+      imports: pool) + NEW tests/unit/repository_test_root.zig aggregator on `test`
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-3. Named module "repository" absent from build.zig. 12 pure JSON
+      canonicalisation / content-hash tests -- highest-value pure unit cluster
+      after test_oidc08. Note the source file src/repository/canonicaliser.zig
+      IS already reachable (via src/entities/definition.zig), but this TEST file
+      is not, because "repository" does not resolve.
+
+  - file: tests/unit/repository_artifacts_test.zig
+    test_blocks: 1
+    disposition: NEEDS_SHIM
+    target: 'NEW module "repository" + tests/unit/repository_test_root.zig'
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-3. Same missing "repository" module. Only 14 lines / 1 test block, and
+      it references BPM_TEST_DB_URL -- CODE-DESIGNER should read it and decide
+      whether it is a placeholder that belongs on test-integration instead. If
+      the single block turns out to need a live DB, move it to
+      test-integration and keep only repository_canonicaliser_test.zig on `test`.
+    needs_designer_judgement: true
+
+  - file: tests/unit/wasm_executor_test.zig
+    test_blocks: 6
+    disposition: NEEDS_SHIM
+    target: 'NEW b.createModule name "wasm" (root src/wasm/mod.zig) + NEW tests/unit/wasm_test_root.zig on `test`'
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-3. Named module "wasm" absent from build.zig; src/wasm/ is a complete
+      subsystem (12 files) reachable from NO addTest root and not re-exported by
+      src/bpm.zig or src/main.zig. Tests are explicitly stub-level ("engine_new
+      is a stub that returns null in unit tests"), so they are pure. CODE-DESIGNER
+      must confirm src/wasm/wasmtime_bindings.zig does not require linking a real
+      Wasmtime library at test time -- if it does, this file becomes a
+      DOCUMENTED_EXCLUSION candidate instead.
+    needs_designer_judgement: true
+
+  - file: tests/unit/lua_test.zig
+    test_blocks: 7
+    disposition: NEEDS_SHIM
+    target: 'NEW tests/unit/misc_unit_test_root.zig aggregator wired onto `test` (no new module needed)'
+    build_step: test
+    needs_live_services: false
+    rationale: >-
+      RC-2 variant. Imports ONLY std -- no missing module, no DB, no network.
+      Its own doc comment says it deliberately avoids LuaJIT headers and tests
+      only "Zig wrapper logic, error handling, and compile-time verification".
+      Pure byte-comparison tests. Could equally be its own addTest root; an
+      aggregator is preferred per ISS-0136 (minimise independent zig-test
+      binaries / concurrent -lc compile jobs).
+
+  # ==== CLUSTER 8: obsolete ====
+  - file: tests/unit/event_store_test_orig.zig
+    test_blocks: 25
+    disposition: DELETE_OBSOLETE
+    target: "git rm tests/unit/event_store_test_orig.zig"
+    build_step: null
+    needs_live_services: false
+    rationale: >-
+      Byte-identical duplicate of tests/unit/event_store_test.zig (verified:
+      contents match exactly after normalising the UTF-8 BOM and CRLF line
+      endings). The wired copy is already an addTest root on `zig build test`
+      (build.zig:154, event_store_tests). All 25 blocks in BOTH files are
+      `return error.SkipZigTest` stubs, so deleting the duplicate loses zero
+      coverage. The "_orig" suffix and its origin commit (951e575 "Refactor code
+      structure...") confirm it is a leftover backup copy that was committed by
+      accident. Deleting also removes 25 phantom test blocks from the linter's
+      denominator.
+
+# ---------------------------------------------------------------------------
+# UNIT vs INTEGRATION SPLIT -- the Green-Main Gate boundary
+# ---------------------------------------------------------------------------
+unit_vs_integration_split:
+  principle: >-
+    `zig build test` is the Green-Main Gate. It must stay runnable on a machine
+    with NO Postgres and NO Keycloak. Any file whose tests touch a live service
+    goes on `test-integration` (or a `test-integration-*` sibling), never on
+    `test`.
+
+  goes_on_zig_build_test:
+    count: 33
+    test_blocks: 141
+    count_note: >-
+      33 files / 141 test blocks total: the 21 src/ production files (74 blocks),
+      11 tests/unit files (56 blocks), tests/unit/repository_artifacts_test.zig
+      (1 block, conditional -- see below), and
+      tests/integration/iss206_token_multiset_test.zig is NOT counted here (it is
+      routed to test-integration for wiring simplicity despite being DB-free).
+    files_summary: >-
+      All 21 src/**/*.zig production files (their in-file test bodies were
+      individually inspected: zero Pool/Conn/query/BPM_TEST_DB_URL/http
+      references inside any test block), plus 12 of the 13 tests/unit files
+      (all except the deleted event_store_test_orig.zig).
+    exact_list:
+      - src/api/tenant_context.zig
+      - src/api/pipeline_context.zig
+      - src/obs/metrics.zig
+      - src/env.zig
+      - src/config/identity_provider.zig
+      - src/identity/provider/bootstrap.zig
+      - src/oidc/claim_mapping.zig
+      - src/oidc/jit_provisioning.zig
+      - src/oidc/identity_stability.zig
+      - src/oidc/realm_deletion.zig
+      - src/oidc/realm_tenant_binding.zig
+      - src/oidc/realm_provisioning.zig
+      - src/oidc/tenant_claim_source.zig
+      - src/repository/artifacts.zig
+      - src/repository/schemas.zig
+      - src/repository/activation.zig
+      - src/simulation/context.zig
+      - src/simulation/time_source.zig
+      - src/simulation/uuid_source.zig
+      - src/simulation/mock_catalog.zig
+      - src/simulation/tenant_store.zig
+    tests_unit_also_on_test:
+      - tests/unit/test_oidc06_jwks_cache.zig
+      - tests/unit/test_oidc08_claim_mapping.zig
+      - tests/unit/test_oidc27_verification_benchmark.zig
+      - tests/unit/test_oidc28_local_dev_realm.zig
+      - tests/unit/test_oidc29_realm_seed.zig
+      - tests/unit/test_oidc30_test_token_helper.zig
+      - tests/unit/test_oidc32_agent_test_identities.zig
+      - tests/unit/test_oidc33_coexistence_auth.zig
+      - tests/unit/repository_canonicaliser_test.zig
+      - tests/unit/lua_test.zig
+      - tests/unit/wasm_executor_test.zig
+    conditional:
+      - file: tests/unit/repository_artifacts_test.zig
+        note: "references BPM_TEST_DB_URL in 14 lines -- CODE-DESIGNER decides test vs test-integration"
+
+  goes_on_test_integration_only:
+    count: 21
+    test_blocks: 184
+    count_note: >-
+      All 21 tests/integration/ files. 18 of them genuinely need a live service;
+      the remaining 3 (oidc13, oidc14, iss206) are DB-free but are routed here
+      anyway because they are wired through tests/integration/main_test.zig,
+      which is already behind the ISS-0106 barrier -- moving them to `test`
+      would require separate roots for no coverage gain.
+    reason_postgres:
+      - tests/integration/xc01_trace_propagation_test.zig
+      - tests/integration/xc02_audit_immutability_test.zig
+      - tests/integration/xc03_configuration_repository_test.zig
+      - tests/integration/xc05_deterministic_replay_test.zig
+      - tests/integration/xc06_backwards_compatibility_test.zig
+      - tests/integration/effects_subsystem_test.zig
+      - tests/integration/repository_test.zig
+      - tests/integration/env01_tenant_type_field_test.zig
+      - tests/integration/exp601_tier_quota_test.zig
+      - tests/integration/oidc08_claim_mapping_config_test.zig
+      - tests/integration/oidc09_jit_provisioning_test.zig
+      - tests/integration/oidc10_attribute_sync_test.zig
+      - tests/integration/oidc11_identity_stability_test.zig
+      - tests/integration/oidc12_realm_tenant_binding_test.zig
+      - tests/integration/oidc15_realm_deletion_test.zig
+      - tests/integration/oidc34_migration_helper_test.zig
+    reason_postgres_and_keycloak:
+      - tests/integration/oidc31_end_to_end_auth_suite_test.zig
+      - tests/integration/oidc35_onboarding_test.zig
+    db_free_but_kept_here_for_cluster_coherence:
+      - tests/integration/oidc13_tenant_claim_source_test.zig
+      - tests/integration/oidc14_realm_provisioning_test.zig
+
+  misfiled_by_directory:
+    - file: tests/integration/iss206_token_multiset_test.zig
+      note: >-
+        Lives in tests/integration/ but uses no TestHarness and no DB. Wiring it
+        into main_test.zig is still correct and lowest-risk (it will simply run
+        with the integration suite), but it is not an integration test.
+    - file: tests/integration/oidc13_tenant_claim_source_test.zig
+      note: "DB-free pure predicate tests; same reasoning as iss206."
+    - file: tests/integration/oidc14_realm_provisioning_test.zig
+      note: "DB-free; same reasoning as iss206."
+
+  barrier_requirement:
+    rule: >-
+      ISS-0106: any NEW addTest attached to `test-integration` must be attached
+      to `test_integration_others_step` (the internal barrier), NOT directly to
+      `test_integration_step` -- otherwise it can race
+      tests/integration/test_iss503_rls_removal.zig, which holds
+      AccessExclusiveLock while running GBL-084's full DDL body.
+    applies_to: >-
+      Only if CODE-DESIGNER chooses dedicated addTest roots over main_test.zig
+      import lines. If everything is wired via main_test.zig (recommended),
+      no new barrier edges are needed -- main_test.zig is already behind the
+      barrier.
+
+# ---------------------------------------------------------------------------
+# CLUSTERS -- suggested implementation order
+# ---------------------------------------------------------------------------
+clusters:
+  - order: 1
+    id: C1-delete-duplicate
+    name: "Delete the obsolete duplicate"
+    files: 1
+    test_blocks_recovered: 0
+    risk: none
+    work: "git rm tests/unit/event_store_test_orig.zig"
+    why_first: "Zero risk, removes 25 phantom stub blocks from the linter denominator, shrinks the problem to 54 files."
+
+  - order: 2
+    id: C2-integration-import-lines
+    name: "Pure import-list omissions in tests/integration/main_test.zig"
+    files: 10
+    file_list:
+      - tests/integration/xc01_trace_propagation_test.zig
+      - tests/integration/xc02_audit_immutability_test.zig
+      - tests/integration/xc03_configuration_repository_test.zig
+      - tests/integration/xc05_deterministic_replay_test.zig
+      - tests/integration/xc06_backwards_compatibility_test.zig
+      - tests/integration/effects_subsystem_test.zig
+      - tests/integration/repository_test.zig
+      - tests/integration/env01_tenant_type_field_test.zig
+      - tests/integration/oidc31_end_to_end_auth_suite_test.zig
+      - tests/integration/oidc35_onboarding_test.zig
+    test_blocks_recovered: 118
+    risk: >-
+      MEDIUM -- these 118 blocks have never run. Expect real failures on first
+      execution (the GH #428 precedent: 7 of transition.zig's 30 tests had
+      rotted). Every failure found here must be enqueued onto this run's
+      issue_queue.json per docs/agents/protocols/ISSUE_QUEUE.md.
+    work: "One `const x = @import(\"...\");` line each in tests/integration/main_test.zig. No build.zig change."
+    green_main_gate_impact: "NONE -- all land on test-integration."
+
+  - order: 3
+    id: C3-src-refalldecls-shims
+    name: "src/ production in-file tests via refAllDecls shims"
+    files: 21
+    test_blocks_recovered: 77
+    member_rule: "every disposition entry whose file path starts with src/"
+    new_files:
+      - src/core_modules_test_root.zig
+      - src/config_idp_test_root.zig
+      - src/oidc_test_root.zig
+      - src/repository_test_root.zig
+      - src/simulation_test_root.zig
+      - src/identity/provider/idp_test_root.zig
+    risk: >-
+      MEDIUM-HIGH. This is the cluster that lands on `zig build test` -- the
+      Green-Main Gate. All 21 files' test bodies were verified pure, but the
+      tests have never executed, so failures are likely. Do this cluster on its
+      own so a red gate is unambiguously attributable.
+    work: >-
+      6 new shim files following src/transition_test_root.zig, plus 6 addTest +
+      Run + test_step.dependOn triples in build.zig. Attach each to `test` AND
+      give each a narrow test-<name> step for debugging.
+    green_main_gate_impact: "HIGH -- see green_main_gate_risk below."
+
+  - order: 4
+    id: C4-missing-oidc-modules
+    name: "Create the missing OIDC named modules, then wire 9 integration + 8 unit tests"
+    files: 17
+    test_blocks_recovered: 96
+    file_list:
+      - tests/integration/oidc08_claim_mapping_config_test.zig
+      - tests/integration/oidc09_jit_provisioning_test.zig
+      - tests/integration/oidc10_attribute_sync_test.zig
+      - tests/integration/oidc11_identity_stability_test.zig
+      - tests/integration/oidc12_realm_tenant_binding_test.zig
+      - tests/integration/oidc13_tenant_claim_source_test.zig
+      - tests/integration/oidc14_realm_provisioning_test.zig
+      - tests/integration/oidc15_realm_deletion_test.zig
+      - tests/integration/oidc34_migration_helper_test.zig
+      - tests/unit/test_oidc06_jwks_cache.zig
+      - tests/unit/test_oidc08_claim_mapping.zig
+      - tests/unit/test_oidc27_verification_benchmark.zig
+      - tests/unit/test_oidc28_local_dev_realm.zig
+      - tests/unit/test_oidc29_realm_seed.zig
+      - tests/unit/test_oidc30_test_token_helper.zig
+      - tests/unit/test_oidc32_agent_test_identities.zig
+      - tests/unit/test_oidc33_coexistence_auth.zig
+    note: >-
+      test_oidc28 and test_oidc32 need NO new module (std-only, disk-reading);
+      they join this aggregator only because they are OIDC-family and need the
+      same setCwd treatment. The other 15 need the named modules listed below.
+    new_build_modules:
+      - {name: claim_mapping, root: src/oidc/claim_mapping.zig, imports: [pool]}
+      - {name: jit_provisioning, root: src/oidc/jit_provisioning.zig, imports: [pool, claim_mapping]}
+      - {name: identity_stability, root: src/oidc/identity_stability.zig, imports: [pool]}
+      - {name: realm_tenant_binding, root: src/oidc/realm_tenant_binding.zig, imports: [pool]}
+      - {name: tenant_claim_source, root: src/oidc/tenant_claim_source.zig, imports: []}
+      - {name: realm_provisioning, root: src/oidc/realm_provisioning.zig, imports: []}
+      - {name: realm_deletion, root: src/oidc/realm_deletion.zig, imports: [pool]}
+      - {name: oidc_migration_helper, root: src/oidc/migration_helper.zig, imports: []}
+      - {name: jwks_cache, root: src/identity/provider/oidc/jwks_cache.zig, imports: []}
+      - {name: oidc_bench, root: src/oidc/verification_benchmark.zig, imports: []}
+      - {name: realm_seed, root: src/oidc/realm_seed.zig, imports: []}
+      - {name: oidc_test_token_helper, root: src/oidc/test_token_helper.zig, imports: []}
+      - {name: oidc_coexistence, root: src/oidc/coexistence_auth.zig, imports: []}
+    new_files:
+      - tests/unit/oidc_unit_test_root.zig
+    risk: >-
+      HIGH. Largest build.zig surface change. The named modules must be added to
+      `integration_imports` (for the 9 integration tests) and to the new unit
+      aggregator's module list. Watch for "file exists in two modules" conflicts
+      -- src/oidc/claim_mapping.zig will now be both a named module root AND
+      reachable from src/oidc_test_root.zig (C3). CODE-DESIGNER must decide
+      whether C3's oidc shim should refAllDecls the NAMED modules instead of
+      relative paths to avoid this.
+    dependency: "Overlaps C3 -- sequence C3 before C4 and re-verify."
+    green_main_gate_impact: "6 unit files land on `test`; 9 land on test-integration."
+
+  - order: 5
+    id: C5-repository-wasm-lua-misc
+    name: "Missing `repository` and `wasm` modules + std-only stragglers"
+    files: 5
+    file_list:
+      - tests/unit/repository_canonicaliser_test.zig
+      - tests/unit/repository_artifacts_test.zig
+      - tests/unit/wasm_executor_test.zig
+      - tests/unit/lua_test.zig
+      - tests/integration/iss206_token_multiset_test.zig
+    test_blocks_recovered: 29
+    new_build_modules:
+      - {name: repository, root: src/repository/mod.zig, imports: [pool]}
+      - {name: wasm, root: src/wasm/mod.zig, imports: []}
+    new_files:
+      - tests/unit/repository_test_root.zig
+      - tests/unit/misc_unit_test_root.zig
+    risk: >-
+      MEDIUM. wasm_executor_test.zig may require a real Wasmtime link
+      (src/wasm/wasmtime_bindings.zig) -- if so it converts to
+      DOCUMENTED_EXCLUSION and the linter needs the exclusion mechanism below.
+      iss206 needs a one-symbol source fix (bpm.engine_transition does not exist).
+    green_main_gate_impact: "4 of 5 land on `test`."
+
+  - order: 6
+    id: C6-exp601-relative-escape
+    name: "exp601_tier_quota_test.zig relative-import escape"
+    files: 1
+    test_blocks_recovered: 5
+    risk: >-
+      MEDIUM. Requires a source edit, not just wiring: the file's
+      `@import("../../src/config/quota_policy.zig")` and
+      `@import("../../src/api/middleware/quota_enforcement.zig")` escape the
+      tests/integration module root and Zig 0.16 rejects that. Either rewrite to
+      reach those symbols via the `bpm` module, or add re-exports to src/bpm.zig.
+    green_main_gate_impact: "NONE -- lands on test-integration."
+
+  - order: 7
+    id: C7-enable-the-gate
+    name: "Promote test-wiring-check into `zig build test`'s dependency graph"
+    files: 0
+    risk: low
+    work: >-
+      Once `python tools/lint_test_wiring.py` exits 0, add
+      `test_step.dependOn(&run_wiring_check.step);` in build.zig and delete the
+      "Not made a dependency of `test` or `build`" paragraph at build.zig
+      lines 1531-1544. This is what makes the class of defect non-recurring and
+      is the explicit closing condition in ISS-0137's candidate_resolution.
+    must_be_last: true
+
+cluster_totals:
+  files_addressed: 55
+  test_blocks_total_in_unwired_files: 350
+  test_blocks_landing_on_zig_build_test: 141
+  test_blocks_landing_on_test_integration: 184
+  test_blocks_deleted_as_duplicate_stubs: 25
+  arithmetic_check: "141 + 184 + 25 = 350"
+  cluster_partition:
+    note: "C1..C6 partition the 55 files exactly; C7 touches no file."
+    C1: {files: 1, blocks: 25}
+    C2: {files: 10, blocks: 118}
+    C3: {files: 21, blocks: 77}
+    C4: {files: 17, blocks: 96}
+    C5: {files: 5, blocks: 29}
+    C6: {files: 1, blocks: 5}
+    sum: {files: 55, blocks: 350}
+  derivation: >-
+    Computed from the per-file `build_step` and `test_blocks` fields on the 55
+    disposition entries: 33 files -> `test` (141 blocks), 21 files ->
+    `test-integration` (184 blocks), 1 file deleted (25 stub blocks).
+
+# ---------------------------------------------------------------------------
+# LINTER CHANGES REQUIRED
+# ---------------------------------------------------------------------------
+linter_changes_required:
+  exclusion_mechanism:
+    currently_supported: false
+    evidence: >-
+      tools/lint_test_wiring.py has no allowlist, no skip file, no inline-comment
+      pragma, and no CLI flag beyond --quiet. Read end to end: SCAN_DIRS is the
+      only filter and it is a hardcoded ("src", "tests") tuple. There is
+      therefore NO way today to record disposition (e) DOCUMENTED_EXCLUSION.
+    required_if_disposition_e_used: true
+    current_diagnosis_uses_disposition_e: false
+    note: >-
+      This diagnosis assigns ZERO files to DOCUMENTED_EXCLUSION, so the linter
+      change is not strictly blocking for the current 55. It becomes blocking if
+      CODE-DESIGNER converts tests/unit/wasm_executor_test.zig (or
+      repository_artifacts_test.zig) to an exclusion after judging the Wasmtime
+      link / live-DB questions flagged above.
+    recommended_design: >-
+      Add a `tools/test_wiring_exclusions.yaml` (YAML per CLAUDE.md output rules)
+      with entries {path, reason, issue_ref, added_at}. Load it in main(),
+      subtract from `unwired`, and PRINT every excluded path with its reason on
+      every run so an exclusion can never become invisible. Require a non-empty
+      `reason` and `issue_ref` -- an exclusion without a filed issue is exactly
+      the "silently unreachable" state this linter exists to prevent. Do NOT
+      implement it as an inline source comment: that would let a future agent
+      silence the gate by editing the file the gate measures, which CLAUDE.md's
+      "Never Satisfy a Gate by Editing What It Measures" directive forbids.
+
+  other_recommended_improvements:
+    - id: L-1
+      severity: MINOR
+      change: >-
+        Report the per-file test-block COUNT alongside each [UNWIRED] line.
+        The tool currently reports 55 files but not that they carry 350 test
+        blocks -- the count is what conveys the real coverage gap and would have
+        made ISS-0137's severity obvious at filing time (it is currently MINOR;
+        350 never-executed test blocks arguably is not MINOR).
+    - id: L-2
+      severity: MINOR
+      change: >-
+        Resolve NAMED module imports, not only relative .zig imports. Today
+        IMPORT_LITERAL requires a literal ".zig" suffix, so the linter cannot
+        follow `@import("bpm")` -> src/bpm.zig. Parsing build.zig's
+        b.createModule name->root_source_file map and following named edges
+        would let the linter distinguish RC-1 (module exists but is never
+        rooted) from RC-3 (module does not exist at all) automatically. It
+        would also, correctly, still report all 21 src/ files as unwired --
+        being reachable as a module is not the same as having your tests run.
+    - id: L-3
+      severity: MINOR
+      change: >-
+        Warn when an addTest root file is a shim (<= SHIM_OWN_TEST_BLOCK_MAX own
+        test blocks) that contains NEITHER `_ = @import(...)` NOR
+        `refAllDecls` -- i.e. a target that compiles and silently runs zero
+        tests. That is the exact trap src/transition_test_root.zig's doc comment
+        documents for src/bpm.zig, and nothing currently detects it.
+
+# ---------------------------------------------------------------------------
+# GREEN-MAIN GATE RISK
+# ---------------------------------------------------------------------------
+green_main_gate_risk:
+  headline: >-
+    Wiring naively -- adding all 55 files to `zig build test` -- would break the
+    Green-Main Gate in three independent ways at once.
+
+  risks:
+    - id: G-1
+      severity: BLOCKER
+      name: "Live-service tests on a service-free gate"
+      detail: >-
+        34 of the 55 files require Postgres (BPM_TEST_DB_URL) and 2 of those
+        additionally require Keycloak at localhost:8081. `zig build test` is the
+        WF-02 Step 00a Green-Main Gate and must pass on a machine with no
+        docker-compose stack. Putting any of these 34 on `test` turns the gate
+        permanently red on every developer machine and in any CI job that does
+        not provision services.
+      mitigation: >-
+        Honour the unit_vs_integration_split section above exactly: 21 src/ files
+        + 11 tests/unit files + iss206 go on `test`; all 20 tests/integration
+        files (incl. oidc13/oidc14, which are DB-free but belong to the
+        integration cluster) go on `test-integration` via main_test.zig.
+
+    - id: G-2
+      severity: MAJOR
+      name: "Never-executed tests are presumed rotten"
+      detail: >-
+        These 350 test blocks have not compiled or run for months. The GH #428
+        precedent is direct evidence of what happens: when transition.zig's 30
+        in-file tests were finally wired in, 7 of them failed against ownership-
+        model drift AND the exercise surfaced two real production memory bugs.
+        Expect a comparable failure rate here -- roughly 20-25% of 350 is 70-90
+        failing blocks. Wiring all 55 in one commit produces an unreadable red
+        wall with no attribution.
+      mitigation: >-
+        Land the clusters in the order given, one commit each, re-running
+        `python tools/lint_test_wiring.py` and the relevant zig build step after
+        every cluster. Every genuine test failure discovered is a NEW issue: file
+        it (ISS + GitHub, per CLAUDE.md "No Issue Left Local-Only") and enqueue
+        it onto handoffs/WF03-gh439-testwiring-20260806/issue_queue.json for
+        draining via WF-03 Steps 1-7 on THIS branch.
+
+    - id: G-3
+      severity: MAJOR
+      name: "Compile failures, not test failures -- 22 files cannot build today"
+      detail: >-
+        The 22 RC-3 files reference 15 named modules that do not exist in
+        build.zig. A naive `_ = @import(...)` into an existing aggregator makes
+        the WHOLE aggregator fail to compile, taking every currently-green test
+        in that binary down with it. tests/unit/api_test_root.zig,
+        bpm_src_test_root.zig and bpm_main_test_root.zig each carry 6-12
+        currently-passing files -- a bad import there is a much larger blast
+        radius than the file being wired.
+      mitigation: >-
+        Never add an RC-3 file to an EXISTING aggregator. Create the missing
+        b.createModule declarations first, verify with a NEW dedicated
+        aggregator root (tests/unit/oidc_unit_test_root.zig etc.), and only
+        attach that new root to `test` once it compiles standalone.
+
+    - id: G-4
+      severity: MINOR
+      name: "ISS-0136 concurrent -lc cache-lock deadlock"
+      detail: >-
+        build.zig's aggregator comments (lines 169-176, 224-229, 244-248)
+        document an upstream Zig cache-lock deadlock triggered by too many
+        concurrent libc-linked zig-test compile jobs. Several new modules here
+        need .link_libc = true (env_mod consumers, api/identity paths). Adding
+        6-10 new standalone addTest targets would push the concurrent -lc count
+        back up.
+      mitigation: >-
+        Prefer AGGREGATOR_SHIM roots over per-file addTest targets throughout.
+        This diagnosis proposes 6 src/ shims + 3 tests/unit aggregators = 9 new
+        targets rather than 42, and NEW_ADDTEST_ROOT is deliberately assigned to
+        zero files for this reason.
+
+    - id: G-5
+      severity: MINOR
+      name: "ISS-0106 DDL race on test-integration"
+      detail: >-
+        Any new addTest attached directly to `test_integration_step` instead of
+        the `test_integration_others_step` barrier can run concurrently with
+        test_iss503_rls_removal.zig's AccessExclusiveLock-holding DDL.
+      mitigation: >-
+        Wire all 12 RC-2/RC-3 integration files through
+        tests/integration/main_test.zig's import list. main_test.zig is already
+        behind the barrier, so no new barrier edges are required and the risk
+        is eliminated by construction.
+
+# ---------------------------------------------------------------------------
+# INCIDENTAL FINDINGS -- NOT fixed here; for ORCH to enqueue
+# ---------------------------------------------------------------------------
+incidental_findings:
+  - id: INC-1
+    severity: MAJOR
+    title: "tests/integration/iss206_token_multiset_test.zig references bpm.engine_transition, which src/bpm.zig does not export"
+    detail: >-
+      Line 85 does `const transition_mod = bpm.engine_transition;`. src/bpm.zig
+      exports `transition` (line 27, `@import("engine/transition.zig")`), not
+      `engine_transition`. The file cannot compile as written. It has never been
+      caught because the file is unwired -- a second-order symptom of ISS-0137.
+    affected: tests/integration/iss206_token_multiset_test.zig
+    recommendation: "Enqueue onto this run's issue_queue.json; fix during cluster C5."
+
+  - id: INC-2
+    severity: MAJOR
+    title: "tests/integration/exp601_tier_quota_test.zig uses ../../src/ relative imports that escape the module root"
+    detail: >-
+      Lines 16-17 import "../../src/config/quota_policy.zig" and
+      "../../src/api/middleware/quota_enforcement.zig". Zig 0.16 rejects an
+      @import that escapes the importing file's module root (the same constraint
+      documented in build.zig lines 51-55 and src/transition_test_root.zig).
+      The file cannot compile as written.
+    affected: tests/integration/exp601_tier_quota_test.zig
+    recommendation: "Enqueue; fix during cluster C6 by routing through the `bpm` module."
+
+  - id: INC-3
+    severity: MINOR
+    title: "src/wasm/ (12 files) is an entire subsystem reachable from no addTest root and re-exported by neither src/bpm.zig nor src/main.zig"
+    detail: >-
+      Only tests/unit/wasm_executor_test.zig surfaced in the linter output
+      because only it carries test blocks. The subsystem itself is dead weight in
+      the build graph -- it is compiled by nothing. Either it is live code that
+      needs wiring, or it is unfinished Stage-10 work that should be marked as
+      such. The test file's own comment says "Real Wasmtime integration happens
+      in Stage 10".
+    affected: src/wasm/**
+    recommendation: "Enqueue as its own issue -- a scope question for CODE-DESIGNER, not part of the wiring fix."
+
+  - id: INC-4
+    severity: MINOR
+    title: "ISS-0137's severity is recorded as MINOR but the gap is 350 never-executed test blocks"
+    detail: >-
+      docs/issues/ISS-0137.json sets severity MINOR. The measured scope is 55
+      files carrying 350 test blocks that have never run, in modules including
+      OIDC provisioning, the repository content-addressed store, and the
+      simulation kernel. The GH #428 precedent showed this class of gap conceals
+      real production bugs (two memory-ownership defects in transition.zig).
+    affected: docs/issues/ISS-0137.json
+    recommendation: "ORCH may reclassify to MAJOR. Not changed by this diagnosis step."
+
+  - id: INC-5
+    severity: MINOR
+    title: "tests/unit/event_store_test.zig (the WIRED copy) is 25 SkipZigTest stubs -- ES-01..ES-08 have zero real unit coverage"
+    detail: >-
+      Discovered while confirming event_store_test_orig.zig is a duplicate. The
+      surviving, wired file is entirely `return error.SkipZigTest`. It is an
+      addTest root on `zig build test` and contributes 25 skipped tests to the
+      green count. Per CLAUDE.md DIRECTIVE T-1 / TEST-DESIGNER rules, a skipped
+      MUST test means the requirement stays PENDING.
+    affected: tests/unit/event_store_test.zig
+    recommendation: "Enqueue as its own issue -- unrelated to wiring, but it is a real coverage hole this diagnosis surfaced."
+
+# ---------------------------------------------------------------------------
+verification:
+  linter_run: "python tools/lint_test_wiring.py"
+  linter_result: "FAIL -- 55 test-bearing file(s) unwired (243 test-bearing files found, 59 addTest roots, 262 reachable)"
+  method: >-
+    Every one of the 55 files was opened and read (import lines, test-block
+    count, and -- for disposition purposes -- the test bodies themselves,
+    programmatically extracted and scanned for Pool/Conn/query/BPM_TEST_DB_URL/
+    http references). Reachability claims were re-verified by importing
+    tools/lint_test_wiring.py directly and querying its BFS result set. The
+    event_store_test_orig.zig duplicate claim was verified by byte comparison
+    after BOM and CRLF normalisation. Missing named modules were verified by
+    grepping build.zig for `.name = "<module>"` -- all 15 return 0 matches.
+  no_fixes_applied: true
+  no_duplicate_iss_created: true
+  no_duplicate_github_issue_created: true
+next_action: "Route to CODE-DESIGNER (WF-03 Step 2)"

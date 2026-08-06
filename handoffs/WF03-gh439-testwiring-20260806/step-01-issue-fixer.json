@@ -1,0 +1,79 @@
+{
+  "handoff_id": "d60e48f2-685b-48b6-9f3a-ffa362e52671",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-gh439-testwiring-20260806/step-01-issue-fixer.json",
+  "created_at": "2026-08-06T05:15:57Z",
+  "started_at": "2026-08-06T05:15:57Z",
+  "completed_at": "2026-08-06T05:28:23Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "issue_ids": [
+      "ISS-0137"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/439",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0137.json",
+      "tools/lint_test_wiring.py",
+      "build.zig",
+      "src/transition_test_root.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Steps 0.5 + 1 for GH #439 / ISS-0137: 55 test-bearing .zig files are unreachable from every b.addTest root in build.zig. ISS-0137 already exists and is already filed on GitHub as #439 -- do NOT create a duplicate ISS file or GitHub issue; update the existing one. Perform root-cause diagnosis and produce a per-file disposition table classifying each of the 55 files into exactly one of: (a) WIRE_INTO_EXISTING_ROOT (name the root/shim and the import line to add), (b) NEW_ADDTEST_ROOT (name the build.zig step), (c) NEEDS_SHIM (module-root @import constraint -- name the *_test_root.zig shim to create, per src/transition_test_root.zig pattern), (d) DELETE_OBSOLETE (justify: superseded by which file), (e) DOCUMENTED_EXCLUSION (justify why it must not run, and where the exclusion is recorded). Read each file enough to judge; do NOT guess. Note which files require BPM_TEST_DB_URL / live services, since wiring those into `zig build test` would break the Green-Main Gate -- those belong on test-integration, not test. Write the diagnosis as docs/issue-reports/ISS-0137-diagnosis.yaml.",
+    "acceptance_criteria": [
+      "docs/issue-reports/ISS-0137-diagnosis.yaml exists with a disposition for all 55 files",
+      "Root cause stated explicitly (why these files became unreachable)",
+      "Each disposition names the concrete build.zig change or shim file required",
+      "Integration-vs-unit split identified so the Green-Main Gate is not broken",
+      "No duplicate ISS file or GitHub issue created"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:update-issue",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 0.5+1 diagnosis for GH #439 / ISS-0137. Read all 55 unwired files and build.zig end to end. Root cause is three distinct mechanisms, not one omission: RC-1 (21 src/ files exist only as named b.createModule modules, never as addTest roots -- the ISS-0132/GH #428 defect never generalised beyond transition.zig; includes the orphaned src/repository and src/simulation trees), RC-2 (12 integration tests never added to tests/integration/main_test.zig's import list), RC-3 (22 files import 15 named modules that do not exist in build.zig at all, so they cannot compile today). Dispositions: 42 NEEDS_SHIM, 12 WIRE_INTO_EXISTING_ROOT, 1 DELETE_OBSOLETE, 0 NEW_ADDTEST_ROOT, 0 DOCUMENTED_EXCLUSION. Unit/integration split: 141 test blocks to `zig build test` (all verified service-free by inspecting test bodies), 184 to `test-integration` (18 files need Postgres, 2 of those also Keycloak), 25 deleted. lint_test_wiring.py has NO exclusion mechanism today -- documented as a required change if disposition (e) is ever used (this diagnosis uses it zero times). No ISS or GitHub duplicate created; existing ISS-0137 updated in place, status left OPEN.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0137-diagnosis.yaml",
+      "docs/issues/ISS-0137.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "INC-1: tests/integration/iss206_token_multiset_test.zig line 85 references bpm.engine_transition; src/bpm.zig exports `transition`, not `engine_transition`. File cannot compile as written. Masked until now because the file is unwired."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "INC-2: tests/integration/exp601_tier_quota_test.zig lines 16-17 import '../../src/config/quota_policy.zig' and '../../src/api/middleware/quota_enforcement.zig', which escape the module root; Zig 0.16 rejects this. File cannot compile as written."
+      },
+      {
+        "severity": "MINOR",
+        "description": "INC-3: src/wasm/ (12 files) is an entire subsystem reachable from no addTest root and re-exported by neither src/bpm.zig nor src/main.zig. Scope question: live code needing wiring, or unfinished Stage-10 work needing to be marked as such."
+      },
+      {
+        "severity": "MINOR",
+        "description": "INC-4: ISS-0137 severity is recorded MINOR but the measured gap is 350 never-executed test blocks across OIDC provisioning, the repository store and the simulation kernel. ORCH may reclassify to MAJOR."
+      },
+      {
+        "severity": "MINOR",
+        "description": "INC-5: tests/unit/event_store_test.zig (the surviving wired copy) is 25 error.SkipZigTest stubs -- ES-01..ES-08 have zero real unit coverage while contributing 25 skipped tests to the green count."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
