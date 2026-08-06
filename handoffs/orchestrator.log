@@ -168,3 +168,4 @@
 2026-08-06T22:22:37Z | ROUTE | WF03-ISS-0169-20260806 | 1f784eb5 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING step 02b
 2026-08-06T22:24:45Z | VALIDATE | WF03-ISS-0169-20260806 | 1f784eb5 | CODE-DESIGN-VALIDATOR | PASS - lua-capability-enforcement.md: LUA-05/06/07 criteria all mapped; registry bindings source-verified in luajit_bindings.zig; fail-closed CAP-2 + SBX-1 ordering invariant present; 3 MINOR scope notes; route to BACKEND-DEV (Step 3)
 2026-08-06T22:27:01Z | ROUTE | WF03-ISS-0169-20260806 | 77135597 | ORCH -> BACKEND-DEV | PENDING step 03
+2026-08-06T22:48:58Z | COMPLETE | WF03-ISS-0169-20260806 | 77135597 | BACKEND-DEV | PASS — LUA-05/06/07 capability gate enforced at call time; empty CapabilitySet now denies all 6 gated platform.* fns (inverse of E9); verified by mutation; ISS-0173 filed+queued
