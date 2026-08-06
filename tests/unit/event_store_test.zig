@@ -201,6 +201,188 @@ test "TC-ES-05-06: valid object schema document is accepted" {
 }
 
 // ---------------------------------------------------------------------------
+// TC-ES-05-02: payload validation against the REGISTERED schema (ISS-0155)
+//
+// ES-05: "WHEN a caller appends a payload that fails the registered schema,
+// THEN the platform returns HTTP 422 with an RFC 9457 body listing every
+// validation failure (field path, constraint violated, actual value)."
+//
+// Until ISS-0155 / GH #473 this was unreachable: Registry.validatePayload
+// fetched the schema then discarded it (`_ = record;`) and Registry.getType
+// returned a placeholder with json_schema hardcoded to "{}", so every JSON
+// object was accepted for every registered event type.
+//
+// The schema-vs-payload decision itself is pure and DB-free — it is
+// `registry.validatePayloadAgainstSchema`, which `Registry.validatePayload`
+// itself calls after fetching the row, so these assertions execute the same
+// bytes production executes (no mock Registry, no fake Pool; DIRECTIVE T-1).
+// The DB half — that getType returns the STORED schema rather than "{}" — is
+// covered by integration TC-ES-05-02 against real PostgreSQL.
+// ---------------------------------------------------------------------------
+
+/// Free a failure list returned by validatePayloadAgainstSchema. The caller
+/// owns both the per-failure strings and the list itself.
+fn freeFailureList(list: *std.ArrayList(registry.ValidationFailure)) void {
+    registry.freeFailures(talloc, list.items);
+    list.deinit(talloc);
+}
+
+/// Collect failures for (schema, payload) and assert the call was accepted.
+fn expectPayloadAccepted(schema: []const u8, payload: []const u8) !void {
+    var failures = try registry.validatePayloadAgainstSchema(talloc, schema, payload);
+    defer freeFailureList(&failures);
+    if (failures.items.len != 0) {
+        std.debug.print("expected accept, got {d} failure(s); first: {s} {s}\n", .{
+            failures.items.len,
+            failures.items[0].field_path,
+            failures.items[0].constraint,
+        });
+        return error.TestUnexpectedResult;
+    }
+}
+
+// The positive direction: a payload conforming to the registered schema is
+// accepted. Without this, "reject everything" would pass the negative test.
+test "TC-ES-05-02a: payload conforming to the registered schema is accepted" {
+    const schema =
+        \\{"type":"object","required":["order_id","amount"],"properties":{"order_id":{"type":"string","maxLength":36},"amount":{"type":"integer","minimum":0}}}
+    ;
+    try expectPayloadAccepted(schema,
+        \\{"order_id":"ord-1","amount":250}
+    );
+    // Optional members may be omitted, and undeclared members are allowed
+    // because the schema does not set additionalProperties:false.
+    try expectPayloadAccepted(schema,
+        \\{"order_id":"ord-2","amount":0,"note":"extra"}
+    );
+    // An empty schema constrains nothing (ES-05 edge case: payload {} with a
+    // schema that has no required fields is valid).
+    try expectPayloadAccepted("{}", "{}");
+    try expectPayloadAccepted("{\"type\":\"object\"}", "{}");
+}
+
+// The negative direction: a payload violating the registered schema is
+// rejected, and EVERY violation is reported with its field path, the failing
+// constraint, and the actual value (ES-05's RFC 9457 requirement).
+test "TC-ES-05-02b: payload failing the registered schema is rejected with per-field detail" {
+    const schema =
+        \\{"type":"object","required":["order_id","amount"],"properties":{"order_id":{"type":"string","maxLength":5},"amount":{"type":"integer","minimum":0}}}
+    ;
+
+    // Wrong type on a declared property.
+    {
+        var f = try registry.validatePayloadAgainstSchema(talloc,
+            schema,
+            \\{"order_id":"ord-1","amount":"not-a-number"}
+        );
+        defer freeFailureList(&f);
+        try std.testing.expectEqual(@as(usize, 1), f.items.len);
+        try std.testing.expectEqualStrings("/amount", f.items[0].field_path);
+        try std.testing.expectEqualStrings("type", f.items[0].constraint);
+        try std.testing.expectEqualStrings("\"not-a-number\"", f.items[0].actual);
+    }
+
+    // ES-05 edge case: payload {} against a schema WITH required fields must
+    // list ALL missing required fields — not stop at the first.
+    {
+        var f = try registry.validatePayloadAgainstSchema(talloc, schema, "{}");
+        defer freeFailureList(&f);
+        try std.testing.expectEqual(@as(usize, 2), f.items.len);
+        try std.testing.expectEqualStrings("/order_id", f.items[0].field_path);
+        try std.testing.expectEqualStrings("required", f.items[0].constraint);
+        try std.testing.expectEqualStrings("null", f.items[0].actual);
+        try std.testing.expectEqualStrings("/amount", f.items[1].field_path);
+        try std.testing.expectEqualStrings("required", f.items[1].constraint);
+    }
+
+    // Multiple simultaneous constraint violations are all reported.
+    {
+        var f = try registry.validatePayloadAgainstSchema(talloc,
+            schema,
+            \\{"order_id":"far-too-long","amount":-5}
+        );
+        defer freeFailureList(&f);
+        try std.testing.expectEqual(@as(usize, 2), f.items.len);
+        try std.testing.expectEqualStrings("/order_id", f.items[0].field_path);
+        try std.testing.expectEqualStrings("maxLength", f.items[0].constraint);
+        try std.testing.expectEqualStrings("/amount", f.items[1].field_path);
+        try std.testing.expectEqualStrings("minimum", f.items[1].constraint);
+        try std.testing.expectEqualStrings("-5", f.items[1].actual);
+    }
+}
+
+// Regression guard for the exact ISS-0155 defect: before the fix, validation
+// ran against a hardcoded "{}" schema, so a payload that plainly contradicts
+// its registered schema was accepted. If the schema argument is ever ignored
+// again, this test fails.
+test "TC-ES-05-02c: the registered schema is actually consulted (ISS-0155 regression)" {
+    const strict =
+        \\{"type":"object","required":["must_have"]}
+    ;
+    var f = try registry.validatePayloadAgainstSchema(talloc, strict,
+        \\{"something_else":1}
+    );
+    defer freeFailureList(&f);
+    // An empty-schema no-op would return zero failures here.
+    try std.testing.expect(f.items.len > 0);
+    try std.testing.expectEqualStrings("/must_have", f.items[0].field_path);
+    try std.testing.expectEqualStrings("required", f.items[0].constraint);
+}
+
+// The real seeded schemas from migrations/094_entity_subsystem.sql, exercised
+// against the payloads src/entities/events.zig actually builds. This pins the
+// two together: if either drifts, real appends would start being rejected in
+// production, and this test catches it first.
+test "TC-ES-05-02d: real ENTITY_RECORD_CREATED schema accepts the payload production builds" {
+    const schema =
+        \\{"type":"object","required":["entity_type","entity_def_version","record_id","field_values"],"properties":{"entity_type":{"type":"string","minLength":1,"maxLength":128},"entity_def_version":{"type":"integer","minimum":1},"record_id":{"type":"string","format":"uuid"},"field_values":{"type":"object"}}}
+    ;
+    try expectPayloadAccepted(schema,
+        \\{"entity_type":"customer","entity_def_version":1,"record_id":"550e8400-e29b-41d4-a716-446655440000","field_values":{"email":"a@b.c"}}
+    );
+
+    // A payload missing a required member is rejected against that same schema.
+    var f = try registry.validatePayloadAgainstSchema(talloc, schema,
+        \\{"entity_type":"customer","entity_def_version":1,"record_id":"550e8400-e29b-41d4-a716-446655440000"}
+    );
+    defer freeFailureList(&f);
+    try std.testing.expectEqual(@as(usize, 1), f.items.len);
+    try std.testing.expectEqualStrings("/field_values", f.items[0].field_path);
+    try std.testing.expectEqualStrings("required", f.items[0].constraint);
+}
+
+// A payload that is not a JSON object at all fails the structural check with a
+// root-pointer "type" failure, regardless of what the schema says.
+test "TC-ES-05-02e: non-object payload fails at the document root" {
+    for ([_][]const u8{ "[1,2]", "42", "\"str\"", "null", "" }) |payload| {
+        var f = try registry.validatePayloadAgainstSchema(talloc, "{\"type\":\"object\"}", payload);
+        defer freeFailureList(&f);
+        try std.testing.expectEqual(@as(usize, 1), f.items.len);
+        try std.testing.expectEqualStrings("/", f.items[0].field_path);
+        try std.testing.expectEqualStrings("type", f.items[0].constraint);
+    }
+}
+
+// Malformed JSON that happens to start with '{' passes the cheap structural
+// guard but must still be rejected by the parse step.
+test "TC-ES-05-02f: malformed JSON payload starting with a brace is rejected" {
+    var f = try registry.validatePayloadAgainstSchema(talloc, "{\"type\":\"object\"}", "{not valid json");
+    defer freeFailureList(&f);
+    try std.testing.expectEqual(@as(usize, 1), f.items.len);
+    try std.testing.expectEqualStrings("/", f.items[0].field_path);
+    try std.testing.expectEqualStrings("type", f.items[0].constraint);
+}
+
+// A stored schema that no longer parses is a registry-integrity fault: it must
+// surface as InvalidJsonSchema, never as "payload accepted".
+test "TC-ES-05-02g: unparseable stored schema returns InvalidJsonSchema, not silent acceptance" {
+    try std.testing.expectError(
+        RegistryError.InvalidJsonSchema,
+        registry.validatePayloadAgainstSchema(talloc, "{broken schema", "{\"a\":1}"),
+    );
+}
+
+// ---------------------------------------------------------------------------
 // ES-07: Retention policy — mode/value consistency (ADP-11 protected families)
 // ---------------------------------------------------------------------------
 
@@ -531,9 +713,17 @@ test "pre-write validation order is actor then key then payload then metadata" {
 //   TC-ES-07-02 (archive returns count of moved rows)
 //                                                        -> see ISS-0154 / GH #472
 //
-//   TC-ES-05-02 (payload failing registered schema -> PayloadSchemaInvalid) is
-//   not implementable at any level today: Registry.validatePayload carries a
-//   TODO and performs only a structural is-JSON-object check, so no payload can
-//   currently fail a registered schema. That is a production gap, not a test gap.
-//                                                        -> see ISS-0155 / GH #473
+//   TC-ES-05-02 (payload failing registered schema -> PayloadSchemaInvalid) was
+//   previously listed here as "not implementable at any level": Registry
+//   .validatePayload carried a TODO and performed only a structural
+//   is-JSON-object check, so no payload could fail a registered schema. That
+//   production gap was ISS-0155 / GH #473 and is now FIXED. Coverage:
+//     - unit (this file): TC-ES-05-02a..g against
+//       registry.validatePayloadAgainstSchema, the pure schema-vs-payload
+//       decision Registry.validatePayload itself calls.
+//     - integration: "TC-ES-05-02: append with payload failing registered
+//       schema returns PayloadSchemaInvalid" in
+//       tests/integration/event_store_integration_test.zig, which additionally
+//       proves Registry.getType returns the STORED schema rather than the old
+//       hardcoded "{}" placeholder.
 // ---------------------------------------------------------------------------

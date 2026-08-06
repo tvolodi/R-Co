@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-03T21:58:33Z'
+generated_at: '2026-08-06T11:20:39Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -2650,12 +2650,19 @@ requirements:
     - individual-file
     implemented_in:
     - src/event_store/registry.zig
+    - src/tools/json_schema.zig
     test_spec: tests/specs/ES-01-08.md
     test_run: WF02-stage1-integration-20260520-run-01.md
     tested_at: '2026-05-21'
     released_at: '2026-05-21'
     release_run: WF02-stage1-release-20260521
     type: requirement
+    note: 'ISS-0155 / GH #473: schema enforcement made real. Registry.getType now parses the stored json_schema
+      instead of returning a ''{}'' placeholder, and Registry.validatePayload validates the payload against
+      it via validatePayloadAgainstSchema, reporting every violation with an RFC 6901 field path, the
+      failing constraint keyword, and the serialised actual value. Previously both were stubs, so any
+      JSON object was accepted for any registered event type while ES-05 read RELEASED.'
+    last_updated: '2026-08-06T11:20:39Z'
   ES-06:
     id: ES-06
     title: Point-in-time query

@@ -91,6 +91,15 @@ fn insertInstance(pool: *Pool, inst_id: []const u8, def_id: []const u8) !void {
     );
 }
 
+/// Delete a per-test event type registration (best-effort cleanup).
+/// registerType() autocommits, so the row outlives the harness transaction and
+/// must be removed explicitly or it accumulates in the shared test database.
+fn cleanupEventType(pool: *Pool, type_name: []const u8) void {
+    const conn = pool.acquire() catch return;
+    defer pool.release(conn);
+    conn.exec("DELETE FROM event_type_registry WHERE name = $1", &.{type_name}) catch {};
+}
+
 /// Delete test data written by a test (best-effort cleanup).
 fn cleanupInstance(pool: *Pool, inst_id: []const u8, idem_keys: []const []const u8) void {
     const conn = pool.acquire() catch return;
@@ -603,6 +612,129 @@ test "TC-ES-05-01: append with unregistered event_type returns UnknownEventType"
     }
 }
 
+// TC-ES-05-02 (integration) — ISS-0155 / GH #473
+//
+// ES-05: "GIVEN event type T is registered, WHEN a caller appends a payload
+// that fails the registered schema, THEN the platform returns HTTP 422 ...
+// listing every validation failure (field path, constraint violated, actual
+// value)." The mapped store-level error is PayloadSchemaInvalid.
+//
+// This is the DB half of the fix and the ONLY level that can catch the second
+// half of the ISS-0155 defect: Registry.getType used to return a placeholder
+// with json_schema hardcoded to "{}", so even a correct validatePayload would
+// have validated every payload against the empty schema. The pure
+// schema-vs-payload decision is unit-tested in tests/unit/event_store_test.zig
+// (TC-ES-05-02a..g); what is asserted HERE is that the schema actually stored
+// in event_type_registry is the one enforced.
+//
+// Fixture isolation: per-test UUIDs and a per-test event type name, so this
+// test does not collide with any sibling binary sharing BPM_TEST_DB_URL.
+test "TC-ES-05-02: append with payload failing registered schema returns PayloadSchemaInvalid" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    // Per-test unique identifiers (ISS-0113: never reuse deterministic keys in
+    // a shared test database).
+    const suffix = try h.newUuidString(alloc);
+    defer alloc.free(suffix);
+    const type_name = try std.fmt.allocPrint(alloc, "ES05_SCHEMA_{s}", .{suffix[0..8]});
+    defer alloc.free(type_name);
+    const idem_ok = try std.fmt.allocPrint(alloc, "es05-schema-ok-{s}", .{suffix});
+    defer alloc.free(idem_ok);
+    const idem_bad = try std.fmt.allocPrint(alloc, "es05-schema-bad-{s}", .{suffix});
+    defer alloc.free(idem_bad);
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+
+    // A schema with real constraints — NOT "{}". If getType ever regresses to
+    // returning a placeholder empty schema, the reject case below stops failing.
+    _ = try registry.registerType(alloc, RegisterParams{
+        .name = type_name,
+        .schema_version = 1,
+        .json_schema =
+        \\{"type":"object","required":["order_id","amount"],"properties":{"order_id":{"type":"string"},"amount":{"type":"integer","minimum":1}}}
+        ,
+        .description = null,
+    });
+    defer cleanupEventType(&pool, type_name);
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    // A fresh random UUID, not a fixed literal — the shared test database is
+    // written concurrently by sibling binaries (ISS-0113).
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = "defdef00-0052-0000-0000-000000000052";
+    try insertInstance(&pool, inst_str, def_str);
+    defer cleanupInstance(&pool, inst_str, &.{ idem_ok, idem_bad });
+
+    const inst_uuid = try parseUuid(alloc, inst_str);
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000052");
+
+    // ── Direction 1: a CONFORMING payload is accepted and persisted ──────────
+    // Without this half, "reject everything" would satisfy the reject case.
+    const ok_result = try store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = type_name,
+        .payload =
+        \\{"order_id":"ord-1","amount":250}
+        ,
+        .actor_id = actor_uuid,
+        .idempotency_key = idem_ok,
+        .metadata = null,
+    });
+    try std.testing.expect(!ok_result.is_duplicate);
+
+    // ── Direction 2: a NON-CONFORMING payload is rejected ────────────────────
+    // "amount" violates minimum, and "order_id" is missing entirely. Both are
+    // valid JSON objects, so the pre-ISS-0155 is-object-only check accepted
+    // them; only real schema enforcement rejects them.
+    const err = store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = type_name,
+        .payload =
+        \\{"amount":0}
+        ,
+        .actor_id = actor_uuid,
+        .idempotency_key = idem_bad,
+        .metadata = null,
+    });
+    try std.testing.expectError(StoreError.PayloadSchemaInvalid, err);
+
+    // ES-05 requires the per-field detail behind the 422, not just the status.
+    const failures = registry.lastValidationFailures();
+    try std.testing.expectEqual(@as(usize, 2), failures.len);
+    try std.testing.expectEqualStrings("/order_id", failures[0].field_path);
+    try std.testing.expectEqualStrings("required", failures[0].constraint);
+    try std.testing.expectEqualStrings("null", failures[0].actual);
+    try std.testing.expectEqualStrings("/amount", failures[1].field_path);
+    try std.testing.expectEqualStrings("minimum", failures[1].constraint);
+    try std.testing.expectEqualStrings("0", failures[1].actual);
+
+    // The rejected append must not have written an events row.
+    const check = try pool.acquire();
+    defer pool.release(check);
+    var cnt = try check.query(
+        alloc,
+        "SELECT COUNT(*) FROM events WHERE idempotency_key = $1",
+        &.{idem_bad},
+    );
+    defer cnt.deinit();
+    try std.testing.expect(cnt.rows.len > 0);
+    if (cnt.rows[0][0]) |s| {
+        try std.testing.expectEqual(@as(i64, 0), try std.fmt.parseInt(i64, s, 10));
+    }
+}
+
 // ---------------------------------------------------------------------------
 // ES-06: Point-in-time query
 // ---------------------------------------------------------------------------
@@ -1016,10 +1148,18 @@ test "TC-ADP-11-03: protected keep_days policy archives and preserves queryabili
     const inst_uuid = try parseUuid(alloc, inst_str);
     const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000032");
 
+    // ISS-0155: INSTANCE_STARTED's registered schema (migrations/
+    // 002_event_type_registry.sql) requires "definition_id". This payload used
+    // to be "{}", which passed only because ES-05 schema enforcement was a
+    // no-op. The payload is now made to conform rather than the enforcement
+    // weakened — this test is about retention policy, not about schema
+    // validation, so a conforming payload is the correct fixture.
     _ = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "INSTANCE_STARTED",
-        .payload = "{}",
+        .payload =
+        \\{"definition_id":"defdef00-0032-0000-0000-000000000032"}
+        ,
         .actor_id = actor_uuid,
         .idempotency_key = "adp11-idem-02",
         .metadata = null,

@@ -20,7 +20,8 @@ const plugin_registry_mod = @import("plugin_registry.zig");
 const scheduler_store_mod = @import("../scheduler/store.zig");
 const dlq_store_mod = @import("../dlq/store.zig");
 const metrics = @import("obs_metrics");
-const json_schema = @import("../tools/json_schema.zig");
+// Named module, not a relative import — see the note in src/main.zig (ISS-0155).
+const json_schema = @import("json_schema");
 
 // ---------------------------------------------------------------------------
 // fillRandom — cross-platform OS entropy (replaces std.crypto.random removed

@@ -28,7 +28,12 @@ pub const instance_routes = @import("api/routes/instances.zig");
 pub const task_store = @import("tasks/store.zig");
 pub const scheduler_poller = @import("scheduler/scheduler.zig"); // SCH-02
 pub const task_routes = @import("api/routes/tasks.zig");
-pub const json_schema_mod = @import("tools/json_schema.zig"); // EE-09 schema validator (pure)
+// EE-09 / ES-05 schema validator (pure). Imported as a NAMED module, not by
+// relative path: src/event_store/registry.zig (ISS-0155) needs it too, and that
+// file lives under the `event_store` module whose root is store.zig, so it can
+// only reach the validator as a named module. A file may belong to exactly one
+// module, so every importer must use the same named form.
+pub const json_schema_mod = @import("json_schema");
 pub const api_errors = @import("api/errors.zig"); // API-01 RFC 9457 Problem Details
 pub const api_response = @import("api/response.zig"); // API-01 response builder
 pub const api_content_type = @import("api/middleware/content_type.zig"); // API-01 Content-Type enforcement

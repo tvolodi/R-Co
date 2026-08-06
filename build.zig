@@ -37,6 +37,15 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    // ISS-0155 / GH #473: src/event_store/registry.zig performs real ES-05 JSON
+    // Schema validation via this validator. registry.zig lives under the
+    // `event_store` module (root src/event_store/store.zig), so it cannot reach
+    // ../tools/json_schema.zig by relative @import — expose it as a named module.
+    const json_schema_mod = b.createModule(.{
+        .root_source_file = b.path("src/tools/json_schema.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
     const pool_root_mod = b.createModule(.{
         .root_source_file = b.path("src/db/pool.zig"),
         .target = target,
@@ -46,6 +55,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            .{ .name = "json_schema", .module = json_schema_mod },
         },
     });
     // env_mod: src/env.zig, the portable environment-variable helper (ISS-0134).
@@ -237,6 +247,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "tenant_context", .module = tenant_context_mod },
         .{ .name = "pipeline_context", .module = pipeline_context_mod },
         .{ .name = "obs_metrics", .module = obs_metrics_mod },
+        .{ .name = "json_schema", .module = json_schema_mod },
         // ISS-0134: portable environment-variable access (src/env.zig).
         .{ .name = "env", .module = env_mod },
     };
@@ -295,6 +306,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "pool", .module = pool_root_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            .{ .name = "json_schema", .module = json_schema_mod },
         },
     });
     const event_store_tests = b.addTest(.{
@@ -313,12 +325,28 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "tenant_context", .module = tenant_context_mod },
                 .{ .name = "pipeline_context", .module = pipeline_context_mod },
                 .{ .name = "obs_metrics", .module = obs_metrics_mod },
+                .{ .name = "json_schema", .module = json_schema_mod },
                 .{ .name = "env", .module = env_mod },
                 .{ .name = "event_store", .module = event_store_mod },
             },
         }),
     });
     const run_event_store_tests = b.addRunArtifact(event_store_tests);
+
+    // ISS-0155 / GH #473: json_schema.zig is now a named module (so both
+    // src/main.zig and src/event_store/registry.zig can reach the same file),
+    // which removed it from `root`'s file set and therefore from every existing
+    // addTest root. It is pure and import-free, so it is its own test root here
+    // — otherwise its EE-09 and ES-05 test blocks would compile but never run,
+    // exactly the ISS-0133 failure mode lint_test_wiring.py exists to catch.
+    const json_schema_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tools/json_schema.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_json_schema_tests = b.addRunArtifact(json_schema_tests);
 
     const graph_mod = b.createModule(.{
         .root_source_file = b.path("src/definition/graph.zig"),
@@ -372,6 +400,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            .{ .name = "json_schema", .module = json_schema_mod },
             // identity_provider added so integration tests can call route handlers
             // that reference auth.getIdentityProviderManager() (e.g. handlePatchTenant).
             .{ .name = "identity_provider", .module = identity_provider_mod },
@@ -478,6 +507,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            .{ .name = "json_schema", .module = json_schema_mod },
         },
     });
     const api_mod = b.createModule(.{
@@ -491,6 +521,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            .{ .name = "json_schema", .module = json_schema_mod },
         },
     });
     // API-01/API-06/API-07/API-09/OIDC-01 unit tests, aggregated into one
@@ -880,6 +911,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "tenant_context", .module = tenant_context_mod },
                 .{ .name = "pipeline_context", .module = pipeline_context_mod },
                 .{ .name = "obs_metrics", .module = obs_metrics_mod },
+                .{ .name = "json_schema", .module = json_schema_mod },
             },
         }),
     });
@@ -978,6 +1010,7 @@ pub fn build(b: *std.Build) void {
     // bpm_src_tests aggregator declared above.
 
     test_step.dependOn(&run_event_store_tests.step);
+    test_step.dependOn(&run_json_schema_tests.step);
     test_step.dependOn(&run_graph_tests.step);
     test_step.dependOn(&run_bpm_main_tests.step);
     test_step.dependOn(&run_snapshot_tests.step);
@@ -1940,6 +1973,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "tenant_context", .module = tenant_context_mod },
         .{ .name = "pipeline_context", .module = pipeline_context_mod },
         .{ .name = "obs_metrics", .module = obs_metrics_mod },
+        .{ .name = "json_schema", .module = json_schema_mod },
         .{ .name = "db_provisioning", .module = provisioning_mod_migrate },
     };
     const migrate_exe = b.addExecutable(.{

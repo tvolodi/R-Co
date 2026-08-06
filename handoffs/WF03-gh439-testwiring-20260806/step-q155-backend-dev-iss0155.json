@@ -1,0 +1,72 @@
+{
+  "handoff_id": "24494923-d496-44de-8f3f-b3dd0787aa7d",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "q155",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-gh439-testwiring-20260806/step-q155-backend-dev-iss0155.json",
+  "created_at": "2026-08-06T10:13:12Z",
+  "started_at": "2026-08-06T10:13:12Z",
+  "completed_at": "2026-08-06T11:22:58Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "ES-05"
+    ],
+    "issue_ids": [
+      "ISS-0155"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/473",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "queue_drain": true,
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0155.json",
+      "src/event_store/registry.zig",
+      "src/tools/json_schema.zig"
+    ]
+  },
+  "task": {
+    "description": "Queue-drain pass for ISS-0155 / GH #473: ES-05 schema enforcement is a no-op in production while ES-05 is marked RELEASED. Registry.validatePayload fetches the registered schema then discards it (`_ = record;`), performing only an is-JSON-object check; Registry.getType returns a placeholder with json_schema hardcoded to \"{}\". Net effect: any JSON object is accepted for any registered event type. Implement real schema validation: getType must return the actually-stored json_schema parsed from the queried row; validatePayload must validate the payload against that schema and reject non-conforming payloads with a typed error, populating last_failures with RFC 6901 field paths, failing constraint keyword, and serialised actual value. Reuse/extend the existing src/tools/json_schema.zig validator rather than writing a new one. Add real tests proving both directions (conforming ACCEPTED, non-conforming REJECTED). Re-derive ES-05 requirement status honestly.",
+    "acceptance_criteria": [
+      "Registry.getType parses the queried row into a real EventTypeRecord (notably json_schema) instead of returning a \"{}\" placeholder",
+      "Registry.validatePayload validates payload against record.json_schema and returns PayloadValidationFailed on non-conformance",
+      "last_failures populated with one ValidationFailure per violated constraint (field_path RFC 6901 pointer, constraint keyword, serialised actual)",
+      "Real tests assert BOTH a conforming payload is accepted AND a non-conforming payload is rejected; mutation check confirms tests fail when validation is broken",
+      "ES-05 requirement status honestly reflects reality via tools/reqctl.py",
+      "zig build exits 0 with no 'error set' output",
+      "zig build test exits 0",
+      "python tools/lint_test_wiring.py exits 0",
+      "python tools/lint_sql_param_types.py src tests reports no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:update-issue",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0155 / GH #473 resolved: ES-05 event payload schema enforcement is now real. Both halves of the defect were fixed, and either alone would have left behaviour unchanged. (1) Registry.getType parsed no row at all -- it returned a placeholder with json_schema hardcoded to the empty object; it now parses id/name/schema_version/json_schema/description/created_at/updated_at from the queried row into an allocator-owned EventTypeRecord (freed via the new freeTypeRecord). (2) Registry.validatePayload fetched the record and discarded it, checking only that the payload started with a brace; it now delegates to the new pure, DB-free registry.validatePayloadAgainstSchema(allocator, schema_text, payload), the same bytes production runs (same ISS-0148 pattern as validateRegisterParams), and populates last_failures with one ValidationFailure per violated constraint -- RFC 6901 field_path, failing schema keyword, serialised actual value -- as ES-05's RFC 9457 criterion requires. Reused the EXISTING validator src/tools/json_schema.zig (EE-09) rather than writing a second one, extending it with a collecting entry point validateCollect/deinitViolations plus the object-structure keywords ES-05's registered schemas actually use. Subset now covered: type, required, properties, items, enum, minimum, maximum, minLength, maxLength, additionalProperties:false -- applied recursively with RFC 6901 pointer escaping. Deliberately NOT implemented (documented non-goals, ignored rather than rejected so valid payloads are never spuriously refused): $ref, allOf/anyOf/oneOf/not, patternProperties, pattern, format, dependencies, tuple-form items. This subset validates every schema seeded by migrations 002 and 094 exactly. Build wiring: json_schema.zig became a named module (registry.zig sits under the event_store module whose root is store.zig, so a relative import escapes the module path); src/main.zig and src/engine/instance.zig were switched to the same named form since a file may belong to only one module, and json_schema.zig was given its own addTest root so its test blocks keep running (lint_test_wiring caught this immediately -- the ISS-0133 failure mode). MUTATION CHECK PASSED: forcing the schema to look empty made TC-ES-05-02b/c/d fail; restoring made them pass. Fixed one test that had been relying on the broken behaviour: TC-ADP-11-03 appended an empty-object payload for INSTANCE_STARTED, whose registered schema requires definition_id. Per CLAUDE.md 'Never Satisfy a Gate by Editing What It Measures', the PAYLOAD was made to conform rather than the enforcement weakened. zig build exits 0 with no 'error set' output; zig build test 61/61 steps, 826/890 passed (64 pre-existing skips); lint_test_wiring PASS; lint_sql_param_types 0 BLOCKER/MAJOR.",
+    "artifacts_out": [
+      "src/event_store/registry.zig",
+      "src/tools/json_schema.zig",
+      "src/main.zig",
+      "src/engine/instance.zig",
+      "build.zig",
+      "tests/unit/event_store_test.zig",
+      "tests/integration/event_store_integration_test.zig",
+      "docs/anti-patterns.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml"
+    ],
+    "issues": [],
+    "next_action": "ORCH continues queue drain"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
