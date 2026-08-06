@@ -25,8 +25,47 @@
   ],
   "notes": [
     "Filed per ISSUE_QUEUE.md forwarding rules rather than expanding ISS-0161's scope.",
-    "Motivating evidence: the first sandbox rule actually exercised under ISS-0161 (loadfile removal) turned out to be BROKEN. These 12 requirements have never been executed."
+    "Motivating evidence: the first sandbox rule actually exercised under ISS-0161 (loadfile removal) turned out to be BROKEN. These 12 requirements have never been executed.",
+    "Status remains OPEN after tranche 1: 9 of the 12 requirements (LUA-08..16) are still IN_PROGRESS and unclaimed, and LUA-07 is only half-satisfied. See tranche_progress below."
   ],
+  "tranche_progress": {
+    "updated_at": "2026-08-06T23:32:26Z",
+    "updated_by": "DOC-UPDATER WF03-ISS-0169-20260806 Step 7",
+    "plan": "Four sequential WF-03 runs per the Step 1 scope_recommendation; CLAUDE.md caps a run at 4 requirements.",
+    "tranche_1": {
+      "requirements": ["LUA-05", "LUA-06", "LUA-07"],
+      "run_id": "WF03-ISS-0169-20260806",
+      "status": "DONE",
+      "outcome": "LUA-05 RELEASED, LUA-06 RELEASED, LUA-07 left IN_PROGRESS (partial).",
+      "summary": "Closed the capability enforcement hole: ExecutionContext now reaches every lua_CFunction via LUA_REGISTRYINDEX light userdata and all 6 gated platform.* functions check the CapabilitySet at call time, fail-closed. Fixed the luaopen_base ordering invariant (open base, then prune) and unified product/test state behind createSandboxedState. Manifest hash now binds script source + sorted 0x00-separated capabilities, with constant-time verification and pre-state-creation rejection.",
+      "evidence": "zig build exit 0; zig build test-lua 71/71; zig build test 936/1000 passed, 0 failed, 81/81 steps. Baseline main b3d406d = 865/929; per-binary diff shows exactly one new binary of 71 tests and identical pass counts on every pre-existing binary -- ZERO regressions. Gate proven load-bearing by mutation (neutering requireCapability turns exactly the capability tests red).",
+      "design": "src/design/lua-capability-enforcement.md",
+      "test_report": "tests/reports/report-20260806-WF03-ISS-0169-20260806.yaml",
+      "lua_07_scope_boundary": "LUA-07 criterion 2 (manifest hash in the execution audit record) requires the engine to write the audit row, out of scope for src/lua. Filed as ISS-0176 / https://github.com/tvolodi/R-Co/issues/504 and queued. Not marking LUA-07 RELEASED is deliberate -- doing so would repeat the ISS-0153 pattern this issue exists to correct."
+    },
+    "tranche_2": {
+      "requirements": ["LUA-08", "LUA-09", "LUA-10"],
+      "status": "PENDING",
+      "scope": "Instruction limit, memory limit, wall-clock timeout. instruction_limiter.zig and memory_limiter.zig were made to COMPILE in tranche 1 but no limiter is installed by executeScript -- they still have no caller."
+    },
+    "tranche_3": {
+      "requirements": ["LUA-11", "LUA-12", "LUA-13"],
+      "status": "PENDING",
+      "scope": "Stateful host API: variable read/write, service call, logging. Depends on tranche 1's context plumbing."
+    },
+    "tranche_4": {
+      "requirements": ["LUA-14", "LUA-15", "LUA-16"],
+      "status": "PENDING",
+      "scope": "Time source, structured failure, runtime error capture. Includes moving fail.zig's forgeable script-writable globals into the registry (design section 11 follow-up 3)."
+    },
+    "incidental_issues_filed": [
+      "ISS-0172 / https://github.com/tvolodi/R-Co/issues/500",
+      "ISS-0173 / https://github.com/tvolodi/R-Co/issues/501",
+      "ISS-0174 / https://github.com/tvolodi/R-Co/issues/502",
+      "ISS-0175 / https://github.com/tvolodi/R-Co/issues/503",
+      "ISS-0176 / https://github.com/tvolodi/R-Co/issues/504"
+    ]
+  },
   "diagnosis": {
     "diagnosed_at": "2026-08-06T22:05:22Z",
     "diagnosed_by": "ISSUE-FIXER WF03-ISS-0169-20260806 Step 1",

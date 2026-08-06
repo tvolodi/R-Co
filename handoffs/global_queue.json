@@ -224,6 +224,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0176",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/504",
+      "title": "LUA-07 criterion 2: engine must write manifest_hash into the execution audit record",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-06T23:35:18Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

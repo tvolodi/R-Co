@@ -1,0 +1,31 @@
+{
+  "id": "ISS-0176",
+  "title": "LUA-07 second criterion unsatisfied: manifest_hash is produced on ScriptResult but never written into the execution audit record",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/504",
+  "discovered_at": "2026-08-06T23:32:26Z",
+  "discovered_by": "DOC-UPDATER WF03-ISS-0169-20260806 Step 7",
+  "discovered_while_fixing": "ISS-0169",
+  "run_id": null,
+  "affected_areas": [
+    "src/engine",
+    "src/lua/manifest.zig",
+    "src/lua/executor.zig"
+  ],
+  "symptom": "LUA-07 (Capability manifest validation) has two acceptance criteria. Criterion 1 -- the manifest hash binds the script source together with its declared capabilities -- is satisfied in src/lua/ by ISS-0169 tranche 1: manifest.zig computes a digest over the script source plus sorted, 0x00-separated capabilities, verifyManifestHash compares it in constant time, and executeScriptWithManifest rejects a mismatch before any Lua state is created. Criterion 2 -- the manifest hash appears in the execution audit record -- is NOT satisfied. src/lua/ produces manifest_hash on ScriptResult, but nothing consumes it: no caller writes it into an audit row, so an operator auditing a script execution cannot tell which script source and which capability set actually ran.",
+  "root_cause": "Scope boundary, not a defect in the delivered code. The audit row for a script execution is written by the engine (the caller of the Lua executor), not by src/lua/. ISS-0169 tranche 1 was scoped to src/lua/ and correctly stopped at producing the value on ScriptResult. The engine-side plumbing that carries manifest_hash from ScriptResult into the persisted audit record was deliberately left open and recorded in src/design/lua-capability-enforcement.md section 11, follow-up 2.",
+  "acceptance_criteria": [
+    "The engine call site that executes a Lua script reads manifest_hash from ScriptResult and persists it on the execution audit record",
+    "The audit record's manifest_hash is queryable for a completed script execution",
+    "An integration test asserts that executing a script with a known manifest produces an audit row carrying that exact hash",
+    "The test is mutation-checked: dropping the hash write makes it fail",
+    "LUA-07 set to RELEASED only once both its criteria are evidenced"
+  ],
+  "notes": [
+    "Filed per CLAUDE.md 'No Issue Left Local-Only' and the ISSUE_QUEUE forwarding rule rather than expanding ISS-0169 tranche 1's scope onto its branch.",
+    "TEST-DESIGN-VALIDATOR (WF03-ISS-0169-20260806 Step 4b) ruled criterion 2 only partially satisfiable within src/lua and required that LUA-07 not be marked RELEASED by this run.",
+    "LUA-07 is therefore left at IN_PROGRESS with an explanatory note. Marking it RELEASED on the strength of the satisfied half would repeat the ISS-0153 pattern that ISS-0169 exists to correct.",
+    "Source: src/design/lua-capability-enforcement.md section 11, follow-up 2."
+  ]
+}
