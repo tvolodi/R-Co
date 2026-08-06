@@ -1,4 +1,44 @@
 {
   "version": "1",
-  "items": []
+  "items": [
+    {
+      "issue_id": "ISS-0163",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/489",
+      "title": "103 dangling implemented_in refs in requirements.yaml; reqctl validate never checks them",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-06T18:22:19Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0162",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/486",
+      "title": "entity_subsystem_test flaky: two cross-binary races in shared TestHarness",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-06T18:22:19Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0161",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/485",
+      "title": "LuaJIT not available; src/lua executes no scripts (LUA-01..16 IN_PROGRESS)",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-06T18:22:19Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    }
+  ]
 }
