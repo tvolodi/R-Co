@@ -1,3 +1,6 @@
+-- scope: public
+-- ISS-0604 / GH-470: defines public.bpm_drop_tenant_schema() and drives provisioning
+-- via dynamic EXECUTE format(... %I ...). Runs once from the public pass only.
 -- Migration 069: retroactive tenant schema provisioning and schema drop helper (ISS-0068)
 -- Idempotent migration: safe to run multiple times.
 

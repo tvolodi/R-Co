@@ -1,3 +1,7 @@
+-- scope: public
+-- ISS-0604 / GH-470: iterates SCHEMA-mode tenants and applies DDL via dynamic
+-- EXECUTE format(... %I ...). It is driven once from the public pass; running it
+-- inside each per-tenant pass would redo the same cross-schema loop N times.
 -- Migration 134: ISS-0112 - Add secret_ref and secret_key_id to SCHEMA-mode tenant webhook_subscriptions
 -- Issue: https://github.com/R-Co/bpm-platform/issues/375 (ISS-0112)
 -- Date: 2026-08-04

@@ -1,3 +1,6 @@
+-- scope: public
+-- ISS-0604 / GH-470: corrective backfill over public.tenant / public.tenant_schemas.
+-- Runs once from the public pass only.
 -- Migration 070: corrective backfill for tenant schema provisioning (ISS-0068)
 -- Applies provisioning for any tenants still missing tenant_schemas rows.
 
