@@ -171,3 +171,5 @@
 2026-08-06T22:48:58Z | COMPLETE | WF03-ISS-0169-20260806 | 77135597 | BACKEND-DEV | PASS — LUA-05/06/07 capability gate enforced at call time; empty CapabilitySet now denies all 6 gated platform.* fns (inverse of E9); verified by mutation; ISS-0173 filed+queued
 2026-08-06T22:50:42Z | ROUTE | WF03-ISS-0169-20260806 | 98aa0b7a | ORCH -> TEST-DESIGNER | PENDING step 04
 2026-08-06T23:08:26Z | COMPLETE | WF03-ISS-0169-20260806 | 98aa0b7a | TEST-DESIGNER | PASS - LUA-05/06/07 specs + 18 capability-enforcement test cases vs real LuaJIT; test-lua 71/71 (was 53); filed ISS-0174/GH#502
+2026-08-06T23:10:16Z | ROUTE | WF03-ISS-0169-20260806 | 4343ce0e | ORCH -> TEST-DESIGN-VALIDATOR | PENDING step 04b
+2026-08-06T23:15:16Z | VALIDATE | WF03-ISS-0169-20260806 | 4343ce0e | TEST-DESIGN-VALIDATOR | PASS - 18/18 blocks verified, 71/71 test-lua, load-bearing confirmed by 2 mutations

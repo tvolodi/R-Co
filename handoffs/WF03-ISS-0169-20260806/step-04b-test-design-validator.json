@@ -1,0 +1,67 @@
+{
+  "handoff_id": "4343ce0e-4470-4ca3-913f-586eb021ac9d",
+  "run_id": "WF03-ISS-0169-20260806",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-08-06T23:10:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [
+      "LUA-05",
+      "LUA-06",
+      "LUA-07"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/LUA-05.md",
+      "tests/specs/LUA-06.md",
+      "tests/specs/LUA-07.md",
+      "src/lua/capability_enforcement_test.zig",
+      "src/design/lua-capability-enforcement.md"
+    ]
+  },
+  "task": {
+    "description": "HARD GATE. Validate the LUA-05/06/07 test specs and test source written in Step 4. TEST-RUNNER cannot start until PASS.",
+    "acceptance_criteria": [
+      "Every MUST requirement has a runnable test file",
+      "No error.SkipZigTest on MUST tests without a passing counterpart",
+      "Fixtures isolated",
+      "Tests fail clearly if prerequisites absent",
+      "Spec case count matches implementation"
+    ],
+    "functions_to_call": [
+      "fn:validate-test-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "HARD GATE PASS. LUA-05/06/07 tranche-1 test design validated. Counted 18 `test` blocks in src/lua/capability_enforcement_test.zig, matching the spec claim exactly (6 LUA-05 S-cases, 7 blocks covering LUA-06 D01-D12, 5 LUA-07 M-cases). `zig build test-lua` = 71/71 pass. Load-bearing status proven by two mutations run by this validator, not taken on trust: (1) inverting an assertion in TC-LUA-05-S05 turned exactly that block red with a real runtime value ('expected 999, found 24'), proving function bodies execute rather than being satisfied by an ISS-0172-style type pin; (2) making host_context.requireCapability fail-OPEN on an absent context turned TC-LUA-06-D08 and D09 red and NO other test in the suite, confirming those two cases cover a fail-closed path that previously had none. Source restored and re-verified green (71/71) after both mutations. No error.SkipZigTest anywhere in src/lua/. Fixtures per-test and isolated (fresh CapabilitySet/ExecutionContext/lua_State per block, std.testing.allocator fails on leak, every result and manifest has its own defer). No credentials, secrets, URLs, or SQL in the test source. The LUA-06/LUA-07 spec rewrites are judged a LEGITIMATE scope correction, not bar-lowering \u2014 see issues for the reasoning.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "JUDGEMENT on the LUA-06 spec rewrite: LEGITIMATE, not gate-gaming. TEST-DESIGNER removed old positive cases TC-LUA-06-02/04/06/08/10/12 which asserted EFFECTS ('the write is staged', 'instance state is returned as a Lua table') and were labelled `Layer: integration`. I verified by reading source that those effects genuinely do not exist yet: src/lua/host_api/write_variable.zig line 41-43, get_instance_state.zig line 34, and read_variable.zig line 44-46 all push nil/empty and carry explicit 'LUA-11 (tranche 3) implements the actual staging. Gated, not implemented.' comments, matching design \u00a79's written scope boundary. Asserting those effects today would fail against CORRECT code for this tranche. Decisive evidence that the bar was RAISED rather than lowered: the replacement TC-LUA-06-D07 runs a full 6x6 cross-product (36 combinations) where the old spec ran 6 isolated one-capability checks, and new D08/D09 cover a fail-closed path that my own mutation proved NOTHING else in the suite caught. Every old case has a traceable successor: D13/D14 -> TC-LUA-05-S05, D15 -> the `granted:` field assertions in expectDenied, D16 -> TC-LUA-05-S06 (CAP-1). Nothing was silently dropped."
+      },
+      {
+        "severity": "MINOR",
+        "description": "JUDGEMENT on the LUA-07 spec rewrite ('cases encoded defects as specification'): LEGITIMATE. The old spec's hash factory hashed only limits and capability strings, excluding the script artifact \u2014 so it could not detect a manifest paired with a different script, which is exactly what acceptance criterion 1 requires. It was also order-dependent and separator-free, contradicting its own TC-LUA-07-13. Removing cases that codify a defect and replacing them with TC-LUA-07-M05's five hash properties (order-independence, 0x00 separator, artifact binding down to one byte, every limit participating, determinism) strictly strengthens the requirement. Old cases 01-16 are not dropped: they are retained as 8 test blocks in src/lua/manifest.zig (verified by count) and cross-referenced in LUA-07.md \u00a75."
+      },
+      {
+        "severity": "MINOR",
+        "description": "JUDGEMENT on LUA-07 acceptance criterion 2 ('manifest hash appears in the execution audit record') being only PARTIALLY satisfied: ACCEPTABLE SCOPE for this gate, and explicitly NOT grounds for FAIL. src/lua/ demonstrably PRODUCES the value \u2014 ScriptResult.manifest_hash and ExecutionContext.manifest_hash are populated from the verified hash and asserted byte-for-byte by TC-LUA-07-M01 and M04. Persisting it into the audit row requires I/O, which executor.zig deliberately does not perform (consistent with the transition.zig purity rule). Critically, TEST-DESIGNER DISCLOSED this in LUA-07.md \u00a76 rather than concealing it, and stated plainly that LUA-07 must not be marked RELEASED on these tests alone. That is the honest-scope behaviour ISS-0169 exists to restore, and it is the opposite of gate-gaming. ACTION FOR ORCH: LUA-07 must NOT be set to RELEASED by DOC-UPDATER in this run; the engine-side audit write (design \u00a711 follow-up 2) must be tracked as its own queued issue before LUA-07 can be closed."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Test-wiring note, verified not a defect. src/lua_test_root.zig line 83 imports the new file as `pub const capability_enforcement_test = @import(...)`, so the test runner collects its `test` blocks directly \u2014 it does NOT depend on the refAllDecls type-pin mechanism that ISS-0172/GH #500 showed to be unreliable. Confirmed empirically by the S05 mutation above: a false assertion produced a genuine runtime failure, which a type pin could never do."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T23:10:16Z",
+  "completed_at": "2026-08-06T23:15:16Z"
+}
