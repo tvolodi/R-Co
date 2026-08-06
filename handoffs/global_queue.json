@@ -58,10 +58,13 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/503",
       "title": "LuaJIT build input luajit_relver.txt git-ignored but required by build.zig \u2014 fresh clone cannot build test-lua",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-ws2-loop",
+        "locked_at": "2026-08-06T23:42:55Z"
+      },
       "added_at": "2026-08-06T23:27:04Z",
-      "started_at": null,
+      "started_at": "2026-08-06T23:42:55Z",
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null

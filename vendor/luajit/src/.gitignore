@@ -1,6 +1,24 @@
+# NOTE (ISS-0175 / GH #503): this list is inherited from upstream LuaJIT, where
+# `luajit_relver.txt` is correctly ignored because upstream's src/Makefile
+# generates it from the LuaJIT repo's own git metadata
+# (`git show -s --format=%ct`, Makefile:493-495).
+#
+# This repo vendors LuaJIT as a snapshot and drives the build from
+# vendor/luajit/build.zig instead of that Makefile. There is no LuaJIT `.git`
+# here to read, and build.zig consumes the file as a REQUIRED input
+# (genversion.addFileArg, build.zig:79) without generating it. Ignoring it made
+# every fresh clone and every CI run fail with
+# "failed to check cache: ... luajit_relver.txt file_hash FileNotFound".
+#
+# So `luajit_relver.txt` is deliberately TRACKED here. This mirrors upstream's
+# own fallback for non-git consumers (source tarballs), which read a tracked
+# `../.relver`. A vendored dependency is the tarball case, not the git case.
+#
+# The entries below stay ignored and are correct to ignore: unlike
+# luajit_relver.txt, build.zig DOES generate every one of them into the Zig
+# cache (genversion -> luajit.h; buildvm -> the lj_*def.h set and lj_vm).
 luajit
 luajit.h
-luajit_relver.txt
 lj_bcdef.h
 lj_ffdef.h
 lj_libdef.h

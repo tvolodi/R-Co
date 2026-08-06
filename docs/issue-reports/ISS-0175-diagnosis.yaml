@@ -1,0 +1,115 @@
+issue_id: ISS-0175
+github_issue: https://github.com/tvolodi/R-Co/issues/503
+run_id: WF03-ISS-0175-20260806
+step: "01"
+agent: BACKEND-DEV
+severity: MAJOR
+diagnosed_at: "2026-08-06T23:45:44Z"
+
+symptom: >-
+  On any checkout that does not already carry the untracked file
+  vendor/luajit/src/luajit_relver.txt, `zig build test-lua` and `zig build test`
+  fail before compiling anything with:
+  "error: failed to check cache: '<repo>/vendor/luajit/src/luajit_relver.txt'
+  file_hash FileNotFound". This makes CI red on main for every PR (PR #505 hit it).
+
+root_cause: >-
+  vendor/luajit/src/.gitignore line 3 ignores luajit_relver.txt. That .gitignore was
+  inherited verbatim from upstream LuaJIT, where ignoring the file is CORRECT because
+  upstream's own Makefile generates it. This repo (commit c8bdbd6 / PR #496 / ISS-0161)
+  replaced the upstream Makefile with vendor/luajit/build.zig, which at line 79 consumes
+  the file as a REQUIRED build input via genversion.addFileArg(...), but never generates
+  it. The file is therefore simultaneously required-as-input and excluded-from-version-
+  control, with nothing producing it.
+
+evidence:
+  - fact: "Upstream generates the file from the LuaJIT repo's OWN git metadata."
+    source: "vendor/luajit/src/Makefile:493-495"
+    detail: >-
+      GIT_RELVER= [ -e ../.git ] && git show -s --format=%ct >luajit_relver.txt
+      || cat ../.relver >luajit_relver.txt
+      The value is simply the upstream HEAD commit's unix timestamp.
+  - fact: "That ../.git does not exist here — LuaJIT is a vendored snapshot inside R-Co's git."
+    source: "ls -a vendor/luajit/ -> COPYRIGHT, build.zig, dynasm/, src/ only. No .git."
+  - fact: "Upstream's documented fallback for a NON-git checkout is a TRACKED file, ../.relver."
+    source: "vendor/luajit/src/Makefile:495 (`cat ../.relver`)"
+    detail: >-
+      This is the source-tarball path. A vendored dependency snapshot IS the tarball case,
+      not the git case. vendor/luajit/.relver does not currently exist in this repo either.
+  - fact: "The local primary checkout only builds because it holds a STALE untracked copy."
+    source: "empirical, 2026-08-06"
+    detail: >-
+      Local vendor/luajit/src/luajit_relver.txt contains 1785763465 (2026-08-03 13:24:25 UTC),
+      which PREDATES the vendoring commit c8bdbd6 (1786046761). It is a leftover from a local
+      build three days before LuaJIT was vendored — proving the file is not produced by the
+      current build and is not reproducible from the repo.
+  - fact: "The value is a genuine compiled-in build input, not decoration."
+    source: "vendor/luajit/src/luajit_rolling.h:33-35"
+    detail: >-
+      genversion.lua substitutes it into LUAJIT_VERSION ("LuaJIT 2.1.<relver>") and
+      LUAJIT_VERSION_SYM (luaJIT_version_2_1_<relver>), which becomes a linked symbol.
+
+options_considered:
+  - id: b
+    option: "Generate luajit_relver.txt in build.zig with a WriteFile / git-run step."
+    verdict: REJECTED
+    why: >-
+      Upstream derives the value from the LUAJIT repo's HEAD timestamp. R-Co has no LuaJIT
+      git repo to read. Deriving it from R-Co's own HEAD instead would make the vendored
+      LuaJIT version string change on every unrelated R-Co commit — non-deterministic,
+      non-reproducible, and it would cache-bust the entire ~60-file LuaJIT compile on every
+      commit. Shelling out to `git` would also break exported tarballs and any CI checkout
+      without git metadata, reintroducing the same class of failure this issue is about.
+      A hardcoded WriteFile constant is functionally identical to tracking the file but
+      hides a data value inside build logic.
+  - id: c
+    option: "Stop requiring the file / drop the genversion stage."
+    verdict: REJECTED
+    why: >-
+      luajit.h is a real, required build artefact — host/buildvm.c includes it and
+      LUAJIT_VERSION_SYM is compiled into the static library. Removing the stage would mean
+      hand-maintaining a generated header or patching upstream sources, both of which
+      increase vendor drift. Removing a required input to silence a build error would also
+      be satisfying the detector rather than fixing the condition (CLAUDE.md: "Never Satisfy
+      a Gate by Editing What It Measures").
+  - id: a
+    option: "Un-ignore and commit luajit_relver.txt as a tracked vendored source file."
+    verdict: CHOSEN
+    why: >-
+      This is exactly what upstream intends for non-git consumers — it is the purpose of the
+      tracked ../.relver fallback in Makefile:495. A vendored dependency is a pinned snapshot;
+      pinning its version stamp alongside its sources is correct and makes the build
+      byte-for-byte deterministic from a fresh clone with no git metadata, no network, and no
+      extra build machinery. It is also the minimal change: one .gitignore line plus one
+      tracked 11-byte file.
+
+chosen_fix:
+  approach: "a — track luajit_relver.txt as a vendored source file"
+  changes:
+    - "vendor/luajit/src/.gitignore: remove the `luajit_relver.txt` line, with a comment explaining why this repo diverges from upstream's ignore list."
+    - "vendor/luajit/src/luajit_relver.txt: commit it, pinned to the vendored snapshot's release version."
+  note: >-
+    The remaining entries in that .gitignore (luajit.h, lj_bcdef.h, lj_ffdef.h, lj_libdef.h,
+    lj_recdef.h, lj_folddef.h, lj_vm.[sS]) stay ignored and are CORRECT to ignore: unlike
+    luajit_relver.txt, every one of those IS generated by vendor/luajit/build.zig into the
+    Zig cache (genversion -> luajit.h; buildvm -> the lj_*def.h set and lj_vm). Only
+    luajit_relver.txt was orphaned by the Makefile-to-build.zig migration.
+
+acceptance_criteria_mapping:
+  - criterion: "A clean clone or fresh worktree can run `zig build test-lua` with no manual file copying."
+    satisfied_by: "The file is tracked, so it is present in every checkout by definition."
+    verification: "Proven in an isolated worktree at Step 03 — see the run report."
+  - criterion: "Either the file is tracked, or build.zig generates it."
+    satisfied_by: "Tracked (option a)."
+  - criterion: "A CI job building from a clean checkout exercises test-lua."
+    satisfied_by: "Out of scope for this fix — CI workflow coverage is a separate concern."
+    note: >-
+      Not silently dropped. If the existing CI does not already run test-lua from a clean
+      checkout, that gap is filed and forwarded as its own issue per the Unblock-Everything
+      scope boundary, rather than folded into this branch.
+
+regression_risk: LOW
+regression_rationale: >-
+  Committing a build input that every working build already relies on. The only behavioural
+  change is that the value becomes a fixed, reviewed constant rather than whatever stale
+  artefact a given machine happened to have. Version-string-only impact; no code path changes.
