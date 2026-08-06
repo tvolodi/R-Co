@@ -51,6 +51,11 @@ Thumbs.db
 # ── Scratch (one-off scripts, debug dumps, temp outputs) ─────────────────────
 scratch/
 
+# ── Queue transient mutex (never commit — held only milliseconds) ─────────────
+handoffs/global_queue.lock
+# ── Loop stop flag ────────────────────────────────────────────────────────────
+handoffs/STOP_LOOP
+
 # ── Python virtualenv (local tooling: psycopg2-binary, PyYAML) ───────────────
 .venv/
 __pycache__/
