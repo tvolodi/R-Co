@@ -1,0 +1,44 @@
+{
+  "issue_id": "ISS-0151",
+  "title": "test-integration-tnt still flaky after ISS-0148: second, independent race causes 23505 on schema_migrations_schema_version_uq",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "created_at": "2026-08-06T11:18:04Z",
+  "discovered_by": "TEST-RUNNER (WF03-gh477-20260806 Step 05 independent verification)",
+  "discovered_while_fixing": "ISS-0148",
+  "affected_areas": [
+    "tests/integration/tnt_schema_isolation_test.zig",
+    "tests/integration/tnt_backfill_export_cleanup_test.zig",
+    "tools/clean_test_db.py",
+    "build.zig"
+  ],
+  "symptom": "`zig build test-integration-tnt` still exits 1 intermittently after the ISS-0148 fix. Measured 5 consecutive runs on feature/WF03-gh477-20260806: exit codes 1, 1, 0, 1, 0 (2/5 pass). A 3-run control on clean origin/main produced 0, 1, 1 \u2014 so the step is flaky BOTH before and after the fix.",
+  "root_cause_analysis": "ISS-0148's fix is effective against the defect it targeted: the 42P01 `relation \"audit_entries\" does not exist` signature appears 0 times across all 5 post-fix runs, while it is still present on the clean origin/main control. However a SECOND, independent race remains, present identically on both main and the fixed branch: a 23505 unique-constraint violation on `schema_migrations_schema_version_uq`, key `(tenant_<uuid>, 001_event_store.sql)`. The tenant-scoped migration ledger row is re-inserted by a live test's `Migrations.runForSchema` while the sweep's `DELETE FROM public.schema_migrations WHERE schema_name <> 'tenant_default' AND schema_name <> 'public'` (tools/clean_test_db.py) removes it. ISS-0148 Layer 1 serialises clean_test_db against test binaries, and Layer 2 makes the sweep atomic under pg_advisory_xact_lock, but neither makes the TEST-SIDE tenant provisioning take that same advisory lock \u2014 so a tenant created by a test after the sweep's transaction commits can still interleave with a subsequent sweep in the same build.",
+  "evidence": {
+    "post_fix_exit_codes": [
+      1,
+      1,
+      0,
+      1,
+      0
+    ],
+    "clean_main_control_exit_codes": [
+      0,
+      1,
+      1
+    ],
+    "original_42P01_audit_entries_occurrences_post_fix": 0,
+    "original_42P01_audit_entries_present_on_main": true,
+    "residual_23505_present_on_both": true,
+    "secondary_symptom": "In runs 1/2/4 the failing artifact is tnt_backfill_export_cleanup_test.zig, which reports `test runner failed to respond` (~1m timeout). That binary passes 3/3 when run standalone and 3/3 when run concurrently with only its sibling tnt_schema_isolation_test.zig, which localises the hang to interaction with the clean_test_db sweep rather than to the two test binaries themselves.",
+    "note_on_reported_pass_counts": "Runs 2 and 4 report `19/19 tests passed` yet still exit 1 \u2014 the step fails on the run-artifact timeout, not on a test assertion. Judging this step by test-pass text rather than exit code would misreport it as green."
+  },
+  "acceptance_criteria": [
+    "`zig build test-integration-tnt` exits 0 on 5 consecutive runs, measured by exit code only",
+    "No 23505 violation on schema_migrations_schema_version_uq during the run",
+    "tnt_backfill_export_cleanup_test.zig does not time out when run as part of the step",
+    "The fix does not weaken or remove the ISS-0148 ordering edge or the advisory-locked sweep"
+  ],
+  "notes": "Does NOT invalidate the ISS-0148 fix: that fix demonstrably removed its target signature and introduced no regression (see ISS-0148 verification report). This is a distinct, pre-existing defect that shares the same step. Filed separately rather than folded into ISS-0148 per CLAUDE.md 'No Issue Left Local-Only'.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/483"
+}

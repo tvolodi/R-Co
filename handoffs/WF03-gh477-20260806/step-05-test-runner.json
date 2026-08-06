@@ -1,0 +1,78 @@
+{
+  "handoff_id": "9490f1e9-e50f-432a-b859-3ce98ca090fd",
+  "run_id": "WF03-gh477-20260806",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-06T10:50:57Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Maintenance",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "22fa7399-0b5d-4351-ba34-5b4ceb8bc655"
+    ],
+    "artifacts_in": [
+      "src/design/iss0148_clean_test_db_ordering_and_lock.md",
+      "build.zig",
+      "tools/clean_test_db.py",
+      "docs/issues/ISS-0148.json"
+    ],
+    "issue_id": "ISS-0148",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/477"
+  },
+  "task": {
+    "description": "Independently verify the ISS-0148 / GH #477 fix implemented in Step 3 (build.zig ordering helper + advisory-locked orphan sweep in tools/clean_test_db.py). BACKEND-DEV measured 5/5 exit 0 against a 5/5 FAIL baseline - re-measure independently, do not take that on trust. Also confirm no regression across the wider integration suite given the fix touched 43 run-artifact sites in build.zig.",
+    "acceptance_criteria": [
+      "zig build test-integration-tnt exit 0 on 5 consecutive runs, independently measured",
+      "TC-TNT-01-01 passes",
+      "No regression in other test-integration-* steps attributable to the build.zig helper",
+      "Test report written to tests/reports/ as .yaml",
+      "Verdict judged by exit code only"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Independently re-measured the ISS-0148 fix. PRIMARY CRITERION NOT MET: zig build test-integration-tnt exit codes over 5 consecutive runs were 1, 1, 0, 1, 0 (2/5 pass), judged by exit code only. BACKEND-DEV's reported 5/5 PASS did not reproduce. HOWEVER the fix itself is correct and regression-free: the target signature 42P01 'relation \"audit_entries\" does not exist' occurs 0 times across all 5 post-fix runs while still occurring in a clean origin/main control, and a 3-run control on clean main gave 0, 1, 1 - so the step is flaky BOTH before and after the fix and the residual flakiness is NOT introduced by this change. Residual cause is a distinct 23505 on schema_migrations_schema_version_uq (tenant_<uuid>, 001_event_store.sql), present identically on main, filed as ISS-0151/GH #483. TC-TNT-01-01 passes. Regression sweep over 6 unrelated integration suites + zig build test: unit 0, iss101 0, iss102 0, iss103 0, iss107 0, iss0121 0, iss106 1 (pre-existing, identical on main), svc 1 (pre-existing ISS-0150, byte-identical 9x42P01 counts on branch and main - independently confirmed, not re-filed). No regression attributable to the 43-site addIntegrationRun() rewiring. Also filed ISS-0152/GH #484: health-checklist item C5 fails unconditionally on main.",
+    "artifacts_out": [
+      "tests/reports/report-20260806-WF03-gh477-20260806.yaml",
+      "docs/issues/ISS-0151.json",
+      "docs/issues/ISS-0152.json",
+      "docs/issues/issue_index.json",
+      "handoffs/WF03-gh477-20260806/issue_queue.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "id": "ISS-0151",
+        "github": "https://github.com/tvolodi/R-Co/issues/483",
+        "description": "test-integration-tnt still intermittently red (2/5 exit 0) after the fix, due to a SECOND independent race: 23505 on schema_migrations_schema_version_uq. Confirmed present on clean origin/main (control 0,1,1), so NOT caused by the ISS-0148 fix. Secondary symptom: tnt_backfill_export_cleanup_test.zig times out (~1m) inside the step but passes 3/3 standalone and 3/3 concurrently with only its sibling.",
+        "caused_by_this_fix": false,
+        "enqueued": true
+      },
+      {
+        "severity": "MAJOR",
+        "id": "ISS-0152",
+        "github": "https://github.com/tvolodi/R-Co/issues/484",
+        "description": "zig build test-env-verify exits 1 on check C5 only (88 BLOCKER isolation violations); identical on a clean origin/main worktree whose inputs this branch does not touch. Makes the CLAUDE.md hard gate unsatisfiable as written.",
+        "caused_by_this_fix": false,
+        "enqueued": true
+      },
+      {
+        "severity": "MAJOR",
+        "id": "ISS-0150",
+        "github": "https://github.com/tvolodi/R-Co/issues/482",
+        "description": "test-integration-svc pre-existing failure independently re-confirmed: 9x 42P01 and 3x missing tenant schema_migrations on BOTH branch and clean main. Already enqueued; not re-filed per handoff instruction.",
+        "caused_by_this_fix": false,
+        "enqueued": true
+      }
+    ],
+    "next_action": "Route to RELEASE-VALIDATOR (Step 6)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T10:50:57Z",
+  "completed_at": "2026-08-06T11:20:59Z"
+}

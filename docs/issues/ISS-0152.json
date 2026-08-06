@@ -1,0 +1,27 @@
+{
+  "issue_id": "ISS-0152",
+  "title": "Infrastructure Health Checklist item C5 fails on main: 88 BLOCKER isolation violations make zig build test-env-verify exit 1 unconditionally",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "created_at": "2026-08-06T11:18:04Z",
+  "discovered_by": "TEST-RUNNER (WF03-gh477-20260806 Step 05 pre-checks)",
+  "discovered_while_fixing": "ISS-0148",
+  "affected_areas": [
+    "tools/lint_test_isolation.py",
+    "tools/verify_test_env.py",
+    "tests/integration/"
+  ],
+  "symptom": "`zig build test-env-verify` exits 1 with `UNHEALTHY \u2014 1 of 7 checks failed (C5)`. Checks C1, C2, C3, C4, C6, C7 all PASS; only C5 (test isolation lint) fails, reporting BLOCKER=88 MAJOR=6 across 127 integration test files (e.g. hardcoded UUIDs `00000000-0000-0000-0000-000000000001` in adp04_user_tenant_binding_test.zig:38, tm01_tenant_list_test.zig:48, pd03_version_test.zig:112).",
+  "root_cause_analysis": "The 88 BLOCKERs are hardcoded-UUID (T010) violations of INV-TI-2 that pre-date this branch. Confirmed pre-existing by running tools/lint_test_isolation.py against a clean origin/main worktree: identical result (BLOCKER=88 MAJOR=6, exit 1). The feature branch touches no files under tests/, and does not touch lint_test_isolation.py, its baseline, or verify_test_env.py \u2014 `git diff --name-only origin/main...HEAD` over those paths is empty.",
+  "impact": "CLAUDE.md instructs TEST-RUNNER to STOP and return FAIL with BLOCKER severity if any Infrastructure Health Checklist item fails, and docs/guides/test_infrastructure_guide.md \u00a73 makes each item a hard gate. Because C5 fails unconditionally on main, that gate can never be satisfied as written \u2014 so every TEST-RUNNER either halts on an unrelated pre-existing condition or (worse) learns to run tests despite a red checklist. That is precisely the 'noise trains agents to ignore a checker' failure mode described in GH #469.",
+  "acceptance_criteria": [
+    "Each of the 88 T010 BLOCKERs is either fixed in the test source (per-test UUIDs) or deliberately baselined with a per-finding recorded reason",
+    "`zig build test-env-verify` exits 0 on a clean main",
+    "The baseline is NOT blanket-regenerated to silence findings (CLAUDE.md: never satisfy a gate by editing what it measures)"
+  ],
+  "related": [
+    "GH #469 / ISS-0152-prior covers baseline DRIFT (128 recorded vs 131 actual MAJORs) and explicitly notes BLOCKER=88 is identical on main and branch; this issue covers those 88 BLOCKERs themselves, which are what actually fail the C5 gate."
+  ],
+  "notes": "Not caused by the ISS-0148 fix. Filed per CLAUDE.md 'No Issue Left Local-Only' and 'Unblock-Everything'; it did not block measurement of the ISS-0148 primary criterion because C1-C4/C6/C7 passed and the DB baseline was verified sound (public-scope ledger 106 rows == 106 migration files, 0 ungranted locks).",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/484"
+}
