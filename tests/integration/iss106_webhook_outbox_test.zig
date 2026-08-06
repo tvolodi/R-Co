@@ -351,6 +351,15 @@ test "iss106_webhook_outbox: out_of_domain_status_rejected" {
     }
 
     // Rejected value #2: the legacy lowercase 'pending' — no longer in the uppercase domain.
+    //
+    // ISS-0149 / GH #465: this literal read 'PENDING' (uppercase), contradicting the
+    // comment directly above it and the migration it exists to verify.
+    // `085_iss106_webhook_deliveries_outbox.sql` migrates the legacy lowercase values
+    // UP to uppercase and installs
+    //   CHECK (status IN ('PENDING','DELIVERED','FAILED','RETRYING'))
+    // so 'PENDING' is the canonical ACCEPTED value — asserting it is rejected asserts
+    // the exact opposite of the contract. Only the pre-migration lowercase spelling is
+    // out of domain, which is what the comment always said this case covers.
     {
         const delivery_id = try randomUuidStr(allocator);
         defer allocator.free(delivery_id);
@@ -360,7 +369,7 @@ test "iss106_webhook_outbox: out_of_domain_status_rejected" {
             \\INSERT INTO webhook_deliveries
             \\    (id, subscription_id, event_id, status, attempt, next_attempt_at, created_at)
             \\VALUES
-            \\    ($1::uuid, $2::uuid, NULL, 'PENDING', 0, NOW(), NOW())
+            \\    ($1::uuid, $2::uuid, NULL, 'pending', 0, NOW(), NOW())
         ,
             &.{ delivery_id, subscription_id },
         );

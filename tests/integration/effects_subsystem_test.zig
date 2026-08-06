@@ -19,6 +19,9 @@ const testing = std.testing;
 
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
+// ISS-0149 / GH #465: cross-platform environ reader, same import every other
+// integration test uses to reach BPM_TEST_DB_URL.
+const portable_env = @import("env");
 
 const bpm = @import("bpm");
 // ISS-0137 / GH #439: src/bpm.zig exports this as `effects_mod`, not `effects`
@@ -33,31 +36,29 @@ const EffectSpec = effects.EffectSpec;
 const EffectKind = effects.EffectKind;
 const HttpEffectSpec = effects.HttpEffectSpec;
 const EffectDeliveryResult = effects.EffectDeliveryResult;
-const StubEffectsExecutor = effects.StubEffectsExecutor;
+// ISS-0149 / GH #465: StubEffectsExecutor lives in src/effects/stub.zig, re-exported
+// by src/bpm.zig as `effects_stub` — `effects/mod.zig` does not re-export it. Same for
+// the queue and worker modules (`effects_queue` / `effects_worker`). This file was
+// wired into no build target until GH #439, so the wrong names never surfaced.
+const StubEffectsExecutor = bpm.effects_stub.StubEffectsExecutor;
 
-const Queue = effects.queue;
-const Worker = effects.worker;
+const Queue = bpm.effects_queue;
+const Worker = bpm.effects_worker;
 
 // ---------------------------------------------------------------------------
 // Test Helpers
 // ---------------------------------------------------------------------------
 
 /// Generate a fresh UUID string for test isolation.
+///
+/// ISS-0149 / GH #465: previously hand-rolled the hyphenated rendering through
+/// `std.io.fixedBufferStream`, which Zig 0.16 removed (`std` has no `io` member).
+/// `bpm.uuid.generateUuidV4Into` produces the identical canonical 36-byte form
+/// from the same CSPRNG, so delegate rather than re-derive.
 fn generateTestUuid(allocator: std.mem.Allocator) ![]u8 {
-    var buf: [16]u8 = undefined;
-    // ISS-0137 / GH #439: std.crypto.random was removed in Zig 0.16.
-    helpers.fillRandom(&buf);
     var hex_buf: [36]u8 = undefined;
-    var hex_fbs = std.io.fixedBufferStream(&hex_buf);
-    const writer = hex_fbs.writer();
-    try std.fmt.format(writer, "{:0>8}-{:0>4}-{:0>4}-{:0>4}-{:0>12}", .{
-        std.mem.readInt(u32, buf[0..4], .little),
-        std.mem.readInt(u16, buf[4..6], .little),
-        std.mem.readInt(u16, buf[6..8], .little),
-        std.mem.readInt(u16, buf[8..10], .little),
-        std.mem.readInt(u64, buf[10..16], .little),
-    });
-    return allocator.dupe(u8, hex_buf[0..hex_fbs.pos]);
+    bpm.uuid.generateUuidV4Into(&hex_buf);
+    return allocator.dupe(u8, &hex_buf);
 }
 
 fn parseUuid(allocator: std.mem.Allocator, s: []const u8) ![16]u8 {
@@ -88,8 +89,12 @@ fn freeInstanceState(allocator: std.mem.Allocator, state: transition_mod.Instanc
         if (token.waiting_child_instance_id) |id| allocator.free(id);
     }
     allocator.free(state.tokens);
-    state.variables.deinit(allocator);
-    state.join_counters.deinit(allocator);
+    // ISS-0149 / GH #465: ObjectMap.deinit takes *Self in Zig 0.16, so the map
+    // needs a mutable binding — `state` is passed by value here.
+    var variables = state.variables;
+    variables.deinit(allocator);
+    var join_counters = state.join_counters;
+    join_counters.deinit(allocator);
     for (state.pending_task_nodes) |node_id| allocator.free(node_id);
     allocator.free(state.pending_task_nodes);
     for (state.cancelled_branch_ids) |branch_id| allocator.free(branch_id);
@@ -174,9 +179,14 @@ fn makeInitialState(allocator: std.mem.Allocator, instance_id: [16]u8) transitio
     };
 }
 
-fn freeSeedState(state: transition_mod.InstanceState) void {
-    state.variables.deinit();
-    state.join_counters.deinit();
+// ISS-0149 / GH #465: Zig 0.16 moved the allocator from ObjectMap's handle onto
+// each call, so `deinit()` now takes it explicitly. `makeInitialState` always
+// builds both maps with the same allocator, so pass it back through here.
+fn freeSeedState(allocator: std.mem.Allocator, state: transition_mod.InstanceState) void {
+    var variables = state.variables;
+    variables.deinit(allocator);
+    var join_counters = state.join_counters;
+    join_counters.deinit(allocator);
 }
 
 fn expectEffectEmitted(event: transition_mod.EmittedEvent) !transition_mod.EffectEmittedPayload {
@@ -186,7 +196,11 @@ fn expectEffectEmitted(event: transition_mod.EmittedEvent) !transition_mod.Effec
     };
 }
 
-fn seedInstanceProjection(conn: *bpm.pool.Conn, instance_id: []const u8, definition_id: []const u8) !void {
+// ISS-0149 / GH #465: `conn` is `anytype` because these seeds are called both with
+// TestHarness's raw `pg.Conn` (rolled-back tx) and with EffectsPoolFixture's
+// `*pool.Conn` (autocommitting), which are distinct types exposing the same
+// exec/query surface. Same rationale as Queue.insertEffectInTx's own `anytype`.
+fn seedInstanceProjection(conn: anytype, instance_id: []const u8, definition_id: []const u8) !void {
     try conn.exec(
         \\INSERT INTO instance_projections (
         \\  instance_id, definition_id, correlation_key, status,
@@ -201,7 +215,7 @@ fn seedInstanceProjection(conn: *bpm.pool.Conn, instance_id: []const u8, definit
     , &.{ instance_id, definition_id });
 }
 
-fn seedInstanceWait(conn: *bpm.pool.Conn, instance_id: []const u8, node_id: []const u8, correlation_key: []const u8) ![]u8 {
+fn seedInstanceWait(conn: anytype, instance_id: []const u8, node_id: []const u8, correlation_key: []const u8) ![]u8 {
     const wait_id = try generateTestUuid(std.testing.allocator);
     errdefer std.testing.allocator.free(wait_id);
     const ref_id = try generateTestUuid(std.testing.allocator);
@@ -213,6 +227,68 @@ fn seedInstanceWait(conn: *bpm.pool.Conn, instance_id: []const u8, node_id: []co
     std.testing.allocator.free(ref_id);
     return wait_id;
 }
+
+// ---------------------------------------------------------------------------
+// ISS-0149 / GH #465 — EffectsPoolFixture
+//
+// Six blocks in this file drive `Worker.sweepOnce` / `Worker.reenterEffectResult`,
+// which take a `*db.Pool` and acquire their OWN connection. They previously wrote
+// `&h.pool`, a field TestHarness has never had — this file compiled against no
+// build target until GH #439, so the reference was never checked.
+//
+// Simply swapping in a pool is not enough: TestHarness wraps its connection in a
+// transaction that `deinit()` only ever rolls back, so any fixture written through
+// `h.conn` is invisible to a separately-acquired pool connection. These blocks must
+// therefore seed through the pool itself (autocommitting) and delete their own rows
+// explicitly, since no rollback will do it for them.
+//
+// Per the anti-patterns catalogue's autocommitted-fixture entry, every value written
+// here derives from a per-test UUID, never a static literal, so re-runs cannot collide.
+// ---------------------------------------------------------------------------
+const EffectsPoolFixture = struct {
+    pool: bpm.pool.Pool,
+    conn: *bpm.pool.Conn,
+    allocator: std.mem.Allocator,
+
+    fn init(allocator: std.mem.Allocator) !EffectsPoolFixture {
+        const env = portable_env.globalEnviron();
+        const url = env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
+            error.EnvironmentVariableMissing => {
+                std.debug.print("BPM_TEST_DB_URL is required for integration tests\n", .{});
+                return error.MissingTestDatabaseUrl;
+            },
+            else => return err,
+        };
+        defer allocator.free(url);
+
+        // Match every other integration test's makePool(): establish the tenant
+        // context BEFORE Pool.init so each acquire() routes search_path the same
+        // way (see the ISS-0145 anti-pattern on ambient tenant_context ordering).
+        bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
+        var pool = try bpm.pool.Pool.init(std.testing.io, allocator, .{
+            .url = url,
+            .pool_size = 2,
+        });
+        errdefer pool.deinit();
+        const conn = try pool.acquire();
+        return .{ .pool = pool, .conn = conn, .allocator = allocator };
+    }
+
+    fn deinit(self: *EffectsPoolFixture) void {
+        self.pool.release(self.conn);
+        self.pool.deinit();
+    }
+
+    /// Delete every autocommitted row this fixture may have created, children
+    /// before parents. Registered with `defer` BEFORE any insert, so it runs even
+    /// if the test body fails mid-way (INV-TI-2).
+    fn cleanup(self: *EffectsPoolFixture, instance_id: []const u8) void {
+        self.conn.exec("DELETE FROM effects_outbox WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
+        self.conn.exec("DELETE FROM instance_waits WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
+        self.conn.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
+        self.conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
+    }
+};
 
 /// Create a minimal test tenant and instance for effects testing.
 fn setupTestInstance(
@@ -255,13 +331,16 @@ test "TC-EXP-301-01: insertEffectInTx inserts row with pending status and future
         .secret_ref = null,
     };
 
-    var spec_buf: [1024]u8 = undefined;
-    var fbs = std.io.fixedBufferStream(&spec_buf);
-    try std.json.stringify(http_spec, .{}, fbs.writer());
-    const spec_json = fbs.getWritten();
+    // ISS-0149 / GH #465: Zig 0.16 removed `std.io.fixedBufferStream` and the
+    // free `std.json.stringify`; the allocating form is the current API.
+    const spec_json = try std.json.Stringify.valueAlloc(testing.allocator, http_spec, .{});
+    defer testing.allocator.free(spec_json);
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was
+        // written; src/effects/worker.zig uses "default" on the re-entry path.
+        .tenant_id = "default",
         .instance_id = instance_id,
         .node_id = node_id,
         .token_id = token_id,
@@ -272,13 +351,13 @@ test "TC-EXP-301-01: insertEffectInTx inserts row with pending status and future
     defer testing.allocator.free(spec.spec_json);
 
     // Insert effect
-    const delivery_id = try Queue.insertEffectInTx(testing.allocator, h.conn, spec);
+    const delivery_id = try Queue.insertEffectInTx(testing.allocator, &h.conn, spec);
     defer testing.allocator.free(delivery_id);
 
     // Verify row was inserted
-    const rows = h.conn.query(
+    var rows = h.conn.query(
         testing.allocator,
-        \\SELECT status, attempt_count, next_attempt_at > NOW() as is_future
+        \\SELECT status, attempt_count, (next_attempt_at > NOW())::text as is_future
         \\FROM effects_outbox WHERE effect_delivery_id = $1::uuid
     ,
         &.{delivery_id},
@@ -313,6 +392,9 @@ test "TC-EXP-301-02: sweepOnce selects pending effects with past next_attempt_at
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was
+        // written; src/effects/worker.zig uses "default" on the re-entry path.
+        .tenant_id = "default",
         .instance_id = instance_id,
         .node_id = "TASK_1",
         .token_id = token_id,
@@ -321,7 +403,7 @@ test "TC-EXP-301-02: sweepOnce selects pending effects with past next_attempt_at
         .spec_json = "{}",
     };
 
-    const delivery_id = try Queue.insertEffectInTx(testing.allocator, h.conn, spec);
+    const delivery_id = try Queue.insertEffectInTx(testing.allocator, &h.conn, spec);
     defer testing.allocator.free(delivery_id);
 
     // Force next_attempt_at into the past (for testing)
@@ -331,7 +413,7 @@ test "TC-EXP-301-02: sweepOnce selects pending effects with past next_attempt_at
     ) catch return error.UpdateFailed;
 
     // Query for due effects (this is what the worker does)
-    const due_rows = h.conn.query(
+    var due_rows = h.conn.query(
         testing.allocator,
         \\SELECT effect_delivery_id, status FROM effects_outbox
         \\WHERE status = 'pending' AND next_attempt_at <= NOW()
@@ -364,6 +446,9 @@ test "TC-EXP-301-03: markDelivered sets status=delivered and records http_status
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was
+        // written; src/effects/worker.zig uses "default" on the re-entry path.
+        .tenant_id = "default",
         .instance_id = instance_id,
         .node_id = "TASK_1",
         .token_id = token_id,
@@ -372,14 +457,14 @@ test "TC-EXP-301-03: markDelivered sets status=delivered and records http_status
         .spec_json = "{}",
     };
 
-    const delivery_id = try Queue.insertEffectInTx(testing.allocator, h.conn, spec);
+    const delivery_id = try Queue.insertEffectInTx(testing.allocator, &h.conn, spec);
     defer testing.allocator.free(delivery_id);
 
     // Mark as delivered with HTTP 200
-    try Queue.markDelivered(testing.allocator, h.conn, delivery_id, 200);
+    try Queue.markDelivered(testing.allocator, &h.conn, delivery_id, 200);
 
     // Verify status and http_status
-    const rows = h.conn.query(
+    var rows = h.conn.query(
         testing.allocator,
         "SELECT status, last_http_status FROM effects_outbox WHERE effect_delivery_id = $1::uuid",
         &.{delivery_id},
@@ -410,6 +495,9 @@ test "TC-EXP-301-04: markRetry increments attempt_count and updates next_attempt
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was
+        // written; src/effects/worker.zig uses "default" on the re-entry path.
+        .tenant_id = "default",
         .instance_id = instance_id,
         .node_id = "TASK_1",
         .token_id = token_id,
@@ -418,10 +506,10 @@ test "TC-EXP-301-04: markRetry increments attempt_count and updates next_attempt
         .spec_json = "{}",
     };
 
-    const delivery_id = try Queue.insertEffectInTx(testing.allocator, h.conn, spec);
+    const delivery_id = try Queue.insertEffectInTx(testing.allocator, &h.conn, spec);
     defer testing.allocator.free(delivery_id);
 
-    const before = h.conn.query(
+    var before = h.conn.query(
         testing.allocator,
         "SELECT attempt_count, next_attempt_at FROM effects_outbox WHERE effect_delivery_id = $1::uuid",
         &.{delivery_id},
@@ -430,11 +518,11 @@ test "TC-EXP-301-04: markRetry increments attempt_count and updates next_attempt
     try testing.expect(before.rows.len == 1);
 
     // Mark as retry with 30s backoff
-    try Queue.markRetry(testing.allocator, h.conn, delivery_id, 500, "Service Unavailable", 30_000);
+    try Queue.markRetry(testing.allocator, &h.conn, delivery_id, 500, "Service Unavailable", 30_000);
 
-    const after = h.conn.query(
+    var after = h.conn.query(
         testing.allocator,
-        \\SELECT attempt_count, next_attempt_at > NOW() as is_future, status
+        \\SELECT attempt_count, (next_attempt_at > NOW())::text as is_future, status
         \\FROM effects_outbox WHERE effect_delivery_id = $1::uuid
     ,
         &.{delivery_id},
@@ -475,6 +563,8 @@ test "TC-EXP-301-05: backoff schedule follows expected intervals" {
 
         const spec = EffectSpec{
             .effect_event_id = effect_event_id,
+            // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+            .tenant_id = "default",
             .instance_id = instance_id,
             .node_id = node_id,
             .token_id = token_id,
@@ -483,14 +573,14 @@ test "TC-EXP-301-05: backoff schedule follows expected intervals" {
             .spec_json = base_spec_json,
         };
 
-        const delivery_id = try Queue.insertEffectInTx(testing.allocator, h.conn, spec);
+        const delivery_id = try Queue.insertEffectInTx(testing.allocator, &h.conn, spec);
         delivery_ids[i] = delivery_id;
 
         // Seed row i to attempt_count=i using tiny retry intervals.
         for (0..i) |_| {
             try Queue.markRetry(
                 testing.allocator,
-                h.conn,
+                &h.conn,
                 delivery_id,
                 500,
                 "seed attempt_count",
@@ -502,7 +592,7 @@ test "TC-EXP-301-05: backoff schedule follows expected intervals" {
     defer for (delivery_ids) |id| testing.allocator.free(id);
 
     for (delivery_ids, 0..) |delivery_id, i| {
-        const before_rows = h.conn.query(
+        var before_rows = h.conn.query(
             testing.allocator,
             \\SELECT
             \\  attempt_count::text,
@@ -522,9 +612,9 @@ test "TC-EXP-301-05: backoff schedule follows expected intervals" {
         const next_ms_before = std.fmt.parseFloat(f64, before_rows.rows[0][1] orelse "") catch return error.QueryFailed;
 
         if (attempt_before + 1 >= effects.EFFECT_MAX_ATTEMPTS) {
-            try Queue.markDeadLettered(h.conn, delivery_id, "max attempts exhausted");
+            try Queue.markDeadLettered(&h.conn, delivery_id, "max attempts exhausted");
 
-            const terminal_rows = h.conn.query(
+            var terminal_rows = h.conn.query(
                 testing.allocator,
                 "SELECT status, attempt_count::text, last_error FROM effects_outbox WHERE effect_delivery_id = $1::uuid",
                 &.{delivery_id},
@@ -542,14 +632,14 @@ test "TC-EXP-301-05: backoff schedule follows expected intervals" {
 
         try Queue.markRetry(
             testing.allocator,
-            h.conn,
+            &h.conn,
             delivery_id,
             500,
             "schedule check",
             expected_delay,
         );
 
-        const after_rows = h.conn.query(
+        var after_rows = h.conn.query(
             testing.allocator,
             \\SELECT
             \\  attempt_count::text,
@@ -596,6 +686,9 @@ test "TC-EXP-301-06: max_attempts reached triggers dead_lettering" {
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was
+        // written; src/effects/worker.zig uses "default" on the re-entry path.
+        .tenant_id = "default",
         .instance_id = instance_id,
         .node_id = "TASK_1",
         .token_id = token_id,
@@ -604,18 +697,18 @@ test "TC-EXP-301-06: max_attempts reached triggers dead_lettering" {
         .spec_json = "{}",
     };
 
-    const delivery_id = try Queue.insertEffectInTx(testing.allocator, h.conn, spec);
+    const delivery_id = try Queue.insertEffectInTx(testing.allocator, &h.conn, spec);
     defer testing.allocator.free(delivery_id);
 
     // Simulate 5 failed attempts
     for (0..5) |_| {
-        try Queue.markRetry(testing.allocator, h.conn, delivery_id, 500, "Failed", 5_000);
+        try Queue.markRetry(testing.allocator, &h.conn, delivery_id, 500, "Failed", 5_000);
     }
 
     // After 5 retries, mark as dead-lettered
-    try Queue.markDeadLettered(h.conn, delivery_id, "Max attempts exhausted");
+    try Queue.markDeadLettered(&h.conn, delivery_id, "Max attempts exhausted");
 
-    const rows = h.conn.query(
+    var rows = h.conn.query(
         testing.allocator,
         "SELECT status, attempt_count FROM effects_outbox WHERE effect_delivery_id = $1::uuid",
         &.{delivery_id},
@@ -633,21 +726,28 @@ test "TC-EXP-301-06: max_attempts reached triggers dead_lettering" {
 
 test "TC-EXP-301-07: HTTP adapter injects Idempotency-Key header from effect_event_id" {
     const allocator = testing.allocator;
-    var h = try TestHarness.init(allocator);
+    // ISS-0149 / GH #465: sweepOnce acquires its own pool connection, so the
+    // fixture must be autocommitted through that same pool rather than written
+    // inside TestHarness's rolled-back transaction.
+    var h = try EffectsPoolFixture.init(allocator);
     defer h.deinit();
 
     const instance_id = try generateTestUuid(allocator);
     defer allocator.free(instance_id);
+    defer h.cleanup(instance_id);
     const effect_event_id = try generateTestUuid(allocator);
     defer allocator.free(effect_event_id);
     const definition_id = try generateTestUuid(allocator);
     defer allocator.free(definition_id);
     const correlation_key = try std.fmt.allocPrint(allocator, "svc:{s}", .{effect_event_id});
     defer allocator.free(correlation_key);
-    try seedInstanceProjection(&h.conn, instance_id, definition_id);
+    try seedInstanceProjection(h.conn, instance_id, definition_id);
 
     const delivery_id = try Queue.insertEffectInTx(allocator, h.conn, .{
         .effect_event_id = effect_event_id,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was
+        // written; src/effects/worker.zig uses "default" on the re-entry path.
+        .tenant_id = "default",
         .instance_id = instance_id,
         .node_id = "svc",
         .token_id = effect_event_id,
@@ -704,6 +804,7 @@ test "TC-EXP-301-07: HTTP adapter injects Idempotency-Key header from effect_eve
     Worker.sweepOnce(allocator, &h.pool, .http, .{ .max_rows_per_cycle = 1 });
 
     try testing.expectEqual(@as(usize, 1), server.request_count);
+    // The Idempotency-Key header must be byte-identical to the effect_event_id.
     try testing.expectEqualStrings(effect_event_id, server.idempotency_key[0..server.idempotency_key_len]);
 }
 
@@ -713,7 +814,10 @@ test "TC-EXP-301-07: HTTP adapter injects Idempotency-Key header from effect_eve
 
 test "TC-EXP-301-08: duplicate EFFECT_EMITTED events with same idempotency key are deduplicated" {
     const allocator = testing.allocator;
-    var h = try TestHarness.init(allocator);
+    // ISS-0149 / GH #465: Store/Registry take a *Pool and acquire their own
+    // connections, so the instance_projections fixture they depend on must be
+    // committed rather than living in TestHarness's rolled-back transaction.
+    var h = try EffectsPoolFixture.init(allocator);
     defer h.deinit();
 
     var registry = registry_mod.Registry.init(allocator, &h.pool);
@@ -730,9 +834,10 @@ test "TC-EXP-301-08: duplicate EFFECT_EMITTED events with same idempotency key a
 
     const instance_id = try generateTestUuid(allocator);
     defer allocator.free(instance_id);
+    defer h.cleanup(instance_id);
     const definition_id = try generateTestUuid(allocator);
     defer allocator.free(definition_id);
-    try seedInstanceProjection(&h.conn, instance_id, definition_id);
+    try seedInstanceProjection(h.conn, instance_id, definition_id);
 
     const instance_uuid = try parseUuid(allocator, instance_id);
     const actor_uuid = try parseUuid(allocator, definition_id);
@@ -754,11 +859,8 @@ test "TC-EXP-301-08: duplicate EFFECT_EMITTED events with same idempotency key a
     try testing.expect(!first.is_duplicate);
     try testing.expect(second.is_duplicate);
 
-    const rows = try h.conn.query(allocator, "SELECT COUNT(*) FROM events WHERE idempotency_key = $1", &.{ idem_key });
-    defer {
-        var r = rows;
-        r.deinit();
-    }
+    var rows = try h.conn.query(allocator, "SELECT COUNT(*) FROM events WHERE idempotency_key = $1", &.{ idem_key });
+    defer rows.deinit();
     try testing.expectEqualStrings("1", rows.rows[0][0].?);
 }
 
@@ -767,11 +869,14 @@ test "TC-EXP-301-08: duplicate EFFECT_EMITTED events with same idempotency key a
 // ---------------------------------------------------------------------------
 
 test "TC-EXP-301-09: email adapter returns 200 (stub, no SMTP)" {
-    var h = try TestHarness.init(testing.allocator);
+    // ISS-0149 / GH #465: sweepOnce acquires its own pool connection — see the
+    // EffectsPoolFixture comment above.
+    var h = try EffectsPoolFixture.init(testing.allocator);
     defer h.deinit();
 
     const instance_id = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(instance_id);
+    defer h.cleanup(instance_id);
     const effect_event_id = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(effect_event_id);
     const definition_id = try generateTestUuid(testing.allocator);
@@ -780,10 +885,13 @@ test "TC-EXP-301-09: email adapter returns 200 (stub, no SMTP)" {
     defer testing.allocator.free(token_id);
     const correlation_key = try std.fmt.allocPrint(testing.allocator, "EMAIL_1:{s}", .{token_id});
     defer testing.allocator.free(correlation_key);
-    try seedInstanceProjection(&h.conn, instance_id, definition_id);
+    try seedInstanceProjection(h.conn, instance_id, definition_id);
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was
+        // written; src/effects/worker.zig uses "default" on the re-entry path.
+        .tenant_id = "default",
         .instance_id = instance_id,
         .node_id = "EMAIL_1",
         .token_id = token_id,
@@ -797,15 +905,12 @@ test "TC-EXP-301-09: email adapter returns 200 (stub, no SMTP)" {
     try h.conn.exec("UPDATE effects_outbox SET next_attempt_at = NOW() - INTERVAL '1 minute' WHERE effect_delivery_id = $1::uuid", &.{ delivery_id });
     Worker.sweepOnce(testing.allocator, &h.pool, .http, .{ .max_rows_per_cycle = 1 });
 
-    const rows = try h.conn.query(
+    var rows = try h.conn.query(
         testing.allocator,
         "SELECT status, last_error FROM effects_outbox WHERE effect_delivery_id = $1::uuid",
         &.{delivery_id},
     );
-    defer {
-        var r = rows;
-        r.deinit();
-    }
+    defer rows.deinit();
 
     try testing.expectEqualStrings("pending", rows.rows[0][0].?);
     try testing.expect(std.mem.containsAtLeast(u8, rows.rows[0][1].?, 1, "SecretResolutionFailed"));
@@ -843,6 +948,8 @@ test "TC-EXP-301-10: worker query filters out delivered and dead_lettered rows" 
 
     const spec1 = EffectSpec{
         .effect_event_id = effect_id_1,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
         .instance_id = instance_id_1,
         .node_id = "T1",
         .token_id = token_id_1,
@@ -859,22 +966,22 @@ test "TC-EXP-301-10: worker query filters out delivered and dead_lettered rows" 
     spec3.token_id = token_id_3;
     spec3.correlation_key = correlation_key_3;
 
-    const id1 = try Queue.insertEffectInTx(testing.allocator, h.conn, spec1);
+    const id1 = try Queue.insertEffectInTx(testing.allocator, &h.conn, spec1);
     defer testing.allocator.free(id1);
-    const id2 = try Queue.insertEffectInTx(testing.allocator, h.conn, spec2);
+    const id2 = try Queue.insertEffectInTx(testing.allocator, &h.conn, spec2);
     defer testing.allocator.free(id2);
-    const id3 = try Queue.insertEffectInTx(testing.allocator, h.conn, spec3);
+    const id3 = try Queue.insertEffectInTx(testing.allocator, &h.conn, spec3);
     defer testing.allocator.free(id3);
 
     // Mark first as delivered, second as pending, third as dead-lettered
-    try Queue.markDelivered(testing.allocator, h.conn, id1, 200);
+    try Queue.markDelivered(testing.allocator, &h.conn, id1, 200);
     h.conn.exec(
         "UPDATE effects_outbox SET status = 'dead_lettered' WHERE effect_delivery_id = $1::uuid",
         &.{id3},
     ) catch return error.UpdateFailed;
 
     // Query should only return the pending one
-    const rows = h.conn.query(
+    var rows = h.conn.query(
         testing.allocator,
         "SELECT effect_delivery_id FROM effects_outbox WHERE status = 'pending' ORDER BY created_at",
         &.{},
@@ -891,11 +998,14 @@ test "TC-EXP-301-10: worker query filters out delivered and dead_lettered rows" 
 
 test "TC-EXP-301-11: reenterEffectResult success inserts EFFECT_COMPLETED and resolves wait" {
     const allocator = testing.allocator;
-    var h = try TestHarness.init(allocator);
+    // ISS-0149 / GH #465: reenterEffectResult takes a *Pool and acquires its own
+    // connection — see the EffectsPoolFixture comment above.
+    var h = try EffectsPoolFixture.init(allocator);
     defer h.deinit();
 
     const instance_id = try generateTestUuid(allocator);
     defer allocator.free(instance_id);
+    defer h.cleanup(instance_id);
     const definition_id = try generateTestUuid(allocator);
     defer allocator.free(definition_id);
     const token_id = try generateTestUuid(allocator);
@@ -903,8 +1013,8 @@ test "TC-EXP-301-11: reenterEffectResult success inserts EFFECT_COMPLETED and re
     const correlation_key = try std.fmt.allocPrint(allocator, "svc:{s}", .{token_id});
     defer allocator.free(correlation_key);
 
-    try seedInstanceProjection(&h.conn, instance_id, definition_id);
-    const wait_id = try seedInstanceWait(&h.conn, instance_id, "svc", correlation_key);
+    try seedInstanceProjection(h.conn, instance_id, definition_id);
+    const wait_id = try seedInstanceWait(h.conn, instance_id, "svc", correlation_key);
     defer allocator.free(wait_id);
 
     try Worker.reenterEffectResult(allocator, .{
@@ -915,7 +1025,7 @@ test "TC-EXP-301-11: reenterEffectResult success inserts EFFECT_COMPLETED and re
         .http_status = 200,
     });
 
-    const event_rows = try h.conn.query(
+    var event_rows = try h.conn.query(
         allocator,
         \\SELECT event_type, payload::text
         \\FROM events
@@ -926,23 +1036,17 @@ test "TC-EXP-301-11: reenterEffectResult success inserts EFFECT_COMPLETED and re
     ,
         &.{instance_id},
     );
-    defer {
-        var r = event_rows;
-        r.deinit();
-    }
+    defer event_rows.deinit();
     try testing.expectEqual(@as(usize, 1), event_rows.rows.len);
     try testing.expectEqualStrings("EFFECT_COMPLETED", event_rows.rows[0][0].?);
     try testing.expect(std.mem.containsAtLeast(u8, event_rows.rows[0][1].?, 1, correlation_key));
 
-    const wait_rows = try h.conn.query(
+    var wait_rows = try h.conn.query(
         allocator,
         "SELECT resolved_at IS NOT NULL FROM instance_waits WHERE id = $1::uuid",
         &.{wait_id},
     );
-    defer {
-        var r = wait_rows;
-        r.deinit();
-    }
+    defer wait_rows.deinit();
     try testing.expectEqual(@as(usize, 1), wait_rows.rows.len);
     try testing.expectEqualStrings("t", wait_rows.rows[0][0].?);
 }
@@ -953,11 +1057,14 @@ test "TC-EXP-301-11: reenterEffectResult success inserts EFFECT_COMPLETED and re
 
 test "TC-EXP-301-12: reenterEffectResult failure inserts EFFECT_FAILED and resolves wait" {
     const allocator = testing.allocator;
-    var h = try TestHarness.init(allocator);
+    // ISS-0149 / GH #465: reenterEffectResult takes a *Pool and acquires its own
+    // connection — see the EffectsPoolFixture comment above.
+    var h = try EffectsPoolFixture.init(allocator);
     defer h.deinit();
 
     const instance_id = try generateTestUuid(allocator);
     defer allocator.free(instance_id);
+    defer h.cleanup(instance_id);
     const definition_id = try generateTestUuid(allocator);
     defer allocator.free(definition_id);
     const token_id = try generateTestUuid(allocator);
@@ -965,8 +1072,8 @@ test "TC-EXP-301-12: reenterEffectResult failure inserts EFFECT_FAILED and resol
     const correlation_key = try std.fmt.allocPrint(allocator, "svc:{s}", .{token_id});
     defer allocator.free(correlation_key);
 
-    try seedInstanceProjection(&h.conn, instance_id, definition_id);
-    const wait_id = try seedInstanceWait(&h.conn, instance_id, "svc", correlation_key);
+    try seedInstanceProjection(h.conn, instance_id, definition_id);
+    const wait_id = try seedInstanceWait(h.conn, instance_id, "svc", correlation_key);
     defer allocator.free(wait_id);
 
     try Worker.reenterEffectResult(allocator, .{
@@ -977,7 +1084,7 @@ test "TC-EXP-301-12: reenterEffectResult failure inserts EFFECT_FAILED and resol
         .http_status = 500,
     });
 
-    const event_rows = try h.conn.query(
+    var event_rows = try h.conn.query(
         allocator,
         \\SELECT event_type, payload::text
         \\FROM events
@@ -988,23 +1095,17 @@ test "TC-EXP-301-12: reenterEffectResult failure inserts EFFECT_FAILED and resol
     ,
         &.{instance_id},
     );
-    defer {
-        var r = event_rows;
-        r.deinit();
-    }
+    defer event_rows.deinit();
     try testing.expectEqual(@as(usize, 1), event_rows.rows.len);
     try testing.expectEqualStrings("EFFECT_FAILED", event_rows.rows[0][0].?);
     try testing.expect(std.mem.containsAtLeast(u8, event_rows.rows[0][1].?, 1, correlation_key));
 
-    const wait_rows = try h.conn.query(
+    var wait_rows = try h.conn.query(
         allocator,
         "SELECT resolved_at IS NOT NULL FROM instance_waits WHERE id = $1::uuid",
         &.{wait_id},
     );
-    defer {
-        var r = wait_rows;
-        r.deinit();
-    }
+    defer wait_rows.deinit();
     try testing.expectEqual(@as(usize, 1), wait_rows.rows.len);
     try testing.expectEqualStrings("t", wait_rows.rows[0][0].?);
 }
@@ -1024,10 +1125,10 @@ test "TC-EXP-302-01: SERVICE_TASK activation emits effect_emitted in async path"
     defer testing.allocator.free(definition_id);
 
     const state = makeInitialState(testing.allocator, instance_id);
-    defer freeSeedState(state);
+    defer freeSeedState(testing.allocator, state);
 
     var initial_vars = makeObjectMap(testing.allocator);
-    defer initial_vars.deinit();
+    defer initial_vars.deinit(testing.allocator);
 
     const graph = makeServiceTaskGraph("{\"url\":\"http://127.0.0.1:18192/hook\",\"method\":\"POST\"}");
     const result = try transition_mod.transition(
@@ -1050,8 +1151,11 @@ test "TC-EXP-302-01: SERVICE_TASK activation emits effect_emitted in async path"
 
     const effect_event_id = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(effect_event_id);
-    const delivery_id = try Queue.insertEffectInTx(testing.allocator, h.conn, .{
+    const delivery_id = try Queue.insertEffectInTx(testing.allocator, &h.conn, .{
         .effect_event_id = effect_event_id,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was
+        // written; src/effects/worker.zig uses "default" on the re-entry path.
+        .tenant_id = "default",
         .instance_id = instance_id_hex,
         .node_id = emitted.node_id,
         .token_id = emitted.token_id,
@@ -1061,7 +1165,7 @@ test "TC-EXP-302-01: SERVICE_TASK activation emits effect_emitted in async path"
     });
     defer testing.allocator.free(delivery_id);
 
-    const count_rows = h.conn.query(
+    var count_rows = h.conn.query(
         testing.allocator,
         "SELECT COUNT(*) FROM effects_outbox WHERE effect_delivery_id = $1::uuid AND status = 'pending'",
         &.{delivery_id},
@@ -1083,10 +1187,10 @@ test "TC-EXP-302-02: SERVICE_TASK transition leaves a parked token and persisted
     defer testing.allocator.free(instance_id_hex);
     const instance_id = try parseUuid(testing.allocator, instance_id_hex);
     const state = makeInitialState(testing.allocator, instance_id);
-    defer freeSeedState(state);
+    defer freeSeedState(testing.allocator, state);
 
     var initial_vars = makeObjectMap(testing.allocator);
-    defer initial_vars.deinit();
+    defer initial_vars.deinit(testing.allocator);
 
     const graph = makeServiceTaskGraph("{\"url\":\"http://127.0.0.1:18192/hook\",\"method\":\"POST\"}");
     const result = try transition_mod.transition(
@@ -1104,8 +1208,11 @@ test "TC-EXP-302-02: SERVICE_TASK transition leaves a parked token and persisted
 
     const effect_event_id = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(effect_event_id);
-    const delivery_id = try Queue.insertEffectInTx(testing.allocator, h.conn, .{
+    const delivery_id = try Queue.insertEffectInTx(testing.allocator, &h.conn, .{
         .effect_event_id = effect_event_id,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was
+        // written; src/effects/worker.zig uses "default" on the re-entry path.
+        .tenant_id = "default",
         .instance_id = instance_id_hex,
         .node_id = emitted.node_id,
         .token_id = emitted.token_id,
@@ -1118,7 +1225,7 @@ test "TC-EXP-302-02: SERVICE_TASK transition leaves a parked token and persisted
     const wait_id = try seedInstanceWait(&h.conn, instance_id_hex, emitted.node_id, emitted.correlation_key);
     defer testing.allocator.free(wait_id);
 
-    const outbox_rows = try h.conn.query(
+    var outbox_rows = try h.conn.query(
         testing.allocator,
         "SELECT status, node_id, correlation_key FROM effects_outbox WHERE effect_delivery_id = $1::uuid",
         &.{delivery_id},
@@ -1129,7 +1236,7 @@ test "TC-EXP-302-02: SERVICE_TASK transition leaves a parked token and persisted
     try testing.expectEqualStrings("svc", outbox_rows.rows[0][1].?);
     try testing.expectEqualStrings(emitted.correlation_key, outbox_rows.rows[0][2].?);
 
-    const wait_rows = try h.conn.query(
+    var wait_rows = try h.conn.query(
         testing.allocator,
         "SELECT node_id, catch_event_key FROM instance_waits WHERE id = $1::uuid",
         &.{wait_id},
@@ -1147,10 +1254,10 @@ test "TC-EXP-302-02: SERVICE_TASK transition leaves a parked token and persisted
 test "TC-EXP-302-03: EFFECT_COMPLETED re-entry advances the token and merges response body" {
     const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
     const state = makeInitialState(testing.allocator, instance_id);
-    defer freeSeedState(state);
+    defer freeSeedState(testing.allocator, state);
 
     var initial_vars = makeObjectMap(testing.allocator);
-    defer initial_vars.deinit();
+    defer initial_vars.deinit(testing.allocator);
 
     const graph = makeServiceTaskGraph("{\"url\":\"http://127.0.0.1:18192/hook\",\"method\":\"POST\"}");
     const started = try transition_mod.transition(
@@ -1185,10 +1292,10 @@ test "TC-EXP-302-03: EFFECT_COMPLETED re-entry advances the token and merges res
 test "TC-EXP-302-04: EFFECT_FAILED re-entry marks the instance ERROR" {
     const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
     const state = makeInitialState(testing.allocator, instance_id);
-    defer freeSeedState(state);
+    defer freeSeedState(testing.allocator, state);
 
     var initial_vars = makeObjectMap(testing.allocator);
-    defer initial_vars.deinit();
+    defer initial_vars.deinit(testing.allocator);
 
     const graph = makeServiceTaskGraph("{\"url\":\"http://127.0.0.1:18192/hook\",\"method\":\"POST\"}");
     const started = try transition_mod.transition(
@@ -1223,10 +1330,10 @@ test "TC-EXP-302-04: EFFECT_FAILED re-entry marks the instance ERROR" {
 test "TC-EXP-302-05: sync_inline true suppresses async effect emission" {
     const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
     const state = makeInitialState(testing.allocator, instance_id);
-    defer freeSeedState(state);
+    defer freeSeedState(testing.allocator, state);
 
     var initial_vars = makeObjectMap(testing.allocator);
-    defer initial_vars.deinit();
+    defer initial_vars.deinit(testing.allocator);
 
     const graph = makeServiceTaskGraph("{\"sync_inline\":true,\"url\":\"http://127.0.0.1:18192/hook\",\"method\":\"POST\"}");
     const result = try transition_mod.transition(
@@ -1251,10 +1358,10 @@ test "TC-EXP-302-05: sync_inline true suppresses async effect emission" {
 test "TC-EXP-302-06: response body is available after EFFECT_COMPLETED re-entry" {
     const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
     const state = makeInitialState(testing.allocator, instance_id);
-    defer freeSeedState(state);
+    defer freeSeedState(testing.allocator, state);
 
     var initial_vars = makeObjectMap(testing.allocator);
-    defer initial_vars.deinit();
+    defer initial_vars.deinit(testing.allocator);
 
     const graph = makeServiceTaskGraph("{\"url\":\"http://127.0.0.1:18192/hook\",\"method\":\"POST\"}");
     const started = try transition_mod.transition(
@@ -1288,10 +1395,10 @@ test "TC-EXP-302-06: response body is available after EFFECT_COMPLETED re-entry"
 test "TC-EXP-302-07: sequential SERVICE_TASK nodes emit distinct effects" {
     const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
     const state = makeInitialState(testing.allocator, instance_id);
-    defer freeSeedState(state);
+    defer freeSeedState(testing.allocator, state);
 
     var initial_vars = makeObjectMap(testing.allocator);
-    defer initial_vars.deinit();
+    defer initial_vars.deinit(testing.allocator);
 
     const graph = makeSequenceGraph();
     const started = try transition_mod.transition(
@@ -1326,10 +1433,10 @@ test "TC-EXP-302-07: sequential SERVICE_TASK nodes emit distinct effects" {
 test "TC-EXP-302-08: parallel SERVICE_TASK branches emit isolated effects" {
     const instance_id = try parseUuid(testing.allocator, try generateTestUuid(testing.allocator));
     const state = makeInitialState(testing.allocator, instance_id);
-    defer freeSeedState(state);
+    defer freeSeedState(testing.allocator, state);
 
     var initial_vars = makeObjectMap(testing.allocator);
-    defer initial_vars.deinit();
+    defer initial_vars.deinit(testing.allocator);
 
     const graph = makeParallelGraph();
     const split = try transition_mod.transition(
@@ -1399,9 +1506,21 @@ test "TC-EXP-303-01: StubEffectsExecutor increments http_call_count" {
     defer testing.allocator.free(correlation_key);
 
     // Simulate an HTTP call
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_1 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_1);
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_2 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_2);
     const spec = EffectSpec{
-        .effect_event_id = try generateTestUuid(testing.allocator),
-        .instance_id = try generateTestUuid(testing.allocator),
+        .effect_event_id = __uuid_1,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
+        .instance_id = __uuid_2,
         .node_id = "T1",
         .token_id = token_id,
         .correlation_key = correlation_key,
@@ -1431,9 +1550,21 @@ test "TC-EXP-303-02: StubEffectsExecutor increments email_count independently" {
     const correlation_key = try std.fmt.allocPrint(testing.allocator, "E1:{s}", .{token_id});
     defer testing.allocator.free(correlation_key);
 
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_3 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_3);
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_4 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_4);
     const spec = EffectSpec{
-        .effect_event_id = try generateTestUuid(testing.allocator),
-        .instance_id = try generateTestUuid(testing.allocator),
+        .effect_event_id = __uuid_3,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
+        .instance_id = __uuid_4,
         .node_id = "E1",
         .token_id = token_id,
         .correlation_key = correlation_key,
@@ -1463,9 +1594,21 @@ test "TC-EXP-303-06: reset() clears counters and recorded map" {
     const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
     defer testing.allocator.free(correlation_key);
 
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_5 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_5);
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_6 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_6);
     const spec = EffectSpec{
-        .effect_event_id = try generateTestUuid(testing.allocator),
-        .instance_id = try generateTestUuid(testing.allocator),
+        .effect_event_id = __uuid_5,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
+        .instance_id = __uuid_6,
         .node_id = "svc",
         .token_id = token_id,
         .correlation_key = correlation_key,
@@ -1502,6 +1645,9 @@ test "TC-EXP-303-08: StubEffectsExecutor returns idempotency_key_sent from effec
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was
+        // written; src/effects/worker.zig uses "default" on the re-entry path.
+        .tenant_id = "default",
         .instance_id = instance_id,
         .node_id = "T1",
         .token_id = token_id,
@@ -1525,9 +1671,21 @@ test "TC-EXP-303-03: StubEffectsExecutor recorded map preserves effect specs" {
     const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
     defer testing.allocator.free(correlation_key);
 
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_7 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_7);
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_8 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_8);
     const spec = EffectSpec{
-        .effect_event_id = try generateTestUuid(testing.allocator),
-        .instance_id = try generateTestUuid(testing.allocator),
+        .effect_event_id = __uuid_7,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
+        .instance_id = __uuid_8,
         .node_id = "svc",
         .token_id = token_id,
         .correlation_key = correlation_key,
@@ -1548,9 +1706,21 @@ test "TC-EXP-303-04: StubEffectsExecutor reset clears counters and recorded stat
     const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
     defer testing.allocator.free(correlation_key);
 
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_9 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_9);
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_10 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_10);
     const spec = EffectSpec{
-        .effect_event_id = try generateTestUuid(testing.allocator),
-        .instance_id = try generateTestUuid(testing.allocator),
+        .effect_event_id = __uuid_9,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
+        .instance_id = __uuid_10,
         .node_id = "svc",
         .token_id = token_id,
         .correlation_key = correlation_key,
@@ -1576,9 +1746,21 @@ test "TC-EXP-303-05: StubEffectsExecutor failure response is configurable" {
     const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
     defer testing.allocator.free(correlation_key);
 
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_11 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_11);
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_12 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_12);
     const spec = EffectSpec{
-        .effect_event_id = try generateTestUuid(testing.allocator),
-        .instance_id = try generateTestUuid(testing.allocator),
+        .effect_event_id = __uuid_11,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
+        .instance_id = __uuid_12,
         .node_id = "svc",
         .token_id = token_id,
         .correlation_key = correlation_key,
@@ -1599,9 +1781,21 @@ test "TC-EXP-303-07: StubEffectsExecutor executes deterministically with no exte
     const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
     defer testing.allocator.free(correlation_key);
 
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_13 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_13);
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_14 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_14);
     const spec = EffectSpec{
-        .effect_event_id = try generateTestUuid(testing.allocator),
-        .instance_id = try generateTestUuid(testing.allocator),
+        .effect_event_id = __uuid_13,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
+        .instance_id = __uuid_14,
         .node_id = "svc",
         .token_id = token_id,
         .correlation_key = correlation_key,
@@ -1623,18 +1817,42 @@ test "TC-EXP-303-09: StubEffectsExecutor keeps different keys isolated" {
     defer executor.deinit();
     executor.reset();
 
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_15 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_15);
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_16 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_16);
     const spec_a = EffectSpec{
-        .effect_event_id = try generateTestUuid(testing.allocator),
-        .instance_id = try generateTestUuid(testing.allocator),
+        .effect_event_id = __uuid_15,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
+        .instance_id = __uuid_16,
         .node_id = "svc",
         .token_id = "tok-a",
         .correlation_key = "svc:tok-a",
         .kind = .http_call,
         .spec_json = "{\"a\":1}",
     };
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_17 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_17);
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_18 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_18);
     const spec_b = EffectSpec{
-        .effect_event_id = try generateTestUuid(testing.allocator),
-        .instance_id = try generateTestUuid(testing.allocator),
+        .effect_event_id = __uuid_17,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
+        .instance_id = __uuid_18,
         .node_id = "svc",
         .token_id = "tok-b",
         .correlation_key = "svc:tok-b",
@@ -1660,9 +1878,21 @@ test "TC-EXP-303-10: zero-attempt execution returns a deterministic result" {
     const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
     defer testing.allocator.free(correlation_key);
 
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_19 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_19);
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_20 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_20);
     const spec = EffectSpec{
-        .effect_event_id = try generateTestUuid(testing.allocator),
-        .instance_id = try generateTestUuid(testing.allocator),
+        .effect_event_id = __uuid_19,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
+        .instance_id = __uuid_20,
         .node_id = "svc",
         .token_id = token_id,
         .correlation_key = correlation_key,
@@ -1683,9 +1913,21 @@ test "TC-EXP-303-11: changing the configured response changes behavior" {
     const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
     defer testing.allocator.free(correlation_key);
 
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_21 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_21);
+    // ISS-0149 / GH #465: this was an inline `try generateTestUuid(...)` with no
+    // owner, so the 36-byte allocation leaked on every run — the struct field
+    // only borrows the slice. Bind it so a defer can release it.
+    const __uuid_22 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(__uuid_22);
     const spec = EffectSpec{
-        .effect_event_id = try generateTestUuid(testing.allocator),
-        .instance_id = try generateTestUuid(testing.allocator),
+        .effect_event_id = __uuid_21,
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
+        .instance_id = __uuid_22,
         .node_id = "svc",
         .token_id = token_id,
         .correlation_key = correlation_key,
@@ -1716,6 +1958,8 @@ test "effects module imports compile successfully" {
     defer testing.allocator.free(correlation_key);
     const spec = EffectSpec{
         .effect_event_id = "test",
+        // ISS-0149 / GH #465: EffectSpec gained tenant_id after this file was written.
+        .tenant_id = "default",
         .instance_id = "inst",
         .node_id = "node",
         .token_id = token_id,

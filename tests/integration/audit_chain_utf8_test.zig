@@ -58,6 +58,20 @@ fn isAllHexLower(s: []const u8) bool {
 /// resource_type, resource_id, action). The trg_bpm_audit_apply_chain_hash
 /// trigger fires on this INSERT so chain_hash is computed automatically
 /// against the 1107 guard.
+/// ISS-0149 / GH #465: re-enable user triggers for the duration of the insert.
+///
+/// `TestHarness.init()` sets `session_replication_role = 'replica'` session-wide so
+/// that `resetTestData()` can DELETE from `audit_entries` without tripping the
+/// immutability guard (`trg_audit_entries_no_delete`). But `replica` suppresses ALL
+/// user triggers on the session — including `trg_bpm_audit_apply_chain_hash`, the
+/// exact trigger every test in this file exists to exercise. Every insert here
+/// therefore landed with `chain_hash IS NULL` and the assertions read that NULL as a
+/// broken hash, not as "the trigger never ran".
+///
+/// Scope the override to the single INSERT rather than clearing it session-wide:
+/// the harness's `replica` setting is a real safety net for the delete path, and
+/// leaving it off for the rest of the session would let a later `resetTestData()`
+/// hit the immutability guard.
 fn insertAuditRow(
     harness: *TestHarness,
     audit_id: []const u8,
@@ -67,6 +81,9 @@ fn insertAuditRow(
     resource_id: []const u8,
     action: []const u8,
 ) !void {
+    try harness.conn.exec("SET session_replication_role = 'origin'", &.{});
+    defer harness.conn.exec("SET session_replication_role = 'replica'", &.{}) catch {};
+
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
@@ -260,21 +277,29 @@ test "TC-ISS-0122-03: bpm_audit_validate_chain returns empty issues[]" {
         "tc03-ascii",
         "iss0122.tc03.create",
     );
-    try harness.conn.exec(
-        \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-        \\  "timestamp", before_state, after_state, trace_id
-        \\)
-        \\VALUES (
-        \\  $1, $2, $3,
-        \\  'iss0122.tc03.create',
-        \\  'iss0122.parent.tc03',
-        \\  convert_from(decode('e2aaaa','hex'),'UTF8'),
-        \\  NOW(), NULL, '{"k":"v"}'::jsonb, 'iss0122-test'
-        \\)
-    ,
-        &.{ utf8_audit_id, tenant_id, actor_id },
-    );
+    // ISS-0149 / GH #465: this insert bypasses insertAuditRow(), so it needs the
+    // same session_replication_role override — without it the row lands with a NULL
+    // chain_hash while the ASCII row above (which now DOES get the trigger) has a
+    // real one, and the validator correctly reports the resulting broken link.
+    try harness.conn.exec("SET session_replication_role = 'origin'", &.{});
+    {
+        defer harness.conn.exec("SET session_replication_role = 'replica'", &.{}) catch {};
+        try harness.conn.exec(
+            \\INSERT INTO audit_entries (
+            \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+            \\  "timestamp", before_state, after_state, trace_id
+            \\)
+            \\VALUES (
+            \\  $1, $2, $3,
+            \\  'iss0122.tc03.create',
+            \\  'iss0122.parent.tc03',
+            \\  convert_from(decode('e2aaaa','hex'),'UTF8'),
+            \\  NOW(), NULL, '{"k":"v"}'::jsonb, 'iss0122-test'
+            \\)
+        ,
+            &.{ utf8_audit_id, tenant_id, actor_id },
+        );
+    }
 
     // Validator: count issues[] for this tenant.
     var issues = try harness.conn.query(

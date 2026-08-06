@@ -1489,6 +1489,29 @@ fn processNodeEntry(
                 };
                 try events.append(allocator, split_event);
                 var new_state = state;
+
+                // ISS-0149 / GitHub #465: the token that ARRIVED at this gateway was
+                // filtered out of `new_tokens` at the top of this branch and is
+                // replaced by the freshly-allocated per-edge tokens above — nothing
+                // downstream ever sees it again. Its fields are allocator-owned per
+                // the ISS-0601 ownership contract, and `state.tokens`' outer array is
+                // likewise owned and about to be superseded by `toOwnedSlice`, so both
+                // must be released here or every parallel split leaks the arriving
+                // token's node_id + branch_id + token_id plus the old array.
+                //
+                // Surviving tokens were appended into `new_tokens` BY VALUE (same
+                // field pointers), so only the dropped token's fields may be freed —
+                // never the survivors'. This mirrors what the JOIN branch below
+                // already does for the same reason.
+                for (state.tokens) |t| {
+                    if (!std.mem.eql(u8, t.node_id, node_id)) continue;
+                    allocator.free(t.node_id);
+                    allocator.free(t.branch_id);
+                    if (t.token_id) |tid| allocator.free(tid);
+                    if (t.waiting_child_instance_id) |w| allocator.free(w);
+                }
+                allocator.free(state.tokens);
+
                 new_state.tokens = try new_tokens.toOwnedSlice(allocator);
 
                 // GH #428: snapshot the target node_ids to visit BEFORE
@@ -1963,10 +1986,14 @@ fn emptyOwnedStrSlice(allocator: std.mem.Allocator) ![][]const u8 {
 
 /// Free every heap allocation inside a single PendingEvent payload. Mirrors
 /// (and is the missing counterpart to) freeInstanceState, scoped to the
-/// PendingEvent union — see src/engine/instance.zig's freeOwnedTransitionState
-/// for the production analogue, which currently frees only the outer
-/// EmittedEvent.idempotency_key and does not walk into payload internals.
-/// Test-only: kept local to this file's test section.
+/// PendingEvent union.
+///
+/// ISS-0149 / GitHub #465: this used to be documented as "test-only", with a note
+/// that `src/engine/instance.zig`'s `freeOwnedTransitionState` "currently frees only
+/// the outer EmittedEvent.idempotency_key and does not walk into payload internals."
+/// That gap WAS the production leak — it is now closed: `freeOwnedTransitionState`
+/// delegates to `freeTransitionResult`, which reaches this function for every
+/// emitted event. So this is production teardown, not a test helper.
 fn freePendingEventPayload(allocator: std.mem.Allocator, payload: PendingEvent) void {
     switch (payload) {
         .parallel_split => |p| {
@@ -2045,7 +2072,14 @@ fn freePendingEvents(allocator: std.mem.Allocator, events: []const PendingEvent)
 /// Free a transition()-returned TransitionResult in full: state (via
 /// freeInstanceState) plus every EmittedEvent's idempotency_key and payload,
 /// plus the emitted_events slice itself.
-fn freeTransitionResult(allocator: std.mem.Allocator, result: TransitionResult) void {
+///
+/// ISS-0149 / GitHub #465: made `pub` so `src/engine/instance.zig` can call the
+/// canonical teardown instead of maintaining its own partial copy. Its private
+/// version freed only `idempotency_key`, never `payload`, so every allocation
+/// `freePendingEventPayload` handles above (a TIMER node's `duration_iso8601`,
+/// a SERVICE_TASK's `spec_json`, a sub-process's `child_definition_id`, …) was
+/// leaked on the production `create()`/`advance()` path.
+pub fn freeTransitionResult(allocator: std.mem.Allocator, result: TransitionResult) void {
     for (result.emitted_events) |ev| {
         allocator.free(ev.idempotency_key);
         freePendingEventPayload(allocator, ev.payload);
@@ -2364,12 +2398,16 @@ test "TC-EE-02-07: PARALLEL_GATEWAY split creates N tokens" {
     // array by value (doesn't free/reuse its fields), so a literal here is
     // safe from a crash standpoint — but the *new* split tokens are freshly
     // allocator.dupe'd and must be freed via freeInstanceState below.
-    var __tokens_15 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
+    // ISS-0149 / GH #465: processNodeEntry now frees the arriving token that the
+    // PARALLEL_GATEWAY split drops, per the ISS-0601 "tokens are always
+    // allocator-owned" contract. A stack array of string literals cannot be freed,
+    // so this fixture must be heap-owned like its siblings above.
+    const __tokens_15 = try dupeTokenSlice(allocator, &.{.{ .node_id = "gw", .branch_id = "b" }});
     const __pending_task_nodes_16 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_15,
+        .tokens = __tokens_15,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .pending_task_nodes = __pending_task_nodes_16,
@@ -2568,12 +2606,16 @@ test "TC-EE-06-01: PARALLEL_GATEWAY split with 2 edges creates 2 tokens and 1 PA
         .{ .id = "e2", .source = "gw", .target = "t2", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
-    var __tokens_27 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
+    // ISS-0149 / GH #465: processNodeEntry now frees the arriving token that the
+    // PARALLEL_GATEWAY split drops, per the ISS-0601 "tokens are always
+    // allocator-owned" contract. A stack array of string literals cannot be freed,
+    // so this fixture must be heap-owned like its siblings above.
+    const __tokens_27 = try dupeTokenSlice(allocator, &.{.{ .node_id = "gw", .branch_id = "b" }});
     const __pending_task_nodes_28 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_27,
+        .tokens = __tokens_27,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .pending_task_nodes = __pending_task_nodes_28,
@@ -2603,12 +2645,16 @@ test "TC-EE-06-02: PARALLEL_GATEWAY split with 3 edges creates 3 tokens with uni
         .{ .id = "e3", .source = "gw", .target = "t3", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
-    var __tokens_29 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
+    // ISS-0149 / GH #465: processNodeEntry now frees the arriving token that the
+    // PARALLEL_GATEWAY split drops, per the ISS-0601 "tokens are always
+    // allocator-owned" contract. A stack array of string literals cannot be freed,
+    // so this fixture must be heap-owned like its siblings above.
+    const __tokens_29 = try dupeTokenSlice(allocator, &.{.{ .node_id = "gw", .branch_id = "b" }});
     const __pending_task_nodes_30 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_29,
+        .tokens = __tokens_29,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .pending_task_nodes = __pending_task_nodes_30,
@@ -2637,12 +2683,16 @@ test "TC-EE-06-03: original arriving token removed after parallel split" {
         .{ .id = "e2", .source = "gw", .target = "t2", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
-    var __tokens_31 = [_]Token{.{ .node_id = "gw", .branch_id = "arriving" }};
+    // ISS-0149 / GH #465: processNodeEntry now frees the arriving token that the
+    // PARALLEL_GATEWAY split drops, per the ISS-0601 "tokens are always
+    // allocator-owned" contract. A stack array of string literals cannot be freed,
+    // so this fixture must be heap-owned like its siblings above.
+    const __tokens_31 = try dupeTokenSlice(allocator, &.{.{ .node_id = "gw", .branch_id = "arriving" }});
     const __pending_task_nodes_32 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_31,
+        .tokens = __tokens_31,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .pending_task_nodes = __pending_task_nodes_32,
@@ -2673,12 +2723,16 @@ test "TC-EE-06-04: each new token targets correct next node per definition edges
         .{ .id = "e2", .source = "gw", .target = "tb", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
-    var __tokens_33 = [_]Token{.{ .node_id = "gw", .branch_id = "b" }};
+    // ISS-0149 / GH #465: processNodeEntry now frees the arriving token that the
+    // PARALLEL_GATEWAY split drops, per the ISS-0601 "tokens are always
+    // allocator-owned" contract. A stack array of string literals cannot be freed,
+    // so this fixture must be heap-owned like its siblings above.
+    const __tokens_33 = try dupeTokenSlice(allocator, &.{.{ .node_id = "gw", .branch_id = "b" }});
     const __pending_task_nodes_34 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_33,
+        .tokens = __tokens_33,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .pending_task_nodes = __pending_task_nodes_34,
@@ -2711,12 +2765,16 @@ test "TC-EE-06-05: PARALLEL_SPLIT event records correct source_node_id and edge_
         .{ .id = "e2", .source = "gw2", .target = "n2", .condition = null, .is_default = false },
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
-    var __tokens_35 = [_]Token{.{ .node_id = "gw2", .branch_id = "b" }};
+    // ISS-0149 / GH #465: processNodeEntry now frees the arriving token that the
+    // PARALLEL_GATEWAY split drops, per the ISS-0601 "tokens are always
+    // allocator-owned" contract. A stack array of string literals cannot be freed,
+    // so this fixture must be heap-owned like its siblings above.
+    const __tokens_35 = try dupeTokenSlice(allocator, &.{.{ .node_id = "gw2", .branch_id = "b" }});
     const __pending_task_nodes_36 = try emptyOwnedStrSlice(allocator);
     const state = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &__tokens_35,
+        .tokens = __tokens_35,
         .variables = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .join_counters = try std.json.ObjectMap.init(allocator, &.{}, &.{}),
         .pending_task_nodes = __pending_task_nodes_36,

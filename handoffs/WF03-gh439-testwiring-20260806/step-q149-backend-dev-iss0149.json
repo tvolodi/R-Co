@@ -1,0 +1,63 @@
+{
+  "handoff_id": "cf5cbc4a-515c-482f-89b8-572cdd7c2830",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "q149",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-06T07:55:45Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "issue_ids": [
+      "ISS-0149"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/465",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "queue_drain": true,
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0149.json"
+    ]
+  },
+  "task": {
+    "description": "Triage and fix 33 failing/leaking test blocks across 10 already-wired tests/integration files (GH #465, ISS-0149).",
+    "acceptance_criteria": [
+      "zig build test-integration exits 0",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "python tools/lint_test_wiring.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "ISS-0149 resolved for all ten files named in GH #465: each passes deterministically in isolation (2/2 clean runs). Three real production bugs fixed (two engine memory leaks in src/engine/instance.zig + src/engine/transition.zig; three EXP-301/302 migrations that silently no-op'd so effects_outbox never existed) and three test bugs fixed (inverted CHECK assertion, hardcoded idempotency key, trigger suppressed by session_replication_role). Full-suite failing blocks fell 253 -> 167. zig build test-integration still exits 1 due to GH #366 cross-binary contention and ISS-0158/GH #479 (effects_subsystem_test), both out of scope and documented.",
+    "artifacts_out": [
+      "src/engine/instance.zig",
+      "src/engine/transition.zig",
+      "migrations/1136_iss0149_exp301_effects_outbox_tenant_scope.sql",
+      "tests/integration/audit_chain_utf8_test.zig",
+      "tests/integration/iss106_webhook_outbox_test.zig",
+      "tests/integration/sch303_timer_dlq_test.zig",
+      "tests/integration/effects_subsystem_test.zig",
+      "docs/issues/ISS-0149.json",
+      "docs/issues/ISS-0158.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0158 / GH #479: 14 effects_subsystem_test blocks still fail; transition() emits no effect_emitted for SERVICE_TASK. Filed and enqueued."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "zig build test-integration not green: residual failures are GH #366 / ISS-0107 cross-binary contention (55P03 lock timeouts, sibling resetTestData TRUNCATEs). Evidence: every affected file passes 2/2 isolated runs."
+      }
+    ],
+    "next_action": "ORCH: drain ISS-0153/0154/0155/0156/0157/0158 remaining in issue_queue.json"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T07:55:45Z",
+  "completed_at": "2026-08-06T10:06:50Z"
+}
