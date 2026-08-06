@@ -94,10 +94,34 @@ test "TC-ISS-0602-cross-01: killIdleConnections with caller tag does not termina
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TC-ISS-0602-cross-02 — defensive cross-owner count is zero under correct
-// predicate.
+// TC-ISS-0602-cross-02 — the caller's own kill predicate excludes a
+// known-different-tagged sibling connection: killIdleConnections() must not
+// touch it, and the sibling must still be observable afterward.
 // ─────────────────────────────────────────────────────────────────────────────
-test "TC-ISS-0602-cross-02: defensive cross-owner count is zero under correct predicate" {
+//
+// ISS-0144 / GitHub #454: this test previously asserted
+// "SELECT count(*) FROM pg_stat_activity WHERE state = 'idle in transaction'
+// AND application_name <> $1" is always 0 — i.e. that NO OTHER connection
+// anywhere on the shared database is ever idle-in-transaction with a
+// different tag. That is not a property of killIdleConnections()'s
+// correctness; it is a property of how many *other* `zig build
+// test-integration` binaries happen to be mid-test at the exact moment this
+// query runs. Every TestHarness.init() holds its connection idle-in-tx for
+// the ENTIRE test body (see helpers.zig: conn.begin() near the end of
+// init(), rolled back only in deinit()), and `test-integration` runs ~20+
+// such binaries concurrently by design (see
+// test-integration-others-internal in build.zig) — so this assertion failed
+// deterministically any time another sibling binary was mid-test, which
+// under normal concurrent execution is effectively always. Reproduced: this
+// is a test-design flaw (asserting a whole-database invariant that the
+// concurrent test-integration model does not provide), not a defect in
+// killIdleConnections() or in the `application_name = $1` predicate itself.
+//
+// Fixed by testing the actual SQL contract with a controlled, self-created
+// sibling connection (same staging pattern as TC-ISS-0602-cross-01 above)
+// instead of asserting a global property of the shared database's entire
+// pg_stat_activity.
+test "TC-ISS-0602-cross-02: kill predicate does not affect a differently-tagged sibling connection" {
     const alloc = testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -105,16 +129,49 @@ test "TC-ISS-0602-cross-02: defensive cross-owner count is zero under correct pr
     const tag = try GetTestOwnerTag(alloc);
     defer alloc.free(tag);
 
-    var q = try h.conn.query(alloc,
+    // Stage a second connection tagged with a different, known application_name
+    // and park it idle-in-transaction — a controlled stand-in for a sibling
+    // process's connection, instead of relying on whatever else happens to be
+    // running concurrently on the shared database.
+    const env = portable_env.globalEnviron();
+    const url_b = try env.getAlloc(alloc, "BPM_TEST_DB_URL");
+    defer alloc.free(url_b);
+    var conn_b = try pg.Conn.connectUrl(std.testing.io, alloc, url_b);
+    defer conn_b.close();
+
+    const sibling_tag = "uid_cross02sibl0";
+    try conn_b.exec("BEGIN", &.{});
+    try conn_b.exec("SELECT set_config('application_name', $1, false)", &.{sibling_tag});
+    {
+        var park = try conn_b.query(alloc, "SELECT 1 AS parked", &.{});
+        defer park.deinit();
+    }
+
+    // The defensive cross-owner check inside killIdleConnections() must not
+    // observe the sibling above as an unexpected side effect of killing
+    // connections tagged with the caller's OWN tag: the kill predicate
+    // (application_name = $1) cannot match sibling_tag, so the sibling
+    // remains idle-in-tx with a DIFFERENT tag than $1, and the defensive
+    // check's own predicate (application_name <> $1) DOES count it — the
+    // correct behavior of this call is therefore to detect it and return
+    // error.OwnerTagMismatch. This proves the check is watching, not that
+    // the database is otherwise quiescent.
+    const result = helpers.killIdleConnections(&h.conn, tag);
+    try testing.expectError(error.OwnerTagMismatch, result);
+
+    // The sibling must be unaffected — still alive and idle-in-tx with its
+    // own tag, proving the kill predicate genuinely excluded it rather than
+    // erroring for an unrelated reason.
+    var sibling_alive = try conn_b.query(alloc,
         \\SELECT count(*) FROM pg_stat_activity
-        \\WHERE state = 'idle in transaction'
-        \\  AND application_name <> $1
-        \\  AND pid <> pg_backend_pid()
-    , &.{tag});
-    defer q.deinit();
-    try testing.expect(q.rows.len > 0);
-    const leftover = std.fmt.parseInt(i64, q.rows[0][0] orelse "0", 10) catch 0;
-    try testing.expectEqual(@as(i64, 0), leftover);
+        \\WHERE application_name = $1 AND state = 'idle in transaction'
+    , &.{sibling_tag});
+    defer sibling_alive.deinit();
+    try testing.expect(sibling_alive.rows.len > 0);
+    const alive_count = std.fmt.parseInt(i64, sibling_alive.rows[0][0] orelse "0", 10) catch 0;
+    try testing.expectEqual(@as(i64, 1), alive_count);
+
+    try conn_b.exec("ROLLBACK", &.{});
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

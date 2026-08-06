@@ -13,6 +13,7 @@ const testing = std.testing;
 const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
+const helpers = @import("helpers.zig");
 
 // Root-level export required so pool connections apply tenant-schema search_path
 // instead of falling back to search_path=public (see audit_iss103_test.zig).
@@ -42,6 +43,14 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 }
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
+    // ISS-0144 / GitHub #454: this binary queries public/tenant_default
+    // tables directly and never calls TestHarness.init(), so under
+    // `zig build test-integration`'s concurrent barrier group it has no
+    // guarantee migrations have finished applying in a sibling binary.
+    // ensureSchemaReady() reuses the same locked migration path
+    // TestHarness.init() uses (see helpers.zig) to close that race.
+    try helpers.ensureSchemaReady(allocator);
+
     // Set the tenant context BEFORE Pool.init so that every pool.acquire()
     // applies SET search_path TO tenant_default,public (schema isolation).
     bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
@@ -365,7 +374,17 @@ test "TC-TNT-07-01: GBL-077 migration is applied (RLS cleanup complete)" {
     defer pool.release(conn);
 
     const row = conn.queryRow(alloc,
-        "SELECT count(*) FROM public.schema_migrations WHERE schema_name = 'public' AND version = 'GBL-077_tnt07_rls_cleanup.sql'",
+        // ISS-0144 / GitHub #454: this migration's file was renamed from
+        // GBL-077_tnt07_rls_cleanup.sql to GBL-116_tnt07_rls_cleanup.sql (the
+        // file's own header comment still says "GBL-077" — see
+        // migrations/GBL-116_tnt07_rls_cleanup.sql line 1 — but its recorded
+        // schema_migrations.version is the current filename). helpers.zig's
+        // markPublicGlobalSkipsApplied() and GBL-133 already reference the
+        // current name; this test was the one place still querying the
+        // pre-rename name, so it never matched any row (same anti-pattern
+        // class as ISS-0088 / GitHub #337, a stale name reference after a
+        // rename — see docs/anti-patterns.md).
+        "SELECT count(*) FROM public.schema_migrations WHERE schema_name = 'public' AND version = 'GBL-116_tnt07_rls_cleanup.sql'",
         &.{},
     ) catch null;
     if (row) |r| {
@@ -468,10 +487,22 @@ test "TC-TNT-07-05: GBL-077 migration is idempotent (already applied)" {
     };
     defer pool.release(conn);
 
-    // GBL-077 is already recorded in schema_migrations (version 77).
-    // The migration runner should skip it. Verify the record is there.
+    // GBL-116_tnt07_rls_cleanup.sql (referred to as "GBL-077" in its own
+    // header comment — see the ISS-0144 note above) is already recorded in
+    // schema_migrations. The migration runner should skip it on subsequent
+    // runs. Verify the record is there.
     const row = conn.queryRow(alloc,
-        "SELECT count(*) FROM public.schema_migrations WHERE schema_name = 'public' AND version = 'GBL-077_tnt07_rls_cleanup.sql'",
+        // ISS-0144 / GitHub #454: this migration's file was renamed from
+        // GBL-077_tnt07_rls_cleanup.sql to GBL-116_tnt07_rls_cleanup.sql (the
+        // file's own header comment still says "GBL-077" — see
+        // migrations/GBL-116_tnt07_rls_cleanup.sql line 1 — but its recorded
+        // schema_migrations.version is the current filename). helpers.zig's
+        // markPublicGlobalSkipsApplied() and GBL-133 already reference the
+        // current name; this test was the one place still querying the
+        // pre-rename name, so it never matched any row (same anti-pattern
+        // class as ISS-0088 / GitHub #337, a stale name reference after a
+        // rename — see docs/anti-patterns.md).
+        "SELECT count(*) FROM public.schema_migrations WHERE schema_name = 'public' AND version = 'GBL-116_tnt07_rls_cleanup.sql'",
         &.{},
     ) catch null;
     if (row) |r| {

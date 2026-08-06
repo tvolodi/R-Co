@@ -671,6 +671,80 @@ pub fn cleanupDefinitionSnapshots(conn: *pg.Conn, definition_id: []const u8) !vo
     );
 }
 
+/// ISS-0144 / GitHub #454: guarantee the shared test database's `public` and
+/// `tenant_default` schemas are fully migrated before a binary that does NOT
+/// use TestHarness (no rollback-on-deinit isolation needed — e.g. binaries
+/// whose own tests manage per-test UUID fixtures with autocommit connections)
+/// issues its first query.
+///
+/// Root cause this closes: `zig build test-integration` runs ~20+ independent
+/// test binaries as concurrent sibling build-graph Steps (see
+/// `test-integration-others-internal` in build.zig, same barrier group
+/// documented in src/design/fix-ISS-0106.md). Every binary that calls
+/// `TestHarness.init()` waits for migrations via the locked runMigrations() /
+/// runMigrationsForSchema() path below before touching `public`/`tenant_default`
+/// tables. A handful of binaries (tnt_backfill_export_cleanup_test.zig,
+/// tenant_config_realm_test.zig, sch303_timer_dlq_test.zig,
+/// onboarding_realm_guard_test.zig, exp103_instance_waits_test.zig) query
+/// those same shared schemas via a raw `Pool.init()` with no such guarantee,
+/// so when the build runner starts them concurrently with a binary that is
+/// still mid-migration, they observe a partially-migrated schema
+/// (`C42703 column does not exist`, `relation does not exist`) — exactly the
+/// mechanism GH #364/ISS-0106 and GH #366/ISS-0107 already fixed for other
+/// binaries, recurring here for a different set of callers.
+///
+/// This reuses the SAME locked migration path `TestHarness.init()` already
+/// uses (runMigrations() takes the widened `bpm_test_migrations_public`
+/// advisory lock; runForSchema() takes the per-migration
+/// `bpm.migrations.runForSchema` advisory lock — see ISS-0107/ISS-0129) rather
+/// than introducing a second, independent locking scheme that could reopen
+/// the same class of race against the existing lock. Unlike TestHarness.init(),
+/// this does NOT open a long-lived transaction and does NOT provide
+/// rollback-on-deinit isolation — callers that need that must use
+/// TestHarness.init() instead. This function only guarantees schema
+/// readiness; it is safe and cheap to call once per test (runMigrations()/
+/// runMigrationsForSchema() are idempotent — a fully-migrated schema costs
+/// one indexed SELECT per call).
+pub fn ensureSchemaReady(allocator: std.mem.Allocator) !void {
+    const env = portable_env.globalEnviron();
+    const url = env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => {
+            std.debug.print("BPM_TEST_DB_URL is required for integration tests\n", .{});
+            return error.MissingTestDatabaseUrl;
+        },
+        error.OutOfMemory => return error.OutOfMemory,
+        else => return err,
+    };
+    defer allocator.free(url);
+
+    var conn = pg.Conn.connectUrl(std.testing.io, allocator, url) catch |err| {
+        std.debug.print("ensureSchemaReady: pg.Conn.connectUrl failed: {}\n", .{err});
+        return err;
+    };
+    defer conn.close();
+
+    configureSessionTimeouts(&conn) catch |err| {
+        std.debug.print("ensureSchemaReady: configureSessionTimeouts failed: {}\n", .{err});
+        return err;
+    };
+
+    // Run migrations against public first (locked — see runMigrations()).
+    runMigrations(std.testing.io, allocator, &conn, url) catch |err| {
+        std.debug.print("ensureSchemaReady: runMigrations failed: {}\n", .{err});
+        return err;
+    };
+
+    // Provision and migrate tenant_default so tenant-scoped business tables
+    // (events, instance_projections, timers, dead_letter_items, etc.) exist —
+    // several of the affected binaries (sch303_timer_dlq_test.zig) query
+    // tenant_default tables directly.
+    _ = conn.exec("SELECT bpm_provision_tenant_schema($1::uuid)", &.{bpm.api_tenant_context.DEFAULT_TENANT_ID}) catch {};
+    runMigrationsForSchema(std.testing.io, allocator, &conn, "tenant_default", url) catch |err| {
+        std.debug.print("ensureSchemaReady: runMigrationsForSchema (tenant_default) failed: {}\n", .{err});
+        return err;
+    };
+}
+
 // ---------------------------------------------------------------------------
 // TestHarness
 // ---------------------------------------------------------------------------

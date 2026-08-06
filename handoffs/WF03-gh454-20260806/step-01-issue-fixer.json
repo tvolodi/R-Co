@@ -1,0 +1,78 @@
+{
+  "handoff_id": "c2d3e4f5-0000-4a00-9000-000000000002",
+  "run_id": "WF03-gh454-20260806",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-gh454-20260806/step-01-issue-fixer.json",
+  "created_at": "2026-08-05T22:20:19Z",
+  "started_at": "2026-08-05T22:20:19Z",
+  "completed_at": "2026-08-06T00:34:46Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": ["docs/issues/ISS-0144.json"]
+  },
+  "task": {
+    "description": "Diagnose (ISSUE-FIXER role), design (CODE-DESIGNER role), and implement (BACKEND-DEV role) a fix for GH #454 / ISS-0144: zig build test-integration's concurrent suite has widespread non-deterministic failures. Single agent covered Steps 1 (Diagnose) through 3 (Fix) given the infra/build-graph scale of the fix, per the task's explicit authorization to act as its own CODE-DESIGNER for this class of change.",
+    "acceptance_criteria": [
+      "Root-cause the specific mechanism(s) using targeted reproduction, not just re-running the full suite",
+      "zig build test-integration produces the same pass/fail result across multiple consecutive runs (determinism)",
+      "zig build test-env-verify's C4 does not regress after a normal test-integration run",
+      "Document the fix in docs/anti-patterns.md following the #364/#366 precedent style"
+    ],
+    "functions_to_call": ["fn:search-issues", "fn:register-issue", "fn:update-issue"]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Root-caused and fixed four distinct, independently-confirmed mechanisms contributing to ISS-0144's symptom cluster: (1) cross-binary schema-readiness gap in 6 standalone test-integration binaries that never called TestHarness.init() -- fixed via new helpers.zig::ensureSchemaReady(); (2) a genuine TOCTOU race in src/db/migrations.zig::runForSchema() where the 'already applied' snapshot was read before the serializing lock was acquired -- fixed by re-checking under lock; (3) a C4 schema-baseline leak (345 orphaned public.tenant rows confirmed live) from tnt_schema_isolation_test.zig's cleanupTenant() never deleting the public.tenant row provisionTenantSchema() creates -- fixed; (4) two test assertions that were flawed under real concurrency (TC-TNT-03-01/03-03, TC-ISS-0602-cross-02) -- rewritten. Also fixed a recurrence of ISS-0089 (unqualified service_catalog SQL in svc01_service_catalog_scope_test.zig) and svc01/svc03's TenantNotFound bugs (tests referenced tenants that were never inserted), which together account for the exact svc01/svc03 'column scope does not exist' symptom named in the original report. DETERMINISM EVIDENCE: zig build test-integration-tnt (34 tests) passed (exit 0) across 3 consecutive clean runs post-fix. zig build test-integration (the umbrella) went from 163/156/107 failures (original baseline, ~672-679 total) to 124/85 failures (~682 total) across 2 consecutive post-fix runs -- substantial, verified improvement, though full determinism across the entire ~90-file main_test.zig aggregate was not achieved. A separate, pre-existing architectural fragility (tests relying on ambient thread-local tenant_context left by whichever test ran immediately before them) was found while validating -- this amplifies severely when main_test.zig's identical source is compiled standalone via test-integration-svc/-env (not part of the umbrella target this issue names), and was filed separately as GH #457 / ISS-0145 rather than fixed here, since closing it requires a file-by-file audit beyond this fix's minimal scope. zig build test-env-verify reports HEALTHY (7/7 PASS, including C4) after this fix. A tool bug in tools/verify_schema_baseline.py's --auto-fix path (references a renamed migration file) was also found and filed as GH #458 / ISS-0146.",
+    "artifacts_out": [
+      "tests/integration/helpers.zig",
+      "src/db/migrations.zig",
+      "tests/integration/tnt_schema_isolation_test.zig",
+      "tests/integration/tnt_backfill_export_cleanup_test.zig",
+      "tests/integration/tenant_config_realm_test.zig",
+      "tests/integration/sch303_timer_dlq_test.zig",
+      "tests/integration/onboarding_realm_guard_test.zig",
+      "tests/integration/exp103_instance_waits_test.zig",
+      "tests/integration/iss0602_cross_process_isolation_test.zig",
+      "tests/integration/svc01_service_catalog_scope_test.zig",
+      "tests/integration/svc03_definition_activation_scope_test.zig",
+      "docs/anti-patterns.md",
+      "docs/issues/ISS-0144.json",
+      "docs/issues/ISS-0145.json",
+      "docs/issues/ISS-0146.json",
+      "docs/issues/issue_index.json",
+      "CHANGELOG.md"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0145",
+        "severity": "MAJOR",
+        "description": "Ambient tenant_context ordering dependency across test-integration files causes severe failures when main_test.zig is compiled standalone (test-integration-svc/-env); deferred out of scope for this fix, filed as GH #457.",
+        "affected_requirement": null
+      },
+      {
+        "id": "ISS-0146",
+        "severity": "MINOR",
+        "description": "tools/verify_schema_baseline.py --auto-fix references renamed migration GBL-105 (now GBL-133); deferred, filed as GH #458.",
+        "affected_requirement": null
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh454-20260806",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-gh454-20260806",
+      "push_status": "pending",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to Step Final (git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

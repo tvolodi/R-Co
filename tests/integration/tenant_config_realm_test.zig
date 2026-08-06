@@ -16,6 +16,7 @@ const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 const tenant_config = bpm.tenant_config_routes;
+const helpers = @import("helpers.zig");
 
 // ---------------------------------------------------------------------------
 // OS-level random bytes (Zig 0.16: std.crypto.random removed)
@@ -52,6 +53,10 @@ fn testDbUrl(alloc: std.mem.Allocator) ![]u8 {
 }
 
 fn makePool(alloc: std.mem.Allocator, url: []const u8) !Pool {
+    // ISS-0144 / GitHub #454: guarantee public/tenant_default schemas are
+    // fully migrated before this binary's first query — see the doc comment
+    // on helpers.ensureSchemaReady() for the full root-cause rationale.
+    try helpers.ensureSchemaReady(alloc);
     return Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
 }
 

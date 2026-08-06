@@ -29,6 +29,7 @@ const PoolConfig = bpm.pool.PoolConfig;
 const Scheduler = bpm.scheduler_poller.Scheduler;
 const SchedulerConfig = bpm.scheduler_poller.SchedulerConfig;
 const tenant_context = bpm.api_tenant_context;
+const helpers = @import("helpers.zig");
 
 // Default tenant UUID — the pool resolves this to schema 'tenant_default'.
 const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
@@ -49,6 +50,10 @@ fn getTestDbUrl(allocator: std.mem.Allocator) ![]u8 {
 }
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
+    // ISS-0144 / GitHub #454: guarantee public/tenant_default schemas are
+    // fully migrated before this binary's first query — see the doc comment
+    // on helpers.ensureSchemaReady() for the full root-cause rationale.
+    try helpers.ensureSchemaReady(allocator);
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 8 });
 }
 

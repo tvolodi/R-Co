@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-05T20:00:21Z",
-  "next_issue_id": 130,
+  "last_updated": "2026-08-06T00:25:21Z",
+  "next_issue_id": 147,
   "issues": [
     {
       "id": "ISS-0205",
@@ -1589,7 +1589,7 @@
     {
       "id": "ISS-0144",
       "title": "tests/integration suite has widespread non-deterministic failures when run concurrently (schema drift, cross-binary races)",
-      "status": "OPEN",
+      "status": "PARTIALLY_RESOLVED",
       "severity": "MAJOR",
       "category": "test-infrastructure / concurrency-race",
       "run_id": "WF03-gh446-lint-baseline-20260805",
@@ -1601,8 +1601,41 @@
         "tools/verify_schema_baseline.py"
       ],
       "created_at": "2026-08-05T19:58:51Z",
-      "resolved_at": null,
+      "resolved_at": "2026-08-06T00:25:21Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/454"
+    },
+    {
+      "id": "ISS-0145",
+      "title": "tests/integration files relying on ambient tenant_context ordering cause severe standalone -svc/-env failures",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "test-infrastructure / ambient-state-ordering",
+      "run_id": "WF03-gh454-20260806",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/integration/db_integration_test.zig",
+        "tests/integration/*.zig",
+        "src/api/tenant_context.zig",
+        "src/db/pool.zig"
+      ],
+      "created_at": "2026-08-06T00:25:21Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/457"
+    },
+    {
+      "id": "ISS-0146",
+      "title": "tools/verify_schema_baseline.py --auto-fix references renamed migration GBL-105 (now GBL-133), auto-fix always fails and loops",
+      "status": "OPEN",
+      "severity": "MINOR",
+      "category": "tooling / stale-filename-after-rename",
+      "run_id": "WF03-gh454-20260806",
+      "handoff_id": null,
+      "affected_areas": [
+        "tools/verify_schema_baseline.py"
+      ],
+      "created_at": "2026-08-06T00:25:21Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/458"
     }
   ]
 }

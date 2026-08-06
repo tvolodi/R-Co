@@ -78,6 +78,55 @@ fn parseUuid36(s: []const u8) ![16]u8 {
     return out;
 }
 
+/// ISS-0144 / GitHub #454: `ServiceCatalog.registerService()` (see
+/// src/repository/service_catalog.zig) requires `owner_tenant_id` to already
+/// exist as a row in public.tenant for a scope=.tenant registration — it
+/// runs `SELECT id FROM public.tenant WHERE id = $1::uuid` and returns
+/// CatalogError.TenantNotFound if that lookup is empty. Several tests below
+/// generated a random tenant UUID and passed it straight to
+/// registerService() as owner_tenant_id under a comment claiming it was a
+/// "pre-committed fixture tenant" — but no code in this file ever inserted
+/// that row, so every one of those calls deterministically hit
+/// TenantNotFound (not a migration/concurrency issue — the tenant simply
+/// never existed). Insert it for real before registering a tenant-scoped
+/// service.
+///
+/// Takes `*Pool` (the SAME pool passed to `ServiceCatalog.init()`), not
+/// `h.conn` (the TestHarness's own connection): `TestHarness.init()` opens
+/// an explicit, never-committed transaction on `h.conn` that only rolls
+/// back in `deinit()` (by design, for per-test isolation) — an INSERT
+/// issued on `h.conn` is invisible to any other session under Postgres's
+/// default READ COMMITTED isolation, including the separate pool
+/// connection `registerService()` acquires via `pool.acquire()`. Acquiring
+/// a connection from the SAME pool here (and letting the driver's default
+/// autocommit behavior commit it immediately) makes the row visible to
+/// every subsequent `pool.acquire()` call in this test, including
+/// `registerService()`'s.
+fn insertTenant(alloc: std.mem.Allocator, pool: *Pool, id_hex: []const u8, label: []const u8) !void {
+    // ISS-0144 rework: `slug` and `idp_realm_id` both carry UNIQUE indexes
+    // (idx_tenant_slug_unique, idx_tenant_idp_realm_id) in public.tenant.
+    // Because this INSERT commits immediately (via `pool`, not the
+    // TestHarness's rolled-back h.conn), a static per-test-name slug like
+    // "svc03-own" collides with the SAME row left behind by every PRIOR run
+    // of this suite: `ON CONFLICT (id) DO NOTHING` only covers the `id`
+    // column, so the slug/idp_realm_id unique-index violation on the second
+    // and later runs was an uncaught Postgres error. Derive both from
+    // `id_hex` (already a fresh random UUID per test) so they are unique
+    // per call, forever, with no accumulation risk.
+    const unique_slug = try std.fmt.allocPrint(alloc, "{s}-{s}", .{ label, id_hex });
+    defer alloc.free(unique_slug);
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    try conn.exec(
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $2, now(), 'test', $4::uuid)
+        \\ON CONFLICT (id) DO NOTHING
+    ,
+        &.{ id_hex, unique_slug, label, "00000000-0000-0000-0000-000000000000" },
+    );
+}
+
 fn freeServiceRecord(alloc: std.mem.Allocator, rec: bpm.service_catalog.ServiceCatalogRecord) void {
     alloc.free(rec.service_id);
     alloc.free(rec.endpoint_url);
@@ -254,10 +303,13 @@ test "svc03: activation passes for own-tenant scoped service" {
     defer registry.deinit();
     plugin_registry.freezePluginRegistry(&registry);
 
-    // Use pre-committed fixture tenant (visible to pool connections).
+    // Insert the fixture tenant for real — see insertTenant()'s doc comment
+    // (ISS-0144 / GitHub #454) for why a bare random UUID here previously
+    // made registerService() fail with TenantNotFound.
     const owner_hex = try randomUuidStr(alloc);
     defer alloc.free(owner_hex);
     const tid_owner = try parseUuid36(owner_hex);
+    try insertTenant(alloc, &pool, owner_hex, "svc03-own");
 
     var rand_bytes: [8]u8 = undefined;
     fillRandom(&rand_bytes);
@@ -310,13 +362,18 @@ test "svc03: activation rejected for cross-tenant service reference" {
     defer registry.deinit();
     plugin_registry.freezePluginRegistry(&registry);
 
-    // Use pre-committed fixture tenants (visible to pool connections).
+    // Insert the owner fixture tenant for real — see insertTenant()'s doc
+    // comment (ISS-0144 / GitHub #454). tid_caller does not need a DB row:
+    // it is only passed to validateServiceTaskReferences() as the
+    // "activating tenant" argument, never looked up via registerService()'s
+    // TenantNotFound check.
     const owner_hex = try randomUuidStr(alloc);
     defer alloc.free(owner_hex);
     const caller_hex = try randomUuidStr(alloc);
     defer alloc.free(caller_hex);
     const tid_owner = try parseUuid36(owner_hex);
     const tid_caller = try parseUuid36(caller_hex);
+    try insertTenant(alloc, &pool, owner_hex, "svc03-xt-owner");
 
     var rand_bytes: [8]u8 = undefined;
     fillRandom(&rand_bytes);
@@ -508,13 +565,15 @@ test "svc03: first scope violation stops validation atomically" {
     defer registry.deinit();
     plugin_registry.freezePluginRegistry(&registry);
 
-    // Use pre-committed fixture tenants (visible to pool connections).
+    // Insert the owner fixture tenant for real — see insertTenant()'s doc
+    // comment (ISS-0144 / GitHub #454).
     const owner_hex = try randomUuidStr(alloc);
     defer alloc.free(owner_hex);
     const caller_hex = try randomUuidStr(alloc);
     defer alloc.free(caller_hex);
     const tid_owner = try parseUuid36(owner_hex);
     const tid_caller = try parseUuid36(caller_hex);
+    try insertTenant(alloc, &pool, owner_hex, "svc03-atom-owner");
 
     var rand_bytes: [8]u8 = undefined;
     fillRandom(&rand_bytes);

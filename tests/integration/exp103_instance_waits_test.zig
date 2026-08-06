@@ -20,6 +20,7 @@ const Scheduler = bpm.scheduler_poller.Scheduler;
 const SchedulerConfig = bpm.scheduler_poller.SchedulerConfig;
 const TaskStore = bpm.tasks.TaskStore;
 const tenant_context = bpm.api_tenant_context;
+const helpers = @import("helpers.zig");
 
 // Default tenant UUID — pool resolves to schema 'tenant_default'.
 const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
@@ -47,6 +48,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     // the default tenant row to SCHEMA before creating the real pool.  Once the
     // DB row is SCHEMA, the real pool's first acquire() will re-query and route
     // to tenant_default schema as intended.
+    //
+    // ISS-0144 / GitHub #454: this file's own runForSchema() call further
+    // below only migrates tenant_default, and its error is swallowed as
+    // non-fatal — it does not guarantee `public` (e.g. public.tenant, whose
+    // storage_mode column the UPDATE just below depends on) is fully
+    // migrated. Under zig build test-integration's concurrent barrier group
+    // this binary can start before a sibling binary's public-schema
+    // migration pass finishes. ensureSchemaReady() closes that race using
+    // the same locked migration path TestHarness.init() uses; the
+    // runForSchema() call below then becomes a fast, idempotent no-op.
+    try helpers.ensureSchemaReady(allocator);
     {
         tenant_context.clear(); // no tenant → pool routes to public
         var setup_pool = try Pool.init(std.testing.io, allocator, PoolConfig{

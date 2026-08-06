@@ -1,0 +1,31 @@
+{
+  "run_id": "WF03-gh454-20260806",
+  "created_at": "2026-08-05T22:20:19Z",
+  "branch_name": "feature/WF03-gh454-20260806",
+  "items": [
+    {
+      "issue_id": "ISS-0145",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/457",
+      "status": "DEFERRED_OUT_OF_SCOPE",
+      "severity": "MAJOR",
+      "discovered_at": "2026-08-06T00:25:21Z",
+      "discovered_by": "BACKEND-DEV (acting as ISSUE-FIXER) WF03-gh454-20260806, determinism validation step",
+      "discovered_while_fixing": "ISS-0144",
+      "started_at": null,
+      "completed_at": null,
+      "deferral_rationale": "This run's acceptance criterion is determinism of `zig build test-integration` (the umbrella target named in GH #454). ISS-0145's catastrophic failure amplification (~291/543) is reproduced only when running the standalone `test-integration-svc`/`test-integration-env` narrow steps directly -- the umbrella target shows only 2 occurrences of the same underlying signature across repeated runs, confirmed by direct log comparison. Fixing ISS-0145 properly requires auditing every tests/integration/*.zig file reachable from main_test.zig for missing tenant_context.set()/.clear() calls in its own setup path -- a file-by-file audit of unknown scope (confirmed >1 file affected, exact count not yet enumerated), which is itself architectural/large per WF-03's fix-size discipline (the same rationale ISS-0106's design doc used to explicitly scope out a similar broader hardening). Filed as GH #457 / ISS-0145 with full root-cause analysis and reproduction steps so a future run can pick it up without re-diagnosing. Not a destructive/irreversible-change exception -- purely a scope-size judgement call, logged here per CLAUDE.md's Unblock-Everything directive for ORCH/future-run visibility."
+    },
+    {
+      "issue_id": "ISS-0146",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/458",
+      "status": "DEFERRED_OUT_OF_SCOPE",
+      "severity": "MINOR",
+      "discovered_at": "2026-08-06T00:25:21Z",
+      "discovered_by": "BACKEND-DEV (acting as ISSUE-FIXER) WF03-gh454-20260806, self-review C4 verification step",
+      "discovered_while_fixing": "ISS-0144",
+      "started_at": null,
+      "completed_at": null,
+      "deferral_rationale": "tools/verify_schema_baseline.py --auto-fix references a renamed migration file (GBL-105 -> GBL-133) and its auto-fix path is unconditionally broken as a result. Not blocking: the 2 orphaned tenant rows this run's C4 check flagged were cleaned up directly via SQL, and `zig build test-env-verify` now reports HEALTHY (7/7 PASS) without needing the auto-fix path. A tool-script filename fix plus a retry-cap addition is a genuinely separate, small, MINOR-severity task with no dependency on this run's branch -- filed as GH #458 / ISS-0146 rather than expanding this run's diff with an unrelated tool fix."
+    }
+  ]
+}

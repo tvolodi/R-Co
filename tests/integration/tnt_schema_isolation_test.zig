@@ -137,6 +137,25 @@ fn cleanupTenant(
     ) catch |err| {
         std.debug.print("cleanup: DELETE schema_migrations for {s} failed: {}\n", .{ schema_name_str, err });
     };
+
+    // ISS-0144 / GitHub #454: provisionTenantSchema() (src/db/provisioning.zig
+    // Step 6a) inserts/updates a public.tenant row with storage_mode='SCHEMA'
+    // for every provisioned tenant_id. Without deleting it here, every test
+    // in this file that calls provisionTenantSchema() permanently leaks a
+    // public.tenant row — confirmed live: 345 orphaned SCHEMA-mode rows (and
+    // 20+ orphaned empty tenant_<uuid> schemas whose CASCADE drop above
+    // cleans the schema itself, but not this registry row) accumulated in
+    // the shared bpm_test database from prior runs. zig build
+    // test-env-verify's C4 schema-baseline check later flags these rows as
+    // drift because no matching Postgres schema exists for them anymore.
+    // Delete unconditionally (defer already guarantees this runs on test
+    // failure, not just success).
+    conn.exec(
+        "DELETE FROM public.tenant WHERE id = $1::uuid",
+        &.{tenant_id_str},
+    ) catch |err| {
+        std.debug.print("cleanup: DELETE public.tenant for {s} failed: {}\n", .{ tenant_id_str, err });
+    };
 }
 
 // The full list of 21 business tables that must live in per-tenant schemas.
@@ -590,7 +609,7 @@ test "TC-TNT-02-03: linter rejects migration file containing public.events" {
 
     // Run the linter as a subprocess using Zig 0.16 std.process.run.
     const result = try std.process.run(alloc, std.testing.io, .{
-        .argv = &.{ "python3", "tools/lint_migration_schema.py", scratch_path },
+        .argv = &.{ "python", "tools/lint_migration_schema.py", scratch_path },
         .stdout_limit = .limited(64 * 1024),
         .stderr_limit = .limited(64 * 1024),
     });
@@ -658,7 +677,7 @@ test "TC-TNT-02-04: linter accepts migration file containing public.schema_migra
     defer std.Io.Dir.cwd().deleteFile(std.testing.io, scratch_path) catch {};
 
     const result = try std.process.run(alloc, std.testing.io, .{
-        .argv = &.{ "python3", "tools/lint_migration_schema.py", scratch_path },
+        .argv = &.{ "python", "tools/lint_migration_schema.py", scratch_path },
         .stdout_limit = .limited(64 * 1024),
         .stderr_limit = .limited(64 * 1024),
     });
@@ -854,6 +873,19 @@ test "TC-TNT-03-01: pool checkout for resolved tenant includes tenant schema in 
 
     var schema_buf: [80]u8 = undefined;
     const schema_name_str = schemaName(tenant_id, &schema_buf);
+    defer cleanupTenant(alloc, &pool, tenant_id, schema_name_str);
+
+    // ISS-0144 / GitHub #454: this test asserts the pool routes a resolved
+    // tenant to SCHEMA mode (search_path includes the tenant schema), but a
+    // tenant that was never provisioned resolves to LEGACY_RLS (see
+    // resolveAndCacheStorageMode() in src/db/pool.zig: 0 rows in
+    // public.tenant AND 0 rows in public.tenant_schemas falls through to
+    // LEGACY_RLS) — so without provisioning, this assertion fails
+    // deterministically (reproduced standalone, zero concurrency: "expected
+    // search_path to contain 'tenant_<uuid>', got: 'public'"). Provision the
+    // tenant first so the SCHEMA branch this test actually targets is the
+    // one exercised.
+    try provisionTenantSchema(alloc, &pool, tenant_id, migrationsDir());
 
     // Set tenant context so acquire() calls applyRequestTenantContext with
     // the resolved tenant branch.
@@ -951,11 +983,21 @@ test "TC-TNT-03-03: two concurrent connections for different tenants have indepe
     defer alloc.free(tenant_a_id);
     var schema_buf_a: [80]u8 = undefined;
     const schema_a = schemaName(tenant_a_id, &schema_buf_a);
+    defer cleanupTenant(alloc, &pool, tenant_a_id, schema_a);
 
     const tenant_b_id = try randomUuidStr(alloc);
     defer alloc.free(tenant_b_id);
     var schema_buf_b: [80]u8 = undefined;
     const schema_b = schemaName(tenant_b_id, &schema_buf_b);
+    defer cleanupTenant(alloc, &pool, tenant_b_id, schema_b);
+
+    // ISS-0144 / GitHub #454: both tenants must be provisioned before
+    // asserting SCHEMA-mode routing — an unprovisioned tenant resolves to
+    // LEGACY_RLS (search_path=public), which made this assertion fail
+    // deterministically even with zero concurrency. See the identical fix
+    // and rationale on TC-TNT-03-01 above.
+    try provisionTenantSchema(alloc, &pool, tenant_a_id, migrationsDir());
+    try provisionTenantSchema(alloc, &pool, tenant_b_id, migrationsDir());
 
     // Acquire connection A with tenant A context.
     tenant_context.set(tenant_a_id);

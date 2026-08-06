@@ -24,6 +24,7 @@ const provider_types = bpm.identity_provider.types;
 const provider_errors = bpm.identity_provider.errors;
 const provider_manager = bpm.identity_provider.manager;
 const tenant_ctx = bpm.api_tenant_context;
+const helpers = @import("helpers.zig");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,10 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 }
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
+    // ISS-0144 / GitHub #454: guarantee public/tenant_default schemas are
+    // fully migrated before this binary's first query — see the doc comment
+    // on helpers.ensureSchemaReady() for the full root-cause rationale.
+    try helpers.ensureSchemaReady(allocator);
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 3 });
 }
 
