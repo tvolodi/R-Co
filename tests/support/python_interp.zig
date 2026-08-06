@@ -54,7 +54,11 @@ pub const path_candidates = [_][]const u8{ "python3", "python" };
 ///
 /// Any spawn failure (candidate absent, not executable) is a rejection, not an
 /// error — resolution moves on to the next candidate.
-fn probe(allocator: std.mem.Allocator, io: std.Io, exe: []const u8) bool {
+///
+/// Public so tests/unit/python_interp_test.zig can assert the rejection
+/// behaviour directly; this module carries no `test` blocks of its own (it is a
+/// helper, not an integration test — see `helpers.zig` for the same pattern).
+pub fn probe(allocator: std.mem.Allocator, io: std.Io, exe: []const u8) bool {
     const result = std.process.run(allocator, io, .{
         .argv = &.{ exe, "-c", probe_source },
         .stdout_limit = .limited(4 * 1024),
@@ -213,48 +217,4 @@ pub fn deinitCache() void {
         cache_allocator.free(@constCast(c));
         cached = null;
     }
-}
-
-// ---------------------------------------------------------------------------
-// Unit tests — no database required.
-// ---------------------------------------------------------------------------
-
-test "resolve returns an interpreter that can execute code" {
-    const alloc = std.testing.allocator;
-    const exe = try resolve(alloc, std.testing.io);
-    defer alloc.free(exe);
-
-    try std.testing.expect(exe.len > 0);
-
-    // The resolved interpreter must actually run Python — this is the property
-    // the whole module exists to guarantee.
-    const result = try std.process.run(alloc, std.testing.io, .{
-        .argv = &.{ exe, "-c", "import sys; sys.stdout.write('hello')" },
-        .stdout_limit = .limited(4 * 1024),
-        .stderr_limit = .limited(4 * 1024),
-    });
-    defer alloc.free(result.stdout);
-    defer alloc.free(result.stderr);
-
-    try std.testing.expectEqual(@as(u8, 0), result.term.exited);
-    try std.testing.expect(std.mem.indexOf(u8, result.stdout, "hello") != null);
-}
-
-test "probe rejects a non-interpreter" {
-    const alloc = std.testing.allocator;
-    // A path that cannot spawn must be rejected, not crash.
-    try std.testing.expect(!probe(alloc, std.testing.io, "definitely-not-a-real-executable-bpm"));
-}
-
-test "resolveCached memoises: repeat calls return the same backing memory" {
-    const alloc = std.testing.allocator;
-    defer deinitCache();
-
-    const a = try resolveCached(alloc, std.testing.io);
-    const b = try resolveCached(alloc, std.testing.io);
-    // Same backing memory — callers must not free it (design §5 ownership table).
-    // Note this test's allocator is leak-checked at test end and the cache is
-    // NOT allocated from it, which is the point of `cache_allocator`.
-    try std.testing.expectEqual(a.ptr, b.ptr);
-    try std.testing.expectEqual(a.len, b.len);
 }

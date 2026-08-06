@@ -161,6 +161,37 @@ pub fn build(b: *std.Build) void {
     });
     const run_event_store_tests = b.addRunArtifact(event_store_tests);
 
+    // ISS-0147 / GitHub #374: Python interpreter resolver shared by the
+    // integration linter tests (tnt_schema_isolation_test.zig) and its own unit
+    // tests. Lives in tests/support/ rather than tests/integration/ because it
+    // is a helper, not a test file, and because Zig forbids importing across
+    // module roots — a named module is what lets both callers reach it.
+    const python_interp_mod = b.createModule(.{
+        .root_source_file = b.path("tests/support/python_interp.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "env", .module = env_mod },
+        },
+    });
+
+    // Unit tests for the resolver. Needs no database, so it belongs in the
+    // `test` group rather than `test-integration`. Wired here deliberately: an
+    // unreferenced test-bearing file reports green while running nothing (see
+    // `zig build test-wiring-check`).
+    const python_interp_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/python_interp_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "python_interp", .module = python_interp_mod },
+            },
+        }),
+    });
+    const run_python_interp_tests = b.addRunArtifact(python_interp_tests);
+    run_python_interp_tests.setCwd(b.path("."));
+
     const graph_mod = b.createModule(.{
         .root_source_file = b.path("src/definition/graph.zig"),
         .target = target,
@@ -574,6 +605,7 @@ pub fn build(b: *std.Build) void {
     // bpm_src_tests aggregator declared above.
 
     test_step.dependOn(&run_event_store_tests.step);
+    test_step.dependOn(&run_python_interp_tests.step);
     test_step.dependOn(&run_graph_tests.step);
     test_step.dependOn(&run_bpm_main_tests.step);
     test_step.dependOn(&run_snapshot_tests.step);
@@ -629,6 +661,9 @@ pub fn build(b: *std.Build) void {
         .{ .name = "pool", .module = pool_root_mod },
         .{ .name = "bpm", .module = bpm_src_mod },
         .{ .name = "build_options", .module = build_options_mod },
+        // ISS-0147 / GitHub #374: deterministic Python interpreter resolution
+        // for tests that spawn Python tooling as a subprocess.
+        .{ .name = "python_interp", .module = python_interp_mod },
         // ISS-0134: ~90 tests/integration/*.zig files (plus tests/unit/
         // test_api08_auth.zig and definition_retrieval_test.zig) each carry
         // their own copy-pasted testDbUrl() helper using

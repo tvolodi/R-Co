@@ -19,7 +19,7 @@ const std = @import("std");
 const portable_env = @import("env");
 const testing = std.testing;
 const helpers = @import("helpers.zig");
-const python_interp = @import("python_interp.zig");
+const python_interp = @import("python_interp");
 const TestHarness = helpers.TestHarness;
 const build_options = @import("build_options");
 

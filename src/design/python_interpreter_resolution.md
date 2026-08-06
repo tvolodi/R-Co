@@ -161,15 +161,27 @@ measurement rather than suppressing it.
 
 ## 5. Public interface
 
-New module: **`tests/integration/python_interp.zig`**
+New module: **`tests/support/python_interp.zig`**, wired as the named module `python_interp`.
 
-It is placed in `tests/integration/` — beside the existing `tests/integration/helpers.zig` —
-specifically so that it needs **no `build.zig` module wiring**. `tnt_schema_isolation_test.zig`
-already imports its neighbour by relative path (`const helpers = @import("helpers.zig");`,
-line 21), and Zig resolves such an import relative to the importing file. A `tests/support/`
-directory would have required either a new named entry in `integration_imports`
-(`build.zig:624`) or a `..`-relative import; both are avoidable complexity for a two-call-site
-helper. See §8.1 for the full build-wiring statement.
+It is a *helper*, not a test file, so it does not live in `tests/integration/`. Two concrete
+constraints force this placement, both discovered during implementation:
+
+1. **Zig forbids importing across module roots.** The resolver needs unit tests of its own
+   (it is the thing being fixed, so it must be directly tested), and a unit test under
+   `tests/unit/` cannot `@import("../integration/python_interp.zig")` — that fails with
+   `error: import of file outside module path`. A **named module** is what lets both
+   `tests/unit/python_interp_test.zig` and `tests/integration/tnt_schema_isolation_test.zig`
+   reach the same source file.
+2. **`tools/lint_test_isolation.py` correctly treats any test-bearing file under
+   `tests/integration/` as an integration test** and requires it to reference
+   `BPM_TEST_DB_URL` (T050) and to carry no module-level mutable state (T020). The resolver
+   needs no database and legitimately owns a process-lifetime cache. Placing it under
+   `tests/integration/` produced two MAJOR findings that were accurate signals about
+   misplacement, not false positives. `tests/integration/helpers.zig` avoids them only by
+   carrying no `test` blocks at all.
+
+The resolver therefore keeps **no `test` blocks**; its tests live in
+`tests/unit/python_interp_test.zig`. See §8.1 for the full build-wiring statement.
 
 ```zig
 /// Error set for interpreter resolution.
@@ -277,21 +289,22 @@ respectively. The point of the fix is that those assertions now observe the lint
 
 ### 8.1 Build wiring (exhaustive)
 
-This design's total footprint in `build.zig` is **one optional line**. Specifically:
-
 | Change | Where | Required? |
 |---|---|---|
-| New module `tests/integration/python_interp.zig` becomes importable | *nothing* — resolved by relative `@import` from the test file, exactly as `helpers.zig` is today (`tnt_schema_isolation_test.zig:21`) | n/a |
-| Add `python_interp.zig` to `integration_imports` (`build.zig:624`) | — | **No.** A relative import needs no named module entry. |
-| `run_tnt_integration_tests.setEnvironmentVariable("BPM_PYTHON", <verified path>)` | `build.zig:794-796`, beside the existing `BPM_MIGRATIONS_DIR` line | **Optional** (fast path, §5.1) |
+| Declare `python_interp_mod` from `tests/support/python_interp.zig`, importing `env` | beside the other unit-test module declarations | **Yes** |
+| Add `.{ .name = "python_interp", .module = python_interp_mod }` to `integration_imports` | the `integration_imports` array | **Yes** — this is what `tnt_schema_isolation_test.zig` imports |
+| `addTest` for `tests/unit/python_interp_test.zig` importing `python_interp`, plus `test_step.dependOn(...)` | the unit-test group | **Yes** — an unwired test-bearing file reports green while running nothing (`zig build test-wiring-check`) |
+| `run_tnt_integration_tests.setEnvironmentVariable("BPM_PYTHON", <verified path>)` | beside the existing `BPM_MIGRATIONS_DIR` line | **Optional** (fast path, §5.1) |
 
-The `BPM_PYTHON` line is optional because the resolver is correct without it: with the
+The first three rows replace the "no wiring needed" claim of the original draft, which
+assumed a relative import that Zig rejects across module roots (see §5).
+
+The `BPM_PYTHON` line remains optional because the resolver is correct without it: with the
 variable unset, resolution simply starts at candidate 2. It is worth adding only if
 `build.zig` can supply a path it has verified — per §3, an unverified value would convert a
-recoverable autodetection into `error.BpmPythonOverrideUnusable`. **BACKEND-DEV should
-implement the resolver first, confirm the tests pass with `BPM_PYTHON` unset, and add the
-fast-path line only if it can be set from a verified source.** No other `build.zig` edit is
-in scope for this design (see §10).
+recoverable autodetection into `error.BpmPythonOverrideUnusable`. It is **not** set in the
+delivered implementation: the tests pass with it unset, and no verified source was available
+at build-configure time. No other `build.zig` edit is in scope for this design (see §10).
 
 ---
 

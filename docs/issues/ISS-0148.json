@@ -19,7 +19,7 @@
   ],
   "symptom": "zig build test-integration-tnt fails intermittently on TC-TNT-01-01 with POSTGRES 42P01 'relation \"audit_entries\" does not exist' raised from src/db/migrations.zig:484 runForSchema. Measured on main (146070c): 3 consecutive runs gave pass, fail, fail. An accompanying 23505 duplicate-key error on schema_migrations_schema_version_uq (schema_name, version)=(tenant_<uuid>, 001_event_store.sql) appears in the same runs.",
   "reproduction": "export BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test; zig build test-integration-tnt   # repeat 3-5 times against the shared bpm_test DB",
-  "root_cause_analysis": "NOT YET DIAGNOSED. The 42P01 inside runForSchema points at either migration ordering within per-tenant provisioning, or residual partial state in the shared bpm_test database causing a partially-provisioned schema to be re-migrated. The intermittency plus the accompanying schema_migrations duplicate-key error suggest residual state from a previously aborted run is being re-entered rather than a deterministic ordering bug. Requires a dedicated diagnosis pass.",
+  "root_cause_analysis": "NARROWED (not yet fixed). The failing assertion is preceded, in every failing run, by C23505 on schema_migrations_schema_version_uq for (tenant_<random-uuid>, 001_event_store.sql) -- a DIFFERENT random per-test UUID each run (tenant_23c4a67b..., tenant_79a3b2b0..., tenant_ff91d9ff...). That rules out stale cross-run residue: each of those schemas is created fresh by the test's own randomUuidStr(). Two callers are therefore racing on the SAME freshly-created tenant schema within a single run. The consequence is a tracking/state mismatch: 001_event_store.sql ends up RECORDED in public.schema_migrations for that schema while its tables were not created in it, so the subsequent migration doing unqualified, search_path-resolved work fails with 42P01 -- observed as both 'relation \"events\" does not exist' and 'relation \"audit_entries\" does not exist' depending on which file is reached first. runForSchema (src/db/migrations.zig:~440-490) already holds a transaction-scoped advisory lock and re-checks public.schema_migrations under that lock (the ISS-0144/GH-454 fix), so the surviving race is narrower than the one that fix addressed and needs its own diagnosis pass -- likely the interaction between the pre-loop `applied` snapshot, the per-file COMMIT boundary, and search_path state across that boundary. Confirmed NOT residue: at rest, the only tenant_% row for 001_event_store.sql is tenant_default, whose schema does exist.",
   "acceptance_criteria": [
     "zig build test-integration-tnt passes deterministically across at least 5 consecutive runs on a shared bpm_test database",
     "TC-TNT-01-01 no longer fails with relation \"audit_entries\" does not exist",
@@ -27,5 +27,14 @@
   ],
   "discovered_while_fixing": "ISS-0147",
   "pre_existing": true,
-  "pre_existing_evidence": "Reproduced on main (146070c) with none of the ISS-0147 changes present: runs 2 and 3 of 3 failed. Failure path (runForSchema/migrations) is disjoint from ISS-0147's (subprocess interpreter selection)."
+  "pre_existing_evidence": "Reproduced on main (146070c) with none of the ISS-0147 changes present: runs 2 and 3 of 3 failed. Failure path (runForSchema/migrations) is disjoint from ISS-0147's (subprocess interpreter selection).",
+  "evidence": [
+    "Reproduced on main (146070c): 3 consecutive zig build test-integration-tnt runs -> pass, fail, fail",
+    "Reproduced on feature/WF03-gh374-20260806: 3 runs -> pass, fail, fail (identical signature)",
+    "Failing tenant schema UUID differs every run -> intra-run race, not cross-run residue",
+    "42P01 relation varies between 'events' and 'audit_entries' -> whichever unqualified migration is reached first",
+    "At rest, no orphaned tenant_% schema_migrations rows exist (checked live against bpm_test)"
+  ],
+  "diagnosed_by": "BACKEND-DEV (WF03-gh374-20260806, queue drain pass 1)",
+  "diagnosed_at": "2026-08-06T08:35:41Z"
 }
