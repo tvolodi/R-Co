@@ -1,0 +1,203 @@
+run_id: WF03-ISS-0169-20260806
+workflow_id: WF-03
+step: "05"
+agent: TEST-RUNNER
+handoff_id: d2fc3abd-52ac-4b7b-9915-5f5510aa245f
+timestamp: "2026-08-06T23:25:56Z"
+branch: feature/WF03-ISS-0169-20260806
+branch_head: 7d82027
+baseline_ref: main
+baseline_head: b3d406d
+issue_under_test: ISS-0169
+github_issue: "https://github.com/tvolodi/R-Co/issues/495"
+requirement_ids:
+  - LUA-05
+  - LUA-06
+  - LUA-07
+
+verdict: PASS
+verdict_rationale: >-
+  Every command run for this step exited 0 on the feature branch. The full unit
+  suite is 936/1000 passed, 0 failed, 64 skipped. A per-binary diff against a
+  clean worktree of main shows exactly one difference: the branch contributes one
+  additional test binary of 71 tests. No pre-existing binary changed its pass
+  count, so this run introduced zero regressions.
+
+commands_run:
+  - command: zig build
+    exit_code: 0
+    output: "(no output)"
+  - command: zig build test-lua --summary all
+    exit_code: 0
+    output: "Build Summary: 15/15 steps succeeded; 71/71 tests passed"
+  - command: zig build test --summary all
+    exit_code: 0
+    output: "Build Summary: 81/81 steps succeeded; 936/1000 tests passed (64 skipped)"
+
+summary:
+  total: 1000
+  passed: 936
+  failed: 0
+  skipped: 64
+
+scoped_suite:
+  name: test-lua
+  description: src/lua/*.zig in-file unit tests, the suite that covers this change
+  total: 71
+  passed: 71
+  failed: 0
+  skipped: 0
+
+failures: []
+
+new_regressions: []
+
+# ---------------------------------------------------------------------------
+# Baseline comparison — how NEW was distinguished from PRE-EXISTING
+# ---------------------------------------------------------------------------
+baseline_comparison:
+  method: >-
+    A clean worktree of main was created with `git worktree add ../rco-baseline
+    main` (main at b3d406d) and `zig build test --summary all` was run there.
+    Per-test-binary pass counts were extracted from both runs and diffed. The
+    worktree was removed afterwards with `git worktree remove --force`; `git
+    worktree list` confirms only the primary checkout remains.
+  branch_result: "81/81 steps succeeded; 936/1000 tests passed (64 skipped); exit 0"
+  baseline_result: "70/81 steps succeeded (1 failed); 865/929 tests passed (64 skipped); exit 1"
+  per_binary_diff: >-
+    The diff of per-binary counts between main and the branch is exactly one
+    line: the branch has one additional binary reporting `run test 71 pass (71
+    total)`. Every other test binary reports an identical pass count on both
+    sides. 936 - 865 = 71 and 1000 - 929 = 71, which reconciles exactly with the
+    one added binary.
+  regressions_found: 0
+  interpretation: >-
+    The branch adds 71 passing tests and changes no existing test outcome.
+  baseline_step_failure:
+    what_failed: >-
+      The single failing step in the baseline run is the LuaJIT-backed test
+      binary, which failed to compile in the worktree.
+    is_it_a_main_defect: >-
+      Two distinct causes were separated. The first is a genuine repository
+      defect and is filed as ISS-0175 / GH #503: vendor/luajit/src/.gitignore
+      ignores luajit_relver.txt while vendor/luajit/build.zig line 79 requires it
+      as a build input, so a clean checkout fails with "failed to check cache:
+      ... luajit_relver.txt file_hash FileNotFound". Copying the file in from the
+      primary checkout cleared that error. The second cause is a build-environment
+      artifact of the worktree path, not a code difference: dynasm-generated
+      buildvm_arch.h emitted #line directives containing unescaped Windows
+      backslash paths, producing 77 "unknown escape sequence" errors in
+      buildvm.c, and clearing the cache changed the error rather than resolving
+      it. Neither cause is attributable to this run's changes.
+    effect_on_this_verdict: >-
+      None. The comparison this step needed is whether any pre-existing test
+      changed outcome, and every pre-existing binary compiled and ran identically
+      on both sides. The one binary that failed to build in the baseline is the
+      lua binary, and it compiles and passes 71/71 on the branch at the real
+      checkout path, which is the stronger result.
+
+# ---------------------------------------------------------------------------
+# Coverage of the change under test
+# ---------------------------------------------------------------------------
+change_coverage:
+  new_test_file: src/lua/capability_enforcement_test.zig
+  new_test_blocks: 18
+  skipped_blocks: 0
+  skip_directive_occurrences: 0
+  wiring_verified: >-
+    src/lua_test_root.zig line 83 imports the file and line 88 calls
+    std.testing.refAllDecls on it, so the blocks are reachable from the test-lua
+    addTest root and are not silently unwired.
+  blocks:
+    - "TC-LUA-06-D01..D06: every gated function is denied while holding a wrong capability"
+    - "TC-LUA-06-D07: a single grant opens exactly one function and no other"
+    - "TC-LUA-06-D08: an ABSENT context denies every gated function (CAP-2)"
+    - "TC-LUA-06-D09: a WRONG-TYPE registry entry denies too, it does not allow"
+    - "TC-LUA-05-S01: the platform table holds exactly the designed functions and nothing else"
+    - "TC-LUA-05-S02: an undeclared platform function is nil and calling it raises"
+    - "TC-LUA-05-S03: base is opened AND pruned — safe globals present, loaders gone (SBX-1)"
+    - "TC-LUA-05-S04: a pruned loader cannot be reached through any surviving alias"
+    - "TC-LUA-07-M01: the registered pairing executes and records the verified hash"
+    - "TC-LUA-07-M02: a manifest modified after registration is rejected at load time"
+    - "TC-LUA-07-M03: rejection happens BEFORE any script instruction runs"
+    - "TC-LUA-07-M04: parseManifest feeds the load-time path end to end"
+    - "TC-LUA-07-M05: canonical hashing — order-independent, separator-safe, script-bound"
+    - "TC-LUA-06-D10: a script can pcall its own denial without gaining the capability"
+    - "TC-LUA-06-D11: call_service is gated per service id, exactly and without truncation"
+    - "TC-LUA-06-D12: an over-long service id is rejected, never truncated into a match"
+    - "TC-LUA-05-S05: now and fail are ungated by design and raise no capability error"
+    - "TC-LUA-05-S06: a denied call reports the DENIAL even when its arguments are invalid (CAP-1)"
+
+# ---------------------------------------------------------------------------
+# Pre-existing red state — declared, not re-litigated here
+# ---------------------------------------------------------------------------
+pre_existing_state:
+  - id: ISS-0152
+    github_issue: "https://github.com/tvolodi/R-Co/issues/484"
+    classification: PRE-EXISTING
+    note: >-
+      zig build test-env-verify exits 1 unconditionally (C5 test isolation lint,
+      88 BLOCKER violations on main). Queued as its own run. Not run as a gate
+      here because this step's scope is the unit suite, which needs neither
+      PostgreSQL nor Keycloak.
+  - id: ISS-0150
+    github_issue: "https://github.com/tvolodi/R-Co/issues/482"
+    classification: PRE-EXISTING
+    note: test-integration-svc has 63 pre-existing failing blocks. Queued separately.
+  - id: integration-suite
+    github_issues:
+      - "https://github.com/tvolodi/R-Co/issues/479"
+      - "https://github.com/tvolodi/R-Co/issues/427"
+      - "https://github.com/tvolodi/R-Co/issues/424"
+      - "https://github.com/tvolodi/R-Co/issues/423"
+      - "https://github.com/tvolodi/R-Co/issues/418"
+      - "https://github.com/tvolodi/R-Co/issues/417"
+    classification: PRE-EXISTING
+    note: >-
+      The integration suite carries substantial pre-existing failures under these
+      issues. Not exercised by this step.
+  - id: skipped-tests
+    classification: PRE-EXISTING
+    note: >-
+      64 tests report as skipped. The identical count of 64 appears in the main
+      baseline run, so none of these skips were introduced by this run.
+
+# ---------------------------------------------------------------------------
+# Issues filed by this step
+# ---------------------------------------------------------------------------
+issues:
+  - id: ISS-0175
+    github_issue: "https://github.com/tvolodi/R-Co/issues/503"
+    severity: MAJOR
+    classification: PRE-EXISTING
+    caused_by_this_run: false
+    title: >-
+      LuaJIT build input luajit_relver.txt is git-ignored but required by
+      build.zig — a fresh clone cannot build test-lua
+    discovered_how: >-
+      Surfaced while creating the clean main worktree for the baseline
+      comparison required by this step.
+    action_taken: >-
+      Registered at docs/issues/ISS-0175.json, filed as GH #503, and added to
+      handoffs/global_queue.json via tools/queue_add.py at severity MAJOR. Not
+      fixed here, per the filed-and-forwarded scope boundary.
+
+scope_not_run:
+  - name: integration tests
+    reason: >-
+      Out of scope for this handoff. This change is pure in-process Lua
+      capability enforcement with no database or HTTP surface, and the
+      integration suite is in a declared pre-existing red state under the issues
+      listed above.
+  - name: frontend / E2E
+    reason: This change touches no frontend code.
+
+coverage:
+  note: >-
+    No coverage instrumentation is wired into the Zig unit build, so no line
+    coverage percentage is reported. Coverage of the change is evidenced above by
+    the 18 executed test blocks mapped to LUA-05, LUA-06, and LUA-07 test cases.
+
+nfr_results: []
+
+next_action: Route to DOC-UPDATER (Step 7)

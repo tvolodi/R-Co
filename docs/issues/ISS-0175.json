@@ -1,0 +1,24 @@
+{
+  "issue_id": "ISS-0175",
+  "title": "Vendored LuaJIT build input luajit_relver.txt is git-ignored but required by build.zig — a fresh clone cannot build test-lua",
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "discovered_by": "TEST-RUNNER",
+  "discovered_in_run": "WF03-ISS-0169-20260806",
+  "discovered_at": "2026-08-06T23:25:56Z",
+  "affected_areas": [
+    "vendor/luajit/build.zig",
+    "vendor/luajit/src/.gitignore",
+    "build.zig (test-lua step)"
+  ],
+  "symptom": "On a checkout that does not already carry the untracked file vendor/luajit/src/luajit_relver.txt, `zig build test-lua` and `zig build test` fail before compiling anything with: error: failed to check cache: '<repo>/vendor/luajit/src/luajit_relver.txt' file_hash FileNotFound. Reproduced on 2026-08-06 by creating a clean worktree of main (`git worktree add ../rco-baseline main`) and running `zig build test` there: Build Summary 69/81 steps succeeded (1 failed), the failing step being the LuaJIT-backed test binary. The primary working checkout builds fine only because it happens to hold a stale untracked copy of the file from an earlier local build.",
+  "root_cause": "vendor/luajit/src/.gitignore line 3 ignores luajit_relver.txt. That gitignore is inherited verbatim from upstream LuaJIT, where the file is produced by the upstream Makefile. This repo replaced the Makefile with vendor/luajit/build.zig, which at line 79 consumes the file as a required build input (`genversion.addFileArg(b.path(src ++ \"luajit_relver.txt\"))`) but never generates it. So the file is simultaneously required-as-input and excluded-from-version-control, and nothing in the Zig build produces it.",
+  "impact": "Any fresh clone, any new CI runner without a warm working tree, and any new developer machine cannot build or run the Lua test suite. The failure is a cache/FileNotFound error that does not name the underlying cause, so it is expensive to diagnose. This also silently degrades CI: the test-lua coverage added for LUA-01/05/06/07 would not run on a clean checkout.",
+  "acceptance_criteria": [
+    "A clean clone or fresh `git worktree add` of main can run `zig build test-lua` to completion with no manual file copying.",
+    "Either luajit_relver.txt is tracked in git (remove the .gitignore entry and commit the file), or vendor/luajit/build.zig generates it as a build step before genversion consumes it.",
+    "A CI job that builds from a clean checkout exercises the test-lua step, so this class of regression is caught by the pipeline rather than by a developer."
+  ],
+  "notes": "Discovered incidentally while establishing a main baseline for regression comparison during WF-03 ISS-0169 tranche 1 (LUA-05/06/07). Not caused by that run and not fixed there, per the Unblock-Everything scope boundary (filed and forwarded, not fixed in-run). Separately noted during the same baseline attempt: in a worktree at a different filesystem path, dynasm-generated buildvm_arch.h emits #line directives containing unescaped Windows backslash paths, producing 77 'unknown escape sequence' errors in buildvm.c. That is a distinct path-sensitivity concern and is not claimed as verified here beyond the observation.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/503"
+}

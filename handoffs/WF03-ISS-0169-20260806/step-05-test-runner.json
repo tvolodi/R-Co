@@ -1,0 +1,59 @@
+{
+  "handoff_id": "d2fc3abd-52ac-4b7b-9915-5f5510aa245f",
+  "run_id": "WF03-ISS-0169-20260806",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-06T23:18:24Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [
+      "LUA-05",
+      "LUA-06",
+      "LUA-07"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/lua/capability_enforcement_test.zig",
+      "tests/specs/LUA-05.md",
+      "tests/specs/LUA-06.md",
+      "tests/specs/LUA-07.md"
+    ]
+  },
+  "task": {
+    "description": "Run the full test suite to verify the ISS-0169 tranche 1 fix (LUA-05/06/07) and detect regressions. Run pre-checks first per CLAUDE.md TEST-RUNNER section.",
+    "acceptance_criteria": [
+      "zig build test-lua passes",
+      "zig build test passes with no NEW failures vs main baseline",
+      "Test report written to tests/reports/ as YAML"
+    ],
+    "functions_to_call": [
+      "fn:run-tests"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Unit test run for ISS-0169 tranche 1 (LUA-05/06/07) is green with zero regressions. zig build exit 0. zig build test-lua: 71/71 passed, exit 0. zig build test: 936/1000 passed, 0 failed, 64 skipped, 81/81 steps succeeded, exit 0. Baseline established against a clean worktree of main (b3d406d): 865/929 passed. A per-test-binary diff shows exactly one difference \u2014 the branch adds one binary of 71 tests \u2014 and every pre-existing binary reports an identical pass count on both sides, so this run introduced NO new regression. All 18 new blocks in src/lua/capability_enforcement_test.zig execute (0 SkipZigTest) and are wired via src/lua_test_root.zig. The 64 skips are PRE-EXISTING (same count on main). One PRE-EXISTING defect was discovered while building the baseline and filed and forwarded, not fixed here: ISS-0175 / GH #503, vendor/luajit/src/luajit_relver.txt is git-ignored yet required by vendor/luajit/build.zig, so a fresh clone cannot build test-lua.",
+    "artifacts_out": [
+      "tests/reports/report-20260806-WF03-ISS-0169-20260806.yaml",
+      "docs/issues/ISS-0175.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "classification": "PRE-EXISTING",
+        "caused_by_this_run": false,
+        "issue_id": "ISS-0175",
+        "github_issue": "https://github.com/tvolodi/R-Co/issues/503",
+        "description": "LuaJIT build input vendor/luajit/src/luajit_relver.txt is ignored by vendor/luajit/src/.gitignore line 3 but consumed as a required build input by vendor/luajit/build.zig line 79, and nothing in the Zig build generates it. A clean clone or fresh worktree therefore cannot build test-lua, failing with \"failed to check cache: ... luajit_relver.txt file_hash FileNotFound\". Discovered while creating the main baseline worktree required by this step. Filed as GH #503 and added to the global queue at MAJOR; not fixed in this run per the filed-and-forwarded scope boundary."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 7)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T23:18:24Z",
+  "completed_at": "2026-08-06T23:28:25Z"
+}

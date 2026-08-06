@@ -211,6 +211,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0175",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/503",
+      "title": "LuaJIT build input luajit_relver.txt git-ignored but required by build.zig \u2014 fresh clone cannot build test-lua",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-06T23:27:04Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
