@@ -1,0 +1,24 @@
+{
+  "run_id": "WF03-gh467-20260806",
+  "created_at": "2026-08-06T07:12:57Z",
+  "items": [
+    {
+      "issue_id": "ISS-0603",
+      "github_issue": 467,
+      "severity": "BLOCKER",
+      "status": "RESOLVED",
+      "enqueued_at": "2026-08-06T07:12:57Z",
+      "source": "workspace-2 fresh-database bootstrap (zig build migrate)",
+      "resolved_at": "2026-08-06T07:31:10Z"
+    },
+    {
+      "issue_id": "ISS-0604",
+      "github_issue": 470,
+      "severity": "BLOCKER",
+      "status": "RESOLVED",
+      "enqueued_at": "2026-08-06T07:31:10Z",
+      "source": "discovered by ISSUE-FIXER while verifying ISS-0603 from-empty bootstrap; separate circular dependency (public-only migration 1135 in per-tenant pass vs GBL-119 gated behind GBL-116 pre-flight)",
+      "resolved_at": "2026-08-06T07:54:04Z"
+    }
+  ]
+}

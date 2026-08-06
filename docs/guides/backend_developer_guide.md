@@ -220,7 +220,55 @@ All queries MUST use prepared statements (parameterised via `pg.zig`). No string
 - Filename: `NNN_<descriptive_name>.sql` where NNN is zero-padded to 3 digits
 - Every migration MUST be idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`)
 - No `DROP` statements in migrations (use a new migration to rename/replace)
-- Migrations run in filename order; never rename an existing migration file
+- Never rename an existing migration file — the filename IS the ledger key in
+  `public.schema_migrations`, so renaming re-runs the migration everywhere
+
+#### Apply order (ISS-0603 / GH-467)
+
+Migrations run in **`migrationOrder()` order, not raw filename order**. The rule:
+parse the leading digits; for a `GBL-` prefixed file, strip the prefix and add
+1000. So `GBL-119` → 1119, which correctly sorts *between* `1111_` and `1134_`.
+Files with equal order are broken by filename for determinism.
+
+This matters because raw byte ordering puts `'1'` (0x31) before `'G'` (0x47),
+which would apply every `GBL-*` file after every `1xxx_*` file. Both runners —
+`src/db/migrations.zig` (server, test harness) and `src/tools/migrate.zig`
+(`zig build migrate`) — share the single `migrationOrder()` definition. Do not
+reintroduce a second ordering rule.
+
+#### Migration scope: public vs per-tenant (ISS-0604 / GH-470)
+
+The runner applies migrations **twice**: once against `public`, and once per
+tenant schema (`tenant_default`, `tenant_<uuid>`). Every migration must declare
+which passes it belongs to.
+
+| Marker | Meaning |
+|---|---|
+| `GBL-` filename prefix | Public pass only (historical marker, still honoured) |
+| `-- scope: public` header | Public pass only — **use this for new numeric migrations** |
+| `-- scope: all_schemas` header | Explicit opt-in to the default |
+| *(no marker)* | Runs in every pass — the default |
+
+Put the header on the **first line** of the file:
+
+```sql
+-- scope: public
+-- Why: writes only public.-qualified tables; has no per-tenant effect.
+INSERT INTO public.tenant (...) SELECT ... FROM public.tenant_schemas ...;
+```
+
+**Rule of thumb:** if every table reference is `public.`-qualified (or reaches
+other schemas via dynamic `EXECUTE format('... %I ...')`), the migration is
+`-- scope: public`. If it creates or alters unqualified tables that resolve
+through `search_path`, it must run in every pass — leave it unmarked.
+
+**Getting this wrong fails loudly.** A migration marked public-only whose body
+does unqualified table work is rejected with `MigrationScopeMismatch` (the CLI
+exits 1 with a message naming the file). This is deliberate: silently skipping
+tenant work would drift tenant schemas apart with no error — the ISS-0604
+failure mode. Note the guard applies to the `-- scope: public` **header only**,
+not to `GBL-` files, because 13 existing GBL files legitimately use unqualified
+names and rely on `search_path` resolving to `public` in the public pass.
 
 ---
 

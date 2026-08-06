@@ -1,0 +1,45 @@
+{
+  "handoff_id": "0eaf8396-0d7d-4c6c-a1fb-c71b3425f036",
+  "run_id": "WF03-gh477-20260806",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-06T09:15:11Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Maintenance",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_SETUP.md"
+    ],
+    "issue_id": "ISS-0148",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/477"
+  },
+  "task": {
+    "description": "fn:git-setup for WF-03 run resolving GH #477 / ISS-0148 (intermittent TC-TNT-01-01 failure: relation \"audit_entries\" does not exist during tenant schema provisioning). Create and push feature branch feature/WF03-gh477-20260806 from a clean, up-to-date main per docs/agents/protocols/GIT_SETUP.md.",
+    "acceptance_criteria": [
+      "Branch feature/WF03-gh477-20260806 created from latest origin/main and pushed",
+      "git branch --show-current outputs feature/WF03-gh477-20260806",
+      "Working tree clean at end of step"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "fn:git-setup complete for WF03-gh477-20260806. main was clean and already up to date with origin/main (git pull --ff-only exit 0); branch feature/WF03-gh477-20260806 created from that commit, verified current via git branch --show-current, and pushed with -u (exit 0, new branch on origin). Empty issue_queue.json created for the run per ISSUE_QUEUE.md.",
+    "artifacts_out": [
+      "branch: feature/WF03-gh477-20260806",
+      "handoffs/WF03-gh477-20260806/issue_queue.json"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 0.5/1)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T09:15:34Z",
+  "completed_at": "2026-08-06T09:16:51Z"
+}

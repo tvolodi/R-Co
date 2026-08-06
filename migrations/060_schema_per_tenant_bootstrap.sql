@@ -1,3 +1,6 @@
+-- scope: public
+-- ISS-0604 / GH-470: creates public.tenant_schemas and alters public.schema_migrations.
+-- Entirely public-schema infrastructure; must not run in per-tenant passes.
 -- Migration 060: Schema-per-tenant provisioning infrastructure (SPT-01)
 -- Idempotent throughout: all DDL uses IF NOT EXISTS / IF EXISTS guards.
 

@@ -1,0 +1,59 @@
+{
+  "handoff_id": "6b3c2e1b-2784-4cdc-9bb6-aed7b2d884e3",
+  "run_id": "WF03-gh477-20260806",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-06T09:52:09Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Maintenance",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "8b42f1e8-873b-4c31-8674-760001c94a23"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0148-diagnosis.yaml",
+      "docs/issues/ISS-0148.json",
+      "build.zig",
+      "tools/clean_test_db.py",
+      "src/db/migrations.zig"
+    ],
+    "issue_id": "ISS-0148",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/477"
+  },
+  "task": {
+    "description": "Design the fix for ISS-0148 / GH #477. Root cause (confirmed in Step 1): build.zig declares clean_test_db.step as an UNORDERED SIBLING of the test run artifacts for test-integration-tnt, so the orphan sweep in tools/clean_test_db.py can DROP SCHEMA CASCADE a tenant schema while a test is actively migrating it. Design both layers: (1) explicit build-graph ordering so the clean step is a predecessor of every integration run artifact (~40 test-integration-* steps share the same 3-sibling shape - design a helper, not 40 hand edits), and (2) defence in depth so the sweep takes the existing advisory lock and can never drop a live schema regardless of scheduling. Classify per templates/lego-catalog.md - this is expected to be Type E (prose design in src/design/).",
+    "acceptance_criteria": [
+      "Design artefact produced and classified per templates/lego-catalog.md",
+      "Both fix layers specified: build-graph ordering AND advisory-lock guard in the sweep",
+      "Helper/abstraction specified for wiring clean-before-run across all integration steps, with the full list of affected steps",
+      "No implementation code in a Type E prose design",
+      "Design states how the fix will be verified (deterministic repeat runs)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E design for ISS-0148 / GH #477. Layer 1 (primary): a file-local build.zig helper that constructs every integration run artifact with an ordering edge to clean_test_db, making the sweep a true predecessor instead of an unordered sibling. Edge is attached to the RUN ARTIFACT, not the aggregating step, because Step dependOn edges are global in Zig's build graph and 30 binaries reach test-integration only via the ISS-0106 barrier, which has no clean_test_db edge at all. Enumerated 39 defective steps by parsing build.zig (not estimated). Layer 2 (defence in depth): the orphan sweep in tools/clean_test_db.py holds pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint) - the migration runner's own key (migrations.zig:31) - across the whole enumerate/drop/ledger-delete sequence in ONE psql session, blocking rather than skipping. Design flags that a bare run_psql lock call protects nothing since each call is its own process/transaction, and that enumeration must happen under the lock. C23505 documented as a red herring. lint_design_artefact.py exits 0 with BLOCKER=0 MAJOR=0.",
+    "artifacts_out": [
+      "src/design/iss0148_clean_test_db_ordering_and_lock.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Incidental finding while enumerating build.zig: step 'test-integration-iss0076' (build.zig:1273) runs run_iss0076_integration_tests with NO clean_test_db edge at all, so that suite executes against an uncleaned database. Pre-existing gap, distinct from the ISS-0148 race. Closed as a side effect by the Layer 1 helper (which attaches the edge to the artifact); no separate issue needed. Recorded in design section 2.2 finding (b)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "lint_design_artefact.py reports one MINOR E030 for 'information_schema.schemata'. False positive: E030 targets application tables that should be unqualified, but this is a PostgreSQL catalog view that must be schema-qualified, cited because it is the exact relation the sweep queries. Exit code is 0; no BLOCKER/MAJOR."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T09:52:09Z",
+  "completed_at": "2026-08-06T09:56:57Z"
+}

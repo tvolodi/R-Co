@@ -1,0 +1,53 @@
+{
+  "id": "ISS-0604",
+  "title": "migrate: circular dependency blocks fresh-DB bootstrap \u2014 public-only migration 1135 runs in per-tenant pass and needs GBL-119, which is gated behind GBL-116's tenant-ready pre-flight",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "migration-ordering",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/470",
+  "run_id": "WF03-gh467-20260806",
+  "discovered_by": "ISSUE-FIXER during WF03-gh467-20260806 (ISS-0603 verification)",
+  "affected_areas": [
+    "src/tools/migrate.zig",
+    "src/db/migrations.zig",
+    "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql",
+    "migrations/GBL-116_tnt07_rls_cleanup.sql"
+  ],
+  "created_at": "2026-08-06T07:12:57Z",
+  "notes": "Discovered while verifying the ISS-0603 apply-order fix against a genuinely empty database. ISS-0603 is fixed and necessary, but NOT sufficient for a from-empty bootstrap: a separate circular dependency remains and `zig build migrate` still exits 1 on a fresh database.\n\nOBSERVED (fresh_check scratch DB on localhost:5452, post-ISS-0603-fix): migrate applies public migrations correctly in the new order, then the ISS-502 default-tenant provisioning hook in src/tools/migrate.zig fires immediately before the first GBL- file. That hook calls Migrations.runForSchema() for schema tenant_default. Per-tenant passes deliberately SKIP every GBL-* file, so that pass reaches 1135_iss0114_backfill_public_tenant_storage_mode.sql without GBL-119 having run, and dies with C42703 'column \"tenant_type\" of relation \"tenant\" does not exist'. Because that pass failed, public.tenant_schemas.migrations_applied_at stays NULL for the default tenant, so GBL-116_tnt07_rls_cleanup.sql's TNT-07 pre-flight then aborts with 'TNT-07 pre-flight failed. Unready tenants: 00000000-0000-0000-0000-000000000000'. Migration stops permanently at 86/106 public migrations and does NOT converge across repeated runs (verified: 4 consecutive `zig build migrate` passes all stop at exactly 86).\n\nThe cycle: tenant_default pass needs 1135 -> 1135 needs public.tenant.tenant_type -> that column comes from GBL-119 -> GBL-119 is ordered after GBL-116 -> GBL-116's pre-flight requires the tenant_default pass to have completed.\n\nPROOF THE CYCLE IS THE ONLY REMAINING BLOCKER: applying GBL-119 by hand to the public schema and re-running migrate drove the database to 106/106 public migrations applied, and the next run reported 'No new migrations to apply.' with exit 0. So once the cycle is broken, the ISS-0603 ordering fix carries a fresh database all the way to completion.",
+  "root_cause": "Migration 1135_iss0114_backfill_public_tenant_storage_mode.sql is entirely public-schema work \u2014 every table it touches is fully qualified (INSERT INTO public.tenant ... FROM public.tenant_schemas ... WHERE NOT EXISTS (SELECT 1 FROM public.tenant ...)). It has no per-tenant effect at all, yet it is a non-GBL file, so per-tenant migration passes execute it anyway. There is currently no way to mark a numeric (non-GBL) migration as public-schema-only; the GBL- prefix is the only such marker, and 1135 cannot simply be renamed to GBL- because that would change its migrationOrder() and its position relative to the tenant-schema DDL chain.",
+  "candidate_resolution": "Introduce an explicit public-only marker for non-GBL migrations (e.g. a '-- scope: public' header convention parsed by the applier, mirroring the existing '-- reapply_on_drift: true' header) and mark 1135 with it, so per-tenant passes skip it the same way they skip GBL- files. Alternative: move the ISS-502 default-tenant provisioning hook to run after ALL public migrations complete rather than immediately before the first GBL- file \u2014 but that risks re-breaking the GBL-077/GBL-084 gating that the hook's current placement was specifically introduced to satisfy, so the header-marker route is preferred. Either fix needs verification from a genuinely empty database.",
+  "files_to_change": [
+    "src/db/migrations.zig",
+    "src/tools/migrate.zig",
+    "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql"
+  ],
+  "acceptance_criteria": [
+    "zig build migrate exits 0 against a completely empty database in a single invocation",
+    "zig build migrate is a no-op (exits 0) when re-run on the resulting database",
+    "public-only migrations are skipped in per-tenant passes via an explicit, documented marker",
+    "default tenant ends with public.tenant_schemas.migrations_applied_at IS NOT NULL after a from-empty bootstrap",
+    "no regression for pre-existing databases (bpm_dev on localhost:5452)"
+  ],
+  "related_issues": [
+    "ISS-0603"
+  ],
+  "resolved_at": "2026-08-06T07:54:04Z",
+  "resolution": {
+    "summary": "Introduced a declarative per-file migration scope marker and made the runner honour it.\n\nDESIGN CHOSEN: an explicit `-- scope: public` header parsed from the migration file, rather than renaming 1135 to a GBL- name. Rationale: (1) the filename IS the ledger key in public.schema_migrations, so renaming 1135 would make every existing database re-run it; (2) GBL-135 would collide with numeric order 1135 anyway (135+1000); (3) renaming fixes one instance while leaving the trap open \u2014 an audit found FIVE non-GBL public-only migrations (060, 069, 070, 1134, 1135), not just 1135; (4) scope declared in the file is visible to the author while writing the SQL and to reviewers in the diff, whereas classification living only in runner logic is precisely how ISS-0603 happened.\n\nMechanism: migrationScope(filename, header) returns public_only for the historical GBL- prefix OR an explicit `-- scope: public` header; `-- scope: all_schemas` is the explicit default opt-in. Per-tenant passes now skip any public_only migration instead of only GBL- ones.\n\nFAIL-LOUDLY HALF: declaresUnqualifiedTableWork() detects a body doing unqualified, search_path-resolved table work; combined with declaresPublicScopeHeader() the runner rejects a misclassified file with MigrationScopeMismatch (CLI exits 1 naming the file) rather than silently skipping tenant work. The guard deliberately keys off the HEADER, not the scope: an audit of all 106 migrations showed 13 existing GBL files (GBL-114/116/117/119/120/123/125/126/127/128/129/130/131) legitimately use unqualified names relying on search_path=public in the public pass, so applying the stricter contract to GBL files would have hard-failed every migration run. That false positive was caught by auditing before enabling the guard, not by a failed migration.\n\nDEDUPLICATION: src/tools/migrate.zig's private duplicate of migrationOrder() was deleted; both runners now share the single definition in src/db/migrations.zig (re-exported through src/db/provisioning.zig, because migrations.zig already belongs to that module and a Zig file may belong to exactly one module). This closes the ISS-0603 root hazard of two copies drifting apart.",
+    "files_changed": [
+      "src/db/migrations.zig",
+      "src/tools/migrate.zig",
+      "src/db/provisioning.zig",
+      "tests/unit/db_test.zig",
+      "docs/guides/backend_developer_guide.md",
+      "migrations/060_schema_per_tenant_bootstrap.sql",
+      "migrations/069_retroactive_tenant_schema_provision.sql",
+      "migrations/070_retroactive_tenant_schema_provision_backfill_fix.sql",
+      "migrations/1134_iss0112_add_secret_ref_to_tenant_schemas.sql",
+      "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql"
+    ],
+    "verification": "All commands run in workspace 2 against the r-co-2 docker stack.\n\n(a) FROM-EMPTY: scratch DB final_check on localhost:5452. `zig build migrate` reported '106 migration(s) applied successfully.' and EXITED 0. public.schema_migrations shows 106/106 against 106 files on disk. public.tenant_schemas.migrations_applied_at IS NOT NULL for the default tenant ('t') \u2014 the exact ISS-0604 symptom (unready tenant tripping GBL-116's TNT-07 pre-flight) is gone. Reproduced identically on an earlier scratch DB (fresh_check).\n\n(b) RE-RUN NO-OP: `zig build migrate` on that migrated DB reported 'No new migrations to apply.', EXIT 0.\n\n(c) EXISTING ENVIRONMENT: bpm_dev (localhost:5452), the real pre-existing partially-migrated DB, went 87 -> 106/106 public migrations with EXIT 0, and a further re-run reported 'No new migrations to apply.' EXIT 0. Final state correct: tenant ready ('t'), public.tenant.storage_mode='SCHEMA'. A non-fatal 'default tenant schema provisioning failed: error.SchemaPromotionFailed' warning is emitted on bpm_dev only (never on a fresh DB) and is an artifact of that database's pre-existing partially-migrated history; it does not affect the exit code or the converged end state.\n\n(d) `zig build` EXIT 0; `zig build 2>&1 | grep -i 'error set'` produced no output.\n\n(e) `zig build test` EXIT 0 (full suite).\n\n(f) REGRESSION COVERAGE: 9 new tests (TC-DB-01-07) in tests/unit/db_test.zig covering GBL- backward compatibility, header-based public_only classification, the unmarked all_schemas default, all_schemas override precedence, the misclassification guard firing on unqualified work under a public header, the guard NOT firing on public.-qualified work, the guard ignoring dynamic EXECUTE format(... %I ...), the guard never firing on GBL- files, and comments mentioning CREATE TABLE not tripping it. Unit group went 73 -> 82 passing. MUTATION-TESTED: removing the scope-header branch from migrationScope() made TC-DB-01-07 fail as expected, confirming these are genuine guards; restored and re-verified passing.\n\nVerified the 5 header-marked files are exactly the intended set and that ZERO of the 106 migrations trip the guard, by auditing every file before enabling it.\n\nAll scratch databases (fresh_check, final_check, verify_fresh) were dropped.",
+    "prevention": "Scope is now declared in the migration file itself, so a future author sees and sets it while writing the SQL instead of needing to know a rule embedded in runner logic, and reviewers see it in the diff. A wrong value fails loudly with MigrationScopeMismatch rather than silently skipping tenant work. The convention (apply order + scope table + rule of thumb + the GBL exemption) is documented in docs/guides/backend_developer_guide.md \u00a74.4, which also had a stale 'migrations run in filename order' line corrected."
+  }
+}

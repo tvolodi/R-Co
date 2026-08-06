@@ -1,5 +1,56 @@
 const std = @import("std");
 
+/// ISS-0148 (GitHub #477): construct a run artifact for an integration/regression
+/// test binary with the test-database cleanup sweep attached as a true ordering
+/// PREDECESSOR.
+///
+/// Before this helper existed, `clean_test_db.step` and the `run_*` artifacts hung
+/// off the same aggregating step as SIBLINGS. Zig's build runner imposes no ordering
+/// edge between siblings of one step, so it was free to run `tools/clean_test_db.py`
+/// concurrently with a test binary. The sweep's orphan pass enumerates tenant schemas
+/// by name shape alone (`LIKE 'tenant\_%'`) and cannot distinguish a leaked schema
+/// from one a live test is migrating right now, so it would `DROP SCHEMA ... CASCADE`
+/// an in-flight schema mid-migration. `Migrations.runForSchema` then kept applying
+/// files against a schema that no longer existed, failing with 42P01 on whichever
+/// file happened to be next — which is why both the failing file and the named
+/// relation varied run to run.
+///
+/// The edge MUST be attached to the run ARTIFACT, not to the aggregating step:
+/// - 30 binaries reach `test-integration` only transitively through the
+///   `test-integration-others-internal` barrier, which has no `clean_test_db` edge
+///   of its own. A per-step fix would miss all of them.
+/// - `dependOn` edges are a GLOBAL property of a Step in Zig's build graph, not
+///   scoped to the path by which that Step was reached. An edge on the artifact
+///   therefore holds on every path that can reach it — narrow step, umbrella and
+///   barrier alike.
+///
+/// Folding the three repeated setup lines (create / setCwd / BPM_MIGRATIONS_DIR) into
+/// this helper is what makes the ordering edge impossible to omit: once this is the
+/// only construction path for an integration run artifact, a future contributor adding
+/// a suite gets the edge automatically and cannot reintroduce the defect by forgetting
+/// a line.
+///
+/// Acyclicity: every edge added here points from a run artifact to `clean_test_db`,
+/// and `clean_test_db` has no edge into any run artifact (it depends only on
+/// `lint_test_table_refs`). The added edges form a star into a sink-side node and
+/// cannot close a cycle with the ISS-0106 barrier's existing edges.
+///
+/// See src/design/iss0148_clean_test_db_ordering_and_lock.md.
+fn addIntegrationRun(
+    b: *std.Build,
+    test_artifact: *std.Build.Step.Compile,
+    migrations_dir: []const u8,
+    clean_test_db: *std.Build.Step.Run,
+) *std.Build.Step.Run {
+    const run = b.addRunArtifact(test_artifact);
+    run.setCwd(b.path("."));
+    run.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    // The ordering edge that fixes ISS-0148: no integration binary may start
+    // until the cleanup sweep has finished.
+    run.step.dependOn(&clean_test_db.step);
+    return run;
+}
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -371,6 +422,36 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_entities_tests = b.addRunArtifact(entities_validator_tests);
+    // ISS-0147 / GitHub #374: Python interpreter resolver shared by the
+    // integration linter tests (tnt_schema_isolation_test.zig) and its own unit
+    // tests. Lives in tests/support/ rather than tests/integration/ because it
+    // is a helper, not a test file, and because Zig forbids importing across
+    // module roots — a named module is what lets both callers reach it.
+    const python_interp_mod = b.createModule(.{
+        .root_source_file = b.path("tests/support/python_interp.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "env", .module = env_mod },
+        },
+    });
+
+    // Unit tests for the resolver. Needs no database, so it belongs in the
+    // `test` group rather than `test-integration`. Wired here deliberately: an
+    // unreferenced test-bearing file reports green while running nothing (see
+    // `zig build test-wiring-check`).
+    const python_interp_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/python_interp_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "python_interp", .module = python_interp_mod },
+            },
+        }),
+    });
+    const run_python_interp_tests = b.addRunArtifact(python_interp_tests);
+    run_python_interp_tests.setCwd(b.path("."));
 
     const graph_mod = b.createModule(.{
         .root_source_file = b.path("src/definition/graph.zig"),
@@ -1080,6 +1161,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_event_store_tests.step);
     test_step.dependOn(&run_json_schema_tests.step);
     test_step.dependOn(&run_entities_tests.step); // ISS-0160 / GH #481
+    test_step.dependOn(&run_python_interp_tests.step);
     test_step.dependOn(&run_graph_tests.step);
     test_step.dependOn(&run_bpm_main_tests.step);
     test_step.dependOn(&run_snapshot_tests.step);
@@ -1158,6 +1240,29 @@ pub fn build(b: *std.Build) void {
 
     // bpm_src_mod is declared earlier (after bpm_main_mod) and is reused here.
 
+    // ISS-0088: verify clean_test_db.py / helpers.zig resetTestData() only
+    // reference table names that currently exist, so a future migration
+    // rename/drop can't silently desync them again.
+    const lint_test_table_refs = b.addSystemCommand(&.{ "python", "tools/lint_test_table_refs.py" });
+    lint_test_table_refs.setCwd(b.path("."));
+    const lint_test_table_refs_step = b.step("lint-test-table-refs", "Verify test cleanup tooling references only current table names");
+    lint_test_table_refs_step.dependOn(&lint_test_table_refs.step);
+
+    // Pre-cleanup: delete all rows from test DB tables before running tests.
+    //
+    // ISS-0148 (GitHub #477): this pair is declared HERE, ahead of the integration
+    // run artifacts below, rather than after them as it was originally. Every
+    // integration run artifact is now built through addIntegrationRun(), which
+    // takes `clean_test_db` as its ordering predecessor, so the binding must be
+    // in scope before the first such call. Moving the declaration changes nothing
+    // about the steps themselves — `clean-test-db` and `lint-test-table-refs`
+    // keep their names, actions and edges verbatim.
+    const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });
+    clean_test_db.setCwd(b.path("."));
+    clean_test_db.step.dependOn(&lint_test_table_refs.step);
+    const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
+    clean_test_db_step.dependOn(&clean_test_db.step);
+
     const integration_imports: []const std.Build.Module.Import = &.{
         .{ .name = "pg", .module = pg_mod },
         .{ .name = "http", .module = http_mod },
@@ -1166,6 +1271,9 @@ pub fn build(b: *std.Build) void {
         .{ .name = "pool", .module = pool_root_mod },
         .{ .name = "bpm", .module = bpm_src_mod },
         .{ .name = "build_options", .module = build_options_mod },
+        // ISS-0147 / GitHub #374: deterministic Python interpreter resolution
+        // for tests that spawn Python tooling as a subprocess.
+        .{ .name = "python_interp", .module = python_interp_mod },
         // ISS-0134: ~90 tests/integration/*.zig files (plus tests/unit/
         // test_api08_auth.zig and definition_retrieval_test.zig) each carry
         // their own copy-pasted testDbUrl() helper using
@@ -1199,9 +1307,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_integration_tests = b.addRunArtifact(integration_tests);
-    run_integration_tests.setCwd(b.path("."));
-    run_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_integration_tests = addIntegrationRun(b, integration_tests, migrations_dir, clean_test_db);
 
 
 
@@ -1213,9 +1319,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_xc04_integration_tests = b.addRunArtifact(xc04_integration_tests);
-    run_xc04_integration_tests.setCwd(b.path("."));
-    run_xc04_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_xc04_integration_tests = addIntegrationRun(b, xc04_integration_tests, migrations_dir, clean_test_db);
 
     const stage11_sim_xc04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1225,9 +1329,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_stage11_sim_xc04_integration_tests = b.addRunArtifact(stage11_sim_xc04_integration_tests);
-    run_stage11_sim_xc04_integration_tests.setCwd(b.path("."));
-    run_stage11_sim_xc04_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_stage11_sim_xc04_integration_tests = addIntegrationRun(b, stage11_sim_xc04_integration_tests, migrations_dir, clean_test_db);
 
     const sim05_08_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1237,9 +1339,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_sim05_08_integration_tests = b.addRunArtifact(sim05_08_integration_tests);
-    run_sim05_08_integration_tests.setCwd(b.path("."));
-    run_sim05_08_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_sim05_08_integration_tests = addIntegrationRun(b, sim05_08_integration_tests, migrations_dir, clean_test_db);
 
     const obs03_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1249,9 +1349,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_obs03_integration_tests = b.addRunArtifact(obs03_integration_tests);
-    run_obs03_integration_tests.setCwd(b.path("."));
-    run_obs03_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_obs03_integration_tests = addIntegrationRun(b, obs03_integration_tests, migrations_dir, clean_test_db);
 
     const adm_ui_09_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1261,9 +1359,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_adm_ui_09_integration_tests = b.addRunArtifact(adm_ui_09_integration_tests);
-    run_adm_ui_09_integration_tests.setCwd(b.path("."));
-    run_adm_ui_09_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_adm_ui_09_integration_tests = addIntegrationRun(b, adm_ui_09_integration_tests, migrations_dir, clean_test_db);
 
     const obs04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1273,9 +1369,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_obs04_integration_tests = b.addRunArtifact(obs04_integration_tests);
-    run_obs04_integration_tests.setCwd(b.path("."));
-    run_obs04_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_obs04_integration_tests = addIntegrationRun(b, obs04_integration_tests, migrations_dir, clean_test_db);
 
     const adp12_regression_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1285,9 +1379,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_adp12_regression_tests = b.addRunArtifact(adp12_regression_tests);
-    run_adp12_regression_tests.setCwd(b.path("."));
-    run_adp12_regression_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_adp12_regression_tests = addIntegrationRun(b, adp12_regression_tests, migrations_dir, clean_test_db);
 
     const tm_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1297,9 +1389,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_tm_integration_tests = b.addRunArtifact(tm_integration_tests);
-    run_tm_integration_tests.setCwd(b.path("."));
-    run_tm_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_tm_integration_tests = addIntegrationRun(b, tm_integration_tests, migrations_dir, clean_test_db);
 
     const exp_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1309,9 +1399,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_exp_integration_tests = b.addRunArtifact(exp_integration_tests);
-    run_exp_integration_tests.setCwd(b.path("."));
-    run_exp_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_exp_integration_tests = addIntegrationRun(b, exp_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-0150 / GH #466: ENV-01 tenant-type-field cases. Reachable via
     // main_test.zig, but given its own addTest root and narrow step so the nine
@@ -1338,9 +1426,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_spt01_iss0068_integration_tests = b.addRunArtifact(spt01_iss0068_integration_tests);
-    run_spt01_iss0068_integration_tests.setCwd(b.path("."));
-    run_spt01_iss0068_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_spt01_iss0068_integration_tests = addIntegrationRun(b, spt01_iss0068_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-0071: Onboarding realm-existence guard integration tests.
     const iss0071_realm_guard_integration_tests = b.addTest(.{
@@ -1351,9 +1437,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss0071_realm_guard_integration_tests = b.addRunArtifact(iss0071_realm_guard_integration_tests);
-    run_iss0071_realm_guard_integration_tests.setCwd(b.path("."));
-    run_iss0071_realm_guard_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss0071_realm_guard_integration_tests = addIntegrationRun(b, iss0071_realm_guard_integration_tests, migrations_dir, clean_test_db);
 
     const tnt_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1363,9 +1447,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_tnt_integration_tests = b.addRunArtifact(tnt_integration_tests);
-    run_tnt_integration_tests.setCwd(b.path("."));
-    run_tnt_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_tnt_integration_tests = addIntegrationRun(b, tnt_integration_tests, migrations_dir, clean_test_db);
 
     const tnt_backfill_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1375,9 +1457,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_tnt_backfill_integration_tests = b.addRunArtifact(tnt_backfill_integration_tests);
-    run_tnt_backfill_integration_tests.setCwd(b.path("."));
-    run_tnt_backfill_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_tnt_backfill_integration_tests = addIntegrationRun(b, tnt_backfill_integration_tests, migrations_dir, clean_test_db);
 
     const iss101_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1387,9 +1467,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss101_integration_tests = b.addRunArtifact(iss101_integration_tests);
-    run_iss101_integration_tests.setCwd(b.path("."));
-    run_iss101_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss101_integration_tests = addIntegrationRun(b, iss101_integration_tests, migrations_dir, clean_test_db);
 
     const iss102_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1399,9 +1477,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss102_integration_tests = b.addRunArtifact(iss102_integration_tests);
-    run_iss102_integration_tests.setCwd(b.path("."));
-    run_iss102_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss102_integration_tests = addIntegrationRun(b, iss102_integration_tests, migrations_dir, clean_test_db);
 
     const iss103_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1411,9 +1487,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss103_integration_tests = b.addRunArtifact(iss103_integration_tests);
-    run_iss103_integration_tests.setCwd(b.path("."));
-    run_iss103_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss103_integration_tests = addIntegrationRun(b, iss103_integration_tests, migrations_dir, clean_test_db);
 
     const iss0091_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1423,9 +1497,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss0091_integration_tests = b.addRunArtifact(iss0091_integration_tests);
-    run_iss0091_integration_tests.setCwd(b.path("."));
-    run_iss0091_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss0091_integration_tests = addIntegrationRun(b, iss0091_integration_tests, migrations_dir, clean_test_db);
 
     const iss106_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1435,9 +1507,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss106_integration_tests = b.addRunArtifact(iss106_integration_tests);
-    run_iss106_integration_tests.setCwd(b.path("."));
-    run_iss106_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss106_integration_tests = addIntegrationRun(b, iss106_integration_tests, migrations_dir, clean_test_db);
 
     const iss107_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1447,9 +1517,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss107_integration_tests = b.addRunArtifact(iss107_integration_tests);
-    run_iss107_integration_tests.setCwd(b.path("."));
-    run_iss107_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss107_integration_tests = addIntegrationRun(b, iss107_integration_tests, migrations_dir, clean_test_db);
 
     const iss105_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1459,9 +1527,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss105_integration_tests = b.addRunArtifact(iss105_integration_tests);
-    run_iss105_integration_tests.setCwd(b.path("."));
-    run_iss105_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss105_integration_tests = addIntegrationRun(b, iss105_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-502: SPT cutover transaction integration tests.
     const iss502_integration_tests = b.addTest(.{
@@ -1472,9 +1538,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss502_integration_tests = b.addRunArtifact(iss502_integration_tests);
-    run_iss502_integration_tests.setCwd(b.path("."));
-    run_iss502_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss502_integration_tests = addIntegrationRun(b, iss502_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-503: GBL-084 RLS removal migration integration tests.
     const iss503_integration_tests = b.addTest(.{
@@ -1485,9 +1549,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss503_integration_tests = b.addRunArtifact(iss503_integration_tests);
-    run_iss503_integration_tests.setCwd(b.path("."));
-    run_iss503_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss503_integration_tests = addIntegrationRun(b, iss503_integration_tests, migrations_dir, clean_test_db);
 
     const iss202_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1497,9 +1559,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss202_integration_tests = b.addRunArtifact(iss202_integration_tests);
-    run_iss202_integration_tests.setCwd(b.path("."));
-    run_iss202_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss202_integration_tests = addIntegrationRun(b, iss202_integration_tests, migrations_dir, clean_test_db);
 
     const iss203_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1509,9 +1569,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss203_integration_tests = b.addRunArtifact(iss203_integration_tests);
-    run_iss203_integration_tests.setCwd(b.path("."));
-    run_iss203_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss203_integration_tests = addIntegrationRun(b, iss203_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-207: Convergent EXECUTION_ERROR retry integration tests.
     const iss207_integration_tests = b.addTest(.{
@@ -1522,9 +1580,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss207_integration_tests = b.addRunArtifact(iss207_integration_tests);
-    run_iss207_integration_tests.setCwd(b.path("."));
-    run_iss207_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss207_integration_tests = addIntegrationRun(b, iss207_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-208: Guard task completion against terminal instances integration tests.
     const iss208_integration_tests = b.addTest(.{
@@ -1535,9 +1591,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss208_integration_tests = b.addRunArtifact(iss208_integration_tests);
-    run_iss208_integration_tests.setCwd(b.path("."));
-    run_iss208_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss208_integration_tests = addIntegrationRun(b, iss208_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-205: Webhook transactional outbox integration tests.
     const iss205_integration_tests = b.addTest(.{
@@ -1548,9 +1602,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss205_integration_tests = b.addRunArtifact(iss205_integration_tests);
-    run_iss205_integration_tests.setCwd(b.path("."));
-    run_iss205_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss205_integration_tests = addIntegrationRun(b, iss205_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-601: State Snapshots for Large-Instance Reconstruction integration tests.
     const iss601_integration_imports: []const std.Build.Module.Import = &.{
@@ -1575,9 +1627,7 @@ pub fn build(b: *std.Build) void {
             .imports = iss601_integration_imports,
         }),
     });
-    const run_iss601_integration_tests = b.addRunArtifact(iss601_integration_tests);
-    run_iss601_integration_tests.setCwd(b.path("."));
-    run_iss601_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss601_integration_tests = addIntegrationRun(b, iss601_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-0125: process definition snapshot FK cascade and cleanup-error propagation.
     const iss0125_integration_tests = b.addTest(.{
@@ -1588,9 +1638,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss0125_integration_tests = b.addRunArtifact(iss0125_integration_tests);
-    run_iss0125_integration_tests.setCwd(b.path("."));
-    run_iss0125_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss0125_integration_tests = addIntegrationRun(b, iss0125_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-0122: Audit chain TEXT resource_id + non-UTF-8 resilience regression tests.
     // Migration 1107 wrapped the chain-hash pipeline in EXCEPTION blocks and
@@ -1606,9 +1654,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss0122_integration_tests = b.addRunArtifact(iss0122_integration_tests);
-    run_iss0122_integration_tests.setCwd(b.path("."));
-    run_iss0122_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss0122_integration_tests = addIntegrationRun(b, iss0122_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-0121: TestHarness per-test UUID isolation helper regression tests
     // (GitHub #387). Pins the contract for `h.newUuid()` and
@@ -1623,9 +1669,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss0121_integration_tests = b.addRunArtifact(iss0121_integration_tests);
-    run_iss0121_integration_tests.setCwd(b.path("."));
-    run_iss0121_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss0121_integration_tests = addIntegrationRun(b, iss0121_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-0129 / GitHub #419: migration-runner pg_advisory_xact_lock
     // regression. Verifies that concurrent runForSchema() / provisionTenantSchema
@@ -1642,9 +1686,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss0129_integration_tests = b.addRunArtifact(iss0129_integration_tests);
-    run_iss0129_integration_tests.setCwd(b.path("."));
-    run_iss0129_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss0129_integration_tests = addIntegrationRun(b, iss0129_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-0602 / GitHub #414: per-process owner tag for killIdleConnections().
     // Single-process regression verifying the tag is set on every TestHarness
@@ -1658,9 +1700,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss0602_same_integration_tests = b.addRunArtifact(iss0602_same_integration_tests);
-    run_iss0602_same_integration_tests.setCwd(b.path("."));
-    run_iss0602_same_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss0602_same_integration_tests = addIntegrationRun(b, iss0602_same_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-0602: cross-process SQL contract — killIdleConnections() predicate
     // application_name = $1 cannot match a sibling-tagged parked connection.
@@ -1672,9 +1712,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss0602_cross_integration_tests = b.addRunArtifact(iss0602_cross_integration_tests);
-    run_iss0602_cross_integration_tests.setCwd(b.path("."));
-    run_iss0602_cross_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss0602_cross_integration_tests = addIntegrationRun(b, iss0602_cross_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-0123: DLQ rename (Cluster B) + obs05 audit-trigger isolation (Cluster A) regression tests.
     const iss0123_integration_tests = b.addTest(.{
@@ -1685,9 +1723,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss0123_integration_tests = b.addRunArtifact(iss0123_integration_tests);
-    run_iss0123_integration_tests.setCwd(b.path("."));
-    run_iss0123_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss0123_integration_tests = addIntegrationRun(b, iss0123_integration_tests, migrations_dir, clean_test_db);
 
     // EPIC-3 (ISS-301, ISS-302, ISS-303): Scheduler concurrency and DLQ routing integration tests.
     const sch303_integration_tests = b.addTest(.{
@@ -1698,9 +1734,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_sch303_integration_tests = b.addRunArtifact(sch303_integration_tests);
-    run_sch303_integration_tests.setCwd(b.path("."));
-    run_sch303_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_sch303_integration_tests = addIntegrationRun(b, sch303_integration_tests, migrations_dir, clean_test_db);
 
     // ISS-0076: secrets table creation regression coverage (GitHub #335).
     const iss0076_integration_tests = b.addTest(.{
@@ -1711,24 +1745,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss0076_integration_tests = b.addRunArtifact(iss0076_integration_tests);
-    run_iss0076_integration_tests.setCwd(b.path("."));
-    run_iss0076_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
-
-    // ISS-0088: verify clean_test_db.py / helpers.zig resetTestData() only
-    // reference table names that currently exist, so a future migration
-    // rename/drop can't silently desync them again.
-    const lint_test_table_refs = b.addSystemCommand(&.{ "python", "tools/lint_test_table_refs.py" });
-    lint_test_table_refs.setCwd(b.path("."));
-    const lint_test_table_refs_step = b.step("lint-test-table-refs", "Verify test cleanup tooling references only current table names");
-    lint_test_table_refs_step.dependOn(&lint_test_table_refs.step);
-
-    // Pre-cleanup: delete all rows from test DB tables before running tests.
-    const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });
-    clean_test_db.setCwd(b.path("."));
-    clean_test_db.step.dependOn(&lint_test_table_refs.step);
-    const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
-    clean_test_db_step.dependOn(&clean_test_db.step);
+    const run_iss0076_integration_tests = addIntegrationRun(b, iss0076_integration_tests, migrations_dir, clean_test_db);
 
     const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL)");
     test_integration_step.dependOn(&clean_test_db.step);
@@ -1815,9 +1832,7 @@ pub fn build(b: *std.Build) void {
     // test-integration-iss503 unaffected. Running the same test binary a
     // second time via its own Run step keeps that edge scoped to
     // test_integration_step's own path only.
-    const run_iss503_integration_tests_after_others = b.addRunArtifact(iss503_integration_tests);
-    run_iss503_integration_tests_after_others.setCwd(b.path("."));
-    run_iss503_integration_tests_after_others.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss503_integration_tests_after_others = addIntegrationRun(b, iss503_integration_tests, migrations_dir, clean_test_db);
     run_iss503_integration_tests_after_others.step.dependOn(test_integration_others_step);
     test_integration_step.dependOn(&run_iss503_integration_tests_after_others.step);
 
@@ -1982,9 +1997,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_exp103_integration_tests = b.addRunArtifact(exp103_integration_tests);
-    run_exp103_integration_tests.setCwd(b.path("."));
-    run_exp103_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_exp103_integration_tests = addIntegrationRun(b, exp103_integration_tests, migrations_dir, clean_test_db);
 
     const test_integration_exp103_step = b.step("test-integration-exp103", "Run EXP-103 instance_waits persistence layer integration tests (requires BPM_TEST_DB_URL)");
     test_integration_exp103_step.dependOn(&clean_test_db.step);
@@ -1999,9 +2012,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_svc_integration_tests = b.addRunArtifact(svc_integration_tests);
-    run_svc_integration_tests.setCwd(b.path("."));
-    run_svc_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_svc_integration_tests = addIntegrationRun(b, svc_integration_tests, migrations_dir, clean_test_db);
 
     const test_integration_svc_step = b.step("test-integration-svc", "Run Stage 13 SVC-01..SVC-04 integration tests (requires BPM_TEST_DB_URL)");
     test_integration_svc_step.dependOn(&clean_test_db.step);
@@ -2015,9 +2026,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_env_integration_tests = b.addRunArtifact(env_integration_tests);
-    run_env_integration_tests.setCwd(b.path("."));
-    run_env_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_env_integration_tests = addIntegrationRun(b, env_integration_tests, migrations_dir, clean_test_db);
 
     const test_integration_env_step = b.step("test-integration-env", "Run Stage 14 ENV-01..ENV-05 integration tests (requires BPM_TEST_DB_URL)");
     test_integration_env_step.dependOn(&clean_test_db.step);
@@ -2032,9 +2041,7 @@ pub fn build(b: *std.Build) void {
             .imports = integration_imports,
         }),
     });
-    const run_iss0072_integration_tests = b.addRunArtifact(iss0072_integration_tests);
-    run_iss0072_integration_tests.setCwd(b.path("."));
-    run_iss0072_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    const run_iss0072_integration_tests = addIntegrationRun(b, iss0072_integration_tests, migrations_dir, clean_test_db);
 
     const test_integration_iss0072_step = b.step("test-integration-iss0072", "Run ISS-0072 tenant-config realm override integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0072_step.dependOn(&clean_test_db.step);

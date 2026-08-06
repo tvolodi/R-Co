@@ -1,7 +1,9 @@
 //! Migration runner — DB-01, DB-03
 //!
 //! Discovers numbered SQL files in a migrations directory, applies each in
-//! lexicographic order, and records successful application in the
+//! migrationOrder() order (numeric prefix, with "GBL-" prefixed files offset by
+//! +1000 so they interleave with the 1xxx_ series rather than sorting after
+//! them — ISS-0603 / GH-467), and records successful application in the
 //! schema_migrations table.  Each migration runs in its own transaction.
 //!
 //! Design artefact: src/design/db.md
@@ -47,6 +49,11 @@ pub const MigrationError = error{
     PoolExhausted,
     /// SET search_path failed for the target schema.
     SchemaSetupFailed,
+    /// ISS-0604 / GH-470: a migration declares `-- scope: public` (or carries the
+    /// GBL- prefix) but its body performs unqualified, search_path-resolved table
+    /// work that genuinely belongs in the per-tenant pass. Applying it would
+    /// silently skip that work for every tenant, so the runner refuses.
+    MigrationScopeMismatch,
 };
 
 // ---------------------------------------------------------------------------
@@ -60,11 +67,12 @@ pub const Migrations = struct {
     /// backward compatibility.  All callers are unaffected.
     ///
     /// Algorithm (DB-01, DB-03):
-    ///  1. List all *.sql files in migrations_dir; sort lexicographically.
+    ///  1. List all *.sql files in migrations_dir; sort by migrationOrder(),
+    ///     with the filename as a deterministic tiebreak (ISS-0603 / GH-467).
     ///  2. Query schema_migrations for already-applied versions (schema='public').
     ///  3. For each file in sorted order:
     ///     - If already in schema_migrations → skip (idempotent).
-    ///     - If any version M > this file's N is in schema_migrations →
+    ///     - If a HIGHER-ordered migration was already walked past in this pass →
     ///       return OutOfOrderMigration.
     ///     - Otherwise: BEGIN; execute file; INSERT INTO schema_migrations;
     ///       COMMIT.  On any error: ROLLBACK; return MigrationFailed.
@@ -181,9 +189,33 @@ pub const Migrations = struct {
             };
         }
 
-        // Sort lexicographically (zero-padded NNN_ prefix ensures numeric order).
+        // ISS-0603 / GH-467: Order by migrationOrder(), NOT by raw filename bytes.
+        //
+        // This sort previously used a plain std.mem.lessThan on the filename and
+        // was commented "zero-padded NNN_ prefix ensures numeric order". That
+        // stopped being true the moment GBL- prefixed migrations were introduced:
+        // '1' (0x31) sorts before 'G' (0x47), so EVERY GBL-* file was applied
+        // after EVERY 1xxx_* file. GBL-119_env01_tenant_type_field.sql adds
+        // public.tenant.tenant_type, which 1135_iss0114_backfill_public_tenant_
+        // storage_mode.sql writes to — so bootstrapping any fresh database died
+        // with C42703 'column "tenant_type" of relation "tenant" does not exist'.
+        //
+        // migrationOrder() already encoded the INTENDED ordering (strip "GBL-",
+        // add a 1000 offset => GBL-119 -> 1119, correctly before 1135) and was
+        // already used by the out-of-order detection check below. The sort and
+        // the detection check disagreed, and the sort governed execution.
+        // Both now agree: migrationOrder() is the single ordering authority.
+        //
+        // Filename is the tiebreak when two files share an order, so the
+        // sequence is fully deterministic (e.g. 050_tenant_hostnames.sql and
+        // 050_xc01_trace_id_audit.sql, and 056_onboarding_registry.sql and
+        // 056_xc03_configuration_repository_fix.sql, are real duplicate-order
+        // pairs in migrations/).
         std.sort.block([]u8, names.items, {}, struct {
             fn lessThan(_: void, a: []u8, b: []u8) bool {
+                const oa = migrationOrder(a);
+                const ob = migrationOrder(b);
+                if (oa != ob) return oa < ob;
                 return std.mem.lessThan(u8, a, b);
             }
         }.lessThan);
@@ -222,34 +254,78 @@ pub const Migrations = struct {
             }
         }
 
-        // Determine the highest already-applied numeric order for out-of-order detection.
-        var max_applied: []const u8 = "";
-        var max_applied_order: u32 = 0;
-        var applied_iter = applied.keyIterator();
-        while (applied_iter.next()) |k| {
-            const order = migrationOrder(k.*);
-            if (order > max_applied_order) {
-                max_applied_order = order;
-                max_applied = k.*;
-            }
-        }
+        // ISS-0603 / GH-467: Establish the pre-existing-database baseline.
+        //
+        // Before this fix the apply sort ran in raw filename order, so every
+        // GBL-* file was applied AFTER every 1xxx_* file. Databases provisioned
+        // under that old order therefore legitimately contain ledger rows whose
+        // migrationOrder() is *lower* than a previously applied one — e.g. a DB
+        // with 1134 applied but GBL-112..GBL-133 (orders 1112..1133) still
+        // pending, which is exactly the state this workspace's bpm_dev is in.
+        //
+        // Judging those pending files against the global `max_applied_order`
+        // watermark would return OutOfOrderMigration and permanently brick every
+        // such environment — a fix that bootstraps fresh databases but breaks
+        // every existing developer database is not an acceptable fix.
+        //
+        // So the out-of-order check below is scoped to genuine NEW inversions:
+        // a file is only rejected when a HIGHER-ordered migration was applied
+        // that this run has already walked past in sorted order. Migrations that
+        // were left pending by the old, wrong sort are grandfathered in and are
+        // simply applied now, in their correct relative order.
+        //
+        // `walked_order` is the highest migrationOrder() this run has already
+        // passed while walking `names.items` in correctly-sorted order. It starts
+        // at 0 and only advances, so it measures inversions *within this pass*
+        // rather than against the whole historical ledger.
+        var walked_order: u32 = 0;
 
         // Apply pending migrations in order.
         for (names.items) |filename| {
-            // GBL-prefixed migrations are global (public-schema) operations that
-            // must ONLY run against the public schema.  They must never be applied
-            // to per-tenant schemas (tenant_default, tenant_<uuid>, etc.) because
-            // they perform DDL on public.tenant_schemas, public.tnt05_progress,
-            // onboarding_registry and other global tables that do not exist in
-            // tenant schemas.  Silently skip them when schema_name != "public".
-            if (!std.mem.eql(u8, schema_name, "public") and
-                std.mem.startsWith(u8, filename, "GBL-"))
-            {
-                continue;
+            // ISS-0604 / GH-470: skip public-only migrations in per-tenant passes.
+            //
+            // Public-only migrations are global operations that must ONLY run
+            // against the public schema. They must never be applied to per-tenant
+            // schemas (tenant_default, tenant_<uuid>, ...) because they perform
+            // DDL/DML on public.tenant_schemas, public.tenant, public.tnt05_progress,
+            // onboarding_registry and other global tables.
+            //
+            // Scope comes from migrationScope(): the historical `GBL-` filename
+            // prefix, OR an explicit `-- scope: public` header. Before ISS-0604
+            // only the GBL- prefix was honoured, so numeric-but-public-only files
+            // (1135 and friends) were wrongly executed in tenant passes. For 1135
+            // that was fatal on a fresh database: it writes public.tenant.tenant_type,
+            // a column added by GBL-119, which tenant passes skip — so it failed
+            // C42703, left the default tenant unready, and that in turn tripped
+            // GBL-116's TNT-07 pre-flight, deadlocking bootstrap at 86/106.
+            const is_public_pass = std.mem.eql(u8, schema_name, "public");
+            if (!is_public_pass) {
+                const scope_header = blk: {
+                    const probe = dir.readFileAlloc(
+                        pool.io,
+                        filename,
+                        allocator,
+                        std.Io.Limit.limited(4096),
+                    ) catch break :blk &[_]u8{};
+                    break :blk probe;
+                };
+                defer if (scope_header.len > 0) allocator.free(scope_header);
+                if (migrationScope(filename, scope_header) == .public_only) continue;
             }
 
             // Skip already-applied migrations (idempotent).
-            if (applied.contains(filename)) continue;
+            //
+            // ISS-0603 / GH-467: walking past an applied file advances
+            // `walked_order`. This is what gives the out-of-order check below its
+            // meaning: an applied migration only constrains files that come AFTER
+            // it in correct sort order. A pending file that sorts BEFORE every
+            // applied one (the legacy GBL backlog) is never compared against it,
+            // so pre-existing databases apply their backlog instead of erroring.
+            if (applied.contains(filename)) {
+                const applied_order = migrationOrder(filename);
+                if (applied_order > walked_order) walked_order = applied_order;
+                continue;
+            }
 
             // ISS-0112 applier guard (Change 2 of src/design/fix-iss0112.md).
             // Read the migration file's first 1 KiB to detect the
@@ -304,8 +380,21 @@ pub const Migrations = struct {
 
             // Out-of-order check: a lower numeric migration order cannot be applied
             // after a higher order has already been recorded for this schema.
+            //
+            // ISS-0603 / GH-467: compared against `walked_order` — the highest
+            // order this run has already passed in correctly-sorted order — and
+            // not against the raw global `max_applied_order` watermark. Because
+            // `names.items` is now sorted by migrationOrder(), reaching a pending
+            // file whose order is below something we already walked past is a
+            // genuine inversion (a newly authored migration numbered beneath the
+            // existing chain), which is what this check is for.
+            //
+            // Applied migrations that sort ABOVE the whole pending backlog are
+            // the legacy artefact of the old lexicographic sort (see the
+            // `walked_order` rationale above) and must NOT trip this check,
+            // or every database provisioned before this fix would fail forever.
             const file_order = migrationOrder(filename);
-            if (max_applied.len > 0 and file_order < max_applied_order) {
+            if (walked_order > 0 and file_order < walked_order) {
                 return MigrationError.OutOfOrderMigration;
             }
 
@@ -313,6 +402,21 @@ pub const Migrations = struct {
             const sql_bytes = dir.readFileAlloc(pool.io, filename, allocator, std.Io.Limit.limited(16 * 1024 * 1024)) catch
                 return MigrationError.MigrationFailed;
             defer allocator.free(sql_bytes);
+
+            // ISS-0604 / GH-470: misclassification guard — fail LOUDLY.
+            //
+            // A migration marked public-only whose body does unqualified,
+            // search_path-resolved table work would silently skip that work for
+            // every tenant schema, drifting tenant data shape apart with no error
+            // — exactly the silent-wrong-pass failure mode this issue is about.
+            // Checked in the public pass (where every migration is seen) so a bad
+            // header is caught on the very first run, not months later.
+            if (is_public_pass and
+                declaresPublicScopeHeader(filename, sql_bytes) and
+                declaresUnqualifiedTableWork(sql_bytes))
+            {
+                return MigrationError.MigrationScopeMismatch;
+            }
 
             // BEGIN transaction.
             conn.exec("BEGIN", &.{}) catch return MigrationError.MigrationFailed;
@@ -367,10 +471,7 @@ pub const Migrations = struct {
             };
             if (already_applied_under_lock) {
                 conn.exec("COMMIT", &.{}) catch return MigrationError.MigrationFailed;
-                if (file_order > max_applied_order) {
-                    max_applied_order = file_order;
-                    max_applied = filename;
-                }
+                if (file_order > walked_order) walked_order = file_order;
                 continue;
             }
 
@@ -397,15 +498,19 @@ pub const Migrations = struct {
             conn.exec("COMMIT", &.{}) catch return MigrationError.MigrationFailed;
 
             // Update local tracking so subsequent out-of-order checks are accurate.
-            if (file_order > max_applied_order) {
-                max_applied_order = file_order;
-                max_applied = filename;
-            }
+            if (file_order > walked_order) walked_order = file_order;
         }
     }
 };
 
-fn migrationOrder(filename: []const u8) u32 {
+/// The single ordering authority for migration application (ISS-0603 / GH-467).
+///
+/// Both the apply sort in `runForSchema` and its out-of-order detection check
+/// use this function. Made public so the ordering contract is directly testable
+/// — see TC-DB-01-03 / TC-DB-01-06 in tests/unit/db_test.zig. Keeping the sort
+/// and the detection check on two different notions of "order" is precisely the
+/// defect ISS-0603 fixed; do not reintroduce a second ordering rule.
+pub fn migrationOrder(filename: []const u8) u32 {
     // GBL-NNN_... files: skip "GBL-" prefix then parse the numeric part.
     // We add an offset (1000) for GBL migrations so they don't clash with
     // regular NNN prefix migrations numerically.
@@ -420,4 +525,120 @@ fn migrationOrder(filename: []const u8) u32 {
     if (i == start) return 0;
     const base_order = std.fmt.parseInt(u32, filename[start..i], 10) catch 0;
     return base_order + offset;
+}
+
+// ---------------------------------------------------------------------------
+// ISS-0604 / GH-470: migration scope classification
+// ---------------------------------------------------------------------------
+
+/// Which migration pass a file belongs to.
+///
+/// The runner applies migrations twice over: once against the `public` schema,
+/// and once per tenant schema (`tenant_default`, `tenant_<uuid>`, ...). A
+/// migration that runs in the wrong pass is the ISS-0604 defect class.
+pub const MigrationScope = enum {
+    /// Runs in the public pass ONLY. Never applied to a tenant schema.
+    public_only,
+    /// Runs in every pass — public and per-tenant. The default for numeric
+    /// migrations that create/alter unqualified (search_path-resolved) tables.
+    all_schemas,
+};
+
+/// The declared scope header a migration may carry, e.g.
+///     -- scope: public
+pub const SCOPE_PUBLIC_HEADER = "-- scope: public";
+
+/// The explicit opt-in for the default, useful to silence the misclassification
+/// guard on a migration that genuinely is public-qualified but must still run
+/// per-tenant (rare — e.g. it reads public config to write tenant tables).
+pub const SCOPE_ALL_HEADER = "-- scope: all_schemas";
+
+/// Classify a migration from its filename and header text.
+///
+/// ISS-0604 / GH-470. Two mechanisms, in precedence order:
+///   1. The `GBL-` filename prefix — the pre-existing, implicit marker. Always
+///      public-only. Kept for backward compatibility; every existing GBL file
+///      relies on it and renaming them would rewrite ledger keys.
+///   2. An explicit `-- scope: public` / `-- scope: all_schemas` header in the
+///      first KiB of the file — the preferred, self-evident marker for numeric
+///      migrations.
+///
+/// Scope is deliberately declared IN THE MIGRATION FILE rather than in a list
+/// inside the runner. ISS-0603 happened precisely because a file's ordering
+/// classification lived only in runner logic and drifted out of agreement with
+/// the files; keeping scope next to the SQL it describes means a future author
+/// sees it while writing the migration, and reviewers see it in the diff.
+pub fn migrationScope(filename: []const u8, header: []const u8) MigrationScope {
+    if (std.mem.startsWith(u8, filename, "GBL-")) return .public_only;
+    if (std.mem.indexOf(u8, header, SCOPE_ALL_HEADER) != null) return .all_schemas;
+    if (std.mem.indexOf(u8, header, SCOPE_PUBLIC_HEADER) != null) return .public_only;
+    return .all_schemas;
+}
+
+/// True when public-only scope came from an explicit `-- scope: public` header
+/// rather than from the historical `GBL-` filename prefix.
+///
+/// ISS-0604 / GH-470: the misclassification guard keys off THIS, not off
+/// migrationScope(), because unqualified table names are a legitimate
+/// long-standing convention inside GBL files (they run only in the public pass,
+/// where search_path already resolves to public). Only the newly introduced
+/// header carries the stricter "must be public.-qualified" contract.
+pub fn declaresPublicScopeHeader(filename: []const u8, header: []const u8) bool {
+    if (std.mem.startsWith(u8, filename, "GBL-")) return false;
+    if (std.mem.indexOf(u8, header, SCOPE_ALL_HEADER) != null) return false;
+    return std.mem.indexOf(u8, header, SCOPE_PUBLIC_HEADER) != null;
+}
+
+/// Heuristic misclassification detector (ISS-0604 / GH-470).
+///
+/// Returns true when a migration body performs schema-resolved DDL/DML — i.e.
+/// it references at least one table WITHOUT a `public.` qualifier and without
+/// dynamic `%I` schema interpolation. Such a migration genuinely needs the
+/// per-tenant pass, so declaring it `-- scope: public` is a misclassification
+/// and the runner refuses to proceed rather than silently skipping tenant work.
+///
+/// This is the "fail loudly" half of the contract: the scope header is cheap to
+/// write and therefore cheap to get wrong, so a wrong value must not degrade
+/// into silent data-shape drift across tenant schemas the way ISS-0604 did.
+///
+/// SCOPE OF THE GUARD — applies to the `-- scope: public` header ONLY, never to
+/// the `GBL-` prefix. 13 existing GBL files (GBL-114/116/117/119/120/123/125/126/
+/// 127/128/129/130/131) legitimately write unqualified table names and rely on
+/// search_path resolving to `public` during the public pass. That is a valid,
+/// long-standing convention for GBL files, so applying this heuristic to them
+/// would hard-fail every migration run. Verified by auditing all 106 files in
+/// migrations/ before enabling the guard.
+pub fn declaresUnqualifiedTableWork(body: []const u8) bool {
+    // Statement heads that introduce a table reference we care about.
+    const heads = [_][]const u8{
+        "CREATE TABLE IF NOT EXISTS ",
+        "CREATE TABLE ",
+        "ALTER TABLE IF EXISTS ",
+        "ALTER TABLE ",
+        "DROP TABLE IF EXISTS ",
+        "DROP TABLE ",
+        "INSERT INTO ",
+    };
+    var line_it = std.mem.splitScalar(u8, body, '\n');
+    while (line_it.next()) |raw_line| {
+        const line = std.mem.trim(u8, raw_line, " \t\r");
+        // Skip comments — a scope header or prose must never trip the guard.
+        if (std.mem.startsWith(u8, line, "--")) continue;
+        // Skip dynamic SQL: EXECUTE format('... %I ...') targets a schema
+        // computed at runtime, which is the sanctioned cross-schema pattern.
+        if (std.mem.indexOf(u8, line, "%I") != null) continue;
+        for (heads) |head| {
+            const idx = std.mem.indexOf(u8, line, head) orelse continue;
+            const rest = std.mem.trimStart(u8, line[idx + head.len ..], " \t");
+            if (rest.len == 0) continue;
+            // Qualified with an explicit schema? Then it is not search_path work.
+            if (std.mem.startsWith(u8, rest, "public.")) break;
+            if (std.mem.startsWith(u8, rest, "pg_")) break;
+            if (std.mem.startsWith(u8, rest, "information_schema.")) break;
+            // A quoted or bare identifier with no schema qualifier: this
+            // resolves through search_path, so it is per-tenant work.
+            return true;
+        }
+    }
+    return false;
 }

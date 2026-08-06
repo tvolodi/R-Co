@@ -1,0 +1,23 @@
+{
+  "id": "ISS-0168",
+  "title": "lint_test_isolation.baseline.json drift: 128 recorded vs 131 actual, surfacing 3 pre-existing T020 MAJORs",
+  "status": "RESOLVED",
+  "severity": "MINOR",
+  "category": "lint-baseline-drift",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "handoff_id": "9752c4ed-757f-482e-9f24-b7d6999d5098",
+  "affected_areas": [
+    "tools/lint_test_isolation.baseline.json",
+    "tests/integration/"
+  ],
+  "created_at": "2026-08-06T07:16:34Z",
+  "resolved_at": "2026-08-06T07:27:39Z",
+  "notes": "TEST-RUNNER finding TR-02 during WF-03 Step 5 verification of GH #439 / ISS-0137. Baseline records 128 suppressed findings, tree produces 131; the 3 unaccounted findings are T020 MAJORs present on origin/main. BLOCKER counts identical (88) on both refs, so this is suppression-baseline drift, not a new isolation defect.",
+  "candidate_resolution": "Resolve each of the 3 unaccounted T020 findings individually -- fix in test source, or add to baseline with a recorded reason. Do not blanket-regenerate the baseline, which would also suppress genuine violations.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/469",
+  "discovered_while_fixing": "ISS-0137",
+  "resolution": "Not 3 isolation defects -- 97 stale baseline line numbers. The 2026-08-05 baseline (ISS-0142) was generated against a tree 3 lines shorter than origin/main (uniform +3 shift on 94 entries), and helpers.zig shifted +44 in ISS-0137 commit baea783 (the 3 T020 MAJORs). Each T020 was decided individually: all 3 (cached_owner_tag, tag_repr_storage, tag_repr_lock) KEPT BASELINED as justified exceptions -- they implement ISS-0602/GH #414 per-process owner-tag scoping for killIdleConnections, where cross-block sharing is the required semantics, access is cmpxchg lock-guarded, and ownership/free is handled by the first TestHarness via owns_tag_storage. Fixing them per-test would regress ISS-0602. Applied a line-number-only sync (97 relined / 0 added / 0 removed) whose script aborts if any finding identity would change; verified the identity multiset is unchanged and BLOCKER count stayed 88. Rationale recorded in the baseline last_line_sync/t020_helpers_decision fields.",
+  "prevention": "Baseline drift of this kind is invisible because the count check (128 vs 131) understates it -- 97 entries were actually stale, but 94 of them happened to be BLOCKERs already failing for other reasons. Two guards: (1) never regenerate this baseline wholesale -- use an identity-preserving line-number-only sync that aborts on any add/drop, as done here; (2) when generating a baseline, do it from a clean checkout of the merge-base rather than a dirty working tree, which is what introduced the uniform +3 offset. A future improvement worth considering is making lint_test_isolation.py match baseline entries on (severity,code,file,message) with line as advisory only, which would make the baseline immune to line drift entirely.",
+  "renumbered_from": "ISS-0152",
+  "renumber_reason": "ISS-0152 was claimed concurrently on main by an unrelated issue (merged via PR #487/#488 lineage). This entry keeps its GitHub issue https://github.com/tvolodi/R-Co/issues/469, which is the stable identifier; only the local ID moved."
+}

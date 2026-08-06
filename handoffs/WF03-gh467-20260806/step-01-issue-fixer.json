@@ -1,0 +1,73 @@
+{
+  "handoff_id": "d0e21b70-02bd-46d9-a83f-124e34e2d9d3",
+  "run_id": "WF03-gh467-20260806",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-06T07:12:57Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [],
+    "issue_ids": [
+      "ISS-0603"
+    ],
+    "github_issue": 467,
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0603.json",
+      "src/db/migrations.zig"
+    ]
+  },
+  "task": {
+    "description": "Fix migration apply-ordering so GBL-prefixed migrations interleave numerically with NNN_ migrations instead of sorting after all of them.\n\nRoot cause is already diagnosed in docs/issues/ISS-0603.json: the apply sort in src/db/migrations.zig (~line 185) uses raw lexicographic std.mem.lessThan on the filename, while migrationOrder() in the same file already encodes the intended ordering (GBL- => +1000 offset). Make the sort use migrationOrder() with filename as a deterministic tiebreak for equal orders.\n\nVerify against a genuinely empty database \u2014 this bug is invisible on an already-migrated one. The workspace-2 stack is running: dev DB on localhost:5452, test DB on localhost:5453 (see .env). Create a scratch database to prove the from-empty path, and confirm re-running migrate on an already-migrated DB stays a no-op so existing environments do not regress.",
+    "acceptance_criteria": [
+      "zig build migrate exits 0 against a completely empty database",
+      "zig build migrate is a no-op (exits 0, applies nothing) on an already-migrated database",
+      "apply order matches the order migrationOrder()-based out-of-order detection enforces",
+      "stale 'zero-padded NNN_ prefix ensures numeric order' comment corrected",
+      "regression test asserts GBL-119 sorts before 1135",
+      "zig build exits 0 with no 'error set' output",
+      "zig build test exits 0"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed ISS-0603 / GH #467: migration apply order now uses migrationOrder() with a filename tiebreak, so GBL-* migrations interleave numerically with the 1xxx_ series instead of sorting after all of them. The bug existed in TWO runners: src/db/migrations.zig (runForSchema) was the file named in the diagnosis, but `zig build migrate` actually executes a duplicated copy in src/tools/migrate.zig \u2014 fixing only the former left the symptom completely unchanged. Both fixed. Out-of-order detection was reworked from a global max-applied watermark to a within-pass 'walked_order' watermark so pre-existing databases (which carry a legacy backlog of pending GBL files below an already-applied 1134) are grandfathered in rather than bricked. Verified against a real pre-existing DB: bpm_dev applied GBL-112..115 after 1134 with no out-of-order error. 4 mutation-tested regression tests added. NOTE: a fresh DB still cannot fully bootstrap due to a SEPARATE circular dependency, filed as ISS-0604 / GH #470 and enqueued.\n\nISS-0604 / GH #470 (second queued item, authorized by ORCH after independent reproduction) is now ALSO fixed: introduced a declarative `-- scope: public` migration header, honoured by both runners, so public-only migrations are skipped in per-tenant passes. Chose the header over renaming 1135 because the filename is the ledger key (a rename re-runs it everywhere), GBL-135 would collide at order 1135, and an audit found FIVE public-only non-GBL migrations, not one. A misclassified migration now fails loudly with MigrationScopeMismatch. Also deleted src/tools/migrate.zig's duplicate migrationOrder(), closing the ISS-0603 root hazard. Fresh-database bootstrap now reaches 106/106 with exit 0; the run's issue_queue.json is fully drained.",
+    "artifacts_out": [
+      "src/db/migrations.zig",
+      "src/tools/migrate.zig",
+      "src/db/provisioning.zig",
+      "build.zig",
+      "tests/unit/db_test.zig",
+      "docs/guides/backend_developer_guide.md",
+      "migrations/060_schema_per_tenant_bootstrap.sql",
+      "migrations/069_retroactive_tenant_schema_provision.sql",
+      "migrations/070_retroactive_tenant_schema_provision_backfill_fix.sql",
+      "migrations/1134_iss0112_add_secret_ref_to_tenant_schemas.sql",
+      "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql",
+      "docs/issues/ISS-0603.json",
+      "docs/issues/ISS-0604.json",
+      "handoffs/WF03-gh467-20260806/issue_queue.json"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "issue_id": "ISS-0604",
+        "github_issue": 470,
+        "status": "RESOLVED",
+        "description": "Discovered while verifying ISS-0603's from-empty path, filed as GH #470, then fixed under this same handoff after ORCH independently reproduced it and authorized the work. Fresh-database bootstrap now reaches 106/106 with exit 0. Queue drained."
+      }
+    ],
+    "next_action": "issue_queue.json is fully drained (ISS-0603 RESOLVED, ISS-0604 RESOLVED). Route to CODE-DESIGNER (WF-03 Step 2) for the fix design record, then continue the WF-03 chain to Step Final (git-merge). Note for RELEASE-VALIDATOR: fresh-DB bootstrap is now a verified-working path and is worth a standing check, since this defect class was invisible on already-migrated databases."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T07:12:57Z",
+  "completed_at": "2026-08-06T07:54:04Z"
+}

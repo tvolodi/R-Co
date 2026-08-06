@@ -1,0 +1,19 @@
+{
+  "run_id": "WF03-gh374-20260806",
+  "created_at": "2026-08-06T08:07:38Z",
+  "branch_name": "feature/WF03-gh374-20260806",
+  "items": [
+    {
+      "issue_id": "ISS-0148",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/477",
+      "status": "DEFERRED",
+      "severity": "MAJOR",
+      "discovered_at": "2026-08-06T08:29:20Z",
+      "discovered_by": "BACKEND-DEV Step 3 (verification of ISS-0147 fix)",
+      "discovered_while_fixing": "ISS-0147",
+      "started_at": null,
+      "completed_at": "2026-08-06T09:08:44Z",
+      "deferred_reason": "Out of this run's scope by explicit user decision (2026-08-06). Pre-existing on main (reproduced 3x there before any ISS-0147 change), root cause is in the migration runner / tenant provisioning path (src/db/migrations.zig, src/db/provisioning.zig) rather than in interpreter resolution, and that code carries explicit in-source warnings that a careless change bricks existing developer databases. Diagnosis recorded on ISS-0148 / GH #477; stays OPEN for its own run. Merging ISS-0147 does not regress it."
+    }
+  ]
+}

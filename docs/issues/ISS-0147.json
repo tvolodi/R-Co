@@ -1,24 +1,48 @@
 {
-  "id": "ISS-0147",
-  "title": "src/wasm/ (12 files) is reachable from no addTest root and re-exported by neither bpm.zig nor main.zig",
-  "status": "RESOLVED",
-  "severity": "MINOR",
-  "category": "dead-subsystem-visibility",
-  "run_id": "WF03-gh439-testwiring-20260806",
-  "handoff_id": "d60e48f2-685b-48b6-9f3a-ffa362e52671",
-  "affected_areas": [
-    "src/wasm/",
-    "src/bpm.zig",
-    "src/main.zig",
-    "build.zig",
-    "tests/unit/wasm_executor_test.zig"
+  "issue_id": "ISS-0147",
+  "title": "Integration linter tests invoke Windows Store Python alias instead of repository interpreter",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/374",
+  "registered_at": "2026-08-06T08:09:55Z",
+  "registered_by": "ISSUE-FIXER (WF03-gh374-20260806 Step 0.5)",
+  "related_to": [
+    "ISS-0138"
   ],
-  "created_at": "2026-08-06T05:32:56Z",
-  "resolved_at": "2026-08-06T07:41:56Z",
-  "notes": "Incidental finding #3 of the WF-03 Step 1 diagnosis for GH #439 / ISS-0137 (docs/issue-reports/ISS-0137-diagnosis.yaml). Broader than #439: the whole src/wasm subsystem is unreferenced, not merely its tests. Only tests/unit/wasm_executor_test.zig appears in #439's 55-file list (cluster C5); wiring that one test does not answer whether src/wasm is live, prototype, or dead code. src/wasm/wasmtime_bindings.zig may need a real Wasmtime link, which determines whether the test can run in CI at all.",
-  "candidate_resolution": "Decide liveness of src/wasm. If live: re-export via src/bpm.zig and add an addTest root. If prototype/dead: delete, or record a documented exclusion. Document the wasmtime external-link requirement either way.",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/463",
-  "discovered_while_fixing": "ISS-0137",
-  "resolution": "VERDICT: LIVE. src/wasm is production code backed by 14 requirements (WASM-01..14, 11 MUST + 2 SHOULD), every one RELEASED, and every one of the 12 files appears in some requirement implemented_in list in docs/requirements.yaml. Not deleted.\n\nWIRED: build.zig now passes the wasm named module into bpm_src_mod, and src/bpm.zig re-exports pub const wasm = @import(\"wasm\"). The import is BY NAME, never a relative path: every src/wasm/*.zig reaches its siblings relatively (engine.zig -> wasmtime_bindings.zig, executor.zig -> five siblings, ...), so those files are already owned by wasm_mod; @import(\"wasm/mod.zig\") would enrol them into a second module and Zig 0.16 rejects with 'file exists in multiple modules' (the Single-Owner Module Rule already documented for src/repository and src/oidc).\n\nMADE SELF-ENFORCING: src/wasm carries ZERO in-file test blocks across all 19 files, so it was never test-bearing and lint_test_wiring.py never flagged it -- and a bare re-export would still not be checked, because Zig only semantically analyses decls that something actually references. Added tests/unit/wasm_reexport_test.zig (aggregated into tests/unit/bpm_src_test_root.zig) which touches a concrete decl from every file in the subsystem, so a compile break anywhere under src/wasm/ now fails zig build test.\n\nROT FOUND AND FIXED BY THAT TEST: the first run failed on src/wasm/wasmtime_bindings.zig:70 callconv(.C) -- valid when written (Stage 9, May 2026) but Zig 0.16 turned CallingConvention into a tagged union whose C member is lowercase .c. Corrected. This is direct proof of the harm the issue described: the subsystem had been silently uncompilable and no target went red.\n\nEXTERNAL-LINK QUESTION (the open half of the issue): NO LINK IS NEEDED, confirmed independently. src/wasm contains zero @cImport and zero linkSystemLibrary. wasmtime_bindings.zig declares only extern struct/extern union TYPES -- extern there is a memory-layout qualifier, not a link-time symbol reference -- and every binding fn is an inline fn stub returning a failure sentinel (engine_new -> null, module_new -> 1). That file's own header says real @cImport bindings arrive in Stage 10. Linking Wasmtime is a Stage 10 concern, not a prerequisite for compiling the subsystem today. Documented in src/bpm.zig, in build.zig, and in the new test file header comment.\n\ntests/unit/wasm_executor_test.zig was left wired exactly as GH #439 left it -- not un-wired, not deleted.\n\nVERIFIED: python tools/lint_test_wiring.py exit 0 (253 test-bearing files, up from 252); zig build exit 0; zig build test exit 0.",
-  "prevention": "A subsystem with zero in-file test blocks is invisible to tools/lint_test_wiring.py, which only tracks test-bearing files. Build-graph reachability and test reachability are different properties and the existing gate only measures the second. Two habits close the gap: (1) when a subsystem is re-exported purely for reachability, add a test that references a concrete decl from each of its files -- a bare pub const x = @import(...) is never analysed by Zig and so silently rots; (2) when marking requirements RELEASED, confirm the files listed in implemented_in are reachable from some build target, otherwise RELEASED status is not backed by anything that compiles. Consider extending lint_test_wiring.py (or a sibling linter) to flag any src/ directory that no module root and no addTest root reaches, regardless of whether it contains test blocks -- that check would have caught both this issue and ISS-0153 (src/lua) automatically."
+  "severity": "MAJOR",
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-06T09:10:24Z",
+  "run_id": "WF03-gh374-20260806",
+  "category": "test-infrastructure/interpreter-resolution",
+  "affected_areas": [
+    "tests/integration/tnt_schema_isolation_test.zig",
+    "tests/support/python_interp.zig",
+    "build.zig"
+  ],
+  "symptom": "zig build test-integration fails TC-TNT-02-03 and TC-TNT-02-04. Both tests spawn tools/lint_migration_schema.py with argv[0] == \"python\"; on Windows that can resolve to the Microsoft Store App Execution Alias stub, which prints 'Python was not found; run without arguments to install from the Microsoft Store...' and exits 49. The tests observe exit 49 instead of the linter's real exit codes 1 and 0.",
+  "reproduction": "On Windows with a WindowsApps python.exe alias on PATH: C:/Users/tvolo/AppData/Local/Microsoft/WindowsApps/python.exe tools/lint_migration_schema.py <file> -> 'Python was not found...' exit 49. Confirmed on this machine 2026-08-06.",
+  "root_cause_analysis": "Interpreter selection is by bare name only. 'python' has three PATH resolutions on this machine (Programs/Python312 real, WindowsApps alias stub, AppData/Local/Python/bin shim). Which one wins depends on the PATH the spawning process inherits, which differs between an interactive shell and a zig-build-spawned test binary -- so name-based selection is non-deterministic. ISS-0138 (GH #440) fixed the sibling 'python3' case in build.zig by switching to 'python', but 'python' carries the same WindowsApps alias, and these two call sites live in a test binary rather than build.zig, so that fix does not cover them.",
+  "acceptance_criteria": [
+    "Integration tests resolve the repository-selected Python interpreter deterministically on Windows and non-Windows hosts",
+    "TC-TNT-02-03 observes expected linter rejection exit 1",
+    "TC-TNT-02-04 observes expected linter acceptance exit 0",
+    "Full zig build test-integration no longer contains 'Python was not found'"
+  ],
+  "design_artifact": "src/design/python_interpreter_resolution.md",
+  "resolution": "Added tests/support/python_interp.zig (named module `python_interp`): interpreter resolution via an ordered candidate list ($BPM_PYTHON authoritative, repo .venv, $VIRTUAL_ENV, python3, python) where every candidate must pass a liveness probe (-c writing sentinel BPM_PY_OK, exit 0) before acceptance. The probe rejects the WindowsApps App Execution Alias stub. Both call sites in tests/integration/tnt_schema_isolation_test.zig now spawn the resolved interpreter instead of bare \"python\". Test assertions unchanged -- the fix restores the measurement rather than suppressing it. Resolver unit tests live in tests/unit/python_interp_test.zig, wired into `zig build test`.",
+  "prevention": "Never select an interpreter (or any tool whose exit code a test asserts on) by bare name and assume PATH order. Name-based selection is host- and spawn-context-dependent. Probe the candidate for the behaviour you depend on, and accept it only if the probe passes. When a test asserts on a subprocess's exit code, a non-interpreter's exit code is indistinguishable from a real result unless something verifies what was actually run.",
+  "verification": [
+    "TC-TNT-02-03 and TC-TNT-02-04 pass across 3 consecutive zig build test-integration-tnt runs",
+    "0 occurrences of 'Python was not found' in full test-integration-tnt output",
+    "Negative test: BPM_PYTHON forced to the WindowsApps stub is rejected with error.BpmPythonOverrideUnusable and a diagnostic naming the path",
+    "zig build exits 0, no 'error set' output",
+    "zig build test exits 0 (includes 4 new resolver unit tests)",
+    "tools/lint_design_artefact.py, lint_sql_param_types.py, lint_test_wiring.py exit 0",
+    "tools/lint_test_isolation.py MAJOR on tests/integration: 8 -> 6 (both resolver findings cleared)"
+  ],
+  "artifacts_out": [
+    "tests/support/python_interp.zig",
+    "tests/unit/python_interp_test.zig",
+    "tests/integration/tnt_schema_isolation_test.zig",
+    "build.zig",
+    "src/design/python_interpreter_resolution.md"
+  ]
 }

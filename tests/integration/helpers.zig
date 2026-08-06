@@ -97,11 +97,37 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, url: 
     // back before the schema_migrations row commits, every subsequent run
     // retries forever.
     //
-    // GH-402: Previous implementation used pg_advisory_lock() which could hang
-    // indefinitely if another process held the lock. Statement timeout caused
-    // connection errors that left connections in bad state. For now, rely on
-    // migration idempotency - Migrations.run() should retry on conflict.
-    // TODO: Implement proper distributed locking (Redis, Consul, or similar).
+    // ISS-0151 / GitHub #483: the session-level advisory lock that used to guard
+    // this check-and-apply pass is RESTORED here. Commit db362fd (GH-402) deleted
+    // all three `pg_advisory_lock(hashtext('bpm_test_migrations_public'))` acquires
+    // in this file on the theory that "migration idempotency is sufficient", but
+    // left the matching `pg_advisory_unlock` in TestHarness.init() in place — so
+    // the file has been unlocking a lock nobody takes ever since.
+    //
+    // Idempotency is NOT sufficient, and src/db/migrations.zig says so in its own
+    // ISS-0144 comment: Migrations.run/runForSchema do check-then-apply against an
+    // `applied` set read before the per-file transaction begins. Two binaries can
+    // both observe a file as unapplied; the loser's DDL then fails against a
+    // half-built or concurrently-rebuilt schema. That is the observed ISS-0151
+    // signature — 42P01 `relation "events_archive"/"events"/"instance_projections"
+    // does not exist` raised from runForSchema inside provisionTenantSchema — plus
+    // the ~60s stalls where a test binary sat behind a peer's uncoordinated DDL
+    // until the build runner's own timeout fired.
+    //
+    // Why restoring it does not reintroduce the GH-402 hang: the hang GH-402 was
+    // reacting to was never the lock itself. It was ISS-0110's diagnosis — the
+    // ambient `lock_timeout = '5s'` from configureSessionTimeouts() cancelling this
+    // very acquire with 55P03 once enough of the ~19+ concurrent binaries queued
+    // behind it. The fix for that is the ISS-0107-rework-1 bracket, already proven
+    // at the widened acquire in TestHarness.init(): raise lock_timeout for exactly
+    // this one acquire statement, then restore it immediately. Bounded wait, not
+    // an unbounded one — and a bounded wait is what a correct queue looks like.
+    //
+    // The lock is released by `defer` below, so an error path cannot leak it.
+    try conn.exec("SET lock_timeout = '90s'", &.{});
+    try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
+    try conn.exec("SET lock_timeout = '5s'", &.{});
+    defer conn.exec("SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public'))", &.{}) catch {};
 
     try markPublicGlobalSkipsApplied(conn);
 
@@ -139,14 +165,32 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
     // as-is: if the real migrator has already fully migrated this schema, we
     // can skip straight to setting search_path.
     //
-    // ISS-0090: Concurrent test binaries calling TestHarness.init() race on
-    // schema-local non-idempotent inline CONSTRAINT/index DDL. Previously this
-    // was serialized with pg_advisory_lock(), but that could hang indefinitely
-    // if another process held the lock (especially with statement_timeout causing
-    // connection state issues).
+    // ISS-0090 / ISS-0151 (GitHub #483): concurrent test binaries calling
+    // TestHarness.init() (or ensureSchemaReady(), which routes here too) race on
+    // this schema's non-idempotent inline CONSTRAINT/index DDL. The per-schema
+    // advisory lock that serialized them was deleted by commit db362fd (GH-402)
+    // along with the two `bpm_test_migrations_public` acquires; it is restored
+    // here for the same reason given in runMigrations() above.
     //
-    // GH-402: For now, rely on migration idempotency and let Migrations.runForSchema()
-    // handle conflicts. If this causes issues, implement proper distributed locking.
+    // Scope note: the lock is taken BEFORE the already-migrated fast path below,
+    // not after it. The fast path reads public.tenant_schemas and
+    // public.schema_migrations to decide whether to skip the apply entirely —
+    // that read is exactly the check half of the check-then-apply race, so
+    // leaving it outside the lock would let two binaries both decide to apply.
+    //
+    // Keyed on hashtext(schema) so two binaries provisioning DIFFERENT tenant
+    // schemas still proceed in parallel; only same-schema work serializes. The
+    // common contended case is "tenant_default", which every binary provisions.
+    //
+    // Bracketed with the ISS-0107-rework-1 lock_timeout pattern for the same
+    // reason as runMigrations(): the ambient 5s ceiling from
+    // configureSessionTimeouts() would otherwise cancel this acquire with 55P03
+    // under normal queueing (ISS-0110), which is the failure GH-402 misread as
+    // "the advisory lock hangs".
+    try conn.exec("SET lock_timeout = '90s'", &.{});
+    try conn.exec("SELECT pg_advisory_lock(hashtext($1))", &.{schema});
+    try conn.exec("SET lock_timeout = '5s'", &.{});
+    defer conn.exec("SELECT pg_advisory_unlock(hashtext($1))", &.{schema}) catch {};
 
     {
         var already_migrated = conn.query(
@@ -952,6 +996,16 @@ pub const TestHarness = struct {
         // unnecessary, given errdefer conn.close() above already discards the
         // whole connection on any error, and actively harmful, since a
         // function-scope defer would not fire until after conn.begin() below).
+        //
+        // ISS-0151 / GitHub #483: these three statements are RESTORED. Commit
+        // db362fd (GH-402) deleted them but left the matching pg_advisory_unlock
+        // below in place, so this widened critical section has been running
+        // completely unguarded — and unlocking a lock nobody held — ever since.
+        // The comment block above survived the deletion and describes exactly the
+        // bracket being reinstated here.
+        try conn.exec("SET lock_timeout = '90s'", &.{});
+        try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
+        try conn.exec("SET lock_timeout = '5s'", &.{});
 
         // Set search_path to tenant_default so resetTestData and all subsequent
         // operations on this direct connection resolve tenant-schema tables

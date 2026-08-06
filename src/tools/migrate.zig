@@ -4,6 +4,16 @@ const pool_mod = @import("pool");
 const db_provisioning = @import("db_provisioning");
 const build_options = @import("build_options");
 
+// ISS-0604 / GH-470: use the canonical migration classification helpers instead
+// of a private copy. ISS-0603 was caused by this CLI carrying a duplicate of the
+// ordering logic that drifted from src/db/migrations.zig; the duplicate is now
+// gone and both runners share one definition. Re-exported via db_provisioning
+// because migrations.zig already belongs to that module (a Zig file may belong
+// to exactly one module).
+const migrationOrder = db_provisioning.migrationOrder;
+const declaresPublicScopeHeader = db_provisioning.declaresPublicScopeHeader;
+const declaresUnqualifiedTableWork = db_provisioning.declaresUnqualifiedTableWork;
+
 pub fn main(init: std.process.Init) !void {
     const allocator = init.gpa;
 
@@ -68,8 +78,26 @@ pub fn main(init: std.process.Init) !void {
         };
     }
 
+    // ISS-0603 / GH-467: Order by migrationOrder(), NOT by raw filename bytes.
+    //
+    // This is the sort that `zig build migrate` actually executes, and it must
+    // stay identical to the one in src/db/migrations.zig runForSchema().
+    //
+    // Previously a plain std.mem.lessThan on the filename: '1' (0x31) sorts
+    // before 'G' (0x47), so EVERY GBL-* file was applied after EVERY 1xxx_*
+    // file. GBL-119_env01_tenant_type_field.sql adds public.tenant.tenant_type,
+    // which 1135_iss0114_backfill_public_tenant_storage_mode.sql writes to, so
+    // bootstrapping a fresh database died with C42703 'column "tenant_type" of
+    // relation "tenant" does not exist'.
+    //
+    // Filename is the tiebreak for equal orders so the sequence is fully
+    // deterministic (migrations/ contains real duplicate-order pairs, e.g.
+    // 050_tenant_hostnames.sql / 050_xc01_trace_id_audit.sql).
     std.sort.block([]u8, names.items, {}, struct {
         fn lessThan(_: void, a: []u8, b: []u8) bool {
+            const oa = migrationOrder(a);
+            const ob = migrationOrder(b);
+            if (oa != ob) return oa < ob;
             return std.mem.lessThan(u8, a, b);
         }
     }.lessThan);
@@ -97,16 +125,22 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // Apply pending migrations.
-    var max_applied: []const u8 = "";
-    var max_applied_order: u32 = 0;
-    var applied_iter = applied.keyIterator();
-    while (applied_iter.next()) |k| {
-        const order = migrationOrder(k.*);
-        if (order > max_applied_order) {
-            max_applied_order = order;
-            max_applied = k.*;
-        }
-    }
+    //
+    // ISS-0603 / GH-467: `walked_order` is the highest migrationOrder() this run
+    // has already passed while walking `names.items` in correctly-sorted order.
+    // The out-of-order check below compares against it rather than against a
+    // global max-applied watermark.
+    //
+    // Rationale: before this fix the sort ran in raw filename order, so every
+    // GBL-* file was applied AFTER every 1xxx_* file. Databases provisioned
+    // under that old order legitimately have a backlog of pending GBL files
+    // (orders 1112..1133) sitting below an already-applied 1134/1135. Judging
+    // that backlog against a global watermark would abort with "Out-of-order
+    // migration" and permanently brick every pre-existing environment. Scoping
+    // the check to inversions encountered *within this pass* grandfathers the
+    // legacy backlog in while still catching a genuinely misnumbered new file.
+    var walked_order: u32 = 0;
+    var walked_name: []const u8 = "";
 
     var applied_count: u32 = 0;
     var provisioned_default_tenant = false;
@@ -154,12 +188,21 @@ pub fn main(init: std.process.Init) !void {
 
         if (applied.contains(filename)) {
             std.log.info("  skip  {s}", .{filename});
+            // ISS-0603 / GH-467: walking past an applied file advances the
+            // watermark, so an applied migration only constrains files that come
+            // AFTER it in correct sort order. A pending file sorting BEFORE every
+            // applied one (the legacy GBL backlog) is never compared against it.
+            const applied_order = migrationOrder(filename);
+            if (applied_order > walked_order) {
+                walked_order = applied_order;
+                walked_name = filename;
+            }
             continue;
         }
 
         const file_order = migrationOrder(filename);
-        if (max_applied.len > 0 and file_order < max_applied_order) {
-            std.log.err("Out-of-order migration: {s} (max applied: {s})", .{ filename, max_applied });
+        if (walked_order > 0 and file_order < walked_order) {
+            std.log.err("Out-of-order migration: {s} (already applied past: {s})", .{ filename, walked_name });
             std.process.exit(1);
         }
 
@@ -168,6 +211,24 @@ pub fn main(init: std.process.Init) !void {
             std.process.exit(1);
         };
         defer allocator.free(sql_bytes);
+
+        // ISS-0604 / GH-470: misclassification guard — fail LOUDLY.
+        //
+        // A migration marked public-only (via the GBL- prefix or a
+        // `-- scope: public` header) whose body performs unqualified,
+        // search_path-resolved table work would silently skip that work for every
+        // tenant schema. Refuse rather than drift tenant data shape apart.
+        if (declaresPublicScopeHeader(filename, sql_bytes) and
+            declaresUnqualifiedTableWork(sql_bytes))
+        {
+            std.log.err(
+                "Migration scope mismatch: {s} is declared public-only (GBL- prefix or '-- scope: public') " ++
+                    "but performs unqualified table work that needs the per-tenant pass. " ++
+                    "Either qualify the tables with public., or change the scope header to '-- scope: all_schemas'.",
+                .{filename},
+            );
+            std.process.exit(1);
+        }
 
         conn.exec("BEGIN", &.{}) catch |err| {
             std.log.err("BEGIN failed for {s}: {}", .{ filename, err });
@@ -195,9 +256,9 @@ pub fn main(init: std.process.Init) !void {
         };
 
         std.log.info("  apply {s}", .{filename});
-        if (file_order > max_applied_order) {
-            max_applied_order = file_order;
-            max_applied = filename;
+        if (file_order > walked_order) {
+            walked_order = file_order;
+            walked_name = filename;
         }
         applied_count += 1;
     }
@@ -228,19 +289,8 @@ pub fn main(init: std.process.Init) !void {
     }
 }
 
-fn migrationOrder(filename: []const u8) u32 {
-    // GBL-NNN_... files: skip "GBL-" prefix then parse the numeric part.
-    // We add an offset (1000) for GBL migrations so they don't clash with
-    // regular NNN prefix migrations numerically.
-    var start: usize = 0;
-    var offset: u32 = 0;
-    if (std.mem.startsWith(u8, filename, "GBL-")) {
-        start = 4;
-        offset = 1000;
-    }
-    var i: usize = start;
-    while (i < filename.len and std.ascii.isDigit(filename[i])) : (i += 1) {}
-    if (i == start) return 0;
-    const base_order = std.fmt.parseInt(u32, filename[start..i], 10) catch 0;
-    return base_order + offset;
-}
+// ISS-0604 / GH-470: the private duplicate of migrationOrder() that used to live
+// here was removed. Both runners now share the single definition in
+// src/db/migrations.zig (imported as `db_migrations` above), so the CLI and the
+// runtime can no longer disagree about migration order or scope — which is the
+// exact drift that caused ISS-0603.

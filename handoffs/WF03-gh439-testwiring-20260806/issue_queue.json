@@ -4,7 +4,7 @@
   "branch_name": "feature/WF03-gh439-testwiring-20260806",
   "items": [
     {
-      "issue_id": "ISS-0147",
+      "issue_id": "ISS-0164",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/463",
       "status": "DRAINED",
       "severity": "MINOR",
@@ -12,10 +12,11 @@
       "discovered_by": "ISSUE-FIXER Step 1",
       "discovered_while_fixing": "ISS-0137",
       "started_at": "2026-08-06T07:20:53Z",
-      "completed_at": "2026-08-06T07:41:56Z"
+      "completed_at": "2026-08-06T07:41:56Z",
+      "renumbered_from": "ISS-0147"
     },
     {
-      "issue_id": "ISS-0148",
+      "issue_id": "ISS-0165",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/464",
       "status": "DRAINED",
       "severity": "MAJOR",
@@ -23,7 +24,8 @@
       "discovered_by": "ISSUE-FIXER Step 1",
       "discovered_while_fixing": "ISS-0137",
       "started_at": "2026-08-06T07:50:11Z",
-      "completed_at": "2026-08-06T07:51:28Z"
+      "completed_at": "2026-08-06T07:51:28Z",
+      "renumbered_from": "ISS-0148"
     },
     {
       "issue_id": "ISS-0149",
@@ -37,7 +39,7 @@
       "completed_at": "2026-08-06T10:06:50Z"
     },
     {
-      "issue_id": "ISS-0150",
+      "issue_id": "ISS-0166",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/466",
       "status": "DRAINED",
       "severity": "MAJOR",
@@ -45,10 +47,11 @@
       "discovered_by": "BACKEND-DEV Step 3",
       "discovered_while_fixing": "ISS-0137",
       "started_at": "2026-08-06T07:54:10Z",
-      "completed_at": "2026-08-06T08:30:25Z"
+      "completed_at": "2026-08-06T08:30:25Z",
+      "renumbered_from": "ISS-0150"
     },
     {
-      "issue_id": "ISS-0151",
+      "issue_id": "ISS-0167",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/468",
       "status": "DRAINED",
       "severity": "MINOR",
@@ -56,10 +59,11 @@
       "discovered_by": "TEST-RUNNER Step 5",
       "discovered_while_fixing": "ISS-0137",
       "started_at": "2026-08-06T07:20:53Z",
-      "completed_at": "2026-08-06T07:26:27Z"
+      "completed_at": "2026-08-06T07:26:27Z",
+      "renumbered_from": "ISS-0151"
     },
     {
-      "issue_id": "ISS-0152",
+      "issue_id": "ISS-0168",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/469",
       "status": "DRAINED",
       "severity": "MINOR",
@@ -67,7 +71,8 @@
       "discovered_by": "TEST-RUNNER Step 5",
       "discovered_while_fixing": "ISS-0137",
       "started_at": "2026-08-06T07:20:53Z",
-      "completed_at": "2026-08-06T07:54:10Z"
+      "completed_at": "2026-08-06T07:54:10Z",
+      "renumbered_from": "ISS-0152"
     },
     {
       "issue_id": "ISS-0153",
@@ -187,5 +192,6 @@
     }
   ],
   "closed_at": "2026-08-06T12:35:02Z",
-  "close_note": "Queue closed by ORCH at run end. 11 items DRAINED (ISS-0147..0157, ISS-0159, ISS-0160). Remaining items are DEFERRED, not forgotten: each has a GitHub issue and an ISS file, and each needs a decision or infrastructure change outside a build-graph run's scope."
+  "close_note": "Queue closed by ORCH at run end. 11 items DRAINED (ISS-0147..0157, ISS-0159, ISS-0160). Remaining items are DEFERRED, not forgotten: each has a GitHub issue and an ISS file, and each needs a decision or infrastructure change outside a build-graph run's scope.",
+  "renumber_note": "ISS-0147/0148/0150/0151/0152 were claimed concurrently on main by unrelated issues; this run's entries moved to ISS-0164/0165/0166/0167/0168. GitHub issue numbers (#463/#464/#466/#468/#469) are unchanged and remain the stable identifiers."
 }
