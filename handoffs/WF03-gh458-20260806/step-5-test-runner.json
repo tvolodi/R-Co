@@ -1,0 +1,35 @@
+{
+  "handoff_id": "4d80514a-65f5-4b32-b7bf-d6e7df644bd4",
+  "run_id": "WF03-gh458-20260806",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-06T02:34:39Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tools/verify_schema_baseline.py"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/458",
+    "local_issue": "ISS-0146",
+    "branch_name": "feature/WF03-gh458-20260806"
+  },
+  "task": {
+    "description": "Verify the ISS-0146 fix: run tools/verify_schema_baseline.py --check-tenants --auto-fix against a deliberately-orphaned tenant row scenario and confirm it no longer references GBL-105 and no longer loops unboundedly. This is a Python tool fix with no associated Zig test suite; verification is via direct script execution and log inspection, not zig build test-integration.",
+    "acceptance_criteria": [
+      "Script runs to completion with a bounded number of retries",
+      "No reference to GBL-105 anywhere in script output or source",
+      "Orphaned tenant row is reconciled by --auto-fix"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}
