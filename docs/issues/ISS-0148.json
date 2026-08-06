@@ -8,33 +8,40 @@
     "ISS-0147"
   ],
   "severity": "MAJOR",
-  "status": "OPEN",
+  "status": "DIAGNOSED",
   "resolved_at": null,
-  "run_id": "WF03-gh374-20260806",
-  "category": "test-infrastructure/migration-ordering-or-residual-state",
+  "run_id": "WF03-gh477-20260806",
+  "category": "test-infrastructure/concurrent-schema-drop-during-migration",
   "affected_areas": [
+    "build.zig",
+    "tools/clean_test_db.py",
     "tests/integration/tnt_schema_isolation_test.zig",
     "src/db/migrations.zig",
     "src/db/provisioning.zig"
   ],
-  "symptom": "zig build test-integration-tnt fails intermittently on TC-TNT-01-01 with POSTGRES 42P01 'relation \"audit_entries\" does not exist' raised from src/db/migrations.zig:484 runForSchema. Measured on main (146070c): 3 consecutive runs gave pass, fail, fail. An accompanying 23505 duplicate-key error on schema_migrations_schema_version_uq (schema_name, version)=(tenant_<uuid>, 001_event_store.sql) appears in the same runs.",
-  "reproduction": "export BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test; zig build test-integration-tnt   # repeat 3-5 times against the shared bpm_test DB",
-  "root_cause_analysis": "NARROWED (not yet fixed). The failing assertion is preceded, in every failing run, by C23505 on schema_migrations_schema_version_uq for (tenant_<random-uuid>, 001_event_store.sql) -- a DIFFERENT random per-test UUID each run (tenant_23c4a67b..., tenant_79a3b2b0..., tenant_ff91d9ff...). That rules out stale cross-run residue: each of those schemas is created fresh by the test's own randomUuidStr(). Two callers are therefore racing on the SAME freshly-created tenant schema within a single run. The consequence is a tracking/state mismatch: 001_event_store.sql ends up RECORDED in public.schema_migrations for that schema while its tables were not created in it, so the subsequent migration doing unqualified, search_path-resolved work fails with 42P01 -- observed as both 'relation \"events\" does not exist' and 'relation \"audit_entries\" does not exist' depending on which file is reached first. runForSchema (src/db/migrations.zig:~440-490) already holds a transaction-scoped advisory lock and re-checks public.schema_migrations under that lock (the ISS-0144/GH-454 fix), so the surviving race is narrower than the one that fix addressed and needs its own diagnosis pass -- likely the interaction between the pre-loop `applied` snapshot, the per-file COMMIT boundary, and search_path state across that boundary. Confirmed NOT residue: at rest, the only tenant_% row for 001_event_store.sql is tenant_default, whose schema does exist.",
+  "symptom": "zig build test-integration-tnt fails intermittently on TC-TNT-01-01 with POSTGRES 42P01 'relation \"<X>\" does not exist' raised from src/db/migrations.zig runForSchema. The missing relation VARIES across runs (observed: events, users, audit_entries, webhook_subscriptions, process_definitions, user_roles, event_type_registry), and the failing migration file also varies (observed: 028, 040, 050_xc01, 081, 094). Measured on feature/WF03-gh477-20260806: 5 of 5 consecutive `zig build test-integration-tnt` runs failed.",
+  "reproduction": "export BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test; zig build test-integration-tnt   # repeat; fails intermittently (5/5 in this workspace). Running the SAME compiled test binary directly (bypassing the build graph) passes 6/6 - the failure requires the build graph's parallel step scheduling.",
+  "root_cause_analysis": "CONFIRMED by DDL-level server logs. `build.zig:1304-1307` declares `test_integration_tnt_step` with THREE sibling dependencies: `clean_test_db.step`, `run_tnt_integration_tests.step` and `run_tnt_backfill_integration_tests.step`. Sibling dependencies of the same Zig build step carry no ordering edges between one another, so the Zig build runner is free to execute `clean_test_db.py` CONCURRENTLY with the test binaries rather than strictly before them. `tools/clean_test_db.py::drop_orphaned_tenant_schemas()` (lines 100-123) enumerates EVERY schema matching `tenant\\_%` other than `tenant_default` from `information_schema.schemata` and issues `DROP SCHEMA IF EXISTS <name> CASCADE` (line 119) followed by `DELETE FROM public.schema_migrations WHERE schema_name != 'tenant_default' AND schema_name != 'public'` (line 123). Its enumeration predicate is purely name-shaped - it cannot distinguish a leaked schema from a live one currently being migrated by a concurrently running test. When TC-TNT-01-01 calls provisionTenantSchema() for its fresh per-test UUID, the sweep can observe that brand-new schema and drop it MID-MIGRATION. runForSchema() then continues applying the remaining files against a schema that no longer exists; the first file performing unqualified, search_path-resolved work on a table an earlier file created fails 42P01. Because the sweep lands at a random point in the ~80-file per-tenant sequence, BOTH the failing file and the missing relation vary run to run - which is exactly the previously unexplained variability. The pre-loop `applied` snapshot, per-file COMMIT boundary and search_path are all CORRECT and are NOT implicated: instrumentation showed applied_count=0 and zero skips for the failing schema, and pg_backend_pid()/current_setting('search_path') were stable and correct for every applied file. The C23505 duplicate-key on schema_migrations_schema_version_uq for (tenant_<uuid>, 001_event_store.sql) that accompanies these runs is a RED HERRING: it is TC-TNT-02-05's deliberate duplicate INSERT (tests/integration/tnt_schema_isolation_test.zig:783-786), which that test asserts MUST fail; it appears identically in PASSING runs.",
   "acceptance_criteria": [
     "zig build test-integration-tnt passes deterministically across at least 5 consecutive runs on a shared bpm_test database",
-    "TC-TNT-01-01 no longer fails with relation \"audit_entries\" does not exist",
-    "No schema_migrations_schema_version_uq duplicate-key error during tenant provisioning"
+    "TC-TNT-01-01 no longer fails with 'relation ... does not exist'",
+    "clean_test_db.py can never drop a tenant schema that a concurrently running test is actively migrating",
+    "The fix does not weaken, skip, or delete TC-TNT-01-01 or any other TNT test"
   ],
   "discovered_while_fixing": "ISS-0147",
   "pre_existing": true,
   "pre_existing_evidence": "Reproduced on main (146070c) with none of the ISS-0147 changes present: runs 2 and 3 of 3 failed. Failure path (runForSchema/migrations) is disjoint from ISS-0147's (subprocess interpreter selection).",
   "evidence": [
-    "Reproduced on main (146070c): 3 consecutive zig build test-integration-tnt runs -> pass, fail, fail",
-    "Reproduced on feature/WF03-gh374-20260806: 3 runs -> pass, fail, fail (identical signature)",
-    "Failing tenant schema UUID differs every run -> intra-run race, not cross-run residue",
-    "42P01 relation varies between 'events' and 'audit_entries' -> whichever unqualified migration is reached first",
-    "At rest, no orphaned tenant_% schema_migrations rows exist (checked live against bpm_test)"
+    "SMOKING GUN - PostgreSQL server log with log_statement='ddl' during a reproduced failure (schema tenant_37630918ade942288be9157ced6f296e): '2026-08-06 09:46:46.691 UTC [57413] LOG: statement: DROP SCHEMA IF EXISTS tenant_37630918ade942288be9157ced6f296e CASCADE' issued while backend 57140 - the migration runner, identified by its earlier 'CREATE TABLE IF NOT EXISTS public.schema_migrations' and by 'CONTEXT: SQL statement \"ALTER TABLE timers DROP CONSTRAINT IF EXISTS chk_timers_status_domain\"' at 09:46:46.972 - was still applying migration 081 to that same schema. The runner then failed 42P01 on that file.",
+    "Backend 57413 used the SIMPLE query protocol ('LOG: statement:'), matching tools/clean_test_db.py's `psql -c` invocation (run_psql, clean_test_db.py:46-53); the migration runner uses the extended protocol ('LOG: execute <unnamed>:'). Exactly ONE psql-issued DROP SCHEMA occurred during the run, and it targeted precisely the schema that failed.",
+    "Build-graph vs direct-binary control: `zig build test-integration-tnt` failed 5/5; running the SAME compiled test.exe directly (no build graph, so no concurrent clean_test_db.py) passed 6/6. Isolates the defect to the build graph's parallel scheduling, not to the test logic.",
+    "Instrumented runForSchema (temporary, since removed): failing schema logged 'applied_count=0' with ZERO skip lines, refuting the prior hypothesis that a stale pre-loop `applied` snapshot caused a migration to be wrongly skipped.",
+    "Instrumented backend/search_path probe (temporary, since removed): every applied file for a given schema ran on ONE stable backend with search_path='<tenant_schema>, public', refuting the search_path-clobber and pooled-connection-swap hypotheses.",
+    "Failure point varies across runs - files 028_adp02_tenant_scope_persistence.sql, 040_oidc10_role_source.sql, 050_xc01_trace_id_audit.sql, 081_iss101_timers_failed_status.sql, 094_entity_subsystem.sql; missing relations events/users/audit_entries/webhook_subscriptions/process_definitions/user_roles/event_type_registry - consistent with a drop landing at a random point in the ~80-file sequence.",
+    "The accompanying C23505 on (tenant_<uuid>, 001_event_store.sql) also appears in PASSING runs (exit 0), confirming it is TC-TNT-02-05's intentional duplicate-insert assertion and not part of this defect.",
+    "bpm_provision_tenant_schema() (pg_proc source, migrations/060) writes NO public.schema_migrations rows, ruling it out as a source of ledger-without-tables state.",
+    "GBL-133_iss0112_schema_ledger_reconcile.sql Step 2 (lines 170-192) blind-inserts all 98 non-GBL filenames for SCHEMA-mode tenants and was evaluated as a candidate; ruled out because it is already recorded for 'public' (so skipped in the public pass), is GBL-prefixed (so skipped in every tenant pass), and the failing schemas showed applied_count=0 rather than 98."
   ],
-  "diagnosed_by": "BACKEND-DEV (WF03-gh374-20260806, queue drain pass 1)",
-  "diagnosed_at": "2026-08-06T08:35:41Z"
+  "diagnosed_by": "ISSUE-FIXER (WF03-gh477-20260806 Step 01)",
+  "diagnosed_at": "2026-08-06T09:48:48Z"
 }

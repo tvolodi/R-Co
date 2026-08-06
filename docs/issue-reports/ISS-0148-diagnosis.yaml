@@ -1,0 +1,293 @@
+issue_id: ISS-0148
+github_issue: https://github.com/tvolodi/R-Co/issues/477
+run_id: WF03-gh477-20260806
+step: "01"
+agent: ISSUE-FIXER
+diagnosed_at: "2026-08-06T09:48:48Z"
+verdict: PASS
+status: DIAGNOSED (no source fix applied - Step 3 implements after the design gate)
+
+symptom:
+  summary: >-
+    zig build test-integration-tnt fails intermittently on TC-TNT-01-01 with
+    PostgreSQL 42P01 "relation <X> does not exist", raised from
+    Migrations.runForSchema while provisioning a fresh per-test tenant schema.
+  variability_observed:
+    missing_relations:
+      - events
+      - users
+      - audit_entries
+      - webhook_subscriptions
+      - process_definitions
+      - user_roles
+      - event_type_registry
+    failing_migration_files:
+      - 028_adp02_tenant_scope_persistence.sql
+      - 040_oidc10_role_source.sql
+      - 050_xc01_trace_id_audit.sql
+      - 081_iss101_timers_failed_status.sql
+      - 094_entity_subsystem.sql
+  note: >-
+    This variability was the central unexplained feature of the prior
+    narrowing. It is fully explained by the root cause below: a DROP lands at
+    a random point in the ~80-file per-tenant migration sequence.
+
+reproduction:
+  environment:
+    workspace: ws2 (compose project r-co-2, +10 port band)
+    test_db_url: postgres://bpm:bpm@localhost:5453/bpm_test
+    services: db, db_test, keycloak all healthy (verified via docker ps)
+    python_note: >-
+      python3 does not exist on this host; `python` was used (see user memory
+      rco-python3-missing).
+  method: >-
+    export BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test then run
+    `zig build test-integration-tnt` repeatedly, capturing exit code and
+    stderr. All logs written to scratch/ (git-ignored).
+  measured_results:
+    - control: "zig build test-integration-tnt (uninstrumented, 5 consecutive runs)"
+      result: "5/5 FAIL (exit 1), each with a different random tenant UUID"
+      log: scratch/iss0148-repro.log
+    - control: "zig build test-integration-tnt (3 further runs, later session)"
+      result: "pass, fail, fail - confirms intermittency is timing-dependent"
+      log: scratch/iss0148-clean.log
+    - control: "SAME compiled test.exe invoked DIRECTLY, 6 consecutive runs, no build graph"
+      result: "6/6 PASS, zero migration failures"
+      log: scratch/direct.log
+      significance: >-
+        Isolates the defect to the build graph's parallel step scheduling.
+        The test logic and the migration runner are identical in both arms;
+        only the presence of concurrently-scheduled sibling build steps differs.
+    - control: "Two tnt test binaries run concurrently by hand (no clean step), 4 iterations"
+      result: "TC-TNT-01-01 never failed"
+      significance: Rules out binary-vs-binary contention as sufficient cause.
+    - control: "log_statement='ddl' enabled on db_test, then zig build test-integration-tnt"
+      result: "FAIL on first run; server log captured the concurrent DROP (see evidence)"
+      log: scratch/ddlrun.log
+
+root_cause:
+  one_line: >-
+    tools/clean_test_db.py's orphan sweep runs CONCURRENTLY with the test
+    binaries (they are unordered sibling dependencies of the same build step)
+    and DROP SCHEMA ... CASCADE's a tenant schema that a running test is
+    actively migrating.
+  mechanism:
+    - step: 1
+      detail: >-
+        build.zig:1304-1307 declares test_integration_tnt_step with three
+        sibling dependencies - clean_test_db.step, run_tnt_integration_tests.step,
+        run_tnt_backfill_integration_tests.step. Sibling dependencies of one
+        step carry NO ordering edges between each other, so the Zig build
+        runner may execute clean_test_db.py concurrently with the test
+        binaries rather than strictly before them.
+    - step: 2
+      detail: >-
+        TC-TNT-01-01 generates a fresh random UUID and calls
+        provisionTenantSchema(), which creates schema tenant_<uuid> and enters
+        Migrations.runForSchema() to apply ~80 per-tenant migration files, one
+        transaction per file.
+    - step: 3
+      detail: >-
+        Concurrently, clean_test_db.py::drop_orphaned_tenant_schemas()
+        enumerates every schema matching `tenant\_%` except tenant_default
+        straight from information_schema.schemata. Its predicate is purely
+        name-shaped - it cannot distinguish a leaked schema from a live one
+        being migrated right now - so it includes the in-flight schema.
+    - step: 4
+      detail: >-
+        It issues DROP SCHEMA IF EXISTS <name> CASCADE (clean_test_db.py:119),
+        then DELETE FROM public.schema_migrations WHERE schema_name NOT IN
+        ('tenant_default','public') (clean_test_db.py:123). The schema and its
+        ledger rows vanish mid-run.
+    - step: 5
+      detail: >-
+        runForSchema continues with the remaining files. The next file that
+        performs unqualified, search_path-resolved work on a table an earlier
+        file created fails 42P01, because that table (and its whole schema) is
+        gone. Which file that is depends on when the DROP landed - hence the
+        run-to-run variability in both file and relation name.
+  hypotheses_refuted:
+    - hypothesis: "Stale pre-loop `applied` snapshot causes a migration to be wrongly skipped"
+      refuted_by: >-
+        Temporary instrumentation logged applied_count=0 and ZERO skip lines
+        for every failing schema. Nothing was skipped; every file was
+        genuinely attempted in order.
+    - hypothesis: "search_path clobbered across a per-file COMMIT boundary, or a different pooled connection serves a later statement"
+      refuted_by: >-
+        A temporary probe of pg_backend_pid() and current_setting('search_path')
+        immediately before each file showed ONE stable backend and a correct
+        '<tenant_schema>, public' search_path for all 80 files of every schema.
+    - hypothesis: "GBL-133_iss0112_schema_ledger_reconcile.sql Step 2 blind-inserts ledger rows without creating tables"
+      refuted_by: >-
+        Structurally plausible (it does insert all 98 non-GBL filenames for
+        SCHEMA-mode tenants) but ruled out: it is already recorded for
+        'public' so the public pass skips it, it is GBL-prefixed so every
+        tenant pass skips it, and failing schemas showed applied_count=0
+        rather than 98.
+    - hypothesis: "The C23505 duplicate key on (tenant_<uuid>, 001_event_store.sql) is part of the defect"
+      refuted_by: >-
+        It is TC-TNT-02-05's DELIBERATE duplicate INSERT
+        (tests/integration/tnt_schema_isolation_test.zig:783-786), which the
+        test asserts must fail. It appears identically in PASSING runs
+        (exit 0). It is a red herring and must not drive the fix.
+    - hypothesis: "bpm_provision_tenant_schema() records ledger rows without creating tables"
+      refuted_by: >-
+        Its pg_proc source (migrations/060) only takes an advisory lock,
+        CREATE SCHEMA IF NOT EXISTS, and INSERTs into public.tenant_schemas.
+        It never touches public.schema_migrations.
+
+evidence:
+  smoking_gun: >-
+    PostgreSQL server log with log_statement='ddl', during a reproduced
+    failure of schema tenant_37630918ade942288be9157ced6f296e:
+      2026-08-06 09:46:46.691 UTC [57413] LOG:  statement: DROP SCHEMA IF EXISTS tenant_37630918ade942288be9157ced6f296e CASCADE
+      2026-08-06 09:46:46.972 UTC [57140] CONTEXT:  SQL statement "ALTER TABLE timers DROP CONSTRAINT IF EXISTS chk_timers_status_domain"
+      2026-08-06 09:46:46.980 UTC [57140] LOG:  execute <unnamed>: DROP SCHEMA IF EXISTS tenant_37630918ade942288be9157ced6f296e CASCADE
+    Backend 57140 is the migration runner (identified by its earlier
+    'CREATE TABLE IF NOT EXISTS public.schema_migrations' and by the ALTER
+    TABLE above, which belongs to migration 081). Backend 57413 dropped that
+    schema 281 ms BEFORE 57140 reached file 081. The runner then failed 42P01
+    on 081. The final line is the test's own defer cleanupTenant().
+  attribution_of_backend_57413: >-
+    57413 used the SIMPLE query protocol ('LOG: statement:'), which matches
+    clean_test_db.py's `psql -c` invocation (run_psql, clean_test_db.py:46-53).
+    The migration runner uses the extended protocol ('LOG: execute <unnamed>:').
+    Exactly ONE psql-issued DROP SCHEMA occurred in the whole run and it
+    targeted precisely the schema that failed.
+  build_output_corroboration: >-
+    The same failing run printed 'Dropped 1 orphaned tenant schema(s).' from
+    clean_test_db.py - the sweep did fire, and it dropped exactly one schema.
+
+code_locations_at_fault:
+  primary:
+    - file: build.zig
+      lines: "1304-1307"
+      detail: >-
+        test_integration_tnt_step.dependOn(&clean_test_db.step) and
+        dependOn(&run_tnt_integration_tests.step) /
+        dependOn(&run_tnt_backfill_integration_tests.step) are SIBLINGS with no
+        ordering edge between them, so the cleanup may run concurrently with
+        the tests instead of strictly before them. This same 3-sibling shape is
+        repeated for ~40 other test-integration-* steps in this file, so the
+        defect class is repo-wide, not specific to the tnt step.
+    - file: tools/clean_test_db.py
+      lines: "100-123 (drop_orphaned_tenant_schemas)"
+      detail: >-
+        Enumerates tenant schemas by NAME SHAPE only (information_schema.schemata
+        LIKE 'tenant\_%') and unconditionally DROP SCHEMA ... CASCADE's each one
+        (line 119), then deletes their ledger rows (line 123). It has no way to
+        tell a leaked schema from one that a live test is actively migrating.
+  not_at_fault_confirmed:
+    - file: src/db/migrations.zig
+      detail: >-
+        runForSchema's advisory lock, under-lock re-check (ISS-0144/GH-454),
+        per-file transaction boundary, `applied` snapshot and search_path
+        handling all behaved correctly under instrumentation. No change is
+        required here for correctness of the migration algorithm itself.
+    - file: tests/integration/tnt_schema_isolation_test.zig
+      detail: >-
+        Per-test UUID fixtures and defer cleanupTenant() are correct. The test
+        is a faithful detector of the defect and must NOT be weakened.
+
+recommended_fix_approach:
+  note: >-
+    Described only - NOT implemented in this step. CODE-DESIGNER (Step 2) turns
+    this into a design; BACKEND-DEV (Step 3) implements after the
+    CODE-DESIGN-VALIDATOR gate.
+  preferred_option:
+    name: "Make the cleanup sweep an ordering PREDECESSOR of the test binaries"
+    rationale: >-
+      This addresses the actual condition (cleanup racing live tests) rather
+      than making the symptom rarer. It is a build-graph correctness fix and
+      cannot be satisfied by renaming or masking anything.
+    sketch: >-
+      Instead of hanging clean_test_db.step and the run_* steps off the same
+      parent as unordered siblings, give each run_* step an explicit
+      dependOn(&clean_test_db.step) so the Zig build runner is forced to
+      complete the sweep before any test binary starts. Apply this uniformly:
+      the same 3-sibling shape exists for ~40 test-integration-* steps in
+      build.zig, so a helper that wires (clean -> run) for every integration
+      run artifact is preferable to 40 hand-edits, and prevents the pattern
+      from being reintroduced.
+    caveats:
+      - >-
+        `zig build test-integration` (the full suite) runs many binaries as
+        concurrent siblings; making all of them depend on the single
+        clean_test_db step is correct and does not serialise the binaries
+        relative to each other, only relative to the sweep.
+      - >-
+        Verify that clean_test_db.step is not itself scheduled more than once
+        per build invocation (Zig caches step execution, so one instance is
+        expected).
+  defence_in_depth_option:
+    name: "Make the sweep refuse to drop schemas that are in active use"
+    rationale: >-
+      Even with correct ordering, any future concurrent invocation (a developer
+      running clean-test-db while tests run, or a second workspace pointed at
+      the same database) can reintroduce the race. A sweep that cannot drop a
+      live schema is safe under any scheduling.
+    sketch: >-
+      In drop_orphaned_tenant_schemas(), before dropping, exclude schemas that
+      are demonstrably live. Candidate predicates, in order of robustness:
+      (a) take the same pg advisory lock the migration runner uses
+      (hashtext('bpm.migrations.runForSchema'), see migrations.zig
+      MIGRATIONS_LOCK_KEY_SQL) with pg_advisory_lock so the sweep and any
+      in-flight runForSchema transaction are mutually exclusive; (b) skip
+      schemas whose public.tenant_schemas row was created within a short recency
+      window; (c) skip schemas referenced by a currently-active backend in
+      pg_stat_activity. Option (a) is the strongest because it reuses the
+      existing, already-correct serialisation primitive rather than inventing a
+      second one.
+  explicitly_rejected:
+    - "Deleting, skipping, or weakening TC-TNT-01-01 or any TNT test - forbidden by the handoff and by CLAUDE.md."
+    - >-
+      Retrying runForSchema on 42P01 - this masks a real 'someone deleted my
+      schema' condition and would make genuine migration bugs silent.
+    - >-
+      Making clean_test_db.py's sweep quieter or narrowing its name pattern -
+      that reduces the failure rate without removing the race, i.e. satisfying
+      the detector rather than fixing the condition.
+
+verification_for_step_3:
+  - "zig build test-integration-tnt passes 5+ consecutive runs on the shared bpm_test database."
+  - "The fix is verified by exit code, not by absence of any particular string in the output."
+  - >-
+    Re-run with log_statement='ddl' and confirm no DROP SCHEMA for a tenant
+    schema is interleaved with that schema's migration statements.
+  - "No changes to TC-TNT-01-01 or any other TNT test assertion."
+
+incidental_findings:
+  - id: none-filed
+    summary: >-
+      tnt_backfill_export_cleanup_test.zig failed (TestExpectedEqual /
+      TestExpectedError, and TC-TNT-05-03) in several concurrent-execution
+      experiments. Not filed as a separate issue because these runs were under
+      artificial contention created by this diagnosis (hand-launched concurrent
+      binaries and, in one arm, extra probe queries that exhausted connections
+      and produced CONNECTION_RESET). Under the normal `zig build
+      test-integration-tnt` path this binary's failures are plausibly the same
+      concurrent-drop mechanism documented here. Recommend Step 5 (TEST-RUNNER)
+      re-checks this binary once the primary fix lands, and files it then if it
+      still fails.
+
+artifacts:
+  logs_written_to_scratch:
+    - scratch/iss0148-repro.log
+    - scratch/iss0148-clean.log
+    - scratch/iss0148-diag.log
+    - scratch/iss0148-diag2.log
+    - scratch/iss0148-skip.log
+    - scratch/iss0148-catch.log
+    - scratch/direct.log
+    - scratch/ddlrun.log
+    - scratch/verify.log
+  temporary_instrumentation:
+    status: REMOVED
+    detail: >-
+      Diagnostic std.debug.print probes were added to src/db/migrations.zig
+      (SNAPSHOT / SKIP / APPLY / SQLFAIL) to prove the mechanism, then removed.
+      `git diff src/db/migrations.zig` is empty and `zig build` exits 0 with no
+      "error set" output. The db_test server's log_statement was set to 'ddl'
+      for evidence capture and has been reset via ALTER SYSTEM RESET
+      log_statement + pg_reload_conf().
+  source_changes_applied: none (diagnosis-only step, per handoff constraints)
