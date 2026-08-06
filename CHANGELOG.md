@@ -4,6 +4,19 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-06
 
+### Added
+
+**ISS-0161** ([GitHub #485](https://github.com/tvolodi/R-Co/issues/485) — LuaJIT was not available in this repo, so `src/lua` executed no scripts)
+
+- **LuaJIT 2.1 is now vendored and statically linked (LUA-01).** `vendor/luajit/build.zig` reimplements the upstream three-stage bootstrap (`minilua` → `genversion`+`dynasm` → `buildvm`) as `build.zig` steps. Two toolchain blockers had to be solved, both diagnosed empirically rather than assumed:
+  - **The upstream Makefile cannot drive this build here.** GNU Make 3.81 fails with `CreateProcess(NULL, host/minilua.exe ...) / e=2` when invoking a just-built relative-path executable on Windows; the identical command run directly from a shell succeeds. Driving the bootstrap from `build.zig`, which invokes artifacts by absolute path, sidesteps it.
+  - **`buildvm` must compile with UBSan off.** DynASM's `dasm_x86.h:143` does pointer arithmetic on a NULL `buf` during setup; Zig's clang traps it, so `buildvm` panicked and generated nothing. `-fno-sanitize=undefined` restores upstream C semantics.
+- **The ISS-0153 stubs are gone.** `src/lua/luajit_bindings.zig` now declares the real symbols, plus `inline fn` wrappers for the parts of the Lua 5.1 API that are **C macros** (`lua_pop`, `lua_newtable`, `lua_tostring`, `lua_getglobal`/`lua_setglobal`, the `lua_is*` family) and therefore have no symbol to link against. `has_real_luajit` is now `true`. **No caller in `src/lua/` changed** — ISS-0153 kept the stub signatures faithful to the LuaJIT 2.1 ABI precisely so this would be a drop-in, and it was.
+- **A live sandbox escape was found and fixed.** Linking a real interpreter immediately exposed that **`loadfile` survived `loadSafeStdlib`**: `luaopen_base` installs it as a global, and `stdlib.zig` removed `load`/`loadstring`/`dofile` but not `loadfile` — so a sandboxed script could read and compile an arbitrary file from disk, defeating both LUA-03 (no filesystem reach) and LUA-04 (the bytecode gate, since `loadfile` loads bytecode files happily). This was undetectable for as long as the bindings were stubs, because no script could run to observe which globals actually survived. The fix is mutation-checked: reverting the one-line change makes `TC-LUA-03-08..12` fail.
+- **Three further latent bugs surfaced** the moment real compilation reached this code: `executor.zig` could not describe `OutOfMemory` (it is not in `LuaError`, so an allocation failure would have been mislabelled as a script error); `host_api/call_service.zig` still called `std.fmt.fmtSliceHexLower`, removed in Zig 0.16, having not compiled since 0.10.
+- **Verification:** `zig build test-lua` 15/15 steps, 25/25 tests; `zig build test` 81/81 steps, **890 passed, 0 failed** (count rose 865 → 954 because the real bindings pulled previously-dead code into compilation). LUA-01's static-linking requirement checked directly — a static `luajit.lib` is produced and the linked binary contains **zero** Lua DLL references. The headline test executes `return 6 * 7` and reads back 42, which is impossible against the stubs.
+- **LUA-01, LUA-02, LUA-03, LUA-04 restored to RELEASED** with evidence in `src/lua/execution_test.zig`. **LUA-05..16 remain IN_PROGRESS** — they are executable for the first time but not yet verified, and are forwarded as [#495](https://github.com/tvolodi/R-Co/issues/495)/ISS-0169 rather than being claimed. Given that the first sandbox rule ever actually exercised turned out to be broken, claiming the other twelve without tests would be unwarranted.
+
 ### Fixed
 
 **ISS-0162** ([GitHub #486](https://github.com/tvolodi/R-Co/issues/486) — `entity_subsystem_test` flaky against the shared `TestHarness`: two cross-binary races)

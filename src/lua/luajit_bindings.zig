@@ -1,76 +1,42 @@
 //! LuaJIT C FFI declarations and linking configuration.
 //!
-//! ISS-0153 / GH #471 — the LuaJIT link decision, recorded here because this is
-//! the file the decision is about.
+//! ISS-0161 / GH #485 — this file now binds a **real, statically linked
+//! LuaJIT 2.1**. LuaJIT is vendored at `vendor/luajit/` and built by
+//! `vendor/luajit/build.zig`, which performs the upstream three-stage bootstrap
+//! (minilua → dynasm → buildvm) from `build.zig` rather than from the upstream
+//! Makefile. See that file for the two toolchain workarounds it needs.
 //!
-//! ## Why this file no longer `@cImport`s the LuaJIT headers
+//! ## History
 //!
-//! As written in Stage 9 (commit 113bdb3, May 2026) this file did:
+//! Stage 9 (commit 113bdb3, May 2026) wrote this file as `@cImport` +
+//! `pub extern fn lua_*`, but no LuaJIT existed in the repo, so any target that
+//! pulled it in failed at translate-C time. That is why the subsystem stayed
+//! unreferenced and rotted unobserved for three months while LUA-01..16 sat
+//! marked RELEASED.
 //!
-//!     pub const c = @cImport({ @cInclude("lua.h"); ... });
-//!     pub extern fn lua_newstate(...) ?*c.lua_State;
+//! ISS-0153 / GH #471 replaced that unresolvable surface with pure-Zig stubs
+//! returning failure sentinels — honest and loud, but not executable. The
+//! signatures were kept faithful to the LuaJIT 2.1 (Lua 5.1) ABI *specifically*
+//! so that this change would be a drop-in replacement rather than a rewrite of
+//! every call site. It was: no caller in `src/lua/` changed.
 //!
-//! Both halves are unsatisfiable in this repository today, and that was verified
-//! empirically rather than assumed (ISS-0153, 2026-08-06):
+//! ## Structure
 //!
-//!   - `zig test` on a two-line probe containing only `@cInclude("lua.h")` fails
-//!     with `'lua.h' not found`, both with and without `-lc`.
-//!   - `zig test -lc -lluajit-5.1` fails with `unable to find dynamic system
-//!     library 'luajit-5.1' using strategy 'paths_first'. searched paths: none`.
-//!   - There is no LuaJIT under `vendor/` (only `pg`, `http`, `cel`), no LuaJIT
-//!     entry in `build.zig.zon` `.dependencies`, no `lua.h` anywhere on disk
-//!     (`find . -name lua.h` -> empty), and no LuaJIT install step in
-//!     `docker-compose.yml` or `.github/workflows/`.
-//!
-//! So the `@cImport` could not resolve, and the `pub extern fn lua_*`
-//! declarations named link-time symbols that no archive in this build provides.
-//! Any target that pulled this file in would have failed at translate-C time —
-//! which is precisely why the subsystem stayed unreferenced: wiring it up as
-//! written was impossible, so nobody did, and the rot compounded unobserved for
-//! three months while LUA-01..16 sat marked RELEASED.
-//!
-//! ## The decision
-//!
-//! Same disposition ISS-0147 reached for `src/wasm/wasmtime_bindings.zig`:
-//! replace the unresolvable C surface with **pure-Zig stubs** that carry the
-//! real API shape (types, constants, signatures) but need no linker
-//! involvement. That makes the whole subsystem compile and be type-checked on
-//! every `zig build test`, so the Zig-side logic in `executor.zig`,
-//! `stdlib.zig`, the limiters and the eight `host_api/*.zig` files can no
-//! longer rot silently the way it did between May and August 2026.
-//!
-//! What it does NOT do is execute Lua. Every stub below returns a failure or
-//! zero sentinel. `executor.executeScript` therefore reports
-//! `LuaAllocFailed` rather than running a script — an honest, loud failure
-//! rather than a silent pretence of working (see docs/anti-patterns.md, "A
-//! function fetches the state it needs, immediately discards it ... and returns
-//! success", ISS-0155: a stub that returns success is a silent false negative).
-//!
-//! Because of that, LUA-01..16 are **not** backed by executable behaviour and
-//! were downgraded from RELEASED under ISS-0153. Restoring them requires
-//! vendoring LuaJIT (or adding it as a build.zig.zon dependency) and swapping
-//! the stubs below for real `@cImport` bindings plus a static
-//! `linkSystemLibrary`/`linkLibrary` — tracked as ISS-0161 / GH #485.
-//!
-//! ## Fidelity note
-//!
-//! The signatures below are the LuaJIT 2.1 (Lua 5.1 ABI) ones, kept faithful so
-//! that swapping in the real `@cImport` is a drop-in replacement rather than a
-//! rewrite of every call site. Three decls that the rest of `src/lua/` calls
-//! were MISSING from the original file entirely and are added here:
-//! `lua_istable`, `lua_sethook` and the `lua_Debug` type. They were never
-//! noticed because no build target ever analysed the callers.
-
+//! Lua 5.1 defines a large part of its public API as **C macros** over a
+//! smaller set of real functions (`lua_pop` is `lua_settop`, `lua_tostring` is
+//! `lua_tolstring`, `lua_newtable` is `lua_createtable`, the `lua_is*` family
+//! is `lua_type` comparisons, and so on). A macro has no symbol to link
+//! against, so those are `inline fn` wrappers here — same names, same
+//! signatures as the stubs they replace. Everything else is `pub extern fn`,
+//! resolved against the static archive.
 const std = @import("std");
 
 // ---------------------------------------------------------------------------
 // Core types
 // ---------------------------------------------------------------------------
 
-/// Opaque Lua interpreter state. `extern struct` here is a memory-layout
-/// qualifier, not a link-time symbol reference — referencing this type pulls in
-/// no external symbol.
-pub const lua_State = extern struct {};
+/// Opaque Lua interpreter state.
+pub const lua_State = opaque {};
 
 /// LuaJIT debug/activation record, passed to hook callbacks (LUA-08).
 /// Field layout matches Lua 5.1's `lua_Debug`; only `event` and `currentline`
@@ -136,390 +102,203 @@ pub const LUA_MASKRET: c_int = 2;
 pub const LUA_MASKLINE: c_int = 4;
 pub const LUA_MASKCOUNT: c_int = 8;
 
+/// Pseudo-indices (lua.h). LUA_GLOBALSINDEX is Lua 5.1-only — LuaJIT keeps it.
+pub const LUA_REGISTRYINDEX: c_int = -10000;
+pub const LUA_ENVIRONINDEX: c_int = -10001;
+pub const LUA_GLOBALSINDEX: c_int = -10002;
+
 // ---------------------------------------------------------------------------
-// Stub implementations
-//
-// Every function below is an `inline fn` returning a failure/zero sentinel. No
-// linker involvement. Swapping in real LuaJIT means deleting this section and
-// restoring the `pub extern fn` declarations with the same names and
-// signatures — ISS-0161 / GH #485.
+// Real LuaJIT functions (lua.h / lualib.h / lauxlib.h)
 // ---------------------------------------------------------------------------
 
-/// Create a new Lua state (stub: always fails, so callers surface
-/// `LuaError.LuaAllocFailed` rather than pretending to have a runtime).
-pub inline fn lua_newstate(f: lua_Alloc, ud: ?*anyopaque) ?*lua_State {
-    _ = f;
-    _ = ud;
-    return null;
-}
-
-pub inline fn lua_close(L: *lua_State) void {
-    _ = L;
-}
-
-pub inline fn lua_newthread(L: *lua_State) ?*lua_State {
-    _ = L;
-    return null;
-}
+pub extern fn lua_newstate(f: lua_Alloc, ud: ?*anyopaque) ?*lua_State;
+pub extern fn lua_close(L: *lua_State) void;
+pub extern fn lua_newthread(L: *lua_State) ?*lua_State;
 
 // Stack manipulation
+pub extern fn lua_gettop(L: *lua_State) c_int;
+pub extern fn lua_settop(L: *lua_State, idx: c_int) void;
+pub extern fn lua_pushvalue(L: *lua_State, idx: c_int) void;
+pub extern fn lua_remove(L: *lua_State, idx: c_int) void;
+pub extern fn lua_insert(L: *lua_State, idx: c_int) void;
+pub extern fn lua_replace(L: *lua_State, idx: c_int) void;
+pub extern fn lua_checkstack(L: *lua_State, sz: c_int) c_int;
 
-pub inline fn lua_gettop(L: *lua_State) c_int {
-    _ = L;
-    return 0;
-}
+// Push
+pub extern fn lua_pushnil(L: *lua_State) void;
+pub extern fn lua_pushboolean(L: *lua_State, b: c_int) void;
+pub extern fn lua_pushnumber(L: *lua_State, n: f64) void;
+pub extern fn lua_pushinteger(L: *lua_State, i: isize) void;
+pub extern fn lua_pushlstring(L: *lua_State, s: [*]const u8, len: usize) void;
+pub extern fn lua_pushstring(L: *lua_State, s: [*:0]const u8) void;
+pub extern fn lua_pushcclosure(L: *lua_State, f: lua_CFunction, n: c_int) void;
+pub extern fn lua_pushlightuserdata(L: *lua_State, p: ?*anyopaque) void;
 
-pub inline fn lua_settop(L: *lua_State, idx: c_int) void {
-    _ = L;
-    _ = idx;
-}
+// Type inspection
+pub extern fn lua_type(L: *lua_State, idx: c_int) c_int;
+pub extern fn lua_typename(L: *lua_State, tp: c_int) [*:0]const u8;
+pub extern fn lua_isnumber(L: *lua_State, idx: c_int) c_int;
+pub extern fn lua_isstring(L: *lua_State, idx: c_int) c_int;
+pub extern fn lua_isuserdata(L: *lua_State, idx: c_int) c_int;
 
-pub inline fn lua_pushvalue(L: *lua_State, idx: c_int) void {
-    _ = L;
-    _ = idx;
-}
+// Conversion
+pub extern fn lua_toboolean(L: *lua_State, idx: c_int) c_int;
+pub extern fn lua_tonumber(L: *lua_State, idx: c_int) f64;
+pub extern fn lua_tointeger(L: *lua_State, idx: c_int) isize;
+pub extern fn lua_tolstring(L: *lua_State, idx: c_int, len: *usize) [*:0]const u8;
+pub extern fn lua_touserdata(L: *lua_State, idx: c_int) ?*anyopaque;
 
-pub inline fn lua_remove(L: *lua_State, idx: c_int) void {
-    _ = L;
-    _ = idx;
-}
+// Tables
+pub extern fn lua_createtable(L: *lua_State, narr: c_int, nrec: c_int) void;
+pub extern fn lua_getfield(L: *lua_State, idx: c_int, k: [*:0]const u8) void;
+pub extern fn lua_setfield(L: *lua_State, idx: c_int, k: [*:0]const u8) void;
+pub extern fn lua_rawget(L: *lua_State, idx: c_int) void;
+pub extern fn lua_rawset(L: *lua_State, idx: c_int) void;
+pub extern fn lua_rawgeti(L: *lua_State, idx: c_int, n: c_int) void;
+pub extern fn lua_rawseti(L: *lua_State, idx: c_int, n: c_int) void;
 
-pub inline fn lua_insert(L: *lua_State, idx: c_int) void {
-    _ = L;
-    _ = idx;
-}
+// Calls
+pub extern fn lua_call(L: *lua_State, nargs: c_int, nresults: c_int) void;
+pub extern fn lua_pcall(L: *lua_State, nargs: c_int, nresults: c_int, errfunc: c_int) c_int;
+pub extern fn lua_error(L: *lua_State) c_int;
 
-pub inline fn lua_replace(L: *lua_State, idx: c_int) void {
-    _ = L;
-    _ = idx;
-}
+// Debug / hooks (LUA-08 instruction limiting)
+pub extern fn lua_sethook(L: *lua_State, f: ?lua_Hook, mask: c_int, count: c_int) c_int;
+pub extern fn lua_gethookcount(L: *lua_State) c_int;
 
-pub inline fn lua_checkstack(L: *lua_State, sz: c_int) c_int {
-    _ = L;
-    _ = sz;
-    return 0;
-}
+// Standard libraries (lualib.h) — LUA-03 opens only the permitted subset.
+pub extern fn luaopen_base(L: *lua_State) c_int;
+pub extern fn luaopen_math(L: *lua_State) c_int;
+pub extern fn luaopen_string(L: *lua_State) c_int;
+pub extern fn luaopen_table(L: *lua_State) c_int;
+pub extern fn luaopen_io(L: *lua_State) c_int;
+pub extern fn luaopen_os(L: *lua_State) c_int;
+pub extern fn luaopen_debug(L: *lua_State) c_int;
+pub extern fn luaopen_package(L: *lua_State) c_int;
 
-/// `lua_pop` is a macro in lua.h; it stays a real wrapper over `lua_settop`
-/// so the relationship survives the stub->real swap unchanged.
+// Auxiliary library (lauxlib.h)
+pub extern fn luaL_loadstring(L: *lua_State, s: [*:0]const u8) c_int;
+pub extern fn luaL_loadbuffer(L: *lua_State, buff: [*]const u8, sz: usize, name: [*:0]const u8) c_int;
+pub extern fn luaL_newmetatable(L: *lua_State, tname: [*:0]const u8) c_int;
+
+// User data
+pub extern fn lua_newuserdata(L: *lua_State, sz: usize) ?*anyopaque;
+pub extern fn lua_setfenv(L: *lua_State, idx: c_int) c_int;
+pub extern fn lua_getfenv(L: *lua_State, idx: c_int) void;
+
+// ---------------------------------------------------------------------------
+// Macro equivalents
+//
+// These are `#define`s in lua.h / lauxlib.h, so they have no symbol to link
+// against. Each is expressed here exactly as the C macro expands, keeping the
+// same name and signature the rest of src/lua/ already calls.
+// ---------------------------------------------------------------------------
+
+/// `#define lua_pop(L,n) lua_settop(L, -(n)-1)`
 pub inline fn lua_pop(L: *lua_State, n: c_int) void {
     lua_settop(L, -n - 1);
 }
 
-// Push values
-
-pub inline fn lua_pushnil(L: *lua_State) void {
-    _ = L;
+/// `#define lua_newtable(L) lua_createtable(L, 0, 0)`
+pub inline fn lua_newtable(L: *lua_State) void {
+    lua_createtable(L, 0, 0);
 }
 
-pub inline fn lua_pushboolean(L: *lua_State, b: c_int) void {
-    _ = L;
-    _ = b;
+/// `#define lua_tostring(L,i) lua_tolstring(L, (i), NULL)`
+pub inline fn lua_tostring(L: *lua_State, idx: c_int) [*:0]const u8 {
+    var len: usize = 0;
+    return lua_tolstring(L, idx, &len);
 }
 
-pub inline fn lua_pushnumber(L: *lua_State, n: f64) void {
-    _ = L;
-    _ = n;
+/// `#define lua_getglobal(L,s) lua_getfield(L, LUA_GLOBALSINDEX, (s))`
+pub inline fn lua_getglobal(L: *lua_State, name: [*:0]const u8) void {
+    lua_getfield(L, LUA_GLOBALSINDEX, name);
 }
 
-pub inline fn lua_pushinteger(L: *lua_State, i: isize) void {
-    _ = L;
-    _ = i;
+/// `#define lua_setglobal(L,s) lua_setfield(L, LUA_GLOBALSINDEX, (s))`
+pub inline fn lua_setglobal(L: *lua_State, name: [*:0]const u8) void {
+    lua_setfield(L, LUA_GLOBALSINDEX, name);
 }
 
-pub inline fn lua_pushlstring(L: *lua_State, s: [*]const u8, len: usize) void {
-    _ = L;
-    _ = s;
-    _ = len;
-}
-
-pub inline fn lua_pushstring(L: *lua_State, s: [*:0]const u8) void {
-    _ = L;
-    _ = s;
-}
-
-pub inline fn lua_pushcclosure(L: *lua_State, f: lua_CFunction, n: c_int) void {
-    _ = L;
-    _ = f;
-    _ = n;
-}
-
-pub inline fn lua_pushlightuserdata(L: *lua_State, p: ?*anyopaque) void {
-    _ = L;
-    _ = p;
-}
-
-// Type queries
-
-pub inline fn lua_type(L: *lua_State, idx: c_int) c_int {
-    _ = L;
-    _ = idx;
-    return LUA_TNONE;
-}
-
-pub inline fn lua_typename(L: *lua_State, tp: c_int) [*:0]const u8 {
-    _ = L;
-    _ = tp;
-    return "no value";
-}
+// The lua_is* family: `#define lua_isnil(L,n) (lua_type(L,(n)) == LUA_TNIL)`.
+// These return c_int (1/0) rather than bool to match the stub signatures the
+// callers were written against.
 
 pub inline fn lua_isnil(L: *lua_State, idx: c_int) c_int {
-    _ = L;
-    _ = idx;
-    return 0;
+    return @intFromBool(lua_type(L, idx) == LUA_TNIL);
 }
 
 pub inline fn lua_isboolean(L: *lua_State, idx: c_int) c_int {
-    _ = L;
-    _ = idx;
-    return 0;
+    return @intFromBool(lua_type(L, idx) == LUA_TBOOLEAN);
 }
 
-pub inline fn lua_isnumber(L: *lua_State, idx: c_int) c_int {
-    _ = L;
-    _ = idx;
-    return 0;
-}
-
-pub inline fn lua_isstring(L: *lua_State, idx: c_int) c_int {
-    _ = L;
-    _ = idx;
-    return 0;
-}
-
-/// Referenced by host_api/fail.zig but absent from the original file — the
-/// caller was never analysed by any build target, so the gap never surfaced.
 pub inline fn lua_istable(L: *lua_State, idx: c_int) c_int {
-    _ = L;
-    _ = idx;
-    return 0;
+    return @intFromBool(lua_type(L, idx) == LUA_TTABLE);
 }
 
-pub inline fn lua_isuserdata(L: *lua_State, idx: c_int) c_int {
-    _ = L;
-    _ = idx;
-    return 0;
-}
-
-// Get values from the stack
-
-pub inline fn lua_toboolean(L: *lua_State, idx: c_int) c_int {
-    _ = L;
-    _ = idx;
-    return 0;
-}
-
-pub inline fn lua_tonumber(L: *lua_State, idx: c_int) f64 {
-    _ = L;
-    _ = idx;
-    return 0;
-}
-
-pub inline fn lua_tointeger(L: *lua_State, idx: c_int) isize {
-    _ = L;
-    _ = idx;
-    return 0;
-}
-
-pub inline fn lua_tolstring(L: *lua_State, idx: c_int, len: *usize) [*:0]const u8 {
-    _ = L;
-    _ = idx;
-    len.* = 0;
-    return "";
-}
-
-pub inline fn lua_tostring(L: *lua_State, idx: c_int) [*:0]const u8 {
-    _ = L;
-    _ = idx;
-    return "";
-}
-
-pub inline fn lua_touserdata(L: *lua_State, idx: c_int) ?*anyopaque {
-    _ = L;
-    _ = idx;
-    return null;
-}
-
-// Table operations
-
-pub inline fn lua_newtable(L: *lua_State) void {
-    _ = L;
-}
-
-pub inline fn lua_getfield(L: *lua_State, idx: c_int, k: [*:0]const u8) void {
-    _ = L;
-    _ = idx;
-    _ = k;
-}
-
-pub inline fn lua_setfield(L: *lua_State, idx: c_int, k: [*:0]const u8) void {
-    _ = L;
-    _ = idx;
-    _ = k;
-}
-
-pub inline fn lua_rawget(L: *lua_State, idx: c_int) void {
-    _ = L;
-    _ = idx;
-}
-
-pub inline fn lua_rawset(L: *lua_State, idx: c_int) void {
-    _ = L;
-    _ = idx;
-}
-
-pub inline fn lua_rawgeti(L: *lua_State, idx: c_int, n: c_int) void {
-    _ = L;
-    _ = idx;
-    _ = n;
-}
-
-pub inline fn lua_rawseti(L: *lua_State, idx: c_int, n: c_int) void {
-    _ = L;
-    _ = idx;
-    _ = n;
-}
-
-// Globals
-
-pub inline fn lua_getglobal(L: *lua_State, name: [*:0]const u8) void {
-    _ = L;
-    _ = name;
-}
-
-pub inline fn lua_setglobal(L: *lua_State, name: [*:0]const u8) void {
-    _ = L;
-    _ = name;
-}
-
-// Calls
-
-pub inline fn lua_call(L: *lua_State, nargs: c_int, nresults: c_int) void {
-    _ = L;
-    _ = nargs;
-    _ = nresults;
-}
-
-/// Stub returns `LUA_ERRRUN` (not `LUA_OK`): with no interpreter present, a
-/// protected call has NOT succeeded, and reporting success here would make
-/// `executeScript` claim a script ran when nothing did.
-pub inline fn lua_pcall(L: *lua_State, nargs: c_int, nresults: c_int, errfunc: c_int) c_int {
-    _ = L;
-    _ = nargs;
-    _ = nresults;
-    _ = errfunc;
-    return LUA_ERRRUN;
-}
-
-// Errors
-
-pub inline fn lua_error(L: *lua_State) c_int {
-    _ = L;
-    return 0;
-}
-
-// Debug hooks (LUA-08 instruction limiting)
-
-/// Referenced by instruction_limiter.zig but absent from the original file.
-pub inline fn lua_sethook(L: *lua_State, f: lua_Hook, mask: c_int, count: c_int) c_int {
-    _ = L;
-    _ = f;
-    _ = mask;
-    _ = count;
-    return 0;
-}
-
-pub inline fn lua_gethookcount(L: *lua_State) c_int {
-    _ = L;
-    return 0;
-}
-
-// Standard library opens
-
-pub inline fn luaopen_math(L: *lua_State) c_int {
-    _ = L;
-    return 0;
-}
-
-pub inline fn luaopen_string(L: *lua_State) c_int {
-    _ = L;
-    return 0;
-}
-
-pub inline fn luaopen_table(L: *lua_State) c_int {
-    _ = L;
-    return 0;
-}
-
-pub inline fn luaopen_io(L: *lua_State) c_int {
-    _ = L;
-    return 0;
-}
-
-pub inline fn luaopen_os(L: *lua_State) c_int {
-    _ = L;
-    return 0;
-}
-
-pub inline fn luaopen_debug(L: *lua_State) c_int {
-    _ = L;
-    return 0;
-}
-
-pub inline fn luaopen_package(L: *lua_State) c_int {
-    _ = L;
-    return 0;
-}
-
-// Auxlib
-
-/// Stub returns `LUA_ERRSYNTAX`: nothing was loaded, so reporting `LUA_OK`
-/// would let `executeScript` proceed as though a chunk were on the stack.
-pub inline fn luaL_loadstring(L: *lua_State, s: [*:0]const u8) c_int {
-    _ = L;
-    _ = s;
-    return LUA_ERRSYNTAX;
-}
-
-pub inline fn luaL_loadbuffer(L: *lua_State, buff: [*]const u8, sz: usize, name: [*:0]const u8) c_int {
-    _ = L;
-    _ = buff;
-    _ = sz;
-    _ = name;
-    return LUA_ERRSYNTAX;
-}
-
-pub inline fn luaL_setmetatable(L: *lua_State, tname: [*:0]const u8) void {
-    _ = L;
-    _ = tname;
-}
-
+/// `#define luaL_getmetatable(L,n) lua_getfield(L, LUA_REGISTRYINDEX, (n))`
+/// Returns c_int to match the stub signature; the C macro yields the pushed
+/// value's presence, so report the type of what was pushed.
 pub inline fn luaL_getmetatable(L: *lua_State, tname: [*:0]const u8) c_int {
-    _ = L;
-    _ = tname;
-    return 0;
+    lua_getfield(L, LUA_REGISTRYINDEX, tname);
+    return lua_type(L, -1);
 }
 
-// User data
+/// Lua 5.1 has no `luaL_setmetatable` (it arrived in 5.2). The equivalent is
+/// fetching the named metatable from the registry and setting it on the value
+/// at the top of the stack.
+pub inline fn luaL_setmetatable(L: *lua_State, tname: [*:0]const u8) void {
+    lua_getfield(L, LUA_REGISTRYINDEX, tname);
+    lua_setfenv(L, -2);
+}
 
+/// Lua 5.1 spells the per-userdata value slot `lua_setfenv`, not
+/// `lua_setuservalue` (5.2+). Kept under the caller-facing name.
 pub inline fn lua_setuservalue(L: *lua_State, idx: c_int) void {
-    _ = L;
-    _ = idx;
+    _ = lua_setfenv(L, idx);
 }
 
+/// Lua 5.1 equivalent of `lua_getuservalue` (5.2+). Returns the type of the
+/// pushed value, matching the stub signature.
 pub inline fn lua_getuservalue(L: *lua_State, idx: c_int) c_int {
-    _ = L;
-    _ = idx;
-    return 0;
-}
-
-pub inline fn lua_newuserdata(L: *lua_State, sz: usize) ?*anyopaque {
-    _ = L;
-    _ = sz;
-    return null;
+    lua_getfenv(L, idx);
+    return lua_type(L, -1);
 }
 
 /// True when this build has a real LuaJIT linked in. Callers and tests read
-/// this instead of hardcoding an assumption, so flipping it to `true` under
-/// ISS-0161 changes behaviour in one place.
-pub const has_real_luajit = false;
+/// this instead of hardcoding an assumption, so it changes in one place.
+///
+/// ISS-0161: now `true` — LuaJIT is vendored and statically linked.
+pub const has_real_luajit = true;
+
+test "ISS-0161: a real LuaJIT is linked and executes Lua" {
+    // The point of this test is that it CANNOT pass against the stubs: they
+    // returned null from lua_newstate and LUA_ERRSYNTAX from luaL_loadstring.
+    try std.testing.expect(has_real_luajit);
+
+    const L = lua_newstate(testAlloc, null) orelse return error.LuaStateAllocFailed;
+    defer lua_close(L);
+
+    _ = luaopen_base(L);
+
+    // Execute an actual script and read back the value it computed.
+    try std.testing.expectEqual(LUA_OK, luaL_loadstring(L, "return 6 * 7"));
+    try std.testing.expectEqual(LUA_OK, lua_pcall(L, 0, 1, 0));
+    try std.testing.expectEqual(@as(f64, 42), lua_tonumber(L, -1));
+    lua_pop(L, 1);
+
+    // A syntax error must still be reported as one.
+    try std.testing.expectEqual(LUA_ERRSYNTAX, luaL_loadstring(L, "this is not lua"));
+    lua_pop(L, 1);
+}
+
+/// C-ABI allocator for the test above, matching `lua_Alloc`.
+fn testAlloc(ud: ?*anyopaque, ptr: ?*anyopaque, osize: usize, nsize: usize) callconv(.c) ?*anyopaque {
+    _ = ud;
+    _ = osize;
+    if (nsize == 0) {
+        if (ptr) |p| std.c.free(p);
+        return null;
+    }
+    return std.c.realloc(ptr, nsize);
+}

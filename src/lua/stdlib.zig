@@ -35,9 +35,19 @@ pub fn loadSafeStdlib(L: *bindings.LuaState) !void {
     try removeGlobal(L, "string", "loadfile");
     try removeGlobal(L, "string", "dofile");
 
-    // Also remove top-level load* functions that might have been loaded
+    // Also remove top-level load* functions that might have been loaded.
+    //
+    // ISS-0161 / GH #485: `loadfile` was MISSING from this list. luaopen_base
+    // installs it as a global, and nothing here removed it, so a sandboxed
+    // script could call loadfile() to read and compile an arbitrary file from
+    // disk — defeating both LUA-03 (no filesystem reach) and LUA-04 (the
+    // bytecode gate, since loadfile happily loads a bytecode file). The gap was
+    // invisible for as long as the bindings were stubs: no script could run, so
+    // no test could observe which globals actually survived. It was found the
+    // moment a real interpreter was linked and the survivors were enumerated.
     try removeGlobalIfExists(L, "load");
     try removeGlobalIfExists(L, "loadstring");
+    try removeGlobalIfExists(L, "loadfile");
     try removeGlobalIfExists(L, "dofile");
 
     // Load table library (fully safe)

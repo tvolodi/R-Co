@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-06T18:30:18Z'
+last_updated: '2026-08-06T20:01:46Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1755,13 +1755,16 @@ requirements:
     status: UNTRACKED
     title: CEL→`expr` differential test corpus (cutover gate)
   LUA-01:
-    status: IN_PROGRESS
+    status: RELEASED
     stage: 8
     priority: MUST
     title: LuaJIT integration
     implemented_in:
     - src/lua/luajit_bindings.zig
-    - src/lua_test_root.zig
+    - src/lua/stdlib.zig
+    - src/lua/executor.zig
+    - vendor/luajit/build.zig
+    - src/lua/execution_test.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua01-05-test-run.json
     released_at: '2026-05-28T00:00:00Z'
@@ -1773,13 +1776,16 @@ requirements:
       so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
       anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-02:
-    status: IN_PROGRESS
+    status: RELEASED
     stage: 8
     priority: MUST
     title: State isolation
     implemented_in:
+    - src/lua/luajit_bindings.zig
+    - src/lua/stdlib.zig
     - src/lua/executor.zig
-    - src/lua_test_root.zig
+    - vendor/luajit/build.zig
+    - src/lua/execution_test.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua01-05-test-run.json
     released_at: '2026-05-28T00:00:00Z'
@@ -1791,13 +1797,16 @@ requirements:
       so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
       anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-03:
-    status: IN_PROGRESS
+    status: RELEASED
     stage: 8
     priority: MUST
     title: Stdlib restriction
     implemented_in:
+    - src/lua/luajit_bindings.zig
     - src/lua/stdlib.zig
-    - src/lua_test_root.zig
+    - src/lua/executor.zig
+    - vendor/luajit/build.zig
+    - src/lua/execution_test.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua01-05-test-run.json
     released_at: '2026-05-28T00:00:00Z'
@@ -1809,14 +1818,16 @@ requirements:
       so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
       anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-04:
-    status: IN_PROGRESS
+    status: RELEASED
     stage: 8
     priority: MUST
     title: Bytecode loading disabled
     implemented_in:
+    - src/lua/luajit_bindings.zig
     - src/lua/stdlib.zig
     - src/lua/executor.zig
-    - src/lua_test_root.zig
+    - vendor/luajit/build.zig
+    - src/lua/execution_test.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'

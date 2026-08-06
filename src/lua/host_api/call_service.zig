@@ -116,7 +116,11 @@ fn computeFingerprint(
     var digest: [32]u8 = undefined;
     hasher.final(&digest);
 
+    // ISS-0161: std.fmt.fmtSliceHexLower was removed in Zig 0.16; the `{x}`
+    // specifier on a byte slice now produces lowercase hex directly. This file
+    // had not been compiled since Zig 0.10, so the stale call survived until
+    // linking real LuaJIT made this module reachable.
     var out: [64]u8 = undefined;
-    _ = std.fmt.bufPrint(&out, "{s}", .{std.fmt.fmtSliceHexLower(&digest)}) catch unreachable;
+    _ = std.fmt.bufPrint(&out, "{x}", .{&digest}) catch unreachable;
     return allocator.dupe(u8, &out);
 }

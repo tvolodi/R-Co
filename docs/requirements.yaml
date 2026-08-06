@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-06T12:39:25Z'
+generated_at: '2026-08-06T20:01:45Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -4653,7 +4653,7 @@ requirements:
     title: LuaJIT integration
     stage: 8
     priority: MUST
-    status: IN_PROGRESS
+    status: RELEASED
     body: |-
       > The platform MUST embed LuaJIT and expose it through Zig C-interop. Linking MUST be static.
 
@@ -4666,13 +4666,16 @@ requirements:
     alt_sources: []
     implemented_in:
     - src/lua/luajit_bindings.zig
-    - src/lua_test_root.zig
+    - src/lua/stdlib.zig
+    - src/lua/executor.zig
+    - vendor/luajit/build.zig
+    - src/lua/execution_test.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua01-05-test-run.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua01-05-20260528
     release_decision: docs/status/release-stage8-20260528.json
-    last_updated: '2026-08-06T11:45:37Z'
+    last_updated: '2026-08-06T20:01:42Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
@@ -4684,7 +4687,7 @@ requirements:
     title: State isolation
     stage: 8
     priority: MUST
-    status: IN_PROGRESS
+    status: RELEASED
     body: |-
       > Each script execution MUST occur in a fresh `lua_State` or a fully reset state. State MUST NOT leak between script invocations.
 
@@ -4700,14 +4703,17 @@ requirements:
     body_source: functional-doc
     alt_sources: []
     implemented_in:
+    - src/lua/luajit_bindings.zig
+    - src/lua/stdlib.zig
     - src/lua/executor.zig
-    - src/lua_test_root.zig
+    - vendor/luajit/build.zig
+    - src/lua/execution_test.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua01-05-test-run.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua01-05-20260528
     release_decision: docs/status/release-stage8-20260528.json
-    last_updated: '2026-08-06T11:45:38Z'
+    last_updated: '2026-08-06T20:01:43Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
@@ -4719,7 +4725,7 @@ requirements:
     title: Stdlib restriction
     stage: 8
     priority: MUST
-    status: IN_PROGRESS
+    status: RELEASED
     body: |-
       > The Lua sandbox MUST NOT load: `io`, `os`, `package`, `debug`. The sandbox MUST load only: `math`, `string`, `table`. Within loaded modules, MUST remove: `string.dump`, `os.execute` (if reachable), `loadstring`, `load`, `loadfile`, `dofile`.
       <!-- CHANGE: Added os.execute (if reachable) to removal list per source doc LUA-03; security-relevant sandbox escape path, 2026-05-26 -->
@@ -4732,14 +4738,17 @@ requirements:
     body_source: functional-doc
     alt_sources: []
     implemented_in:
+    - src/lua/luajit_bindings.zig
     - src/lua/stdlib.zig
-    - src/lua_test_root.zig
+    - src/lua/executor.zig
+    - vendor/luajit/build.zig
+    - src/lua/execution_test.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua01-05-test-run.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua01-05-20260528
     release_decision: docs/status/release-stage8-20260528.json
-    last_updated: '2026-08-06T11:45:39Z'
+    last_updated: '2026-08-06T20:01:44Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
@@ -4751,7 +4760,7 @@ requirements:
     title: Bytecode loading disabled
     stage: 8
     priority: MUST
-    status: IN_PROGRESS
+    status: RELEASED
     body: |-
       > The sandbox MUST refuse to load Lua bytecode; only source text MAY be loaded.
 
@@ -4762,15 +4771,17 @@ requirements:
     body_source: functional-doc
     alt_sources: []
     implemented_in:
+    - src/lua/luajit_bindings.zig
     - src/lua/stdlib.zig
     - src/lua/executor.zig
-    - src/lua_test_root.zig
+    - vendor/luajit/build.zig
+    - src/lua/execution_test.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua01-05-20260528
     release_decision: docs/status/release-stage8-20260528.json
-    last_updated: '2026-08-06T11:46:26Z'
+    last_updated: '2026-08-06T20:01:45Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. The bytecode-magic rejection in executor.zig
       IS genuinely enforced in pure Zig and is covered by a passing test (src/lua_test_root.zig, ''bytecode
