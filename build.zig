@@ -1039,20 +1039,6 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
-    const probe_svc_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("scratch/probe_svc.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "bpm", .module = bpm_src_mod },
-            },
-        }),
-    });
-    const run_probe_svc_tests = b.addRunArtifact(probe_svc_tests);
-    const test_probe_svc_step = b.step("test-probe-svc", "TEMP probe");
-    test_probe_svc_step.dependOn(&run_probe_svc_tests.step);
-
     const run_misc_unit_tests = b.addRunArtifact(misc_unit_tests);
     const test_misc_unit_step = b.step(
         "test-misc-unit",
