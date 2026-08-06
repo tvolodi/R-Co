@@ -52,6 +52,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0170",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/497",
+      "title": "CI runner starvation renders as false red on PRs",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-06T21:23:20Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
