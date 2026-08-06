@@ -165,3 +165,5 @@
 2026-08-06T22:08:58Z | COMPLETE | WF03-ISS-0169-20260806 | 63008f82 | ISSUE-FIXER | PASS - ISS-0169 diagnosed: premise false, 11/12 LUA reqs not implemented/broken; ISS-0172 (GH #500) filed+queued
 2026-08-06T22:13:06Z | ROUTE | WF03-ISS-0169-20260806 | 85394b75 | ORCH -> CODE-DESIGNER | PENDING step 02
 2026-08-06T22:20:18Z | COMPLETE | WF03-ISS-0169-20260806 | 85394b75 | CODE-DESIGNER | PASS - src/design/lua-capability-enforcement.md (LUA-05/06/07, registry-key context plumbing)
+2026-08-06T22:22:37Z | ROUTE | WF03-ISS-0169-20260806 | 1f784eb5 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING step 02b
+2026-08-06T22:24:45Z | VALIDATE | WF03-ISS-0169-20260806 | 1f784eb5 | CODE-DESIGN-VALIDATOR | PASS - lua-capability-enforcement.md: LUA-05/06/07 criteria all mapped; registry bindings source-verified in luajit_bindings.zig; fail-closed CAP-2 + SBX-1 ordering invariant present; 3 MINOR scope notes; route to BACKEND-DEV (Step 3)

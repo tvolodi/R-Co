@@ -1,0 +1,62 @@
+{
+  "handoff_id": "1f784eb5-e1d7-498c-b379-a6dd8b21fcd2",
+  "run_id": "WF03-ISS-0169-20260806",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-06T22:22:37Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [
+      "LUA-05",
+      "LUA-06",
+      "LUA-07"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/lua-capability-enforcement.md",
+      "docs/issue-reports/ISS-0169-diagnosis.yaml"
+    ]
+  },
+  "task": {
+    "description": "HARD GATE. Validate src/design/lua-capability-enforcement.md against LUA-05, LUA-06, LUA-07 acceptance criteria. BACKEND-DEV cannot start until PASS.",
+    "acceptance_criteria": [
+      "Every acceptance criterion of LUA-05/06/07 maps to a design element",
+      "No implementation code present (Type E)",
+      "All public function signatures listed",
+      "Error taxonomy present",
+      "Dependencies documented",
+      "Lego-catalog classification correct",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:validate-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/lua-capability-enforcement.md validated against LUA-05/06/07. All 7 acceptance criteria map to concrete design elements. lint_design_artefact.py exits 0 with no findings. Type E classification correct per lego-catalog.md rule 5. No implementation code present (signatures only, no function bodies, no SQL DDL). Error taxonomy complete (LuaError +2 variants, ManifestError unchanged with 9 variants mapped to spec cases). Dependencies and MUST-NOT-depend boundaries documented in section 8. SOURCE-VERIFIED (not taken on the design's word): all bindings the registry mechanism depends on genuinely exist in src/lua/luajit_bindings.zig -- lua_pushlightuserdata:135, lua_touserdata:149, LUA_REGISTRYINDEX:106, LUA_TLIGHTUSERDATA:83, lua_getfield:153, lua_setfield:154, lua_pushlstring:132, lua_error:163, luaopen_base:170, lua_type:138, LUA_TSTRING:85. The design's claim 'no new extern declarations required' is TRUE, and its claim that lua_upvalueindex is absent (justifying rejection of option (a)) is also TRUE. Design is fail-closed: contextFromState returns an optional, CAP-2 (section 3.4) enumerates three deny conditions including a null context and an unconstructable capability string, and requireCapability/raiseCapabilityDenied are typed noreturn so a host function cannot structurally fall through past a denial. Base-library ordering appears as a named invariant SBX-1 (section 5.2) with the inversion failure mode stated explicitly; SBX-2 unifies product and test state construction, fixing the diagnosis R4 divergence verified at src/lua/execution_test.zig:38.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "LUA-07 acceptance criterion 2 ('the manifest hash appears in the execution audit record') is satisfied only up to the src/lua boundary in this tranche: the design commits src/lua to producing manifest_hash on ScriptResult and ExecutionContext, while the engine writes the audit row. JUDGED ACCEPTABLE, not a FAIL, for three reasons. (1) It is a correct architectural boundary, not an evasion -- keeping executor.zig free of I/O follows the transition.zig purity precedent that CLAUDE.md makes an absolute rule, and matches the diagnosis's own D5 recommendation. (2) It is disclosed rather than hidden: section 6.4 states it inline, section 10's mapping row names it, and section 11 item 2 records it as an open follow-up with the words 'only end-to-end satisfied when that lands'. (3) The half that src/lua owns -- the value's existence, its derivation from a canonical hash that binds manifest to artifact, and its presence on the result -- is fully designed and testable here. The risk this issue guards against is the tranche being later reported as fully closing LUA-07; ORCH and DOC-UPDATER must not mark LUA-07 RELEASED on this tranche alone, and the engine-side audit write must be filed and queued as its own run per the ISSUE_QUEUE protocol."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Section 3.3 disables wildcard capability matching ('service:call:*' not honoured) while ADP-08 supports wildcards elsewhere in the platform. The design records this in section 11 item 1 as a deliberate cross-cutting follow-up. Acceptable here because exact-match is the strictly safer of the two semantics -- a design that guessed at wildcard rules would risk widening grants -- but the divergence must be reconciled before any caller relies on wildcard service grants reaching Lua."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Section 6.2 rejects the LUA-07 spec's sketched in-script '__manifest__' table as the trust source, taking the manifest from the caller instead. This is a deliberate, correctly-reasoned departure from the spec text (a self-asserted manifest cannot validate anything), and the design states it explicitly rather than silently. Noted so TEST-DESIGNER writes LUA-07 cases against the caller-supplied form and does not encode the spec's advisory sketch as the contract."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T22:22:37Z",
+  "completed_at": "2026-08-06T22:24:45Z"
+}
