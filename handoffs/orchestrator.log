@@ -71,3 +71,4 @@
 2026-08-06T02:56:06Z | REWORK_COMPLETE | WF03-gh458-20260806 | d7d4e2e4 | CODE-DESIGNER | PASS -> routing to CODE-DESIGN-VALIDATOR (Step 2b rework re-check)
 2026-08-06T02:59:04Z | VALIDATE | WF03-gh458-20260806 | 7a8845b6 | CODE-DESIGN-VALIDATOR | PASS (rework 1) -> BACKEND-DEV (Step 3)
 2026-08-06T03:06:39Z | COMPLETE | WF03-gh458-20260806 | 1906849c | BACKEND-DEV | PASS -- fixed GBL-105 stale ref + unbounded auto-fix recursion, verified via db_test orphaned-tenant repro, commit 5d93c8e -> Route to TEST-RUNNER (Step 5)
+2026-08-06T03:11:50Z | COMPLETE | WF03-gh458-20260806 | 4d80514a | TEST-RUNNER | PASS - independent reverification of ISS-0146/GH-458 fix; GBL-105 removed, retries bounded, no connection leak - next: DOC-UPDATER (Step 7)
