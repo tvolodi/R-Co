@@ -1,0 +1,46 @@
+{
+  "handoff_id": "ac31f291-2fbb-44bf-bd46-3bc6cb141aa4",
+  "run_id": "WF03-gh458-20260806",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-06T02:34:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0146.json",
+      "tools/verify_schema_baseline.py"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/458",
+    "local_issue": "ISS-0146",
+    "branch_name": "feature/WF03-gh458-20260806"
+  },
+  "task": {
+    "description": "Diagnose GH #458 / ISS-0146: tools/verify_schema_baseline.py hardcodes the stale migration filename GBL-105_iss0112_schema_ledger_reconcile.sql at lines 18, 155-156, 166, 168, 186, 260. The file was renamed (confirmed via git log --follow, pure rename, no content change) to GBL-133_iss0112_schema_ledger_reconcile.sql. Additionally, auto_fix() drift retry via recursive main() call at line 264 has no retry cap, causing observed 5x loop and Postgres connection exhaustion. Confirm root cause and produce diagnosis for CODE-DESIGNER.",
+    "acceptance_criteria": [
+      "Root cause confirmed: hardcoded filename + uncapped recursive retry in auto_fix/main",
+      "docs/issues/ISS-0146.json updated with resolution plan"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Confirmed root cause of GH #458 / ISS-0146. (1) Stale filename: tools/verify_schema_baseline.py hardcodes the literal GBL-105_iss0112_schema_ledger_reconcile.sql at docstring line 18, auto_fix() lines 156/158/166/168, argparse help line 186, and runtime message line 260. Verified via git diff (commit db362fd, PR #405) that migrations/GBL-133_iss0112_schema_ledger_reconcile.sql is the sole, correct successor: git reports an 88% (not 100%) similarity rename, but the 12% delta is fully explained by a mass GBL renumbering done in the same commit plus self-referential string updates inside the file itself (RAISE NOTICE label + backfill-exclusion comment) -- all DDL/business logic is byte-identical. Repo-wide grep confirms no other code path still needs GBL-105; remaining hits are historical prose (CHANGELOG.md, src/design/, scratch/). (2) Unbounded retry: main() line 264 does an unconditional 'return main()' recursion (zero depth cap) whenever 'failures and args.auto_fix' (line 259) is true; since auto_fix() fails identically every time (file not found) and does not mutate failures or return status, the same condition re-triggers every level, each opening a fresh psycopg2 connection (line 210) -- matches the observed 5x-loop / connection-exhaustion symptom. Both root causes confirmed by direct source read, independent of ORCH's original brief. docs/issues/ISS-0146.json updated with detailed root_cause_analysis, refined acceptance_criteria (incl. preferred dynamic-glob resolution per ISS-0088 precedent), and a resolution_plan block for CODE-DESIGNER (Type E fix: filename resolution strategy + bounded-retry control flow + mandatory auto-fix verification against a deliberately-orphaned tenant row). Reviewed ISS-0088 (GH #337, same anti-pattern class: stale filename surviving a rename) and ISS-0144 (GH #454, cross-referenced but different failure class: test-suite non-determinism) for pattern context; no additional root-cause material found there beyond what ISS-0146 already cited.",
+    "artifacts_out": [
+      "docs/issues/ISS-0146.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T02:38:52Z",
+  "completed_at": "2026-08-06T02:41:37Z"
+}

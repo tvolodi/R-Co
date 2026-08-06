@@ -15,8 +15,9 @@ CLI flags:
   --check-tenants   Strict mode: also verify every public.tenant row maps
                     to an existing Postgres schema.
   --auto-fix        On drift, attempt a one-shot auto-reconcile by re-emitting
-                    the GBL-105 ledger reconcile SQL. Backed by the change-2
-                    applier guard.
+                    the iss0112 schema-ledger-reconcile migration SQL
+                    (resolved dynamically from migrations/). Backed by the
+                    change-2 applier guard.
   --migrations-dir  Override the migrations directory (default: ./migrations).
   --db-url          Override the database URL (default: $BPM_TEST_DB_URL).
 """
@@ -36,6 +37,16 @@ except ImportError:  # pragma: no cover - defensive
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MIGRATIONS_DIR = REPO_ROOT / "migrations"
+
+# --auto-fix is a one-shot attempt: at most one auto_fix() call, followed by
+# at most one recheck. See "Retry-cap control flow" in
+# src/design/verify_schema_baseline_fix.md.
+MAX_AUTO_FIX_ATTEMPTS = 2  # 1 initial check + at most 1 post-auto-fix recheck
+
+
+class ReconcileFileResolutionError(RuntimeError):
+    """Raised by resolve_reconcile_migration() when the glob match count for
+    the iss0112 schema-ledger-reconcile migration is not exactly 1."""
 
 
 def get_migration_files(migrations_dir: Path) -> list[str]:
@@ -151,21 +162,115 @@ def check_expected_check_constraints(conn) -> list[str]:
     return missing
 
 
-def auto_fix(db_url: str, migrations_dir: Path) -> None:
-    """Best-effort auto-reconcile. Re-applies GBL-105."""
-    gbl_path = migrations_dir / "GBL-105_iss0112_schema_ledger_reconcile.sql"
-    if not gbl_path.is_file():
-        print(f"ERROR: {gbl_path} not found; cannot auto-fix", file=sys.stderr)
-        return
-    sql = gbl_path.read_text(encoding="utf-8")
+def resolve_reconcile_migration(migrations_dir: Path) -> Path:
+    """Locate the iss0112 schema-ledger-reconcile migration file dynamically.
+
+    The GBL-NNN numeric prefix changes on renumbering (see ISS-0146); the
+    suffix '_iss0112_schema_ledger_reconcile.sql' is the stable, purpose-
+    bearing part. Raises ReconcileFileResolutionError on 0 or 2+ matches —
+    never silently picks one.
+    """
+    pattern = "*_iss0112_schema_ledger_reconcile.sql"
+    matches = sorted(migrations_dir.glob(pattern))
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) == 0:
+        raise ReconcileFileResolutionError(
+            f"no file matching '{pattern}' found under {migrations_dir}; "
+            "cannot auto-fix"
+        )
+    matched_names = [m.name for m in matches]
+    raise ReconcileFileResolutionError(
+        f"{len(matches)} files match '{pattern}' under {migrations_dir}; "
+        f"ambiguous, will not guess: {matched_names}"
+    )
+
+
+def auto_fix(db_url: str, migrations_dir: Path) -> bool:
+    """Best-effort, one-shot auto-reconcile. Resolves the current iss0112
+    schema-ledger-reconcile migration dynamically and re-applies it.
+
+    Returns True only if the file was located AND executed AND committed
+    without exception. Returns False on any failure. Never raises past its
+    own boundary.
+    """
+    try:
+        reconcile_path = resolve_reconcile_migration(migrations_dir)
+    except ReconcileFileResolutionError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return False
+
+    sql = reconcile_path.read_text(encoding="utf-8")
     try:
         with psycopg2.connect(db_url) as conn:
             with conn.cursor() as cur:
                 cur.execute(sql)
             conn.commit()
-        print("auto-fix GBL-105 applied")
+        print(f"auto-fix {reconcile_path.name} applied")
+        return True
     except Exception as exc:  # noqa: BLE001
-        print(f"auto-fix GBL-105 failed: {exc}", file=sys.stderr)
+        print(f"auto-fix {reconcile_path.name} failed: {exc}", file=sys.stderr)
+        return False
+
+
+def run_checks(
+    conn,
+    migrations_dir: Path,
+    migration_files: list[str],
+    check_tenants: bool,
+) -> list[str]:
+    """Run the four baseline checks against an already-open connection,
+    printing the same [OK]/[FAIL] lines as before. Pure check-and-report:
+    no auto-fix logic, no recursion, no connection lifecycle ownership.
+    Returns the list of failure messages (empty = all checks passed)."""
+    failures: list[str] = []
+
+    ok, msg = check_migration_ledger_count(conn, migration_files)
+    print(f"[{'OK' if ok else 'FAIL'}] check_migration_ledger_count: {msg}")
+    if not ok:
+        failures.append(msg)
+
+    missing = check_per_migration_row_present(conn, migration_files)
+    if missing:
+        msg = (
+            f"missing ledger rows for {len(missing)} migration file(s): "
+            f"{missing[:5]}{'...' if len(missing) > 5 else ''}"
+        )
+        print(f"[FAIL] check_per_migration_row_present: {msg}")
+        failures.append(msg)
+    else:
+        print(
+            f"[OK] check_per_migration_row_present: all "
+            f"{len(migration_files)} migrations have a ledger row"
+        )
+
+    if check_tenants:
+        missing_schemas = check_tenant_schemas_consistent(conn)
+        if missing_schemas:
+            msg = (
+                f"missing Postgres schemas for {len(missing_schemas)} tenant(s): "
+                f"{missing_schemas[:5]}{'...' if len(missing_schemas) > 5 else ''}"
+            )
+            print(f"[FAIL] check_tenant_schemas_consistent: {msg}")
+            failures.append(msg)
+        else:
+            print(
+                "[OK] check_tenant_schemas_consistent: "
+                "all SCHEMA-mode tenants have a Postgres schema"
+            )
+
+    missing_constraints = check_expected_check_constraints(conn)
+    if missing_constraints:
+        msg = f"missing CHECK constraint(s): {missing_constraints}"
+        print(f"[FAIL] check_expected_check_constraints: {msg}")
+        failures.append(msg)
+    else:
+        print(
+            "[OK] check_expected_check_constraints: "
+            "webhook_deliveries_status_check + tenant_storage_mode_check present"
+        )
+
+    return failures
 
 
 def main() -> int:
@@ -183,7 +288,11 @@ def main() -> int:
     parser.add_argument(
         "--auto-fix",
         action="store_true",
-        help="On drift, attempt a one-shot auto-reconcile via GBL-105.",
+        help=(
+            "On drift, attempt a one-shot auto-reconcile by re-emitting the "
+            "iss0112 schema-ledger-reconcile migration SQL (resolved "
+            "dynamically from migrations/)."
+        ),
     )
     parser.add_argument(
         "--migrations-dir",
@@ -204,71 +313,58 @@ def main() -> int:
     migrations_dir = Path(args.migrations_dir)
     migration_files = get_migration_files(migrations_dir)
 
-    failures: list[str] = []
-
-    try:
-        with connect(args.db_url) as conn:
-            ok, msg = check_migration_ledger_count(conn, migration_files)
-            print(f"[{'OK' if ok else 'FAIL'}] check_migration_ledger_count: {msg}")
-            if not ok:
-                failures.append(msg)
-
-            missing = check_per_migration_row_present(conn, migration_files)
-            if missing:
-                msg = (
-                    f"missing ledger rows for {len(missing)} migration file(s): "
-                    f"{missing[:5]}{'...' if len(missing) > 5 else ''}"
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            with connect(args.db_url) as conn:
+                failures = run_checks(
+                    conn, migrations_dir, migration_files, args.check_tenants
                 )
-                print(f"[FAIL] check_per_migration_row_present: {msg}")
-                failures.append(msg)
-            else:
-                print(
-                    f"[OK] check_per_migration_row_present: all "
-                    f"{len(migration_files)} migrations have a ledger row"
-                )
+        except psycopg2.OperationalError as exc:
+            print(f"ERROR: could not connect to {args.db_url}: {exc}", file=sys.stderr)
+            return 2
 
-            if args.check_tenants:
-                missing_schemas = check_tenant_schemas_consistent(conn)
-                if missing_schemas:
-                    msg = (
-                        f"missing Postgres schemas for {len(missing_schemas)} tenant(s): "
-                        f"{missing_schemas[:5]}{'...' if len(missing_schemas) > 5 else ''}"
-                    )
-                    print(f"[FAIL] check_tenant_schemas_consistent: {msg}")
-                    failures.append(msg)
-                else:
-                    print(
-                        "[OK] check_tenant_schemas_consistent: "
-                        "all SCHEMA-mode tenants have a Postgres schema"
-                    )
+        if not failures:
+            print("\nAll baseline checks PASS.")
+            return 0
 
-            missing_constraints = check_expected_check_constraints(conn)
-            if missing_constraints:
-                msg = f"missing CHECK constraint(s): {missing_constraints}"
-                print(f"[FAIL] check_expected_check_constraints: {msg}")
-                failures.append(msg)
-            else:
-                print(
-                    "[OK] check_expected_check_constraints: "
-                    "webhook_deliveries_status_check + tenant_storage_mode_check present"
-                )
-    except psycopg2.OperationalError as exc:
-        print(f"ERROR: could not connect to {args.db_url}: {exc}", file=sys.stderr)
-        return 2
+        if not args.auto_fix:
+            print(
+                f"\nFAIL: {len(failures)} drift condition(s) detected.",
+                file=sys.stderr,
+            )
+            return 1
 
-    if failures and args.auto_fix:
-        print("\n--auto-fix requested; re-applying GBL-105...", flush=True)
-        auto_fix(args.db_url, migrations_dir)
-        # Re-run checks once after the fix.
+        if attempt >= MAX_AUTO_FIX_ATTEMPTS:
+            print(
+                f"\nFAIL: {len(failures)} drift condition(s) remain after one "
+                "auto-fix attempt; not retrying further (see "
+                "docs/guides/test_infrastructure_guide.md §6).",
+                file=sys.stderr,
+            )
+            return 1
+
+        # attempt == 1, --auto-fix requested, failures present: the one
+        # permitted auto-fix attempt, then loop back for one recheck.
+        print(
+            "\n--auto-fix requested; re-applying iss0112 schema-ledger "
+            "reconcile migration...",
+            flush=True,
+        )
+        fixed = auto_fix(args.db_url, migrations_dir)
+        if not fixed:
+            print(
+                "\nFAIL: auto-fix attempt did not succeed; see error above. "
+                "Not retrying.",
+                file=sys.stderr,
+            )
+            return 1
+
         print("\nRe-running checks after auto-fix...")
-        return main()
-
-    if failures:
-        print(f"\nFAIL: {len(failures)} drift condition(s) detected.", file=sys.stderr)
-        return 1
-
-    print("\nAll baseline checks PASS.")
-    return 0
+        # loop continues -> attempt becomes 2 -> run_checks() called once
+        # more -> if failures persist, `attempt >= MAX_AUTO_FIX_ATTEMPTS`
+        # fires above and returns 1. No third attempt is reachable.
 
 
 if __name__ == "__main__":

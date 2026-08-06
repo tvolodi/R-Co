@@ -1,0 +1,44 @@
+{
+  "handoff_id": "d7d4e2e4-d0cf-4674-b093-ebc65b2fd42d",
+  "run_id": "WF03-gh458-20260806",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-06T02:34:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0146.json",
+      "tools/verify_schema_baseline.py"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/458",
+    "local_issue": "ISS-0146",
+    "branch_name": "feature/WF03-gh458-20260806"
+  },
+  "task": {
+    "description": "Design the fix for tools/verify_schema_baseline.py (GH #458 / ISS-0146): (1) replace hardcoded GBL-105_iss0112_schema_ledger_reconcile.sql literal with GBL-133_iss0112_schema_ledger_reconcile.sql in the docstring (line 18), auto_fix() (lines 155-156, 166, 168), and main() help text/messages (lines 186, 260); (2) add a bounded retry cap (e.g. max 1 auto-fix retry) to the auto-fix loop in main() so it fails fast with a clear error instead of recursing unboundedly via the current self-call pattern; (3) design a verification path (e.g. a --self-test or documented manual repro) confirming --auto-fix reconciles a deliberately-orphaned tenant row. This is a small, localized fix (Type E prose design, single file, no new module).\n\nREWORK 1: CODE-DESIGN-VALIDATOR FAILed the design. Add an explicit statement of what the module MUST NOT depend on (the Completeness checklist requires both a positive dependency list AND an explicit must-not-depend-on clause; only the former was present). Example: must not depend on any new third-party package beyond the already-imported psycopg2/pathlib/argparse stdlib+existing deps; must not depend on network access beyond the single Postgres connection; must not depend on any other tool/script in tools/ (self-contained). Tailor to what genuinely applies to this design.",
+    "acceptance_criteria": [
+      "Design covers all 3 ISS-0146 acceptance criteria",
+      "No implementation code, prose/pseudocode only",
+      "Retry cap mechanism specified precisely (parameter name, default, fail-fast message)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Reworked design per CODE-DESIGN-VALIDATOR FAIL: added explicit MUST-NOT-depend-on list to External dependencies section (no new pip packages beyond psycopg2/stdlib; no subprocess/shell-out for SQL execution; no coupling to zig build test-integration or Zig test harness; no runtime dependency on docs/issues/*.json), and rephrased the information_schema.schemata reference in the verification-procedure prose to clear lint E030. lint_design_artefact.py now reports OK, no issues (BLOCKER=0, MAJOR=0, MINOR=0).",
+    "artifacts_out": [
+      "src/design/verify_schema_baseline_fix.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b, rework re-check)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-08-06T02:54:58Z",
+  "completed_at": "2026-08-06T02:56:06Z"
+}
