@@ -1,0 +1,53 @@
+{
+  "handoff_id": "5f2208b6-ef3e-459f-8b94-eede15aa50df",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "q151",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-gh439-testwiring-20260806/step-q151-backend-dev-iss0151.json",
+  "created_at": "2026-08-06T07:20:53Z",
+  "started_at": "2026-08-06T07:20:53Z",
+  "completed_at": "2026-08-06T07:26:27Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "issue_ids": [
+      "ISS-0151"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/468",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "queue_drain": true,
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0151.json"
+    ]
+  },
+  "task": {
+    "description": "Queue-drain pass for ISS-0151 / GH #468: zig build test-env-verify check C3 reports BPM_DB_URL missing even though .env defines it, because tools/verify_test_env.py reads only the process environment. Fix the checker's environment resolution to load .env the same way the rest of the toolchain does. HARD CONSTRAINT per CLAUDE.md 'Never Satisfy a Gate by Editing What It Measures': do NOT remove, default, soften, or make-unreachable check C3. A workspace genuinely missing BPM_DB_URL must still FAIL C3 -- prove this by testing both directions.",
+    "acceptance_criteria": [
+      "zig build test-env-verify exits 0 on a workspace whose .env defines BPM_DB_URL, with no manual export",
+      "A workspace genuinely missing BPM_DB_URL still fails C3 -- verified by test, both directions",
+      "Check C3 not removed, defaulted, or weakened"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:update-issue",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0151/GH #468 fixed in tools/verify_test_env.py. Root cause: the tool resolved BPM_DB_URL inconsistently with itself -- C7 already consulted .env via dotenv_has(), while C3/C4/C6 read only os.environ, so a workspace whose .env correctly defined BPM_DB_URL failed the gate unless the operator had manually exported it. Fix generalises dotenv_has() into dotenv_get() and adds load_dotenv_into_environ(), called once at the top of main(), which exports .env values into os.environ ONLY for keys the process environment lacks (bench.zig resolveDbUrl precedence: real env always wins). Exporting into os.environ rather than teaching each check to read .env is required because zig build migrate (src/tools/migrate.zig) and verify_schema_baseline.py are subprocesses that read their own environment and never parse .env. check_migrate() (C3) itself is byte-for-byte unchanged -- git diff shows zero lines touched in its body -- so its failure path, condition and message are intact per the CLAUDE.md no-silencing-the-detector rule. VERIFIED BOTH DIRECTIONS: (1) .env defines BPM_DB_URL, no shell export -> zig build test-env-verify exits 0, all 7 checks PASS. (2) BPM_DB_URL commented out of .env AND unset in env -> C3 still FAILS with the original message and exit 1. .env restored byte-identical (md5 b3d947cf44e30a7220e426d3f6086328 before and after). Regressions clean: python tools/lint_test_wiring.py exit 0 (252 files reachable), zig build exit 0.",
+    "artifacts_out": [
+      "tools/verify_test_env.py"
+    ],
+    "issues": [],
+    "next_action": "ORCH continues queue drain"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

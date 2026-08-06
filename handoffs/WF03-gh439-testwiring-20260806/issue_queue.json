@@ -6,12 +6,12 @@
     {
       "issue_id": "ISS-0147",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/463",
-      "status": "QUEUED",
+      "status": "IN_PROGRESS",
       "severity": "MINOR",
       "discovered_at": "2026-08-06T05:32:56Z",
       "discovered_by": "ISSUE-FIXER Step 1",
       "discovered_while_fixing": "ISS-0137",
-      "started_at": null,
+      "started_at": "2026-08-06T07:20:53Z",
       "completed_at": null
     },
     {
@@ -45,6 +45,28 @@
       "discovered_by": "BACKEND-DEV Step 3",
       "discovered_while_fixing": "ISS-0137",
       "started_at": null,
+      "completed_at": null
+    },
+    {
+      "issue_id": "ISS-0151",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/468",
+      "status": "RESOLVED",
+      "severity": "MINOR",
+      "discovered_at": "2026-08-06T07:16:34Z",
+      "discovered_by": "TEST-RUNNER Step 5",
+      "discovered_while_fixing": "ISS-0137",
+      "started_at": "2026-08-06T07:20:53Z",
+      "completed_at": "2026-08-06T07:26:27Z"
+    },
+    {
+      "issue_id": "ISS-0152",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/469",
+      "status": "IN_PROGRESS",
+      "severity": "MINOR",
+      "discovered_at": "2026-08-06T07:16:34Z",
+      "discovered_by": "TEST-RUNNER Step 5",
+      "discovered_while_fixing": "ISS-0137",
+      "started_at": "2026-08-06T07:20:53Z",
       "completed_at": null
     }
   ]

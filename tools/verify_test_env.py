@@ -29,6 +29,19 @@ Checks (§3 of the test infrastructure guide)
   C6  no ungranted locks left over from a prior session
   C7  benchmark environment resolves a DB URL from the environment
 
+Environment resolution
+----------------------
+Every check resolves BPM_DB_URL / BPM_TEST_DB_URL / BPM_BENCH_DB_URL the way
+the rest of the toolchain does: the process environment first, then `.env` in
+the repo root (bench.zig's resolveDbUrl order). Values found only in `.env` are
+exported into os.environ before any check runs, because the subprocesses these
+checks spawn — `zig build migrate`, verify_schema_baseline.py — read their own
+environment and do not parse `.env` themselves.
+
+This resolves *where* configuration is read from. It does not supply defaults:
+a variable absent from both the environment and `.env` stays absent, and the
+check that requires it still fails.
+
 Exit codes:
   0  environment healthy — safe to run tests or dispatch TEST-RUNNER
   1  one or more checks failed (details on stdout)
@@ -55,6 +68,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # Benchmark DB-URL resolution order. Must match resolveDbUrl() in
 # tests/bench/bench.zig — if that order changes, change it here too.
 BENCH_DB_URL_VARS = ("BPM_BENCH_DB_URL", "BPM_DB_URL", "BPM_TEST_DB_URL")
+
+# Variables the checks (and the subprocesses they spawn) resolve from the
+# process environment, falling back to .env. See load_dotenv_into_environ().
+DOTENV_KEYS = ("BPM_DB_URL", "BPM_TEST_DB_URL", "BPM_BENCH_DB_URL")
 
 OK = "PASS"
 BAD = "FAIL"
@@ -99,26 +116,72 @@ def run(cmd: list[str], timeout: int = 300, cwd: Path | None = None) -> tuple[in
     return proc.returncode, (out + err).strip()
 
 
-def dotenv_has(key: str) -> bool:
-    """True if .env in the repo root defines a non-empty value for key.
+def dotenv_get(key: str) -> str | None:
+    """Value of key from .env in the repo root, or None if absent/empty.
 
     bench.zig falls back to .env when the variable is absent from the process
-    environment, so the check must look in the same places the binary does.
+    environment (see readDotEnvValue/parseDotEnvValue in tests/bench/bench.zig),
+    so the checks must look in the same places the binaries do — and parse the
+    file the same way: skip blanks and `#` comments, split on the first `=`,
+    strip surrounding whitespace, then strip one layer of matching quotes.
     """
     env_path = REPO_ROOT / ".env"
     if not env_path.is_file():
-        return False
+        return None
     try:
-        for raw in env_path.read_text(encoding="utf-8-sig").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            name, _, value = line.partition("=")
-            if name.strip() == key and value.strip().strip("\"'"):
-                return True
+        contents = env_path.read_text(encoding="utf-8-sig")
     except OSError:
-        return False
-    return False
+        return None
+    for raw in contents.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, _, value = line.partition("=")
+        if name.strip() != key:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        return value or None
+    return None
+
+
+def dotenv_has(key: str) -> bool:
+    """True if .env in the repo root defines a non-empty value for key."""
+    return dotenv_get(key) is not None
+
+
+def load_dotenv_into_environ(keys: tuple[str, ...]) -> list[str]:
+    """Populate os.environ from .env for keys the process environment lacks.
+
+    ISS-0151 / GH #468: C3, C4 and C6 read only os.environ, so a workspace whose
+    .env correctly defines BPM_DB_URL failed the gate unless the operator had
+    manually exported it — while C7, which already consulted .env, passed. The
+    gate therefore disagreed with itself about the same workspace.
+
+    Loading .env here rather than teaching each check to call dotenv_get() is
+    deliberate: `zig build migrate` (src/tools/migrate.zig) and
+    tools/verify_schema_baseline.py are *subprocesses* that read BPM_DB_URL /
+    BPM_TEST_DB_URL from their own process environment and do not read .env.
+    A check that merely consulted .env itself would report PASS-able state and
+    then still watch the subprocess die. Exporting into os.environ is what makes
+    the child processes see the same configuration the checks do.
+
+    Precedence matches bench.zig's resolveDbUrl(): the real process environment
+    always wins; .env fills gaps only. Values genuinely absent from BOTH sources
+    stay absent, so every check's failure path remains fully reachable — this
+    resolves where configuration is read from, it does not weaken what is
+    required. Returns the names actually loaded, for reporting.
+    """
+    loaded: list[str] = []
+    for key in keys:
+        if os.environ.get(key):
+            continue
+        value = dotenv_get(key)
+        if value:
+            os.environ[key] = value
+            loaded.append(key)
+    return loaded
 
 
 def check_docker() -> Check:
@@ -313,6 +376,12 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--skip-docker", action="store_true", help="skip the container check (C1)")
     parser.add_argument("--quiet", action="store_true", help="print only the verdict line")
     args = parser.parse_args(argv[1:])
+
+    # ISS-0151: resolve DB URLs from .env before any check runs, so the checks
+    # and the subprocesses they spawn agree on the workspace's configuration.
+    loaded = load_dotenv_into_environ(DOTENV_KEYS)
+    if loaded and not args.quiet:
+        print(f"  [info] loaded from .env: {', '.join(loaded)}")
 
     if args.bench_only:
         checks = [check_bench_env()]
