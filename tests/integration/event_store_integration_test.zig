@@ -91,6 +91,45 @@ fn insertInstance(pool: *Pool, inst_id: []const u8, def_id: []const u8) !void {
     );
 }
 
+/// Insert an instance_projections row with an explicit lifecycle status.
+/// Used by TC-ES-01-03 / TC-ES-01-04, which need a terminated instance.
+fn insertInstanceWithStatus(pool: *Pool, inst_id: []const u8, def_id: []const u8, status: []const u8) !void {
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    try conn.exec(
+        "INSERT INTO instance_projections " ++
+            "(instance_id, definition_id, status, last_event_seq) " ++
+            "VALUES ($1::uuid, $2::uuid, $3, 0) " ++
+            "ON CONFLICT (instance_id) DO UPDATE SET status = EXCLUDED.status",
+        &.{ inst_id, def_id, status },
+    );
+}
+
+/// Build a per-test-unique identifier of the form "<prefix>-<uuid>".
+///
+/// Used for event type names and idempotency keys so that no two tests — and no
+/// two runs of the same test against this shared database — can collide (T010).
+/// Caller owns the returned slice.
+fn uniqueName(allocator: std.mem.Allocator, h: *TestHarness, prefix: []const u8) ![]u8 {
+    const id = try h.newUuidString(allocator);
+    defer allocator.free(id);
+    return std.fmt.allocPrint(allocator, "{s}-{s}", .{ prefix, id });
+}
+
+/// Count live event rows carrying the given idempotency_key.
+fn countEvents(pool: *Pool, alloc: std.mem.Allocator, idem_key: []const u8) !i64 {
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    var res = try conn.query(
+        alloc,
+        "SELECT COUNT(*) FROM events WHERE idempotency_key = $1",
+        &.{idem_key},
+    );
+    defer res.deinit();
+    if (res.rows.len == 0 or res.rows[0].len == 0) return 0;
+    return std.fmt.parseInt(i64, res.rows[0][0] orelse "0", 10) catch 0;
+}
+
 /// Delete a per-test event type registration (best-effort cleanup).
 /// registerType() autocommits, so the row outlives the harness transaction and
 /// must be removed explicitly or it accumulates in the shared test database.
@@ -673,12 +712,15 @@ test "TC-ES-05-02: append with payload failing registered schema returns Payload
     // written concurrently by sibling binaries (ISS-0113).
     const inst_str = try h.newUuidString(alloc);
     defer alloc.free(inst_str);
-    const def_str = "defdef00-0052-0000-0000-000000000052";
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{ idem_ok, idem_bad });
 
+    const actor_str = try h.newUuidString(alloc);
+    defer alloc.free(actor_str);
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000052");
+    const actor_uuid = try parseUuid(alloc, actor_str);
 
     // ── Direction 1: a CONFORMING payload is accepted and persisted ──────────
     // Without this half, "reject everything" would satisfy the reject case.
@@ -1154,12 +1196,19 @@ test "TC-ADP-11-03: protected keep_days policy archives and preserves queryabili
     // no-op. The payload is now made to conform rather than the enforcement
     // weakened — this test is about retention policy, not about schema
     // validation, so a conforming payload is the correct fixture.
+    // Built from def_str (the definition this instance was actually seeded
+    // with) rather than a second, unrelated UUID literal.
+    const started_payload = try std.fmt.allocPrint(
+        alloc,
+        "{{\"definition_id\":\"{s}\"}}",
+        .{def_str},
+    );
+    defer alloc.free(started_payload);
+
     _ = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "INSTANCE_STARTED",
-        .payload =
-        \\{"definition_id":"defdef00-0032-0000-0000-000000000032"}
-        ,
+        .payload = started_payload,
         .actor_id = actor_uuid,
         .idempotency_key = "adp11-idem-02",
         .metadata = null,
@@ -1669,4 +1718,478 @@ test "TC-ES-03-03: append with 256-char idempotency_key returns IdempotencyKeyTo
         .idempotency_key = long_key,
         .metadata = null,
     }));
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-01-02: append to a non-existent instance returns InstanceNotFound
+//
+// ES-01 acceptance criterion: "instance_id MUST reference an existing process
+// instance; if the instance does not exist, the platform returns HTTP 404."
+// StoreError.InstanceNotFound is the store-layer expression of that 404.
+//
+// The event type is registered first because Store.append() runs ES-05 registry
+// validation BEFORE the instance lookup — without a registered type the call
+// would fail with UnknownEventType and never reach the path under test.
+// ---------------------------------------------------------------------------
+
+test "TC-ES-01-02: append to non-existent instance returns InstanceNotFound" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    // Per-test unique names/keys (T010): nothing here is shared with any other
+    // test or any earlier run of this test.
+    const type_name = try uniqueName(alloc, &h, "ES0102");
+    defer alloc.free(type_name);
+    const idem_key = try uniqueName(alloc, &h, "es01-02");
+    defer alloc.free(idem_key);
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+    defer cleanupEventType(&pool, type_name);
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = type_name,
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    // Deliberately NOT inserted into instance_projections.
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const actor_str = try h.newUuidString(alloc);
+    defer alloc.free(actor_str);
+    const inst_uuid = try parseUuid(alloc, inst_str);
+    const actor_uuid = try parseUuid(alloc, actor_str);
+
+    // Cleanup is unconditional: registered before the assertion so that an
+    // unexpected successful append still gets torn down.
+    defer cleanupInstance(&pool, inst_str, &.{idem_key});
+
+    // Precondition: the instance really is absent.
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        var pre = try conn.query(
+            alloc,
+            "SELECT COUNT(*) FROM instance_projections WHERE instance_id = $1::uuid",
+            &.{inst_str},
+        );
+        defer pre.deinit();
+        const n = std.fmt.parseInt(i64, pre.rows[0][0] orelse "0", 10) catch -1;
+        try std.testing.expectEqual(@as(i64, 0), n);
+    }
+
+    try std.testing.expectError(StoreError.InstanceNotFound, store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = type_name,
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = idem_key,
+        .metadata = null,
+    }));
+
+    // "no event row is inserted" — the rejection must not leave a partial write.
+    try std.testing.expectEqual(@as(i64, 0), try countEvents(&pool, alloc, idem_key));
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-01-03: append to a COMPLETED instance returns InstanceTerminated
+//
+// ES-01 acceptance criterion: "Appending an event to a CANCELLED or COMPLETED
+// instance MUST be rejected with HTTP 409." StoreError.InstanceTerminated is
+// the store-layer expression of that 409 (no HTTP route exposes event append
+// yet, so the store boundary is the enforcement point).
+// ---------------------------------------------------------------------------
+
+test "TC-ES-01-03: append to COMPLETED instance returns InstanceTerminated" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const type_name = try uniqueName(alloc, &h, "ES0103");
+    defer alloc.free(type_name);
+    const idem_key = try uniqueName(alloc, &h, "es01-03");
+    defer alloc.free(idem_key);
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+    defer cleanupEventType(&pool, type_name);
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = type_name,
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
+    const actor_str = try h.newUuidString(alloc);
+    defer alloc.free(actor_str);
+
+    defer cleanupInstance(&pool, inst_str, &.{idem_key});
+    try insertInstanceWithStatus(&pool, inst_str, def_str, "COMPLETED");
+
+    const inst_uuid = try parseUuid(alloc, inst_str);
+    const actor_uuid = try parseUuid(alloc, actor_str);
+
+    try std.testing.expectError(StoreError.InstanceTerminated, store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = type_name,
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = idem_key,
+        .metadata = null,
+    }));
+
+    try std.testing.expectEqual(@as(i64, 0), try countEvents(&pool, alloc, idem_key));
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-01-04: append to a CANCELLED instance returns InstanceTerminated
+//
+// Same ES-01 HTTP-409 acceptance criterion as TC-ES-01-03, exercising the
+// CANCELLED half of the terminal-status check.
+// ---------------------------------------------------------------------------
+
+test "TC-ES-01-04: append to CANCELLED instance returns InstanceTerminated" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const type_name = try uniqueName(alloc, &h, "ES0104");
+    defer alloc.free(type_name);
+    const idem_key = try uniqueName(alloc, &h, "es01-04");
+    defer alloc.free(idem_key);
+    const active_key = try uniqueName(alloc, &h, "es01-04-active");
+    defer alloc.free(active_key);
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+    defer cleanupEventType(&pool, type_name);
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = type_name,
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
+    const actor_str = try h.newUuidString(alloc);
+    defer alloc.free(actor_str);
+
+    defer cleanupInstance(&pool, inst_str, &.{idem_key});
+    try insertInstanceWithStatus(&pool, inst_str, def_str, "CANCELLED");
+
+    const inst_uuid = try parseUuid(alloc, inst_str);
+    const actor_uuid = try parseUuid(alloc, actor_str);
+
+    try std.testing.expectError(StoreError.InstanceTerminated, store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = type_name,
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = idem_key,
+        .metadata = null,
+    }));
+
+    try std.testing.expectEqual(@as(i64, 0), try countEvents(&pool, alloc, idem_key));
+
+    // An ACTIVE instance is the control: the same append must succeed, proving
+    // the rejection above is caused by the terminal status and not by the
+    // fixture being unusable for some other reason.
+    const active_str = try h.newUuidString(alloc);
+    defer alloc.free(active_str);
+    const active_def = try h.newUuidString(alloc);
+    defer alloc.free(active_def);
+
+    defer cleanupInstance(&pool, active_str, &.{active_key});
+    try insertInstanceWithStatus(&pool, active_str, active_def, "ACTIVE");
+    const active_uuid = try parseUuid(alloc, active_str);
+    _ = try store.append(alloc, AppendParams{
+        .instance_id = active_uuid,
+        .event_type = type_name,
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = active_key,
+        .metadata = null,
+    });
+    try std.testing.expectEqual(@as(i64, 1), try countEvents(&pool, alloc, active_key));
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-05-04: registerType with a duplicate (name, schema_version) returns
+// DuplicateEventTypeVersion
+//
+// ES-05 acceptance criterion: "Registering a duplicate name+version combination
+// MUST be rejected with HTTP 409." RegistryError.DuplicateEventTypeVersion is
+// the registry-layer expression of that 409.
+// ---------------------------------------------------------------------------
+
+test "TC-ES-05-04: registerType with duplicate name+version returns DuplicateEventTypeVersion" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+
+    // Per-test unique type name (T010): the name is the very thing under test,
+    // so it must not be shared with any other test or earlier run.
+    const type_name = try uniqueName(alloc, &h, "ES0504_DUP");
+    defer alloc.free(type_name);
+    // registerType() autocommits, so cleanup must be unconditional and is
+    // registered before the first registration attempt.
+    defer cleanupEventType(&pool, type_name);
+
+    // First registration must succeed.
+    _ = try registry.registerType(alloc, RegisterParams{
+        .name = type_name,
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    });
+
+    // Second registration with the SAME name and SAME schema_version → 409.
+    try std.testing.expectError(
+        bpm.registry.RegistryError.DuplicateEventTypeVersion,
+        registry.registerType(alloc, RegisterParams{
+            .name = type_name,
+            .schema_version = 1,
+            .json_schema = "{\"type\":\"object\"}",
+            .description = "second attempt",
+        }),
+    );
+
+    // "no new row is inserted" — exactly one row for (name, version = 1).
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        var res = try conn.query(
+            alloc,
+            "SELECT COUNT(*) FROM event_type_registry WHERE name = $1 AND schema_version = 1",
+            &.{type_name},
+        );
+        defer res.deinit();
+        const n = std.fmt.parseInt(i64, res.rows[0][0] orelse "0", 10) catch -1;
+        try std.testing.expectEqual(@as(i64, 1), n);
+    }
+
+    // Control: a NEW schema_version of the same name is NOT a duplicate. This
+    // proves the rejection keys on (name, version) and not on name alone.
+    _ = try registry.registerType(alloc, RegisterParams{
+        .name = type_name,
+        .schema_version = 2,
+        .json_schema = "{}",
+        .description = null,
+    });
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-07-02: archive returns the count of moved rows
+//
+// Spec (tests/specs/ES-01-08.md): GIVEN an events table with exactly 3 expired
+// events and 2 non-expired events, WHEN Store.archive() is called, THEN it
+// returns exactly 3 and the 2 non-expired events remain in events.
+//
+// Five events are appended through the real Store, then three are backdated
+// past the keep_days boundary via SQL (Store.append always stamps created_at =
+// NOW(), so ageing has to be simulated at the row level).
+// ---------------------------------------------------------------------------
+
+test "TC-ES-07-02: archive returns count of moved rows and leaves non-expired events" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    // Per-test unique event type: archive() is driven by a per-event_type
+    // retention policy, so a shared name would let concurrent tests archive
+    // each other's rows and make the returned count non-deterministic (T010).
+    const type_name = try uniqueName(alloc, &h, "ES0702_COUNT");
+    defer alloc.free(type_name);
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+    defer cleanupEventType(&pool, type_name);
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = type_name,
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
+    const actor_str = try h.newUuidString(alloc);
+    defer alloc.free(actor_str);
+
+    var keys: [5][]const u8 = undefined;
+    var allocated: usize = 0;
+    defer for (keys[0..allocated]) |k| alloc.free(k);
+    for (0..5) |i| {
+        const label = if (i < 3) "es07-02-old" else "es07-02-new";
+        keys[i] = try uniqueName(alloc, &h, label);
+        allocated += 1;
+    }
+
+    // Unconditional cleanup: events, events_archive, instance rows, policy.
+    defer cleanupInstance(&pool, inst_str, &keys);
+    defer {
+        if (pool.acquire()) |c| {
+            for (keys) |k| {
+                c.exec("DELETE FROM events_archive WHERE idempotency_key = $1", &.{k}) catch {};
+            }
+            c.exec("DELETE FROM event_retention_policies WHERE event_type = $1", &.{type_name}) catch {};
+            pool.release(c);
+        } else |_| {}
+    }
+
+    try insertInstance(&pool, inst_str, def_str);
+
+    const inst_uuid = try parseUuid(alloc, inst_str);
+    const actor_uuid = try parseUuid(alloc, actor_str);
+
+    for (keys) |k| {
+        _ = try store.append(alloc, AppendParams{
+            .instance_id = inst_uuid,
+            .event_type = type_name,
+            .payload = "{}",
+            .actor_id = actor_uuid,
+            .idempotency_key = k,
+            .metadata = null,
+        });
+    }
+
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+
+        // Age the three "old" events 10 days into the past; the two "new" ones
+        // stay at NOW() and must survive a keep_days = 1 policy.
+        try conn.exec(
+            "UPDATE events SET created_at = NOW() - INTERVAL '10 days' " ++
+                "WHERE idempotency_key IN ($1, $2, $3)",
+            &.{ keys[0], keys[1], keys[2] },
+        );
+
+        try conn.exec(
+            "INSERT INTO event_retention_policies (event_type, policy, keep_days) " ++
+                "VALUES ($1, 'keep_days', '1') " ++
+                "ON CONFLICT (event_type) DO UPDATE SET policy = 'keep_days', keep_days = '1'",
+            &.{type_name},
+        );
+    }
+
+    // Precondition: all five events are live before archival.
+    var live_before: i64 = 0;
+    for (keys) |k| live_before += try countEvents(&pool, alloc, k);
+    try std.testing.expectEqual(@as(i64, 5), live_before);
+
+    const moved = try store.archive(alloc, 0);
+
+    // The three expired events left `events` …
+    try std.testing.expectEqual(@as(i64, 0), try countEvents(&pool, alloc, keys[0]));
+    try std.testing.expectEqual(@as(i64, 0), try countEvents(&pool, alloc, keys[1]));
+    try std.testing.expectEqual(@as(i64, 0), try countEvents(&pool, alloc, keys[2]));
+
+    // … and the two non-expired events are untouched.
+    try std.testing.expectEqual(@as(i64, 1), try countEvents(&pool, alloc, keys[3]));
+    try std.testing.expectEqual(@as(i64, 1), try countEvents(&pool, alloc, keys[4]));
+
+    // The three moved rows are retrievable from events_archive.
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        var arc = try conn.query(
+            alloc,
+            "SELECT COUNT(*) FROM events_archive WHERE idempotency_key IN ($1, $2, $3)",
+            &.{ keys[0], keys[1], keys[2] },
+        );
+        defer arc.deinit();
+        const n = std.fmt.parseInt(i64, arc.rows[0][0] orelse "0", 10) catch -1;
+        try std.testing.expectEqual(@as(i64, 3), n);
+    }
+
+    // The core assertion of TC-ES-07-02: archive() reports the number of ROWS
+    // it moved, not the number of policies it applied.
+    //
+    // archive() sweeps every policy in the table, so a concurrently running
+    // test may legitimately contribute rows of its own type to this total —
+    // hence >= rather than ==. The bound is still strong enough to be the
+    // thing under test: the defect this guards against (counting policies)
+    // returns 1 for this test's three expired rows, which fails here. The
+    // "exactly three" half of the spec is asserted precisely above, scoped to
+    // this test's own idempotency keys.
+    try std.testing.expect(moved >= 3);
+
+    // ES-07: "The archival operation MUST be idempotent." This test's rows are
+    // all archived now, so a second sweep must not move them again, must not
+    // touch the two non-expired rows, and must not duplicate the archived ones.
+    _ = try store.archive(alloc, 0);
+    try std.testing.expectEqual(@as(i64, 0), try countEvents(&pool, alloc, keys[0]));
+    try std.testing.expectEqual(@as(i64, 0), try countEvents(&pool, alloc, keys[1]));
+    try std.testing.expectEqual(@as(i64, 0), try countEvents(&pool, alloc, keys[2]));
+    try std.testing.expectEqual(@as(i64, 1), try countEvents(&pool, alloc, keys[3]));
+    try std.testing.expectEqual(@as(i64, 1), try countEvents(&pool, alloc, keys[4]));
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        var arc = try conn.query(
+            alloc,
+            "SELECT COUNT(*) FROM events_archive WHERE idempotency_key IN ($1, $2, $3)",
+            &.{ keys[0], keys[1], keys[2] },
+        );
+        defer arc.deinit();
+        const n = std.fmt.parseInt(i64, arc.rows[0][0] orelse "0", 10) catch -1;
+        try std.testing.expectEqual(@as(i64, 3), n);
+    }
 }

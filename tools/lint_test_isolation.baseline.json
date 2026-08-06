@@ -3,17 +3,8 @@
   "generated_at": "2026-08-05T19:17:41Z",
   "source": "tools/lint_test_isolation.py --no-baseline --json tests/integration",
   "regenerated_by": "WF03-gh446-lint-baseline-20260805 (GitHub #446 / ISS-0142)",
-  "regeneration_note": "Regenerated against tests/integration/ current file/line state. 218 of 225 entries are line-number-shifted restatements of findings already present in the 2026-05-29T16:26:29Z baseline (same file+code+message, different line -- legitimate baseline maintenance per docs/issues/ISS-0142.json). The remaining 7 are newly-triaged and judged non-actionable this session; see ISS-0142.json 'progress' field and the WF03-gh446 commit message for per-finding rationale. 48 other genuinely-new findings discovered in this same scan were fixed in source rather than baselined -- see the same commit.",
-  "last_line_sync": {
-    "at": "2026-08-06T07:26:15Z",
-    "by": "WF03-gh439-testwiring-20260806 (GitHub #469 / ISS-0152)",
-    "kind": "line-number-only",
-    "entries_relined": 97,
-    "entries_added": 0,
-    "entries_removed": 0,
-    "note": "NOT a regeneration. Only the `line` field of already-present entries was updated; every entry's (severity, code, file, message) identity was preserved 1:1. The sync aborts rather than writing if any identity would be added or dropped, so a genuine new violation cannot be absorbed by this operation. Root cause of the drift: the 2026-08-05 baseline was generated against a tree state 3 lines shorter than origin/main (a uniform +3 shift affects 94 entries on files otherwise untouched by this branch), plus a +44 shift in tests/integration/helpers.zig from the ISS-0137 test-wiring commit baea783. Verified: zero findings changed identity, so BLOCKER count is unchanged at 88 both before and after.",
-    "t020_helpers_decision": "The 3 T020 MAJORs on tests/integration/helpers.zig (`cached_owner_tag`:388, `tag_repr_storage`:393, `tag_repr_lock`:394) were each reviewed individually and DELIBERATELY KEPT BASELINED rather than fixed in source. These three module-level vars are the intended mechanism of ISS-0602 / GH #414 (commit 316d350, 'scope killIdleConnections by per-process owner tag'): an initialise-once, lock-guarded, process-lifetime cache of the per-process owner tag. T020 flags module-level `var` because shared mutable state normally leaks between test blocks, but here the cross-block sharing IS the required semantics -- killIdleConnections must scope by a tag that is stable for the whole process, and ownership is explicitly transferred to the first TestHarness via `owns_tag_storage` and freed in its deinit (helpers.zig:1084-1091). Making them per-test would reintroduce the ISS-0602 failure mode of one test binary killing another's connections. Access is guarded by tag_repr_lock's cmpxchg spinlock with acquire/release ordering, so the shared state is race-free. These entries were already present in the 2026-08-05 baseline at lines 344/349/350; only their line numbers were stale."
-  },
+  "regeneration_note": "Regenerated against tests/integration/ current file/line state. 218 of 225 entries are line-number-shifted restatements of findings already present in the 2026-05-29T16:26:29Z baseline (same file+code+message, different line -- legitimate baseline maintenance per docs/issues/ISS-0142.json). The remaining 7 are newly-triaged and judged non-actionable this session; see ISS-0142.json 'progress' field and the WF03-gh446 commit message for per-finding rationale. 48 other genuinely-new findings discovered in this same scan were fixed in source rather than baselined -- see the same commit. LINE-SYNC 2026-08-06T11:57:44Z (WF03-gh439-testwiring-20260806 / ISS-0154, GH #472): line numbers re-stamped after five ES-01/ES-05/ES-07 integration tests were appended to tests/integration/event_store_integration_test.zig, which shifted every pre-existing UUID literal below the insertion point. Entries are matched by (file, code, message) \u2014 the UUID literal text is unchanged \u2014 so this is line drift, not new suppression, per the precedent set in ISS-0142. The five new tests introduce NO hardcoded UUIDs (they use TestHarness.newUuidString) and add nothing to this baseline. 3 genuinely new finding(s) were deliberately left UNsuppressed.",
+  "last_line_sync": "2026-08-06T11:58:42Z",
   "issues": [
     {
       "severity": "BLOCKER",
@@ -93,13 +84,6 @@
       "message": "hardcoded UUID `33333333-3333-3333-3333-333333333333` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T050",
-      "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-      "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
-    },
-    {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
@@ -116,7 +100,7 @@
     {
       "severity": "MAJOR",
       "code": "T050",
-      "file": "tests/integration/adp10_agent_io_capture_audit_test.zig",
+      "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
       "line": 1,
       "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
@@ -140,6 +124,13 @@
       "file": "tests/integration/adp10_agent_io_capture_audit_test.zig",
       "line": 181,
       "message": "hardcoded UUID `a1000000-0000-0000-0000-000000000102` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "MAJOR",
+      "code": "T050",
+      "file": "tests/integration/adp10_agent_io_capture_audit_test.zig",
+      "line": 1,
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "MAJOR",
@@ -348,406 +339,406 @@
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 135,
+      "line": 183,
       "message": "hardcoded UUID `e5010000-0001-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 136,
+      "line": 184,
       "message": "hardcoded UUID `defdef00-0001-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 141,
+      "line": 189,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 201,
+      "line": 249,
       "message": "hardcoded UUID `e5020000-0002-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 202,
+      "line": 250,
       "message": "hardcoded UUID `defdef00-0002-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 207,
+      "line": 255,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 255,
+      "line": 303,
       "message": "hardcoded UUID `e5020000-0003-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 256,
+      "line": 304,
       "message": "hardcoded UUID `defdef00-0003-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 261,
+      "line": 309,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 337,
+      "line": 385,
       "message": "hardcoded UUID `e5030000-0003-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 338,
+      "line": 386,
       "message": "hardcoded UUID `defdef00-0003-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 343,
+      "line": 391,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000004` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 410,
+      "line": 458,
       "message": "hardcoded UUID `e5040000-0004-0000-0000-00000000000a` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 411,
+      "line": 459,
       "message": "hardcoded UUID `e5040000-0004-0000-0000-00000000000b` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 412,
+      "line": 460,
       "message": "hardcoded UUID `defdef00-0004-0000-0000-00000000000a` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 413,
+      "line": 461,
       "message": "hardcoded UUID `defdef00-0004-0000-0000-00000000000b` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 421,
+      "line": 469,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000005` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 501,
+      "line": 549,
       "message": "hardcoded UUID `e504c0b0-0004-0000-0000-000000000004` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 502,
+      "line": 550,
       "message": "hardcoded UUID `defdef00-0004-0000-0000-000000000004` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 510,
+      "line": 558,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000006` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 575,
+      "line": 623,
       "message": "hardcoded UUID `e5050000-0005-0000-0000-000000000005` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 576,
+      "line": 624,
       "message": "hardcoded UUID `defdef00-0005-0000-0000-000000000005` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 581,
+      "line": 629,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000007` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 635,
+      "line": 809,
       "message": "hardcoded UUID `e5060000-0006-0000-0000-000000000006` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 636,
+      "line": 810,
       "message": "hardcoded UUID `defdef00-0006-0000-0000-000000000006` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 643,
+      "line": 817,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000008` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 736,
+      "line": 910,
       "message": "hardcoded UUID `e506b000-0006-0000-0000-000000000006` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 737,
+      "line": 911,
       "message": "hardcoded UUID `defdef00-0006-0000-0000-000000000006` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 745,
+      "line": 919,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000009` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 811,
+      "line": 985,
       "message": "hardcoded UUID `e5070000-0007-0000-0000-000000000007` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 812,
+      "line": 986,
       "message": "hardcoded UUID `defdef00-0007-0000-0000-000000000007` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 824,
+      "line": 998,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000010` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 929,
+      "line": 1103,
       "message": "hardcoded UUID `ad110000-0002-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 930,
+      "line": 1104,
       "message": "hardcoded UUID `defdef00-ad11-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 943,
+      "line": 1117,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000031` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1005,
+      "line": 1179,
       "message": "hardcoded UUID `ad110000-0003-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1006,
+      "line": 1180,
       "message": "hardcoded UUID `defdef00-ad11-0000-0000-000000000003` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1017,
+      "line": 1191,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000032` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1085,
+      "line": 1274,
       "message": "hardcoded UUID `e5080000-0008-0000-0000-000000000008` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1086,
+      "line": 1275,
       "message": "hardcoded UUID `defdef00-0008-0000-0000-000000000008` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1091,
+      "line": 1280,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000011` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1133,
+      "line": 1322,
       "message": "hardcoded UUID `ad010000-0001-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1134,
+      "line": 1323,
       "message": "hardcoded UUID `defdef00-ad01-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1139,
+      "line": 1328,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000021` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1204,
+      "line": 1393,
       "message": "hardcoded UUID `ad010000-0002-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1205,
+      "line": 1394,
       "message": "hardcoded UUID `defdef00-ad01-0000-0000-000000000002` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1210,
+      "line": 1399,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000022` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1211,
+      "line": 1400,
       "message": "hardcoded UUID `11111111-1111-1111-1111-111111111111` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1353,
+      "line": 1542,
       "message": "hardcoded UUID `ad010000-0004-0000-0000-000000000004` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1354,
+      "line": 1543,
       "message": "hardcoded UUID `defdef00-ad01-0000-0000-000000000004` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1359,
+      "line": 1548,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000024` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1414,
+      "line": 1603,
       "message": "hardcoded UUID `e5010500-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1449,
+      "line": 1638,
       "message": "hardcoded UUID `e5010600-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1450,
+      "line": 1639,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000025` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1483,
+      "line": 1672,
       "message": "hardcoded UUID `e5030200-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1484,
+      "line": 1673,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000026` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1517,
+      "line": 1706,
       "message": "hardcoded UUID `e5030300-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/event_store_integration_test.zig",
-      "line": 1518,
+      "line": 1707,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000027` \u2014 generate per-test UUIDs instead"
     },
     {
@@ -1136,13 +1127,6 @@
       "message": "hardcoded UUID `00000000-0000-0000-0000-ffffffffffff` \u2014 generate per-test UUIDs instead"
     },
     {
-      "severity": "MAJOR",
-      "code": "T050",
-      "file": "tests/integration/oidc13_tenant_claim_source_test.zig",
-      "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
-    },
-    {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/oidc13_tenant_claim_source_test.zig",
@@ -1159,7 +1143,7 @@
     {
       "severity": "MAJOR",
       "code": "T050",
-      "file": "tests/integration/oidc14_realm_provisioning_test.zig",
+      "file": "tests/integration/oidc13_tenant_claim_source_test.zig",
       "line": 1,
       "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
@@ -1183,6 +1167,13 @@
       "file": "tests/integration/oidc14_realm_provisioning_test.zig",
       "line": 97,
       "message": "hardcoded UUID `44444444-4444-4444-4444-444444444444` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "MAJOR",
+      "code": "T050",
+      "file": "tests/integration/oidc14_realm_provisioning_test.zig",
+      "line": 1,
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "BLOCKER",
@@ -1225,13 +1216,6 @@
       "file": "tests/integration/oidc15_realm_deletion_test.zig",
       "line": 429,
       "message": "hardcoded UUID `00000000-0000-0000-0000-000000000111` \u2014 generate per-test UUIDs instead"
-    },
-    {
-      "severity": "MAJOR",
-      "code": "T050",
-      "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
-      "line": 1,
-      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "BLOCKER",
@@ -1288,6 +1272,13 @@
       "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
       "line": 202,
       "message": "hardcoded UUID `70000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
+    },
+    {
+      "severity": "MAJOR",
+      "code": "T050",
+      "file": "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
+      "line": 1,
+      "message": "integration test does not reference BPM_TEST_DB_URL \u2014 must connect to real Postgres"
     },
     {
       "severity": "BLOCKER",

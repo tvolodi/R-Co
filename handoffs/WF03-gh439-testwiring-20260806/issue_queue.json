@@ -83,13 +83,13 @@
     {
       "issue_id": "ISS-0154",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/472",
-      "status": "QUEUED",
+      "status": "DRAINED",
       "severity": "MAJOR",
       "discovered_at": "2026-08-06T07:51:28Z",
       "discovered_by": "BACKEND-DEV Step q148",
       "discovered_while_fixing": "ISS-0148",
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-08-06T12:02:43Z"
     },
     {
       "issue_id": "ISS-0155",

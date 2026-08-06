@@ -984,7 +984,10 @@ pub const Store = struct {
                     },
                 ) catch continue;
                 // Delete only rows confirmed in archive. (Invariant #11)
-                conn.exec(
+                // RETURNING lets us count the rows actually moved (ES-07,
+                // TC-ES-07-02) rather than the number of policies applied.
+                var moved = conn.query(
+                    allocator,
                     \\DELETE FROM events e
                     \\WHERE event_type = $1
                     \\  AND created_at <= NOW() - ($2 || ' days')::interval
@@ -992,27 +995,32 @@ pub const Store = struct {
                     \\    SELECT 1 FROM events_archive ea
                     \\    WHERE ea.idempotency_key = e.idempotency_key
                     \\  )
+                    \\RETURNING e.event_id
                 ,
                     &.{
                         event_type,
                         intToStr(param_alloc, keep_days) catch continue,
                     },
                 ) catch continue;
-                total_moved += 1; // real count from DELETE RETURNING not available yet
+                total_moved += moved.rows.len;
+                moved.deinit();
             } else if (std.mem.eql(u8, policy, "hard_delete_days")) {
                 const keep_days_str = policy_row[2] orelse continue;
                 const keep_days = std.fmt.parseInt(i64, keep_days_str, 10) catch continue;
-                conn.exec(
+                var deleted = conn.query(
+                    allocator,
                     \\DELETE FROM events
                     \\WHERE event_type = $1
                     \\  AND created_at <= NOW() - ($2 || ' days')::interval
+                    \\RETURNING event_id
                 ,
                     &.{
                         event_type,
                         intToStr(param_alloc, keep_days) catch continue,
                     },
                 ) catch continue;
-                total_moved += 1;
+                total_moved += deleted.rows.len;
+                deleted.deinit();
             } else if (std.mem.eql(u8, policy, "keep_count")) {
                 const keep_count_str = policy_row[3] orelse continue;
                 const keep_count = std.fmt.parseInt(i64, keep_count_str, 10) catch continue;
@@ -1041,7 +1049,8 @@ pub const Store = struct {
                         intToStr(param_alloc, keep_count) catch continue,
                     },
                 ) catch continue;
-                conn.exec(
+                var moved = conn.query(
+                    allocator,
                     \\DELETE FROM events e
                     \\WHERE event_type = $1
                     \\  AND e.event_id NOT IN (
@@ -1054,17 +1063,20 @@ pub const Store = struct {
                     \\    SELECT 1 FROM events_archive ea
                     \\    WHERE ea.idempotency_key = e.idempotency_key
                     \\  )
+                    \\RETURNING e.event_id
                 ,
                     &.{
                         event_type,
                         intToStr(param_alloc, keep_count) catch continue,
                     },
                 ) catch continue;
-                total_moved += 1;
+                total_moved += moved.rows.len;
+                moved.deinit();
             } else if (std.mem.eql(u8, policy, "hard_delete_count")) {
                 const keep_count_str = policy_row[3] orelse continue;
                 const keep_count = std.fmt.parseInt(i64, keep_count_str, 10) catch continue;
-                conn.exec(
+                var deleted = conn.query(
+                    allocator,
                     \\DELETE FROM events e
                     \\WHERE e.event_type = $1
                     \\  AND e.event_id NOT IN (
@@ -1073,13 +1085,15 @@ pub const Store = struct {
                     \\    ORDER BY sequence_number DESC
                     \\    LIMIT $2
                     \\  )
+                    \\RETURNING e.event_id
                 ,
                     &.{
                         event_type,
                         intToStr(param_alloc, keep_count) catch continue,
                     },
                 ) catch continue;
-                total_moved += 1;
+                total_moved += deleted.rows.len;
+                deleted.deinit();
             }
         }
 
@@ -1102,7 +1116,8 @@ pub const Store = struct {
             ,
                 &.{uintToStr(param_alloc, retention_days) catch return StoreError.TransactionFailed},
             ) catch return StoreError.TransactionFailed;
-            conn.exec(
+            var moved = conn.query(
+                allocator,
                 \\DELETE FROM events e
                 \\WHERE created_at <= NOW() - ($1 || ' days')::interval
                 \\  AND event_type NOT IN (
@@ -1112,10 +1127,12 @@ pub const Store = struct {
                 \\    SELECT 1 FROM events_archive ea
                 \\    WHERE ea.idempotency_key = e.idempotency_key
                 \\  )
+                \\RETURNING e.event_id
             ,
                 &.{uintToStr(param_alloc, retention_days) catch return StoreError.TransactionFailed},
             ) catch return StoreError.TransactionFailed;
-            total_moved += 1;
+            total_moved += moved.rows.len;
+            moved.deinit();
         }
 
         return total_moved;
