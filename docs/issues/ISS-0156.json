@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0156",
+  "title": "Entity record create/update/delete is broken in production: getOrCreateEntityTypeInstance mints an instance_id with no backing instance_projections row, so store.append always returns InstanceNotFound",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "discovered_at": "2026-08-06T08:14:46Z",
+  "discovered_by": "BACKEND-DEV",
+  "discovered_during": "WF03-gh439-testwiring-20260806 step q150 (ISS-0150 / GH #466) — surfaced the first time tests/integration/entity_subsystem_test.zig was ever executed",
+  "affected_areas": [
+    "src/entities/commands.zig",
+    "src/event_store/store.zig",
+    "tests/integration/entity_subsystem_test.zig",
+    "tests/integration/exp201_202_entities_test.zig"
+  ],
+  "symptom": "Every entity record command — createRecord, updateRecord, deleteRecord — fails at runtime with EntityCommandError.TransactionFailed, wrapping StoreError.InstanceNotFound. The EXP-201 pure-validator tests pass (7 of 12); all 5 database-backed EXP-202 blocks fail identically.\n\nStack: entities.commands.createRecord -> store.append -> src/event_store/store.zig:330 `return StoreError.InstanceNotFound`.",
+  "root_cause": "src/entities/commands.zig `getOrCreateEntityTypeInstance()` (line ~299) INSERTs into `<tenant_schema>.entity_type_instances` and returns the freshly generated `instance_id`. Nothing anywhere in the entity subsystem then creates the corresponding row in `<tenant_schema>.instance_projections`.\n\n`store.append()` (src/event_store/store.zig:315-330) begins by validating the instance exists:\n\n    SELECT status FROM instance_projections WHERE instance_id = $1\n\nand returns `StoreError.InstanceNotFound` when that returns zero rows — which it always does for an entity-type instance, because only src/engine/instance.zig:625 ever INSERTs into instance_projections, and that is the process-engine path, never reached for entity records.\n\nGrep confirms the asymmetry: `INSERT INTO instance_projections` appears exactly once in src/ (src/engine/instance.zig:625) and `instance_projections` appears zero times anywhere under src/entities/.",
+  "reproduction": "Requires BPM_TEST_DB_URL pointing at a real PostgreSQL.\n\n  zig build test-integration-exp\n\n-> 7 pass, 5 fail (12 total). Each of the 5 failures is StoreError.InstanceNotFound raised from src/event_store/store.zig:330 via entities.commands.createRecord.\n\nDirect DB confirmation that no projection row is ever produced:\n\n  psql $BPM_TEST_DB_URL -c \"SELECT count(*) FROM tenant_default.instance_projections\"   -> 0\n\nwhile entity_type_instances does receive its row from getOrCreateEntityTypeInstance.",
+  "impact": "EXP-202 (entity record create/update/delete via the event-sourced command path) does not work at all against a real database. The requirement is marked as covered by tests/integration/exp201_202_entities_test.zig, whose EXP-202 blocks are subject to the same defect.\n\nThis went undetected because BOTH integration files that exercise the path were effectively unexecuted: entity_subsystem_test.zig was built but attached to no build step and had not compiled since the TestHarness API changed (ISS-0150 / GH #466), and its sibling runs only inside the main_test.zig aggregate binary. The defect is in production source, not in the tests — the tests are what finally revealed it.",
+  "candidate_resolution": "Decide the intended ownership model for entity-type instances, then make it explicit:\n\n(a) Have `getOrCreateEntityTypeInstance()` also INSERT the matching `instance_projections` row (status 'ACTIVE', a synthetic/sentinel `definition_id` for entity-type streams, `last_event_seq` 0) inside the same transaction, ON CONFLICT DO NOTHING so it stays idempotent; or\n\n(b) Give `store.append()` an explicit mode for entity-type streams that skips the instance-existence precondition, if entity records are deliberately not process instances.\n\n(a) is the smaller change and keeps store.append's invariant intact. Whichever is chosen, the 5 currently-failing blocks in tests/integration/entity_subsystem_test.zig must go green without weakening their assertions — they assert projection row presence, version_seq progression 1 -> 2, idempotent replay returning the first record, and soft-delete stamping deleted_at.\n\nDo NOT resolve this by relaxing the tests: the assertions describe the behaviour EXP-202 specifies.",
+  "notes": "Filed as its own issue rather than fixed inline under ISS-0150, per the WF03-gh439 handoff constraint: ISS-0150's scope is 'these tests do not actually test anything', and it is now discharged — entity_subsystem_test.zig compiles, is attached to test_integration_others_step, and executes with real assertions. What those assertions revealed is a distinct production defect in the entity command path with its own diagnose/design/fix cycle, and it is a BLOCKER-severity behaviour gap rather than a test-wiring gap.\n\nThe 5 failing blocks are left FAILING on purpose. Marking them skipped or deleting them to reach a green step would be precisely the 'never satisfy a gate by editing what it measures' anti-pattern that ISS-0150 exists to remove.",
+  "related_issues": [
+    "ISS-0150",
+    "ISS-0137"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/475"
+}

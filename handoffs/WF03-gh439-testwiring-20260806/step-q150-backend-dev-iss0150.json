@@ -1,0 +1,91 @@
+{
+  "handoff_id": "e1d787d7-4fbc-432e-bb7a-c5c2361c7ad0",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "q150",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-06T07:57:10Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 queue drain",
+    "issue_ids": [
+      "ISS-0150"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/466",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "queue_drain": true,
+    "requirement_ids": [
+      "ENV-01",
+      "EXP-201",
+      "EXP-202"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0150.json",
+      "tests/integration/env01_tenant_type_field_test.zig",
+      "tests/integration/entity_subsystem_test.zig",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "ISS-0150 (GH #466): (A) give the 9 assertion-free ENV-01 blocks real assertions against real PostgreSQL; (B) attach entity_subsystem_test.zig's Run artifact to the test-integration graph and fix the first-time failures it surfaces; consider strengthening tools/lint_test_wiring.py to detect unattached Run artifacts.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "python tools/lint_test_wiring.py exits 0",
+      "python tools/lint_test_isolation.py tests/integration exits 0 with no BLOCKER",
+      "env01_tenant_type_field_test.zig executes with real assertions (mutation-checked)",
+      "entity_subsystem_test.zig executes as part of test-integration"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:register-issue",
+      "fn:update-issue",
+      "fn:enqueue-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0150 resolved. (A) env01_tenant_type_field_test.zig: all 9 previously assertion-free blocks rewritten with real assertions against real PostgreSQL (schema DEFAULT backfill, both CHECK-constraint rejections, ON DELETE RESTRICT, admin-list field exposure, both PATCH-immutability 422s); 9/9 pass and a deliberately broken assertion fails exactly one block (mutation-verified). (B) entity_subsystem_test.zig: had never compiled (undeclared alloc, removed std.fmt.fmtSliceHexLower, and a TestHarness.pool field that has never existed); rewritten onto a real Pool like its sibling, and its Run artifact attached to test_integration_others_step so it executes under `zig build test-integration`. It now runs: 7 pass, 5 fail - the 5 failures are a genuine production defect in the entity command path, filed as ISS-0156 / GH #475 rather than papered over. Also strengthened tools/lint_test_wiring.py with an unattached-Run-artifact check that reproduces the (B) defect; it surfaced 4 further never-executed binaries, 2 attached here and 2 filed as ISS-0157 / GH #476.",
+    "artifacts_out": [
+      "tests/integration/env01_tenant_type_field_test.zig",
+      "tests/integration/entity_subsystem_test.zig",
+      "build.zig",
+      "tools/lint_test_wiring.py",
+      "docs/issues/ISS-0150.json",
+      "docs/issues/ISS-0156.json",
+      "docs/issues/ISS-0157.json"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "issue_id": "ISS-0156",
+        "github_issue": "https://github.com/tvolodi/R-Co/issues/475",
+        "description": "Entity record create/update/delete is broken in production: getOrCreateEntityTypeInstance mints an instance_id with no backing instance_projections row, so store.append always returns InstanceNotFound. Surfaced the first time entity_subsystem_test.zig ever executed. Filed and enqueued; NOT fixed here."
+      },
+      {
+        "severity": "MAJOR",
+        "issue_id": "ISS-0157",
+        "github_issue": "https://github.com/tvolodi/R-Co/issues/476",
+        "description": "Four more test binaries attached only to narrow opt-in steps and never executed (13 blocks). Two pass and were attached here; two fail on first run (iss105 GIN index, differential_test) and are tracked in an explicit KNOWN_UNATTACHED ledger. Filed and enqueued; NOT fixed here."
+      }
+    ],
+    "next_action": "ORCH: continue draining issue_queue.json (ISS-0156 BLOCKER, ISS-0157 MAJOR now QUEUED)",
+    "verification": {
+      "zig build": "exit 0",
+      "zig build test": "exit 0",
+      "python tools/lint_test_wiring.py": "exit 0",
+      "python tools/lint_test_isolation.py tests/integration": "exit 0, no BLOCKER",
+      "zig build test-integration-env01-tt": "exit 0 - 9/9 pass",
+      "zig build test-integration-exp": "exit 1 - 7 pass, 5 fail (all 5 = ISS-0156)",
+      "mutation_check_env01": "broke one assertion -> 8 pass 1 fail; restored -> 9 pass",
+      "mutation_check_entity": "broke one assertion -> 6 pass 6 fail; restored -> 7 pass 5 fail"
+    }
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T07:57:10Z",
+  "completed_at": "2026-08-06T08:30:25Z"
+}

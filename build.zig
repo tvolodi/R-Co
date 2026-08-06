@@ -1188,6 +1188,23 @@ pub fn build(b: *std.Build) void {
     run_exp_integration_tests.setCwd(b.path("."));
     run_exp_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    // ISS-0150 / GH #466: ENV-01 tenant-type-field cases. Reachable via
+    // main_test.zig, but given its own addTest root and narrow step so the nine
+    // blocks can be exercised on their own — the file spent months as an
+    // assertion-free scaffold precisely because nothing ever ran it in
+    // isolation where a vacuous PASS would have been noticeable.
+    const env01_tt_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/env01_tenant_type_field_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_env01_tt_integration_tests = b.addRunArtifact(env01_tt_integration_tests);
+    run_env01_tt_integration_tests.setCwd(b.path("."));
+    run_env01_tt_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     const spt01_iss0068_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/spt01_iss0068_onboarding_schema_test.zig"),
@@ -1626,6 +1643,29 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_iss0076_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_same_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_cross_integration_tests.step);
+    // ISS-0150 / GH #466: entity_subsystem_test.zig's Run artifact was created
+    // and fully configured but attached to no step reachable from
+    // `test-integration` — only to the narrow `test-integration-exp` step, which
+    // nothing in CI invokes. It was therefore built and never run, and had in
+    // fact not compiled since the TestHarness API it was written against
+    // changed. lint_test_wiring.py could not see this because it proves a file
+    // is reachable from an addTest ROOT, not that the root is ever executed;
+    // that gap is now covered by the linter's unattached-run-artifact check.
+    test_integration_others_step.dependOn(&run_exp_integration_tests.step);
+    // ISS-0150 / GH #466: the ENV-01 tenant-type-field cases also run inside the
+    // main_test.zig aggregate, but the dedicated artifact is attached here too so
+    // `test-integration-env01-tt` is not the only thing that ever executes it —
+    // a narrow opt-in step nothing invokes is what hid entity_subsystem_test.zig.
+    test_integration_others_step.dependOn(&run_env01_tt_integration_tests.step);
+    // ISS-0150 / GH #466: surfaced by the new unattached-run-artifact check in
+    // tools/lint_test_wiring.py. Both of these had a narrow step and nothing
+    // else, so their blocks never ran under `zig build test-integration`. Both
+    // pass on first execution, so they are attached here directly. Two further
+    // finds from the same check (iss105_token_model_test, differential_test) do
+    // NOT pass on first run and are tracked as ISS-0157 rather than being
+    // attached-and-left-red or quietly excluded.
+    test_integration_others_step.dependOn(&run_xc04_integration_tests.step);
+    test_integration_others_step.dependOn(&run_stage11_sim_xc04_integration_tests.step);
 
     // ISS-0106: force ISS-503 to run only after the barrier above (i.e. after
     // every other test-integration sibling has finished), then re-attach it
@@ -1693,6 +1733,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_exp_step = b.step("test-integration-exp", "Run Entity Subsystem integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_exp_step.dependOn(&clean_test_db.step);
     test_integration_exp_step.dependOn(&run_exp_integration_tests.step);
+
+    const test_integration_env01_tt_step = b.step("test-integration-env01-tt", "Run ENV-01 tenant type field integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_env01_tt_step.dependOn(&clean_test_db.step);
+    test_integration_env01_tt_step.dependOn(&run_env01_tt_integration_tests.step);
 
     const test_integration_spt01_iss68_step = b.step("test-integration-spt01-iss68", "Run SPT-01 ISS-0068 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_spt01_iss68_step.dependOn(&clean_test_db.step);
