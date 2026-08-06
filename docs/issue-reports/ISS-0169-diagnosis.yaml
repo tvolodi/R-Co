@@ -1,0 +1,729 @@
+issue_id: ISS-0169
+github_issue: https://github.com/tvolodi/R-Co/issues/495
+run_id: WF03-ISS-0169-20260806
+step: "01"
+agent: ISSUE-FIXER
+phase: diagnosis
+severity: MAJOR
+
+summary: >
+  LUA-05..16 are not "implemented but untested". Empirical execution against the
+  real, statically-linked LuaJIT (ISS-0161) shows the subsystem is a registration
+  skeleton: all eight platform.* functions exist and are reachable, but NONE of
+  them performs a capability check, NONE reads or writes real state, and the three
+  limiters (instruction/memory/timeout) are never installed by executeScript at all.
+  Two of the three limiter files do not even compile - a fact `zig build test-lua`
+  cannot see. Separately, the sandbox is over-restrictive in a way that makes
+  ordinary Lua unusable: luaopen_base is never called, so `pairs`, `pcall`, `error`,
+  `type`, `print`, `setmetatable` and `_G` are all absent from any script run
+  through executeScript.
+
+method:
+  description: >
+    Every claim below was verified by executing code, not by reading it. A temporary
+    build target (src/iss0169_probe_root.zig + a build.zig patch) was added, driven
+    against the real vendored LuaJIT, and removed afterwards. build.zig was restored
+    via `git checkout build.zig`; the probe file was deleted. Working tree is clean
+    apart from this run's artefacts.
+  commands_run:
+    - "zig build test-lua                     # exit 0 (baseline, green)"
+    - "zig build iss0169-probe                # temporary target, real LuaJIT linked"
+    - "grep -rn '<limiter symbols>' src/ --include=*.zig   # caller census"
+    - ".venv/Scripts/python.exe tools/reqctl.py show LUA-05..LUA-16"
+
+# ---------------------------------------------------------------------------
+# Empirical evidence
+# ---------------------------------------------------------------------------
+
+evidence:
+
+  E1_caller_census:
+    claim: >
+      No code path anywhere in src/ installs an instruction limiter, a memory
+      limiter, a timeout, a manifest validation, a structured logger, a Lua-side
+      service catalog, or a Lua SCRIPT_ERROR/SCRIPT_FAILED event.
+    method: >
+      grep -rn for installHook, InstructionLimiter, MemoryLimiter, TimeoutContext,
+      validateManifest, StructuredLogger, ServiceCatalog, EventRecord across src/.
+    result: >
+      Every hit under src/lua/ is either the definition itself, a re-export line in
+      src/lua/mod.zig, or a pin in src/lua_test_root.zig. src/lua/executor.zig
+      imports instruction_limiter, memory_limiter, timeout_ctx, structured_logger,
+      service_catalog and events at the top of the file and then references none of
+      them. The only real TimeoutContext user in the repo is src/wasm/executor.zig,
+      which uses src/wasm/timeout.zig (a different file).
+    verdict: >
+      The limiter machinery is DEAD CODE relative to executeScript. It is not
+      "untested"; it is unreachable.
+
+  E2_executor_has_no_limits:
+    claim: executeScript installs no hook, no bounded allocator, and no timeout.
+    method: read src/lua/executor.zig lines 98-184 end to end.
+    result: >
+      executeScript does exactly: bytecode check -> createState() -> loadSafeStdlib
+      -> registerHostAPI -> luaL_loadstring -> lua_pcall -> extractValue. createState
+      calls `bindings.lua_newstate(defaultAlloc, null)`; defaultAlloc is a plain
+      malloc/realloc/free wrapper with NO ceiling and NO limiter userdata. There is
+      no lua_sethook call and no wall-clock guard anywhere in the function.
+    verdict: >
+      LUA-08, LUA-09 and LUA-10 have zero enforcement on the production path. A
+      script containing `while true do end` submitted to executeScript hangs the
+      calling thread forever.
+
+  E3_instruction_limiter_does_not_compile:
+    claim: src/lua/instruction_limiter.zig contains a hard compile error.
+    method: >
+      Add a probe test that genuinely calls `il.installHook(L, &limiter)` (not
+      comptime-eliminated) and build.
+    result: |
+      src/lua/instruction_limiter.zig:39:25: error: value of type 'c_int' ignored
+          bindings.lua_sethook(L, hookCallback, LUA_MASKCOUNT, 100);
+      Under the ISS-0153 stubs lua_sethook was declared returning void; ISS-0161
+      replaced it with the real `pub extern fn lua_sethook(...) c_int`, which made
+      this call site invalid. Nothing caught it because nothing calls installHook.
+    verdict: LUA-08 implementation has never been compiled since ISS-0161 landed.
+
+  E4_memory_limiter_does_not_compile:
+    claim: src/lua/memory_limiter.zig contains a hard compile error.
+    method: Add a probe that constructs a MemoryLimiter and build.
+    result: |
+      src/lua/memory_limiter.zig:13:22: error: root source file struct 'Thread'
+        has no member named 'Mutex'
+          mutex: std.Thread.Mutex,
+      std.Thread.Mutex does not exist in Zig 0.16. Note src/oidc/jwks.zig:322 uses
+      the same stale spelling; whether that file is analysed was not determined here.
+    verdict: LUA-09 implementation has never been compiled under Zig 0.16.
+
+  E5_test_lua_is_green_anyway:
+    claim: >
+      `zig build test-lua` exits 0 despite E3 and E4, so no existing gate can see
+      either error.
+    method: run `zig build test-lua` after confirming E3/E4.
+    result: exit 0.
+    cause: >
+      src/lua_test_root.zig pins these two files with bare TYPE references
+      (`_ = lua.instruction_limiter.InstructionLimiter;`,
+       `_ = lua.memory_limiter.MemoryLimiter;`). Zig resolves struct field types
+      lazily, so `std.Thread.Mutex` is never looked up; and `_ = someFn;` takes an
+      address without analysing the body, so the lua_sethook error is never
+      reported. refAllDecls is shallow and closes neither gap.
+    forwarded_as: ISS-0172 / https://github.com/tvolodi/R-Co/issues/500
+
+  E6_instruction_hook_design_works_but_error_is_garbage:
+    claim: >
+      The installHook DESIGN does terminate an infinite loop, but the error it
+      produces is not structured and does not identify the limit.
+    method: >
+      Reimplement installHook/hookCallback verbatim in the probe with only the
+      `_ =` discard added, install on a real state, run `while true do end`.
+    result: |
+      [LUA-08] pcall status=2 executed=1000 limit=1000
+      [LUA-08] err='upval'
+      status=2 is LUA_ERRRUN - the loop WAS terminated at the configured limit.
+      The message is 'upval': hookCallback calls `lua_error(L)` without first
+      pushing an error value, so LuaJIT raises whatever happens to sit on the
+      stack top (here an internal upvalue name).
+    verdict: >
+      LUA-08 acceptance criterion 1 ("infinite loop terminates within the limit")
+      is satisfiable by this design; criterion 2 ("error is structured and
+      identifies the script and the limit exceeded") is NOT met and needs a real
+      fix, not just a test.
+    additional_defect: >
+      Storing the limiter as a plain Lua global named `__limiter__` is script-
+      reachable: any script can `__limiter__ = nil` to make hookCallback's
+      `ud == null` early-return fire and disable its own instruction limit. The
+      limiter belongs in the registry (LUA_REGISTRYINDEX) or in the lua_Alloc
+      userdata slot, not in _G.
+
+  E7_memory_limiter_design_works_but_accounting_is_wrong:
+    claim: >
+      MemoryLimiter.alloc IS usable as a lua_Alloc and does abort a runaway
+      allocation cleanly, but its accounting never reports the limit as exceeded.
+    method: >
+      Reimplement the alloc body verbatim in the probe minus the mutex field, pass
+      it to lua_newstate with a 16 MB cap, run
+      `local t={} for i=1,2000000 do t[i]=i end`.
+    result: |
+      [LUA-09] state created; current=12752 peak=12752
+      [LUA-09] pcall status=4 current=8406335 peak=8406335
+      status=4 is LUA_ERRMEM. The host did NOT crash - LUA-09's acceptance
+      criterion ("fails cleanly without crashing the host") is met by the design.
+    verdict: >
+      However current (8 406 335) never reached max (16 777 216), so
+      wasLimitExceeded() returns FALSE after a genuine OOM abort. The accounting
+      is approximate: `size_delta = nsize - osize` ignores that Zig's allocator
+      returns blocks larger than requested, and frees subtract osize rather than
+      the real block size. Any test asserting wasLimitExceeded() will fail.
+
+  E8_sandbox_is_over_restrictive_base_lib_never_opened:
+    claim: >
+      loadSafeStdlib never calls luaopen_base, so scripts run through executeScript
+      have no core Lua functions at all.
+    method: >
+      Run a battery of `return <global> ~= nil` scripts through executeScript with
+      an empty capability set.
+    result: |
+      platform      = present      math        = present
+      string        = present      table       = present
+      string.rep    = present      math.floor  works (returns 4)
+      io/os/package/debug         = absent  (correct, LUA-03/LUA-14)
+      load/loadstring/loadfile/dofile/require = absent  (correct, LUA-03)
+      string.dump                 = absent  (correct, LUA-03)
+      -- but also absent:
+      print, pairs, ipairs, pcall, error, type, setmetatable, _G
+      An earlier probe using `type(x)` failed on EVERY expression with
+      "attempt to call global 'type' (a nil value)", which is how this surfaced.
+    verdict: >
+      Two consequences. (a) src/lua/stdlib.zig's removeGlobalIfExists calls for
+      load/loadstring/loadfile/dofile are currently no-ops through executeScript,
+      because luaopen_base never installed them - the ISS-0161 loadfile fix is
+      correct but is protecting a door that is not currently open on this path.
+      Note src/lua/execution_test.zig calls luaopen_base explicitly in its
+      sandboxedState() helper, so the existing LUA-03 tests exercise a DIFFERENT,
+      more permissive state than executeScript actually builds. (b) No realistic
+      business script can run: no pcall, no pairs, no error, no type.
+      This is a genuine design decision for CODE-DESIGNER, not a mere test gap.
+
+  E9_no_capability_check_fires_anywhere:
+    claim: >
+      With a completely EMPTY CapabilitySet, every platform.* function that
+      LUA-06 requires to be capability-gated executes successfully.
+    method: >
+      executeScript with `CapabilitySet.init(alloc)` and no `.add()` calls, then
+      invoke each host function.
+    result: |
+      platform.now()                    -> '2026-08-22T21:58:05.189Z'   (correct: no cap required)
+      platform.read_variable('x')       -> nil    (should raise: variable:read denied)
+      platform.write_variable('x','y')  -> nil    (should raise: variable:write denied)
+      platform.log('INFO','m')          -> nil    (should raise: audit:log denied)
+      platform.emit_event('E',{})       -> nil    (should raise: event:emit denied)
+      platform.get_instance_state()     -> table  (should raise: instance:read denied)
+      platform.call_service('svc','GET','/p') -> '{}'  (should raise: service:call:svc denied)
+      platform.fail('boom')             -> script terminated, msg 'boom'  (correct)
+    root_cause_in_source: >
+      Every host_api/*.zig register() function begins with `_ = context;`. The
+      ExecutionContext - and therefore the CapabilitySet - is discarded at
+      registration time and is not available to the C closure at call time. The
+      closures are registered with lua_pushcclosure(L, fn, 0), i.e. ZERO upvalues,
+      so there is no channel by which a capability set could reach them.
+    verdict: >
+      LUA-06 is 0% implemented. This is an architectural gap (context plumbing),
+      not a missing test. It is also the single highest-severity finding in this
+      diagnosis: a Lua script today has unconditional access to every host
+      function regardless of its declared manifest.
+
+  E10_host_functions_are_no_ops:
+    claim: The four state-touching host functions do nothing.
+    method: read each host_api/*.zig body.
+    result: >
+      read_variable  - validates arg is a string, then `_ = key;` and pushes nil.
+      write_variable - validates args, then `_ = key;` and pushes nil. Nothing staged.
+      log            - validates args, discards both, pushes nil. StructuredLogger
+                       is never called.
+      emit_event     - validates arg 1, ignores the payload entirely, pushes nil.
+      get_instance_state - ignores everything, pushes an empty table.
+      call_service   - has a REAL simulation path (simulation_interceptor) but its
+                       non-simulation branch pushes the hardcoded literal '{}' and
+                       status 200; it never consults src/lua/service_catalog.zig.
+      now            - genuinely implemented (real clock + simulation clock, ISO 8601).
+      fail           - genuinely terminates the script and surfaces the reason.
+    verdict: >
+      This is the ISS-0155 anti-pattern verbatim ("a function fetches state, discards
+      it with `_ =`, and returns success"). LUA-11, LUA-12, LUA-13 have no
+      implementation behind the function name.
+
+  E11_error_reporting_is_unstructured:
+    claim: >
+      Host-function argument errors produce meaningless messages, and there is no
+      SCRIPT_ERROR / SCRIPT_FAILED event emission anywhere.
+    method: call host functions with wrong arity; inspect result.error_message.
+    result: |
+      platform.read_variable()          -> error_message = '1.0954944061662e-311'
+      platform.log('only-one-arg')      -> error_message = 'only-one-arg'
+      platform.write_variable(123, 1)   -> SUCCEEDED (no error at all)
+    analysis: >
+      Every arity/type guard in host_api/*.zig calls `lua_error(L)` WITHOUT first
+      pushing a message, so LuaJIT raises whatever is on the stack top - the
+      caller's own argument, or uninitialised stack garbage. The numeric-key case
+      succeeds because Lua 5.1's lua_isstring() returns true for numbers
+      (coercion), so `lua_isstring(L, 1)` is the wrong guard for "must be a string";
+      lua_type(L,1) == LUA_TSTRING is required.
+      Separately: src/lua/events.zig defines SCRIPT_ERROR and SCRIPT_FAILED
+      payloads, but nothing constructs or appends them. executeScript returns a
+      flat ScriptResult with a plain string message - no stack trace, no
+      instruction count, no capability state, no event-store append.
+    verdict: LUA-16 is 0% implemented on the emission side. LUA-15 partially works.
+
+  E12_manifest_is_never_consulted:
+    claim: validateManifest exists and is correct-looking, but is called by nothing.
+    method: caller census (E1) plus reading executeScript.
+    result: >
+      manifest.validateManifest is referenced only by src/lua_test_root.zig's pin.
+      ExecutionContext has fields {allocator, capabilities, instance_id, actor_id} -
+      no manifest, no manifest_hash, no limits. There is no load-time path at all:
+      executeScript takes raw source text and runs it.
+      Additionally, ScriptManifest.deinit frees only the outer `capabilities` slice
+      and leaks every duped capability string that validateManifest allocated.
+    verdict: >
+      LUA-07 has a validator with no caller and no hash-recording path. Both
+      acceptance criteria ("modified manifest rejected at load time", "manifest
+      hash appears in the execution audit record") are unimplementable without a
+      load-time entry point that does not exist.
+
+# ---------------------------------------------------------------------------
+# Per-requirement analysis
+# ---------------------------------------------------------------------------
+
+per_requirement:
+
+  - id: LUA-05
+    title: Host API registration
+    demands: >
+      Register exactly the platform.* functions from Architecture 5.2 and no
+      others. Each function MUST check the caller's capability grant.
+    exists: >
+      host_api/mod.zig creates the platform table and registers all 8 functions.
+      Probe confirms all 8 reachable and platform.undeclared_function is nil.
+    missing_or_broken: >
+      The capability half of the requirement is entirely absent (see LUA-06).
+    classification: PARTIALLY_IMPLEMENTED
+    needs: src_changes_and_tests
+    src_work: >
+      Plumb ExecutionContext into every closure (upvalue or registry), then have
+      each function consult it. Registration itself is sound.
+
+  - id: LUA-06
+    title: Capability check at call site
+    demands: >
+      Every host function checks capabilities before executing; a missing
+      capability raises a Lua error naming function, required cap, granted caps.
+    exists: >
+      capabilities.zig (CapabilitySet with add/has/summary) is complete and
+      compiles. summary() already produces the "granted capabilities" string the
+      error message needs.
+    missing_or_broken: >
+      ZERO of the 8 host functions calls has(). Every register() discards context
+      with `_ = context;` and registers a 0-upvalue closure, so the capability set
+      is not even in scope at call time. Verified empirically: an empty
+      CapabilitySet permits all 7 gated calls (E9).
+    classification: NOT_IMPLEMENTED
+    needs: src_changes_and_tests
+    severity_note: >
+      Highest-severity finding. This is a security control that does not exist.
+      Note capabilities.zig's StandardCapabilities uses "variable:read"/"audit:log"
+      while tests/unit/lua_test.zig and parts of the specs use "variable:read:*"/
+      "log:write" - the canonical strings must be fixed before tests are written.
+
+  - id: LUA-07
+    title: Capability manifest validation
+    demands: >
+      Validate manifest against the script artifact at LOAD time; record the
+      manifest hash with each execution.
+    exists: manifest.zig validateManifest + Limits bounds. Compiles.
+    missing_or_broken: >
+      No caller (E12). No load-time entry point. ExecutionContext carries no
+      manifest or manifest_hash. Nothing records a hash anywhere. Also:
+      validateManifest hashes only the LIMITS and capability strings, never the
+      script source, so a "modified manifest without re-registration" cannot be
+      detected against the artifact as the requirement demands.
+      ScriptManifest.deinit leaks the duped capability strings.
+    classification: NOT_IMPLEMENTED
+    needs: src_changes_and_tests
+
+  - id: LUA-08
+    title: Instruction limit
+    demands: >
+      Configurable max instruction count; exceeding it terminates the script with
+      a structured error identifying the script and the limit.
+    exists: instruction_limiter.zig with installHook + count hook.
+    missing_or_broken: >
+      (a) DOES NOT COMPILE - lua_sethook c_int discarded (E3).
+      (b) Never called by executeScript (E1/E2).
+      (c) The design DOES terminate an infinite loop when made to compile (E6),
+          but lua_error is raised with no pushed message, producing 'upval'.
+      (d) Limiter is stored in a script-writable global __limiter__, so a script
+          can disable its own limit (E6).
+      (e) Counting is approximate (+100 per hook) and never reads the real count.
+    classification: BROKEN
+    needs: src_changes_and_tests
+
+  - id: LUA-09
+    title: Memory limit
+    demands: >
+      Configurable memory limit; a 1 GB allocation under a 16 MB cap fails cleanly
+      without crashing the host.
+    exists: memory_limiter.zig MemoryLimiter with a lua_Alloc-shaped alloc().
+    missing_or_broken: >
+      (a) DOES NOT COMPILE - std.Thread.Mutex removed in Zig 0.16 (E4).
+      (b) Never wired: createState passes defaultAlloc (unbounded), not the limiter.
+      (c) When made to compile, the design DOES work - LUA_ERRMEM, host survives (E7).
+      (d) Accounting under-counts, so wasLimitExceeded() is false after a real OOM.
+    classification: BROKEN
+    needs: src_changes_and_tests
+
+  - id: LUA-10
+    title: Wall clock timeout
+    demands: >
+      Configurable wall-clock timeout enforced BY THE HOST, from OUTSIDE the Lua
+      state, and effective even when the script blocks in a host function.
+    exists: timeout.zig TimeoutContext (compiles; ISS-0153 fixed its @divExact panic).
+    missing_or_broken: >
+      Nothing calls checkTimeout on the Lua path. More fundamentally,
+      TimeoutContext is a passive polled struct - it can only fire if someone
+      calls checkTimeout(). Since lua_pcall blocks the calling thread and no hook
+      or watchdog thread exists, there is currently NO mechanism that could
+      satisfy "enforced from outside the Lua state" or "terminable while blocked
+      in a host function". This needs a design (watchdog thread + lua_sethook
+      cancellation, or a deadline checked inside the count hook), not just wiring.
+    classification: NOT_IMPLEMENTED
+    needs: src_changes_and_tests
+    design_risk: HIGH
+
+  - id: LUA-11
+    title: Variable read/write
+    demands: >
+      read_variable returns current value or nil; write_variable STAGES a write;
+      writes applied atomically on success, DISCARDED on failure.
+    exists: two host functions that validate argument shapes.
+    missing_or_broken: >
+      Both discard the key with `_ =` and push nil (E10). There is no staging
+      buffer, no commit-on-success, no discard-on-failure, and no connection to
+      instance state. ExecutionContext has no variable store handle.
+    classification: NOT_IMPLEMENTED
+    needs: src_changes_and_tests
+
+  - id: LUA-12
+    title: Service call
+    demands: >
+      call_service invokes a registered service synchronously; response returned
+      as a Lua TABLE; failures return a STRUCTURED ERROR, not a Lua error.
+    exists: >
+      call_service.zig with a working simulation-mode path via
+      simulation_interceptor. service_catalog.zig (Lua-side) exists and compiles.
+    missing_or_broken: >
+      Non-simulation branch returns hardcoded '{}' / 200 (E10). Returns
+      (string, number) not a table - contradicts the requirement. Never consults
+      src/lua/service_catalog.zig - that module has no callers at all (E1). No
+      structured error table on failure; failures call lua_error instead, which
+      the requirement explicitly forbids.
+    classification: NOT_IMPLEMENTED
+    needs: src_changes_and_tests
+
+  - id: LUA-13
+    title: Logging
+    demands: >
+      platform.log emits a structured entry tagged with script identity,
+      instance ID and trace ID, appearing in OBS-01 structured output.
+    exists: structured_logger.zig StructuredLogger + StructuredLogEntry (compiles).
+    missing_or_broken: >
+      host_api/log.zig never constructs an entry and never calls the logger; it
+      discards level and message and pushes nil (E10). StructuredLogger has no
+      callers (E1). No trace_id exists on ExecutionContext. StructuredLogger.log
+      also uses std.io.getStdErr(), which needs checking against Zig 0.16.
+    classification: NOT_IMPLEMENTED
+    needs: src_changes_and_tests
+
+  - id: LUA-14
+    title: Time source
+    demands: platform.now() returns ISO 8601 UTC; os.time MUST NOT be available.
+    exists: >
+      host_api/now.zig is genuinely implemented (real clock + simulation clock,
+      correct ISO 8601 formatting). time_source.zig compiles.
+    missing_or_broken: >
+      Nothing. Probe confirms platform.now() returns '2026-08-22T21:58:05.189Z'
+      and that `os` is nil in the sandbox. Both acceptance criteria hold TODAY.
+      Caveat: the returned timestamp came from the simulation clock in the probe
+      context; a test must cover the non-simulation path explicitly.
+    classification: IMPLEMENTED
+    needs: tests_only
+    note: The only one of the twelve that is genuinely "implemented but untested".
+
+  - id: LUA-15
+    title: Structured failure
+    demands: >
+      platform.fail terminates the script and propagates a structured failure;
+      engine records a SCRIPT_FAILED event and routes per the node's error policy.
+    exists: >
+      host_api/fail.zig terminates execution and the reason reaches the caller -
+      probe shows error_message = 'boom' for platform.fail('boom').
+      events.zig defines the ScriptFailedPayload shape.
+    missing_or_broken: >
+      No SCRIPT_FAILED event is ever constructed or appended (E1/E11). fail.zig
+      stashes __failure_reason__/__failure_details__/__explicit_failure__ in
+      script-writable GLOBALS, which (a) a script can forge and (b) executeScript
+      never reads back. There is no engine routing hook. Also lua_pushstring is
+      called with a non-NUL-terminated slice pointer (@ptrCast of reason.ptr) -
+      a latent read-past-end bug.
+    classification: PARTIALLY_IMPLEMENTED
+    needs: src_changes_and_tests
+
+  - id: LUA-16
+    title: Runtime error capture
+    demands: >
+      Uncaught Lua errors converted to structured SCRIPT_ERROR events WITH stack
+      trace, instruction count consumed, and capability state at failure; event
+      appended to the instance event log.
+    exists: >
+      errors.zig LuaError taxonomy + statusCodeFromError + errorDescription.
+      events.zig ScriptErrorPayload has exactly the right fields.
+      executeScript does capture pcall failure into result.error_message - the
+      probe shows a real LuaJIT message for `local x = nil return x.y`.
+    missing_or_broken: >
+      No SCRIPT_ERROR event is ever constructed or appended. No stack trace is
+      captured (lua_pcall is called with errfunc=0; a traceback handler is needed).
+      No instruction count (the limiter is not installed). No capability state.
+      No event-store integration.
+    classification: PARTIALLY_IMPLEMENTED
+    needs: src_changes_and_tests
+
+# ---------------------------------------------------------------------------
+# Root cause
+# ---------------------------------------------------------------------------
+
+root_cause:
+  statement: >
+    ISS-0169 was filed on the premise that LUA-05..16 are implemented but
+    unverified, and that this run therefore only needs tests. That premise is
+    false. What exists in src/lua/ is a Stage-8 scaffold written in May 2026
+    against bindings that could never execute: every host function was stubbed to
+    "validate arguments, discard them, return nil", every limiter was written but
+    never wired into executeScript, and every supporting module (manifest,
+    structured_logger, service_catalog, events) was written with no caller. Because
+    luajit_bindings.zig was unresolvable and then stubbed, nothing ever ran, so the
+    scaffold's emptiness was indistinguishable from the stubs' emptiness.
+  why_it_survived: >
+    Three independent gates failed to see it.
+    (1) The requirements were marked RELEASED in May 2026 on the strength of a test
+        report whose tests could not execute any Lua.
+    (2) ISS-0153 wired src/lua/ into a build target, which caught SYNTAX rot but
+        proved only that the files type-check - and, per ISS-0172/GH #500, its
+        type-only pins do not even do that for instruction_limiter.zig and
+        memory_limiter.zig.
+    (3) ISS-0161 linked a real LuaJIT and correctly scoped itself to LUA-01..05,
+        so the first four requirements got real tests while 05..16 did not.
+  the_generalisable_lesson: >
+    This is the ISS-0155 anti-pattern at subsystem scale: a dozen functions with
+    the right names, the right signatures, the right error taxonomies and the right
+    payload structs, all returning success without doing the work. The presence of
+    a well-formed module (manifest.zig, structured_logger.zig, service_catalog.zig,
+    events.zig) proved nothing, because none of them had a caller.
+
+# ---------------------------------------------------------------------------
+# Recommended scope for CODE-DESIGNER (Step 2)
+# ---------------------------------------------------------------------------
+
+recommended_scope:
+
+  classification: >
+    Type E (novel / cross-cutting prose design, src/design/lua_runtime.md). This is
+    not a CRUD endpoint, a list page, a migration or a React Flow node. It touches
+    the executor, all eight host functions, three limiters, the manifest path, and
+    the event-store boundary.
+
+  scope_warning: >
+    This is materially larger than a normal WF-03 fix. It is 12 MUST requirements
+    of which ONE (LUA-14) is genuinely done, THREE are partial (LUA-05, LUA-15,
+    LUA-16), TWO are broken-and-non-compiling (LUA-08, LUA-09), and SIX are not
+    implemented at all (LUA-06, LUA-07, LUA-10, LUA-11, LUA-12, LUA-13). The
+    12 specs together define 169 test cases. ORCH should consider splitting this
+    into sequential runs along the boundaries below rather than attempting all
+    twelve on one branch; note CLAUDE.md caps WF-02 at 4 requirements per run for
+    exactly this blast-radius reason.
+
+  design_must_decide:
+
+    - id: D1
+      title: Context plumbing (blocks LUA-05, LUA-06, LUA-11, LUA-12, LUA-13)
+      question: >
+        How does ExecutionContext reach a lua_CFunction? Today every closure is
+        registered with 0 upvalues and every register() discards context.
+      options: >
+        (a) lua_pushlightuserdata(context) as upvalue 1 of each closure
+            (lua_pushcclosure(L, fn, 1)), read via lua_upvalueindex(1);
+        (b) store the context pointer in LUA_REGISTRYINDEX under a private key.
+      recommendation: >
+        Prefer (b) or (a) over any _G-based approach. Explicitly FORBID storing
+        anything security-relevant in a script-writable global - the existing
+        __limiter__, __failure_reason__ and __explicit_failure__ globals are all
+        forgeable by the script they are meant to constrain.
+      note: lua_upvalueindex is NOT currently declared in luajit_bindings.zig.
+
+    - id: D2
+      title: Sandbox base-library policy (blocks LUA-05, LUA-03 regression risk)
+      question: >
+        loadSafeStdlib never calls luaopen_base, so pairs/ipairs/pcall/error/type/
+        setmetatable/_G are absent and no realistic script can run. Should base be
+        opened and pruned, or should the platform commit to a base-less sandbox?
+      recommendation: >
+        Open luaopen_base and then prune the dangerous entries (load, loadstring,
+        loadfile, dofile, dofile, require, getfenv/setfenv, rawequal/rawget/rawset
+        as policy dictates, collectgarbage, print) - which is what stdlib.zig's
+        removeGlobalIfExists calls were clearly WRITTEN for and currently no-op on.
+      must_also_fix: >
+        src/lua/execution_test.zig's sandboxedState() calls luaopen_base itself, so
+        the existing LUA-03 tests currently assert against a state that
+        executeScript does not build. Whichever policy is chosen, the test helper
+        and executeScript must construct the SAME state, or the LUA-03 evidence is
+        worthless. This is a real (if narrow) test/implementation divergence and
+        should be called out in the design.
+
+    - id: D3
+      title: Limit enforcement wiring (blocks LUA-08, LUA-09, LUA-10)
+      question: >
+        Where do max_instructions / max_memory_bytes / timeout_seconds come from,
+        and where are they installed?
+      requires: >
+        executeScript must accept limits (probably via a validated ScriptManifest
+        on ExecutionContext, which also unblocks LUA-07), must pass MemoryLimiter
+        .alloc to lua_newstate instead of defaultAlloc, and must call
+        installHook before lua_pcall.
+      must_fix_in_design:
+        - "lua_sethook's c_int return must be consumed (E3)."
+        - "std.Thread.Mutex must be replaced with the Zig 0.16 spelling (E4)."
+        - "hookCallback must PUSH a structured message before lua_error, or the
+           error is 'upval' garbage (E6)."
+        - "Memory accounting must be exact enough that wasLimitExceeded() is true
+           after a real LUA_ERRMEM (E7)."
+        - "The limiter must not live in _G (E6)."
+
+    - id: D4
+      title: Wall-clock timeout mechanism (LUA-10)
+      question: >
+        The requirement demands enforcement from OUTSIDE the Lua state, effective
+        while the script blocks inside a host function. A polled TimeoutContext
+        cannot deliver this.
+      recommendation: >
+        Design an explicit mechanism - a watchdog thread that sets a
+        cancellation flag which the count hook observes, plus a deadline check at
+        the entry of every host function that can block. State clearly which of
+        the two acceptance criteria each part satisfies.
+      risk: HIGH - this is the one requirement with no viable partial implementation today.
+
+    - id: D5
+      title: Event emission boundary (LUA-15, LUA-16)
+      question: >
+        Who appends SCRIPT_FAILED / SCRIPT_ERROR to the instance event log, and
+        with what stack trace / instruction count / capability state?
+      requires: >
+        A traceback error handler passed as lua_pcall's errfunc (currently 0), the
+        instruction count read back from the installed limiter, capability summary
+        from CapabilitySet.summary(), and an event-store handle on the context or
+        a caller-side emission contract. Decide whether src/lua/ appends directly
+        or returns a payload the engine appends - the latter keeps executor.zig
+        free of I/O and is consistent with the transition.zig purity precedent.
+
+    - id: D6
+      title: Argument validation and error message discipline
+      question: All host functions call lua_error with nothing pushed (E11).
+      requires: >
+        A shared helper that pushes a formatted message and then raises, plus
+        replacing lua_isstring with lua_type == LUA_TSTRING where a true string is
+        required (Lua 5.1 lua_isstring accepts numbers - this is why
+        platform.write_variable(123, 1) silently succeeded).
+
+    - id: D7
+      title: Canonical capability strings
+      question: >
+        capabilities.zig uses "variable:read"/"variable:write"/"audit:log"/
+        "event:emit"/"instance:read"; tests/unit/lua_test.zig and parts of the
+        specs use "variable:read:*"/"log:write". These must be reconciled BEFORE
+        tests are written, or every capability test encodes the wrong string.
+
+  out_of_scope_for_this_run:
+    - id: ISS-0172
+      github: https://github.com/tvolodi/R-Co/issues/500
+      why: >
+        The test-root pin blind spot is a repo-wide tooling defect affecting eight
+        test roots. Filed and queued; fixed in its own run.
+      but_note: >
+        Until ISS-0172 is fixed, BACKEND-DEV in Step 3 MUST verify the limiter
+        fixes with a target that genuinely CALLS installHook and constructs a
+        MemoryLimiter. `zig build test-lua` going green does NOT prove those two
+        files compile.
+
+# ---------------------------------------------------------------------------
+# Risks
+# ---------------------------------------------------------------------------
+
+risks:
+
+  - id: R1
+    severity: HIGH
+    description: >
+      Scope. Twelve MUST requirements, 169 spec test cases, and six of the twelve
+      need net-new implementation rather than wiring. Attempting all twelve on one
+      branch risks a very large PR with a long red window.
+    mitigation: >
+      Recommend ORCH split into sequential runs: (1) LUA-05/06/07 context plumbing
+      + capability enforcement + manifest, (2) LUA-08/09/10 limiters,
+      (3) LUA-11/12/13 stateful host API, (4) LUA-14/15/16 time + events.
+      Group 1 is a prerequisite for 3 and 4.
+
+  - id: R2
+    severity: HIGH
+    description: >
+      LUA-06 is a security control that currently does not exist. Any Lua script
+      the platform executes today has unconditional access to every host function
+      regardless of its declared manifest. This is not merely untested.
+    mitigation: >
+      Treat LUA-06 as the highest-priority sub-scope. Consider whether the Lua
+      execution path is reachable from any production entry point today - if it is,
+      this warrants its own BLOCKER issue rather than sitting inside a MAJOR.
+    action_taken: >
+      NOT separately filed by this diagnosis, because it is squarely inside
+      ISS-0169's own affected_areas and acceptance criteria ("LUA-06/07 capability
+      denial tested"). Flagged here for ORCH's severity re-assessment.
+
+  - id: R3
+    severity: MEDIUM
+    description: >
+      LUA-10's "enforced from outside the Lua state" has no viable implementation
+      in the current single-threaded executeScript shape. A design that only polls
+      TimeoutContext will satisfy the words but not the requirement, and will
+      reproduce the ISS-0155 pattern this diagnosis is documenting.
+    mitigation: CODE-DESIGN-VALIDATOR must reject a polled-only design for LUA-10.
+
+  - id: R4
+    severity: MEDIUM
+    description: >
+      Test/implementation divergence in src/lua/execution_test.zig - its
+      sandboxedState() opens luaopen_base while executeScript does not, so the
+      currently-green LUA-03 tests describe a state the product never builds.
+      Changing the base-library policy (D2) will move these tests either way.
+    mitigation: >
+      Whichever policy D2 chooses, unify the state construction so the test helper
+      calls the same code path executeScript does.
+
+  - id: R5
+    severity: LOW
+    description: >
+      Memory-accounting exactness (E7) may prove awkward: Zig allocators can return
+      more than requested, and MemoryLimiter frees using osize rather than the true
+      block size. A test asserting an exact byte ceiling will be flaky.
+    mitigation: >
+      Assert on the OBSERVABLE contract (LUA_ERRMEM raised, host survives,
+      wasLimitExceeded() true) rather than on an exact byte count.
+
+  - id: R6
+    severity: LOW
+    description: >
+      src/oidc/jwks.zig:322 also uses `std.Thread.Mutex`. If that file is analysed
+      by any target it should already be failing; if it is not analysed, it is
+      another instance of ISS-0172's blind spot. Not investigated here.
+    mitigation: Verify during the ISS-0172 run.
+
+# ---------------------------------------------------------------------------
+
+conclusion:
+  premise_of_iss0169: >
+    "12 MUST requirements are executable for the first time but unverified;
+     their spec cases were never written."
+  corrected_premise: >
+    "12 MUST requirements are executable for the first time and that execution
+     reveals that 11 of them are not implemented, partially implemented, or do not
+     compile. Writing tests is the LAST step of this fix, not the whole of it."
+  next_action: Route to CODE-DESIGNER (Step 2)
+  recommendation_to_orch: >
+    Consider re-scoping ISS-0169 into four sequential WF-03 runs along the
+    boundaries in R1, and re-assessing severity in light of R2 (LUA-06 is an
+    absent security control, not a missing test).

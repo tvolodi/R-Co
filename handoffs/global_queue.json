@@ -172,6 +172,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0172",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/500",
+      "title": "Test-root type-only pins hide compile errors in instruction_limiter.zig / memory_limiter.zig",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-06T22:05:23Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

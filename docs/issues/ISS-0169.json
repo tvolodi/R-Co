@@ -7,7 +7,7 @@
   "discovered_at": "2026-08-06T20:03:10Z",
   "discovered_by": "BACKEND-DEV WF03-ISS-0161-20260806 Step 3",
   "discovered_while_fixing": "ISS-0161",
-  "run_id": null,
+  "run_id": "WF03-ISS-0169-20260806",
   "affected_areas": [
     "src/lua/host_api",
     "src/lua/instruction_limiter.zig",
@@ -26,5 +26,40 @@
   "notes": [
     "Filed per ISSUE_QUEUE.md forwarding rules rather than expanding ISS-0161's scope.",
     "Motivating evidence: the first sandbox rule actually exercised under ISS-0161 (loadfile removal) turned out to be BROKEN. These 12 requirements have never been executed."
-  ]
+  ],
+  "diagnosis": {
+    "diagnosed_at": "2026-08-06T22:05:22Z",
+    "diagnosed_by": "ISSUE-FIXER WF03-ISS-0169-20260806 Step 1",
+    "report": "docs/issue-reports/ISS-0169-diagnosis.yaml",
+    "premise_correction": "The issue's premise ('implemented but untested') is false. Execution against real LuaJIT shows 11 of the 12 requirements are not implemented, only partially implemented, or do not compile. Only LUA-14 is genuinely implemented-but-untested.",
+    "root_cause": "src/lua/ is a Stage-8 scaffold written in May 2026 against bindings that could never execute. Every host_api register() discards ExecutionContext with `_ = context;` and registers a 0-upvalue closure, so no capability set is reachable at call time and NO capability check fires anywhere (verified: an empty CapabilitySet permits all 7 gated calls). The four state-touching host functions validate their arguments, discard them with `_ =`, and push nil. executeScript installs no instruction hook, no bounded allocator and no timeout, so instruction_limiter.zig / memory_limiter.zig / timeout.zig are dead code with no caller anywhere in src/. Two of those three files do not even compile (instruction_limiter.zig:39 discards lua_sethook's c_int; memory_limiter.zig:13 uses std.Thread.Mutex, removed in Zig 0.16) - invisible because src/lua_test_root.zig pins them with type-only references that force neither field-type resolution nor function-body analysis. Additionally loadSafeStdlib never calls luaopen_base, so pairs/pcall/error/type/setmetatable/_G are absent from any script run through executeScript, making stdlib.zig's load/loadstring/loadfile removals no-ops on that path and rendering realistic scripts unrunnable. This is the ISS-0155 anti-pattern at subsystem scale: correct names, correct signatures, correct error taxonomies and correct payload structs, all returning success without doing the work.",
+    "classification_summary": {
+      "IMPLEMENTED_needs_tests_only": [
+        "LUA-14"
+      ],
+      "PARTIALLY_IMPLEMENTED_needs_src_changes": [
+        "LUA-05",
+        "LUA-15",
+        "LUA-16"
+      ],
+      "BROKEN_does_not_compile": [
+        "LUA-08",
+        "LUA-09"
+      ],
+      "NOT_IMPLEMENTED": [
+        "LUA-06",
+        "LUA-07",
+        "LUA-10",
+        "LUA-11",
+        "LUA-12",
+        "LUA-13"
+      ]
+    },
+    "highest_severity_finding": "LUA-06 is an absent security control, not a missing test: a Lua script today has unconditional access to every platform.* host function regardless of its declared manifest. ORCH should re-assess ISS-0169's MAJOR severity in light of this.",
+    "scope_recommendation": "Recommend ORCH split into four sequential WF-03 runs: (1) LUA-05/06/07 context plumbing + capability enforcement + manifest, (2) LUA-08/09/10 limiters, (3) LUA-11/12/13 stateful host API, (4) LUA-14/15/16 time + events. Group 1 is a prerequisite for 3 and 4. The 12 specs define 169 test cases; CLAUDE.md caps a run at 4 requirements for exactly this blast-radius reason.",
+    "incidental_issues_filed": [
+      "ISS-0172 / https://github.com/tvolodi/R-Co/issues/500"
+    ],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  }
 }

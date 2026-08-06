@@ -1,0 +1,140 @@
+{
+  "handoff_id": "63008f82-e3a2-4d60-8280-a67fdff5a1ed",
+  "run_id": "WF03-ISS-0169-20260806",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-06T21:52:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 8",
+    "requirement_ids": [
+      "LUA-05",
+      "LUA-06",
+      "LUA-07",
+      "LUA-08",
+      "LUA-09",
+      "LUA-10",
+      "LUA-11",
+      "LUA-12",
+      "LUA-13",
+      "LUA-14",
+      "LUA-15",
+      "LUA-16"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0169.json",
+      "src/lua/",
+      "src/lua_test_root.zig",
+      "tests/specs/LUA-01-05.md",
+      "tests/specs/LUA-06.md",
+      "tests/specs/LUA-07.md",
+      "tests/specs/LUA-08.md",
+      "tests/specs/LUA-09.md",
+      "tests/specs/LUA-10.md",
+      "tests/specs/LUA-11.md",
+      "tests/specs/LUA-12.md",
+      "tests/specs/LUA-13.md",
+      "tests/specs/LUA-14.md",
+      "tests/specs/LUA-15.md",
+      "tests/specs/LUA-16.md",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Steps 0.5 and 1 for ISS-0169 (GH #495): registry lookup, then root-cause diagnosis of why LUA-05..16 remain IN_PROGRESS after ISS-0161 linked a real LuaJIT. Diagnosis only - no fix implementation.",
+    "acceptance_criteria": [
+      "fn:search-issues run against docs/issues/issue_index.json and docs/issues/*.json",
+      "Every claim verified by executing code or running a command - no speculation",
+      "Per-requirement analysis for LUA-05..LUA-16 distinguishing implemented-but-untested from not-implemented",
+      "Explicit verified determination of whether the limiter machinery is wired into the real LuaJIT VM",
+      "Concrete recommended scope for CODE-DESIGNER (Step 2) and BACKEND-DEV (Step 3)",
+      "docs/issue-reports/ISS-0169-diagnosis.yaml written",
+      "docs/issues/ISS-0169.json updated with run_id and diagnosis, status kept OPEN",
+      "Any incidental defect filed (ISS + GitHub issue) and forwarded to the global queue, not fixed here"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:enqueue-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed ISS-0169. The premise of the issue is FALSE: LUA-05..16 are not 'implemented but untested'. Verified by executing scripts against the real vendored LuaJIT via a temporary probe build target (since removed; build.zig restored via git checkout). Findings: (1) ZERO capability checks fire anywhere - an EMPTY CapabilitySet permits all seven gated platform.* calls, because every host_api register() discards ExecutionContext with `_ = context;` and registers a 0-upvalue closure, so LUA-06 is an absent security control. (2) executeScript installs no instruction hook, no bounded allocator and no timeout; instruction_limiter.zig, memory_limiter.zig, timeout.zig, manifest.zig, structured_logger.zig, service_catalog.zig and events.zig have NO caller anywhere in src/ - dead code, not untested code. (3) instruction_limiter.zig:39 and memory_limiter.zig:13 DO NOT COMPILE (lua_sethook c_int discarded; std.Thread.Mutex removed in Zig 0.16) yet `zig build test-lua` exits 0, because lua_test_root.zig type-only pins force neither field-type resolution nor function-body analysis - filed as ISS-0172 / GH #500. (4) When made to compile, the limiter DESIGNS do work: the instruction hook terminates `while true do end` at the limit (status=2) but raises the garbage message 'upval' because lua_error is called with nothing pushed; the memory limiter aborts a runaway allocation with LUA_ERRMEM without crashing the host, but its accounting under-counts so wasLimitExceeded() stays false. (5) loadSafeStdlib never calls luaopen_base, so pairs/pcall/error/type/setmetatable/_G are absent from every script run through executeScript - making stdlib.zig load/loadstring/loadfile removals no-ops on that path, and diverging from execution_test.zig sandboxedState() which DOES open base. Classification: LUA-14 implemented (tests only); LUA-05/15/16 partial; LUA-08/09 broken and non-compiling; LUA-06/07/10/11/12/13 not implemented. Recommend ORCH split into four sequential runs and re-assess severity given LUA-06.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0169-diagnosis.yaml",
+      "docs/issues/ISS-0169.json",
+      "docs/issues/ISS-0172.json"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "LUA-06 capability enforcement does not exist. Verified empirically: with a completely empty CapabilitySet, platform.read_variable, write_variable, log, emit_event, get_instance_state and call_service all execute successfully. Every host_api/*.zig register() begins with `_ = context;` and calls lua_pushcclosure(L, fn, 0) with zero upvalues, so the capability set is not in scope at call time. This is an absent security control, not a missing test."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "src/lua/instruction_limiter.zig:39 does not compile - bindings.lua_sethook(...) discards a c_int ('value of type c_int ignored'). ISS-0161 changed lua_sethook from the stub void to the real extern c_int and this call site was never updated. LUA-08 has therefore never been compiled since ISS-0161 landed."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "src/lua/memory_limiter.zig:13 does not compile - `mutex: std.Thread.Mutex` ('root source file struct Thread has no member named Mutex'; removed in Zig 0.16). LUA-09 has never been compiled under Zig 0.16."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "executeScript enforces none of LUA-08/09/10. createState passes the unbounded defaultAlloc to lua_newstate, no lua_sethook call exists, and no wall-clock guard exists. A script containing `while true do end` submitted to executeScript hangs the calling thread indefinitely."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "LUA-11/12/13 host functions are no-ops: read_variable and write_variable discard the key with `_ = key;` and push nil; log discards level and message and never calls StructuredLogger; emit_event ignores its payload; get_instance_state returns an empty table; call_service non-simulation branch returns hardcoded '{}' / 200 and never consults src/lua/service_catalog.zig. This is the ISS-0155 anti-pattern at subsystem scale."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "LUA-07 manifest validation has no caller and no load-time entry point. validateManifest hashes only the limits and capability strings, never the script source, so 'a modified manifest without re-registration is rejected at load time' is not achievable as written. ScriptManifest.deinit also leaks every duped capability string."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "LUA-16 emits nothing. No SCRIPT_ERROR or SCRIPT_FAILED event is ever constructed or appended despite events.zig defining exactly the right payloads. lua_pcall is called with errfunc=0 so no stack trace is captured, and no instruction count or capability state is available because the limiter is not installed."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "Security-relevant state is stored in script-writable globals: instruction_limiter uses __limiter__, fail.zig uses __failure_reason__, __failure_details__ and __explicit_failure__. A script can set __limiter__ = nil to make hookCallback null check early-return and disable its own instruction limit, and can forge the failure globals. These belong in LUA_REGISTRYINDEX or closure upvalues."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "Host-function error reporting is unstructured. Every arity/type guard calls lua_error(L) without pushing a message, so LuaJIT raises whatever is on the stack top: platform.read_variable() produced error_message '1.0954944061662e-311'. Separately, lua_isstring is the wrong guard for 'must be a string' - Lua 5.1 coerces numbers, which is why platform.write_variable(123, 1) silently succeeded. Use lua_type(L,n) == LUA_TSTRING."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "loadSafeStdlib never calls luaopen_base, so pairs, ipairs, pcall, error, type, print, setmetatable and _G are all absent from any script run through executeScript. Consequences: stdlib.zig removeGlobalIfExists calls for load/loadstring/loadfile/dofile are no-ops on this path (the ISS-0161 loadfile fix guards a door that is not open here), and no realistic business script can run. src/lua/execution_test.zig sandboxedState() DOES call luaopen_base, so the currently-green LUA-03 tests assert against a state executeScript never builds."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "LUA-10 has no viable mechanism. TimeoutContext is a passively polled struct; lua_pcall blocks the calling thread and there is no watchdog thread or hook-based cancellation. 'Enforced from outside the Lua state' and 'terminable while blocked in a host function' cannot be satisfied by wiring alone and need a design decision. CODE-DESIGN-VALIDATOR must reject a polled-only design."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Canonical capability strings diverge: capabilities.zig defines variable:read / variable:write / audit:log / event:emit / instance:read while tests/unit/lua_test.zig and parts of the specs use variable:read:* / log:write. Must be reconciled before capability tests are written or every test encodes the wrong string."
+      },
+      {
+        "severity": "MINOR",
+        "description": "host_api/fail.zig calls lua_pushstring with @ptrCast(reason.ptr) on a non-NUL-terminated slice - a latent read-past-end. lua_pushlstring with the explicit length is correct."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Incidental, NOT fixed here: src/oidc/jwks.zig:322 also uses the stale std.Thread.Mutex spelling. If any target analyses that file it should already be failing; if not, it is another instance of the ISS-0172 blind spot. Flagged for verification during the ISS-0172 run rather than filed separately."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "INCIDENTAL - filed and forwarded, not fixed here: ISS-0172 / https://github.com/tvolodi/R-Co/issues/500. Test-root type-only pins (`_ = Module.TypeName;`) force neither struct field-type resolution nor function-body analysis, so `zig build test-lua` reports green over two non-compiling files. Eight src/*_test_root.zig files use the same pattern. Added to the global queue via tools/queue_add.py."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T21:52:00Z",
+  "completed_at": "2026-08-06T22:08:58Z"
+}

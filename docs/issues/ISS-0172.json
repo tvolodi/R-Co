@@ -1,0 +1,36 @@
+{
+  "id": "ISS-0172",
+  "title": "Test-root `_ = Module.TypeName;` pins do not force analysis of struct field types or unreferenced functions, so compile errors stay invisible while the target reports green",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/500",
+  "discovered_at": "2026-08-06T22:05:22Z",
+  "discovered_by": "ISSUE-FIXER WF03-ISS-0169-20260806 Step 1",
+  "discovered_while_fixing": "ISS-0169",
+  "run_id": null,
+  "affected_areas": [
+    "src/lua_test_root.zig",
+    "src/simulation_test_root.zig",
+    "src/transition_test_root.zig",
+    "src/oidc_test_root.zig",
+    "src/oidc_jit_test_root.zig",
+    "src/config_idp_test_root.zig",
+    "src/core_modules_test_root.zig",
+    "src/repository_test_root.zig",
+    "tools/lint_test_wiring.py"
+  ],
+  "symptom": "`zig build test-lua` exits 0 while two files under src/lua/ contain hard compile errors. `src/lua/instruction_limiter.zig:39` calls `bindings.lua_sethook(...)` and discards its `c_int` result ('value of type c_int ignored'); `src/lua/memory_limiter.zig:13` declares `mutex: std.Thread.Mutex`, which does not exist in Zig 0.16 ('root source file struct Thread has no member named Mutex'). Both errors appear the moment a test actually references `installHook` or constructs a `MemoryLimiter`, but never during `zig build test-lua`.",
+  "root_cause": "src/lua_test_root.zig pins each file with a bare type or decl reference (`_ = lua.instruction_limiter.InstructionLimiter;`, `_ = lua.memory_limiter.MemoryLimiter;`). Zig resolves a struct's field types lazily: naming the type does not force field-type resolution, so `std.Thread.Mutex` is never looked up. Likewise `_ = someFn;` takes the function's address without requiring its body to be semantically analysed, so a statement-level error inside the body is not reported. `refAllDecls` is explicitly documented as shallow and does not close either gap. The comment in src/lua_test_root.zig claims the pattern was verified by mutation, but the mutation used was a type error inside a function body that IS reached (host_api register()), which does not exercise either of the two blind spots above.",
+  "acceptance_criteria": [
+    "A pin form is adopted that forces both (a) struct field-type resolution and (b) function-body analysis - e.g. `_ = @sizeOf(T);` or `_ = @typeInfo(T).@\"struct\".fields;` for types, and a real (possibly `if (false)`-guarded but non-comptime-eliminated) call or `_ = &fn;` plus `@TypeOf` usage for functions.",
+    "The chosen form is verified by deliberate mutation for BOTH failure shapes: inject a bad field type into a struct, and inject a statement error into an otherwise-unreferenced function; the target must go red in both cases.",
+    "The same fix is applied to every src/*_test_root.zig that uses the type-only pin pattern.",
+    "tools/lint_test_wiring.py flags a test root whose pins are type-only.",
+    "The misleading 'verified by mutation' comment in src/lua_test_root.zig is corrected to state which mutation shapes were actually tested."
+  ],
+  "notes": [
+    "Filed per ISSUE_QUEUE.md forwarding rules; not fixed inside WF03-ISS-0169-20260806.",
+    "This is the same class as ISS-0133 (26 transition.zig tests wired into no addTest root) and ISS-0147 (src/wasm invisible), but one layer deeper: here the root EXISTS and the pin EXISTS, and the compile error is still not surfaced.",
+    "Evidence is reproducible: add `_ = lua.memory_limiter.MemoryLimiter.alloc;` or a real `installHook` call to any target that links src/lua and the two errors appear immediately."
+  ]
+}
