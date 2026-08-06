@@ -22,7 +22,7 @@ pub fn register(L: *bindings.LuaState, context: *const executor.ExecutionContext
 }
 
 /// Lua C function: platform.read_variable(key)
-fn platformReadVariable(L: *bindings.LuaState) callconv(.C) c_int {
+fn platformReadVariable(L: *bindings.LuaState) callconv(.c) c_int {
     // Check argument count
     const nargs = bindings.lua_gettop(L);
     if (nargs < 1) {

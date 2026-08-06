@@ -20,7 +20,7 @@ pub fn register(L: *bindings.LuaState, context: *const executor.ExecutionContext
 }
 
 /// Lua C function: platform.now()
-fn platformNow(L: *bindings.LuaState) callconv(.C) c_int {
+fn platformNow(L: *bindings.LuaState) callconv(.c) c_int {
     const now = blk: {
         if (simulation_runtime.get()) |ctx| {
             break :blk time_source.DateTime.fromNanoseconds(ctx.clock.nowMs() * 1_000_000);
@@ -33,9 +33,12 @@ fn platformNow(L: *bindings.LuaState) callconv(.C) c_int {
 
     // Format as ISO 8601
     var buffer: [32]u8 = undefined;
+    // ISS-0153: `{:04d}` is pre-0.16 format syntax and no longer parses
+    // (`expected . or }, found 'd'`). Zig 0.16 spells zero-padding as
+    // `{d:0>4}` — specifier first, then fill/alignment/width.
     const formatted = std.fmt.bufPrint(
         &buffer,
-        "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}.{:03d}Z",
+        "{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}.{d:0>3}Z",
         .{
             now.year, now.month, now.day,
             now.hour, now.minute, now.second,

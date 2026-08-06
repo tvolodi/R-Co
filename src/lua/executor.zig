@@ -55,26 +55,32 @@ pub const ScriptValue = union(enum) {
     string: []const u8,
     table: std.StringHashMap(ScriptValue),
 
+    /// ISS-0153: the original body did not compile and would have leaked and
+    /// double-freed if it had. Three separate defects, none ever reported
+    /// because no build target analysed this file:
+    ///   1. `self.table.allocator orelse allocator` — `StringHashMap.allocator`
+    ///      is not optional, so `orelse` is a type error.
+    ///   2. The map's own storage was never released (no `t.deinit()`), so
+    ///      every table-valued script result leaked its bucket array.
+    ///   3. Entries were walked twice — once for keys in the switch, once for
+    ///      values below — with the second pass freeing only `.string` values
+    ///      non-recursively, so nested tables leaked while the structure
+    ///      invited a double free.
+    /// Rewritten as a single recursive pass that frees each key and each value
+    /// exactly once, then releases the map itself.
     pub fn deinit(self: ScriptValue, allocator: std.mem.Allocator) void {
         switch (self) {
             .string => |s| allocator.free(s),
             .table => |t| {
-                var iter = t.keyIterator();
-                while (iter.next()) |key| {
-                    allocator.free(key.*);
+                var map = t;
+                var iter = map.iterator();
+                while (iter.next()) |entry| {
+                    allocator.free(entry.key_ptr.*);
+                    entry.value_ptr.deinit(allocator);
                 }
-                // Note: values are deallocated recursively below
+                map.deinit();
             },
             else => {},
-        }
-        // Recursive cleanup for table values (simplified: only one level)
-        if (self == .table) {
-            var iter = self.table.valueIterator();
-            while (iter.next()) |val| {
-                if (val.* == .string) {
-                    (self.table.allocator orelse allocator).free(val.string);
-                }
-            }
         }
     }
 };
@@ -174,8 +180,18 @@ fn createState() !*bindings.LuaState {
     return L;
 }
 
-/// Default allocator for Lua (uses Zig's GPA for simplicity; can be customized).
-fn defaultAlloc(ud: ?*c_void, ptr: ?*c_void, osize: usize, nsize: usize) callconv(.C) ?*c_void {
+/// Default allocator for Lua.
+///
+/// Uses the C allocator directly because LuaJIT calls this through a C ABI
+/// function pointer and may realloc/free across the FFI boundary, which Zig's
+/// allocator interface cannot service without the original slice length. This
+/// is why the `lua` build module sets `link_libc = true` (build.zig).
+///
+/// ISS-0153: with the stub bindings currently in place `lua_newstate` returns
+/// null and never invokes this, but the function is kept intact (not deleted)
+/// so it is still type-checked and is correct on the day real LuaJIT is linked
+/// under ISS-0161 / GH #485.
+fn defaultAlloc(ud: ?*anyopaque, ptr: ?*anyopaque, osize: usize, nsize: usize) callconv(.c) ?*anyopaque {
     _ = ud;
     _ = osize;
 
@@ -214,7 +230,7 @@ fn extractValue(L: *bindings.LuaState, idx: c_int, allocator: std.mem.Allocator)
             return ScriptValue{ .string = try allocator.dupe(u8, str) };
         },
         bindings.LUA_TTABLE => {
-            var table = std.StringHashMap(ScriptValue).init(allocator);
+            const table = std.StringHashMap(ScriptValue).init(allocator);
             // Simplified table extraction (one level only for MVP)
             return ScriptValue{ .table = table };
         },

@@ -20,7 +20,7 @@ pub fn register(L: *bindings.LuaState, context: *const executor.ExecutionContext
 }
 
 /// Lua C function: platform.write_variable(key, value)
-fn platformWriteVariable(L: *bindings.LuaState) callconv(.C) c_int {
+fn platformWriteVariable(L: *bindings.LuaState) callconv(.c) c_int {
     // Check argument count
     const nargs = bindings.lua_gettop(L);
     if (nargs < 2) {

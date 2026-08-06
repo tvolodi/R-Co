@@ -22,7 +22,7 @@ pub fn register(L: *bindings.LuaState, context: *const executor.ExecutionContext
 }
 
 /// Lua C function: platform.call_service(svc_id, method, path, headers, body)
-fn platformCallService(L: *bindings.LuaState) callconv(.C) c_int {
+fn platformCallService(L: *bindings.LuaState) callconv(.c) c_int {
     // Check argument count (minimum 3: svc_id, method, path)
     const nargs = bindings.lua_gettop(L);
     if (nargs < 3) {

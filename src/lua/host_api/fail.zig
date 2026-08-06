@@ -17,7 +17,7 @@ pub fn register(L: *bindings.LuaState, context: *const executor.ExecutionContext
 }
 
 /// Lua C function: platform.fail(reason, [details])
-fn platformFail(L: *bindings.LuaState) callconv(.C) c_int {
+fn platformFail(L: *bindings.LuaState) callconv(.c) c_int {
     const nargs = bindings.lua_gettop(L);
 
     if (nargs < 1) {
@@ -40,7 +40,9 @@ fn platformFail(L: *bindings.LuaState) callconv(.C) c_int {
     bindings.lua_setglobal(L, "__failure_reason__");
 
     // Optional: Store details at index 2
-    if (nargs >= 2 && bindings.lua_istable(L, 2) != 0) {
+    // ISS-0153: `&&` is not a Zig operator (C habit); Zig spells logical AND
+    // as `and`. Never compiled — this file was analysed by no build target.
+    if (nargs >= 2 and bindings.lua_istable(L, 2) != 0) {
         bindings.lua_pushvalue(L, 2);
         bindings.lua_setglobal(L, "__failure_details__");
     }

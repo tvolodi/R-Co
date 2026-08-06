@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-06T11:20:40Z'
+last_updated: '2026-08-06T11:46:27Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1758,128 +1758,189 @@ requirements:
     status: UNTRACKED
     title: CEL→`expr` differential test corpus (cutover gate)
   LUA-01:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: LuaJIT integration
     implemented_in:
     - src/lua/luajit_bindings.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua01-05-test-run.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua01-05-20260528
     release_decision: docs/status/release-stage8-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-02:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: State isolation
     implemented_in:
     - src/lua/executor.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua01-05-test-run.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua01-05-20260528
     release_decision: docs/status/release-stage8-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-03:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Stdlib restriction
     implemented_in:
     - src/lua/stdlib.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua01-05-test-run.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua01-05-20260528
     release_decision: docs/status/release-stage8-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-04:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Bytecode loading disabled
     implemented_in:
     - src/lua/stdlib.zig
     - src/lua/executor.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua01-05-20260528
     release_decision: docs/status/release-stage8-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. The bytecode-magic rejection in executor.zig
+      IS genuinely enforced in pure Zig and is covered by a passing test (src/lua_test_root.zig, ''bytecode
+      is rejected before any runtime is needed''). However LUA-04''s defence-in-depth also relies on stdlib.zig
+      stripping load/loadstring/string.dump from the interpreter, and with no LuaJIT linked those removals
+      execute against stub bindings and are unverified. Kept IN_PROGRESS rather than RELEASED so the status
+      is not stronger than the evidence. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-05:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Host API registration
     implemented_in:
     - src/lua/host_api/mod.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua01-05-20260528
     release_decision: docs/status/release-stage8-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-06:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Capability check at call site
     implemented_in:
     - src/lua/capabilities.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-06.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-07:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Capability manifest validation
     implemented_in:
     - src/lua/manifest.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-07.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-08:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Instruction limit
     implemented_in:
     - src/lua/instruction_limiter.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-08.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-09:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Memory limit
     implemented_in:
     - src/lua/memory_limiter.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-09.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-10:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Wall clock timeout
     implemented_in:
     - src/lua/timeout.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-10.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-11:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Variable read/write
@@ -1887,76 +1948,112 @@ requirements:
     - src/lua/executor.zig
     - src/lua/host_api/read_variable.zig
     - src/lua/host_api/write_variable.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-11.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-12:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Service call
     implemented_in:
     - src/lua/service_catalog.zig
     - src/lua/host_api/call_service.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-12.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-13:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Logging
     implemented_in:
     - src/lua/structured_logger.zig
     - src/lua/host_api/log.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-13.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-14:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Time source
     implemented_in:
     - src/lua/time_source.zig
     - src/lua/host_api/now.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-14.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-15:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Structured failure
     implemented_in:
     - src/lua/host_api/fail.zig
     - src/lua/events.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-15.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-16:
-    status: RELEASED
+    status: IN_PROGRESS
     stage: 8
     priority: MUST
     title: Runtime error capture
     implemented_in:
     - src/lua/errors.zig
     - src/lua/events.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-16.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
+    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
+      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
+      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
+      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
+      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   OBS-01:
     status: RELEASED
     stage: 6

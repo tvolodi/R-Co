@@ -985,6 +985,50 @@ pub fn build(b: *std.Build) void {
     );
     test_repository_unit_step.dependOn(&run_repository_unit_tests.step);
 
+    // ISS-0153 / GH #471 — src/lua/ (LUA-01..16) was reachable from no addTest
+    // root and had not compiled since Zig 0.10. This target is what makes the
+    // subsystem type-checked on every `zig build test`.
+    //
+    // Rooted at `src/lua_test_root.zig`, NOT at src/lua/mod.zig, and that
+    // placement is load-bearing (Single-Owner Module Rule, design
+    // §1.2 / src/design/test-wiring-iss0137.md): host_api/call_service.zig and
+    // host_api/now.zig import `../../simulation/*.zig`, escaping src/lua/, and
+    // src/simulation/types.zig in turn imports `../event_store/store.zig`. A
+    // module rooted inside src/lua/ would reject those as "import of file
+    // outside module path" (verified empirically). Rooting at src/ contains the
+    // whole chain — identical to the constraint that placed
+    // src/simulation_test_root.zig and src/transition_test_root.zig at src/.
+    //
+    // The four named imports below are the set src/event_store/store.zig
+    // demands, exactly as src/simulation_test_root.zig's module needs them for
+    // the same reason.
+    //
+    // link_libc: src/lua/executor.zig's defaultAlloc uses std.c.malloc/realloc/
+    // free — the C-ABI allocator LuaJIT requires. No LuaJIT itself is linked
+    // (none is available; see src/lua/luajit_bindings.zig for the evidence and
+    // ISS-0161 / GH #485 for the follow-up).
+    const lua_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/lua_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "tenant_context", .module = tenant_context_mod },
+                .{ .name = "pipeline_context", .module = pipeline_context_mod },
+                .{ .name = "obs_metrics", .module = obs_metrics_mod },
+                .{ .name = "json_schema", .module = json_schema_mod },
+            },
+        }),
+    });
+    const run_lua_tests = b.addRunArtifact(lua_tests);
+    const test_lua_step = b.step(
+        "test-lua",
+        "Run src/lua/*.zig in-file unit tests (ISS-0153)",
+    );
+    test_lua_step.dependOn(&run_lua_tests.step);
+
     const misc_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/unit/misc_unit_test_root.zig"),
@@ -995,6 +1039,20 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
+    const probe_svc_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("scratch/probe_svc.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
+        }),
+    });
+    const run_probe_svc_tests = b.addRunArtifact(probe_svc_tests);
+    const test_probe_svc_step = b.step("test-probe-svc", "TEMP probe");
+    test_probe_svc_step.dependOn(&run_probe_svc_tests.step);
+
     const run_misc_unit_tests = b.addRunArtifact(misc_unit_tests);
     const test_misc_unit_step = b.step(
         "test-misc-unit",
@@ -1036,6 +1094,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_oidc_unit_tests.step);
     test_step.dependOn(&run_repository_unit_tests.step);
     test_step.dependOn(&run_misc_unit_tests.step);
+    // ISS-0153 / GH #471 — src/lua subsystem.
+    test_step.dependOn(&run_lua_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-differential` — ISS-602 CEL/expr differential harness

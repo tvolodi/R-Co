@@ -1,0 +1,87 @@
+{
+  "handoff_id": "35dd1b87-9d24-4eb3-bbc8-9cd24811cedc",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "q153",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-06T11:28:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_ids": [
+      "ISS-0153"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/471",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "queue_drain": true,
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0153.json",
+      "src/lua/",
+      "build.zig",
+      "src/design/test-wiring-iss0137.md",
+      "tools/lint_test_wiring.py"
+    ]
+  },
+  "task": {
+    "description": "Repair src/lua Zig 0.16 API rot (c_void -> anyopaque, callconv(.C) -> callconv(.c)), resolve the LuaJIT link decision with evidence, wire the subsystem into the build graph, and correct LUA-01..16 requirement status if RELEASED is not backed by executable code (GH #471, ISS-0153).",
+    "acceptance_criteria": [
+      "zig build exits 0 with no 'error set' output",
+      "zig build test exits 0",
+      "python tools/lint_test_wiring.py exits 0",
+      "LuaJIT link verdict documented with evidence",
+      "LUA-01..16 requirement status reflects reality"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:register-issue",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0153 / GH #471 resolved. LuaJIT link verdict: NOT AVAILABLE (verified empirically: @cInclude(\"lua.h\") -> 'lua.h not found' with and without -lc; -lluajit-5.1 -> 'unable to find dynamic system library'; no lua.h/libluajit on disk; vendor/ and build.zig.zon hold only pg/http/cel; nothing in docker-compose or CI). Took the ISS-0147 disposition: replaced the unresolvable @cImport/extern-fn surface with faithful pure-Zig stubs returning FAILURE sentinels, so src/lua compiles and is type-checked without a linker while never pretending to run scripts. Fixed 8 categories of rot (issue named 2): c_void, callconv(.C), 2-arg @ptrCast, '&&', nanoTimestamp removal, {:04d} format syntax, 3 called-but-undeclared decls, and a non-compiling/leaking/double-freeing ScriptValue.deinit; plus @divExact->@divTrunc on elapsed ns. Wired via new addTest root src/lua_test_root.zig at src/ (placement forced by host_api -> ../../simulation -> ../event_store escape chain) and new `zig build test-lua` attached to the aggregate test step; reachability proven by mutation, 11 tests execute. Downgraded all 16 of LUA-01..16 RELEASED -> IN_PROGRESS since RELEASED was backed by nothing executable. Remaining half (actually linking LuaJIT) filed as ISS-0161 / GH #485 and enqueued QUEUED.",
+    "artifacts_out": [
+      "src/lua/luajit_bindings.zig",
+      "src/lua/executor.zig",
+      "src/lua/memory_limiter.zig",
+      "src/lua/instruction_limiter.zig",
+      "src/lua/timeout.zig",
+      "src/lua/time_source.zig",
+      "src/lua/host_api/fail.zig",
+      "src/lua/host_api/now.zig",
+      "src/lua/host_api/call_service.zig",
+      "src/lua/host_api/emit_event.zig",
+      "src/lua/host_api/get_instance_state.zig",
+      "src/lua/host_api/log.zig",
+      "src/lua/host_api/read_variable.zig",
+      "src/lua/host_api/write_variable.zig",
+      "src/lua_test_root.zig",
+      "build.zig",
+      "src/bpm.zig",
+      "docs/issues/ISS-0153.json",
+      "docs/issues/ISS-0161.json",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0161 / GH #485 \u2014 LuaJIT is not available in this repo, so src/lua executes no Lua. The subsystem now compiles and is type-checked, but the C bindings are stubs. LUA-01..16 stay IN_PROGRESS until LuaJIT is vendored/linked and the real execution tests in tests/specs/LUA-01-05.md are written. Enqueued QUEUED on this run's issue_queue.json."
+      }
+    ],
+    "verification": {
+      "zig_build": "exit 0, no 'error set' output",
+      "zig_build_test": "exit 0 \u2014 837 tests passed across 30 targets",
+      "zig_build_test_lua": "exit 0 \u2014 11/11 tests passed",
+      "lint_test_wiring": "exit 0 \u2014 PASS, 254 test-bearing files reachable; no new exclusion added",
+      "mutation_check": "type error injected into get_instance_state.platformGetInstanceState body turned test-lua red, confirming nested fn bodies are analysed"
+    },
+    "next_action": "ORCH: ISS-0153 DRAINED. Drain ISS-0161 (GH #485) or rule it out of scope before Step Final."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T11:28:39Z",
+  "completed_at": "2026-08-06T11:50:48Z"
+}

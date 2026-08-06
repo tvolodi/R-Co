@@ -95,3 +95,25 @@ pub const entities = @import("entities/mod.zig"); // EXP-201/EXP-202 entities su
 // linking Wasmtime is a Stage 10 concern, not a prerequisite for compiling
 // this subsystem today.
 pub const wasm = @import("wasm"); // WASM-01..14
+
+// ISS-0153 / GH #471 — src/lua subsystem (LUA-01..16).
+//
+// Deliberately NOT re-exported here, unlike `wasm` above, and that asymmetry is
+// intentional rather than an oversight.
+//
+// src/lua/host_api/call_service.zig and host_api/now.zig import
+// `../../simulation/*.zig`, and src/simulation/types.zig imports
+// `../event_store/store.zig`. Those files are already plain members of THIS
+// module (bpm_src_mod) via `pub const simulation = @import("simulation/mod.zig")`
+// above. Making src/lua/mod.zig a named module root as well would enrol the
+// simulation and event_store files into two modules at once and Zig 0.16
+// rejects that with "file exists in multiple modules" — the Single-Owner Module
+// Rule. Re-exporting it relatively from here instead would work, but would drag
+// libc into every target that imports `bpm` (executor.zig's defaultAlloc uses
+// std.c.malloc/realloc/free for the LuaJIT C-ABI allocator).
+//
+// The subsystem is instead kept analysed by a dedicated addTest root,
+// src/lua_test_root.zig (`zig build test-lua`, also reached by `zig build
+// test`), which is what stops it rotting silently again. See that file for the
+// full account of what this wiring caught, and src/lua/luajit_bindings.zig for
+// the evidence that no LuaJIT is available to link.
