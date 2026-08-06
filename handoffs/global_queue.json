@@ -237,6 +237,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0177",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/506",
+      "title": "dynasm.lua emits unescaped Windows backslash paths in #line directives",
+      "severity": "MAJOR",
+      "status": "RESOLVED",
+      "lock": null,
+      "added_at": "2026-08-06T23:54:25Z",
+      "started_at": "2026-08-06T23:54:51Z",
+      "completed_at": "2026-08-06T23:54:51Z",
+      "run_id": "WF03-ISS-0175-20260806",
+      "deferred_reason": "Fixed in-run under Unblock-Everything: it blocked the fresh-clone verification that was ISS-0175 acceptance criterion."
     }
   ]
 }

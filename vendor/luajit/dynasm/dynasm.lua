@@ -83,9 +83,18 @@ local function wcomment(aline)
 end
 
 -- Resync CPP line numbers.
+-- LOCAL PATCH (ISS-0177 / GH #506): g_fname is interpolated into a C string
+-- literal, so backslashes and quotes must be escaped. Upstream omits this
+-- because its MSVC build invokes dynasm with a relative, single-component
+-- path. build.zig passes an ABSOLUTE Windows path, whose separators would
+-- otherwise become C escape sequences -- e.g. a checkout under
+-- ...\2\rco-freshclone\vendor\... emits \r \c \v \s, and the invalid ones make
+-- buildvm.c fail to compile with "unknown escape sequence". Whether a machine
+-- was affected depended purely on the letters following the backslashes.
+-- This is a no-op for POSIX paths, which contain neither character.
 local function wsync()
   if g_synclineno ~= g_lineno and g_opt.cpp then
-    wline("#line "..g_lineno..' "'..g_fname..'"')
+    wline("#line "..g_lineno..' "'..g_fname:gsub('[\\"]', '\\%0')..'"')
     g_synclineno = g_lineno
   end
 end
