@@ -87,3 +87,4 @@
 2026-08-06T04:40:39Z | MERGE | WF03-gh457-20260806 | --- | ORCH | PR #462 squash-merged (39018cb), branch deleted, GH #457 closed
 2026-08-06T07:12:57Z | ROUTE | WF03-gh467-20260806 | d0e21b70 | ORCH -> ISSUE-FIXER | PENDING (ISS-0603 / GH #467)
 2026-08-06T07:31:10Z | COMPLETE | WF03-gh467-20260806 | d0e21b70 | ISSUE-FIXER | PASS — ISS-0603 apply-order fixed in src/db/migrations.zig + src/tools/migrate.zig (duplicate runner); existing DBs grandfathered; NEW ISS-0604/GH#470 filed and QUEUED
+2026-08-06T07:54:04Z | COMPLETE | WF03-gh467-20260806 | d0e21b70 | ISSUE-FIXER | PASS — ISS-0604/GH#470 fixed via declarative '-- scope: public' migration header + loud MigrationScopeMismatch guard; duplicate migrationOrder() removed; fresh DB bootstraps 106/106 exit 0; queue drained

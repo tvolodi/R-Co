@@ -49,6 +49,11 @@ pub const MigrationError = error{
     PoolExhausted,
     /// SET search_path failed for the target schema.
     SchemaSetupFailed,
+    /// ISS-0604 / GH-470: a migration declares `-- scope: public` (or carries the
+    /// GBL- prefix) but its body performs unqualified, search_path-resolved table
+    /// work that genuinely belongs in the per-tenant pass. Applying it would
+    /// silently skip that work for every tenant, so the runner refuses.
+    MigrationScopeMismatch,
 };
 
 // ---------------------------------------------------------------------------
@@ -277,16 +282,35 @@ pub const Migrations = struct {
 
         // Apply pending migrations in order.
         for (names.items) |filename| {
-            // GBL-prefixed migrations are global (public-schema) operations that
-            // must ONLY run against the public schema.  They must never be applied
-            // to per-tenant schemas (tenant_default, tenant_<uuid>, etc.) because
-            // they perform DDL on public.tenant_schemas, public.tnt05_progress,
-            // onboarding_registry and other global tables that do not exist in
-            // tenant schemas.  Silently skip them when schema_name != "public".
-            if (!std.mem.eql(u8, schema_name, "public") and
-                std.mem.startsWith(u8, filename, "GBL-"))
-            {
-                continue;
+            // ISS-0604 / GH-470: skip public-only migrations in per-tenant passes.
+            //
+            // Public-only migrations are global operations that must ONLY run
+            // against the public schema. They must never be applied to per-tenant
+            // schemas (tenant_default, tenant_<uuid>, ...) because they perform
+            // DDL/DML on public.tenant_schemas, public.tenant, public.tnt05_progress,
+            // onboarding_registry and other global tables.
+            //
+            // Scope comes from migrationScope(): the historical `GBL-` filename
+            // prefix, OR an explicit `-- scope: public` header. Before ISS-0604
+            // only the GBL- prefix was honoured, so numeric-but-public-only files
+            // (1135 and friends) were wrongly executed in tenant passes. For 1135
+            // that was fatal on a fresh database: it writes public.tenant.tenant_type,
+            // a column added by GBL-119, which tenant passes skip — so it failed
+            // C42703, left the default tenant unready, and that in turn tripped
+            // GBL-116's TNT-07 pre-flight, deadlocking bootstrap at 86/106.
+            const is_public_pass = std.mem.eql(u8, schema_name, "public");
+            if (!is_public_pass) {
+                const scope_header = blk: {
+                    const probe = dir.readFileAlloc(
+                        pool.io,
+                        filename,
+                        allocator,
+                        std.Io.Limit.limited(4096),
+                    ) catch break :blk &[_]u8{};
+                    break :blk probe;
+                };
+                defer if (scope_header.len > 0) allocator.free(scope_header);
+                if (migrationScope(filename, scope_header) == .public_only) continue;
             }
 
             // Skip already-applied migrations (idempotent).
@@ -378,6 +402,21 @@ pub const Migrations = struct {
             const sql_bytes = dir.readFileAlloc(pool.io, filename, allocator, std.Io.Limit.limited(16 * 1024 * 1024)) catch
                 return MigrationError.MigrationFailed;
             defer allocator.free(sql_bytes);
+
+            // ISS-0604 / GH-470: misclassification guard — fail LOUDLY.
+            //
+            // A migration marked public-only whose body does unqualified,
+            // search_path-resolved table work would silently skip that work for
+            // every tenant schema, drifting tenant data shape apart with no error
+            // — exactly the silent-wrong-pass failure mode this issue is about.
+            // Checked in the public pass (where every migration is seen) so a bad
+            // header is caught on the very first run, not months later.
+            if (is_public_pass and
+                declaresPublicScopeHeader(filename, sql_bytes) and
+                declaresUnqualifiedTableWork(sql_bytes))
+            {
+                return MigrationError.MigrationScopeMismatch;
+            }
 
             // BEGIN transaction.
             conn.exec("BEGIN", &.{}) catch return MigrationError.MigrationFailed;
@@ -486,4 +525,120 @@ pub fn migrationOrder(filename: []const u8) u32 {
     if (i == start) return 0;
     const base_order = std.fmt.parseInt(u32, filename[start..i], 10) catch 0;
     return base_order + offset;
+}
+
+// ---------------------------------------------------------------------------
+// ISS-0604 / GH-470: migration scope classification
+// ---------------------------------------------------------------------------
+
+/// Which migration pass a file belongs to.
+///
+/// The runner applies migrations twice over: once against the `public` schema,
+/// and once per tenant schema (`tenant_default`, `tenant_<uuid>`, ...). A
+/// migration that runs in the wrong pass is the ISS-0604 defect class.
+pub const MigrationScope = enum {
+    /// Runs in the public pass ONLY. Never applied to a tenant schema.
+    public_only,
+    /// Runs in every pass — public and per-tenant. The default for numeric
+    /// migrations that create/alter unqualified (search_path-resolved) tables.
+    all_schemas,
+};
+
+/// The declared scope header a migration may carry, e.g.
+///     -- scope: public
+pub const SCOPE_PUBLIC_HEADER = "-- scope: public";
+
+/// The explicit opt-in for the default, useful to silence the misclassification
+/// guard on a migration that genuinely is public-qualified but must still run
+/// per-tenant (rare — e.g. it reads public config to write tenant tables).
+pub const SCOPE_ALL_HEADER = "-- scope: all_schemas";
+
+/// Classify a migration from its filename and header text.
+///
+/// ISS-0604 / GH-470. Two mechanisms, in precedence order:
+///   1. The `GBL-` filename prefix — the pre-existing, implicit marker. Always
+///      public-only. Kept for backward compatibility; every existing GBL file
+///      relies on it and renaming them would rewrite ledger keys.
+///   2. An explicit `-- scope: public` / `-- scope: all_schemas` header in the
+///      first KiB of the file — the preferred, self-evident marker for numeric
+///      migrations.
+///
+/// Scope is deliberately declared IN THE MIGRATION FILE rather than in a list
+/// inside the runner. ISS-0603 happened precisely because a file's ordering
+/// classification lived only in runner logic and drifted out of agreement with
+/// the files; keeping scope next to the SQL it describes means a future author
+/// sees it while writing the migration, and reviewers see it in the diff.
+pub fn migrationScope(filename: []const u8, header: []const u8) MigrationScope {
+    if (std.mem.startsWith(u8, filename, "GBL-")) return .public_only;
+    if (std.mem.indexOf(u8, header, SCOPE_ALL_HEADER) != null) return .all_schemas;
+    if (std.mem.indexOf(u8, header, SCOPE_PUBLIC_HEADER) != null) return .public_only;
+    return .all_schemas;
+}
+
+/// True when public-only scope came from an explicit `-- scope: public` header
+/// rather than from the historical `GBL-` filename prefix.
+///
+/// ISS-0604 / GH-470: the misclassification guard keys off THIS, not off
+/// migrationScope(), because unqualified table names are a legitimate
+/// long-standing convention inside GBL files (they run only in the public pass,
+/// where search_path already resolves to public). Only the newly introduced
+/// header carries the stricter "must be public.-qualified" contract.
+pub fn declaresPublicScopeHeader(filename: []const u8, header: []const u8) bool {
+    if (std.mem.startsWith(u8, filename, "GBL-")) return false;
+    if (std.mem.indexOf(u8, header, SCOPE_ALL_HEADER) != null) return false;
+    return std.mem.indexOf(u8, header, SCOPE_PUBLIC_HEADER) != null;
+}
+
+/// Heuristic misclassification detector (ISS-0604 / GH-470).
+///
+/// Returns true when a migration body performs schema-resolved DDL/DML — i.e.
+/// it references at least one table WITHOUT a `public.` qualifier and without
+/// dynamic `%I` schema interpolation. Such a migration genuinely needs the
+/// per-tenant pass, so declaring it `-- scope: public` is a misclassification
+/// and the runner refuses to proceed rather than silently skipping tenant work.
+///
+/// This is the "fail loudly" half of the contract: the scope header is cheap to
+/// write and therefore cheap to get wrong, so a wrong value must not degrade
+/// into silent data-shape drift across tenant schemas the way ISS-0604 did.
+///
+/// SCOPE OF THE GUARD — applies to the `-- scope: public` header ONLY, never to
+/// the `GBL-` prefix. 13 existing GBL files (GBL-114/116/117/119/120/123/125/126/
+/// 127/128/129/130/131) legitimately write unqualified table names and rely on
+/// search_path resolving to `public` during the public pass. That is a valid,
+/// long-standing convention for GBL files, so applying this heuristic to them
+/// would hard-fail every migration run. Verified by auditing all 106 files in
+/// migrations/ before enabling the guard.
+pub fn declaresUnqualifiedTableWork(body: []const u8) bool {
+    // Statement heads that introduce a table reference we care about.
+    const heads = [_][]const u8{
+        "CREATE TABLE IF NOT EXISTS ",
+        "CREATE TABLE ",
+        "ALTER TABLE IF EXISTS ",
+        "ALTER TABLE ",
+        "DROP TABLE IF EXISTS ",
+        "DROP TABLE ",
+        "INSERT INTO ",
+    };
+    var line_it = std.mem.splitScalar(u8, body, '\n');
+    while (line_it.next()) |raw_line| {
+        const line = std.mem.trim(u8, raw_line, " \t\r");
+        // Skip comments — a scope header or prose must never trip the guard.
+        if (std.mem.startsWith(u8, line, "--")) continue;
+        // Skip dynamic SQL: EXECUTE format('... %I ...') targets a schema
+        // computed at runtime, which is the sanctioned cross-schema pattern.
+        if (std.mem.indexOf(u8, line, "%I") != null) continue;
+        for (heads) |head| {
+            const idx = std.mem.indexOf(u8, line, head) orelse continue;
+            const rest = std.mem.trimStart(u8, line[idx + head.len ..], " \t");
+            if (rest.len == 0) continue;
+            // Qualified with an explicit schema? Then it is not search_path work.
+            if (std.mem.startsWith(u8, rest, "public.")) break;
+            if (std.mem.startsWith(u8, rest, "pg_")) break;
+            if (std.mem.startsWith(u8, rest, "information_schema.")) break;
+            // A quoted or bare identifier with no schema qualifier: this
+            // resolves through search_path, so it is per-tenant work.
+            return true;
+        }
+    }
+    return false;
 }

@@ -20,6 +20,20 @@ const migrations = @import("migrations.zig");
 const MigrationError = migrations.MigrationError;
 const tenant_context_mod = @import("tenant_context");
 
+// ISS-0604 / GH-470: re-export the canonical migration classification helpers.
+//
+// src/tools/migrate.zig (the runner `zig build migrate` executes) needs these,
+// but migrations.zig cannot be added to that executable as its own module —
+// this file already imports it relatively, and Zig requires a file to belong to
+// exactly one module. Re-exporting here gives the CLI the SINGLE canonical
+// definition without duplicating it, which matters because ISS-0603 was caused
+// precisely by the CLI carrying its own drifted copy of the ordering logic.
+pub const migrationOrder = migrations.migrationOrder;
+pub const migrationScope = migrations.migrationScope;
+pub const MigrationScope = migrations.MigrationScope;
+pub const declaresPublicScopeHeader = migrations.declaresPublicScopeHeader;
+pub const declaresUnqualifiedTableWork = migrations.declaresUnqualifiedTableWork;
+
 // ---------------------------------------------------------------------------
 // Public error set
 // ---------------------------------------------------------------------------

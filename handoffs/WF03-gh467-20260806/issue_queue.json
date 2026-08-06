@@ -15,9 +15,10 @@
       "issue_id": "ISS-0604",
       "github_issue": 470,
       "severity": "BLOCKER",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "enqueued_at": "2026-08-06T07:31:10Z",
-      "source": "discovered by ISSUE-FIXER while verifying ISS-0603 from-empty bootstrap; separate circular dependency (public-only migration 1135 in per-tenant pass vs GBL-119 gated behind GBL-116 pre-flight)"
+      "source": "discovered by ISSUE-FIXER while verifying ISS-0603 from-empty bootstrap; separate circular dependency (public-only migration 1135 in per-tenant pass vs GBL-119 gated behind GBL-116 pre-flight)",
+      "resolved_at": "2026-08-06T07:54:04Z"
     }
   ]
 }

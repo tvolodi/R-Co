@@ -189,3 +189,126 @@ test "TC-DB-04-01: health check returns latency_ms on successful SELECT 1" {
 test "TC-DB-04-02: health check returns ExhaustedPool when all connections are in use" {
     return error.SkipZigTest;
 }
+
+// ---------------------------------------------------------------------------
+// TC-DB-01-07 (ISS-0604 / GH-470): migration scope classification
+//
+// Regression guard for the fresh-database bootstrap DEADLOCK that remained
+// after ISS-0603 fixed apply ordering.
+//
+// The runner applies migrations twice: once against `public`, and once per
+// tenant schema. Before ISS-0604 the only marker for "public pass only" was the
+// `GBL-` filename prefix, so numeric-but-public-only migrations were wrongly
+// executed in tenant passes. For 1135 that was fatal on a fresh database: it
+// writes public.tenant.tenant_type (added by GBL-119, which tenant passes skip),
+// so it failed C42703, left the default tenant unready, and that tripped
+// GBL-116's TNT-07 pre-flight — deadlocking bootstrap at 86/106 with no
+// convergence across repeated runs.
+//
+// Scope is now declared IN THE MIGRATION FILE via `-- scope: public`, so a
+// future author sees it while writing the SQL rather than having to know a rule
+// buried in the runner. A misclassified file fails loudly instead of silently
+// skipping tenant work.
+// ---------------------------------------------------------------------------
+
+const migrationScope = bpm.migrations.migrationScope;
+const declaresPublicScopeHeader = bpm.migrations.declaresPublicScopeHeader;
+const declaresUnqualifiedTableWork = bpm.migrations.declaresUnqualifiedTableWork;
+
+test "TC-DB-01-07: GBL- prefix still classifies as public_only (backward compat)" {
+    try std.testing.expectEqual(
+        bpm.migrations.MigrationScope.public_only,
+        migrationScope("GBL-119_env01_tenant_type_field.sql", "-- anything\n"),
+    );
+}
+
+test "TC-DB-01-07: '-- scope: public' header classifies a numeric migration as public_only" {
+    const body =
+        \\-- scope: public
+        \\-- ISS-0604: writes only public.-qualified tables.
+        \\INSERT INTO public.tenant (id) SELECT ts.tenant_id FROM public.tenant_schemas ts;
+    ;
+    try std.testing.expectEqual(
+        bpm.migrations.MigrationScope.public_only,
+        migrationScope("1135_iss0114_backfill_public_tenant_storage_mode.sql", body),
+    );
+}
+
+test "TC-DB-01-07: unmarked numeric migration defaults to all_schemas" {
+    const body =
+        \\-- Migration 006: tasks
+        \\CREATE TABLE IF NOT EXISTS tasks (id uuid primary key);
+    ;
+    try std.testing.expectEqual(
+        bpm.migrations.MigrationScope.all_schemas,
+        migrationScope("006_tasks.sql", body),
+    );
+}
+
+test "TC-DB-01-07: explicit '-- scope: all_schemas' overrides the public header" {
+    const body =
+        \\-- scope: all_schemas
+        \\-- scope: public
+        \\CREATE TABLE IF NOT EXISTS tasks (id uuid primary key);
+    ;
+    try std.testing.expectEqual(
+        bpm.migrations.MigrationScope.all_schemas,
+        migrationScope("006_tasks.sql", body),
+    );
+}
+
+test "TC-DB-01-07: misclassification guard fires on unqualified work under '-- scope: public'" {
+    // This is the trap: an author marks a migration public-only, but its body
+    // creates a search_path-resolved (unqualified) table that every tenant
+    // schema needs. Silently skipping it would drift tenant data shape apart.
+    const bad =
+        \\-- scope: public
+        \\CREATE TABLE IF NOT EXISTS tasks (id uuid primary key);
+    ;
+    try std.testing.expect(declaresPublicScopeHeader("1200_bad.sql", bad));
+    try std.testing.expect(declaresUnqualifiedTableWork(bad));
+}
+
+test "TC-DB-01-07: guard does NOT fire on genuinely public-qualified work" {
+    const good =
+        \\-- scope: public
+        \\INSERT INTO public.tenant (id, slug) SELECT ts.tenant_id, 'x' FROM public.tenant_schemas ts;
+        \\ALTER TABLE public.schema_migrations ADD COLUMN IF NOT EXISTS note text;
+    ;
+    try std.testing.expect(declaresPublicScopeHeader("1201_good.sql", good));
+    try std.testing.expect(!declaresUnqualifiedTableWork(good));
+}
+
+test "TC-DB-01-07: guard ignores dynamic cross-schema EXECUTE format(... %I ...)" {
+    // 1134 and 069 drive DDL into tenant schemas via dynamic SQL from the public
+    // pass. That is the sanctioned cross-schema pattern and must not be flagged.
+    const dynamic =
+        \\-- scope: public
+        \\DO $$ BEGIN
+        \\  EXECUTE format('ALTER TABLE %I.webhook_subscriptions ADD COLUMN secret_ref text', v_schema);
+        \\END $$;
+    ;
+    try std.testing.expect(!declaresUnqualifiedTableWork(dynamic));
+}
+
+test "TC-DB-01-07: guard never fires on GBL- files (they legitimately use unqualified names)" {
+    // 13 existing GBL files write unqualified table names and rely on
+    // search_path resolving to public during the public pass. Applying the
+    // stricter header contract to them would hard-fail every migration run.
+    const gbl_body =
+        \\-- GBL-119: add tenant_type
+        \\ALTER TABLE tenant ADD COLUMN IF NOT EXISTS tenant_type text;
+    ;
+    try std.testing.expect(declaresUnqualifiedTableWork(gbl_body));
+    // ...but the guard keys off the HEADER, not the scope, so GBL is exempt:
+    try std.testing.expect(!declaresPublicScopeHeader("GBL-119_env01_tenant_type_field.sql", gbl_body));
+}
+
+test "TC-DB-01-07: a comment mentioning CREATE TABLE does not trip the guard" {
+    const commented =
+        \\-- scope: public
+        \\-- This migration used to CREATE TABLE tasks (id uuid); it no longer does.
+        \\INSERT INTO public.tenant (id) VALUES (gen_random_uuid());
+    ;
+    try std.testing.expect(!declaresUnqualifiedTableWork(commented));
+}

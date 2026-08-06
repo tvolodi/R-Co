@@ -38,11 +38,19 @@
   },
   "result": {
     "status": "PASS",
-    "summary": "Fixed ISS-0603 / GH #467: migration apply order now uses migrationOrder() with a filename tiebreak, so GBL-* migrations interleave numerically with the 1xxx_ series instead of sorting after all of them. The bug existed in TWO runners: src/db/migrations.zig (runForSchema) was the file named in the diagnosis, but `zig build migrate` actually executes a duplicated copy in src/tools/migrate.zig \u2014 fixing only the former left the symptom completely unchanged. Both fixed. Out-of-order detection was reworked from a global max-applied watermark to a within-pass 'walked_order' watermark so pre-existing databases (which carry a legacy backlog of pending GBL files below an already-applied 1134) are grandfathered in rather than bricked. Verified against a real pre-existing DB: bpm_dev applied GBL-112..115 after 1134 with no out-of-order error. 4 mutation-tested regression tests added. NOTE: a fresh DB still cannot fully bootstrap due to a SEPARATE circular dependency, filed as ISS-0604 / GH #470 and enqueued.",
+    "summary": "Fixed ISS-0603 / GH #467: migration apply order now uses migrationOrder() with a filename tiebreak, so GBL-* migrations interleave numerically with the 1xxx_ series instead of sorting after all of them. The bug existed in TWO runners: src/db/migrations.zig (runForSchema) was the file named in the diagnosis, but `zig build migrate` actually executes a duplicated copy in src/tools/migrate.zig \u2014 fixing only the former left the symptom completely unchanged. Both fixed. Out-of-order detection was reworked from a global max-applied watermark to a within-pass 'walked_order' watermark so pre-existing databases (which carry a legacy backlog of pending GBL files below an already-applied 1134) are grandfathered in rather than bricked. Verified against a real pre-existing DB: bpm_dev applied GBL-112..115 after 1134 with no out-of-order error. 4 mutation-tested regression tests added. NOTE: a fresh DB still cannot fully bootstrap due to a SEPARATE circular dependency, filed as ISS-0604 / GH #470 and enqueued.\n\nISS-0604 / GH #470 (second queued item, authorized by ORCH after independent reproduction) is now ALSO fixed: introduced a declarative `-- scope: public` migration header, honoured by both runners, so public-only migrations are skipped in per-tenant passes. Chose the header over renaming 1135 because the filename is the ledger key (a rename re-runs it everywhere), GBL-135 would collide at order 1135, and an audit found FIVE public-only non-GBL migrations, not one. A misclassified migration now fails loudly with MigrationScopeMismatch. Also deleted src/tools/migrate.zig's duplicate migrationOrder(), closing the ISS-0603 root hazard. Fresh-database bootstrap now reaches 106/106 with exit 0; the run's issue_queue.json is fully drained.",
     "artifacts_out": [
       "src/db/migrations.zig",
       "src/tools/migrate.zig",
+      "src/db/provisioning.zig",
+      "build.zig",
       "tests/unit/db_test.zig",
+      "docs/guides/backend_developer_guide.md",
+      "migrations/060_schema_per_tenant_bootstrap.sql",
+      "migrations/069_retroactive_tenant_schema_provision.sql",
+      "migrations/070_retroactive_tenant_schema_provision_backfill_fix.sql",
+      "migrations/1134_iss0112_add_secret_ref_to_tenant_schemas.sql",
+      "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql",
       "docs/issues/ISS-0603.json",
       "docs/issues/ISS-0604.json",
       "handoffs/WF03-gh467-20260806/issue_queue.json"
@@ -52,13 +60,14 @@
         "severity": "BLOCKER",
         "issue_id": "ISS-0604",
         "github_issue": 470,
-        "description": "NEW, SEPARATE defect discovered while verifying the from-empty path (not a regression from this fix, and not in scope for it). Public-only migration 1135 executes during the per-tenant migration pass, which deliberately skips all GBL-* files, so it cannot see public.tenant.tenant_type added by GBL-119 and fails C42703. The resulting unready default tenant then trips GBL-116's TNT-07 pre-flight, so `zig build migrate` still exits 1 on a fresh database and does not converge across repeated runs (stuck at 86/106). Proof the ordering fix is otherwise complete: applying GBL-119 by hand drove the DB to 106/106 with exit 0, and the next run was a clean no-op. Filed as GH #470 and enqueued on this run's issue_queue.json as QUEUED."
+        "status": "RESOLVED",
+        "description": "Discovered while verifying ISS-0603's from-empty path, filed as GH #470, then fixed under this same handoff after ORCH independently reproduced it and authorized the work. Fresh-database bootstrap now reaches 106/106 with exit 0. Queue drained."
       }
     ],
-    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2) for the ISS-0603 fix design record, then drain ISS-0604 (GH #470) from this run's issue_queue.json via WF-03 Steps 1-7 on this run's existing branch before Step Final. ISS-0604 must be fixed before fresh-database bootstrap works end to end."
+    "next_action": "issue_queue.json is fully drained (ISS-0603 RESOLVED, ISS-0604 RESOLVED). Route to CODE-DESIGNER (WF-03 Step 2) for the fix design record, then continue the WF-03 chain to Step Final (git-merge). Note for RELEASE-VALIDATOR: fresh-DB bootstrap is now a verified-working path and is worth a standing check, since this defect class was invisible on already-migrated databases."
   },
   "rework_count": 0,
   "max_rework": 3,
   "started_at": "2026-08-06T07:12:57Z",
-  "completed_at": "2026-08-06T07:31:10Z"
+  "completed_at": "2026-08-06T07:54:04Z"
 }

@@ -1,3 +1,9 @@
+-- scope: public
+-- ISS-0604 / GH-470: writes ONLY public.tenant from public.tenant_schemas (every
+-- table reference is public.-qualified). It has no per-tenant effect, and running
+-- it in a tenant pass is fatal on a fresh database: it needs public.tenant.tenant_type
+-- from GBL-119, which per-tenant passes skip, so it failed C42703, left the default
+-- tenant unready, and tripped GBL-116's TNT-07 pre-flight — deadlocking bootstrap.
 -- Migration 1135: ISS-0114 - Backfill public.tenant from public.tenant_schemas
 -- Issue: https://github.com/R-Co/bpm-platform/issues/377 (ISS-0114)
 -- Date: 2026-08-04

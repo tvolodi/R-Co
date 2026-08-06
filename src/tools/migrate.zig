@@ -4,6 +4,16 @@ const pool_mod = @import("pool");
 const db_provisioning = @import("db_provisioning");
 const build_options = @import("build_options");
 
+// ISS-0604 / GH-470: use the canonical migration classification helpers instead
+// of a private copy. ISS-0603 was caused by this CLI carrying a duplicate of the
+// ordering logic that drifted from src/db/migrations.zig; the duplicate is now
+// gone and both runners share one definition. Re-exported via db_provisioning
+// because migrations.zig already belongs to that module (a Zig file may belong
+// to exactly one module).
+const migrationOrder = db_provisioning.migrationOrder;
+const declaresPublicScopeHeader = db_provisioning.declaresPublicScopeHeader;
+const declaresUnqualifiedTableWork = db_provisioning.declaresUnqualifiedTableWork;
+
 pub fn main(init: std.process.Init) !void {
     const allocator = init.gpa;
 
@@ -202,6 +212,24 @@ pub fn main(init: std.process.Init) !void {
         };
         defer allocator.free(sql_bytes);
 
+        // ISS-0604 / GH-470: misclassification guard — fail LOUDLY.
+        //
+        // A migration marked public-only (via the GBL- prefix or a
+        // `-- scope: public` header) whose body performs unqualified,
+        // search_path-resolved table work would silently skip that work for every
+        // tenant schema. Refuse rather than drift tenant data shape apart.
+        if (declaresPublicScopeHeader(filename, sql_bytes) and
+            declaresUnqualifiedTableWork(sql_bytes))
+        {
+            std.log.err(
+                "Migration scope mismatch: {s} is declared public-only (GBL- prefix or '-- scope: public') " ++
+                    "but performs unqualified table work that needs the per-tenant pass. " ++
+                    "Either qualify the tables with public., or change the scope header to '-- scope: all_schemas'.",
+                .{filename},
+            );
+            std.process.exit(1);
+        }
+
         conn.exec("BEGIN", &.{}) catch |err| {
             std.log.err("BEGIN failed for {s}: {}", .{ filename, err });
             std.process.exit(1);
@@ -261,27 +289,8 @@ pub fn main(init: std.process.Init) !void {
     }
 }
 
-/// Migration ordering rule for the CLI runner.
-///
-/// ISS-0603 / GH-467: this is a byte-for-byte duplicate of
-/// `migrationOrder` in src/db/migrations.zig. The two MUST stay identical —
-/// `zig build migrate` runs this copy while the server/test harness runs the
-/// other, so any drift between them means the CLI and the runtime disagree
-/// about migration order, which is the class of defect ISS-0603 fixed.
-/// If you change one, change both (and the sort comparators that call them).
-fn migrationOrder(filename: []const u8) u32 {
-    // GBL-NNN_... files: skip "GBL-" prefix then parse the numeric part.
-    // We add an offset (1000) for GBL migrations so they don't clash with
-    // regular NNN prefix migrations numerically.
-    var start: usize = 0;
-    var offset: u32 = 0;
-    if (std.mem.startsWith(u8, filename, "GBL-")) {
-        start = 4;
-        offset = 1000;
-    }
-    var i: usize = start;
-    while (i < filename.len and std.ascii.isDigit(filename[i])) : (i += 1) {}
-    if (i == start) return 0;
-    const base_order = std.fmt.parseInt(u32, filename[start..i], 10) catch 0;
-    return base_order + offset;
-}
+// ISS-0604 / GH-470: the private duplicate of migrationOrder() that used to live
+// here was removed. Both runners now share the single definition in
+// src/db/migrations.zig (imported as `db_migrations` above), so the CLI and the
+// runtime can no longer disagree about migration order or scope — which is the
+// exact drift that caused ISS-0603.
