@@ -72,12 +72,12 @@
     {
       "issue_id": "ISS-0153",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/471",
-      "status": "QUEUED",
+      "status": "IN_PROGRESS",
       "severity": "MAJOR",
       "discovered_at": "2026-08-06T07:41:56Z",
       "discovered_by": "BACKEND-DEV Step q147",
       "discovered_while_fixing": "ISS-0147",
-      "started_at": null,
+      "started_at": "2026-08-06T10:09:21Z",
       "completed_at": null
     },
     {
@@ -94,24 +94,24 @@
     {
       "issue_id": "ISS-0155",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/473",
-      "status": "QUEUED",
+      "status": "IN_PROGRESS",
       "severity": "MAJOR",
       "discovered_at": "2026-08-06T07:51:28Z",
       "discovered_by": "BACKEND-DEV Step q148",
       "discovered_while_fixing": "ISS-0148",
-      "started_at": null,
+      "started_at": "2026-08-06T10:09:21Z",
       "completed_at": null
     },
     {
       "issue_id": "ISS-0156",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/475",
-      "status": "QUEUED",
+      "status": "DRAINED",
       "severity": "BLOCKER",
       "discovered_at": "2026-08-06T08:30:25Z",
       "discovered_by": "BACKEND-DEV step q150",
       "discovered_while_fixing": "ISS-0150",
-      "started_at": null,
-      "completed_at": null
+      "started_at": "2026-08-06T10:09:21Z",
+      "completed_at": "2026-08-06T10:34:13Z"
     },
     {
       "issue_id": "ISS-0157",
@@ -132,6 +132,28 @@
       "discovered_at": "2026-08-06T09:54:16Z",
       "discovered_by": "BACKEND-DEV step q149",
       "discovered_while_fixing": "ISS-0149",
+      "started_at": null,
+      "completed_at": null
+    },
+    {
+      "issue_id": "ISS-0159",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/480",
+      "status": "QUEUED",
+      "severity": "MAJOR",
+      "discovered_at": "2026-08-06T10:28:00Z",
+      "discovered_by": "BACKEND-DEV step q156",
+      "discovered_while_fixing": "ISS-0156",
+      "started_at": null,
+      "completed_at": null
+    },
+    {
+      "issue_id": "ISS-0160",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/481",
+      "status": "QUEUED",
+      "severity": "MAJOR",
+      "discovered_at": "2026-08-06T10:28:00Z",
+      "discovered_by": "BACKEND-DEV step q156",
+      "discovered_while_fixing": "ISS-0156",
       "started_at": null,
       "completed_at": null
     }

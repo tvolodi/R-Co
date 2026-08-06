@@ -104,7 +104,7 @@ pub fn createRecord(
     // For EXP-202 Stage 1, we assume JSON is valid or validated upstream.
 
     // 3. Get or create instance_id for this entity_type
-    const instance_id = getOrCreateEntityTypeInstance(conn, params.tenant_id, params.entity_type) catch return error.TransactionFailed;
+    const instance_id = getOrCreateEntityTypeInstance(allocator, conn, params.tenant_id, params.entity_type) catch return error.TransactionFailed;
 
     // 4. Build event payload
     const record_uuid = blk: {
@@ -179,7 +179,7 @@ pub fn updateRecord(
     defer definition.deinit(allocator);
 
     // Get instance_id
-    const instance_id = getOrCreateEntityTypeInstance(conn, params.tenant_id, params.entity_type) catch return error.TransactionFailed;
+    const instance_id = getOrCreateEntityTypeInstance(allocator, conn, params.tenant_id, params.entity_type) catch return error.TransactionFailed;
 
     // TODO: diff against current state to find changed_fields
 
@@ -244,7 +244,7 @@ pub fn deleteRecord(
     var definition = def;
     defer definition.deinit(allocator);
 
-    const instance_id = getOrCreateEntityTypeInstance(conn, params.tenant_id, params.entity_type) catch return error.TransactionFailed;
+    const instance_id = getOrCreateEntityTypeInstance(allocator, conn, params.tenant_id, params.entity_type) catch return error.TransactionFailed;
 
     // Fetch current state for deletion payload
     const current = fetchRecordResult(allocator, conn, params.entity_type, params.record_id, params.tenant_id) catch |err| switch (err) {
@@ -296,26 +296,87 @@ pub fn deleteRecord(
 
 // ── Private helpers ─────────────────────────────────────────────────────────
 
-fn getOrCreateEntityTypeInstance(conn: *db.Conn, tenant_id: []const u8, entity_type: []const u8) !Uuid {
+/// Sentinel `definition_id` carried by every synthetic entity-type instance.
+///
+/// `instance_projections.definition_id` is NOT NULL but has no foreign key to
+/// `process_definitions`, so a fixed sentinel is safe and makes entity-type
+/// streams trivially identifiable (`WHERE definition_id = ENTITY_STREAM_DEFINITION_ID`)
+/// without adding a column. It is deliberately distinct from the all-zero
+/// default-tenant UUID so the two never alias in a query.
+pub const ENTITY_STREAM_DEFINITION_ID = "00000000-0000-0000-0000-0000000e2117";
+
+/// Resolve (creating on first use) the synthetic process instance that owns the
+/// event stream for `entity_type`, per `src/design/entities.md` §"Instance scoping".
+///
+/// Two rows make up that instance and BOTH must exist:
+///   - `entity_type_instances` — the entity_type → instance_id mapping, and
+///   - `instance_projections`  — the instance itself.
+///
+/// `store.append()` validates `SELECT status FROM instance_projections WHERE
+/// instance_id = $1` before every append and returns `StoreError.InstanceNotFound`
+/// when it is missing. Creating only the mapping row (as this function did before
+/// ISS-0156 / GH #475) therefore broke every entity record create/update/delete.
+///
+/// The projection row is written exactly as `src/engine/instance.zig` writes one
+/// for a process instance — `status 'ACTIVE'`, empty `variables`/`current_nodes`,
+/// `tenant_id` from `bpm_effective_tenant_id()` so the forced RLS policy admits it
+/// — differing only in carrying the entity sentinel `definition_id` and a NULL
+/// `correlation_key`. `ON CONFLICT (instance_id) DO NOTHING` keeps it idempotent
+/// across repeated calls, and also self-repairs a mapping row left over from
+/// before this fix, whose projection row never existed.
+fn getOrCreateEntityTypeInstance(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    tenant_id: []const u8,
+    entity_type: []const u8,
+) !Uuid {
     var schema_buf: [80]u8 = undefined;
     const schema_name = db.schemaNameForTenant(tenant_id, &schema_buf);
 
-    const query_sql = std.fmt.allocPrint(std.heap.page_allocator,
+    // Only the schema name — derived from the tenant UUID by schemaNameForTenant,
+    // never raw user input — is interpolated. All values are bound as $N.
+    const query_sql = std.fmt.allocPrint(allocator,
         \\INSERT INTO {s}.entity_type_instances (entity_type, tenant_id, instance_id)
-        \\VALUES ($1, $2, gen_random_uuid())
+        \\VALUES ($1, $2::uuid, gen_random_uuid())
         \\ON CONFLICT (entity_type) DO UPDATE SET tenant_id = EXCLUDED.tenant_id
         \\RETURNING instance_id::text
     , .{schema_name}) catch return error.OutOfMemory;
-    defer std.heap.page_allocator.free(query_sql);
+    defer allocator.free(query_sql);
 
-    const row = (conn.queryRow(std.heap.page_allocator, query_sql, &.{ entity_type, tenant_id }) catch return error.TransactionFailed) orelse return error.TransactionFailed;
+    const row = (conn.queryRow(allocator, query_sql, &.{ entity_type, tenant_id }) catch return error.TransactionFailed) orelse return error.TransactionFailed;
     defer {
-        if (row[0]) |v| std.heap.page_allocator.free(v);
-        std.heap.page_allocator.free(row);
+        if (row[0]) |v| allocator.free(v);
+        allocator.free(row);
     }
 
     const id_str = row[0] orelse return error.TransactionFailed;
-    return entities_mod.parseUuid(id_str);
+    const instance_id = try entities_mod.parseUuid(id_str);
+
+    try ensureEntityInstanceProjection(allocator, conn, schema_name, id_str);
+
+    return instance_id;
+}
+
+/// Create the `instance_projections` row backing a synthetic entity-type
+/// instance, if it does not already exist. Idempotent.
+fn ensureEntityInstanceProjection(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    schema_name: []const u8,
+    instance_id_str: []const u8,
+) !void {
+    const sql = std.fmt.allocPrint(allocator,
+        \\INSERT INTO {s}.instance_projections
+        \\    (tenant_id, instance_id, definition_id, correlation_key,
+        \\     status, variables, current_nodes, started_at, updated_at)
+        \\VALUES
+        \\    ({s}.bpm_effective_tenant_id(), $1::uuid, $2::uuid, NULL,
+        \\     'ACTIVE', '{{}}'::jsonb, '[]'::jsonb, NOW(), NOW())
+        \\ON CONFLICT (instance_id) DO NOTHING
+    , .{ schema_name, schema_name }) catch return error.OutOfMemory;
+    defer allocator.free(sql);
+
+    conn.exec(sql, &.{ instance_id_str, ENTITY_STREAM_DEFINITION_ID }) catch return error.TransactionFailed;
 }
 
 fn updateProjection(

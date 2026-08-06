@@ -1257,6 +1257,28 @@
       "created_at": "2026-08-06T07:57:10Z",
       "status": "COMPLETED",
       "stage": "WF-03 queue drain"
+    },
+    {
+      "handoff_id": "24494923-d496-44de-8f3f-b3dd0787aa7d",
+      "file": "handoffs/WF03-gh439-testwiring-20260806/step-q155-backend-dev-iss0155.json",
+      "run_id": "WF03-gh439-testwiring-20260806",
+      "step": "q155",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-06T10:13:12Z",
+      "status": "PENDING",
+      "stage": null
+    },
+    {
+      "handoff_id": "59f9b59b-736b-4dc2-992d-8917d77f3229",
+      "file": "handoffs/WF03-gh439-testwiring-20260806/step-q156-backend-dev-iss0156.json",
+      "run_id": "WF03-gh439-testwiring-20260806",
+      "step": "q156",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-06T10:13:13Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 queue drain"
     }
   ],
   "last_updated": "2026-08-06T00:39:45Z"
