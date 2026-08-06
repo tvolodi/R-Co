@@ -10,6 +10,7 @@
 //!
 //! Requirement traceability: DB-01, DB-02, DB-03
 const std = @import("std");
+const builtin = @import("builtin");
 const portable_env = @import("env");
 const pg = @import("pg");
 const root = @import("root");
@@ -335,6 +336,49 @@ const TestOwnerTagError = error{
 /// validateOwnerTag / setTestApplicationName / killIdleConnections) so callers
 /// cannot mint a tag from arbitrary bytes.
 pub const Tag = []const u8;
+
+/// Fill `buf` with cryptographically secure random bytes.
+///
+/// Replaces `std.crypto.random`, which Zig 0.16 removed. ISS-0137 / GH #439
+/// centralises it here: the same helper was already copy-pasted into
+/// exp401_exp402_comp_restore_test.zig and others, and two more files
+/// (repository_test.zig, effects_subsystem_test.zig) still referenced the
+/// removed API — they had not compiled since the 0.16 upgrade because they were
+/// wired into no build target.
+pub fn fillRandom(buf: []u8) void {
+    switch (comptime builtin.os.tag) {
+        .linux => _ = std.os.linux.getrandom(buf.ptr, buf.len, 0),
+        .windows => {
+            const adv = struct {
+                extern "advapi32" fn SystemFunction036(pbBuffer: *anyopaque, cbBuffer: u32) u8;
+            };
+            _ = adv.SystemFunction036(@ptrCast(buf.ptr), @intCast(buf.len));
+        },
+        .macos, .ios, .tvos, .watchos, .visionos, .driverkit, .freebsd, .netbsd, .openbsd, .dragonfly => std.c.arc4random_buf(buf.ptr, buf.len),
+        else => @compileError("fillRandom: unsupported OS — add a platform branch"),
+    }
+}
+
+/// Random UUID as raw 16 bytes, for per-test fixture isolation.
+pub fn randomUuidBytes() [16]u8 {
+    var uuid: [16]u8 = undefined;
+    fillRandom(&uuid);
+    return uuid;
+}
+
+/// Format a raw 16-byte UUID as the canonical 36-char hyphenated string.
+/// Caller owns the returned memory.
+pub fn uuidBytesToString(allocator: std.mem.Allocator, uuid: [16]u8) ![]const u8 {
+    return std.fmt.allocPrint(
+        allocator,
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
+        .{
+            uuid[0],  uuid[1],  uuid[2],  uuid[3],  uuid[4],  uuid[5],
+            uuid[6],  uuid[7],  uuid[8],  uuid[9],  uuid[10], uuid[11],
+            uuid[12], uuid[13], uuid[14], uuid[15],
+        },
+    );
+}
 
 /// Cached per-process tag. The first generateOwnerTag() call in a process
 /// fills it; subsequent calls in the same process return the same value.
@@ -982,6 +1026,41 @@ pub const TestHarness = struct {
         };
     }
 
+    /// Insert a `public.tenant` row for `tenant_id` so tenant-scoped code that
+    /// validates tenant existence (e.g. ServiceCatalog.registerService's
+    /// `SELECT id FROM public.tenant WHERE id = $1::uuid`) can find it.
+    ///
+    /// Idempotent via ON CONFLICT DO NOTHING, and rolled back with the rest of
+    /// the harness transaction on deinit, so it needs no explicit cleanup.
+    ///
+    /// ISS-0137 / GH #439: this method and setTenant() below were called by
+    /// tests/integration/entity_subsystem_test.zig and exp601_tier_quota_test.zig
+    /// but existed on no type — the tests were written against a TestHarness API
+    /// that was never implemented. Neither file could compile. It went unnoticed
+    /// because exp601 was wired into no build target at all, and
+    /// entity_subsystem_test.zig's `run_exp_integration_tests` artifact is
+    /// created in build.zig but attached to no step, so it never runs either.
+    pub fn provisionTenant(self: *TestHarness, tenant_id: []const u8) !void {
+        try self.conn.exec(
+            \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+            \\VALUES ($1::uuid, $2, $2, $2, now(), 'test', $3::uuid)
+            \\ON CONFLICT (id) DO NOTHING
+        ,
+            &.{ tenant_id, tenant_id, bpm.api_tenant_context.DEFAULT_TENANT_ID },
+        );
+    }
+
+    /// Bind the ambient tenant context to `tenant_id` for subsequent calls on
+    /// this thread. Mirrors what the API layer does per request; pool
+    /// connections read it to stamp `bpm.tenant_id`.
+    ///
+    /// deinit() restores DEFAULT_TENANT_ID, so a test that sets this does not
+    /// leak the binding into the next test on the same thread.
+    pub fn setTenant(self: *TestHarness, tenant_id: []const u8) void {
+        _ = self;
+        bpm.api_tenant_context.set(tenant_id);
+    }
+
     /// Roll back the open transaction, close the connection, and release the
     /// process tag backing storage when this harness created it.
     /// Never commits — test isolation is guaranteed.
@@ -994,6 +1073,13 @@ pub const TestHarness = struct {
         ) catch {};
         self.conn.rollback() catch {};
         self.conn.close();
+
+        // ISS-0137 / GH #439: restore the ambient tenant binding. setTenant()
+        // mutates thread-local state that outlives this harness, so without
+        // this a test that called setTenant() would leak its tenant id into
+        // whichever test runs next on the same thread. Unconditional: harnesses
+        // that never called setTenant() are already at the default.
+        bpm.api_tenant_context.set(bpm.api_tenant_context.DEFAULT_TENANT_ID);
 
         if (self.owns_tag_storage) {
             while (tag_repr_lock.cmpxchgWeak(false, true, .acquire, .acquire) != null) {}

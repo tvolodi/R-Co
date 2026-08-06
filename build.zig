@@ -346,6 +346,10 @@ pub fn build(b: *std.Build) void {
             // identity_provider added so integration tests can call route handlers
             // that reference auth.getIdentityProviderManager() (e.g. handlePatchTenant).
             .{ .name = "identity_provider", .module = identity_provider_mod },
+            // ISS-0137 / GH #439: src/api/routes/onboarding.zig line 3 imports
+            // build_options. Reachable through bpm once oidc35_onboarding_test
+            // is wired into main_test.zig.
+            .{ .name = "build_options", .module = build_options_mod },
             // ISS-0134: portable environment-variable access (src/env.zig).
             .{ .name = "env", .module = env_mod },
         },
@@ -739,7 +743,19 @@ pub fn build(b: *std.Build) void {
                 // identity_provider.zig's own named import. NOT idp_config_mod:
                 // that module is rooted at the very file whose tests this target
                 // collects, and supplying it would put the file in two modules.
-                .{ .name = "portable_env", .module = env_mod },
+                //
+                // A PRIVATE env module instance, not the shared env_mod: Zig
+                // deduplicates modules by identity, so binding the shared
+                // env_mod under the extra name `portable_env` here rewrites it
+                // for every other consumer too — which turned every
+                // `@import("env")` in the integration suite into
+                // `env=portable_env` and broke tests/integration/helpers.zig.
+                .{ .name = "portable_env", .module = b.createModule(.{
+                    .root_source_file = b.path("src/env.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                }) },
             },
         }),
     });
@@ -1366,6 +1382,12 @@ pub fn build(b: *std.Build) void {
         .{ .name = "pool", .module = pool_root_mod },
         .{ .name = "bpm", .module = bpm_src_mod },
         .{ .name = "build_options", .module = build_options_mod },
+        // ISS-0137 / GH #439: tests/integration/helpers.zig line 13 does
+        // @import("env") (ISS-0134's portable environ helper). Every other
+        // integration target inherits it from integration_imports; this
+        // hand-rolled slice omitted it, so this root could not compile the
+        // helpers it depends on.
+        .{ .name = "env", .module = env_mod },
     };
     const iss601_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{

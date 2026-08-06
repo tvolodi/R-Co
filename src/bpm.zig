@@ -57,6 +57,13 @@ pub const bootstrap_audit = @import("bootstrap/audit.zig"); // TNT-04
 pub const tenant_migration = @import("admin/tenant_migration.zig"); // TNT-06
 pub const tenant_status = @import("api/middleware/tenant_status.zig"); // TNT-06
 pub const service_catalog = @import("repository/service_catalog.zig"); // SVC-01, SVC-04
+// ISS-0137 / GH #439: exp601_tier_quota_test.zig reached these two by relative
+// path (../../src/...), which escapes the tests/integration module root and
+// Zig 0.16 rejects. Re-exporting here is what this shim is for — every other
+// integration test reaches src/ through `bpm`, and tenant_status above is the
+// direct precedent for re-exporting an api/middleware module.
+pub const quota_policy = @import("config/quota_policy.zig"); // EXP-601
+pub const quota_enforcement = @import("api/middleware/quota_enforcement.zig"); // EXP-601
 pub const service_scope_validator = @import("definition/service_scope_validator.zig"); // SVC-03
 pub const services_routes = @import("api/routes/services.zig"); // SVC-04
 pub const effects_mod = @import("effects/mod.zig"); // EXP-301/302/303 async effects subsystem

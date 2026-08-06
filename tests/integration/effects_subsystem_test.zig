@@ -21,7 +21,10 @@ const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
 const bpm = @import("bpm");
-const effects = bpm.effects;
+// ISS-0137 / GH #439: src/bpm.zig exports this as `effects_mod`, not `effects`
+// (see also effects_stub / effects_queue / effects_worker beside it). The file
+// was wired into no build target, so the wrong name never surfaced.
+const effects = bpm.effects_mod;
 const store_mod = bpm.store;
 const registry_mod = bpm.registry;
 const transition_mod = bpm.transition;
@@ -42,7 +45,8 @@ const Worker = effects.worker;
 /// Generate a fresh UUID string for test isolation.
 fn generateTestUuid(allocator: std.mem.Allocator) ![]u8 {
     var buf: [16]u8 = undefined;
-    std.crypto.random.bytes(&buf);
+    // ISS-0137 / GH #439: std.crypto.random was removed in Zig 0.16.
+    helpers.fillRandom(&buf);
     var hex_buf: [36]u8 = undefined;
     var hex_fbs = std.io.fixedBufferStream(&hex_buf);
     const writer = hex_fbs.writer();

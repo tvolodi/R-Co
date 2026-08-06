@@ -27,13 +27,24 @@ const Fixtures = struct {
     test_tenant_id: [16]u8,
 };
 
+// ISS-0137 / GH #439: this file is an UNFINISHED codegen scaffold. All nine of
+// its `test` blocks below are `// CUSTOM:` placeholders containing zero
+// assertions — the implementer never filled them in. It had not compiled since
+// the Zig 0.16 upgrade (std.crypto.random removed, plus a `generated.uuid()`
+// helper that exists nowhere) because it was wired into no build target, so
+// nothing ever noticed.
+//
+// The real ENV-01 coverage lives in tests/integration/env01_test.zig (12 test
+// blocks, 31 assertions) and is wired. This file is repaired to COMPILE rather
+// than deleted or left unwired, so it stays visible to the wiring linter; the
+// missing assertions are tracked as their own issue. Making it compile does not
+// make it cover anything — that is the point of filing it rather than hiding it.
 fn setup(allocator: std.mem.Allocator, conn: *pg.Conn) !Fixtures {
     _ = conn;
     _ = allocator;
-    // CUSTOM: realise per-test fixtures here (UUIDs, random strings, seed SQL).
     return Fixtures{
-        .prod_tenant_id = std.crypto.random.bytes(16),
-        .test_tenant_id = std.crypto.random.bytes(16),
+        .prod_tenant_id = helpers.randomUuidBytes(),
+        .test_tenant_id = helpers.randomUuidBytes(),
     };
 }
 
@@ -42,7 +53,7 @@ test "env01_tenant_type_field: backfill_existing_rows_are_production" {
     // covers: ENV-01
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
+    const fx = try setup(std.testing.allocator, &h.conn);
     _ = fx;
 
     // SELECT tenant_type, production_tenant_id FROM tenant WHERE id = fx.prod_tenant_id
@@ -56,10 +67,13 @@ test "env01_tenant_type_field: production_tenant_insert_no_parent" {
     // covers: ENV-01
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
+    const fx = try setup(std.testing.allocator, &h.conn);
     _ = fx;
 
-    const new_id = generated.uuid();
+    // ISS-0137 / GH #439: was `generated.uuid()` — a helper that exists nowhere
+    // in this repo. Only ever consumed by the commented-out INSERT below.
+    const new_id = helpers.randomUuidBytes();
+    _ = new_id;
 
     // INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
     // VALUES (new_id, 'prod-new', 'Prod New', 'ACTIVE', 'realm-x', 'production', NULL)
@@ -73,7 +87,7 @@ test "env01_tenant_type_field: test_tenant_insert_with_valid_parent" {
     // covers: ENV-01
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
+    const fx = try setup(std.testing.allocator, &h.conn);
     _ = fx;
 
     // seed_prod_tenant already inserted
@@ -90,7 +104,7 @@ test "env01_tenant_type_field: check_constraint_rejects_test_tenant_without_pare
     // covers: ENV-01
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
+    const fx = try setup(std.testing.allocator, &h.conn);
     _ = fx;
 
     // INSERT INTO tenant (..., tenant_type, production_tenant_id)
@@ -105,7 +119,7 @@ test "env01_tenant_type_field: check_constraint_rejects_production_tenant_with_p
     // covers: ENV-01
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
+    const fx = try setup(std.testing.allocator, &h.conn);
     _ = fx;
 
     // seed_prod_tenant already inserted
@@ -122,7 +136,7 @@ test "env01_tenant_type_field: on_delete_restrict_blocks_deleting_parent_with_ch
     // covers: ENV-01
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
+    const fx = try setup(std.testing.allocator, &h.conn);
     _ = fx;
 
     // insert prod_tenant, insert test_tenant linked to prod_tenant
@@ -138,7 +152,7 @@ test "env01_tenant_type_field: admin_list_includes_new_fields" {
     // covers: ENV-01
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
+    const fx = try setup(std.testing.allocator, &h.conn);
     _ = fx;
 
     // seed both prod and test tenant rows
@@ -154,7 +168,7 @@ test "env01_tenant_type_field: patch_immutability_tenant_type" {
     // covers: ENV-01
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
+    const fx = try setup(std.testing.allocator, &h.conn);
     _ = fx;
 
     // seed prod_tenant row
@@ -170,7 +184,7 @@ test "env01_tenant_type_field: patch_immutability_production_tenant_id" {
     // covers: ENV-01
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
+    const fx = try setup(std.testing.allocator, &h.conn);
     _ = fx;
 
     // seed test_tenant row
