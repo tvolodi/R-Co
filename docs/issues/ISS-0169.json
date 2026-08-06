@@ -1,0 +1,30 @@
+{
+  "id": "ISS-0169",
+  "title": "LUA-05..16 remain IN_PROGRESS: host API, capability, and limiter tests not yet written against real LuaJIT",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/495",
+  "discovered_at": "2026-08-06T20:03:10Z",
+  "discovered_by": "BACKEND-DEV WF03-ISS-0161-20260806 Step 3",
+  "discovered_while_fixing": "ISS-0161",
+  "run_id": null,
+  "affected_areas": [
+    "src/lua/host_api",
+    "src/lua/instruction_limiter.zig",
+    "src/lua/memory_limiter.zig",
+    "src/lua/timeout.zig"
+  ],
+  "symptom": "12 MUST requirements (LUA-05..16) are executable for the first time but unverified; their spec cases were never written because stub bindings made execution impossible.",
+  "root_cause": "ISS-0153 stubs prevented any script from running, so no limiter or host-API behaviour could be observed. ISS-0161 removed that blocker but scoped itself to LUA-01..05.",
+  "acceptance_criteria": [
+    "TC-LUA-05-01..12 implemented",
+    "LUA-08/09/10 limiters proven to terminate scripts",
+    "LUA-06/07 capability denial tested",
+    "LUA-11..16 host API tested",
+    "LUA-05..16 RELEASED with evidence"
+  ],
+  "notes": [
+    "Filed per ISSUE_QUEUE.md forwarding rules rather than expanding ISS-0161's scope.",
+    "Motivating evidence: the first sandbox rule actually exercised under ISS-0161 (loadfile removal) turned out to be BROKEN. These 12 requirements have never been executed."
+  ]
+}

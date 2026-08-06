@@ -75,3 +75,20 @@ screenshots/
 *-screenshot.jpeg
 
 
+
+# ISS-0161: LuaJIT build artefacts. The bootstrap generates these into the
+# source tree when built by the upstream Makefile; build.zig writes them to the
+# cache instead, so any copy here is stray.
+vendor/luajit/src/*.o
+vendor/luajit/src/*.obj
+vendor/luajit/src/*.a
+vendor/luajit/src/*.lib
+vendor/luajit/src/host/*.o
+vendor/luajit/src/host/*.exe
+vendor/luajit/src/luajit.h
+vendor/luajit/src/lj_bcdef.h
+vendor/luajit/src/lj_ffdef.h
+vendor/luajit/src/lj_libdef.h
+vendor/luajit/src/lj_recdef.h
+vendor/luajit/src/lj_folddef.h
+vendor/luajit/src/jit/vmdef.lua

@@ -165,9 +165,18 @@ pub fn executeScript(context: *const ExecutionContext, script_source: []const u8
     };
 
     if (bindings.lua_gettop(L) > 0) {
-        result.value = extractValue(L, -1, context.allocator) catch |err| {
-            result.success = false;
-            result.error_message = try context.allocator.dupe(u8, errors.errorDescription(err));
+        result.value = extractValue(L, -1, context.allocator) catch |err| switch (err) {
+            // ISS-0161: extractValue's error set is LuaError || error{OutOfMemory}.
+            // errorDescription takes LuaError only, so OutOfMemory must be split
+            // out rather than described. An allocation failure is not a script
+            // error and must propagate, not be recorded as one — the stubs hid
+            // this because executeScript never reached here with a live state.
+            error.OutOfMemory => return error.OutOfMemory,
+            else => |lua_err| blk: {
+                result.success = false;
+                result.error_message = try context.allocator.dupe(u8, errors.errorDescription(lua_err));
+                break :blk null;
+            },
         };
     }
 

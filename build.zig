@@ -1,4 +1,7 @@
 const std = @import("std");
+// ISS-0161 / GH #485: LuaJIT static build (LUA-01). See vendor/luajit/build.zig
+// for the three-stage bootstrap and the two toolchain workarounds it needs.
+const luajit_build = @import("vendor/luajit/build.zig");
 
 /// ISS-0148 (GitHub #477): construct a run artifact for an integration/regression
 /// test binary with the test-database cleanup sweep attached as a true ordering
@@ -1109,9 +1112,13 @@ pub fn build(b: *std.Build) void {
     // the same reason.
     //
     // link_libc: src/lua/executor.zig's defaultAlloc uses std.c.malloc/realloc/
-    // free — the C-ABI allocator LuaJIT requires. No LuaJIT itself is linked
-    // (none is available; see src/lua/luajit_bindings.zig for the evidence and
-    // ISS-0161 / GH #485 for the follow-up).
+    // free — the C-ABI allocator LuaJIT requires.
+    //
+    // ISS-0161 / GH #485: LuaJIT is now vendored and statically linked (LUA-01),
+    // so src/lua/luajit_bindings.zig @cImports the real lua.h and the stubs are
+    // gone. See vendor/luajit/build.zig.
+    const luajit_lib = luajit_build.addLuaJit(b, target, optimize);
+
     const lua_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/lua_test_root.zig"),
@@ -1127,10 +1134,14 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
+    // ISS-0161: link the static LuaJIT archive and expose lua.h to @cImport.
+    lua_tests.root_module.linkLibrary(luajit_lib);
+    lua_tests.root_module.addIncludePath(luajit_build.luajitIncludePath(b));
+
     const run_lua_tests = b.addRunArtifact(lua_tests);
     const test_lua_step = b.step(
         "test-lua",
-        "Run src/lua/*.zig in-file unit tests (ISS-0153)",
+        "Run src/lua/*.zig in-file unit tests (ISS-0153, ISS-0161)",
     );
     test_lua_step.dependOn(&run_lua_tests.step);
 

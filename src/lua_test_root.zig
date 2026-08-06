@@ -69,8 +69,14 @@ const std = @import("std");
 
 pub const lua = @import("lua/mod.zig");
 
+// ISS-0161 / GH #485 — LUA-01..05 execution tests against the real, statically
+// linked LuaJIT. Pulled in explicitly: it lives under src/lua/ (module-boundary
+// reason above) and is not reachable via refAllDecls from mod.zig.
+pub const execution_test = @import("lua/execution_test.zig");
+
 test {
     std.testing.refAllDecls(lua);
+    std.testing.refAllDecls(execution_test);
 }
 
 test "ISS-0153: every file in the src/lua subsystem is analysed" {
@@ -103,61 +109,65 @@ test "ISS-0153: every file in the src/lua subsystem is analysed" {
     _ = host_api.fail_func.register;
 }
 
-test "ISS-0153: LuaJIT is not linked, and the bindings say so honestly" {
+test "ISS-0161: LuaJIT is linked and the bindings say so honestly" {
     const bindings = lua.luajit_bindings;
 
-    // The subsystem must not silently claim to have a Lua runtime.
-    try std.testing.expect(!bindings.has_real_luajit);
+    // ISS-0161 / GH #485 inverted this assertion. Under ISS-0153 it read
+    // `expect(!has_real_luajit)` and asserted that lua_newstate returned null
+    // and that load/pcall reported failure -- the honest description of a
+    // stubbed subsystem. LuaJIT is now vendored and statically linked, so the
+    // guarantee to protect is the opposite one: a real state is created and a
+    // real script runs.
+    try std.testing.expect(bindings.has_real_luajit);
 
-    // lua_newstate fails, so executeScript cannot pretend a script ran.
-    try std.testing.expect(bindings.lua_newstate(stubAlloc, null) == null);
+    const L = bindings.lua_newstate(realAlloc, null) orelse
+        return error.LuaStateAllocFailed;
+    defer bindings.lua_close(L);
+    _ = bindings.luaopen_base(L);
 
-    // Load and pcall report failure rather than LUA_OK — a stub that returned
-    // success here would be a silent false negative (docs/anti-patterns.md,
-    // ISS-0155: "a TODO inside a function that returns success").
-    var state: bindings.lua_State = .{};
     try std.testing.expectEqual(
-        bindings.LUA_ERRSYNTAX,
-        bindings.luaL_loadstring(&state, "return 42"),
+        bindings.LUA_OK,
+        bindings.luaL_loadstring(L, "return 42"),
     );
-    try std.testing.expectEqual(
-        bindings.LUA_ERRRUN,
-        bindings.lua_pcall(&state, 0, 1, 0),
-    );
+    try std.testing.expectEqual(bindings.LUA_OK, bindings.lua_pcall(L, 0, 1, 0));
+    try std.testing.expectEqual(@as(f64, 42), bindings.lua_tonumber(L, -1));
 }
 
-fn stubAlloc(
+/// C-ABI allocator matching `lua_Alloc`. Replaces ISS-0153's `stubAlloc`, which
+/// always returned null because no allocation could ever succeed.
+fn realAlloc(
     ud: ?*anyopaque,
     ptr: ?*anyopaque,
     osize: usize,
     nsize: usize,
 ) callconv(.c) ?*anyopaque {
     _ = ud;
-    _ = ptr;
     _ = osize;
-    _ = nsize;
-    return null;
+    if (nsize == 0) {
+        if (ptr) |p| std.c.free(p);
+        return null;
+    }
+    return std.c.realloc(ptr, nsize);
 }
 
-test "ISS-0153: executeScript surfaces the missing runtime as an error, not success" {
+test "ISS-0161: executeScript actually executes a script and returns its value" {
     var caps = lua.capabilities.CapabilitySet.init(std.testing.allocator);
     defer caps.deinit();
 
     const ctx = lua.ExecutionContext{
         .allocator = std.testing.allocator,
         .capabilities = &caps,
-        .instance_id = "iss0153-instance",
-        .actor_id = "iss0153-actor",
+        .instance_id = "iss0161-instance",
+        .actor_id = "iss0161-actor",
     };
 
     var result = try lua.executeScript(&ctx, "return 42");
     defer result.deinit(std.testing.allocator);
 
-    // With no LuaJIT linked, state creation fails and the result must report
-    // failure. If this ever starts returning success while has_real_luajit is
-    // false, the stubs have started lying.
-    try std.testing.expect(!result.success);
-    try std.testing.expect(result.error_message != null);
+    // Under ISS-0153 this asserted !result.success, because state creation
+    // could not succeed. The whole point of ISS-0161 is that it now does.
+    try std.testing.expect(result.success);
+    try std.testing.expect(result.error_message == null);
 }
 
 test "ISS-0153: bytecode is rejected before any runtime is needed (LUA-04)" {
