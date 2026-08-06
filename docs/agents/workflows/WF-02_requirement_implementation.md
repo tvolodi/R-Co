@@ -126,12 +126,14 @@ Step workflow chain template:
 **Protocol:** `docs/agents/protocols/GIT_SETUP.md`
 
 ORCH supplies `context.branch_name = "feature/<run-id>"` in this handoff.
-Follow GIT_SETUP.md exactly. On PASS, ORCH creates `handoffs/<run_id>/issue_queue.json`
-(empty `items: []`) per `docs/agents/protocols/ISSUE_QUEUE.md`, then routes to Step 1.
-Any issue discovered anywhere in this run (Step 4 test failures, Step 5 NFR failures,
-anything else) is drained onto this same queue and this same branch — see §8c of
-`docs/agents/ORCHESTRATOR.md`. Step Final below runs exactly once, after the queue is
-empty.
+Follow GIT_SETUP.md exactly. On PASS, ORCH routes to Step 1. Do **not** create a
+`handoffs/<run_id>/issue_queue.json` — per-run issue queues were removed on 2026-08-06.
+
+Failures caused by this run's own work are rework on this branch. Issues discovered
+incidentally (pre-existing defects this run did not cause) are filed and forwarded to the
+global queue per `docs/agents/protocols/ISSUE_QUEUE.md`, to be fixed in their own later
+runs — see §8c of `docs/agents/ORCHESTRATOR.md`. Step Final runs exactly once, directly
+after Step 6.
 
 ---
 
@@ -418,16 +420,17 @@ d. If zig build still fails, or if the fix scope exceeds the limits above:
 All inline fixes MUST be listed in `result.artifacts_out` and summarised in `result.summary`.
 If inline fix succeeds, `result.summary` MUST note: "Compile blocker resolved inline; no WF-03 required."
 
-When TEST-RUNNER returns FAIL for non-compile errors, ORCH enqueues the failure onto
-this run's `handoffs/<run_id>/issue_queue.json` (per `docs/agents/protocols/ISSUE_QUEUE.md`
-§8c) and drains it via WF-03 Steps 1–7 **on this run's existing branch** — WF-03's Step 00
-does NOT run again; there is no second branch or PR for this fix. Once the queue is
-empty, ORCH returns to this Step 4 to re-verify.
+When TEST-RUNNER returns FAIL for non-compile errors **in this run's own implementation**,
+that is this run's own failure: ORCH reworks the responsible agent (BACKEND-DEV /
+FRONTEND-DEV, or TEST-DESIGNER if the test itself is wrong) per ORCHESTRATOR.md §4.2, then
+returns to this Step 4 to re-verify. This stays on the run's existing branch and does not
+create a new run.
 
 If the same full-suite run also surfaces failures unrelated to what TEST-RUNNER was
-dispatched to check (pre-existing regressions this implementation didn't cause), those
-are enqueued the same way per WF-03 Step 5 §"Incidental discovery" — they do not block
-this step's own PASS verdict but are drained before this run's Step Final.
+dispatched to check (pre-existing regressions this implementation didn't cause), those are
+**filed and forwarded to the global queue** per `docs/agents/protocols/ISSUE_QUEUE.md` —
+they do not block this step's own PASS verdict, and they are not fixed in this run. They
+become their own WF-03 runs later.
 
 ---
 
@@ -488,11 +491,12 @@ Log the block with action `BENCH_ENV_BLOCK` in `handoffs/orchestrator.log`.
 ```
 
 On FAIL, `ORCH` inspects the blocking issue type:
-- NFR benchmark failure → `BACKEND-DEV` (performance work) — if this requires diagnosis
-  beyond an inline fix, enqueue and drain per `docs/agents/protocols/ISSUE_QUEUE.md` on
-  this run's existing branch (no new git-setup)
+- NFR benchmark failure caused by this run's implementation → `BACKEND-DEV` (performance
+  work), as rework on this run's existing branch
 - Benchmark environment missing → `BACKEND-DEV` (env provisioning; run pre-check again before next RV dispatch)
-- Test regression → enqueue and drain per ISSUE_QUEUE.md (WF-03 Steps 1-7, same branch)
+- Test regression caused by this run → rework the responsible agent on this branch
+- Pre-existing failure or NFR gap this run did not cause → file and forward to the global
+  queue per `docs/agents/protocols/ISSUE_QUEUE.md`; do not fix it in this run
 - Documentation stale → `DOC-UPDATER`
 
 ---
@@ -523,14 +527,13 @@ On FAIL, `ORCH` inspects the blocking issue type:
 
 **Agent:** `BACKEND-DEV` (backend/mixed runs) or `FRONTEND-DEV` (frontend-only runs) — same agent as Step 00
 **Protocol:** `docs/agents/protocols/GIT_MERGE.md`
-**Precondition:** `handoffs/<run_id>/issue_queue.json` has no items with status `QUEUED`
-or `IN_PROGRESS` — every issue discovered anywhere in this run (Step 4, Step 5, or while
-draining an earlier queued item) has reached `DRAINED`. If any remain, ORCH drains them
-via WF-03 Steps 1–7 first (see §8c) — this step does not run until the queue is empty.
+**Precondition:** Step 6 (DOC-UPDATER) returned PASS. This step follows it directly — there
+is no queue check between them.
 
 ORCH supplies `context.branch_name` and `context.requirement_ids` in this handoff.
-Use DOC-UPDATER's `result.summary` as the commit and PR one-line summary, and list every
-`ISS-NNNN` resolved during the run (not just the original requirements) in the PR body.
+Use DOC-UPDATER's `result.summary` as the commit and PR one-line summary, and list this
+run's requirement IDs in the PR body. If the run forwarded any incidental discoveries to
+the global queue, list their `ISS-NNNN` IDs under a "Forwarded, not fixed here" note.
 Follow GIT_MERGE.md exactly.
 
 ---

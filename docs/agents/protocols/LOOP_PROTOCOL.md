@@ -9,20 +9,24 @@
 
 ## Purpose
 
-The ISSUE_QUEUE protocol (see `ISSUE_QUEUE.md`) drains issues *within a single workflow
-run* — all found issues are fixed on one branch, one PR. This protocol addresses a
-different scenario: **two or more VS Code workspaces working autonomously**, each picking
-issues from a shared backlog, with no duplication of effort.
+The ISSUE_QUEUE protocol (see `ISSUE_QUEUE.md`) covers *discovery*: what an agent does the
+moment it finds an issue it was not asked to fix — file it, then forward it here. This
+protocol covers *consumption*: how issues on that shared backlog get claimed and fixed,
+including by **two or more VS Code workspaces working autonomously** with no duplication of
+effort.
 
-Key differences from the per-run queue:
+The two protocols are the two halves of one flow:
 
-| | Per-run queue (ISSUE_QUEUE.md) | Global queue (this protocol) |
+| | ISSUE_QUEUE.md (produce) | LOOP_PROTOCOL.md (consume) |
 |---|---|---|
-| Scope | One workflow run, one branch | Cross-run, cross-workspace |
-| Item count per session | All queued items drained | **One item at a time** |
-| Lock mechanism | Git branch ownership | File mutex + item-level TTL lock |
-| Stop condition | Queue empty after drain | Queue empty OR `STOP_LOOP` flag present |
-| Branch lifecycle | One branch for all items in run | **One branch per item** |
+| Question answered | Where does a newly-found issue go? | How does a queued issue get fixed? |
+| Actor | Any agent, mid-run | ORCH in loop mode |
+| Action | File ISS + GitHub issue, `queue_add.py` | `queue_claim.py` → full WF-03 run → `queue_release.py` |
+| Effect on current run | None — the run finishes its own job | Each claimed item is its own run, own branch, own PR |
+
+> **Changed 2026-08-06.** ISSUE_QUEUE.md previously specified a *per-run* queue drained
+> inline on the run's own branch. That inner loop was removed; the global queue described
+> here is now the only issue queue.
 
 ---
 
@@ -187,9 +191,10 @@ queue gets its own full WF-03 run with its own feature branch and PR. This keeps
 small, reviewable, and mergeable independently.
 
 **No nesting** — if WF-03 discovers a new incidental issue while fixing the claimed item,
-`fn:enqueue-issue` adds it to the *global* queue (via `queue_add.py`) rather than the
-per-run queue. The current item's WF-03 continues; the new item is processed in the
-next loop iteration (by this or another workspace).
+`fn:enqueue-issue` adds it to the global queue via `queue_add.py`. The current item's WF-03
+continues to its own Step Final unchanged; the new item is processed in a later loop
+iteration (by this or another workspace). An iteration never grows to include a second
+issue.
 
 ---
 
