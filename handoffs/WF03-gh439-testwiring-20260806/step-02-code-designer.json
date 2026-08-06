@@ -1,0 +1,60 @@
+{
+  "handoff_id": "ff88a283-52c7-4a74-aba2-26bdbd0af937",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-gh439-testwiring-20260806/step-02-code-designer.json",
+  "created_at": "2026-08-06T05:33:29Z",
+  "started_at": "2026-08-06T05:33:29Z",
+  "completed_at": "2026-08-06T05:39:37Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "issue_ids": [
+      "ISS-0137"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/439",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "related_handoff_ids": [
+      "d60e48f2-685b-48b6-9f3a-ffa362e52671"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0137-diagnosis.yaml",
+      "docs/issues/ISS-0137.json",
+      "build.zig",
+      "src/transition_test_root.zig",
+      "tools/lint_test_wiring.py"
+    ]
+  },
+  "task": {
+    "description": "Produce the fix design for ISS-0137 / GH #439 as a Type E prose design at src/design/test-wiring-iss0137.md. The diagnosis (docs/issue-reports/ISS-0137-diagnosis.yaml) already classifies all 55 files into 7 clusters C1-C7 with per-file dispositions -- your job is to turn that into an unambiguous implementation design BACKEND-DEV can execute without further decisions. Resolve every open decision the diagnosis defers, specifically: (1) the C3/C4 overlap -- src/oidc/claim_mapping.zig would become BOTH a named module root (C4) AND reachable from src/oidc_test_root.zig (C3), which risks a Zig 'file exists in two modules' error; decide whether the C3 oidc shim refAllDecls the NAMED modules or relative paths, and state the rule generally so the same conflict cannot recur for the other overlapping files; (2) exact content and location of each of the 7 new *_test_root.zig shim files; (3) exact build.zig edits per cluster (module declarations, addTest roots, Run steps, test_step.dependOn wiring, and which narrow test-<name> steps to expose); (4) the two required source fixes -- iss206_token_multiset_test.zig's bpm.engine_transition symbol and exp601_tier_quota_test.zig's ../../src relative-import escape (specify the fix approach, not the code); (5) whether tools/lint_test_wiring.py needs the exclusion mechanism -- the diagnosis assigns zero files to DOCUMENTED_EXCLUSION but flags wasm_executor_test.zig as a possible conversion if Wasmtime linking is required; design the exclusion mechanism as a YAML file requiring reason+issue_ref (never an inline source pragma, which would let a future agent silence the gate by editing what it measures). Design must preserve the Green-Main Gate: no file needing BPM_TEST_DB_URL or Keycloak may land on `zig build test`. Note that src/wasm liveness is now tracked separately as ISS-0147 / GH #463 -- design C5 so it does not depend on that decision.",
+    "acceptance_criteria": [
+      "src/design/test-wiring-iss0137.md exists as prose design with no implementation code",
+      "C3/C4 module-ownership conflict resolved with a stated general rule",
+      "Every new shim file named with its exact purpose and refAllDecls target",
+      "Every build.zig change specified per cluster with its build step attachment",
+      "Unit-vs-integration split preserved: zero live-service files on `zig build test`",
+      "Linter exclusion mechanism designed (YAML, reason+issue_ref, no inline pragma)",
+      "C7 closing condition specified: promote test-wiring-check into test_step only after linter exits 0"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E prose design at src/design/test-wiring-iss0137.md. Resolved the C3/C4 module-ownership conflict with a general Single-Owner Module Rule (a file that is a named-module root must be reached by NAME everywhere, incl. shims; verified all 12 src/oidc files use only named imports, so the rule is free there). Inverted the cluster order (C4a modules must precede C3 shims). Specified all 6 src/ shims + 3 tests/unit aggregators, 15 new b.createModule decls, 9 addTest triples with narrow test-<name> steps, and the integration_imports extension. Source fixes decided: iss206 fixes the test symbol to bpm.transition (no alias); exp601 gets two new src/bpm.zig re-exports (quota_policy, quota_enforcement) since bpm.zig exported neither. Exclusion mechanism designed as tools/test_wiring_exclusions.yaml (path/reason/issue_ref/added_at, hard-fail on invalid entry, always printed) but deferred: both DOCUMENTED_EXCLUSION candidates resolved to WIRE IT. Promoted linter improvement L-2 (named-module edge resolution) from optional to REQUIRED -- the Single-Owner Module Rule makes 14 files invisible to the current regex BFS, so C7 cannot reach exit 0 without it. Green-Main Gate split verified by spot-check: 33 files/141 blocks on test, 21/184 on test-integration, zero live-service files on test. Recorded 7 corrections to the diagnosis.",
+    "artifacts_out": [
+      "src/design/test-wiring-iss0137.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

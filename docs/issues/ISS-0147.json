@@ -1,0 +1,22 @@
+{
+  "id": "ISS-0147",
+  "title": "src/wasm/ (12 files) is reachable from no addTest root and re-exported by neither bpm.zig nor main.zig",
+  "status": "OPEN",
+  "severity": "MINOR",
+  "category": "dead-subsystem-visibility",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "handoff_id": "d60e48f2-685b-48b6-9f3a-ffa362e52671",
+  "affected_areas": [
+    "src/wasm/",
+    "src/bpm.zig",
+    "src/main.zig",
+    "build.zig",
+    "tests/unit/wasm_executor_test.zig"
+  ],
+  "created_at": "2026-08-06T05:32:56Z",
+  "resolved_at": null,
+  "notes": "Incidental finding #3 of the WF-03 Step 1 diagnosis for GH #439 / ISS-0137 (docs/issue-reports/ISS-0137-diagnosis.yaml). Broader than #439: the whole src/wasm subsystem is unreferenced, not merely its tests. Only tests/unit/wasm_executor_test.zig appears in #439's 55-file list (cluster C5); wiring that one test does not answer whether src/wasm is live, prototype, or dead code. src/wasm/wasmtime_bindings.zig may need a real Wasmtime link, which determines whether the test can run in CI at all.",
+  "candidate_resolution": "Decide liveness of src/wasm. If live: re-export via src/bpm.zig and add an addTest root. If prototype/dead: delete, or record a documented exclusion. Document the wasmtime external-link requirement either way.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/463",
+  "discovered_while_fixing": "ISS-0137"
+}

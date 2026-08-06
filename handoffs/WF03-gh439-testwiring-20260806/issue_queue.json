@@ -2,5 +2,28 @@
   "run_id": "WF03-gh439-testwiring-20260806",
   "created_at": "2026-08-06T05:12:51Z",
   "branch_name": "feature/WF03-gh439-testwiring-20260806",
-  "items": []
+  "items": [
+    {
+      "issue_id": "ISS-0147",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/463",
+      "status": "QUEUED",
+      "severity": "MINOR",
+      "discovered_at": "2026-08-06T05:32:56Z",
+      "discovered_by": "ISSUE-FIXER Step 1",
+      "discovered_while_fixing": "ISS-0137",
+      "started_at": null,
+      "completed_at": null
+    },
+    {
+      "issue_id": "ISS-0148",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/464",
+      "status": "QUEUED",
+      "severity": "MAJOR",
+      "discovered_at": "2026-08-06T05:32:56Z",
+      "discovered_by": "ISSUE-FIXER Step 1",
+      "discovered_while_fixing": "ISS-0137",
+      "started_at": null,
+      "completed_at": null
+    }
+  ]
 }

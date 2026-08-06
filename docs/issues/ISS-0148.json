@@ -1,0 +1,19 @@
+{
+  "id": "ISS-0148",
+  "title": "tests/unit/event_store_test.zig is 25 SkipZigTest stubs -- ES-01..ES-08 have zero real unit coverage but report green",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "false-green-test-coverage",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "handoff_id": "d60e48f2-685b-48b6-9f3a-ffa362e52671",
+  "affected_areas": [
+    "tests/unit/event_store_test.zig",
+    "docs/status/requirement_status.yaml"
+  ],
+  "created_at": "2026-08-06T05:32:56Z",
+  "resolved_at": null,
+  "notes": "Incidental finding #5 of the WF-03 Step 1 diagnosis for GH #439 / ISS-0137. The file IS correctly wired, so this is not a #439 wiring defect -- the defect is that all 25 blocks are error.SkipZigTest, so ES-01..ES-08 report green with zero executing assertions. Surfaced while confirming tests/unit/event_store_test_orig.zig is a byte-identical duplicate safe to delete under #439 cluster C1 (it loses no coverage precisely because there was none).",
+  "candidate_resolution": "Replace each SkipZigTest block with real assertions, or move coverage to named integration tests. Per CLAUDE.md TEST-DESIGNER directive no SkipZigTest may remain on a MUST-requirement block without a passing integration counterpart. Re-derive ES-01..ES-08 status in requirement_status.yaml afterwards.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/464",
+  "discovered_while_fixing": "ISS-0137"
+}
