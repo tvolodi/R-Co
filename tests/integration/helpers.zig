@@ -1047,12 +1047,31 @@ pub const TestHarness = struct {
         //     return err;
         // };
 
-        // Release the widened bpm_test_migrations_public advisory lock now that
-        // resetTestData()/applyCompatibilityShims() have completed. Explicit
-        // unlock (rather than defer) matches the fix design's required release
-        // point: after applyCompatibilityShims() but before tenant context is
-        // set and the per-test transaction begins.
-        conn.exec("SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public'))", &.{}) catch {};
+        // ISS-0162 / GitHub #486: the bpm_test_migrations_public advisory lock is
+        // deliberately NOT released here. It is released in deinit(), so it spans
+        // the whole harness lifetime.
+        //
+        // Releasing it at this point made init mutually exclusive only with other
+        // inits — which is not the correctness requirement. resetTestData() issues
+        // unconditional DELETEs against instance_projections, events,
+        // process_definitions and nine other tables in the shared `tenant_default`
+        // schema that EVERY integration binary provisions. With the lock released
+        // here, binary B's init legitimately deleted binary A's fixture rows while
+        // A's test was mid-flight:
+        //
+        //   A: init ─lock─ reset ─unlock─ BEGIN ── test body writes fixtures ──▶
+        //   B:        (queued) ────────── lock ─ reset ─unlock ─ ...
+        //                                        ▲ DELETEs A's rows, committed
+        //
+        // A's per-test transaction does not protect it: it is READ COMMITTED, so
+        // each statement sees B's committed deletes. That produced both signatures
+        // in #486 — StoreError.InstanceNotFound (the synthetic entity-type instance
+        // vanishes) and expect(r2.is_duplicate) failing (the idempotency row
+        // vanishes, so the replay is no longer recognised as a duplicate).
+        //
+        // Holding the lock until deinit() serializes whole binaries against each
+        // other. They were never actually safe to overlap; the narrow window only
+        // made it look that way. See src/design/iss0162_test_harness_cross_binary_races.md.
 
         // Initialize test tenant context for all pool connections.
         // Pool.acquire() calls applyRequestTenantContext() which reads this thread-local.
@@ -1126,6 +1145,24 @@ pub const TestHarness = struct {
             &.{},
         ) catch {};
         self.conn.rollback() catch {};
+
+        // ISS-0162 / GitHub #486: release the bpm_test_migrations_public advisory
+        // lock acquired in init(). Held across the whole harness lifetime so no
+        // sibling binary can run resetTestData()'s DELETEs against the shared
+        // tenant_default schema while this test is live — see init() and
+        // src/design/iss0162_test_harness_cross_binary_races.md.
+        //
+        // Ordered AFTER rollback() so this test's transaction is fully closed
+        // before another binary is admitted, and BEFORE close() so it is released
+        // explicitly rather than only as a side effect of disconnecting.
+        // catch {}-guarded: releasing the lock must never block teardown. A
+        // session-level advisory lock is also released automatically when the
+        // connection drops, so even a hard abort cannot strand it.
+        self.conn.exec(
+            "SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public'))",
+            &.{},
+        ) catch {};
+
         self.conn.close();
 
         // ISS-0137 / GH #439: restore the ambient tenant binding. setTenant()
