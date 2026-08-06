@@ -95,6 +95,28 @@ Never report something as working without verifying it yourself. Run the build, 
 - "I believe this..."
 - "Once you verify..."
 
+### ⛔ Never Call a Red Pipeline "OK" Without a Source
+
+If CI is red, you may not report it as acceptable on your own judgement. Attribute it to evidence, and name the evidence:
+
+```bash
+python3 tools/check_github_status.py          # is the platform degraded?
+gh run view <run-id> --json jobs --jq '.jobs[]|"\(.name): \(.conclusion)"'
+gh run view <run-id> --log-failed             # what actually failed
+```
+
+Three outcomes, three different answers:
+
+| Finding | Correct report |
+|---|---|
+| `check_github_status.py` reports degraded, and the jobs never started (no runner, zero steps) | Platform outage — name the incident and its start time |
+| A step genuinely failed | **It is not OK.** Read the failing step and fix it |
+| A step failed but is `continue-on-error` | **It is not OK either** — a masked failure is still a failure; see ISS-0171 / GH #498 |
+
+Checking the job list is not enough. On 2026-08-06 the `Source linters` job reported `success` through the GitHub API while its own log contained `##[error]Process completed with exit code 1`, because the failing step was `continue-on-error`. A green check meant nothing had been verified.
+
+This directive exists because the opposite happened repeatedly: agents told the maintainer that red workflows were fine, without checking anything, until the maintainer pushed back. "In this project every second workflow fails but agents say me that it is OK" is a bug report about agent behaviour, and this is the fix. If you cannot determine the cause, say that you could not determine it — never that it is fine.
+
 ### ⛔ File Placement Rules
 
 Agent-created files MUST go in the correct directory. **Never create working files in the project root.**

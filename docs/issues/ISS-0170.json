@@ -1,0 +1,27 @@
+{
+  "id": "ISS-0170",
+  "title": "CI cannot distinguish a GitHub Actions platform outage from a real failure",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/497",
+  "discovered_at": "2026-08-06T21:23:19Z",
+  "discovered_by": "ORCH investigating run 31127727011",
+  "discovered_while_fixing": null,
+  "run_id": null,
+  "affected_areas": [
+    ".github/workflows/ci.yml"
+  ],
+  "symptom": "A platform outage renders on a PR as a red X identical to a failed test. 12/12 runs before 15:22Z succeeded; every cancellation and failure today falls after the incident opened.",
+  "root_cause": "GitHub Actions major_outage (incident 'Incident with Actions', impact critical, opened 2026-08-06T15:22:49Z). Webhook triggers throttled, so runs are never created and queued jobs are never assigned a runner. NOT runner capacity.",
+  "acceptance_criteria": [
+    "Pre-flight step queries githubstatus.com components API for the Actions component",
+    "Outage surfaced as an explicit annotation naming the incident",
+    "Pre-check is diagnostic only: never fails the build, never masks a genuine failure",
+    "CLAUDE.md requires checking the status API before reporting red CI as acceptable"
+  ],
+  "notes": [
+    "Opposite defect to ISS-0171/#498, which HID real failures via continue-on-error.",
+    "Last 40 runs: 31 success, 6 cancelled, 3 failure -- only 3 are genuine code failures."
+  ],
+  "correction_note": "Originally filed as 'runner starvation' from runner-assignment evidence alone. That inference was wrong because githubstatus.com was never checked. Corrected 2026-08-06; the remedy changed from capacity tuning to outage attribution."
+}
