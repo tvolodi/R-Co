@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-06T11:46:27Z'
+last_updated: '2026-08-06T12:41:22Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -979,8 +979,9 @@ requirements:
     priority: MUST
     title: Tenant carries a type field distinguishing production from test
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     - tests/integration/helpers.zig
+    - tests/integration/env01_tenant_type_field_test.zig
     test_spec: tests/specs/ENV-01.md
     test_run: tests/reports/report-20260611-WF02-env-batch1-20260610.yaml
     tested_at: '2026-06-11'

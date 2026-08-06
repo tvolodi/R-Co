@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-06T11:46:26Z'
+generated_at: '2026-08-06T12:39:25Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -2218,15 +2218,16 @@ requirements:
     body_source: individual-file
     alt_sources: []
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
     - tests/integration/helpers.zig
+    - tests/integration/env01_tenant_type_field_test.zig
     test_spec: tests/specs/ENV-01.md
     test_run: tests/reports/report-20260611-WF02-env-batch1-20260610.yaml
     tested_at: '2026-06-11'
     released_at: '2026-06-11T00:00:00Z'
     release_run: WF02-env-batch1-20260610
     release_decision: docs/status/release-stage14-env-batch1-20260611.yaml
-    last_updated: '2026-08-01T12:19:45Z'
+    last_updated: '2026-08-06T12:39:25Z'
     type: requirement
     note: 'ISS-0112 fix: tenant_type field reconciliation + per-test isolation helpers'
   ENV-02:
