@@ -15,7 +15,36 @@ pub const get_instance_state = @import("get_instance_state.zig");
 pub const now_func = @import("now.zig");
 pub const fail_func = @import("fail.zig");
 
-/// Register all host API functions into the platform table.
+/// Register EXACTLY the eight Architecture §5.2 functions into the `platform`
+/// table, and no others (LUA-05 first clause).
+///
+/// The normative capability matrix lives in
+/// `src/design/lua-capability-enforcement.md` §3.2. Adding a ninth function
+/// without adding a row there is a defect.
+///
+/// | platform.*            | capability required        |
+/// |-----------------------|----------------------------|
+/// | call_service          | service:call:<svc_id>      |
+/// | read_variable         | variable:read              |
+/// | write_variable        | variable:write             |
+/// | log                   | audit:log                  |
+/// | emit_event            | event:emit                 |
+/// | get_instance_state    | instance:read              |
+/// | now                   | NONE — ungated by design   |
+/// | fail                  | NONE — ungated by design   |
+///
+/// `now` and `fail` being ungated is a POSITIVE design statement, not an
+/// omission: `now` is a pure time read with no state reach (LUA-14), and a
+/// script may always terminate itself (LUA-15). A test that expects a gate on
+/// either is reading the matrix wrong.
+///
+/// The context is installed into `LUA_REGISTRYINDEX` by
+/// `executor.createSandboxedState` BEFORE this runs, so every closure created
+/// here can reach it via `host_context.contextFromState`. The `context`
+/// parameter is retained on each `register` for signature stability, but no
+/// registration carries the pointer itself — that is the whole point of the
+/// registry channel (design §2.2): one write, one shared read helper, no
+/// per-closure ceremony that a new function can forget.
 pub fn registerAll(
     L: *bindings.LuaState,
     context: *const executor.ExecutionContext,

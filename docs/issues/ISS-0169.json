@@ -7,7 +7,7 @@
   "discovered_at": "2026-08-06T20:03:10Z",
   "discovered_by": "BACKEND-DEV WF03-ISS-0161-20260806 Step 3",
   "discovered_while_fixing": "ISS-0161",
-  "run_id": null,
+  "run_id": "WF03-ISS-0169-20260806",
   "affected_areas": [
     "src/lua/host_api",
     "src/lua/instruction_limiter.zig",
@@ -25,6 +25,80 @@
   ],
   "notes": [
     "Filed per ISSUE_QUEUE.md forwarding rules rather than expanding ISS-0161's scope.",
-    "Motivating evidence: the first sandbox rule actually exercised under ISS-0161 (loadfile removal) turned out to be BROKEN. These 12 requirements have never been executed."
-  ]
+    "Motivating evidence: the first sandbox rule actually exercised under ISS-0161 (loadfile removal) turned out to be BROKEN. These 12 requirements have never been executed.",
+    "Status remains OPEN after tranche 1: 9 of the 12 requirements (LUA-08..16) are still IN_PROGRESS and unclaimed, and LUA-07 is only half-satisfied. See tranche_progress below."
+  ],
+  "tranche_progress": {
+    "updated_at": "2026-08-06T23:32:26Z",
+    "updated_by": "DOC-UPDATER WF03-ISS-0169-20260806 Step 7",
+    "plan": "Four sequential WF-03 runs per the Step 1 scope_recommendation; CLAUDE.md caps a run at 4 requirements.",
+    "tranche_1": {
+      "requirements": ["LUA-05", "LUA-06", "LUA-07"],
+      "run_id": "WF03-ISS-0169-20260806",
+      "status": "DONE",
+      "outcome": "LUA-05 RELEASED, LUA-06 RELEASED, LUA-07 left IN_PROGRESS (partial).",
+      "summary": "Closed the capability enforcement hole: ExecutionContext now reaches every lua_CFunction via LUA_REGISTRYINDEX light userdata and all 6 gated platform.* functions check the CapabilitySet at call time, fail-closed. Fixed the luaopen_base ordering invariant (open base, then prune) and unified product/test state behind createSandboxedState. Manifest hash now binds script source + sorted 0x00-separated capabilities, with constant-time verification and pre-state-creation rejection.",
+      "evidence": "zig build exit 0; zig build test-lua 71/71; zig build test 936/1000 passed, 0 failed, 81/81 steps. Baseline main b3d406d = 865/929; per-binary diff shows exactly one new binary of 71 tests and identical pass counts on every pre-existing binary -- ZERO regressions. Gate proven load-bearing by mutation (neutering requireCapability turns exactly the capability tests red).",
+      "design": "src/design/lua-capability-enforcement.md",
+      "test_report": "tests/reports/report-20260806-WF03-ISS-0169-20260806.yaml",
+      "lua_07_scope_boundary": "LUA-07 criterion 2 (manifest hash in the execution audit record) requires the engine to write the audit row, out of scope for src/lua. Filed as ISS-0176 / https://github.com/tvolodi/R-Co/issues/504 and queued. Not marking LUA-07 RELEASED is deliberate -- doing so would repeat the ISS-0153 pattern this issue exists to correct."
+    },
+    "tranche_2": {
+      "requirements": ["LUA-08", "LUA-09", "LUA-10"],
+      "status": "PENDING",
+      "scope": "Instruction limit, memory limit, wall-clock timeout. instruction_limiter.zig and memory_limiter.zig were made to COMPILE in tranche 1 but no limiter is installed by executeScript -- they still have no caller."
+    },
+    "tranche_3": {
+      "requirements": ["LUA-11", "LUA-12", "LUA-13"],
+      "status": "PENDING",
+      "scope": "Stateful host API: variable read/write, service call, logging. Depends on tranche 1's context plumbing."
+    },
+    "tranche_4": {
+      "requirements": ["LUA-14", "LUA-15", "LUA-16"],
+      "status": "PENDING",
+      "scope": "Time source, structured failure, runtime error capture. Includes moving fail.zig's forgeable script-writable globals into the registry (design section 11 follow-up 3)."
+    },
+    "incidental_issues_filed": [
+      "ISS-0172 / https://github.com/tvolodi/R-Co/issues/500",
+      "ISS-0173 / https://github.com/tvolodi/R-Co/issues/501",
+      "ISS-0174 / https://github.com/tvolodi/R-Co/issues/502",
+      "ISS-0175 / https://github.com/tvolodi/R-Co/issues/503",
+      "ISS-0176 / https://github.com/tvolodi/R-Co/issues/504"
+    ]
+  },
+  "diagnosis": {
+    "diagnosed_at": "2026-08-06T22:05:22Z",
+    "diagnosed_by": "ISSUE-FIXER WF03-ISS-0169-20260806 Step 1",
+    "report": "docs/issue-reports/ISS-0169-diagnosis.yaml",
+    "premise_correction": "The issue's premise ('implemented but untested') is false. Execution against real LuaJIT shows 11 of the 12 requirements are not implemented, only partially implemented, or do not compile. Only LUA-14 is genuinely implemented-but-untested.",
+    "root_cause": "src/lua/ is a Stage-8 scaffold written in May 2026 against bindings that could never execute. Every host_api register() discards ExecutionContext with `_ = context;` and registers a 0-upvalue closure, so no capability set is reachable at call time and NO capability check fires anywhere (verified: an empty CapabilitySet permits all 7 gated calls). The four state-touching host functions validate their arguments, discard them with `_ =`, and push nil. executeScript installs no instruction hook, no bounded allocator and no timeout, so instruction_limiter.zig / memory_limiter.zig / timeout.zig are dead code with no caller anywhere in src/. Two of those three files do not even compile (instruction_limiter.zig:39 discards lua_sethook's c_int; memory_limiter.zig:13 uses std.Thread.Mutex, removed in Zig 0.16) - invisible because src/lua_test_root.zig pins them with type-only references that force neither field-type resolution nor function-body analysis. Additionally loadSafeStdlib never calls luaopen_base, so pairs/pcall/error/type/setmetatable/_G are absent from any script run through executeScript, making stdlib.zig's load/loadstring/loadfile removals no-ops on that path and rendering realistic scripts unrunnable. This is the ISS-0155 anti-pattern at subsystem scale: correct names, correct signatures, correct error taxonomies and correct payload structs, all returning success without doing the work.",
+    "classification_summary": {
+      "IMPLEMENTED_needs_tests_only": [
+        "LUA-14"
+      ],
+      "PARTIALLY_IMPLEMENTED_needs_src_changes": [
+        "LUA-05",
+        "LUA-15",
+        "LUA-16"
+      ],
+      "BROKEN_does_not_compile": [
+        "LUA-08",
+        "LUA-09"
+      ],
+      "NOT_IMPLEMENTED": [
+        "LUA-06",
+        "LUA-07",
+        "LUA-10",
+        "LUA-11",
+        "LUA-12",
+        "LUA-13"
+      ]
+    },
+    "highest_severity_finding": "LUA-06 is an absent security control, not a missing test: a Lua script today has unconditional access to every platform.* host function regardless of its declared manifest. ORCH should re-assess ISS-0169's MAJOR severity in light of this.",
+    "scope_recommendation": "Recommend ORCH split into four sequential WF-03 runs: (1) LUA-05/06/07 context plumbing + capability enforcement + manifest, (2) LUA-08/09/10 limiters, (3) LUA-11/12/13 stateful host API, (4) LUA-14/15/16 time + events. Group 1 is a prerequisite for 3 and 4. The 12 specs define 169 test cases; CLAUDE.md caps a run at 4 requirements for exactly this blast-radius reason.",
+    "incidental_issues_filed": [
+      "ISS-0172 / https://github.com/tvolodi/R-Co/issues/500"
+    ],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  }
 }

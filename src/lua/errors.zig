@@ -10,6 +10,10 @@ pub const LuaError = error{
     InvalidArgument,          // Invalid argument to host function
     DatabaseError,            // Error accessing database
     UnknownEventType,         // Event type not in registry
+
+    // ISS-0169 / GH #495 (design §4.5).
+    ContextInstallFailed,     // ExecutionContext could not be installed into LUA_REGISTRYINDEX
+    ManifestRequired,         // Load-time execution requested with no manifest where policy requires one
 };
 
 /// Map Lua error types to HTTP status codes (for API layer).
@@ -24,6 +28,10 @@ pub fn statusCodeFromError(err: LuaError) u16 {
         error.LuaAllocFailed => 503,
         error.DatabaseError => 503,
         error.UnknownEventType => 400,
+        // A capability gate that cannot be installed is a server fault, not a
+        // caller fault: the script must not run, and the operator must know.
+        error.ContextInstallFailed => 500,
+        error.ManifestRequired => 422,
     };
 }
 
@@ -39,5 +47,7 @@ pub fn errorDescription(err: LuaError) []const u8 {
         error.InvalidArgument => "Invalid argument to host function",
         error.DatabaseError => "Database error during script execution",
         error.UnknownEventType => "Unknown event type",
+        error.ContextInstallFailed => "Failed to install the execution context into the Lua registry",
+        error.ManifestRequired => "A script manifest is required for load-time execution",
     };
 }

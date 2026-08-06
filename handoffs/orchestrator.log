@@ -160,3 +160,20 @@
 2026-08-06T12:35:02Z | DRAIN | WF03-gh439-testwiring-20260806 | -------- | ORCH | ISS-0157 DRAINED; queue closed: 11 drained, 3 deferred as tracked follow-ups
 2026-08-06T16:57:22Z | COMPLETE | WF03-gh439-testwiring-20260806 | 70cf4a61 | BACKEND-DEV | Step q157 PARTIAL - ISS-0157 done+verified, ISS-0158 deferred (GH #479)
 2026-08-06T17:45:44Z | MERGE | WF03-gh439-testwiring-20260806 | 8103072d | ORCH | PR #490 squash-merged to main (8103072d97b2fc81534a3511d0ec2940a8a82e17), branch deleted, repo on clean main. Merged with --admin: GitHub Actions major outage (incident 2026-08-06T15:22Z) left all checks queued; verified locally instead - zig build 0, zig build test 0, lint_test_wiring 0, lint_handoffs --changed 0. 14 GitHub issues auto-closed. Deferred follow-ups remain OPEN: #479 #485 #486 #489.
+2026-08-06T21:50:39Z | ROUTE | WF03-ISS-0169-20260806 | 275309fe | ORCH -> BACKEND-DEV | PENDING step 00
+2026-08-06T21:52:11Z | COMPLETE | WF03-ISS-0169-20260806 | 275309fe | BACKEND-DEV | PASS step 00
+2026-08-06T22:08:58Z | COMPLETE | WF03-ISS-0169-20260806 | 63008f82 | ISSUE-FIXER | PASS - ISS-0169 diagnosed: premise false, 11/12 LUA reqs not implemented/broken; ISS-0172 (GH #500) filed+queued
+2026-08-06T22:13:06Z | ROUTE | WF03-ISS-0169-20260806 | 85394b75 | ORCH -> CODE-DESIGNER | PENDING step 02
+2026-08-06T22:20:18Z | COMPLETE | WF03-ISS-0169-20260806 | 85394b75 | CODE-DESIGNER | PASS - src/design/lua-capability-enforcement.md (LUA-05/06/07, registry-key context plumbing)
+2026-08-06T22:22:37Z | ROUTE | WF03-ISS-0169-20260806 | 1f784eb5 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING step 02b
+2026-08-06T22:24:45Z | VALIDATE | WF03-ISS-0169-20260806 | 1f784eb5 | CODE-DESIGN-VALIDATOR | PASS - lua-capability-enforcement.md: LUA-05/06/07 criteria all mapped; registry bindings source-verified in luajit_bindings.zig; fail-closed CAP-2 + SBX-1 ordering invariant present; 3 MINOR scope notes; route to BACKEND-DEV (Step 3)
+2026-08-06T22:27:01Z | ROUTE | WF03-ISS-0169-20260806 | 77135597 | ORCH -> BACKEND-DEV | PENDING step 03
+2026-08-06T22:48:58Z | COMPLETE | WF03-ISS-0169-20260806 | 77135597 | BACKEND-DEV | PASS — LUA-05/06/07 capability gate enforced at call time; empty CapabilitySet now denies all 6 gated platform.* fns (inverse of E9); verified by mutation; ISS-0173 filed+queued
+2026-08-06T22:50:42Z | ROUTE | WF03-ISS-0169-20260806 | 98aa0b7a | ORCH -> TEST-DESIGNER | PENDING step 04
+2026-08-06T23:08:26Z | COMPLETE | WF03-ISS-0169-20260806 | 98aa0b7a | TEST-DESIGNER | PASS - LUA-05/06/07 specs + 18 capability-enforcement test cases vs real LuaJIT; test-lua 71/71 (was 53); filed ISS-0174/GH#502
+2026-08-06T23:10:16Z | ROUTE | WF03-ISS-0169-20260806 | 4343ce0e | ORCH -> TEST-DESIGN-VALIDATOR | PENDING step 04b
+2026-08-06T23:15:16Z | VALIDATE | WF03-ISS-0169-20260806 | 4343ce0e | TEST-DESIGN-VALIDATOR | PASS - 18/18 blocks verified, 71/71 test-lua, load-bearing confirmed by 2 mutations
+2026-08-06T23:18:24Z | ROUTE | WF03-ISS-0169-20260806 | d2fc3abd | ORCH -> TEST-RUNNER | PENDING step 05
+2026-08-06T23:28:25Z | COMPLETE | WF03-ISS-0169-20260806 | d2fc3abd | TEST-RUNNER | PASS - test-lua 71/71, test 936/1000 (0 failed, 64 pre-existing skips), 0 regressions vs main b3d406d baseline; filed ISS-0175/GH #503
+2026-08-06T23:31:26Z | ROUTE | WF03-ISS-0169-20260806 | 7b1bf4b2 | ORCH -> DOC-UPDATER | PENDING step 07
+2026-08-06T23:36:39Z | COMPLETE | WF03-ISS-0169-20260806 | 7b1bf4b2 | DOC-UPDATER | PASS - CHANGELOG + LUA-05/06 RELEASED, LUA-07 held IN_PROGRESS (partial); ISS-0176/GH #504 filed+queued

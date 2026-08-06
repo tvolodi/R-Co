@@ -1,0 +1,90 @@
+{
+  "handoff_id": "77135597-e842-4ea0-99fe-7bb1deb7ca97",
+  "run_id": "WF03-ISS-0169-20260806",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-06T22:27:01Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [
+      "LUA-05",
+      "LUA-06",
+      "LUA-07"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/lua-capability-enforcement.md",
+      "docs/issue-reports/ISS-0169-diagnosis.yaml",
+      "handoffs/WF03-ISS-0169-20260806/step-02b-code-design-validator.json"
+    ]
+  },
+  "task": {
+    "description": "Implement the fix for ISS-0169 tranche 1 (LUA-05, LUA-06, LUA-07) exactly per the validated design src/design/lua-capability-enforcement.md. Close the capability enforcement hole: today all 8 gated host functions run with ZERO capability checks.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "Capability denial actually fires: a script calling a gated function without the capability is denied",
+      "luaopen_base opened then dangerous globals pruned AFTER (SBX-1 invariant)",
+      "Manifest hash binds script source per design 6.3",
+      "No stub/mock behaviour; verified against real vendored LuaJIT",
+      "zig build 2>&1 | grep -i \"error set\" produces no output"
+    ],
+    "functions_to_call": [
+      "fn:implement-backend",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ISS-0169 tranche 1 (LUA-05, LUA-06, LUA-07) per the validated design. Closed the capability enforcement hole: the ExecutionContext now reaches every lua_CFunction through LUA_REGISTRYINDEX light userdata, and all 6 gated platform.* functions check the CapabilitySet at call time and fail closed. Opened luaopen_base then pruned dangerous globals (SBX-1). Unified product and test state behind a single createSandboxedState (SBX-2). Manifest hash now binds the script source digest with sorted, 0x00-separated capabilities; added parseManifest and constant-time verifyManifestHash; fixed the deinit leak. Added executeScriptWithManifest, which rejects a hash mismatch before any Lua state is created. Fixed the two files that did not compile (instruction_limiter discarded a c_int; memory_limiter used std.Thread.Mutex, removed in Zig 0.16) \u2014 compile only, no limiter is installed (tranche 2). EMPIRICAL PROOF against real vendored LuaJIT: with an EMPTY CapabilitySet all 6 gated functions are denied with a structured message naming the function, the required capability and the granted set; with the capability granted the same calls succeed; a variable:read grant does not open write_variable; call_service is gated per service id. Gate verified LOAD-BEARING by deliberate mutation: neutering requireCapability turns exactly the 4 capability tests red, then restoring it returns 53/53 green.",
+    "artifacts_out": [
+      "src/lua/host_context.zig",
+      "src/lua/executor.zig",
+      "src/lua/stdlib.zig",
+      "src/lua/manifest.zig",
+      "src/lua/errors.zig",
+      "src/lua/mod.zig",
+      "src/lua/host_api/mod.zig",
+      "src/lua/host_api/call_service.zig",
+      "src/lua/host_api/read_variable.zig",
+      "src/lua/host_api/write_variable.zig",
+      "src/lua/host_api/log.zig",
+      "src/lua/host_api/emit_event.zig",
+      "src/lua/host_api/get_instance_state.zig",
+      "src/lua/host_api/now.zig",
+      "src/lua/host_api/fail.zig",
+      "src/lua/instruction_limiter.zig",
+      "src/lua/memory_limiter.zig",
+      "src/lua/execution_test.zig",
+      "src/lua_test_root.zig",
+      "tests/unit/lua_test.zig",
+      "docs/issues/ISS-0173.json"
+    ],
+    "validation": {
+      "zig build": "exit 0",
+      "zig build test": "exit 0 (all targets green; src/lua target 53/53 pass)",
+      "zig build 2>&1 | grep -i 'error set'": "no output",
+      "lint_sql_param_types.py src tests": "exit 0 \u2014 0 BLOCKER, 0 MAJOR, 0 MINOR",
+      "lint_handoffs.py": "no findings against WF03-ISS-0169-20260806 (2043 pre-existing historical findings unrelated to this run)",
+      "capability_gate_mutation_test": "gate disabled -> 4 capability tests FAIL; gate restored -> 53/53 PASS"
+    },
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "NEW incidental defect, filed and forwarded (NOT fixed on this branch): src/oidc/jwks.zig does not compile under Zig 0.16 (stale std.Thread.Mutex at :322 plus three std.ArrayList(T).init/.deinit() call sites), yet zig build is green because src/main.zig only re-exports it and nothing calls into it \u2014 the same ISS-0172/GH #500 blind spot in the OIDC token-cache and JTI replay-denylist path. Verified empirically with a throwaway probe root. Does not block ISS-0169: nothing in src/lua/ imports it. Registered as docs/issues/ISS-0173.json, filed as https://github.com/tvolodi/R-Co/issues/501, queued via tools/queue_add.py."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Scope note, per design \u00a79 and \u00a76.5: this tranche gates the six functions but does NOT implement their bodies (read/write_variable stage nothing, log writes nothing, emit_event appends nothing, get_instance_state returns an empty table, call_service keeps its simulation path) \u2014 LUA-11/12/13 and tranche 4. Manifest limits are validated and carried but NO limiter is installed \u2014 LUA-08/09/10, tranche 2. Persisting manifest_hash into the audit record is the engine's job (design \u00a711.2)."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T22:27:01Z",
+  "completed_at": "2026-08-06T22:48:58Z"
+}

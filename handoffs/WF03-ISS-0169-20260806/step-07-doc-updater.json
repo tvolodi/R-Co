@@ -1,0 +1,64 @@
+{
+  "handoff_id": "7b1bf4b2-40db-4766-ace5-525fdd85311c",
+  "run_id": "WF03-ISS-0169-20260806",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-06T23:31:26Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [
+      "LUA-05",
+      "LUA-06",
+      "LUA-07"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/reports/report-20260806-WF03-ISS-0169-20260806.yaml",
+      "docs/issues/ISS-0169.json"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG and requirement status for ISS-0169 tranche 1. CRITICAL CONSTRAINT from TEST-DESIGN-VALIDATOR: LUA-07 MUST NOT be set RELEASED - its audit-record criterion is only partially satisfied (engine writes the audit row, out of scope for src/lua). LUA-05 and LUA-06 are fully covered.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated",
+      "reqctl set-status applied for LUA-05 and LUA-06 only",
+      "LUA-07 left non-RELEASED with an explanatory note",
+      "render-status regenerated",
+      "Engine-side audit follow-up filed as ISS + GitHub issue + queue entry"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG updated with a Security section for ISS-0169 tranche 1 (GH #495): the capability gate now actually fires (previously an empty CapabilitySet permitted all gated platform.* calls -- an absent security control, not a missing test), the luaopen_base open-then-prune ordering invariant, and the manifest hash binding script source + sorted capabilities. Requirement status via reqctl: LUA-05 RELEASED, LUA-06 RELEASED. LUA-07 deliberately LEFT IN_PROGRESS with an explanatory note -- its criterion 2 (manifest hash in the execution audit record) needs the engine to write the audit row, out of scope for src/lua; releasing on the satisfied half would repeat the ISS-0153 pattern this issue exists to correct. render-status regenerated (350 entries); reqctl validate BLOCKER: 0. Engine-side audit follow-up filed per No-Issue-Left-Local-Only: docs/issues/ISS-0176.json + GH #504 (collision-checked: 503 was the highest existing issue, ISS-0176 free locally and on GitHub) + queue_add MAJOR. ISS-0169 updated with a tranche_progress block and kept OPEN: tranche 1 DONE, tranches 2-4 (LUA-08..16) PENDING. Retrospective SKIPPED -- no handoffs/WF03-ISS-0169-20260806/estimation.json exists (estimation is a WF-02/WF-04 artefact; this is WF-03).",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml",
+      "docs/issues/ISS-0176.json",
+      "docs/issues/ISS-0169.json",
+      "handoffs/global_queue.json",
+      "https://github.com/tvolodi/R-Co/issues/504"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "LUA-07 remains IN_PROGRESS: criterion 2 (manifest hash in execution audit record) requires the engine-side audit write. Filed as ISS-0176 / GH #504 and queued for its own WF-03 run."
+      },
+      {
+        "severity": "MINOR",
+        "description": "ISS-0169 stays OPEN: LUA-08..16 (tranches 2-4) are unclaimed and still IN_PROGRESS."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV for Step Final (fn:git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T23:31:26Z",
+  "completed_at": "2026-08-06T23:36:39Z"
+}

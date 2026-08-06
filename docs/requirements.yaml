@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-06T20:01:45Z'
+generated_at: '2026-08-06T23:35:45Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -4794,7 +4794,7 @@ requirements:
     title: Host API registration
     stage: 8
     priority: MUST
-    status: IN_PROGRESS
+    status: RELEASED
     body: |-
       > The platform MUST register exactly the `platform.*` functions defined in Architecture §5.2 and no others. Each function MUST check the caller's capability grant before executing.
 
@@ -4810,14 +4810,15 @@ requirements:
     body_source: functional-doc
     alt_sources: []
     implemented_in:
-    - src/lua/host_api/mod.zig
-    - src/lua_test_root.zig
+    - src/lua/host_context.zig
+    - src/lua/executor.zig
+    - src/lua/stdlib.zig
     test_spec: tests/specs/LUA-01-05.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua01-05-20260528
     release_decision: docs/status/release-stage8-20260528.json
-    last_updated: '2026-08-06T11:45:40Z'
+    last_updated: '2026-08-06T23:35:29Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
@@ -4829,7 +4830,7 @@ requirements:
     title: Capability check at call site
     stage: 8
     priority: MUST
-    status: IN_PROGRESS
+    status: RELEASED
     body: |-
       > Every host function MUST check the script's declared capabilities before executing. A missing capability MUST raise a Lua error with structured details (function name, capability required, capabilities granted).
 
@@ -4840,14 +4841,15 @@ requirements:
     body_source: functional-doc
     alt_sources: []
     implemented_in:
-    - src/lua/capabilities.zig
-    - src/lua_test_root.zig
+    - src/lua/host_context.zig
+    - src/lua/executor.zig
+    - src/lua/stdlib.zig
     test_spec: tests/specs/LUA-06.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    last_updated: '2026-08-06T11:45:41Z'
+    last_updated: '2026-08-06T23:35:29Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
@@ -4876,19 +4878,23 @@ requirements:
     alt_sources: []
     implemented_in:
     - src/lua/manifest.zig
-    - src/lua_test_root.zig
+    - src/lua/executor.zig
     test_spec: tests/specs/LUA-07.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    last_updated: '2026-08-06T11:45:41Z'
+    last_updated: '2026-08-06T23:35:45Z'
     type: requirement
-    note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
-      build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
-      (no vendored copy, no build.zig.zon dependency, no lua.h on disk, no system library - verified empirically),
-      so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
-      anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
+    note: 'PARTIAL (ISS-0169 tranche 1, WF03-ISS-0169-20260806). Criterion 1 SATISFIED in src/lua: manifest.zig
+      digests script source + sorted 0x00-separated capabilities; verifyManifestHash is constant-time;
+      executeScriptWithManifest rejects a hash mismatch before any Lua state is created. Criterion 2 NOT
+      SATISFIED: the hash must appear in the execution audit record, but the audit row is written by the
+      engine, not by src/lua -- manifest_hash is produced on ScriptResult and consumed by nobody. Deliberately
+      NOT set RELEASED: TEST-DESIGN-VALIDATOR Step 4b ruled criterion 2 only partially satisfiable within
+      src/lua, and releasing on the satisfied half would repeat the ISS-0153 pattern ISS-0169 exists to
+      correct. Engine-side write filed as ISS-0176 / https://github.com/tvolodi/R-Co/issues/504 and queued.
+      See src/design/lua-capability-enforcement.md section 11 follow-up 2.'
   LUA-08:
     id: LUA-08
     title: Instruction limit
