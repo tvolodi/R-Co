@@ -38,26 +38,41 @@ test "LUA-04: Non-bytecode strings don't match magic" {
 // LUA-05 & LUA-06: Capability Set Operations
 // ============================================================================
 
+// ISS-0169 / GH #495 (design §3.5): this file previously used three spellings
+// that exist NOWHERE in the source — `variable:read:*`, `event:emit:*` and
+// `log:write`. `src/lua/capabilities.zig` `StandardCapabilities` is normative,
+// and `tests/specs/LUA-06.md` / `tests/specs/LUA-01-05.md` already agreed with
+// it. A test suite written against a different spelling of a grant is how a
+// capability test passes while enforcing nothing, so the strings below were
+// corrected to the canonical ones rather than the source accommodated.
+//
+// Canonical:
+//   service:call:<svc_id>   variable:read   variable:write
+//   audit:log               event:emit      instance:read
+//
+// Note there is no wildcard form: `has()` is exact string containment, so
+// `service:call:*` grants nothing (design §3.3 / §11.1).
+
 test "LUA-05: Capability set initialization" {
     // Minimal test that doesn't require Lua FFI
     _ = testing.allocator;
 
     // Verify we can construct capability identifiers
-    const cap_service_call = "service:call:*";
-    const cap_variable_read = "variable:read:*";
+    const cap_service_call = "service:call:payment_svc";
+    const cap_variable_read = "variable:read";
 
-    try testing.expect(std.mem.startsWith(u8, cap_service_call, "service:"));
+    try testing.expect(std.mem.startsWith(u8, cap_service_call, "service:call:"));
     try testing.expect(std.mem.startsWith(u8, cap_variable_read, "variable:"));
 }
 
 test "LUA-06: Capability names are distinct" {
     const caps = [_][]const u8{
-        "service:call:*",
-        "variable:read:*",
-        "variable:write:*",
-        "event:emit:*",
-        "instance:state:read",
-        "log:write",
+        "service:call:payment_svc",
+        "variable:read",
+        "variable:write",
+        "event:emit",
+        "instance:read",
+        "audit:log",
     };
 
     // Verify each capability is unique
@@ -95,12 +110,17 @@ test "Bytecode rejection error message is clear" {
 }
 
 test "Capability denial message identifies requirement" {
-    const error_msg = "capability check failed: function platform.call_service requires capability service:call:*";
+    // ISS-0169 §4.2 — the one denial format produced by
+    // host_context.raiseCapabilityDenied. The live assertion against real
+    // LuaJIT lives in src/lua/execution_test.zig; this checks the shape only.
+    const error_msg = "capability denied: platform.call_service requires 'service:call:payment_svc'; granted: (none)";
     const has_function = std.mem.containsAtLeast(u8, error_msg, 1, "platform.");
-    const has_capability = std.mem.containsAtLeast(u8, error_msg, 1, "capability");
+    const has_capability = std.mem.containsAtLeast(u8, error_msg, 1, "capability denied");
+    const has_granted = std.mem.containsAtLeast(u8, error_msg, 1, "granted:");
 
     try testing.expect(has_function);
     try testing.expect(has_capability);
+    try testing.expect(has_granted);
 }
 
 // ============================================================================

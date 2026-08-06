@@ -21,6 +21,9 @@ pub const errors = @import("errors.zig");
 pub const stdlib = @import("stdlib.zig");
 pub const luajit_bindings = @import("luajit_bindings.zig");
 pub const host_api = @import("host_api/mod.zig");
+/// ISS-0169 / GH #495 — the registry channel and capability gate every host
+/// function opens with (LUA-05, LUA-06).
+pub const host_context = @import("host_context.zig");
 pub const manifest = @import("manifest.zig");
 pub const instruction_limiter = @import("instruction_limiter.zig");
 pub const memory_limiter = @import("memory_limiter.zig");
@@ -50,5 +53,12 @@ pub const RegisteredService = service_catalog.RegisteredService;
 pub const Event = events.Event;
 pub const EventRecord = events.EventRecord;
 
-// Public entry point
+// Public entry points
 pub const executeScript = executor.executeScript;
+/// LUA-07 load-time entry point (ISS-0169). Verifies the manifest against the
+/// script artifact BEFORE creating any state, then executes.
+pub const executeScriptWithManifest = executor.executeScriptWithManifest;
+/// The single sandboxed-state constructor (invariant SBX-2). Tests must use
+/// this rather than building a state of their own, or they assert against a
+/// sandbox the product never constructs.
+pub const createSandboxedState = executor.createSandboxedState;

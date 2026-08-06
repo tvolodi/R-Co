@@ -185,6 +185,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0173",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/501",
+      "title": "src/oidc/jwks.zig does not compile under Zig 0.16 (ISS-0172 blind spot in OIDC token cache)",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-06T22:47:08Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

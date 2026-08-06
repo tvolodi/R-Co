@@ -33,10 +33,19 @@ pub fn installHook(L: *bindings.LuaState, limiter: *InstructionLimiter) !void {
     bindings.lua_pushlightuserdata(L, limiter);
     bindings.lua_setglobal(L, "__limiter__");
 
-    // Register hook callback invoked every ~100 instructions
-    // LUA_MASKCOUNT = 0x08 (from lua.h)
-    const LUA_MASKCOUNT = 0x08;
-    bindings.lua_sethook(L, hookCallback, LUA_MASKCOUNT, 100);
+    // Register hook callback invoked every ~100 instructions.
+    //
+    // ISS-0169 E3: this call discarded a c_int and therefore did not compile
+    // ("value of type 'c_int' ignored"). Under the ISS-0153 stubs lua_sethook
+    // was declared returning void; ISS-0161 replaced it with the real
+    // `pub extern fn lua_sethook(...) c_int`, invalidating this call site. No
+    // gate saw it, because `zig build test-lua` pins this file with a bare TYPE
+    // reference and nothing calls installHook (ISS-0172 / GH #500).
+    //
+    // ISS-0169 tranche 1 makes this file COMPILE and nothing more. The limiter
+    // is still installed by no code path — executeScript does not call it, so
+    // LUA-08 has no enforcement. Tranche 2 owns that work.
+    _ = bindings.lua_sethook(L, hookCallback, bindings.LUA_MASKCOUNT, 100);
 }
 
 /// Hook callback invoked periodically during script execution.

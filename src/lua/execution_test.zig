@@ -18,26 +18,38 @@ const std = @import("std");
 const lua = @import("mod.zig");
 const bindings = @import("luajit_bindings.zig");
 const stdlib = @import("stdlib.zig");
+const executor = @import("executor.zig");
+const capabilities = @import("capabilities.zig");
 
-/// C-ABI allocator matching `lua_Alloc`.
-fn luaAlloc(ud: ?*anyopaque, ptr: ?*anyopaque, osize: usize, nsize: usize) callconv(.c) ?*anyopaque {
-    _ = ud;
-    _ = osize;
-    if (nsize == 0) {
-        if (ptr) |p| std.c.free(p);
-        return null;
-    }
-    return std.c.realloc(ptr, nsize);
-}
+/// Capabilities and context backing `sandboxedState`. File-scope so the
+/// pointer satisfies invariant CTX-1 (the context must outlive the state) for
+/// every test that uses the helper.
+var shared_caps: ?capabilities.CapabilitySet = null;
+var shared_context: executor.ExecutionContext = undefined;
 
-/// A fresh state with the sandboxed stdlib applied, exactly as executeScript
-/// builds it. Caller must `lua_close`.
+/// A fresh sandboxed state, built by THE SAME constructor the product uses.
+///
+/// ISS-0169 (design §5.3, invariant SBX-2): this helper used to build its own
+/// state and call `luaopen_base(L)` itself, while `executeScript` never opened
+/// base at all. Its doc comment claimed it built the state "exactly as
+/// executeScript builds it" — that was FALSE, and it meant every green LUA-03
+/// sandbox assertion was made against a more permissive state than the product
+/// ever constructed (diagnosis R4). The base-library call is gone and this now
+/// delegates to `executor.createSandboxedState`, which is what makes the
+/// LUA-03 evidence below mean anything.
+///
+/// Caller must `lua_close`.
 fn sandboxedState() !*bindings.lua_State {
-    const L = bindings.lua_newstate(luaAlloc, null) orelse return error.LuaStateAllocFailed;
-    errdefer bindings.lua_close(L);
-    _ = bindings.luaopen_base(L);
-    try stdlib.loadSafeStdlib(L);
-    return L;
+    if (shared_caps == null) {
+        shared_caps = capabilities.CapabilitySet.init(std.testing.allocator);
+        shared_context = .{
+            .allocator = std.testing.allocator,
+            .capabilities = &shared_caps.?,
+            .instance_id = "iss0169-sandbox-instance",
+            .actor_id = "iss0169-sandbox-actor",
+        };
+    }
+    return executor.createSandboxedState(&shared_context);
 }
 
 /// Run `src` and return the numeric result. Errors if it does not compile,
@@ -207,6 +219,306 @@ test "TC-LUA-04-02: source text still works after the bytecode check" {
     var result = try lua.executeScript(&ctx, "return 1 + 1");
     defer result.deinit(std.testing.allocator);
     try std.testing.expect(result.success);
+}
+
+// ---------------------------------------------------------------------------
+// LUA-05 / LUA-06 — capability enforcement (ISS-0169 / GH #495)
+//
+// These are the direct empirical inverse of diagnosis evidence E9, which
+// recorded that with a COMPLETELY EMPTY CapabilitySet all seven
+// capability-requiring platform.* calls SUCCEEDED. If any test below ever goes
+// green while asserting success on an empty grant set, the gate is gone again.
+// ---------------------------------------------------------------------------
+
+/// Run `src` through the real `executeScript` with exactly `grants` granted.
+/// Returns the ScriptResult; caller deinits.
+fn runWithGrants(grants: []const []const u8, src: []const u8) !lua.ScriptResult {
+    var caps = lua.capabilities.CapabilitySet.init(std.testing.allocator);
+    defer caps.deinit();
+    for (grants) |g| try caps.add(g);
+
+    const ctx = lua.ExecutionContext{
+        .allocator = std.testing.allocator,
+        .capabilities = &caps,
+        .instance_id = "iss0169-instance",
+        .actor_id = "iss0169-actor",
+    };
+    return lua.executeScript(&ctx, src);
+}
+
+/// The six gated functions of the Architecture §5.2 matrix, each with a call
+/// that supplies valid arguments so that ONLY the capability can be the cause
+/// of a failure.
+const GATED_CALLS = [_]struct {
+    fn_name: []const u8,
+    capability: []const u8,
+    call: []const u8,
+}{
+    .{ .fn_name = "call_service", .capability = "service:call:payment_svc", .call = "platform.call_service('payment_svc', 'POST', '/pay')" },
+    .{ .fn_name = "read_variable", .capability = "variable:read", .call = "platform.read_variable('amount')" },
+    .{ .fn_name = "write_variable", .capability = "variable:write", .call = "platform.write_variable('amount', 1)" },
+    .{ .fn_name = "log", .capability = "audit:log", .call = "platform.log('info', 'hello')" },
+    .{ .fn_name = "emit_event", .capability = "event:emit", .call = "platform.emit_event('APPROVED', {})" },
+    .{ .fn_name = "get_instance_state", .capability = "instance:read", .call = "platform.get_instance_state()" },
+};
+
+test "TC-LUA-06: with an EMPTY capability set every gated function is DENIED" {
+    for (GATED_CALLS) |c| {
+        var result = try runWithGrants(&.{}, c.call);
+        defer result.deinit(std.testing.allocator);
+
+        // E9's inverse: this MUST fail. Before ISS-0169 every one succeeded.
+        try std.testing.expect(!result.success);
+        const msg = result.error_message orelse return error.NoErrorMessage;
+
+        // LUA-06: the error names the function, the capability required, and
+        // the capabilities granted.
+        try std.testing.expect(std.mem.indexOf(u8, msg, "capability denied") != null);
+        try std.testing.expect(std.mem.indexOf(u8, msg, c.fn_name) != null);
+        try std.testing.expect(std.mem.indexOf(u8, msg, c.capability) != null);
+        try std.testing.expect(std.mem.indexOf(u8, msg, "(none)") != null);
+    }
+}
+
+test "TC-LUA-06: granting exactly the required capability lets the call through" {
+    for (GATED_CALLS) |c| {
+        var result = try runWithGrants(&.{c.capability}, c.call);
+        defer result.deinit(std.testing.allocator);
+
+        // The gate must not be a blanket refusal: with the grant present the
+        // call proceeds. (The bodies remain unimplemented — LUA-11/12/13 —
+        // so "proceeds" means "did not raise", which is exactly the claim.)
+        if (!result.success) {
+            std.debug.print("unexpected denial for {s}: {s}\n", .{ c.fn_name, result.error_message orelse "(no message)" });
+        }
+        try std.testing.expect(result.success);
+    }
+}
+
+test "TC-LUA-06: an unrelated grant does not open a different function" {
+    // Holding variable:read must not permit variable:write. This is what
+    // distinguishes a real per-capability gate from a "context is present, so
+    // allow" check.
+    var result = try runWithGrants(&.{"variable:read"}, "platform.write_variable('k', 1)");
+    defer result.deinit(std.testing.allocator);
+
+    try std.testing.expect(!result.success);
+    const msg = result.error_message orelse return error.NoErrorMessage;
+    try std.testing.expect(std.mem.indexOf(u8, msg, "variable:write") != null);
+    // The granted set is rendered, so the denial is diagnosable.
+    try std.testing.expect(std.mem.indexOf(u8, msg, "variable:read") != null);
+}
+
+test "TC-LUA-06-01/02: call_service is gated per service id, not blanket" {
+    // Granted for payment_svc only.
+    const grants = [_][]const u8{"service:call:payment_svc"};
+
+    var ok = try runWithGrants(&grants, "platform.call_service('payment_svc','POST','/pay')");
+    defer ok.deinit(std.testing.allocator);
+    try std.testing.expect(ok.success);
+
+    // A DIFFERENT service must be denied even though a service:call:* grant
+    // exists — `has()` is exact match; wildcards are not honoured (design §3.3).
+    var denied = try runWithGrants(&grants, "platform.call_service('shipping_svc','POST','/ship')");
+    defer denied.deinit(std.testing.allocator);
+    try std.testing.expect(!denied.success);
+    const msg = denied.error_message orelse return error.NoErrorMessage;
+    try std.testing.expect(std.mem.indexOf(u8, msg, "service:call:shipping_svc") != null);
+    try std.testing.expect(std.mem.indexOf(u8, msg, "shipping_svc") != null);
+}
+
+test "TC-LUA-06: a script can observe its own denial with pcall" {
+    // LUA-06's semantics are "raises a Lua error", so a script must be able to
+    // catch one. This is why §5.2 keeps pcall in the sandbox.
+    var result = try runWithGrants(&.{},
+        \\local ok, err = pcall(function() return platform.read_variable('k') end)
+        \\if ok then return 'NOT_DENIED' end
+        \\return err
+    );
+    defer result.deinit(std.testing.allocator);
+
+    try std.testing.expect(result.success);
+    const value = result.value orelse return error.NoValue;
+    try std.testing.expect(value == .string);
+    try std.testing.expect(std.mem.indexOf(u8, value.string, "capability denied") != null);
+    try std.testing.expect(std.mem.indexOf(u8, value.string, "variable:read") != null);
+}
+
+test "TC-LUA-05: argument errors are distinguishable from capability denials" {
+    // With the capability granted, a bad argument must produce the §4.2
+    // ARGUMENT-error format — not a denial, and not stack garbage.
+    var result = try runWithGrants(&.{"variable:write"}, "platform.write_variable(123, 1)");
+    defer result.deinit(std.testing.allocator);
+
+    // E11: this call used to SUCCEED, because lua_isstring coerces numbers.
+    try std.testing.expect(!result.success);
+    const msg = result.error_message orelse return error.NoErrorMessage;
+    try std.testing.expect(std.mem.indexOf(u8, msg, "invalid argument") != null);
+    try std.testing.expect(std.mem.indexOf(u8, msg, "write_variable") != null);
+    try std.testing.expect(std.mem.indexOf(u8, msg, "capability denied") == null);
+}
+
+test "TC-LUA-05: a missing argument reports a real message, not stack garbage" {
+    // E6/E11: `platform.read_variable()` used to report
+    // '1.0954944061662e-311' — uninitialised stack memory — because
+    // lua_error was called with nothing pushed (ERR-1).
+    var result = try runWithGrants(&.{"variable:read"}, "platform.read_variable()");
+    defer result.deinit(std.testing.allocator);
+
+    try std.testing.expect(!result.success);
+    const msg = result.error_message orelse return error.NoErrorMessage;
+    try std.testing.expect(std.mem.indexOf(u8, msg, "invalid argument") != null);
+    try std.testing.expect(std.mem.indexOf(u8, msg, "read_variable") != null);
+    try std.testing.expect(std.mem.indexOf(u8, msg, "must be a string") != null);
+}
+
+test "TC-LUA-05: now and fail are ungated BY DESIGN" {
+    // Empty capability set. Both must work: platform.now() is a pure time read
+    // and a script may always terminate itself (design §3.2).
+    var now_result = try runWithGrants(&.{}, "return platform.now()");
+    defer now_result.deinit(std.testing.allocator);
+    try std.testing.expect(now_result.success);
+    const now_value = now_result.value orelse return error.NoValue;
+    try std.testing.expect(now_value == .string);
+    // ISO 8601 UTC: YYYY-MM-DDTHH:MM:SS.sssZ
+    try std.testing.expectEqual(@as(usize, 24), now_value.string.len);
+    try std.testing.expect(std.mem.endsWith(u8, now_value.string, "Z"));
+
+    // platform.fail raises with the reason, and NOT a capability denial.
+    var fail_result = try runWithGrants(&.{}, "platform.fail('budget exceeded')");
+    defer fail_result.deinit(std.testing.allocator);
+    try std.testing.expect(!fail_result.success);
+    const fail_msg = fail_result.error_message orelse return error.NoErrorMessage;
+    try std.testing.expect(std.mem.indexOf(u8, fail_msg, "budget exceeded") != null);
+    try std.testing.expect(std.mem.indexOf(u8, fail_msg, "capability denied") == null);
+}
+
+test "TC-LUA-05-01..06: exactly the eight Architecture 5.2 functions are registered" {
+    var result = try runWithGrants(&.{},
+        \\local names = {'call_service','read_variable','write_variable','log',
+        \\               'emit_event','get_instance_state','now','fail'}
+        \\for _, n in ipairs(names) do
+        \\  if type(platform[n]) ~= 'function' then return 'MISSING:' .. n end
+        \\end
+        \\local count = 0
+        \\for _ in pairs(platform) do count = count + 1 end
+        \\if count ~= 8 then return 'COUNT:' .. count end
+        \\if platform.undeclared_function ~= nil then return 'EXTRA' end
+        \\return 'OK'
+    );
+    defer result.deinit(std.testing.allocator);
+
+    try std.testing.expect(result.success);
+    const value = result.value orelse return error.NoValue;
+    try std.testing.expect(value == .string);
+    try std.testing.expectEqualStrings("OK", value.string);
+}
+
+// ---------------------------------------------------------------------------
+// LUA-03 / sandbox — now meaningful, because product and test share a state
+// ---------------------------------------------------------------------------
+
+test "ISS-0169: the base library is available through executeScript" {
+    // Diagnosis E8: pairs, ipairs, pcall, error, type, tostring and
+    // setmetatable were ALL absent from any script run through executeScript,
+    // because loadSafeStdlib never called luaopen_base. No realistic script
+    // could run, and no denial test could use pcall to observe a raise.
+    var result = try runWithGrants(&.{},
+        \\local names = {'pairs','ipairs','next','type','tostring','tonumber',
+        \\               'pcall','xpcall','error','assert','select','unpack',
+        \\               'rawequal','rawget','rawset','setmetatable',
+        \\               'getmetatable'}
+        \\for _, n in ipairs(names) do
+        \\  if _G[n] == nil then return 'MISSING:' .. n end
+        \\end
+        \\if _G == nil then return 'MISSING:_G' end
+        \\return 'OK'
+    );
+    defer result.deinit(std.testing.allocator);
+
+    try std.testing.expect(result.success);
+    const value = result.value orelse return error.NoValue;
+    try std.testing.expect(value == .string);
+    try std.testing.expectEqualStrings("OK", value.string);
+}
+
+test "ISS-0169: dangerous globals are pruned AFTER base is opened (SBX-1)" {
+    // These assertions become meaningful for the first time here. Previously
+    // the globals were absent because base was never opened; now they are
+    // absent because they were deliberately pruned. Same assertion, real
+    // evidence. If SBX-1 were ever inverted (prune before open), luaopen_base
+    // would reinstall all of these and this test would go red.
+    var result = try runWithGrants(&.{},
+        \\local banned = {'load','loadstring','loadfile','dofile','require',
+        \\                'getfenv','setfenv','collectgarbage','print',
+        \\                'newproxy','module','ffi','io','os','package',
+        \\                'debug','jit'}
+        \\for _, n in ipairs(banned) do
+        \\  if _G[n] ~= nil then return 'PRESENT:' .. n end
+        \\end
+        \\if string.dump ~= nil then return 'PRESENT:string.dump' end
+        \\return 'OK'
+    );
+    defer result.deinit(std.testing.allocator);
+
+    try std.testing.expect(result.success);
+    const value = result.value orelse return error.NoValue;
+    try std.testing.expect(value == .string);
+    try std.testing.expectEqualStrings("OK", value.string);
+}
+
+// ---------------------------------------------------------------------------
+// LUA-07 — manifest binding through the load-time entry point
+// ---------------------------------------------------------------------------
+
+test "TC-LUA-07: executeScriptWithManifest rejects a manifest bound to a different script" {
+    var caps = lua.capabilities.CapabilitySet.init(std.testing.allocator);
+    defer caps.deinit();
+    try caps.add("variable:read");
+
+    const ctx = lua.ExecutionContext{
+        .allocator = std.testing.allocator,
+        .capabilities = &caps,
+        .instance_id = "iss0169-instance",
+        .actor_id = "iss0169-actor",
+    };
+
+    const registered_script = "return platform.read_variable('k')";
+    const declared = [_][]const u8{"variable:read"};
+
+    var m = try lua.manifest.validateManifest(
+        &declared,
+        &caps,
+        100_000,
+        8_388_608,
+        30,
+        registered_script,
+        std.testing.allocator,
+    );
+    defer m.deinit();
+
+    // The registered pairing executes and records the hash on the result.
+    var ok = try lua.executeScriptWithManifest(&ctx, registered_script, &m, m.manifest_hash);
+    defer ok.deinit(std.testing.allocator);
+    try std.testing.expect(ok.success);
+    const recorded = ok.manifest_hash orelse return error.NoManifestHash;
+    try std.testing.expectEqualSlices(u8, &m.manifest_hash, &recorded);
+
+    // The SAME manifest against a DIFFERENT script is rejected at load time —
+    // before any Lua state is created, so nothing executes.
+    try std.testing.expectError(
+        lua.manifest.ManifestError.ManifestHashMismatch,
+        lua.executeScriptWithManifest(&ctx, "return 'substituted'", &m, m.manifest_hash),
+    );
+}
+
+test "TC-LUA-07: the plain executeScript path records no manifest hash" {
+    var result = try runWithGrants(&.{}, "return 1");
+    defer result.deinit(std.testing.allocator);
+    try std.testing.expect(result.success);
+    // executeScript performs no manifest verification, and says so honestly
+    // rather than reporting a hash it never checked.
+    try std.testing.expect(result.manifest_hash == null);
 }
 
 // ---------------------------------------------------------------------------

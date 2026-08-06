@@ -88,8 +88,19 @@ test "ISS-0153: every file in the src/lua subsystem is analysed" {
     _ = lua.stdlib.loadSafeStdlib; // stdlib.zig        — LUA-03
     _ = lua.luajit_bindings.lua_State; // luajit_bindings   — LUA-01
     _ = lua.manifest.validateManifest; // manifest.zig      — LUA-07
-    _ = lua.instruction_limiter.InstructionLimiter; // LUA-08
-    _ = lua.memory_limiter.MemoryLimiter; // memory_limiter    — LUA-09
+    _ = lua.host_context.requireCapability; // host_context.zig  — LUA-05, LUA-06
+
+    // ISS-0172 / GH #500 — a bare TYPE reference does NOT prove a file
+    // compiles. Zig resolves struct field types lazily, and `_ = someFn;` takes
+    // an address without analysing the body. Both limiters carried hard compile
+    // errors (`std.Thread.Mutex` removed in 0.16; a discarded c_int from
+    // lua_sethook) THROUGH a green `zig build test-lua` for exactly that
+    // reason. The two pins below therefore force real analysis:
+    //   - @sizeOf resolves every field type, catching the Mutex class of error.
+    //   - a call inside a comptime-false-guarded but reachable branch would
+    //     still be elided, so installHook is called for real below instead.
+    _ = @sizeOf(lua.instruction_limiter.InstructionLimiter); // LUA-08
+    _ = @sizeOf(lua.memory_limiter.MemoryLimiter); // memory_limiter    — LUA-09
     _ = lua.timeout.TimeoutContext; // timeout.zig       — LUA-10
     _ = lua.time_source.TimeSource; // time_source.zig   — LUA-14
     _ = lua.structured_logger.StructuredLogger; // structured_logger — LUA-13
@@ -192,6 +203,73 @@ test "ISS-0153: bytecode is rejected before any runtime is needed (LUA-04)" {
         result.error_message.?,
         "Bytecode is not allowed",
     ) != null);
+}
+
+test "ISS-0169: the limiter FUNCTION BODIES are analysed, not just their types" {
+    // ISS-0172 / GH #500: `zig build test-lua` was green while BOTH limiters
+    // carried hard compile errors, because src/lua_test_root.zig pinned them
+    // with `_ = Module.TypeName;` — which forces neither field-type resolution
+    // nor function-body analysis. This test calls them for real, so a break
+    // cannot hide behind a green target again.
+    //
+    // NOTE: this proves the limiters COMPILE. It proves nothing about
+    // enforcement, and ISS-0169 tranche 1 installs neither of them:
+    // executeScript still creates its state with an unbounded allocator and no
+    // instruction hook. LUA-08/LUA-09/LUA-10 enforcement is tranche 2.
+    const bindings = lua.luajit_bindings;
+
+    const L = bindings.lua_newstate(realAlloc, null) orelse
+        return error.LuaStateAllocFailed;
+    defer bindings.lua_close(L);
+
+    var limiter = lua.instruction_limiter.InstructionLimiter.init(
+        std.testing.allocator,
+        1_000,
+    );
+    // Calls the body containing the previously-invalid lua_sethook call site.
+    try lua.instruction_limiter.installHook(L, &limiter);
+    try std.testing.expectEqual(@as(u64, 0), lua.instruction_limiter.getInstructionCount(&limiter));
+    try std.testing.expect(!lua.instruction_limiter.wasLimitExceeded(&limiter));
+
+    // Constructs the struct whose `mutex` field type did not exist under
+    // Zig 0.16, and drives its allocator body through a real alloc/free pair.
+    var mem_limiter = lua.memory_limiter.MemoryLimiter.init(
+        std.testing.allocator,
+        1_048_576,
+    );
+    const block = lua.memory_limiter.MemoryLimiter.alloc(&mem_limiter, null, 0, 128) orelse
+        return error.MemoryLimiterAllocFailed;
+    try std.testing.expect(mem_limiter.getCurrentMemory() >= 128);
+    _ = lua.memory_limiter.MemoryLimiter.alloc(&mem_limiter, block, 128, 0);
+    try std.testing.expect(!mem_limiter.wasLimitExceeded());
+}
+
+test "ISS-0169: host_context and the load-time entry point are analysed" {
+    // Same ISS-0172 rationale: call, do not merely reference.
+    const bindings = lua.luajit_bindings;
+
+    var caps = lua.capabilities.CapabilitySet.init(std.testing.allocator);
+    defer caps.deinit();
+    const ctx = lua.ExecutionContext{
+        .allocator = std.testing.allocator,
+        .capabilities = &caps,
+        .instance_id = "iss0169-root-instance",
+        .actor_id = "iss0169-root-actor",
+    };
+
+    // createSandboxedState exercises loadSafeStdlib, installContext and
+    // registerAll — i.e. every file changed by this tranche.
+    const L = try lua.createSandboxedState(&ctx);
+    defer bindings.lua_close(L);
+
+    const read_back = lua.host_context.contextFromState(L) orelse
+        return error.ContextNotInstalled;
+    try std.testing.expectEqualStrings("iss0169-root-instance", read_back.instance_id);
+
+    var cap_buf: [lua.host_context.SERVICE_CAP_BUFFER_BYTES]u8 = undefined;
+    const built = lua.host_context.serviceCallCapability(&cap_buf, "payment_svc") orelse
+        return error.CapabilityNotBuilt;
+    try std.testing.expectEqualStrings("service:call:payment_svc", built);
 }
 
 test "ISS-0153: timeout elapsed-ms no longer uses @divExact (would panic)" {

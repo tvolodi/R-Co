@@ -1,44 +1,63 @@
 //! platform.call_service(svc_id, method, path, headers, body) -> (string, number)
 //!
-//! Call a registered HTTP service. Requires 'service:call:<svc_id>' capability.
+//! Call a registered HTTP service. Requires the `service:call:<svc_id>`
+//! capability — the ONE capability in the matrix that is computed per call
+//! rather than constant.
 //!
 //! Returns: Tuple of (response_body, status_code)
-//! Errors: Capability denied, service not found, HTTP error
+//! Raises:  capability denial (LUA-05/LUA-06), invalid argument
+//!
+//! ISS-0169 tranche 1 gates this function. It does NOT implement it: after the
+//! gate passes it keeps its simulation path and its hardcoded `{}`
+//! non-simulation branch, does not consult `service_catalog.zig`, and still
+//! returns `(string, number)` rather than a table. That is LUA-12 (tranche 3).
 
 const std = @import("std");
 const bindings = @import("../luajit_bindings.zig");
 const executor = @import("../executor.zig");
+const host_context = @import("../host_context.zig");
 const simulation_runtime = @import("../../simulation/runtime.zig");
 const simulation_types = @import("../../simulation/types.zig");
 const simulation_interceptor = @import("../../simulation/service_interceptor.zig");
 
+const FN_NAME = "call_service";
+
 /// Register platform.call_service
 pub fn register(L: *bindings.LuaState, context: *const executor.ExecutionContext) !void {
     _ = context;
-    // For MVP, placeholder implementation.
-
     bindings.lua_pushcclosure(L, platformCallService, 0);
     bindings.lua_setfield(L, -2, "call_service");
 }
 
 /// Lua C function: platform.call_service(svc_id, method, path, headers, body)
 fn platformCallService(L: *bindings.LuaState) callconv(.c) c_int {
-    // Check argument count (minimum 3: svc_id, method, path)
+    // svc_id must be read and type-validated BEFORE the capability check,
+    // because it IS the capability. This is the only permitted exception to
+    // CAP-1's "check before touching arguments" (design §3.3), and it touches
+    // argument 1 only.
+    //
+    // A non-string or missing svc_id is an ARGUMENT error, not a capability
+    // denial: the two must stay distinguishable so a test can tell which one
+    // fired.
+    const svc_id = host_context.checkString(L, FN_NAME, 1);
+
+    // Build "service:call:<svc_id>" into a fixed stack buffer. No allocator:
+    // the denial path longjmps, so any outstanding heap allocation would leak
+    // (ERR-2). An over-long svc_id is rejected as InvalidArgument and is NEVER
+    // truncated — a truncated capability could match a shorter grant, which is
+    // privilege escalation rather than a diagnostic inconvenience.
+    var cap_buffer: [host_context.SERVICE_CAP_BUFFER_BYTES]u8 = undefined;
+    const required = host_context.serviceCallCapability(&cap_buffer, svc_id) orelse
+        host_context.raiseInvalidArgument(L, FN_NAME, 1, "a service id of at most 256 bytes");
+
+    // No wildcard matching in this tranche: `has()` is exact string
+    // containment, so `service:call:*` is not honoured. Reconciling that with
+    // ADP-08's wildcard model is a cross-cutting follow-up (design §11.1).
+    host_context.requireCapability(L, FN_NAME, required);
+
+    // Remaining arguments (minimum 3 overall: svc_id, method, path).
+    host_context.checkArgCount(L, FN_NAME, 3);
     const nargs = bindings.lua_gettop(L);
-    if (nargs < 3) {
-        _ = bindings.lua_error(L);
-        return 0;
-    }
-
-    // Get svc_id
-    if (bindings.lua_isstring(L, 1) == 0) {
-        _ = bindings.lua_error(L);
-        return 0;
-    }
-
-    var svc_id_len: usize = 0;
-    const svc_id_ptr = bindings.lua_tolstring(L, 1, &svc_id_len);
-    const svc_id = svc_id_ptr[0..svc_id_len];
 
     var method: []const u8 = "POST";
     if (nargs >= 2 and bindings.lua_isstring(L, 2) != 0) {
@@ -63,10 +82,12 @@ fn platformCallService(L: *bindings.LuaState) callconv(.c) c_int {
 
     if (simulation_runtime.get()) |ctx| {
         const allocator = std.heap.page_allocator;
-        const fingerprint = computeFingerprint(allocator, svc_id, method, path, body) catch {
-            _ = bindings.lua_error(L);
-            return 0;
-        };
+        // ERR-1: every raise pushes its message first. A bare lua_error(L)
+        // raises whatever happens to be on the stack top, which is how the
+        // diagnosis observed errors reading as '1.0954944061662e-311'
+        // (uninitialised stack memory).
+        const fingerprint = computeFingerprint(allocator, svc_id, method, path, body) catch
+            host_context.raiseMessage(L, "platform.call_service: could not compute the request fingerprint");
         defer allocator.free(fingerprint);
 
         const response = simulation_interceptor.executeMockedServiceCall(
@@ -80,10 +101,11 @@ fn platformCallService(L: *bindings.LuaState) callconv(.c) c_int {
                 .path = path,
                 .body = body,
             },
-        ) catch {
-            _ = bindings.lua_error(L);
-            return 0;
-        };
+        ) catch
+            // The fingerprint above is freed by its `defer`, which does NOT run
+            // across lua_error's longjmp — so it is freed explicitly here
+            // first, then the raise happens (ERR-2).
+            freeThenRaise(L, allocator, fingerprint, "platform.call_service: the service call failed");
         defer response.deinit(allocator);
 
         bindings.lua_pushlstring(L, @ptrCast(response.body.ptr), response.body.len);
@@ -95,6 +117,21 @@ fn platformCallService(L: *bindings.LuaState) callconv(.c) c_int {
     bindings.lua_pushstring(L, "{}");
     bindings.lua_pushnumber(L, 200);
     return 2;
+}
+
+/// Release a heap allocation and then raise (ERR-2).
+///
+/// `lua_error` longjmps, so Zig `defer`/`errdefer` in the raising frame never
+/// run. Anything allocated by a host function must therefore be freed BEFORE
+/// the raise or never allocated at all.
+fn freeThenRaise(
+    L: *bindings.LuaState,
+    allocator: std.mem.Allocator,
+    owned: []u8,
+    message: []const u8,
+) noreturn {
+    allocator.free(owned);
+    host_context.raiseMessage(L, message);
 }
 
 fn computeFingerprint(
