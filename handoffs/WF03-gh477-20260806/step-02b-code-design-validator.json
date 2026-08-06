@@ -1,0 +1,54 @@
+{
+  "handoff_id": "689dfee1-8c92-4b3f-9f74-787f916da004",
+  "run_id": "WF03-gh477-20260806",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-06T09:58:32Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Maintenance",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "6b3c2e1b-2784-4cdc-9bb6-aed7b2d884e3"
+    ],
+    "artifacts_in": [
+      "src/design/iss0148_clean_test_db_ordering_and_lock.md",
+      "docs/issue-reports/ISS-0148-diagnosis.yaml",
+      "docs/issues/ISS-0148.json",
+      "build.zig",
+      "tools/clean_test_db.py"
+    ],
+    "issue_id": "ISS-0148",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/477"
+  },
+  "task": {
+    "description": "HARD GATE (WF-03 Step 2b). Validate the Type E design src/design/iss0148_clean_test_db_ordering_and_lock.md for ISS-0148 / GH #477 before BACKEND-DEV implements it. Verify: design covers every GH #477 acceptance criterion; no implementation code in the prose design; the enumerated list of 39 affected build.zig steps is accurate (verify against build.zig, do not trust the list); the claim that 30 binaries reach test_integration_step via the test-integration-others-internal barrier without a clean_test_db edge is correct; the Layer 2 advisory-lock design is sound given run_psql spawns a fresh process per call (transaction-scoped locks would not survive); the design does not weaken the failing test, retry on 42P01, or narrow the sweep name pattern.",
+    "acceptance_criteria": [
+      "Every GH #477 acceptance criterion maps to a design element",
+      "No implementation code present in the Type E prose design",
+      "Affected build.zig step list independently verified against build.zig",
+      "Layer 2 lock scoping verified sound against the actual run_psql behaviour",
+      "lint_design_artefact.py run on the artefact",
+      "PASS or FAIL verdict with issue list"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E design src/design/iss0148_clean_test_db_ordering_and_lock.md validated as a hard gate. All four GH #477 acceptance criteria map to design elements. No implementation code present (the single fenced block is the verification command 'zig build test-integration-tnt'). The 39-step defective enumeration was INDEPENDENTLY re-derived from build.zig by parsing all b.step/dependOn edges: count, membership and line numbers match the design exactly, with no omissions. The barrier claim is confirmed: test_integration_step (1190) depends only on clean_test_db (1191) and run_iss503_integration_tests_after_others (1251), while test-integration-others-internal (1204) carries exactly 30 run-artifact edges and NO clean_test_db edge (grep of all 44 clean_test_db references confirms the barrier is absent from the list) - so attaching edges to run ARTIFACTS rather than steps is required, not merely preferred. clean-test-db (1187) is correctly identified as non-defective, and test-integration-iss0076 (1273) genuinely has no cleanup edge at all. The 43 addRunArtifact conversion target was verified by count and the uniform 3-line setCwd/setEnvironmentVariable shape confirmed at sampled sites. Layer 2 lock scoping is sound: run_psql (clean_test_db.py:46-61) does build a fresh subprocess per call so a transaction-scoped lock would not survive between calls; the remedy (BEGIN -> pg_advisory_xact_lock -> enumerate+drop+ledger-delete under the lock -> COMMIT in one psql session via stdin) closes the hole, and the specified key matches src/db/migrations.zig:31 MIGRATIONS_LOCK_KEY_SQL verbatim. No masking: weakening the test, retrying on 42P01 and narrowing the sweep pattern are all explicitly listed as rejected approaches, and the pass criterion is the exit code. The C23505 red-herring claim was independently verified true against tests/integration/tnt_schema_isolation_test.zig:783-796 (a deliberate duplicate INSERT the test asserts must fail, violating schema_migrations_schema_version_uq from migrations/060:63), and the design states how GH #477 criterion 3 is thereby satisfied. lint_design_artefact.py exits 0 with one known-false-positive MINOR E030. Design is sufficient for BACKEND-DEV to implement without inventing design decisions.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "lint_design_artefact.py E030 at line 131 flags the schema-qualified name 'information_schema.schemata'. Known false positive - that catalog view must be schema-qualified. No action required."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T09:58:32Z",
+  "completed_at": "2026-08-06T10:01:24Z"
+}

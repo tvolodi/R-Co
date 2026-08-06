@@ -1,0 +1,56 @@
+{
+  "handoff_id": "8b42f1e8-873b-4c31-8674-760001c94a23",
+  "run_id": "WF03-gh477-20260806",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-06T09:18:03Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Maintenance",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0148.json",
+      "src/db/migrations.zig",
+      "src/db/provisioning.zig",
+      "tests/integration/tnt_schema_isolation_test.zig"
+    ],
+    "issue_id": "ISS-0148",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/477"
+  },
+  "task": {
+    "description": "WF-03 Steps 0.5 + 1 for ISS-0148 / GH #477. ISS-0148 already exists and is registered on GitHub - do NOT create a duplicate. Start from its recorded root_cause_analysis (narrowed to an intra-run race in runForSchema, not cross-run residue) and complete the diagnosis to a definitive root cause: reproduce the failure, identify the exact mechanism by which 001_event_store.sql is recorded in public.schema_migrations for a tenant schema whose tables were not created, and specify precisely what must change. Do NOT implement the fix - that is Step 3 (BACKEND-DEV) after the design gate.",
+    "acceptance_criteria": [
+      "Failure reproduced and captured with evidence",
+      "Definitive root cause identified at file:line granularity",
+      "docs/issues/ISS-0148.json updated with confirmed root_cause_analysis and evidence",
+      "Inner report written to docs/issue-reports/ as .yaml",
+      "No source code fix applied in this step"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause CONFIRMED at DDL-log level: tools/clean_test_db.py's orphan sweep runs concurrently with the test binaries (build.zig:1304-1307 declares clean_test_db.step and the two run_* steps as unordered SIBLINGS of test_integration_tnt_step) and issues DROP SCHEMA <tenant_uuid> CASCADE (clean_test_db.py:119) against a schema that a running test is actively migrating, plus DELETE of its ledger rows (line 123). runForSchema then hits 42P01 on the next file doing unqualified work. Server log caught backend 57413 dropping tenant_37630918ade942288be9157ced6f296e at 09:46:46.691 while migration-runner backend 57140 was mid-migration-081 on it at 09:46:46.972. Control: zig build test-integration-tnt 5/5 FAIL vs the SAME test.exe run directly 6/6 PASS. Prior hypotheses (stale `applied` snapshot, search_path clobber across COMMIT, GBL-133 ledger backfill) all REFUTED by instrumentation; the accompanying C23505 on 001_event_store.sql is TC-TNT-02-05's intentional duplicate-insert assertion and appears in passing runs too. No source fix applied; temporary instrumentation removed (clean git diff, zig build exits 0); db_test log_statement reset.",
+    "artifacts_out": [
+      "docs/issues/ISS-0148.json",
+      "docs/issue-reports/ISS-0148-diagnosis.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "tnt_backfill_export_cleanup_test.zig failed in several hand-constructed concurrency experiments during this diagnosis. Not filed separately: those runs were under artificial contention created by the diagnosis itself. TEST-RUNNER (Step 5) should re-check this binary after the primary fix lands and file it then if it still fails."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T09:18:03Z",
+  "completed_at": "2026-08-06T09:48:48Z"
+}

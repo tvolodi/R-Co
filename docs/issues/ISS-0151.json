@@ -1,0 +1,69 @@
+{
+  "issue_id": "ISS-0151",
+  "title": "test-integration-tnt flaky: all three pg_advisory_lock acquires were deleted from tests/integration/helpers.zig by GH-402 while the matching pg_advisory_unlock was left behind",
+  "status": "RESOLVED",
+  "severity": "MAJOR",
+  "created_at": "2026-08-06T11:18:04Z",
+  "discovered_by": "TEST-RUNNER (WF03-gh477-20260806 Step 05 independent verification)",
+  "discovered_while_fixing": "ISS-0148",
+  "affected_areas": [
+    "tests/integration/helpers.zig"
+  ],
+  "symptom": "`zig build test-integration-tnt` still exits 1 intermittently after the ISS-0148 fix. Measured 5 consecutive runs on feature/WF03-gh477-20260806: exit codes 1, 1, 0, 1, 0 (2/5 pass). A 3-run control on clean origin/main produced 0, 1, 1 \u2014 so the step is flaky BOTH before and after the fix.",
+  "root_cause_analysis": "CORRECTED from the original filing. The 23505 on schema_migrations_schema_version_uq named in the original report is a RED HERRING: it is emitted by TC-TNT-02-05 (tests/integration/tnt_schema_isolation_test.zig:770-796), which deliberately inserts a duplicate (schema_name, version) pair and asserts it MUST error. Measured post-fix it occurs exactly once per run, unchanged, on runs that exit 0 - proving it is expected passing-test behaviour, not the defect.\n\nThe actual root cause: commit db362fd (fix(test-infra): remove advisory locks, fix database cleanup hang, GH-402) deleted ALL THREE pg_advisory_lock acquires from tests/integration/helpers.zig - the bpm_test_migrations_public acquire in runMigrations(), the per-schema hashtext($1) acquire in runMigrationsForSchema(), and the widened bpm_test_migrations_public acquire in TestHarness.init() - but LEFT the matching SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public')) in TestHarness.init() in place. Since 2026-08-03 the harness has therefore been releasing a lock nobody ever takes, and every concurrent test binary has run its migration check-and-apply completely unguarded. The surviving ISS-0107 comment block still describes, in detail, the exact lock bracket that had been deleted from underneath it.\n\nThe db362fd rationale - rely on migration idempotency - is false, and src/db/migrations.zig says so in its own ISS-0144 comment: Migrations.run/runForSchema do check-then-apply against an applied set read BEFORE the per-file transaction begins. Two binaries can both observe a migration file as unapplied; the loser then executes DDL against a schema a peer is concurrently building.\n\nzig build test-integration-tnt runs two binaries (tnt_schema_isolation_test.zig and tnt_backfill_export_cleanup_test.zig) that Zig's build runner schedules CONCURRENTLY, and both bootstrap through helpers.zig against the shared public and tenant_default schemas. That is why the step is flaky while each binary is 4/4 green when run alone.",
+  "evidence": {
+    "post_fix_exit_codes": [
+      1,
+      1,
+      0,
+      1,
+      0
+    ],
+    "clean_main_control_exit_codes": [
+      0,
+      1,
+      1
+    ],
+    "original_42P01_audit_entries_occurrences_post_fix": 0,
+    "original_42P01_audit_entries_present_on_main": true,
+    "residual_23505_present_on_both": true,
+    "secondary_symptom": "In runs 1/2/4 the failing artifact is tnt_backfill_export_cleanup_test.zig, which reports `test runner failed to respond` (~1m timeout). That binary passes 3/3 when run standalone and 3/3 when run concurrently with only its sibling tnt_schema_isolation_test.zig, which localises the hang to interaction with the clean_test_db sweep rather than to the two test binaries themselves.",
+    "note_on_reported_pass_counts": "Runs 2 and 4 report `19/19 tests passed` yet still exit 1 \u2014 the step fails on the run-artifact timeout, not on a test assertion. Judging this step by test-pass text rather than exit code would misreport it as green.",
+    "corrected_diagnosis": {
+      "23505_is_red_herring": "Occurs exactly 1x per run across all 5 post-fix runs, all of which exit 0. Source is the deliberate duplicate-insert assertion in TC-TNT-02-05.",
+      "binary_identification": "PDB debug info maps .zig-cache/o/4196e8e8.../test.exe -> tnt_backfill_export_cleanup_test.zig (the binary that hung ~60s) and .zig-cache/o/f92edf18.../test.exe -> tnt_schema_isolation_test.zig (the binary reporting 19/19 and emitting the benign 23505). The '19/19 tests passed' text and the non-zero exit came from DIFFERENT binaries.",
+      "two_symptoms_one_cause": "Both observed failure modes trace to the same missing serialization: (a) tnt_backfill hanging until the build runner's ~60s no-response timeout, and (b) tnt_schema_isolation asserting with 42P01 relation events_archive/events/instance_projections does not exist, raised from Migrations.runForSchema inside provisionTenantSchema.",
+      "no_lock_contention_found": "pg_locks sampling during hangs showed zero ungranted locks and zero advisory locks held - refuting the pre-registered hypothesis that ISS-0148's blocking sweep was the cause. The advisory locks were absent because they had been deleted, not because they were contended.",
+      "solo_vs_concurrent": "tnt_backfill_export_cleanup_test.zig: 4/4 exit 0 standalone. tnt_schema_isolation_test.zig: 4/4 exit 0 standalone. The failure requires the two binaries to run concurrently.",
+      "pre_fix_exit_codes_this_session": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "post_fix_exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "post_fix_additional_consecutive_passes": 6,
+      "post_fix_test_counts": "8/8 steps succeeded; 34/34 tests passed (19 isolation + 15 backfill)",
+      "post_fix_42P01_total": 0,
+      "post_fix_audit_entries_42P01_total": 0,
+      "duration_stabilised": "43-47s post-fix vs 46-88s pre-fix"
+    }
+  },
+  "acceptance_criteria": [
+    "`zig build test-integration-tnt` exits 0 on 5 consecutive runs, measured by exit code only",
+    "No 23505 violation on schema_migrations_schema_version_uq during the run",
+    "tnt_backfill_export_cleanup_test.zig does not time out when run as part of the step",
+    "The fix does not weaken or remove the ISS-0148 ordering edge or the advisory-locked sweep"
+  ],
+  "notes": "Does NOT invalidate the ISS-0148 fix: that fix demonstrably removed its target signature and introduced no regression (see ISS-0148 verification report). This is a distinct, pre-existing defect that shares the same step. Filed separately rather than folded into ISS-0148 per CLAUDE.md 'No Issue Left Local-Only'.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/483",
+  "resolved_at": "2026-08-06T12:12:19Z",
+  "resolution": "Restored all three deleted pg_advisory_lock acquires in tests/integration/helpers.zig, each bracketed with the ISS-0107-rework-1 lock_timeout pattern (SET lock_timeout=90s / acquire / SET lock_timeout=5s):\n1. runMigrations(): session lock on hashtext('bpm_test_migrations_public'), released via defer, guarding the public check-and-apply pass.\n2. runMigrationsForSchema(): session lock on hashtext($1) keyed by schema name, released via defer, taken BEFORE the already-migrated fast path (that read is the check half of the check-then-apply race). Keying on the schema name keeps different tenant schemas parallel; only same-schema work serialises.\n3. TestHarness.init(): the widened acquire, restored at the exact position its surviving ISS-0107 comment block describes, re-pairing the orphaned pg_advisory_unlock.\n\nRestoring the locks does NOT reintroduce the hang GH-402 was reacting to. That hang was never the lock itself - ISS-0110 already diagnosed it as the ambient lock_timeout=5s from configureSessionTimeouts() cancelling the acquire with 55P03 once enough binaries queued. The 90s bracket is the proven fix for that and was already in use at one acquire site before db362fd removed it.\n\nNo test was weakened, skipped, deleted, or given a retry/sleep. No timeout was raised to hide a hang. The ISS-0148 ordering edge (addIntegrationRun) and the advisory-locked sweep in tools/clean_test_db.py are untouched; the audit_entries 42P01 signature remains at 0 occurrences.",
+  "prevention": "1. An unlock with no matching lock is a mechanical, cheap-to-detect defect that survived three months and at least nine downstream investigations. Add a linter rule asserting every pg_advisory_unlock(K) / pg_advisory_lock(K) pair balances within a file.\n2. 'Remove the lock and rely on idempotency' is only valid if the guarded operation is ACTUALLY idempotent under concurrency. Migrations.runForSchema is check-then-apply and documents its own race (ISS-0144). Removing a lock must cite the specific mechanism that makes the operation safe without it.\n3. GH-402 removed a lock to fix a hang whose real cause (lock_timeout cancelling the acquire, ISS-0110) was already diagnosed elsewhere in the same repo. This is the anti-pattern of treating the synchronisation primitive as the bug because it is where the symptom appears.\n4. Never judge this step by 'N/N tests passed' text - zig build test-integration-tnt runs two concurrent binaries and the pass-count line can come from the binary that did NOT fail. Judge by exit code only.\n5. When a step runs multiple binaries concurrently, identify the failing artifact by mapping the .zig-cache hash in the failed-command line to its source via the PDB before theorising about cause."
+}

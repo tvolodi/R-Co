@@ -1,0 +1,68 @@
+{
+  "handoff_id": "22fa7399-0b5d-4351-ba34-5b4ceb8bc655",
+  "run_id": "WF03-gh477-20260806",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-06T10:03:00Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Maintenance",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "689dfee1-8c92-4b3f-9f74-787f916da004"
+    ],
+    "artifacts_in": [
+      "src/design/iss0148_clean_test_db_ordering_and_lock.md",
+      "docs/issue-reports/ISS-0148-diagnosis.yaml",
+      "docs/issues/ISS-0148.json"
+    ],
+    "issue_id": "ISS-0148",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/477"
+  },
+  "task": {
+    "description": "Implement the fix for ISS-0148 / GH #477 exactly per the design src/design/iss0148_clean_test_db_ordering_and_lock.md, which PASSED the CODE-DESIGN-VALIDATOR gate with every claim independently re-derived. Layer 1: build.zig helper attaching clean_test_db as an ordering predecessor of every integration run ARTIFACT (39 defective steps; 30 binaries reach the umbrella via the test-integration-others-internal barrier which has no clean edge; test-integration-iss0076 has no clean edge at all). Layer 2: tools/clean_test_db.py orphan sweep performs enumerate+drop+ledger-delete in a SINGLE psql session under pg_advisory_xact_lock(hashtext(bpm.migrations.runForSchema)::bigint), enumeration under the lock.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test-integration-tnt exits 0 on 5 consecutive runs (baseline was 5/5 FAIL)",
+      "No test file, migration, or src/db/migrations.zig weakened - verified by git diff",
+      "Both design layers implemented",
+      "Implementation committed and pushed to feature/WF03-gh477-20260806"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented both ISS-0148 layers. Layer 1: new file-local addIntegrationRun() helper in build.zig folds the repeated create/setCwd/BPM_MIGRATIONS_DIR shape and attaches clean_test_db as an ordering PREDECESSOR of the run ARTIFACT; applied to all 43 integration run-artifact sites (run_bench correctly excluded). This reaches the 30 barrier-routed binaries a per-step fix would miss, and closes finding (b): test-integration-iss0076 previously had NO cleanup edge at all. lint_test_table_refs/clean_test_db declarations moved above the integration block so the binding is in scope; all 56 step names and every pre-existing dependOn edge preserved verbatim (verified by diffing extracted step names and edges against HEAD). Layer 2: the orphan sweep now runs enumerate->validate->drop->ledger-delete as ONE transaction in ONE psql session (new run_psql_script() feeding a script on stdin) holding pg_advisory_xact_lock(hashtext('bpm.migrations.runForSchema')::bigint), the key verbatim from src/db/migrations.zig:31, with enumeration performed UNDER the lock. The ^tenant_[0-9a-f]{32}$ injection guard moved server-side as an equivalent regex check plus format(%I) quoting. VERIFIED BY MEASUREMENT: baseline 3/3 FAIL, then 5 consecutive post-fix runs of zig build test-integration-tnt exited 0,0,0,0,0. Lock proven non-no-op: with a competing session holding the same key for 12s, the sweep BLOCKED and took 14s, then exited 0.",
+    "artifacts_out": [
+      "build.zig",
+      "tools/clean_test_db.py",
+      "docs/issues/ISS-0150.json",
+      "handoffs/WF03-gh477-20260806/issue_queue.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Incidental finding (b) from design 2.2 confirmed and closed as a side effect: test-integration-iss0076 ran an integration binary with no clean_test_db edge whatsoever. It now inherits the ordering edge via the helper; verified exit 0."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Residual blocker cleared during Step 03: TC-TNT-01-02 and TC-TNT-01-04 failed deterministically (3/3) both WITH and WITHOUT the fix, on stale state - public.repository_form_schemas existed despite GBL-112 having dropped it, recreated after that migration ran. Dropped the stray table; it does NOT come back after a full tnt run, confirming stale contamination rather than a live leak. No code change was needed and none was made."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "NEW pre-existing defect discovered during the mandated spot-check and filed as ISS-0150 / GH #482, enqueued on this run issue_queue.json: zig build test-integration-svc exits 1 with 63 failing blocks across 34 files, dominated by 42P01 relation tenant_<uuid>.schema_migrations does not exist. Proven pre-existing by a stashed-change control run producing an identical 63-block failure set. Overlaps but does not duplicate ISS-0149 / GH #465 (10 files, different named cause). NOT fixed here per the issue-queue protocol."
+      },
+      {
+        "severity": "MINOR",
+        "description": "db_integration_test.TC-DB-02-04 is flaky, not a regression: it appeared in 1 of 3 runs and was absent in 2 repeats. It opens a pool at boundary size 200 while db_test runs max_connections=250. Recorded under ISS-0150."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T10:03:00Z",
+  "completed_at": "2026-08-06T10:49:01Z"
+}
