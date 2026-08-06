@@ -606,6 +606,65 @@ Step 2b waits for all three sign-offs before running.
 
 Any issue found incidentally during Steps 1-7 (not the thing currently being fixed) is filed and enqueued per `docs/agents/protocols/ISSUE_QUEUE.md` — it does not spawn a nested WF-03 branch. See that doc and ORCHESTRATOR.md §8c for the full draining loop.
 
+### ORCH loop mode (multi-workspace autonomous processing)
+
+**Read:** `docs/agents/protocols/LOOP_PROTOCOL.md` before entering this mode.
+
+ORCH enters loop mode when the user says "start loop", "process the queue", "run autonomous loop", or equivalent. Each iteration resolves **exactly one issue** from `handoffs/global_queue.json`, then commits the queue state to `main`.
+
+**Trigger phrases:** "start loop", "run loop", "process the queue", "autonomous mode", "keep fixing issues".
+
+**Loop skeleton (mandatory — do not deviate):**
+
+```python
+workspace_id = "<COMPUTERNAME or user-supplied label>"
+stop_loop    = "handoffs/STOP_LOOP"
+
+while True:
+    # 1. Check stop flag
+    if os.path.exists(stop_loop):
+        break
+
+    # 2. Claim one item
+    result = subprocess.run(
+        ["python3", "tools/queue_claim.py", workspace_id],
+        capture_output=True, text=True
+    )
+    if result.returncode == 2:   # empty
+        break
+    if result.returncode != 0:   # locked (3) or error (1)
+        break
+    item = json.loads(result.stdout)
+
+    # 3. Run WF-03 for this single item (own branch, own PR, own merge)
+    run_id = f"WF03-{item['issue_id']}-{date_str}"
+    #   → Steps 0.5 → 1 → 2 → 2b → 3 → [4/4b] → 5 → 6 → 7 → Step Final
+
+    # 4. Release lock
+    status = "RESOLVED"   # or "DEFERRED" if scope decision made during WF-03
+    subprocess.run(
+        ["python3", "tools/queue_release.py", item["issue_id"], workspace_id,
+         "--status", status],
+        check=True
+    )
+
+    # 5. Commit queue state to main
+    #    git add handoffs/global_queue.json handoffs/orchestrator.log
+    #    git commit -m "queue: resolve <issue_id>"
+    #    git push origin main
+```
+
+**Each item gets a full WF-03 run:** own Step 00 (git-setup), own WF-03 Steps 1–7, own Step Final (git-merge). No shared branches between items.
+
+**Incidental issues discovered during a loop iteration** are added to the *global* queue via `python3 tools/queue_add.py` (not the per-run queue), then processed in a later loop iteration. Do not inline-fix them in the current iteration.
+
+**Stop the loop gracefully** (current item completes, then loop exits):
+```powershell
+New-Item -ItemType File -Force handoffs/STOP_LOOP
+```
+
+---
+
 ### ORCH execution style
 
 **Never explain before acting.** Do not write preamble sentences like "The orchestrator instructions are clear..." or "I'll now create a handoff for...". Just create the handoffs and invoke subagents immediately.
