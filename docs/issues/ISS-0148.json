@@ -1,0 +1,31 @@
+{
+  "issue_id": "ISS-0148",
+  "title": "TC-TNT-01-01 fails intermittently: relation \"audit_entries\" does not exist during tenant schema provisioning",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/477",
+  "registered_at": "2026-08-06T08:29:20Z",
+  "registered_by": "BACKEND-DEV (WF03-gh374-20260806 Step 3, incidental discovery)",
+  "related_to": [
+    "ISS-0147"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "resolved_at": null,
+  "run_id": "WF03-gh374-20260806",
+  "category": "test-infrastructure/migration-ordering-or-residual-state",
+  "affected_areas": [
+    "tests/integration/tnt_schema_isolation_test.zig",
+    "src/db/migrations.zig",
+    "src/db/provisioning.zig"
+  ],
+  "symptom": "zig build test-integration-tnt fails intermittently on TC-TNT-01-01 with POSTGRES 42P01 'relation \"audit_entries\" does not exist' raised from src/db/migrations.zig:484 runForSchema. Measured on main (146070c): 3 consecutive runs gave pass, fail, fail. An accompanying 23505 duplicate-key error on schema_migrations_schema_version_uq (schema_name, version)=(tenant_<uuid>, 001_event_store.sql) appears in the same runs.",
+  "reproduction": "export BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test; zig build test-integration-tnt   # repeat 3-5 times against the shared bpm_test DB",
+  "root_cause_analysis": "NOT YET DIAGNOSED. The 42P01 inside runForSchema points at either migration ordering within per-tenant provisioning, or residual partial state in the shared bpm_test database causing a partially-provisioned schema to be re-migrated. The intermittency plus the accompanying schema_migrations duplicate-key error suggest residual state from a previously aborted run is being re-entered rather than a deterministic ordering bug. Requires a dedicated diagnosis pass.",
+  "acceptance_criteria": [
+    "zig build test-integration-tnt passes deterministically across at least 5 consecutive runs on a shared bpm_test database",
+    "TC-TNT-01-01 no longer fails with relation \"audit_entries\" does not exist",
+    "No schema_migrations_schema_version_uq duplicate-key error during tenant provisioning"
+  ],
+  "discovered_while_fixing": "ISS-0147",
+  "pre_existing": true,
+  "pre_existing_evidence": "Reproduced on main (146070c) with none of the ISS-0147 changes present: runs 2 and 3 of 3 failed. Failure path (runForSchema/migrations) is disjoint from ISS-0147's (subprocess interpreter selection)."
+}

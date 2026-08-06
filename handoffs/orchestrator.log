@@ -88,3 +88,8 @@
 2026-08-06T07:12:57Z | ROUTE | WF03-gh467-20260806 | d0e21b70 | ORCH -> ISSUE-FIXER | PENDING (ISS-0603 / GH #467)
 2026-08-06T07:31:10Z | COMPLETE | WF03-gh467-20260806 | d0e21b70 | ISSUE-FIXER | PASS — ISS-0603 apply-order fixed in src/db/migrations.zig + src/tools/migrate.zig (duplicate runner); existing DBs grandfathered; NEW ISS-0604/GH#470 filed and QUEUED
 2026-08-06T07:54:04Z | COMPLETE | WF03-gh467-20260806 | d0e21b70 | ISSUE-FIXER | PASS — ISS-0604/GH#470 fixed via declarative '-- scope: public' migration header + loud MigrationScopeMismatch guard; duplicate migrationOrder() removed; fresh DB bootstraps 106/106 exit 0; queue drained
+2026-08-06T08:06:22Z | ROUTE | WF03-gh374-20260806 | 473bd89b | ORCH -> BACKEND-DEV | PENDING (Step 00 git-setup, GH #374)
+2026-08-06T08:07:38Z | COMPLETE | WF03-gh374-20260806 | 473bd89b | BACKEND-DEV | PASS (git-setup; issue_queue.json created)
+2026-08-06T08:14:50Z | COMPLETE | WF03-gh374-20260806 | 1152b9ae | ISSUE-FIXER | PASS (Step 1 diagnose; ISS-0147 registered, GH #374)
+2026-08-06T08:14:50Z | COMPLETE | WF03-gh374-20260806 | bc2257ac | CODE-DESIGNER | PASS (Step 2 design artefact)
+2026-08-06T08:29:20Z | ENQUEUE | WF03-gh374-20260806 | ISS-0148 | BACKEND-DEV | QUEUED MAJOR (GH #477, pre-existing flake found while verifying ISS-0147)

@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-06T00:25:21Z",
-  "next_issue_id": 147,
+  "last_updated": "2026-08-06T08:29:20Z",
+  "next_issue_id": 149,
   "issues": [
     {
       "id": "ISS-0205",
@@ -1636,6 +1636,38 @@
       "created_at": "2026-08-06T00:25:21Z",
       "resolved_at": null,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/458"
+    },
+    {
+      "id": "ISS-0147",
+      "title": "Integration linter tests invoke Windows Store Python alias instead of repository interpreter (GH #374)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "test-infrastructure/interpreter-resolution",
+      "run_id": "WF03-gh374-20260806",
+      "affected_areas": [
+        "tests/integration/tnt_schema_isolation_test.zig",
+        "tests/support/python_interp.zig",
+        "build.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/374",
+      "created_at": "2026-08-06T08:09:55Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0148",
+      "title": "TC-TNT-01-01 fails intermittently: relation \"audit_entries\" does not exist during tenant schema provisioning (GH #477)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "test-infrastructure/migration-ordering-or-residual-state",
+      "run_id": "WF03-gh374-20260806",
+      "affected_areas": [
+        "tests/integration/tnt_schema_isolation_test.zig",
+        "src/db/migrations.zig",
+        "src/db/provisioning.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/477",
+      "created_at": "2026-08-06T08:29:20Z",
+      "resolved_at": null
     }
   ]
 }

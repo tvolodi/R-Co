@@ -1135,6 +1135,39 @@
       "created_at": "2026-08-06T07:12:57Z",
       "status": "COMPLETED",
       "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "473bd89b-2671-452f-8eab-60f0e35002f0",
+      "file": "handoffs/WF03-gh374-20260806/step-00-backend-dev-git-setup.json",
+      "run_id": "WF03-gh374-20260806",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-06T08:06:22Z",
+      "status": "COMPLETED",
+      "stage": "Issue Resolving"
+    },
+    {
+      "handoff_id": "1152b9ae-1215-4521-901b-f62767445783",
+      "file": "handoffs/WF03-gh374-20260806/step-01-issue-fixer-diagnose.json",
+      "run_id": "WF03-gh374-20260806",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-06T08:14:50Z",
+      "status": "COMPLETED",
+      "stage": "Issue Resolving"
+    },
+    {
+      "handoff_id": "bc2257ac-dd56-4ff4-a54a-92a40172d541",
+      "file": "handoffs/WF03-gh374-20260806/step-02-code-designer-fix-design.json",
+      "run_id": "WF03-gh374-20260806",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-06T08:14:50Z",
+      "status": "COMPLETED",
+      "stage": "Issue Resolving"
     }
   ],
   "last_updated": "2026-08-06T00:39:45Z"

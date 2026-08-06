@@ -19,6 +19,7 @@ const std = @import("std");
 const portable_env = @import("env");
 const testing = std.testing;
 const helpers = @import("helpers.zig");
+const python_interp = @import("python_interp.zig");
 const TestHarness = helpers.TestHarness;
 const build_options = @import("build_options");
 
@@ -608,8 +609,16 @@ test "TC-TNT-02-03: linter rejects migration file containing public.events" {
     defer std.Io.Dir.cwd().deleteFile(std.testing.io, scratch_path) catch {};
 
     // Run the linter as a subprocess using Zig 0.16 std.process.run.
+    //
+    // ISS-0147 (GH #374): the interpreter must be resolved via python_interp,
+    // not spawned as bare "python". On Windows a bare name can resolve to the
+    // Store App Execution Alias stub, which exits 49 — and this test would then
+    // be comparing that 49 against the linter's expected 1. The slice returned
+    // by resolveCached is module-owned; do not free it here.
+    const py = try python_interp.resolveCached(alloc, std.testing.io);
+
     const result = try std.process.run(alloc, std.testing.io, .{
-        .argv = &.{ "python", "tools/lint_migration_schema.py", scratch_path },
+        .argv = &.{ py, "tools/lint_migration_schema.py", scratch_path },
         .stdout_limit = .limited(64 * 1024),
         .stderr_limit = .limited(64 * 1024),
     });
@@ -676,8 +685,13 @@ test "TC-TNT-02-04: linter accepts migration file containing public.schema_migra
     });
     defer std.Io.Dir.cwd().deleteFile(std.testing.io, scratch_path) catch {};
 
+    // ISS-0147 (GH #374): see TC-TNT-02-03 above. The returned slice is
+    // module-owned and backed by a process-lifetime allocator, not by this
+    // test's allocator — do not free it here.
+    const py = try python_interp.resolveCached(alloc, std.testing.io);
+
     const result = try std.process.run(alloc, std.testing.io, .{
-        .argv = &.{ "python", "tools/lint_migration_schema.py", scratch_path },
+        .argv = &.{ py, "tools/lint_migration_schema.py", scratch_path },
         .stdout_limit = .limited(64 * 1024),
         .stderr_limit = .limited(64 * 1024),
     });

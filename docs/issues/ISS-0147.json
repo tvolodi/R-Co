@@ -1,0 +1,30 @@
+{
+  "issue_id": "ISS-0147",
+  "title": "Integration linter tests invoke Windows Store Python alias instead of repository interpreter",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/374",
+  "registered_at": "2026-08-06T08:09:55Z",
+  "registered_by": "ISSUE-FIXER (WF03-gh374-20260806 Step 0.5)",
+  "related_to": [
+    "ISS-0138"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "resolved_at": null,
+  "run_id": "WF03-gh374-20260806",
+  "category": "test-infrastructure/interpreter-resolution",
+  "affected_areas": [
+    "tests/integration/tnt_schema_isolation_test.zig",
+    "tests/support/python_interp.zig",
+    "build.zig"
+  ],
+  "symptom": "zig build test-integration fails TC-TNT-02-03 and TC-TNT-02-04. Both tests spawn tools/lint_migration_schema.py with argv[0] == \"python\"; on Windows that can resolve to the Microsoft Store App Execution Alias stub, which prints 'Python was not found; run without arguments to install from the Microsoft Store...' and exits 49. The tests observe exit 49 instead of the linter's real exit codes 1 and 0.",
+  "reproduction": "On Windows with a WindowsApps python.exe alias on PATH: C:/Users/tvolo/AppData/Local/Microsoft/WindowsApps/python.exe tools/lint_migration_schema.py <file> -> 'Python was not found...' exit 49. Confirmed on this machine 2026-08-06.",
+  "root_cause_analysis": "Interpreter selection is by bare name only. 'python' has three PATH resolutions on this machine (Programs/Python312 real, WindowsApps alias stub, AppData/Local/Python/bin shim). Which one wins depends on the PATH the spawning process inherits, which differs between an interactive shell and a zig-build-spawned test binary -- so name-based selection is non-deterministic. ISS-0138 (GH #440) fixed the sibling 'python3' case in build.zig by switching to 'python', but 'python' carries the same WindowsApps alias, and these two call sites live in a test binary rather than build.zig, so that fix does not cover them.",
+  "acceptance_criteria": [
+    "Integration tests resolve the repository-selected Python interpreter deterministically on Windows and non-Windows hosts",
+    "TC-TNT-02-03 observes expected linter rejection exit 1",
+    "TC-TNT-02-04 observes expected linter acceptance exit 0",
+    "Full zig build test-integration no longer contains 'Python was not found'"
+  ],
+  "design_artifact": "src/design/python_interpreter_resolution.md"
+}
