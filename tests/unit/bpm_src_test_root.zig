@@ -28,4 +28,7 @@ test {
     _ = @import("service_task_test.zig");
     _ = @import("ext03_plugin_test.zig");
     _ = @import("effects/test_effects.zig");
+    // ISS-0147 / GH #463: forces semantic analysis of the src/wasm subsystem,
+    // which src/bpm.zig now re-exports as `bpm.wasm`.
+    _ = @import("wasm_reexport_test.zig");
 }

@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0158",
+  "title": "14 remaining EXP-301/EXP-302 effects_subsystem_test blocks fail; transition() emits no effect_emitted for SERVICE_TASK",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "discovered_at": "2026-08-06T09:54:16Z",
+  "discovered_by": "BACKEND-DEV step q149",
+  "discovered_during": "WF03-gh439-testwiring-20260806 step q149 (ISS-0149 / GH #465)",
+  "affected_areas": [
+    "tests/integration/effects_subsystem_test.zig",
+    "src/engine/transition.zig",
+    "src/effects/worker.zig",
+    "src/effects/queue.zig"
+  ],
+  "symptom": "After ISS-0149 made tests/integration/effects_subsystem_test.zig compile for the first time and fixed 16 of its 30 failing blocks, 14 blocks still fail. The largest cluster is TC-EXP-302-02/03/04/06/07/08, which all panic with `index out of bounds: index 0, len 0` at `result.emitted_events[0]` \u2014 transition() returns ZERO emitted events when a token enters a SERVICE_TASK node, so the EXP-302 async-effect emission path produces nothing to assert on. TC-EXP-302-01 and TC-EXP-302-05 fail/leak against the same path. TC-EXP-301-05/07/08/09/11/12 fail or leak individually on the worker sweep and re-entry paths.",
+  "root_cause": "NOT FULLY DIAGNOSED. What IS established: (a) the file had never compiled or executed before GH #439 wired it, so none of these paths has ever had test coverage; (b) the missing effects_outbox table (fixed under ISS-0149 by migrations/1136_iss0149_exp301_effects_outbox_tenant_scope.sql) accounted for 4 of the 30 and is no longer a factor; (c) the TC-EXP-302 cluster is a genuine emitted_events gap in src/engine/transition.zig's SERVICE_TASK handling, not a fixture problem \u2014 the test asserts on emitted_events[0] and the slice is empty. Whether transition() is supposed to emit effect_emitted on SERVICE_TASK entry (EXP-302's stated contract) or the test's graph fixture fails to reach the node has not been determined.",
+  "reproduction": "1. docker-compose db_test healthy, BPM_TEST_DB_URL set.\n2. zig build test-integration-svc\n3. Observe 14 `error: 'effects_subsystem_test.test.TC-EXP-30*'` lines.",
+  "impact": "EXP-301 (async effects outbox) and EXP-302 (SERVICE_TASK migration to async effects) are marked implemented but their integration tests have never passed. If TC-EXP-302's reading is correct, SERVICE_TASK nodes do not emit effects at all, meaning the async service-task path is non-functional in production, not merely untested.",
+  "candidate_resolution": "Start with TC-EXP-302-02: read src/engine/transition.zig's processNodeEntry SERVICE_TASK branch against the EXP-302 requirement and determine whether effect_emitted is supposed to be produced there. That single answer decides whether the six TC-EXP-302 failures are a production defect or six wrong tests. Treat the six TC-EXP-301 failures separately \u2014 they are individual worker/re-entry assertions, not one cluster.",
+  "notes": "Filed rather than fixed inline because ISS-0149's scope is the ten specific integration files named in GH #465, all ten of which now pass in isolation. effects_subsystem_test.zig is NOT one of them; it entered the picture only because GH #439's wiring commit made it a compile-blocker for the whole test-integration umbrella, which ISS-0149 had to clear to see any results at all. The compile fixes, the missing-migration fix, and 16 of the 30 failures were resolved under ISS-0149 as unavoidable unblocking work; the remaining 14 require a production-behaviour decision about EXP-302 that is properly its own diagnosis.",
+  "related_issues": [
+    "ISS-0149",
+    "ISS-0137"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/479"
+}

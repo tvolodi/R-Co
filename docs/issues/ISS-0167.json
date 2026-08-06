@@ -1,0 +1,24 @@
+{
+  "id": "ISS-0167",
+  "title": "zig build test-env-verify check C3 fails on BPM_DB_URL despite .env defining it (reads process env only)",
+  "status": "RESOLVED",
+  "severity": "MINOR",
+  "category": "test-gate-reliability",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "handoff_id": "9752c4ed-757f-482e-9f24-b7d6999d5098",
+  "affected_areas": [
+    "tools/verify_test_env.py",
+    ".env",
+    "build.zig"
+  ],
+  "created_at": "2026-08-06T07:16:34Z",
+  "resolved_at": "2026-08-06T07:26:27Z",
+  "notes": "TEST-RUNNER finding TR-01 during WF-03 Step 5 verification of GH #439 / ISS-0137. test-env-verify C3 reads only the process environment, not .env, so a correctly-configured workspace gets a red gate; exporting BPM_DB_URL makes the same command exit 0. Matters because test-env-verify is ORCH's mandatory pre-check before dispatching TEST-RUNNER and is judged by exit code only.",
+  "candidate_resolution": "Fix the checker's environment resolution to load .env the way the rest of the toolchain does. Do NOT remove, default, or soften check C3 -- per CLAUDE.md a detector must not be silenced to pass (2026-05-30 dbUrlSourceLabel precedent). A workspace genuinely missing BPM_DB_URL must still fail C3.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/468",
+  "discovered_while_fixing": "ISS-0137",
+  "resolution": "tools/verify_test_env.py now resolves BPM_DB_URL / BPM_TEST_DB_URL / BPM_BENCH_DB_URL from the process environment first and .env second -- the same order bench.zig resolveDbUrl() uses. dotenv_has() was generalised into dotenv_get(); a new load_dotenv_into_environ() runs once at the top of main() and exports .env values into os.environ only for keys the real environment does not already define. Exporting into os.environ (rather than having each check call dotenv_get directly) is what fixes C3: zig build migrate is a subprocess reading BPM_DB_URL from its own environment, and it does not parse .env, so a check that only consulted .env itself would pass and then still watch the child die. C4 and C6 were affected by the same root cause and are fixed by the same change. check_migrate() (C3) is unmodified -- git diff shows no lines changed inside it.",
+  "prevention": "The tool disagreed with itself: C7 read .env, C3/C4/C6 did not, and the divergence sat unnoticed because operators habitually exported the vars. When a checker has a documented environment-resolution order, resolve it ONCE in a single shared helper before any check runs, rather than per-check -- and make that helper populate os.environ so spawned subprocesses inherit the same view. Note also what was deliberately NOT done: giving BPM_DB_URL a default, or softening C3, would have turned a red gate green while leaving a genuinely unconfigured workspace undetectable -- the 2026-05-30 dbUrlSourceLabel failure mode. Any future change here must be checked in both directions: configured workspace passes AND unconfigured workspace still fails.",
+  "renumbered_from": "ISS-0151",
+  "renumber_reason": "ISS-0151 was claimed concurrently on main by an unrelated issue (merged via PR #487/#488 lineage). This entry keeps its GitHub issue https://github.com/tvolodi/R-Co/issues/468, which is the stable identifier; only the local ID moved."
+}

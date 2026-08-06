@@ -1,0 +1,84 @@
+{
+  "handoff_id": "15818aed-518d-4a98-9051-42994675e303",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-gh439-testwiring-20260806/step-02b-code-design-validator.json",
+  "created_at": "2026-08-06T05:41:36Z",
+  "started_at": "2026-08-06T05:41:36Z",
+  "completed_at": "2026-08-06T05:47:07Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "issue_ids": [
+      "ISS-0137"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/439",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "related_handoff_ids": [
+      "d60e48f2-685b-48b6-9f3a-ffa362e52671",
+      "ff88a283-52c7-4a74-aba2-26bdbd0af937"
+    ],
+    "artifacts_in": [
+      "src/design/test-wiring-iss0137.md",
+      "docs/issue-reports/ISS-0137-diagnosis.yaml",
+      "build.zig",
+      "src/transition_test_root.zig",
+      "tools/lint_test_wiring.py"
+    ]
+  },
+  "task": {
+    "description": "HARD GATE (WF-03 Step 2b). Validate src/design/test-wiring-iss0137.md before BACKEND-DEV may start. This is a Type E prose design for a build-graph fix, so the standard 'covers acceptance criteria / no implementation code / signatures listed' checks apply, but the decisive checks are structural correctness against build.zig's real content. Verify specifically: (1) the Single-Owner Module Rule as stated actually holds against build.zig -- no file is assigned as root_source_file of a named module while also being reached by relative path from a shim; spot-check at least the src/oidc/*, src/repository/*, src/simulation/* families by reading build.zig and the files themselves, do not trust the design's claim; (2) the inverted cluster order (C4a module declarations before C3 shims) is coherent and no cluster depends on a later one; (3) the design's claim that lint_test_wiring.py's IMPORT_LITERAL regex cannot follow named-module edges is TRUE -- read the linter; if true, confirm the design's L-2 improvement is genuinely required for C7 to reach exit 0, and that L-2 improves the DETECTOR rather than weakening it (per CLAUDE.md 'Never Satisfy a Gate by Editing What It Measures', a change that makes the linter stop reporting real unwired files is an automatic FAIL); (4) the Green-Main Gate split -- independently spot-check at least 5 files the design routes to `zig build test` and confirm none needs BPM_TEST_DB_URL or Keycloak; (5) the two source-fix decisions (iss206 symbol fix, exp601 bpm.zig re-exports) are correct against the actual current content of src/bpm.zig; (6) the bootstrap.zig @import(\"root\") risk has a concrete, bounded fallback; (7) the exclusion mechanism is deferred for a stated reason and, if built, is a YAML file rather than an inline source pragma. FAIL if any check fails.",
+    "acceptance_criteria": [
+      "Single-Owner Module Rule verified against real build.zig content, not assumed",
+      "Cluster ordering has no forward dependency",
+      "L-2 linter change confirmed to strengthen not weaken the detector",
+      "Green-Main Gate split independently spot-checked on >=5 files",
+      "Both source-fix decisions verified against current src/bpm.zig",
+      "bootstrap.zig root-import risk has a bounded fallback",
+      "PASS or FAIL recorded with concrete issue list"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design src/design/test-wiring-iss0137.md validated against the real content of build.zig, src/oidc/*, src/repository/*, src/simulation/*, src/bpm.zig, src/main.zig, tools/lint_test_wiring.py and 11 test files. All 7 decisive checks verified by reading source, not by trusting the design. Single-Owner Module Rule holds (all 14 src/oidc/*.zig files use only named imports; zero relative .zig imports). Cluster order C4a-before-C3 is correct with no forward dependency. L-2 is genuinely required and STRENGTHENS the detector (adds a real edge type the build graph has; does not loosen reachability) - no 'Never Satisfy a Gate by Editing What It Measures' violation. Green-Main split spot-checked on 11 files (>=5 required); zero live-service files land on 'zig build test'. Both bpm.zig source-fix decisions verified correct against current source. bootstrap.zig @import(root) is used only inside @hasDecl, so the design's benign branch is the actual one and its fallback is bounded. Exclusion mechanism correctly deferred and specified as YAML with reason+issue_ref, explicitly forbidding an inline pragma. Countdown arithmetic closes against the real 55-file list. PASS with 2 MAJOR and 4 MINOR corrections BACKEND-DEV must apply; none require redesign.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "Sec 6.1 understates the scope of the engine_transition fix and its instruction is unsafe as written. The design asserts 'Nothing else in the repo references engine_transition' and scopes the change to 'exactly one line in one test file'. Repo-wide grep finds five more references: src/main.zig:1460 DEFINES pub const engine_transition = @import(\"engine/transition.zig\"); and tests/unit/test_ee07_parallel_join.zig:24, tests/unit/test_engine_apply.zig:25, tests/unit/test_engine_ee05.zig:16 all read bpm.engine_transition. Those three unit tests are aggregated by tests/unit/bpm_main_test_root.zig (lines 25/27/28), whose bpm is bpm_main_mod rooted at src/main.zig - where engine_transition is the CORRECT and only spelling. The design's decision remains right for iss206 (it imports bpm = bpm_src_mod = src/bpm.zig, which exports 'transition' at line 28 and has no engine_transition binding). But Sec 6.1's literal instruction - 'if other references exist, fix them all the same way' - would break three currently-passing bpm_main_mod unit tests and delete a legitimate src/main.zig export. BACKEND-DEV MUST change ONLY tests/integration/iss206_token_multiset_test.zig line 85, and MUST NOT touch src/main.zig:1460 or the three tests/unit/test_engine*/test_ee07 files. The two names are not a duplication to reconcile: bpm_src_mod and bpm_main_mod are different modules with different roots and independently correct surfaces."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "Sec 7 step-7 'Expected remaining = 2' is internally inconsistent with the design's own Sec 7.1 and with its file dispositions, and Sec 7 tells BACKEND-DEV that a count mismatch is a 'stop-and-diagnose condition' - so a wrong target number will manufacture a false stop. Verified by enumerating the actual 55-file unwired list against the design's own cluster assignments: C1(1) + C3(21) + C4b(8) + C5(4) + C2/C4b-int(19) = 55, i.e. every file is dispositioned and the true remainder after step 7 is 0, not 2. Separately, Sec 7.1 correctly states the 14 named-reach files still report UNWIRED until L-2 lands, which implies the linter-visible figure after step 7 should be 14, cleared to 0 by step 8. Neither 0 nor 14 is 2. BACKEND-DEV must record the observed count at each step and reconcile against 14-then-0, treating the table's '2' as an erratum rather than a target. No structural decision changes."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Sec 1.3 says 'all 12 src/oidc/*.zig files'. There are 14. The substantive claim is nonetheless VERIFIED TRUE for all 14: every non-std import in the directory is a named module (pool, claim_mapping, identity_provider, obs_metrics) with zero relative .zig imports, so every file is a valid standalone module root and the Single-Owner Module Rule is safe as applied. Count only."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Sec 8 describes claim_mapping.zig's pool reference as 'a struct field at line 105'. It is a FUNCTION PARAMETER type at line 106: pub fn loadClaimMappingConfig(allocator, pool: *@import(\"pool\").Pool, realm). The load-bearing conclusion is unaffected and verified correct - production code, not a test body, so the module must be given pool to compile while its tests need no live DB; correctly routed to 'zig build test'."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Sec 1.3 states only src/simulation/tenant_store.zig escapes src/simulation/ via '../event_store/store.zig'. src/simulation/types.zig line 2 has the identical escaping import. This STRENGTHENS the design's conclusion (the Sec 2.5 shim placement at src/ rather than src/simulation/ is more necessary than argued, since types.zig is imported by 6 of the 9 simulation siblings), so no decision changes - recorded so BACKEND-DEV is not surprised when the compiler names types.zig rather than tenant_store.zig."
+      },
+      {
+        "severity": "MINOR",
+        "description": "python tools/lint_design_artefact.py src/design/test-wiring-iss0137.md exits 1 with [MAJOR] E010 'missing required section for errors'. Assessed as a FALSE POSITIVE and not treated as a gate failure: this is a Type E build-graph design with no runtime error surface, so an error taxonomy is not meaningful; the linter's required-section rule assumes a business-logic module design. Same class as the documented lint false-positive family in docs/anti-patterns.md (ISS-0109). No design change requested; flagged so the exit-1 is not mistaken downstream for an unaddressed gate."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

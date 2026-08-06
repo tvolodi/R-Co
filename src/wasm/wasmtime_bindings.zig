@@ -67,7 +67,12 @@ pub inline fn engine_delete(engine: ?*Engine) void {
 pub inline fn store_new(
     engine: ?*Engine,
     data: ?*anyopaque,
-    finalizer: ?*const fn (?*anyopaque) callconv(.C) void,
+    // ISS-0147 / GH #463: `callconv(.C)` was valid when this file was written
+    // (Stage 9, May 2026) but Zig 0.16 turned CallingConvention into a tagged
+    // union whose C member is lowercase `.c`. This never surfaced because
+    // nothing referenced store_new, so the decl was never analysed — the exact
+    // silent rot that re-exporting src/wasm via bpm.zig now prevents.
+    finalizer: ?*const fn (?*anyopaque) callconv(.c) void,
 ) ?*Store {
     _ = engine;
     _ = data;

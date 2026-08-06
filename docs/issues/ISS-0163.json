@@ -1,0 +1,24 @@
+{
+  "id": "ISS-0163",
+  "title": "103 dangling implemented_in references in docs/requirements.yaml; reqctl validate never checks them",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/489",
+  "discovered_at": "2026-08-06T12:40:50Z",
+  "discovered_by": "DOC-UPDATER Step 7",
+  "discovered_while_fixing": "ISS-0137",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "affected_areas": [
+    "docs/requirements.yaml",
+    "tools/reqctl.py"
+  ],
+  "symptom": "103 implemented_in entries across docs/requirements.yaml point at files that do not exist. reqctl.py validate does not check implemented_in paths, so this accumulated undetected.",
+  "root_cause": "Three distinct causes: (1) stale GBL-0xx migration filenames after the mass renumbering in db362fd/PR #405 (same class as #337/ISS-0088 and #458/ISS-0146, both of which fixed only one consumer); (2) run-IDs such as WF02-env-batch1-20260610 written into implemented_in where a file path belongs; (3) a bare str passed where list[str] was expected, splitting 'feature/WF02-iss204-206-20260611' into one-character entries for ISS-204 and ISS-206.",
+  "acceptance_criteria": [
+    "reqctl.py validate checks that every implemented_in entry resolves to an existing path (MAJOR; BLOCKER for RELEASED requirements)",
+    "All 103 dangling references resolved",
+    "ISS-204/ISS-206 character-split entries repaired and the writer that produced them fixed",
+    "python tools/reqctl.py validate exits 0 on the new check"
+  ],
+  "notes": "Deferred out of run WF03-gh439-testwiring-20260806: it is a registry-wide data-quality sweep plus a new validator check, unrelated to that run's test-wiring scope. ENV-01's instance of cause (1) was fixed in that run because it was encountered directly."
+}

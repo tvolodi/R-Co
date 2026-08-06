@@ -1,0 +1,49 @@
+{
+  "handoff_id": "0afc1206-7020-4f1e-962d-0097155003ee",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-gh439-testwiring-20260806/step-00-backend-dev-git-setup.json",
+  "created_at": "2026-08-06T05:10:54Z",
+  "started_at": "2026-08-06T05:11:26Z",
+  "completed_at": "2026-08-06T05:13:29Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "issue_ids": [
+      "ISS-0137"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/439",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Run fn:git-setup per docs/agents/protocols/GIT_SETUP.md. Create and push feature branch feature/WF03-gh439-testwiring-20260806 from an up-to-date main. Do NOT make any source changes in this step.",
+    "acceptance_criteria": [
+      "git branch --show-current outputs feature/WF03-gh439-testwiring-20260806",
+      "git push -u origin feature/WF03-gh439-testwiring-20260806 exits 0"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "fn:git-setup complete. main fast-forwarded (already up to date), created and pushed feature/WF03-gh439-testwiring-20260806 with upstream tracking. No source changes made. Run issue queue created empty at handoffs/WF03-gh439-testwiring-20260806/issue_queue.json.",
+    "artifacts_out": [
+      "branch: feature/WF03-gh439-testwiring-20260806",
+      "handoffs/WF03-gh439-testwiring-20260806/issue_queue.json"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to ISSUE-FIXER (Step 0.5/1)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

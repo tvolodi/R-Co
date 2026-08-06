@@ -1,0 +1,81 @@
+{
+  "handoff_id": "9752c4ed-757f-482e-9f24-b7d6999d5098",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-gh439-testwiring-20260806/step-05-test-runner.json",
+  "created_at": "2026-08-06T06:59:43Z",
+  "started_at": "2026-08-06T06:59:43Z",
+  "completed_at": "2026-08-06T07:13:42Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "issue_ids": [
+      "ISS-0137"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/439",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "related_handoff_ids": [
+      "d995131c-5d37-4439-9e8f-d5a95f46351c"
+    ],
+    "artifacts_in": [
+      "src/design/test-wiring-iss0137.md",
+      "build.zig",
+      "tools/lint_test_wiring.py"
+    ]
+  },
+  "task": {
+    "description": "Independently verify the ISS-0137 / GH #439 test-wiring fix implemented in Step 3. BACKEND-DEV reports: lint_test_wiring exits 0, zig build test exits 0, 8 real defects fixed, C7 gate active. Verify these claims yourself -- do not take them on trust. The decisive check is NOT that the linter is green but that tests actually EXECUTE: BACKEND-DEV discovered mid-implementation that a named-module shim could make the linter report green while enrolling only 1 synthetic test block instead of the file's 16 real ones. So verify EXECUTED TEST COUNTS, not just exit codes. Compare the per-target test counts before and after (main vs this branch) and confirm the delta is consistent with ~141 newly-executing blocks on `zig build test`. Run the standard pre-checks first (backend services, Infrastructure Health Checklist, test-env-verify). Note that `zig build test-integration` is known to FAIL on main today due to pre-existing ISS-0149 / GH #465 (33 failing/leaking blocks in already-wired files) -- that is an enqueued separate issue, not a regression from this run; confirm it is genuinely pre-existing by checking against origin/main rather than assuming. Write the report to tests/reports/report-20260806-WF03-gh439-testwiring.yaml.",
+    "acceptance_criteria": [
+      "python tools/lint_test_wiring.py independently confirmed exit 0",
+      "zig build test independently confirmed exit 0",
+      "Executed test counts verified to have actually increased -- not just linter green",
+      "C7 gate verified to genuinely fire (de-wire something, confirm zig build test goes red, restore)",
+      "ISS-0149 test-integration failures confirmed pre-existing on origin/main, not caused by this run",
+      "tests/reports/report-20260806-WF03-gh439-testwiring.yaml written"
+    ],
+    "functions_to_call": [
+      "fn:run-tests",
+      "fn:write-test-report",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Independently verified the ISS-0137 / GH #439 test-wiring fix. The fix is GENUINE, not cosmetic. Executed test blocks on `zig build test` rose from 701 (origin/main) to 865 (branch): +164 blocks across +10 new addTest targets, 776 pass / 89 skip / 0 fail. The +164 exceeds the design's 141 expectation in the correct direction (BACKEND-DEV landed 10 targets rather than 9, splitting src/oidc_jit_test_root.zig out after finding the named-module shim defect). No new target enrolls fewer than 4 blocks, so the '1 synthetic block instead of 16 real ones' failure mode is absent -- test-oidc-jit specifically reports the full 16. Three named-test spot-checks (tenant_context, claim_mapping, repository_canonicaliser) confirmed by-name execution via temporary forced failures, all restored byte-for-byte. C7 gate PROVEN to genuinely fire: de-wiring misc_unit_test_root.zig made `zig build test` exit 1 naming both orphaned files while all 763 test binaries were still green; exact restoration returned it to exit 0. ISS-0149 / GH #465 CONFIRMED pre-existing -- test-integration fails on origin/main with 15 distinct failing tests and 13 leaks, and every failing file exists on main and was touched by neither this run nor this branch. Zero new issues caused by this run.",
+    "artifacts_out": [
+      "tests/reports/report-20260806-WF03-gh439-testwiring.yaml"
+    ],
+    "issues": [
+      {
+        "id": "TR-01",
+        "severity": "MINOR",
+        "pre_existing": true,
+        "caused_by_this_run": false,
+        "description": "zig build migrate (and therefore test-env-verify check C3) exits 1 with 'BPM_DB_URL environment variable is not set' in a shell where only BPM_TEST_DB_URL is exported, even though .env defines BPM_DB_URL. Exits 0 once exported. Makes test-env-verify report UNHEALTHY for an environment reason rather than a real infrastructure defect, weakening the gate's signal."
+      },
+      {
+        "id": "TR-02",
+        "severity": "MINOR",
+        "pre_existing": true,
+        "caused_by_this_run": false,
+        "description": "tools/lint_test_isolation.baseline.json suppression drift: 128 suppressed on branch vs 131 on origin/main, surfacing 3 T020 MAJORs (cached_owner_tag, tag_repr_storage, tag_repr_lock in tests/integration/helpers.zig) that already exist on main. BLOCKER count identical (88) on both refs."
+      },
+      {
+        "id": "TR-03",
+        "severity": "MAJOR",
+        "pre_existing": true,
+        "caused_by_this_run": false,
+        "description": "zig build test-integration fails on origin/main: 15 distinct failing tests, 13 leaked allocations. Already filed as ISS-0149 / GH #465 and enqueued on this run's issue_queue.json. Not a regression from GH #439."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 7). No rework required -- fix verified genuine."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

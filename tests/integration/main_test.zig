@@ -165,6 +165,46 @@ const iss503_rls_removal_integration = @import("test_iss503_rls_removal.zig");
 // ISS-504 — reconcile schema + per-tenant migration tracking (SPT-04)
 const iss504_migration_tracking_integration = @import("test_iss504_migration_tracking.zig");
 
+// ---------------------------------------------------------------------------
+// ISS-0137 / GH #439 — 21 integration test files that were wired into no build
+// target. Root cause RC-2: they were simply never added to this import list, so
+// their 184 test blocks never ran while `zig build test-integration` reported
+// green. Six of them (oidc09/10/11/12/15/35) are the files ISS-0102 / GH #360
+// flagged by hand in 2026-07-31.
+//
+// They are wired HERE rather than as dedicated addTest roots on purpose:
+// main_test.zig already sits behind the test_integration_others_step barrier,
+// so adding them costs no new barrier edges and the ISS-0106 concurrent-DDL
+// race is avoided by construction.
+// ---------------------------------------------------------------------------
+// OIDC-08..OIDC-15 — claim mapping, JIT provisioning, attribute sync, identity
+// stability, realm/tenant binding, tenant claim source, realm lifecycle.
+const oidc08_claim_mapping_config_integration = @import("oidc08_claim_mapping_config_test.zig");
+const oidc09_jit_provisioning_integration = @import("oidc09_jit_provisioning_test.zig");
+const oidc10_attribute_sync_integration = @import("oidc10_attribute_sync_test.zig");
+const oidc11_identity_stability_integration = @import("oidc11_identity_stability_test.zig");
+const oidc12_realm_tenant_binding_integration = @import("oidc12_realm_tenant_binding_test.zig");
+const oidc13_tenant_claim_source_integration = @import("oidc13_tenant_claim_source_test.zig");
+const oidc14_realm_provisioning_integration = @import("oidc14_realm_provisioning_test.zig");
+const oidc15_realm_deletion_integration = @import("oidc15_realm_deletion_test.zig");
+// OIDC-31/34/35 — end-to-end auth suite, migration helper, onboarding.
+const oidc31_end_to_end_auth_suite_integration = @import("oidc31_end_to_end_auth_suite_test.zig");
+const oidc34_migration_helper_integration = @import("oidc34_migration_helper_test.zig");
+const oidc35_onboarding_integration = @import("oidc35_onboarding_test.zig");
+// XC-01..XC-06 — cross-cutting: trace propagation, audit immutability,
+// configuration repository, deterministic replay, backwards compatibility.
+const xc01_trace_propagation_integration = @import("xc01_trace_propagation_test.zig");
+const xc02_audit_immutability_integration = @import("xc02_audit_immutability_test.zig");
+const xc03_configuration_repository_integration = @import("xc03_configuration_repository_test.zig");
+const xc05_deterministic_replay_integration = @import("xc05_deterministic_replay_test.zig");
+const xc06_backwards_compatibility_integration = @import("xc06_backwards_compatibility_test.zig");
+// Remaining singletons.
+const effects_subsystem_integration = @import("effects_subsystem_test.zig");
+const env01_tenant_type_field_integration_file = @import("env01_tenant_type_field_test.zig");
+const exp601_tier_quota_integration = @import("exp601_tier_quota_test.zig");
+const iss206_token_multiset_integration = @import("iss206_token_multiset_test.zig");
+const repository_integration = @import("repository_test.zig");
+
 comptime {
     _ = std;
     _ = helpers;
@@ -241,6 +281,28 @@ comptime {
     _ = iss502_spt_cutover_integration;
     _ = iss503_rls_removal_integration;
     _ = iss504_migration_tracking_integration;
+    // ISS-0137 / GH #439 — the 21 files added to the import list above.
+    _ = oidc08_claim_mapping_config_integration;
+    _ = oidc09_jit_provisioning_integration;
+    _ = oidc10_attribute_sync_integration;
+    _ = oidc11_identity_stability_integration;
+    _ = oidc12_realm_tenant_binding_integration;
+    _ = oidc13_tenant_claim_source_integration;
+    _ = oidc14_realm_provisioning_integration;
+    _ = oidc15_realm_deletion_integration;
+    _ = oidc31_end_to_end_auth_suite_integration;
+    _ = oidc34_migration_helper_integration;
+    _ = oidc35_onboarding_integration;
+    _ = xc01_trace_propagation_integration;
+    _ = xc02_audit_immutability_integration;
+    _ = xc03_configuration_repository_integration;
+    _ = xc05_deterministic_replay_integration;
+    _ = xc06_backwards_compatibility_integration;
+    _ = effects_subsystem_integration;
+    _ = env01_tenant_type_field_integration_file;
+    _ = exp601_tier_quota_integration;
+    _ = iss206_token_multiset_integration;
+    _ = repository_integration;
 }
 
 test "integration placeholder" {

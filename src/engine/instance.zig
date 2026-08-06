@@ -20,7 +20,8 @@ const plugin_registry_mod = @import("plugin_registry.zig");
 const scheduler_store_mod = @import("../scheduler/store.zig");
 const dlq_store_mod = @import("../dlq/store.zig");
 const metrics = @import("obs_metrics");
-const json_schema = @import("../tools/json_schema.zig");
+// Named module, not a relative import — see the note in src/main.zig (ISS-0155).
+const json_schema = @import("json_schema");
 
 // ---------------------------------------------------------------------------
 // fillRandom — cross-platform OS entropy (replaces std.crypto.random removed
@@ -394,41 +395,35 @@ pub const MergeVariablesResult = struct {
     overwritten_events: []VariableOverwrittenPayload,
 };
 
+/// Release everything `transition()` allocated and handed back in `result`.
+///
+/// ISS-0149 / GitHub #465 — this used to hand-roll the state teardown and got the
+/// two ObjectMaps wrong: it called `vars.deinit(allocator)` / `jc.deinit(allocator)`,
+/// which release only the hash table's own bucket storage. But `transition()` builds
+/// both maps with `cloneObjectMapSafe`, which `allocator.dupe`s every key and
+/// deep-clones every value precisely so the result aliases nothing (see the ISS-0601
+/// comment on `cloneJsonValueSafe`) — so each of those keys and every heap-backed
+/// value (`.string`, `.number_string`, nested `.array`/`.object`) was leaked, one
+/// allocation per variable, on every single `create()`/`advance()` call.
+///
+/// The same divergence hit `emitted_events`: this function freed each event's
+/// `idempotency_key` and the slice, but never the event's `payload`. Every string
+/// `freePendingEventPayload` owns was therefore leaked too — a TIMER node's
+/// `duration_iso8601`/`repeat_expression`/`payload_json`, a SERVICE_TASK's
+/// `spec_json`/`correlation_key`, a sub-process's `child_definition_id`.
+/// Everything downstream (`persistTimersFromPendingEventsInTx` and friends) only
+/// borrows these strings as SQL parameters inside the same transaction and never
+/// retains them past this scope, so freeing here is correct.
+///
+/// `transition_mod.freeTransitionResult` is the canonical teardown that already
+/// lives beside the allocation and handles both halves, so delegate to it rather
+/// than keeping a second, divergent copy. That duplication is what let the two
+/// drift apart in the first place.
 fn freeOwnedTransitionState(
     allocator: std.mem.Allocator,
     result: transition_mod.TransitionResult,
 ) void {
-    for (result.state.tokens) |tok| {
-        if (tok.token_id) |tid| allocator.free(tid);
-        allocator.free(tok.node_id);
-        allocator.free(tok.branch_id);
-        if (tok.waiting_child_instance_id) |child_id| {
-            allocator.free(child_id);
-        }
-    }
-    allocator.free(result.state.tokens);
-
-    var vars = result.state.variables;
-    vars.deinit(allocator);
-
-    var jc = result.state.join_counters;
-    jc.deinit(allocator);
-
-    for (result.state.pending_task_nodes) |node_id| {
-        allocator.free(node_id);
-    }
-    allocator.free(result.state.pending_task_nodes);
-
-    if (result.state.error_detail) |detail| {
-        allocator.free(detail);
-    }
-
-    allocator.free(result.state.cancelled_branch_ids);
-    // ISS-203: free each EmittedEvent's idempotency_key string before freeing the slice.
-    for (result.emitted_events) |emitted| {
-        allocator.free(emitted.idempotency_key);
-    }
-    allocator.free(result.emitted_events);
+    transition_mod.freeTransitionResult(allocator, result);
 }
 
 // ---------------------------------------------------------------------------

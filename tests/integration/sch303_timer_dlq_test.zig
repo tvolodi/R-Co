@@ -118,7 +118,15 @@ test "TC-SCH-303-03: timer fire exhaustion moves timer to FAILED and inserts DLQ
     defer allocator.free(def_id);
     const timer_id = try randomUuidStr(allocator);
     defer allocator.free(timer_id);
-    const idem_key    = "timer-fired:30310000-0000-0000-0000-000000000002";
+    // ISS-0149 / GH #465: this was a hardcoded literal
+    // ("timer-fired:<fixed-uuid>") while `timer_id` above is a per-test random
+    // UUID. src/scheduler/scheduler.zig builds the key as "timer-fired:{timer_id}",
+    // so the pre-inserted events row could never collide with the one the fire
+    // transaction actually writes — the fire always SUCCEEDED instead of rolling
+    // back, and the retry-exhaustion path this test exists to exercise never ran.
+    // Derive it from the same timer_id the scheduler will use.
+    const idem_key = try std.fmt.allocPrint(allocator, "timer-fired:{s}", .{timer_id});
+    defer allocator.free(idem_key);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -229,7 +237,15 @@ test "TC-SCH-303-04: timer stays pending when fire_error_count < max_timer_fire_
     defer allocator.free(def_id);
     const timer_id = try randomUuidStr(allocator);
     defer allocator.free(timer_id);
-    const idem_key    = "timer-fired:30320000-0000-0000-0000-000000000002";
+    // ISS-0149 / GH #465: this was a hardcoded literal
+    // ("timer-fired:<fixed-uuid>") while `timer_id` above is a per-test random
+    // UUID. src/scheduler/scheduler.zig builds the key as "timer-fired:{timer_id}",
+    // so the pre-inserted events row could never collide with the one the fire
+    // transaction actually writes — the fire always SUCCEEDED instead of rolling
+    // back, and the retry-exhaustion path this test exists to exercise never ran.
+    // Derive it from the same timer_id the scheduler will use.
+    const idem_key = try std.fmt.allocPrint(allocator, "timer-fired:{s}", .{timer_id});
+    defer allocator.free(idem_key);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -331,7 +347,15 @@ test "TC-SCH-301-03: two sequential scheduler polls on one timer fire it exactly
     defer allocator.free(def_id);
     const timer_id = try randomUuidStr(allocator);
     defer allocator.free(timer_id);
-    const idem_key    = "timer-fired:30100000-0000-0000-0000-000000000002";
+    // ISS-0149 / GH #465: this was a hardcoded literal
+    // ("timer-fired:<fixed-uuid>") while `timer_id` above is a per-test random
+    // UUID. src/scheduler/scheduler.zig builds the key as "timer-fired:{timer_id}",
+    // so the pre-inserted events row could never collide with the one the fire
+    // transaction actually writes — the fire always SUCCEEDED instead of rolling
+    // back, and the retry-exhaustion path this test exists to exercise never ran.
+    // Derive it from the same timer_id the scheduler will use.
+    const idem_key = try std.fmt.allocPrint(allocator, "timer-fired:{s}", .{timer_id});
+    defer allocator.free(idem_key);
 
     const conn = try pool.acquire();
     defer pool.release(conn);

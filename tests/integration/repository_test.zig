@@ -30,23 +30,19 @@ const bpm = @import("bpm");
 // Helpers: UUID generation and test data creation
 // ---------------------------------------------------------------------------
 
+// ISS-0137 / GH #439: these two were local copies using `std.crypto.random` and
+// `std.io.fixedBufferStream`, both removed in Zig 0.16. The file had not
+// compiled since that upgrade because it was wired into no build target. Now
+// delegated to the shared helpers rather than repairing a fourth private copy.
+
 /// Generate a random UUID for per-test isolation.
 fn randomUuid() [16]u8 {
-    var uuid: [16]u8 = undefined;
-    std.crypto.random.bytes(&uuid);
-    return uuid;
+    return helpers.randomUuidBytes();
 }
 
 /// Convert a 16-byte UUID to a 36-char hex string (UUID format).
 fn uuidToString(allocator: std.mem.Allocator, uuid: [16]u8) ![]const u8 {
-    var buffer: [36]u8 = undefined;
-    var stream = std.io.fixedBufferStream(&buffer);
-    try std.fmt.format(
-        stream.writer(),
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
-        .{ uuid[0], uuid[1], uuid[2], uuid[3], uuid[4], uuid[5], uuid[6], uuid[7], uuid[8], uuid[9], uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15] },
-    );
-    return allocator.dupe(u8, buffer[0..]);
+    return helpers.uuidBytesToString(allocator, uuid);
 }
 
 /// Sample JSON for testing canonical serialisation.
@@ -77,8 +73,8 @@ test "TC-REPO-01-01: identical content deduplicates" {
     var h = try TestHarness.init(alloc);
     defer h.deinit();
 
-    const tenant_id = randomUuid();
-    const user_id = randomUuid();
+    // ISS-0137 / GH #439: tenant_id/user_id locals removed — this test's SQL
+    // never referenced them (it keys purely on content_hash).
     const content = sampleDefinitionJson("order_process");
     defer alloc.free(content);
 
@@ -196,7 +192,7 @@ test "TC-REPO-02-02: new content creates new version" {
     var h = try TestHarness.init(alloc);
     defer h.deinit();
 
-    const tenant_id = randomUuid();
+    // ISS-0137 / GH #439: unused tenant_id local removed; user_id_str IS used below.
     const user_id = randomUuid();
     const user_id_str = try uuidToString(alloc, user_id);
     defer alloc.free(user_id_str);
@@ -279,26 +275,36 @@ test "TC-REPO-03-01: versions list in chronological order with parent linkage" {
             version_hashes[i] = hash;
         }
 
-        // Insert version with parent linkage
-        const parent_id_str = if (i == 0) "NULL" else "($NULL)";
+        // Insert version with parent linkage.
+        // ISS-0137 / GH #439: a dead `parent_id_str` local sat here; the real
+        // parent linkage is `parent_clause` below, which this never fed into.
         const version_id = randomUuid();
         version_ids[i] = version_id;
         const version_id_str = try uuidToString(alloc, version_id);
         defer alloc.free(version_id_str);
 
+        // ISS-0137 / GH #439: the first version has no parent. This used to
+        // build the literal string "NULL", which is NOT a SQL NULL — through
+        // `$4::uuid` Postgres would try to parse the four characters N-U-L-L as
+        // a uuid and raise 22P02. Sending an empty string and wrapping the
+        // parameter in NULLIF(...,'') makes it a real SQL NULL.
         const parent_clause = if (i == 0)
-            try std.fmt.allocPrint(alloc, "{s}", .{"NULL"})
+            try alloc.dupe(u8, "")
         else
-            try std.fmt.allocPrint(alloc, "{s}", .{try uuidToString(alloc, version_ids[i - 1])});
+            try uuidToString(alloc, version_ids[i - 1]);
         defer alloc.free(parent_clause);
+
+        const version_number_str = try std.fmt.allocPrint(alloc, "{d}", .{i + 1});
+        defer alloc.free(version_number_str);
 
         var ver_result = try h.conn.query(
             alloc,
             \\INSERT INTO artifact_versions
             \\(version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at)
-            \\VALUES ($1, gen_random_uuid(), 'definition', 'order_process', $2, digest($3, 'sha256'), $4::uuid, $5::uuid, NOW())
+            \\VALUES ($1, gen_random_uuid(), 'definition', 'order_process', $2, digest($3, 'sha256'), NULLIF($4, '')::uuid, $5::uuid, NOW())
         ,
-            &.{ version_id_str, i + 1, content, if (i == 0) null else parent_clause, user_id_str },
+            // Every pg parameter is []const u8; `i + 1` was a usize.
+            &.{ version_id_str, version_number_str, content, parent_clause, user_id_str },
         );
         defer ver_result.deinit();
     }
@@ -346,13 +352,17 @@ test "TC-REPO-03-02: list versions with pagination" {
         const version_id_str = try uuidToString(alloc, version_id);
         defer alloc.free(version_id_str);
 
+        const version_number_str = try std.fmt.allocPrint(alloc, "{d}", .{i + 1});
+        defer alloc.free(version_number_str);
+
         var ver_result = try h.conn.query(
             alloc,
             \\INSERT INTO artifact_versions
             \\(version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at)
             \\VALUES ($1, gen_random_uuid(), 'definition', 'paginated_artifact', $2, digest($3, 'sha256'), NULL, $4::uuid, NOW())
         ,
-            &.{ version_id_str, i + 1, content, user_id_str },
+            // ISS-0137 / GH #439: pg parameters are []const u8; `i + 1` was usize.
+            &.{ version_id_str, version_number_str, content, user_id_str },
         );
         defer ver_result.deinit();
     }
@@ -587,12 +597,14 @@ test "TC-REPO-06-01: event type registry with producing definition" {
     );
     defer ver_insert.deinit();
 
-    // Register producer link (if table exists)
-    if (event_type_id != null) {
+    // Register producer link (if table exists).
+    // ISS-0137 / GH #439: `event_type_id` is ?[]u8; pg parameters are []const u8.
+    // Capture the unwrapped payload instead of passing the optional itself.
+    if (event_type_id) |event_type_id_val| {
         var producer_insert = try h.conn.query(
             alloc,
             "INSERT INTO event_type_registry_producers (id, event_type_id, definition_version_id, registered_at) VALUES (gen_random_uuid(), $1::uuid, $2::uuid, NOW())",
-            &.{ event_type_id, version_id_str },
+            &.{ event_type_id_val, version_id_str },
         );
         defer producer_insert.deinit();
 
@@ -600,7 +612,7 @@ test "TC-REPO-06-01: event type registry with producing definition" {
         var producer_query = try h.conn.query(
             alloc,
             "SELECT definition_version_id FROM event_type_registry_producers WHERE event_type_id = $1::uuid",
-            &.{event_type_id},
+            &.{event_type_id_val},
         );
         defer producer_query.deinit();
         try std.testing.expectEqual(@as(usize, 1), producer_query.rows.len);
@@ -757,13 +769,17 @@ test "TC-REPO-09-01: activations are tenant-scoped" {
     const version_2_str = try uuidToString(alloc, version_2);
     defer alloc.free(version_2_str);
 
-    for ([_][16]u8{ version_1, version_2 }, 0..) |ver_id, i| {
-        const ver_id_str = if (i == 0) version_1_str else version_2_str;
+    // ISS-0137 / GH #439: iterate the UUID STRINGS directly. The loop captured
+    // the raw [16]u8 `ver_id` and then ignored it, re-deriving the string from
+    // `i` — an unused capture, which Zig rejects. Same rows inserted either way.
+    for ([_][]const u8{ version_1_str, version_2_str }, 0..) |ver_id_str, i| {
+        const version_number_str = try std.fmt.allocPrint(alloc, "{d}", .{i + 1});
+        defer alloc.free(version_number_str);
 
         var insert = try h.conn.query(
             alloc,
             "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'definition', 'test_artifact', $2, gen_random_uuid(), NULL, $3::uuid, NOW())",
-            &.{ ver_id_str, i + 1, user_id_str },
+            &.{ ver_id_str, version_number_str, user_id_str },
         );
         defer insert.deinit();
     }
@@ -835,12 +851,17 @@ test "TC-REPO-10-01: activation history records all fields" {
     defer alloc.free(version_2_str);
 
     // Create two versions
-    for ([_][16]u8{ version_1, version_2 }, 0..) |ver_id, i| {
-        const ver_id_str = if (i == 0) version_1_str else version_2_str;
+    // ISS-0137 / GH #439: iterate the UUID STRINGS directly. The loop captured
+    // the raw [16]u8 `ver_id` and then ignored it, re-deriving the string from
+    // `i` — an unused capture, which Zig rejects. Same rows inserted either way.
+    for ([_][]const u8{ version_1_str, version_2_str }, 0..) |ver_id_str, i| {
+        const version_number_str = try std.fmt.allocPrint(alloc, "{d}", .{i + 1});
+        defer alloc.free(version_number_str);
+
         var insert = try h.conn.query(
             alloc,
             "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'definition', 'test_artifact', $2, gen_random_uuid(), NULL, $3::uuid, NOW())",
-            &.{ ver_id_str, i + 1, user_id_str },
+            &.{ ver_id_str, version_number_str, user_id_str },
         );
         defer insert.deinit();
     }
@@ -1019,17 +1040,23 @@ test "TC-REPO-12-01: list versions in order with parent linkage" {
         defer alloc.free(content);
 
         const parent_clause = if (i == 0)
-            "NULL"
+            // ISS-0137 / GH #439: empty string + NULLIF, not the literal "NULL" —
+            // through `$4::uuid` Postgres would try to parse "NULL" as a uuid
+            // and raise 22P02.
+            try alloc.dupe(u8, "")
         else blk: {
             const parent_str = try uuidToString(alloc, version_ids[i - 1]);
             break :blk parent_str;
         };
-        defer if (i > 0) alloc.free(parent_clause);
+        defer alloc.free(parent_clause);
+
+        const version_number_str = try std.fmt.allocPrint(alloc, "{d}", .{i + 1});
+        defer alloc.free(version_number_str);
 
         var insert = try h.conn.query(
             alloc,
-            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'definition', 'test_artifact', $2, digest($3, 'sha256'), $4::uuid, $5::uuid, NOW())",
-            &.{ ver_id_str, i + 1, content, if (i == 0) null else parent_clause, user_id_str },
+            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'definition', 'test_artifact', $2, digest($3, 'sha256'), NULLIF($4, '')::uuid, $5::uuid, NOW())",
+            &.{ ver_id_str, version_number_str, content, parent_clause, user_id_str },
         );
         defer insert.deinit();
     }
@@ -1069,10 +1096,14 @@ test "TC-REPO-12-02: list versions pagination" {
         const content = try std.fmt.allocPrint(alloc, "{{\"v\":{}}}", .{i});
         defer alloc.free(content);
 
+        const version_number_str = try std.fmt.allocPrint(alloc, "{d}", .{i + 1});
+        defer alloc.free(version_number_str);
+
         var insert = try h.conn.query(
             alloc,
             "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'definition', 'paginated_artifact', $2, digest($3, 'sha256'), NULL, $4::uuid, NOW())",
-            &.{ version_id_str, i + 1, content, user_id_str },
+            // ISS-0137 / GH #439: pg parameters are []const u8; `i + 1` was usize.
+            &.{ version_id_str, version_number_str, content, user_id_str },
         );
         defer insert.deinit();
     }

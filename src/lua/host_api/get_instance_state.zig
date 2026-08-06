@@ -20,7 +20,7 @@ pub fn register(L: *bindings.LuaState, context: *const executor.ExecutionContext
 }
 
 /// Lua C function: platform.get_instance_state()
-fn platformGetInstanceState(L: *bindings.LuaState) callconv(.C) c_int {
+fn platformGetInstanceState(L: *bindings.LuaState) callconv(.c) c_int {
     // No arguments expected
     // For MVP: return an empty table
     bindings.lua_newtable(L);

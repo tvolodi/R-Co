@@ -57,6 +57,13 @@ pub const bootstrap_audit = @import("bootstrap/audit.zig"); // TNT-04
 pub const tenant_migration = @import("admin/tenant_migration.zig"); // TNT-06
 pub const tenant_status = @import("api/middleware/tenant_status.zig"); // TNT-06
 pub const service_catalog = @import("repository/service_catalog.zig"); // SVC-01, SVC-04
+// ISS-0137 / GH #439: exp601_tier_quota_test.zig reached these two by relative
+// path (../../src/...), which escapes the tests/integration module root and
+// Zig 0.16 rejects. Re-exporting here is what this shim is for — every other
+// integration test reaches src/ through `bpm`, and tenant_status above is the
+// direct precedent for re-exporting an api/middleware module.
+pub const quota_policy = @import("config/quota_policy.zig"); // EXP-601
+pub const quota_enforcement = @import("api/middleware/quota_enforcement.zig"); // EXP-601
 pub const service_scope_validator = @import("definition/service_scope_validator.zig"); // SVC-03
 pub const services_routes = @import("api/routes/services.zig"); // SVC-04
 pub const effects_mod = @import("effects/mod.zig"); // EXP-301/302/303 async effects subsystem
@@ -68,3 +75,45 @@ pub const promotion_mod = @import("definition/promotion.zig"); // ENV-03 definit
 pub const promotion_routes = @import("api/routes/promotion.zig"); // ENV-03 promotion HTTP handler
 pub const tenant_lifecycle_admin = @import("admin/tenant_lifecycle.zig"); // ENV-05 reset/delete lifecycle
 pub const entities = @import("entities/mod.zig"); // EXP-201/EXP-202 entities subsystem
+
+// ISS-0147 / GH #463 — src/wasm subsystem (WASM-01..14, all RELEASED).
+//
+// Imported BY NAME, not by relative path. Every file under src/wasm/ reaches
+// its siblings relatively (engine.zig -> wasmtime_bindings.zig, executor.zig ->
+// five siblings, ...), so those files are already owned by `wasm_mod`
+// (build.zig, root src/wasm/mod.zig). Writing @import("wasm/mod.zig") here
+// would enrol the same files into bpm_src_mod as well and Zig 0.16 rejects the
+// build with "file exists in multiple modules" — the Single-Owner Module Rule
+// documented against src/repository and src/oidc in build.zig.
+//
+// No Wasmtime link is configured and none is needed: src/wasm/ contains zero
+// @cImport and zero linkSystemLibrary. wasmtime_bindings.zig declares only
+// `extern struct`/`extern union` TYPES — a memory-layout qualifier, not a
+// link-time symbol reference — and every binding fn is an `inline fn` stub
+// returning a failure sentinel (`engine_new` -> null, `module_new` -> 1).
+// Real @cImport bindings land in Stage 10 per that file's own header comment;
+// linking Wasmtime is a Stage 10 concern, not a prerequisite for compiling
+// this subsystem today.
+pub const wasm = @import("wasm"); // WASM-01..14
+
+// ISS-0153 / GH #471 — src/lua subsystem (LUA-01..16).
+//
+// Deliberately NOT re-exported here, unlike `wasm` above, and that asymmetry is
+// intentional rather than an oversight.
+//
+// src/lua/host_api/call_service.zig and host_api/now.zig import
+// `../../simulation/*.zig`, and src/simulation/types.zig imports
+// `../event_store/store.zig`. Those files are already plain members of THIS
+// module (bpm_src_mod) via `pub const simulation = @import("simulation/mod.zig")`
+// above. Making src/lua/mod.zig a named module root as well would enrol the
+// simulation and event_store files into two modules at once and Zig 0.16
+// rejects that with "file exists in multiple modules" — the Single-Owner Module
+// Rule. Re-exporting it relatively from here instead would work, but would drag
+// libc into every target that imports `bpm` (executor.zig's defaultAlloc uses
+// std.c.malloc/realloc/free for the LuaJIT C-ABI allocator).
+//
+// The subsystem is instead kept analysed by a dedicated addTest root,
+// src/lua_test_root.zig (`zig build test-lua`, also reached by `zig build
+// test`), which is what stops it rotting silently again. See that file for the
+// full account of what this wiring caught, and src/lua/luajit_bindings.zig for
+// the evidence that no LuaJIT is available to link.

@@ -88,6 +88,15 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    // ISS-0155 / GH #473: src/event_store/registry.zig performs real ES-05 JSON
+    // Schema validation via this validator. registry.zig lives under the
+    // `event_store` module (root src/event_store/store.zig), so it cannot reach
+    // ../tools/json_schema.zig by relative @import — expose it as a named module.
+    const json_schema_mod = b.createModule(.{
+        .root_source_file = b.path("src/tools/json_schema.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
     const pool_root_mod = b.createModule(.{
         .root_source_file = b.path("src/db/pool.zig"),
         .target = target,
@@ -97,6 +106,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            .{ .name = "json_schema", .module = json_schema_mod },
         },
     });
     // env_mod: src/env.zig, the portable environment-variable helper (ISS-0134).
@@ -147,6 +157,136 @@ pub fn build(b: *std.Build) void {
             .{ .name = "expr", .module = expr_mod },
         },
     });
+
+    // ---------------------------------------------------------------------------
+    // ISS-0137 / GH #439 — OIDC + repository/wasm named modules (cluster C4a).
+    //
+    // These 15 modules existed only as file paths before this run: the OIDC
+    // production files carry 44 in-file test blocks and the tests/unit/
+    // test_oidc*.zig + tests/integration/oidc*.zig suites import them by the
+    // names below, but no `b.createModule` declared any of them — so those
+    // tests could not compile, and the production files' own tests were
+    // reachable from no addTest root (root cause RC-3 of ISS-0137).
+    //
+    // Every file below is a valid standalone module root: verified that no
+    // src/oidc/*.zig file reaches a sibling by relative path (all non-std
+    // imports in that directory are named modules). Consequently the
+    // Single-Owner Module Rule applies — src/oidc_test_root.zig must reach
+    // these seven files by NAME, never by relative path, or Zig rejects the
+    // compilation with "file exists in multiple modules".
+    //
+    // Declaration order matters: claim_mapping before jit_provisioning.
+    // ---------------------------------------------------------------------------
+    const claim_mapping_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/claim_mapping.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    const jit_provisioning_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/jit_provisioning.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "claim_mapping", .module = claim_mapping_mod },
+        },
+    });
+    const identity_stability_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/identity_stability.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    const realm_tenant_binding_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/realm_tenant_binding.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    const tenant_claim_source_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/tenant_claim_source.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const realm_provisioning_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/realm_provisioning.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const realm_deletion_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/realm_deletion.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    // migration_helper.zig imports pool (line 2) and identity_provider (line 3) —
+    // an empty .imports here would fail to compile.
+    const oidc_migration_helper_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/migration_helper.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "identity_provider", .module = identity_provider_mod },
+        },
+    });
+    // NOTE: src/identity/provider/oidc/jwks_cache.zig — NOT src/oidc/jwks.zig.
+    // Two different files; conflating them was an error in the diagnosis.
+    const jwks_cache_mod = b.createModule(.{
+        .root_source_file = b.path("src/identity/provider/oidc/jwks_cache.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const oidc_bench_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/verification_benchmark.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const realm_seed_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/realm_seed.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const oidc_test_token_helper_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/test_token_helper.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const oidc_coexistence_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/coexistence_auth.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    // repository/mod.zig is the ONLY repository file that becomes a module root:
+    // artifacts.zig and activation.zig reach canonicaliser.zig/artifacts.zig by
+    // relative path, so they must stay plain members of this module.
+    const repository_mod = b.createModule(.{
+        .root_source_file = b.path("src/repository/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    // src/wasm/ has zero @cImport and zero linkSystemLibrary; wasmtime_bindings.zig
+    // declares only `extern struct` layout types, which need no link-time symbol.
+    // So this module compiles and its tests run against pure-Zig stubs.
+    const wasm_mod = b.createModule(.{
+        .root_source_file = b.path("src/wasm/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const vendor_imports: []const std.Build.Module.Import = &.{
         .{ .name = "pg", .module = pg_mod },
         .{ .name = "http", .module = http_mod },
@@ -158,6 +298,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "tenant_context", .module = tenant_context_mod },
         .{ .name = "pipeline_context", .module = pipeline_context_mod },
         .{ .name = "obs_metrics", .module = obs_metrics_mod },
+        .{ .name = "json_schema", .module = json_schema_mod },
         // ISS-0134: portable environment-variable access (src/env.zig).
         .{ .name = "env", .module = env_mod },
     };
@@ -202,16 +343,85 @@ pub fn build(b: *std.Build) void {
     });
     const run_unit_tests = b.addRunArtifact(unit_tests);
 
+    // ISS-0148: tests/unit/event_store_test.zig is a standalone test root, so it
+    // cannot reach src/event_store/*.zig by relative @import ("import of file
+    // outside module path"). Expose store.zig as a named module instead. Its own
+    // named imports (pool / pipeline_context / obs_metrics) must be supplied at
+    // this module's level; registry.zig is reached from store.zig by relative
+    // path and so is a plain member of this module.
+    const event_store_mod = b.createModule(.{
+        .root_source_file = b.path("src/event_store/store.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "pipeline_context", .module = pipeline_context_mod },
+            .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            .{ .name = "json_schema", .module = json_schema_mod },
+        },
+    });
     const event_store_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/unit/event_store_test.zig"),
             .target = target,
             .optimize = optimize,
-            .imports = vendor_imports,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "http", .module = http_mod },
+                .{ .name = "expr", .module = expr_mod },
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "transition", .module = transition_mod },
+                .{ .name = "build_options", .module = build_options_mod },
+                .{ .name = "identity_provider", .module = identity_provider_mod },
+                .{ .name = "tenant_context", .module = tenant_context_mod },
+                .{ .name = "pipeline_context", .module = pipeline_context_mod },
+                .{ .name = "obs_metrics", .module = obs_metrics_mod },
+                .{ .name = "json_schema", .module = json_schema_mod },
+                .{ .name = "env", .module = env_mod },
+                .{ .name = "event_store", .module = event_store_mod },
+            },
         }),
     });
     const run_event_store_tests = b.addRunArtifact(event_store_tests);
 
+    // ISS-0155 / GH #473: json_schema.zig is now a named module (so both
+    // src/main.zig and src/event_store/registry.zig can reach the same file),
+    // which removed it from `root`'s file set and therefore from every existing
+    // addTest root. It is pure and import-free, so it is its own test root here
+    // — otherwise its EE-09 and ES-05 test blocks would compile but never run,
+    // exactly the ISS-0133 failure mode lint_test_wiring.py exists to catch.
+    const json_schema_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tools/json_schema.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_json_schema_tests = b.addRunArtifact(json_schema_tests);
+
+    // ISS-0160 / GH #481: src/entities/ is reached from src/main.zig only via
+    // api/routes/entities.zig, which imports definition.zig and commands.zig
+    // directly — validator.zig's own test blocks were therefore in NO addTest
+    // root's file set and never ran. Verified with a deliberately-failing
+    // canary test: `zig build test` stayed green at 63/63 with it present,
+    // which is precisely the ISS-0133 failure mode.
+    //
+    // validator.zig is its own root rather than mod.zig: mod.zig transitively
+    // reaches ../repository/canonicaliser.zig (via definition.zig), which
+    // escapes the src/entities/ module path and makes it unusable as a test
+    // root ("import of file outside module path"). validator.zig is pure and
+    // needs only json_schema, so it stands alone.
+    const entities_validator_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/entities/validator.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "json_schema", .module = json_schema_mod },
+            },
+        }),
+    });
+    const run_entities_tests = b.addRunArtifact(entities_validator_tests);
     // ISS-0147 / GitHub #374: Python interpreter resolver shared by the
     // integration linter tests (tnt_schema_isolation_test.zig) and its own unit
     // tests. Lives in tests/support/ rather than tests/integration/ because it
@@ -295,11 +505,23 @@ pub fn build(b: *std.Build) void {
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            .{ .name = "json_schema", .module = json_schema_mod },
             // identity_provider added so integration tests can call route handlers
             // that reference auth.getIdentityProviderManager() (e.g. handlePatchTenant).
             .{ .name = "identity_provider", .module = identity_provider_mod },
+            // ISS-0137 / GH #439: src/api/routes/onboarding.zig line 3 imports
+            // build_options. Reachable through bpm once oidc35_onboarding_test
+            // is wired into main_test.zig.
+            .{ .name = "build_options", .module = build_options_mod },
             // ISS-0134: portable environment-variable access (src/env.zig).
             .{ .name = "env", .module = env_mod },
+            // ISS-0147 / GH #463: src/wasm (WASM-01..14, all RELEASED) was
+            // re-exported by neither bpm.zig nor main.zig, so no production
+            // build path compiled it. Passed BY NAME — src/wasm/*.zig reach
+            // each other by relative path and are therefore owned solely by
+            // wasm_mod; a relative @import from bpm.zig would trip the
+            // Single-Owner Module Rule. See the comment in src/bpm.zig.
+            .{ .name = "wasm", .module = wasm_mod },
         },
     });
 
@@ -390,6 +612,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            .{ .name = "json_schema", .module = json_schema_mod },
         },
     });
     const api_mod = b.createModule(.{
@@ -403,6 +626,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            .{ .name = "json_schema", .module = json_schema_mod },
         },
     });
     // API-01/API-06/API-07/API-09/OIDC-01 unit tests, aggregated into one
@@ -648,6 +872,285 @@ pub fn build(b: *std.Build) void {
     const test_crypto_iss0074_step = b.step("test-crypto-iss0074", "Run ISS-0074 secrets/crypto.zig unit tests");
     test_crypto_iss0074_step.dependOn(&run_crypto_iss0074_tests.step);
 
+    // ---------------------------------------------------------------------------
+    // ISS-0137 / GH #439 — nine targets clearing the unwired-test backlog.
+    //
+    // These wire in 141 test blocks that had never executed. Each group gets its
+    // own narrow `test-<name>` step, not just a `test` edge: when a batch of
+    // never-executed tests runs for the first time, failures must be attributable
+    // to one group rather than arriving as one unreadable red wall.
+    //
+    // Every target here is service-free — no Postgres, no Keycloak — so the
+    // Green-Main Gate (`zig build test` passes with no services up) holds. The
+    // DB/Keycloak half of ISS-0137's backlog is wired through
+    // tests/integration/main_test.zig instead, behind test-integration.
+    // ---------------------------------------------------------------------------
+    const core_modules_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/core_modules_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            // ISS-0134: src/env.zig needs libc's `environ` extern on non-Windows.
+            .link_libc = true,
+            // Deliberately NO .imports here: see the shim's doc comment. Passing
+            // tenant_context_mod/env_mod/etc. as named modules would put those
+            // files in a SECOND module alongside this one and Zig would reject
+            // the compilation with "file exists in multiple modules".
+        }),
+    });
+    const run_core_modules_tests = b.addRunArtifact(core_modules_tests);
+    const test_core_modules_step = b.step(
+        "test-core-modules",
+        "Run in-file tests of tenant_context, pipeline_context, obs/metrics and env",
+    );
+    test_core_modules_step.dependOn(&run_core_modules_tests.step);
+
+    const config_idp_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/config_idp_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                // identity_provider.zig's own named import. NOT idp_config_mod:
+                // that module is rooted at the very file whose tests this target
+                // collects, and supplying it would put the file in two modules.
+                //
+                // A PRIVATE env module instance, not the shared env_mod: Zig
+                // deduplicates modules by identity, so binding the shared
+                // env_mod under the extra name `portable_env` here rewrites it
+                // for every other consumer too — which turned every
+                // `@import("env")` in the integration suite into
+                // `env=portable_env` and broke tests/integration/helpers.zig.
+                .{ .name = "portable_env", .module = b.createModule(.{
+                    .root_source_file = b.path("src/env.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                }) },
+            },
+        }),
+    });
+    const run_config_idp_tests = b.addRunArtifact(config_idp_tests);
+    const test_config_idp_step = b.step(
+        "test-config-idp",
+        "Run src/config/identity_provider.zig in-file unit tests",
+    );
+    test_config_idp_step.dependOn(&run_config_idp_tests.step);
+
+    const oidc_src_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/oidc_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            // Only `pool` — the six collected files' own named import. Passing
+            // claim_mapping_mod et al. would make those files members of two
+            // modules at once AND stop their tests being enrolled at all.
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_oidc_src_tests = b.addRunArtifact(oidc_src_tests);
+    const test_oidc_src_step = b.step(
+        "test-oidc-src",
+        "Run six src/oidc/*.zig production files' in-file unit tests",
+    );
+    test_oidc_src_step.dependOn(&run_oidc_src_tests.step);
+
+    // jit_provisioning.zig needs its own target: it imports `claim_mapping` by
+    // name, and claim_mapping.zig is a relative member of oidc_src_tests above.
+    // One compilation cannot hold both roles for the same file.
+    const oidc_jit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/oidc_jit_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "claim_mapping", .module = claim_mapping_mod },
+            },
+        }),
+    });
+    const run_oidc_jit_tests = b.addRunArtifact(oidc_jit_tests);
+    const test_oidc_jit_step = b.step(
+        "test-oidc-jit",
+        "Run src/oidc/jit_provisioning.zig in-file unit tests",
+    );
+    test_oidc_jit_step.dependOn(&run_oidc_jit_tests.step);
+
+    const repository_src_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/repository_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            // Only `pool`. repository_mod is rooted at the very mod.zig this
+            // shim reaches relatively; supplying it would put those files in two
+            // modules and stop their tests being enrolled.
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_repository_src_tests = b.addRunArtifact(repository_src_tests);
+    const test_repository_src_step = b.step(
+        "test-repository-src",
+        "Run src/repository/*.zig in-file unit tests",
+    );
+    test_repository_src_step.dependOn(&run_repository_src_tests.step);
+
+    const simulation_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/simulation_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            // simulation/types.zig and tenant_store.zig both reach
+            // ../event_store/store.zig by RELATIVE path, so store.zig is a plain
+            // member of this shim's own module — and its four named imports must
+            // therefore be supplied at this module's level, not inherited from
+            // anywhere. Design §2.5 anticipated exactly this ("BACKEND-DEV adds
+            // whatever named imports the compiler demands and records them");
+            // these four are the complete set demanded.
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "tenant_context", .module = tenant_context_mod },
+                .{ .name = "pipeline_context", .module = pipeline_context_mod },
+                .{ .name = "obs_metrics", .module = obs_metrics_mod },
+                .{ .name = "json_schema", .module = json_schema_mod },
+            },
+        }),
+    });
+    const run_simulation_tests = b.addRunArtifact(simulation_tests);
+    const test_simulation_step = b.step(
+        "test-simulation",
+        "Run src/simulation/*.zig in-file unit tests",
+    );
+    test_simulation_step.dependOn(&run_simulation_tests.step);
+
+    const idp_bootstrap_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/identity/provider/idp_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "env", .module = env_mod },
+                .{ .name = "idp_config", .module = idp_config_mod },
+            },
+        }),
+    });
+    const run_idp_bootstrap_tests = b.addRunArtifact(idp_bootstrap_tests);
+    const test_idp_bootstrap_step = b.step(
+        "test-idp-bootstrap",
+        "Run src/identity/provider/bootstrap.zig in-file unit tests",
+    );
+    test_idp_bootstrap_step.dependOn(&run_idp_bootstrap_tests.step);
+
+    const oidc_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/oidc_unit_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "jwks_cache", .module = jwks_cache_mod },
+                .{ .name = "claim_mapping", .module = claim_mapping_mod },
+                .{ .name = "oidc_bench", .module = oidc_bench_mod },
+                .{ .name = "realm_seed", .module = realm_seed_mod },
+                .{ .name = "oidc_test_token_helper", .module = oidc_test_token_helper_mod },
+                .{ .name = "oidc_coexistence", .module = oidc_coexistence_mod },
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_oidc_unit_tests = b.addRunArtifact(oidc_unit_tests);
+    // REQUIRED: test_oidc28 and test_oidc32 read docker-compose.yml and
+    // infrastructure/keycloak/realms/*.json from disk via Dir.cwd().
+    run_oidc_unit_tests.setCwd(b.path("."));
+    const test_oidc_unit_step = b.step(
+        "test-oidc-unit",
+        "Run the eight tests/unit/test_oidc*.zig unit test files",
+    );
+    test_oidc_unit_step.dependOn(&run_oidc_unit_tests.step);
+
+    const repository_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/repository_unit_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "repository", .module = repository_mod },
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_repository_unit_tests = b.addRunArtifact(repository_unit_tests);
+    const test_repository_unit_step = b.step(
+        "test-repository-unit",
+        "Run tests/unit/repository_*.zig unit test files",
+    );
+    test_repository_unit_step.dependOn(&run_repository_unit_tests.step);
+
+    // ISS-0153 / GH #471 — src/lua/ (LUA-01..16) was reachable from no addTest
+    // root and had not compiled since Zig 0.10. This target is what makes the
+    // subsystem type-checked on every `zig build test`.
+    //
+    // Rooted at `src/lua_test_root.zig`, NOT at src/lua/mod.zig, and that
+    // placement is load-bearing (Single-Owner Module Rule, design
+    // §1.2 / src/design/test-wiring-iss0137.md): host_api/call_service.zig and
+    // host_api/now.zig import `../../simulation/*.zig`, escaping src/lua/, and
+    // src/simulation/types.zig in turn imports `../event_store/store.zig`. A
+    // module rooted inside src/lua/ would reject those as "import of file
+    // outside module path" (verified empirically). Rooting at src/ contains the
+    // whole chain — identical to the constraint that placed
+    // src/simulation_test_root.zig and src/transition_test_root.zig at src/.
+    //
+    // The four named imports below are the set src/event_store/store.zig
+    // demands, exactly as src/simulation_test_root.zig's module needs them for
+    // the same reason.
+    //
+    // link_libc: src/lua/executor.zig's defaultAlloc uses std.c.malloc/realloc/
+    // free — the C-ABI allocator LuaJIT requires. No LuaJIT itself is linked
+    // (none is available; see src/lua/luajit_bindings.zig for the evidence and
+    // ISS-0161 / GH #485 for the follow-up).
+    const lua_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/lua_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "tenant_context", .module = tenant_context_mod },
+                .{ .name = "pipeline_context", .module = pipeline_context_mod },
+                .{ .name = "obs_metrics", .module = obs_metrics_mod },
+                .{ .name = "json_schema", .module = json_schema_mod },
+            },
+        }),
+    });
+    const run_lua_tests = b.addRunArtifact(lua_tests);
+    const test_lua_step = b.step(
+        "test-lua",
+        "Run src/lua/*.zig in-file unit tests (ISS-0153)",
+    );
+    test_lua_step.dependOn(&run_lua_tests.step);
+
+    const misc_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/misc_unit_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "wasm", .module = wasm_mod },
+            },
+        }),
+    });
+    const run_misc_unit_tests = b.addRunArtifact(misc_unit_tests);
+    const test_misc_unit_step = b.step(
+        "test-misc-unit",
+        "Run tests/unit/lua_test.zig and wasm_executor_test.zig",
+    );
+    test_misc_unit_step.dependOn(&run_misc_unit_tests.step);
+
     const test_step = b.step("test", "Run all unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_bpm_src_tests.step);
@@ -656,6 +1159,8 @@ pub fn build(b: *std.Build) void {
     // bpm_src_tests aggregator declared above.
 
     test_step.dependOn(&run_event_store_tests.step);
+    test_step.dependOn(&run_json_schema_tests.step);
+    test_step.dependOn(&run_entities_tests.step); // ISS-0160 / GH #481
     test_step.dependOn(&run_python_interp_tests.step);
     test_step.dependOn(&run_graph_tests.step);
     test_step.dependOn(&run_bpm_main_tests.step);
@@ -672,11 +1177,34 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_expr_error_recovery_tests.step);
     test_step.dependOn(&run_dsl04_eval_tests.step);
 
+    // ISS-0137 / GH #439 — the nine backlog-clearing targets declared above.
+    test_step.dependOn(&run_core_modules_tests.step);
+    test_step.dependOn(&run_config_idp_tests.step);
+    test_step.dependOn(&run_oidc_src_tests.step);
+    test_step.dependOn(&run_oidc_jit_tests.step);
+    test_step.dependOn(&run_repository_src_tests.step);
+    test_step.dependOn(&run_simulation_tests.step);
+    test_step.dependOn(&run_idp_bootstrap_tests.step);
+    test_step.dependOn(&run_oidc_unit_tests.step);
+    test_step.dependOn(&run_repository_unit_tests.step);
+    test_step.dependOn(&run_misc_unit_tests.step);
+    // ISS-0153 / GH #471 — src/lua subsystem.
+    test_step.dependOn(&run_lua_tests.step);
+
     // ---------------------------------------------------------------------------
     // `zig build test-differential` — ISS-602 CEL/expr differential harness
     // ---------------------------------------------------------------------------
     const expr_diff_mod = b.createModule(.{
         .root_source_file = b.path("src/expr/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    // ISS-0157 / GH #476: TC-ISS-602-03's static import gate needs
+    // src/engine/transition.zig's source bytes. `@embedFile` cannot reach
+    // outside the embedding module's root, so the bytes come through a shim
+    // colocated with the file (same pattern as docs/exp701_doc_embed.zig).
+    const transition_source_embed_mod = b.createModule(.{
+        .root_source_file = b.path("src/engine/transition_source_embed.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -688,6 +1216,7 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "cel", .module = cel_mod },
                 .{ .name = "expr", .module = expr_diff_mod },
+                .{ .name = "transition_source_embed", .module = transition_source_embed_mod },
             },
         }),
     });
@@ -697,7 +1226,14 @@ pub fn build(b: *std.Build) void {
     run_differential_tests.setCwd(b.path("."));
     const test_differential_step = b.step("test-differential", "Run CEL/expr differential corpus tests (ISS-602)");
     test_differential_step.dependOn(&run_differential_tests.step);
-
+    // ISS-0157 / GH #476: the ISS-602 CEL/expr differential corpus was attached
+    // only to the narrow `test-differential` step, so its 3 blocks never ran
+    // under `zig build test` — and in fact never compiled (the @embedFile path
+    // fix is in src/engine/transition_source_embed.zig). It is service-free
+    // (pure CEL/expr evaluation plus a static source-text gate), so it belongs
+    // on `test` rather than `test-integration` and keeps the Green-Main Gate's
+    // no-services-required property intact.
+    test_step.dependOn(&run_differential_tests.step);
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)
     // ---------------------------------------------------------------------------
@@ -745,7 +1281,23 @@ pub fn build(b: *std.Build) void {
         // type-checks on Windows/WASI/freestanding; it fails every one of
         // these files on Linux. All are rewritten to call env.globalEnviron().
         .{ .name = "env", .module = env_mod },
+        // ISS-0137 / GH #439 (cluster C4a): the nine tests/integration/oidc*.zig
+        // files reach these modules by name. Because integration_imports is
+        // shared by integration_tests, svc_integration_tests,
+        // env_integration_tests and the ~35 dedicated roots, appending here is
+        // the ONLY build.zig change those integration files need — no new
+        // dedicated addTest roots, which is what keeps the ISS-0106 DDL race
+        // eliminated by construction.
+        .{ .name = "claim_mapping", .module = claim_mapping_mod },
+        .{ .name = "jit_provisioning", .module = jit_provisioning_mod },
+        .{ .name = "identity_stability", .module = identity_stability_mod },
+        .{ .name = "realm_tenant_binding", .module = realm_tenant_binding_mod },
+        .{ .name = "tenant_claim_source", .module = tenant_claim_source_mod },
+        .{ .name = "realm_provisioning", .module = realm_provisioning_mod },
+        .{ .name = "realm_deletion", .module = realm_deletion_mod },
+        .{ .name = "oidc_migration_helper", .module = oidc_migration_helper_mod },
     };
+
 
     const integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -756,6 +1308,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_integration_tests = addIntegrationRun(b, integration_tests, migrations_dir, clean_test_db);
+
+
 
     const xc04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -846,6 +1400,23 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_exp_integration_tests = addIntegrationRun(b, exp_integration_tests, migrations_dir, clean_test_db);
+
+    // ISS-0150 / GH #466: ENV-01 tenant-type-field cases. Reachable via
+    // main_test.zig, but given its own addTest root and narrow step so the nine
+    // blocks can be exercised on their own — the file spent months as an
+    // assertion-free scaffold precisely because nothing ever ran it in
+    // isolation where a vacuous PASS would have been noticeable.
+    const env01_tt_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/env01_tenant_type_field_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_env01_tt_integration_tests = b.addRunArtifact(env01_tt_integration_tests);
+    run_env01_tt_integration_tests.setCwd(b.path("."));
+    run_env01_tt_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
     const spt01_iss0068_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1041,6 +1612,12 @@ pub fn build(b: *std.Build) void {
         .{ .name = "pool", .module = pool_root_mod },
         .{ .name = "bpm", .module = bpm_src_mod },
         .{ .name = "build_options", .module = build_options_mod },
+        // ISS-0137 / GH #439: tests/integration/helpers.zig line 13 does
+        // @import("env") (ISS-0134's portable environ helper). Every other
+        // integration target inherits it from integration_imports; this
+        // hand-rolled slice omitted it, so this root could not compile the
+        // helpers it depends on.
+        .{ .name = "env", .module = env_mod },
     };
     const iss601_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1208,6 +1785,34 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_iss0076_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_same_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_cross_integration_tests.step);
+    // ISS-0150 / GH #466: entity_subsystem_test.zig's Run artifact was created
+    // and fully configured but attached to no step reachable from
+    // `test-integration` — only to the narrow `test-integration-exp` step, which
+    // nothing in CI invokes. It was therefore built and never run, and had in
+    // fact not compiled since the TestHarness API it was written against
+    // changed. lint_test_wiring.py could not see this because it proves a file
+    // is reachable from an addTest ROOT, not that the root is ever executed;
+    // that gap is now covered by the linter's unattached-run-artifact check.
+    test_integration_others_step.dependOn(&run_exp_integration_tests.step);
+    // ISS-0150 / GH #466: the ENV-01 tenant-type-field cases also run inside the
+    // main_test.zig aggregate, but the dedicated artifact is attached here too so
+    // `test-integration-env01-tt` is not the only thing that ever executes it —
+    // a narrow opt-in step nothing invokes is what hid entity_subsystem_test.zig.
+    test_integration_others_step.dependOn(&run_env01_tt_integration_tests.step);
+    // ISS-0150 / GH #466: surfaced by the new unattached-run-artifact check in
+    // tools/lint_test_wiring.py. Both of these had a narrow step and nothing
+    // else, so their blocks never ran under `zig build test-integration`. Both
+    // pass on first execution, so they are attached here directly. Two further
+    // finds from the same check (iss105_token_model_test, differential_test) do
+    // NOT pass on first run and are tracked as ISS-0157 rather than being
+    // attached-and-left-red or quietly excluded.
+    test_integration_others_step.dependOn(&run_xc04_integration_tests.step);
+    test_integration_others_step.dependOn(&run_stage11_sim_xc04_integration_tests.step);
+    // ISS-0157 / GH #476: the two remaining finds, now fixed and attached, which
+    // empties the KNOWN_UNATTACHED ledger in tools/lint_test_wiring.py.
+    // iss105_token_model_test passes 4/4 as written — its GIN-index assertion
+    // creates the index it then asserts on, so it was never the real defect.
+    test_integration_others_step.dependOn(&run_iss105_integration_tests.step);
 
     // ISS-0106: force ISS-503 to run only after the barrier above (i.e. after
     // every other test-integration sibling has finished), then re-attach it
@@ -1273,6 +1878,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_exp_step = b.step("test-integration-exp", "Run Entity Subsystem integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_exp_step.dependOn(&clean_test_db.step);
     test_integration_exp_step.dependOn(&run_exp_integration_tests.step);
+
+    const test_integration_env01_tt_step = b.step("test-integration-env01-tt", "Run ENV-01 tenant type field integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_env01_tt_step.dependOn(&clean_test_db.step);
+    test_integration_env01_tt_step.dependOn(&run_env01_tt_integration_tests.step);
 
     const test_integration_spt01_iss68_step = b.step("test-integration-spt01-iss68", "Run SPT-01 ISS-0068 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_spt01_iss68_step.dependOn(&clean_test_db.step);
@@ -1468,6 +2077,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "tenant_context", .module = tenant_context_mod },
         .{ .name = "pipeline_context", .module = pipeline_context_mod },
         .{ .name = "obs_metrics", .module = obs_metrics_mod },
+        .{ .name = "json_schema", .module = json_schema_mod },
         .{ .name = "db_provisioning", .module = provisioning_mod_migrate },
     };
     const migrate_exe = b.addExecutable(.{
@@ -1540,15 +2150,17 @@ pub fn build(b: *std.Build) void {
     // `zig build test-wiring-check` — no test-bearing file is wired into no
     // build target (prevents ISS-0102 / GH #428 recurrence)
     //
-    // Not made a dependency of `test` or `build`: as of the GH #428 fix this
-    // tool found 55 PRE-EXISTING test-bearing files (unrelated to
-    // transition.zig) that were already unreachable from any addTest root —
-    // filed separately rather than fixed here, since fixing 55 unrelated
-    // files is out of scope for the transition.zig leak/crash fix this step
-    // was added alongside. Wiring this into `test` today would turn the
-    // Green-Main Gate red for a pre-existing condition this change didn't
-    // cause. Run it manually (or from CI as its own check) until that
-    // backlog is cleared; see the filed issue for the file list.
+    // ISS-0137 / GH #439 cleared the 55-file backlog that GH #428 discovered and
+    // filed rather than fixed, so this check is now ENFORCED: it is a dependency
+    // of `zig build test` (see test_step.dependOn below) and any file whose test
+    // blocks become unreachable from every addTest root turns the build red.
+    //
+    // That backlog was worth clearing rather than tolerating: those 55 files
+    // held ~350 test blocks that had never executed, and wiring them in
+    // surfaced real defects — two Zig-0.16 ArrayList API regressions and an
+    // incomplete error set in src/repository/artifacts.zig, plus a TestHarness
+    // API (provisionTenant/setTenant) that tests called but nothing
+    // implemented. Silent unreachability is what let all of it accumulate.
     // ---------------------------------------------------------------------------
     const run_wiring_check = b.addSystemCommand(&.{
         "python",
@@ -1561,6 +2173,11 @@ pub fn build(b: *std.Build) void {
         "Verify every test-bearing file is reachable from an addTest root; exit 0 = none unwired",
     );
     wiring_check_step.dependOn(&run_wiring_check.step);
+    // ISS-0137 / GH #439 closing condition: `zig build test` fails whenever any
+    // test-bearing file becomes unreachable from every addTest root. Attached
+    // here rather than beside the other test_step edges because
+    // run_wiring_check is declared in this section, far below test_step.
+    test_step.dependOn(&run_wiring_check.step);
 
     // ---------------------------------------------------------------------------
     // `zig build openapi` — OpenAPI generator

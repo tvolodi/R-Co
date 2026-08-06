@@ -69,11 +69,13 @@ test "ISS-206: join_counters with data round-trips correctly" {
     try testing.expect(parsed.value == .object);
     const deserialized = parsed.value.object;
 
+    // ISS-0137 / GH #439: std.json ObjectMap.get returns the Value BY VALUE,
+    // not a pointer — the `.*` derefs here never compiled.
     const entry = deserialized.get("join_gw_1") orelse return testing.expect(false);
-    try testing.expect(entry.* == .object);
-    const rc = entry.*.object.get("received_count") orelse return testing.expect(false);
-    try testing.expect(rc.* == .integer);
-    try testing.expectEqual(@as(i64, 2), rc.*.integer);
+    try testing.expect(entry == .object);
+    const rc = entry.object.get("received_count") orelse return testing.expect(false);
+    try testing.expect(rc == .integer);
+    try testing.expectEqual(@as(i64, 2), rc.integer);
 }
 
 test "ISS-206: deterministic token_id from computeTokenId is stable" {
@@ -82,7 +84,11 @@ test "ISS-206: deterministic token_id from computeTokenId is stable" {
     const allocator = testing.allocator;
 
     const bpm = @import("bpm");
-    const transition_mod = bpm.engine_transition;
+    // `bpm` here is bpm_src_mod (src/bpm.zig), which exports this as
+    // `transition`. The `engine_transition` spelling belongs to bpm_main_mod
+    // (src/main.zig) and is correct there — the two are different modules with
+    // different roots, not a duplication to reconcile.
+    const transition_mod = bpm.transition;
 
     // Use the public FNV-1a helpers to verify determinism.
     // (computeTokenId is private; we test determinism indirectly via transition().)

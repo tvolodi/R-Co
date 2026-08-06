@@ -103,6 +103,11 @@ fn makeAuthContext(allocator: std.mem.Allocator) bpm.api_auth.AuthContext {
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = true,
         .token_id = "test-token",
+        // ISS-0137 / GH #439: `principal` (ISS-403 shared-store rate limiting)
+        // was added to AuthContext after this test was written, and the test
+        // never compiled afterwards because it was wired into no build target.
+        // "bootstrap" is the documented value for a bootstrap token.
+        .principal = "bootstrap",
         .tenant_id = bpm.api_auth.DEFAULT_TENANT_ID.*,
         .tenant_source = .default_fallback,
     };
@@ -467,6 +472,12 @@ test "TC-OIDC-35-06: onboarding saga creates tenant and binds hostname" {
         .hostname = hostname,
         .realm_config = null,
         .client_config = null,
+        // ISS-0137 / GH #439: ENV-01 added these two required fields after this
+        // test was written; it never compiled again because it was wired into
+        // no build target. Both cases onboard an ordinary production tenant,
+        // which by definition has no parent production_tenant_id.
+        .tenant_type = .production,
+        .production_tenant_id = null,
     };
 
     const result = onboarding_mod.executeSaga(alloc, boot_result.active.manager, &pool, input, null, build_options.migrations_dir) catch |err| {
@@ -548,6 +559,12 @@ test "TC-OIDC-35-07: saga compensation cleans up tenant on failure" {
         .hostname = hostname,
         .realm_config = null,
         .client_config = null,
+        // ISS-0137 / GH #439: ENV-01 added these two required fields after this
+        // test was written; it never compiled again because it was wired into
+        // no build target. Both cases onboard an ordinary production tenant,
+        // which by definition has no parent production_tenant_id.
+        .tenant_type = .production,
+        .production_tenant_id = null,
     };
 
     // The saga should fail at realm provisioning (Manager has no provider),

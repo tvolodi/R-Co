@@ -31,6 +31,14 @@ pub const ArtifactsError = error{
     TransactionFailed,          // DB transaction failed → HTTP 500
     OutOfMemory,
     InvalidJson,
+    // ISS-0137 / GH #439: create() propagates canonicaliser.hashContent(), whose
+    // CanonicaliserError carries InvalidBinary and NoSpaceLeft alongside
+    // OutOfMemory/InvalidJson. Omitting these two made ArtifactsError narrower
+    // than what create() can actually return, so the file did not compile in a
+    // test context. It went unnoticed because src/repository/ was reachable from
+    // no addTest root — the defect this issue exists to remove.
+    InvalidBinary,              // Binary content has a bad header → HTTP 400
+    NoSpaceLeft,                // Canonical form exceeded its buffer → HTTP 400
 };
 
 // ---------------------------------------------------------------------------

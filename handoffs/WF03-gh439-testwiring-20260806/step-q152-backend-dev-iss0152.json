@@ -1,0 +1,54 @@
+{
+  "handoff_id": "a4be0d51-156f-4039-b10b-3935f5c9a57f",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "q152",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-gh439-testwiring-20260806/step-q152-backend-dev-iss0152.json",
+  "created_at": "2026-08-06T07:20:53Z",
+  "started_at": "2026-08-06T07:20:53Z",
+  "completed_at": "2026-08-06T07:27:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "issue_ids": [
+      "ISS-0152"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/469",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "queue_drain": true,
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0152.json"
+    ]
+  },
+  "task": {
+    "description": "Queue-drain pass for ISS-0152 / GH #469: tools/lint_test_isolation.baseline.json records 128 suppressed findings but the tree produces 131; the 3 unaccounted findings are T020 MAJORs present on origin/main. Resolve each of the 3 INDIVIDUALLY -- either fix it in the test source, or add it to the baseline with a recorded reason. HARD CONSTRAINT per CLAUDE.md: do NOT blanket-regenerate the baseline, which would also silently suppress genuine violations. Identify the 3 specific findings first and report what each one is.",
+    "acceptance_criteria": [
+      "The 3 unaccounted T020 findings identified individually and each fixed or deliberately baselined with a reason",
+      "Baseline suppression count matches the tree's actual suppressed findings",
+      "python tools/lint_test_isolation.py tests/integration exits 0",
+      "Baseline was not blanket-regenerated"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:update-issue",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0152 resolved. Root cause was NOT 3 isolation defects: the 2026-08-05 baseline was generated against a tree state 3 lines shorter than origin/main, so 94 entries carried a uniform +3 stale line offset, plus 3 entries in tests/integration/helpers.zig carried a +44 offset from ISS-0137 commit baea783 -- 97 stale entries total, of which the 3 helpers.zig ones are the T020 MAJORs reported. Each of the 3 T020 findings (cached_owner_tag:388, tag_repr_storage:393, tag_repr_lock:394) was reviewed individually and DELIBERATELY KEPT BASELINED: they are the intended per-process owner-tag cache mechanism of ISS-0602/GH #414 (commit 316d350), lock-guarded via cmpxchg with acquire/release ordering and freed by the owning TestHarness deinit; making them per-test would reintroduce the ISS-0602 cross-binary connection-kill failure. Applied a strict line-number-ONLY sync (97 entries relined, 0 added, 0 removed) that aborts rather than writing if any finding identity would change -- verified the (severity,code,file,message) identity multiset is bit-identical to the pre-change baseline, so no genuine violation could be absorbed. NOT a blanket regeneration.",
+    "artifacts_out": [
+      "tools/lint_test_isolation.baseline.json"
+    ],
+    "issues": [],
+    "next_action": "ORCH continues queue drain"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

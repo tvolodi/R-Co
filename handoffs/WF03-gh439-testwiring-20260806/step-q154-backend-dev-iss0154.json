@@ -1,0 +1,67 @@
+{
+  "handoff_id": "77d5a42c-fbc3-4bce-9a86-7992839efc80",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "q154",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-06T11:30:13Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_ids": [
+      "ISS-0154"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/472",
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "queue_drain": true,
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0154.json",
+      "tests/integration/event_store_integration_test.zig",
+      "tests/specs/ES-01-08.md",
+      "src/event_store/store.zig",
+      "src/event_store/registry.zig"
+    ]
+  },
+  "task": {
+    "description": "Write real executing tests for the five event-store cases that have no coverage at unit or integration level: TC-ES-01-02 (append to non-existent instance -> InstanceNotFound), TC-ES-01-03 (append to COMPLETED instance -> InstanceTerminated / HTTP 409), TC-ES-01-04 (append to CANCELLED instance -> InstanceTerminated / HTTP 409), TC-ES-05-04 (registerType duplicate name+version -> DuplicateEventTypeVersion / HTTP 409), TC-ES-07-02 (archive returns count of moved rows). No mocks or stubs (DIRECTIVE T-1); per-test UUID fixtures; unconditional cleanup; fail clearly without BPM_TEST_DB_URL (GH #472, ISS-0154).",
+    "acceptance_criteria": [
+      "All five test cases have executing tests asserting the required behavior",
+      "zig build exits 0 with no 'error set' output",
+      "zig build test exits 0",
+      "python tools/lint_test_wiring.py exits 0",
+      "python tools/lint_test_isolation.py tests/integration exits 0 with no BLOCKER",
+      "Mutation check: breaking a new assertion makes the test FAIL"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Covered all five previously-untested event-store cases with real integration tests against PostgreSQL. TC-ES-07-02 exposed a genuine production defect: Store.archive() returned the count of retention POLICIES applied rather than rows moved (returned 1 where the spec requires 3); fixed by converting its five DELETE statements to RETURNING queries and counting rows. zig build exits 0 with no 'error set'; zig build test exits 0; both lints exit 0; all five tests mutation-verified.",
+    "artifacts_out": [
+      "tests/integration/event_store_integration_test.zig",
+      "src/event_store/store.zig",
+      "tools/lint_test_isolation.baseline.json",
+      "docs/issues/ISS-0154.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Pre-existing and NOT introduced here: TC-ES-08-04 and TC-ADP-01-03 in the same file fail both with and without these changes (verified by stashing). Additional event-store tests (TC-ES-02-02, TC-ES-04-01/02, TC-ES-06-01/02, TC-ES-07-01) flake intermittently \u2014 root cause observed directly: TestHarness.init() -> resetTestData() DELETEs all rows from events and instance_projections, and killIdleConnections reports 'cross-owner idle connections remain' when a sibling agent's test binary runs concurrently against the shared test DB. This is the known GH #366/#454 shared-database race, not a defect in the new tests."
+      },
+      {
+        "severity": "MINOR",
+        "description": "tools/lint_test_isolation.baseline.json was line-synced (not regenerated): appending tests shifted every pre-existing UUID literal below the insertion point, un-suppressing 61 findings. Entries were re-stamped by matching (file, code, message) so all 225 baseline entries are preserved, zero new suppressions were added, and the 3 genuinely-new findings were fixed in source rather than suppressed. This follows the precedent set by ISS-0142 (RESOLVED)."
+      }
+    ],
+    "next_action": "Return to ORCH for next queue item"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T11:30:13Z",
+  "completed_at": "2026-08-06T12:03:16Z"
+}

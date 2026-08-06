@@ -22,15 +22,18 @@ pub const MemoryLimiter = struct {
         };
     }
 
-    /// Lua allocator function (callconv(.C) required for C interop).
+    /// Lua allocator function (callconv(.c) required for C interop).
     /// ud: user data (limiter pointer)
     /// ptr: pointer to old block (null for new allocation)
     /// osize: size of old block
     /// nsize: size of new block (0 = free)
-    pub fn alloc(ud: ?*c_void, ptr: ?*c_void, osize: usize, nsize: usize) callconv(.C) ?*c_void {
+    pub fn alloc(ud: ?*anyopaque, ptr: ?*anyopaque, osize: usize, nsize: usize) callconv(.c) ?*anyopaque {
         if (ud == null) return null;
 
-        const limiter = @ptrCast(*MemoryLimiter, ud);
+        // ISS-0153: Zig 0.11 made @ptrCast single-argument (destination type
+        // comes from the result location); the two-arg form here was written
+        // for Zig 0.10 and never compiled since.
+        const limiter: *MemoryLimiter = @ptrCast(@alignCast(ud));
 
         limiter.mutex.lock();
         defer limiter.mutex.unlock();
@@ -41,7 +44,8 @@ pub const MemoryLimiter = struct {
                 if (limiter.current_memory_bytes >= osize) {
                     limiter.current_memory_bytes -= osize;
                 }
-                const old_slice = @ptrCast([*]align(1) u8, ptr)[0..osize];
+                const old_base: [*]align(1) u8 = @ptrCast(ptr);
+                const old_slice = old_base[0..osize];
                 limiter.allocator.free(old_slice);
             }
             return null;
@@ -55,11 +59,12 @@ pub const MemoryLimiter = struct {
             return null;
         }
 
-        var result: ?*c_void = null;
+        var result: ?*anyopaque = null;
 
         if (ptr != null) {
             // Reallocation
-            const old_slice = @ptrCast([*]align(1) u8, ptr)[0..osize];
+            const old_base: [*]align(1) u8 = @ptrCast(ptr);
+            const old_slice = old_base[0..osize];
             if (limiter.allocator.resize(old_slice, nsize)) {
                 result = ptr;
             } else {

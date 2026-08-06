@@ -41,7 +41,7 @@ pub fn installHook(L: *bindings.LuaState, limiter: *InstructionLimiter) !void {
 
 /// Hook callback invoked periodically during script execution.
 /// Checks if instruction limit is exceeded; raises error if so.
-fn hookCallback(L: *bindings.LuaState, ar: ?*bindings.lua_Debug) callconv(.C) void {
+fn hookCallback(L: *bindings.LuaState, ar: ?*bindings.lua_Debug) callconv(.c) void {
     _ = ar; // Unused in basic implementation
 
     // Retrieve limiter from global state
@@ -51,7 +51,9 @@ fn hookCallback(L: *bindings.LuaState, ar: ?*bindings.lua_Debug) callconv(.C) vo
 
     if (ud == null) return;
 
-    const limiter = @ptrCast(*InstructionLimiter, ud);
+    // ISS-0153: single-argument @ptrCast (Zig 0.11+); the two-arg form here
+    // dated from Zig 0.10 and had never been analysed by any build target.
+    const limiter: *InstructionLimiter = @ptrCast(@alignCast(ud));
     limiter.instructions_executed += 100; // Approximate (hook interval)
 
     if (limiter.instructions_executed >= limiter.max_instructions) {

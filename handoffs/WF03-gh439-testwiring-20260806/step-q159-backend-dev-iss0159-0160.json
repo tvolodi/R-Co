@@ -1,0 +1,94 @@
+{
+  "handoff_id": "d1755ff6-4e1d-47b2-aee0-00b91dfa91f1",
+  "run_id": "WF03-gh439-testwiring-20260806",
+  "workflow_id": "WF-03",
+  "step": "q159",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-06T11:32:14Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "issue_ids": [
+      "ISS-0159",
+      "ISS-0160"
+    ],
+    "github_issues": [
+      "https://github.com/tvolodi/R-Co/issues/480",
+      "https://github.com/tvolodi/R-Co/issues/481"
+    ],
+    "branch_name": "feature/WF03-gh439-testwiring-20260806",
+    "queue_drain": true,
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0159.json",
+      "docs/issues/ISS-0160.json",
+      "src/entities/commands.zig",
+      "src/entities/validator.zig",
+      "src/tools/json_schema.zig",
+      "src/event_store/registry.zig",
+      "tests/integration/entity_subsystem_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Drain ISS-0159 (GH #480, MAJOR) and ISS-0160 (GH #481, MAJOR) \u2014 the last 2 failing blocks of tests/integration/entity_subsystem_test.zig (10/12 at baseline, 3 leaks). ISS-0159: createRecord's duplicate branch calls fetchRecordResult with the freshly-minted record_id instead of the original event's (available in append_res.record.payload), and leaks append_res.record. ISS-0160: record payload validation is a literal TODO at commands.zig:103; InvalidPayload is declared but unreachable. Reuse src/tools/json_schema.zig's validateCollect/Violation (extended under ISS-0155) following registry.zig's validatePayloadAgainstSchema pattern \u2014 do not write a second validator. Fix production code, never the assertions.",
+    "acceptance_criteria": [
+      "zig build test-integration-exp -> 12/12 pass, zero leaks",
+      "zig build exits 0 with no 'error set' output",
+      "zig build test exits 0",
+      "python tools/lint_sql_param_types.py src tests exits 0",
+      "python tools/lint_test_wiring.py exits 0",
+      "InvalidPayload reachable; tests prove conforming payload ACCEPTED and non-conforming REJECTED",
+      "Mutation check on the new validation",
+      "No test assertion weakened; no error.SkipZigTest added"
+    ],
+    "functions_to_call": [
+      "fn:register-issue",
+      "fn:update-issue",
+      "fn:enqueue-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0159 (GH #480) and ISS-0160 (GH #481) both resolved. tests/integration/entity_subsystem_test.zig: 10/12 with 3 leaks -> 12/12 with ZERO leaks. ISS-0159 root cause: createRecord's duplicate branch called fetchRecordResult with the freshly-minted record_id (never persisted on a replay, so zero rows matched -> InvalidRecord) instead of the original event's, which sits in append_res.record.payload; and it never freed append_res.record, whose event_type/payload/metadata are allocator-owned on the duplicate path (rowToEventRecord dupes exactly 3 strings = the 3 reported leaks) but borrowed on the fresh path (duplicateFromParams sets them to \"\"). Fix: new extractRecordId() helper recovers the original id from the replayed payload; a single unconditional 'var append_record = append_res.record; defer append_record.deinit(allocator);' handles both ownership shapes (EventRecord.deinit guards on .len > 0) and was added to createRecord, updateRecord AND deleteRecord. ISS-0160 root cause: payload validation was a literal TODO at commands.zig:103 and InvalidPayload was declared but returned nowhere in src/entities/. Fix: new validateRecordPayload() in validator.zig translates the entity definition's fields array into a JSON Schema and delegates to src/tools/json_schema.zig's validateCollect (ISS-0155), mirroring registry.zig's validatePayloadAgainstSchema - no second validator was written. Called before the append in BOTH createRecord and updateRecord, so a rejected create leaves no event and no projection row. INCIDENTAL FIX (ISS-0133 class): validator.zig's test blocks were in no addTest root's file set and never ran; proven with a deliberately-failing canary that left 'zig build test' green at 63/63. build.zig now registers validator.zig as its own test root; re-injecting the canary turned the build red, confirming the wiring. Unit test count 837 -> 856. All three fixes mutation-verified independently.",
+    "artifacts_out": [
+      "src/entities/commands.zig",
+      "src/entities/validator.zig",
+      "build.zig",
+      "docs/issues/ISS-0159.json",
+      "docs/issues/ISS-0160.json",
+      "docs/issues/ISS-0162.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "issue_id": "ISS-0162",
+        "github_issue": "https://github.com/tvolodi/R-Co/issues/486",
+        "description": "entity_subsystem_test is flaky against the shared TestHarness via two independent cross-binary races: (A) C23505 on schema_migrations_schema_version_uq for schema_name='tenant_default', which cascades OutOfOrderMigration into every later block in the binary; (B) resetTestData deleting a live test's instance_projections mid-test, surfacing as InstanceNotFound and a lost idempotency row. Both reproduce with the ISS-0159/0160 changes stashed and are in shared harness code, not src/entities/. Explicitly NOT a duplicate of #483/ISS-0151 (that one is schema_name=tenant_<uuid> explained by the clean_test_db sweep, which excludes tenant_default). Filed + QUEUED."
+      },
+      {
+        "severity": "MAJOR",
+        "issue_id": "ISS-0157",
+        "github_issue": "https://github.com/tvolodi/R-Co/issues/476",
+        "description": "Pre-existing and already QUEUED: lint_test_wiring.py exits 1 on a third unattached artifact, run_probe_svc_tests, which is not on its known-list (unlike run_differential_tests and run_iss105_integration_tests). Reproduces with my changes stashed. Not fixed here because build.zig was being concurrently edited by the ISS-0154/LUA agent in the same run. Documented as a comment on GH #476 rather than filed as a duplicate."
+      }
+    ],
+    "verification": {
+      "zig build": "exit 0, no 'error set' output",
+      "zig build test": "856/920 tests passed (64 skipped), up from 837 - the +19 are validator.zig blocks that previously never ran. Only failing step is the pre-existing lint_test_wiring probe_svc_tests issue (ISS-0157/GH #476), reproduced with my changes stashed.",
+      "zig build test-integration-exp": "6/6 steps succeeded; 12/12 tests passed; ZERO leaks (baseline: 10/12, 3 leaks)",
+      "python tools/lint_sql_param_types.py src tests": "exit 0 - 0 BLOCKER, 0 MAJOR, 0 MINOR",
+      "python tools/lint_test_wiring.py": "exit 1 - pre-existing run_probe_svc_tests, unrelated to this change (see ISS-0157 above)",
+      "mutation_check_iss0159_lookup": "reverting to 'const lookup_id = record_id;' -> 'EXP-202: Create record idempotency' fails at fetchRecordResult with error.InvalidRecord (11/12) - the exact reported signature",
+      "mutation_check_iss0159_leak": "removing the createRecord deinit -> 'leaked 3 allocations' returns (12/12 pass, 3 leaks) - the exact baseline leak count",
+      "mutation_check_iss0160": "disabling the validatePayload call -> 'EXP-202: Create record with invalid payload' fails with 'createRecord accepted a payload missing required field f1' (11/12) - the exact reported symptom",
+      "mutation_check_test_wiring": "a deliberately-failing canary test in validator.zig left 'zig build test' GREEN at 63/63 before the build.zig fix, and turned it RED after - proving the new unit tests actually execute (ISS-0133 discipline)",
+      "InvalidPayload_reachability": "src/entities/commands.zig:362 'return error.InvalidPayload', reached from createRecord and updateRecord; previously zero return sites in src/entities/"
+    },
+    "next_action": "Return to ORCH; ISS-0162 (GH #486) remains QUEUED for the drain loop"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T11:32:14Z",
+  "completed_at": "2026-08-06T12:10:01Z"
+}
