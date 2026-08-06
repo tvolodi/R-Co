@@ -1,0 +1,48 @@
+{
+  "issue_id": "ISS-0147",
+  "title": "Integration linter tests invoke Windows Store Python alias instead of repository interpreter",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/374",
+  "registered_at": "2026-08-06T08:09:55Z",
+  "registered_by": "ISSUE-FIXER (WF03-gh374-20260806 Step 0.5)",
+  "related_to": [
+    "ISS-0138"
+  ],
+  "severity": "MAJOR",
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-06T09:10:24Z",
+  "run_id": "WF03-gh374-20260806",
+  "category": "test-infrastructure/interpreter-resolution",
+  "affected_areas": [
+    "tests/integration/tnt_schema_isolation_test.zig",
+    "tests/support/python_interp.zig",
+    "build.zig"
+  ],
+  "symptom": "zig build test-integration fails TC-TNT-02-03 and TC-TNT-02-04. Both tests spawn tools/lint_migration_schema.py with argv[0] == \"python\"; on Windows that can resolve to the Microsoft Store App Execution Alias stub, which prints 'Python was not found; run without arguments to install from the Microsoft Store...' and exits 49. The tests observe exit 49 instead of the linter's real exit codes 1 and 0.",
+  "reproduction": "On Windows with a WindowsApps python.exe alias on PATH: C:/Users/tvolo/AppData/Local/Microsoft/WindowsApps/python.exe tools/lint_migration_schema.py <file> -> 'Python was not found...' exit 49. Confirmed on this machine 2026-08-06.",
+  "root_cause_analysis": "Interpreter selection is by bare name only. 'python' has three PATH resolutions on this machine (Programs/Python312 real, WindowsApps alias stub, AppData/Local/Python/bin shim). Which one wins depends on the PATH the spawning process inherits, which differs between an interactive shell and a zig-build-spawned test binary -- so name-based selection is non-deterministic. ISS-0138 (GH #440) fixed the sibling 'python3' case in build.zig by switching to 'python', but 'python' carries the same WindowsApps alias, and these two call sites live in a test binary rather than build.zig, so that fix does not cover them.",
+  "acceptance_criteria": [
+    "Integration tests resolve the repository-selected Python interpreter deterministically on Windows and non-Windows hosts",
+    "TC-TNT-02-03 observes expected linter rejection exit 1",
+    "TC-TNT-02-04 observes expected linter acceptance exit 0",
+    "Full zig build test-integration no longer contains 'Python was not found'"
+  ],
+  "design_artifact": "src/design/python_interpreter_resolution.md",
+  "resolution": "Added tests/support/python_interp.zig (named module `python_interp`): interpreter resolution via an ordered candidate list ($BPM_PYTHON authoritative, repo .venv, $VIRTUAL_ENV, python3, python) where every candidate must pass a liveness probe (-c writing sentinel BPM_PY_OK, exit 0) before acceptance. The probe rejects the WindowsApps App Execution Alias stub. Both call sites in tests/integration/tnt_schema_isolation_test.zig now spawn the resolved interpreter instead of bare \"python\". Test assertions unchanged -- the fix restores the measurement rather than suppressing it. Resolver unit tests live in tests/unit/python_interp_test.zig, wired into `zig build test`.",
+  "prevention": "Never select an interpreter (or any tool whose exit code a test asserts on) by bare name and assume PATH order. Name-based selection is host- and spawn-context-dependent. Probe the candidate for the behaviour you depend on, and accept it only if the probe passes. When a test asserts on a subprocess's exit code, a non-interpreter's exit code is indistinguishable from a real result unless something verifies what was actually run.",
+  "verification": [
+    "TC-TNT-02-03 and TC-TNT-02-04 pass across 3 consecutive zig build test-integration-tnt runs",
+    "0 occurrences of 'Python was not found' in full test-integration-tnt output",
+    "Negative test: BPM_PYTHON forced to the WindowsApps stub is rejected with error.BpmPythonOverrideUnusable and a diagnostic naming the path",
+    "zig build exits 0, no 'error set' output",
+    "zig build test exits 0 (includes 4 new resolver unit tests)",
+    "tools/lint_design_artefact.py, lint_sql_param_types.py, lint_test_wiring.py exit 0",
+    "tools/lint_test_isolation.py MAJOR on tests/integration: 8 -> 6 (both resolver findings cleared)"
+  ],
+  "artifacts_out": [
+    "tests/support/python_interp.zig",
+    "tests/unit/python_interp_test.zig",
+    "tests/integration/tnt_schema_isolation_test.zig",
+    "build.zig",
+    "src/design/python_interpreter_resolution.md"
+  ]
+}
