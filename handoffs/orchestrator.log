@@ -158,3 +158,4 @@
 2026-08-06T12:10:01Z | DRAIN | WF03-gh439-testwiring-20260806 | d1755ff6 | BACKEND-DEV | ISS-0160 PASS
 2026-08-06T12:29:40Z | ROUTE | WF03-gh439-testwiring-20260806 | 70cf4a61 | ORCH -> BACKEND-DEV | PENDING (ISS-0157, ISS-0158)
 2026-08-06T12:35:02Z | DRAIN | WF03-gh439-testwiring-20260806 | -------- | ORCH | ISS-0157 DRAINED; queue closed: 11 drained, 3 deferred as tracked follow-ups
+2026-08-06T16:57:22Z | COMPLETE | WF03-gh439-testwiring-20260806 | 70cf4a61 | BACKEND-DEV | Step q157 PARTIAL - ISS-0157 done+verified, ISS-0158 deferred (GH #479)
