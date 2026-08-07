@@ -1,0 +1,40 @@
+{
+  "handoff_id": "4f2e5412-ed9a-4a71-bf32-d2fe781c8d23",
+  "run_id": "WF03-GH520-20260807",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH520-20260807/step-02b-code-design-validator.json",
+  "created_at": "2026-08-07T22:18:55Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/gh520-backoff-schedule-deterministic-assertion.md",
+      "docs/issues/ISS-0186.json",
+      "tests/integration/effects_subsystem_test.zig",
+      "src/effects/queue.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/gh520-backoff-schedule-deterministic-assertion.md, a Type E design fixing GH #520 / ISS-0186's flaky TC-EXP-301-05 test. The design replaces a two-separate-database-round-trip wall-clock delta measurement with a single combined query issued once immediately after Queue.markRetry returns, reading attempt_count, status, next_attempt_at, and NOW() in one statement execution, tightening the tolerance from +/-500ms to +/-50ms. Verify: (1) the tolerance justification is sound -- the design claims +/-50ms accounts for same-connection statement-dispatch latency between the UPDATE (inside markRetry) and the follow-up SELECT, and explicitly does NOT claim 0ms is safe because the two statements are not in the same transaction (so PostgreSQL's per-transaction NOW() stability doesn't apply across them) -- confirm this reasoning is technically correct against actual PostgreSQL semantics (check whether markRetry's UPDATE and the test's follow-up SELECT really do run as separate statements/transactions, or whether they could be combined further); (2) the assertion remains non-tautological -- it must still fail if markRetry's backoff interval computation regresses; (3) all four expected_backoff values (5000/30000/120000/600000ms) are still exercised; (4) no production code is touched.",
+    "acceptance_criteria": [
+      "The +/-50ms tolerance justification is verified against actual PostgreSQL statement/transaction semantics, not just trusted",
+      "The assertion remains non-tautological and still exercises all 4 expected_backoff values",
+      "No production code touched",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
