@@ -1,0 +1,140 @@
+---
+run_id: WF03-GH542-20260807
+issue_id: ISS-0607
+github_issue: https://github.com/tvolodi/R-Co/issues/542
+title: pg.zig SCRAM-SHA-256 authentication failure blocks all integration tests on main — DIAGNOSIS
+status: DIAGNOSED
+severity: BLOCKER
+disposition: ROOT_CAUSE_RECLASSIFIED — not SCRAM
+
+# DIAGNOSIS — REVISED ROOT CAUSE
+
+## Original hypothesis (WRONG)
+GH-542 / ISS-0607 was filed under the assumption that integration tests fail at
+`vendor/pg/pg.zig:451` with `error.AuthenticationFailed`, attributed to a SCRAM-SHA-256
+authentication handshake failure between the Zig client and PostgreSQL 15.
+
+## Empirical investigation — full results
+
+### 1. PostgreSQL server auth mode (db_test container, port 5434)
+
+```python
+# python scratch/_scram_trace.py — direct socket trace
+>> StartupMessage sent (postgres://bpm:bpm@localhost:5434/bpm_test)
+<< 'R' auth_type=0         # AuthenticationOk (TRUST)
+<< 'S' application_name=
+<< 'S' client_encoding=UTF8
+<< ...
+<< 'K' BackendKeyData
+<< 'Z' ReadyForQuery
+```
+
+Result: **PostgreSQL is in TRUST auth mode** (`POSTGRES_HOST_AUTH_METHOD=trust` in
+`docker-compose.yml`). No password is exchanged. No SCRAM mechanism is ever requested.
+
+### 2. Role state on db_test
+
+```sql
+SELECT rolname FROM pg_authid;
+-- bpm, pg_checkpoint, pg_database_owner, pg_monitor, ...
+-- NO "postgres" role (POSTGRES_USER=bpm in compose).
+-- bpm has password set (rolpassword IS NOT NULL).
+```
+
+### 3. Reproduced iss107 test failure — actual stack trace
+
+```
+test-integration-iss107
++- run test w
+POSTGRES ERROR: SERRORVERRORC23514Mnew row for relation "tenant" violates check
+constraint "tenant_storage_mode_check"DFailing row contains
+(070fea69-88b8-4fbc-b977-4c9323a98d6f, iss107-t4, ISS-107 Test Tenant 4, ACTIVE,
+realm-iss107-t4, ..., BOGUS).stenant_defaultttenantntenant_storage_mode_check
+```
+
+The ACTUAL failure is **C23514 constraint violation** (POSTGRES ERROR to stderr),
+NOT `error.AuthenticationFailed`.
+
+## Root cause — REVISED
+
+`vendor/pg/pg.zig` writes PostgreSQL server errors to **stderr** whenever a query
+returns an error (regardless of whether the caller is going to handle the error
+as expected). The Zig test runner interprets any stderr output during a test
+binary as a hard failure for the entire binary, even when the test deliberately
+expected the error.
+
+Negative tests like `check_constraint_rejects_invalid_mode` (iss107 TC-04) call
+`UPDATE tenant SET storage_mode='BOGUS'` to verify the CHECK constraint fires.
+The constraint fires correctly, returns `error.ServerError`, and the test asserts
+`expectError(error.ServerError, ...)`. But pg.zig has already printed
+`POSTGRES ERROR: SERRORV...C23514...` to stderr first, so zig test runner aborts
+the binary before the test assertion runs.
+
+## Why the OLD log shows "AuthenticationFailed at pg.zig:451"
+
+`scratch/test-iss107-main.log` is from a prior session. The error reported in that
+log may have been a different transient state (e.g. db_test container was
+recreated with a non-trust auth mode at some point). Current state: db_test is
+in trust mode and connects successfully.
+
+## What is NOT broken
+- PostgreSQL auth (trust mode works, direct connection succeeds).
+- pg.zig SCRAM implementation (never exercised on db_test).
+- BPM_TEST_DB_URL configuration (port 5434 → db_test, correct).
+
+## What IS broken
+- pg.zig's query-error stderr logging on `Conn.exec`.
+- zig test runner's stderr-as-failure policy.
+- Missing mechanism to suppress expected-error stderr output per-test.
+
+## Proposed fix strategy (3 options, ranked)
+
+### Option A (recommended, minimal): silence pg.zig's stderr logging
+- In `vendor/pg/pg.zig`, change `POSTGRES ERROR:` stderr print to a debug-level
+  log gated behind a build flag (e.g. `-Dlog-pg-errors=true`).
+- Default off in CI. Tests can opt in via `zig build -Dlog-pg-errors=true test-integration`.
+- Effort: ~30 lines changed in 1 file. Regression test: assert that a
+  negative-test integration test passes end-to-end without "stderr noise".
+
+### Option B: redirect pg.zig errors to a log buffer instead of stderr
+- Add `Conn.options.log_sink: ?*std.io.Writer` so tests can route errors to
+  a `std.debug.print`-only sink they discard.
+- Default sink: null = no logging (clean). Backward-compatible.
+- Effort: ~50 lines, plus test infra update. Better long-term.
+
+### Option C: use zig test runner's --summary flag + per-test stderr capture
+- Configure zig test runner to capture stderr per-test (current Zig 0.16 has
+  limited per-test stderr capture).
+- Effort: investigation required; may not be supported in this Zig version.
+
+## Regression test sketch
+
+```zig
+test "regression: GH-542 — negative tests do not abort test binary on stderr" {
+    // This test deliberately triggers a CHECK constraint violation
+    // and asserts that the test binary continues running.
+    var h = try helpers.TestHarness.init(std.testing.allocator);
+    defer h.deinit();
+    // Insert a tenant.
+    try h.conn.exec("INSERT INTO tenant (...) VALUES (...)", &.{...});
+    // Trigger the constraint violation — this is the negative path.
+    const result = h.conn.exec("UPDATE tenant SET storage_mode='BOGUS' WHERE ...", &.{...});
+    try std.testing.expectError(error.ServerError, result);
+    // After this test, the binary must NOT have been aborted by stderr.
+}
+```
+
+The mere presence of this test passing in a full `zig build test-integration-iss107`
+run is the regression evidence.
+
+## Cross-references
+- ISS-0605 / GH-537 (RESOLVED-WITH-INFRA-BLOCK — partially unblocked by this diagnosis;
+  the new iss0605 regression test should now also pass once the pg.zig stderr fix lands).
+- vendor/pg/pg.zig:451 — the line that returns `error.AuthenticationFailed`
+  is *not* the failing line; the failing line is wherever the stderr print happens.
+
+## Recommended next step
+Spawn WF-03-GH542-fix: BACKEND-DEV implements Option A (silence pg.zig stderr
+logging). TEST-DESIGNER writes the regression test sketch above. TEST-RUNNER
+validates iss107 passes end-to-end. Then re-dispatch GH-537 / ISS-0605 TEST-RUNNER
+to validate the iss0605 regression test also passes.

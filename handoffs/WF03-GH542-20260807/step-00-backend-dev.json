@@ -1,0 +1,54 @@
+{
+  "handoff_id": "c7b141ac-c91e-445e-ae21-cf7fe21ba419",
+  "run_id": "WF03-GH542-20260807",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T12:33:18Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving Step 00 (git-setup)",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0607.json",
+      "https://github.com/tvolodi/R-Co/issues/542"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 00: git-setup for GH-542 / ISS-0607.\n\nIssue: pg.zig SCRAM-SHA-256 authentication failure blocks all integration tests on main.\n\nCreate feature branch feature/WF03-GH542-20260807 from origin/main (current HEAD: 69174b74).\nPush to origin.\nReturn PASS with branch name and remote tracking.",
+    "acceptance_criteria": [
+      "git branch --show-current outputs feature/WF03-GH542-20260807",
+      "git push -u origin feature/WF03-GH542-20260807 succeeds",
+      "Working tree clean"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Git setup completed: synchronized main, created and pushed feature/WF03-GH542-20260807, and verified the remote SHA.",
+    "artifacts_out": [
+      "branch: feature/WF03-GH542-20260807",
+      "docs/issue-reports/WF03-GH542-20260807-step-00-backend-dev-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH542-20260807",
+      "commit_sha_list": [
+        "69174b7449187cfe1a864556bf2dc7a282058175"
+      ],
+      "remote_branch": "origin/feature/WF03-GH542-20260807",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "ORCH routes to ISSUE-FIXER Step 0.5"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "started_at": "2026-08-07T12:33:18Z",
+  "completed_at": "2026-08-07T12:35:00Z"
+}

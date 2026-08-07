@@ -444,15 +444,15 @@
     {
       "issue_id": "GH-542",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/542",
-      "title": "pg.zig stderr logging makes zig test runner abort on every server error \u2014 blocks all negative integration tests",
+      "title": "pg.zig SCRAM-SHA-256 authentication failure blocks all integration tests on main",
       "severity": "MAJOR",
       "status": "IN_PROGRESS",
       "lock": {
         "workspace_id": "TVOLODI-loop",
-        "locked_at": "2026-08-07T12:55:05Z"
+        "locked_at": "2026-08-07T12:33:14Z"
       },
-      "added_at": "2026-08-07T12:55:05Z",
-      "started_at": "2026-08-07T12:55:05Z",
+      "added_at": "2026-08-07T12:33:14Z",
+      "started_at": "2026-08-07T12:33:14Z",
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null,

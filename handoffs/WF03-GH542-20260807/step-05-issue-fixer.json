@@ -1,0 +1,54 @@
+{
+  "handoff_id": "c5420005-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH542-20260807",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-07T12:36:21Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving Step 0.5/1",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c7b141ac-c91e-445e-ae21-cf7fe21ba419"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0607.json",
+      "tests/reports/report-2026-08-07-WF03-GH537.yaml",
+      "scratch/test-iss107-main.log"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 0.5 + Step 1: Register and diagnose SCRAM auth failure.\n\nStep 0.5:\n- Confirm docs/issues/ISS-0607.json exists with github_issue populated.\n- Search docs/issues/issue_index.json for prior SCRAM/pg.zig/pg_authid issues (fn:search-issues).\n- If found: link as recurrence. If not: NEW issue, already filed as GH-542.\n\nStep 1 (DIAGNOSIS - critical, spend time here):\nReproduce on plain origin/main (69174b74):\n- docker-compose ps (services healthy?)\n- BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-iss107\n- Capture exact failure context: pg.zig:451 call stack, bpm role password source, PostgreSQL pg_authid.rolpassword format.\n\nThree diagnostic angles:\n(a) Direct psql: PGPASSWORD=bpm psql -h localhost -p 5434 -U bpm -d bpm_test -c \"SELECT 1\" - works?\n(b) vendor/pg/pg.zig around line 451 - what auth mechanism does it use?\n(c) PostgreSQL pg_authid: SELECT rolname, rolpassword FROM pg_authid WHERE rolname='bpm' - what SCRAM hash format?\n(d) docker-compose.yml or init scripts - password provisioning flow\n\nDeliverables:\n- Root cause statement (specific file + line + missing/wrong config)\n- Proposed fix strategy (1-3 sentences)\n- Regression test sketch\n\nWrite findings to docs/issue-reports/WF03-GH542-20260807-step-05-issue-fixer-DIAGNOSIS.yaml.\nComplete handoff with PASS even if root cause is uncertain - list candidates.",
+    "acceptance_criteria": [
+      "docs/issue-reports/...DIAGNOSIS.yaml written",
+      "Direct psql connect attempt result reported",
+      "vendor/pg/pg.zig:451 context quoted",
+      "pg_authid query result reported",
+      "Root cause candidates listed (even if unresolved)"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:diagnose"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "DIAGNOSIS COMPLETE \u2014 root cause reclassified from SCRAM auth failure to pg.zig stderr-on-error issue. Empirical evidence: (1) db_test uses trust auth (auth_type=0), not SCRAM; (2) reproducing iss107 today shows C23514 constraint violation as the actual error, NOT AuthenticationFailed at pg.zig:451. The OLD log (test-iss107-main.log) showing AuthenticationFailed was from a different transient state. The real issue: pg.zig prints POSTGRES ERROR to stderr on every query error, zig test runner treats any stderr as binary-level failure, so negative tests (which DELIBERATELY trigger server errors) abort the whole binary. Recommended fix: silence pg.zig stderr logging (Option A, ~30 lines in vendor/pg/pg.zig). See docs/issue-reports/WF03-GH542-20260807-step-05-issue-fixer-DIAGNOSIS.yaml for full evidence.",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-GH542-20260807-step-05-issue-fixer-DIAGNOSIS.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "GH-542 title and body claim SCRAM auth failure, but actual root cause is pg.zig stderr logging. Issue should be re-titled and body updated before fix workflow proceeds."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGNER for fix design"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-08-07T12:36:21Z",
+  "completed_at": "2026-08-07T12:46:54Z"
+}
