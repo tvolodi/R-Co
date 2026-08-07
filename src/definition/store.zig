@@ -1344,7 +1344,9 @@ fn parseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !Definit
             .label = if (n.label) |l| try allocator.dupe(u8, l) else null,
             .attributes = if (n.attributes) |a| try allocator.dupe(u8, a) else null,
         };
-        nodes_built += 1;
+        // Increment BEFORE the next iteration's try so errdefer always counts
+        // everything assigned up to and including the last successful iteration.
+        nodes_built = i + 1;
     }
 
     const edges_copy = try allocator.alloc(graph_mod.GraphEdge, parsed.value.edges.len);
@@ -1369,7 +1371,9 @@ fn parseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !Definit
             .transform = if (e.transform) |t| try allocator.dupe(u8, t) else null,
             .is_default = e.is_default,
         };
-        edges_built += 1;
+        // Increment BEFORE the next iteration's try so errdefer always counts
+        // everything assigned up to and including the last successful iteration.
+        edges_built = i + 1;
     }
 
     parsed.deinit();
@@ -1574,4 +1578,47 @@ fn parseDefinitionStatus(s: []const u8) error{InvalidStatus}!DefinitionStatus {
     if (std.mem.eql(u8, s, "DEPRECATED")) return .DEPRECATED;
     if (std.mem.eql(u8, s, "ARCHIVED")) return .ARCHIVED;
     return error.InvalidStatus;
+}
+
+// ---------------------------------------------------------------------------
+// ISS-0132 — Allocation-failure coverage for parseGraphJson
+// ---------------------------------------------------------------------------
+
+// Wrapper that calls parseGraphJson and frees all resources on success.
+// Used with checkAllAllocationFailures to verify no leaks on any allocation
+// failure inside the function.
+fn allocFailureParseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !void {
+    const graph = try parseGraphJson(allocator, graph_json);
+    for (graph.nodes) |n| {
+        allocator.free(n.id);
+        if (n.label) |l| allocator.free(l);
+        if (n.attributes) |a| allocator.free(a);
+    }
+    allocator.free(graph.nodes);
+    for (graph.edges) |e| {
+        allocator.free(e.id);
+        allocator.free(e.source);
+        allocator.free(e.target);
+        if (e.condition) |c| allocator.free(c);
+        if (e.transform) |t| allocator.free(t);
+    }
+    allocator.free(graph.edges);
+}
+
+// ISS-0132-04: parseGraphJson leaks nothing on any allocation failure.
+// The graph has multiple nodes and edges so failures can occur mid-loop
+// during node-string or edge-string duplications.
+test "TC-ISS-0132-04: parseGraphJson leaks nothing on any allocation failure" {
+    // Two nodes and two edges — enough for failures to hit mid-node-loop
+    // and mid-edge-loop on any dupe call.
+    const graph_json =
+        \\{"nodes":[{"id":"n1","node_type":"SERVICE_TASK","label":"Task 1"},".+
+        \\{"id":"n2","node_type":"SERVICE_TASK","label":"Task 2"}],".+
+        \\"edges":[{"id":"e1","source":"n1","target":"n2","is_default":true}]}
+    ;
+    try std.testing.checkAllAllocationFailures(
+        std.testing.allocator,
+        allocFailureParseGraphJson,
+        .{graph_json},
+    );
 }
