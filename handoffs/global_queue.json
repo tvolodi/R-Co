@@ -378,14 +378,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/522",
       "title": "TC-EXP-301-09 panics unwrapping a NULL column; email stub's intended last_error is unspecified",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-07T21:43:51Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-07T21:43:51Z",
       "started_at": "2026-08-07T21:43:51Z",
-      "completed_at": null,
+      "completed_at": "2026-08-07T22:09:42Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 522,
