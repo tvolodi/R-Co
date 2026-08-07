@@ -221,3 +221,4 @@
 2026-08-07T04:40:47Z | COMPLETE | WF03-ISS-0132-20260807 | db306d41 | BACKEND-DEV | Step 03 PASS
 2026-08-07T04:51:00Z | COMPLETE | WF03-ISS-0132-20260807 | 66c23ed3 | DOC-UPDATER | PASS - CHANGELOG ISS-0132 (GH #427); no requirement status moved (all 26 mapped reqs already RELEASED); ISS-0132 RESOLVED, index consistent
 2026-08-07T04:58:58Z | FORWARD | WF03-ISS-0132-20260807 | 66c23ed3 | DOC-UPDATER | ISS-0207 / GH #528 filed + queued - TC-EXT-01-U08a flake (hardcoded port 18181, cross-thread header read); not caused by this branch
+2026-08-07T05:10:15Z | REBASE | WF03-ISS-0132-20260807 | 66c23ed3 | BACKEND-DEV | rebased onto 06b1e45; resolved store.zig conflict vs PR #527 partial fix (superseded: counter-only, malformed test JSON); revalidated 83/83, 939/1003, 0 leaks x3
