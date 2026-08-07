@@ -424,6 +424,19 @@
       "deferred_reason": null,
       "issue_number": 533,
       "labels": []
+    },
+    {
+      "issue_id": "ISS-0605",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/537",
+      "title": "test-env-verify C4 schema baseline: 5 tenants missing Postgres schemas",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-07T09:51:31Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
