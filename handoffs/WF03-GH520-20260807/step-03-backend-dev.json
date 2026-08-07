@@ -1,0 +1,39 @@
+{
+  "handoff_id": "88ac499d-bb01-4bac-a5d1-87773b1a42af",
+  "run_id": "WF03-GH520-20260807",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH520-20260807/step-03-backend-dev.json",
+  "created_at": "2026-08-07T22:31:57Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/gh520-backoff-schedule-deterministic-assertion.md",
+      "docs/issues/ISS-0186.json"
+    ]
+  },
+  "task": {
+    "description": "Implement the validated design at src/design/gh520-backoff-schedule-deterministic-assertion.md to fix flaky test TC-EXP-301-05 in tests/integration/effects_subsystem_test.zig (GH #520 / ISS-0186). This is a git-setup-already-done run (branch feature/WF03-GH520-20260807 exists and is checked out) -- do NOT run git-setup again, only implement + commit. Root cause: the test measured a wall-clock delta between two separate database reads around Queue.markRetry, but both reads run inside the SAME already-open transaction (TestHarness.init()'s conn.begin()), so PostgreSQL's NOW() is frozen and identical for both -- the actual flakiness came from execution-order/seed-state perturbation under concurrent load (which value the 'before' read captured), not clock jitter. Fix: read this designed exactly -- read the full design doc before starting, it has precise before/after code structure. Summary: replace the two-round-trip measurement with a single combined read after markRetry, comparing the computed delta against expected_backoff[i] with a ~1.0ms tolerance (pure float round-trip epsilon, not a timing budget). Test-only change -- no production code touched.",
+    "acceptance_criteria": [
+      "TC-EXP-301-05 asserts on the deterministic single-transaction property per the validated design",
+      "Tolerance is ~1.0ms (float round-trip epsilon), not a timing budget",
+      "zig build test-integration-svc (or equivalent scoped target covering effects_subsystem_test.zig) exits 0",
+      "TC-EXP-301-05 passes repeatedly under a loaded parallel run (run zig build test-integration at least 2-3 times to build confidence the original flake is gone)",
+      "No production code touched"
+    ],
+    "functions_to_call": [
+      "fn:zig-build-test"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
