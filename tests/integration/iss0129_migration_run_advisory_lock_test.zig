@@ -162,7 +162,8 @@ const ProvisionWorker = struct {
 
 // ---------------------------------------------------------------------------
 // RT-5 source-stability guard (called inline by RT-1's preamble and as a
-// standalone test).
+// standalone test). Also covers ISS-0130 RT-6's SET LOCAL search_path
+// prefix to detect drift on the secondary fix.
 // ---------------------------------------------------------------------------
 
 fn assertLockPrefixStable(allocator: std.mem.Allocator) !void {
@@ -176,6 +177,17 @@ fn assertLockPrefixStable(allocator: std.mem.Allocator) !void {
     if (std.mem.indexOf(u8, content, needle) == null) {
         std.debug.print("RT-5: lock prefix drift — {s} no longer contains {s}\n", .{ src_path, needle });
         return error.MissingLockPrefix;
+    }
+    // ISS-0130 / GH-423 source-stability: SET LOCAL search_path must
+    // appear in the per-migration transaction path. If it drifts
+    // (or is dropped), sequential idempotent re-provisioning on a
+    // pooled connection with stale session-level search_path will
+    // start surfacing C42P01 again (RT-6 catches this at runtime;
+    // this assertion catches the source drift first).
+    const local_needle = "SET LOCAL search_path TO {s},public";
+    if (std.mem.indexOf(u8, content, local_needle) == null) {
+        std.debug.print("RT-5: SET LOCAL search_path drift — {s} no longer contains {s}\n", .{ src_path, local_needle });
+        return error.MissingLocalSearchPath;
     }
 }
 
@@ -650,4 +662,146 @@ test "ISS-0129 RT-5: MIGRATIONS_LOCK_KEY_SQL prefix is stable in src/db/migratio
     const alloc = std.testing.allocator;
 
     try assertLockPrefixStable(alloc);
+}
+
+// ---------------------------------------------------------------------------
+// ISS-0130 RT-6: Sequential idempotent re-provisioning no longer
+// surfaces C42P01 "relation 'users' does not exist".
+//
+// The pre-fix failure mode was:
+//   1. RT-1/RT-2 provision tenant_a and tenant_b concurrently and succeed.
+//   2. After both pools' connections are returned to the pool, the
+//      session-level `SET search_path TO <tenant_a>,public` from
+//      tenant_a's provisioning is gone (next pooled checkout gets
+//      whatever search_path the connection last had, including
+//      potentially stale `search_path='public'` from before
+//      runForSchema's top-level SET).
+//   3. GBL-112 has dropped `public.users` and `public.user_roles`.
+//   4. A sequential re-run of provisionTenantSchema for tenant_a then
+//      for tenant_b re-acquires a connection with stale search_path,
+//      and migration 040's unqualified `CREATE TABLE users` lands in
+//      `public` (which doesn't exist) or fails on the cross-reference
+//      to `user_roles`.
+//   5. Error: `C42P01: relation "users" does not exist`.
+//
+// The fix is `SET LOCAL search_path TO <schema>,public` immediately
+// after every BEGIN inside runForSchema's per-migration transaction.
+// SET LOCAL is transaction-scoped and never leaks to the next pooled
+// caller regardless of what session-level state the connection carries.
+//
+// This test was previously called out as "out of scope for ISS-0129"
+// (see RT-1/RT-2 comments above) because the concurrent-path fix did
+// not address it. ISS-0130 addresses it directly via the SET LOCAL
+// change. RT-6 is the dedicated regression for that fix.
+// ---------------------------------------------------------------------------
+test "ISS-0130 RT-6: sequential idempotent re-provisioning does not surface C42P01" {
+    std.debug.print(">>> ENTERING RT-6 (ISS-0130)\n", .{});
+    const alloc = std.testing.allocator;
+
+    // Source-stability: if a future contributor drops the SET LOCAL
+    // search_path from the per-migration transaction, this test will
+    // start surfacing C42P01 again. The guard fails first with a clear
+    // message before any runtime symptom appears.
+    try assertLockPrefixStable(alloc);
+
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const tenant_a = try randomUuidStr(alloc);
+    defer alloc.free(tenant_a);
+    const tenant_b = try randomUuidStr(alloc);
+    defer alloc.free(tenant_b);
+
+    var buf_a: [80]u8 = undefined;
+    var buf_b: [80]u8 = undefined;
+    const schema_a = schemaName(tenant_a, &buf_a);
+    const schema_b = schemaName(tenant_b, &buf_b);
+
+    defer cleanupTenant(alloc, &pool, tenant_a, schema_a);
+    defer cleanupTenant(alloc, &pool, tenant_b, schema_b);
+
+    const dir = migrationsDir();
+
+    // Phase 1: provision both tenants concurrently (RT-1-style).
+    var fp_result_a = WorkerResult{};
+    var fp_result_b = WorkerResult{};
+
+    var fp_t1 = try std.Thread.spawn(.{}, ProvisionWorker.run, .{
+        alloc, &pool, tenant_a, dir, &fp_result_a,
+    });
+    var fp_t2 = try std.Thread.spawn(.{}, ProvisionWorker.run, .{
+        alloc, &pool, tenant_b, dir, &fp_result_b,
+    });
+    fp_t1.join();
+    fp_t2.join();
+
+    if (fp_result_a.err) |e| {
+        std.debug.print("RT-6 phase 1: tenant_a concurrent provisionTenantSchema failed: {}\n", .{e});
+        return error.ConcurrentProvisionFailedA;
+    }
+    if (fp_result_b.err) |e| {
+        std.debug.print("RT-6 phase 1: tenant_b concurrent provisionTenantSchema failed: {}\n", .{e});
+        return error.ConcurrentProvisionFailedB;
+    }
+
+    // Phase 2: SEQUENTIAL re-run on the SAME pool, mirroring the
+    // pre-fix failure path. With `SET LOCAL search_path` inside
+    // every per-migration transaction, the re-run sees the correct
+    // schema regardless of whatever session-level state the
+    // pooled connection happens to carry.
+    var result_a2 = WorkerResult{};
+    ProvisionWorker.run(alloc, &pool, tenant_a, dir, &result_a2);
+    if (result_a2.err) |e| {
+        std.debug.print("RT-6 phase 2: tenant_a SEQUENTIAL re-provision failed: {}\n", .{e});
+        return error.SequentialReprovisionFailedA;
+    }
+
+    var result_b2 = WorkerResult{};
+    ProvisionWorker.run(alloc, &pool, tenant_b, dir, &result_b2);
+    if (result_b2.err) |e| {
+        std.debug.print("RT-6 phase 2: tenant_b SEQUENTIAL re-provision failed: {}\n", .{e});
+        return error.SequentialReprovisionFailedB;
+    }
+
+    // Post-condition: both tenants still have a full migration ledger.
+    var count_a = try h.conn.query(
+        alloc,
+        "SELECT count(*) FROM public.schema_migrations WHERE schema_name = $1",
+        &[_][]const u8{schema_a},
+    );
+    defer count_a.deinit();
+    const count_a_val = count_a.rows[0][0] orelse return error.TestUnexpectedResult;
+    const n_a = try std.fmt.parseInt(i64, count_a_val, 10);
+    try std.testing.expect(n_a > 0);
+
+    var count_b = try h.conn.query(
+        alloc,
+        "SELECT count(*) FROM public.schema_migrations WHERE schema_name = $1",
+        &[_][]const u8{schema_b},
+    );
+    defer count_b.deinit();
+    const count_b_val = count_b.rows[0][0] orelse return error.TestUnexpectedResult;
+    const n_b = try std.fmt.parseInt(i64, count_b_val, 10);
+    try std.testing.expect(n_b > 0);
+
+    try std.testing.expectEqual(n_a, n_b);
+
+    // The migration count must NOT have grown between the concurrent
+    // pass and the sequential re-run — re-running provisionTenantSchema
+    // against an already-fully-provisioned schema is a no-op.
+    var ledger_final = try h.conn.query(
+        alloc,
+        "SELECT count(*) FROM public.schema_migrations WHERE schema_name IN ($1, $2)",
+        &[_][]const u8{ schema_a, schema_b },
+    );
+    defer ledger_final.deinit();
+    const ledger_final_val = ledger_final.rows[0][0] orelse return error.TestUnexpectedResult;
+    const ledger_n = try std.fmt.parseInt(i64, ledger_final_val, 10);
+    try std.testing.expectEqual(@as(i64, n_a + n_b), ledger_n);
 }
