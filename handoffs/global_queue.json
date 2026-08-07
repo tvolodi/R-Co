@@ -379,58 +379,6 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-521",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/521",
-      "title": "store.append nests a second pool.acquire",
-      "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T04:39:35Z",
-      "started_at": null,
-      "completed_at": null,
-      "run_id": null,
-      "deferred_reason": null
-    },
-    {
-      "issue_id": "ISS-520",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/520",
-      "title": "TC-EXP-301-05 asserts on measured wall-clock",
-      "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T04:39:35Z",
-      "started_at": null,
-      "completed_at": null,
-      "run_id": null,
-      "deferred_reason": null
-    },
-    {
-      "issue_id": "ISS-518",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/518",
-      "title": "45 business tables are duplicated",
-      "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T04:39:35Z",
-      "started_at": null,
-      "completed_at": null,
-      "run_id": null,
-      "deferred_reason": null
-    },
-    {
-      "issue_id": "ISS-517",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/517",
-      "title": "Remaining test-integration-svc failures",
-      "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T04:39:35Z",
-      "started_at": null,
-      "completed_at": null,
-      "run_id": null,
-      "deferred_reason": null
-    },
-    {
       "issue_id": "ISS-0206",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/526",
       "title": "store.zig rowToDefinition leaks on allocation failure - 4 sequential dupes, zero errdefer guards",
