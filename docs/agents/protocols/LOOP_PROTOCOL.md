@@ -12,9 +12,20 @@ agent → Done`) so the maintainer can read pipeline state without opening agent
 
 ## Purpose
 
-The loop drains **all open GitHub issues** at https://github.com/tvolodi/R-Co/issues —
-bugs, BLOCKERs, requirements gaps, and anything else that appears there. The loop runs
-until GitHub reports zero open issues.
+The loop drains **open GitHub issues** at https://github.com/tvolodi/R-Co/issues — bugs,
+BLOCKERs, and anything else that appears there — **except issues labeled `requirement`**.
+Those 166 (as of 2026-08-07) are from-scratch, never-implemented requirements; this loop
+runs WF-03 (Issue Resolving), which assumes the expected behaviour already exists — the
+wrong workflow for them (`ORCHESTRATOR.md`: *"if the feature has not been specified yet →
+WF-02"*). They are drained instead by the "Requirement batch loop mode" below, via
+`docs/requirements.yaml` and WF-02. Before this exclusion existed, `gh_claim.py`'s
+newest-number-first ordering meant a `requirement`-labeled issue could be — and, per a
+dry-run check, was about to be — claimed ahead of ordinary bugs simply for having a higher
+issue number, sending a from-scratch requirement through the wrong pipeline. See
+`docs/anti-patterns.md`.
+
+The loop runs until every non-`requirement` open GitHub issue is resolved (exit 2) or all
+remaining ones are locked by other workspaces (exit 3).
 
 `handoffs/global_queue.json` is a **lock registry only**. It records which workspace is
 currently processing which GitHub issue so two workspaces never work the same item
