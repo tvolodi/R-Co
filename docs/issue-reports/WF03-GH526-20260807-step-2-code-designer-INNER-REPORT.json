@@ -1,0 +1,32 @@
+{
+  "report_id": "WF03-GH526-20260807-step-2-code-designer-INNER-REPORT",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF03-GH526-20260807",
+  "step": "2",
+  "created_at": "2026-08-07T18:56:07Z",
+  "summary": "WF-03 Step 2 (CODE-DESIGNER) for ISS-0206 / GH #526 — produced the prose design artefact at src/design/iss0206-rowtodefinition-errdefer.md (Type E per templates/lego-catalog.md). The artefact specifies the in-file refactor of src/definition/store.zig rowToDefinition: introduce a parallel rowToDefinitionFromFields(allocator, *const RowFields, fallback) signature that is checkAllAllocationFailures-driveable; the existing DB-row rowToDefinition becomes a thin wrapper. Body sketch follows the proven parseGraphJson pattern at store.zig:1318-1421 (ISS-0132 / GH #427): each fallible result lands in a local guarded by its own errdefer BEFORE the next fallible statement runs; the struct literal is assembled LAST; a graph.deinit errdefer handles the parseGraphJson result regardless of which branch populated it. No public signature changes; no new error variants; no caller modifications. A new unit test file at tests/unit/iss0206_rowtodefinition_errdefer_test.zig is specified, wired into zig build test (not a narrow step) per the ISS-0150 / GH #466 lesson. Lint passed: BLOCKER=0 MAJOR=0 MINOR=2 (the 2 MINOR are linter over-matching the words 'id' and 'format' inside non-requirement-id prose; non-blocking). No implementation code touched. Ready for CODE-DESIGN-VALIDATOR (Step 2b).",
+  "files_created": [
+    "src/design/iss0206-rowtodefinition-errdefer.md"
+  ],
+  "files_modified": [],
+  "tests_run": [
+    {
+      "name": "python tools/lint_design_artefact.py src/design/iss0206-rowtodefinition-errdefer.md",
+      "status": "pass",
+      "detail": "BLOCKER=0 MAJOR=0 MINOR=2 — exit 0; design-only validation. The 2 MINOR findings (E060) are linter over-matching the words 'id' and 'format' in non-requirement-id prose lines; non-blocking per lint_design_artefact.py exit-code policy (exit 0 when no BLOCKER/MAJOR)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Two E060 MINOR findings from tools/lint_design_artefact.py: the linter's 'covers/covered/requirement[s]? :' regex over-matches the literal words 'id' and 'format' on two prose lines ('Sections covered:' and 'requirement-id format'). Both tokens do not match the requirement-id pattern but the linter does not distinguish. Non-blocking (lint exits 0)."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGN-VALIDATOR (Step 2b) for re-validation.",
+    "BACKEND-DEV (Step 3) implements the body per the §4.5 sketch and adds tests/unit/iss0206_rowtodefinition_errdefer_test.zig wired into build.zig.",
+    "TEST-RUNNER (Step 5) must run zig build test and confirm no DebugAllocator leak output for the new test target.",
+    "DOC-UPDATER (Step 7) updates CHANGELOG.md and marks ISS-0206 as RESOLVED via fn:update-issue."
+  ],
+  "blockers": []
+}
