@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0128 — event_store::append() InstanceNotFound race on pooled connections** ([GitHub #418](https://github.com/tvolodi/R-Co/issues/418))
+
+- **Root cause:** Pooled database connections retained session-level `search_path` from previous tenant queries, causing `instance_projections` lookups in `append()` to fail despite rows existing in the correct tenant schema.
+- **Fix:** Applied ISS-0130 pattern — transaction-scoped `SET LOCAL search_path TO <schema>,public` immediately after `BEGIN` in `src/event_store/store.zig` append path (lines 309-318).
+- **Verification:** TC-DB-03-01 now passes; previously failed with `StoreError.InstanceNotFound` at store.zig:337. Pattern proven stable in ISS-0130 (PR #531) across 172 integration tests with 0 regressions.
+- **Prevention:** Every event_store operation that queries tenant-scoped tables must set transaction-local search_path before the first query. Never rely on session-level search_path in pooled connection environments.
+
 **ISS-0132 — a leak signature that consumed 18 pipeline runs is closed at the class level: this repo now has allocation-failure coverage** ([GitHub #427](https://github.com/tvolodi/R-Co/issues/427))
 
 - **This ends a signature, not an incident.** The same DebugAllocator leak class recurred across **18 distinct pipeline runs** between 2026-05-28 and 2026-08-05. Each run patched the one allocation site that run happened to hit; none added the coverage that would find the *class*. The reason is structural: leaks on allocation-failure paths only surface when a run happens to trigger an OOM at exactly the right statement, so `zig build test-engine` passes clean while the defect is fully present — unit tests exercise happy paths. `std.testing.checkAllAllocationFailures` and `FailingAllocator` were used **nowhere in this repository**. That is what changed.
