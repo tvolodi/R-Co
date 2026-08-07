@@ -2039,6 +2039,15 @@
       ],
       "created_at": "2026-08-07T09:50:38Z",
       "resolved_at": "2026-08-07T12:27:52Z"
+    },
+    {
+      "issue_id": "ISS-0607",
+      "title": "pg.zig SCRAM-SHA-256 authentication failure blocks all integration tests",
+      "status": "QUEUED",
+      "severity": "BLOCKER",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/542",
+      "discovered_in": "WF03-GH537-20260807",
+      "discovered_at": "2026-08-07T12:35:00Z"
     }
   ]
 }
