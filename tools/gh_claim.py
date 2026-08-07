@@ -18,7 +18,12 @@ Usage:
   python3 tools/gh_claim.py [<workspace_id>]
 
   <workspace_id> defaults to "<hostname>-<pid>" when omitted.
-  Use a stable value (e.g. machine name) so logs clearly identify which workspace claimed.
+  For loop mode, pass BPM_WORKSPACE_ID from .env instead (see .env.example) — do NOT use
+  machine name alone. Two parallel checkouts of this repo on the same host share the same
+  hostname, so a hostname-derived workspace_id collides across workspaces and lets two of
+  them claim the same GitHub issue under an identical lock key (2026-08-07 GH-542 incident,
+  see docs/anti-patterns.md). BPM_WORKSPACE_ID is set by hand per checkout and is guaranteed
+  distinct.
 
 Printed JSON on exit 0:
   {
