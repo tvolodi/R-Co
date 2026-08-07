@@ -1,0 +1,25 @@
+{
+  "issue_id": "ISS-0206",
+  "title": "src/definition/store.zig rowToDefinition leaks on allocation failure \u2014 4 sequential dupes, zero errdefer guards",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/526",
+  "registered_at": "2026-08-07T04:40:47Z",
+  "registered_by": "BACKEND-DEV during WF03-ISS-0132-20260807 (incidental discovery)",
+  "related_to": [
+    "ISS-0132",
+    "ISS-0601-LEAK-001"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "scope": "Same leak class ISS-0132 addresses, at a site the ISS-0132 harness cannot reach.",
+  "symptom": "On any allocation failure partway through rowToDefinition, every dupe that already succeeded is leaked. The function has no errdefer guards at all.",
+  "location": "src/definition/store.zig:1433 rowToDefinition",
+  "root_cause_analysis": "rowToDefinition performs four sequential fallible allocations \u2014 `name` (line ~1452), `version` (~1453), `description` (~1457), and `stage` (~1481) \u2014 and then assembles them into a returned `Definition` struct. None of the four is protected by an errdefer. If `version`'s dupe fails, `name` leaks; if `stage`'s dupe fails, `name`, `version` and `description` all leak, along with the `graph` produced by the parseGraphJson call in between. This is structurally identical to PGJ-2/PGJ-3, the partial-construction leaks fixed in parseGraphJson under ISS-0132, but at a different function.\n\nIt was NOT fixed in the ISS-0132 run because it is out of that run's reach rather than out of its scope: rowToDefinition consumes `row: []?[]u8` (a pg.zig result row), so std.testing.checkAllAllocationFailures cannot drive it without a live DB row or a row-shaped fixture. ISS-0132's acceptance criterion 5 covers 'any further alloc site reached by these harnesses'; this one is not reached by them.\n\nBlast radius is wider than parseGraphJson's: rowToDefinition has 9 call sites (store.zig lines 294, 347, 688, 775, 862, 1067, 1205, 1511) covering create, get, activate, deprecate, archive and list paths. Note also that most call sites swallow its error with `catch` into a DefinitionError, so the leak is invisible at the boundary.",
+  "reproduction": "Not reachable by the existing pure-unit harness. Requires either (a) refactoring rowToDefinition to take a row-shaped fixture struct so checkAllAllocationFailures can drive it directly, or (b) an integration-layer allocation-failure harness that wraps a real query result.",
+  "acceptance_criteria": [
+    "rowToDefinition guards every one of its four dupes (plus the graph it obtains from parseGraphJson) with an errdefer, so no partially-constructed Definition can leak",
+    "An allocation-failure test exercises rowToDefinition \u2014 preferably by extracting the pure row-to-struct mapping behind a fixture-driven signature that std.testing.checkAllAllocationFailures can drive",
+    "The test fails against the unfixed function and passes after the fix",
+    "zig build test exits 0 with no DebugAllocator leak output"
+  ],
+  "notes": "Filed per CLAUDE.md's scope-boundary rule: a defect noticed while working, not blocking the current run's acceptance criteria, is filed and forwarded to the global queue to be fixed in its own run with its own branch and PR \u2014 not absorbed into the current branch."
+}

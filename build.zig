@@ -855,6 +855,32 @@ pub fn build(b: *std.Build) void {
     test_transition_step.dependOn(&run_transition_tests.step);
     test_engine_step.dependOn(&run_transition_tests.step);
 
+    // ISS-0132 / GH #427: src/definition/store.zig had ZERO test blocks and was
+    // reachable from no addTest root, so parseGraphJson's allocation-failure
+    // paths had never executed — GH #406 patched one leak there and the
+    // signature recurred. Same inert-file class as the transition wiring above.
+    // src/definition_store_test_root.zig is a refAllDecls shim at src/ (not
+    // src/definition/) to satisfy the module-root constraint; see its doc
+    // comment. The ISS-0132 tests it exposes are pure (no DB connection), so
+    // this target needs no BPM_TEST_DB_URL and is safe under `zig build test`.
+    const definition_store_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/definition_store_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_definition_store_tests = b.addRunArtifact(definition_store_tests);
+    const test_definition_store_step = b.step(
+        "test-definition-store",
+        "Run src/definition/store.zig in-file unit tests (ISS-0132 alloc-failure harness)",
+    );
+    test_definition_store_step.dependOn(&run_definition_store_tests.step);
+    test_engine_step.dependOn(&run_definition_store_tests.step);
+
     // ISS-0074: secrets/crypto.zig envelope-encryption unit tests (pure — no DB, no network)
     const secrets_crypto_mod = b.createModule(.{
         .root_source_file = b.path("src/secrets/crypto.zig"),
@@ -1179,6 +1205,12 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_tasks_store_tests.step);
     test_step.dependOn(&run_engine_tests.step);
     test_step.dependOn(&run_transition_tests.step);
+    // ISS-0132 / GH #427: attach the store.zig alloc-failure harness to the
+    // aggregate step, not only to its narrow `test-definition-store` step — an
+    // opt-in step nothing invokes means the tests never run, which is the exact
+    // defect (ISS-0150 / GH #466) that tools/lint_test_wiring.py guards, and the
+    // same inert-test class ISS-0132 itself exists to end.
+    test_step.dependOn(&run_definition_store_tests.step);
     test_step.dependOn(&run_api_tests.step);
     test_step.dependOn(&run_api08_auth_tests.step);
     test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);

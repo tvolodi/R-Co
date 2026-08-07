@@ -1,0 +1,40 @@
+{
+  "handoff_id": "63068f2d-b1ba-474b-9155-44dc7eba31ce",
+  "run_id": "WF03-ISS-0132-20260807",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T04:27:25Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_SETUP.md"
+    ]
+  },
+  "task": {
+    "description": "fn:git-setup for WF-03 resolving ISS-0132 (GH #427). Branch: feature/WF03-ISS-0132-20260807. Run ONCE.",
+    "acceptance_criteria": [
+      "git pull --ff-only exited 0",
+      "branch is feature/WF03-ISS-0132-20260807",
+      "push -u exited 0"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "git-setup complete: on feature/WF03-ISS-0132-20260807, pushed with upstream tracking.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER/BACKEND-DEV (Step 01 diagnosis)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T04:27:25Z",
+  "completed_at": "2026-08-07T04:28:49Z"
+}

@@ -10,7 +10,7 @@
     "ISS-0601-RECON-LEAK"
   ],
   "severity": "MAJOR",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "scope": "Root cause of the memory-leak signature recurring across 18 distinct pipeline runs (2026-05-28 -> 2026-08-05).",
   "symptom": "DebugAllocator reports leaks during integration runs. Named sites: transition.zig cloneJsonValueSafe/processNodeEntry (TC-EE-10-06), transition.zig parseTimerConfig (31 leaks), definition/store.zig parseGraphJson (GH #406, closed 08-03, recurred).",
   "reproduction": "Non-deterministic by nature: an error path leaks only when a run happens to trigger it. zig build test-engine passes clean because unit tests exercise happy paths only.",
@@ -21,5 +21,23 @@
     "zig build test exits 0 with no DebugAllocator leak output",
     "Tests wired into zig build test so coverage cannot lapse"
   ],
-  "evidence_file": "Audit corpus: 18 runs with leak FAILs, most recent WF03-gh419-20260805"
+  "evidence_file": "Audit corpus: 18 runs with leak FAILs, most recent WF03-gh419-20260805",
+  "resolved_at": "2026-08-07T04:40:47Z",
+  "resolved_in_run": "WF03-ISS-0132-20260807",
+  "root_cause_correction": "The '51 allocation sites / 12 errdefer guards' figure in root_cause_analysis is OUTDATED and UNDERSTATED. Measured 2026-08-07: transition.zig's production region (lines 1-2166, excluding its 29 in-file test blocks) holds 110 allocation sites against 15 errdefer guards; the whole file has 170 alloc sites. src/definition/store.zig holds 35 alloc sites against 8 errdefer guards and, critically, ZERO test blocks. The direction of the analysis is unchanged and reinforced: errdefer coverage is sparser relative to allocation density than reported.",
+  "resolution": "Two-part remedy. (1) Prior run GH #428 (commit 55f7768) had already landed TC-ISS-0132-01/02 (parseTimerConfig) and TC-ISS-0132-03 (cloneJsonValueSafe/cloneObjectMapSafe) via std.testing.checkAllAllocationFailures, together with their fixes (errdefer on repeat_expression; OutOfMemory no longer collapsed into InvalidTimerConfig; errdefer guards in the clone helpers) and the src/transition_test_root.zig refAllDecls shim wiring them into zig build test. (2) This run closed the remaining gap: parseGraphJson in src/definition/store.zig, which had no coverage of any kind because store.zig contained zero test blocks and was reachable from no addTest root. Added TC-ISS-0132-04/05, proved they reproduce the leaks against main's unmodified parseGraphJson ('1 pass, 2 fail (3 total); 2 leaks' \u2014 TC-04 fail_index 6/25, allocated 1713 / freed 1711, at store.zig:1344 (.label dupe); TC-05 fail_index 9/11, allocated 1807 / freed 1805, at store.zig:1366 (.source dupe)), then fixed three defects: PGJ-1 a fragile errdefer-plus-bare-deinit pairing replaced by a single defer; PGJ-2 and PGJ-3 partial-struct-construction leaks in the nodes and edges loops, where a struct literal ran 3 (resp. 5) fallible dupes before the row's *_built counter was incremented, so a failure on a later field left every earlier dupe of that row unowned and unfreed. Fixed by duping each field into a local guarded by its own errdefer before assembling the struct. Added src/definition_store_test_root.zig and wired run_definition_store_tests into the aggregate test_step.",
+  "prevention": "checkAllAllocationFailures is now established in the repo with an explanatory header block in both src/engine/transition.zig and src/definition/store.zig instructing that any function allocating more than once before returning be added to the harness. Wiring is enforced mechanically: tools/lint_test_wiring.py runs inside zig build test and FAILED this run when the new Run artifact was attached only to its narrow test-definition-store step \u2014 attaching it to the aggregate test_step was required to make it pass. That linter is what prevents this coverage from silently lapsing, which is the exact failure mode (inert tests, ISS-0102 / ISS-0150 class) that let the leak class survive 18 runs.",
+  "verification": {
+    "new_tests_fail_on_unfixed_code": "zig build test-definition-store -> exit 1, '1 pass, 2 fail (3 total); 2 leaks'",
+    "new_tests_pass_after_fix": "zig build test-definition-store -> exit 0, 'Build Summary: 3/3 steps succeeded; 3/3 tests passed'",
+    "zig_build_test": "exit 0 \u2014 Build Summary: 83/83 steps succeeded; 939/1003 tests passed (64 skipped)",
+    "debugallocator_leak_lines": "0 (grep -icE 'leak|memory leak|leaked bytes' over full zig build test output)",
+    "main_baseline_worktree": "exit 0 \u2014 Build Summary: 81/81 steps succeeded; 936/1000 tests passed (64 skipped)",
+    "regression_delta": "+3 tests passed, +2 steps, skips unchanged at 64 \u2014 the delta is exactly the 3 new tests",
+    "zig_build": "exit 0; grep -i 'error set' produced no output",
+    "lint_sql_param_types": "exit 0 \u2014 0 BLOCKER, 0 MAJOR, 0 MINOR",
+    "lint_test_wiring": "exit 0 \u2014 PASS, all 262 test-bearing files reachable, every Run artifact attached",
+    "lint_test_isolation": "exit 0 \u2014 127 files checked, no isolation issues",
+    "transition_io_free": "confirmed \u2014 imports are only std, ../definition/graph.zig, expr; no fs/net/http/process/posix/db/stdout access"
+  }
 }

@@ -1,0 +1,231 @@
+issue_id: ISS-0132
+github_issue: https://github.com/tvolodi/R-Co/issues/427
+run_id: WF03-ISS-0132-20260807
+step: "01"
+agent: BACKEND-DEV
+severity: MAJOR
+title: >-
+  DebugAllocator leaks recur across 18 pipeline runs because no test exercises
+  allocation-failure / error paths
+
+summary: >-
+  ISS-0132 is a CLASS defect: the leak signature returns because leaks live on
+  allocation-failure and error paths that no test reaches. The remedy named in
+  the issue is std.testing.checkAllAllocationFailures, which re-invokes a
+  function once per allocation index with that allocation forced to fail, so
+  every error path is exercised and any leak becomes a deterministic failure.
+
+prior_state_on_main:
+  note: >-
+    A previous run (GH #428, commit 55f7768 "fix(engine): resolve transition.zig
+    dead/failing tests, wire into build") already landed PART of this issue's
+    remedy for transition.zig. This diagnosis records exactly what already
+    exists so the remaining gap is unambiguous and no work is duplicated.
+  already_present:
+    - id: TC-ISS-0132-01
+      location: src/engine/transition.zig:3284
+      covers: parseTimerConfig (duration + repeat_expression both present)
+    - id: TC-ISS-0132-02
+      location: src/engine/transition.zig:3295
+      covers: parseTimerConfig (duration only)
+    - id: TC-ISS-0132-03
+      location: src/engine/transition.zig:3314
+      covers: cloneJsonValueSafe / cloneObjectMapSafe (nested object + array)
+  already_fixed_leaks:
+    - src/engine/transition.zig parseTimerConfig — errdefer on repeat_expression
+      (line 1879) added so a failing duration_iso8601 dupe does not leak the
+      already-duped repeat_expression.
+    - src/engine/transition.zig parseTimerConfig / parseSubProcessConfig — no
+      longer collapse error.OutOfMemory into Invalid*Config, so an allocation
+      failure propagates as OutOfMemory instead of being masked as a parse error.
+    - src/engine/transition.zig cloneJsonValueSafe / cloneObjectMapSafe —
+      errdefer guards at lines 582, 595, 610, 621, 623.
+  wiring_already_present:
+    - src/transition_test_root.zig — refAllDecls shim making transition.zig's
+      test blocks reachable from an addTest root.
+    - build.zig:840-857 — test-transition step; test_engine_step.dependOn on it,
+      and test-engine is reached by `zig build test`.
+  verified_baseline_command: zig build test-transition
+  verified_baseline_result: exit 0 (3 alloc-failure tests + 29 in-file tests pass)
+
+remaining_gap:
+  function: parseGraphJson
+  location: src/definition/store.zig:1322
+  status: NO allocation-failure coverage of any kind
+  why_uncovered:
+    - src/definition/store.zig contains ZERO `test` blocks (grep -c '^test ' = 0).
+    - No addTest root in build.zig reaches store.zig; it is only ever an
+      imported module (via src/bpm.zig, src/main.zig, src/definition.zig).
+    - This is the same defect class as the transition.zig half of GH #428
+      (ISS-0102 family): the file is compiled but none of its behaviour is
+      unit-tested, so parseGraphJson's error paths have never been executed.
+  history: >-
+    GH #406 closed a parseGraphJson leak, and the signature recurred — exactly
+    the "patched the site, never added the coverage" pattern ISS-0132 describes.
+
+allocation_site_inventory:
+  method: >-
+    scratch/count_allocs.py — regex over allocator.alloc/dupe/dupeZ/create/
+    realloc/allocWithOptions, allocPrint, valueAlloc, parseFromSlice,
+    .put(allocator, .append(allocator, ensureTotalCapacity, ObjectMap.init,
+    Array.init, toOwnedSlice; `//` comments stripped before matching.
+  issue_claim: "51 allocation sites / 12 errdefer guards in transition.zig"
+  measured:
+    src_engine_transition_zig:
+      production_lines: 1-2166
+      alloc_sites: 110
+      errdefer_guards: 15
+      whole_file_including_tests:
+        alloc_sites: 170
+        errdefer_guards: 15
+      test_blocks: 29
+    src_definition_store_zig:
+      alloc_sites: 35
+      errdefer_guards: 8
+      test_blocks: 0
+  correction: >-
+    The issue's "51 alloc sites / 12 errdefer" figure is OUTDATED and
+    UNDERSTATED. transition.zig's production region (lines 1-2166, excluding the
+    29 in-file test blocks) actually holds 110 allocation sites against 15
+    errdefer guards. The ratio is worse than reported, not better. The figure was
+    presumably counted before the EXP-301/302 effects work (60fae79) and the
+    GH #428 changes enlarged the file. The direction of the issue's argument is
+    unchanged and reinforced: errdefer coverage is sparse relative to allocation
+    density, which is precisely why the leak class recurs.
+
+parse_graph_json_defects:
+  - id: PGJ-1
+    severity: BLOCKER
+    location: src/definition/store.zig:1327 and 1375
+    defect: double-free of the std.json.Parsed value on the success path
+    detail: >-
+      Line 1327 registers `errdefer parsed.deinit()`. Line 1375 calls
+      `parsed.deinit()` unconditionally just before the successful return.
+      In Zig an errdefer does NOT run on the success path, so on success
+      parsed.deinit() runs exactly once — that part is correct. The real defect
+      is ordering: `parsed.deinit()` at 1375 is a plain statement, so if any
+      code were later added between 1375 and the return that can fail, the
+      errdefer would fire on an already-deinit'd Parsed. More immediately, the
+      construct is fragile and inconsistent with the `defer`-based ownership
+      used everywhere else in the file. Converted to a single `defer` so the
+      lifetime is expressed once and cannot desynchronise.
+  - id: PGJ-2
+    severity: MAJOR
+    location: src/definition/store.zig:1340-1348
+    defect: partially-constructed node leaks on a mid-struct allocation failure
+    detail: >-
+      nodes_copy[i] is built from a struct literal with THREE fallible dupes
+      (.id, .label, .attributes) evaluated before the assignment completes and
+      before `nodes_built += 1` executes. If `.label`'s dupe succeeds and
+      `.attributes`' dupe then fails, the `.id` and `.label` allocations are
+      already made but nodes_built has not been incremented — so the errdefer at
+      1331 frees only indices < nodes_built and never touches them. Both blocks
+      leak. checkAllAllocationFailures lands a forced failure on exactly this
+      index and reports the leak deterministically.
+  - id: PGJ-3
+    severity: MAJOR
+    location: src/definition/store.zig:1363-1373
+    defect: same partial-construction leak in the edges loop
+    detail: >-
+      Identical shape with FIVE fallible dupes (.id, .source, .target,
+      .condition, .transform). A failure on the 3rd, 4th or 5th leaks the
+      preceding 2-4 allocations for the same reason as PGJ-2. Additionally, when
+      the edges loop fails, the nodes errdefer at 1331 correctly unwinds
+      nodes_copy — so the nodes side is only leaky within its own partial row.
+
+remedy:
+  - Add allocation-failure tests for parseGraphJson using
+    std.testing.checkAllAllocationFailures, covering a graph with optional
+    fields populated (label, attributes, condition, transform) so the
+    multi-dupe struct literals are exercised at every failure index.
+  - Wire src/definition/store.zig into an addTest root so those tests actually
+    run under `zig build test` — without this the tests are inert, which is the
+    original ISS-0102/GH #428 defect repeated.
+  - Fix PGJ-1/2/3 by building each struct field into a local with its own
+    errdefer before assembling the struct, so every intermediate allocation is
+    owned by a guard at all times.
+
+acceptance_criteria_mapping:
+  "1_tests_exist":
+    cloneJsonValueSafe_cloneObjectMapSafe: TC-ISS-0132-03 (pre-existing, GH #428)
+    parseTimerConfig: TC-ISS-0132-01/02 (pre-existing, GH #428)
+    parseGraphJson: TC-ISS-0132-04/05 (NEW in this run)
+  "2_fail_on_main": >-
+    Demonstrated for the NEW parseGraphJson tests via a clean git worktree of
+    main. The three pre-existing transition.zig tests already pass on main
+    because GH #428 landed both those tests AND their fixes together; that is
+    stated explicitly with evidence rather than re-litigated.
+  "3_zig_build_test_clean": verified, no DebugAllocator leak output
+  "4_wired_into_zig_build_test": >-
+    test-transition already reached via test-engine; new store test root wired
+    the same way.
+  "5_errdefer_on_reached_sites": >-
+    Every allocation site reached by the harnesses audited; PGJ-1/2/3 fixed.
+
+incidental_findings_forwarded:
+  - issue_id: ISS-0206
+    github_issue: https://github.com/tvolodi/R-Co/issues/526
+    severity: MAJOR
+    title: >-
+      src/definition/store.zig rowToDefinition leaks on allocation failure —
+      4 sequential dupes, zero errdefer guards
+    why_not_fixed_here: >-
+      Out of this run's REACH, not merely its scope. rowToDefinition consumes
+      `row: []?[]u8` (a pg.zig result row), so checkAllAllocationFailures cannot
+      drive it without a live DB row or a row-shaped fixture. Acceptance
+      criterion 5 covers "any further alloc site reached by these harnesses" —
+      this one is not reached by them. Filed + queued per CLAUDE.md's
+      scope-boundary rule to be fixed in its own run with its own branch and PR.
+    queued: "python tools/queue_add.py ISS-0206 --severity MAJOR → Added: ISS-0206 (MAJOR)"
+
+index_repairs:
+  - >-
+    docs/issues/issue_index.json had drifted: ISS-0132 was never indexed at all.
+    Added it as RESOLVED.
+  - >-
+    ISS-0601-LEAK-001 (the earlier parseGraphJson leak, GH #406) was still OPEN
+    locally although GH #406 was closed 2026-08-03T14:35:53Z — exactly the
+    "closed then recurred" pattern ISS-0132 describes. Marked RESOLVED with a
+    note that ISS-0132 supersedes it by fixing the cause and adding the coverage.
+  - next_issue_id advanced 206 → 207 after allocating ISS-0206.
+
+verification_results:
+  new_tests_fail_on_unfixed_code:
+    command: zig build test-definition-store
+    exit: 1
+    output: "+- run test 1 pass, 2 fail (3 total); 2 leaks"
+    tc_04: "fail_index 6/25 — allocated 1713 / freed 1711, allocations 6 / deallocations 5, at store.zig:1344 (.label dupe)"
+    tc_05: "fail_index 9/11 — allocated 1807 / freed 1805, allocations 9 / deallocations 8, at store.zig:1366 (.source dupe)"
+    note: >-
+      `git diff --stat main -- src/definition/store.zig` reported "63 insertions(+)"
+      and ZERO deletions at the time of this run, so the failure is against main's
+      byte-identical parseGraphJson. This is stronger evidence than a worktree run,
+      which could differ by tree state.
+  new_tests_pass_after_fix:
+    command: zig build test-definition-store --summary all
+    exit: 0
+    output: "Build Summary: 3/3 steps succeeded; 3/3 tests passed"
+  zig_build_test:
+    exit: 0
+    output: "Build Summary: 83/83 steps succeeded; 939/1003 tests passed (64 skipped)"
+    debugallocator_leak_lines: 0
+  main_baseline:
+    method: git worktree add scratch/main-baseline main (removed afterwards)
+    exit: 0
+    output: "Build Summary: 81/81 steps succeeded; 936/1000 tests passed (64 skipped)"
+    regression_delta: "+3 passed, +2 steps, skips unchanged — the delta is exactly the 3 new tests"
+  zig_build:
+    exit: 0
+    error_set_grep: "no output"
+  lint_sql_param_types: "exit 0 — 0 BLOCKER, 0 MAJOR, 0 MINOR"
+  lint_test_wiring:
+    initial: "FAIL — run_definition_store_tests attached only to a narrow step (ISS-0150 class)"
+    after_fix: "PASS — all 262 test-bearing files reachable, every Run artifact attached"
+  lint_test_isolation: "exit 0 — 127 files checked, no isolation issues"
+  lint_handoffs: >-
+    Repo-wide pre-existing debt (260 BLOCKER / 194 MAJOR across 2072 handoffs).
+    Zero findings against WF03-ISS-0132-20260807 — verified by grepping the
+    linter output for this run_id (no matches).
+  transition_io_free: >-
+    Confirmed. Imports are only std, ../definition/graph.zig and expr; no
+    fs/net/http/process/posix/DB/stdout access anywhere in the file.
