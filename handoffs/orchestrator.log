@@ -191,3 +191,4 @@
 2026-08-07T00:31:35Z | COMPLETE | WF03-ISS-0170-20260807 | 2b2789b2 | BACKEND-DEV | Step 00 git-setup PASS — branch feature/WF03-ISS-0170-20260807 pushed
 2026-08-07T00:33:40Z | COMPLETE | WF03-ISS-0170-20260807 | 93845cbc | BACKEND-DEV | Step 01 diagnosis PASS — 2 of 4 criteria pre-satisfied by 9a2b45c; D1-D4 close the rest
 2026-08-07T00:37:47Z | COMPLETE | WF03-ISS-0170-20260807 | a623116e | BACKEND-DEV | Step 03 implement PASS — diagnostic outage pre-flight; all 4 ISS-0170 criteria verified
+2026-08-07T00:43:51Z | COMPLETE | WF03-ISS-0170-20260807 | 8d123862 | DOC-UPDATER | Step 07 PASS - CHANGELOG + ISS-0170 RESOLVED (GH #497); no requirement maps (CI infra)
