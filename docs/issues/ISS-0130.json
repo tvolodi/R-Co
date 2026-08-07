@@ -1,7 +1,7 @@
 {
   "iss_id": "ISS-0130",
   "title": "Concurrent provisionTenantSchema races on stale search_path \u2192 C42P01 \"relation X does not exist\" (post-GBL-112)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "migration / connection-pool-state-race",
   "reporter": "TEST-DESIGNER (WF03-gh419-20260805)",
@@ -13,10 +13,10 @@
     "migrations/040_tnt03_user_roles.sql",
     "migrations/GBL-112_tnt01_drop_legacy_public_business_tables.sql",
     "src/db/migrations.zig",
-    "tests/integration/iss0129_migration_run_advisory_lock_test.zig (RT-1, RT-2)"
+    "tests/integration/iss0129_migration_run_advisory_lock_test.zig (RT-1, RT-2, RT-6)"
   ],
   "created_at": "2026-08-05T10:17:01Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-07T05:22:24Z",
   "notes": "Discovered while implementing the regression test for ISS-0129 (C40P01 deadlock fix). After GBL-112 dropped public.users/public.user_roles, migration 008's CREATE TABLE IF NOT EXISTS users races against a pool connection whose search_path is stale. Tests RT-1 / RT-2 in tests/integration/iss0129_migration_run_advisory_lock_test.zig intermittently fail with C42P01 'relation users does not exist' / 'relation user_roles does not exist' during the FIRST concurrent pass, even though the underlying lock fix (Migrations.runForSchema pg_advisory_xact_lock) is verified correct by 172-test integration suite run with zero C40P01 deadlocks. The lock serializes concurrent migrate steps correctly; the C42P01 is a separate pool-state race. Out of scope for ISS-0129 \u2014 the original deadlock is fixed.",
   "root_cause": "Pool connection reused after a prior transaction commits. The tenant schema's search_path was set via SET search_path TO <schema>, public (session-level), but when a SECOND pool.acquire() returns a connection that last served a public-schema migration (search_path=public), the unqualified CREATE TABLE users lands in public \u2014 which doesn't exist for new tenants after GBL-112 dropped it. Migration 008 then fails because migration 040 references users/user_roles BEFORE its CREATE TABLE. Fix options: (a) schema-qualify the CREATE TABLE in 008/017/040 (tenant_<uuid>.users), (b) force SET LOCAL search_path inside the migration runner before each simpleQuery call, (c) force pool reset between connections.",
   "repro_steps": [
@@ -25,7 +25,7 @@
     "3. RT-1 / RT-2 fail intermittently with C42P01 'relation users does not exist'"
   ],
   "candidate_resolution": "Schema-qualify the CREATE TABLE statements in migrations 008, 017, and 040 to use the current schema name (e.g. CREATE TABLE tenant_<uuid>.users). Alternatively, force SET LOCAL search_path TO <schema>, public at the start of each per-migration transaction in Migrations.runForSchema. Verify RT-1/RT-2 in iss0129 regression suite pass deterministically.",
-  "resolution": null,
+  "resolution": "Fixed via the systemic runner-level hardening (candidate option b), not migration-file patching: `SET LOCAL search_path TO <schema>,public` is now re-asserted as the first statement immediately after BEGIN inside Migrations.runForSchema's per-migration transaction (src/db/migrations.zig), in addition to the existing session-level SET at function entry. SET LOCAL is strictly transaction-scoped and cannot leak past COMMIT/ROLLBACK, so every migration's DDL/DML now executes under the correct search_path regardless of the pooled connection's prior session-level state. Landed in commit 1d388ba (PR #531, GH #423) on 2026-08-07, which also added a dedicated regression test (ISS-0130 RT-6 in tests/integration/iss0129_migration_run_advisory_lock_test.zig) exercising the exact sequential-reprovisioning-after-concurrent-pass scenario the original RT-1/RT-2 comments called out as untested, plus an RT-5 source-stability assertion for the SET LOCAL string. Independently verified in run WF03-ISS-0130-20260807 (docs/issue-reports/ISS-0130-diagnosis.yaml): could not empirically reproduce the original C42P01 after 40 repro attempts pre-fix (likely narrowed by the concurrently-merged ISS-0131/GH #424 provisionTenantSchema session-lock fix), and confirmed 0 regressions post-fix via `zig build test` producing byte-identical results (918/1003 passing, 21 pre-existing unrelated failures -- see ISS-0209) on both the feature branch and a clean origin/main worktree. This ISS file's status/resolved_at were left stale (OPEN/null) by the resolving run despite handoffs/global_queue.json and the GitHub PR both showing RESOLVED/merged; corrected here as bookkeeping cleanup, no code change.",
   "files_to_change": [
     "migrations/008_tnt01_tenant_tables.sql",
     "migrations/017_tnt01_tenant_tables_more.sql",

@@ -1,0 +1,37 @@
+{
+  "iss_id": "ISS-0209",
+  "title": "test_api08_auth.zig's tenant_default recovery path DROP SCHEMA CASCADE races concurrent zig build test binaries, causing widespread process_definitions/users/api_tokens C42P01 failures",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "test-infrastructure / shared-schema-race",
+  "reporter": "BACKEND-DEV (WF03-ISS-0130-20260807, Step 03 regression verification for ISS-0130/GH #423)",
+  "run_id": "WF03-ISS-0130-20260807",
+  "affected_areas": [
+    "tests/unit/test_api08_auth.zig",
+    "tests/unit/definition_retrieval_test.zig (collateral victim)"
+  ],
+  "created_at": "2026-08-07T06:39:14Z",
+  "resolved_at": null,
+  "notes": "Discovered while running the mandatory `zig build test --summary all` regression comparison for ISS-0130 (GH #423). Reproduced identically (byte-for-byte same 21 failing test names) on THREE separate runs: twice on the ISS-0130 feature branch and once on a clean `origin/main` worktree baseline with no ISS-0130-related changes at all -- proving this is 100% pre-existing on main and completely unrelated to the search_path/SET LOCAL fix. Deterministic, not flaky: same failure set across all 3 runs (918/1003 passing, 21 failing, every time).",
+  "root_cause": "tests/unit/test_api08_auth.zig's ensureTenantDefaultSchema() helper (lines 62-96) calls provisionTenantSchema() for tenant_default, and on ANY MigrationFailed error (which can be caused by transient contention with another concurrently-running test binary in the same `zig build test` graph -- not just genuine corruption) falls back to an unconditional `DROP SCHEMA IF EXISTS tenant_default CASCADE` (line 78) followed by re-provisioning. `zig build test` runs many binaries concurrently by default (this is the aggregate 'all unit tests' step covering ~80+ compile+run steps), and several other files (including tests/integration/helpers.zig's TestHarness.init() and other tests/unit/*.zig files) also provision or depend on the SAME shared tenant_default schema existing. When test_api08_auth's recovery path fires mid-run, it destroys tenant_default -- and every table in it (process_definitions, users, api_tokens, user_roles, etc.) -- out from under any other binary that is concurrently relying on that schema already being provisioned, producing C42P01 'relation X does not exist' in whichever sibling binary happens to query it in that window. definition_retrieval_test.zig (tests/unit/, also DB-backed, also depends on tenant_default's process_definitions table) is the most visible collateral victim, but the underlying defect is entirely inside test_api08_auth.zig's destructive recovery path, not in definition_retrieval_test.zig itself (which was already hardened for a DIFFERENT concurrency issue in ISS-0141 / GH #445 -- unique fixture names -- and that fix remains correct; this is a new, different failure mode: the whole schema disappearing, not a fixture collision).",
+  "repro_steps": [
+    "1. zig build test --summary all (fresh or shared BPM_TEST_DB_URL, either works)",
+    "2. Observe Build Summary: 918/1003 tests passed, 21 failed",
+    "3. All 21 failures are in definition_retrieval_test.zig (TC-PD-07-*) and test_api08_auth.zig (TC-IDN-01-06, TC-IDN-04-04a/b, TC-IDN-04-05a/b), each showing C42P01 on process_definitions/users/api_tokens/user_roles inside the tenant_default schema",
+    "4. Reproduces identically on a clean origin/main worktree with zero other changes"
+  ],
+  "candidate_resolution": "Either (a) make ensureTenantDefaultSchema's recovery path serialize against other concurrent provisioners of tenant_default via the existing pg_advisory_lock keyed by tenant_id (already added for ISS-0131 in provisionTenantSchema, but this DROP SCHEMA happens OUTSIDE that lock's critical section, after provisionTenantSchema has already returned an error and released its own lock), or (b) stop treating a generic MigrationFailed as sufficient evidence of corruption warranting a destructive DROP -- distinguish 'this schema is genuinely broken' from 'a concurrent caller is mid-provisioning it and I raced them', e.g. by re-checking migrations_applied_at IS NOT NULL before concluding a DROP is warranted, or (c) move test_api08_auth.zig's DB-touching tests out of tests/unit/ (anti-patterns.md already documents DB-backed tests in tests/unit/ as a violation) and into tests/integration/ where they can use the shared TestHarness/advisory-lock machinery instead of a bespoke recovery path.",
+  "acceptance_criteria": [
+    "AC-1: zig build test passes 100% deterministically across 5 consecutive runs with no process_definitions/users/api_tokens C42P01 failures",
+    "AC-2: The destructive DROP SCHEMA recovery path in test_api08_auth.zig either no longer exists, or is provably safe under concurrent zig build test execution (e.g. via an advisory lock held across the whole check-then-drop-then-reprovision sequence)"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/533",
+  "prevention": [
+    "A recovery path that destroys shared state on error should hold whatever lock protects that shared state for its ENTIRE check-then-act sequence, not just for the initial provisioning attempt that failed.",
+    "DB-backed tests belong in tests/integration/, not tests/unit/, specifically so they get the shared TestHarness/advisory-lock protections that tests/unit/ files (each rolling their own ad-hoc setup) do not have."
+  ],
+  "prior_iss_search": "Related but distinct: ISS-0141/GH #445 (definition_retrieval_test.zig fixture-name collisions, already RESOLVED and NOT reintroduced -- current failures are a different symptom, the whole schema disappearing, not a fixture unique-constraint collision) and GH #457/#477 (other tenant_default provisioning races, already CLOSED, different specific mechanisms). No prior ISS covers test_api08_auth.zig's own DROP SCHEMA recovery path racing concurrent binaries.",
+  "diagnoser": "BACKEND-DEV",
+  "diagnoser_run_id": "WF03-ISS-0130-20260807",
+  "diagnosed_at": "2026-08-07T06:39:14Z"
+}

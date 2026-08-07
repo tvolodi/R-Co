@@ -1,0 +1,57 @@
+{
+  "handoff_id": "c80e113e-fcc8-4d87-a22d-69edfb647911",
+  "run_id": "WF03-ISS-0130-20260807",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T06:08:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "045f7033-2bd2-40f0-b48a-de7afeea46f6"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0130-diagnosis.yaml",
+      "src/db/migrations.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement the systemic SET LOCAL search_path fix in Migrations.runForSchema per the diagnosis chosen_fix, verify RT-1/RT-2/RT-6 pass deterministically (5/5), verify no regression in zig build/test/migrate, and resolve bookkeeping.",
+    "acceptance_criteria": [
+      "RT-1/RT-2 (and RT-6 once merged) pass deterministically 5/5 consecutive runs",
+      "Existing integration test suite has no regression vs main baseline",
+      "No regression in already-passing migrations",
+      "zig build exits 0 with no error-set output",
+      "lint_sql_param_types.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "While independently implementing the SET LOCAL search_path fix in src/db/migrations.zig, discovered that a DIFFERENT concurrent workspace/run had already implemented and merged the identical fix to origin/main (commit 1d388ba, PR #531) -- same mechanism, same placement, plus a dedicated RT-6 regression test this run did not have. Discarded this run's own redundant edit and rebased the feature branch onto origin/main to inherit the merged fix rather than duplicate or conflict with it. Verified the merged fix meets all acceptance criteria: RT-1/RT-2/RT-6 pass 5/5 consecutive runs on a freshly created+migrated database, plus 5/5 on the shared DB and 12/12 concurrent-OS-process stress runs (22/22 total post-fix, 0 failures). zig build exits 0, no \"error set\" output. lint_sql_param_types.py exits 0. zig build migrate exits 0 against both the long-lived dev DB and a brand-new blank database (108/108 migrations applied). zig build test --summary all produces byte-identical results (918/1003 passing, 21 pre-existing failures) across this branch and a clean origin/main worktree baseline, proving zero regressions. Additionally: (1) fixed ISS-0208/GH #532, a pre-existing compile-blocking error in tests/integration/effects_subsystem_test.zig (botched merge from an unrelated PR) that was preventing any zig build test-integration baseline from being obtained -- fixed inline per Unblock-Everything since it was a genuine blocker; (2) discovered and filed ISS-0209/GH #533 (tests/unit/test_api08_auth.zig's tenant_default DROP SCHEMA CASCADE recovery path races other concurrent zig build test binaries, causing 21 deterministic C42P01 failures) -- confirmed 100% pre-existing on main via the baseline worktree comparison, filed and forwarded to the global queue, NOT fixed here (non-blocking, distinct root cause, out of scope); (3) corrected stale bookkeeping on docs/issues/ISS-0130.json (was OPEN/resolved_at=null despite the fix being merged and handoffs/global_queue.json showing RESOLVED) and closed GitHub issue #423, which the resolving workspace had left open.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0130-diagnosis.yaml",
+      "docs/issues/ISS-0130.json",
+      "docs/issues/ISS-0208.json",
+      "docs/issues/ISS-0209.json",
+      "tests/integration/effects_subsystem_test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0209/GH #533 forwarded to global queue: test_api08_auth.zig tenant_default DROP SCHEMA race, 21 deterministic pre-existing failures on main, unrelated to this fix."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 7) then Step Final git-merge"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T06:08:30Z",
+  "completed_at": "2026-08-07T06:42:14Z"
+}

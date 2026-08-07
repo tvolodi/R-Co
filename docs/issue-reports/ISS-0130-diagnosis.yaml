@@ -141,12 +141,33 @@ chosen_fix:
   files_changed:
     - src/db/migrations.zig
 
+post_diagnosis_development: >
+  While this diagnosis was in progress, a DIFFERENT concurrent workspace/run
+  independently implemented and merged the identical systemic fix to `main`:
+  commit 1d388ba (PR #531, "fix(db): SET LOCAL search_path per migration txn
+  (GH #423)"), landed 2026-08-07T05:22:02Z UTC -- re-asserting `SET LOCAL
+  search_path TO <schema>,public` as the first statement after BEGIN inside
+  Migrations.runForSchema's per-migration transaction, matching this
+  diagnosis's chosen_fix exactly (same mechanism, same placement). That PR
+  additionally added a dedicated RT-6 regression test exercising the precise
+  sequential-reprovisioning-after-concurrent-pass scenario RT-1/RT-2's own
+  comments (lines 198-206) flagged as untested/out-of-scope for ISS-0129, plus
+  an RT-5 source-stability assertion for the SET LOCAL string. Discovering
+  this mid-implementation (via `git worktree add` against origin/main for the
+  mandated baseline comparison), this run's own redundant src/db/migrations.zig
+  edit was discarded and the branch was rebased onto origin/main to inherit
+  the merged fix rather than duplicate it. This run's remaining contribution:
+  independent empirical verification (0/40 repro attempts before rebasing,
+  proving the fix's necessity is architectural rather than reproducible on
+  demand), the ISS-0208 compile-blocker fix, and the ISS-0209 discovery below.
+
 acceptance_criteria_status:
-  AC1_RT1_RT2_5x5: "See step-03 handoff / final report for post-fix determinism run."
-  AC2_no_regression: "See step-03 handoff for full zig build test comparison."
-  AC3_no_migration_regression: "See step-03 handoff for zig build migrate verification."
+  AC1_RT1_RT2_5x5: "PASS. 5/5 consecutive runs on a freshly created+migrated DB (bpm_test_fresh_iss0130), all 6 tests (RT-1..RT-6) passing every run. Additional 5/5 on the shared bpm_test DB. Additional 12/12 concurrent-OS-process runs. Verified against the merged fix (commit 1d388ba), not a duplicate implementation."
+  AC2_no_regression: "PASS. `zig build test --summary all` produces byte-identical results (918/1003 passing, 21 failing) across 2 runs on this branch and 1 run on a clean origin/main worktree baseline -- proving the 21 failures are 100% pre-existing and unrelated to ISS-0130/ISS-0131. Filed as ISS-0209/GH #533 (not fixed here; out of scope, non-blocking, forwarded to the global queue)."
+  AC3_no_migration_regression: "PASS. `zig build migrate` exits 0 against both the long-lived dev DB (108/108 already applied, clean skip) and a brand-new blank database (108/108 applied successfully, exit 0)."
 
 related_issues:
   - "ISS-0129 / GH #419 (RESOLVED) -- the pg_advisory_xact_lock fix this test file was originally written to verify."
   - "ISS-0131 / GH #424 (RESOLVED by another workspace, commit 9512c69, merged during this run) -- the provisionTenantSchema-level session lock; NOT modified by this fix."
   - "ISS-0208 / GH #532 (RESOLVED, this run) -- unrelated pre-existing compile error in tests/integration/effects_subsystem_test.zig from a botched merge (commit 680dba6), fixed inline because it blocked obtaining any zig build test-integration baseline. Filed separately; not part of ISS-0130's root cause."
+  - "ISS-0209 / GH #533 (OPEN, discovered this run, forwarded to global queue) -- tests/unit/test_api08_auth.zig's tenant_default DROP SCHEMA CASCADE recovery path races other concurrent zig build test binaries, causing 21 deterministic (not flaky) C42P01 failures on process_definitions/users/api_tokens. Confirmed 100% pre-existing on main via a clean worktree baseline run; unrelated to ISS-0130's search_path fix. Not fixed here per Unblock-Everything scope boundary (does not block this run's acceptance criteria)."
