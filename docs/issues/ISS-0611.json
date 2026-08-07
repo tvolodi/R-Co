@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0611",
+  "title": "gh_claim.py had no requirement-label filter, could route from-scratch requirements through the wrong workflow (WF-03)",
+  "severity": "MAJOR",
+  "discovered_by": "ORCH",
+  "discovered_at": "2026-08-07T17:00:00Z",
+  "discovered_in": "User question during post-hoc review of the requirement-batch loop mode built earlier this session (\"Do simple loop treat the issue list in the same way, or it filter list by some label?\")",
+  "symptom": "tools/gh_claim.py (the GitHub-issue loop, triggered by 'start loop') queried gh issue list --state open with no label filtering -- every open issue, requirement-labeled or not, was one undifferentiated pool sorted newest-number-first. Once the requirement-batch loop (WF-02, docs/requirements.yaml) was built for the 166 label:requirement issues, this became a live routing hazard: issue #331 (BRW-SEC-1) was the single highest-numbered open issue in the whole repository. The very next 'start loop' run would have claimed it and routed it through WF-03 (Issue Resolving) -- confirmed live via a dry-run gh_claim.py invocation before this fix, which returned #528 (an ordinary bug) only because #331-#325 etc. had not yet been excluded at the time of that specific test run's data snapshot, but tracing gh_claim.py's own sort order confirmed #331 was next in line on any run made before this fix.",
+  "root_cause": "Two loops were built to answer two different questions (bugs via WF-03, requirements via WF-02) but shared one undifferentiated data source (all open GitHub issues) with no label-based boundary drawn between them at the point the second loop was added.",
+  "impact": "A from-scratch, never-implemented requirement issue claimed via the wrong loop would be diagnosed by ISSUE-FIXER as if the expected behaviour already existed in a requirements spec (WF-03's premise), when in fact the requirement itself needed CODE-DESIGNER + BACKEND-DEV work from scratch (WF-02's premise) -- producing either a confused/incorrect ISSUE-FIXER diagnosis or, if caught, a redundant loop back to the requirement-batch loop after wasted WF-03 steps.",
+  "evidence": "Live dry-run of gh_claim.py before the fix confirmed BRW-SEC-1 (#331) was the highest-numbered open issue and would sort first. Post-fix dry-run confirmed 245 open issues -> 79 claimable by the GitHub-issue loop with zero label:requirement issues among them, highest claimable now #550 (a genuine bug).",
+  "fix_target": "Added a label:requirement exclusion filter to gh_claim.py._fetch_open_issues(). Updated its module docstring and docs/agents/protocols/LOOP_PROTOCOL.md's Purpose section (previously stated the loop drains 'all open GitHub issues... requirements gaps, and anything else' -- now factually corrected to state the exclusion and why).",
+  "related_issues": [
+    "ISS-0607/GH-542, ISS-0609/GH-548, ISS-0610/GH-550 -- the same loop-mode hardening session this was discovered during",
+    "The requirement-batch loop mode itself (no single ISS/GH number -- delivered across PR #552 and #553) is the counterpart this filter defers to"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/554",
+  "github_issue_collision_checked": true,
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-07T17:05:00Z",
+  "resolved_in": [
+    "tools/gh_claim.py",
+    "docs/agents/protocols/LOOP_PROTOCOL.md"
+  ],
+  "resolution": "gh_claim.py._fetch_open_issues() now filters out any issue whose labels include 'requirement' before sorting/returning candidates. Verified via direct import test: 245 open issues reduce to 79 claimable, 0 requirement-labeled issues remain, highest-numbered claimable issue changed from #331 (BRW-SEC-1) to #550 (a genuine bug). Full gh_claim.py dry-run confirmed it correctly skips already-resolved issues (#550) and claims a real bug (#528) without ever surfacing a requirement issue; test claim discarded (local-only, never pushed) before commit."
+}

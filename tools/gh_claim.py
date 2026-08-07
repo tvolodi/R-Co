@@ -2,7 +2,8 @@
 """
 gh_claim.py — claim the newest open GitHub issue not currently being processed.
 
-SOURCE OF TRUTH: https://github.com/tvolodi/R-Co/issues  (open issues, sorted newest first)
+SOURCE OF TRUTH: https://github.com/tvolodi/R-Co/issues  (open issues, sorted newest first,
+                 EXCLUDING label:requirement — see tools/reqctl_batch_claim.py for those)
 LOCK REGISTRY:   handoffs/global_queue.json               (IN_PROGRESS items = locked)
 
 The lock registry is NOT a backlog — it only records what is currently being worked on.
@@ -129,8 +130,26 @@ def _write_queue(data: dict) -> None:
         f.write("\n")
 
 
+REQUIREMENT_LABEL = "requirement"
+
+
 def _fetch_open_issues() -> list:
-    """Return all open GitHub issues sorted newest first (highest number first)."""
+    """Return all open GitHub issues sorted newest first (highest number first),
+    excluding anything labeled 'requirement'.
+
+    Requirement-labeled issues (166 as of 2026-08-07) are handled exclusively
+    by the requirement-batch loop (reqctl_batch_claim.py / LOOP_PROTOCOL.md
+    "Requirement batch loop mode"), which drains them via WF-02 (Requirement
+    Implementation) in dependency order from docs/requirements.yaml. This
+    loop runs WF-03 (Issue Resolving), the wrong workflow for a from-scratch,
+    never-implemented requirement — ORCHESTRATOR.md's own rule is "if the
+    feature has not been specified yet -> WF-02." Before this filter existed,
+    gh_claim.py's newest-number-first ordering meant issue #331 (BRW-SEC-1,
+    the single highest-numbered open issue at the time) would have been the
+    very next thing claimed by a plain "start loop" run, sending a
+    from-scratch requirement through the wrong pipeline. See
+    docs/anti-patterns.md.
+    """
     result = subprocess.run(
         [
             "gh", "issue", "list",
@@ -145,6 +164,10 @@ def _fetch_open_issues() -> list:
     if result.returncode != 0:
         raise RuntimeError(f"gh issue list failed:\n{result.stderr.strip()}")
     issues = json.loads(result.stdout)
+    issues = [
+        i for i in issues
+        if REQUIREMENT_LABEL not in {lbl["name"] for lbl in i.get("labels", [])}
+    ]
     issues.sort(key=lambda x: x["number"], reverse=True)  # newest = highest number
     return issues
 
