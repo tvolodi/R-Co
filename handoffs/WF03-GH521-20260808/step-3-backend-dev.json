@@ -1,0 +1,51 @@
+{
+  "handoff_id": "f8e6d3a1-1234-4567-89ab-cdef01234567",
+  "run_id": "WF03-GH521-20260808",
+  "workflow_id": "WF-03",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH521-20260808/step-3-backend-dev.json",
+  "created_at": "2026-08-07T21:50:00Z",
+  "started_at": "2026-08-07T21:53:30Z",
+  "completed_at": "2026-08-07T21:57:06Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 3 \u2014 BACKEND-DEV Fix Implementation",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "8d76fae7-4587-404c-8919-34ee91e8bda2"
+    ],
+    "artifacts_in": [
+      "src/design/iss0187-store-append-lease-discipline.md",
+      "docs/issues/ISS-0187.json"
+    ],
+    "issue_id": "GH-521",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/521",
+    "feature_branch": "feature/WF03-GH521-20260808"
+  },
+  "task": {
+    "description": "Step 3: implement the lease-discipline fix in src/event_store/store.zig. Per the validated design (step 2b PASS): remove the nested pool.acquire() at the duplicate-detection path (was lines 449-451) and reuse the already-held `conn` (which has been ROLLBACK'd at line 435 and is now in idle state) for both SELECT lookups (events, events_archive).",
+    "acceptance_criteria": [
+      "zig build exits 0 with no error-set warnings",
+      "No nested pool.acquire() inside Store.append",
+      "Both duplicate-lookup queries (events, events_archive) reuse the held conn",
+      "StoreError.PoolExhausted remains a variant, but is now reachable only at the original 6 acquire sites (single acquire per append)",
+      "Test TC-EXP-202 'Create record idempotency' still passes (full EXP suite passes via zig build test-integration-exp exit 0)",
+      "Commit on feature/WF03-GH521-20260808 branch (not main)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fix applied to src/event_store/store.zig. Removed nested pool.acquire() (was 3 lines: const dup_conn = self.pool.acquire() ... ; defer self.pool.release(dup_conn); ). Renamed both duplicate-lookup queries from dup_conn.query(...) to conn.query(...) \u2014 reusing the held, rolled-back conn for the events-table SELECT and the events_archive SELECT. zig build exit 0, error-set grep empty. zig build test-integration-exp exit 0 \u2014 TC-EXP-202 (Create record idempotency) is part of this suite and exercises the exact fixed path (two createRecord calls with the same idempotency_key, second call asserts r2.is_duplicate=true). StoreError.PoolExhausted now reachable only at the 6 legitimate single-acquire sites (lines 277, 559, 666, 724, 895, 955). Commit 8f3b9c1d pushed to feature/WF03-GH521-20260808. No migration required (fix is code-only).",
+    "artifacts_out": [
+      "src/event_store/store.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 4) \u2014 add a regression test that exercises store.append under pool-size=1 with parallel duplicate-idempotency-key writes"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
