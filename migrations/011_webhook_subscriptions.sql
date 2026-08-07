@@ -6,6 +6,9 @@
 -- Lightweight key-value store for in-process Prometheus mirrors
 -- and for the health/metrics endpoint (OBS-06).
 
+-- scope: public
+-- ISS-0185: this migration creates a global-registry table.
+
 CREATE TABLE IF NOT EXISTS metric_snapshots (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT        NOT NULL,

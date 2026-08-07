@@ -1851,6 +1851,20 @@ pub fn build(b: *std.Build) void {
     });
     const run_iss0123_integration_tests = addIntegrationRun(b, iss0123_integration_tests, migrations_dir, clean_test_db);
 
+    // ISS-0185: Dual-schema table duplication cleanup regression tests.
+    // Verifies that GBL-134 / GBL-135 reduced the 45-duplicate count to
+    // exactly 9 (the HYBRID allow-list), and that schema_migrations
+    // records both cleanup migrations as applied.
+    const iss0185_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0185_dual_schema_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0185_integration_tests = addIntegrationRun(b, iss0185_integration_tests, migrations_dir, clean_test_db);
+
     // EPIC-3 (ISS-301, ISS-302, ISS-303): Scheduler concurrency and DLQ routing integration tests.
     const sch303_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -2086,11 +2100,16 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_iss0125_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0122_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0123_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss0185_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0121_integration_tests.step);
 
     const test_integration_iss0123_step = b.step("test-integration-iss0123", "Run ISS-0123 DLQ rename + audit-trigger isolation regression tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0123_step.dependOn(&clean_test_db.step);
     test_integration_iss0123_step.dependOn(&run_iss0123_integration_tests.step);
+
+    const test_integration_iss0185_step = b.step("test-integration-iss0185", "Run ISS-0185 dual-schema table duplication cleanup regression tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0185_step.dependOn(&clean_test_db.step);
+    test_integration_iss0185_step.dependOn(&run_iss0185_integration_tests.step);
 
     const test_integration_iss0122_step = b.step("test-integration-iss0122", "Run ISS-0122 audit chain non-UTF-8 resilience integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0122_step.dependOn(&clean_test_db.step);

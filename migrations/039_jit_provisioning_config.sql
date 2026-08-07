@@ -6,6 +6,9 @@
 --
 -- This is a configuration table, not an event-store table.
 
+-- scope: public
+-- ISS-0185: this migration creates a global-registry table.
+
 CREATE TABLE IF NOT EXISTS jit_provisioning_config (
     realm           VARCHAR(64) PRIMARY KEY,
     enabled         BOOLEAN     NOT NULL DEFAULT TRUE,

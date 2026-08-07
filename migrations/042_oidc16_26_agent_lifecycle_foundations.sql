@@ -1,5 +1,8 @@
 -- OIDC-16..OIDC-26 foundational persistence artifacts.
 
+-- scope: public
+-- ISS-0185: this migration creates a global-registry table.
+
 CREATE TABLE IF NOT EXISTS idp_operation_ledger (
     operation_id UUID PRIMARY KEY,
     endpoint_fingerprint TEXT NOT NULL,
