@@ -480,6 +480,19 @@
       "completed_at": "2026-08-07T15:19:48Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0612",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/556",
+      "title": "provisioning.zig advisory lock left held by idle pooled connection, hangs full-suite zig build test",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-07T19:14:10Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
