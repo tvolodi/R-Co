@@ -1,0 +1,73 @@
+# ISS-0206 / GH-526 — Diagnosis Report
+# WF-03 Step 1 (ISSUE-FIXER)
+# Generated 2026-08-07 (UTC) by r-co-1-loop
+#
+# Verification artifact for the diagnosis produced in this step.
+# Per docs/agents/AGENT_SYSTEM.md §6, this file is committed to git as part of the
+# run's audit trail (docs/issue-reports/ is a tracked directory).
+
+issue_id: "ISS-0206"
+github_issue: "https://github.com/tvolodi/R-Co/issues/526"
+title: "store.zig rowToDefinition leaks on allocation failure — 4 sequential dupes, zero errdefer guards"
+severity: "MAJOR"
+category: "A — Logic error"   # source is wrong; test is correct
+diagnosed_at: "2026-08-07T18:50:00Z"
+diagnosed_by: "ISSUE-FIXER (r-co-1-loop)"
+
+problem_location:
+  file: "src/definition/store.zig"
+  function: "rowToDefinition"
+  line_start: 1437
+  line_end: 1502
+  fallible_sites:
+    - { line: 1451, op: "allocator.dupe(u8, name)",  guards_errdefer: false }
+    - { line: 1452, op: "allocator.dupe(u8, version)", guards_errdefer: false }
+    - { line: 1457, op: "allocator.dupe(u8, desc_raw)", guards_errdefer: false }
+    - { line: 1471, op: "parseGraphJson(allocator, graph_json_str)", guards_errdefer: false }
+    - { line: 1481, op: "allocator.dupe(u8, stage_raw)", guards_errdefer: false }
+
+prior_resolved_match:
+  issue_id: "ISS-0132"
+  github_issue: "https://github.com/tvolodi/R-Co/issues/427"
+  pattern: "PGJ-1/PGJ-2/PGJ-3 (parseGraphJson errdefer guards)"
+  fix_location: "src/definition/store.zig:1318-1421"
+  applicability: "identical class of defect (partial-construction leak in rowToDefinition), same file, established fix pattern"
+
+reproduction:
+  current_state: "Not reachable by existing pure-unit harness (no DB row fixture)."
+  strategy: "Refactor rowToDefinition to expose a fixture-driven signature (e.g. rowToDefinitionFromFields(allocator, fields, fallback)) so std.testing.checkAllAllocationFailures can drive it. The DB-row variant becomes a thin wrapper."
+
+blast_radius:
+  call_sites: 9
+  call_site_files:
+    - "src/definition/store.zig:294  (insert/create path)"
+    - "src/definition/store.zig:347  (get path)"
+    - "src/definition/store.zig:688  (activate path)"
+    - "src/definition/store.zig:775  (deprecate path)"
+    - "src/definition/store.zig:862  (archive path)"
+    - "src/definition/store.zig:1067 (list path)"
+    - "src/definition/store.zig:1205 (search path)"
+    - "src/definition/store.zig:1511 (rowsToDefinitions)"
+    - "src/definition/store.zig:1542 (rowsToSearchResults)"
+  error_visibility: "Most call sites `catch` the error into DefinitionError.TransactionFailed, so the leak is invisible at the boundary."
+
+acceptance_criteria:
+  - "rowToDefinition guards every one of its 4 dupes (plus the graph obtained from parseGraphJson) with an errdefer so no partially-constructed Definition can leak"
+  - "An allocation-failure test exercises rowToDefinition — preferably by extracting the pure row-to-struct mapping behind a fixture-driven signature checkAllAllocationFailures can drive"
+  - "The test fails against the unfixed function and passes after the fix"
+  - "zig build test exits 0 with no DebugAllocator leak output"
+
+proposed_fix:
+  classification: "Type E prose design (per templates/lego-catalog.md) — partial-construction leak fix in a non-CRUD function, no CRUD boilerplate to codegen."
+  design_artefact: "src/design/iss0206-rowtodefinition-errdefer.md (to be produced by CODE-DESIGNER in WF-03 Step 2)"
+  implementation_target: "src/definition/store.zig (refactor rowToDefinition + add rowToDefinitionFromFields)"
+  test_target: "tests/unit/iss0206_rowtodefinition_errdefer_test.zig (new file, wired into build.zig)"
+  expected_validation:
+    - "zig build exits 0"
+    - "zig build test exits 0"
+    - "The new test fails on the unfixed function and passes after the fix"
+    - "No DebugAllocator leak output on zig build test"
+
+next_action: "Route to CODE-DESIGNER (WF-03 Step 2)"
+agent_to_dispatch: "CODE-DESIGNER"
+handoff_id_after_step1: "<populated by complete-handoff>"

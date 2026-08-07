@@ -1,0 +1,13 @@
+{
+  "run_id": "WF03-GH526-20260807",
+  "step": "1",
+  "agent": "ISSUE-FIXER",
+  "result": "PASS",
+  "produced_at": "2026-08-07T18:49:40Z",
+  "summary": "Root-cause diagnosis: rowToDefinition performs 4 sequential fallible dupe() calls (name, version, description, stage) plus 1 fallible parseGraphJson() call, with no errdefer guards. Any mid-sequence allocation failure leaks the dupes that already succeeded. Classified as Category A (logic error) \u2014 source is wrong, no test change. The fix pattern is already established in the same file at lines 1318-1421 (parseGraphJson, fixed in WF03-ISS-0132-20260807 as PGJ-1/PGJ-2/PGJ-3). Refactor: extract a fixture-driven rowToDefinitionFromFields(allocator, fields, fallback) signature so std.testing.checkAllAllocationFailures can drive it. Then add a tests/unit/ allocation-failure test that fails on the unfixed function and passes after the fix.",
+  "diagnosis_file": "docs/issue-reports/ISS-0206-diagnosis.yaml",
+  "issue_id": "ISS-0206",
+  "category": "A",
+  "next_action": "Route to CODE-DESIGNER (WF-03 Step 2)",
+  "agent_to_dispatch": "CODE-DESIGNER"
+}
