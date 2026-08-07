@@ -479,17 +479,22 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0612",
+      "issue_id": "GH-556",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/556",
-      "title": "provisioning.zig advisory lock left held by idle pooled connection, hangs full-suite zig build test",
+      "title": "src/db/provisioning.zig: advisory lock can be left held by an idle pooled connection, hanging full-suite zig build test",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T19:14:10Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-07T19:22:34Z"
+      },
+      "added_at": "2026-08-07T19:22:34Z",
+      "started_at": "2026-08-07T19:22:34Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 556,
+      "labels": []
     }
   ]
 }
