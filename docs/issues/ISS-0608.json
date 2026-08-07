@@ -1,0 +1,25 @@
+{
+  "issue_id": "ISS-0608",
+  "title": "Infrastructure Health Checklist never verified db_test's actual pg_hba.conf auth method against docker-compose.yml, so a stale container silently kept a superseded auth setting indefinitely",
+  "severity": "MAJOR",
+  "discovered_by": "ORCH",
+  "discovered_at": "2026-08-07T15:10:00Z",
+  "discovered_in": "WF03-GH542-20260807 (incidental finding, not the GH-542 fix itself)",
+  "symptom": "A sibling workspace's db_test container reported AuthenticationFailed (SCRAM) on every integration test, despite docker-compose.yml declaring POSTGRES_HOST_AUTH_METHOD: trust for db_test, and despite zig build test-env-verify (C0-C8) reporting fully HEALTHY. The mismatch was invisible to every existing check.",
+  "root_cause": "POSTGRES_HOST_AUTH_METHOD is applied by the postgres:15-alpine entrypoint only at initdb time (first container start with an empty data directory). A container left running since before a docker-compose.yml change to this variable never re-reads it on a plain restart or `docker-compose up` (which reuses an existing container rather than recreating it). None of the existing checks (C0-C8) inspect pg_hba.conf or otherwise verify the running container's actual auth configuration against the tracked compose file — C1 only checks health status and port publication, which both stayed green on the stale container.",
+  "impact": "Two independent workspaces spent significant diagnosis time (a multi-hour investigation across parallel sessions) attributing the AuthenticationFailed symptom to a hypothesized SCRAM negotiation bug in vendor/pg/pg.zig (see ISS-0607's original, now-corrected root_cause text) before the actual cause -- a stale container that predated a compose-file fix -- was found. The correct remedy (docker-compose rm -f -v db_test && up -d db_test) was a one-line fix once identified, but nothing detected the condition automatically.",
+  "evidence": "scratch/GH542-workspace-config-comparison.md (written during WF03-GH542-20260807 to hand the diagnosis to the affected sibling workspace); confirmed live by comparing pg_hba.conf catch-all line ('host all all all <method>') between the correctly-configured r-co-2-db_test-1 container ('trust') and a freshly-created throwaway postgres:15-alpine container with no POSTGRES_HOST_AUTH_METHOD override ('scram-sha-256')",
+  "fix_target": "Add a new check (C9) to tools/verify_test_env.py that reads docker-compose.yml's declared POSTGRES_HOST_AUTH_METHOD for the db_test service, execs into the running db_test container to read its actual pg_hba.conf, and fails the gate with an explicit remedy (recreate the container) if they disagree. Document the new check in docs/guides/test_infrastructure_guide.md §3.",
+  "related_issues": [
+    "ISS-0607 (GH-542) -- the investigation this was discovered during; ISS-0607's own root cause was unrelated (pg.zig stderr abort, not auth) but the AuthenticationFailed symptom that motivated the original (incorrect) SCRAM hypothesis in ISS-0607 came from exactly this stale-container condition on a different workspace"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/545",
+  "github_issue_collision_checked": true,
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-07T15:20:00Z",
+  "resolved_in": [
+    "tools/verify_test_env.py",
+    "docs/guides/test_infrastructure_guide.md"
+  ],
+  "resolution": "Added check_db_test_auth_method() (C9) to tools/verify_test_env.py: parses docker-compose.yml's declared POSTGRES_HOST_AUTH_METHOD for the db_test service (defaulting to Postgres's own scram-sha-256 default if the key is absent), execs into the running db_test container to read pg_hba.conf, and matches specifically the 'host all all all <method>' catch-all line (not the fixed loopback/local entries the postgres:15-alpine entrypoint always writes regardless of the env var -- an earlier draft of this check matched the first 'host' line and was verified, via a throwaway scram-sha-256 container, to incorrectly read those loopback entries as 'trust' and silently miss the mismatch). Verified against both a correctly-configured trust container (PASS) and two independently-created throwaway scram-sha-256 containers (FAIL, correctly detected). Documented in test_infrastructure_guide.md Section 3's checklist."
+}
