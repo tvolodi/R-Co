@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGNER",
   "file": "handoffs/WF03-GH520-20260807/step-02-code-designer.json",
   "created_at": "2026-08-07T22:14:40Z",
-  "started_at": "2026-08-07T22:15:14Z",
-  "completed_at": "2026-08-07T22:17:37Z",
-  "status": "COMPLETED",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -22,7 +22,7 @@
     ]
   },
   "task": {
-    "description": "Design a fix for GH #520 / ISS-0186: TC-EXP-301-05 (tests/integration/effects_subsystem_test.zig, block starting ~line 570) asserts on a measured wall-clock delta between two separate database reads (next_attempt_at read BEFORE markRetry, then read AFTER, subtracting to get observed_delta_ms, compared against expected_ms +/- 500ms tolerance at lines 689-694). Root cause: Queue.markRetry (src/effects/queue.zig:84-108) computes next_attempt_at = NOW() + $3::interval entirely on the PostgreSQL server side using SQL NOW() -- the Zig test has no control over or synchronized view of that server clock, and under ~20-test-binaries-concurrent load (zig build test-integration-svc), scheduling jitter between the test's two separate query round-trips exceeds the +/-500ms tolerance. Design a fix that asserts a deterministic property instead: read next_attempt_at AND a server-side NOW() snapshot in the SAME query (single round-trip, e.g. SELECT EXTRACT(EPOCH FROM next_attempt_at)*1000, EXTRACT(EPOCH FROM NOW())*1000 in one statement, executed once, immediately after markRetry returns) so there is no cross-round-trip jitter window at all -- the interval between next_attempt_at and that same query's NOW() should equal the requested backoff_ms exactly (modulo query execution time within a single round trip, which is sub-millisecond, not the multi-hundred-ms cross-request jitter the current two-round-trip design is vulnerable to). Alternatively/additionally consider asserting the raw interval algebraically: since next_attempt_at = t_exec + backoff_ms where t_exec is the server's own NOW() at execution time, capturing BOTH values in one query removes the wall-clock-relative-to-test-process measurement entirely. Read the current test block in full (tests/integration/effects_subsystem_test.zig around lines 567-696) and src/effects/queue.zig's markRetry before designing. The acceptance criteria require the assertion still fails on a genuine backoff-schedule regression -- do not weaken it into a tautology (e.g. do not just assert next_attempt_at > NOW() with no bound).",
+    "description": "Design a fix for GH #520 / ISS-0186: TC-EXP-301-05 (tests/integration/effects_subsystem_test.zig, block starting ~line 570) asserts on a measured wall-clock delta between two separate database reads (next_attempt_at read BEFORE markRetry, then read AFTER, subtracting to get observed_delta_ms, compared against expected_ms +/- 500ms tolerance at lines 689-694). Root cause: Queue.markRetry (src/effects/queue.zig:84-108) computes next_attempt_at = NOW() + $3::interval entirely on the PostgreSQL server side using SQL NOW() -- the Zig test has no control over or synchronized view of that server clock, and under ~20-test-binaries-concurrent load (zig build test-integration-svc), scheduling jitter between the test's two separate query round-trips exceeds the +/-500ms tolerance. Design a fix that asserts a deterministic property instead: read next_attempt_at AND a server-side NOW() snapshot in the SAME query (single round-trip, e.g. SELECT EXTRACT(EPOCH FROM next_attempt_at)*1000, EXTRACT(EPOCH FROM NOW())*1000 in one statement, executed once, immediately after markRetry returns) so there is no cross-round-trip jitter window at all -- the interval between next_attempt_at and that same query's NOW() should equal the requested backoff_ms exactly (modulo query execution time within a single round trip, which is sub-millisecond, not the multi-hundred-ms cross-request jitter the current two-round-trip design is vulnerable to). Alternatively/additionally consider asserting the raw interval algebraically: since next_attempt_at = t_exec + backoff_ms where t_exec is the server's own NOW() at execution time, capturing BOTH values in one query removes the wall-clock-relative-to-test-process measurement entirely. Read the current test block in full (tests/integration/effects_subsystem_test.zig around lines 567-696) and src/effects/queue.zig's markRetry before designing. The acceptance criteria require the assertion still fails on a genuine backoff-schedule regression -- do not weaken it into a tautology (e.g. do not just assert next_attempt_at > NOW() with no bound).\n\nREWORK 1:\n- [BLOCKER] Tolerance justification is factually wrong for this codebase. TC-EXP-301-05 runs entirely inside TestHarness.init()'s single explicit conn.begin() (tests/integration/helpers.zig:1085) held open until deinit()'s rollback -- both markRetry's UPDATE and the follow-up SELECT execute on the SAME &h.conn inside that ONE already-open transaction (vendor/pg/pg.zig:149-161 confirms Conn.exec/Conn.query never issue implicit per-call BEGIN/COMMIT). Per PostgreSQL semantics, NOW() is frozen at transaction start and identical for every statement in that transaction, so next_attempt_at and a follow-up NOW() read are the SAME value read twice, not two independently-drifting values. Re-derive the tolerance -- likely 0.0ms or a tiny client-side float round-trip epsilon (EXTRACT/parseFloat), not the proposed 50ms.",
     "acceptance_criteria": [
       "Design replaces the two-separate-query wall-clock delta measurement with a single-round-trip deterministic assertion",
       "The assertion still fails if the backoff schedule regresses -- not weakened into a tautology",
@@ -33,15 +33,7 @@
       "fn:write-design-artefact"
     ]
   },
-  "result": {
-    "status": "PASS",
-    "summary": "Designed a test-only fix for GH #520 / ISS-0186 (TC-EXP-301-05 flaky backoff assertion). Replaces the two-separate-round-trip wall-clock delta (next_attempt_at read before markRetry, then after, subtracted) with a single combined SELECT that reads next_attempt_at and server NOW() in the same statement execution immediately after markRetry returns, comparing next_attempt_at - NOW() against expected_backoff[i] with a tightened 50ms tolerance (down from 500ms). The before-read is removed entirely except a minimal attempt_count-only pre-check retained for the dead-letter branch condition. The assertion remains non-tautological -- it still bounds against each of the four distinct expected_backoff values, so a genuine markRetry interval regression still fails the test. No production code changes.",
-    "artifacts_out": [
-      "src/design/gh520-backoff-schedule-deterministic-assertion.md"
-    ],
-    "issues": [],
-    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
-  },
-  "rework_count": 0,
+  "result": null,
+  "rework_count": 1,
   "max_rework": 3
 }
