@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGNER",
   "file": "handoffs/WF03-GH528-20260807/step-01-code-designer.json",
   "created_at": "2026-08-07T17:08:28Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-07T17:19:13Z",
+  "completed_at": "2026-08-07T17:21:34Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -31,7 +31,13 @@
       "fn:write-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 1/3: replaced every std.Thread.ResetEvent reference in the design with std.Io.Event (lib/std/Io.zig ~L1766-1870, vendored zig 0.16.0), driven via std.testing.io on both threads. Corrected the field default from '.{}' to the explicit '.unset' enum variant, documented that wait/set/waitTimeout all require an explicit Io argument (unlike ResetEvent's bare methods), and noted Event.wait returns Cancelable!void (must be try'd or replaced with waitUncancelable). Fixed the port-readback description to reference the real field server.socket.address (confirmed via lib/std/Io/net.zig: std.Io.net.Server has only socket/options fields, and Socket.address's doc comment confirms it holds the resolved ephemeral port) instead of the previous hedged '.listen_address / getLocalAddress()' guess. All other content (ephemeral port binding via port 0, scope/non-goals, key invariants, public interface) preserved from the prior version, only updated to reference the corrected primitive and field name throughout.",
+    "artifacts_out": ["src/design/service-task-test-capture-server.md"],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b) for rework verification"
+  },
   "rework_count": 1,
   "max_rework": 3
 }
