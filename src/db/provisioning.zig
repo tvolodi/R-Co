@@ -80,6 +80,41 @@ pub fn provisionTenantSchema(
     if (tenant_id_str.len == 0) return ProvisionError.InvalidTenantId;
     if (tenant_id_str.len != 36) return ProvisionError.InvalidTenantId;
 
+    // ISS-0131 / GH #424: serialize the whole provisionTenantSchema pass
+    // under a session-level advisory lock keyed by tenant_id. Without this,
+    // concurrent provisionTenantSchema calls race against each other on
+    // the tenant_schemas row and the bpm_provision_tenant_schema() SQL
+    // function, surfacing as a C40P01 deadlock between AccessShareLock on
+    // the relation and ShareLock on the open transaction under full-suite
+    // integration runs. The inner runForSchema advisory lock from
+    // ISS-0129 does not cover the pre- and post-migration steps above.
+    //
+    // The lock is session-scoped (pg_advisory_lock, not pg_advisory_xact_lock)
+    // because the per-migration transactions inside runForSchema would
+    // release an xact_lock prematurely. We pair it with a matching
+    // pg_advisory_unlock from the same connection before pool.release.
+    const lock_key = std.fmt.allocPrint(
+        allocator,
+        "bpm.provisioning.provisionTenantSchema:{s}",
+        .{tenant_id_str},
+    ) catch return ProvisionError.QueryFailed;
+    defer allocator.free(lock_key);
+    {
+        const lock_conn = pool.acquire() catch |err| switch (err) {
+            PoolError.ExhaustedPool => return ProvisionError.PoolExhausted,
+            else => return ProvisionError.QueryFailed,
+        };
+        defer pool.release(lock_conn);
+        lock_conn.exec(
+            "SELECT pg_advisory_lock(hashtext($1)::bigint)",
+            &.{lock_key},
+        ) catch return ProvisionError.QueryFailed;
+        defer lock_conn.exec(
+            "SELECT pg_advisory_unlock(hashtext($1)::bigint)",
+            &.{lock_key},
+        ) catch {};
+    }
+
     // Step 2: Idempotency check.
     {
         const conn = pool.acquire() catch |err| switch (err) {
