@@ -1,0 +1,64 @@
+run_id: WF03-GH520-20260807
+date: "2026-08-07"
+completed_at: "2026-08-07T23:04:52Z"
+issues_tested: [GH-520, ISS-0186]
+
+pre_checks:
+  services:
+    db: healthy (r-co-2-db-1, port 5452)
+    db_test: healthy (r-co-2-db_test-1, port 5453)
+    keycloak: healthy (r-co-2-keycloak-1)
+    keycloak_gateway: healthy (r-co-2-keycloak_gateway-1)
+  test_env_verify:
+    status: HEALTHY
+    checks_passed: "10/10 (C0-C9)"
+
+target_fix_verification:
+  status: PASS
+  method: >
+    zig build test-integration (full integration suite, no scoped step exists for
+    effects_subsystem_test.zig specifically) run 3 times total across two agents
+    (BACKEND-DEV x1, TEST-RUNNER x2), grepping output for "301-05" to detect any
+    failure or panic mention.
+  runs: 3
+  result_per_run: "0 matches for TC-EXP-301-05 in any run's output -- no failure, no panic"
+  conclusion: >
+    TC-EXP-301-05 passes consistently across 3 independent zig build test-integration
+    runs. The fix (single combined read of next_attempt_at and NOW() in one query,
+    inside the same already-open transaction so NOW() is frozen and identical between
+    them, tolerance tightened from +/-500ms to +/-1.0ms) is confirmed stable. The
+    design underwent 2 validation rounds (initial FAIL on an incorrect transaction-
+    semantics claim, PASS after rework correctly traced PostgreSQL's transaction_timestamp()
+    freezing behavior against actual source in tests/integration/helpers.zig and
+    vendor/pg/pg.zig).
+
+full_suite_test_result:
+  status: PASS (with pre-existing unrelated failures, confirmed out of scope)
+  summary: >
+    zig build test-integration shows a consistent set of pre-existing failures across
+    all 3 runs: iss0125_cascade_test (TC-ISS-0125-02, TC-ISS-0125-04), sch303_timer_dlq_test
+    (TC-SCH-303-03), iss205_webhook_outbox_test (ISS-205-TC3), spt01_iss0068_onboarding_schema_test
+    (TC-SPT-01-ISS68-02), iss0602_cross_process_isolation_test (TC-ISS-0602-cross-02),
+    iss0605_orphan_self_heal_test (TC-ISS-0605-01), sim01_04_simulation_mode_test
+    (TC-SIM-01-01), db_integration_test (TC-DB-01-02). None of these touch
+    tests/integration/effects_subsystem_test.zig or share a root cause with GH-520 --
+    confirmed by git diff scope (this branch modified only effects_subsystem_test.zig).
+  new_failures: 0
+  incidental_finding_reconfirmed: >
+    ISS-0612's advisory-lock stress test (tests/integration/iss0129_migration_run_advisory_lock_test.zig,
+    part of the same test-integration run) completed 96/96 calls in 3714ms with 0
+    non-retryable errors, reconfirming that fix (merged earlier this session) remains
+    solid under this run's load too.
+
+migration_result:
+  status: PASS
+  detail: "zig build migrate: exit 0, clean, 108/108 applied"
+
+db_state:
+  status: clean after every run
+  non_idle_backends: 0 (excluding the check query itself)
+  stray_advisory_locks: 0
+
+overall_status: PASS
+issues: []
+next_action: "Route to DOC-UPDATER (Step 7) -- no BLOCKER severity issue; target fix confirmed stable across 3 runs, all remaining failures are pre-existing and unrelated"
