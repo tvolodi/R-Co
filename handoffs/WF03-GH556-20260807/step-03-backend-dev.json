@@ -1,0 +1,42 @@
+{
+  "handoff_id": "c9904074-5a9b-4817-9165-c48a2a9e5763",
+  "run_id": "WF03-GH556-20260807",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH556-20260807/step-03-backend-dev.json",
+  "created_at": "2026-08-07T19:47:14Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/iss0612-provisioning-lock-scope-fix.md",
+      "docs/issues/ISS-0612.json"
+    ]
+  },
+  "task": {
+    "description": "Implement the validated design at src/design/iss0612-provisioning-lock-scope-fix.md to fix ISS-0612/GH-556 in src/db/provisioning.zig's provisionTenantSchema(). This is a git-setup-already-done run (branch feature/WF03-GH556-20260807 exists and is checked out) -- do NOT run git-setup again, only implement + commit. Summary: restructure provisionTenantSchema() so a single lock_conn, acquired once via pool.acquire(), is reused across Step 2 (idempotency check), Steps 3-4 (bpm_provision_tenant_schema() SQL call), Step 6 (tenant_schemas timestamp update), and Step 6a (public.tenant promotion) -- removing each of those steps' own separate pool.acquire()/release() pairs. Lock acquire (acquireAdvisoryLock) happens once at the start on lock_conn; lock release (releaseAdvisoryLock) + pool.release(lock_conn) become a single defer pair registered once, covering every exit path including the idempotency fast-return. Step 5 (runForSchema migrations) is CONFIRMED BY CODE-DESIGN-VALIDATOR to structurally require its own separate connection -- runForSchema's signature (src/db/migrations.zig ~line 104-116) takes (allocator, pool, migrations_dir, schema_name, force_reconcile), NOT a *Conn parameter, so it always calls pool.acquire() internally and cannot accidentally receive lock_conn. Do not change runForSchema's signature or attempt to pass lock_conn into it -- leave Step 5 exactly as it currently acquires its own connection. As defense-in-depth, also add a call to pg_advisory_unlock_all() in Pool.release() (src/db/pool.zig, after resetConnectionSearchPath around line 857, before the connection re-enters the idle set) so any future bug of this class becomes a harmless no-op instead of a silent hang. Read the full design doc before starting -- it has more precise detail than this summary.",
+    "acceptance_criteria": [
+      "provisionTenantSchema() acquires lock_conn once and reuses it for Steps 2, 3-4, 6, 6a",
+      "Lock release + connection release happen via a single defer pair covering all exit paths",
+      "Step 5 (runForSchema) is unchanged in how it acquires its connection (stays separate, per the validated deadlock-freedom analysis)",
+      "Pool.release() defensively calls pg_advisory_unlock_all() before returning a connection to idle",
+      "zig build exits 0, no error-set output",
+      "zig build test exits 0",
+      "The stress-test scenario from ISS-0612 (many concurrent same-tenant provisionTenantSchema calls) no longer stalls -- re-run a similar concurrent stress test and confirm all calls complete",
+      "tools/lint_sql_param_types.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:zig-build-test"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
