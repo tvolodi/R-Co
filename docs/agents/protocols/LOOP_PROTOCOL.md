@@ -1,9 +1,12 @@
 # LOOP Protocol — GitHub Issues as Source of Truth, Multi-Workspace Locking
 
-**Version:** 2.0 · 2026-08-07
+**Version:** 2.1 · 2026-08-07
 **Function:** `fn:loop-mode`
 **Read by:** `ORCH` (owner); relevant to any workspace running an autonomous fix loop
-**Tools:** `tools/gh_claim.py`, `tools/queue_release.py`, `tools/queue_add.py`
+**Tools:** `tools/gh_claim.py`, `tools/queue_release.py`, `tools/queue_add.py`, `tools/gh_project_status.py`
+**See also:** `docs/agents/protocols/PROJECT_BOARD.md` — the project-board status
+transitions this loop drives (`Todo → In Progress → Implemented → Validated by UAT
+agent → Done`) so the maintainer can read pipeline state without opening agent chats.
 
 ---
 
@@ -195,7 +198,14 @@ LOOP START
 │   Every GitHub issue → WF-03 (issue resolving)
 │   run_id = "WF03-GH<number>-<YYYYMMDD>"   e.g. "WF03-GH533-20260807"
 │
+├─ python3 tools/gh_project_status.py <issue_number> --target in_progress
+│   (moves the board card Todo -> In Progress; see PROJECT_BOARD.md.
+│    a failure here is logged and never blocks the run — see that doc's
+│    "Failure handling" section)
+│
 ├─ Run WF-03:  Step 00 → 0.5 → 1 → 2 → 2b → 3 → [4/4b] → 5 → [6] → 7 → Final
+│   (Step Final also moves the board to Implemented/Done — see
+│    CLAUDE.md "GitHub Branch Management (MANDATORY)" and PROJECT_BOARD.md)
 │   Own feature branch: feature/WF03-GH<number>-<YYYYMMDD>
 │   Own PR, own squash-merge
 │

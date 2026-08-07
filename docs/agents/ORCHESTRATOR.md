@@ -107,6 +107,26 @@ defects that are merely adjacent to the run, not ones standing in its way.
 
 ---
 
+## 8d. Project Board Status
+
+**Protocol:** `docs/agents/protocols/PROJECT_BOARD.md`
+
+Every GitHub issue the pipeline touches has a card on the "R-Co system" project board
+(https://github.com/users/tvolodi/projects/3) whose Status field moves
+`Todo → In Progress → Implemented → Validated by UAT agent → Done` as the pipeline
+processes it — driven by `tools/gh_project_status.py` at the claim point (loop mode,
+`LOOP_PROTOCOL.md`), Step Final (`git-merge`, CLAUDE.md's "GitHub Branch Management"),
+and UAT-Runner's report step. This gives the maintainer one place to see what's
+in-flight instead of reconstructing it from handoffs or agent transcripts.
+
+**ORCH does not call the tool directly** — it is invoked by the agent executing the
+relevant step (BACKEND-DEV/FRONTEND-DEV at claim and merge, UAT-RUNNER at validation),
+the same way `fn:register-issue` is threaded through existing steps rather than being
+its own row in a pipeline table. ORCH's only obligation is to not treat a board-update
+failure as a run failure — it never is one.
+
+---
+
 ## 2. Standard Workflows
 
 | ID | Name | Entry trigger | Document |

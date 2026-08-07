@@ -726,6 +726,18 @@ New-Item -ItemType File -Force handoffs/STOP_LOOP
 3. Merge the PR to main via `gh pr merge --squash --delete-branch`
 4. Verify the branch is deleted from GitHub (no orphaned branches)
 5. Record the merge in the handoff result (PR number, merge commit SHA)
+6. **If this run resolves a GitHub issue** (WF-03, or any workflow closing an issue),
+   update the project board per `docs/agents/protocols/PROJECT_BOARD.md`:
+   ```bash
+   # non-UAT-scoped issue (no requirement ID, or the requirement has no UAT scenario match):
+   python3 tools/gh_project_status.py <issue-number> --target implemented
+   python3 tools/gh_project_status.py <issue-number> --target done
+   # UAT-scoped issue (requirement ID matches a file under tests/simulation/scenarios/):
+   python3 tools/gh_project_status.py <issue-number> --target implemented
+   # — stop here; UAT-RUNNER advances it to validated/done in its own WF-05 run
+   ```
+   A failure of this call (rate limit, network) is logged as `BOARD_UPDATE_FAILED` and
+   never fails the handoff — the board is a visibility aid, not a gate.
 
 **If manual intervention is required during merge:**
 - Resolve conflicts via `git merge origin/main` (do NOT use force-push)
@@ -1492,6 +1504,20 @@ Forbidden: _"The Playwright test failed at line 47 with assertion error on locat
 
 **6. Complete the handoff** — PASS if all scenarios passed or only MINOR issues;
 FAIL if any BLOCKER or MAJOR issue exists.
+
+**7. Update the project board** for any GitHub issue whose requirement was exercised
+by a scenario that PASSED in this run (per `docs/agents/protocols/PROJECT_BOARD.md`):
+```bash
+python3 tools/gh_project_status.py <issue-number> --target validated
+python3 tools/gh_project_status.py <issue-number> --target done
+```
+Find the issue number by matching the scenario's covered requirement ID(s) against
+open/`Implemented`-status issues on the board — an issue only needs this call if it is
+currently sitting at `Implemented` (i.e. it was UAT-scoped and is waiting on exactly
+this validation). If a scenario FAILS or SKIPs, do not advance that issue's card — it
+stays at `Implemented`, which is itself the correct signal that it's fixed but not yet
+UAT-clean. A failure of the board call itself (rate limit, network) is logged and never
+turns a PASS scenario result into a FAIL handoff.
 
 ### Allowed commands
 
