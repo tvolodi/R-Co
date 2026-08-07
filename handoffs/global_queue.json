@@ -412,14 +412,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/533",
       "title": "test_api08_auth.zig's tenant_default DROP SCHEMA recovery races concurrent zig build test binaries (21 deterministic C42P01 failures)",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI-loop",
-        "locked_at": "2026-08-07T09:10:47Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-07T09:10:47Z",
       "started_at": "2026-08-07T09:10:47Z",
-      "completed_at": null,
+      "completed_at": "2026-08-07T10:54:04Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 533,
