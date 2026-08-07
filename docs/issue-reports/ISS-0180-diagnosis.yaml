@@ -1,0 +1,189 @@
+issue_id: ISS-0180
+github_issue: https://github.com/tvolodi/R-Co/issues/511
+run_id: WF03-ISS-0180-20260807
+step: "01"
+agent: BACKEND-DEV
+severity: MAJOR
+class: GATE-INTEGRITY
+title: >-
+  verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL —
+  C3 can report PASS against an unmigrated test database
+
+summary: >-
+  The Infrastructure Health Checklist does not agree with itself about which
+  database it is certifying. C3 applies migrations to the database named by
+  BPM_DB_URL (the development database), while C4, C6 and every integration
+  test read BPM_TEST_DB_URL (the test database). In the normal configuration
+  those are two different databases, so C3's PASS is evidence about a database
+  no test will ever touch. A hard gate that can report PASS having verified the
+  wrong subject is worse than no gate, because it manufactures confidence.
+
+defect_mechanism:
+  chain:
+    - "tools/verify_test_env.py:check_migrate() (C3) runs a bare `zig build migrate`."
+    - "build.zig's migrate_step wires src/tools/migrate.zig with no environment override."
+    - "src/tools/migrate.zig:21 reads ONLY `init.environ_map.get(\"BPM_DB_URL\")`. It has
+       no knowledge of BPM_TEST_DB_URL and no way to be pointed at it from the build step."
+    - "tools/verify_test_env.py:check_schema_baseline() (C4) delegates to
+       tools/verify_schema_baseline.py, whose --db-url defaults to os.environ['BPM_TEST_DB_URL']
+       (verify_schema_baseline.py:304)."
+    - "Therefore C3 writes to bpm_dev and C4 reads bpm_test. When bpm_dev is already current,
+       migrate exits 0 with 'No new migrations to apply.' and C3 reports PASS regardless of
+       how far behind bpm_test is."
+  why_it_is_a_false_green: >-
+    C3's stated role in docs/guides/test_infrastructure_guide.md §3 is to establish that the
+    database the integration tests will use is fully migrated. As implemented it establishes
+    that a *different* database is fully migrated. Its remedy string ("resolve the migration
+    failure above") also misdirects: no migration failed — the migration was aimed at the
+    wrong database.
+  aggravating_factor: >-
+    The process environment on a multi-workspace host can carry a stale BPM_TEST_DB_URL from
+    a sibling checkout (observed here: port 5434 = workspace 1's band) which shadows this
+    workspace's .env value (5453). load_dotenv_into_environ() deliberately gives the process
+    environment precedence, so the gate silently certifies another workspace's database.
+    Nothing in the checklist ever printed which URLs it was using, so this was undetectable
+    from the output.
+
+per_check_audit:
+  - check: C1 db_test container healthy
+    reads: docker container name (no DB URL at all)
+    verdict: DEFECTIVE (same family, separate defect)
+    detail: >-
+      Hardcodes the container name "r-co-db_test-1" (verify_test_env.py:192). This workspace
+      sets COMPOSE_PROJECT_NAME=r-co-2, so its container is "r-co-2-db_test-1" and the inspect
+      always fails, falling through to `docker ps --filter name=db_test`, which matches ANY
+      compose project's db_test on the host. On this machine that matches r-co-db_test-1
+      (workspace 1, port 5434) as readily as r-co-2-db_test-1 (port 5453). C1 therefore
+      reports the health of a container that need not be the one BPM_TEST_DB_URL addresses.
+      It verifies a name, never a connection.
+    in_scope: true
+
+  - check: C2 zig build
+    reads: no database
+    verdict: CORRECT
+    in_scope: false
+
+  - check: C3 zig build migrate
+    reads: BPM_DB_URL (via src/tools/migrate.zig)
+    verdict: DEFECTIVE — the reported issue
+    detail: migrates the dev database; certifies nothing about the test database
+    in_scope: true
+
+  - check: C4 schema baseline
+    reads: BPM_TEST_DB_URL (via verify_schema_baseline.py --db-url default)
+    verdict: CORRECT
+    detail: the only check that was already looking at the right database on the right terms
+    in_scope: false
+
+  - check: C5 test isolation lint
+    reads: no database (static source lint over tests/integration)
+    verdict: CORRECT
+    in_scope: false
+
+  - check: C6 no stale locks
+    reads: BPM_TEST_DB_URL
+    verdict: CORRECT
+    in_scope: false
+
+  - check: C7 bench DB URL resolvable
+    reads: BPM_BENCH_DB_URL, then BPM_DB_URL, then BPM_TEST_DB_URL
+    verdict: WEAK (by design, but silently so)
+    detail: >-
+      C7 deliberately mirrors bench.zig's resolveDbUrl() precedence, which prefers the dev
+      database. That precedence is bench.zig's contract and changing it is out of scope here
+      — but C7 previously reported only *that* a variable was set, never which database the
+      benchmark would consequently run against. It could report PASS naming BPM_DB_URL while
+      the operator believed the benchmark used the test database.
+    in_scope: partial (reporting only — precedence left unchanged)
+
+reproduction:
+  preconditions:
+    - "BPM_DB_URL=postgres://bpm:bpm@localhost:5452/bpm_dev  (dev, fully migrated: 108/108)"
+    - "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test (test, held one behind: 107/108)"
+    - "The divergence was created by deleting exactly one ledger row from the TEST database:
+       DELETE FROM public.schema_migrations WHERE schema_name='public'
+         AND version='GBL-133_iss0112_schema_ledger_reconcile.sql'"
+  command: python tools/verify_test_env.py --skip-docker
+  observed_pre_fix: |
+      [SKIP] C1 db_test container healthy
+      [PASS] C2 zig build
+      [PASS] C3 zig build migrate
+      [FAIL] C4 schema baseline
+             [FAIL] check_migration_ledger_count: public.schema_migrations has 107 rows for
+                    schema_name='public', but migrations/ contains 108 *.sql files (delta = -1)
+      [PASS] C5 test isolation lint
+      [PASS] C6 no stale locks
+      [PASS] C7 bench DB URL resolvable
+      verify_test_env: UNHEALTHY — 1 of 7 checks failed (C4)
+      EXIT=1
+  interpretation: >-
+    C3 PASS and C4 FAIL in the same run against the same workspace, exactly as ISS-0180
+    reported. C3 exited 0 because bpm_dev had nothing pending. The gate's own two checks
+    contradict each other because they are describing two different databases.
+
+chosen_fix:
+  approach: >-
+    Make every database-touching check name and verify the SAME database — the one the tests
+    use — and make the checklist state which database that is, out loud, before any check runs.
+  changes:
+    - id: F1
+      what: >-
+        New resolve_target_urls() + a C0 preflight that prints the resolved BPM_DB_URL and
+        BPM_TEST_DB_URL (credentials redacted) and FAILS when BPM_TEST_DB_URL is absent, or
+        when BPM_DB_URL and BPM_TEST_DB_URL resolve to the same host:port/database.
+      why: >-
+        Requested in the handoff and independently justified: dev and test pointing at one
+        database means integration tests mutate the development database, and it would also
+        make C3's old behaviour accidentally correct, hiding the very defect this run fixes.
+        Printing the URLs converts an invisible misconfiguration (stale inherited env var from
+        a sibling workspace) into a visible line of output.
+    - id: F2
+      what: >-
+        C3 runs `zig build migrate` with BPM_DB_URL overridden in the CHILD process
+        environment to the value of BPM_TEST_DB_URL, so migrate.zig applies migrations to the
+        test database. C3 additionally verifies afterwards, by direct query, that the test
+        database's ledger count for schema_name='public' equals the number of migrations/*.sql
+        files, and FAILS naming the delta if not.
+      why: >-
+        This is the minimal, honest fix. migrate.zig reads BPM_DB_URL by contract and is used
+        by production bootstrap; changing which variable it reads would alter production
+        behaviour. Overriding the variable for this one child process changes only the
+        target, not the semantics. The post-migration ledger assertion is what makes C3's PASS
+        mean something: exit 0 alone only proves the runner did not crash, whereas the ledger
+        equality proves the test database is actually current. C3 now fails for the ISS-0180
+        condition on its own, without relying on C4.
+      not_chosen:
+        - "Editing migrate.zig to prefer BPM_TEST_DB_URL — would change production bootstrap
+           semantics to fix a test-gate defect."
+        - "Deleting C3 or relaxing C4 — forbidden: the gate must become more truthful, not
+           quieter."
+    - id: F3
+      what: >-
+        C1 resolves the container from COMPOSE_PROJECT_NAME (falling back to r-co) instead of
+        the hardcoded r-co-db_test-1, and then confirms the container's published port matches
+        the port in BPM_TEST_DB_URL. On mismatch it FAILS naming both ports.
+      why: >-
+        Ties C1 to the same database as C3/C4/C6 instead of to a name that can belong to
+        another workspace. This is the C1 half of the same "which database are we talking
+        about" defect.
+    - id: F4
+      what: C7's PASS detail now names the resolved variable AND its redacted URL.
+      why: >-
+        Leaves bench.zig's documented precedence untouched (out of scope) while making the
+        consequence visible, so an operator can see that the benchmark will use the dev
+        database rather than assuming otherwise.
+  invariants_preserved:
+    - "No check was deleted, weakened, or made unreachable."
+    - "No detector was edited to stop reporting; C4 is untouched."
+    - "Every new failure path is reachable and was exercised (see verification)."
+    - "Judgement remains by exit code; the added ledger check compares integers, not text."
+
+acceptance_criteria_mapping:
+  - criterion: "C3 migrates the same database C4 verifies"
+    satisfied_by: F2
+  - criterion: "A test database behind migrations/ causes C3 itself to FAIL, not only C4"
+    satisfied_by: F2 (post-migration ledger equality assertion)
+  - criterion: "C3's remedy distinguishes 'migration failed' from 'targeted a different database'"
+    satisfied_by: F2 (distinct detail/remedy strings per failure mode) and F1 (C0 preflight)
+  - criterion: "Verified by leaving the test DB one migration behind and confirming C3 FAILs"
+    satisfied_by: reproduction section above plus the post-fix run in the step-03 handoff

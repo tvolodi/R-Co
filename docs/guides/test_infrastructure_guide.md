@@ -71,16 +71,44 @@ Concretely:
 
 This checklist is the definition of "healthy test infrastructure". TEST-RUNNER executes it before dispatching any test binary. Each item is a hard gate: failure → STOP, return FAIL with severity BLOCKER, reason = "Test infrastructure unhealthy".
 
+**Every item below is about one database: the one `BPM_TEST_DB_URL` names.** That
+is the database the integration tests open, so it is the only one whose health
+this checklist asserts. An item that verifies a *different* database — however
+green it looks — tells you nothing (see ISS-0180 / GH #511, where `zig build
+migrate` was migrating `BPM_DB_URL`'s development database while the baseline
+check inspected `BPM_TEST_DB_URL`'s test database, and reported PASS and FAIL in
+the same run).
+
 ```
-[ ] docker-compose ps shows db_test as "healthy"
-[ ] zig build migrate exits 0 with no error output
-[ ] public.schema_migrations row count == count of files in migrations/
+[ ] BPM_TEST_DB_URL is set, and BPM_DB_URL does not resolve to the same
+       host:port/database (dev and test must be distinct databases)
+[ ] docker-compose ps shows db_test as "healthy", AND that container publishes
+       the port in BPM_TEST_DB_URL (a container merely named db_test may belong
+       to a different workspace on the same host)
+[ ] zig build migrate exits 0 with no error output, run against BPM_TEST_DB_URL
+[ ] public.schema_migrations row count for schema_name='public' in the TEST
+       database == count of files in migrations/
 [ ] All tenant schemas expected by the integration test suite exist
        (verified by: python3 tools/verify_schema_baseline.py --check-tenants)
 [ ] zig build exits 0 (no compile errors)
 [ ] python3 tools/lint_test_isolation.py tests/integration exits 0, no BLOCKER
 [ ] No stale lock rows in pg_locks for the test database from prior sessions
        (verified by: psql $BPM_TEST_DB_URL -c "SELECT count(*) FROM pg_locks WHERE NOT granted" -> must be 0)
+```
+
+Do not run these by hand and judge them by eye. `zig build test-env-verify`
+executes all of them as checks C0–C7 and reports a single exit code (0 =
+healthy), and it prints the resolved database URLs so the subject of each check
+is visible rather than assumed. Judge it by the exit code only.
+
+Note that `src/tools/migrate.zig` reads `BPM_DB_URL` by contract — that is also
+the production bootstrap path and is deliberately unchanged. `verify_test_env.py`
+therefore overrides `BPM_DB_URL` in the migrate child process only, pointing it
+at `BPM_TEST_DB_URL`. If you invoke `zig build migrate` manually to prepare the
+test database, you must do the same:
+
+```bash
+BPM_DB_URL="$BPM_TEST_DB_URL" zig build migrate
 ```
 
 If any item fails, TEST-RUNNER reports FAIL and instructs ORCH to create an ADHOC BACKEND-DEV handoff before retrying.

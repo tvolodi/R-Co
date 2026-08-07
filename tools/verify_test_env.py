@@ -20,14 +20,38 @@ label, so this tool reports one.
 
 Checks (§3 of the test infrastructure guide)
 --------------------------------------------
-  C1  db_test container reports healthy
+  C0  the resolved DB URLs are the intended ones (ISS-0180)
+  C1  db_test container reports healthy AND publishes BPM_TEST_DB_URL's port
   C2  `zig build` exits 0 (no compile errors)
-  C3  `zig build migrate` exits 0 with no error output
+  C3  `zig build migrate` exits 0 against the TEST database, and that database's
+      migration ledger is then complete
   C4  schema baseline matches the migration ledger  (delegates to
       tools/verify_schema_baseline.py, which owns INV-TI-1/INV-TI-2)
   C5  tools/lint_test_isolation.py reports no BLOCKER
   C6  no ungranted locks left over from a prior session
   C7  benchmark environment resolves a DB URL from the environment
+
+One checklist, one database (ISS-0180 / GH #511)
+------------------------------------------------
+Every check that touches a database must touch *the database the tests use* —
+the one named by BPM_TEST_DB_URL. Before ISS-0180 the checklist did not agree
+with itself about this: C3 ran a bare `zig build migrate`, and
+src/tools/migrate.zig resolves its target from BPM_DB_URL alone (the
+development database), while C4, C6 and every integration test read
+BPM_TEST_DB_URL. In the normal configuration those are two different
+databases, so C3 could report PASS having migrated a database that C4 never
+inspects and no test ever opens — a false green on a hard gate. It was observed
+directly: C3 PASS and C4 FAIL in the same run, on the same workspace.
+
+C3 therefore overrides BPM_DB_URL *in the child process only* for the duration
+of the migrate call, and then asserts the test database's ledger is complete.
+migrate.zig's own contract (read BPM_DB_URL) is deliberately left alone: it is
+also the production bootstrap path, and changing which variable it honours to
+fix a test-gate defect would move the problem rather than solve it.
+
+C1 likewise verifies that the container it inspected is the one BPM_TEST_DB_URL
+addresses, by comparing published ports — a container merely *named* db_test
+may belong to a different workspace on the same host.
 
 Environment resolution
 ----------------------
@@ -41,6 +65,11 @@ environment and do not parse `.env` themselves.
 This resolves *where* configuration is read from. It does not supply defaults:
 a variable absent from both the environment and `.env` stays absent, and the
 check that requires it still fails.
+
+Because the process environment wins, a stale BPM_TEST_DB_URL inherited from a
+sibling checkout silently retargets the whole checklist at another workspace's
+database. C0 exists to make that visible: it prints the URLs actually in force
+(credentials redacted) before any check runs.
 
 Exit codes:
   0  environment healthy — safe to run tests or dispatch TEST-RUNNER
@@ -62,6 +91,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -92,11 +122,21 @@ class Check:
         return self.status == BAD
 
 
-def run(cmd: list[str], timeout: int = 300, cwd: Path | None = None) -> tuple[int, str]:
+def run(
+    cmd: list[str],
+    timeout: int = 300,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> tuple[int, str]:
     """Run a command, returning (exit_code, combined_output).
 
     Exit code 127 is reserved here for "executable not found" so callers can
     distinguish a missing tool from a genuine failure.
+
+    `env`, when given, fully replaces the child's environment (callers pass a
+    copy of os.environ with specific keys overridden). C3 uses this to point
+    `zig build migrate` at BPM_TEST_DB_URL without disturbing this process's
+    own environment, which C4 and C6 still read.
     """
     try:
         proc = subprocess.run(
@@ -105,6 +145,7 @@ def run(cmd: list[str], timeout: int = 300, cwd: Path | None = None) -> tuple[in
             capture_output=True,
             timeout=timeout,
             check=False,
+            env=env,
         )
     except FileNotFoundError:
         return 127, f"executable not found: {cmd[0]}"
@@ -146,11 +187,6 @@ def dotenv_get(key: str) -> str | None:
     return None
 
 
-def dotenv_has(key: str) -> bool:
-    """True if .env in the repo root defines a non-empty value for key."""
-    return dotenv_get(key) is not None
-
-
 def load_dotenv_into_environ(keys: tuple[str, ...]) -> list[str]:
     """Populate os.environ from .env for keys the process environment lacks.
 
@@ -184,45 +220,165 @@ def load_dotenv_into_environ(keys: tuple[str, ...]) -> list[str]:
     return loaded
 
 
+def redact(url: str) -> str:
+    """A DB URL with any password removed, safe to print in gate output.
+
+    C0 prints the URLs the checklist resolved, so an operator can see which
+    database is actually being certified. That is only usable if it can be
+    printed without leaking a credential into CI logs.
+    """
+    parsed = urlsplit(url)
+    if not parsed.hostname:
+        return url
+    userinfo = ""
+    if parsed.username:
+        userinfo = parsed.username + ("@" if not parsed.password else ":***@")
+    port = f":{parsed.port}" if parsed.port else ""
+    return f"{parsed.scheme}://{userinfo}{parsed.hostname}{port}{parsed.path}"
+
+
+def db_identity(url: str) -> tuple[str, int | None, str]:
+    """(host, port, database) for a DB URL — what makes two URLs the same DB.
+
+    Compared rather than the raw strings so that cosmetic differences (a
+    trailing query string, different credentials for the same database) do not
+    hide the fact that two variables address one database.
+    """
+    parsed = urlsplit(url)
+    return ((parsed.hostname or "").lower(), parsed.port, parsed.path.lstrip("/"))
+
+
+def check_url_targets() -> Check:
+    """C0 — the checklist states which databases it is about to verify.
+
+    ISS-0180 / GH #511. Two failure modes, both of which make every later check
+    untrustworthy rather than merely inconvenient:
+
+      * BPM_TEST_DB_URL absent — C3/C4/C6 have no test database to verify, and
+        before this check C3 would quietly fall back to migrating the dev
+        database and report PASS anyway.
+
+      * BPM_DB_URL and BPM_TEST_DB_URL naming the same host:port/database —
+        a misconfiguration in its own right (integration tests would mutate the
+        development database), and one that would additionally mask ISS-0180 by
+        making C3's old dev-database behaviour accidentally correct.
+
+    Printing the resolved URLs is the other half of the check. The process
+    environment takes precedence over .env, so a stale value inherited from a
+    sibling checkout retargets the entire checklist at a database the operator
+    never intended — invisibly, until now.
+    """
+    dev_url = os.environ.get("BPM_DB_URL")
+    test_url = os.environ.get("BPM_TEST_DB_URL")
+
+    if not test_url:
+        return Check(
+            "C0 DB URL targets",
+            BAD,
+            "BPM_TEST_DB_URL is not set — the checklist has no test database to verify",
+            "set BPM_TEST_DB_URL (see .env.example)",
+        )
+
+    if dev_url and db_identity(dev_url) == db_identity(test_url):
+        return Check(
+            "C0 DB URL targets",
+            BAD,
+            f"BPM_DB_URL and BPM_TEST_DB_URL both resolve to {redact(test_url)} — "
+            "integration tests would run against the development database",
+            "point BPM_TEST_DB_URL at the db_test container, not db (see .env.example)",
+        )
+
+    dev_label = redact(dev_url) if dev_url else "(unset)"
+    return Check(
+        "C0 DB URL targets",
+        OK,
+        f"test={redact(test_url)} dev={dev_label}",
+    )
+
+
+def compose_project_name() -> str:
+    """This workspace's compose project, from the environment or .env.
+
+    ISS-0180: the container name is `<project>-db_test-1`, and several checkouts
+    of this repo can run side by side on one host under different project names
+    (`.env` sets COMPOSE_PROJECT_NAME for exactly that reason). Hardcoding one
+    project's container name means the check inspects a sibling workspace's
+    container — or falls through to a name-substring match that accepts any of
+    them.
+    """
+    return os.environ.get("COMPOSE_PROJECT_NAME") or dotenv_get("COMPOSE_PROJECT_NAME") or "r-co"
+
+
+def container_publishes_port(name: str, port: int) -> bool:
+    """True if the named container publishes `port` on the host.
+
+    Uses `docker port`, whose output lists the host bindings for the container's
+    exposed ports (e.g. "5432/tcp -> 0.0.0.0:5453").
+    """
+    code, out = run(["docker", "port", name], timeout=30)
+    if code != 0:
+        return False
+    return any(binding.rsplit(":", 1)[-1].strip() == str(port) for binding in out.splitlines() if ":" in binding)
+
+
 def check_docker() -> Check:
+    """C1 — the db_test container is healthy AND is the one the tests connect to.
+
+    ISS-0180: a container merely *named* db_test proves nothing on a host running
+    several workspaces. After confirming health, this check confirms the
+    container publishes the port in BPM_TEST_DB_URL, so C1 is talking about the
+    same database as C3, C4 and C6.
+    """
     if not shutil.which("docker"):
         return Check("C1 db_test container healthy", SKIP, "docker not on PATH")
 
+    container = f"{compose_project_name()}-db_test-1"
+
     code, out = run(
-        ["docker", "inspect", "-f", "{{.State.Health.Status}}", "r-co-db_test-1"],
+        ["docker", "inspect", "-f", "{{.State.Health.Status}}", container],
         timeout=30,
     )
     if code != 0:
-        # Container name is compose-project dependent; fall back to a label query.
+        # Compose v1 used underscores; fall back before giving up on the name.
+        legacy = f"{compose_project_name()}_db_test_1"
         code, out = run(
-            ["docker", "ps", "--filter", "name=db_test", "--format", "{{.Names}}\t{{.Status}}"],
+            ["docker", "inspect", "-f", "{{.State.Health.Status}}", legacy],
             timeout=30,
         )
-        if code != 0 or not out:
+        if code != 0:
             return Check(
                 "C1 db_test container healthy",
                 BAD,
-                "db_test container not found or not running",
+                f"container {container!r} not found (COMPOSE_PROJECT_NAME={compose_project_name()!r})",
                 "docker compose up -d db db_test keycloak --wait",
             )
-        if "healthy" not in out.lower() and "up" not in out.lower():
-            return Check(
-                "C1 db_test container healthy",
-                BAD,
-                out.splitlines()[0],
-                "docker compose up -d db db_test --wait",
-            )
-        return Check("C1 db_test container healthy", OK, out.splitlines()[0])
+        container = legacy
 
     status = out.strip()
     if status != "healthy":
         return Check(
             "C1 db_test container healthy",
             BAD,
-            f"health status is {status!r}",
+            f"{container}: health status is {status!r}",
             "docker compose up -d db_test --wait",
         )
-    return Check("C1 db_test container healthy", OK, "healthy")
+
+    # The container is healthy — but is it the one BPM_TEST_DB_URL addresses?
+    test_url = os.environ.get("BPM_TEST_DB_URL")
+    if test_url:
+        _, port, _ = db_identity(test_url)
+        if port and not container_publishes_port(container, port):
+            return Check(
+                "C1 db_test container healthy",
+                BAD,
+                f"{container} is healthy but does not publish port {port} from "
+                f"BPM_TEST_DB_URL ({redact(test_url)}) — the healthy container is not "
+                "the database the tests connect to",
+                "align COMPOSE_PROJECT_NAME and BPM_TEST_DB_URL's port (see .env)",
+            )
+        return Check("C1 db_test container healthy", OK, f"{container} healthy, publishes :{port}")
+
+    return Check("C1 db_test container healthy", OK, f"{container} healthy")
 
 
 def check_zig_build() -> Check:
@@ -235,20 +391,75 @@ def check_zig_build() -> Check:
     return Check("C2 zig build", OK, "exit 0")
 
 
+def migration_file_count() -> int:
+    """Number of *.sql files in migrations/ — the ledger's expected row count."""
+    return len(list((REPO_ROOT / "migrations").glob("*.sql")))
+
+
+def applied_migration_count(db_url: str) -> int | str:
+    """Rows in public.schema_migrations for schema_name='public', or an error string."""
+    try:
+        import psycopg2
+    except ImportError:
+        return "psycopg2 not installed"
+    try:
+        with psycopg2.connect(db_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT count(*) FROM public.schema_migrations WHERE schema_name = 'public'"
+                )
+                (count,) = cur.fetchone()
+                return int(count)
+    except Exception as exc:  # noqa: BLE001 - report any connection/query failure
+        return f"{type(exc).__name__}: {exc}".strip()
+
+
 def check_migrate() -> Check:
-    if not (os.environ.get("BPM_DB_URL") or os.environ.get("BPM_TEST_DB_URL")):
+    """C3 — the TEST database is fully migrated.
+
+    ISS-0180 / GH #511. Two things changed here, and neither relaxes anything:
+
+    1. `zig build migrate` is invoked with BPM_DB_URL overridden to
+       BPM_TEST_DB_URL *in the child environment only*. src/tools/migrate.zig
+       resolves its target from BPM_DB_URL by contract and is also the
+       production bootstrap path, so the variable is retargeted for this one
+       call rather than the program being taught a new variable. Previously C3
+       migrated the development database and reported PASS about it, while C4
+       verified the test database — the two checks describing two different
+       databases is what made a false green possible.
+
+    2. Exit 0 is necessary but not sufficient. `migrate` exits 0 when there is
+       nothing to do, which is exactly what it reported while the test database
+       sat behind. C3 now compares the test database's ledger against
+       migrations/ and fails naming the delta, so C3 detects the ISS-0180
+       condition on its own instead of leaving it to C4.
+    """
+    test_url = os.environ.get("BPM_TEST_DB_URL")
+    if not test_url:
         return Check(
             "C3 zig build migrate",
             BAD,
-            "neither BPM_DB_URL nor BPM_TEST_DB_URL is set",
-            "set BPM_DB_URL (see .env.example)",
+            "BPM_TEST_DB_URL is not set — cannot migrate the database the tests use",
+            "set BPM_TEST_DB_URL (see .env.example)",
         )
-    code, out = run(["zig", "build", "migrate"], timeout=600)
+
+    # Retarget the child process only; this process's own environment (and
+    # therefore C4's and C6's view) is untouched.
+    child_env = dict(os.environ)
+    child_env["BPM_DB_URL"] = test_url
+
+    code, out = run(["zig", "build", "migrate"], timeout=600, env=child_env)
     if code == 127:
         return Check("C3 zig build migrate", SKIP, "zig not on PATH")
     if code != 0:
         tail = "\n         ".join(out.splitlines()[-4:]) or "non-zero exit"
-        return Check("C3 zig build migrate", BAD, tail, "resolve the migration failure above")
+        return Check(
+            "C3 zig build migrate",
+            BAD,
+            f"migrate failed against the test database ({redact(test_url)}):\n         {tail}",
+            "resolve the migration failure above — it is a genuine migration error, "
+            "not a wrong-database problem",
+        )
     # The guide treats these as baseline drift even on exit 0. Match only
     # genuine std.log error/warning lines (which always start with the
     # "error:"/"warning:" level prefix) or an explicit "already exists" DB
@@ -275,7 +486,37 @@ def check_migrate() -> Check:
                 f"exit 0 but output contains 'already exists' — baseline drift: {line.strip()!r}",
                 "python3 tools/verify_schema_baseline.py --auto-fix",
             )
-    return Check("C3 zig build migrate", OK, "exit 0, clean output")
+
+    # ISS-0180: exit 0 only proves the runner did not crash. `migrate` exits 0
+    # with "No new migrations to apply." whenever its target is current — which
+    # is precisely what it reported while pointed at the development database
+    # and the test database sat behind. Assert the ledger instead, so C3's PASS
+    # is a statement about the test database rather than about a subprocess.
+    expected = migration_file_count()
+    applied = applied_migration_count(test_url)
+    if isinstance(applied, str):
+        return Check(
+            "C3 zig build migrate",
+            BAD,
+            f"migrate exited 0 but the test database's ledger could not be read "
+            f"({redact(test_url)}): {applied}",
+            "confirm BPM_TEST_DB_URL points at a reachable db_test container",
+        )
+    if applied != expected:
+        return Check(
+            "C3 zig build migrate",
+            BAD,
+            f"migrate exited 0 but {redact(test_url)} has {applied} applied migration(s) "
+            f"for schema_name='public' while migrations/ contains {expected} *.sql file(s) "
+            f"(delta = {applied - expected}) — the test database is not fully migrated",
+            "python3 tools/verify_schema_baseline.py --check-tenants --auto-fix",
+        )
+
+    return Check(
+        "C3 zig build migrate",
+        OK,
+        f"exit 0, clean output, {applied}/{expected} applied on {redact(test_url)}",
+    )
 
 
 def check_schema_baseline() -> Check:
@@ -352,13 +593,30 @@ def check_bench_env() -> Check:
 
     Passes when a benchmark DB URL is resolvable exactly the way bench.zig
     resolves one: process environment first, then .env in the repo root.
+
+    ISS-0180: that precedence prefers BPM_DB_URL over BPM_TEST_DB_URL, which is
+    bench.zig's own documented contract and is deliberately left unchanged here
+    — a gate must mirror the behaviour it is checking, not a preferred one. What
+    did change is that C7 now names the resolved URL as well as the variable, so
+    an operator can see which database the benchmark will actually use instead
+    of inferring it from a variable name.
     """
     for var in BENCH_DB_URL_VARS:
-        if os.environ.get(var):
-            return Check("C7 bench DB URL resolvable", OK, f"{var} set in environment")
+        value = os.environ.get(var)
+        if value:
+            return Check(
+                "C7 bench DB URL resolvable",
+                OK,
+                f"{var} set in environment → {redact(value)}",
+            )
     for var in BENCH_DB_URL_VARS:
-        if dotenv_has(var):
-            return Check("C7 bench DB URL resolvable", OK, f"{var} set in .env")
+        value = dotenv_get(var)
+        if value:
+            return Check(
+                "C7 bench DB URL resolvable",
+                OK,
+                f"{var} set in .env → {redact(value)}",
+            )
     return Check(
         "C7 bench DB URL resolvable",
         BAD,
@@ -387,6 +645,8 @@ def main(argv: list[str]) -> int:
         checks = [check_bench_env()]
     else:
         checks = []
+        # C0 first: it names the databases every later check is about. ISS-0180.
+        checks.append(check_url_targets())
         checks.append(
             Check("C1 db_test container healthy", SKIP, "--skip-docker")
             if args.skip_docker
@@ -408,7 +668,10 @@ def main(argv: list[str]) -> int:
     if not args.quiet:
         for c in checks:
             print(f"  [{c.status}] {c.name}")
-            if c.detail and c.status != OK:
+            # ISS-0180: print the detail on PASS too. A check that certifies a
+            # *specific* database must say which one — a bare "[PASS] C3" is
+            # exactly the uninformative green this issue was about.
+            if c.detail:
                 print(f"         {c.detail}")
             if c.remedy and c.failed:
                 print(f"         remedy: {c.remedy}")

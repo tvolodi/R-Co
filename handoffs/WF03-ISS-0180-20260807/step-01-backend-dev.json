@@ -1,0 +1,47 @@
+{
+  "handoff_id": "12894406-8149-4607-9056-507de8be9159",
+  "run_id": "WF03-ISS-0180-20260807",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T01:27:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0180.json",
+      "tools/verify_test_env.py",
+      "src/tools/migrate.zig",
+      "build.zig",
+      ".env",
+      ".env.example",
+      "docker-compose.yml"
+    ]
+  },
+  "task": {
+    "description": "Diagnose ISS-0180 (GH #511): audit every check C1..C7 of tools/verify_test_env.py for dev-vs-test database confusion; reproduce the false green.",
+    "acceptance_criteria": [
+      "All of C1..C7 audited for which env var they read",
+      "Defect mechanism traced to source lines",
+      "Bug reproduced with pasted output",
+      "Diagnosis written to docs/issue-reports/ISS-0180-diagnosis.yaml"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "C3 runs zig build migrate, which src/tools/migrate.zig resolves ONLY from BPM_DB_URL (dev DB), while C4/C6 and all integration tests use BPM_TEST_DB_URL. Reproduced: with dev at 108/108 and test held at 107/108, C3 PASS and C4 FAIL in the same run. Audit found a second, same-family defect in C1: it hardcodes container name r-co-db_test-1 while this workspace uses COMPOSE_PROJECT_NAME=r-co-2, so it falls through to a name-substring docker ps filter matching ANY project db_test. C7 is weak-by-design (mirrors bench.zig precedence, prefers dev) but never reported which DB it resolved. C2/C5 touch no DB; C4/C6 were already correct.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0180-diagnosis.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 03 implement)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T01:27:44Z",
+  "completed_at": "2026-08-07T01:27:44Z"
+}

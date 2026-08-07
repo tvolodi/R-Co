@@ -97,10 +97,13 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/511",
       "title": "verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-ws2-loop",
+        "locked_at": "2026-08-07T01:22:52Z"
+      },
       "added_at": "2026-08-07T01:00:13Z",
-      "started_at": null,
+      "started_at": "2026-08-07T01:22:52Z",
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
