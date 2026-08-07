@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGN-VALIDATOR",
   "file": "handoffs/WF03-GH556-20260807/step-02b-code-design-validator.json",
   "created_at": "2026-08-07T19:44:04Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-07T19:44:43Z",
+  "completed_at": "2026-08-07T19:46:03Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -36,7 +36,13 @@
       "fn:lint-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Validated src/design/iss0612-provisioning-lock-scope-fix.md against the actual current source (src/db/provisioning.zig, src/db/migrations.zig, migrations/060_schema_per_tenant_bootstrap.sql, src/db/pool.zig read in full, not excerpted). All factual claims in the design check out exactly against source: (1) the current lock block at provisioning.zig:117-125 does close before Steps 2-6a begin, confirming the root cause; (2) runForSchema() (migrations.zig:104-116) has NO *Conn parameter in its signature -- it only takes *Pool and always calls pool.acquire() internally (line 112) -- so it is structurally impossible, not merely a matter of implementer discipline, for the redesigned provisionTenantSchema() to pass lock_conn into it; this is a stronger guardrail than the design claims for itself. (3) Pool.acquire() (pool.zig:779-818) only ever draws from the idle_indices/idle_count set under mutex, so a checked-out lock_conn can never be handed back out to a concurrent/nested acquire() call until release() returns it -- confirms no self-deadlock and no accidental connection reuse. (4) MIGRATIONS_LOCK_KEY_SQL (migrations.zig:31-32) is pg_advisory_xact_lock on a global (non-tenant) key, acquired on runForSchema's own connection inside its per-migration transaction (line 463) -- disjoint keyspace and disjoint connection from lock_conn's session-scoped pg_advisory_lock, so no cross-lock wait-for cycle exists; the design correctly identifies the real cost as connection-pool scarcity (two connections held per critical section pass), not a deadlock, and correctly relies on the pre-existing PoolExhausted fail-fast path. (5) bpm_provision_tenant_schema() (migrations/060_schema_per_tenant_bootstrap.sql:73-99) confirmed to take pg_advisory_xact_lock(hashtext(v_schema_name)) at line 89 -- a third, schema-keyed, disjoint lock layer as claimed; keep-as-is recommendation is defensible since it protects direct SQL callers bypassing the Zig-side lock entirely. (6) Pool.release() (pool.zig:834-873) confirmed: resetConnectionSearchPath at line 857, mutex-guarded idle-set insertion at lines 859-873 -- the proposed pg_advisory_unlock_all() placement matches exactly. lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0, 2 MINOR: a schema-qualified-name mention in prose describing an existing SQL function's name, and the ISS-0612 requirement-ID-format check, both expected/cosmetic for this Type E issue-fix doc). No implementation code present. Design is complete enough for BACKEND-DEV to proceed without ambiguity on connection-sharing scope.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
