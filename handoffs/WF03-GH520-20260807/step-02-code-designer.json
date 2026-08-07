@@ -1,0 +1,39 @@
+{
+  "handoff_id": "d8d44f86-94c7-4132-9fb5-772b83ed9f48",
+  "run_id": "WF03-GH520-20260807",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH520-20260807/step-02-code-designer.json",
+  "created_at": "2026-08-07T22:14:40Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0186.json",
+      "tests/integration/effects_subsystem_test.zig",
+      "src/effects/queue.zig"
+    ]
+  },
+  "task": {
+    "description": "Design a fix for GH #520 / ISS-0186: TC-EXP-301-05 (tests/integration/effects_subsystem_test.zig, block starting ~line 570) asserts on a measured wall-clock delta between two separate database reads (next_attempt_at read BEFORE markRetry, then read AFTER, subtracting to get observed_delta_ms, compared against expected_ms +/- 500ms tolerance at lines 689-694). Root cause: Queue.markRetry (src/effects/queue.zig:84-108) computes next_attempt_at = NOW() + $3::interval entirely on the PostgreSQL server side using SQL NOW() -- the Zig test has no control over or synchronized view of that server clock, and under ~20-test-binaries-concurrent load (zig build test-integration-svc), scheduling jitter between the test's two separate query round-trips exceeds the +/-500ms tolerance. Design a fix that asserts a deterministic property instead: read next_attempt_at AND a server-side NOW() snapshot in the SAME query (single round-trip, e.g. SELECT EXTRACT(EPOCH FROM next_attempt_at)*1000, EXTRACT(EPOCH FROM NOW())*1000 in one statement, executed once, immediately after markRetry returns) so there is no cross-round-trip jitter window at all -- the interval between next_attempt_at and that same query's NOW() should equal the requested backoff_ms exactly (modulo query execution time within a single round trip, which is sub-millisecond, not the multi-hundred-ms cross-request jitter the current two-round-trip design is vulnerable to). Alternatively/additionally consider asserting the raw interval algebraically: since next_attempt_at = t_exec + backoff_ms where t_exec is the server's own NOW() at execution time, capturing BOTH values in one query removes the wall-clock-relative-to-test-process measurement entirely. Read the current test block in full (tests/integration/effects_subsystem_test.zig around lines 567-696) and src/effects/queue.zig's markRetry before designing. The acceptance criteria require the assertion still fails on a genuine backoff-schedule regression -- do not weaken it into a tautology (e.g. do not just assert next_attempt_at > NOW() with no bound).",
+    "acceptance_criteria": [
+      "Design replaces the two-separate-query wall-clock delta measurement with a single-round-trip deterministic assertion",
+      "The assertion still fails if the backoff schedule regresses -- not weakened into a tautology",
+      "Design is implementable as a test-only change (tests/integration/effects_subsystem_test.zig) with no production code touched",
+      "No implementation code present in the design artefact"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
