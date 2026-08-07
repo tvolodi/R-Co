@@ -100,8 +100,25 @@ def priority_sort_key(priority: str) -> int:
     return {"MUST": 0, "SHOULD": 1, "COULD": 2}.get(priority, 3)
 
 
-def build_plan(reqs: dict, status_filter: str) -> list[list[str]]:
-    scope_ids = {rid for rid, e in reqs.items() if e.get("status") == status_filter}
+def build_plan(reqs: dict, status_filter: str, stage_filter: str | None = None) -> list[list[str]]:
+    """`stage_filter`, when given, restricts the pool to requirements whose
+    `stage` field exactly matches it — so an independently-authored backlog
+    (e.g. the BRW-* "borrowing" requirements, which come with their own
+    hand-written Track A / Track M ordering in
+    docs/addon-2/03-implementation-order.md) is planned and claimed as its
+    own sequence, never interleaved batch-by-batch with an unrelated
+    backlog's requirements. Two backlogs each internally well-ordered do NOT
+    merge into one well-ordered stream just by sharing a status filter —
+    verified when this was added: without stage_filter, BRW-* Track-A engine
+    work landed in the same batches as unrelated CAC-UI/CMP-UI frontend
+    work, exactly the unrelated-batch churn ORCHESTRATOR.md's WF-02 rules
+    exist to prevent.
+    """
+    scope_ids = {
+        rid for rid, e in reqs.items()
+        if e.get("status") == status_filter
+        and (stage_filter is None or str(e.get("stage")) == stage_filter)
+    }
     if not scope_ids:
         return []
 
@@ -184,12 +201,18 @@ def build_plan(reqs: dict, status_filter: str) -> list[list[str]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--status", default="DRAFT", help="requirement status to include (default: DRAFT)")
+    parser.add_argument(
+        "--stage", default=None,
+        help="restrict to requirements whose stage field exactly matches this "
+             "(e.g. 'BRW — Borrowing from ASCOA-GO') — keeps independently-"
+             "authored backlogs from interleaving; omit to plan across all stages",
+    )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     args = parser.parse_args()
 
     reqs = load_requirements()
     try:
-        batches = build_plan(reqs, args.status)
+        batches = build_plan(reqs, args.status, args.stage)
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
@@ -199,10 +222,12 @@ def main() -> int:
         return 0
 
     if not batches:
-        print(f"No requirements with status={args.status!r} to batch.")
+        scope = f"status={args.status!r}" + (f" stage={args.stage!r}" if args.stage else "")
+        print(f"No requirements with {scope} to batch.")
         return 0
 
-    print(f"{sum(len(b) for b in batches)} requirements in {len(batches)} batches (status={args.status!r}):\n")
+    scope_desc = f"status={args.status!r}" + (f", stage={args.stage!r}" if args.stage else "")
+    print(f"{sum(len(b) for b in batches)} requirements in {len(batches)} batches ({scope_desc}):\n")
     for i, batch in enumerate(batches, 1):
         print(f"Batch {i}:")
         for rid in batch:

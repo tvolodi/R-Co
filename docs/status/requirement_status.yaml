@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-07T16:17:56Z'
+last_updated: '2026-08-07T16:44:06Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4727,3 +4727,103 @@ requirements:
     stage: '16'
     priority: SHOULD
     title: Validation gate at authoring and promotion
+  BRW-MOB-1:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: MUST
+    title: Generic definition-interpreter mobile app
+  BRW-MOB-2:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: MUST
+    title: Tenant bootstrap sequence
+  BRW-MOB-3:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: MUST
+    title: Offline definition cache with delta sync and version pinning
+  BRW-MOB-4:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: MUST
+    title: Generic renderers with six mandatory states
+  BRW-MOB-5:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: MUST
+    title: On-device security
+  BRW-MOB-6:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: SHOULD
+    title: API client with auth, refresh, retry, typed errors
+  BRW-MOB-7:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: SHOULD
+    title: Internationalisation
+  BRW-MOB-8:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: MUST
+    title: v1 scope boundary
+  BRW-ENG-1:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: MUST
+    title: Formalized per-node retry policy
+  BRW-ENG-2:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: MUST
+    title: Failed-instance lifecycle
+  BRW-ENG-3:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: MUST
+    title: Parallel-branch failure isolation
+  BRW-ENG-4:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: SHOULD
+    title: Compensation and error-boundary constructs
+  BRW-ENG-5:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: SHOULD
+    title: Restore reconciliation with `instance_waits`
+  BRW-EFX-1:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: SHOULD
+    title: Async-effects coverage and hardening
+  BRW-SAGA-1:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: SHOULD
+    title: Minimal generic saga runner
+  BRW-SEC-1:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: SHOULD
+    title: HMAC ingress key rotation with grace window
+  BRW-OPS-1:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: MUST
+    title: Stated scale anchor
+  BRW-OPS-2:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: SHOULD
+    title: Tier→quota model coverage
+  BRW-OPS-3:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: MUST
+    title: Written sandbox threat model
+  BRW-OPS-4:
+    status: DRAFT
+    stage: BRW — Borrowing from ASCOA-GO
+    priority: COULD
+    title: Ephemeral throwaway-sandbox tier (conditional)

@@ -322,30 +322,49 @@ operator can run either independently, or both (GitHub issues first, by conventi
 bugs blocking other work should usually clear before new features build on top of a
 possibly-broken base — but nothing enforces that ordering; it is an operator choice).
 
+**Multiple independently-authored backlogs must be planned separately, via `--stage`.**
+`docs/requirements.yaml` can hold several `DRAFT` backlogs migrated from different source
+documents, each with its own internal ordering logic — e.g. the 92-requirement backlog
+(implicit ordering derived from `**Extends:**` markers added during migration) and the
+20-requirement `BRW-*` "borrowing" set (`stage: "BRW — Borrowing from ASCOA-GO"`, ordering
+transcribed directly from `docs/addon-2/03-implementation-order.md`'s hand-authored Track
+A / Track M plan). Planning them together (no `--stage` filter) produces a single merged
+batch stream where unrelated requirements from different backlogs land in the same batch
+— confirmed when this was built: without `--stage`, `BRW-*` Track-A engine work
+interleaved with unrelated `CAC-UI`/`CMP-UI` frontend work from the other backlog, exactly
+the unrelated-batch churn `ORCHESTRATOR.md`'s WF-02 rules exist to prevent. Always pass
+`--stage "<exact stage value>"` to `reqctl_batch_plan.py`, `reqctl_batch_claim.py`, and
+`reqctl_batch_release.py` together when draining a backlog that has one; omit it only for
+a backlog meant to interleave freely with everything else.
+
 **Tools reference:**
 
 ```
-python3 tools/reqctl_batch_plan.py [--status DRAFT] [--json]
+python3 tools/reqctl_batch_plan.py [--status DRAFT] [--stage "<stage value>"] [--json]
 ```
-Computes the ordered batch list from `docs/requirements.yaml`: topological order from
-each requirement's `**Extends:** <ID>` marker (a genuine directional dependency — unlike
-`**See:**`, which is symmetric cross-referencing with no ordering meaning in how this
-repo writes it; verified when this was built that the `See:` graph among the initial
-92-requirement backlog migration had 34 mutual-reference cycles while the `Extends:` graph
-was a clean DAG), workflow-clustered (keeps one feature's requirements adjacent), capped
-at 4 per batch (`ORCHESTRATOR.md`'s WF-02 hard limit), and a requirement never shares a
-batch with the thing it `Extends` even if the dependency graph says it's technically
-"ready" — CODE-DESIGNER needs the extended requirement's design settled first.
+Computes the ordered batch list from `docs/requirements.yaml`, optionally restricted to
+one `stage` value (see above). Topological order from each requirement's
+`**Extends:** <ID>` marker (a genuine directional dependency — unlike `**See:**`, which is
+symmetric cross-referencing with no ordering meaning in how this repo writes it; verified
+when this was built that the `See:` graph among the initial 92-requirement backlog
+migration had 34 mutual-reference cycles while the `Extends:` graph was a clean DAG),
+workflow-clustered (keeps one feature's requirements adjacent), capped at 4 per batch
+(`ORCHESTRATOR.md`'s WF-02 hard limit), and a requirement never shares a batch with the
+thing it `Extends` even if the dependency graph says it's technically "ready" —
+CODE-DESIGNER needs the extended requirement's design settled first.
 
 ```
-python3 tools/reqctl_batch_claim.py <workspace_id>
+python3 tools/reqctl_batch_claim.py <workspace_id> [--stage "<stage value>"]
 ```
-Claims the next unclaimed, non-`DONE` batch. Exit 0 = claimed (JSON on stdout), exit 2 =
-nothing left to claim, exit 3 = all unclaimed batches locked by other workspaces, exit 1 =
-error. Same exit-code semantics as `gh_claim.py`.
+Claims the next unclaimed, non-`DONE` batch within the given stage (or across all stages
+if omitted). Exit 0 = claimed (JSON on stdout), exit 2 = nothing left to claim, exit 3 =
+all unclaimed batches locked by other workspaces, exit 1 = error. Same exit-code semantics
+as `gh_claim.py`. Batches from different `--stage` values are locked independently — they
+share `handoffs/batch_queue.json` but are keyed by `(stage_key, batch_index)`, never by a
+bare index, so claiming batch 0 of one backlog never collides with batch 0 of another.
 
 ```
-python3 tools/reqctl_batch_release.py <batch_index> <workspace_id> [--run-id RUN_ID]
+python3 tools/reqctl_batch_release.py <batch_index> <workspace_id> [--run-id RUN_ID] [--stage "<stage value>"]
 ```
 Marks a claimed batch `DONE`. Same lock-ownership check as `queue_release.py` (refuses to
 release a batch locked by a different `workspace_id`).

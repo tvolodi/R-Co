@@ -63,16 +63,26 @@ def _release_mutex():
 
 def main() -> int:
     if len(sys.argv) < 3:
-        print("Usage: reqctl_batch_release.py <batch_index> <workspace_id> [--run-id RUN_ID]", file=sys.stderr)
+        print(
+            "Usage: reqctl_batch_release.py <batch_index> <workspace_id> "
+            "[--run-id RUN_ID] [--stage \"<stage value>\"]",
+            file=sys.stderr,
+        )
         return 1
 
     batch_index = int(sys.argv[1])
     workspace_id = sys.argv[2]
     run_id = None
+    stage = None
     if "--run-id" in sys.argv:
         i = sys.argv.index("--run-id")
         if i + 1 < len(sys.argv):
             run_id = sys.argv[i + 1]
+    if "--stage" in sys.argv:
+        i = sys.argv.index("--stage")
+        if i + 1 < len(sys.argv):
+            stage = sys.argv[i + 1]
+    stage_key = stage or "__all__"
 
     for attempt in range(5):
         if _acquire_mutex(workspace_id):
@@ -91,12 +101,13 @@ def main() -> int:
 
         found = False
         for item in q.get("items", []):
-            if item.get("batch_index") != batch_index:
+            if item.get("batch_index") != batch_index or item.get("stage_key") != stage_key:
                 continue
             lock = item.get("lock") or {}
             if lock.get("workspace_id") != workspace_id:
                 print(
-                    f"ERROR: batch {batch_index} is locked by '{lock.get('workspace_id')}', not '{workspace_id}'",
+                    f"ERROR: batch {batch_index} (stage={stage_key!r}) is locked by "
+                    f"'{lock.get('workspace_id')}', not '{workspace_id}'",
                     file=sys.stderr,
                 )
                 _release_mutex()
