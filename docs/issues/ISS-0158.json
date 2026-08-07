@@ -20,7 +20,11 @@
   "notes": "Filed rather than fixed inline because ISS-0149's scope is the ten specific integration files named in GH #465, all ten of which now pass in isolation. effects_subsystem_test.zig is NOT one of them; it entered the picture only because GH #439's wiring commit made it a compile-blocker for the whole test-integration umbrella, which ISS-0149 had to clear to see any results at all. The compile fixes, the missing-migration fix, and 16 of the 30 failures were resolved under ISS-0149 as unavoidable unblocking work; the remaining 14 require a production-behaviour decision about EXP-302 that is properly its own diagnosis.",
   "related_issues": [
     "ISS-0149",
-    "ISS-0137"
+    "ISS-0137",
+    "ISS-0182",
+    "ISS-0186",
+    "ISS-0187",
+    "ISS-0188"
   ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/479",
   "resolved_at": "2026-08-07T04:03:47Z",
