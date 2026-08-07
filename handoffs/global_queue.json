@@ -404,14 +404,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/528",
       "title": "TC-EXT-01-U08a is flaky under full-suite concurrency: CaptureServer hardcodes TCP port 18181 and its captured headers are read across a thread boundary",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-07T17:07:42Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-07T17:07:42Z",
       "started_at": "2026-08-07T17:07:42Z",
-      "completed_at": null,
+      "completed_at": "2026-08-07T19:21:18Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 528,
