@@ -4,12 +4,35 @@
   "github_issue": "https://github.com/tvolodi/R-Co/issues/526",
   "registered_at": "2026-08-07T04:40:47Z",
   "registered_by": "BACKEND-DEV during WF03-ISS-0132-20260807 (incidental discovery)",
+  "resolved_by": "DOC-UPDATER (WF03-GH526-20260807 Step 7) at 2026-08-07T21:20:23Z",
+  "resolution": "Refactored rowToDefinition into a thin wrapper that fills a private RowFields struct via the existing col.get/col.getOpt helpers and delegates to the new rowToDefinitionFromFields(allocator, *const RowFields, fallback) error{OutOfMemory}!Definition. The new function follows the proven parseGraphJson errdefer pattern from ISS-0132: every fallible dupe (name, version, description, stage) and the graph obtained from parseGraphJson is guarded by its own errdefer registered BEFORE the next fallible statement; the Definition struct literal is assembled LAST. parseGraphJson now propagates error.OutOfMemory (was silently swallowed by catch fallback.graph); every other parseGraphJson error is still caught to fallback.graph. No caller signature changes (9 call sites unchanged: store.zig:294, 347, 688, 775, 862, 1067, 1205, 1511, 1542). No new error variants introduced. Allocation-failure coverage: src/iss0206_rowtodefinition_errdefer_test.zig with TC-ISS-0206-01/02/03 driving std.testing.checkAllAllocationFailures against the new signature; wired into build.zig aggregate test_step per ISS-0150 / GH #466. Verification: zig build test-iss0206-rowtodefinition = 5/5 PASS, 18ms, no leak; zig build test-definition-store = 3/3 PASS; zig build = 0; zig build bench = 5/5 PASS; all three linters clean; env gate HEALTHY after remediation. Release APPROVED by RELEASE-VALIDATOR (docs/status/release-WF03-GH526-20260807.yaml). PR (to be created at Step Final) will close GH #526 with a reference to commit 6729f7aa on feature/WF03-GH526-20260807.",
+  "resolution_provenance": {
+    "fix_commit": "6729f7aa on feature/WF03-GH526-20260807",
+    "design_artefact": "src/design/iss0206-rowtodefinition-errdefer.md",
+    "test_file": "src/iss0206_rowtodefinition_errdefer_test.zig",
+    "test_spec": "tests/specs/ISS-0206.md",
+    "diagnosis": "docs/issue-reports/ISS-0206-diagnosis.yaml",
+    "release_decision": "docs/status/release-WF03-GH526-20260807.yaml",
+    "inner_reports": [
+      "docs/issue-reports/WF03-GH526-20260807-step-2-code-designer-INNER-REPORT.json",
+      "docs/issue-reports/WF03-GH526-20260807-step-2b-code-design-validator-INNER-REPORT.json",
+      "docs/issue-reports/WF03-GH526-20260807-step-3-backend-dev.json",
+      "docs/issue-reports/WF03-GH526-20260807-step-4-test-designer-INNER-REPORT.json",
+      "docs/issue-reports/WF03-GH526-20260807-step-4b-test-design-validator-INNER-REPORT.json",
+      "docs/issue-reports/WF03-GH526-20260807-step-5-test-runner-INNER-REPORT.json",
+      "docs/issue-reports/WF03-GH526-20260807-step-6-release-validator-INNER-REPORT.json"
+    ]
+  },
   "related_to": [
     "ISS-0132",
     "ISS-0601-LEAK-001"
   ],
   "severity": "MAJOR",
-  "status": "OPEN",
+  "status": "RESOLVED",
+  "status_history": [
+    {"status": "OPEN",     "at": "2026-08-07T04:40:47Z", "by": "BACKEND-DEV during WF03-ISS-0132-20260807 (incidental discovery)"},
+    {"status": "RESOLVED", "at": "2026-08-07T21:20:23Z", "by": "DOC-UPDATER (WF03-GH526-20260807 Step 7)"}
+  ],
   "scope": "Same leak class ISS-0132 addresses, at a site the ISS-0132 harness cannot reach.",
   "symptom": "On any allocation failure partway through rowToDefinition, every dupe that already succeeded is leaked. The function has no errdefer guards at all.",
   "location": "src/definition/store.zig:1433 rowToDefinition",

@@ -360,3 +360,4 @@
 2026-08-07T19:49:23Z | VALIDATE | WF03-GH526-20260807 | c1d2e3f4 | TEST-DESIGN-VALIDATOR → ORCH | PASS — all 4 ISS-0206 acceptance criteria mapped 1:1 to 3 test cases; lint_test_isolation.py exit 0; zig build test-iss0206-rowtodefinition exit 0 no leak; wired into aggregate test_step per ISS-0150; no pipeline file required; routing to TEST-RUNNER
 2026-08-07T20:51:29Z | COMPLETE | WF03-GH526-20260807 | 87f58489 | TEST-RUNNER | PASS Step 5 (narrow 5/5 in 18ms, no leak; aggregate infra noise pre-existing baseline) → step 6 RELEASE-VALIDATOR
 2026-08-07T21:17:35Z | COMPLETE | WF03-GH526-20260807 | 049b6e64 | RELEASE-VALIDATOR | PASS -- release APPROVED for ISS-0206
+2026-08-07T21:22:16Z | COMPLETE | WF03-GH526-20260807 | 7d8e9f01 | DOC-UPDATER -> ORCH | PASS Step 7 -- CHANGELOG + ISS-0206 RESOLVED + retrospective + board updated; routing to Step Final (git-merge)
