@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0188",
   "title": "TC-EXP-301-09 panics unwrapping a NULL last_error column from the email stub delivery path",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "created_at": "2026-08-07T04:03:47Z",
   "discovered_by": "BACKEND-DEV (WF03-ISS-0158-20260807)",
@@ -25,5 +25,11 @@
     "docs/issue-reports/ISS-0158-diagnosis.yaml"
   ],
   "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. Requires a production-behaviour decision about the email stub, which is why it is not folded into ISS-0158.",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/522"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/522",
+  "resolved_at": "2026-08-07T22:07:10Z",
+  "resolved_in": [
+    "tests/integration/effects_subsystem_test.zig"
+  ],
+  "resolution": "Already fixed and merged to main before this loop iteration claimed GH-522 -- PR #525 (commit 680dba6, 2026-08-07T09:38:39+05:00) determined the intended behaviour: the email adapter's deliver() succeeds with status_code=200 when secret_ref is null, so markDelivered() is called (not markRetry) and last_error stays NULL. The original test's expectation (status='pending', last_error containing 'SecretResolutionFailed') was backwards -- the test title 'email adapter returns 200 (stub, no SMTP)' describes a success path, not a failure path. TC-EXP-301-09 now asserts status='delivered' and last_error IS NULL, with the nullable column read via `rows.rows[0][1] == null` (no unwrap panic). A follow-up fix (PR #534 / ISS-0208, commit merged as part of GH #532) repaired a botched diff from PR #525 that had left the file syntactically broken. This loop iteration (WF03-GH522-20260807) found no work to do: independently reran zig build test-integration and confirmed TC-EXP-301-09 does not appear among current failures/panics, confirming the fix already holds on main. This is the 'issue fixed and merged but GitHub issue never closed' scenario documented in gh_claim.py's _already_resolved_locally check -- that check did not catch it here only because the local ISS-0188.json's status field had never been updated to RESOLVED despite the fix landing weeks/hours earlier, which this update now corrects for future loop runs.",
+  "closed_without_new_commits": true
 }
