@@ -1,0 +1,66 @@
+{
+  "report_id": "WF03-GH526-20260807-step-4b-test-design-validator-INNER-REPORT",
+  "agent_id": "TEST-DESIGN-VALIDATOR",
+  "run_id": "WF03-GH526-20260807",
+  "step": "4b",
+  "created_at": "2026-08-07T19:48:39Z",
+  "summary": "WF-03 Step 4b (TEST-DESIGN-VALIDATOR) for ISS-0206 / GH #526. Hard-gate validation of the Step 4 TEST-DESIGNER handoff. PASS — all coverage / isolation / self-sufficiency / pipeline-applicability checks met. The test spec at tests/specs/ISS-0206.md covers all four ISS-0206 acceptance criteria with a 1:1 mapping table. The test file at src/iss0206_rowtodefinition_errdefer_test.zig implements three test cases (TC-ISS-0206-01 all fields populated, TC-ISS-0206-02 optional fields absent, TC-ISS-0206-03 regression negative control) — case count matches the spec exactly. No error.SkipZigTest anywhere in the file (this is a MUST). No mocks/stubs/in-memory fakes (drives the real rowToDefinitionFromFields via std.testing.checkAllAllocationFailures). zig build test-iss0206-rowtodefinition exits 0 with no DebugAllocator leak output (build is silent on success). tools/lint_test_isolation.py exits 0 ('OK — 1 file(s) checked, no isolation issues'). tools/lint_handoffs.py reports ZERO issues against any WF03-GH526-20260807 handoff (pre-existing BLOCKERs in other runs are out of scope). Test target is wired into build.zig at three sites: the dedicated test-iss0206-rowtodefinition step (build.zig:926-930), the test_engine_step (build.zig:931), and the aggregate test_step (build.zig:1267) — fulfilling the ISS-0150 / GH #466 lesson that tests must be reachable via the aggregate step, not narrow-only. No pipeline file is required: the four existing pipeline files (admin-user-lifecycle, onboarding-wizard, sim-admin-processes, sim-company-onboarding) do not cover the rowToDefinition codepath, and ISS-0206 has no user-visible sequential action. All workflow artefacts committed to feature/WF03-GH526-20260807 (working tree clean except the git-ignored memories/ directory).",
+  "checks_performed": [
+    {
+      "name": "Spec coverage of acceptance criteria",
+      "status": "pass",
+      "detail": "tests/specs/ISS-0206.md contains a 1:1 mapping table from all 4 ISS-0206 acceptance criteria (defined in docs/issues/ISS-0206.json) to the 3 implemented test cases. Each criterion has at least one TC-ISS-0206-N row."
+    },
+    {
+      "name": "Spec/implementation case-count match",
+      "status": "pass",
+      "detail": "Spec declares 3 cases (TC-ISS-0206-01/02/03 in the spec table). Implementation has exactly 3 'test \"...\"' blocks (TC-ISS-0206-01, TC-ISS-0206-02, TC-ISS-0206-03). Counted via grep: 3 tests in src/iss0206_rowtodefinition_errdefer_test.zig."
+    },
+    {
+      "name": "No error.SkipZigTest on MUST tests",
+      "status": "pass",
+      "detail": "Grep for SkipZigTest|test\\.skip|@import\\(.mock|mock across the test file returned zero matches. All 3 test blocks execute unconditionally."
+    },
+    {
+      "name": "No mocks/stubs/in-memory fakes",
+      "status": "pass",
+      "detail": "The test file imports only @import(\"std\") and @import(\"definition/store.zig\") — no mock library, no stub, no fake allocator. It drives the real rowToDefinitionFromFields signature with the real std.testing.checkAllAllocationFailures failure-injection harness. The fallback argument passed to rowToDefinitionFromFields is a literal struct (not a mock); the .allocator is std.testing.allocator (the actual debug allocator)."
+    },
+    {
+      "name": "Fixture isolation",
+      "status": "pass",
+      "detail": "tools/lint_test_isolation.py src/iss0206_rowtodefinition_errdefer_test.zig → 'OK — 1 file(s) checked, no isolation issues.' Originally BLOCKER=2 (T010 hardcoded UUID_A/UUID_B literal UUID regex); Step 4 renamed them to FIXTURE_ID_A/FIXTURE_CREATED_BY_A. Comment in the test file documents the rename rationale."
+    },
+    {
+      "name": "Self-sufficiency",
+      "status": "pass",
+      "detail": "Function under test is pure — no DB, no network, no BPM_TEST_DB_URL. std.testing.allocator is the only allocator. Test fails (clearly) if any errdefer guard is removed: the first forced-failure iteration triggers a DebugAllocator leak. No silent skips."
+    },
+    {
+      "name": "Test target wiring (ISS-0150 / GH #466)",
+      "status": "pass",
+      "detail": "build.zig:915-931 wires the test target as addTest with root_source_file = src/iss0206_rowtodefinition_errdefer_test.zig, attaches to test_engine_step, and exposes the dedicated 'test-iss0206-rowtodefinition' step. build.zig:1267 also wires it into the aggregate test_step — the test is reachable from BOTH the narrow and aggregate paths."
+    },
+    {
+      "name": "zig build test-iss0206-rowtodefinition",
+      "status": "pass",
+      "detail": "Exit code 0. No DebugAllocator leak output. Build is silent on success (which is the expected behaviour of std.testing.checkAllAllocationFailures when no leak is detected)."
+    },
+    {
+      "name": "Pipeline applicability",
+      "status": "pass",
+      "detail": "No pipeline file required. ISS-0206 is a backend leak-fix in src/definition/store.zig with no user-visible sequential action — no UI journey, no Keycloak actor change, no Playwright pipeline that could regress. Existing pipeline files (admin-user-lifecycle, onboarding-wizard, sim-admin-processes, sim-company-onboarding) do not cover the rowToDefinition codepath."
+    },
+    {
+      "name": "tools/lint_handoffs.py for this run",
+      "status": "pass",
+      "detail": "Filtered output for WF03-GH526-20260807 returns ZERO BLOCKERs. (Pre-existing BLOCKERs in other unrelated handoffs are out of scope for this Step 4b — per HANDOFF_PROTOCOL.md §8, they are workspace context, not a blocker for my edits.)"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-RUNNER (Step 5). TEST-RUNNER must run zig build test (aggregate, not narrow-only) and confirm no DebugAllocator leak output for the new target. Per the TEST-RUNNER pre-checks in CLAUDE.md, this run is a pure unit-test verification — no BPM_TEST_DB_URL or Keycloak is required.",
+    "If TEST-RUNNER finds a regression, route back to TEST-DESIGNER for rework (max 3 cycles before escalation)."
+  ],
+  "blockers": []
+}
