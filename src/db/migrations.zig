@@ -421,6 +421,30 @@ pub const Migrations = struct {
             // BEGIN transaction.
             conn.exec("BEGIN", &.{}) catch return MigrationError.MigrationFailed;
 
+            // ISS-0130 / GH-423: SET LOCAL search_path TO <schema>,public
+            // immediately after BEGIN so the per-migration transaction always
+            // sees the correct schema regardless of any stale session-level
+            // search_path on the pooled connection. The outer session-level
+            // SET search_path at the top of runForSchema may also be set,
+            // but a previous tenant's transaction could have committed and
+            // changed the connection's session state, or a different
+            // concurrent runForSchema could have raced the connection. SET
+            // LOCAL is reset automatically at COMMIT/ROLLBACK so it never
+            // leaks to the next pooled caller.
+            var local_path_buf: [128]u8 = undefined;
+            const local_search_path_sql = std.fmt.bufPrint(
+                &local_path_buf,
+                "SET LOCAL search_path TO {s},public",
+                .{schema_name},
+            ) catch {
+                conn.exec("ROLLBACK", &.{}) catch {};
+                return MigrationError.MigrationFailed;
+            };
+            conn.exec(local_search_path_sql, &.{}) catch {
+                conn.exec("ROLLBACK", &.{}) catch {};
+                return MigrationError.MigrationFailed;
+            };
+
             // ISS-0129 / GH-419: Acquire the canonical migration-runner
             // advisory lock immediately after BEGIN so concurrent migrate-step
             // callers serialize on this key for the duration of this
