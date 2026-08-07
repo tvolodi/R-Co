@@ -7,9 +7,9 @@
   "to_agent": "ISSUE-FIXER",
   "file": "handoffs/WF03-GH556-20260807/step-01-issue-fixer.json",
   "created_at": "2026-08-07T19:23:12Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-07T19:24:59Z",
+  "completed_at": "2026-08-07T19:37:00Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -32,7 +32,13 @@
       "fn:register-issue"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Confirmed root cause for ISS-0612: src/db/provisioning.zig:117-125's session-scoped advisory-lock block closes (acquires AND releases the lock, returns lock_conn to the pool) BEFORE Steps 2-6a of provisionTenantSchema() execute -- so the lock does not serialize the pass as its own comment (lines 104-105) claims. Concurrent same-tenant provisionTenantSchema() calls race unprotected through Steps 2-6a, contending on migrations.zig's single GLOBAL (not per-tenant) advisory-lock key (MIGRATIONS_LOCK_KEY_SQL, migrations.zig:31-32/463) and on a third, independent per-schema advisory lock inside the bpm_provision_tenant_schema() SQL function (migrations/060_schema_per_tenant_bootstrap.sql:89). The originally-suspected mechanism (conn._is_valid flipping false between acquireAdvisoryLock succeeding and releaseAdvisoryLock running) was ruled out via direct source read of Conn.exec (pool.zig:467-488): no path both sets _is_valid=false and returns success, and nothing touches lock_conn between the two calls. Confirmed empirically via a targeted stress reproduction (12 threads, same tenant_id, shared Pool pool_size=3, tests/integration/iss0129_migration_run_advisory_lock_test.zig, temporarily appended then reverted): progress stalled at 24/96 calls and never recovered within a 180s hard cap; force-terminated workers returned error.PoolExhausted (8/12), confirming pool connections became stuck checked-out under same-tenant concurrent provisioning load with zero server-side advisory locks or active queries observed at sample time -- consistent with the unprotected-Steps-2-6a race, not the _is_valid theory.",
+    "artifacts_out": ["docs/issues/ISS-0612.json"],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
