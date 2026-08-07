@@ -1,13 +1,15 @@
 {
   "issue_id": "ISS-0180",
   "title": "verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL \u2014 C3 can report PASS against an unmigrated test database",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "created_at": "2026-08-07T00:57:21Z",
   "discovered_by": "BACKEND-DEV (WF03-ISS-0152-20260807 Step 01 diagnosis)",
   "discovered_while_fixing": "ISS-0152",
   "affected_areas": [
-    "tools/verify_test_env.py"
+    "tools/verify_test_env.py",
+    "docs/guides/test_infrastructure_guide.md",
+    "docs/anti-patterns.md"
   ],
   "symptom": "In a single `zig build test-env-verify` run, C3 (`zig build migrate`) reported PASS while C4 (schema baseline) reported FAIL with `public.schema_migrations has 106 rows for schema_name='public', but migrations/ contains 108 *.sql files (delta = -2)`. The two missing migrations were 1136_iss0149_exp301_effects_outbox_tenant_scope.sql and 1137_iss0156_entity_instance_projection_backfill.sql. Running `zig build migrate` with BPM_DB_URL explicitly pointed at the test database applied both and turned C4 green.",
   "root_cause_analysis": "check_migrate() (C3) runs a bare `zig build migrate`, whose DB resolution prefers BPM_DB_URL (the development database). check_schema_baseline() (C4) always verifies BPM_TEST_DB_URL (the test database) \u2014 see tools/verify_test_env.py:285-303 vs :238-262. When BPM_DB_URL and BPM_TEST_DB_URL point at different databases (the normal configuration: .env sets bpm_dev and bpm_test separately), C3 migrates a database that C4 never inspects and that no integration test uses. C3's PASS therefore carries no information about the database the tests will actually run against, and its remedy string ('resolve the migration failure above') misdirects, because no migration failed \u2014 the migration targeted the wrong database.",
@@ -23,5 +25,10 @@
     "ISS-0140 / GH #443 \u2014 prior C3 false-positive fix in the same function"
   ],
   "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only'. Not fixed in WF03-ISS-0152-20260807: it did not block that run's acceptance criteria, and changing a gate's own definition belongs in its own run with its own review, per 'Never Satisfy a Gate by Editing What It Measures'.",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/511"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/511",
+  "resolved_at": "2026-08-07T01:34:30Z",
+  "resolved_by": "BACKEND-DEV (WF03-ISS-0180-20260807 Step 03)",
+  "resolution": "C0 preflight added: resolves and prints BPM_DB_URL/BPM_TEST_DB_URL (credentials redacted) before any check runs, and FAILS if BPM_TEST_DB_URL is absent or if both resolve to the same host:port/database. C3 now runs zig build migrate with BPM_DB_URL overridden to BPM_TEST_DB_URL in the CHILD process only (migrate.zig reads BPM_DB_URL by contract and is also the production bootstrap path, so the call is retargeted rather than the program changed), and then asserts the test database ledger count for schema_name=public equals the migrations/*.sql file count - because migrate exits 0 whenever its target is already current, which is exactly what produced the false green. C3 failure detail/remedy now distinguish a genuine migration error from an incomplete-ledger condition and name the database. C1 resolves its container from COMPOSE_PROJECT_NAME instead of the hardcoded r-co-db_test-1 and confirms the healthy container publishes the port in BPM_TEST_DB_URL. C7 keeps bench.zig precedence unchanged but now names the resolved URL. Detail is printed on PASS as well as FAIL. No check was deleted, relaxed, or silenced; C4 untouched.",
+  "prevention": "Anti-pattern entry added to docs/anti-patterns.md (multi-check gate whose checks verify different subjects). docs/guides/test_infrastructure_guide.md section 3 now states that every item is about the BPM_TEST_DB_URL database, documents the BPM_DB_URL=$BPM_TEST_DB_URL override for manual migrate runs, and directs readers to judge zig build test-env-verify by exit code.",
+  "verification": "Pre-fix: with dev at 108/108 and test held at 107/108, C3 PASS + C4 FAIL reproduced. Post-fix same condition: C3 migrated the test database and reported 108/108 on port 5453; exit 0. C3 failure path proven reachable via a phantom ledger row (109 vs 108): C3 FAIL + C4 FAIL, exit 1. C0 both failure paths proven reachable. C1 mismatch path proven with a stale port-5434 BPM_TEST_DB_URL against the r-co-2 container. Full zig build test-env-verify: 8/8 PASS exit 0. zig build exit 0."
 }

@@ -1,0 +1,59 @@
+{
+  "handoff_id": "4ccf9f01-925f-4319-aab8-dbedc93a71f5",
+  "run_id": "WF03-ISS-0180-20260807",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T01:35:37Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0180-diagnosis.yaml",
+      "docs/issues/ISS-0180.json",
+      "tools/verify_test_env.py"
+    ]
+  },
+  "task": {
+    "description": "Implement ISS-0180 fix (GH #511): every check in the test-environment checklist must verify the database the tests actually use. Fix the condition, not the detector.",
+    "acceptance_criteria": [
+      "C3 migrates the same database C4 verifies",
+      "A test database behind migrations/ causes C3 itself to FAIL, not only C4",
+      "C3 remedy distinguishes migration failure from wrong-database targeting",
+      "Bug proven present pre-fix and gone post-fix with pasted output",
+      "zig build test-env-verify exits 0 in the correct configuration",
+      "zig build exits 0",
+      "No check deleted, relaxed, or silenced"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Added C0 preflight (resolves+prints BPM_DB_URL/BPM_TEST_DB_URL redacted; FAILs on missing BPM_TEST_DB_URL or dev==test). C3 now runs zig build migrate with BPM_DB_URL overridden to BPM_TEST_DB_URL in the child env only, then asserts the test DB ledger count == migrations/*.sql count (exit 0 alone is insufficient: migrate exits 0 when its target is already current, which is what caused the false green). C3 failure detail/remedy now name the DB and distinguish genuine migration failure from incomplete ledger. C1 resolves the container via COMPOSE_PROJECT_NAME (was hardcoded r-co-db_test-1, which fell through to a substring filter matching any workspace) and confirms it publishes BPM_TEST_DB_URL's port. C7 keeps bench.zig precedence but names the resolved URL. Detail printed on PASS too. C4 untouched. Guide section 3 and anti-patterns.md updated.",
+    "artifacts_out": [
+      "tools/verify_test_env.py",
+      "docs/guides/test_infrastructure_guide.md",
+      "docs/anti-patterns.md",
+      "docs/issues/ISS-0180.json",
+      "docs/issue-reports/ISS-0180-diagnosis.yaml"
+    ],
+    "issues": [],
+    "evidence": {
+      "pre_fix_repro": "dev 108/108, test 107/108 -> [PASS] C3, [FAIL] C4, exit 1 (false green on C3)",
+      "post_fix_same_condition": "C3 migrated test DB, reported 108/108 on :5453, all checks PASS, exit 0",
+      "c3_failure_path_reachable": "phantom ledger row (109 vs 108) -> [FAIL] C3 + [FAIL] C4, exit 1",
+      "c0_failure_paths": "missing BPM_TEST_DB_URL -> FAIL; dev==test -> FAIL",
+      "c1_failure_path": "stale BPM_TEST_DB_URL port 5434 vs r-co-2 container -> FAIL",
+      "full_gate": "zig build test-env-verify -> 8/8 PASS, exit 0",
+      "zig_build": "exit 0, no error-set output"
+    },
+    "next_action": "Route to TEST-DESIGNER / DOC-UPDATER per WF-03"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T01:35:37Z",
+  "completed_at": "2026-08-07T01:35:37Z"
+}
