@@ -6,6 +6,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0209 — `test_api08_auth.zig`'s destructive `tenant_default` `DROP SCHEMA` recovery raced concurrent `zig build test` binaries** ([GitHub #533](https://github.com/tvolodi/R-Co/issues/533))
+
+- **The defect was a destructive fallback against shared state.** `tests/unit/test_api08_auth.zig::ensureTenantDefaultSchema()` treated any `error.MigrationFailed` from `provisionTenantSchema()` as proof that `tenant_default` was corrupt and fell back to `DROP SCHEMA IF EXISTS tenant_default CASCADE` followed by re-provisioning. `zig build test` runs ~80+ binary steps concurrently by design, and several siblings (notably `definition_retrieval_test.zig`'s PD-07 tests) depend on the same `tenant_default` schema being live. When the recovery path fired mid-run, it erased every shared table (`process_definitions`, `users`, `api_tokens`, `user_roles`, …) out from under any sibling binary that was querying it in that window, surfacing as C42P01 `relation does not exist` in whichever binary happened to be in flight. Reproduced identically across three runs (two on the ISS-0130 feature branch and one on a clean `origin/main` worktree), proving the failure is 100% pre-existing on `main` and unrelated to any prior fix.
+- **A generic `MigrationFailed` is never a license to drop a schema other binaries are using.** The first fix step simply removed the fallback. On transient contention the helper now retries inside the same `pg_advisory_lock`-scoped critical section; on genuinely unrecoverable drift it surfaces a typed error and asks an operator to investigate.
+- **Verification:** `zig build test` exits 0 deterministically across 5 consecutive runs with no `process_definitions`/`users`/`api_tokens` C42P01 failures. The destructive `DROP SCHEMA` recovery path no longer exists in `tests/unit/test_api08_auth.zig`. Design: `src/design/iss0209-test-api08-recovery.md`. Cross-reference: `docs/anti-patterns.md → Anti-pattern: Destructive recovery fallbacks (ISS-0209 / GH-533)`.
+
 **ISS-0128 — event_store::append() InstanceNotFound race on pooled connections** ([GitHub #418](https://github.com/tvolodi/R-Co/issues/418))
 
 - **Root cause:** Pooled database connections retained session-level `search_path` from previous tenant queries, causing `instance_projections` lookups in `append()` to fail despite rows existing in the correct tenant schema.

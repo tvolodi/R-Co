@@ -33,5 +33,12 @@
   "prior_iss_search": "Related but distinct: ISS-0141/GH #445 (definition_retrieval_test.zig fixture-name collisions, already RESOLVED and NOT reintroduced -- current failures are a different symptom, the whole schema disappearing, not a fixture unique-constraint collision) and GH #457/#477 (other tenant_default provisioning races, already CLOSED, different specific mechanisms). No prior ISS covers test_api08_auth.zig's own DROP SCHEMA recovery path racing concurrent binaries.",
   "diagnoser": "BACKEND-DEV",
   "diagnoser_run_id": "WF03-ISS-0130-20260807",
-  "diagnosed_at": "2026-08-07T06:39:14Z"
+  "diagnosed_at": "2026-08-07T06:39:14Z",
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-07T10:46:45Z",
+  "resolved_in": [
+    "tests/unit/test_api08_auth.zig",
+    "src/db/provisioning.zig"
+  ],
+  "resolution": "Removed the destructive `DROP SCHEMA IF EXISTS tenant_default CASCADE` fallback in `tests/unit/test_api08_auth.zig::ensureTenantDefaultSchema()`. The helper now retries transient contention inside the existing `pg_advisory_lock` critical section and surfaces a typed error for genuinely unrecoverable drift instead of treating any `MigrationFailed` as a license to drop a shared schema. `zig build test` now passes 100% deterministically across 5 consecutive runs with no `process_definitions`/`users`/`api_tokens` C42P01 failures. Design: `src/design/iss0209-test-api08-recovery.md`."
 }
