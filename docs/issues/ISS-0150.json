@@ -1,6 +1,6 @@
 {
   "issue_id": "ISS-0150",
-  "title": "test-integration-svc: 63 failing blocks across 34 files, dominated by missing tenant_<uuid>.schema_migrations ledger",
+  "title": "test-integration-svc: 138 failing blocks across 37 files; the reported 'missing tenant_<uuid>.schema_migrations ledger' premise was disproven, three unrelated root causes fixed (33 blocks), suite still exits 1",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/482",
   "registered_at": "2026-08-06T10:45:25Z",
   "registered_by": "BACKEND-DEV (WF03-gh477-20260806 Step 03, incidental discovery during spot-check)",
@@ -10,7 +10,6 @@
   ],
   "severity": "MAJOR",
   "status": "PARTIALLY_RESOLVED",
-  "resolved_at": "2026-08-07T02:51:21Z",
   "run_id": "WF03-gh477-20260806",
   "category": "test-infrastructure/missing-per-tenant-migration-ledger",
   "affected_areas": [
@@ -18,9 +17,9 @@
     "src/db/migrations.zig",
     "tests/integration/"
   ],
-  "symptom": "zig build test-integration-svc exits 1 with 63 failing test blocks across 34 integration test files. Dominant failure mode is PostgreSQL 42P01 'relation \"tenant_<uuid>.schema_migrations\" does not exist' - a per-tenant schema is referenced but its own schema_migrations ledger table was never created inside it. Secondary modes: C23505 duplicate key on process_definitions_pkey in tenant_<uuid>.process_definitions, and TC-ISS503-02/03 (GBL-084 LEGACY_RLS removal) assertion failures.",
+  "symptom": "zig build test-integration-svc exits 1. The issue was filed reporting 63 failing blocks across 34 files with a dominant failure mode of PostgreSQL 42P01 'relation \"tenant_<uuid>.schema_migrations\" does not exist'. Neither figure nor the dominant-mode attribution survived measurement: the actual pre-fix count on a pristine database is 138 failing blocks across 37 files (119 fail + 9 crash + 10 other of 733 total), and the 42P01 lines are stderr bleed from a concurrently running sibling binary, not a failure of any test.",
   "reproduction": "docker-compose up -d db db_test keycloak; export BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test; zig build test-integration-svc   # exits 1, 63 failing blocks",
-  "root_cause_analysis": "NOT YET DIAGNOSED. Deferred to its own WF-03 run. The dominant symptom (a tenant schema reachable without its per-tenant migration ledger) points at tenant provisioning rather than at the tests, but this has not been confirmed.",
+  "root_cause_analysis": "The filed root cause was disproven (see disproven_premise). Three genuine, mutually independent root causes were found and fixed instead; see root_causes_fixed. They account for 33 of the 119 pre-fix failing blocks measured on a pristine database.",
   "pre_existing": true,
   "pre_existing_evidence": "Control performed during WF03-gh477-20260806 Step 03: with build.zig and tools/clean_test_db.py stashed back to their pre-fix state, against the same healthy db_test database, zig build test-integration-svc failed IDENTICALLY (63 failing blocks, same failure set). The ISS-0148 fix neither causes nor worsens it.",
   "relationship_to_iss0149": "Overlapping but not a duplicate. ISS-0149 (GH #465) enumerates 10 failing files under `zig build test-integration`. This set is 34 files and is dominated by a single distinct root cause (missing tenant_<uuid>.schema_migrations) that ISS-0149 does not name. Common files: iss202_merge_atomicity_test, iss106_webhook_outbox_test, sch303_timer_dlq_test.",
@@ -76,11 +75,105 @@
   "resolution": "The reported root cause was disproven. The tenant_<uuid>.schema_migrations does not exist lines are stderr bleed from a concurrently running sibling binary, captured inside the output block of an unrelated failing test (TC-ISS503-01). Per-tenant ledger tables are intentionally absent: the canonical tracker is public.schema_migrations(schema_name, version) per src/design/iss504_migration_tracking.md, and GBL-132_iss0108_drop_stray_tenant_schema_migrations.sql deliberately drops any stray per-tenant copies. Tenant provisioning is not defective. Three genuine, independent root causes were found and fixed instead: (RC-1) migrations/GBL-084_rls_removal.sql was renamed to GBL-123 by commit db362fd but tests/integration/test_iss503_rls_removal.zig still read the old filename, so TC-ISS503-01/02/03 failed with FileNotFound before running any SQL; (RC-2) xc05/xc06 fixtures wrote to a table named `instances` that has never existed in any schema (the projection table is instance_projections), named a created_at column that does not exist (it is started_at), omitted the NOT NULL definition_id, and probed information_schema for table_schema='public' when the business tables live in tenant_default; (RC-3) six OIDC test files wrote unqualified INSERT INTO tenant (... tenant_type ...) which, under the TestHarness search_path of tenant_default,public, resolved to a stale tenant_default.tenant shadow copy that lacks the tenant_type column added by GBL-119 to public.tenant only. Measured on two freshly created and separately migrated databases so the only difference is the source change: 119 failing blocks BEFORE, 86 AFTER. 33 blocks fixed, 0 regressions. zig build test still exits 0.",
   "prevention": "When a migration file is renamed, grep tests/ for the old filename in the same commit - a test that reads a migration by name is as much a caller as a SQL reference is. When a test fails with a PostgreSQL error, confirm the error belongs to that test before diagnosing from it: Zig attributes a test binary's interleaved stderr to whichever block was running, so a sibling's transient output is routinely misread as the failing test's cause. Measure integration suite pass/fail counts on a freshly created and migrated database, never on the long-lived shared one - the shared bpm_test database carries a baked-in ordering artifact (1134_iss0112_add_secret_ref_to_tenant_schemas.sql recorded applied 43 minutes before GBL-128_exp501_secrets.sql, so its columns were never added and never will be) that produces 4 phantom failures absent from any clean database.",
   "forwarded": [
-    "ISS-0182 / GH #515 - effects_subsystem_test backoff assertions and leaks (13 blocks)",
-    "ISS-0183 / GH #516 - repository_test content_hash bytea/uuid and untyped params (11 blocks)",
-    "ISS-0184 / GH #517 - remaining 62 blocks across 31 files",
-    "ISS-0185 / GH #518 - 45 tables duplicated between public and tenant_default"
+    "ISS-0182 / GH #515 - effects_subsystem_test: wall-clock backoff assertions and leaked allocations (13 blocks)",
+    "ISS-0183 / GH #516 - repository_test: content_hash bytea/uuid mismatch and untyped SQL parameters (11 blocks)",
+    "ISS-0184 / GH #517 - remaining 62 blocks across 31 files (audit/webhook/entity/env/adp clusters)",
+    "ISS-0185 / GH #518 - 45 business tables duplicated between public and tenant_default with diverging columns (systemic cause behind RC-3)"
   ],
   "diagnosis_report": "docs/issue-reports/ISS-0150-diagnosis.yaml",
-  "run_id_resolved": "WF03-ISS-0150-20260807"
+  "partially_resolved_at": "2026-08-07T03:01:25Z",
+  "open_reason": "Acceptance criterion 2 ('zig build test-integration-svc exits 0 against a healthy test database') is NOT met. The suite still exits 1 with 86 failing blocks. GH #482 stays OPEN. The 86 residual blocks have root causes independent of this issue's and are forwarded as ISS-0182/#515, ISS-0183/#516, ISS-0184/#517 and ISS-0185/#518, each to be fixed in its own WF-03 run.",
+  "measurement_correction": {
+    "reported_in_issue": "63 failing blocks across 34 files",
+    "actual_measured": "138 failing blocks across 37 files",
+    "note": "The issue was written from a partial log. Counts in this record are taken on freshly created and separately migrated databases (bpm_base BEFORE, bpm_fresh2 AFTER), never on the long-lived shared bpm_test database."
+  },
+  "disproven_premise": {
+    "claim": "A per-tenant schema_migrations ledger table is never created during tenant provisioning, making a tenant schema reachable without its own migration ledger; tenant provisioning is therefore defective.",
+    "verdict": "DISPROVEN - not a defect; the described state is the intended design.",
+    "evidence": [
+      "Per-tenant ledgers are INTENTIONALLY absent. The canonical tracker is public.schema_migrations(schema_name, version) per src/design/iss504_migration_tracking.md.",
+      "GBL-132_iss0108_drop_stray_tenant_schema_migrations.sql exists specifically to DROP stray per-tenant copies, establishing their absence as deliberate.",
+      "The three 42P01 lines sit inside the captured output block of TC-ISS503-01, whose real failure is error.FileNotFound at tests/integration/test_iss503_rls_removal.zig:132 - it failed before executing any SQL. Zig attributes a test binary's interleaved stderr to whichever block was running, so a concurrent sibling's output was misread as this test's cause.",
+      "Confirmed on a freshly migrated database: 108/108 migrations applied, zero per-tenant ledger tables created, and no 42P01 error raised."
+    ],
+    "consequence": "Tenant provisioning is NOT defective. A fix implementing per-tenant ledgers would have contradicted the ISS-504 design."
+  },
+  "root_causes_fixed": [
+    {
+      "id": "RC-1",
+      "blocks_fixed": 3,
+      "title": "Migration renamed GBL-084 -> GBL-123 by commit db362fd (GH #405); the test still read the old filename",
+      "detail": "tests/integration/test_iss503_rls_removal.zig opened migrations/GBL-084_rls_removal.sql from disk after the file had been renamed to GBL-123_rls_removal.sql, so readGbl084Sql() returned error.FileNotFound and TC-ISS503-01/02/03 failed before running any SQL.",
+      "files": [
+        "tests/integration/test_iss503_rls_removal.zig",
+        "tests/integration/main_test.zig"
+      ]
+    },
+    {
+      "id": "RC-2",
+      "blocks_fixed": 11,
+      "title": "xc05/xc06 fixtures wrote to `instances`, a table that has never existed in any schema",
+      "detail": "The projection table is instance_projections (created under that name by 005_instances.sql). The same fixtures also named a created_at column (the real column is started_at), omitted definition_id which is NOT NULL with no default, and TC-XC-06-01 probed information_schema for table_schema='public' while the business tables live in tenant_default because non-GBL migrations apply per tenant schema.",
+      "files": [
+        "tests/integration/xc05_deterministic_replay_test.zig",
+        "tests/integration/xc06_backwards_compatibility_test.zig"
+      ]
+    },
+    {
+      "id": "RC-3",
+      "blocks_fixed": 19,
+      "title": "Six OIDC files wrote unqualified INSERT INTO tenant (... tenant_type ...), hitting a stale tenant_default shadow copy",
+      "detail": "TestHarness sets search_path to tenant_default,public, so an unqualified write resolves to tenant_default.tenant - a stale duplicate lacking the tenant_type column that GBL-119_env01_tenant_type_field.sql added to public.tenant only (C42703, 23 occurrences). Every reference was qualified as public.tenant. The underlying public/tenant_default duplication is the systemic cause and is forwarded as ISS-0185 / GH #518.",
+      "files": [
+        "tests/integration/oidc09_jit_provisioning_test.zig",
+        "tests/integration/oidc10_attribute_sync_test.zig",
+        "tests/integration/oidc11_identity_stability_test.zig",
+        "tests/integration/oidc12_realm_tenant_binding_test.zig",
+        "tests/integration/oidc15_realm_deletion_test.zig",
+        "tests/integration/oidc35_onboarding_test.zig"
+      ]
+    }
+  ],
+  "measured_outcome": {
+    "method": "Two freshly created and separately migrated databases so the runs differ only by the source change: bpm_base (BEFORE, change stashed) and bpm_fresh2 (AFTER).",
+    "before": "596 pass / 119 fail / 9 crash / 9 skip (733 total), exit 1",
+    "after": "629 pass / 86 fail / 9 crash / 9 skip (733 total), exit 1",
+    "net": "33 blocks fixed, 0 regressions (established by set-difference of failing test names)",
+    "suite_exit_code_after_fix": 1
+  },
+  "acceptance_criteria_status": [
+    {
+      "criterion": "Root cause of 'relation tenant_<uuid>.schema_migrations does not exist' identified",
+      "status": "MET",
+      "note": "Identified and disproven as a defect - stderr bleed misattributed to TC-ISS503-01, whose real cause (RC-1) is fixed."
+    },
+    {
+      "criterion": "zig build test-integration-svc exits 0 against a healthy test database",
+      "status": "NOT MET",
+      "note": "Still exits 1 with 86 failing blocks. This is why the issue stays OPEN on GitHub and PARTIALLY_RESOLVED here."
+    },
+    {
+      "criterion": "TC-DB-02-04 either made deterministic or its connection-pressure sensitivity documented and bounded",
+      "status": "NOT ADDRESSED",
+      "note": "Not reached in this run; the additional_flaky_finding note in this record stands as the only documentation."
+    },
+    {
+      "criterion": "Any real production defect found during triage is fixed, not just its test",
+      "status": "MET (no production defect found)",
+      "note": "All three root causes are test-side. The one systemic production-adjacent finding - 45 tables duplicated across public and tenant_default with diverging columns - is filed as ISS-0185 / GH #518 rather than fixed here, per the CLAUDE.md scope boundary."
+    }
+  ],
+  "verification": {
+    "zig_build": "exit 0",
+    "error_set_check": "no output",
+    "lint_sql_param_types": "0 BLOCKER / 0 MAJOR / 0 MINOR",
+    "lint_test_isolation": "OK - 127 files checked, no isolation issues",
+    "zig_build_test": "exit 0 (no regression)",
+    "test_env_verify": "exit 0, HEALTHY, 8/8 checks",
+    "test_integration_svc": "STILL EXITS 1 - 86 failing blocks remain"
+  },
+  "shared_db_container_trap": "The shared db_test container has 1134_iss0112_add_secret_ref_to_tenant_schemas.sql recorded applied at 2026-08-06T07:15:23Z, 43 minutes BEFORE GBL-128_exp501_secrets.sql at 07:58:38Z which creates the table it alters. Because the ledger marks it applied it never re-runs, so secret_ref/secret_key_id were never added and never will be on that database, though both are present on any freshly migrated one. This accounts for the entire gap between the shared-DB (123) and pristine (119) BEFORE counts. Recorded in docs/anti-patterns.md.",
+  "run_id_partial_fix": "WF03-ISS-0150-20260807",
+  "requirement_status_note": "No requirement status was moved. XC-05, XC-06 and SIM-01..SIM-04 reference the repaired test files via test_run/implemented_in but are all already RELEASED (terminal). This run repaired test fixtures and implemented no requirement."
 }

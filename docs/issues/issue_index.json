@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-07T00:19:28Z",
+  "last_updated": "2026-08-07T03:01:25Z",
   "next_issue_id": 153,
   "issues": [
     {
@@ -182,7 +182,7 @@
     },
     {
       "id": "ISS-0076",
-      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table \u2014 creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
+      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table — creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
       "status": "OPEN",
       "severity": "MAJOR",
       "category": "migration scoping / search_path defect",
@@ -212,10 +212,10 @@
     },
     {
       "id": "ISS-0073",
-      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm \u2014 signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
+      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm — signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
       "status": "OPEN",
       "severity": "BLOCKER",
-      "category": "logic error \u2014 singleton cache bypasses realm resolution at callback time",
+      "category": "logic error — singleton cache bypasses realm resolution at callback time",
       "run_id": "WF03-oidc-callback-realm-20260616",
       "handoff_id": "1ef2a3b4-c5d6-7890-1ef2-a3b4c5d67890",
       "affected_areas": [
@@ -228,7 +228,7 @@
     },
     {
       "id": "ISS-0072",
-      "title": "Tenant admin login fails after onboarding \u2014 GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
+      "title": "Tenant admin login fails after onboarding — GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "logic error / design gap",
@@ -245,7 +245,7 @@
     },
     {
       "id": "ISS-0071",
-      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input \u2014 swiftroute realm-missing inconsistent state compounds scenario unverifiability",
+      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input — swiftroute realm-missing inconsistent state compounds scenario unverifiability",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "test harness error + backend state inconsistency",
@@ -291,7 +291,7 @@
     },
     {
       "id": "ISS-0068",
-      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() \u2014 tenant schemas missing for all tenants",
+      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() — tenant schemas missing for all tenants",
       "status": "RESOLVED",
       "severity": "BLOCKER",
       "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
@@ -644,7 +644,7 @@
     },
     {
       "id": "ISS-0044",
-      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails \u2014 unique index not upgraded to named constraint",
+      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails — unique index not upgraded to named constraint",
       "status": "RESOLVED",
       "severity": "CRITICAL",
       "run_id": "WF03-def-store-regression-20260528",
@@ -1372,7 +1372,7 @@
     },
     {
       "id": "ISS-0123",
-      "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6\u00d7 alongside missing source_ref column",
+      "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6× alongside missing source_ref column",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "schema-drift / audit-trigger-side-effect",
@@ -1573,7 +1573,7 @@
     },
     {
       "id": "ISS-0143",
-      "title": "CI 'zig build test' retry loop can report PASS despite a 'failed command:' line \u2014 status==0 alone is not trustworthy",
+      "title": "CI 'zig build test' retry loop can report PASS despite a 'failed command:' line — status==0 alone is not trustworthy",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "ci-reliability / false-positive-gate",
@@ -1671,19 +1671,18 @@
     },
     {
       "id": "ISS-0150",
-      "title": "test-integration-svc: 63 failing blocks across 34 files, dominated by missing tenant_<uuid>.schema_migrations ledger (GH #482)",
-      "status": "OPEN",
+      "title": "test-integration-svc: reported 'missing tenant_<uuid>.schema_migrations ledger' premise DISPROVEN; 3 unrelated root causes fixed (33 blocks), suite still exits 1 with 86 remaining (GH #482)",
+      "status": "PARTIALLY_RESOLVED",
       "severity": "MAJOR",
-      "category": "test-infrastructure/missing-per-tenant-migration-ledger",
-      "run_id": "WF03-gh477-20260806",
+      "category": "test-infrastructure/misattributed-stderr-and-schema-scoping",
+      "run_id": "WF03-ISS-0150-20260807",
       "affected_areas": [
-        "src/db/provisioning.zig",
-        "src/db/migrations.zig",
         "tests/integration/"
       ],
       "github_issue": "https://github.com/tvolodi/R-Co/issues/482",
       "created_at": "2026-08-06T10:45:25Z",
-      "resolved_at": null
+      "resolved_at": null,
+      "note": "Acceptance criterion 'test-integration-svc exits 0' NOT met; GH #482 stays OPEN. Residue forwarded as ISS-0182/#515, ISS-0183/#516, ISS-0184/#517, ISS-0185/#518."
     },
     {
       "id": "ISS-0151",
@@ -1721,7 +1720,7 @@
     },
     {
       "id": "ISS-0175",
-      "title": "Vendored LuaJIT build input luajit_relver.txt is git-ignored but required by build.zig \u2014 a fresh clone cannot build test-lua (GH #503)",
+      "title": "Vendored LuaJIT build input luajit_relver.txt is git-ignored but required by build.zig — a fresh clone cannot build test-lua (GH #503)",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "build-infrastructure/untracked-required-build-input",
@@ -1782,6 +1781,70 @@
       "created_at": "2026-08-07T00:19:28Z",
       "discovered_by": "BACKEND-DEV (WF03-ISS-0175-20260806 Step Final)",
       "resolved_at": "2026-08-07T00:19:28Z"
+    },
+    {
+      "id": "ISS-0182",
+      "title": "effects_subsystem_test: wall-clock backoff interval assertions and leaked allocations (13 blocks)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "",
+      "run_id": "WF03-ISS-0150-20260807",
+      "affected_areas": [
+        "tests/integration/effects_subsystem_test.zig",
+        "src/effects/"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/515",
+      "created_at": "2026-08-07T02:51:21Z",
+      "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807)",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0183",
+      "title": "repository_test: content_hash bytea/uuid type mismatch and untyped SQL parameters (11 blocks)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "",
+      "run_id": "WF03-ISS-0150-20260807",
+      "affected_areas": [
+        "tests/integration/repository_test.zig",
+        "migrations/"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/516",
+      "created_at": "2026-08-07T02:51:21Z",
+      "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807)",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0184",
+      "title": "Remaining test-integration-svc failures across 31 files (audit chain, webhook, entity, env, adp clusters)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "",
+      "run_id": "WF03-ISS-0150-20260807",
+      "affected_areas": [
+        "tests/integration/"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/517",
+      "created_at": "2026-08-07T02:51:21Z",
+      "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807)",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0185",
+      "title": "45 business tables are duplicated between public and tenant_default with diverging columns",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "",
+      "run_id": "WF03-ISS-0150-20260807",
+      "affected_areas": [
+        "migrations/",
+        "src/db/migrations.zig",
+        "tests/integration/helpers.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/518",
+      "created_at": "2026-08-07T02:51:21Z",
+      "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807)",
+      "resolved_at": null
     }
   ]
 }
