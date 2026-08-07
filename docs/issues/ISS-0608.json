@@ -21,5 +21,9 @@
     "tools/verify_test_env.py",
     "docs/guides/test_infrastructure_guide.md"
   ],
+  "related_runs": [
+    "WF03-GH542-20260807",
+    "WF03-GH545-20260807"
+  ],
   "resolution": "Added check_db_test_auth_method() (C9) to tools/verify_test_env.py: parses docker-compose.yml's declared POSTGRES_HOST_AUTH_METHOD for the db_test service (defaulting to Postgres's own scram-sha-256 default if the key is absent), execs into the running db_test container to read pg_hba.conf, and matches specifically the 'host all all all <method>' catch-all line (not the fixed loopback/local entries the postgres:15-alpine entrypoint always writes regardless of the env var -- an earlier draft of this check matched the first 'host' line and was verified, via a throwaway scram-sha-256 container, to incorrectly read those loopback entries as 'trust' and silently miss the mismatch). Verified against both a correctly-configured trust container (PASS) and two independently-created throwaway scram-sha-256 containers (FAIL, correctly detected). Documented in test_infrastructure_guide.md Section 3's checklist."
 }
