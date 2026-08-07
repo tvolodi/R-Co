@@ -565,6 +565,14 @@ test "TC-EXP-301-04: markRetry increments attempt_count and updates next_attempt
 
 // ---------------------------------------------------------------------------
 // TC-EXP-301-05: Backoff Schedule Verification (Integration)
+// ISS-0186 (GitHub #520): asserts next_attempt_at - NOW() against the
+// expected backoff using a single same-statement read-back instead of two
+// separate reads straddling the markRetry call. Both next_attempt_at and
+// this NOW() are evaluated inside the one transaction TestHarness.init()
+// opens for the whole test, so NOW() is frozen and identical between them
+// (transaction_timestamp() semantics) -- the comparison is exact
+// server-side arithmetic, not a wall-clock/jitter measurement. See
+// src/design/gh520-backoff-schedule-deterministic-assertion.md.
 // ---------------------------------------------------------------------------
 
 test "TC-EXP-301-05: backoff schedule follows expected intervals" {
@@ -622,12 +630,7 @@ test "TC-EXP-301-05: backoff schedule follows expected intervals" {
     for (delivery_ids, 0..) |delivery_id, i| {
         var before_rows = h.conn.query(
             testing.allocator,
-            \\SELECT
-            \\  attempt_count::text,
-            \\  EXTRACT(EPOCH FROM next_attempt_at) * 1000
-            \\FROM effects_outbox
-            \\WHERE effect_delivery_id = $1::uuid
-        ,
+            "SELECT attempt_count::text FROM effects_outbox WHERE effect_delivery_id = $1::uuid",
             &.{delivery_id},
         ) catch return error.QueryFailed;
         defer before_rows.deinit();
@@ -636,8 +639,6 @@ test "TC-EXP-301-05: backoff schedule follows expected intervals" {
 
         const attempt_before = try std.fmt.parseInt(u8, before_rows.rows[0][0] orelse "", 10);
         try testing.expectEqual(@as(u8, @intCast(i)), attempt_before);
-
-        const next_ms_before = std.fmt.parseFloat(f64, before_rows.rows[0][1] orelse "") catch return error.QueryFailed;
 
         if (attempt_before + 1 >= effects.EFFECT_MAX_ATTEMPTS) {
             try Queue.markDeadLettered(&h.conn, delivery_id, "max attempts exhausted");
@@ -671,8 +672,9 @@ test "TC-EXP-301-05: backoff schedule follows expected intervals" {
             testing.allocator,
             \\SELECT
             \\  attempt_count::text,
+            \\  status,
             \\  EXTRACT(EPOCH FROM next_attempt_at) * 1000,
-            \\  status
+            \\  EXTRACT(EPOCH FROM NOW()) * 1000
             \\FROM effects_outbox
             \\WHERE effect_delivery_id = $1::uuid
         ,
@@ -682,14 +684,24 @@ test "TC-EXP-301-05: backoff schedule follows expected intervals" {
 
         try testing.expectEqual(@as(usize, 1), after_rows.rows.len);
         const attempt_after = try std.fmt.parseInt(u8, after_rows.rows[0][0] orelse "", 10);
-        const next_ms_after = std.fmt.parseFloat(f64, after_rows.rows[0][1] orelse "") catch return error.QueryFailed;
+        const status_after = after_rows.rows[0][1] orelse "";
+        const next_ms = std.fmt.parseFloat(f64, after_rows.rows[0][2] orelse "") catch return error.QueryFailed;
+        const now_ms = std.fmt.parseFloat(f64, after_rows.rows[0][3] orelse "") catch return error.QueryFailed;
         try testing.expectEqual(attempt_before + 1, attempt_after);
-        try testing.expectEqualStrings("pending", after_rows.rows[0][2] orelse "");
+        try testing.expectEqualStrings("pending", status_after);
 
-        const observed_delta_ms = next_ms_after - next_ms_before;
+        // ISS-0186: next_attempt_at and NOW() are read in the same
+        // statement execution, inside the one transaction this test holds
+        // open for its whole body -- NOW() is frozen and identical between
+        // them (transaction_timestamp() semantics), so this is exact
+        // server-side arithmetic, not a wall-clock measurement. The 1.0ms
+        // tolerance is a client-side float round-trip epsilon
+        // (EXTRACT/parseFloat), not a timing budget.
+        const observed_delta_ms = next_ms - now_ms;
         const expected_ms = @as(f64, @floatFromInt(expected_delay));
-        const lower_bound = expected_ms - 500.0;
-        const upper_bound = expected_ms + 500.0;
+        const tolerance_ms = 1.0;
+        const lower_bound = expected_ms - tolerance_ms;
+        const upper_bound = expected_ms + tolerance_ms;
         try testing.expect(observed_delta_ms >= lower_bound);
         try testing.expect(observed_delta_ms <= upper_bound);
     }
