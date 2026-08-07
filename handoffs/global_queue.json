@@ -71,14 +71,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/497",
       "title": "CI runner starvation renders as false red on PRs",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI-ws2-loop",
-        "locked_at": "2026-08-07T00:29:32Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-06T21:23:20Z",
       "started_at": "2026-08-07T00:29:32Z",
-      "completed_at": null,
+      "completed_at": "2026-08-07T00:49:34Z",
       "run_id": null,
       "deferred_reason": null
     },
