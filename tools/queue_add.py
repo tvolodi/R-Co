@@ -18,6 +18,9 @@ import os
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _queue_sync import sync_queue_from_origin  # noqa: E402
+
 QUEUE_FILE = "handoffs/global_queue.json"
 LOCK_FILE  = "handoffs/global_queue.lock"
 
@@ -95,7 +98,12 @@ def main() -> int:
 
     try:
         with open(QUEUE_FILE, encoding="utf-8-sig") as f:
-            q = json.load(f)
+            local_q = json.load(f)
+        # Sync against origin/main before mutating — see tools/_queue_sync.py.
+        # Without this, appending to a stale in-memory copy and writing the
+        # WHOLE file back would silently drop any item another workspace
+        # already added/updated and pushed while this one was running.
+        q = sync_queue_from_origin(local_q)
 
         for item in q.get("items", []):
             if item["issue_id"] == issue_id:

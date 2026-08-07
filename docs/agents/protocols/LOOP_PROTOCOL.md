@@ -112,9 +112,27 @@ the item JSON to stdout.
 | Exit | Meaning | ORCH action |
 |---|---|---|
 | 0 | Item claimed; JSON on stdout | Start WF-03 for this item |
-| 2 | No claimable issues (GitHub has 0 open, or all are locked) | Stop the loop |
-| 3 | All open issues locked by other workspaces | Stop or retry after delay |
+| 2 | No claimable issues (GitHub has 0 open, all are locked, or every remaining open issue is already resolved locally — see below) | Stop the loop |
+| 3 | At least one open issue is locked by another workspace, and no unlocked/unresolved issue was found | Stop or retry after delay |
 | 1 | Unexpected error (gh CLI failure, JSON error) | Log, stop |
+
+**Already-resolved-but-still-open detection (2026-08-07).** Before claiming a candidate
+issue, `gh_claim.py` checks whether any `docs/issues/ISS-*.json` already links this
+GitHub issue via its `github_issue` field with `status` in `RESOLVED` /
+`RESOLVED-WITH-INFRA-BLOCK`. If so, it skips the issue (printing a note to stderr) rather
+than claiming it. This exists because closing a GitHub issue and merging its fix are two
+separate actions with nothing enforcing they happen together — an issue can be fixed and
+merged to `main` by any workspace while staying open on GitHub, and the next
+`gh_claim.py` call (from any workspace, including the one that shipped the fix) would
+otherwise claim and re-work it. This happened four times in one session on 2026-08-07
+(GH-545, GH-548, GH-532, GH-366/GH-364) before being caught and fixed — see
+`docs/anti-patterns.md`. ISSUE-FIXER's Step 0.5 registry lookup already catches this once
+a run has started; this check catches it before a branch is even created, and matters
+more for a design/implementation run that can otherwise drift past the "already resolved"
+signal instead of stopping on it (observed on GH-548: the design step proceeded and
+failed its own validation gate before anyone noticed the issue was already fixed).
+**This check does not replace closing the GitHub issue** — the fix's own Step Final /
+DOC-UPDATER should still close it; this is a safety net for when that didn't happen.
 
 `<workspace_id>` defaults to `<hostname>-<pid>` when omitted — note the `-<pid>` makes this
 actually unique per *process*, but not stable across a workspace's *runs* (a new pid each time
@@ -197,13 +215,28 @@ LOOP START
 ├─ Check STOP_LOOP flag
 │   Test-Path handoffs/STOP_LOOP  →  if present: exit loop gracefully
 │
+├─ PULL MAIN BEFORE CLAIMING — gh_claim.py reads handoffs/global_queue.json from the
+│  LOCAL WORKING TREE ONLY; it never fetches or pulls. A workspace with a stale local
+│  checkout can claim an issue another workspace already locked and pushed to
+│  origin/main minutes ago, simply because its local copy predates that push. The
+│  end-of-claim push-rejection check (below) catches this eventually, but only after
+│  wasting the time between a stale claim and the rejected push — pulling first avoids
+│  the wasted work rather than merely detecting it after the fact:
+│   git checkout main
+│   git pull --ff-only origin main
+│   If this fails (local main has diverged / uncommitted changes): resolve before
+│   proceeding — do not claim against a working tree that isn't known-fresh.
+│
 ├─ python3 tools/gh_claim.py <workspace_id>
 │   ├─ exit 2 → GitHub has 0 open issues  →  loop complete, stop
 │   ├─ exit 3 → all open issues locked    →  stop (another workspace active)
 │   ├─ exit 1 → unexpected error          →  log, stop
 │   └─ exit 0 → item claimed, JSON on stdout
 │
-├─ PUSH THE CLAIM TO MAIN IMMEDIATELY — before any WF-03 work starts:
+├─ PUSH THE CLAIM TO MAIN IMMEDIATELY — before any WF-03 work starts. This step remains
+│  mandatory even after pulling first above: the pull only closes the window before
+│  gh_claim.py runs, not a second race against another workspace claiming between your
+│  pull and your push. Treat this as defense-in-depth, not redundant:
 │   git add handoffs/global_queue.json
 │   git commit -m "queue: claim GH-<number> for <workspace_id>"
 │   git fetch origin main && git rebase origin/main   ← resolve any interleaving here
