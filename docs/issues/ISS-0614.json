@@ -1,0 +1,32 @@
+{
+  "id": "ISS-0614",
+  "title": "lint_handoffs.py has no rule that detects git conflict markers or decimal codepoint text in handoffs/orchestrator.log",
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "created_at": "2026-08-07T23:05:00Z",
+  "updated_at": "2026-08-07T23:05:00Z",
+  "github_issue": null,
+  "sync_ref": "ISS-0614",
+  "tags": ["audit-log", "lint-gap", "incident", "loop-mode"],
+  "description": "tools/lint_handoffs.py has rules H011 (UTF-16 NUL bytes) and H012 (line-count shrinkage vs HEAD). Neither rule detects the defect class observed in PR #561: literal git conflict markers in handoffs/orchestrator.log accompanied by ~114KB of decimal codepoint text instead of UTF-8 line content. The corruption went undetected across the entire WF03-GH521 cycle because no linter rule covered it.",
+  "symptom": "Selecting linter output for the corrupted log returned empty — the tool ran green on a file with three conflict markers and a 114KB garbage line. The only way to find the corruption was a manual git diff against the pre-corruption blob (91558695) followed by hex inspection.",
+  "root_cause": "The linter's append-only-log check is anchored on two narrow byte patterns (NULs for H011, line-count for H012). Conflict markers are pure ASCII; the surrounding corruption was decimal-digit text (no NULs) and the file grew from 367 to 375 lines (no shrinkage). Both rules legitimately passed.",
+  "evidence": "PR #561 (da09bb08) merged with the corrupt log. Select-String over lint output filtered to 'orchestrator.log' was empty. The corruption was only visible by inspecting the file with `head -1` (showed `<<<<<<< HEAD`) and counting lines.",
+  "acceptance_criteria": [
+    "A new linter rule (suggested H014) detects literal conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) anywhere in handoffs/orchestrator.log",
+    "The rule should classify the finding as BLOCKER — this file is supposed to be append-only machine-readable audit, and a marker line means a merge mishandled the file",
+    "Add a complementary check that detects lines whose non-whitespace content is dominated by runs of decimal digits (catches the 'PowerShell >> with the wrong encoding mangled a chunk into codepoints' pattern even if markers were not produced)",
+    "Both checks should run as part of the standard `tools/lint_handoffs.py` invocation (not gated behind --deep-checks)",
+    "Backfill the existing audit log with a single verification pass (re-run after the ISS-0613 repair lands) and confirm both rules are now happy on a clean file"
+  ],
+  "reproduction_steps": [
+    "1. git checkout da09bb08",
+    "2. python3 tools/lint_handoffs.py | grep orchestrator.log",
+    "3. (no output — bug confirmed)",
+    "4. head -1 handoffs/orchestrator.log",
+    "5. Output: '<<<<<<< HEAD' — corruption present"
+  ],
+  "files_likely_to_change": [
+    "tools/lint_handoffs.py"
+  ]
+}

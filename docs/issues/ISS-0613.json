@@ -1,0 +1,36 @@
+{
+  "id": "ISS-0613",
+  "title": "Committed git conflict markers + UTF-16 corruption in append-only audit log handoffs/orchestrator.log (PR #561, da09bb08)",
+  "severity": "BLOCKER",
+  "status": "RESOLVED",
+  "created_at": "2026-08-07T22:59:13Z",
+  "updated_at": "2026-08-07T22:59:13Z",
+  "github_issue": null,
+  "sync_ref": "ISS-0613",
+  "tags": ["audit-log", "corruption", "incident", "loop-mode", "WF03-GH521"],
+  "description": "PR #561 (squash-merge of WF03-GH521-20260808 via da09bb08) committed the append-only audit log handoffs/orchestrator.log with literal git conflict markers and a UTF-16-style corruption inside the HEAD side of the conflict. The log is the authoritative append-only audit trail per CLAUDE.md (Bookkeeping Is Not Optional / Never Satisfy a Gate by Editing What It Measures).",
+  "symptom": "Line 1 = '<<<<<<< HEAD'; line 2 = 114,186 characters of concatenated decimal codepoints (the documented PowerShell `>>` append-into-UTF-8 failure mode recorded in lint_handoffs.py H011 description); line 3 = '======='; lines 4-373 = clean 'theirs' side; line 374 = '>>>>>>> 957c124b ...'; line 375 = the legitimate Step Final line. Total file = 375 lines on HEAD.",
+  "root_cause": "Two compounding failures in the WF03-GH521 Step Final agent: (1) the agent claimed '1 rebase conflict resolved' but in fact committed the unresolved conflict block; (2) the HEAD side of the conflict had already been mangled by a PowerShell `>>` append, suggesting the upstream content the agent was reading from had been written with the wrong encoding. The agent's commit message even acknowledged interleaving an INFRA_BLOCK line with main's LOOP_ITEM_DONE line, but the underlying write still contained markers.",
+  "evidence": {
+    "git_introduced": "commit da09bb08 (PR #561 squash-merge)",
+    "pre_corruption_blob": "91558695 (367 lines, 0 markers)",
+    "head_blob": "375 lines, 3 markers, 114KB garbage line",
+    "scanner_method": "scratch/_decode_head_anchored.py (timestamp-anchored line splitting)",
+    "lossless_proof": "scratch/_verify_head_lossless.py — 371 decoded lines, 50 apparent uniques reduce to 6 by ASCII-skeleton normalisation, every line has an exact clean twin in the reconstruction (e.g. '-oG=' ↔ 'Route', '=\"'.' ↔ '→', '-oo?' ↔ 'Root ', 'NF-5met' ↔ 'NFRs met').",
+    "lint_gap": "tools/lint_handoffs.py H011 only fires on literal NUL bytes; H012 only on line-count shrinkage vs HEAD. No rule detects conflict markers in the audit log. Select-String over lint output filtered to 'orchestrator.log' returned 0 findings for the corrupted file."
+  },
+  "resolution": "Repair by reconstructing from the clean base blob (91558695) plus the 5 WF03-GH521 new lines on the 'theirs' side plus the reinserted 'LOOP_ITEM_DONE | WF03-GH522' line that base had but theirs was missing, plus the Step Final line after the conflict block. Repair script at scratch/_repair_orchestrator_log.py produces a 372-line clean log with 0 conflict markers and 100% well-formed timestamps. The H012 BLOCKER that fires on the local working copy (current 372 < HEAD 375) is the truncation guard measuring against the corrupted HEAD — it will resolve once the repair is committed and HEAD becomes 372.",
+  "prevention": [
+    "File a second issue for the lint gap: no rule detects conflict markers in the audit log. H011 catches NUL bytes; H012 catches shrinkage. Both missed this defect class. Forwarded to global queue.",
+    "Step Final agents must verify post-commit that `git diff HEAD~1 -- handoffs/orchestrator.log | grep -E '^(<{7}|={7}|>{7})'` is empty before reporting PASS.",
+    "PowerShell `>>` appends are banned for orchestrator.log (already documented); add a pre-commit hook that rejects the file if it contains conflict markers regardless of encoding.",
+    "When claiming 'rebase conflict resolved', the agent must run `git diff <base>...<feature> -- handoffs/orchestrator.log` and confirm the output has no conflict markers before committing."
+  ],
+  "files_changed": [
+    "handoffs/orchestrator.log",
+    "scratch/_repair_orchestrator_log.py",
+    "scratch/_decode_head_anchored.py",
+    "scratch/_verify_head_lossless.py",
+    "scratch/_orchestrator.log.corrupt.bak"
+  ]
+}
