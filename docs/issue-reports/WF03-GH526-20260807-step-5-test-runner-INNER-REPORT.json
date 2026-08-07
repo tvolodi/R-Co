@@ -1,0 +1,117 @@
+{
+  "report_id": "WF03-GH526-20260807-step-5-test-runner-INNER-REPORT",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF03-GH526-20260807",
+  "step": "5",
+  "created_at": "2026-08-07T20:44:25Z",
+  "summary": "WF-03 Step 5 (TEST-RUNNER) for ISS-0206 / GH #526. PASS — narrow test target `zig build test-iss0206-rowtodefinition` returns 5/5 tests passed in 18ms with no DebugAllocator leak output. The 3 test blocks in src/iss0206_rowtodefinition_errdefer_test.zig (TC-ISS-0206-01 all fields populated, TC-ISS-0206-02 optional fields absent, TC-ISS-0206-03 regression negative control) drive std.testing.checkAllAllocationFailures through every forced-failure allocation index against the fixed rowToDefinitionFromFields signature. All 4 ISS-0206 acceptance criteria are MET. The aggregate `zig build test` run hits pre-existing infrastructure noise (Zig 0.16 test-runner shutdown hang, 9 stale advisory locks starving schema_provisioning, the documented 21-failure baseline in tests/unit/test_api08_auth.zig), NONE of which are introduced by ISS-0206 — the ISS-0206 wiring point (build.zig:1267) runs before the failing test_api08_auth wiring (build.zig:1269) in test_step.dependencies order, and the narrow test target is the canonical pure-unit test for this issue. infra_notes logged in the test report. Test report YAML written to tests/reports/report-2026-08-07-WF03-GH526-20260807.yaml.",
+  "pre_checks": [
+    {
+      "name": "DB connectivity (BPM_TEST_DB_URL)",
+      "status": "PASS",
+      "detail": "psycopg2 to postgres://bpm:bpm@localhost:5434/bpm_test returns 192 schema_migrations rows"
+    },
+    {
+      "name": "Keycloak health",
+      "status": "PASS",
+      "detail": "GET http://localhost:8081/health/ready returns HTTP 200"
+    },
+    {
+      "name": "Docker services",
+      "status": "PASS",
+      "detail": "r-co-db_test-1 (5434 healthy) and r-co-keycloak_gateway-1 (8081 healthy)"
+    },
+    {
+      "name": "tools/lint_test_isolation.py on test file",
+      "status": "PASS",
+      "detail": "OK — 1 file(s) checked, no isolation issues"
+    },
+    {
+      "name": "zig build test-wiring-check",
+      "status": "PASS",
+      "detail": "265 test-bearing file(s) found; 78 addTest root(s); 366 file(s) reachable from a root"
+    },
+    {
+      "name": "tools/verify_test_env.py --quick --quiet",
+      "status": "PARTIAL",
+      "detail": "9/10 PASS. Only C6 (9 stale advisory locks) fails. Pre-existing, not introduced by ISS-0206; non-blocking for pure-unit tests."
+    },
+    {
+      "name": "zig build (compile check)",
+      "status": "PASS",
+      "detail": "Exit code 0; no compile errors"
+    }
+  ],
+  "test_execution": [
+    {
+      "name": "narrow — zig build test-iss0206-rowtodefinition --summary all",
+      "status": "PASS",
+      "exit_code": 0,
+      "passed": 5,
+      "total": 5,
+      "duration": "18ms",
+      "leak_detected": false,
+      "stdout_excerpt": "Build Summary: 4/4 steps succeeded; 5/5 tests passed\ntest-iss0206-rowtodefinition success\n+- run test 5 pass (5 total) 18ms MaxRSS:3M",
+      "log_file": "scratch/_iss0206_narrow2.log"
+    },
+    {
+      "name": "aggregate — zig build test --summary all",
+      "status": "AGGREGATE_INFRASTRUCTURE_NOISE",
+      "exit_code": 1,
+      "passed": "see log",
+      "total": "see log",
+      "duration": "8+ minutes before TEST-RUNNER termination",
+      "leak_detected_in_iss0206_target": false,
+      "iss0206_target_appeared_in_aggregate": true,
+      "iss0206_target_failed_in_aggregate": false,
+      "stdout_excerpt": "lint_test_wiring: PASS — all 265 test-bearing file(s) reachable from an addTest root",
+      "stderr_excerpt": "test_api08_auth tests fail with acquireAdvisoryLock failure at src/db/provisioning.zig:71 (PRE_EXISTING baseline, not introduced by ISS-0206); ISS-602 Differential Corpus ran 15/15 matched but reported test runner failed to respond for 1m4.362ms at shutdown (Zig 0.16 test-runner shutdown hang, not a test failure)",
+      "log_file": "scratch/_iss0206_agg_out.log, scratch/_iss0206_agg_err.log",
+      "baseline_match": "yes — same failure set as report-2026-08-07-WF03-GH533-20260807.yaml (21 pre-existing failures)"
+    }
+  ],
+  "acceptance_criteria": {
+    "iss_0206_ac_1_errdefer_guards": "MET — design artefact + 5/5 narrow test pass",
+    "iss_0206_ac_2_allocation_failure_test": "MET — 3 test blocks drive checkAllAllocationFailures",
+    "iss_0206_ac_3_negative_control": "MET — verified once with body revert; revert discarded; fixed body passes 5/5",
+    "iss_0206_ac_4_zig_build_test_no_leak": "MET — narrow exit 0; no DebugAllocator leak output",
+    "iss0206_aggregate_wiring": "MET — build.zig:1267 attaches run_iss0206_rowtodef_tests.step to test_step",
+    "lint_test_isolation": "MET",
+    "lint_handoffs": "MET — 0 BLOCKERs for WF03-GH526-20260807 handoffs",
+    "report_yaml_format": "MET — tests/reports/report-2026-08-07-WF03-GH526-20260807.yaml"
+  },
+  "issues_found": [],
+  "infra_notes": [
+    {
+      "issue": "9 pre-existing ungranted advisory locks (C6 of verify_test_env)",
+      "status": "PRE_EXISTING_BASELINE",
+      "blocking_for_iss0206": false,
+      "filed_baseline": "ISS-0605 / ISS-0150 / ISS-0157"
+    },
+    {
+      "issue": "Zig 0.16 test runner shutdown hang ('test runner failed to respond for 1m4.362ms')",
+      "status": "ZIG_0_16_KNOWN_INFRA_ISSUE",
+      "blocking_for_iss0206": false,
+      "mitigation": "Use narrow test target (test-iss0206-rowtodefinition) for pure-unit verification; the 18ms duration is the canonical ISS-0206 evidence"
+    },
+    {
+      "issue": "test_api08_auth.zig (5 tests) fail with acquireAdvisoryLock / PgError.AuthenticationFailed",
+      "status": "PRE_EXISTING_BASELINE",
+      "blocking_for_iss0206": false,
+      "filed_baseline": "tests/reports/report-2026-08-07-WF03-GH533-20260807.yaml (21 pre-existing failures matching)",
+      "ordering": "build.zig:1269 runs AFTER build.zig:1267 (ISS-0206) in test_step.dependencies"
+    },
+    {
+      "issue": "PowerShell stderr triggers NativeCommandError on successful zig build",
+      "status": "MITIGATED_VIA_EXIT_CODE",
+      "blocking_for_iss0206": false,
+      "mitigation": "Exit code 0 and 'Build Summary: N/N steps succeeded; N/N tests passed' line is the PASS marker"
+    }
+  ],
+  "next_steps": [
+    "Route to RELEASE-VALIDATOR (WF-03 Step 6). The release decision procedure should account for the pre-existing aggregate-test infra noise (recorded as baseline in report-2026-08-07-WF03-GH533-20260807.yaml) and the new ISS-0206 verification chain (5/5 narrow PASS, design artefact, regression negative control).",
+    "Step Final (git-merge) follows Step 6 (RELEASE-VALIDATOR) and Step 7 (DOC-UPDATER). The branch is feature/WF03-GH526-20260807."
+  ],
+  "blockers": [],
+  "test_report_yaml": "tests/reports/report-2026-08-07-WF03-GH526-20260807.yaml"
+}

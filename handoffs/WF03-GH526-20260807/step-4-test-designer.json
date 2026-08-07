@@ -1,0 +1,79 @@
+{
+  "handoff_id": "9a3f7b21-5e4d-4c08-9a7f-2e1b6d3c4a85",
+  "run_id": "WF03-GH526-20260807",
+  "workflow_id": "WF-03",
+  "step": "4",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF03-GH526-20260807/step-4-test-designer.json",
+  "created_at": "2026-08-07T19:45:25Z",
+  "started_at": "2026-08-07T19:45:25Z",
+  "completed_at": "2026-08-07T19:45:31Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 4 (TEST-DESIGNER: regression coverage)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "78128920-b391-482c-a01e-f2aa7faf9b92",
+      "93b33c49-9ff3-442f-8b37-e4c84170f1e1",
+      "b3a4f9c2-7d8e-4f01-9b3a-6e5f1c2d8a40",
+      "c5d2e4a1-7f83-4b6d-9e80-3a4f6b1c7d52",
+      "8f5b2c91-3a4e-4d6f-b2a8-7c1d9e0f4b3a"
+    ],
+    "artifacts_in": [
+      "src/design/iss0206-rowtodefinition-errdefer.md",
+      "src/iss0206_rowtodefinition_errdefer_test.zig",
+      "src/definition/store.zig",
+      "docs/issues/ISS-0206.json",
+      "docs/issue-reports/ISS-0206-diagnosis.yaml",
+      "docs/issue-reports/WF03-GH526-20260807-step-3-backend-dev.json"
+    ],
+    "issue_id": "GH-526",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/526",
+    "issue_title": "ISS-0206: store.zig rowToDefinition leaks on allocation failure — 4 sequential dupes, zero errdefer guards",
+    "severity": "MAJOR"
+  },
+  "task": {
+    "description": "WF-03 Step 4 (TEST-DESIGNER). The fix landed in Step 3 with an in-tree regression test already written at src/iss0206_rowtodefinition_errdefer_test.zig (TC-ISS-0206-01/02/03 driving std.testing.checkAllAllocationFailures against the new internal rowToDefinitionFromFields(allocator, *const RowFields, fallback) signature, wired into the aggregate zig build test_step per ISS-0150 / GH #466). Required actions: (1) write the test spec at tests/specs/ISS-0206.md covering all 4 ISS-0206 acceptance criteria 1:1; (2) re-validate the existing test file; (3) fix any mechanical lint blockers (e.g. T010 hardcoded-UUID regex) without changing semantics; (4) verify no pipeline file is required (ISS-0206 is a backend-only leak fix — no user-visible sequential action); (5) run mandatory pre-handoff lints; (6) commit test artifacts on the feature branch; (7) register inner report and complete handoff with real UTC timestamps. Pipeline applicability: none — the existing pipeline files (admin-user-lifecycle, onboarding-wizard, sim-admin-processes, sim-company-onboarding) do not cover the rowToDefinition codepath.",
+    "acceptance_criteria": [
+      "tests/specs/ISS-0206.md exists with 1:1 mapping of all 4 ISS-0206 acceptance criteria to the 3 test cases",
+      "Test file src/iss0206_rowtodefinition_errdefer_test.zig still implements TC-ISS-0206-01, TC-ISS-0206-02, TC-ISS-0206-03 (no spec/implementation case-count mismatch)",
+      "tools/lint_test_isolation.py src/iss0206_rowtodefinition_errdefer_test.zig exits 0 — no BLOCKER/MAJOR",
+      "tools/lint_handoffs.py exits 0",
+      "zig build test-iss0206-rowtodefinition exits 0 with no DebugAllocator leak output",
+      "Test file has no error.SkipZigTest on any MUST test (it is a MUST)",
+      "Test file has no mocks/stubs (it drives the real rowToDefinitionFromFields with the real std.testing.checkAllAllocationFailures harness)",
+      "Test target is wired into the aggregate zig build test_step (not narrow-only) per ISS-0150 / GH #466",
+      "No pipeline file required (verified — no UI journey affected)",
+      "Inner report at docs/issue-reports/WF03-GH526-20260807-step-4-test-designer-INNER-REPORT.json exists in JSON",
+      "Test artifacts (spec, test file, inner report) committed to feature/WF03-GH526-20260807",
+      "fn:validate-completeness + fn:register-inner-report called before fn:complete-handoff",
+      "Handoff result PASS with real started_at and completed_at (clock-derived UTC), next_action: 'Route to TEST-DESIGN-VALIDATOR (Step 4b)'"
+    ],
+    "functions_to_call": [
+      "fn:write-test-spec",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 4 PASS. Wrote the test spec at tests/specs/ISS-0206.md (1:1 mapping of all 4 ISS-0206 acceptance criteria to the 3 test cases in a table that mirrors the ISS-0074-fix precedent). Re-validated the existing test file at src/iss0206_rowtodefinition_errdefer_test.zig — its three cases (TC-ISS-0206-01 all-fields-populated, TC-ISS-0206-02 optional-fields-absent, TC-ISS-0206-03 in-tree regression negative control) all use std.testing.checkAllAllocationFailures against the new internal rowToDefinitionFromFields signature. Fixed one mechanical lint blocker: the file originally had two hardcoded UUID literals (UUID_A, UUID_B) used as []const u8 fixture slices; tools/lint_test_isolation.py T010 mechanically flagged both as BLOCKERs. Renamed to non-UUID string slices (FIXTURE_ID_A, FIXTURE_CREATED_BY_A) — semantically a no-op because the function under test treats these columns as opaque text and the values never reach a database. Lint results: tools/lint_test_isolation.py src/iss0206_rowtodefinition_errdefer_test.zig = exit 0, no isolation issues. zig build test-iss0206-rowtodefinition = exit 0, no DebugAllocator leak output. tools/lint_handoffs.py = exit 0. No error.SkipZigTest anywhere in the file (this is a MUST test). No mocks, no stubs — drives the real rowToDefinitionFromFields with the real std.testing.checkAllAllocationFailures harness. The test target is wired into the aggregate zig build test_step in build.zig (test_step.dependOn(&run_iss0206_rowtodef_tests.step)) per the ISS-0150 / GH #466 lesson. No pipeline file required: the four existing pipeline files (admin-user-lifecycle, onboarding-wizard, sim-admin-processes, sim-company-onboarding) do not cover the rowToDefinition codepath, and ISS-0206 has no user-visible sequential action. Inner report at docs/issue-reports/WF03-GH526-20260807-step-4-test-designer-INNER-REPORT.json.",
+    "artifacts_out": [
+      "tests/specs/ISS-0206.md",
+      "src/iss0206_rowtodefinition_errdefer_test.zig",
+      "docs/issue-reports/WF03-GH526-20260807-step-4-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Renamed two fixture identifiers in src/iss0206_rowtodefinition_errdefer_test.zig from UUID_A/UUID_B to FIXTURE_ID_A/FIXTURE_CREATED_BY_A to satisfy tools/lint_test_isolation.py T010 (mechanical hardcoded-UUID regex). Semantically a no-op: RowFields stores these as plain []const u8 column values consumed by rowToDefinitionFromFields; they never reach a database. Comment in the test file explains the rename and the linter rationale."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 4b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
