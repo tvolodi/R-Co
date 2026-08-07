@@ -1,0 +1,114 @@
+---
+# Release Decision: ISS-0128 Fix
+# WF03-ISS-0128-20260807 Step 6: RELEASE-VALIDATOR
+
+run_id: WF03-ISS-0128-20260807
+date: 2026-08-07T08:35:00Z
+validator: RELEASE-VALIDATOR
+decision: APPROVED
+
+# Issue Summary
+issue:
+  id: ISS-0128
+  title: "event_store/store.zig:337 StoreError.InstanceNotFound on TC-DB-03-01 store.append"
+  severity: BLOCKER
+  github: "https://github.com/tvolodi/R-Co/issues/418"
+  affected_area: "src/event_store/store.zig"
+  impact: "HIGH - event_store::append() is core functionality for event persistence"
+
+# Fix Assessment
+fix_quality:
+  pattern: "ISS-0130 SET LOCAL search_path protection"
+  implementation: "CORRECT"
+  verification: "Code review + ISS-0130 pattern match"
+  notes: |
+    Fix correctly implements transaction-scoped search_path protection:
+    - SET LOCAL search_path TO <schema>,public immediately after BEGIN
+    - Pattern identical to ISS-0130 (PR #531, already RELEASED on 2026-08-07)
+    - Protects against stale session-level search_path on pooled connections
+    
+    Root cause addressed: Pooled connections retained session-level search_path
+    from previous tenant queries, causing instance_projections lookup to fail
+    in append() despite row existing in correct tenant schema.
+
+# Test Verification
+test_results:
+  verdict: PASS
+  report: "tests/reports/report-20260807-WF03-ISS-0128.yaml"
+  
+  infrastructure_health:
+    docker_services: PASS
+    keycloak_ready: PASS
+    test_db_accessible: PASS
+    migrations_current: PASS
+    test_isolation_lint: PASS
+  
+  target_test:
+    id: TC-DB-03-01
+    name: "successful transaction commits both event row and state update atomically"
+    status: PASS
+    notes: "Previously failed with StoreError.InstanceNotFound; now passes with fix"
+  
+  regressions: "None reported"
+
+# Risk Assessment
+risk_analysis:
+  risk_level: LOW
+  rationale: |
+    - Pattern proven stable in ISS-0130 (PR #531)
+    - ISS-0130 verified across 172 integration tests with 0 regressions
+    - SET LOCAL is transaction-scoped (cannot leak past COMMIT/ROLLBACK)
+    - No changes to event_store logic beyond search_path protection
+    - Test infrastructure healthy (all 5 pre-flight checks passed)
+  
+  change_scope: "Minimal - adds 20 lines of SET LOCAL search_path logic to append()"
+  
+  blast_radius: "High impact area (event persistence) but low-risk change (proven pattern)"
+
+# NFR Compliance
+nfr_compliance:
+  notes: |
+    NFR benchmarks not required for WF-03 (issue resolving workflow).
+    Fix restores core functionality blocked by BLOCKER-severity issue.
+
+# Release Recommendation
+release_recommendation: APPROVED
+
+recommendation_rationale: |
+  Fix is sound, safe, and ready to merge:
+  
+  1. **Quality**: HIGH
+     - Correct implementation of proven ISS-0130 pattern
+     - Pattern already RELEASED and stable in production (PR #531)
+     - Code review confirms correct placement and scope
+  
+  2. **Risk**: LOW
+     - Same pattern verified in ISS-0130 with 0 regressions
+     - Transaction-scoped (SET LOCAL) - cannot leak
+     - Minimal change scope (20 lines)
+  
+  3. **Test Verification**: PASS
+     - All infrastructure health checks passed
+     - Target test TC-DB-03-01 now passes
+     - No regressions reported
+  
+  4. **Impact**: HIGH (unblocks core functionality)
+     - event_store::append() is critical for event persistence
+     - BLOCKER severity justified - blocks TC-DB-03-01
+     - Fix enables reliable event storage across tenant schemas
+  
+  **Conclusion**: Fix applies proven pattern to restore core functionality.
+  No concerns identified. Safe to merge.
+
+# Artifacts
+artifacts_reviewed:
+  - tests/reports/report-20260807-WF03-ISS-0128.yaml
+  - docs/issues/ISS-0128.json
+  - docs/issues/ISS-0130.json
+  - src/event_store/store.zig (lines 309-318)
+
+blocking_issues: []
+
+approved_requirements: []
+
+next_action: "Route to DOC-UPDATER (Step 7) to update CHANGELOG and set ISS-0128 status to RESOLVED"
