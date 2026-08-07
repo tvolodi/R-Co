@@ -76,34 +76,34 @@ const HarnessRecoveryError = error{
 /// provisioned. This helper is idempotent: if the schema is already set up
 /// it returns immediately.
 ///
-/// ISS-0209: holds the canonical tenant advisory lock around the full
-/// recovery sequence. On MigrationFailed, retries the canonical call with
-/// bounded backoff; on persistent failure, escalates to RecoveryFailed —
-/// never drops the schema, never deletes metadata.
+/// ISS-0209: retries the canonical `provisionTenantSchema()` call with
+/// bounded backoff on transient MigrationFailed; on persistent failure,
+/// escalates to RecoveryFailed — never drops the schema, never deletes
+/// metadata.
+///
+/// ISS-0612 / GH #556: this helper previously wrapped the canonical call in
+/// its OWN acquireAdvisoryLock/releaseAdvisoryLock pair on a separate
+/// lock_conn, held for the full retry loop. That was only safe while
+/// provisionTenantSchema()'s own internal lock was a no-op (acquired and
+/// released within its own micro-scope before doing any real work — the
+/// defect ISS-0612 fixed). Now that provisionTenantSchema() genuinely holds
+/// the SAME advisory-lock key (bpm.provisioning.provisionTenantSchema:<tenant_id>)
+/// for the full duration of its Steps 2-6a, this helper acquiring that same
+/// key first — on a DIFFERENT connection — would self-deadlock: this
+/// helper's lock_conn holds the lock and blocks forever waiting for
+/// provisionTenantSchema() to return, while provisionTenantSchema()'s own
+/// lock_conn blocks forever waiting for this helper's lock_conn to release
+/// it. provisionTenantSchema() now provides the "hold the lock across
+/// check-then-act" guarantee ISS-0209 needed internally, so this helper no
+/// longer needs (and must not take) its own outer lock — the retry loop
+/// below still gives the transient-contention backoff/escalation behaviour
+/// ISS-0209 requires, just without a redundant, now-conflicting lock layer.
 fn ensureTenantDefaultSchema(
     allocator: std.mem.Allocator,
     db_pool: *pool.Pool,
     max_recovery_attempts: u8,
 ) HarnessRecoveryError!void {
     const default_tenant_id = "00000000-0000-0000-0000-000000000000";
-
-    const lock_conn = db_pool.acquire() catch return HarnessRecoveryError.CanonicalProvisionFailed;
-    defer db_pool.release(lock_conn);
-
-    lock_conn.exec(
-        "SET lock_timeout = '90s'",
-        &.{},
-    ) catch return HarnessRecoveryError.CanonicalProvisionFailed;
-    defer lock_conn.exec(
-        "SET lock_timeout = '0'",
-        &.{},
-    ) catch {};
-
-    provisioning_mod.acquireAdvisoryLock(lock_conn, default_tenant_id) catch |err| switch (err) {
-        error.PoolExhausted => return HarnessRecoveryError.CanonicalProvisionFailed,
-        else => return HarnessRecoveryError.CanonicalProvisionFailed,
-    };
-    defer provisioning_mod.releaseAdvisoryLock(lock_conn, default_tenant_id) catch {};
 
     var attempt: u8 = 0;
     while (attempt < max_recovery_attempts) : (attempt += 1) {

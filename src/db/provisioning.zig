@@ -114,25 +114,28 @@ pub fn provisionTenantSchema(
     // because the per-migration transactions inside runForSchema would
     // release an xact_lock prematurely. We pair it with a matching
     // pg_advisory_unlock from the same connection before pool.release.
-    {
-        const lock_conn = pool.acquire() catch |err| switch (err) {
-            PoolError.ExhaustedPool => return ProvisionError.PoolExhausted,
-            else => return ProvisionError.QueryFailed,
-        };
-        defer pool.release(lock_conn);
-        try acquireAdvisoryLock(lock_conn, tenant_id_str);
-        defer releaseAdvisoryLock(lock_conn, tenant_id_str) catch {};
-    }
+    //
+    // ISS-0612 / GH #556: the block above previously closed its own nested
+    // scope (acquire lock_conn, acquire lock, release lock, release
+    // lock_conn) before Step 2 even began, so the lock serialized nothing.
+    // lock_conn is now acquired ONCE here and reused across Steps 2, 3-4, 6,
+    // and 6a (everything except Step 5's runForSchema, which structurally
+    // requires its own connection — see
+    // src/design/iss0612-provisioning-lock-scope-fix.md §3). The lock and
+    // connection are released together via a single defer pair registered
+    // here, covering every exit path below (including Step 2's idempotency
+    // fast-return).
+    const lock_conn = pool.acquire() catch |err| switch (err) {
+        PoolError.ExhaustedPool => return ProvisionError.PoolExhausted,
+        else => return ProvisionError.QueryFailed,
+    };
+    defer pool.release(lock_conn);
+    try acquireAdvisoryLock(lock_conn, tenant_id_str);
+    defer releaseAdvisoryLock(lock_conn, tenant_id_str) catch {};
 
     // Step 2: Idempotency check.
     {
-        const conn = pool.acquire() catch |err| switch (err) {
-            PoolError.ExhaustedPool => return ProvisionError.PoolExhausted,
-            else => return ProvisionError.QueryFailed,
-        };
-        defer pool.release(conn);
-
-        const result = conn.query(
+        const result = lock_conn.query(
             allocator,
             // Only skip if migrations have been applied (migrations_applied_at IS NOT NULL).
             // A schema registered by a SQL migration (GBL-069 etc.) but never fully
@@ -165,36 +168,30 @@ pub fn provisionTenantSchema(
     const schema_name = pool_mod.schemaNameForTenant(tenant_id_str, &schema_buf);
 
     // Step 4: Call SQL provisioning function to create schema + register row.
-    {
-        const conn = pool.acquire() catch |err| switch (err) {
-            PoolError.ExhaustedPool => return ProvisionError.PoolExhausted,
-            else => return ProvisionError.SchemaCreationFailed,
-        };
-        defer pool.release(conn);
-
-        conn.exec(
-            "SELECT public.bpm_provision_tenant_schema($1::uuid)",
-            &.{tenant_id_str},
-        ) catch return ProvisionError.SchemaCreationFailed;
-    }
+    lock_conn.exec(
+        "SELECT public.bpm_provision_tenant_schema($1::uuid)",
+        &.{tenant_id_str},
+    ) catch return ProvisionError.SchemaCreationFailed;
 
     // Step 5: Apply migrations inside the tenant schema.
+    //
+    // ISS-0612 / GH #556: deliberately NOT given lock_conn. runForSchema's
+    // signature (src/db/migrations.zig) takes (allocator, pool,
+    // migrations_dir, schema_name, force_reconcile) — no *Conn parameter —
+    // so it always acquires its own connection from the pool internally.
+    // The tenant-level advisory lock stays held on lock_conn (which is idle,
+    // not blocked in Postgres) for the full duration of this call; see the
+    // design doc §3 for the deadlock-freedom analysis (no cross-lock
+    // wait-for cycle — runForSchema's MIGRATIONS_LOCK_KEY_SQL is a disjoint
+    // keyspace on a different connection).
     migrations.Migrations.runForSchema(allocator, pool, migrations_dir, schema_name, false) catch
         return ProvisionError.MigrationFailed;
 
     // Step 6: Update migrations_applied_at timestamp in tenant_schemas.
-    {
-        const conn = pool.acquire() catch |err| switch (err) {
-            PoolError.ExhaustedPool => return ProvisionError.PoolExhausted,
-            else => return ProvisionError.RegistryUpdateFailed,
-        };
-        defer pool.release(conn);
-
-        conn.exec(
-            "UPDATE public.tenant_schemas SET migrations_applied_at = NOW() WHERE tenant_id = $1::uuid",
-            &.{tenant_id_str},
-        ) catch return ProvisionError.RegistryUpdateFailed;
-    }
+    lock_conn.exec(
+        "UPDATE public.tenant_schemas SET migrations_applied_at = NOW() WHERE tenant_id = $1::uuid",
+        &.{tenant_id_str},
+    ) catch return ProvisionError.RegistryUpdateFailed;
 
     // Step 6a: ISS-0114 / GH-377 — authoritative promotion to SCHEMA storage_mode.
     //
@@ -214,40 +211,32 @@ pub fn provisionTenantSchema(
     // Idempotency: ON CONFLICT (id) DO UPDATE only fires when storage_mode is
     // 'LEGACY_RLS' OR NULL, so re-running this for an already-SCHEMA tenant
     // is a no-op. This matches the behaviour of migration 1135.
-    {
-        const conn = pool.acquire() catch |err| switch (err) {
-            PoolError.ExhaustedPool => return ProvisionError.PoolExhausted,
-            else => return ProvisionError.SchemaPromotionFailed,
-        };
-        defer pool.release(conn);
-
-        conn.exec(
-            \\INSERT INTO public.tenant (
-            \\    id,
-            \\    slug,
-            \\    display_name,
-            \\    status,
-            \\    tenant_type,
-            \\    storage_mode,
-            \\    created_at,
-            \\    updated_at
-            \\) VALUES (
-            \\    $1::uuid,
-            \\    'tenant-' || replace($1::text, '-', ''),
-            \\    'Auto-provisioned tenant ' || substr($1::text, 1, 8),
-            \\    'ACTIVE',
-            \\    'production',
-            \\    'SCHEMA',
-            \\    NOW(),
-            \\    NOW()
-            \\)
-            \\ON CONFLICT (id) DO UPDATE
-            \\  SET storage_mode = 'SCHEMA',
-            \\      updated_at = NOW()
-            \\  WHERE public.tenant.storage_mode = 'LEGACY_RLS'
-            \\     OR public.tenant.storage_mode IS NULL
-        , &.{tenant_id_str}) catch return ProvisionError.SchemaPromotionFailed;
-    }
+    lock_conn.exec(
+        \\INSERT INTO public.tenant (
+        \\    id,
+        \\    slug,
+        \\    display_name,
+        \\    status,
+        \\    tenant_type,
+        \\    storage_mode,
+        \\    created_at,
+        \\    updated_at
+        \\) VALUES (
+        \\    $1::uuid,
+        \\    'tenant-' || replace($1::text, '-', ''),
+        \\    'Auto-provisioned tenant ' || substr($1::text, 1, 8),
+        \\    'ACTIVE',
+        \\    'production',
+        \\    'SCHEMA',
+        \\    NOW(),
+        \\    NOW()
+        \\)
+        \\ON CONFLICT (id) DO UPDATE
+        \\  SET storage_mode = 'SCHEMA',
+        \\      updated_at = NOW()
+        \\  WHERE public.tenant.storage_mode = 'LEGACY_RLS'
+        \\     OR public.tenant.storage_mode IS NULL
+    , &.{tenant_id_str}) catch return ProvisionError.SchemaPromotionFailed;
 
     // Step 6b: Prime the thread-local tenant_context so the very next
     // pool.acquire() in this thread sees storage_mode_resolved=true and

@@ -7,9 +7,9 @@
   "to_agent": "BACKEND-DEV",
   "file": "handoffs/WF03-GH556-20260807/step-03-backend-dev.json",
   "created_at": "2026-08-07T19:47:14Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-07T19:47:47Z",
+  "completed_at": "2026-08-07T20:15:52Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -36,7 +36,18 @@
       "fn:zig-build-test"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed ISS-0612/GH-556: provisionTenantSchema() (src/db/provisioning.zig) previously acquired lock_conn, took the advisory lock, and released both within its own nested scope BEFORE Steps 2-6a began, so the lock serialized nothing. Restructured so lock_conn is acquired ONCE at function start and reused across Step 2 (idempotency check), Steps 3-4 (bpm_provision_tenant_schema() call), Step 6 (tenant_schemas timestamp update), and Step 6a (public.tenant promotion); a single defer pair (releaseAdvisoryLock then pool.release(lock_conn)) now covers every exit path including the idempotency fast-return. Step 5 (runForSchema) deliberately left unchanged -- it structurally cannot receive lock_conn (no *Conn parameter) and always acquires its own connection, per the validated design's deadlock-freedom analysis. Added defense-in-depth: Pool.release() (src/db/pool.zig) now calls pg_advisory_unlock_all() via a new clearConnectionAdvisoryLocks() helper, positioned after resetConnectionSearchPath and before the idle-set insertion, mirroring that function's mark-invalid-on-failure pattern. Discovered and fixed a blocking interaction: tests/unit/test_api08_auth.zig's ensureTenantDefaultSchema() (added by ISS-0209) wrapped its own outer acquireAdvisoryLock/releaseAdvisoryLock pair around its retry loop, relying on the pre-fix lock being a no-op. Once the lock genuinely spans Steps 2-6a, that outer wrapper self-deadlocked (its lock_conn held the lock while blocking on provisionTenantSchema(), whose own lock_conn blocked waiting for the outer lock to release) -- reproduced live via zig build test hanging with pg_stat_activity showing one idle connection holding the advisory lock and two others blocked waiting on it for 3+ minutes. Removed the now-redundant outer lock from ensureTenantDefaultSchema(); provisionTenantSchema()'s own lock now provides the check-then-act guarantee ISS-0209 needed, so the retry loop alone (unchanged backoff/escalation logic) is sufficient. Added a permanent regression test (tests/integration/iss0129_migration_run_advisory_lock_test.zig, 'ISS-0612: 12 threads x 8 rounds same-tenant concurrent provisionTenantSchema does not stall under pool_size=3') reproducing the original diagnosis's exact stress conditions. Concurrent stress-test result: BEFORE any fix, original defect stalled at 24/96 calls indefinitely (180s hard cap, PoolExhausted on force-termination, zero DB query activity during stall). AFTER the provisioning.zig fix alone (before the test-harness fix), zig build test hung again via a DIFFERENT mechanism (the ensureTenantDefaultSchema self-deadlock described above), confirmed live via pg_stat_activity/pg_locks showing a held-but-idle advisory lock blocking two waiters for 3+ minutes -- this was fixed by removing the outer lock from the test helper. AFTER both fixes: zig build test passes cleanly (939/1003 tests passed, 64 skipped -- identical to pre-change baseline, run twice for consistency), and the dedicated stress test completes 96/96 calls in ~2.2-2.3s with 0 non-retryable errors (verified in 2 consecutive runs). Per the validated design's own §3.2, pool_size=3 with 12 threads is below the 'minimum viable pool size of two connections per concurrently-provisioning tenant', so the stress test retries on PoolExhausted/MigrationFailed with bounded backoff rather than asserting zero contention -- Pool.acquire() fails fast (does not block/queue) by design, which is itself the intended improvement over the original silent indefinite hang.",
+    "artifacts_out": [
+      "src/db/provisioning.zig",
+      "src/db/pool.zig",
+      "tests/unit/test_api08_auth.zig",
+      "tests/integration/iss0129_migration_run_advisory_lock_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
