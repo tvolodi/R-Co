@@ -1,0 +1,164 @@
+issue_id: ISS-0170
+github_issue: https://github.com/tvolodi/R-Co/issues/497
+run_id: WF03-ISS-0170-20260807
+step: "01"
+agent: BACKEND-DEV
+severity: MAJOR
+title: CI cannot distinguish a GitHub Actions platform outage from a real failure
+
+symptom: >-
+  A GitHub Actions platform outage renders on a pull request as a red X that is
+  visually identical to a failed test. On 2026-08-06 the Actions component went
+  to major_outage at 15:22:49Z with webhook triggers throttled; runs stopped
+  being created and queued jobs were never assigned a runner, then cancelled
+  ~15 minutes later. Of the last 40 runs, 31 succeeded, 6 were cancelled and 3
+  failed -- only the 3 failures were genuine code defects, but nothing in the
+  pipeline said which was which. The outage was identified only because a human
+  thought to open githubstatus.com by hand.
+
+root_cause: >-
+  The pipeline had no mechanical source of platform-state truth. Run colour was
+  the only signal available to a reader, and run colour conflates "your change
+  broke something" with "the platform could not run your change at all". The
+  attribution step existed solely as an unwritten habit, so it was skipped.
+
+state_at_start_of_this_run:
+  note: >-
+    Commit 9a2b45c (the ISS-0171 / GH #498 fix, merged as PR #499) already
+    landed tools/check_github_status.py and the ci.yml `platform_status` job.
+    That work covers part of ISS-0170's acceptance criteria. This run closes the
+    remainder rather than duplicating what exists. Verified by reading both
+    files and by executing the tool against the live API before designing.
+  criterion_1_components_api_query:
+    status: ALREADY_SATISFIED
+    evidence: >-
+      tools/check_github_status.py queries
+      https://www.githubstatus.com/api/v2/components.json and selects the
+      ungrouped component named "Actions". Verified against the live API: the
+      raw payload lists 'Actions' -> operational as an ungrouped top-level
+      component, and the tool reports status=operational, degraded=false.
+  criterion_2_explicit_annotation_naming_incident:
+    status: PARTIALLY_SATISFIED
+    have: >-
+      `--github` emits a ::warning:: annotation naming the incident. Proven by
+      injecting a synthetic major_outage payload shaped like the real
+      2026-08-06 incident: the annotation is emitted, names "Incident with
+      Actions", and the human-readable block prints the 15:22:49Z start time.
+    gaps:
+      - >-
+        Nothing writes to $GITHUB_STEP_SUMMARY. A ::warning:: annotation is
+        transient and easy to miss; the step summary is the durable surface a
+        reader lands on from the PR checks tab.
+      - >-
+        The incident START TIME appears only in stdout, not in the annotation
+        itself. ISS-0170 criterion 2 asks for the annotation to name the
+        incident; naming its start time is what lets a reader correlate "my run
+        was cancelled at T" against "the incident opened at T-minus-something".
+      - >-
+        platform_status runs as its own job on its own runner. Its annotation
+        is therefore not attached to the build job whose red X prompted the
+        question. During the exact failure mode this issue describes -- webhook
+        throttling, jobs never assigned a runner -- this job is itself likely to
+        be cancelled or never scheduled, so the one diagnostic that explains the
+        outage disappears precisely when it is needed.
+  criterion_3_diagnostic_only:
+    status: ALREADY_SATISFIED
+    evidence: >-
+      main() returns 0 unconditionally; fetch() swallows URLError, TimeoutError,
+      JSONDecodeError and OSError and returns None, so an unreachable status
+      page is reported as UNKNOWN rather than raising. Confirmed by execution:
+      exit 0 on the healthy live API and exit 0 on the injected major_outage
+      payload.
+  criterion_4_claude_md_requires_the_check:
+    status: NOT_SATISFIED
+    evidence: >-
+      CLAUDE.md's "Never Call a Red Pipeline OK Without a Source" lists
+      `python3 tools/check_github_status.py` in a code block and references it
+      in one table row, but the prose never states that running it is mandatory
+      before attributing a red run. A reader can satisfy the section as written
+      without ever querying the status API -- which is the precise behaviour
+      that produced the original misdiagnosis recorded in this issue's
+      correction_note.
+
+design:
+  principle: >-
+    Purely additive and diagnostic. The pre-check reports context; it never
+    changes any job's verdict. This constraint is load-bearing: ISS-0171 /
+    GH #498 was the exact opposite defect, where continue-on-error let genuine
+    failures pass silently. A mechanism that turned a red build green during an
+    outage would repeat #498 with a worse blast radius, because an "outage" is
+    attacker-free but also attributed automatically. Therefore the outage signal
+    is allowed to ANNOTATE a failure and is never allowed to SUPPRESS one.
+
+  changes:
+    - id: D1
+      file: .github/workflows/ci.yml
+      change: >-
+        Add a diagnostic pre-flight step at the head of the `build` job (the job
+        whose red X is what a reader actually investigates), before Zig is
+        installed. It runs check_github_status.py and cannot fail the job.
+      rationale: >-
+        Co-locating the diagnostic with the gating job means the explanation is
+        attached to the same job page as the failure it explains, instead of
+        living on a sibling job the reader may never open.
+      safety: >-
+        The step wraps only its own invocation in `|| true`, and that invocation
+        is a network read of a third-party status page -- it executes no build,
+        no test, and no linter, so there is no verdict for it to mask. The
+        `|| true` guards against the interpreter or the network dying, not
+        against a failing check. Every build/test step in the job is left
+        untouched and un-masked.
+    - id: D2
+      file: .github/workflows/ci.yml
+      change: >-
+        Have both the `platform_status` job and the new build pre-flight step
+        write a durable section to $GITHUB_STEP_SUMMARY.
+      rationale: Closes criterion 2's durability gap.
+    - id: D3
+      file: tools/check_github_status.py
+      change: >-
+        Include the incident start time in the ::warning:: annotation text, and
+        add a `--summary` mode that emits GitHub-flavoured Markdown suitable for
+        redirecting into $GITHUB_STEP_SUMMARY. Reuse the existing fetch/parse
+        functions -- no duplicated status logic.
+      safety: >-
+        Exit code remains unconditionally 0. No change to fetch() error
+        swallowing. New output surfaces only; no control-flow change.
+    - id: D4
+      file: CLAUDE.md
+      change: >-
+        Rewrite the "Never Call a Red Pipeline OK Without a Source" section so
+        querying the status API is stated as a mandatory precondition, add the
+        "status API not checked" row to the outcome table, and state explicitly
+        that an open incident never converts a genuine step failure into an
+        acceptable one.
+      rationale: Closes criterion 4, and encodes the anti-masking constraint in prose.
+
+  explicitly_rejected:
+    - option: Gate the build on platform status (fail fast during an outage).
+      reason: >-
+        Adds a second independent way for the platform to redden a healthy PR,
+        which is the very confusion this issue exists to remove.
+    - option: >-
+        Auto-retry, auto-cancel, or auto-neutralise a failed job when an
+        incident is open.
+      reason: >-
+        This is the #498 defect. An incident being open is not evidence that
+        THIS failure is platform-caused; a real assertion failure during an
+        outage is still a real assertion failure. Suppression on a correlated-
+        but-not-causal signal would hide genuine defects.
+    - option: continue-on-error on the diagnostic step.
+      reason: >-
+        Unnecessary -- the tool already exits 0 by construction -- and the
+        keyword's presence in this file is itself a hazard, since #498 showed it
+        gets copied onto steps that do gate. `|| true` scoped to the single
+        network call expresses the intent without introducing the keyword.
+
+verification_plan:
+  - Parse .github/workflows/ci.yml with yaml.safe_load -- must not raise.
+  - Run tools/check_github_status.py against the live API and record output.
+  - Exercise the degraded path with an injected major_outage payload and assert
+    exit code 0, annotation emitted, incident named, start time present.
+  - Re-read the final ci.yml and confirm no build/test/lint step carries
+    continue-on-error or `|| true`.
+  - zig build exits 0 (sanity; this change touches no Zig source).

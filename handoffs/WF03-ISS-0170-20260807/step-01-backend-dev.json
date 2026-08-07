@@ -1,0 +1,45 @@
+{
+  "handoff_id": "93845cbc-21bc-41fd-a279-32f0704366e9",
+  "run_id": "WF03-ISS-0170-20260807",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T00:33:40Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0170.json",
+      ".github/workflows/ci.yml",
+      "tools/check_github_status.py"
+    ]
+  },
+  "task": {
+    "description": "Diagnose ISS-0170 (GH #497): CI cannot distinguish a GitHub Actions platform outage from a real failure. Determine where a diagnostic pre-flight belongs and how to emit a GitHub annotation, without introducing any mechanism that could mask a genuine failure.",
+    "acceptance_criteria": [
+      "Existing tools/check_github_status.py assessed, not duplicated",
+      "Each of the four ISS-0170 acceptance criteria mapped to satisfied/gap",
+      "Design written to docs/issue-reports/ISS-0170-diagnosis.yaml",
+      "Anti-masking constraint (vs ISS-0171/#498) explicitly addressed"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosis complete. Commit 9a2b45c (PR #499, the ISS-0171 fix) already landed tools/check_github_status.py and the ci.yml platform_status job, which satisfy criterion 1 (components API query) and criterion 3 (diagnostic only, exit 0 unconditionally) -- both verified by execution against the live API and against an injected major_outage payload. Criterion 2 is only partially met: the ::warning:: annotation exists but omits the incident start time, nothing writes to $GITHUB_STEP_SUMMARY, and platform_status is a separate job whose annotation is not attached to the build job a reader investigates -- and which is itself likely to be cancelled during the very webhook-throttling outage it exists to explain. Criterion 4 is unmet: CLAUDE.md mentions check_github_status.py but never states that running it is mandatory. Design D1-D4 closes the remainder, purely additively: the outage signal may annotate a failure, never suppress one. Gating on platform status and any auto-retry/auto-neutralise on an open incident were considered and explicitly rejected as repeats of GH #498.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0170-diagnosis.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 03) to implement D1-D4"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T00:33:40Z",
+  "completed_at": "2026-08-07T00:33:40Z"
+}

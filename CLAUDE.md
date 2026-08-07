@@ -100,18 +100,25 @@ Never report something as working without verifying it yourself. Run the build, 
 If CI is red, you may not report it as acceptable on your own judgement. Attribute it to evidence, and name the evidence:
 
 ```bash
-python3 tools/check_github_status.py          # is the platform degraded?
+python3 tools/check_github_status.py          # MANDATORY — is the platform degraded?
 gh run view <run-id> --json jobs --jq '.jobs[]|"\(.name): \(.conclusion)"'
 gh run view <run-id> --log-failed             # what actually failed
 ```
 
-Three outcomes, three different answers:
+**Querying the GitHub status API is mandatory, not optional (ISS-0170 / GH #497).** You MUST run `python3 tools/check_github_status.py` — which queries `githubstatus.com/api/v2/components.json` for the `Actions` component — **before** characterising any red or cancelled run, and you must quote its actual output in your report. "I did not check the status page" is not a permitted state: without that output you have no basis to call a failure either platform-caused or code-caused, and saying either is speculation. This exact omission produced ISS-0170's original misdiagnosis, which was filed as "runner starvation" purely from runner-assignment evidence and had to be corrected once someone finally opened the status page — the remedy changed from capacity tuning to outage attribution.
+
+Four outcomes, four different answers:
 
 | Finding | Correct report |
 |---|---|
+| You have not run `check_github_status.py` | **You cannot report yet.** Run it first — no attribution is valid without it |
 | `check_github_status.py` reports degraded, and the jobs never started (no runner, zero steps) | Platform outage — name the incident and its start time |
 | A step genuinely failed | **It is not OK.** Read the failing step and fix it |
 | A step failed but is `continue-on-error` | **It is not OK either** — a masked failure is still a failure; see ISS-0171 / GH #498 |
+
+**An open incident never converts a genuine failure into an acceptable one.** A degraded platform explains a job that was *cancelled* or *never started*; it explains nothing about a step that *ran and failed*. A real assertion failure during an outage is still a real assertion failure — report it as a failure and fix it. Treating "an incident was open" as grounds to dismiss a red step would recreate ISS-0171 / GH #498, where `continue-on-error` hid genuine failures for months. The status check is there to sharpen attribution, never to launder a defect.
+
+CI publishes this same signal automatically: the `Platform status` job and a diagnostic pre-flight step in the `Build and unit tests` job both emit a `::warning::` annotation naming the incident and write a section to the run's step summary. Both are diagnostic only and cannot fail or pass any job. Read them — but still run the check yourself when reporting, because during a webhook-throttling outage those jobs are themselves liable to be cancelled.
 
 Checking the job list is not enough. On 2026-08-06 the `Source linters` job reported `success` through the GitHub API while its own log contained `##[error]Process completed with exit code 1`, because the failing step was `continue-on-error`. A green check meant nothing had been verified.
 

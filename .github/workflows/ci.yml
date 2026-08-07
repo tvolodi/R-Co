@@ -45,7 +45,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: GitHub Actions platform status
-        run: python3 tools/check_github_status.py --github
+        # `|| true` guards ONLY this diagnostic's own network read of a
+        # third-party status page. This step runs no build, no test and no
+        # linter, so it has no verdict to mask — there is nothing here that
+        # `|| true` could hide. It exists so that githubstatus.com being down
+        # cannot itself redden a PR, which would be a second instance of the
+        # confusion ISS-0170 exists to remove.
+        run: |
+          python3 tools/check_github_status.py --github || true
+          python3 tools/check_github_status.py --summary >> "$GITHUB_STEP_SUMMARY" || true
 
   # ---------------------------------------------------------------------------
   # Bookkeeping — the checks that did not exist when the audit ran.
@@ -152,6 +160,29 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+
+      # ISS-0170 / GH #497. The `platform_status` job publishes the same signal,
+      # but it is a SEPARATE job: its annotation lands on a page nobody opens
+      # when this job is the one showing red, and during the exact failure mode
+      # this addresses — webhook throttling, jobs never assigned a runner — that
+      # sibling job is itself likely to be cancelled or never scheduled. So the
+      # diagnostic is repeated here, attached to the job whose red X is what
+      # actually gets investigated.
+      #
+      # DIAGNOSTIC ONLY. It reports context and never changes this job's
+      # verdict. An open incident explains a job that was cancelled or never
+      # started; it NEVER excuses a step that ran and failed. Deliberately not
+      # wired to skip, retry, or neutralise anything below — that would be
+      # ISS-0171 / GH #498 (`continue-on-error` hiding genuine failures) in a
+      # new costume, and would be a worse regression than the problem it solves.
+      - name: GitHub Actions platform status (diagnostic)
+        # `|| true` guards ONLY this network read of a third-party status page.
+        # No build, test or linter runs in this step, so there is no verdict for
+        # it to mask. check_github_status.py already exits 0 by construction;
+        # this covers the interpreter or the network dying outright.
+        run: |
+          python3 tools/check_github_status.py --github || true
+          python3 tools/check_github_status.py --summary >> "$GITHUB_STEP_SUMMARY" || true
 
       # setup-zig@v1 resolves 0.16.0 through community mirrors, which returned
       # 404/503 on the first run of this workflow. v2 is current, and the direct

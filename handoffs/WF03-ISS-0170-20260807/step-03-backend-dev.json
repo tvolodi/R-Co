@@ -1,0 +1,47 @@
+{
+  "handoff_id": "a623116e-cc30-4036-9a8e-e615d23d8b09",
+  "run_id": "WF03-ISS-0170-20260807",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T00:37:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0170-diagnosis.yaml",
+      "docs/issues/ISS-0170.json"
+    ]
+  },
+  "task": {
+    "description": "Implement D1-D4 from the ISS-0170 diagnosis: a diagnostic CI pre-flight that distinguishes a GitHub Actions platform outage from a real failure, without introducing any mechanism capable of masking a genuine failure.",
+    "acceptance_criteria": [
+      "Pre-flight step queries githubstatus.com components API for the Actions component",
+      "Outage surfaced as an explicit annotation naming the incident",
+      "Pre-check is diagnostic only: never fails the build, never masks a genuine failure",
+      "CLAUDE.md requires checking the status API before reporting red CI as acceptable"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All four ISS-0170 acceptance criteria satisfied and verified by execution. (1) tools/check_github_status.py queries https://www.githubstatus.com/api/v2/components.json for the ungrouped 'Actions' component; verified against the live API, which returned status=operational, degraded=false, exit 0, and independently confirmed by fetching the raw payload. (2) The ::warning:: annotation now names the incident AND its start time, impact and shortlink; a new --summary mode writes a durable Markdown section to $GITHUB_STEP_SUMMARY. Both proven by injecting a synthetic major_outage payload shaped like the real 2026-08-06 incident. (3) Diagnostic only: main() returns 0 unconditionally, fetch() swallows all network/parse errors, and the degraded path was confirmed to exit 0. A programmatic audit of every step in ci.yml confirms no build, test or lint step carries continue-on-error or '|| true' as a result of this change. (4) CLAUDE.md's 'Never Call a Red Pipeline OK Without a Source' now states the status-API query as mandatory, adds a fourth outcome row for the unchecked case, and states explicitly that an open incident never converts a genuine failure into an acceptable one. The diagnostic was added to the build job (not only the sibling platform_status job) because during webhook-throttling outages that sibling job is itself liable to be cancelled. zig build exits 0; ci.yml parses under yaml.safe_load; lint_agent_docs.py reports 0 findings.",
+    "artifacts_out": [
+      ".github/workflows/ci.yml",
+      "tools/check_github_status.py",
+      "CLAUDE.md",
+      "docs/issue-reports/ISS-0170-diagnosis.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 05) per WF-03"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T00:37:47Z",
+  "completed_at": "2026-08-07T00:37:47Z"
+}
