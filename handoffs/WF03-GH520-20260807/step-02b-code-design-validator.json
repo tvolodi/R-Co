@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGN-VALIDATOR",
   "file": "handoffs/WF03-GH520-20260807/step-02b-code-design-validator.json",
   "created_at": "2026-08-07T22:18:55Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-07T22:29:21Z",
+  "completed_at": "2026-08-07T22:30:43Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -34,7 +34,13 @@
       "fn:lint-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validated reworked src/design/gh520-backoff-schedule-deterministic-assertion.md after rework 1/3. Independently re-verified transaction-semantics claim against tests/integration/helpers.zig:1085 (TestHarness.init single conn.begin(), never committed) and vendor/pg/pg.zig:149-190 (exec/query issue no implicit BEGIN/COMMIT; only begin/commit/rollback touch tx state) -- confirmed all statements in TC-EXP-301-05 run in one transaction, so NOW() is frozen and identical for markRetry and the read-back. Independently re-derived the reconciliation algebra from the current test source (tests/integration/effects_subsystem_test.zig:570-696): next_ms_after - next_ms_before reduces to interval_after - interval_before with frozen_NOW cancelling exactly, confirming zero wall-clock component. Verified via git history (git diff 60fae79 HEAD) that TC-EXP-301-05 has been byte-identical since the ISS-0158 fix commit, i.e. the code ISS-0186 was filed against IS this same single-transaction test -- there is no separate-connection prior version, so the reconciliation is not inventing a convenient discrepancy. The design correctly names the actual flake mechanism as execution-order/state dependence in what the seed loop last wrote, not clock jitter, resolving the apparent contradiction with ISS-0186's original jitter theory. 1.0ms tolerance confirmed as pure float round-trip epsilon (5000x headroom vs smallest expected_backoff=5000ms). Assertion remains non-tautological (4 distinct backoff values, bound comparison retained). No production code touched (queue.zig unmodified, explicitly out of scope). lint_design_artefact.py exits 0, no BLOCKER/MAJOR.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
