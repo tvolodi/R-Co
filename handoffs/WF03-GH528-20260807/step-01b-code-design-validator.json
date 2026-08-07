@@ -1,0 +1,57 @@
+{
+  "handoff_id": "c7e28bf5-7673-4a2f-a884-fcd01bc0f2df",
+  "run_id": "WF03-GH528-20260807",
+  "workflow_id": "WF-03",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH528-20260807/step-01b-code-design-validator.json",
+  "created_at": "2026-08-07T17:11:43Z",
+  "started_at": "2026-08-07T17:13:07Z",
+  "completed_at": "2026-08-07T17:17:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/service-task-test-capture-server.md",
+      "docs/issues/ISS-0207.json"
+    ]
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER design at src/design/service-task-test-capture-server.md, which fixes the flaky TC-EXT-01-U08a test (GH #528 / ISS-0207): CaptureServer hardcoded port 18181 + a cross-thread data race reading captured headers before the server thread finished writing them. Confirm the design covers both root causes and contains no implementation code.",
+    "acceptance_criteria": [
+      "Design covers ephemeral port binding (port 0) + dynamic url_template construction, replacing the hardcoded 18181",
+      "Design covers a happens-before synchronisation primitive between the CaptureServer thread and the test assertions, replacing defer-at-scope-exit",
+      "No implementation code (compilable Zig) present in the design artefact",
+      "Design is complete enough for BACKEND-DEV to implement without further clarification"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Design artefact names a synchronisation primitive (std.Thread.ResetEvent) that does not exist in this repo's actual Zig 0.16.0 stdlib or anywhere else in the codebase, which would break compilation if implemented as written.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "src/design/service-task-test-capture-server.md specifies `std.Thread.ResetEvent` as the synchronisation primitive for both readiness signals (Dependencies section line 9; design section (b) lines 79-93; Public interface section lines 117-118; Key invariants #2-3). Verified against the repo's actual toolchain (`zig env` -> zig-x86_64-windows-0.16.0): `std.Thread.zig` in that version has no `ResetEvent` declaration at all -- grepping the vendored stdlib for `ResetEvent` returns zero matches. The codebase already uses a different, correct mechanism throughout: `std.Io.Event` (lib/std/Io.zig lines 1766-1875), an enum-based primitive with `wait(io: Io)` / `set(io: Io)` / `waitTimeout(io, timeout)` and documented acquire/release happens-before semantics -- exactly the guarantee this design needs. The test file already has an `Io` handle available on both sides (`std.testing.io`, used at lines 46-58 in run() and transitively via st.executeHttpRequest in the test body), so std.Io.Event is a drop-in fit. Confirmed by grep: `ResetEvent` occurs nowhere in src/ or tests/ except this design doc and its own handoff -- it is not an existing pattern anywhere in this project. If BACKEND-DEV implements the design literally, `zig build` fails to compile ('no member named ResetEvent in union/struct Thread'), directly violating acceptance criterion 2 (happens-before primitive must be usable) and acceptance criterion 4 (design must need no further clarification).",
+        "location": "src/design/service-task-test-capture-server.md lines 9, 79-93, 105, 117-118, 134",
+        "required_fix": "Replace every reference to `std.Thread.ResetEvent` with `std.Io.Event` (fields `listening: std.Io.Event = .unset` and `headers_captured: std.Io.Event = .unset`; server thread calls `.set(std.testing.io)` at the two signalling points; test thread calls `.wait(std.testing.io)` or `.waitTimeout(std.testing.io, <bound>)` at the two waiting points). Update the Dependencies section accordingly (std.Io.Event is not a 'new dependency' in the external sense -- std.Io is already imported/used throughout this file -- but the design should say so explicitly rather than naming a non-existent stdlib member)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Design section (a) point 3 and the Dependencies section describe the bound-port readback via hedged, non-committal language ('consult whatever field/accessor the vendored std.Io.net.Server/Listener type exposes ... e.g. a .listen_address field or a getLocalAddress()-style accessor'). Checked against the actual vendored stdlib: `std.Io.net.Server` (lib/std/Io/net.zig line 1402) has only `socket: Socket` and `options` fields -- no `.listen_address` field and no `getLocalAddress()` method. The correct accessor is `server.socket.address` (Socket.address is an IpAddress field documented at net.zig line 1055 as 'Contains the resolved ephemeral port number if requested.'). This does not block implementation the way the ResetEvent issue does, since the design explicitly hedges and defers the exact accessor to BACKEND-DEV's own lookup, but it is worth tightening in the same rework pass since CODE-DESIGNER is already touching this file.",
+        "location": "src/design/service-task-test-capture-server.md lines 55, 135",
+        "required_fix": "State the accessor precisely: read the ephemeral port back via `server_result.socket.address.getPort()` (or equivalent on IpAddress) immediately after listen() returns, where server_result is the std.Io.net.Server value."
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER for rework: replace std.Thread.ResetEvent with std.Io.Event throughout, and correct the port-readback accessor description."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
