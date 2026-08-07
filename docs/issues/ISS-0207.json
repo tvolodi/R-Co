@@ -7,7 +7,7 @@
     "ISS-0132"
   ],
   "severity": "MAJOR",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "scope": "tests/unit/service_task_test.zig \u2014 test infrastructure flake, not a production defect.",
   "symptom": "`zig build test` intermittently exits 1 with `Build Summary: 81/83 steps succeeded (1 failed); 938/1003 tests passed (64 skipped, 1 failed)`. The failing block is `TC-EXT-01-U08a: executeHttpRequest injects trace, idempotency, and configured headers`, failing at tests/unit/service_task_test.zig:339 on `expectEqualStrings(\"trace-123\", server.first_trace_id[0..server.first_trace_id_len])` \u2014 expected `trace-123`, got an empty/short slice, i.e. the CaptureServer thread had not recorded the request headers at the point the assertion ran.",
   "reproduction": "Non-deterministic and concurrency-dependent. Observed once in a full `zig build test --summary all` run on branch feature/WF03-ISS-0132-20260807. NOT reproducible in isolation: the compiled binary was run 15 consecutive times directly and passed 15/15; three subsequent full-suite runs on the same branch were clean at 83/83 steps and 939/1003 tests. Six full-suite runs on origin/main (83b88fb) were also clean at 81/81 / 936/1000.",
@@ -20,5 +20,10 @@
   ],
   "evidence_file": "Observed in run WF03-ISS-0132-20260807 Step Final; failure text captured at tests/unit/service_task_test.zig:339 via std.testing.expectEqualStrings -> error.TestExpectedEqual",
   "notes": "Forwarded rather than fixed in WF03-ISS-0132-20260807 per the CLAUDE.md scope boundary: it is an adjacent defect the run noticed, not a blocker of that run's acceptance criteria, and it is unrelated to that run's subject (allocation-failure coverage for parseGraphJson in src/definition/store.zig). That branch changed only src/definition/store.zig, src/definition_store_test_root.zig and build.zig, and does not import or touch tests/unit/service_task_test.zig; adding a build step can perturb suite scheduling and thereby expose this pre-existing race, but is not its cause.",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/528"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/528",
+  "resolved_at": "2026-08-07T19:15:34Z",
+  "resolved_in": [
+    "tests/unit/service_task_test.zig"
+  ],
+  "resolution": "CaptureServer now binds an ephemeral port (0) instead of hardcoded 18181, reading the actual bound port back via server.socket.address to build url_template dynamically. A std.Io.Event (headers_captured) is set by the server thread immediately after header capture completes and waited on by the test thread before assertions, establishing a happens-before edge that replaces the prior defer-server.join()-at-scope-exit pattern. A second std.Io.Event (listening) similarly gates reading back the bound port. Verified via 5 consecutive isolated runs of zig build test-bpm-src (84/95 pass, 0 fail every run) plus 2 truly-concurrent stress runs reproducing the original full-suite-concurrency scenario -- both clean. Design: src/design/service-task-test-capture-server.md. Test-only change, no production source touched."
 }

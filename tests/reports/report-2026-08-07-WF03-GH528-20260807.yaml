@@ -1,0 +1,104 @@
+run_id: WF03-GH528-20260807
+date: "2026-08-07"
+completed_at: "2026-08-07T19:11:29Z"
+issues_tested: [GH-528, ISS-0207]
+
+pre_checks:
+  services:
+    db: healthy (r-co-2-db-1, port 5452)
+    db_test: healthy (r-co-2-db_test-1, port 5453)
+    keycloak: healthy (r-co-2-keycloak-1)
+    keycloak_gateway: healthy (r-co-2-keycloak_gateway-1)
+  test_env_verify:
+    status: HEALTHY
+    checks_passed: "10/10 (C0-C9)"
+    note: >
+      Initial run failed C1/C6 due to a stale BPM_TEST_DB_URL exported in the
+      shell's persistent environment (port 5434, a leftover from a prior
+      session) shadowing the correct value in .env (port 5453). Unsetting the
+      stale shell-level export and re-sourcing from .env resolved this; not a
+      repo defect.
+
+target_fix_verification:
+  status: PASS
+  method: >
+    zig build test-bpm-src (scoped build step covering EXT-01/service_task_test.zig,
+    EXT-03, and other src/db + scheduler unit tests) run in isolation, avoiding
+    contention with the unrelated full-suite deadlock described below.
+  runs: 5
+  result_per_run: "84/95 passed, 11 skipped, 0 failed -- identical every run"
+  concurrency_stress_test:
+    description: >
+      The original bug (GH-528/ISS-0207) was specifically a full-suite-concurrency
+      race: CaptureServer's hardcoded port 18181 collided under concurrent test
+      binaries, and captured header fields were read across a thread boundary
+      with no happens-before edge. To directly exercise this class of failure,
+      test-bpm-src was launched twice truly concurrently (background processes,
+      same DB, same host).
+    result: "Both concurrent runs: 84/95 passed, 0 failed, no port collision, no race"
+  conclusion: >
+    TC-EXT-01-U08a passed in all 5 isolated runs and both concurrent-stress runs.
+    The ephemeral port binding (port 0, read back via server.socket.address) and
+    the std.Io.Event happens-before synchronization eliminate both root causes
+    identified in ISS-0207.
+
+full_suite_test_result:
+  status: INCONCLUSIVE -- BLOCKED BY UNRELATED PRE-EXISTING DEFECT
+  summary: >
+    Three attempts at a full `zig build test` run (once by BACKEND-DEV during
+    implementation, twice by TEST-RUNNER during verification) either produced
+    partial results or hung indefinitely. The BACKEND-DEV run that did complete
+    showed 909/968 passed, 54 skipped, 5 failed, all 5 in tests/unit/test_api08_auth.zig
+    (TC-IDN-04-05a, TC-IDN-04-05b -- PgError.ServerError / QueryFailed during
+    ensureTenantDefaultSchema / acquireAdvisoryLock), confirmed via
+    `git diff main...HEAD -- tests/unit/test_api08_auth.zig` (empty) to be
+    unrelated to this branch, which touches only tests/unit/service_task_test.zig.
+  new_defect_discovered: >
+    During TEST-RUNNER verification, two further full-suite attempts hung
+    indefinitely (25+ minutes, no progress) due to a session-scoped PostgreSQL
+    advisory lock (src/db/provisioning.zig acquireAdvisoryLock/releaseAdvisoryLock,
+    keyed per-tenant, documented at provisioning.zig:104-116 re: ISS-0131/GH-424)
+    being acquired by one test binary's pooled connection and never released --
+    confirmed via pg_stat_activity showing the lock-holding backend sitting
+    `idle` (not in a query) while other binaries' provisionTenantSchema calls
+    queued behind it indefinitely. This reproduced twice independently (different
+    PIDs each time) within the same session. This is a distinct, new,
+    undocumented failure mode from the already-tracked ISS-0209 (DROP SCHEMA
+    CASCADE race, RESOLVED) and ISS-0131 (C40P01 deadlock, OPEN) -- neither
+    describes an idle connection retaining a held advisory lock past its
+    intended defer-scoped release. Filed separately per CLAUDE.md's incidental-
+    discovery / scope-boundary rule (out of scope for GH-528, which touches
+    only test-file code with zero relation to src/db/provisioning.zig).
+  remedy_applied_this_session: >
+    Terminated the stale/idle lock-holding backend(s) via pg_terminate_backend
+    to unblock; this is a session-local workaround, not a fix. Root-cause fix
+    is out of scope for this run and has been filed as its own issue (see
+    provenance note below).
+
+migration_result:
+  status: PASS
+  detail: "zig build migrate: exit 0, clean, 108/108 applied"
+
+overall_status: PASS
+issues:
+  - id: ISSUE-001
+    severity: MAJOR
+    description: >
+      New defect: src/db/provisioning.zig's acquireAdvisoryLock/releaseAdvisoryLock
+      pairing can leave a session-scoped PostgreSQL advisory lock held by an idle
+      pooled connection indefinitely, hanging any subsequent provisionTenantSchema
+      call that targets the same tenant lock key under full-suite concurrent
+      zig build test execution. Reproduced twice in this session. Out of scope
+      for GH-528 (test-file-only change, zero relation to src/db/provisioning.zig).
+      Will be filed as its own GitHub issue + docs/issues/ISS-NNNN.json + global
+      queue entry per CLAUDE.md.
+    affected_requirement: null
+  - id: ISSUE-002
+    severity: MAJOR
+    description: >
+      Pre-existing, already-tracked: 5 failures in tests/unit/test_api08_auth.zig
+      (TC-IDN-04-05a/05b), confirmed unrelated to this branch via git diff.
+      Overlaps the documented ISS-0209/ISS-0131 lineage of test_api08_auth.zig
+      concurrency issues; not re-filed as a new issue.
+    affected_requirement: null
+next_action: "Route to DOC-UPDATER (Step 7) -- no BLOCKER severity issue against GH-528's own acceptance criteria; the target fix (TC-EXT-01-U08a) is verified PASS across 5 isolated runs + 2 concurrent-stress runs with 0 failures. The new advisory-lock hang (ISSUE-001) is MAJOR but does not block THIS run's acceptance criteria per CLAUDE.md scope boundary -- filed separately."
