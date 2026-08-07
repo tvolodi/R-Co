@@ -30,6 +30,9 @@ Checks (§3 of the test infrastructure guide)
   C5  tools/lint_test_isolation.py reports no BLOCKER
   C6  no ungranted locks left over from a prior session
   C7  benchmark environment resolves a DB URL from the environment
+  C8  tools/lint_test_tenant_provisioning.py reports no BLOCKER
+  C9  db_test container's actual pg_hba.conf auth method matches what
+      docker-compose.yml currently declares (GH-542 / ISS-0607)
 
 One checklist, one database (ISS-0180 / GH #511)
 ------------------------------------------------
@@ -711,6 +714,113 @@ def check_tenant_provisioning_lint() -> Check:
     return Check("C8 tenant provisioning lint", OK, "no BLOCKER findings")
 
 
+def check_db_test_auth_method() -> Check:
+    """C9 — the running db_test container's actual auth method matches what
+    docker-compose.yml currently declares.
+
+    GH-542 / ISS-0607: POSTGRES_HOST_AUTH_METHOD is an initdb-time-only
+    setting — Postgres bakes it into pg_hba.conf the first time a data
+    directory is initialized and never re-reads it on a plain container
+    restart or `docker-compose up` (which reuses an existing container
+    rather than recreating it). When docker-compose.yml's declared auth
+    method for db_test changed to `trust`, workspaces whose db_test
+    container was already running from before that change kept the old
+    auth method indefinitely — every other health check (C0-C8) passed,
+    including C1's health/port check, because none of them inspect
+    pg_hba.conf. The only symptom was integration tests failing at the
+    SCRAM handshake with error.AuthenticationFailed, which looked like an
+    application-level bug and cost significant diagnosis time in two
+    parallel workspaces before the actual cause (stale container, not
+    stale code) was found. This check makes that mismatch a named,
+    immediate gate failure instead of a multi-hour debugging session.
+    """
+    if not shutil.which("docker"):
+        return Check("C9 db_test auth method", SKIP, "docker not on PATH")
+
+    compose_path = REPO_ROOT / "docker-compose.yml"
+    if not compose_path.is_file():
+        return Check("C9 db_test auth method", SKIP, "docker-compose.yml not present")
+
+    declared = "trust"  # default fallback: Postgres's own default is scram-sha-256/md5, not trust
+    try:
+        text = compose_path.read_text(encoding="utf-8")
+        in_db_test = False
+        found = False
+        for raw in text.splitlines():
+            if raw.strip().rstrip(":") == "db_test":
+                in_db_test = True
+                continue
+            if in_db_test and raw.strip() and not raw.startswith((" ", "\t")):
+                break  # left the db_test service block
+            if in_db_test and "POSTGRES_HOST_AUTH_METHOD" in raw:
+                declared = raw.split(":", 1)[1].strip().strip("\"'")
+                found = True
+                break
+        if not found:
+            # db_test block exists but declares no override — Postgres image default applies.
+            declared = "scram-sha-256"
+    except OSError:
+        return Check("C9 db_test auth method", SKIP, "could not read docker-compose.yml")
+
+    container = f"{compose_project_name()}-db_test-1"
+    code, out = run(
+        ["docker", "exec", container, "cat", "/var/lib/postgresql/data/pg_hba.conf"],
+        timeout=30,
+    )
+    if code != 0:
+        legacy = f"{compose_project_name()}_db_test_1"
+        code, out = run(
+            ["docker", "exec", legacy, "cat", "/var/lib/postgresql/data/pg_hba.conf"],
+            timeout=30,
+        )
+        if code != 0:
+            return Check(
+                "C9 db_test auth method",
+                SKIP,
+                f"could not exec into {container!r} to read pg_hba.conf",
+            )
+
+    # The postgres:15-alpine entrypoint always writes fixed loopback/local
+    # entries ("local all all trust", "host all all 127.0.0.1/32 trust", ...)
+    # regardless of POSTGRES_HOST_AUTH_METHOD — those are Postgres's own
+    # unconditional defaults, not derived from the env var, so matching the
+    # *first* host line (as an earlier version of this check did) silently
+    # reads "trust" even on a scram-sha-256 container and never detects a
+    # mismatch. The line that actually reflects POSTGRES_HOST_AUTH_METHOD is
+    # the catch-all appended after those fixed entries: "host all all all
+    # <method>" (database=all, user=all, address=all). Match on that specific
+    # shape, not merely on the "host" keyword.
+    actual = None
+    for raw in out.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if len(parts) == 5 and parts[0] == "host" and parts[1] == "all" and parts[2] == "all" and parts[3] == "all":
+            actual = parts[4]
+            break
+
+    if actual is None:
+        return Check(
+            "C9 db_test auth method",
+            SKIP,
+            "no 'host all all all <method>' catch-all line found in pg_hba.conf "
+            "(unexpected pg_hba.conf shape — Postgres image may have changed)",
+        )
+
+    if actual != declared:
+        return Check(
+            "C9 db_test auth method",
+            BAD,
+            f"container's pg_hba.conf uses {actual!r} but docker-compose.yml declares "
+            f"POSTGRES_HOST_AUTH_METHOD={declared!r} for db_test — the running container "
+            "predates the current config and was never recreated to pick it up",
+            "docker-compose stop db_test && docker-compose rm -f -v db_test && "
+            "docker-compose up -d db_test --wait",
+        )
+    return Check("C9 db_test auth method", OK, f"container and docker-compose.yml agree: {actual!r}")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         description="Infrastructure Health Checklist (test_infrastructure_guide.md §3) as an exit code."
@@ -749,6 +859,11 @@ def main(argv: list[str]) -> int:
         checks.append(check_stale_locks())
         checks.append(check_bench_env())
         checks.append(check_tenant_provisioning_lint())
+        checks.append(
+            Check("C9 db_test auth method", SKIP, "--skip-docker")
+            if args.skip_docker
+            else check_db_test_auth_method()
+        )
 
     failed = [c for c in checks if c.failed]
 

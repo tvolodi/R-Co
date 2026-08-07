@@ -94,6 +94,12 @@ the same run).
 [ ] python3 tools/lint_test_isolation.py tests/integration exits 0, no BLOCKER
 [ ] No stale lock rows in pg_locks for the test database from prior sessions
        (verified by: psql $BPM_TEST_DB_URL -c "SELECT count(*) FROM pg_locks WHERE NOT granted" -> must be 0)
+[ ] db_test container's actual pg_hba.conf auth method matches what
+       docker-compose.yml currently declares for db_test (GH-542 / ISS-0607).
+       POSTGRES_HOST_AUTH_METHOD is applied only at initdb time — a container
+       left running since before a docker-compose.yml change never picks up
+       the new value on a plain restart or `docker-compose up`, and every
+       other check above can still pass while this one silently drifts.
 ```
 
 Do not run these by hand and judge them by eye. `zig build test-env-verify`
