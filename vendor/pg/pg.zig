@@ -18,6 +18,12 @@ const net = std.Io.net;
 const mem = std.mem;
 const crypto = std.crypto;
 const base64 = std.base64;
+// ISS-0607 / GH-542: compile-time gate for the stderr print on PostgreSQL
+// ErrorResponse messages. Default off (silent) so that `zig test` does not
+// treat every negative-path integration test as a binary-level stderr
+// failure. Opt back in via `-Dlog-pg-errors=true` for post-mortem debugging.
+const build_options = @import("build_options");
+const log_pg_errors = build_options.log_pg_errors;
 
 // ---------------------------------------------------------------------------
 // Public error set
@@ -313,7 +319,12 @@ pub const Conn = struct {
                 },
                 'E' => { // ErrorResponse
                     const err_raw = self.reader.interface.take(payload_len) catch return PgError.ConnectionFailed;
-                    std.debug.print("\nPOSTGRES ERROR: {s}\n", .{err_raw});
+                    // ISS-0607 / GH-542: only print the server-side error
+                    // payload to stderr when explicitly opted in via
+                    // `-Dlog-pg-errors=true`. The typed
+                    // PgError.ServerError return value is preserved
+                    // unchanged — only this side effect is gated.
+                    if (log_pg_errors) std.debug.print("\nPOSTGRES ERROR: {s}\n", .{err_raw});
                     got_error = true;
                 },
                 // All other messages are safely skipped.

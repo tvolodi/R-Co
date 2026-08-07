@@ -58,22 +58,41 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     const adp12_phase = b.option([]const u8, "phase", "ADP-12 phase filter (pre|post)");
+    // ISS-0607 / GH-542: gate the vendored pg client's stderr print on
+    // PostgreSQL ErrorResponse messages. Default false so `zig test` does
+    // not treat every negative-path integration test as a binary-level
+    // failure. Pass `-Dlog-pg-errors=true` to restore the historical
+    // behaviour for post-mortem debugging.
+    const log_pg_errors = b.option(bool, "log-pg-errors", "Print PostgreSQL ErrorResponse payloads to stderr") orelse false;
 
     const build_options = b.addOptions();
     build_options.addOption([]const u8, "platform_version", "0.1.0");
     build_options.addOption(?[]const u8, "adp12_phase", adp12_phase);
     build_options.addOption([]const u8, "migrations_dir", b.path("migrations").getPath(b));
+    build_options.addOption(bool, "log_pg_errors", log_pg_errors);
     const build_options_mod = build_options.createModule();
     const migrations_dir = b.path("migrations").getPath(b);
 
     // ---------------------------------------------------------------------------
     // Vendor dependencies
     // ---------------------------------------------------------------------------
-    const pg_dep = b.dependency("pg", .{});
     const http_dep = b.dependency("http", .{});
     const cel_dep = b.dependency("cel", .{});
 
-    const pg_mod = pg_dep.module("pg");
+    // ISS-0607 / GH-542: re-create pg_mod so that vendor/pg/pg.zig can
+    // `@import("build_options")` and read `log_pg_errors`. The vendor
+    // package itself does not declare imports — it is a pure single-file
+    // module — so re-binding it here with an additional `build_options`
+    // import is safe and propagates to every consumer below via the
+    // pg_mod reference.
+    const pg_mod = b.createModule(.{
+        .root_source_file = b.path("vendor/pg/pg.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "build_options", .module = build_options_mod },
+        },
+    });
     const http_mod = http_dep.module("http");
     const cel_mod = cel_dep.module("cel");
     const tenant_context_mod = b.createModule(.{
@@ -1341,7 +1360,6 @@ pub fn build(b: *std.Build) void {
         .{ .name = "oidc_migration_helper", .module = oidc_migration_helper_mod },
     };
 
-
     const integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/main_test.zig"),
@@ -1351,8 +1369,6 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_integration_tests = addIntegrationRun(b, integration_tests, migrations_dir, clean_test_db);
-
-
 
     const xc04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1576,6 +1592,23 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_iss0605_integration_tests = addIntegrationRun(b, iss0605_integration_tests, migrations_dir, clean_test_db);
+
+    // ISS-0607 / GH-542: regression test for the vendor/pg/pg.zig stderr
+    // suppression gate. The mere fact that this binary reaches the
+    // `expectError(error.ServerError, …)` assertion proves the fix —
+    // pre-fix, the unconditional `std.debug.print("\nPOSTGRES ERROR: …")`
+    // on every ErrorResponse caused zig test to abort the binary on
+    // stderr before the assertion ran, breaking every negative-path
+    // integration test in the repo.
+    const iss0607_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0607_pg_stderr_suppression_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0607_integration_tests = addIntegrationRun(b, iss0607_integration_tests, migrations_dir, clean_test_db);
 
     const iss105_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1833,6 +1866,7 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_iss106_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss107_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0605_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss0607_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss502_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss202_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss203_integration_tests.step);
@@ -1982,6 +2016,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss0605_step = b.step("test-integration-iss0605", "Run ISS-0605 C4 orphan-row self-heal integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0605_step.dependOn(&clean_test_db.step);
     test_integration_iss0605_step.dependOn(&run_iss0605_integration_tests.step);
+
+    const test_integration_iss0607_step = b.step("test-integration-iss0607", "Run ISS-0607 vendor/pg stderr suppression regression tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0607_step.dependOn(&clean_test_db.step);
+    test_integration_iss0607_step.dependOn(&run_iss0607_integration_tests.step);
 
     const test_integration_iss105_step = b.step("test-integration-iss105", "Run ISS-105 token model schema integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss105_step.dependOn(&clean_test_db.step);
