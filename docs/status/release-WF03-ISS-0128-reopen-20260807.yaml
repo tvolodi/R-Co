@@ -1,0 +1,117 @@
+---
+# Release Decision CORRECTION: ISS-0128 Fix (reopen)
+# WF03-ISS-0128-reopen-20260807
+#
+# This file supersedes docs/status/release-WF03-ISS-0128-20260807.yaml's
+# APPROVED verdict, which cited a test report
+# (tests/reports/report-20260807-WF03-ISS-0128.yaml) that does not exist
+# anywhere in the repository. That earlier decision's "PASS" for
+# TC-DB-03-01 was not backed by an executed test, and TC-DB-03-01 was
+# independently reproduced as STILL FAILING on main after that decision's
+# fix (PR #535) merged.
+
+run_id: WF03-ISS-0128-reopen-20260807
+date: 2026-08-07T10:46:50Z
+validator: RELEASE-VALIDATOR
+decision: APPROVED
+supersedes: docs/status/release-WF03-ISS-0128-20260807.yaml
+
+issue:
+  id: ISS-0128
+  title: "event_store/store.zig:337 StoreError.InstanceNotFound on TC-DB-03-01 store.append"
+  severity: BLOCKER
+  github: "https://github.com/tvolodi/R-Co/issues/418"
+  affected_area: "tests/integration/db_integration_test.zig (test-fixture defect)"
+  impact: "HIGH - TC-DB-03-01 covers DB-03 (MUST requirement, transactional integrity), and was falsely marked resolved and merged to main while still failing"
+
+fix_quality:
+  pattern: "Test-fixture UUID correction (parseUuid helper)"
+  implementation: "CORRECT"
+  verification: "Direct test execution against main both before and after the fix, on freshly created databases"
+  notes: |
+    The prior release decision approved PR #535 (SET LOCAL search_path in
+    src/event_store/store.zig::Store.append()) as the fix for ISS-0128.
+    That change is retained in this branch's history (it is already on
+    main) and is harmless, reasonable defensive hardening consistent with
+    the already-released ISS-0130 pattern -- but it does not fix
+    TC-DB-03-01. This was proven by:
+      1. Checking out the pre-merge commit into an isolated git worktree
+         with a freshly created database and reproducing the identical
+         failure with only that change applied.
+      2. Running zig build test-integration against current main
+         (commit c077db0, after PR #535 was squash-merged) with a freshly
+         created database, and reproducing the identical
+         StoreError.InstanceNotFound failure at the identical call site.
+
+    The actual defect: TC-DB-03-01 called store.append() with a hardcoded
+    UUID literal that was never inserted into instance_projections --
+    the test's own fixture INSERT, post-append assertions, and cleanup all
+    correctly used a different, per-run random UUID (inst_id_str).
+
+test_results:
+  verdict: PASS
+  report_note: >
+    No formatted tests/reports/*.yaml file exists for this correction run
+    (WF-03 does not mandate one). The verification evidence below is the
+    direct, reproduced `zig build test-integration` output.
+
+  target_test:
+    id: TC-DB-03-01
+    name: "successful transaction commits both event row and state update atomically"
+    status: PASS
+    evidence: >
+      Reproduced FAILING on main at commit c077db0 (post PR #535) against a
+      freshly created + freshly migrated database (108/108 migrations
+      applied in order) -- confirming the prior RESOLVED status was false.
+      After this fix: PASSED 5/5 consecutive `zig build test-integration`
+      runs (1 against a freshly created database, 4 against the shared
+      db_test container).
+
+  regressions: >
+    None. `zig build test --summary all`: 83/83 steps succeeded,
+    939/1003 tests passed (64 skipped) -- identical to the pre-fix
+    baseline, confirming zero unit-test regression. Integration-suite
+    failure counts fluctuate run-to-run due to the pre-existing
+    cross-binary-concurrency flakiness class (ISS-0141/ISS-0148/ISS-0151);
+    TC-DB-03-01 itself is not among the fluctuating tests in any of the 5
+    post-fix runs.
+
+  linter_verification: >
+    zig build exit 0, no error-set output. tools/lint_sql_param_types.py
+    exit 0 (0 BLOCKER/MAJOR/MINOR). tools/lint_test_isolation.py exit 0
+    (225/225 baseline findings match after correcting a line-number drift
+    in tools/lint_test_isolation.baseline.json caused by this fix's added
+    helper function; 0 new/unbaselined findings).
+
+risk_analysis:
+  risk_level: LOW
+  rationale: |
+    - Change is confined to a single test file's fixture wiring; no
+      production code needed further modification.
+    - This correction does not revert or modify PR #535's SET LOCAL
+      search_path addition, which remains on main unchanged.
+  change_scope: "Minimal - tests/integration/db_integration_test.zig (fix) + tools/lint_test_isolation.baseline.json (line-number correction for an unrelated pre-existing baselined finding)."
+
+release_recommendation: APPROVED
+
+recommendation_rationale: |
+  1. Quality: HIGH -- root cause independently re-derived from scratch via
+     direct instrumentation (SHOW search_path traced at the exact failing
+     call site), not accepted from either the original or the
+     since-superseded prior fix's stated hypothesis.
+  2. Risk: LOW -- single test file, no production code path affected.
+  3. Test verification: PASS, backed by actual zig build test-integration
+     execution output, reproduced failing on main before this fix and
+     passing 5/5 after, each time on an independently created/migrated or
+     freshly cleaned database.
+
+process_note: >
+  This correction exists because a prior RELEASE-VALIDATOR decision
+  approved a release on an unverified claim. Per CLAUDE.md's "No
+  Speculation" and "Never Call a Red Pipeline OK Without a Source"
+  directives, that gap is named explicitly here rather than silently
+  patched over -- see docs/issues/ISS-0128.json's prevention list for the
+  process fix this incident points to.
+
+blocking_issues: []
+next_step: "Route to DOC-UPDATER (Step 7) -- CHANGELOG + GH issue #418 reopen-then-reclose with corrected resolution"

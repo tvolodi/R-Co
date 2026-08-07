@@ -227,7 +227,7 @@
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/db_integration_test.zig",
-      "line": 383,
+      "line": 407,
       "message": "hardcoded UUID `acac0000-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
     },
     {

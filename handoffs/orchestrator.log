@@ -267,7 +267,13 @@
 2026-08-07T09:51:32Z | COMPLETE | ADHOC-db-port-20260807 | ad000700 | BACKEND-DEV | PARTIAL — port 5433->5434 verified; C4 schema baseline pre-existing failure filed as ISS-0605/GH#537
 2026-08-07T09:55:00Z | INFRA_UNBLOCK | WF03-GH533-20260807 | --- | ORCH | Port 5434 verified - redispatching TEST-RUNNER (C4 schema baseline issue filed as ISS-0605)
 2026-08-07T09:52:19Z | ROUTE | WF03-GH533-20260807 | c5330006b | ORCH -> TEST-RUNNER | PENDING step 5b (REDISPATCH after port fix)
+2026-08-07T10:20:00Z | ROUTE | WF03-ISS-0128-reopen-20260807 | -------- | ORCH -> BACKEND-DEV | PENDING step 00 - reopening ISS-0128: TC-DB-03-01 confirmed still failing on main after PR #535 falsely closed it
+2026-08-07T10:21:00Z | COMPLETE | WF03-ISS-0128-reopen-20260807 | -------- | BACKEND-DEV | PASS - git-setup, branch feature/WF03-ISS-0128-reopen-20260807
+2026-08-07T10:35:00Z | COMPLETE | WF03-ISS-0128-reopen-20260807 | -------- | ISSUE-FIXER | PASS - re-diagnosed: test-fixture UUID mismatch (same root cause as the original, since-superseded feature/WF03-ISS-0128-20260807 branch found)
+2026-08-07T10:45:00Z | COMPLETE | WF03-ISS-0128-reopen-20260807 | -------- | BACKEND-DEV | PASS - fixed db_integration_test.zig TC-DB-03-01, 5/5 determinism confirmed against main post-PR-535
 2026-08-07T10:46:17Z | ROUTE | WF03-GH533-20260807 | c5330007 | ORCH -> DOC-UPDATER | PENDING step 7
+2026-08-07T10:46:50Z | COMPLETE | WF03-ISS-0128-reopen-20260807 | -------- | RELEASE-VALIDATOR | PASS (real, reproduced test-execution evidence) - APPROVED
+2026-08-07T10:48:39Z | COMPLETE | WF03-ISS-0128-reopen-20260807 | -------- | DOC-UPDATER | PASS - CHANGELOG + ISS-0128.json corrected
 2026-08-07T10:50:12Z | COMPLETE | WF03-GH533-20260807 | c5330007 | DOC-UPDATER | ISS-0209/GH-533 docs updated; commit 82c9f996 pushed to origin/feature/WF03-GH533-20260807
 2026-08-07T10:51:38Z | ROUTE | WF03-GH533-20260807 | c5330008 | ORCH -> BACKEND-DEV | PENDING step final
 2026-08-07T10:53:27Z | COMPLETE | WF03-GH533-20260807 | c5330008 | BACKEND-DEV | PASS PR=#539 merge=5292ceb8638245c1e1beabfd073fa8bc9be20b11

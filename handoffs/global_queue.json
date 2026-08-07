@@ -179,8 +179,8 @@
       "lock": null,
       "added_at": "2026-08-06T21:48:42Z",
       "started_at": "2026-08-07T07:52:29Z",
-      "completed_at": "2026-08-07T08:43:02Z",
-      "run_id": null,
+      "completed_at": "2026-08-07T10:48:39Z",
+      "run_id": "WF03-ISS-0128-reopen-20260807",
       "deferred_reason": null
     },
     {

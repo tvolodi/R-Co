@@ -51,6 +51,25 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     });
 }
 
+/// Parse a canonical hyphenated UUID string (e.g. from TestHarness.newUuidString())
+/// into the raw [16]u8 representation Store.append()'s AppendParams.instance_id
+/// expects. Mirrors the established helper of the same name in
+/// event_store_integration_test.zig (ISS-0128 / GH #418).
+fn parseUuid(s: []const u8) ![16]u8 {
+    var buf: [32]u8 = undefined;
+    var i: usize = 0;
+    for (s) |c| {
+        if (c == '-') continue;
+        if (i >= 32) return error.InvalidUuid;
+        buf[i] = c;
+        i += 1;
+    }
+    if (i != 32) return error.InvalidUuid;
+    var out: [16]u8 = undefined;
+    _ = try std.fmt.hexToBytes(&out, buf[0..32]);
+    return out;
+}
+
 // ---------------------------------------------------------------------------
 // DB-01: Schema initialisation
 // ---------------------------------------------------------------------------
@@ -296,9 +315,14 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
         .description = null,
     }) catch {};
 
-    var inst_uuid: [16]u8 = undefined;
+    // ISS-0128 / GH #418: instance_id passed to store.append() MUST be derived
+    // from the same inst_id_str used for the fixture INSERT above (and for the
+    // assertions/cleanup below) — a previous, unrelated hardcoded literal here
+    // ("db0301aa...") was never inserted into instance_projections, so
+    // store.append() correctly-but-misleadingly returned InstanceNotFound for
+    // an instance that was simply never provisioned under that id.
+    const inst_uuid: [16]u8 = try parseUuid(inst_id_str);
     var actor_uuid: [16]u8 = undefined;
-    _ = try std.fmt.hexToBytes(&inst_uuid, "db0301aa000000000000000000000001");
     _ = try std.fmt.hexToBytes(&actor_uuid, "acac0000000000000000000000000001");
 
     const result = try store.append(alloc, AppendParams{

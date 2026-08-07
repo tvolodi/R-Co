@@ -198,3 +198,71 @@ complexity_estimate:
     No schema changes, no new queries, just defensive SET LOCAL.
 
 next_step: "Route to BACKEND-DEV for implementation (WF-03 Step 2)"
+
+# ==========================================================================
+# CORRECTION — 2026-08-07T10:00:00Z (post-merge re-diagnosis)
+# ==========================================================================
+#
+# ISS-0128 / GH #418 was closed and this issue marked RESOLVED on the basis
+# of the diagnosis above (search_path race) and a RELEASE-VALIDATOR PASS
+# verdict recorded in docs/status/release-WF03-ISS-0128-20260807.yaml. Both
+# are incorrect, and TC-DB-03-01 is CONFIRMED STILL FAILING on main as of
+# this correction (verified by running zig build test-integration against a
+# freshly created, freshly migrated database at commit c077db0 — the tip of
+# main after PR #535 merged — and observing the identical
+# StoreError.InstanceNotFound failure).
+#
+# What actually happened:
+#
+# 1. The search_path/schema-visibility race hypothesis above was never
+#    verified by running the test — no diagnosis step in this file's
+#    "evidence" section includes an actual traced search_path value or a
+#    reproduced pass/fail. The only "verification" method recorded under
+#    `prevention.verification` is a textual grep
+#    ("Grep for conn.exec(\"BEGIN\") -> verify SET LOCAL search_path follows
+#    within 3 lines"), not a test execution.
+#
+# 2. The RELEASE-VALIDATOR decision (docs/status/release-WF03-ISS-0128-20260807.yaml)
+#    recorded "target_test: TC-DB-03-01, status: PASS" and cited
+#    "tests/reports/report-20260807-WF03-ISS-0128.yaml" as supporting
+#    evidence. That report file does not exist anywhere in the repository's
+#    history (confirmed via `git log --all --diff-filter=A -- 'tests/reports/report-20260807-WF03-ISS-0128.yaml'`
+#    returning no results). The PASS verdict was not backed by an executed
+#    test.
+#
+# 3. The SET LOCAL search_path change added to src/event_store/store.zig by
+#    PR #535 is real, compiles, and is a reasonable defensive pattern (it
+#    matches the already-released ISS-0130 fix) — but it does not address
+#    the actual defect and does not make TC-DB-03-01 pass. This was
+#    independently confirmed twice: once by checking out the pre-merge
+#    commit (422ac12) into an isolated git worktree with a freshly created
+#    database, and again by running the full test-integration suite against
+#    current main (c077db0) with a freshly created database. Both runs
+#    reproduce the identical failure at the identical call site.
+#
+# 4. The actual root cause (confirmed via direct instrumentation — SHOW
+#    search_path traced at the exact failing lookup, printing the correct
+#    value "tenant_default, public") is a test-fixture defect in
+#    tests/integration/db_integration_test.zig's TC-DB-03-01: the test
+#    generates a fresh per-run UUID (inst_id_str) for its fixture INSERT,
+#    post-append assertions, and cleanup, but calls store.append() with an
+#    unrelated hardcoded UUID literal ("db0301aa...") that was never
+#    inserted into instance_projections under any search_path. See the
+#    "concurrent_workspace_reconciliation" analysis this same file
+#    originally carried on the now-superseded feature branch
+#    (feature/WF03-ISS-0128-20260807) for the full derivation — reproduced
+#    here since that branch's commits were not the ones that reached main.
+#
+# Corrective fix applied on feature/WF03-ISS-0128-reopen-20260807: added a
+# local parseUuid() helper to tests/integration/db_integration_test.zig
+# (mirrors the existing pattern in event_store_integration_test.zig) and
+# changed TC-DB-03-01's store.append() call to derive its instance id from
+# the same inst_id_str used everywhere else in the test. Verified 5/5
+# consecutive zig build test-integration passes (2 fresh DB, 3 shared DB)
+# after 1/1 (100%) reproduced failure on main before the fix. No production
+# code required further changes — the SET LOCAL search_path addition from
+# PR #535 is retained (harmless) but was not the fix that mattered.
+#
+# See docs/status/release-WF03-ISS-0128-reopen-20260807.yaml for the
+# corrected release decision and docs/issues/ISS-0128.json for the
+# corrected issue record.
