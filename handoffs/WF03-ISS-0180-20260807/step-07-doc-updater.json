@@ -1,0 +1,50 @@
+{
+  "handoff_id": "b825d865-b241-4f3f-bbf1-6def5e605933",
+  "run_id": "WF03-ISS-0180-20260807",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-07T01:40:32Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "4ccf9f01-925f-4319-aab8-dbedc93a71f5"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0180.json",
+      "docs/issue-reports/ISS-0180-diagnosis.yaml",
+      "tools/verify_test_env.py",
+      "CHANGELOG.md"
+    ]
+  },
+  "task": {
+    "description": "Document the ISS-0180 fix (GH #511): changelog entry, issue record RESOLVED with resolution+prevention covering the C1 second instance, requirement-status check.",
+    "acceptance_criteria": [
+      "CHANGELOG.md references GH #511 and the #498/#497 gate-integrity trio",
+      "docs/issues/ISS-0180.json status RESOLVED with resolution + prevention text including the C1 instance",
+      "requirement mapping checked against docs/requirements.yaml, not assumed"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md gains a Fixed entry for ISS-0180/#511 covering the C3 wrong-database mechanism, why migrate's exit 0 made it silent, the C1 second instance (hardcoded r-co-db_test-1 falling through to a substring filter matching any workspace), the new C0 preflight, before/after evidence in both directions, and explicit proof nothing was weakened (C4 untouched, C3's precondition stricter). Entry also records that this closes a trio of gate-integrity fixes with #498 (masked failure) and #497 (misattributed failure). ISS-0180.json resolution/prevention rewritten to give the C1 instance equal standing and to state the two structural lessons. Requirement mapping checked, not assumed: search of docs/requirements.yaml for test-env/schema_migrations/migration-ledger terms returns only product-level per-schema tracking semantics (TNT-01, ISS-504), which concern how migrations are tracked, not the developer health checklist that inspects them. No requirement maps to tools/verify_test_env.py, so no status was moved and reqctl.py set-status was correctly not run.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0180.json",
+      "handoffs/WF03-ISS-0180-20260807/step-07-doc-updater.json"
+    ],
+    "issues": [],
+    "requirement_status_changes": "none - no requirement in docs/requirements.yaml maps to test-environment tooling (verified by search)",
+    "next_action": "Route to BACKEND-DEV (Step Final / fn:git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T01:40:32Z",
+  "completed_at": "2026-08-07T01:40:32Z"
+}

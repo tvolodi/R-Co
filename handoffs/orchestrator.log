@@ -203,3 +203,4 @@
 2026-08-07T01:24:45Z | DONE | WF03-ISS-0180-20260807 | 4b0ed69b | BACKEND-DEV | Step 00 git-setup PASS - feature/WF03-ISS-0180-20260807 pushed
 2026-08-07T01:27:44Z | DONE | WF03-ISS-0180-20260807 | 12894406 | BACKEND-DEV | Step 01 diagnosis PASS - C3 reads BPM_DB_URL, C4 reads BPM_TEST_DB_URL; C1 same family
 2026-08-07T01:35:37Z | DONE | WF03-ISS-0180-20260807 | 4ccf9f01 | BACKEND-DEV | Step 03 implement PASS - C0 added, C3 targets test DB + ledger assert, C1 project-aware; 8/8 exit 0
+2026-08-07T01:40:32Z | COMPLETE | WF03-ISS-0180-20260807 | b825d865 | DOC-UPDATER | PASS - changelog + ISS-0180 record (GH #511); no requirement mapping
