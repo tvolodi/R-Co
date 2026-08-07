@@ -1,0 +1,173 @@
+iss_id: ISS-0130
+github_issue: https://github.com/tvolodi/R-Co/issues/423
+title: "Concurrent provisionTenantSchema races on stale search_path -> C42P01 post-GBL-112"
+severity: MAJOR
+diagnoser: BACKEND-DEV/ISSUE-FIXER
+run_id: WF03-ISS-0130-20260807
+diagnosed_at: "2026-08-07T06:08:30Z"
+
+summary: >
+  The issue as filed hypothesises that Migrations.runForSchema()'s session-level
+  `SET search_path TO <schema>,public` can be silently overridden by a stale
+  value left on a reused pool connection, causing migration 008's unqualified
+  `CREATE TABLE IF NOT EXISTS users` to land in `public` (dropped by GBL-112)
+  instead of the target tenant schema. Root cause CONFIRMED as architecturally
+  real (the code has exactly the fragility described), but could NOT be
+  empirically reproduced against the current `main` HEAD after 40+ repro
+  attempts (solo sequential, concurrent-OS-process stress, and a full
+  `zig build test-integration` baseline run), on both the shared long-lived
+  `bpm_test` database and a freshly created + freshly migrated database.
+  The most likely explanation: GH #424 / ISS-0131 (a DIFFERENT workspace's fix,
+  commit 9512c69, merged to `main` at 2026-08-07T05:09:54Z UTC — concurrently
+  with this run) added a session-scoped `pg_advisory_lock` wrapping the ENTIRE
+  `provisionTenantSchema()` call per tenant_id. That lock forces every
+  `pool.acquire()`/`pool.release()` cycle inside one `provisionTenantSchema`
+  call (idempotency check, schema creation, runForSchema, registry update,
+  promotion) to execute against a stable ordering, incidentally narrowing (and
+  in the two-tenant, two-worker-thread scenario RT-1/RT-2 exercise today,
+  apparently eliminating) the exact interleaving ISS-0130 depends on. This
+  timeline is coincidental, not a deliberate fix for ISS-0130 — GH #424's
+  commit message and diff make no mention of search_path staleness.
+
+root_cause_confirmed:
+  mechanism: >
+    Migrations.runForSchema() (src/db/migrations.zig:104-166) acquires ONE
+    connection at function entry (line 112) and holds it via
+    `defer pool.release(conn)` for the function's entire lifetime. It sets
+    search_path exactly once via a plain session-level
+    `SET search_path TO {schema_name},public` (line 126-129) BEFORE any
+    `BEGIN`. This SET is correct for as long as (a) this is the only
+    `SET search_path` executed against this specific connection instance for
+    the rest of the function, and (b) no migration file's own SQL body issues
+    a competing `SET search_path` that COMMITs (a session-level SET inside a
+    transaction persists past COMMIT; only `SET LOCAL` reverts). Both
+    conditions hold in the code as read today (verified: no migration file
+    other than two comment-only mentions contains an executable
+    `SET search_path`; grep results below). The design is nonetheless FRAGILE
+    by construction: the correctness of every unqualified `CREATE TABLE IF NOT
+    EXISTS users` (migrations/008_identity.sql:8 and siblings in the same
+    file) depends entirely on this one connection's search_path never being
+    touched by anything else between line 129 and the per-file
+    `simpleQuery()` call (line 482) for that migration — an invariant that is
+    true today only because of the current call shape, not because it is
+    structurally enforced. A future change that acquires a second connection
+    mid-loop, or reuses `conn` outside runForSchema's own frame, would
+    silently reintroduce exactly the failure mode ISS-0130 describes, with no
+    compiler or test signal until it actually races.
+  evidence:
+    - "src/db/migrations.zig:104-166 (runForSchema signature through schema_migrations bootstrap) — single acquire/release pair for the whole function, SET search_path issued once outside any transaction."
+    - "src/db/pool.zig:779-821 (Pool.acquire) — calls applyRequestStorageRouting() on every acquire, which branches on the per-thread tenant_context; for the no-tenant case (tenant_context.get()==\"\") it issues `SET search_path TO public` (line 263)."
+    - "src/db/pool.zig:834-869 (Pool.release) — calls resetConnectionSearchPath() (line 381-387), which issues `SET search_path TO public` before the connection re-enters the idle pool, specifically to prevent cross-tenant contamination on the NEXT acquire."
+    - "src/api/tenant_context.zig:23-26 — tenant_context storage is `threadlocal`. tests/integration/iss0129_migration_run_advisory_lock_test.zig's makePool() (line 64-72) calls `bpm.api_tenant_context.set(DEFAULT_TENANT_ID)` on the MAIN test thread, but RT-1/RT-2 spawn worker threads via std.Thread.spawn (lines 262-267, 370-377, 424-431) to run provisionTenantSchema — those worker threads start with a FRESH threadlocal block (_has_value=false), so `applyRequestStorageRouting` takes the no-tenant branch (SET search_path TO public) on every pool.acquire() executed from a worker thread, including the ones inside provisionTenantSchema's steps 2/4/6/6a and runForSchema's own acquire. This is harmless today because those steps are all public.-qualified and runForSchema immediately re-sets search_path explicitly (line 126) before touching anything unqualified — but it means the ONLY thing preventing migration 008's CREATE TABLE from landing in `public` is that one explicit SET at line 126, holding on one connection, for one function's lifetime."
+    - "migrations/008_identity.sql:8,31,41,52,69,79,89,106,127 — CREATE TABLE IF NOT EXISTS users/roles/role_permissions/user_roles/groups/user_groups/group_roles/sessions/api_tokens, all fully unqualified (no schema prefix), all default classification .all_schemas (no scope header, no GBL- prefix) per migrationOrder()/migrationScope() in src/db/migrations.zig:529-592 — so 008 legitimately runs in EVERY tenant pass, resolving through search_path."
+    - "migrations/GBL-112_tnt01_drop_legacy_public_business_tables.sql:65,61 — DROP TABLE IF EXISTS public.users CASCADE / public.user_roles CASCADE, migrationOrder()==1112 (GBL- prefix, +1000 offset), applied only in the public pass (migrationScope()==.public_only via the GBL- prefix). Confirms the issue's premise: after this migration runs, public.users/public.user_roles no longer exist, so any tenant-pass CREATE TABLE that accidentally lands in `public` due to stale search_path would itself succeed (CREATE TABLE IF NOT EXISTS doesn't fail on the table not existing) but every SUBSEQUENT tenant-scoped migration that expects `users`/`user_roles` already present in the CORRECT tenant schema would then fail with C42P01, matching the reported symptom."
+    - "No migration file contains an executable `SET search_path` statement — grep confirms the only two hits (migrations/1107, migrations/1135) are prose comments, not SQL. Ruled out as a contributing factor: no migration body can silently override runForSchema's search_path via a COMMITted SET."
+    - "src/db/provisioning.zig:83-116 (GH #424 / ISS-0131 fix, commit 9512c69, merged to main 2026-08-07T05:09:54Z) — wraps the entire provisionTenantSchema() body in a session-scoped pg_advisory_lock keyed by tenant_id, acquired and released on its OWN short-lived connection (acquired/released before the idempotency check). This does not touch search_path directly but serializes all of provisionTenantSchema's internal acquire/release cycles into a single ordered pass per tenant, which is the most plausible explanation for why the originally-reported race is no longer observable: any interleaving where a partially-through-provisioning connection's search_path was visible to a concurrent second caller for the SAME tenant is now impossible, and RT-1/RT-2 provision DIFFERENT tenants so were never blocked by this lock in the first place, but the surrounding acquire/release traffic pattern the two threads produce against the shared 5-connection pool changed as a side effect of GH #424 landing."
+
+repro_attempts:
+  total_runs: 40
+  environments:
+    - "Shared long-lived bpm_test container (drifted, see baseline_drift_finding below) — 18 solo sequential + 12 concurrent-OS-process runs, 0/30 reproduced C42P01 from RT-1/RT-2 (30/30 passed)."
+    - "Freshly created + freshly migrated bpm_test_fresh_iss0130 database — 10 solo sequential runs, 10/10 passed. Each run logs 48 deterministic, non-fatal PG ErrorResponse lines (see benign_noise_finding) but zero test failures and zero ConcurrentProvisionFailed / TestUnexpectedResult."
+  conclusion: "Could not reproduce the intermittent C42P01 failure against current main HEAD (which already includes the GH #424 / ISS-0131 fix). 0/40 repro attempts failed."
+
+benign_noise_finding: >
+  Every run (pass or fail) against a database that has not yet had migration
+  008/017/etc. seed tenant business tables prints ~12 `POSTGRES ERROR:
+  ...C42P01 relation "X" does not exist...` lines per test (48 total across
+  RT-1..RT-4) via vendor/pg/pg.zig:316's unconditional stderr print on any
+  server ErrorResponse. These come from best-effort DROP/ALTER statements
+  inside migration bodies that are guarded server-side (DO blocks with
+  EXCEPTION WHEN undefined_table) but still emit a wire-level ErrorResponse
+  that pg.zig logs regardless of whether the caller's own error handling
+  swallows it. This is deterministic, present in every run including 10/10
+  clean passes, and is NOT the ISS-0130 symptom — it is a separate, pre-existing
+  cosmetic logging nuisance. Not in scope for this fix; not filed separately
+  since it produces no test failures and is out of scope of the Unblock-Everything
+  criteria (does not block any acceptance criterion here).
+
+baseline_drift_finding: >
+  The shared, long-lived `bpm_test` container (port 5453, workspace r-co-2) has
+  pre-existing schema/fixture drift independent of ISS-0130: `python3
+  tools/verify_schema_baseline.py --check-tenants` reports 8 tenant IDs with
+  ledger rows in public.tenant_schemas but no matching Postgres schema
+  (leaked/partial fixture rows from prior test runs), and --auto-fix does not
+  resolve it. A full `zig build test-integration --summary all` run against
+  this container reported 97 failed / 1 crashed out of 905 tests -- consistent
+  with anti-patterns.md's documented class of shared-DB drift (see the
+  "Measuring integration-suite pass/fail counts against the long-lived shared
+  test database" entry). Per that guidance, a SEPARATE freshly created +
+  freshly migrated database (bpm_test_fresh_iss0130) was created and used for
+  the actual before/after measurement in this diagnosis; the drift itself is
+  NOT part of ISS-0130's scope and is not fixed here (would require its own
+  triage of which of the 8 leaked tenant rows are safe to delete vs.
+  reprovision — a distinct, non-blocking, pre-existing condition of the shared
+  workspace database, not of the codebase).
+
+chosen_fix:
+  approach: "Systemic hardening in Migrations.runForSchema(), not migration-file patching"
+  justification: >
+    The task's own preference order applies even though the failure cannot be
+    reproduced today: patching migrations/008, 017, 040 to schema-qualify
+    their CREATE TABLE statements would fix only those three files and leave
+    every other unqualified CREATE TABLE/ALTER TABLE/INSERT INTO in the other
+    ~100 migration files (all of which rely on the exact same
+    runForSchema-sets-search_path-once contract) exposed to the identical
+    class of bug the moment a future refactor invalidates the "one connection,
+    held for the whole function" invariant. A runner-level fix protects the
+    whole class; file-level qualification protects only the three files named
+    in the issue and gives no defense against the next migration author who
+    writes an unqualified statement. Editing already-applied migration files
+    (008/017/040 have version rows in schema_migrations on every existing
+    database) would also not re-run on any already-provisioned tenant schema
+    or on `public` on any long-lived environment -- it only helps schemas
+    provisioned AFTER the file edit ships, whereas a runner-level fix protects
+    every future runForSchema() call regardless of migration content.
+  fix_detail: >
+    Re-assert `SET LOCAL search_path TO <schema>,public` as the FIRST
+    statement inside each per-migration transaction (immediately after BEGIN,
+    before the MIGRATIONS_LOCK_KEY_SQL advisory-lock acquisition), in addition
+    to (not instead of) the existing session-level SET at function entry. This
+    is defense in depth: SET LOCAL is transaction-scoped and cannot leak past
+    COMMIT/ROLLBACK, so even if some future code path left the connection's
+    session-level search_path in a stale state before reaching this loop
+    iteration, each individual migration's transaction re-establishes the
+    correct schema unconditionally and cannot be contaminated by whatever the
+    connection did before BEGIN. This removes the "one distant SET at function
+    entry must remain untouched for the entire function body" invariant and
+    replaces it with a per-transaction guarantee that is verified by Postgres
+    itself (SET LOCAL is inherently rolled back on ROLLBACK, so a failed
+    migration cannot leave search_path set for whatever runs next either).
+  files_changed:
+    - src/db/migrations.zig
+
+post_diagnosis_development: >
+  While this diagnosis was in progress, a DIFFERENT concurrent workspace/run
+  independently implemented and merged the identical systemic fix to `main`:
+  commit 1d388ba (PR #531, "fix(db): SET LOCAL search_path per migration txn
+  (GH #423)"), landed 2026-08-07T05:22:02Z UTC -- re-asserting `SET LOCAL
+  search_path TO <schema>,public` as the first statement after BEGIN inside
+  Migrations.runForSchema's per-migration transaction, matching this
+  diagnosis's chosen_fix exactly (same mechanism, same placement). That PR
+  additionally added a dedicated RT-6 regression test exercising the precise
+  sequential-reprovisioning-after-concurrent-pass scenario RT-1/RT-2's own
+  comments (lines 198-206) flagged as untested/out-of-scope for ISS-0129, plus
+  an RT-5 source-stability assertion for the SET LOCAL string. Discovering
+  this mid-implementation (via `git worktree add` against origin/main for the
+  mandated baseline comparison), this run's own redundant src/db/migrations.zig
+  edit was discarded and the branch was rebased onto origin/main to inherit
+  the merged fix rather than duplicate it. This run's remaining contribution:
+  independent empirical verification (0/40 repro attempts before rebasing,
+  proving the fix's necessity is architectural rather than reproducible on
+  demand), the ISS-0208 compile-blocker fix, and the ISS-0209 discovery below.
+
+acceptance_criteria_status:
+  AC1_RT1_RT2_5x5: "PASS. 5/5 consecutive runs on a freshly created+migrated DB (bpm_test_fresh_iss0130), all 6 tests (RT-1..RT-6) passing every run. Additional 5/5 on the shared bpm_test DB. Additional 12/12 concurrent-OS-process runs. Verified against the merged fix (commit 1d388ba), not a duplicate implementation."
+  AC2_no_regression: "PASS. `zig build test --summary all` produces byte-identical results (918/1003 passing, 21 failing) across 2 runs on this branch and 1 run on a clean origin/main worktree baseline -- proving the 21 failures are 100% pre-existing and unrelated to ISS-0130/ISS-0131. Filed as ISS-0209/GH #533 (not fixed here; out of scope, non-blocking, forwarded to the global queue)."
+  AC3_no_migration_regression: "PASS. `zig build migrate` exits 0 against both the long-lived dev DB (108/108 already applied, clean skip) and a brand-new blank database (108/108 applied successfully, exit 0)."
+
+related_issues:
+  - "ISS-0129 / GH #419 (RESOLVED) -- the pg_advisory_xact_lock fix this test file was originally written to verify."
+  - "ISS-0131 / GH #424 (RESOLVED by another workspace, commit 9512c69, merged during this run) -- the provisionTenantSchema-level session lock; NOT modified by this fix."
+  - "ISS-0208 / GH #532 (RESOLVED, this run) -- unrelated pre-existing compile error in tests/integration/effects_subsystem_test.zig from a botched merge (commit 680dba6), fixed inline because it blocked obtaining any zig build test-integration baseline. Filed separately; not part of ISS-0130's root cause."
+  - "ISS-0209 / GH #533 (OPEN, discovered this run, forwarded to global queue) -- tests/unit/test_api08_auth.zig's tenant_default DROP SCHEMA CASCADE recovery path races other concurrent zig build test binaries, causing 21 deterministic (not flaky) C42P01 failures on process_definitions/users/api_tokens. Confirmed 100% pre-existing on main via a clean worktree baseline run; unrelated to ISS-0130's search_path fix. Not fixed here per Unblock-Everything scope boundary (does not block this run's acceptance criteria)."

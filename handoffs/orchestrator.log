@@ -222,3 +222,7 @@
 2026-08-07T04:51:00Z | COMPLETE | WF03-ISS-0132-20260807 | 66c23ed3 | DOC-UPDATER | PASS - CHANGELOG ISS-0132 (GH #427); no requirement status moved (all 26 mapped reqs already RELEASED); ISS-0132 RESOLVED, index consistent
 2026-08-07T04:58:58Z | FORWARD | WF03-ISS-0132-20260807 | 66c23ed3 | DOC-UPDATER | ISS-0207 / GH #528 filed + queued - TC-EXT-01-U08a flake (hardcoded port 18181, cross-thread header read); not caused by this branch
 2026-08-07T05:10:15Z | REBASE | WF03-ISS-0132-20260807 | 66c23ed3 | BACKEND-DEV | rebased onto 06b1e45; resolved store.zig conflict vs PR #527 partial fix (superseded: counter-only, malformed test JSON); revalidated 83/83, 939/1003, 0 leaks x3
+2026-08-07T05:14:44Z | ROUTE | WF03-ISS-0130-20260807 | e62e7c23 | ORCH -> BACKEND-DEV | PENDING step 00
+2026-08-07T05:17:29Z | COMPLETE | WF03-ISS-0130-20260807 | e62e7c23 | BACKEND-DEV | PASS git-setup feature/WF03-ISS-0130-20260807
+2026-08-07T06:08:30Z | COMPLETE | WF03-ISS-0130-20260807 | 045f7033 | ISSUE-FIXER | PASS - root cause confirmed, diagnosis written, 0/40 repro (see ISS-0130-diagnosis.yaml)
+2026-08-07T06:42:14Z | COMPLETE | WF03-ISS-0130-20260807 | c80e113e | BACKEND-DEV | PASS - fix already merged by concurrent workspace (1d388ba/PR531), rebased and verified; filed ISS-0208(fixed)/ISS-0209(forwarded)

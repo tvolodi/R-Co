@@ -403,6 +403,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0209",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/533",
+      "title": "test_api08_auth.zig tenant_default DROP SCHEMA races concurrent zig build test binaries",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-07T06:40:38Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
