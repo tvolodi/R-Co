@@ -1,0 +1,39 @@
+{
+  "handoff_id": "ebc2a19c-3fea-4763-87c6-8c7023559011",
+  "run_id": "WF03-GH528-20260807",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH528-20260807/step-02-backend-dev.json",
+  "created_at": "2026-08-07T17:25:03Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/service-task-test-capture-server.md",
+      "docs/issues/ISS-0207.json"
+    ]
+  },
+  "task": {
+    "description": "Implement the validated design at src/design/service-task-test-capture-server.md to fix the flaky test TC-EXT-01-U08a in tests/unit/service_task_test.zig (GH #528 / ISS-0207). This is a git-setup-already-done run (branch feature/WF03-GH528-20260807 exists and is checked out) -- do NOT run git-setup again, only implement + commit. Fix: (1) CaptureServer binds an ephemeral port (0) instead of hardcoded 18181, and the test reads the actual bound port back via listener.socket.address to build url_template dynamically; (2) replace the defer-server.join()-at-scope-exit pattern with explicit std.Io.Event synchronization (fields for listening/headers_captured as described in the design) establishing a happens-before edge between the CaptureServer thread finishing header capture and the test thread reading first_trace_id/first_idempotency_key/first_custom_header. Only tests/unit/service_task_test.zig should need changes (test-only fix, no production source touched) -- confirm this matches the design scope before starting.",
+    "acceptance_criteria": [
+      "CaptureServer binds to port 0 and the actual bound port is read back for url_template construction",
+      "std.Io.Event (or equivalent per the validated design) establishes a happens-before edge before the header assertions run",
+      "zig build test exits 0",
+      "The TC-EXT-01-U08a test block passes when run in isolation AND does not regress when run as part of the full suite",
+      "No production source files modified (test-only fix)"
+    ],
+    "functions_to_call": [
+      "fn:zig-build-test"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
