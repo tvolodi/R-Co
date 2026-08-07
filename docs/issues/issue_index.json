@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-07T04:15:13Z",
-  "next_issue_id": 206,
+  "last_updated": "2026-08-07T04:51:00Z",
+  "next_issue_id": 208,
   "issues": [
     {
       "id": "ISS-0001",
@@ -1933,7 +1933,7 @@
     {
       "id": "ISS-0601-LEAK-001",
       "title": "src/definition/store.zig:1356 parseGraphJson leaks node IDs (pre-existing)",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "memory-leak / allocator-dupe-without-free",
       "run_id": "WF03-gh406-20260803",
@@ -1943,8 +1943,58 @@
         "tests/integration/iss601_state_snapshots_test.zig"
       ],
       "created_at": "2026-08-03T15:09:08Z",
-      "resolved_at": null,
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/406"
+      "resolved_at": "2026-08-07T04:40:47Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/406",
+      "resolution_note": "Superseded and permanently closed by ISS-0132 / GH #427 in run WF03-ISS-0132-20260807. GH #406 fixed the specific site and the leak recurred because no test exercised parseGraphJson's allocation-failure paths. TC-ISS-0132-04/05 now cover them via checkAllAllocationFailures, and PGJ-1/2/3 (fragile deinit pairing; partial-struct leaks in the nodes and edges loops) are fixed at the cause."
+    },
+    {
+      "id": "ISS-0132",
+      "title": "Allocation-failure paths leak across engine/definition; no checkAllAllocationFailures coverage (GH #427)",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "category": "memory-leak / missing-allocation-failure-coverage",
+      "run_id": "WF03-ISS-0132-20260807",
+      "handoff_id": "63068f2d-b1ba-474b-9155-44dc7eba31ce",
+      "affected_areas": [
+        "src/engine/transition.zig",
+        "src/definition/store.zig",
+        "src/definition_store_test_root.zig",
+        "src/transition_test_root.zig",
+        "build.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/427",
+      "created_at": "2026-08-05T06:41:44Z",
+      "resolved_at": "2026-08-07T04:40:47Z"
+    },
+    {
+      "id": "ISS-0206",
+      "title": "src/definition/store.zig rowToDefinition leaks on allocation failure \u2014 4 sequential dupes, zero errdefer guards (GH #526)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "memory-leak / allocator-dupe-without-errdefer",
+      "run_id": "WF03-ISS-0132-20260807",
+      "handoff_id": "63068f2d-b1ba-474b-9155-44dc7eba31ce",
+      "affected_areas": [
+        "src/definition/store.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/526",
+      "created_at": "2026-08-07T04:40:47Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0207",
+      "title": "TC-EXT-01-U08a is flaky under full-suite concurrency: CaptureServer binds hardcoded TCP port 18181 and its captured headers are read across a thread boundary",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "test-flake / hardcoded-port + cross-thread-race",
+      "run_id": "WF03-ISS-0132-20260807",
+      "handoff_id": "66c23ed3-0d38-4858-b08a-116deff3b215",
+      "affected_areas": [
+        "tests/unit/service_task_test.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/528",
+      "created_at": "2026-08-07T04:51:00Z",
+      "resolved_at": null
     }
   ]
 }

@@ -1,0 +1,45 @@
+{
+  "handoff_id": "db306d41-2d31-4ffa-8913-e5a27add7681",
+  "run_id": "WF03-ISS-0132-20260807",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T04:40:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0132.json"
+    ]
+  },
+  "task": {
+    "description": "Implement ISS-0132 (GH #427): add checkAllAllocationFailures coverage for parseGraphJson, prove it fails on unfixed code, fix the leaks it exposes, wire the tests into `zig build test`.",
+    "acceptance_criteria": [
+      "allocation-failure tests exist for cloneJsonValueSafe/cloneObjectMapSafe, parseTimerConfig, parseGraphJson",
+      "tests demonstrably FAIL on unfixed code and PASS after the fix",
+      "zig build test exits 0 with no DebugAllocator leak output",
+      "tests wired into zig build test so coverage cannot silently lapse",
+      "every alloc site reached by the harnesses has a matching errdefer"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Added TC-ISS-0132-04/05 (parseGraphJson) via std.testing.checkAllAllocationFailures. PROVEN to reproduce leaks on main's exact parseGraphJson (git diff showed 0 deleted lines at the time): '1 pass, 2 fail (3 total); 2 leaks', TC-04 fail_index 6/25 allocated 1713 / freed 1711 at store.zig:1344 (.label dupe), TC-05 fail_index 9/11 allocated 1807 / freed 1805 at store.zig:1366 (.source dupe). Fixed PGJ-1 (errdefer+bare deinit -> single defer), PGJ-2 and PGJ-3 (per-field guarded locals so each successful dupe is owned before the next fallible one runs). Tests now 3/3 pass. Added src/definition_store_test_root.zig refAllDecls shim and wired run_definition_store_tests into the aggregate test_step; tools/lint_test_wiring.py caught that a narrow step alone was insufficient (ISS-0150 class) and now PASSes.",
+    "artifacts_out": [
+      "src/definition/store.zig",
+      "src/definition_store_test_root.zig",
+      "build.zig",
+      "docs/issue-reports/ISS-0132-diagnosis.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER / DOC-UPDATER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T04:40:47Z",
+  "completed_at": "2026-08-07T04:40:47Z"
+}

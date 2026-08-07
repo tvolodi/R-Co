@@ -429,6 +429,32 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0206",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/526",
+      "title": "store.zig rowToDefinition leaks on allocation failure - 4 sequential dupes, zero errdefer guards",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-07T04:44:59Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0207",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/528",
+      "title": "TC-EXT-01-U08a flaky: CaptureServer hardcoded port 18181 + cross-thread header read",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-07T04:58:25Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

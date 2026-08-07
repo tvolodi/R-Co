@@ -1324,7 +1324,12 @@ fn parseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !Definit
         .ignore_unknown_fields = true,
         .allocate = .alloc_always,
     });
-    errdefer parsed.deinit();
+    // ISS-0132 (PGJ-1): a single `defer` expresses this lifetime once, on both
+    // the success and error paths. Previously an `errdefer` here was paired with
+    // a bare `parsed.deinit()` just before the successful return — two separate
+    // statements that had to be kept in sync by hand, and which would double-free
+    // the moment any fallible statement was added between them.
+    defer parsed.deinit();
 
     const nodes_copy = try allocator.alloc(graph_mod.GraphNode, parsed.value.nodes.len);
     var nodes_built: usize = 0;
@@ -1338,11 +1343,27 @@ fn parseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !Definit
         allocator.free(nodes_copy);
     }
     for (parsed.value.nodes, 0..) |n, i| {
+        // ISS-0132 (PGJ-2): each dupe lands in a local guarded by its own
+        // errdefer BEFORE the next fallible dupe runs. Building the struct
+        // literal inline instead left every already-succeeded dupe of a row
+        // unowned when a later field's dupe failed — `nodes_built` had not been
+        // incremented yet, so the errdefer above skipped the whole row and the
+        // earlier allocations leaked. TC-ISS-0132-04 forced a failure at
+        // exactly that index (fail_index 6/25, at the `.label` dupe).
+        const id_copy = try allocator.dupe(u8, n.id);
+        errdefer allocator.free(id_copy);
+
+        const label_copy: ?[]const u8 = if (n.label) |l| try allocator.dupe(u8, l) else null;
+        errdefer if (label_copy) |l| allocator.free(l);
+
+        const attrs_copy: ?[]const u8 = if (n.attributes) |a| try allocator.dupe(u8, a) else null;
+        errdefer if (attrs_copy) |a| allocator.free(a);
+
         nodes_copy[i] = .{
-            .id = try allocator.dupe(u8, n.id),
+            .id = id_copy,
             .node_type = n.node_type,
-            .label = if (n.label) |l| try allocator.dupe(u8, l) else null,
-            .attributes = if (n.attributes) |a| try allocator.dupe(u8, a) else null,
+            .label = label_copy,
+            .attributes = attrs_copy,
         };
         // Increment BEFORE the next iteration's try so errdefer always counts
         // everything assigned up to and including the last successful iteration.
@@ -1363,12 +1384,31 @@ fn parseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !Definit
         allocator.free(edges_copy);
     }
     for (parsed.value.edges, 0..) |e, i| {
+        // ISS-0132 (PGJ-3): same partial-construction leak as the nodes loop
+        // above, with five fallible dupes instead of three. TC-ISS-0132-05
+        // forced a failure at fail_index 9/11, on the `.source` dupe, leaking
+        // the `.id` dupe that had already succeeded.
+        const id_copy = try allocator.dupe(u8, e.id);
+        errdefer allocator.free(id_copy);
+
+        const source_copy = try allocator.dupe(u8, e.source);
+        errdefer allocator.free(source_copy);
+
+        const target_copy = try allocator.dupe(u8, e.target);
+        errdefer allocator.free(target_copy);
+
+        const condition_copy: ?[]const u8 = if (e.condition) |c| try allocator.dupe(u8, c) else null;
+        errdefer if (condition_copy) |c| allocator.free(c);
+
+        const transform_copy: ?[]const u8 = if (e.transform) |t| try allocator.dupe(u8, t) else null;
+        errdefer if (transform_copy) |t| allocator.free(t);
+
         edges_copy[i] = .{
-            .id = try allocator.dupe(u8, e.id),
-            .source = try allocator.dupe(u8, e.source),
-            .target = try allocator.dupe(u8, e.target),
-            .condition = if (e.condition) |c| try allocator.dupe(u8, c) else null,
-            .transform = if (e.transform) |t| try allocator.dupe(u8, t) else null,
+            .id = id_copy,
+            .source = source_copy,
+            .target = target_copy,
+            .condition = condition_copy,
+            .transform = transform_copy,
             .is_default = e.is_default,
         };
         // Increment BEFORE the next iteration's try so errdefer always counts
@@ -1376,7 +1416,8 @@ fn parseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !Definit
         edges_built = i + 1;
     }
 
-    parsed.deinit();
+    // ISS-0132 (PGJ-1): `parsed` is released by the `defer` registered at the
+    // top of this function — do not deinit it again here.
     return DefinitionGraph{ .nodes = nodes_copy, .edges = edges_copy };
 }
 
@@ -1581,44 +1622,64 @@ fn parseDefinitionStatus(s: []const u8) error{InvalidStatus}!DefinitionStatus {
 }
 
 // ---------------------------------------------------------------------------
-// ISS-0132 — Allocation-failure coverage for parseGraphJson
+// ISS-0132 — allocation-failure coverage for parseGraphJson
+//
+// The DebugAllocator leak signature recurred across 18 pipeline runs
+// (2026-05-28 -> 2026-08-05) because the leaks live on *allocation-failure*
+// paths no test reaches. parseGraphJson specifically was patched once under
+// GH #406 and the signature came back: the site was fixed, the coverage that
+// would find the class was never added. Until this block, store.zig contained
+// zero `test` blocks and was reachable from no addTest root at all — the same
+// inert-file defect as ISS-0102 / GH #428.
+//
+// `std.testing.checkAllAllocationFailures` re-invokes the function once per
+// allocation index with that allocation forced to fail, asserting the call
+// both propagates error.OutOfMemory and leaks nothing. That converts a
+// non-deterministic leak into a deterministic test failure.
+//
+// When adding a function here that allocates more than once before returning,
+// add it to this harness too.
 // ---------------------------------------------------------------------------
 
-// Wrapper that calls parseGraphJson and frees all resources on success.
-// Used with checkAllAllocationFailures to verify no leaks on any allocation
-// failure inside the function.
-fn allocFailureParseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !void {
-    const graph = try parseGraphJson(allocator, graph_json);
-    for (graph.nodes) |n| {
-        allocator.free(n.id);
-        if (n.label) |l| allocator.free(l);
-        if (n.attributes) |a| allocator.free(a);
-    }
-    allocator.free(graph.nodes);
-    for (graph.edges) |e| {
-        allocator.free(e.id);
-        allocator.free(e.source);
-        allocator.free(e.target);
-        if (e.condition) |c| allocator.free(c);
-        if (e.transform) |t| allocator.free(t);
-    }
-    allocator.free(graph.edges);
+fn allocFailureParseGraphJson(allocator: std.mem.Allocator, raw: []const u8) !void {
+    const g = try parseGraphJson(allocator, raw);
+    g.deinit(allocator);
 }
 
-// ISS-0132-04: parseGraphJson leaks nothing on any allocation failure.
-// The graph has multiple nodes and edges so failures can occur mid-loop
-// during node-string or edge-string duplications.
 test "TC-ISS-0132-04: parseGraphJson leaks nothing on any allocation failure" {
-    // Two nodes and two edges — enough for failures to hit mid-node-loop
-    // and mid-edge-loop on any dupe call.
-    const graph_json =
-        \\{"nodes":[{"id":"n1","node_type":"SERVICE_TASK","label":"Task 1"},".+
-        \\{"id":"n2","node_type":"SERVICE_TASK","label":"Task 2"}],".+
-        \\"edges":[{"id":"e1","source":"n1","target":"n2","is_default":true}]}
+    // Every optional field populated (label, attributes, condition, transform)
+    // so both multi-dupe struct literals are exercised: a forced failure on the
+    // 2nd..5th dupe of a row must still free the dupes that already succeeded,
+    // even though the row's `*_built` counter has not been incremented yet.
+    const raw =
+        \\{"nodes":[
+        \\{"id":"n1","node_type":"START","label":"Begin","attributes":"{\"k\":1}"},
+        \\{"id":"n2","node_type":"HUMAN_TASK","label":"Review","attributes":"{\"assignee\":\"u1\"}"},
+        \\{"id":"n3","node_type":"END","label":"Done","attributes":"{\"final\":true}"}],
+        \\"edges":[
+        \\{"id":"e1","source":"n1","target":"n2","condition":"a == 1","transform":"b = 2"},
+        \\{"id":"e2","source":"n2","target":"n3","condition":"c == 3","transform":"d = 4"}]}
     ;
     try std.testing.checkAllAllocationFailures(
         std.testing.allocator,
         allocFailureParseGraphJson,
-        .{graph_json},
+        .{raw},
+    );
+}
+
+test "TC-ISS-0132-05: parseGraphJson leaks nothing when optional fields are absent" {
+    // Null label/attributes/condition/transform take the `else null` branch, so
+    // this walks a different sequence of allocation indices than TC-04.
+    const raw =
+        \\{"nodes":[
+        \\{"id":"n1","node_type":"START"},
+        \\{"id":"n2","node_type":"END"}],
+        \\"edges":[
+        \\{"id":"e1","source":"n1","target":"n2"}]}
+    ;
+    try std.testing.checkAllAllocationFailures(
+        std.testing.allocator,
+        allocFailureParseGraphJson,
+        .{raw},
     );
 }

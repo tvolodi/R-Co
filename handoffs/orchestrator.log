@@ -215,3 +215,10 @@
 2026-08-07T04:08:42Z | COMPLETE | WF03-ISS-0158-20260807 | 084d7e46 | BACKEND-DEV | PASS - ISS-0158 resolved: 5 ownership root causes fixed, effects_subsystem_test 13->3 blocks, 0 regressions; GH #515 deduped/closed; ISS-0186/0187/0188 forwarded
 2026-08-07T04:16:42Z | COMPLETE | WF03-ISS-0158-20260807 | 820c1cc6 | DOC-UPDATER | PASS - changelog + ISS-0158 record + issue_index repair; EXP-301/302 left UNTRACKED (3/12 EXP-301 blocks still fail; both unadmitted backlog entries)
 2026-08-07T04:27:03Z | LOOP_ITEM_DONE | WF03-ISS-0158-20260807 | -------- | TVOLODI-ws2-loop | RESOLVED (PR #523, merge 60fae79; 4 production bugs, #515 deduped)
+2026-08-07T04:27:25Z | ROUTE | WF03-ISS-0132-20260807 | 63068f2d | ORCH -> BACKEND-DEV | PENDING step 00
+2026-08-07T04:28:49Z | COMPLETE | WF03-ISS-0132-20260807 | 63068f2d | BACKEND-DEV | Step 00 git-setup PASS branch=feature/WF03-ISS-0132-20260807
+2026-08-07T04:40:47Z | COMPLETE | WF03-ISS-0132-20260807 | 278a15cc | BACKEND-DEV | Step 01 PASS
+2026-08-07T04:40:47Z | COMPLETE | WF03-ISS-0132-20260807 | db306d41 | BACKEND-DEV | Step 03 PASS
+2026-08-07T04:51:00Z | COMPLETE | WF03-ISS-0132-20260807 | 66c23ed3 | DOC-UPDATER | PASS - CHANGELOG ISS-0132 (GH #427); no requirement status moved (all 26 mapped reqs already RELEASED); ISS-0132 RESOLVED, index consistent
+2026-08-07T04:58:58Z | FORWARD | WF03-ISS-0132-20260807 | 66c23ed3 | DOC-UPDATER | ISS-0207 / GH #528 filed + queued - TC-EXT-01-U08a flake (hardcoded port 18181, cross-thread header read); not caused by this branch
+2026-08-07T05:10:15Z | REBASE | WF03-ISS-0132-20260807 | 66c23ed3 | BACKEND-DEV | rebased onto 06b1e45; resolved store.zig conflict vs PR #527 partial fix (superseded: counter-only, malformed test JSON); revalidated 83/83, 939/1003, 0 leaks x3
