@@ -31,8 +31,9 @@ Checks (§3 of the test infrastructure guide)
   C6  no ungranted locks left over from a prior session
   C7  benchmark environment resolves a DB URL from the environment
   C8  tools/lint_test_tenant_provisioning.py reports no BLOCKER
-  C9  db_test container's actual pg_hba.conf auth method matches what
-      docker-compose.yml currently declares (GH-542 / ISS-0607)
+  C9  every running compose service's container config-hash label matches
+      the CURRENT docker-compose.yml (catches ANY stale-container config
+      drift — not just auth method; GH-542 / ISS-0607 / ISS-0608)
 
 One checklist, one database (ISS-0180 / GH #511)
 ------------------------------------------------
@@ -714,111 +715,101 @@ def check_tenant_provisioning_lint() -> Check:
     return Check("C8 tenant provisioning lint", OK, "no BLOCKER findings")
 
 
-def check_db_test_auth_method() -> Check:
-    """C9 — the running db_test container's actual auth method matches what
-    docker-compose.yml currently declares.
+CONFIG_DRIFT_SERVICES = ("db", "db_test", "keycloak", "keycloak_gateway")
 
-    GH-542 / ISS-0607: POSTGRES_HOST_AUTH_METHOD is an initdb-time-only
-    setting — Postgres bakes it into pg_hba.conf the first time a data
-    directory is initialized and never re-reads it on a plain container
-    restart or `docker-compose up` (which reuses an existing container
-    rather than recreating it). When docker-compose.yml's declared auth
-    method for db_test changed to `trust`, workspaces whose db_test
-    container was already running from before that change kept the old
-    auth method indefinitely — every other health check (C0-C8) passed,
-    including C1's health/port check, because none of them inspect
-    pg_hba.conf. The only symptom was integration tests failing at the
-    SCRAM handshake with error.AuthenticationFailed, which looked like an
-    application-level bug and cost significant diagnosis time in two
-    parallel workspaces before the actual cause (stale container, not
-    stale code) was found. This check makes that mismatch a named,
-    immediate gate failure instead of a multi-hour debugging session.
+
+def check_config_drift() -> Check:
+    """C9 — every running compose service's container matches the CURRENT
+    docker-compose.yml config, not a stale one from before the container was
+    last created.
+
+    GH-542 / ISS-0607 / ISS-0608: POSTGRES_HOST_AUTH_METHOD is an
+    initdb-time-only setting — Postgres bakes it into pg_hba.conf the first
+    time a data directory is initialized and never re-reads it on a plain
+    container restart or `docker-compose up` (which reuses an existing
+    container rather than recreating it). A workspace whose db_test
+    container predated a docker-compose.yml change to that variable kept
+    the old auth method indefinitely; every other health check (C0-C8)
+    stayed green, because none of them compared the container's actual
+    config against the file's current content. The only symptom was
+    integration tests failing at the SCRAM handshake, which looked like an
+    application bug and cost significant diagnosis time before the real
+    cause (stale container, not stale code) was found.
+
+    Rather than hand-writing a comparator for one specific variable (the
+    first version of this check parsed pg_hba.conf and only ever caught
+    POSTGRES_HOST_AUTH_METHOD drift), this check is generic: Docker Compose
+    already stamps every container it creates with a
+    `com.docker.compose.config-hash` label — a hash of that service's fully
+    resolved config at creation time — specifically so `docker-compose up`
+    can decide whether a container needs recreating. `docker-compose config
+    --hash <service>` recomputes that same hash from the CURRENT compose
+    file without touching any container. Comparing the two catches drift in
+    ANY setting for ANY of these services (image tag, command, ports,
+    every environment variable — not just auth method) with the same few
+    lines of code, using a mechanism Compose already maintains rather than
+    a bespoke per-variable parser.
     """
     if not shutil.which("docker"):
-        return Check("C9 db_test auth method", SKIP, "docker not on PATH")
+        return Check("C9 config drift", SKIP, "docker not on PATH")
+    if not shutil.which("docker-compose"):
+        return Check("C9 config drift", SKIP, "docker-compose not on PATH")
 
     compose_path = REPO_ROOT / "docker-compose.yml"
     if not compose_path.is_file():
-        return Check("C9 db_test auth method", SKIP, "docker-compose.yml not present")
+        return Check("C9 config drift", SKIP, "docker-compose.yml not present")
 
-    declared = "trust"  # default fallback: Postgres's own default is scram-sha-256/md5, not trust
-    try:
-        text = compose_path.read_text(encoding="utf-8")
-        in_db_test = False
-        found = False
-        for raw in text.splitlines():
-            if raw.strip().rstrip(":") == "db_test":
-                in_db_test = True
-                continue
-            if in_db_test and raw.strip() and not raw.startswith((" ", "\t")):
-                break  # left the db_test service block
-            if in_db_test and "POSTGRES_HOST_AUTH_METHOD" in raw:
-                declared = raw.split(":", 1)[1].strip().strip("\"'")
-                found = True
-                break
-        if not found:
-            # db_test block exists but declares no override — Postgres image default applies.
-            declared = "scram-sha-256"
-    except OSError:
-        return Check("C9 db_test auth method", SKIP, "could not read docker-compose.yml")
-
-    container = f"{compose_project_name()}-db_test-1"
-    code, out = run(
-        ["docker", "exec", container, "cat", "/var/lib/postgresql/data/pg_hba.conf"],
-        timeout=30,
-    )
+    code, out = run(["docker-compose", "config", "--hash", "*"], timeout=30)
     if code != 0:
-        legacy = f"{compose_project_name()}_db_test_1"
-        code, out = run(
-            ["docker", "exec", legacy, "cat", "/var/lib/postgresql/data/pg_hba.conf"],
-            timeout=30,
+        return Check("C9 config drift", SKIP, f"docker-compose config --hash failed: {out[:200]}")
+
+    current_hashes: dict[str, str] = {}
+    for raw in out.splitlines():
+        parts = raw.strip().split()
+        if len(parts) == 2:
+            current_hashes[parts[0]] = parts[1]
+
+    project = compose_project_name()
+    drifted: list[str] = []
+    checked_any = False
+    for service in CONFIG_DRIFT_SERVICES:
+        expected_hash = current_hashes.get(service)
+        if not expected_hash:
+            continue  # service not defined in this compose file / override
+
+        container = f"{project}-{service}-1"
+        code, label_out = run(
+            ["docker", "inspect", "-f", "{{ index .Config.Labels \"com.docker.compose.config-hash\" }}", container],
+            timeout=15,
         )
         if code != 0:
-            return Check(
-                "C9 db_test auth method",
-                SKIP,
-                f"could not exec into {container!r} to read pg_hba.conf",
+            legacy = f"{project}_{service}_1"
+            code, label_out = run(
+                ["docker", "inspect", "-f", "{{ index .Config.Labels \"com.docker.compose.config-hash\" }}", legacy],
+                timeout=15,
             )
+            if code != 0:
+                continue  # container not running — not this check's concern (C1 covers db_test's presence)
+            container = legacy
 
-    # The postgres:15-alpine entrypoint always writes fixed loopback/local
-    # entries ("local all all trust", "host all all 127.0.0.1/32 trust", ...)
-    # regardless of POSTGRES_HOST_AUTH_METHOD — those are Postgres's own
-    # unconditional defaults, not derived from the env var, so matching the
-    # *first* host line (as an earlier version of this check did) silently
-    # reads "trust" even on a scram-sha-256 container and never detects a
-    # mismatch. The line that actually reflects POSTGRES_HOST_AUTH_METHOD is
-    # the catch-all appended after those fixed entries: "host all all all
-    # <method>" (database=all, user=all, address=all). Match on that specific
-    # shape, not merely on the "host" keyword.
-    actual = None
-    for raw in out.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        parts = line.split()
-        if len(parts) == 5 and parts[0] == "host" and parts[1] == "all" and parts[2] == "all" and parts[3] == "all":
-            actual = parts[4]
-            break
+        checked_any = True
+        actual_hash = label_out.strip()
+        if actual_hash and actual_hash != expected_hash:
+            drifted.append(service)
 
-    if actual is None:
+    if not checked_any:
+        return Check("C9 config drift", SKIP, "no matching running containers found to check")
+
+    if drifted:
         return Check(
-            "C9 db_test auth method",
-            SKIP,
-            "no 'host all all all <method>' catch-all line found in pg_hba.conf "
-            "(unexpected pg_hba.conf shape — Postgres image may have changed)",
-        )
-
-    if actual != declared:
-        return Check(
-            "C9 db_test auth method",
+            "C9 config drift",
             BAD,
-            f"container's pg_hba.conf uses {actual!r} but docker-compose.yml declares "
-            f"POSTGRES_HOST_AUTH_METHOD={declared!r} for db_test — the running container "
-            "predates the current config and was never recreated to pick it up",
-            "docker-compose stop db_test && docker-compose rm -f -v db_test && "
-            "docker-compose up -d db_test --wait",
+            f"{', '.join(drifted)}: running container's config-hash label does not match "
+            "docker-compose.yml's current config — the container predates a config change "
+            "and was never recreated to pick it up",
+            "docker-compose up -d --force-recreate " + " ".join(drifted),
         )
-    return Check("C9 db_test auth method", OK, f"container and docker-compose.yml agree: {actual!r}")
+    return Check("C9 config drift", OK, f"{len(current_hashes)} service(s) checked, all match current config")
 
 
 def main(argv: list[str]) -> int:
@@ -860,9 +851,9 @@ def main(argv: list[str]) -> int:
         checks.append(check_bench_env())
         checks.append(check_tenant_provisioning_lint())
         checks.append(
-            Check("C9 db_test auth method", SKIP, "--skip-docker")
+            Check("C9 config drift", SKIP, "--skip-docker")
             if args.skip_docker
-            else check_db_test_auth_method()
+            else check_config_drift()
         )
 
     failed = [c for c in checks if c.failed]

@@ -1,0 +1,27 @@
+{
+  "issue_id": "ISS-0609",
+  "title": "LOOP_PROTOCOL.md's recommended workspace_id derivation ($env:COMPUTERNAME + \"-loop\") collides across parallel workspaces on the same host, defeating the GH-issue lock",
+  "severity": "MAJOR",
+  "discovered_by": "ORCH",
+  "discovered_at": "2026-08-07T15:35:00Z",
+  "discovered_in": "WF03-GH542-20260807 (incidental finding, surfaced by the user during post-incident review of the GH-542 collision fix)",
+  "symptom": "Both this workspace and a sibling parallel checkout of the same repo on the same machine derived the identical workspace_id 'TVOLODI-loop' when following LOOP_PROTOCOL.md's own documented example ($env:COMPUTERNAME + \"-loop\"). This is a distinct defect from the missing-immediate-push race (ISS/PR #543): even with the claim pushed to main immediately, two workspaces claiming under the SAME workspace_id key makes the lock's audit trail unable to distinguish which physical checkout is doing the work, and (more importantly) a workspace_id collision means log lines and any future collision-detection logic that keys off workspace_id cannot tell the two apart.",
+  "root_cause": "$env:COMPUTERNAME (Windows machine name) is identical for every checkout on one physical host. This repo has a standing, documented parallel-workspace pattern (see .env's own header: 'SECOND parallel workspace', COMPOSE_PROJECT_NAME=r-co-2, +10 port band) specifically because multiple checkouts on one machine is a normal, expected setup here -- but LOOP_PROTOCOL.md's workspace_id guidance was written as if one host runs one workspace, and was never updated when the two-workspace-per-host pattern became standard practice.",
+  "impact": "Any two parallel workspaces on this host that both enter loop mode produce colliding lock-owner identities. Combined with ISS-0543 (the missing-immediate-push race), this was part of why GH-542 was claimed by two workspaces simultaneously -- though it is a separate, independently-triggerable defect: even a correctly-immediate push does not prevent the collision, it only changes which workspace's identical-looking claim wins the race.",
+  "evidence": "docs/agents/protocols/LOOP_PROTOCOL.md line 172 (pre-fix): '$workspace_id = $env:COMPUTERNAME + \"-loop\"   # e.g. \"TVOLODI-loop\"'. tools/gh_claim.py line 21 (pre-fix): 'Use a stable value (e.g. machine name)'. Both this workspace (c:\\Users\\tvolo\\dev\\ai-dala\\2\\R-Co) and the sibling (c:\\Users\\tvolo\\dev\\ai-dala\\R-Co) run on host TVOLODI and would derive 'TVOLODI-loop' identically from either recipe.",
+  "fix_target": "Introduce BPM_WORKSPACE_ID as a per-checkout .env variable (set by hand, following the existing COMPOSE_PROJECT_NAME convention for parallel-workspace isolation), document it in .env.example, and update LOOP_PROTOCOL.md + gh_claim.py's docstring to read it instead of deriving from $env:COMPUTERNAME.",
+  "related_issues": [
+    "GH-542 / ISS-0607 -- the incident this was discovered while reviewing",
+    "The missing-immediate-push race fixed in PR #543 -- a separate, compounding defect in the same loop-mode locking flow"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/548",
+  "github_issue_collision_checked": true,
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-07T15:40:00Z",
+  "resolved_in": [
+    ".env.example",
+    "docs/agents/protocols/LOOP_PROTOCOL.md",
+    "tools/gh_claim.py"
+  ],
+  "resolution": "Added BPM_WORKSPACE_ID as a documented .env.example variable, set by hand per checkout (this workspace's own .env now sets BPM_WORKSPACE_ID=r-co-2-loop, reusing the existing COMPOSE_PROJECT_NAME value). LOOP_PROTOCOL.md's 'ORCH loop mode' section now reads BPM_WORKSPACE_ID from .env with an explicit failure if unset, instead of deriving from $env:COMPUTERNAME. Both LOOP_PROTOCOL.md's tools-reference section and gh_claim.py's own docstring now warn against machine-name-derived workspace_id values and point at BPM_WORKSPACE_ID instead."
+}

@@ -116,8 +116,14 @@ the item JSON to stdout.
 | 3 | All open issues locked by other workspaces | Stop or retry after delay |
 | 1 | Unexpected error (gh CLI failure, JSON error) | Log, stop |
 
-`<workspace_id>` defaults to `<hostname>-<pid>` when omitted. Use a stable value
-(e.g. `$env:COMPUTERNAME + "-loop"`) so logs clearly identify which workspace did the work.
+`<workspace_id>` defaults to `<hostname>-<pid>` when omitted — note the `-<pid>` makes this
+actually unique per *process*, but not stable across a workspace's *runs* (a new pid each time
+defeats "logs clearly identify which workspace did the work" across a history of loop runs).
+For loop mode, pass an explicit stable value instead: `BPM_WORKSPACE_ID` from `.env` (see
+"ORCH loop mode — step by step" below). Do **not** use `$env:COMPUTERNAME` alone or
+`$env:COMPUTERNAME + "-loop"` — every parallel checkout on the same host shares `COMPUTERNAME`,
+so that pattern collides across workspaces and lets two of them claim the same issue under an
+identical lock key (see `docs/anti-patterns.md`, 2026-08-07 GH-542 incident).
 
 The claimed item JSON includes `issue_id` in the form `GH-<number>` (e.g. `GH-533`).
 Pass this as the `<issue_id>` argument to `queue_release.py`.
@@ -166,11 +172,24 @@ Remove-Item handoffs/STOP_LOOP
 ## ORCH loop mode — step by step
 
 ORCH enters loop mode when the user says "start loop", "process issues", "run autonomous loop",
-"drain GitHub issues", or equivalent. Establish a stable `<workspace_id>` once at loop start:
+"drain GitHub issues", or equivalent. Establish a stable `<workspace_id>` once at loop start —
+**read `BPM_WORKSPACE_ID` from `.env`, do not derive it from `$env:COMPUTERNAME` alone.**
+Two checkouts of this repo on the same host share the same `COMPUTERNAME`, so a
+`$env:COMPUTERNAME`-derived value collides across parallel workspaces and lets both claim the
+same GitHub issue under the identical lock key — this is exactly what happened on 2026-08-07
+for GH-542 (see `docs/anti-patterns.md`). `BPM_WORKSPACE_ID` is per-checkout, set by hand in each
+workspace's own `.env` (see `.env.example`), so it is guaranteed distinct:
 
 ```powershell
-$workspace_id = $env:COMPUTERNAME + "-loop"   # e.g. "TVOLODI-loop"
+$workspace_id = (Get-Content .env | Select-String '^BPM_WORKSPACE_ID=').ToString().Split('=')[1]
+if (-not $workspace_id) {
+    Write-Error "BPM_WORKSPACE_ID not set in .env — set it before running loop mode (see .env.example)."
+    exit 1
+}
 ```
+
+If `.env` has no `BPM_WORKSPACE_ID`, do not fall back to a `$env:COMPUTERNAME`-derived value —
+that silently reintroduces the collision. Stop and ask the operator to set it.
 
 ```
 LOOP START
