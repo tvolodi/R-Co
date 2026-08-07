@@ -184,3 +184,4 @@
 2026-08-06T23:47:20Z | COMPLETE | WF03-ISS-0175-20260806 | e04959c8 | ISSUE-FIXER | PASS - Diagnosis: .gitignore inherited from upstream (where Makefile generates the file
 2026-08-06T23:56:17Z | ROUTE | WF03-ISS-0175-20260806 | e3c09036 | ORCH -> BACKEND-DEV | PENDING (step 03 implement)
 2026-08-06T23:56:30Z | COMPLETE | WF03-ISS-0175-20260806 | e3c09036 | BACKEND-DEV | PASS - ISS-0175 fixed by tracking vendor/luajit/src/luajit_relver.txt (option a). Block
+2026-08-07T00:06:56Z | COMPLETE | WF03-ISS-0175-20260806 | e53cc6cf | DOC-UPDATER | PASS - changelog + ISS-0175/0177 RESOLVED; follow-up ISS-0178/GH#507 filed and queued

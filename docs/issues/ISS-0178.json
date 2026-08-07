@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0178",
+  "title": "No CI job builds from a clean checkout, so build inputs that exist only in a warm working tree are never detected as missing",
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "discovered_by": "DOC-UPDATER",
+  "discovered_in_run": "WF03-ISS-0175-20260806",
+  "discovered_at": "2026-08-07T00:00:00Z",
+  "affected_areas": [
+    ".github/workflows/ci.yml (Build and unit tests job)",
+    "vendor/luajit/build.zig",
+    "build.zig (test-lua step)"
+  ],
+  "symptom": "A file that is required as a build input but is not tracked in git produces a green local build and a green developer experience indefinitely, while being fatal on any checkout that does not already carry an untracked copy. The failure surfaces only when someone clones the repository fresh. There is no CI job whose job it is to notice this: the existing 'Build and unit tests' job restores a cached Zig build directory and runs in a workspace that can carry state across runs, so 'the file is present' and 'the file is tracked' are indistinguishable from inside CI.",
+  "root_cause": "The CI pipeline has no clean-checkout build job. Every build path that exists -- local developer machines, and the cached CI workspace -- can satisfy a required build input from a file that version control does not know about. The property that actually needs testing is 'the tracked contents of the repository are sufficient to build', and nothing tests it. This is a gap in the pipeline's coverage, not a defect in any single build file.",
+  "impact": "This class of defect reaches main undetected and blocks every new contributor, every fresh CI runner, and every release built from a pristine source tree. It is expensive to diagnose because the error surfaces as a low-level cache/FileNotFound message that does not name the missing tracked file as the cause. Two instances of exactly this class were fixed in WF03-ISS-0175-20260806 -- ISS-0175 (luajit_relver.txt git-ignored but required) and ISS-0177 (path-dependent dynasm escaping, only observable from a differently-named directory) -- and both were found by a human running a manual git clone, not by the pipeline. Until a clean-checkout job exists, the next instance will be found the same way.",
+  "acceptance_criteria": [
+    "A CI job checks out the repository into a fresh location with no restored build cache and no reused workspace, and builds the LuaJIT-backed test target (`zig build test-lua`) to completion.",
+    "The job fails if any required build input is absent from tracked git contents -- verified by mutation: re-adding luajit_relver.txt to .gitignore (or otherwise removing it from the tracked tree) must turn this job red while the existing cached job stays green.",
+    "The job runs on pull requests targeting main, so the regression is caught before merge rather than after.",
+    "If feasible without excessive runtime cost, the clean checkout path contains a character sequence that would be an invalid C escape (for example a directory component beginning with `c`, `s`, or `U`), so the ISS-0177 path-escaping class is also covered rather than only the missing-file class."
+  ],
+  "notes": "Filed as the unaddressed third acceptance criterion of ISS-0175: 'A CI job that builds from a clean checkout exercises the test-lua step, so this class of regression is caught by the pipeline rather than by a developer.' The first two criteria of ISS-0175 were met and verified in WF03-ISS-0175-20260806; this one was not, and is forwarded as its own run per the Unblock-Everything scope boundary rather than being folded into that fix. Note for whoever implements this: `zig build test` already depends on the Lua test binary (build.zig test_step.dependOn(&run_lua_tests.step)), so the coverage gap is specifically the *clean checkout*, not a missing test-lua wiring.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/507",
+  "discovered_while_fixing": "ISS-0175"
+}

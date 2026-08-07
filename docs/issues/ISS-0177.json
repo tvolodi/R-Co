@@ -22,5 +22,12 @@
   "verification": "Before the fix, a real `git clone` into a path containing \\claude\\...\\scratchpad failed with 'unknown escape sequence' / '\\U used with no following hex digits' errors. After the fix, the same clone runs `zig build test-lua` to completion: 71/71 tests passed. The primary checkout also rebuilds clean (zig build, zig build test).",
   "notes": "Predicted but not confirmed by TEST-RUNNER during WF03-ISS-0169-20260806, and recorded as an unverified aside in the ISS-0175 notes field. This run confirmed it empirically and established that it is a REAL defect affecting genuine clones, not an artifact of `git worktree` as originally suspected. The distinguishing evidence: both the primary checkout and the failing worktree emit identically unescaped paths -- only the following letters differ, which is what decides success or failure.",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/506",
-  "discovered_while_fixing": "ISS-0175"
+  "discovered_while_fixing": "ISS-0175",
+  "resolved_at": "2026-08-07T00:04:38Z",
+  "resolved_in_run": "WF03-ISS-0175-20260806",
+  "prevention": "The escaping fix is strictly correct C string-literal quoting and is a no-op on POSIX paths, so it holds for any future path. What it does not fix is the reason this stayed latent: nothing built the repository from a directory other than the maintainer's own, so a path-dependent failure could only be found by luck. Whether a machine was affected turned on nothing but the letters following the backslashes -- the emitted output was identically unescaped in the passing and failing cases. Coverage for that class is filed as ISS-0178 / GH #507, whose fourth acceptance criterion asks the clean-checkout CI job to build from a path containing a sequence that is an invalid C escape.",
+  "related_issues": [
+    "ISS-0175",
+    "ISS-0178"
+  ]
 }

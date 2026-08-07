@@ -4,6 +4,18 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-06
 
+### Fixed
+
+**ISS-0175 / ISS-0177 — a fresh clone could not build at all** ([GitHub #503](https://github.com/tvolodi/R-Co/issues/503), [GitHub #506](https://github.com/tvolodi/R-Co/issues/506))
+
+- **`vendor/luajit/src/luajit_relver.txt` was git-ignored while being a required build input.** `vendor/luajit/src/.gitignore` is inherited verbatim from upstream LuaJIT, where the file is *generated* by the upstream Makefile. This repo replaced that Makefile with `vendor/luajit/build.zig`, which **consumes** the file (`genversion.addFileArg(...luajit_relver.txt)`) but never produces it. The file was therefore simultaneously required-as-input and excluded-from-version-control. Any checkout without a stale local copy failed before compiling anything with `error: failed to check cache: '.../luajit_relver.txt' file_hash FileNotFound` — an error that never names its own cause.
+- **This was breaking CI, not merely theoretical.** `zig build test` depends on the Lua test binary, so every CI run on `main` failed at this step; the maintainer's own checkout built fine only because it held an untracked copy from an earlier local build. The fix **tracks the file**, which is what upstream itself intends: upstream's Makefile falls back to a tracked `../.relver` for non-git consumers, i.e. the relver is expected to travel with the source when the git-derived path is unavailable. Generating it from `build.zig` was the alternative and was rejected — it would re-derive at build time a value upstream already treats as a shippable constant.
+- **`dynasm.lua` interpolated an unescaped absolute Windows path into a C string literal.** `vendor/luajit/dynasm/dynasm.lua:88` emitted `#line` directives by concatenating the input filename straight into a C literal. `build.zig` passes a `b.path(...)`, which Zig resolves to an **absolute** path — so on Windows every `\` separator became a C escape sequence. Fixed by escaping backslashes and double quotes; a strictly-correct quoting change that is a **no-op on POSIX paths**, which contain neither character.
+- **Whether this broke your build depended only on the letters after the backslashes** — which is why it hid for so long. The maintainer's path yielded `\2 \R \v \s` (tolerated); a genuine clone into a path containing `\claude` and `\AppData` yielded `\c` and `\U`, producing **77 `unknown escape sequence` errors**. Same unescaped output in both cases; only luck differed. This is the works-on-my-machine class in its purest form.
+- **Verified against a real `git clone`, not a `git worktree`.** The distinction mattered: ISS-0177 was originally suspected to be a worktree artifact, and only a true clone settled it. After both fixes, the fresh clone runs `zig build test-lua` to completion — **71/71**. The primary checkout shows no regression: `zig build test` **936/1000 passed, 0 failed**.
+- ISS-0177 was found and fixed **inside** this run under the Unblock-Everything directive, because it blocked the fresh-clone verification that was ISS-0175's entire acceptance criterion — the two defects masked each other.
+- **The follow-up is filed, not silently absorbed.** Both defects were invisible precisely because no CI job builds from a *clean* checkout — CI caches the workspace, so a file that exists only locally looks tracked. That gap is ISS-0178/[#507](https://github.com/tvolodi/R-Co/issues/507) and is queued, not fixed here.
+
 ### Security
 
 **ISS-0169 tranche 1 — LUA-05/06/07** ([GitHub #495](https://github.com/tvolodi/R-Co/issues/495) — Lua capability enforcement did not exist; every host function ran unchecked)
