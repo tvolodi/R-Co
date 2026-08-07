@@ -1,0 +1,48 @@
+{
+  "handoff_id": "c5370003-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH537-20260807",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-07T11:07:56Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5370002-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0605-diagnosis.yaml",
+      "tools/verify_test_env.py",
+      "tools/clean_test_db.py"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2: Fix design for GH-537 / ISS-0605.\n\nRead docs/issue-reports/ISS-0605-diagnosis.yaml.\n\nProduce a fix design. Likely Type E (cross-cutting test-environment tooling + Python utility + lint tool) \u2014 write src/design/iss0605-test-env-c4-orphan-selfheal.md.\n\nThe design must:\n- Specify how tools/verify_test_env.py C4 invokes clean_test_db.py before the schema baseline check\n- Specify tools/lint_test_tenant_provisioning.py \u2014 what it greps for, what it fails on\n- Specify regression test in tests/integration/iss0605_orphan_self_heal_test.zig\n- List files to modify with line ranges\n- Error taxonomy if any\n- NO implementation code \u2014 design only\n\nRun python tools/lint_design_artefact.py src/design/iss0605-test-env-c4-orphan-selfheal.md (must exit 0).\n\nComplete handoff with PASS.",
+    "acceptance_criteria": [
+      "Design file src/design/iss0605-test-env-c4-orphan-selfheal.md exists",
+      "lint_design_artefact.py exits 0",
+      "Covers all diagnosis acceptance criteria",
+      "No implementation code",
+      "Files to modify listed with line ranges"
+    ],
+    "functions_to_call": [
+      "fn:design-fix"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E design for ISS-0605 / GH-537 C4 self-heal + tenant-provisioning lint. Three layers: (1) _run_clean_test_db_sweep() helper invoked before C4 in tools/verify_test_env.py, invoking tools/clean_test_db.py (default mode) which contains the existing ISS-0140 orphan-row DELETE at lines 332-336; (2) new tools/lint_test_tenant_provisioning.py scanning tests/integration/*.zig for INSERT/UPDATE setting storage_mode='SCHEMA' without a co-located provisionTenantSchema() call, with baseline exempting tenant_config_realm_test.zig and iss107_tenant_storage_mode_test.zig; (3) tests/integration/iss0605_orphan_self_heal_test.zig regression test inserting one orphan row and asserting C4 self-heals. Adds new C8 check. lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0 MINOR=37).",
+    "artifacts_out": [
+      "src/design/iss0605-test-env-c4-orphan-selfheal.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T11:07:56Z",
+  "completed_at": "2026-08-07T11:14:23Z"
+}

@@ -39,6 +39,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BASELINE = REPO_ROOT / "tools" / "lint_test_isolation.baseline.json"
 
+# Directory names that hold fixture / test-data files. Files under any of
+# these directories are test-data inputs to *lint* tools, not real test
+# files — they don't connect to a real DB, they don't need per-test UUIDs,
+# and they don't run via zig build test. Currently used by:
+#   tests/integration/_fixtures/lint_tenant_provisioning/ (ISS-0605 / GH-537)
+FIXTURE_DIR_NAMES = ("_fixtures",)
+
 UUID_LITERAL = re.compile(
     r'"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"'
 )
@@ -292,7 +299,12 @@ def iter_targets(paths: list[Path]) -> list[Path]:
     for p in paths:
         p = p.resolve()
         if p.is_dir():
-            out.extend(sorted(f.resolve() for f in p.rglob("*.zig")))
+            for f in sorted(p.rglob("*.zig")):
+                # Skip files inside any _fixtures/ directory — those are
+                # test-data inputs to other lint tools, not real test files.
+                if any(part in FIXTURE_DIR_NAMES for part in f.parts):
+                    continue
+                out.append(f.resolve())
         elif p.suffix == ".zig":
             out.append(p)
     return out

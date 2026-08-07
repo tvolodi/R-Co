@@ -84,6 +84,13 @@ BUILD_ZIG = REPO_ROOT / "build.zig"
 
 SCAN_DIRS = ("src", "tests")
 
+# Directory names (anywhere under SCAN_DIRS) that hold fixture / test-data
+# files — positive or negative controls consumed by *lint* tools, not by
+# zig's test runner. Files in these directories are not required to be
+# reachable from a b.addTest(...) root in build.zig. Currently used by:
+#   tests/integration/_fixtures/lint_tenant_provisioning/ (ISS-0605 / GH-537)
+FIXTURE_DIR_NAMES = ("_fixtures",)
+
 TEST_BLOCK = re.compile(r'^\s*test\s+("[^"]*"\s*)?\{', re.MULTILINE)
 ADD_TEST_CALL = re.compile(r"\bb\.addTest\(")
 ROOT_SOURCE_FILE = re.compile(r'\.root_source_file\s*=\s*b\.path\(\s*"([^"]+)"\s*\)')
@@ -151,13 +158,22 @@ SHIM_OWN_TEST_BLOCK_MAX = 1
 
 
 def find_test_bearing_files() -> set[Path]:
-    """Every .zig file under src/ or tests/ containing a test block."""
+    """Every .zig file under src/ or tests/ containing a test block.
+
+    Files inside any FIXTURE_DIR_NAMES directory are excluded — those are
+    positive/negative controls consumed by *lint* tools (e.g. tools/
+    lint_test_tenant_provisioning.py) and are not meant to run as zig tests.
+    """
     found: set[Path] = set()
     for top in SCAN_DIRS:
         base = REPO_ROOT / top
         if not base.is_dir():
             continue
         for path in base.rglob("*.zig"):
+            # Fixture files live under a _fixtures/ subdirectory anywhere
+            # in the tree; they're test data, not test code.
+            if any(part in FIXTURE_DIR_NAMES for part in path.parts):
+                continue
             try:
                 text = path.read_text(encoding="utf-8-sig")
             except OSError:

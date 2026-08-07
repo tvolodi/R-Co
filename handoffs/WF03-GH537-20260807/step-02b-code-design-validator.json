@@ -1,0 +1,47 @@
+{
+  "handoff_id": "c5370004-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH537-20260807",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-07T11:14:49Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5370003-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss0605-test-env-c4-orphan-selfheal.md",
+      "docs/issue-reports/ISS-0605-diagnosis.yaml"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2b: Design validation (HARD GATE).\n\nVerify src/design/iss0605-test-env-c4-orphan-selfheal.md per code-design-validator guidelines:\n1. python tools/lint_design_artefact.py src/design/iss0605-test-env-c4-orphan-selfheal.md \u2014 exit 0, no BLOCKER/MAJOR\n2. Every diagnosis AC has a corresponding design element\n3. No implementation code (Type E prose)\n4. All public function signatures listed\n5. Error taxonomy specified\n6. Files to modify with line ranges\n7. Classification per templates/lego-catalog.md correct\n8. Dependencies documented\n\nFAIL if any check fails.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0",
+      "All diagnosis AC covered",
+      "No implementation code",
+      "Signatures + error taxonomy + files listed",
+      "Complete enough for BACKEND-DEV to implement without ambiguity"
+    ],
+    "functions_to_call": [
+      "fn:validate-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for ISS-0605 / GH-537 C4 schema-baseline self-heal validated. Type E classification correct (no Lego piece covers cross-cutting test-infra tooling). lint_design_artefact.py exits 0 (BLOCKER=0, MAJOR=0, MINOR=37 \u2014 all E030 prose-style, MINOR-by-design). All 6 diagnosis ACs (AC-1..AC-6) covered by \u00a77.1-7.4; error taxonomy in \u00a74 (9 cases); public function signatures enumerated; files-to-modify with line ranges in \u00a72.1-2.5; dependencies documented in \u00a78. No implementation code (Type E prose). Two open questions in \u00a79 (C8 ordering and SKIP behaviour) have implementer-acceptable defaults documented for BACKEND-DEV.",
+    "artifacts_out": [
+      "src/design/iss0605-test-env-c4-orphan-selfheal.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3) for implementation"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T11:14:49Z",
+  "completed_at": "2026-08-07T11:17:39Z"
+}

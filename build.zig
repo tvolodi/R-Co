@@ -1562,6 +1562,21 @@ pub fn build(b: *std.Build) void {
     });
     const run_iss107_integration_tests = addIntegrationRun(b, iss107_integration_tests, migrations_dir, clean_test_db);
 
+    // ISS-0605 / GH-537: regression test for the C4 schema-baseline self-heal.
+    // Verifies that `_run_clean_test_db_sweep()` (the GH-443 / ISS-0140 orphan-row
+    // DELETE sweep) runs before verify_schema_baseline.py --check-tenants, so the
+    // legacy C4 failure mode — reporting orphan public.tenant rows forever
+    // without removing them — is closed permanently.
+    const iss0605_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0605_orphan_self_heal_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0605_integration_tests = addIntegrationRun(b, iss0605_integration_tests, migrations_dir, clean_test_db);
+
     const iss105_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/iss105_token_model_test.zig"),
@@ -1817,6 +1832,7 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_iss103_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss106_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss107_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss0605_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss502_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss202_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss203_integration_tests.step);
@@ -1962,6 +1978,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss107_step = b.step("test-integration-iss107", "Run ISS-107 tenant storage_mode integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss107_step.dependOn(&clean_test_db.step);
     test_integration_iss107_step.dependOn(&run_iss107_integration_tests.step);
+
+    const test_integration_iss0605_step = b.step("test-integration-iss0605", "Run ISS-0605 C4 orphan-row self-heal integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0605_step.dependOn(&clean_test_db.step);
+    test_integration_iss0605_step.dependOn(&run_iss0605_integration_tests.step);
 
     const test_integration_iss105_step = b.step("test-integration-iss105", "Run ISS-105 token model schema integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss105_step.dependOn(&clean_test_db.step);
