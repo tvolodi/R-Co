@@ -1,4 +1,89 @@
 {
   "version": "1",
-  "items": []
+  "items": [
+    {
+      "issue_id": "--help",
+      "github_issue": "",
+      "title": "",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "tvolodi-20524",
+        "locked_at": "2026-08-07T04:23:39Z"
+      },
+      "added_at": "2026-08-07T04:20:30Z",
+      "started_at": "2026-08-07T04:23:39Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-522",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/522",
+      "title": "TC-EXP-301-09 panics unwrapping a NULL context",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "tvolodi-20524",
+        "locked_at": "2026-08-07T04:23:47Z"
+      },
+      "added_at": "2026-08-07T04:21:06Z",
+      "started_at": "2026-08-07T04:23:47Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-521",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/521",
+      "title": "store.append nests a second pool.acquire",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-07T04:21:06Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-520",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/520",
+      "title": "TC-EXP-301-05 asserts on measured wall-clock",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-07T04:21:07Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-518",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/518",
+      "title": "45 business tables are duplicated",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-07T04:21:08Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-517",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/517",
+      "title": "Remaining test-integration-svc failures",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-07T04:21:09Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    }
+  ]
 }
