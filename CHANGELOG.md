@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0207 — `TC-EXT-01-U08a` flaky under full-suite concurrency: `CaptureServer` hardcoded port + cross-thread data race** ([GitHub #528](https://github.com/tvolodi/R-Co/issues/528))
+
+- **Two independent races, either sufficient on its own.** `tests/unit/service_task_test.zig`'s `CaptureServer` bound a hardcoded TCP port (18181) — a shared machine-wide resource that could collide under `zig build test`'s concurrent test binaries, or across the parallel workspace checkouts this repo is routinely run in. Separately, the test's captured header fields (`first_trace_id`, `first_idempotency_key`, `first_custom_header`) were written by `CaptureServer`'s background thread and read by the test thread with no happens-before edge — `defer server.join()` ran at scope exit, *after* the assertions, so the test could read fields the server thread was still writing.
+- **Fix:** `CaptureServer` now binds an ephemeral port (`0`) and the test reads the actual bound port back via `server.socket.address` to construct `url_template` dynamically. A `std.Io.Event` (`headers_captured`) is set by the server thread immediately after header capture completes and waited on by the test thread before its assertions, establishing the missing happens-before edge. A second `std.Io.Event` (`listening`) similarly gates reading back the bound port.
+- **Verification:** 5 consecutive isolated runs of the scoped `zig build test-bpm-src` step (84/95 passed, 0 failed, every run) plus 2 truly-concurrent stress runs targeting the exact full-suite-concurrency scenario the bug required — both passed cleanly. Design: `src/design/service-task-test-capture-server.md`. Test-only change; no production source touched.
+- **Note:** verification also surfaced a new, unrelated pre-existing defect — `src/db/provisioning.zig`'s advisory-lock release path can leave a lock held by an idle pooled connection, hanging full-suite `zig build test` runs. Filed separately as ISS-0612 / [GitHub #556](https://github.com/tvolodi/R-Co/issues/556); out of scope for this fix.
+
 **ISS-0608 — Infrastructure Health Checklist never verified db_test's actual pg_hba.conf auth method against docker-compose.yml** ([GitHub #545](https://github.com/tvolodi/R-Co/issues/545))
 
 - **Root cause:** POSTGRES_HOST_AUTH_METHOD is applied only at initdb time (first container start with empty data directory). A container left running since before a docker-compose.yml change to this variable never re-reads it on restart or `docker-compose up` (which reuses existing container). None of the existing checks (C0-C8) inspected pg_hba.conf or verified the running container's actual auth configuration against the tracked compose file.
