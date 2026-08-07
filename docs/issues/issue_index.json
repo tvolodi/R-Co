@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-07T04:40:47Z",
-  "next_issue_id": 207,
+  "last_updated": "2026-08-07T04:51:00Z",
+  "next_issue_id": 208,
   "issues": [
     {
       "id": "ISS-0001",
@@ -1979,6 +1979,21 @@
       ],
       "github_issue": "https://github.com/tvolodi/R-Co/issues/526",
       "created_at": "2026-08-07T04:40:47Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0207",
+      "title": "TC-EXT-01-U08a is flaky under full-suite concurrency: CaptureServer binds hardcoded TCP port 18181 and its captured headers are read across a thread boundary",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "test-flake / hardcoded-port + cross-thread-race",
+      "run_id": "WF03-ISS-0132-20260807",
+      "handoff_id": "66c23ed3-0d38-4858-b08a-116deff3b215",
+      "affected_areas": [
+        "tests/unit/service_task_test.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/528",
+      "created_at": "2026-08-07T04:51:00Z",
       "resolved_at": null
     }
   ]
