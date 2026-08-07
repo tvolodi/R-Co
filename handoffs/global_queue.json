@@ -442,17 +442,22 @@
       ]
     },
     {
-      "issue_id": "ISS-0607",
+      "issue_id": "GH-542",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/542",
-      "title": "pg.zig SCRAM auth failure blocks all integration tests",
-      "severity": "BLOCKER",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T12:32:55Z",
-      "started_at": null,
+      "title": "pg.zig stderr logging makes zig test runner abort on every server error \u2014 blocks all negative integration tests",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-07T12:55:05Z"
+      },
+      "added_at": "2026-08-07T12:55:05Z",
+      "started_at": "2026-08-07T12:55:05Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 542,
+      "labels": []
     }
   ]
 }
