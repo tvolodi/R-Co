@@ -7,9 +7,9 @@
   "to_agent": "TEST-RUNNER",
   "file": "handoffs/WF03-GH528-20260807/step-04-test-runner.json",
   "created_at": "2026-08-07T18:11:54Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-07T18:12:20Z",
+  "completed_at": "2026-08-07T19:11:29Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -30,7 +30,28 @@
       "fn:run-tests"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "TC-EXT-01-U08a (GH #528 / ISS-0207) verified fixed: 5 consecutive isolated runs of the scoped test-bpm-src build step (84/95 passed, 0 failed each time) plus 2 truly-concurrent stress runs (same result both) targeting the exact class of full-suite-concurrency race the original bug exhibited. Full zig build test could not be completed cleanly -- one partial run (BACKEND-DEV, 909/968 pass/5 fail, all 5 unrelated pre-existing test_api08_auth.zig DB failures confirmed via empty git diff) and two later attempts hung indefinitely on a newly-discovered, unrelated defect: an idle pooled connection retaining a session-scoped PostgreSQL advisory lock past its intended release (src/db/provisioning.zig), blocking all subsequent tenant provisioning. This is out of scope for GH-528 (test-file-only change) and has been filed as its own issue per CLAUDE.md scope boundary rather than fixed in this run.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-07-WF03-GH528-20260807.yaml"
+    ],
+    "issues": [
+      {
+        "id": "ISSUE-001",
+        "severity": "MAJOR",
+        "description": "New defect discovered: src/db/provisioning.zig advisory-lock release can be skipped, leaving an idle pooled connection holding a session-scoped lock indefinitely and hanging full-suite zig build test runs. Reproduced twice. Filing as its own GitHub issue + ISS file + global queue entry -- not fixed in this run.",
+        "affected_requirement": null
+      },
+      {
+        "id": "ISSUE-002",
+        "severity": "MAJOR",
+        "description": "Pre-existing tests/unit/test_api08_auth.zig failures (TC-IDN-04-05a/05b), confirmed unrelated to this branch via git diff main...HEAD. Already covered by tracked issue lineage (ISS-0209/ISS-0131); not re-filed.",
+        "affected_requirement": null
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 7) -- no BLOCKER against this run's own acceptance criteria (TC-EXT-01-U08a fix verified PASS); new advisory-lock issue filed separately per scope boundary."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
