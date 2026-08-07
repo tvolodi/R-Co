@@ -455,6 +455,24 @@
       "deferred_reason": null,
       "issue_number": 542,
       "labels": []
+    },
+    {
+      "issue_id": "GH-545",
+      "issue_number": 545,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/545",
+      "title": "Infrastructure Health Checklist doesn't detect stale container auth-config drift (POSTGRES_HOST_AUTH_METHOD)",
+      "severity": "MAJOR",
+      "labels": [],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI",
+        "locked_at": "2026-08-07T15:05:14Z"
+      },
+      "added_at": "2026-08-07T15:05:14Z",
+      "started_at": "2026-08-07T15:05:14Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

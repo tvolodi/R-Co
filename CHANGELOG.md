@@ -6,6 +6,14 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0608 — Infrastructure Health Checklist never verified db_test's actual pg_hba.conf auth method against docker-compose.yml** ([GitHub #545](https://github.com/tvolodi/R-Co/issues/545))
+
+- **Root cause:** POSTGRES_HOST_AUTH_METHOD is applied only at initdb time (first container start with empty data directory). A container left running since before a docker-compose.yml change to this variable never re-reads it on restart or `docker-compose up` (which reuses existing container). None of the existing checks (C0-C8) inspected pg_hba.conf or verified the running container's actual auth configuration against the tracked compose file.
+- **Impact:** Two independent workspaces spent significant diagnosis time attributing AuthenticationFailed symptoms to hypothesized SCRAM negotiation bugs before the actual cause (stale container predating a compose-file fix) was found. The correct remedy (`docker-compose rm -f -v db_test && up -d db_test`) was a one-line fix once identified, but nothing detected the condition automatically.
+- **Fix:** Added check_db_test_auth_method() (C9) to tools/verify_test_env.py. Parses docker-compose.yml's declared POSTGRES_HOST_AUTH_METHOD for db_test service, execs into running db_test container to read pg_hba.conf, and matches specifically the 'host all all all <method>' catch-all line. Fails the gate with explicit remedy (recreate container) if they disagree.
+- **Verification:** Verified against correctly-configured trust container (PASS) and two independently-created throwaway scram-sha-256 containers (FAIL, correctly detected). Documented in test_infrastructure_guide.md Section 3's checklist.
+- **Prevention:** Every docker-compose.yml change that modifies container initialization environment variables (POSTGRES_HOST_AUTH_METHOD, POSTGRES_DB, etc.) must verify the running container's actual state matches, not just that the container is healthy. Health status and port publication stay green on stale containers.
+
 **ISS-0128 (correction) — `TC-DB-03-01` was still failing after the entry below shipped; the search_path fix was not the cause** ([GitHub #418](https://github.com/tvolodi/R-Co/issues/418))
 
 - **The entry immediately below this one was wrong, and `main` shipped it anyway.** The prior fix (transaction-scoped `SET LOCAL search_path`) was approved by a RELEASE-VALIDATOR decision citing a test report file, `tests/reports/report-20260807-WF03-ISS-0128.yaml`, that does not exist anywhere in this repository's history. `TC-DB-03-01` was independently re-run against `main` after that fix merged (PR #535), against a freshly created and freshly migrated database, and failed with the identical `StoreError.InstanceNotFound` — the "PASS" verdict had never been backed by an actual test execution.
