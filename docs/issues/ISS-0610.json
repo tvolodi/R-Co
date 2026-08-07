@@ -1,0 +1,29 @@
+{
+  "issue_id": "ISS-0610",
+  "title": "global_queue.json readers/writers never fetch origin/main before reading, and gh_claim.py never checks whether a still-open GitHub issue is already resolved locally, causing repeated duplicate-work claims across parallel workspaces",
+  "severity": "MAJOR",
+  "discovered_by": "ORCH",
+  "discovered_at": "2026-08-07T15:50:00Z",
+  "discovered_in": "Deliberate concurrent-workspace stress test requested by the user, following the GH-542 (ISS-0607) double-claim incident and its first-round fixes (PR #543, #546, #549)",
+  "symptom": "Two independent, structural gaps found during a user-directed adversarial test running two parallel workspace checkouts concurrently: (1) gh_claim.py, queue_release.py, and queue_add.py each read handoffs/global_queue.json from the local working tree and write the WHOLE file back, without ever fetching origin/main first -- the existing file mutex only serializes two processes on the SAME machine, not two independent git checkouts; (2) gh_claim.py filters GitHub's open/closed state only, with no check for whether an issue is already resolved on main but was never closed on GitHub -- discovered when a sibling workspace claimed and began a full WF-03 design/implementation run on GH-548 (already fixed and merged via PR #549 twenty minutes earlier), and a systematic scan of all 246 then-open GitHub issues found three MORE instances of the same pattern already present (GH-532/ISS-0208, GH-366/ISS-0107, GH-364/ISS-0106), all fixed on main for hours to days but never closed.",
+  "root_cause": "(1) handoffs/global_queue.json's three writer tools were designed around a single-workspace, same-machine mutex model; the parallel-workspace pattern this repo has run since at least 2026-05-29 (COMPOSE_PROJECT_NAME=r-co / r-co-2) was never accounted for in the queue tooling. (2) Closing a GitHub issue and merging its fix to main are two separate, independently-fallible actions (a DOC-UPDATER Step 7/Final omission, a manual merge, or a bookkeeping-only PR that never called gh issue close) -- gh_claim.py trusted GitHub's open/closed state as if it were synchronized with docs/issues/*.json's RESOLVED state, which it is not guaranteed to be.",
+  "impact": "GH-548: a full WF-03 run (Step 00 git-setup through Step 2b design validation) was spent on an already-fixed issue before failing its own design-validator gate on an unrelated formatting nit -- caught before any implementation code was written. GH-532/366/364: three further already-fixed-but-open issues sat in the open-issue pool, each a candidate for the same wasted-run pattern on any future gh_claim.py invocation, from either workspace.",
+  "evidence": "docs/anti-patterns.md (GH-542 entry); handoffs/WF03-GH548-20260807/step-2b-code-design-validator.json (sibling workspace, absolute path c:\\Users\\tvolo\\dev\\ai-dala\\R-Co) showing PENDING/FAIL state with zero implementation files touched; direct verification of ISS-0208 (zig ast-check tests/integration/effects_subsystem_test.zig exits 0 on main), ISS-0107 (advisory-lock widening present in tests/integration/helpers.zig), ISS-0106 (test-integration-others-internal barrier present in build.zig) all matching current main before closing GH-532/366/364",
+  "fix_target": "Added tools/_queue_sync.py (sync_queue_from_origin helper: git fetch + git show origin/main:<path>, never touches working tree/branch) and wired it into gh_claim.py, queue_release.py, queue_add.py's read paths, inside their existing file-mutex critical sections. Added LOOP_PROTOCOL.md step: pull main before calling gh_claim.py (closes the window before the tool runs; the sync-on-read closes it at read time; the existing mandatory immediate-push step closes it at write time -- three layers, each covering a different point in the sequence). Added gh_claim.py._already_resolved_locally(): before claiming a candidate issue, checks docs/issues/ISS-*.json for a github_issue match with status RESOLVED/RESOLVED-WITH-INFRA-BLOCK, and skips (does not claim) such issues, printing a note recommending the issue be closed. Closed the four already-resolved-but-open issues found during the audit (GH-548, GH-532, GH-366, GH-364).",
+  "related_issues": [
+    "ISS-0607 / GH-542 -- the original double-claim incident this stress test was probing for regressions of",
+    "ISS-0609 / GH-548 -- itself became an instance of the pattern this issue fixes (already-resolved-but-open), caught mid-investigation"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/550",
+  "github_issue_collision_checked": true,
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-07T15:55:00Z",
+  "resolved_in": [
+    "tools/_queue_sync.py",
+    "tools/gh_claim.py",
+    "tools/queue_release.py",
+    "tools/queue_add.py",
+    "docs/agents/protocols/LOOP_PROTOCOL.md"
+  ],
+  "resolution": "Added tools/_queue_sync.py (sync_queue_from_origin: git fetch + git show origin/main:<path>) wired into all three queue tools' read paths inside their file-mutex sections. Added LOOP_PROTOCOL.md 'pull main before gh_claim.py' step. Added gh_claim.py._already_resolved_locally() pre-claim check against docs/issues/ISS-*.json RESOLVED status, tested directly (correctly detects GH-542 as resolved, correctly returns None for an unrelated URL; corrected the all_locked exit-code semantics so an all-already-resolved backlog reports exit 2 not exit 3). Closed GH-548, GH-532, GH-366, GH-364 after individually verifying each fix is genuinely present on main (zig ast-check, grep for the specific resolved code, respectively)."
+}

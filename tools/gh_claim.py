@@ -62,6 +62,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _queue_sync import sync_queue_from_origin  # noqa: E402
+
 QUEUE_FILE  = "handoffs/global_queue.json"
 LOCK_FILE   = "handoffs/global_queue.lock"
 REPO        = "tvolodi/R-Co"
@@ -146,6 +149,45 @@ def _fetch_open_issues() -> list:
     return issues
 
 
+_RESOLVED_STATUSES = {"RESOLVED", "RESOLVED-WITH-INFRA-BLOCK"}
+
+
+def _already_resolved_locally(github_issue_url: str) -> str | None:
+    """Return a short reason string if a local docs/issues/ISS-*.json already
+    marks this GitHub issue RESOLVED, else None.
+
+    Discovered 2026-08-07: an issue can be fixed and merged to main (by any
+    workspace) without ever being closed on GitHub — closing the GitHub issue
+    and merging the fix are two separate actions, and nothing enforces they
+    happen together. gh_claim.py's source of truth is GitHub's open/closed
+    state, so a still-open-but-already-fixed issue gets claimed and worked a
+    second time. This happened twice in one session (GH-545, GH-548) before
+    being caught. ISSUE-FIXER's Step 0.5 registry lookup already detects this
+    correctly ONCE A RUN HAS ALREADY BEEN STARTED — checking here, before
+    claiming, avoids spending Step 00 (branch creation) and Step 0.5 time on
+    a run that will just discover the same thing a few minutes later, and
+    matters more for a design/implementation run that (per GH-548) can drift
+    past the "already resolved" signal instead of stopping on it.
+    """
+    issues_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs", "issues")
+    if not os.path.isdir(issues_dir):
+        return None
+    for name in os.listdir(issues_dir):
+        if not name.startswith("ISS-") or not name.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(issues_dir, name), encoding="utf-8-sig") as f:
+                iss = json.load(f)
+        except Exception:
+            continue
+        if iss.get("github_issue") != github_issue_url:
+            continue
+        status = iss.get("status")
+        if status in _RESOLVED_STATUSES:
+            return f"{name} status={status!r}"
+    return None
+
+
 def _infer_severity(issue: dict) -> str:
     """Map GitHub labels to BLOCKER / MAJOR / MINOR. Defaults to MAJOR."""
     names = {lbl["name"].lower() for lbl in issue.get("labels", [])}
@@ -174,8 +216,11 @@ def main() -> int:
         return 1
 
     try:
-        # Read current lock registry
-        queue = _read_queue()
+        # Read current lock registry. Sync against origin/main first — the
+        # local file mutex only protects two processes on this machine; it
+        # says nothing about another workspace's already-pushed claim that
+        # this local checkout hasn't pulled yet. See _queue_sync.py.
+        queue = sync_queue_from_origin(_read_queue())
 
         # Build set of GitHub URLs currently locked (and not stale)
         active_locks: set[str] = set()
@@ -197,14 +242,23 @@ def main() -> int:
         if not open_issues:
             return 2  # GitHub reports 0 open issues — loop is done
 
-        # Walk newest-first; find first unclaimed issue
-        all_locked = True
+        # Walk newest-first; find first unclaimed, not-already-resolved issue
+        any_actively_locked = False
         for issue in open_issues:
             url = issue["url"]
             if url in active_locks:
+                any_actively_locked = True
                 continue  # another workspace owns this
 
-            all_locked = False
+            resolved_reason = _already_resolved_locally(url)
+            if resolved_reason:
+                print(
+                    f"[gh_claim] skipping {url} — already resolved locally ({resolved_reason}); "
+                    "the fix landed on main but the GitHub issue was never closed. "
+                    "Consider running: gh issue close <number> --comment '...'",
+                    file=sys.stderr,
+                )
+                continue
             now = _utcnow()
             severity = _infer_severity(issue)
             issue_id = f"GH-{issue['number']}"
@@ -239,12 +293,15 @@ def main() -> int:
             print(json.dumps(claimed_item, indent=2))
             return 0
 
-        # Reached here: every open issue is under an active lock
-        if all_locked:
+        # Reached here: no issue was claimable. Distinguish WHY for the caller:
+        # "everything is being worked by someone else" (retry later, exit 3)
+        # vs. "nothing left to do" (every open issue was either locked or
+        # already resolved-but-unclosed — either way, stop the loop, exit 2).
+        if any_actively_locked:
             print("All open GitHub issues are locked by other workspaces.", file=sys.stderr)
             return 3
 
-        return 2  # nothing claimable
+        return 2  # nothing claimable (none open, or all already resolved)
 
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
