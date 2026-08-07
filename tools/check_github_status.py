@@ -23,10 +23,18 @@ Usage:
     python3 tools/check_github_status.py            # human-readable
     python3 tools/check_github_status.py --github   # + GitHub Actions annotation
     python3 tools/check_github_status.py --json     # machine-readable
+    python3 tools/check_github_status.py --summary  # Markdown for $GITHUB_STEP_SUMMARY
 
 Exit codes:
     0  always (see above), including on network failure -- an unreachable
        status page is itself uninformative and must not fail a build.
+
+An open incident explains a cancelled or never-scheduled job. It does NOT
+excuse a step that ran and failed: a real assertion failure during an outage is
+still a real assertion failure. Nothing here may ever be wired up to retry,
+cancel, neutralise, or otherwise suppress a failing job -- that is the ISS-0171
+/ GH #498 defect, in which `continue-on-error` hid genuine failures for months.
+This tool annotates; it never adjudicates.
 """
 import argparse
 import json
@@ -89,6 +97,51 @@ def active_actions_incident():
     return None
 
 
+def summary_markdown(status, reason, degraded, incident):
+    """Markdown for $GITHUB_STEP_SUMMARY. Durable where an annotation is not.
+
+    A ::warning:: scrolls away with the log; the step summary is the surface a
+    reader lands on from the PR checks tab, which is where the "is this my bug
+    or theirs?" question actually gets asked.
+    """
+    lines = ["### GitHub Actions platform status", ""]
+    if status is None:
+        lines += [
+            f"Status could not be determined ({reason}).",
+            "",
+            "Treated as no signal. This check never fails a build.",
+        ]
+    elif degraded:
+        lines += [f"**DEGRADED — `{status}`.** The GitHub Actions platform is impaired."]
+        if incident:
+            lines += [
+                "",
+                f"- **Incident:** {incident['name']}",
+                f"- **Impact:** {incident['impact']}",
+                f"- **Incident status:** {incident['status']}",
+                f"- **Started:** {incident['started_at']}",
+            ]
+            if incident.get("shortlink"):
+                lines.append(f"- **Details:** {incident['shortlink']}")
+        lines += [
+            "",
+            "A job that was **cancelled**, **never started**, or a run that was "
+            "**never created** is expected while this incident is open, and is not "
+            "evidence of a defect in the change under test.",
+            "",
+            "**A step that ran and failed is still a genuine failure.** This notice "
+            "explains missing or cancelled jobs only — it never excuses a red step. "
+            "Read the failing step.",
+        ]
+    else:
+        lines += [
+            f"Operational (`{status}`). The platform is healthy.",
+            "",
+            "A red run is therefore attributable to the change under test.",
+        ]
+    return "\n".join(lines) + "\n"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit JSON")
@@ -97,11 +150,20 @@ def main():
         action="store_true",
         help="also emit a ::warning:: annotation when Actions is degraded",
     )
+    parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="emit Markdown suitable for $GITHUB_STEP_SUMMARY",
+    )
     args = parser.parse_args()
 
     status, reason = actions_status()
     degraded = status in DEGRADED
     incident = active_actions_incident() if degraded else None
+
+    if args.summary:
+        print(summary_markdown(status, reason, degraded, incident), end="")
+        return 0
 
     if args.json:
         print(json.dumps(
@@ -132,10 +194,21 @@ def main():
         print("A red run is therefore attributable to the change under test.")
 
     if args.github and degraded:
-        detail = incident["name"] if incident else "see githubstatus.com"
+        # ISS-0170 criterion 2: the annotation must NAME the incident. The start
+        # time is part of naming it usefully -- it is what lets a reader line up
+        # "my job was cancelled at T" against "the incident opened at T-minus-x"
+        # and reach an attribution rather than a guess.
+        if incident:
+            detail = f"{incident['name']} (started {incident['started_at']}"
+            detail += f", impact={incident['impact']})"
+            if incident.get("shortlink"):
+                detail += f" {incident['shortlink']}"
+        else:
+            detail = "see githubstatus.com"
         print(f"::warning title=GitHub Actions degraded ({status})::"
               f"{detail}. Cancelled or never-scheduled jobs in this run are likely "
-              f"platform-caused, not code-caused. Genuine step failures still count.")
+              f"platform-caused, not code-caused. A step that ran and FAILED is still "
+              f"a genuine failure -- this notice never excuses one.")
 
     # Always 0. This is diagnostic, never a gate.
     return 0

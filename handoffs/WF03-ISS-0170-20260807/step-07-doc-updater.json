@@ -1,0 +1,51 @@
+{
+  "handoff_id": "8d123862-f772-4bb7-bc21-935f3952d28f",
+  "run_id": "WF03-ISS-0170-20260807",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-07T00:43:51Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a623116e-cc30-4036-9a8e-e615d23d8b09"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0170.json",
+      "docs/issue-reports/ISS-0170-diagnosis.yaml",
+      "handoffs/WF03-ISS-0170-20260807/step-03-backend-dev.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 07 DOC-UPDATER for ISS-0170 / GH #497: record the fix in CHANGELOG.md, verify requirement mapping, and close out the issue record with resolution and prevention text.",
+    "acceptance_criteria": [
+      "CHANGELOG.md documents the fix and references GH #497",
+      "CHANGELOG.md notes the relationship to ISS-0171 / GH #498 (the opposite defect)",
+      "Requirement mapping checked rather than assumed; status updated via reqctl if any maps",
+      "docs/issues/ISS-0170.json set to RESOLVED with resolution + prevention text",
+      "All four ISS-0170 acceptance criteria confirmed met, with per-criterion evidence"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md gained an ISS-0170 entry under [Unreleased] Fixed, referencing GH #497, covering the symptom (outage renders as a red X identical to a failed test; 40-run breakdown 31/6/3 with only 3 genuine defects), the root cause (no mechanical source of platform-state truth; attribution was an unwritten habit), the three changes (enriched annotation naming incident start time/impact/shortlink, new --summary mode writing to $GITHUB_STEP_SUMMARY, diagnostic duplicated at the head of the build job), and the original misdiagnosis as runner starvation. The relationship to ISS-0171/#498 is stated explicitly as a mirror image: that defect HID real failures via continue-on-error while this one made platform noise look like a defect, so the fix for one must not become the other -- the outage signal may annotate a failure and may never suppress one. The no-masking proof is recorded: 15 gating steps at continue-on-error=None, the sole || true guarding a step that runs no build/test/lint. REQUIREMENT MAPPING: checked, none maps. Searched docs/requirements.yaml (350 requirements) for CI/infrastructure/pipeline/build terms; the only textual hit was an unrelated DB-outage acceptance line. The two nearest candidates were read in full and rejected: WASM-05 is byte-identical .wasm compilation output, ADP-06 is pipeline_run_id on BPM audit records -- both product-domain, neither about the GitHub Actions CI harness. No reqctl set-status or render-status was run, correctly. ISS-0170.json set to RESOLVED with resolved_at, resolved_in_commit f097bf3, resolution and prevention text, and a new acceptance_criteria_evidence array giving per-criterion proof. All four criteria are MET: (1) components API queried for the ungrouped Actions component, running as pre-flight in both the platform_status job and the head of the build job, verified live at exit 0; (2) ::warning:: annotation names the incident plus start time, impact and shortlink, with --summary writing a durable step-summary section, proven by an injected major_outage payload naming the 15:22:49Z start; (3) diagnostic only -- main() returns 0 on every path including the exercised degraded path, and the programmatic audit shows all 15 gating steps unmasked; (4) CLAUDE.md marks the status query MANDATORY with a fourth outcome row for the unchecked case and states that an open incident never converts a genuine failure into an acceptable one.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0170.json",
+      "handoffs/WF03-ISS-0170-20260807/step-07-doc-updater.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step Final / fn:git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T00:43:51Z",
+  "completed_at": "2026-08-07T00:43:51Z"
+}

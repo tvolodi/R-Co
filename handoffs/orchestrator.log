@@ -187,3 +187,8 @@
 2026-08-07T00:06:56Z | COMPLETE | WF03-ISS-0175-20260806 | e53cc6cf | DOC-UPDATER | PASS - changelog + ISS-0175/0177 RESOLVED; follow-up ISS-0178/GH#507 filed and queued
 2026-08-07T00:19:59Z | COMPLETE | WF03-ISS-0175-20260806 | e53cc6cf | BACKEND-DEV | ISS-0179/GH#509 fixed in-run (Unblock-Everything): LuaJIT unwinder not linked on Linux, exposed once ISS-0175 stopped masking it
 2026-08-07T00:29:30Z | LOOP_ITEM_DONE | WF03-ISS-0175-20260806 | -------- | TVOLODI-ws2-loop | RESOLVED (PR #508, merge 9d7e11a; also fixed ISS-0177/#506, ISS-0179/#509)
+2026-08-07T00:29:54Z | ROUTE | WF03-ISS-0170-20260807 | 2b2789b2 | ORCH -> BACKEND-DEV | PENDING step 00
+2026-08-07T00:31:35Z | COMPLETE | WF03-ISS-0170-20260807 | 2b2789b2 | BACKEND-DEV | Step 00 git-setup PASS — branch feature/WF03-ISS-0170-20260807 pushed
+2026-08-07T00:33:40Z | COMPLETE | WF03-ISS-0170-20260807 | 93845cbc | BACKEND-DEV | Step 01 diagnosis PASS — 2 of 4 criteria pre-satisfied by 9a2b45c; D1-D4 close the rest
+2026-08-07T00:37:47Z | COMPLETE | WF03-ISS-0170-20260807 | a623116e | BACKEND-DEV | Step 03 implement PASS — diagnostic outage pre-flight; all 4 ISS-0170 criteria verified
+2026-08-07T00:43:51Z | COMPLETE | WF03-ISS-0170-20260807 | 8d123862 | DOC-UPDATER | Step 07 PASS - CHANGELOG + ISS-0170 RESOLVED (GH #497); no requirement maps (CI infra)

@@ -1,27 +1,56 @@
 {
   "id": "ISS-0170",
   "title": "CI cannot distinguish a GitHub Actions platform outage from a real failure",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/497",
   "discovered_at": "2026-08-06T21:23:19Z",
   "discovered_by": "ORCH investigating run 31127727011",
   "discovered_while_fixing": null,
-  "run_id": null,
+  "run_id": "WF03-ISS-0170-20260807",
+  "resolved_at": "2026-08-07T00:41:53Z",
+  "resolved_in_commit": "f097bf3",
   "affected_areas": [
-    ".github/workflows/ci.yml"
+    ".github/workflows/ci.yml",
+    "tools/check_github_status.py",
+    "CLAUDE.md"
   ],
   "symptom": "A platform outage renders on a PR as a red X identical to a failed test. 12/12 runs before 15:22Z succeeded; every cancellation and failure today falls after the incident opened.",
-  "root_cause": "GitHub Actions major_outage (incident 'Incident with Actions', impact critical, opened 2026-08-06T15:22:49Z). Webhook triggers throttled, so runs are never created and queued jobs are never assigned a runner. NOT runner capacity.",
+  "root_cause": "GitHub Actions major_outage (incident 'Incident with Actions', impact critical, opened 2026-08-06T15:22:49Z). Webhook triggers throttled, so runs are never created and queued jobs are never assigned a runner. NOT runner capacity. The deeper cause is that the pipeline had no mechanical source of platform-state truth: run colour was the only signal a reader had, and run colour conflates 'your change broke something' with 'the platform could not run your change at all'. The attribution step existed only as an unwritten habit, so it was skipped.",
   "acceptance_criteria": [
     "Pre-flight step queries githubstatus.com components API for the Actions component",
     "Outage surfaced as an explicit annotation naming the incident",
     "Pre-check is diagnostic only: never fails the build, never masks a genuine failure",
     "CLAUDE.md requires checking the status API before reporting red CI as acceptable"
   ],
+  "acceptance_criteria_evidence": [
+    {
+      "criterion": "Pre-flight step queries githubstatus.com components API for the Actions component",
+      "status": "MET",
+      "how": "tools/check_github_status.py queries https://www.githubstatus.com/api/v2/components.json (COMPONENTS_URL, line 45) and selects the ungrouped top-level component named 'Actions'. It runs as a pre-flight in TWO places in .github/workflows/ci.yml: the standalone `platform_status` job, and -- added by this run -- the head of the `build` job, before any Zig toolchain setup or build step. Verified against the live API: reports status=operational, degraded=false, exit 0."
+    },
+    {
+      "criterion": "Outage surfaced as an explicit annotation naming the incident",
+      "status": "MET",
+      "how": "`--github` emits a ::warning title=GitHub Actions degraded (<status>):: annotation. This run enriched it beyond the incident name to also carry the incident's start time, impact and shortlink (check_github_status.py lines 91-94, 202-208) -- the start time being the field that lets a reader correlate 'my job was cancelled at T' with 'the incident opened at T-x'. A new `--summary` mode additionally writes a durable Markdown section to $GITHUB_STEP_SUMMARY, because a ::warning:: scrolls away with the log while the step summary is the surface reached from the PR checks tab. Proven by injecting a synthetic major_outage payload shaped like the real 2026-08-06 incident: the annotation is emitted and names 'Incident with Actions' together with its 15:22:49Z start time."
+    },
+    {
+      "criterion": "Pre-check is diagnostic only: never fails the build, never masks a genuine failure",
+      "status": "MET",
+      "how": "Both halves verified. NEVER FAILS THE BUILD: main() in check_github_status.py returns 0 unconditionally on every path (lines 166, 214), so a degraded platform cannot redden a job; the degraded path was exercised directly with an injected major_outage payload and still exited 0. NEVER MASKS A GENUINE FAILURE: a programmatic audit over every step in ci.yml confirms all 15 gating steps have continue-on-error=None. The only `|| true` introduced guards the diagnostic's own network read of a third-party status page -- a step that runs no build, no test and no linter, so it has no verdict available to hide; it exists so githubstatus.com being down cannot itself redden a PR. The check is deliberately not wired to skip, retry or neutralise any downstream step: gating CI on platform status and auto-neutralising jobs during an incident were both considered during diagnosis and rejected, because either would recreate ISS-0171/#498 in a new costume."
+    },
+    {
+      "criterion": "CLAUDE.md requires checking the status API before reporting red CI as acceptable",
+      "status": "MET",
+      "how": "The 'Never Call a Red Pipeline OK Without a Source' directive now marks `check_github_status.py` MANDATORY (not advisory) before characterising any red or cancelled run, and requires quoting its actual output. The outcome table grew from three rows to four, the new first row covering the unchecked case: 'You have not run check_github_status.py -> You cannot report yet.' A companion paragraph states that an open incident never converts a genuine failure into an acceptable one -- a degraded platform explains a job that was cancelled or never started, and explains nothing about a step that ran and failed."
+    }
+  ],
+  "resolution": "Closed the gap between the platform's actual state and what a reader of a red PR could know. tools/check_github_status.py and the ci.yml `platform_status` job already existed from commit 9a2b45c (PR #499, the ISS-0171 fix) and satisfied criterion 1; this run closed the rest rather than duplicating them. Three changes: (1) the ::warning:: annotation now names the incident's start time, impact and shortlink, and a new --summary mode writes a durable section to $GITHUB_STEP_SUMMARY; (2) the diagnostic is repeated at the head of the ci.yml `build` job -- deliberately duplicated from the sibling platform_status job, because that job's annotation lands on a page nobody opens when `build` is the one showing red, and during the exact webhook-throttling failure mode at issue the sibling job is itself liable to be cancelled or never scheduled, losing the diagnostic precisely when it is needed; (3) CLAUDE.md makes the status-API query mandatory before characterising a red run, with a fourth outcome row for the unchecked case. Verified: live API returns Actions=operational at exit 0; an injected major_outage payload emits the incident-naming annotation, still at exit 0; ci.yml parses under yaml.safe_load; zig build exit 0; lint_agent_docs.py 0 findings.",
+  "prevention": "The design rule this issue establishes is that a diagnostic signal may sharpen attribution but may never launder a verdict. ISS-0170 and ISS-0171/#498 are mirror images -- one made platform noise look like a code defect, the other made a code defect look like success via continue-on-error -- so any fix for one must be checked against becoming the other. Concretely: (a) the outage check returns 0 on every path and is not wired to skip, retry or neutralise any step, so it cannot grow into a mask; (b) the no-masking property is asserted programmatically over every step in ci.yml (15 gating steps at continue-on-error=None) rather than by reading the diff, so a future `|| true` or continue-on-error added to a gating step is detectable the same way; (c) the degraded branch is exercised with an injected payload, not merely assumed reachable, so the annotation cannot silently rot into a path that never fires; (d) the human-process half is closed in CLAUDE.md, since the mechanical signal only helps if reading it is mandatory -- this issue's own original misdiagnosis as 'runner starvation' came from inferring platform state from runner-assignment evidence without ever opening the status page. Future CI diagnostics should follow the same shape: report context, never change a verdict, and prove the second half by audit rather than by intent.",
   "notes": [
     "Opposite defect to ISS-0171/#498, which HID real failures via continue-on-error.",
-    "Last 40 runs: 31 success, 6 cancelled, 3 failure -- only 3 are genuine code failures."
+    "Last 40 runs: 31 success, 6 cancelled, 3 failure -- only 3 are genuine code failures.",
+    "No requirement in docs/requirements.yaml maps to this change: it is CI harness observability, outside the product requirement set. Nearest candidates were checked and rejected -- WASM-05 is about byte-identical .wasm compilation output, ADP-06 about pipeline_run_id on BPM audit records. No requirement status was moved."
   ],
   "correction_note": "Originally filed as 'runner starvation' from runner-assignment evidence alone. That inference was wrong because githubstatus.com was never checked. Corrected 2026-08-06; the remedy changed from capacity tuning to outage attribution."
 }
