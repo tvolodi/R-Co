@@ -1,8 +1,8 @@
 {
   "issue_id": "ISS-0175",
-  "title": "Vendored LuaJIT build input luajit_relver.txt is git-ignored but required by build.zig — a fresh clone cannot build test-lua",
+  "title": "Vendored LuaJIT build input luajit_relver.txt is git-ignored but required by build.zig \u2014 a fresh clone cannot build test-lua",
   "severity": "MAJOR",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "discovered_by": "TEST-RUNNER",
   "discovered_in_run": "WF03-ISS-0169-20260806",
   "discovered_at": "2026-08-06T23:25:56Z",
@@ -20,5 +20,14 @@
     "A CI job that builds from a clean checkout exercises the test-lua step, so this class of regression is caught by the pipeline rather than by a developer."
   ],
   "notes": "Discovered incidentally while establishing a main baseline for regression comparison during WF-03 ISS-0169 tranche 1 (LUA-05/06/07). Not caused by that run and not fixed there, per the Unblock-Everything scope boundary (filed and forwarded, not fixed in-run). Separately noted during the same baseline attempt: in a worktree at a different filesystem path, dynasm-generated buildvm_arch.h emits #line directives containing unescaped Windows backslash paths, producing 77 'unknown escape sequence' errors in buildvm.c. That is a distinct path-sensitivity concern and is not claimed as verified here beyond the observation.",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/503"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/503",
+  "resolved_at": "2026-08-07T00:04:38Z",
+  "resolved_in_run": "WF03-ISS-0175-20260806",
+  "resolution": "vendor/luajit/src/luajit_relver.txt is now tracked in git: the ignore entry for it was removed from vendor/luajit/src/.gitignore and the file committed (commit 9247f6a). Tracking was chosen over generating the file from build.zig because it is what upstream LuaJIT itself intends -- upstream's Makefile falls back to a tracked ../.relver when the git-derived path is unavailable, i.e. the relver is treated as a shippable constant that travels with the source for non-git consumers, not as a value that every consumer must re-derive. Generating it in build.zig would have re-derived at build time a constant upstream already ships.",
+  "verification": "Verified on a real `git clone` of the branch (not a `git worktree`, which shares the parent's object store and can mask tracking defects): the clone runs `zig build test-lua` to completion, 71/71 tests, exit 0, with no manual file copying. The primary checkout shows no regression: `zig build test` reports 936/1000 passed, 0 failed. Independently, CI on main was failing at exactly this cause -- `error: failed to check cache: '/home/runner/work/R-Co/R-Co/vendor/luajit/src/luajit_relver.txt' file_hash FileNotFound` in the 'Build and unit tests' job of run 31132089370 -- which makes the CI result on this PR a direct empirical test of the fix rather than an inference.",
+  "prevention": "The general defect is that a required build input could be untracked without anything noticing, because every build path in existence (developer machines, and the cached CI workspace) could satisfy it from an untracked local copy. The property that needs testing is 'the tracked contents of the repository are sufficient to build', and nothing tested it. That gap is this issue's third acceptance criterion, which is NOT closed here: it is filed as ISS-0178 / GH #507 (a clean-checkout CI job, mutation-checked by re-ignoring luajit_relver.txt) and queued for its own run. Narrower guard in the meantime: any future vendored .gitignore inherited verbatim from upstream must be re-read against how this repo actually builds that vendor tree, since an ignore rule written for a Makefile-generated file is wrong the moment the Makefile is replaced by build.zig.",
+  "related_issues": [
+    "ISS-0177",
+    "ISS-0178"
+  ]
 }

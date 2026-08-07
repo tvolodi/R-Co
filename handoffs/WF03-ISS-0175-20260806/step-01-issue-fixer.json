@@ -1,0 +1,44 @@
+{
+  "handoff_id": "e04959c8-0e1d-410e-bb83-085f43f03eab",
+  "run_id": "WF03-ISS-0175-20260806",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-06T23:43:13Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0175.json",
+      "vendor/luajit/build.zig",
+      "vendor/luajit/src/.gitignore"
+    ]
+  },
+  "task": {
+    "description": "Diagnose ISS-0175: vendor/luajit/src/.gitignore ignores luajit_relver.txt but vendor/luajit/build.zig consumes it via addFileArg as a required build input. Fresh clone / CI fails with file_hash FileNotFound. This currently blocks CI on main for EVERY PR.",
+    "acceptance_criteria": [
+      "Root cause confirmed by reading .gitignore and build.zig",
+      "Fix approach determined: commit the file, or generate it in build.zig, or stop requiring it",
+      "Report written to docs/issue-reports/"
+    ],
+    "functions_to_call": [
+      "fn:diagnose-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosis: .gitignore inherited from upstream (where Makefile generates the file); build.zig replaced the Makefile but never generates it. Chose option (a) track the file - matches upstream .relver tarball fallback; (b) rejected as non-deterministic, (c) rejected as removing a real build input.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0175-diagnosis.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 03 implementation)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-06T23:43:13Z",
+  "completed_at": "2026-08-06T23:47:20Z"
+}

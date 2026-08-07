@@ -1,0 +1,33 @@
+{
+  "issue_id": "ISS-0177",
+  "title": "dynasm.lua emits #line directives with unescaped Windows backslash paths, breaking any checkout whose absolute path contains an invalid C escape sequence",
+  "severity": "MAJOR",
+  "status": "RESOLVED",
+  "discovered_by": "BACKEND-DEV",
+  "discovered_in_run": "WF03-ISS-0175-20260806",
+  "discovered_at": "2026-08-06T23:52:00Z",
+  "affected_areas": [
+    "vendor/luajit/dynasm/dynasm.lua",
+    "vendor/luajit/build.zig (stage 2: dynasm -> host/buildvm_arch.h)"
+  ],
+  "symptom": "On Windows, `zig build test-lua` fails while compiling the host buildvm tool with dozens of errors of the form \"unknown escape sequence '\\c'\" / \"unknown escape sequence '\\s'\" / \"\\U used with no following hex digits\", all pointing at #line directives inside the generated .zig-cache/o/<hash>/buildvm_arch.h. Observed as 77 compilation errors. Whether a given machine is affected depends entirely on the letters that happen to follow the backslashes in the repository's own absolute path.",
+  "root_cause": "vendor/luajit/dynasm/dynasm.lua line 88 emits a C #line directive by string-concatenating the input filename directly into a C string literal: wline(\"#line \"..g_lineno..' \"'..g_fname..'\"'). g_fname is the path dynasm was invoked with (dynasm.lua:945). vendor/luajit/build.zig:92 passes b.path(src ++ \"vm_x64.dasc\"), which Zig resolves to an ABSOLUTE Windows path using backslash separators. Backslashes are never escaped, so each path separator becomes a C escape sequence in the emitted string literal. Upstream never hits this because the MSVC build (msvcbuild.bat) invokes dynasm with a relative, single-component path.",
+  "impact": "Latent, path-dependent build failure on Windows. A checkout at C:\\...\\2\\R-Co\\vendor\\... survives only by accident: its sequences are \\2 \\R \\v \\s, and \\v is a valid C escape while the rest are tolerated. A checkout at C:\\...\\2\\rco-freshclone\\vendor\\... produces \\r \\c \\v \\s, and \\c / \\s / \\l are invalid, so it fails with 77 errors. This means a genuine `git clone` into a directory whose name begins with an unlucky letter cannot build LuaJIT at all, while the maintainer's own checkout builds fine -- exactly the class of works-on-my-machine defect that hides in CI. Verified on a real `git clone` (not merely a worktree), where the path component \\claude produced '\\c' and \\AppData produced '\\A' and '\\U used with no following hex digits'.",
+  "acceptance_criteria": [
+    "dynasm-generated buildvm_arch.h contains #line directives whose path is a valid C string literal (backslashes escaped) on Windows.",
+    "`zig build test-lua` succeeds from a checkout whose absolute path contains sequences such as \\c, \\s, \\l, \\U, \\A.",
+    "Behaviour on POSIX paths (no backslashes) is byte-for-byte unchanged."
+  ],
+  "resolution": "vendor/luajit/dynasm/dynasm.lua:88 now escapes backslashes and double quotes in g_fname before interpolating it into the C string literal, via g_fname:gsub('[\\\\\"]', '\\\\%0'). This is strictly correct C string-literal quoting and is a no-op for POSIX paths, which contain neither character. Fixed in the same run as ISS-0175 under the Unblock-Everything directive, because it blocked the fresh-clone verification that was ISS-0175's entire acceptance criterion.",
+  "verification": "Before the fix, a real `git clone` into a path containing \\claude\\...\\scratchpad failed with 'unknown escape sequence' / '\\U used with no following hex digits' errors. After the fix, the same clone runs `zig build test-lua` to completion: 71/71 tests passed. The primary checkout also rebuilds clean (zig build, zig build test).",
+  "notes": "Predicted but not confirmed by TEST-RUNNER during WF03-ISS-0169-20260806, and recorded as an unverified aside in the ISS-0175 notes field. This run confirmed it empirically and established that it is a REAL defect affecting genuine clones, not an artifact of `git worktree` as originally suspected. The distinguishing evidence: both the primary checkout and the failing worktree emit identically unescaped paths -- only the following letters differ, which is what decides success or failure.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/506",
+  "discovered_while_fixing": "ISS-0175",
+  "resolved_at": "2026-08-07T00:04:38Z",
+  "resolved_in_run": "WF03-ISS-0175-20260806",
+  "prevention": "The escaping fix is strictly correct C string-literal quoting and is a no-op on POSIX paths, so it holds for any future path. What it does not fix is the reason this stayed latent: nothing built the repository from a directory other than the maintainer's own, so a path-dependent failure could only be found by luck. Whether a machine was affected turned on nothing but the letters following the backslashes -- the emitted output was identically unescaped in the passing and failing cases. Coverage for that class is filed as ISS-0178 / GH #507, whose fourth acceptance criterion asks the clean-checkout CI job to build from a path containing a sequence that is an invalid C escape.",
+  "related_issues": [
+    "ISS-0175",
+    "ISS-0178"
+  ]
+}
