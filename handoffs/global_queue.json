@@ -356,17 +356,22 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0187",
+      "issue_id": "GH-521",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/521",
-      "title": "store.append nests a second pool.acquire() inside a held lease, exhausting the pool",
+      "title": "store.append nests a second pool.acquire() inside a held lease, exhausting the pool (TC-EXP-301-08)",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T04:07:12Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-1-loop",
+        "locked_at": "2026-08-07T21:46:47Z"
+      },
+      "added_at": "2026-08-07T21:46:47Z",
+      "started_at": "2026-08-07T21:46:47Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 521,
+      "labels": []
     },
     {
       "issue_id": "GH-522",
