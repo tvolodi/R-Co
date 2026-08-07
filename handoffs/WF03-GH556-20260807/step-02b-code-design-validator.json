@@ -1,0 +1,42 @@
+{
+  "handoff_id": "2d577010-8895-4e34-9518-951dd6ce3e71",
+  "run_id": "WF03-GH556-20260807",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH556-20260807/step-02b-code-design-validator.json",
+  "created_at": "2026-08-07T19:44:04Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/iss0612-provisioning-lock-scope-fix.md",
+      "docs/issues/ISS-0612.json",
+      "src/db/provisioning.zig",
+      "src/db/migrations.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0612-provisioning-lock-scope-fix.md, a Type E design fixing ISS-0612/GH-556's confirmed root cause: provisionTenantSchema()'s advisory-lock block (provisioning.zig:117-125) closes its own scope before Steps 2-6a (the real work) even begin, so concurrent same-tenant calls race unprotected. The design proposes: (1) restructure so a single lock_conn, acquired once, is reused across Step 2 (idempotency check), Steps 3-4 (bpm_provision_tenant_schema() call), Step 6 (timestamp update), and Step 6a (tenant promotion), with lock release + connection release as one defer pair covering every exit path; (2) Step 5 (runForSchema migrations) deliberately keeps its own separate connection rather than sharing lock_conn, with an explicit deadlock analysis concluding no cross-lock wait-for cycle exists between the tenant-level session lock and MIGRATIONS_LOCK_KEY_SQL's global xact-scoped lock (different connections, disjoint keyspaces); (3) recommends keeping bpm_provision_tenant_schema()'s internal per-schema lock as-is (protects direct SQL callers); (4) recommends adding pg_advisory_unlock_all() to Pool.release() as defense-in-depth. Verify all of this against the actual current source -- do not trust the design doc's or CODE-DESIGNER's own description without checking. This is an architecturally significant change (touches connection/transaction lifecycle in a function multiple other issues (ISS-0131, ISS-0209) already depend on) -- scrutinize the deadlock-freedom claim particularly closely, since a wrong analysis here could trade a hang for a deadlock instead of actually fixing anything.",
+    "acceptance_criteria": [
+      "Design correctly restructures the lock scope to cover Steps 2-6a on a single connection",
+      "The deadlock-freedom claim between the tenant session lock and MIGRATIONS_LOCK_KEY_SQL is independently verified against actual source, not just trusted from the design doc",
+      "Design addresses the third (per-schema SQL-level) lock layer with a defensible recommendation",
+      "Design addresses the Pool.release() defense-in-depth recommendation",
+      "No implementation code present",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
