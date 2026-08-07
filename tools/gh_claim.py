@@ -37,6 +37,16 @@ ORCH loop:
   exit 0 → run full WF-03 for this item, then call queue_release.py GH-NNN <workspace>
   exit 2 → stop the loop (no open GitHub issues remain)
   exit 3 → stop or retry after a delay (everything is locked by other workspaces)
+
+*** THIS SCRIPT ONLY WRITES THE LOCAL global_queue.json FILE. IT DOES NOT COMMIT OR
+*** PUSH TO GIT. The lock is invisible to other workspaces until the caller commits
+*** and pushes handoffs/global_queue.json to origin/main. The caller MUST do that
+*** immediately after a successful (exit 0) claim, BEFORE starting any WF-03 work —
+*** see docs/agents/protocols/LOOP_PROTOCOL.md "ORCH loop mode — step by step".
+*** Deferring that push to end-of-run (alongside queue_release.py) leaves a window
+*** where a second workspace reads a stale, still-unlocked main and claims the same
+*** issue. This exact race let two workspaces both claim GH-542 on 2026-08-07 —
+*** see docs/anti-patterns.md.
 """
 
 import datetime

@@ -184,6 +184,19 @@ LOOP START
 │   ├─ exit 1 → unexpected error          →  log, stop
 │   └─ exit 0 → item claimed, JSON on stdout
 │
+├─ PUSH THE CLAIM TO MAIN IMMEDIATELY — before any WF-03 work starts:
+│   git add handoffs/global_queue.json
+│   git commit -m "queue: claim GH-<number> for <workspace_id>"
+│   git fetch origin main && git rebase origin/main   ← resolve any interleaving here
+│   git push origin main
+│   If the push is rejected (another workspace pushed a claim first): fetch, inspect
+│   whether THIS issue is now locked by someone else. If yes, your claim lost the race —
+│   release your local lock state, re-run gh_claim.py for a different issue, do not
+│   proceed with this one. This step is what makes the lock visible to other
+│   workspaces; gh_claim.py itself only writes the LOCAL file and never pushes —
+│   skipping this step is what caused two workspaces to both claim GH-542 on
+│   2026-08-07 (see docs/anti-patterns.md).
+│
 ├─ Parse claimed item:
 │   {
 │     "issue_id":     "GH-533",       ← pass to queue_release.py
@@ -296,7 +309,9 @@ subprocess.run([
 
 - [ ] Every item in the global queue has a corresponding `docs/issues/ISS-NNNN.json`
 - [ ] Every item in the global queue has a corresponding GitHub issue (`github_issue` field non-empty)
-- [ ] `queue_claim.py` is the ONLY writer for the `lock` field — no agent sets it directly
+- [ ] `gh_claim.py` is the ONLY writer for the `lock` field — no agent sets it directly
 - [ ] `queue_release.py` is the ONLY writer that clears the `lock` field
-- [ ] `handoffs/global_queue.json` is committed to `main` after every add/release
+- [ ] `handoffs/global_queue.json` is committed AND PUSHED to `main` immediately after every claim — never deferred to end-of-run (see "ORCH loop mode — step by step" above; a deferred push is what let two workspaces both claim GH-542 on 2026-08-07, see `docs/anti-patterns.md`)
+- [ ] `handoffs/global_queue.json` is committed to `main` after every release
 - [ ] `handoffs/global_queue.lock` is NEVER committed to git (transient mutex file)
+- [ ] Before starting WF-03 implementation work, re-fetch `origin/main` and confirm this workspace's lock for the claimed issue is still the one on `main` — a rejected/raced push means stand down, not proceed
