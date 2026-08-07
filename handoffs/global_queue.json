@@ -347,14 +347,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/520",
       "title": "TC-EXP-301-05 asserts on measured wall-clock backoff deltas, unstable under parallel test load",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-07T22:13:18Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-07T22:13:18Z",
       "started_at": "2026-08-07T22:13:18Z",
-      "completed_at": null,
+      "completed_at": "2026-08-07T23:12:49Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 520,
