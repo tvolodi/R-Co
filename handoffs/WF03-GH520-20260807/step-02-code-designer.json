@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGNER",
   "file": "handoffs/WF03-GH520-20260807/step-02-code-designer.json",
   "created_at": "2026-08-07T22:14:40Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-07T22:23:06Z",
+  "completed_at": "2026-08-07T22:27:42Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -33,7 +33,15 @@
       "fn:write-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Reworked design to correct the PostgreSQL transaction-semantics claim the validator flagged as BLOCKER. Verified against source: TC-EXP-301-05 runs entirely inside TestHarness.init()'s single conn.begin() (helpers.zig:1085), held open until deinit()'s rollback() (helpers.zig:1147); every statement in the test (seed-loop markRetry, pre-check read, markRetry, read-back) executes on the same &h.conn with no begin()/commit()/rollback() calls of its own; Conn.exec/Conn.query (pg.zig:149-174) never issue implicit per-call BEGIN/COMMIT. So markRetry's UPDATE and the read-back SELECT share ONE transaction, and NOW() (= transaction_timestamp()) is frozen and identical for both -- not two independently-drifting autocommit reads. Re-derived tolerance from 50ms down to 1.0ms: a client-side float round-trip epsilon (EXTRACT(EPOCH...)*1000 through float8, then parseFloat), not a timing/jitter budget, since the underlying comparison is now exact server-side arithmetic. Also reconciled why the original two-read test was ever flaky: both old reads shared the same frozen NOW(), so it cancelled out of the old delta entirely -- the old \u00b1500ms tolerance was actually masking a comparison-correctness gap (the 'before' value depended on the seed loop's prior write, not cleanly on i), not absorbing real jitter. Kept the non-tautology structure, the four expected_backoff values, and test-only scope unchanged. tools/lint_design_artefact.py exits 0, no BLOCKER/MAJOR.",
+    "artifacts_out": [
+      "src/design/gh520-backoff-schedule-deterministic-assertion.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b) for rework verification"
+  },
   "rework_count": 1,
   "max_rework": 3
 }
