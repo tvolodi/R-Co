@@ -1,0 +1,50 @@
+{
+  "handoff_id": "b0aec6b7-524d-4781-afb0-3cf8e92da847",
+  "run_id": "WF03-ISS-0152-20260807",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T01:01:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0152.json"
+    ]
+  },
+  "task": {
+    "description": "Diagnose ISS-0152 (GH #484): C5 test-isolation lint allegedly fails on main making zig build test-env-verify exit 1 unconditionally. Verify the premise before fixing.",
+    "acceptance_criteria": [
+      "Premise independently verified against a pristine main worktree",
+      "T010 findings categorized (system constant vs test-local fixture)",
+      "Baseline integrity checked for prior gate-gaming",
+      "docs/issue-reports/ISS-0152-diagnosis.yaml written"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PREMISE STALE. On a pristine main worktree (HEAD b2cc55c) C5 exits 0: 'OK - 127 file(s) checked, no isolation issues.' C5 was fixed 2026-08-06 by PR #499/ISS-0171. Verified that regeneration was a legitimate line resync: comparing baseline at 9a2b45c vs parent on (severity,code,file,message) gives 0 newly suppressed and 0 disappeared. Raw --no-baseline count is 184 T010 BLOCKERs (not 88; the 88 predates PR #490 which wired 55 orphaned test files into build). Residual exit 1 in this session traced to C4, not C5: (a) stale process BPM_TEST_DB_URL on port 5434 (workspace 1) shadowing .env's 5453, and (b) two unapplied migrations in local db_test. Both environment, not repo defects.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0152-diagnosis.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0180 (GH #511): verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL - C3 can PASS against an unmigrated test DB. Filed and queued, not fixed here."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0181 (GH #512): 184 baselined T010 findings across 45 files remain as debt. Filed and queued, not fixed here."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 03)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T01:01:16Z",
+  "completed_at": "2026-08-07T01:01:16Z"
+}

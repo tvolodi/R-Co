@@ -1,0 +1,209 @@
+issue_id: ISS-0152
+github_issue: https://github.com/tvolodi/R-Co/issues/484
+run_id: WF03-ISS-0152-20260807
+step: "01"
+agent: BACKEND-DEV
+diagnosed_at: "2026-08-07T00:57:21Z"
+
+summary: >-
+  The reported symptom (C5 test-isolation lint fails, making
+  `zig build test-env-verify` exit 1 unconditionally) is NO LONGER REPRODUCIBLE
+  on main. C5 was fixed on 2026-08-06 by PR #499 / ISS-0171 and now passes with
+  exit 0. The 88 T010 BLOCKERs described in the issue are not currently reaching
+  the gate: they are suppressed by tools/lint_test_isolation.baseline.json, which
+  was already in place when ISS-0152 was filed. The residual `test-env-verify`
+  exit 1 observed at the start of this run has a DIFFERENT cause (C4, schema
+  baseline) and is a local environment condition, not a repo defect.
+
+verification_of_premise:
+  claim: "C5 reports BLOCKER=88 MAJOR=6 and fails on main"
+  method: >-
+    Ran the linter on a pristine `main` worktree created with
+    `git worktree add <scratch>/mainwt main` (HEAD b2cc55c), independent of the
+    working tree, to rule out local edits.
+  observed_on_clean_main: |
+    OK - 127 file(s) checked, no isolation issues.
+    Suppressed 225 issue(s) from baseline: tools/lint_test_isolation.baseline.json
+    exit 0
+  verdict: PREMISE_STALE
+  explanation: >-
+    C5 invokes lint_test_isolation.py WITHOUT --no-baseline, so the baseline is
+    active and the pre-existing findings are suppressed. C5 therefore passes.
+    The 88-BLOCKER figure in the issue corresponds to a --no-baseline run.
+
+baseline_integrity_check:
+  question: "Was the baseline blanket-regenerated to silence findings (i.e. was the gate gamed)?"
+  method: >-
+    Compared tools/lint_test_isolation.baseline.json at 9a2b45c (PR #499, the
+    ISS-0171 regeneration) against its parent on the tuple
+    (severity, code, file, message) - deliberately ignoring `line`, since a pure
+    line resync must not change the finding set.
+  result:
+    entries_before: 225
+    entries_after: 225
+    newly_suppressed_ignoring_line: 0
+    disappeared_ignoring_line: 0
+  verdict: LEGITIMATE_LINE_RESYNC
+  explanation: >-
+    Zero findings were newly suppressed. PR #499 only resynced line numbers that
+    PR #490 had shifted. Because issue_key() is
+    "severity|code|file|line|message", a line shift silently breaks suppression;
+    the resync restored it without hiding anything new. This is not gate-gaming.
+
+raw_finding_inventory:
+  command: ".venv/Scripts/python.exe tools/lint_test_isolation.py --no-baseline --json tests/integration"
+  files_checked: 127
+  total_findings: 225
+  by_code:
+    T010_BLOCKER: 184
+    T020_MAJOR: 11
+    T030_MAJOR: 6
+    T050_MAJOR: 22
+    T060_MAJOR: 2
+  note: >-
+    The true raw T010 count on current main is 184, not 88. The 88 figure in the
+    issue predates PR #490 (8103072), which wired 55 previously-orphaned test
+    files into build targets and thereby brought many more files into scope.
+    All 184 are recorded in the baseline; none are newly escaping it.
+  t010_distinct_uuid_literals: 109
+  t010_files_affected: 45
+  t010_top_files:
+    - {file: tests/integration/event_store_integration_test.zig, count: 59}
+    - {file: tests/integration/test_snapshot_integration.zig, count: 10}
+    - {file: tests/integration/obs06_alerts_test.zig, count: 9}
+    - {file: tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig, count: 8}
+    - {file: tests/integration/ext02_webhook_dispatch_test.zig, count: 7}
+
+t010_categorization:
+  - category: SYSTEM_CONSTANT
+    description: >-
+      Well-known fixed platform identifiers that MUST remain stable because
+      production code, migrations, or the tenant-context mechanism depend on the
+      exact value. Randomising these would break the tests, not isolate them.
+    examples:
+      - value: "00000000-0000-0000-0000-000000000000"
+        role: default/system tenant sentinel passed to api_tenant_context.set()
+        note: >-
+          Already exempted in the linter itself (ALL_ZEROS_UUID is skipped) - it
+          is not among the 184.
+      - value: "00000000-0000-0000-0000-000000000001"
+        occurrences: 13
+        role: conventional platform-admin actor user_id in AuthContext fixtures
+    disposition: BASELINE_WITH_REASON
+    rationale: >-
+      These are shared constants by design. Per-test randomisation is not the
+      correct fix and would not improve isolation.
+
+  - category: TEST_LOCAL_FIXTURE
+    description: >-
+      Per-file hand-assigned identifiers for instances, definitions and actors
+      (e.g. "e5010000-0001-...", "defdef00-0001-...", "acac0000-0000-..."). These
+      are the genuine INV-TI-2 violations: two tests running concurrently against
+      the same database collide on these rows.
+    representative_files:
+      - tests/integration/event_store_integration_test.zig
+      - tests/integration/test_snapshot_integration.zig
+    correct_fix: >-
+      TestHarness.newUuid() / TestHarness.newUuidString(allocator) in
+      tests/integration/helpers.zig (introduced by ISS-0121 / GH #387 expressly
+      to remove this collision class).
+    disposition: FIX_IN_SOURCE
+    scope_note: >-
+      This is the real remaining debt. It is NOT what fails the gate today, and
+      it is tracked separately - see `deferred_work` below.
+
+actual_cause_of_exit_1_in_this_session:
+  check: C4 schema baseline
+  finding: >-
+    `zig build test-env-verify` exited 1 in this workspace because of C4, not C5.
+    Two distinct C4 failure modes were observed and both were traced to
+    environment, not to repository state.
+  cause_1_wrong_database:
+    observed: "missing Postgres schemas for 95 tenant(s)"
+    root_cause: >-
+      The process environment carried BPM_TEST_DB_URL=...localhost:5434/bpm_test,
+      which is workspace 1's port band. This workspace (compose project r-co-2)
+      uses port 5453. verify_test_env.py's documented precedence is "real process
+      environment always wins; .env fills gaps only", so the stale process value
+      shadowed the correct .env value and the check ran against the wrong
+      database - one holding 96 leaked SCHEMA-mode fixture tenants.
+    evidence:
+      port_5434_schema_tenants: 96
+      port_5453_schema_tenants: 1
+    disposition: OPERATOR_ENVIRONMENT - not a repo defect.
+  cause_2_unapplied_migrations:
+    observed: >-
+      "public.schema_migrations has 106 rows for schema_name='public', but
+      migrations/ contains 108 *.sql files (delta = -2)"
+    missing:
+      - 1136_iss0149_exp301_effects_outbox_tenant_scope.sql
+      - 1137_iss0156_entity_instance_projection_backfill.sql
+    remedy_applied: >-
+      Ran `zig build migrate` with BPM_DB_URL pointed at the test database; both
+      migrations applied cleanly and C4 went green.
+    disposition: LOCAL_DB_STATE - not a repo defect.
+
+new_defect_found:
+  id: ISS-0180
+  severity: MAJOR
+  title: >-
+    verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL, so
+    C3 can pass against an unmigrated test database
+  detail: >-
+    check_migrate() (C3) runs a bare `zig build migrate`, which resolves
+    BPM_DB_URL first - the DEV database. check_schema_baseline() (C4) always
+    verifies BPM_TEST_DB_URL - the TEST database. When the two point at different
+    databases, C3 reports PASS having migrated a database C4 never inspects,
+    while the test database stays behind. That is exactly what happened here:
+    C3 PASS and C4 FAIL(delta=-2) in the same run. C3's remedy line
+    ("resolve the migration failure above") is then misleading, because there was
+    no migration failure - the migration simply targeted the wrong database.
+  why_it_matters: >-
+    C3's purpose in the Infrastructure Health Checklist is to establish that the
+    database the integration tests will use is fully migrated. As written it can
+    certify a database no test touches, which is a false green on a hard gate.
+  disposition: FILED_AND_FORWARDED
+  note: >-
+    Filed and queued per CLAUDE.md "No Issue Left Local-Only". NOT fixed in this
+    run: it did not block the acceptance criteria, and fixing a gate's own
+    definition belongs in its own run with its own review.
+
+deferred_work:
+  id: ISS-0181
+  severity: MAJOR
+  title: "Retire the 184 baselined T010 hardcoded-UUID findings by migrating fixtures to TestHarness.newUuid()"
+  rationale: >-
+    The baseline is a debt ledger, not a fix. 184 T010 findings across 45 files
+    remain suppressed. Converting them is a large, mechanical, test-touching
+    change that must be validated by actually running the affected integration
+    suites - which currently have unrelated pre-existing failures (#482, #479,
+    #427, #424, #423, #418, #417) that would mask regressions. Bundling that into
+    this run would produce an unreviewable diff and risk silent breakage.
+  disposition: FILED_AND_FORWARDED
+
+acceptance_criteria_assessment:
+  - criterion: >-
+      Each of the 88 T010 BLOCKERs is either fixed in the test source or
+      deliberately baselined with a per-finding recorded reason
+    status: SATISFIED_BY_EXISTING_STATE_PLUS_DOCUMENTATION
+    note: >-
+      All are already baselined. This run does not add a single new suppression.
+      The per-category reasons are recorded above and the residual debt is
+      tracked as ISS-0181 rather than left implicit.
+  - criterion: "`zig build test-env-verify` exits 0 on a clean main"
+    status: SATISFIED
+    note: >-
+      Verified exit 0 with all seven checks PASS once BPM_TEST_DB_URL pointed at
+      this workspace's database and the two pending migrations were applied.
+  - criterion: "The baseline is NOT blanket-regenerated to silence findings"
+    status: SATISFIED
+    note: >-
+      tools/lint_test_isolation.baseline.json is byte-for-byte unmodified by this
+      run. `git diff` against it is empty.
+
+conclusion: >-
+  ISS-0152 should be closed as ALREADY_RESOLVED (by PR #499 / ISS-0171), with the
+  underlying fixture debt it pointed at re-filed as ISS-0181 so it is not lost.
+  No test source was changed and no suppression was added, because the honest
+  finding is that the gate is already green and the remaining work is a separate,
+  larger job.
