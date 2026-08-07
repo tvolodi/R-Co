@@ -1,0 +1,40 @@
+{
+  "handoff_id": "c5330008-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH533-20260807",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T10:51:38Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5330007-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss0209-test-api08-recovery.md",
+      "tests/unit/test_api08_auth.zig",
+      "src/db/provisioning.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step Final: git-merge for GH-533 / ISS-0209.\n\nBranch: feature/WF03-GH533-20260807 (already contains 3 commits since main)\n\nTasks per docs/agents/protocols/GIT_MERGE.md:\n1. git fetch origin main\n2. git rebase origin/main (resolve conflicts if any)\n3. gh pr create --base main --title \"fix(test-auth): remove destructive tenant_default DROP SCHEMA recovery (ISS-0209/GH-533)\" --body (use body from PR template)\n4. Wait for CI checks to pass (or note any infra-only checks failing \u2014 these are pre-existing)\n5. gh pr merge --squash --delete-branch\n6. Verify: git fetch origin && git branch -r | grep feature/WF03-GH533-20260807 OR echo deleted\n7. Return to main: git checkout main && git pull --ff-only origin main\n8. Verify clean state: git status (clean), git branch --show-current \u2192 main\n\nCapture PR number and merge commit SHA in result.",
+    "acceptance_criteria": [
+      "PR created",
+      "PR merged via --squash --delete-branch",
+      "Feature branch deleted from origin",
+      "Local repo on main with clean working tree",
+      "PR number and merge SHA recorded in handoff result"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T10:51:38Z",
+  "completed_at": null
+}

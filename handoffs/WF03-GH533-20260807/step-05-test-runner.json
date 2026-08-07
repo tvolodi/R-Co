@@ -1,0 +1,60 @@
+{
+  "handoff_id": "c5330006-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH533-20260807",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-07T09:41:41Z",
+  "status": "FAILED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5330005-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss0209-test-api08-recovery.md",
+      "tests/unit/test_api08_auth.zig",
+      "src/db/provisioning.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 5: Test execution for ISS-0209 / GH-533 fix.\n\nPre-checks (mandatory per TEST-RUNNER section of CLAUDE.md):\n1. Backend services: docker-compose ps | grep -E 'keycloak|db'; curl Keycloak ready; psql BPM_TEST_DB_URL SELECT 1\n2. Infrastructure: zig build migrate 2>&1 exits 0; psql SELECT count(*) FROM schema_migrations matches migrations/ count\n3. python3 tools/lint_test_isolation.py tests/integration exits 0, no BLOCKER\n4. zig build test-env-verify exits 0\n\nIf any pre-check fails: STOP, return FAIL with BLOCKER severity listing the failed checks. Do NOT attempt to start services.\n\nIf pre-checks pass:\n- Run `zig build test --summary all` \u00d7 5 consecutive times. Each must exit 0 OR match the documented baseline (21 pre-existing failures documented in docs/issue-reports/ISS-0209-diagnosis.yaml).\n- Verify: PASS only if test count is stable across all 5 runs (no new failures introduced).\n\nWrite results to tests/reports/report-<date>-WF03-GH533-20260807.yaml per docs/guides/test_developer_guide.md \u00a79.\n\nComplete handoff with PASS/FAIL.",
+    "acceptance_criteria": [
+      "All pre-checks pass",
+      "zig build test runs 5 times, each produces stable result",
+      "No new failures beyond documented baseline (21 PgError.AuthenticationFailed)",
+      "Report file at tests/reports/ exists"
+    ],
+    "functions_to_call": [
+      "fn:run-tests"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Mandatory infrastructure pre-checks failed. Services and direct DB readiness passed, but migration authentication failed and test-env-verify reported C0, C1, C3, C4, and C6 failures, so the required five consecutive test runs were not validly executed.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-07-WF03-GH533-20260807.yaml",
+      "scratch/precheck-migrate-iss0209.log",
+      "scratch/precheck-isolation-iss0209.log",
+      "scratch/precheck-env-iss0209.log",
+      "scratch/zig-build-test-skipped-iss0209.log"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Test infrastructure unhealthy: BPM_TEST_DB_URL points to localhost:5433 while db_test publishes localhost:5434; zig build migrate exits with error.AuthenticationFailed; zig build test-env-verify exits 1 with C0, C1, C3, C4, and C6 failures."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "The required five-run stability comparison against the documented 21-failure baseline was not performed because the mandatory infrastructure gate failed."
+      }
+    ],
+    "next_action": "Route to ORCH for ADHOC BACKEND-DEV infrastructure repair and redispatch TEST-RUNNER."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T09:41:41Z",
+  "completed_at": "2026-08-07T09:44:17Z"
+}
