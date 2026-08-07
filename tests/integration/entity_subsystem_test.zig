@@ -538,6 +538,139 @@ test "EXP-202: Create record idempotency" {
     try std.testing.expectEqualStrings("1", count_row[0] orelse return error.TestUnexpectedResult);
 }
 
+// ISS-0187 / GH #521 regression: with the buggy Store.append, the
+// duplicate-detection path nested a second pool.acquire() inside the
+// function while the original conn was still held by the function-level
+// defer release. With a pool of size 3 (the smallest size that lets
+// `createRecord` complete — it acquires one conn itself, then calls
+// `store.append` which acquires another; this test holds a third for
+// assertions), the held conn occupied one slot and the buggy nested
+// acquire saw no idle connection, returning PoolExhausted immediately
+// (HTTP 503 in the API layer). The fix reuses the held, rolled-back conn
+// for both duplicate-lookups, so the duplicate path does not acquire a
+// second pool connection. Any regression of the lease-discipline would
+// surface here as PoolExhausted on the second or third call.
+test "EXP-202: Pool-size-3 duplicate append (ISS-0187 regression)" {
+    const allocator = std.testing.allocator;
+    var h = try helpers.TestHarness.init(allocator);
+    defer h.deinit();
+
+    const url = try testDbUrl(allocator);
+    defer allocator.free(url);
+    // ISS-0187: pool_size=3. createRecord acquires 1 conn itself, then
+    // calls store.append which (in the buggy code) would acquire a second;
+    // this test holds a third for assertions. With the buggy nested-
+    // acquire, the second/third createRecord calls would observe
+    // PoolError.ExhaustedPool (pool is non-blocking — see src/db/pool.zig
+    // line 806).
+    bpm.api_tenant_context.set(bpm.api_tenant_context.DEFAULT_TENANT_ID);
+    var pool = try Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 3 });
+    defer pool.deinit();
+
+    const tenant_id = try allocator.dupe(u8, bpm.api_tenant_context.DEFAULT_TENANT_ID);
+    defer allocator.free(tenant_id);
+    const actor_id = try h.newUuidString(allocator);
+    defer allocator.free(actor_id);
+    const idemp_key = try generateIdempKey(allocator);
+    defer allocator.free(idemp_key);
+    const entity_type = try uniqueEntityType(allocator, "poolsat1");
+    defer allocator.free(entity_type);
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    cleanupEntityType(conn, entity_type);
+    defer cleanupEntityType(conn, entity_type);
+
+    const def_json = try std.fmt.allocPrint(
+        allocator,
+        "{{\"name\":\"{s}\", \"display_name\":\"PoolSat\", \"fields\":[{{\"name\":\"f1\",\"type\":\"text\"}}]}}",
+        .{entity_type},
+    );
+    defer allocator.free(def_json);
+
+    var def = try entities.definition.createDefinition(allocator, &pool, .{
+        .name = entity_type,
+        .display_name = "PoolSat",
+        .description = null,
+        .definition_json = def_json,
+        .created_by = actor_id,
+        .tenant_id = tenant_id,
+    });
+    defer def.deinit(allocator);
+    var def_active = try entities.definition.activateDefinition(allocator, &pool, def.id);
+    defer def_active.deinit(allocator);
+
+    var registry = bpm.registry.Registry.init(allocator, &pool);
+    defer registry.deinit();
+    var store = bpm.store.Store.init(allocator, &pool, &registry);
+    defer store.deinit();
+
+    // First append — succeeds, becomes the canonical record.
+    const r1 = try entities.commands.createRecord(allocator, &pool, &store, &registry, .{
+        .entity_type = entity_type,
+        .field_values = "{\"f1\": \"val1\"}",
+        .idempotency_key = idemp_key,
+        .actor_id = actor_id,
+        .tenant_id = tenant_id,
+    });
+    defer {
+        allocator.free(r1.record_id);
+        allocator.free(r1.entity_type);
+        allocator.free(r1.field_values);
+    }
+    try std.testing.expect(!r1.is_duplicate);
+
+    // Second append — same idempotency_key, same single-connection pool.
+    // Pre-fix: Store.append would attempt a nested acquire here and fail
+    // with PoolExhausted. Post-fix: the held (rolled-back) conn is reused,
+    // the duplicate is recognised, and the original record is returned.
+    const r2 = try entities.commands.createRecord(allocator, &pool, &store, &registry, .{
+        .entity_type = entity_type,
+        .field_values = "{\"f1\": \"val1\"}",
+        .idempotency_key = idemp_key,
+        .actor_id = actor_id,
+        .tenant_id = tenant_id,
+    });
+    defer {
+        allocator.free(r2.record_id);
+        allocator.free(r2.entity_type);
+        allocator.free(r2.field_values);
+    }
+    try std.testing.expect(r2.is_duplicate);
+    try std.testing.expectEqualStrings(r1.record_id, r2.record_id);
+
+    // A third append — same scenario, would also trip the buggy code on a
+    // size-1 pool. Catches regressions where only the second call happens
+    // to land on a different connection (e.g. someone caches a connection
+    // across calls).
+    const r3 = try entities.commands.createRecord(allocator, &pool, &store, &registry, .{
+        .entity_type = entity_type,
+        .field_values = "{\"f1\": \"val1\"}",
+        .idempotency_key = idemp_key,
+        .actor_id = actor_id,
+        .tenant_id = tenant_id,
+    });
+    defer {
+        allocator.free(r3.record_id);
+        allocator.free(r3.entity_type);
+        allocator.free(r3.field_values);
+    }
+    try std.testing.expect(r3.is_duplicate);
+    try std.testing.expectEqualStrings(r1.record_id, r3.record_id);
+
+    // Exactly one projection row exists across all three appends.
+    const count_row = (try conn.queryRow(
+        allocator,
+        "SELECT count(*)::text FROM entity_record_latest WHERE tenant_id = $1::uuid AND entity_type = $2",
+        &.{ tenant_id, entity_type },
+    )) orelse return error.TestUnexpectedResult;
+    defer {
+        if (count_row[0]) |v| allocator.free(v);
+        allocator.free(count_row);
+    }
+    try std.testing.expectEqualStrings("1", count_row[0] orelse return error.TestUnexpectedResult);
+}
+
 test "EXP-202: Delete entity record (Integration)" {
     const allocator = std.testing.allocator;
     var h = try helpers.TestHarness.init(allocator);

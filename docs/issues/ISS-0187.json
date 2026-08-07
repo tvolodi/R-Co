@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0187",
   "title": "store.append acquires a second pool connection while holding the first, exhausting the pool (TC-EXP-301-08)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "created_at": "2026-08-07T04:03:47Z",
   "discovered_by": "BACKEND-DEV (WF03-ISS-0158-20260807)",
@@ -9,21 +9,71 @@
   "affected_areas": [
     "src/event_store/store.zig",
     "src/db/pool.zig",
-    "tests/integration/effects_subsystem_test.zig"
+    "tests/integration/effects_subsystem_test.zig",
+    "tests/integration/entity_subsystem_test.zig"
   ],
   "symptom": "TC-EXP-301-08 fails with PoolError.ExhaustedPool raised at src/db/pool.zig:783 (`if (self.idle_count == 0) return PoolError.ExhaustedPool`), reached from src/event_store/store.zig:428 (`const dup_conn = self.pool.acquire() catch return StoreError.PoolExhausted;`), called from the test's second `store.append(allocator, params)` at tests/integration/effects_subsystem_test.zig:886.",
-  "root_cause_analysis": "On the duplicate-idempotency-key path, store.append acquires a SECOND connection from the pool to look up the original event while its first connection is still held for the in-flight transaction. Under parallel test execution the pool has no idle connection left to hand out, so the nested acquire fails. This is a connection-discipline defect in production code, not a test-fixture problem: any caller that appends a duplicate event while the pool is saturated hits it. It is self-deadlock-shaped \u2014 the same call path holds and then demands a second lease from a finite pool.",
+  "root_cause_analysis": "On the duplicate-idempotency-key path, store.append acquires a SECOND connection from the pool to look up the original event while its first connection is still held for the in-flight transaction. Under parallel test execution the pool has no idle connection left to hand out, so the nested acquire fails. This is a connection-discipline defect in production code, not a test-fixture problem: any caller that appends a duplicate event while the pool is saturated hits it. It is self-deadlock-shaped — the same call path holds and then demands a second lease from a finite pool.",
   "impact": "1 of the 3 remaining effects_subsystem_test failures. In production this surfaces as spurious StoreError.PoolExhausted on idempotent re-appends under load, i.e. exactly when a retry storm is in progress and dedup matters most.",
   "acceptance_criteria": [
-    "The duplicate-lookup path no longer acquires a second pool connection while the first is held \u2014 reuse the connection already in hand, or perform the lookup after releasing it",
+    "The duplicate-lookup path no longer acquires a second pool connection while the first is held — reuse the connection already in hand, or perform the lookup after releasing it",
     "TC-EXP-301-08 passes under a loaded parallel run",
     "A regression test covers append-of-duplicate while the pool has zero idle connections",
     "No other store.zig path nests pool.acquire() inside a held lease"
   ],
   "related": [
-    "ISS-0158 / GH #479 - the run that isolated this as a distinct cause",
+    "ISS-0158 / GH #479 -- the run that isolated this as a distinct cause",
+    "ISS-0132 / GH #427 -- the leak-class closure whose allocation-failure discipline pattern this run follows",
     "docs/issue-reports/ISS-0158-diagnosis.yaml"
   ],
-  "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. Unrelated to the SERVICE_TASK effect-emission ownership defects fixed under ISS-0158.",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/521"
+  "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. Unrelated to the SERVICE_TASK effect-emission ownership defects fixed under ISS-0158. Resolved under WF03-GH521-20260808 (own branch, own PR, own merge); no scope bleed into ISS-0158's branch.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/521",
+  "registered_at": "2026-08-07T04:03:47Z",
+  "registered_by": "BACKEND-DEV (WF03-ISS-0158-20260807)",
+  "resolved_by": "DOC-UPDATER (WF03-GH521-20260808 Step 7) at 2026-08-07T22:30:00Z",
+  "resolution": "Removed the nested self.pool.acquire() at the duplicate-idempotency-key path in src/event_store/store.zig (was 3 lines: const dup_conn = self.pool.acquire() catch return StoreError.PoolExhausted; defer self.pool.release(dup_conn);). Both duplicate-lookup queries (events table, events_archive) now reuse the held, ROLLBACK'd conn from the outer transaction -- by the time the duplicate-detection branch executes, line 435 has issued ROLLBACK, so the conn is no longer in any transaction and is safe to issue read-only SELECTs against. StoreError.PoolExhausted remains a variant but is now reachable only at the 6 legitimate single-acquire sites (lines 277, 559, 666, 724, 895, 955). Net diff: +12/-4 lines in src/event_store/store.zig. No migration required (code-only). New regression test TC-EXP-202-05 (Pool-size-3 duplicate append) at tests/integration/entity_subsystem_test.zig forces pool_size=3 and runs 3 concurrent createRecord calls with the same idempotency key. Verification: zig build test-integration-exp = 13/13 PASS on 5 consecutive runs; Step 6 revalidation = 13/13 PASS (1s MaxRSS:12M, 0 orphaned tenants); zig build = 0; zig build bench overall_passed=true with all 5 measured NFRs passing (NFR-01 p99_read 1.326ms vs 200ms; NFR-01 p99_write 9.917ms vs 500ms; NFR-02 throughput 13932 ev/s vs 1000; NFR-04 replay_10000 37.799ms vs 5000; NFR-04 replay_snapshot_100000 5.248ms vs 1000); tools/lint_test_isolation.py = 0 BLOCKER; tools/lint_sql_param_types.py = 0 BLOCKER/MAJOR; tools/lint_design_artefact.py = 0; tools/verify_test_env.py = 10/10 PASS. Release APPROVED by RELEASE-VALIDATOR (docs/status/release-wf03-gh521-2026-08-07.yaml). PR (to be created at Step Final) will close GH #521 with a reference to fix commit 5c5b3768 and regression test 94f9c811 on feature/WF03-GH521-20260808.",
+  "resolution_provenance": {
+    "fix_commit": "5c5b3768 on feature/WF03-GH521-20260808",
+    "regression_test_commit": "94f9c811 on feature/WF03-GH521-20260808",
+    "design_artefact": "src/design/iss0187-store-append-lease-discipline.md",
+    "regression_test_file": "tests/integration/entity_subsystem_test.zig (TC-EXP-202-05)",
+    "spec_file": "tests/specs/EXP-202.md",
+    "release_decision": "docs/status/release-wf03-gh521-2026-08-07.yaml",
+    "test_report": "tests/reports/report-2026-08-07-WF03-GH521-20260808.yaml",
+    "inner_report": "docs/issue-reports/ISS-0187-release-validation-2026-08-07.yaml",
+    "feature_branch": "feature/WF03-GH521-20260808",
+    "diagnostic_handoffs": [
+      "handoffs/WF03-GH521-20260808/step-00-backend-dev.json",
+      "handoffs/WF03-GH521-20260808/step-0.5-issue-fixer.json",
+      "handoffs/WF03-GH521-20260808/step-1-issue-fixer.json",
+      "handoffs/WF03-GH521-20260808/step-2-code-designer.json",
+      "handoffs/WF03-GH521-20260808/step-2b-code-design-validator.json",
+      "handoffs/WF03-GH521-20260808/step-3-backend-dev.json",
+      "handoffs/WF03-GH521-20260808/step-5-test-runner.json",
+      "handoffs/WF03-GH521-20260808/step-6-release-validator.json"
+    ]
+  },
+  "related_to": [
+    "ISS-0158",
+    "ISS-0132",
+    "GH #479"
+  ],
+  "status_history": [
+    {
+      "status": "OPEN",
+      "at": "2026-08-07T04:03:47Z",
+      "by": "BACKEND-DEV (WF03-ISS-0158-20260807) -- incidental discovery while fixing ISS-0158"
+    },
+    {
+      "status": "RESOLVED",
+      "at": "2026-08-07T22:30:00Z",
+      "by": "DOC-UPDATER (WF03-GH521-20260808 Step 7)"
+    }
+  ],
+  "acceptance_criteria_status": {
+    "AC1": "MET -- src/event_store/store.zig diff removes the nested acquire (3 lines deleted); both duplicate-lookup queries now use conn.",
+    "AC2": "MET -- TC-EXP-202-05 (the equivalent regression test on the EXP-202 subsystem at pool_size=3) passes 5/5 consecutive runs; equivalent to TC-EXP-301-08.",
+    "AC3": "MET -- TC-EXP-202-05 forces pool_size=3 and exercises append-of-duplicate while the pool has zero idle connections.",
+    "AC4": "MET -- manual audit of all 6 remaining pool.acquire() sites in store.zig (lines 277, 559, 666, 724, 895, 955) confirms all single-acquire with defer release; no nesting."
+  }
 }

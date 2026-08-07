@@ -1,0 +1,45 @@
+{
+  "handoff_id": "4a0a5743-a490-4010-abd6-80d0325cd62f",
+  "run_id": "WF03-GH521-20260808",
+  "workflow_id": "WF-03",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH521-20260808/step-1-issue-fixer.json",
+  "created_at": "2026-08-07T21:48:30Z",
+  "started_at": "2026-08-07T21:49:00Z",
+  "completed_at": "2026-08-07T21:50:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 1 \u2014 Root-Cause Diagnosis",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0187.json",
+      "src/event_store/store.zig",
+      "tests/integration/effects_subsystem_test.zig"
+    ],
+    "issue_id": "GH-521",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/521"
+  },
+  "task": {
+    "description": "Step 1: confirm root-cause diagnosis and validate the proposed fix shape.\\n\\nISS-0187 root_cause_analysis already names the exact defect: store.append acquires a second connection at line 449 while the first conn (line 277) is still held via defer release (line 281).",
+    "acceptance_criteria": [
+      "Defect category classified (A: logic error in production code)",
+      "Source location confirmed: src/event_store/store.zig:449 self.pool.acquire() inside held lease from line 277",
+      "Pool.acquire()/release audit complete \u2014 no other store.zig function nests acquire inside a held lease",
+      "Fix shape pre-validated: use already-held conn (which is ROLLBACK\\u2019d at line 435) instead of acquiring a fresh dup_conn"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 1 diagnosis PASS. Defect category A (production logic error) confirmed at src/event_store/store.zig:449. Root cause verbatim from code: append() acquires conn at line 277 with defer release at line 281; line 306 BEGIN; line 435 ROLLBACK on duplicate-detection (insert_rows.rows.len == 0); line 449 then nests self.pool.acquire() for the dup-lookup query while the first conn is still held in scope. Full audit of 6 pool.acquire() sites (lines 277, 555, 662, 720, 891, 951) confirms only the append function nests a second acquire inside a held lease. Fix shape: drop dup_conn; reuse the already-held conn (which is rolled-back at line 435 so it is no longer in a transaction and is safe to issue a SELECT on) for both the events-table lookup and the events_archive-table lookup. No error-set change required (StoreError.PoolExhausted remains a valid variant for the initial acquire() failure at line 277). No public signature change. Routing to CODE-DESIGNER (Step 2).",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2) \u2014 fix design artefact"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
