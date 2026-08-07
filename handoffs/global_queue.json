@@ -463,14 +463,11 @@
       "title": "Infrastructure Health Checklist doesn't detect stale container auth-config drift (POSTGRES_HOST_AUTH_METHOD)",
       "severity": "MAJOR",
       "labels": [],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI",
-        "locked_at": "2026-08-07T15:05:14Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-07T15:05:14Z",
       "started_at": "2026-08-07T15:05:14Z",
-      "completed_at": null,
+      "completed_at": "2026-08-07T15:19:48Z",
       "run_id": null,
       "deferred_reason": null
     }
