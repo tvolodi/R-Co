@@ -1,0 +1,75 @@
+{
+  "handoff_id": "52100006-0000-4000-8000-000000000000",
+  "run_id": "WF03-GH521-20260808",
+  "workflow_id": "WF-03",
+  "step": "6",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF03-GH521-20260808/step-6-release-validator.json",
+  "created_at": "2026-08-07T22:24:34Z",
+  "started_at": "2026-08-07T22:24:34Z",
+  "completed_at": "2026-08-07T22:30:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 6 \u2014 Release Validation",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "52105e7a-5test-4f51-95run-521000000000"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-08-07-WF03-GH521-20260808.yaml",
+      "src/design/iss0187-store-append-lease-discipline.md",
+      "docs/issues/ISS-0187.json",
+      "src/event_store/store.zig",
+      "tests/integration/entity_subsystem_test.zig",
+      "tests/specs/EXP-202.md",
+      "handoffs/WF03-GH521-20260808/step-3-backend-dev.json",
+      "handoffs/WF03-GH521-20260808/step-5-test-runner.json"
+    ],
+    "issue_id": "ISS-0187",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/521",
+    "feature_branch": "feature/WF03-GH521-20260808",
+    "commits_under_test": [
+      "5c5b3768506f7b0ee5c83839e33edf90c0061c9b fix(WF03-GH521): event_store.append reuses held conn instead of nested acquire (ISS-0187)",
+      "94f9c8117d2938173d0388969c6d4cd270640881 test(WF03-GH521): regression test for pool-saturation duplicate-append (ISS-0187)"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 6: Release validation for ISS-0187 / GH-521 fix.\n\nPre-checks:\n1. Backend services: docker-compose ps (db, db_test, keycloak, keycloak_gateway) - all healthy\n2. Infrastructure: zig build migrate exits 0; schema_migrations rows == migrations/ count\n3. python3 tools/lint_test_isolation.py tests/integration exits 0\n4. python3 tools/lint_sql_param_types.py src tests exits 0\n5. python3 tools/verify_test_env.py exits 0 (10/10 checks)\n6. zig build exits 0\n7. Re-run zig build test-integration-exp one time as final confirmation\n\nNFR benchmarks (mandatory):\n- zig build bench \u2014 verify NFR-01 (p99_read \u2264200ms, p99_write \u2264500ms), NFR-02 (throughput \u22651000 ev/s), NFR-04 (replay \u22645s for 10k events)\n\nSource review:\n- Inspect src/event_store/store.zig diff: confirm no nested pool.acquire() at the duplicate-lookup path\n- Confirm StoreError.PoolExhausted is only reachable at legitimate single-acquire sites\n- Confirm tests/integration/entity_subsystem_test.zig regression test (TC-EXP-202-05) is wired in\n\nDecision: APPROVED only if all NFR thresholds met and all gates green.\n\nWrite release decision YAML to docs/status/release-<stage>-<YYYY-MM-DD>.yaml per CLAUDE.md format.\nRegister inner report at docs/issue-reports/ISS-0187-release-validation-2026-08-07.yaml.\n\nOn PASS: next_action = 'Route to DOC-UPDATER (WF-03 Step 7)'\nOn FAIL: list blocking issues, route back to BACKEND-DEV for fix.",
+    "acceptance_criteria": [
+      "All pre-checks pass (DB, Keycloak, lints, test-env)",
+      "zig build exit 0",
+      "zig build test-integration-exp exit 0 (re-validation run)",
+      "zig build bench overall_passed=true",
+      "All NFR thresholds met (NFR-01 p99_read \u2264200ms, NFR-01 p99_write \u2264500ms, NFR-02 throughput \u22651000 ev/s, NFR-04 replay \u22645s for 10k events)",
+      "Source review confirms fix removes nested pool.acquire() at the duplicate-lookup path",
+      "Release decision YAML written to docs/status/ with decision: APPROVED",
+      "Inner report written to docs/issue-reports/"
+    ],
+    "functions_to_call": [
+      "fn:run-nfr-benchmarks",
+      "fn:run-integration-tests",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for ISS-0187 / GH-521. All hard gates pass: (1) source review confirms the nested pool.acquire() is removed at src/event_store/store.zig and both duplicate-lookup queries reuse the held, rolled-back conn; (2) zig build exit 0; (3) zig build test-integration-exp exit 0 on Step 6 revalidation (13/13 PASS, 1s MaxRSS:12M); (4) zig build bench overall_passed=true with all 5 measured NFRs meeting thresholds (NFR-01 p99_read 1.326ms vs target 200ms; NFR-01 p99_write 9.917ms vs 500ms; NFR-02 throughput 13932 ev/s vs 1000; NFR-04 replay_10000 37.799ms vs 5000; NFR-04 replay_snapshot_100000 5.248ms vs 1000); (5) verify_test_env.py 10/10 PASS (C0..C9). Environment correction: first bench attempt failed because BPM_DB_URL was set to port 5433 instead of the .env-documented 5442 (per docker-compose.override.yml port-drift); corrected to match .env, no source change. Pre-existing lint_handoffs H004 timestamp inversions on step-00/step-0.5 are upstream ORCH-stamping artifacts unrelated to source correctness; tracked separately. Release decision YAML: docs/status/release-wf03-gh521-2026-08-07.yaml. Inner report: docs/issue-reports/ISS-0187-release-validation-2026-08-07.yaml.",
+    "artifacts_out": [
+      "docs/status/release-wf03-gh521-2026-08-07.yaml",
+      "docs/issue-reports/ISS-0187-release-validation-2026-08-07.yaml",
+      "scratch/_gh521_step6_verify.stdout",
+      "scratch/_gh521_step6_verify.stderr",
+      "scratch/_gh521_step6_bench.log",
+      "scratch/_gh521_step6_confirm.stdout",
+      "scratch/_gh521_step6_confirm.stderr"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (WF-03 Step 7)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

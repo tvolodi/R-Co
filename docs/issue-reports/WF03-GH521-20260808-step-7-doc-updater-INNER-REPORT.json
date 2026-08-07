@@ -1,0 +1,102 @@
+{
+  "run_id": "WF03-GH521-20260808",
+  "step": "7",
+  "agent": "DOC-UPDATER",
+  "completed_at": "2026-08-07T22:32:00Z",
+  "started_at": "2026-08-07T22:29:30Z",
+  "verdict": "PASS",
+  "verdict_summary": "DOC-UPDATER completed all 12 Step 7 acceptance criteria for ISS-0187 / GH-521. CHANGELOG.md updated under [Unreleased] 2026-08-07 with a detailed entry following the existing ISS-0132 / ISS-0158 / ISS-0128(correction) format (root cause -> fix -> regression coverage proved on unfixed code -> audit -> verification with NFR benchmarks -> no requirement status moved -> prevention). docs/issues/ISS-0187.json status OPEN -> RESOLVED with full resolution provenance (fix commit 5c5b3768, regression-test commit 94f9c811, design, test file, spec, test report, inner report, feature branch, 8 diagnostic handoffs). ISS-0187 has no entry in docs/requirements.yaml (471 entries, no match) -- no reqctl.py set-status calls required, consistent with the ISS-0132, ISS-0158, ISS-0206 precedents. Retrospective computed and written to docs/metrics/retrospectives/WF03-GH521-20260808.yaml -- this run did NOT have an estimation.json (verified absent at handoffs/WF03-GH521-20260808/estimation.json); per CLAUDE.md the retrospective is conditional and was written without variance_pct (actuals documented honestly; subjectively this is a difficulty=2 surface=low run by analogy with WF03-GH526-20260807). GH #521 closed on GitHub with explanatory comment referencing fix commit 5c5b3768 and regression test 94f9c811 on feature/WF03-GH521-20260808. Project board already at Done (idempotent; tool reported 'already at Done'). Registry and orchestrator.log updated. All artifacts committed on the feature branch. lint_handoffs.py reports 0 BLOCKERs against any WF03-GH521-20260808 handoff (the 2 H004 timestamp inversions on step-00/step-0.5 are pre-existing upstream ORCH-stamping artifacts, not introduced by Step 7).",
+  "evidence": {
+    "changelog_update": {
+      "file": "CHANGELOG.md",
+      "heading": "## [Unreleased] -- 2026-08-07",
+      "subsection": "### Fixed",
+      "entry_id": "ISS-0187",
+      "position": "inserted after ISS-0612 entry (most recent fix in the section); before ISS-0207",
+      "format_reference": "ISS-0132 / ISS-0158 / ISS-0128(correction) entries already in CHANGELOG.md"
+    },
+    "issue_registry_update": {
+      "file": "docs/issues/ISS-0187.json",
+      "status_field": "OPEN -> RESOLVED",
+      "fields_added": [
+        "registered_at",
+        "registered_by",
+        "resolved_by",
+        "resolution",
+        "resolution_provenance (fix_commit, regression_test_commit, design_artefact, regression_test_file, spec_file, release_decision, test_report, inner_report, feature_branch, diagnostic_handoffs[])",
+        "related_to",
+        "status_history",
+        "acceptance_criteria_status"
+      ],
+      "fields_extended": [
+        "affected_areas (added tests/integration/entity_subsystem_test.zig)",
+        "related (added ISS-0132 / GH #427 cross-reference)",
+        "notes (added 'Resolved under WF03-GH521-20260808 (own branch, own PR, own merge); no scope bleed into ISS-0158 branch')"
+      ],
+      "resolved_at": "2026-08-07T22:30:00Z",
+      "encoding": "UTF-8 (no BOM) -- verified by python json.load(open(path))",
+      "key_count": 23
+    },
+    "requirement_status": {
+      "checked": "docs/requirements.yaml (471 entries)",
+      "match_for_ISS_0187": [],
+      "render_status": "docs/status/requirement_status.yaml is generated from docs/requirements.yaml; since no requirement moved, no reqctl.py set-status calls required and no regeneration needed",
+      "verification_command": "python3 -c 'import yaml; r=yaml.safe_load(open(\"docs/requirements.yaml\", encoding=\"utf-8-sig\")); print([k for k,v in (r[\"requirements\"] or {}).items() if \"ISS-0187\" in str(v) or \"ISS-0187\" in k])'"
+    },
+    "retrospective": {
+      "file": "docs/metrics/retrospectives/WF03-GH521-20260808.yaml",
+      "steps_covered": ["00","0.5","1","2","2b","3","3b/4 (test authoring inline with BACKEND-DEV)","5","6","7"],
+      "actual_step_durations_source": "started_at and completed_at fields from each handoff",
+      "variance_summary": "variance_pct not computed -- this run did NOT have an estimation.json at handoffs/WF03-GH521-20260808/estimation.json (verified absent via Test-Path on 2026-08-07T22:29Z). Per CLAUDE.md the retrospective is conditional on estimation existing; this run documents actuals honestly with actual_minutes per step and explicit null variance_pct. Subjectively (post-hoc): structurally similar to WF03-GH526-20260807 (difficulty=2, surface=low, 81 min estimated) -- actuals here suggest a ~3.4x faster wall-clock than that run, driven by the absence of a test-design round-trip (backend-dev-writes-test-first optimization) and faster dispatch because the env gate was already HEALTHY.",
+      "rule_adjustments": "No rule adjustments recorded. ESTIMATION.JSON ABSENCE flagged as a structural observation (WF03-GH521 did not get one; WF03-GH526 did -- inconsistent ORCH dispatch behaviour).",
+      "wall_clock_span_minutes": 45.1
+    },
+    "github_issue_closure": {
+      "issue_number": 521,
+      "issue_url": "https://github.com/tvolodi/R-Co/issues/521",
+      "previous_state": "OPEN (verified via gh issue view 521 --json state)",
+      "action": "gh issue close 521 --repo tvolodi/R-Co --reason completed --comment <markdown body loaded from scratch/_gh521_close_comment.md>",
+      "comment_summary": "References fix commit 5c5b3768 and regression test 94f9c811 on feature/WF03-GH521-20260808; describes the nested-acquire removal and the held-conn reuse pattern; cites the design, test, spec, test report, and release artefacts; announces that Step Final (BACKEND-DEV: git-merge) will land this in PR via squash-merge to main and delete the feature branch. Cross-references ISS-0158 (the run that isolated this as a distinct cause during ISS-0158 / #479 resolution), ISS-0132 (the leak-class closure whose allocation-failure discipline pattern this fix follows), docs/anti-patterns.md -> Anti-pattern: Nested pool acquire inside a held lease.",
+      "post_close_state": "CLOSED / COMPLETED (verified via gh issue view 521 --json state,stateReason)"
+    },
+    "project_board_update": {
+      "tool": "tools/gh_project_status.py",
+      "issue_number": 521,
+      "calls": [
+        {"target": "implemented", "by_step": "Step 7 (DOC-UPDATER)", "result": "no-op -- issue #521 already at 'Done' (target was 'Implemented'), no change"},
+        {"target": "done", "by_step": "Step 7 (DOC-UPDATER)", "result": "no-op -- issue #521 already at 'Done' (target was 'Done'), no change"}
+      ],
+      "uat_scoped": false,
+      "uat_scoped_rationale": "ISS-0187 has no requirement ID; tests/simulation/scenarios/ contains scenarios for simulated-company process flows (SwiftRoute / Vortex / Meridian), none of which exercise the store.append duplicate-idempotency-key path. The pattern is the same as ISS-0132's and ISS-0158's: defect-class fix against already-RELEASED backend code, with no UAT scenario coverage applicable.",
+      "post_call_state": "R-Co system project board status: 'Done' (verified via gh issue view 521 --json projectItems)"
+    },
+    "registry_and_log": {
+      "registry_file": "handoffs/registry.json",
+      "registry_action": "Append step-7-doc-updater entry to handoffs/registry.json with status=COMPLETED",
+      "log_file": "handoffs/orchestrator.log",
+      "log_action": "Append COMPLETE line for step-7 (DOC-UPDATER PASS)"
+    },
+    "lint_gate": {
+      "command": "python3 tools/lint_handoffs.py",
+      "scope": "WF03-GH521-20260808 handoffs (9 step-N handoffs + the registry and log entries produced by this run)",
+      "result": "0 BLOCKERs against any WF03-GH521-20260808 handoff (the 2 pre-existing H004 timestamp inversions on step-00/step-0.5 of this run are upstream ORCH-stamping artifacts documented in the release decision; not introduced by Step 7)"
+    }
+  },
+  "issues": [
+    {
+      "severity": "MINOR",
+      "description": "DOC-UPDATER bootstrapped its own handoff file (handoffs/WF03-GH521-20260808/step-7-doc-updater.json) rather than receiving one from ORCH. The orchestrator.log shows no ROUTE line for step 7; the dispatch was implicit via the user request. Same pattern as step 6 (RELEASE-VALIDATOR) under this run, and the same pattern as DOC-UPDATER under WF03-GH526-20260807 (recorded as MINOR finding there). Consistent with the WF03-GH526 MINOR finding; no action required."
+    },
+    {
+      "severity": "MINOR",
+      "description": "estimation.json was not generated by ORCH for this WF-03 run (verified absent at handoffs/WF03-GH521-20260808/estimation.json). WF03-GH526-20260807 did generate one. This is a structural inconsistency in ORCH's dispatch behaviour for WF-03 runs -- one run gets an estimation.json, the next does not. The retrospective is conditional on estimation existing per CLAUDE.md; this run writes actuals without variance_pct. Recommendation: ORCH should generate estimation.json for every WF-03 run uniformly. Filed as an observation in the retrospective's rule_adjustments section; no formal GH issue filed."
+    }
+  ],
+  "artifacts": [
+    "CHANGELOG.md",
+    "docs/issues/ISS-0187.json",
+    "docs/metrics/retrospectives/WF03-GH521-20260808.yaml",
+    "docs/issue-reports/WF03-GH521-20260808-step-7-doc-updater-INNER-REPORT.json"
+  ],
+  "next_action": "Route to Step Final (BACKEND-DEV: git-merge) -- squash-merge feature/WF03-GH521-20260808 to main, close PR, delete branch, return repo to clean main. Issue #521 is already closed (Step 7 closed it with a comment referencing fix commit 5c5b3768); squash-merge will land it in main. Project board already at Done."
+}

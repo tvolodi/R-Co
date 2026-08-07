@@ -1,0 +1,62 @@
+{
+  "handoff_id": "52105e7a-5test-4f51-95run-521000000000",
+  "run_id": "WF03-GH521-20260808",
+  "workflow_id": "WF-03",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH521-20260808/step-5-test-runner.json",
+  "created_at": "2026-08-07T22:13:00Z",
+  "started_at": "2026-08-07T22:13:00Z",
+  "completed_at": "2026-08-07T22:16:01Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 5 \u2014 Test Execution",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f8e6d3a1-1234-4567-89ab-cdef01234567"
+    ],
+    "artifacts_in": [
+      "src/design/iss0187-store-append-lease-discipline.md",
+      "docs/issues/ISS-0187.json",
+      "src/event_store/store.zig",
+      "tests/integration/entity_subsystem_test.zig",
+      "tests/specs/EXP-202.md"
+    ],
+    "issue_id": "GH-521",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/521",
+    "feature_branch": "feature/WF03-GH521-20260808"
+  },
+  "task": {
+    "description": "WF-03 Step 5: Test execution for ISS-0187 / GH-521 fix.\n\nPre-checks (mandatory per TEST-RUNNER section of CLAUDE.md):\n1. Backend services: docker-compose ps (db_test, keycloak) - all healthy\n2. Infrastructure: zig build migrate exits 0; psql schema_migrations count matches migrations/ count\n3. python3 tools/lint_test_isolation.py tests/integration exits 0, no BLOCKER\n4. python3 tools/lint_sql_param_types.py src tests exits 0, no BLOCKER/MAJOR\n5. python3 tools/verify_test_env.py exits 0 (10/10 checks)\n\nIf all pre-checks pass:\n- Run `zig build test-integration-exp --summary all` x 5 consecutive times\n- Verify: stable result across all 5 runs, no failures (the test-integration-exp target is the EXP suite; the 21-failure baseline applies to test_api08_auth/PD-07 under `zig build test`, not this target)\n- Write results to tests/reports/report-2026-08-07-WF03-GH521-20260808.yaml per docs/guides/test_developer_guide.md \u00a79\n\nComplete handoff with PASS/FAIL.",
+    "acceptance_criteria": [
+      "All pre-checks pass",
+      "zig build test-integration-exp runs 5 times, 13/13 stable",
+      "No failures",
+      "Regression test TC-EXP-202-05 'Pool-size-3 duplicate append (ISS-0187 regression)' passes",
+      "Report file at tests/reports/ exists in YAML format"
+    ],
+    "functions_to_call": [
+      "fn:run-tests"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All pre-checks pass. zig build test-integration-exp --summary all produced 13/13 PASS on 5 consecutive runs (stable, no failures). The new regression test TC-EXP-202-05 'Pool-size-3 duplicate append (ISS-0187 regression)' is included in the 13 and passes — it forces pool_size=3 and exercises the duplicate-idempotency-key path that previously failed with PoolError.ExhaustedPool on the buggy nested-acquire code. Store.append now reuses the held conn (rolled back at the duplicate-detection branch) for both SELECT lookups, eliminating the nested acquire. test-env-verify passed all 10 checks (C0..C9). test_isolation_lint: 129 files, no isolation issues. lint_sql_param_types: 0 BLOCKER, 0 MAJOR, 0 MINOR.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-07-WF03-GH521-20260808.yaml",
+      "scratch/_gh521_test_stdout.log",
+      "scratch/_gh521_test_stderr.log",
+      "scratch/_gh521_run1_stderr.log",
+      "scratch/_gh521_run2_stderr.log",
+      "scratch/_gh521_run3_stderr.log",
+      "scratch/_gh521_run4_stderr.log",
+      "scratch/_gh521_run5_stderr.log"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-03 Step 6)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
