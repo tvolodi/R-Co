@@ -21,7 +21,11 @@ Exit codes:
   1 — unexpected error
 
 Usage:
-  python3 tools/reqctl_batch_claim.py [<workspace_id>]
+  python3 tools/reqctl_batch_claim.py [<workspace_id>] [--stage "<stage value>"]
+
+  --stage restricts the pool to one stage's requirements, planned and locked
+  independently of any other stage — see reqctl_batch_plan.py's --stage.
+  Omit to plan/claim across all DRAFT requirements regardless of stage.
 """
 
 from __future__ import annotations
@@ -94,7 +98,13 @@ def _write_queue(data: dict) -> None:
 
 
 def main() -> int:
-    workspace_id = sys.argv[1] if len(sys.argv) > 1 else f"{socket.gethostname()}-{os.getpid()}"
+    argv = [a for a in sys.argv[1:] if not a.startswith("--")]
+    stage = None
+    if "--stage" in sys.argv:
+        i = sys.argv.index("--stage")
+        if i + 1 < len(sys.argv):
+            stage = sys.argv[i + 1]
+    workspace_id = argv[0] if argv else f"{socket.gethostname()}-{os.getpid()}"
 
     for attempt in range(5):
         if _acquire_file_mutex(workspace_id):
@@ -108,13 +118,21 @@ def main() -> int:
         queue = sync_queue_from_origin(_read_local_queue(), queue_path=BATCH_QUEUE_FILE)
 
         reqs = reqctl_batch_plan.load_requirements()
-        batches = reqctl_batch_plan.build_plan(reqs, "DRAFT")
+        batches = reqctl_batch_plan.build_plan(reqs, "DRAFT", stage)
         if not batches:
             return 2  # nothing left to batch
+
+        # Items are keyed by (stage, batch_index) so two independently-planned
+        # sequences (e.g. the unscoped 92-item backlog and the BRW-* stage)
+        # never collide on a bare numeric index — see reqctl_batch_plan.py's
+        # build_plan() docstring for why they must not interleave.
+        stage_key = stage or "__all__"
 
         active_locks: set[int] = set()
         done_indices: set[int] = set()
         for item in queue.get("items", []):
+            if item.get("stage_key") != stage_key:
+                continue
             idx = item.get("batch_index")
             if idx is None:
                 continue
@@ -135,6 +153,7 @@ def main() -> int:
 
             now = _utcnow()
             claimed_item = {
+                "stage_key": stage_key,
                 "batch_index": idx,
                 "requirement_ids": batch_ids,
                 "status": "IN_PROGRESS",
@@ -144,7 +163,10 @@ def main() -> int:
                 "run_id": None,
             }
 
-            existing = next((i for i in queue["items"] if i.get("batch_index") == idx), None)
+            existing = next(
+                (i for i in queue["items"] if i.get("stage_key") == stage_key and i.get("batch_index") == idx),
+                None,
+            )
             if existing is not None:
                 existing.update(claimed_item)
             else:
