@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGNER",
   "file": "handoffs/WF03-GH556-20260807/step-02-code-designer.json",
   "created_at": "2026-08-07T19:38:50Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-07T19:39:36Z",
+  "completed_at": "2026-08-07T19:42:50Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -35,7 +35,15 @@
       "fn:write-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Designed the ISS-0612/GH-556 fix: restructure provisionTenantSchema() to acquire a single lock_conn once, hold the session-scoped advisory lock across Steps 2-6a (idempotency check, bpm_provision_tenant_schema() call, migrations_applied_at update, tenant promotion), and release it via deferred cleanup only after Step 6a completes. runForSchema (Step 5) deliberately keeps acquiring its own internal connection rather than sharing lock_conn -- confirmed no lock-ordering deadlock exists between the tenant-level session lock and MIGRATIONS_LOCK_KEY_SQL (different connections, disjoint keyspaces, no wait-for cycle) but the fix does hold two pool connections in flight for the duration of one provisioning pass, which is an accepted, PoolExhausted-backstopped cost. bpm_provision_tenant_schema() SQL-level per-schema lock is recommended to stay (protects direct/non-Zig callers, no coordination changes needed). Recommended Pool.release() defensively call pg_advisory_unlock_all() before returning a connection to idle, alongside the existing resetConnectionSearchPath precedent, as a bounded-cost safety net against future regressions of this bug class.",
+    "artifacts_out": [
+      "src/design/iss0612-provisioning-lock-scope-fix.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
