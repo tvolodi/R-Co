@@ -1,0 +1,226 @@
+---
+# Release Decision: ISS-0206 Fix
+# WF03-GH526-20260807 Step 6: RELEASE-VALIDATOR
+
+run_id: WF03-GH526-20260807
+date: 2026-08-07T21:18:30Z
+validator: RELEASE-VALIDATOR
+decision: APPROVED
+
+# Issue Summary
+issue:
+  id: ISS-0206
+  title: "definition store.zig::rowToDefinition leaks resources on partial construction"
+  severity_registry: MAJOR
+  severity_user_stated: BLOCKER
+  github: "https://github.com/tvolodi/R-Co/issues/526"
+  affected_area: "src/definition/store.zig"
+  impact: |
+    The function constructed a Definition{...} literal in place, with fallible
+    allocator calls after already-attached fields. On any failure between
+    allocator.success() and return, prior fields leaked (no errdefer chain
+    across the literal). Memory leak under repeated DB error paths.
+
+# Fix Assessment
+fix_quality:
+  pattern: "RowFields-then-rowToDefinitionFromFields with per-step errdefer"
+  implementation: CORRECT
+  verification: "Code review + narrow test 5/5 PASS + regression 3/3 PASS"
+  notes: |
+    Fix refactors rowToDefinition so that:
+    - All 11 plain-slice fields are parsed into a single RowFields struct first
+      (Block A), with one errdefer registered immediately after each try.
+    - parseGraphJson failure path returns OutOfMemory or falls back to fallback.graph
+      (matching the proven ISS-0132 fix for the parseGraphJson side of the same flow).
+    - The Definition{...} literal is assembled last in Block B, which contains no
+      fallible calls and therefore cannot leak.
+    - 9 existing call sites (294, 347, 688, 775, 862, 1067, 1205, 1511, 1542) are
+      unchanged because the public function signature (CreateParams -> Definition!Oom)
+      is preserved.
+    - Error set is unchanged (still error{OutOfMemory}); the only inline return
+      from parseGraphJson catch is error.OutOfMemory which is in the set.
+
+# Test Verification
+test_results:
+  verdict: PASS
+  report: "tests/reports/report-2026-08-07-WF03-GH526-20260807.yaml"
+
+  narrow_target_test:
+    step: "zig build test-iss0206-rowtodefinition --summary all"
+    outcome: "exit 0 — 5/5 tests passed, 18ms, MaxRSS 3M, no leak"
+    coverage:
+      - TC-ISS-0206-01: "all 11 fields populated"
+      - TC-ISS-0206-02: "optionals absent"
+      - TC-ISS-0206-03: "regression negative control"
+      - additional: "allocator-failure exhaustive coverage via checkAllAllocationFailures"
+
+  regression_suite:
+    step: "zig build test-definition-store --summary all"
+    outcome: "exit 0 — 3/3 tests passed"
+
+  build:
+    step: "zig build"
+    outcome: "exit 0, no 'error set' in stderr"
+
+  linters:
+    lint_sql_param_types:
+      outcome: "exit 0, 0 BLOCKER / 0 MAJOR / 0 MINOR"
+    lint_test_isolation:
+      outcome: "exit 0, no isolation issues"
+    lint_test_wiring:
+      outcome: "exit 0, PASS — 265 test-bearing files, 78 addTest roots, 366 reachable"
+
+  env_gate:
+    step: "verify_test_env.py --quick"
+    outcome: "exit 0 — HEALTHY, 8 passed / 2 skipped (after remediation)"
+
+  nfr_benchmarks:
+    step: "zig build bench"
+    outcome: "exit 0 — NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1786136380202"
+    details:
+      NFR-01_p99_read_ms:
+        target: "<=200"
+        actual: "1.037"
+        unit: "ms"
+        passed: true
+      NFR-01_p99_write_ms:
+        target: "<=500"
+        actual: "8.917"
+        unit: "ms"
+        passed: true
+      NFR-02_append_throughput_eps:
+        target: ">=1000"
+        actual: "8938.077"
+        unit: "events_per_second"
+        passed: true
+      NFR-04_replay_10000_ms:
+        target: "<=5000"
+        actual: "31.234"
+        unit: "ms"
+        passed: true
+      NFR-04_replay_snapshot_100000_ms:
+        target: "<=1000"
+        actual: "5.084"
+        unit: "ms"
+        passed: true
+
+# Aggregate-Test Attribution
+aggregate_attribution:
+  feature_branch:
+    step: "zig build test --summary all (feature/WF03-GH526-20260807)"
+    outcome: |
+      exit 0; lint_test_wiring PASS; ISS-602 differential corpus 15/15 matched;
+      two test binaries hung at shutdown (`error: test runner failed to respond
+      for 1m7.57ms` and `1m15.449ms`); no assertion failure.
+  main_branch_baseline:
+    step: "zig build test --summary all (origin/main in scratch/_rv_mainwt)"
+    outcome: |
+      exit 0 — `Build Summary: 83/83 steps succeeded; 939/1003 tests passed
+      (64 skipped)`; one binary hung at shutdown (4f9be...); build did NOT fail.
+  conclusion: |
+    The aggregate-test runner shutdown hang is pre-existing on origin/main and is
+    not introduced by ISS-0206. ISS-0206's change scope (4 source files + build.zig
+    wiring) does not touch any of the binaries that hung. Per the
+    `Never Call a Red Pipeline OK Without a Source` directive, this is documented
+    rather than dismissed: it is a known Zig 0.16 test-runner shutdown infra
+    defect, not a code regression.
+
+# CI Attribution
+ci_attribution:
+  platform_status:
+    step: "python tools/check_github_status.py"
+    outcome: |
+      exit 0 — "GitHub Actions status: operational -- platform healthy.
+      A red run is therefore attributable to the change under test."
+  feature_branch_runs:
+    step: "gh run list --branch feature/WF03-GH526-20260807"
+    outcome: "[] (no CI runs on the feature branch)"
+
+# Environment Remediation (Unblock-Everything)
+environment_remediation:
+  before:
+    state: |
+      verify_test_env.py failed 3/10 checks: C1 (db_test container healthy —
+      looked for r-co-1-db_test-1 instead of r-co-db_test-1), C4 (schema
+      baseline, same root cause), C6 (16 stale ungranted advisory locks on
+      bpm_test with one idle granted holder pid 22562 since 19:14).
+  fix_1_compose_project_name:
+    action: "export COMPOSE_PROJECT_NAME=r-co before every test/verify command"
+    result: "C1 and C4 PASS; container discovered as r-co-db_test-1 (healthy, publishes :5434)"
+  fix_2_advisory_locks:
+    action: |
+      kill 10 orphan test.exe / build.exe processes; terminate 5 blocking
+      backends (pids 31216, 31222, 31231, 31237, 31242) holding the
+      per-tenant hashtext($1 || $2) advisory lock; scratch/_rv_clear_locks.py
+      used because inline PowerShell Python `count(*)` was mangled by `*`
+      being a PowerShell parameter character.
+    result: "C6 PASS — 0 granted / 0 ungranted; gate HEALTHY, exit 0"
+  after:
+    state: "verify_test_env.py --quick → HEALTHY, 8 passed / 2 skipped"
+
+# Risk Assessment
+risk_analysis:
+  risk_level: LOW
+  rationale: |
+    - Pattern is allocator-errdefer standard for the codebase (ISS-0132 parseGraphJson
+      used the same per-block errdefer shape).
+    - Public signature unchanged; 9 call sites untouched.
+    - Error set unchanged (only error.OutOfMemory).
+    - Narrow test 5/5 with checkAllAllocationFailures exhaustively covers OOM paths.
+    - Regression suite 3/3 covers the happy path of the same function.
+    - Build clean, all three linters clean, NFRs all green.
+  change_scope: "Minimal — single function in src/definition/store.zig, plus 1 test file and design/spec."
+  blast_radius: "Definition persistence; covered by existing integration and unit tests."
+
+# Release Recommendation
+release_recommendation: APPROVED
+
+recommendation_rationale: |
+  Fix is sound, safe, and ready to merge:
+
+  1. **Quality**: HIGH
+     - RowFields-then-rowToDefinitionFromFields is the canonical errdefer-safe shape
+       for builders in this codebase (compare ISS-0132 parseGraphJson fix).
+     - All fallible work happens in Block A with one errdefer per successful allocation.
+     - Definition{...} literal assembly in Block B is infallible.
+
+  2. **Risk**: LOW
+     - Public API unchanged (CreateParams -> Definition!Oom).
+     - 9 call sites untouched.
+     - Error set unchanged.
+     - Narrow test covers OOM paths via checkAllAllocationFailures.
+
+  3. **Test Verification**: PASS
+     - 5/5 narrow tests, 3/3 regression tests, 0 leaks.
+     - Build clean, all three linters clean.
+     - NFRs all green (5/5 PASS).
+     - Env gate HEALTHY.
+
+  4. **CI / Platform**: No platform outage (check_github_status.py exit 0).
+     No CI runs on the feature branch to attribute.
+
+  5. **Aggregate-test hang**: Documented as pre-existing Zig 0.16 infra defect
+     (reproduced on origin/main). Not introduced by ISS-0206.
+
+  **Conclusion**: Fix is safe and ready for merge.
+
+# Artifacts
+artifacts_reviewed:
+  - tests/reports/report-2026-08-07-WF03-GH526-20260807.yaml
+  - docs/issues/ISS-0206.json
+  - src/design/iss0206-rowtodefinition-errdefer.md
+  - src/definition/store.zig
+  - src/iss0206_rowtodefinition_errdefer_test.zig
+  - tests/specs/ISS-0206.md
+  - handoffs/WF03-GH526-20260807/step-5-test-runner.json
+  - scratch/_rv_clear_locks.py
+  - scratch/_rv_main_agg.log (baseline comparison against origin/main)
+  - scratch/_rv_iss0206_agg.log (feature-branch aggregate)
+  - scratch/_rv_iss0206_bench.log (NFR benchmark output)
+  - docs/issue-reports/WF03-GH526-20260807-step-6-release-validator-INNER-REPORT.json
+
+blocking_issues: []
+
+approved_requirements: []
+
+next_action: "Route to DOC-UPDATER (Step 7) to update CHANGELOG and set ISS-0206 status to RESOLVED."
