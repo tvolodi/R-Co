@@ -1,0 +1,49 @@
+{
+  "handoff_id": "5ac79a7f-f53b-43e9-80e3-74c41202d4fb",
+  "run_id": "WF03-ISS-0152-20260807",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-07T01:07:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0152.json",
+      "docs/issue-reports/ISS-0152-diagnosis.yaml",
+      "docs/issues/ISS-0180.json",
+      "docs/issues/ISS-0181.json"
+    ]
+  },
+  "task": {
+    "description": "Record the ISS-0152 outcome in CHANGELOG.md, verify requirement mapping, update docs/issues/ISS-0152.json with status/resolution/prevention and cross-references to ISS-0180 and ISS-0181.",
+    "acceptance_criteria": [
+      "CHANGELOG.md states accurately that #484's symptom was already resolved by #499, that the underlying T010 debt is carried to #512, and that #511 was found",
+      "CHANGELOG.md does not claim any test source was fixed by this run",
+      "Requirement mapping checked against docs/requirements.yaml, not assumed",
+      "docs/issues/ISS-0152.json status RESOLVED with evidence, prevention, and cross-references"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md records ISS-0152 under a 'Verified (no code change)' heading, stating explicitly that this run changed no test source, no linter and no baseline, and why that is the correct output: the reported C5 failure was already fixed by ISS-0171/PR #499 and is not reproducible on a pristine main worktree (HEAD b2cc55c, linter exit 0). The gate-gaming audit of #499's baseline regeneration is recorded (225 entries before and after, 0 newly suppressed, 0 disappeared when diffed on (severity, code, file, message) ignoring line) along with the environment cause of the local exit 1 (BPM_TEST_DB_URL shadowed to port 5434 instead of 5453, plus 2 unapplied migrations) - which was C4, not C5. The residual debt is stated at its true size (184 raw T010 findings across 45 files, up from 88 because PR #490 wired 55 orphaned test files into build targets) and carried to ISS-0181/GH #512; the new gate-integrity defect is recorded as ISS-0180/GH #511. Requirement mapping was checked, not assumed: a keyword scan of all 359 entries in docs/requirements.yaml surfaced ENV-01/ENV-02 as the only near matches, and reading both shows they govern tenant-level production/test isolation, not test-fixture isolation - so no requirement maps and no status was moved. docs/issues/ISS-0152.json is RESOLVED with full evidence, 5-point prevention text, and cross-references to ISS-0171/#499, ISS-0180/#511, ISS-0181/#512 and GH #490.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0152.json",
+      "handoffs/WF03-ISS-0152-20260807/step-07-doc-updater.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step Final / fn:git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T01:07:30Z",
+  "completed_at": "2026-08-07T01:07:30Z"
+}
