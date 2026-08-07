@@ -47,8 +47,16 @@ import subprocess
 QUEUE_PATH_IN_REPO = "handoffs/global_queue.json"
 
 
-def sync_queue_from_origin(local_fallback: dict) -> dict:
+def sync_queue_from_origin(local_fallback: dict, queue_path: str = QUEUE_PATH_IN_REPO) -> dict:
     """Return the queue as it exists on origin/main, fetching first.
+
+    `queue_path` defaults to the GitHub-issue lock file
+    (handoffs/global_queue.json) but any repo-relative JSON queue file using
+    the same read-mutate-write-whole-file pattern can pass its own path —
+    e.g. handoffs/batch_queue.json for WF-02 requirement-batch locking
+    (tools/reqctl_batch_claim.py). The race this guards against is generic
+    to "a JSON file two independent checkouts each hold a stale copy of,"
+    not specific to the GitHub-issue queue.
 
     Falls back to `local_fallback` (the caller's already-read local copy) if
     the fetch or remote read fails for any reason (offline, no remote
@@ -72,12 +80,12 @@ def sync_queue_from_origin(local_fallback: dict) -> dict:
 
     try:
         proc = subprocess.run(
-            ["git", "show", f"origin/main:{QUEUE_PATH_IN_REPO}"],
+            ["git", "show", f"origin/main:{queue_path}"],
             capture_output=True,
             timeout=15,
             check=True,
         )
         return json.loads(proc.stdout.decode("utf-8-sig"))
     except Exception as exc:
-        print(f"[_queue_sync] could not read {QUEUE_PATH_IN_REPO} from origin/main ({exc}); using local copy — staleness guarantee weakened to same-machine only", file=sys.stderr)
+        print(f"[_queue_sync] could not read {queue_path} from origin/main ({exc}); using local copy (may be genuinely new/uncommitted) — staleness guarantee weakened to same-machine only", file=sys.stderr)
         return local_fallback

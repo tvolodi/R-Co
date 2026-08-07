@@ -21,6 +21,13 @@ This tool does not regenerate them -- new or changed requirement content
 goes into docs/requirements.yaml via `reqctl add` / editing the body field,
 not into those files.
 
+backlog/meta-*.yaml + backlog/bodies/*.md (92 requirements, stages 16/17/F8)
+were migrated the same way on 2026-08-07 (see scratch/migrate_backlog.py,
+now historical) -- backlog/ is FROZEN too; see backlog/FROZEN.md. Their
+implementation order is computed by tools/reqctl_batch_plan.py and drained
+automatically by tools/reqctl_batch_claim.py / reqctl_batch_release.py --
+see docs/agents/protocols/LOOP_PROTOCOL.md "Requirement batch loop mode".
+
 Usage:
   reqctl validate                          Run consistency checks; exit 1 on BLOCKER
   reqctl list [--status S] [--stage N] [--priority P] [--type T]

@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-06T23:35:45Z'
+generated_at: '2026-08-07T16:11:17Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -10669,3 +10669,2163 @@ requirements:
     release_run: WF02-stage10-repo-20260528
     last_updated: '2026-05-29T12:51:00Z'
     type: requirement
+  AGT-01:
+    id: AGT-01
+    title: Agent artifact envelope with kind discrimination
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** SIM-01, promoting agent run output from a simulation artifact to a first-class stored envelope.
+
+      > An authoring agent SHALL submit its work through `POST /api/v1/agent/artifacts` as an envelope carrying `kind`, `task_spec_id`, `attempt_count`, `spec_hash`, `payload`, and `non_deterministic_fields`. `kind` is an enum over `test_report`, `design_artifact`, `patch_set`, `scenario_run` and SHALL discriminate the schema the `payload` is validated against. An envelope whose `kind` is outside the enum returns HTTP 400 `unknown_artifact_kind`; a payload that fails the schema selected by its `kind` returns HTTP 422 `artifact_payload_invalid` naming the failing JSON pointer.
+
+      **Acceptance Criteria:**
+      - GIVEN an envelope with `kind` of `test_report`, WHEN the payload is validated, THEN it is checked against the `test_report` schema and against no other schema.
+      - GIVEN an envelope with `kind` of `patch_set` carrying a `test_report` payload, WHEN it is validated, THEN the platform returns HTTP 422 `artifact_payload_invalid` with the JSON pointer of the first failing member, and writes no `agent_artifacts` row.
+      - GIVEN an envelope with `kind` of `benchmark`, WHEN it is parsed, THEN the platform returns HTTP 400 `unknown_artifact_kind` naming the received value and listing the four accepted discriminants.
+      - GIVEN a valid envelope, WHEN it is stored, THEN the `agent_artifacts` row carries `kind` as a column, and a query filtering on `kind` returns that row without parsing the payload.
+      - GIVEN an envelope carrying two payload members that each match a different `kind` schema, WHEN it is validated, THEN only the schema named by `kind` is applied and unrecognised members are rejected; the schema is closed, and unknown members are not ignored.
+      - The four payload schemas are versioned alongside the envelope and are published at `GET /api/v1/agent/artifacts/schemas`.
+
+      **See:** SIM-01, AGT-02, AGT-03, AGT-04, AGT-07, ENV-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:38Z'
+    workflow: PW-11
+  AGT-02:
+    id: AGT-02
+    title: Non-production artifact environment enforcement
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** ENV-01, confining agent artifacts to non-production environments.
+
+      > Agent artifacts SHALL persist only in the `staging` schema of a non-production deployment. A submission handled by a deployment whose environment class is `production` SHALL return HTTP 403 `wrong_environment` before the payload is parsed and before any schema validation runs. The environment class SHALL be read from deployment configuration; an `environment` field present in the request body or in a header is discarded and never consulted.
+
+      **Acceptance Criteria:**
+      - GIVEN a production deployment, WHEN an artifact is submitted, THEN the platform returns HTTP 403 `wrong_environment`, writes no row, and records no payload content in logs.
+      - GIVEN a production deployment, WHEN a submission carries a valid envelope, THEN the environment check runs before schema selection, so an invalid payload on a production deployment still yields HTTP 403 `wrong_environment` and never HTTP 422.
+      - GIVEN a request body carrying `"environment": "staging"` against a production deployment, WHEN it is handled, THEN the field is discarded and the response is HTTP 403 `wrong_environment`.
+      - GIVEN a staging deployment, WHEN an artifact is submitted and accepted, THEN the row is written to the `staging` schema and no artifact table exists in the production schema.
+      - GIVEN a promotion of platform code from staging to production, WHEN the production deployment starts, THEN the artifact submission route is present and returns HTTP 403 `wrong_environment` for every call; the route is not removed, so its absence cannot be probed.
+      - Every rejected submission appends `ArtifactSubmissionRejected` with the environment class and the calling principal.
+
+      **See:** ENV-01, ENV-03, AGT-01, AGT-03, SBX-01, OBS-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:39Z'
+    workflow: PW-11
+  AGT-03:
+    id: AGT-03
+    title: Artifact submission idempotency per attempt
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** AGT-01, making artifact submission safe to retry.
+
+      > Artifact submission SHALL be idempotent on `(tenant_id, task_spec_id, attempt_count)`, which is a unique index on `agent_artifacts`. The platform SHALL execute `INSERT ... ON CONFLICT (tenant_id, task_spec_id, attempt_count) DO UPDATE SET touched_at = now() RETURNING xmax = 0 AS inserted` and SHALL use `inserted` to distinguish a fresh insert from a re-hit: `true` returns HTTP 201, `false` with a matching `spec_hash` returns HTTP 200 carrying the existing `artifact_id`, and `false` with a differing `spec_hash` returns HTTP 409 `spec_hash_mismatch` carrying both hashes. A re-hit SHALL NOT replace the stored payload.
+
+      **Acceptance Criteria:**
+      - GIVEN no row exists for the triple, WHEN an artifact is submitted, THEN `xmax = 0` evaluates true, the platform returns HTTP 201, and `artifact_id` is the newly created UUID.
+      - GIVEN a row exists for the triple and the submitted `spec_hash` matches the stored one, WHEN the same envelope is resubmitted, THEN the platform returns HTTP 200 with the original `artifact_id`, `touched_at` advances, and the stored `payload` is byte-identical to the payload stored on the first call.
+      - GIVEN a row exists for the triple and the submitted `spec_hash` differs, WHEN the envelope is submitted, THEN the platform returns HTTP 409 `spec_hash_mismatch` carrying `stored_spec_hash` and `submitted_spec_hash`, and the stored row is unmodified.
+      - GIVEN an agent whose network call times out after the server committed, WHEN the agent retries the identical envelope, THEN it receives HTTP 200 and exactly one row exists for the triple.
+      - GIVEN the stored maximum `attempt_count` for a task spec is 3, WHEN an envelope with `attempt_count` of 2 is submitted, THEN the platform returns HTTP 409 `attempt_count_regressed`.
+      - GIVEN two submissions for the same triple arrive concurrently, WHEN both execute, THEN exactly one observes `xmax = 0` true and returns HTTP 201, and the other returns HTTP 200 or HTTP 409 by `spec_hash` comparison.
+
+      **See:** AGT-01, AGT-04, AGT-05, AGT-06, API-10
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:40Z'
+    workflow: PW-11
+  AGT-04:
+    id: AGT-04
+    title: Immutable task specs bound by spec hash
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** PD-08, applying content-addressed immutability to agent task specs.
+
+      > A task spec SHALL be immutable once written. Its identity SHALL be `spec_hash`, the SHA-256 of the RFC 8785 canonical JSON serialisation of the spec document, stored as 64 lowercase hex characters in `task_specs.spec_hash`. Key order, insignificant whitespace, and number formatting in the submitted document SHALL NOT change the hash. A changed spec is a new spec with a new `task_spec_id` and a new `spec_hash`; there is no update path on `task_specs`.
+
+      **Acceptance Criteria:**
+      - GIVEN one spec document serialised twice with different key orders and different insignificant whitespace, WHEN both are canonicalised and hashed, THEN both produce the same 64-character `spec_hash`.
+      - GIVEN a spec whose numeric field is written as `1.0` in one submission and `1` in another, WHEN both are canonicalised, THEN RFC 8785 number formatting is applied and the resulting hashes are equal.
+      - GIVEN a stored `task_specs` row, WHEN any update to its spec document is attempted, THEN the platform returns HTTP 409 `task_spec_immutable` and the stored row is unmodified.
+      - GIVEN a spec differing from a stored spec in exactly one field value, WHEN it is registered, THEN it receives a different `spec_hash` and a different `task_spec_id`, and the stored spec remains addressable.
+      - GIVEN an artifact submitted with a `spec_hash` that matches no `task_specs` row in the tenant, WHEN it is handled, THEN the platform returns HTTP 404 `task_spec_not_found`.
+      - `spec_hash` covers the server-set `orchestrator_principal` of SBX-02, so a spec cannot be re-registered under a different orchestrator identity without changing its hash.
+
+      **See:** PD-08, REPO-07, AGT-03, AGT-05, SBX-02, PIN-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:41Z'
+    workflow: PW-11
+  AGT-05:
+    id: AGT-05
+    title: Non-zero RNG seed folded into spec identity
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** AGT-04, binding run determinism into spec identity.
+
+      > A task spec SHALL carry `rng_seed` as a uint64, SHALL be rejected with HTTP 400 `rng_seed_zero` when that value is 0, and SHALL fold `rng_seed` into the canonical JSON before `spec_hash` is computed. Two specs that differ only in their seed therefore carry different identities, and an agent cannot reuse one spec identity for runs that would diverge. A zero seed is refused rather than defaulted, so an unset seed cannot silently produce a run whose determinism is unrecorded.
+
+      **Acceptance Criteria:**
+      - GIVEN a spec with `rng_seed` of 0, WHEN it is registered, THEN the platform returns HTTP 400 `rng_seed_zero` and writes no `task_specs` row.
+      - GIVEN a spec with `rng_seed` absent, WHEN it is registered, THEN the platform returns HTTP 400 `rng_seed_zero`; no default seed is substituted.
+      - GIVEN two specs identical apart from `rng_seed` values 42 and 43, WHEN both are registered, THEN their `spec_hash` values differ and both rows persist.
+      - GIVEN a spec registered with `rng_seed` of 42, WHEN an artifact is submitted claiming a `spec_hash` computed with `rng_seed` omitted from the canonical form, THEN the hashes differ and the submission returns HTTP 409 `spec_hash_mismatch`.
+      - GIVEN a scenario run replayed with the stored spec, WHEN the seed is read from the spec rather than from the environment, THEN the replay uses the same seed that produced the original artifact.
+      - `rng_seed` is serialised in the canonical JSON as an unsigned integer with no exponent form, so its contribution to `spec_hash` is stable across submitters.
+
+      **See:** AGT-04, AGT-03, SIM-01, AGT-06
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:42Z'
+    workflow: PW-11
+  AGT-06:
+    id: AGT-06
+    title: Dual-sweep artifact retention
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** PIN-01, tying artifact retention to the version pair the artifact was produced against.
+
+      > Artifact retention SHALL be a dual sweep. Sweep 1 deletes artifacts in state `needs_review` whose `created_at` is older than `STAGING_REVIEW_TTL_DAYS` (default 30). Sweep 2 deletes an artifact in state `verified` only when the pinned `(task_spec_version, process_definition_version)` pair recorded in `artifact_version_pins` has been collected AND `verified_at` is older than `STAGING_VERIFIED_TTL_DAYS` (default 365); the later of the two moments governs. A verified artifact is exempt from the needs-review TTL for as long as anything still pins its version pair.
+
+      **Acceptance Criteria:**
+      - GIVEN an artifact in state `needs_review` created 31 days ago, WHEN sweep 1 runs, THEN the row is deleted and the authoring agent must resubmit to restore it.
+      - GIVEN an artifact in state `verified` created 400 days ago, WHEN sweep 1 runs, THEN the row is untouched; the state predicate excludes verified artifacts from the needs-review TTL.
+      - GIVEN a verified artifact whose pinned version pair is still collected-pending and whose `verified_at` is 400 days old, WHEN sweep 2 runs, THEN the row is retained because the pin has not been collected.
+      - GIVEN a verified artifact whose pinned version pair was collected 100 days ago and whose `verified_at` is 200 days old, WHEN sweep 2 runs, THEN the row is retained because 365 days have not elapsed since verification.
+      - GIVEN a verified artifact whose pin was collected and whose `verified_at` is 366 days old, WHEN sweep 2 runs, THEN the row is deleted.
+      - GIVEN an artifact transitions to `verified`, WHEN the transition commits, THEN an `artifact_version_pins` row carrying `(artifact_id, task_spec_version, process_definition_version)` is written in the same transaction.
+      - Both sweeps run on a daily schedule at 03:00 UTC, sweep 1 before sweep 2, and each carries a state predicate that makes a re-run a no-op.
+
+      **See:** PIN-01, PIN-02, ES-07, AGT-03, AGT-04, IR-07
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:43Z'
+    workflow: PW-11
+  AGT-07:
+    id: AGT-07
+    title: Deprecated envelope field names rejected
+    stage: '17'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > **Extends:** AGT-01, refusing silent compatibility shims on the envelope.
+
+      > A deprecated envelope field name SHALL be rejected as a validator error and SHALL NOT be aliased to its replacement. The legacy name `ignore_fields` SHALL return HTTP 400 `deprecated_field:ignore_fields` naming the replacement `non_deterministic_fields`; the submitted value is discarded and no artifact row is written. A stale submitter therefore fails loudly at the boundary rather than storing an artifact whose exclusion set was read from a field the platform no longer defines.
+
+      **Acceptance Criteria:**
+      - GIVEN an envelope carrying `ignore_fields`, WHEN it is validated, THEN the platform returns HTTP 400 `deprecated_field:ignore_fields` with the replacement name in the response body, and writes no `agent_artifacts` row.
+      - GIVEN an envelope carrying both `ignore_fields` and `non_deterministic_fields`, WHEN it is validated, THEN the same HTTP 400 is returned; the presence of the current field does not excuse the deprecated one.
+      - GIVEN an envelope carrying `ignore_fields` with an empty array, WHEN it is validated, THEN the same HTTP 400 is returned; an empty deprecated field is still an error.
+      - GIVEN a deprecated field is rejected, WHEN the stored artifact set is inspected, THEN no row exists whose `non_deterministic_fields` column was populated from a deprecated name.
+      - GIVEN a future field rename, WHEN the replacement is introduced, THEN the prior name is added to the deprecated-name set with its own `deprecated_field:<name>` identifier rather than to an alias map.
+      - The deprecated-name check runs before payload schema validation, so a submitter using a deprecated name receives HTTP 400 rather than HTTP 422.
+
+      **See:** AGT-01, AGT-03, API-10
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:44Z'
+    workflow: PW-11
+  CAC-UI-01:
+    id: CAC-UI-01
+    title: Tenant segment in every query key
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** IDN-02, extending tenant isolation from the API boundary into the client cache.
+
+      > Every factory exported from `web/src/api/queryKeys.ts` SHALL emit a key of the shape `[kind, tenantSlug, ...rest]` with `tenantSlug` at index 1, for every kind in `definition`, `instance`, `task`, `eventType`, `timer`, `dlq`, `audit`, `user`, `role`, `branding`, `metrics` and `health`. The factory SHALL read the slug from `auth/tenantConfig.getActiveTenantSlug()`; a caller SHALL NOT pass a slug into a factory, so a stale component prop cannot widen a key. A factory invoked before the session resolves SHALL throw `MissingTenantContextError` rather than emit a key without the segment. No `useQuery`, `useMutation` or `queryClient` call SHALL take an inline array literal as its key.
+
+      **Acceptance Criteria:**
+      - GIVEN every exported factory in `web/src/api/queryKeys.ts`, WHEN each is invoked with a fixed active slug, THEN element 1 of the returned array equals that slug; a factory missing the segment fails this pure static key-shape check with no HTTP.
+      - GIVEN any factory signature accepting a `tenantSlug` parameter, WHEN the key-shape check runs, THEN it fails naming that factory, since the slug is read from the session and not from a caller.
+      - GIVEN a hook passing an inline array literal to `useQuery`, WHEN the GRD-UI-02 source scan runs, THEN the scan fails reporting the file path and pattern name `inline-query-key`; this is a pure static scan with no HTTP.
+      - GIVEN a Playwright E2E signs in to SwiftRoute against the real backend and opens the Instance List, WHEN `queryClient.getQueryCache().getAll()` is read in the page, THEN every cached key holds `swiftroute` at index 1 and no key omits the segment.
+      - GIVEN a factory is invoked before `auth/tenantConfig` resolves the session, WHEN it runs, THEN `MissingTenantContextError` is thrown and no request is issued.
+
+      **See:** CAC-UI-02, CAC-UI-03, CAC-UI-04, GRD-UI-02, IDN-02, ENV-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:45Z'
+    workflow: PW-15
+  CAC-UI-02:
+    id: CAC-UI-02
+    title: Cache disposal on tenant switch and sign-out
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > On a tenant switch emitted by `web/src/components/TenantHeader.tsx`, the SPA SHALL call `queryClient.removeQueries()` for every cached key whose element 1 equals the outgoing slug, and SHALL complete that disposal before the first query of the incoming tenant is issued. On sign-out the SPA SHALL call `queryClient.clear()` before the identity provider redirect. The regression test covering this SHALL be named `cache-isolation-on-tenant-switch` and SHALL be referenced by that name in `tests/specs/PIPELINE-tenant-cache.md`. Client-side key scoping is defence in depth; the Platform API remains the enforcing tenant boundary.
+
+      **Acceptance Criteria:**
+      - GIVEN a Playwright E2E named `cache-isolation-on-tenant-switch` signs in as a user holding membership in both SwiftRoute and Vortex on the real backend, WHEN the user switches from SwiftRoute to Vortex without reloading, THEN reading `queryClient.getQueryCache().getAll()` in the page returns no key whose element 1 equals `swiftroute`.
+      - GIVEN that switch, WHEN the Instance List is re-rendered, THEN the intermediate frame shows `SkeletonLayout` and no SwiftRoute row appears in any captured frame.
+      - GIVEN a request to a SwiftRoute route is in flight when the switch fires, WHEN the response arrives, THEN it is discarded because its key was removed, and no SwiftRoute row enters the Vortex cache.
+      - GIVEN the user signs out, WHEN the cache is read immediately before the Keycloak redirect in that E2E, THEN `getQueryCache().getAll()` returns an empty array.
+      - GIVEN `tests/specs/PIPELINE-tenant-cache.md`, WHEN it is read, THEN it names `cache-isolation-on-tenant-switch` and maps it to CAC-UI-02; this is a pure static specification check.
+      - No HTTP mocking is used at any point; both tenants are real seeded tenants on the running backend.
+
+      **See:** CAC-UI-01, CAC-UI-04, IDN-02, IDN-05, ADM-UI-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:46Z'
+    workflow: PW-15
+  CAC-UI-03:
+    id: CAC-UI-03
+    title: Cache lifetime tiers by data class
+    stage: F8
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > Each key factory in `web/src/api/queryKeys.ts` SHALL declare one of three cache lifetime tiers defined in `web/src/api/cacheTiers.ts`. The `volatile` tier applies to `instance`, `task`, `timer` and `dlq` with `staleTime` 0 s and `gcTime` 30 s. The `session` tier applies to `definition`, `eventType`, `user` and `role` with `staleTime` 60 s and `gcTime` 5 min. The `reference` tier applies to `branding` and `health` with `staleTime` 15 min and `gcTime` 30 min. The tier SHALL be declared on the factory; a hook SHALL NOT override `staleTime` or `gcTime` at the call site.
+
+      **Acceptance Criteria:**
+      - GIVEN every exported factory in `web/src/api/queryKeys.ts`, WHEN the tier declaration is read, THEN each factory names exactly one of `volatile`, `session` or `reference`; an undeclared factory fails this pure static check with no HTTP.
+      - GIVEN a hook passing `staleTime` or `gcTime` inline to `useQuery`, WHEN the GRD-UI-02 source scan runs, THEN the scan fails reporting the file path and pattern name `inline-stale-time`; this is a pure static scan with no HTTP.
+      - GIVEN a Playwright E2E opens the Instance List against the real backend, navigates to the Definition List and returns, WHEN the page network log is read, THEN the instance list was refetched on the second mount because its `staleTime` is 0 s.
+      - GIVEN the same E2E returns to the Definition List within 60 s, WHEN the network log is read, THEN no definition list request was issued, because the `session` tier holds the data fresh.
+      - GIVEN the branding key, WHEN the same E2E navigates across five routes inside 15 min, THEN exactly one branding request appears in the network log.
+      - GIVEN the tier values in `cacheTiers.ts`, WHEN they are compared against the six numbers stated above, THEN each matches.
+
+      **See:** CAC-UI-01, GRD-UI-02, IN-UI-05, DLQ-UI-01, WH-UI-04
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:47Z'
+    workflow: PW-15
+  CAC-UI-04:
+    id: CAC-UI-04
+    title: Version-pinned task payload fetch
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** PIN-01, carrying instance version pinning through to the client fetch.
+
+      > A task payload read SHALL request the definition version recorded on the task row as `task.definition_version` through `GET /api/v1/definitions/{key}?version={n}`, and SHALL cache it under the key `['definition', tenantSlug, key, version]`. The currently active version SHALL NOT be substituted for a pinned version at any point. The SPA SHALL compare the `X-Definition-Version` response header against the requested version and, on a mismatch, SHALL discard the response and render `StaleVersionError` rather than open a form against the wrong schema.
+
+      **Acceptance Criteria:**
+      - GIVEN a Playwright E2E creates an instance from definition version 3 on the real backend and then publishes version 5 of the same definition key, WHEN the user opens the task from that instance, THEN the page network log shows a request carrying `version=3`; no HTTP mocking is used.
+      - GIVEN that request resolves, WHEN `queryClient.getQueryCache().getAll()` is read in the page, THEN the cached key equals `['definition', <slug>, <key>, 3]` and no unversioned definition key is present.
+      - GIVEN version 5 of the same definition is already cached from the Definition List, WHEN the task opens, THEN the version 5 entry does not satisfy the version 3 read and a separate request is issued.
+      - GIVEN the task form renders, WHEN its fields are compared against the version 3 `form_schema` fetched directly from the real API, THEN the field set matches version 3 and not version 5.
+      - GIVEN the backend returns `X-Definition-Version: 5` for a request that asked for version 3, WHEN the response is processed, THEN it is discarded and `StaleVersionError` renders per RND-UI-06.
+      - GIVEN the pinned version has been purged and the API returns 404, WHEN the state is classified, THEN it is `fetch-failure` and `FetchError` renders with its Retry action.
+
+      **See:** CAC-UI-01, RND-UI-06, RND-UI-03, PIN-01, PD-08, TK-UI-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:48Z'
+    workflow: PW-15
+  CMP-UI-01:
+    id: CMP-UI-01
+    title: Generated design token stylesheet
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > `design-tokens/r-co.tokens.json` SHALL be the only file in which a colour, type, spacing or radius value is authored, and `web/src/styles/tokens.css` SHALL be generated from it as `:root` custom properties. The generated key set SHALL equal the token set specified in `docs/guides/frontend_design_system.md` §2.1, §2.2, §3 and §4: `--color-neutral-0` through `--color-neutral-900`, `--color-brand-400` through `--color-brand-700`, the light, base and dark triplets of `--color-success`, `--color-warning`, `--color-error` and `--color-info`, `--surface-page`, `--surface-card`, `--surface-sidebar`, `--surface-overlay`, `--text-primary`, `--text-secondary`, `--text-disabled`, `--text-inverse`, `--border-default`, `--border-focus`, `--border-error`, `--interactive-primary`, `--interactive-primary-hover`, `--interactive-danger`, `--interactive-danger-hover`, `--font-sans`, `--font-mono`, `--text-xs` through `--text-3xl`, `--font-normal` through `--font-bold`, `--space-1` through `--space-16`, `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-full`, `--sidebar-width`, `--content-max-width` and `--panel-width`.
+
+      **Acceptance Criteria:**
+      - GIVEN the committed `web/src/styles/tokens.css`, WHEN the generator is run against `design-tokens/r-co.tokens.json` and the output is compared byte for byte, THEN the files are identical; drift fails `npm run build`. This is a pure static check with no HTTP.
+      - GIVEN the token key set parsed from `tokens.css`, WHEN it is compared against the key set enumerated above, THEN the two sets are equal, and a key present in one and absent from the other fails the parity check with the key name.
+      - GIVEN `--surface-card`, `--text-primary` and `--interactive-primary` in the generated file, WHEN each is resolved, THEN it resolves through a `var()` reference to a base palette token and holds no literal value of its own.
+      - GIVEN a Playwright E2E loads the Instance List against the real backend, WHEN `getComputedStyle(document.documentElement)` is read, THEN every key in the enumerated set resolves to a non-empty value.
+      - The generator is invoked by the `build` script, so a hand-edit of `tokens.css` without a matching edit to the JSON cannot reach `main`.
+
+      **See:** CMP-UI-02, CMP-UI-03, CMP-UI-04, GRD-UI-01, GRD-UI-02
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:49Z'
+    workflow: PW-14
+  CMP-UI-02:
+    id: CMP-UI-02
+    title: No literal colour values in component code
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > No file under `web/src/` other than `web/src/styles/tokens.css` SHALL contain a literal colour value. The forbidden forms are a six-digit or three-digit hex literal, an `rgb(` or `rgba(` call, and an `hsl(` or `hsla(` call. Component code SHALL reference colour through `var(--color-*)`, `var(--surface-*)`, `var(--text-*)`, `var(--border-*)` or `var(--interactive-*)`. The rule SHALL be enforced by the GRD-UI-01 forbidlist pattern `literal-colour` in both the source scan and the post-build bundle scan.
+
+      **Acceptance Criteria:**
+      - GIVEN a `.ts`, `.tsx` or `.css` file under `web/src/` outside `web/src/styles/tokens.css` containing `#339af0`, WHEN the GRD-UI-02 source scan runs, THEN the scan fails reporting the file path, the line number and pattern name `literal-colour`; this is a pure static scan with no HTTP.
+      - GIVEN `web/src/styles/tokens.css`, WHEN the same scan runs, THEN the file is skipped because it is the sole entry in the pattern's `allowedPaths`.
+      - GIVEN a dependency injects an inline `rgba(` style into a shipped chunk, WHEN the GRD-UI-03 bundle scan runs over `web/dist/assets/*.js`, THEN the scan fails naming the chunk and pattern name `literal-colour`; this is a pure post-build scan with no HTTP.
+      - GIVEN the fixture `web/tests/guards/fixtures/offender/literal-colour.txt`, WHEN the GRD-UI-04 META control runs, THEN the pattern matches it; and GIVEN `web/tests/guards/fixtures/bystander/literal-colour.txt` holding `var(--color-brand-600)` and the string `#hash-anchor`, WHEN the control runs, THEN the pattern does not match it.
+      - GIVEN a Playwright E2E loads the Definition List against the real backend, WHEN the computed background of a `StatusBadge` with `status="ACTIVE"` is read, THEN it equals the resolved value of `--color-success-light`.
+
+      **See:** CMP-UI-01, CMP-UI-03, GRD-UI-01, GRD-UI-02, GRD-UI-03, GRD-UI-04
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:50Z'
+    workflow: PW-14
+  CMP-UI-03:
+    id: CMP-UI-03
+    title: Shared UI component library
+    stage: F8
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > `web/src/components/ui/` SHALL contain `Button`, `DataTable`, `ConfirmDialog`, `Toast`, `JsonEditor`, `StatusBadge`, `PageLayout`, `FilterBar` and `PaginationControls`, each with the prop names and enum values specified in `docs/guides/frontend_design_system.md` §5.4 and §7.1 through §7.6. `StatusBadge` SHALL cover every status in the §5.1, §5.2 and §5.3 tables across the domains `definition`, `instance`, `task`, `timer` and `dlq`. Canvas node geometry SHALL follow the §6.1 dimensions and the §6.2 runtime states. Every destructive action - cancel instance, delete definition, revoke token, discard DLQ item - SHALL route through `ConfirmDialog` with `confirmVariant="danger"`; `window.confirm` and `window.alert` SHALL NOT appear in `web/src/`.
+
+      **Acceptance Criteria:**
+      - GIVEN the exported prop types of the nine components, WHEN they are compared against the §5.4 and §7.1 to §7.6 signatures, THEN every prop name and every enum member matches character for character; a renamed or dropped prop fails the pure static signature check.
+      - GIVEN a call to `window.confirm` or `window.alert` anywhere under `web/src/`, WHEN the GRD-UI-02 source scan runs, THEN the scan fails with pattern name `native-confirm` and the file path; this is a pure static scan with no HTTP.
+      - GIVEN a Playwright E2E opens a running instance on the real backend and presses Cancel Instance, WHEN the frame is inspected, THEN `ConfirmDialog` is mounted with a danger-variant confirm control and the cancel request has not yet been issued in the page network log.
+      - GIVEN that E2E dismisses the dialog, WHEN the network log is read, THEN no cancel request was issued and the instance remains `ACTIVE` when re-read from the real API.
+      - GIVEN a Playwright E2E renders one `StatusBadge` per status in the §5.1 to §5.3 tables, WHEN each computed background, text colour and dot colour is read, THEN each equals the token named for that row.
+      - GIVEN a canvas node of each type in §6.1, WHEN its bounding box is measured in a Playwright E2E of the Process Designer against a real definition, THEN width and minimum height equal the values in that table.
+
+      **See:** CMP-UI-01, CMP-UI-02, RND-UI-02, IN-UI-05, DLQ-UI-01, TK-UI-01, PD-UI-07
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:52Z'
+    workflow: PW-14
+  CMP-UI-04:
+    id: CMP-UI-04
+    title: Tenant brand override at bootstrap
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** ONB-UI-01, giving a provisioned tenant a visual identity in the SPA.
+
+      > The SPA bootstrap SHALL call `GET /api/v1/tenants/{slug}/branding` before the first React render with a budget of 400 ms, and SHALL write the returned values onto `document.documentElement.style` as `--color-brand-400`, `--color-brand-500`, `--color-brand-600` and `--color-brand-700`. Those four are the complete set of tenant-writable tokens; a response key outside the set SHALL be dropped and counted in `brandOverride.rejected`. Semantic tokens `--color-success`, `--color-warning`, `--color-error` and `--color-info`, every neutral, every type token and every spacing token SHALL be identical across all tenants so status colour carries the same meaning everywhere. A timeout SHALL leave the default brand palette and SHALL NOT delay the first render past the budget.
+
+      **Acceptance Criteria:**
+      - GIVEN a Playwright E2E signs in to SwiftRoute against the real backend where a branding row is seeded, WHEN the first contentful paint is captured, THEN the computed background of a `Button variant="primary"` already equals the tenant `brand600` value and no later repaint changes it.
+      - GIVEN the same E2E switches to Vortex whose branding row differs, WHEN the primary button background is read again, THEN it equals the Vortex `brand600` value while the computed value of `--color-error` is unchanged between the two tenants.
+      - GIVEN the real branding endpoint returns a payload carrying `neutral900` alongside the four brand keys, WHEN the bootstrap applies it, THEN `--color-neutral-900` is unchanged, `brandOverride.rejected` equals 1, and the rejected key is recorded in the platform audit log rather than in a user-facing toast.
+      - GIVEN the branding endpoint returns a non-hex string for `brand500`, WHEN the bootstrap applies the response, THEN `--color-brand-500` keeps its default value, the other three overrides are applied, and `brandOverride.rejected` equals 1.
+      - GIVEN the branding request exceeds 400 ms against the real backend, WHEN the render proceeds, THEN the default brand palette is in effect and the app renders without waiting further.
+      - GIVEN a tenant brand value that fails a 4.5:1 contrast ratio against `--surface-card`, WHEN it is submitted, THEN it is rejected at bootstrap and the GRD-UI-06 `color-contrast` rule reports no `serious` violation on the resulting page.
+
+      **See:** CMP-UI-01, ONB-UI-01, ADM-UI-01, GRD-UI-06, IDN-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:53Z'
+    workflow: PW-14
+  CMP-UI-05:
+    id: CMP-UI-05
+    title: Field registry extension point
+    stage: F8
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > `web/src/components/forms/FieldRegistry.ts` SHALL expose `registerField(typeKey, component)` and `resolveField(typeKey)`, where `typeKey` is the JSON Schema `type` and `format` pair, for example `string:date` or `string:iban`. `FieldFactory.tsx` SHALL resolve every field through `resolveField`, and its existing switch SHALL survive only as the seed that registers the seven built-in mappings specified in `docs/guides/frontend_design_system.md` §7.6. A second registration of the same `typeKey` SHALL throw `DuplicateFieldTypeError` at module load. An unregistered `typeKey` SHALL render `<UnsupportedFieldNotice>` naming the key rather than throwing. Adding a field type SHALL be one `registerField` call and SHALL change no file under `web/src/pages/`.
+
+      **Acceptance Criteria:**
+      - GIVEN the seven §7.6 mappings, WHEN the registry module loads, THEN `resolveField` returns a component for each of `string:text`, `string:date`, `string:date-time`, `string:enum`, `number`, `boolean` and `string:long-text`; this is a pure static module check with no HTTP.
+      - GIVEN a commit that adds a new field type, WHEN the diff is scanned, THEN it touches `FieldRegistry` registrations and a new component file and touches no file under `web/src/pages/`; a changed page file fails the check.
+      - GIVEN `registerField` is called twice with `string:iban`, WHEN the module loads, THEN `DuplicateFieldTypeError` is thrown before the first render and the error names the duplicated key.
+      - GIVEN a Playwright E2E opens a human task on the real backend whose `form_schema` carries a property with an unregistered `typeKey`, WHEN the form renders, THEN `UnsupportedFieldNotice` is shown naming that key and the remaining fields stay submittable; the task is completed through the real API in the same test.
+      - GIVEN a field type registered after bootstrap, WHEN a Playwright E2E opens a task whose schema uses it, THEN the registered component renders and carries the full GRD-UI-07 ARIA attribute set without a per-screen edit.
+
+      **See:** CMP-UI-06, CMP-UI-03, GRD-UI-07, TK-UI-01, PD-UI-07
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:54Z'
+    workflow: PW-14
+  CMP-UI-06:
+    id: CMP-UI-06
+    title: Generic interpreter architecture rule
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > `docs/guides/frontend_design_system.md` §10 SHALL record the architecture rule verbatim: "The SPA is a generic interpreter of server-delivered definitions; it contains no hand-coded screen for any tenant entity." The same section SHALL record the directory contract: `web/src/components/renderers/` holds rendering logic, `web/src/pages/` holds thin route shells, and `web/src/components/canvas/` is definition-authoring only. No file under `web/src/` SHALL contain a tenant slug literal or a branch on tenant identity, which the GRD-UI-01 forbidlist pattern `tenant-slug-in-source` SHALL enforce.
+
+      **Acceptance Criteria:**
+      - GIVEN `docs/guides/frontend_design_system.md`, WHEN §10 is read, THEN it contains the rule sentence above verbatim and the three-directory contract; a pure static documentation check fails on absence.
+      - GIVEN a file under `web/src/` containing the literal `swiftroute`, `vortex` or `meridian`, WHEN the GRD-UI-02 source scan runs, THEN the scan fails reporting the file path and pattern name `tenant-slug-in-source`; this is a pure static scan with no HTTP.
+      - GIVEN a file under `web/src/pages/` calling `fetch` or `axios` directly, WHEN the source scan runs, THEN the scan fails with pattern name `raw-fetch-outside-client`, since a route shell reads through `web/src/api/client.ts` alone.
+      - GIVEN the fixture `web/tests/guards/fixtures/bystander/tenant-slug-in-source.txt` containing the word `vortexes` inside a comment about vector maths, WHEN the GRD-UI-04 META control runs, THEN the pattern does not match it.
+      - GIVEN a Playwright E2E signs in as SwiftRoute and then as Vortex against the real backend, WHEN the same route is rendered for both, THEN the component tree is identical and the difference between the two screens comes from server-delivered schema and definition payloads alone.
+
+      **See:** CMP-UI-05, CMP-UI-04, GRD-UI-01, GRD-UI-02, PD-UI-07
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:55Z'
+    workflow: PW-14
+  DDL-01:
+    id: DDL-01
+    title: Pure platform DDL validator
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** MIG-01, adding a pre-flight gate ahead of the tenant fanout.
+
+      > The platform SHALL validate every migration statement through `ValidatePlatformDDL`, a pure function over parsed statement descriptors that holds no database handle, opens no connection, reads no clock, and reads no environment variable. It SHALL reject the statement classes that hold `ACCESS EXCLUSIVE` for a duration proportional to table size -- `DROP COLUMN`, `CLUSTER`, `VACUUM FULL`, `REINDEX` without `CONCURRENTLY`, and `ALTER COLUMN ... SET DATA TYPE` -- and index statements written without `CONCURRENTLY`. Validation SHALL complete before the fanout of MIG-01 opens a connection to any tenant schema, so a rejected file set touches zero schemas.
+
+      **Acceptance Criteria:**
+      - GIVEN a file set containing `ALTER TABLE events DROP COLUMN legacy_flag`, WHEN the migration plan runs, THEN `ValidatePlatformDDL` returns `UnboundedExclusiveLock` naming that statement, the plan exits with status 2, and zero connections are opened to any tenant schema.
+      - GIVEN a file set containing `CREATE INDEX idx_events_actor ON events (actor_id)` without `CONCURRENTLY`, WHEN validated, THEN `NonConcurrentIndexBuild` is returned and the file set is REJECTED.
+      - GIVEN a file set containing `ALTER TABLE events ALTER COLUMN payload SET DATA TYPE JSONB`, WHEN validated, THEN `UnboundedExclusiveLock` is returned; the accepted route for a type change is the three phases of DDL-03 followed by a rename swap.
+      - GIVEN one descriptor list, WHEN `ValidatePlatformDDL` is called from a unit test with no database reachable and no `BPM_DB_URL` set, THEN the call succeeds and returns the same verdict as the in-process call made during a real migration plan.
+      - GIVEN a file set of 200 accepted statements, WHEN validated, THEN the verdict is returned in under 100 ms.
+      - The verdict and the offending statement text are written to `plat_migration_plan`, and `EXECUTION_MIGRATION_VALIDATED` is appended to the event log.
+
+      **See:** MIG-01 (the tenant fanout this gates), DDL-02 (ordering check run in the same pass), DDL-03 (the accepted rewrite), DDL-05 (namespace check run in the same pass), ADP-12 (regression suite exercising the validator against the default tenant)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:56Z'
+    workflow: PW-05
+  DDL-02:
+    id: DDL-02
+    title: Expand-then-constrain ordering check
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** DDL-01, adding a cross-statement ordering check to the same validation pass.
+
+      > `ValidatePlatformDDL` SHALL walk each migration file set in declaration order and reject any file set that constrains a column before that column exists and has been backfilled. A `SET NOT NULL`, an `ADD CONSTRAINT` written without `NOT VALID`, or an `ADD COLUMN ... NOT NULL` without a constant default appearing ahead of its expand and backfill statements SHALL be rejected with `ConstrainBeforeExpand`, naming both the constraining statement and the statement it depends on.
+
+      **Acceptance Criteria:**
+      - GIVEN a file set running `ALTER TABLE instances ADD COLUMN first_event_at TIMESTAMPTZ NOT NULL`, WHEN validated, THEN `ConstrainBeforeExpand` is returned, because the column carries no constant default and no backfill precedes the constraint.
+      - GIVEN a file set running `ALTER TABLE instances ADD COLUMN first_event_at TIMESTAMPTZ NULL` followed immediately by `ALTER TABLE instances ALTER COLUMN first_event_at SET NOT NULL` with no backfill statement between them, WHEN validated, THEN `ConstrainBeforeExpand` is returned naming both statements.
+      - GIVEN a file set that adds the column nullable, adds `CHECK (first_event_at IS NOT NULL) NOT VALID`, backfills, then runs `VALIDATE CONSTRAINT`, WHEN validated, THEN the verdict is ACCEPT.
+      - GIVEN an `ADD CONSTRAINT ... FOREIGN KEY` written without `NOT VALID`, WHEN validated, THEN `ConstrainBeforeExpand` is returned; a foreign key added without `NOT VALID` scans the whole table under a lock that blocks writes on both referencing and referenced tables.
+      - The rejection message names the file and the byte offset of both the constraining statement and the statement it depends on.
+
+      **See:** DDL-01 (the validator this extends), DDL-03 (the three-phase form that satisfies this rule), DDL-04 (the backfill that must sit between expand and constrain)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:57Z'
+    workflow: PW-05
+  DDL-03:
+    id: DDL-03
+    title: Phased DDL generation
+    stage: '16'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > **Extends:** DDL-02, turning the ordering rule into generated output.
+
+      > The platform SHOULD compile every column addition carrying a constraint into exactly three phases: an expand phase issuing `ALTER TABLE t ADD COLUMN c <type> NULL` together with `ALTER TABLE t ADD CONSTRAINT c_nn CHECK (c IS NOT NULL) NOT VALID`; a backfill phase (DDL-04); and a constrain phase issuing `ALTER TABLE t VALIDATE CONSTRAINT c_nn` followed by `ALTER TABLE t ALTER COLUMN c SET NOT NULL`. A change that cannot be expressed in three phases SHALL be rejected with `PhaseGenerationFailed` rather than emitting a statement that takes a wider lock.
+
+      **Acceptance Criteria:**
+      - GIVEN a declared column addition with a NOT NULL constraint, WHEN the generator runs, THEN it emits exactly three phase groups and the emitted phase 3 references the constraint name created in phase 1.
+      - GIVEN phase 3 executes, WHEN `VALIDATE CONSTRAINT` runs, THEN it holds `SHARE UPDATE EXCLUSIVE` and not `ACCESS EXCLUSIVE`, so concurrent reads and writes on the table continue.
+      - GIVEN `ALTER COLUMN c SET NOT NULL` runs after a validated `CHECK (c IS NOT NULL)`, WHEN it executes, THEN PostgreSQL derives the guarantee from the validated constraint and performs no full table scan.
+      - GIVEN a requested change the generator cannot express in three phases, WHEN generation runs, THEN `PhaseGenerationFailed` is returned and no statement is executed against any tenant schema.
+      - GIVEN `VALIDATE CONSTRAINT` finds a violating row, WHEN phase 3 runs, THEN it is rolled back with `BackfillIncomplete`, phase 2 re-runs for that tenant, and phase 3 is retried.
+      - Every phase statement runs with `lock_timeout = 3s` and `statement_timeout = 60s`; a tenant exceeding either is recorded FAILED at that phase and the fanout continues to the next tenant.
+
+      **See:** DDL-01, DDL-02, DDL-04 (phase 2), MIG-01 (the tenant fanout executing each phase)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:58Z'
+    workflow: PW-05
+  DDL-04:
+    id: DDL-04
+    title: Idempotent batched backfill
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** DDL-03, specifying the backfill phase.
+
+      > The backfill phase SHALL be idempotent and batched. The generated statement is `UPDATE t SET c = <expr> WHERE c IS NULL AND ctid = ANY (ARRAY(SELECT ctid FROM t WHERE c IS NULL LIMIT $1))`, executed in a loop with one transaction per batch until an iteration reports zero updated rows. The loop SHALL NOT run inside an outer transaction. `backfill_batch_size` defaults to 5000 rows with an upper bound of 50000. A generated backfill whose predicate is not bounded by `IS NULL` SHALL be rejected with `NonIdempotentBackfill`.
+
+      **Acceptance Criteria:**
+      - GIVEN a backfill is interrupted after 40 of 100 batches and the migration runner restarts, WHEN the migration is re-run, THEN it resumes against the same `c IS NULL` predicate, rows already backfilled are skipped, and the end state is identical to an uninterrupted run.
+      - GIVEN a generated backfill whose predicate is not bounded by `IS NULL`, WHEN validated, THEN `NonIdempotentBackfill` is returned and no statement is executed.
+      - GIVEN a backfill batch, WHEN it executes, THEN it holds `ROW EXCLUSIVE` on the table and commits before the next batch begins; no transaction spans two batches.
+      - GIVEN a batch exceeds 5 s, WHEN the next batch is planned, THEN `backfill_batch_size` is halved for that tenant with a floor of 500 rows.
+      - GIVEN ten consecutive iterations report no progress, WHEN the loop detects the stall, THEN it stops and escalates with the remaining `IS NULL` row count for each tenant.
+      - Rows updated per batch and remaining `IS NULL` rows per tenant are recorded in `plat_migration_state`.
+
+      **See:** DDL-03 (the three phases), DDL-02 (why the backfill must precede the constraint), MIG-01, DB-02 (one pooled connection per batch, released between batches)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:09:59Z'
+    workflow: PW-05
+  DDL-05:
+    id: DDL-05
+    title: Reserved plat_ object namespace
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** SPT-01, reserving an object namespace inside every tenant schema.
+
+      > The prefix `plat_` SHALL be reserved for platform-owned objects in every tenant schema. Tenant-authored DDL that creates, renames, or alters an object whose name begins with `plat_` SHALL be refused with HTTP 422 before any statement is executed. Every object the platform itself creates inside a tenant schema SHALL carry the prefix, so ownership is decidable from the name alone without a catalog lookup. The check runs inside `ValidatePlatformDDL` in the same pass as the lock-class and ordering checks.
+
+      **Acceptance Criteria:**
+      - GIVEN a tenant submits DDL creating a table named `plat_outbox`, WHEN validated, THEN `ReservedNamespace` is returned, the API responds 422 with the offending object name in the body, and no statement is executed.
+      - GIVEN a tenant submits `ALTER TABLE plat_correlation_cursor RENAME TO cursor_backup`, WHEN validated, THEN `ReservedNamespace` is returned and the API responds 422.
+      - GIVEN a platform migration creates an object in a tenant schema without the `plat_` prefix, WHEN validated, THEN `UnreservedPlatformObject` is returned and the file set is REJECTED.
+      - GIVEN a tenant creates a table named `platform_orders`, WHEN validated, THEN the verdict is ACCEPT; the reservation matches the exact prefix `plat_` and does not match a longer word sharing its first four characters.
+      - GIVEN a file set failing the namespace check and the lock-class check, WHEN validated, THEN the first failure in statement order is reported, so one plan run yields one deterministic verdict.
+
+      **See:** DDL-01 (the validating pass), SPT-01 (the schema-per-tenant layout this reservation partitions), MIG-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:00Z'
+    workflow: PW-05
+  FIL-01:
+    id: FIL-01
+    title: Human task attachment upload
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** API-10, adding a document-bearing sub-resource to the human task surface.
+
+      > The platform SHALL accept a file attachment against an open human task through `POST /api/v1/tasks/{task_id}/attachments` as a single multipart part. The caller MUST hold `attachment.write` on the task. The platform generates `attachment_id` as a UUID, computes the SHA-256 of the payload, stores `filename` verbatim, and returns `201 Created` with `{attachment_id, filename, size_bytes, sha256, content_type}`. `filename` is a display value only and is never used to construct the storage object key. `content_type` MUST be one of `application/pdf`, `image/jpeg`, `image/png`, `text/csv`.
+
+      **Acceptance Criteria:**
+      - GIVEN a caller without `attachment.write` on the task, WHEN it posts an attachment, THEN the platform returns HTTP 403 `attachment_write_forbidden`, writes no `attachments` row, and stores no object.
+      - GIVEN a multipart part with `content_type` outside the allowlist, WHEN it is posted, THEN the platform returns HTTP 415 `content_type_not_allowed` and names the received type in the response body.
+      - GIVEN a successful upload, WHEN the response is read, THEN it carries a server-generated `attachment_id` and the computed `sha256`, and it carries no storage object key, bucket name, or storage URL.
+      - GIVEN a `filename` containing `../` or an absolute path prefix, WHEN the attachment is stored, THEN the string is persisted verbatim in the `attachments.filename` column and the object key is built solely from `tenant_slug`, `attachment_id`, and `sha256`.
+      - GIVEN `task_id` names a task in another tenant, WHEN an attachment is posted, THEN the platform returns HTTP 404 and creates no row.
+      - `GET /api/v1/tasks/{task_id}/attachments` lists `attachment_id`, `filename`, `size_bytes`, `content_type`, and `state` for attachments in state `active`.
+
+      **See:** API-10, IDN-05, TNT-01, FIL-02, FIL-03, FIL-04, FIL-05, FIL-06
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:01Z'
+    workflow: PW-09
+  FIL-02:
+    id: FIL-02
+    title: Tenant-prefixed storage object keys
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** TNT-01, pushing tenant isolation down into the object storage client.
+
+      > Every attachment object SHALL be stored under the key `<tenant_slug>/<attachment_id>/<sha256>`. The storage client SHALL compare the key prefix against the tenant slug of the authenticated session on every call it makes, and SHALL raise `CrossTenantObjectKey` when the prefix does not match. No caller-supplied value reaches the key: `tenant_slug` is derived from the session, `attachment_id` is server-generated, and `sha256` is computed from the payload bytes. The isolation check lives in the storage client, not in the route handler, so every call path is covered by one check.
+
+      **Acceptance Criteria:**
+      - GIVEN a session bound to tenant `swiftroute`, WHEN the storage client is called with a key whose first path segment is `vortex`, THEN it raises `CrossTenantObjectKey`, issues no request to the object store, and the caller receives HTTP 500.
+      - GIVEN an upload, WHEN the object key is assembled, THEN it equals `<tenant_slug>/<attachment_id>/<sha256>` with `tenant_slug` taken from the session claim and never from the request path, body, query string, or header.
+      - GIVEN two tenants upload byte-identical files, WHEN both objects are stored, THEN the keys differ in their first path segment and neither read path can reach the other object.
+      - GIVEN any code path that reads, writes, or deletes an attachment object, WHEN it calls the storage client, THEN the prefix check executes; no path bypasses the client to address the object store directly.
+      - `CrossTenantObjectKey` is recorded to the event log with the session tenant and the offending key prefix.
+
+      **See:** TNT-01, XC-05, FIL-01, FIL-05, FIL-06, FIL-08
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:02Z'
+    workflow: PW-09
+  FIL-03:
+    id: FIL-03
+    title: Transactional attachment quota accounting
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** FIL-01, binding storage accounting to the upload write.
+
+      > The `attachments` row insert, the `tenant_storage_usage.bytes_used` increment, and the `outbox` row carrying `AttachmentUploaded` SHALL be written in one database transaction. The platform SHALL reject an upload that would drive `bytes_used + size_bytes` above `tenant_storage_usage.bytes_quota` with HTTP 507 `tenant_quota_exhausted`, rolling back all three writes together. A quota breach therefore leaves no attachment row, no counter movement, and no outbox event.
+
+      **Acceptance Criteria:**
+      - GIVEN a tenant with `bytes_quota` of 1 GiB and `bytes_used` of 1020 MiB, WHEN a 10 MiB upload commits, THEN `bytes_used` reads 1030 MiB and exactly one `outbox` row carrying `AttachmentUploaded` exists for that `attachment_id`.
+      - GIVEN the same tenant at `bytes_used` of 1020 MiB, WHEN a 30 MiB upload is attempted, THEN the platform returns HTTP 507 `tenant_quota_exhausted`, `bytes_used` still reads 1020 MiB, and no `attachments` row exists for the generated `attachment_id`.
+      - GIVEN the transaction fails after the `attachments` insert, WHEN the failure is observed, THEN the counter increment and the outbox row are absent, and the orphaned storage object is collected by FIL-08.
+      - GIVEN two uploads for one tenant commit concurrently, WHEN both succeed, THEN `bytes_used` reflects both sizes; the counter row is updated under a row lock taken in the same transaction.
+      - GIVEN a successful sweep B purge (FIL-07), WHEN the purge transaction commits, THEN `bytes_used` is decremented by that attachment's `size_bytes` in the same transaction that sets state `purged`.
+      - The response body of HTTP 507 carries `bytes_used`, `bytes_quota`, and the rejected `size_bytes`.
+
+      **See:** FIL-01, FIL-04, FIL-07, FIL-08, TNT-01, OBS-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:03Z'
+    workflow: PW-09
+  FIL-04:
+    id: FIL-04
+    title: Per-tier single-upload size cap
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** FIL-01, bounding a single upload before storage is contacted.
+
+      > A single upload SHALL be capped by the tenant's subscription tier: 10 MiB for `free`, 50 MiB for `standard`, 250 MiB for `enterprise`. The cap SHALL be enforced against the streamed part as it is read, and the platform SHALL abort with HTTP 413 `upload_exceeds_tier_cap` at the moment the byte count crosses the cap, before the object store is contacted and before any transaction is opened. The single-upload cap is independent of the tenant quota of FIL-03; a part under the cap can still be refused with HTTP 507.
+
+      **Acceptance Criteria:**
+      - GIVEN a `free`-tier tenant, WHEN a 12 MiB part is uploaded, THEN the platform returns HTTP 413 `upload_exceeds_tier_cap` carrying the tier name and the cap in bytes, and no object is written to the store.
+      - GIVEN a part whose declared `Content-Length` is under the cap but whose streamed body exceeds it, WHEN the byte count crosses the cap during the read, THEN the read is aborted at that byte and HTTP 413 is returned; the declared length is not trusted.
+      - GIVEN an `enterprise`-tier tenant, WHEN a 200 MiB part is uploaded and quota allows it, THEN the upload commits and `size_bytes` reads 209715200.
+      - GIVEN a tenant whose tier changes from `standard` to `free`, WHEN a 30 MiB upload is attempted after the change, THEN it is refused with HTTP 413; attachments stored under the prior tier stay readable.
+      - The cap check runs before the FIL-03 transaction opens, so a refused upload consumes no quota and emits no outbox row.
+
+      **See:** FIL-01, FIL-03, FIL-08, TNT-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:04Z'
+    workflow: PW-09
+  FIL-05:
+    id: FIL-05
+    title: Signed time-limited attachment download URL
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** FIL-01, adding a time-limited download grant that carries no session.
+
+      > Attachment download SHALL be authorised by an HMAC-SHA256 signature over the payload `kid`, `exp`, `attachment_id`, `tenant_slug` joined by LF (`\n`) in exactly that order. `tenant_slug` SHALL be derived server-side from the authenticated session at signing time and re-derived from the session at verification time; a slug present in the URL, body, or a header is discarded. `kid` selects the signing key from the active key set. The platform issues `GET /api/v1/attachments/{attachment_id}/download?kid=<kid>&exp=<unix_seconds>&sig=<base64url>` with `exp = now + 300` seconds. Verification checks `exp` first and recomputes the signature second.
+
+      **Acceptance Criteria:**
+      - GIVEN a signed URL, WHEN the signature is recomputed at verification, THEN the payload is the four components joined by LF in the order `kid`, `exp`, `attachment_id`, `tenant_slug`; any reordering, omission, or alternate separator produces a different signature and HTTP 403 `signature_invalid`.
+      - GIVEN a link whose `exp` is in the past, WHEN it is followed, THEN the platform returns HTTP 403 `signature_invalid` without recomputing the signature and without reading the object.
+      - GIVEN a link with a modified `attachment_id` but the original `sig`, WHEN it is followed, THEN the platform returns HTTP 403 `signature_invalid` and streams no bytes.
+      - GIVEN a caller that appends `tenant_slug=vortex` to a link signed for `swiftroute`, WHEN the link is followed, THEN the query parameter is discarded, the slug is taken from the session, the signature verifies against `swiftroute`, and the vortex value has no effect on the outcome.
+      - GIVEN a signing key retired at time T, WHEN a link bearing that `kid` is followed before T plus 300 seconds, THEN it verifies; after T plus 300 seconds it returns HTTP 403 `signature_invalid`.
+      - Signed URLs are issued with a 300-second lifetime and carry no session cookie or bearer token.
+
+      **See:** FIL-01, FIL-02, FIL-06, IDN-05, XC-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:05Z'
+    workflow: PW-09
+  FIL-06:
+    id: FIL-06
+    title: Probe-safe cross-tenant attachment reads
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** FIL-05, closing the existence oracle on the attachment read path.
+
+      > A request for an attachment that does not exist and a request for an attachment owned by another tenant SHALL both return HTTP 404 `attachment_not_found` with a byte-identical response body and an identical header set. The attachment read path SHALL NOT return HTTP 403 for a cross-tenant reference at any endpoint, so no response code, body, header, or latency difference can be used to establish that an `attachment_id` exists in another tenant.
+
+      **Acceptance Criteria:**
+      - GIVEN a `swiftroute` session and an `attachment_id` that exists in `vortex`, WHEN metadata is requested, THEN the platform returns HTTP 404 `attachment_not_found`.
+      - GIVEN the same session and a UUID that exists in no tenant, WHEN metadata is requested, THEN the response body and headers are byte-identical to the cross-tenant case above.
+      - GIVEN a cross-tenant `attachment_id`, WHEN a download link is requested, THEN the platform returns HTTP 404 and issues no signed URL, so the signing path leaks no existence signal either.
+      - GIVEN a cross-tenant reference, WHEN the tenant scope filter is applied, THEN it is applied in the same query that loads the row, so a found-then-rejected code path that would differ in latency does not exist.
+      - Every cross-tenant attachment reference appends an audit entry naming the session tenant, the requested `attachment_id`, and the owning tenant, even though the response carries no such detail.
+
+      **See:** FIL-05, FIL-02, TNT-01, XC-05, OBS-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:06Z'
+    workflow: PW-09
+  FIL-07:
+    id: FIL-07
+    title: Attachment delete grace period and reaper sweeps
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** FIL-01, giving deletion a grace period and a staged reaper.
+
+      > Attachment deletion SHALL be a request, not an immediate removal. `DELETE /api/v1/attachments/{attachment_id}` sets `delete_requested_at` and leaves `state = 'active'`; the attachment stays readable and stays counted against quota for a 30-day grace period. A scheduled reaper SHALL then run three sweeps in the fixed order A, B, C on every tick: sweep A marks `active` rows past the grace period as `pending_delete`; sweep B deletes the storage object and then commits `state = 'purged'`, `purged_at = now()` together with the `bytes_used` decrement; sweep C deletes `purged` rows older than 7 days from the projection.
+
+      **Acceptance Criteria:**
+      - GIVEN a delete request at time T, WHEN the attachment is read at T plus 29 days, THEN it is still downloadable and `bytes_used` still includes its `size_bytes`.
+      - GIVEN `delete_requested_at` at T, WHEN sweep A runs after T plus 30 days, THEN `UPDATE attachments SET state='pending_delete' WHERE state='active' AND delete_requested_at <= now() - interval '30 days'` moves the row and a download attempt then returns HTTP 404 `attachment_not_found`.
+      - GIVEN a `pending_delete` row, WHEN sweep B completes, THEN the storage object is absent, `state` reads `purged`, `purged_at` is set, and `bytes_used` has been decremented by `size_bytes` in the same transaction as the state change.
+      - GIVEN a `purged` row with `purged_at` older than 7 days, WHEN sweep C runs, THEN the projection row is deleted and the `AttachmentPurged` entry remains in the event log.
+      - GIVEN a tick in which sweep B fails for one attachment, WHEN sweeps continue, THEN sweep C still runs for unrelated rows and the failed attachment stays `pending_delete` for the next tick.
+      - The reaper runs every 15 minutes and executes sweeps in the order A, B, C within one tick.
+
+      **See:** FIL-01, FIL-03, FIL-08, ES-07, ADP-11
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:08Z'
+    workflow: PW-09
+  FIL-08:
+    id: FIL-08
+    title: Reaper ordering and predicate idempotency
+    stage: '17'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > **Extends:** FIL-07, fixing the ordering and idempotency conventions the reaper depends on.
+
+      > Every storage call SHALL be issued before the surrounding database transaction is opened, on the upload path and on the deletion path alike, so no database lock is held across a streaming transfer and a storage failure leaves no database write. Reaper idempotency SHALL come from a `WHERE expected_state` predicate on each sweep rather than from an advisory lock or a row lock held across the storage call. A re-run after a crash therefore matches zero rows for work already advanced. Storage objects with no `attachments` row and an age above 24 hours SHALL be collected as orphans by sweep B.
+
+      **Acceptance Criteria:**
+      - GIVEN an upload, WHEN execution is traced, THEN the object-store write completes before `BEGIN` is issued for the FIL-03 transaction; no transaction is open while payload bytes are transferred.
+      - GIVEN sweep B, WHEN execution is traced, THEN the object-store DELETE completes before `BEGIN` is issued for the state-change transaction; a failed DELETE means no transaction is opened and the row stays `pending_delete`.
+      - GIVEN sweep A is re-run immediately after a successful run, WHEN the statement executes, THEN `WHERE state='active' AND delete_requested_at <= now() - interval '30 days'` matches 0 rows and the sweep commits without effect.
+      - GIVEN the reaper process is terminated between sweep B's storage delete and its commit, WHEN the next tick runs, THEN sweep B re-issues the storage DELETE, treats a missing object as success, and commits the state change and the counter decrement.
+      - GIVEN two reaper instances tick concurrently, WHEN both run sweep B for one row, THEN the `WHERE state='pending_delete'` predicate lets exactly one commit the state change and the other updates 0 rows; no advisory lock is taken.
+      - GIVEN a storage object with no `attachments` row and an age above 24 hours, WHEN sweep B runs, THEN the object is deleted as an orphan.
+
+      **See:** FIL-02, FIL-03, FIL-07, ADP-05, OBS-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:09Z'
+    workflow: PW-09
+  GRD-UI-01:
+    id: GRD-UI-01
+    title: Forbidlist as single guard source of truth
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > `web/tests/guards/forbidlist.ts` SHALL be the only file in the repository in which a banned frontend pattern is authored. It SHALL export `PATTERNS: GuardPattern[]` where `GuardPattern` is `{ name, regex, appliesTo: 'source' | 'bundle' | 'both', allowedPaths: string[], rationale }`, and `rationale` SHALL name the directive or requirement the pattern defends. The list SHALL be seeded with `msw-import`, `http-mock-adapter`, `raw-fetch-outside-client`, `literal-colour`, `native-confirm`, `tenant-slug-in-source`, `inline-query-key`, `inline-stale-time`, `missing-query-state-boundary` and `test-only-or-skip`. Both the source scan and the bundle scan SHALL import from this module and SHALL declare no regex of their own.
+
+      **Acceptance Criteria:**
+      - GIVEN `web/tests/guards/source-scan.spec.ts` and `web/tests/guards/bundle-scan.spec.ts`, WHEN each is parsed, THEN neither contains a regular expression literal and both import `PATTERNS` from `forbidlist.ts`; this is a pure static check with no HTTP.
+      - GIVEN every entry in `PATTERNS`, WHEN the schema check runs, THEN each carries a non-empty `name`, `regex`, `appliesTo`, `allowedPaths` and `rationale`, and each `rationale` names a directive or a requirement ID.
+      - GIVEN the ten seed pattern names above, WHEN `PATTERNS` is read, THEN each is present exactly once and no name is duplicated.
+      - GIVEN the pattern `msw-import` whose `rationale` cites DIRECTIVE T-2, WHEN it is applied, THEN it matches an import of `msw`, `msw/node` or `setupServer`, since R-Co forbids MSW and every form of HTTP mocking outright.
+      - GIVEN a regex declared in any file under `web/tests/guards/` other than `forbidlist.ts`, WHEN the single-source assertion runs, THEN it fails naming that file.
+
+      **See:** GRD-UI-02, GRD-UI-03, GRD-UI-04, GRD-UI-05, CMP-UI-02
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:10Z'
+    workflow: PW-16
+  GRD-UI-02:
+    id: GRD-UI-02
+    title: Frontend source scan gate
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > `web/tests/guards/source-scan.spec.ts` SHALL apply every `PATTERNS` entry whose `appliesTo` is `source` or `both` to `web/src/**/*.{ts,tsx,css}`. A match on a path outside that pattern's `allowedPaths` SHALL fail the gate. `allowedPaths` SHALL be honoured exactly: `raw-fetch-outside-client` permits `web/src/api/client.ts` and `literal-colour` permits `web/src/styles/tokens.css`. The scan SHALL run with no network access and SHALL complete within 30 s. `npm run guards` SHALL be a required status check, so a merge SHALL NOT proceed on a scan failure.
+
+      **Acceptance Criteria:**
+      - GIVEN a file under `web/src/` matching any source-applicable pattern outside its `allowedPaths`, WHEN the scan runs, THEN the gate fails and reports the file path, the line number and the pattern name; this is a pure static scan with no HTTP.
+      - GIVEN `web/src/api/client.ts` containing a direct `fetch` call, WHEN the scan runs, THEN `raw-fetch-outside-client` does not fire, because that path is the pattern's sole allowed entry.
+      - GIVEN a component under `web/src/components/` containing a direct `axios` call, WHEN the scan runs, THEN the gate fails with pattern name `raw-fetch-outside-client` and that component's path.
+      - GIVEN a clean tree, WHEN the scan runs on a machine with no network route, THEN it exits 0 within 30 s, since it reads files and matches regexes and issues no request.
+      - GIVEN a scan failure, WHEN `npm run guards` reports its exit code, THEN it is non-zero and the required status check blocks the merge.
+
+      **See:** GRD-UI-01, GRD-UI-03, GRD-UI-05, CMP-UI-02, CMP-UI-06, CAC-UI-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:11Z'
+    workflow: PW-16
+  GRD-UI-03:
+    id: GRD-UI-03
+    title: Post-build bundle scan gate
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > `web/tests/guards/bundle-scan.spec.ts` SHALL delete the build output with `rmSync('web/dist', { recursive: true, force: true })`, run a real `vite build`, and apply every `PATTERNS` entry whose `appliesTo` is `bundle` or `both` to `web/dist/assets/*.js`. The scan SHALL fail rather than pass when the build produces no assets, so an empty directory cannot yield a vacuous pass. The bundle scan exists because a banned module can enter the shipped artefact through a dependency without appearing in `web/src/`.
+
+      **Acceptance Criteria:**
+      - GIVEN a populated `web/dist/` from an earlier run, WHEN the scan starts, THEN the directory is deleted before `vite build` runs, so no stale chunk is scanned; this is a pure post-build scan with no HTTP.
+      - GIVEN `vite build` produces no file under `web/dist/assets/`, WHEN the scan evaluates its input set, THEN the gate fails naming the empty output rather than reporting zero violations.
+      - GIVEN a transitive dependency that bundles `msw` into a chunk while no file under `web/src/` imports it, WHEN the scan runs, THEN the source scan passes, the bundle scan fails naming the chunk file and pattern name `msw-import`, and the merge is blocked.
+      - GIVEN a chunk containing an inline `rgba(` literal injected by a dependency, WHEN the scan runs, THEN the gate fails with pattern name `literal-colour` and the chunk file name.
+      - GIVEN a clean build, WHEN the scan runs, THEN it exits 0 within a 180 s budget covering the `rmSync` and the `vite build`.
+
+      **See:** GRD-UI-01, GRD-UI-02, GRD-UI-04, GRD-UI-05, CMP-UI-02
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:12Z'
+    workflow: PW-16
+  GRD-UI-04:
+    id: GRD-UI-04
+    title: Two-sided META control per guard pattern
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > Every entry in `PATTERNS` SHALL carry a two-sided META control in `web/tests/guards/meta-control.spec.ts`. The control SHALL assert that the pattern matches `web/tests/guards/fixtures/offender/<pattern>.txt`, a synthetic offender, and that it does not match `web/tests/guards/fixtures/bystander/<pattern>.txt`, an innocent bystander. A pattern added without both fixtures SHALL fail the gate. The META controls SHALL run before the source scan and the bundle scan, so a dead or over-broad guard is reported before its clean result is trusted.
+
+      **Acceptance Criteria:**
+      - GIVEN a pattern whose regex was edited so it no longer matches its offender fixture, WHEN the META control runs, THEN the gate fails naming the pattern as unmatched against its offender; this is a pure static check with no HTTP.
+      - GIVEN a pattern whose regex was widened so it matches its bystander fixture, WHEN the control runs, THEN the gate fails naming the pattern as over-broad against its bystander.
+      - GIVEN an entry added to `PATTERNS` with no offender file or no bystander file, WHEN the fixture completeness check runs, THEN the gate fails naming the pattern and the missing fixture path.
+      - GIVEN the full guard suite, WHEN `npm run guards` executes, THEN the META controls complete within 5 s and run before the source scan and the bundle scan in that order.
+      - GIVEN `web/tests/guards/fixtures/bystander/native-confirm.txt` containing the identifier `confirmVariant` and a comment about a confirmation dialog, WHEN the `native-confirm` control runs, THEN the pattern does not match it, since it targets `window.confirm` and `window.alert` alone.
+
+      **See:** GRD-UI-01, GRD-UI-02, GRD-UI-03, GRD-UI-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:13Z'
+    workflow: PW-16
+  GRD-UI-05:
+    id: GRD-UI-05
+    title: Redacted guard violation reporting
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > A guard violation SHALL be reported as `{ file, line, patternName }` and SHALL NOT carry the matched substring or any surrounding source text, so a credential or token caught by a pattern is never printed to a CI log. The same redacted records SHALL be written to `tests/reports/report-<date>-<run_id>.yaml`. A redaction assertion SHALL run over the reporter output as part of the guard suite.
+
+      **Acceptance Criteria:**
+      - GIVEN a source file containing the string `sk-live-0123456789abcdef` that a pattern matches, WHEN the source scan reports the violation, THEN the report contains the file path, the line number and the pattern name and does not contain the matched string; this is a pure static check with no HTTP.
+      - GIVEN any guard failure, WHEN the reporter output is inspected by the redaction assertion, THEN each record has exactly the keys `file`, `line` and `patternName` and no additional key.
+      - GIVEN a reporter change that emits the matched content, WHEN the redaction assertion runs, THEN the gate fails before the run report is published.
+      - GIVEN a completed guard run with violations, WHEN `tests/reports/report-<date>-<run_id>.yaml` is read, THEN it lists the same redacted records in YAML and carries no matched content.
+      - GIVEN a completed guard run with no violations, WHEN the report is read, THEN the violation list is empty and the report still names every pattern that was evaluated.
+
+      **See:** GRD-UI-02, GRD-UI-03, GRD-UI-04, ENV-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:14Z'
+    workflow: PW-16
+  GRD-UI-06:
+    id: GRD-UI-06
+    title: Accessibility gate per canonical surface
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > An accessibility gate SHALL run `@axe-core/playwright` against each canonical surface - Task Inbox, Instance List, Instance Detail, Definition List, Process Designer and Login - as one Playwright test per surface against the real backend. Any violation with impact `serious` or `critical` SHALL fail the gate, naming the rule ID, the impact and the target selector. Violations with impact `moderate` or `minor` SHALL be recorded in the run report at severity MINOR and SHALL NOT block. The `color-contrast` rule SHALL remain enabled, because the gate executes in a real Chromium page where pixel measurement is available.
+
+      **Acceptance Criteria:**
+      - GIVEN each of the six canonical surfaces loaded against the real backend with seeded data, WHEN axe runs on it in a Playwright test, THEN the gate fails on any `serious` or `critical` violation and the failure names the rule ID, the impact and the target selector; no HTTP mocking is used.
+      - GIVEN the axe configuration for the gate, WHEN it is read, THEN `color-contrast` is not in the disabled rule set.
+      - GIVEN a `moderate` violation on the Instance Detail surface, WHEN the gate completes, THEN it exits 0 and the violation is written to `tests/reports/report-<date>-<run_id>.yaml` at severity MINOR.
+      - GIVEN Keycloak, PostgreSQL or the API is unreachable, WHEN the gate starts, THEN it returns FAIL with severity BLOCKER naming the unreachable services and runs no surface, rather than reporting a clean pass.
+      - GIVEN a tenant brand override applied per CMP-UI-04, WHEN the gate runs on the Task Inbox, THEN `color-contrast` reports no `serious` violation for text drawn on `--surface-card`.
+      - GIVEN all six surfaces, WHEN the gate runs, THEN each completes within a 30 s budget.
+
+      **See:** GRD-UI-07, CMP-UI-01, CMP-UI-04, TK-UI-01, IN-UI-05, PD-UI-07
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:15Z'
+    workflow: PW-16
+  GRD-UI-07:
+    id: GRD-UI-07
+    title: Generated per-field ARIA wiring
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** CMP-UI-05, making ARIA wiring a property of the field registry rather than of each screen.
+
+      > `FieldFactory` SHALL emit, for every field it generates, a `<label htmlFor>` bound to the input id, `aria-required` reflecting the JSON Schema `required` list, `aria-describedby` pointing at the field hint node, and `aria-invalid` with `aria-errormessage` pointing at the field error node whenever the field is in error. `DynamicFormRenderer` SHALL set `aria-busy` on the form element while a submit is in flight. Whenever `aria-invalid` is `true`, the node referenced by `aria-errormessage` SHALL exist in the DOM.
+
+      **Acceptance Criteria:**
+      - GIVEN a Playwright E2E opens a human task on the real backend whose `form_schema` has five properties, WHEN the form renders, THEN every generated field carries a `<label htmlFor>` matching its input id, `aria-required`, and `aria-describedby` resolving to an existing hint node; no HTTP mocking is used.
+      - GIVEN a required field is submitted empty, WHEN validation fails in that E2E, THEN the field carries `aria-invalid="true"` and `aria-errormessage` pointing at a node that exists in the DOM and holds the error text.
+      - GIVEN a field sets `aria-invalid="true"` with a dangling `aria-errormessage` reference, WHEN the ARIA assertion runs on the Task Inbox surface, THEN the gate fails naming the field key.
+      - GIVEN the form is submitted against the real API, WHEN the request is in flight, THEN the form element carries `aria-busy="true"`, and when the response settles the attribute is removed.
+      - GIVEN a field type registered per CMP-UI-05 after the built-in seed, WHEN a task using it renders, THEN it carries the full attribute set without an edit to any file under `web/src/pages/`.
+      - GIVEN the Task Inbox with a rendered form, WHEN the GRD-UI-06 axe scan runs on it, THEN there is no `serious` or `critical` violation of the `label`, `aria-valid-attr-value` or `aria-required-attr` rules.
+
+      **See:** GRD-UI-06, CMP-UI-05, CMP-UI-03, TK-UI-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:16Z'
+    workflow: PW-16
+  MIG-01:
+    id: MIG-01
+    title: Platform migration control table
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL record platform migration state in a single cross-tenant control table `platform.platform_migrations`, holding one row per `(migration_id, tenant_id)` with `status` in `pending`, `done`, `failed`, plus `error_msg`, `completed_at` and `run_id`. The table carries `UNIQUE (migration_id, tenant_id)` as the upsert anchor and the partial index `platform_migrations_resume_idx ON (migration_id, status) WHERE status IN ('pending','failed')` covering the resume query. This replaces reliance on the per-schema `schema_migrations` table as the only record of migration state.
+
+      **Acceptance Criteria:**
+      - GIVEN a fanout begins, WHEN the control rows are seeded, THEN exactly one row exists per enabled tenant at `status = 'pending'`, keyed by `(migration_id, tenant_id)`.
+      - GIVEN the table is created, WHEN its constraints are inspected, THEN `UNIQUE (migration_id, tenant_id)` exists and `status` is constrained by a CHECK over exactly `pending`, `done`, `failed`.
+      - GIVEN the resume query runs, WHEN its plan is inspected, THEN it uses `platform_migrations_resume_idx`.
+      - GIVEN a tenant fails, WHEN its row is written, THEN `error_msg` carries the SQLSTATE and the message text and `completed_at` is null.
+      - GIVEN a tenant succeeds, WHEN its row is written, THEN `completed_at` is set and `error_msg` is null.
+
+      **See:** SPT-01, MIG-02, MIG-04, MIG-05, ENV-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:17Z'
+    workflow: PW-04
+  MIG-02:
+    id: MIG-02
+    title: Control row commits with the DDL
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL upsert a tenant's `platform.platform_migrations` row to `done` inside the same transaction that applies that tenant's DDL steps, so a `done` row proves the DDL committed. A per-tenant failure is recorded as `status = 'failed'` with `error_msg` in a separate transaction opened after the tenant transaction has rolled back.
+
+      **Acceptance Criteria:**
+      - GIVEN a tenant's DDL commits, WHEN the transaction ends, THEN the `done` row committed in that same transaction.
+      - GIVEN a DDL statement raises, WHEN the transaction ends, THEN it rolls back and neither partial DDL nor a `done` row survives in that schema.
+      - GIVEN the tenant transaction rolled back, WHEN the failure is recorded, THEN `status = 'failed'` and `error_msg` are written in their own transaction.
+      - GIVEN the failure-recording transaction itself fails, WHEN the fanout continues, THEN the row remains `pending` and the MIG-04 resume query covers it.
+      - No code path writes a tenant's control row on a connection other than the one applying that tenant's DDL.
+
+      **See:** MIG-01, MIG-03, MIG-04, MIG-05, SPT-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:18Z'
+    workflow: PW-04
+  MIG-03:
+    id: MIG-03
+    title: Tenant migration fanout with continue on failure
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL apply a migration across a snapshot of enabled tenants ordered by `tenant_id`, holding `pg_try_advisory_lock(hashtext(migration_id))` on the platform database for the duration of the run. A failure in tenant N SHALL NOT prevent tenants N+1 through M from being attempted; per-tenant errors are collected and the run continues to the end of the snapshot.
+
+      **Acceptance Criteria:**
+      - GIVEN tenant N fails, WHEN the run continues, THEN tenants N+1 through M are still attempted and each has a `done` or `failed` row when the run ends.
+      - GIVEN the advisory lock for `migration_id` is already held, WHEN a second run is requested, THEN the platform returns HTTP 409 `MigrationAlreadyRunning`.
+      - GIVEN two different `migration_id` values, WHEN both are run, THEN they may execute concurrently because the lock key is derived from `migration_id`.
+      - GIVEN a tenant is created after the snapshot is taken, WHEN it is provisioned, THEN the tenant onboarding path applies the full migration set and inserts `done` rows, so the tenant is not left behind by the concurrent fanout.
+      - GIVEN the snapshot is exhausted, WHEN the run returns, THEN the response carries `{run_id, done, failed, pending}` counts.
+
+      **See:** SPT-01, MIG-01, MIG-02, MIG-04, MIG-06
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:19Z'
+    workflow: PW-04
+  MIG-04:
+    id: MIG-04
+    title: Migration resume for pending and failed tenants
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL provide `POST /api/v1/admin/migrations/{migration_id}/resume`, which applies the migration only to tenants whose control row is `pending` or `failed`, reading that set through `platform_migrations_resume_idx`. Tenants whose row is `done` are never re-applied.
+
+      **Acceptance Criteria:**
+      - GIVEN rows in `done`, `pending` and `failed`, WHEN resume runs, THEN DDL is applied to the `pending` and `failed` tenants only.
+      - GIVEN every row for the migration is `done`, WHEN resume runs, THEN it executes no DDL and returns zero counts.
+      - GIVEN resume selects its tenant set, WHEN the query plan is inspected, THEN it reads through `platform_migrations_resume_idx`.
+      - GIVEN a resume run, WHEN tenants are processed, THEN they are processed in `tenant_id` order, so the failure list is reproducible between a run and its resume.
+      - Resume applies the MIG-02 rule: each tenant's control row is upserted in the same transaction as that tenant's DDL.
+
+      **See:** MIG-01, MIG-02, MIG-03, MIG-05, MIG-06
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:20Z'
+    workflow: PW-04
+  MIG-05:
+    id: MIG-05
+    title: Idempotent migration re-run
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL make a migration run idempotent through `ON CONFLICT (migration_id, tenant_id) DO UPDATE ... WHERE status != 'done'`. Re-running a completed migration is a no-op for tenants already `done`, and opens no transaction against their schemas. A migration file is frozen once any tenant holds a `done` row for its `migration_id`.
+
+      **Acceptance Criteria:**
+      - GIVEN a migration completed for a tenant, WHEN the migration is run again, THEN no DDL executes for that tenant and its `completed_at` is unchanged.
+      - GIVEN a tenant row in `failed`, WHEN the migration is run again, THEN the tenant is re-attempted and its row is updated.
+      - GIVEN a tenant row in `done`, WHEN the seeding step of a re-run executes, THEN the conflict clause leaves `status`, `completed_at` and `error_msg` untouched and does not move the row back to `pending`.
+      - GIVEN a tenant row in `done`, WHEN the fanout loop reaches that tenant, THEN it is skipped without opening a transaction against that tenant schema.
+      - GIVEN any tenant holds a `done` row for `migration_id`, WHEN the migration file content changes, THEN the change is rejected and a new `migration_id` is required.
+
+      **See:** MIG-01, MIG-02, MIG-03, MIG-04, MIG-06
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:21Z'
+    workflow: PW-04
+  MIG-06:
+    id: MIG-06
+    title: Migration admin surface and fix-forward policy
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL expose a migration admin surface requiring the platform-operator role: `POST /api/v1/admin/migrations/run` to start a fanout, `GET /api/v1/admin/migrations/{migration_id}/status` returning aggregate `pending`, `done` and `failed` counts with a per-tenant list carrying `error_msg` and `completed_at`, and `POST /api/v1/admin/migrations/{migration_id}/resume`. A defective migration is corrected by authoring a new `migration_id` that fixes forward; issuing compensating DDL across tenant schemas is prohibited, because a partial compensation leaves schemas divergent.
+
+      **Acceptance Criteria:**
+      - GIVEN a caller without the platform-operator role, WHEN it calls run, status or resume, THEN the platform returns HTTP 403.
+      - GIVEN a `migration_id` matching no file in the migration set, WHEN run is called, THEN the platform returns HTTP 404 `UnknownMigration` and writes no control rows.
+      - GIVEN a fanout that ended with failures, WHEN status is called, THEN the response carries the three counts and a per-tenant list with `error_msg` and `completed_at`.
+      - GIVEN a defective migration already applied to some tenants, WHEN it is corrected, THEN the correction is a new `migration_id` with its own fanout and no reverse DDL is issued across tenant schemas.
+      - GIVEN any migration has outstanding `pending` rows, WHEN the application starts, THEN it refuses to serve traffic and names the migration.
+
+      **See:** SPT-01, MIG-01, MIG-03, MIG-04, API-06
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:23Z'
+    workflow: PW-04
+  OBP-01:
+    id: OBP-01
+    title: Outbox depth cap and cached depth counter
+    stage: '16'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > The outbox SHOULD have a per-tenant depth cap `BPM_OUTBOX_DEPTH_CAP`, read from the environment at startup with a default of 50000 and never inferred from disk, memory, or observed throughput. Depth SHALL be read from a cached counter that the outbox drainer refreshes every 250 ms; no request path SHALL issue `SELECT count(*) FROM plat_outbox`. A cached value older than 5 s SHALL be treated as at-cap.
+
+      **Acceptance Criteria:**
+      - GIVEN the drainer is running, WHEN it completes a publish cycle, THEN it writes the current pending-row count to the shared counter, and the counter is no more than 250 ms behind the table.
+      - GIVEN an ingress request, WHEN the depth check runs, THEN it reads one cached integer and adds under 1 ms to the request; no `count(*)` is executed on the request path.
+      - GIVEN the counter has not been refreshed for more than 5 s, WHEN the depth check runs, THEN depth is treated as at-cap and the gate closes; loss of depth visibility closes ingress rather than opening it.
+      - GIVEN two tenants, WHEN one reaches its cap, THEN the other tenant's depth, gate state, and refusal counters are unaffected; all of them are keyed per tenant schema.
+      - `BPM_OUTBOX_DEPTH_CAP` and `BPM_OUTBOX_LOW_WATER` are documented in `.env.example` with their defaults and their empty-value behaviour.
+
+      **See:** OBP-02 (external refusal reading this depth), OBP-03 (internal overflow reading this depth), OBP-04 (the hysteresis gate), API-10 (rate limiting, a separate control on a different dimension)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:24Z'
+    workflow: PW-08
+  OBP-02:
+    id: OBP-02
+    title: External ingress refusal before transaction
+    stage: '16'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > **Extends:** API-10, adding a capacity-driven refusal distinct from rate limiting.
+
+      > When outbox depth is at or above the cap, external ingress SHALL be refused with HTTP 429 and header `Retry-After: 5`, returned by middleware before `BEGIN` is issued, before a pool connection is taken, and before the idempotency key is recorded. The response body SHALL be `{"error":"outbox_at_capacity","depth":<n>,"cap":<n>}`. A refused request SHALL leave the caller's idempotency key unused.
+
+      **Acceptance Criteria:**
+      - GIVEN depth is at the cap, WHEN an external caller posts to ingress with idempotency key K, THEN the response is 429 with `Retry-After: 5`, and no row for K exists in `plat_idempotency_key`.
+      - GIVEN the same caller retries with key K after the gate reopens, WHEN the request is handled, THEN it is processed as a first attempt and not as a replay of a request that never ran.
+      - GIVEN a refused request, WHEN the database is inspected, THEN no transaction was opened and no connection was taken from the pool for that request.
+      - GIVEN outbox capacity is reached, WHEN a refusal is emitted, THEN the status code is 429 and never 400, 500, or 503; capacity is a throttling condition, not a client error and not a server fault.
+      - GIVEN a 429 is emitted on this path without the `Retry-After` header, WHEN the response is validated, THEN it is recorded as a defect; the header is unconditional.
+      - Every refusal appends `EXECUTION_INGRESS_REFUSED` carrying tenant, depth, and cap.
+
+      **See:** OBP-01 (the depth this reads), OBP-03 (the internal counterpart), OBP-04, API-10, DB-02 (no pooled connection is taken by a refused request)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:25Z'
+    workflow: PW-08
+  OBP-03:
+    id: OBP-03
+    title: Typed outbox overflow on internal emit
+    stage: '16'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > An internal emit runs inside a step transaction and has no response to write, so it SHALL NOT be refused with a status code. When outbox depth is at or above the cap, `outbox.emit()` SHALL return the typed error `error.OutboxOverflow`, no outbox row SHALL be inserted, the step transaction SHALL roll back, and the node's configured retry policy and the existing dead letter path SHALL handle it. `OutboxOverflow` SHALL appear in the declared error set of `outbox.emit()` and of every caller.
+
+      **Acceptance Criteria:**
+      - GIVEN depth is at the cap, WHEN a SERVICE_TASK step calls `outbox.emit()`, THEN it returns `error.OutboxOverflow`, no row is inserted into `plat_outbox`, and every other write of that step is discarded by the rollback.
+      - GIVEN a caller of `outbox.emit()` omits `OutboxOverflow` from its declared error set, WHEN the build runs, THEN it fails with an error-set diagnostic; the variant is never absorbed by `catch unreachable` and never mapped to a generic failure.
+      - GIVEN a step fails with `OutboxOverflow`, WHEN retries are scheduled, THEN the node's existing retry policy and backoff apply unchanged; no separate retry mechanism and no separate rate limiter is introduced for this path.
+      - GIVEN a runaway producer, WHEN its steps fail and back off, THEN its own emit rate falls, so the producer throttles itself while the drainer catches up.
+      - GIVEN retry attempts are exhausted while depth stays at the cap, WHEN the step is dead-lettered, THEN the instance transitions to `failed` and the dead letter entry carries `OutboxOverflow`, the attempt count, and the depth observed at each attempt.
+      - GIVEN a dead-lettered instance is retried after the gate reopens, WHEN it resumes, THEN it runs against the definition version pinned at instance start (PD-08).
+
+      **See:** OBP-01, OBP-02 (the external counterpart), OBP-04, OBS-05 (dead letter queue), PD-08 (the pinned version used on retry)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:26Z'
+    workflow: PW-08
+  OBP-04:
+    id: OBP-04
+    title: Outbox gate hysteresis and escalation
+    stage: '16'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > The ingress gate SHALL close at `BPM_OUTBOX_DEPTH_CAP` and reopen only when depth falls to `BPM_OUTBOX_LOW_WATER`, fixed at 80 per cent of the cap with a default of 40000. It SHALL NOT reopen at the cap itself. Gate state SHALL be recorded per tenant in `plat_outbox_gate` with the timestamp of the last transition, and each reopen SHALL append `EXECUTION_OUTBOX_GATE_OPENED` carrying the duration the gate was closed.
+
+      **Acceptance Criteria:**
+      - GIVEN the cap is 50000 and depth oscillates between 49999 and 50001, WHEN requests arrive, THEN the gate stays closed until depth reaches 40000; it does not flip open and closed per request.
+      - GIVEN the gate is closed and the drainer reduces depth to 40000, WHEN the next external request arrives, THEN it is accepted and `EXECUTION_OUTBOX_GATE_OPENED` is appended with the closed duration.
+      - GIVEN the gate opens and closes within one 250 ms refresh interval, WHEN the transition is observed, THEN it is recorded as a defect indicating the low-water mark has been set equal to the cap, and the 80 per cent hysteresis is restored.
+      - GIVEN more than 100 refusals in one minute for a single tenant, WHEN the rate is evaluated, THEN Platform Admin is escalated, because the drainer is not keeping pace with the emit rate.
+      - GIVEN the gate has been closed for more than 300 s, WHEN the duration is evaluated, THEN Platform Admin is paged, the drainer is restarted, and the closed duration is recorded.
+      - Gate state is keyed per tenant schema, so one tenant's depth never refuses another tenant's ingress.
+
+      **See:** OBP-01 (cached depth and per-tenant keying), OBP-02 (the refusals counted here), OBP-03, OBS-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:27Z'
+    workflow: PW-08
+  ORD-01:
+    id: ORD-01
+    title: Effect completion claim guard
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > A BPM Consumer SHALL claim a pending effect completion with `SELECT completion_id, correlation_id, sequence_no FROM plat_effect_completion WHERE status = 'PENDING' ORDER BY correlation_id, sequence_no FOR UPDATE SKIP LOCKED LIMIT 1`, executed inside the transaction that will apply it. `SKIP LOCKED` guarantees no two consumers hold the same completion row. The claim guard SHALL NOT be relied on to serialise two different rows of the same correlation; that is the execute guard of ORD-02.
+
+      **Acceptance Criteria:**
+      - GIVEN 8 consumers polling and one `PENDING` row, WHEN they claim concurrently, THEN exactly one consumer receives the row and the other 7 receive no row; none blocks waiting for the lock.
+      - GIVEN every `PENDING` row is already locked by another consumer, WHEN a consumer claims, THEN it receives no row, sleeps 200 ms, and repeats without raising an error.
+      - GIVEN a consumer process is killed while holding a claim, WHEN its backend exits, THEN the row lock is released with the transaction and the row returns to `PENDING` without operator action.
+      - GIVEN two `PENDING` rows of the same `correlation_id` with `sequence_no` 5 and 6, WHEN two consumers claim concurrently, THEN both claims succeed because they are different rows; ordering is decided downstream by ORD-02 and ORD-03, not here.
+      - The claim is ordered by `(correlation_id, sequence_no)`, so a consumer that wins a correlation takes its lowest outstanding sequence first.
+
+      **See:** ORD-02 (execute guard), ORD-03 (order guard), ORD-04, DB-02 (one pooled connection per claim transaction)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:28Z'
+    workflow: PW-07
+  ORD-02:
+    id: ORD-02
+    title: Per-correlation execute guard
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > Inside the claim transaction a BPM Consumer SHALL evaluate `SELECT pg_try_advisory_xact_lock(hashtext(correlation_id)::bigint)` before applying a completion. A `false` result SHALL cause an immediate `ROLLBACK`, returning the row to `PENDING` without incrementing any retry counter, and the consumer SHALL move to another correlation. The lock is transaction-scoped and SHALL NOT be released by an explicit unlock call.
+
+      **Acceptance Criteria:**
+      - GIVEN consumer A is applying a completion for correlation X, WHEN consumer B claims another completion for correlation X, THEN B's `pg_try_advisory_xact_lock` returns `false`, B rolls back, and B claims work for a different correlation within the same poll cycle.
+      - GIVEN the try-variant is used, WHEN a consumer loses the guard, THEN it does not block; `pg_advisory_xact_lock` is never called on this path, so no pooled connection is held waiting.
+      - GIVEN a consumer crashes mid-apply, WHEN its backend exits, THEN the advisory lock is released by the transaction abort and the correlation becomes available to another consumer without operator action.
+      - GIVEN two distinct `correlation_id` values whose `hashtext` results collide, WHEN both are claimed, THEN one waits for the other and throughput falls, but neither is misapplied: ordering is decided by the per-correlation cursor of ORD-03, not by the lock key.
+      - GIVEN a completion commits, WHEN the transaction ends, THEN the advisory lock is released at `COMMIT` and the successor becomes eligible on the next claim.
+
+      **See:** ORD-01 (claim guard), ORD-03 (order guard evaluated while this lock is held), ORD-04, DB-02
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:29Z'
+    workflow: PW-07
+  ORD-03:
+    id: ORD-03
+    title: Sequence order guard and gap sweeping
+    stage: '16'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > A completion SHOULD be applied only when `sequence_no = applied_seq + 1`, where `applied_seq` is read from `plat_correlation_cursor` for that `correlation_id` while the execute guard of ORD-02 is held. A completion that is not next in sequence SHALL cause a silent `ROLLBACK` with no error and no retry-count increment, leaving the row `PENDING`. The apply and the cursor advance `UPDATE plat_correlation_cursor SET applied_seq = $2 WHERE correlation_id = $1 AND applied_seq = $2 - 1` SHALL commit in one transaction.
+
+      **Acceptance Criteria:**
+      - GIVEN `applied_seq = 4` for correlation X and the completion for sequence 6 arrives before sequence 5, WHEN sequence 6 is claimed, THEN it is not applied, the transaction rolls back silently, its retry counter is unchanged, and the row remains `PENDING`.
+      - GIVEN sequence 5 then arrives, WHEN it is applied, THEN `applied_seq` advances to 5 and sequence 6 is applied on the next claim, so the engine observes 5 before 6.
+      - GIVEN the conditional cursor update reports 0 updated rows, WHEN the consumer evaluates it, THEN the transaction rolls back and the completion is re-claimed; this guard makes a double-apply impossible even if both other guards were bypassed.
+      - GIVEN the apply raises a typed engine error, WHEN the transaction rolls back, THEN neither the instance state change nor the cursor advance is committed, so applied state and `applied_seq` cannot diverge.
+      - GIVEN a successor has been `PENDING` for longer than `gap_timeout_seconds` (default 300) while its predecessor is absent, WHEN the gap sweeper runs on its 60 s cadence, THEN every `PENDING` row of that correlation moves to `status = 'DEAD'` and is routed to the dead letter queue as one unit, so no correlation is left half-applied.
+      - GIVEN the Effects Worker re-inserts an existing `(correlation_id, sequence_no)`, WHEN the insert runs, THEN it is absorbed by `ON CONFLICT DO NOTHING` and no second apply occurs.
+
+      **See:** ORD-01, ORD-02 (the lock under which the cursor is read and advanced), ORD-04, OBS-05 (dead letter queue receiving a swept correlation)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:30Z'
+    workflow: PW-07
+  ORD-04:
+    id: ORD-04
+    title: Cross-correlation parallelism and lag metrics
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > Completions belonging to different `correlation_id` values SHALL continue to be applied in parallel: distinct correlations take distinct advisory lock keys and distinct `plat_correlation_cursor` rows, so `consumer_count` correlations (default 8) are applied concurrently. The platform SHALL expose per-correlation lag `max(sequence_no) - applied_seq`, the age of the oldest `PENDING` row, and the rate at which the execute guard of ORD-02 returns `false`.
+
+      **Acceptance Criteria:**
+      - GIVEN 8 correlations each holding a pending completion that is next in sequence, WHEN 8 consumers poll, THEN all 8 are applied concurrently and none is serialised behind another.
+      - GIVEN per-correlation lag exceeds 100 unapplied completions, WHEN the sweeper evaluates it, THEN `EXECUTION_CORRELATION_LAG` is appended carrying the `correlation_id`, the lag, and the age of the oldest `PENDING` row, and Platform Admin is escalated.
+      - GIVEN the execute guard returns `false` for more than 50 per cent of claim attempts in one minute, WHEN contention is evaluated, THEN `EXECUTION_CORRELATION_CONTENTION` is appended and `consumer_count` is reduced by 2 with a floor of 2.
+      - GIVEN a correlation is dead-lettered, WHEN the escalation is raised, THEN it names the `correlation_id` and lists every unapplied `sequence_no`, so the missing emit is identifiable without querying the table.
+      - Every applied completion appends `EXECUTION_EFFECT_APPLIED` carrying `correlation_id` and `sequence_no`, so apply order is auditable from the event log alone.
+
+      **See:** ORD-01, ORD-02, ORD-03, OBS-05, PAR-01 (these events are appended to the partitioned event log)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:31Z'
+    workflow: PW-07
+  PAR-01:
+    id: PAR-01
+    title: Monthly range partitioning of the event log
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** ES-07, replacing the row-by-row archival move with a partition lifecycle.
+
+      > The `events` and `events_archive` tables SHALL be declared `PARTITION BY RANGE (created_at)` with one partition per calendar month, named `events_YYYY_MM`. Because PostgreSQL requires the partition key to appear in every unique constraint, the primary key SHALL widen from `event_id` to `(event_id, created_at)`. Global `idempotency_key` uniqueness SHALL be preserved by the separate non-partitioned table `plat_event_idempotency (idempotency_key TEXT PRIMARY KEY, event_id UUID, created_at TIMESTAMPTZ)`, written in the same transaction as every append.
+
+      **Acceptance Criteria:**
+      - GIVEN the converted schema, WHEN `events` is inspected, THEN its partition strategy is RANGE on `created_at`, its primary key is `(event_id, created_at)`, and one partition exists for every calendar month covered by the data.
+      - GIVEN two appends supplying the same `idempotency_key` in different calendar months, WHEN the second is attempted, THEN it is rejected by the primary key of `plat_event_idempotency`; partitioning does not narrow idempotency to a per-month scope.
+      - GIVEN an append, WHEN it commits, THEN the `events` row and the `plat_event_idempotency` row are written in one transaction; a failure of either rolls back both.
+      - GIVEN an append whose `created_at` falls in a month with no attached partition, WHEN it executes, THEN it fails with `PartitionMissingForWrite` and a structured error rather than being routed to another partition.
+      - Every partition of `events` and `events_archive` carries the index `(instance_id, sequence_num)`, so per-partition access preserves the ordering reconstruction depends on.
+
+      **See:** ES-07 (the archival requirement this supersedes), ADP-11 (the protected event types), PAR-04 (partition constraints), PAR-05 (the conversion), PAR-06 (reconstruction bounding), DB-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:32Z'
+    workflow: PW-06
+  PAR-02:
+    id: PAR-02
+    title: Proactive future partition creation
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The scheduler SHALL run `plat_partition_maintenance` daily at 00:15 UTC in every tenant schema and SHALL keep `lead_months` future monthly partitions attached at all times, default 2. Partition creation SHALL be idempotent: creating a partition that already exists and is attached is a no-op. No append SHALL ever be the operation that creates a partition.
+
+      **Acceptance Criteria:**
+      - GIVEN today is the 20th of month N and partitions exist through month N, WHEN `plat_partition_maintenance` runs, THEN partitions for months N+1 and N+2 are created and attached before the job returns.
+      - GIVEN `plat_partition_maintenance` runs twice within the same day, WHEN the second run executes, THEN it creates nothing, raises no error, and leaves the partition set unchanged.
+      - GIVEN the count of attached future partitions falls to 1, WHEN maintenance evaluates lead time, THEN a WARN is raised; falling to 0 raises a BLOCKER before any append can fail with `PartitionMissingForWrite`.
+      - GIVEN the maintenance run is missed because the platform was down, WHEN the platform restarts, THEN the run is recovered on the SCH-05 path and the full lead horizon is restored before ingress resumes.
+      - Each creation appends `EXECUTION_PARTITION_CREATED` carrying the partition name and its range bounds.
+
+      **See:** PAR-01 (the partitioned tables), PAR-04 (constraints declared at creation time), SCH-05 (recovery of a missed maintenance run), DDL-01 (partition DDL passes the validator first)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:33Z'
+    workflow: PW-06
+  PAR-03:
+    id: PAR-03
+    title: Partition-scoped retention and archival
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** ADP-11, giving the deletion prohibition a physical retention mechanism.
+
+      > Retention SHALL be partition-scoped. An `events` partition older than `archive_after_months` (default 13) SHALL be aged out by `ALTER TABLE events DETACH PARTITION events_YYYY_MM CONCURRENTLY` followed by `ALTER TABLE events_archive ATTACH PARTITION events_YYYY_MM FOR VALUES FROM ... TO ...`, a catalog operation that moves no rows. Hard deletion by `DROP TABLE` SHALL be confined to partitions of `events_ephemeral`, which holds only event types whose retention class is `delete`. No `DELETE` statement SHALL run against `events` or `events_archive` at any point.
+
+      **Acceptance Criteria:**
+      - GIVEN an event type in the set `{INSTANCE_*, TASK_*, GATEWAY_*, EXECUTION_*}`, WHEN retention class `delete` is configured for it, THEN configuration is rejected with `RetentionClassForbidden` and the type never routes to `events_ephemeral`.
+      - GIVEN a 14-month-old `events` partition holding 40 million rows, WHEN it ages out, THEN the detach and attach complete without copying a row, and the rows remain readable through `events_archive`.
+      - GIVEN an `events_ephemeral` partition older than `ephemeral_drop_after_months` (default 3), WHEN a drop is attempted, THEN the guard `SELECT count(*) FROM events_ephemeral_YYYY_MM WHERE split_part(event_type, '_', 1) IN ('INSTANCE', 'TASK', 'GATEWAY', 'EXECUTION')` must return 0 before `DROP TABLE` executes.
+      - GIVEN that guard returns a non-zero count, WHEN the scheduler evaluates it, THEN `Adp11GuardTripped` is raised as a BLOCKER, the partition stays attached, and no drop occurs.
+      - GIVEN a detach commits but the archive attach fails, WHEN the failure is recorded, THEN the partition exists standalone in state `ORPHAN_PARTITION`, remains queryable, and the attach is retried on the next maintenance run.
+      - Detach and drop each append `EXECUTION_PARTITION_DETACHED` or `EXECUTION_PARTITION_DROPPED` to the event log.
+
+      **See:** ADP-11 (the deletion prohibition this implements), ES-07 (the retention policy surface), IR-07 (archives remain queryable), PAR-01, PAR-06 (reconstruction spanning both parents)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:34Z'
+    workflow: PW-06
+  PAR-04:
+    id: PAR-04
+    title: Partition constraints declared before attach
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > Every partition SHALL carry `CHECK (tenant_id IS NOT NULL)` and a CHECK matching its own range bounds, both declared on the standalone table before `ATTACH PARTITION` is issued. With both constraints present PostgreSQL validates the attach from the catalog and takes `SHARE UPDATE EXCLUSIVE`; without them it scans the partition under a stronger lock. An attach against a partition missing either constraint SHALL be refused with `AttachScanRequired`.
+
+      **Acceptance Criteria:**
+      - GIVEN a standalone partition carrying both CHECKs, WHEN `ATTACH PARTITION` runs, THEN it acquires `SHARE UPDATE EXCLUSIVE` on the parent, scans no partition rows, and completes in under 50 ms whatever the partition size.
+      - GIVEN a standalone partition missing `CHECK (tenant_id IS NOT NULL)`, WHEN an attach is attempted, THEN `AttachScanRequired` is returned and the attach does not run.
+      - GIVEN an attach exceeds 1 s, WHEN the duration is observed, THEN it is reported as `AttachScanRequired`, since only a missing matching constraint causes the scan.
+      - GIVEN an attached partition, WHEN a row with `tenant_id IS NULL` is inserted, THEN the insert is rejected by the partition-level CHECK, so the tenant scoping invariant holds per partition and not only on the parent.
+      - The range CHECK on each partition matches the `FOR VALUES FROM ... TO ...` bounds used in the attach exactly; a mismatch is detected and rejected before the statement is issued.
+
+      **See:** PAR-01, PAR-02 (constraints declared at creation time), PAR-03 (the attach archival depends on), DDL-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:35Z'
+    workflow: PW-06
+  PAR-05:
+    id: PAR-05
+    title: Online conversion to a partitioned event log
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The one-time conversion of an existing `events` table into a partitioned parent SHALL run online. A new parent is created alongside, historical rows are backfilled in `created_at` windows of one calendar month with one transaction per window and `ON CONFLICT (event_id, created_at) DO NOTHING`, and the tables are exchanged by a rename swap inside a single transaction. `plat_event_idempotency` SHALL be created and populated before the swap, so global `idempotency_key` uniqueness is never absent.
+
+      **Acceptance Criteria:**
+      - GIVEN conversion begins, WHEN the parent is created, THEN it is `CREATE TABLE events_part (LIKE events INCLUDING DEFAULTS INCLUDING IDENTITY) PARTITION BY RANGE (created_at)`, and the live `events` table continues to accept appends unchanged.
+      - GIVEN a month between `min(created_at)` and the lead horizon has no partition, WHEN conversion validates coverage, THEN `PartitionRangeGap` is raised naming the missing month and no backfill starts.
+      - GIVEN a backfill window is interrupted and re-run, WHEN it repeats, THEN `ON CONFLICT (event_id, created_at) DO NOTHING` absorbs the duplicates and the end state is identical to an uninterrupted run.
+      - GIVEN the swap transaction, WHEN it runs, THEN it replays the catch-up window since the last backfilled row and issues `ALTER TABLE events RENAME TO events_legacy; ALTER TABLE events_part RENAME TO events;` in one transaction with `lock_timeout = 3s`; a lock timeout rolls the transaction back, leaves both tables intact and readable, and the swap is retried at the next maintenance window.
+      - GIVEN the swap has committed, WHEN per-month `count(*)` is compared between `events_legacy` and the new partitions, THEN every month matches; a mismatch raises `ConversionRowCountMismatch` and the inverse rename restores the original `events`.
+      - `events_legacy` is retained read-only for one full `archive_after_months` cycle and then attached to `events_archive`; it is never emptied row by row.
+
+      **See:** PAR-01 (the target shape), PAR-03 (how the legacy table finally ages out), PAR-04, DDL-04 (the batched-backfill discipline this reuses)
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:37Z'
+    workflow: PW-06
+  PAR-06:
+    id: PAR-06
+    title: Time-bounded instance reconstruction queries
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > Partition pruning is driven by `created_at` while instance reconstruction identifies work by `instance_id`. The platform SHALL resolve this by bounding every reconstruction query with a time predicate, not by accepting per-partition index fan-out. `instances.first_event_at` and `instances.last_event_at` SHALL be maintained in the same transaction as every append, and the reconstruction query SHALL be `SELECT * FROM events WHERE instance_id = $1 AND created_at >= $2 AND created_at < $3 ORDER BY sequence_num`, with `$2` and `$3` taken from those two columns.
+
+      **Acceptance Criteria:**
+      - GIVEN an instance whose events all fall in one calendar month and 13 partitions are attached, WHEN reconstruction runs, THEN the query plan shows exactly one partition scanned and the other 12 pruned.
+      - GIVEN an instance whose lifetime crosses into a month already moved to `events_archive`, WHEN reconstruction runs, THEN the same bounded predicate is applied to `events_archive`, the two result sets are merged by `sequence_num`, and the result is identical to reconstruction performed before that partition was aged out.
+      - GIVEN `instances.first_event_at` or `instances.last_event_at` is NULL, WHEN reconstruction is requested, THEN `ReconstructionWindowMissing` is returned, the projection row is repaired by one scan of the event log for that instance, and the bounded query is retried.
+      - GIVEN an append for an instance, WHEN it commits, THEN `last_event_at` is advanced in the same transaction, so the window can never exclude a committed event.
+      - GIVEN a reconstruction submitted without a time predicate, WHEN it is received, THEN it is refused rather than executed; unbounded reconstruction is not a supported query form.
+      - The upper bound is `last_event_at` plus one microsecond, so the exclusive `<` comparison still includes the final event.
+
+      **See:** PAR-01, PAR-03, XC-05 (deterministic replay depends on reconstruction returning the same events), IR-07 (archived partitions remain queryable), ES-07
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:38Z'
+    workflow: PW-06
+  PIN-01:
+    id: PIN-01
+    title: Dependency version resolution at instance start
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** PD-08, from the process graph to the non-graph versioned artefacts an instance depends on.
+
+      > The platform SHALL enumerate and resolve every versioned reference in the definition snapshot at instance start: service catalog references on SERVICE_TASK nodes (REPO-07, SVC-01), the definition's `variable_schema` version, and `module_ref` semver ranges on SUB_PROCESS nodes (PLC-01). Each reference resolves to an entry `{kind, ref, resolved_id, version, source}` with `kind` in `catalog_entry`, `variable_schema`, `module` and `source` in `resolved`, `override`, `inherited`. Resolution completes before the instance row is written.
+
+      **Acceptance Criteria:**
+      - GIVEN a SERVICE_TASK reference that names no catalog entry with an active version, WHEN the instance is started, THEN the platform returns HTTP 422 `UnresolvedCatalogRef` naming the node and the reference, and writes no instance row.
+      - GIVEN a `module_ref` semver range matching no published module version, WHEN the instance is started, THEN the platform returns HTTP 422 `UnresolvedModuleRef` naming the node, the range and the versions available.
+      - GIVEN initial variables that violate the resolved `variable_schema` version, WHEN the instance is started, THEN the platform returns HTTP 422 `VariableSchemaViolation` listing each failing field.
+      - GIVEN `pin_overrides` naming a version that does not exist, WHEN the instance is started, THEN the platform returns HTTP 422 `UnresolvedPinOverride` and writes no partial pin set.
+      - `pinned_versions[]` is ordered by `kind` then `ref`, so two starts of the same definition against the same catalog produce byte-identical payloads.
+
+      **See:** PD-08, REPO-07, SVC-01, PLC-01, PIN-02, PIN-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:39Z'
+    workflow: PW-03
+  PIN-02:
+    id: PIN-02
+    title: Pin set recorded in INSTANCE_STARTED
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL record the resolved pin set as the `pinned_versions[]` field of the `INSTANCE_STARTED` event payload, appended in the same transaction as the instance row insert. The event log is the record of record for pins; no side table stores them.
+
+      **Acceptance Criteria:**
+      - GIVEN an instance start commits, WHEN the event log is read, THEN `INSTANCE_STARTED` carries one `pinned_versions[]` entry per enumerated reference plus one entry of kind `variable_schema`.
+      - GIVEN the `INSTANCE_STARTED` append fails, WHEN the transaction ends, THEN it rolls back and no instance row exists, so no committed instance has an unrecorded pin set.
+      - GIVEN a request for the effective pin set, WHEN it is served, THEN the values come from the event log; no pin table is queried.
+      - GIVEN a definition carrying zero service catalog and zero module references, WHEN the instance starts, THEN `pinned_versions[]` contains exactly the `variable_schema` entry.
+      - Every entry records `source` as `resolved`, `override` or `inherited`.
+
+      **See:** PD-08, PIN-01, PIN-04, ES-07, IR-07
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:40Z'
+    workflow: PW-03
+  PIN-03:
+    id: PIN-03
+    title: No fallback to latest version
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL resolve every versioned dependency during execution through the instance's pin set. A reference with no pin entry raises the typed error `PinMissing` and the step enters the standard retry then dead-letter path. The engine SHALL NOT resolve the current active version in place of a missing pin, and retiring or deprecating a pinned version SHALL NOT affect instances already pinned to it.
+
+      **Acceptance Criteria:**
+      - GIVEN a node whose reference has no entry in the pin set, WHEN the node executes, THEN `PinMissing` is raised naming the reference and no catalog lookup for the latest version occurs.
+      - GIVEN a newer catalog entry version is published while an instance is in flight, WHEN the instance next reaches a SERVICE_TASK using that reference, THEN it invokes the pinned version.
+      - GIVEN the pinned catalog entry version is set to DEPRECATED after the instance started, WHEN the node executes, THEN execution proceeds on the pinned version.
+      - GIVEN the retry budget for a `PinMissing` step is exhausted, WHEN the last retry fails, THEN the step lands in the dead-letter queue with the reference name in the payload.
+      - No code path substitutes the current active version for a missing or unresolvable pin entry.
+
+      **See:** PIN-01, PIN-02, PIN-05, REPO-07, PLC-01, EE-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:41Z'
+    workflow: PW-03
+  PIN-04:
+    id: PIN-04
+    title: Pin resolution on replay and in sub-processes
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL read the effective pin set during state reconstruction from `INSTANCE_STARTED` and the most recent `INSTANCE_PINS_REBOUND` event, never from the live service catalog or module registry. A sub-process child instance inherits its parent's pin set and adds entries only for references the parent does not carry. `GET /api/v1/instances/{id}/pins` returns the effective set with the source event identifier for each entry.
+
+      **Acceptance Criteria:**
+      - GIVEN a completed instance whose catalog has changed since it ran, WHEN its state is reconstructed, THEN the reconstructed dependency versions equal the versions recorded in `INSTANCE_STARTED`.
+      - GIVEN a child instance started with `parent_instance_id`, WHEN its pin set is written, THEN entries for references the parent already pins carry `source = inherited` and the parent's version.
+      - GIVEN a child reference that resolves to a version differing from an inherited pin, WHEN the child starts, THEN the inherited pin is used and the conflict is recorded in the child's `INSTANCE_STARTED` payload.
+      - GIVEN a call to `GET /api/v1/instances/{id}/pins`, WHEN it is served, THEN each entry names the event identifier it was read from.
+      - Reconstruction issues no read against the service catalog or the module registry.
+
+      **See:** PIN-02, PIN-03, PIN-05, IR-07, XC-05, PLC-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:42Z'
+    workflow: PW-03
+  PIN-05:
+    id: PIN-05
+    title: Explicit instance pin rebind
+    stage: '16'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > The platform SHALL change an instance's pins only through `POST /api/v1/instances/{id}/rebind-pins`, which takes explicit `{kind, ref, version}` entries and a mandatory reason, and appends `INSTANCE_PINS_REBOUND` recording the prior version, the new version, the actor and the reason for each changed entry. The operation is all-or-nothing and is rejected on a terminal instance. No automatic process upgrades a running instance's pins.
+
+      **Acceptance Criteria:**
+      - GIVEN a running instance, WHEN a valid rebind is submitted, THEN `INSTANCE_PINS_REBOUND` is appended carrying `prior_version`, `new_version`, actor and reason for each changed entry.
+      - GIVEN a rebind naming a reference absent from the current pin set, WHEN it is processed, THEN the platform returns HTTP 422 `UnknownPinRef` and applies none of the entries in the request.
+      - GIVEN an instance in `COMPLETED`, `CANCELLED` or `FAILED`, WHEN a rebind is submitted, THEN the platform returns HTTP 409 `InstanceNotRebindable`.
+      - GIVEN a rebind request with no reason field, WHEN it is validated, THEN the platform returns HTTP 422.
+      - No scheduled job, catalog publication or definition promotion changes the pin set of a running instance.
+
+      **See:** PIN-02, PIN-03, PIN-04, PRM-08, ADP-11
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:43Z'
+    workflow: PW-03
+  PRM-01:
+    id: PRM-01
+    title: Promotion plan and diff report
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** ENV-03, replacing a direct test-tenant to production-tenant copy with a computed, reviewable plan.
+
+      > The platform SHALL compute a promotion plan before any write to the target tenant. The plan diffs the source tenant's definition version against the target tenant's active version across the process graph, the `variable_schema`, service catalog bindings (REPO-07) on SERVICE_TASK nodes, `module_ref` resolutions (PLC-01) on SUB_PROCESS nodes, and permission rules. Each plan entry carries `{type, id, change_kind, before, after}` with `change_kind` in `added`, `modified`, `removed`, and the plan is rendered as a human-readable change list alongside its JSON form. Submission is `POST /api/v1/promotions` and requires the `promotion.submit` permission.
+
+      **Acceptance Criteria:**
+      - GIVEN a caller without `promotion.submit`, WHEN it calls `POST /api/v1/promotions`, THEN the platform returns HTTP 403 and creates no `promotion_reviews` row.
+      - GIVEN the target tenant holds no version of `process_key`, WHEN the plan is computed, THEN every plan entry carries `change_kind = added` and the plan is accepted.
+      - GIVEN the source and target definitions are identical after canonicalisation, WHEN the plan is computed, THEN the platform returns HTTP 422 `EmptyPromotionPlan` and creates no review row.
+      - GIVEN `source_tenant_id` names a production tenant, WHEN the promotion is submitted, THEN the platform returns HTTP 422 `InvalidPromotionSource`.
+      - The plan is computed before any transaction that writes to the target tenant is opened.
+
+      **See:** ENV-03, PD-08, REPO-07, PLC-01, PRM-02, PRM-03, VLD-04
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:44Z'
+    workflow: PW-01
+  PRM-02:
+    id: PRM-02
+    title: Conflict pre-flight rejection
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL run conflict detection as the first step of the promotion pipeline, before any transaction opens. A conflict exists when the target tenant's active version of `process_key` is greater than the `base_version` the source branched from. On conflict the platform returns a typed `ConflictRejection` naming each conflicting definition with its source-side change and its target-side change, appends exactly one `DEFINITION_PROMOTION_REJECTED` event in its own transaction, and moves no version pointer.
+
+      **Acceptance Criteria:**
+      - GIVEN the target active version is greater than `base_version`, WHEN the promotion is submitted, THEN the platform returns HTTP 409 `PromotionConflict` with a body listing `{definition_id, source_change, target_change}` for each conflict.
+      - GIVEN a conflict is detected, WHEN the rejection is recorded, THEN exactly one `DEFINITION_PROMOTION_REJECTED` event is appended and the target tenant's active version pointer is unchanged.
+      - GIVEN a conflict is detected, THEN no `promotion_reviews` row and no `promotion_assertion_runs` row is created.
+      - GIVEN a conflict is detected, THEN the rejection path holds no transaction open against the target tenant schema at the time the conflict is raised.
+      - The conflict check executes before the plan digest is computed (PRM-03) and before the review row is inserted (PRM-04); no ordering makes it run later.
+
+      **See:** PRM-01, PRM-03, PRM-04, PRM-05, ENV-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:45Z'
+    workflow: PW-01
+  PRM-03:
+    id: PRM-03
+    title: Plan digest binds approval to a diff
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL bind every approval to a `plan_digest`: the lowercase hexadecimal SHA-256 over the canonical JSON serialisation of the promotion plan, where canonical means object keys sorted lexicographically and no insignificant whitespace, over the entry shape `{type, id, changes}`. The digest and the full serialised plan are stored on the `promotion_reviews` row at submit time. Approve and apply both require the digest in the request body, and a mismatch is rejected with HTTP 409 `PlanDigestMismatch`.
+
+      **Acceptance Criteria:**
+      - GIVEN two byte-identical plans, WHEN each is digested, THEN both produce the same 64-character lowercase hexadecimal string.
+      - GIVEN an approve request whose body digest differs from the stored digest, WHEN it is processed, THEN the platform returns HTTP 409 `PlanDigestMismatch` and the review remains in `pending_review`.
+      - GIVEN an apply request whose body digest differs from the stored digest, WHEN it is processed, THEN the platform returns HTTP 409 `PlanDigestMismatch` and claims no sandbox.
+      - GIVEN the source definition changes after an approval, WHEN a new promotion is submitted, THEN a new digest and a new review row are created, and the earlier approval cannot be applied to the new plan.
+      - The reviewer context endpoint serves the plan stored at submit time and never re-computes a live diff.
+
+      **See:** PRM-01, PRM-02, PRM-04, PRM-05, PRM-06
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:46Z'
+    workflow: PW-01
+  PRM-04:
+    id: PRM-04
+    title: Promotion review state machine
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL persist promotion approvals in a `promotion_reviews` table holding `id`, `tenant_id`, `plan_digest`, `def_type`, `def_id`, the serialised plan, `status`, `requested_by`, `approved_by`, `approved_at`, `superseded_by`, `row_version`, `created_at` and `updated_at`. `status` is constrained by a CHECK over exactly six values: `pending_review`, `approved`, `rejected`, `applied`, `failed`, `superseded`. The permitted edges are pending_review to approved, pending_review to rejected, pending_review to superseded, approved to applied, approved to failed, and approved to superseded. A partial unique index `promotion_reviews_plan_digest_active_uniq` over `(tenant_id, plan_digest) WHERE status IN ('pending_review','approved')` permits at most one live review per digest.
+
+      **Acceptance Criteria:**
+      - GIVEN a review in `pending_review`, WHEN it is approved, THEN `status` becomes `approved` with `approved_by` and `approved_at` set; from any other source status the platform returns HTTP 400 `InvalidReviewTransition`.
+      - GIVEN a live review for `(tenant_id, plan_digest)`, WHEN a second submission produces the same digest, THEN the platform returns HTTP 409 `DuplicateReview` raised by the partial unique index.
+      - GIVEN a review in `approved` whose assertion re-run fails, WHEN the failure is recorded, THEN `status` becomes `failed`.
+      - GIVEN a promotion applies, WHEN the version pointer moves, THEN `status` moves `approved` to `applied` and `DEFINITION_PROMOTION_APPLIED` is appended in the same transaction as the pointer move.
+      - A transition outside the enumerated edge set is rejected by the CHECK constraint at the database and with HTTP 400 at the API.
+
+      **See:** PRM-02, PRM-03, PRM-05, PRM-06, PRM-08
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:47Z'
+    workflow: PW-01
+  PRM-05:
+    id: PRM-05
+    title: Non-skippable human approval gate
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL require an approved review before a promotion is applied, and SHALL provide no request parameter, header, flag or configuration value that bypasses the check. The principal recorded in `requested_by` cannot approve its own review. `GET /api/v1/promotions/{id}/context` returns the stored plan, the assertions carried by the artifact, the `NEEDS_REVIEW` package and the `plan_digest`, so the reviewer decides on exactly the diff the digest binds.
+
+      **Acceptance Criteria:**
+      - GIVEN a review whose status is not `approved`, WHEN `POST /api/v1/promotions/{id}/apply` is called, THEN the platform returns HTTP 400 `InvalidReviewTransition` and claims no sandbox.
+      - GIVEN an approve request whose principal equals `requested_by`, WHEN it is processed, THEN the platform returns HTTP 403 and the review remains in `pending_review`.
+      - GIVEN a request body carrying an unrecognised field intended to skip the gate, WHEN it is processed, THEN the platform returns HTTP 422 for the unknown field; no skip field exists in the schema.
+      - GIVEN a pre-vetted platform-published template installed during provisioning, WHEN it reaches the target tenant, THEN it is promoted through a separate entry point that never calls apply, rather than through a bypass flag on apply.
+      - The context response contains the serialised plan, `assertions[]`, the `NEEDS_REVIEW` package and `plan_digest` in one document.
+
+      **See:** PRM-03, PRM-04, PRM-06, SOL-02, IDN-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:48Z'
+    workflow: PW-01
+  PRM-06:
+    id: PRM-06
+    title: Pre-promotion assertion re-run
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL re-run the assertions carried by the promotion artifact as a pre-production gate, in an ephemeral sandbox built from the promotion-candidate definitions and loaded with only the artifact's `fixtures[]`. The replay runs under a frozen clock, an RNG seeded from the artifact's `rng_seed`, and the stub effect recorder, and strips `non_deterministic_fields` before comparison. Each run is recorded in `promotion_assertion_runs` with `UNIQUE (tenant_id, idempotency_key)` and key `promotion_rerun:<review_id>:<plan_digest>`.
+
+      **Acceptance Criteria:**
+      - GIVEN apply is called twice for the same review and digest, WHEN the second call runs, THEN it returns the outcome already recorded under the idempotency key and claims no second sandbox.
+      - GIVEN organic rows exist in the source tenant, WHEN the sandbox is loaded, THEN the sandbox contains only the rows named in `fixtures[]`.
+      - GIVEN the same artifact is replayed twice, WHEN results are compared after stripping `non_deterministic_fields`, THEN the two result sets are identical.
+      - GIVEN any assertion fails, WHEN the run completes, THEN `promotion_assertion_runs.status` is `failed`, the review moves `approved` to `failed`, the platform returns HTTP 422 listing the failing assertion identifiers, and the target active version pointer is unchanged.
+      - GIVEN no ephemeral sandbox becomes free within 60 seconds, WHEN the claim times out, THEN the platform returns HTTP 503 `SandboxUnavailable` and the review remains `approved`.
+
+      **See:** PRM-04, PRM-05, PRM-07, ENV-01, ENV-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:49Z'
+    workflow: PW-01
+  PRM-07:
+    id: PRM-07
+    title: Sandbox teardown does not block promotion
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL release the claimed sandbox on every exit path of the assertion re-run, including assertion failure, infrastructure failure and panic. A release failure appends `PROMOTION_ASSERTION_TEARDOWN_FAILED`, sets `promotion_assertion_runs.status` to `teardown_failed`, and is surfaced on the promotion read endpoint, but never converts a passing run into a promotion failure.
+
+      **Acceptance Criteria:**
+      - GIVEN every assertion passed and the sandbox release then fails, WHEN the pipeline continues, THEN the promotion applies, `promotion_assertion_runs.status` is `teardown_failed`, and `PROMOTION_ASSERTION_TEARDOWN_FAILED` is appended.
+      - GIVEN the assertion replay panics, WHEN the panic unwinds, THEN the sandbox release is still invoked before the error is returned.
+      - GIVEN a teardown failure was recorded, WHEN `GET /api/v1/promotions/{id}` is called, THEN the response names the failed teardown and the sandbox identifier.
+      - A teardown failure never sets `promotion_reviews.status` to `failed` and never blocks the version pointer move.
+      - GIVEN a leaked sandbox, WHEN the sandbox reaper next runs, THEN the sandbox is reclaimed and the reclamation is recorded against the same run.
+
+      **See:** PRM-06, PRM-04, ENV-01, ENV-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:50Z'
+    workflow: PW-01
+  PRM-08:
+    id: PRM-08
+    title: Promotion rollback by version pointer move
+    stage: '16'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > **Extends:** PD-08. Because every instance carries a definition snapshot, reverting the active version affects only instances started afterwards.
+
+      > The platform SHALL support promotion rollback as a version pointer move: `POST /api/v1/definitions/{process_key}/rollback` re-points the tenant's active version to a version that was previously active in that tenant and appends `DEFINITION_VERSION_ROLLED_BACK`. No DDL executes, because a promotion carries none. In-flight instances continue on their PD-08 snapshot and their PIN-02 pin set, and the `promotion_reviews` row that applied the reverted version moves to `superseded`.
+
+      **Acceptance Criteria:**
+      - GIVEN version V2 is active and V1 was active before it, WHEN rollback to V1 is requested, THEN the active pointer becomes V1, `DEFINITION_VERSION_ROLLED_BACK` is appended, and no schema change is executed.
+      - GIVEN instances started under V2, WHEN the rollback completes, THEN those instances continue on their PD-08 snapshot and their recorded `pinned_versions[]` are unchanged.
+      - GIVEN a version that was never active in this tenant, WHEN rollback names it, THEN the platform returns HTTP 422 `VersionNeverActive`.
+      - GIVEN the rollback succeeds, WHEN the review is closed, THEN the `promotion_reviews` row that applied V2 moves to `superseded` with `superseded_by` naming the rollback event.
+      - GIVEN a caller without the platform-admin role, WHEN rollback is requested, THEN the platform returns HTTP 403.
+
+      **See:** PD-08, PRM-04, PRM-06, PIN-02, ENV-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:51Z'
+    workflow: PW-01
+  PRM-09:
+    id: PRM-09
+    title: Solution pack update conflict resolution
+    stage: '16'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > **Extends:** SOL-02, which installs a solution pack into a target tenant. This requirement governs the case SOL-02 does not cover: a *later* version of a pack offered to a tenant that has since modified what the earlier version installed.
+
+      > The platform SHALL treat a solution pack update as a three-way comparison rather than an overwrite. When pack `P` at version `Vb` was installed into a tenant and version `Vn` is offered, the platform SHALL compute, per artefact in the pack closure, the difference between the **base** (the artefact exactly as `Vb` installed it, recorded at install time), **theirs** (the tenant's current active artefact), and **incoming** (`Vn`). Each artefact SHALL be classified `unchanged`, `clean_update` (only the pack changed), `local_only` (only the tenant changed), or `conflict` (both changed). A `conflict` artefact SHALL NOT be applied until a resolution of `keep_local`, `take_incoming` or `merged` is recorded against that artefact, with the resolving principal and timestamp. The update SHALL be delivered as a single `PRM-01` promotion plan, so an update reaching a tenant passes the same `PRM-05` gate as any other change.
+
+      **Acceptance Criteria:**
+      - GIVEN pack `P` at `Vb` was installed and the tenant has not modified any installed artefact, WHEN `Vn` is offered, THEN every changed artefact is classified `clean_update`, the plan lists them, and no per-artefact resolution is requested.
+      - GIVEN the tenant modified definition `D` after installing `Vb` and `Vn` also changes `D`, WHEN the update plan is computed, THEN `D` is classified `conflict`, the plan carries the base, local and incoming forms of `D`, and applying the plan without a resolution for `D` returns HTTP 409 `UnresolvedTemplateConflict` naming `D`.
+      - GIVEN a `conflict` artefact with a recorded resolution of `keep_local`, WHEN the update is applied, THEN the tenant's artefact is left byte-identical, `TEMPLATE_UPDATE_CONFLICT_RESOLVED` is appended carrying the resolution and the resolving principal, and the recorded base for that artefact advances to `Vn` so the next update compares against `Vn` rather than `Vb`.
+      - GIVEN an artefact classified `local_only`, WHEN the update is applied, THEN that artefact is not touched and it is reported in the plan as retained, so a tenant customisation is never lost to an update that did not concern it.
+      - GIVEN the install record for `Vb` is absent, so no base form exists, WHEN `Vn` is offered, THEN every artefact the tenant already holds is classified `conflict` rather than `clean_update`, because the platform cannot prove the tenant did not modify it.
+      - No code path applies a pack update to an artefact classified `conflict` without a recorded resolution; a plan carrying an unresolved conflict is rejected by `PRM-02` before any transaction opens.
+
+      **See:** SOL-01, SOL-02, SOL-03, PLC-01, PD-09, PRM-01, PRM-02, PRM-05, ENV-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:52Z'
+    workflow: PW-01
+  QRY-01:
+    id: QRY-01
+    title: Structured entity query surface
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** API-06, generalizing cursor-paged reads from fixed endpoints to tenant-defined entity projections.
+
+      > The platform SHALL expose one structured query surface over entity projections at `POST /api/v1/entities/{entity_key}/query`. The request body carries `filters` as an array of `{field, op, value}` nodes, `sort` as an array of `{field, dir}` nodes, `page_size`, and `cursor`. `op` is an enum over `eq`, `neq`, `lt`, `lte`, `gt`, `gte`, `in`, `contains`; `dir` is an enum over `asc`, `desc`. No request field is concatenated into statement text: the compiler emits allowlisted column and key references and binds every literal as a positional parameter. The surface reads committed typed projection tables `ent_<entity_key>` and performs no write.
+
+      **Acceptance Criteria:**
+      - GIVEN a filter node with `op` outside the enum, WHEN the request is parsed, THEN the platform returns HTTP 400 `operator_not_recognised` naming the received value, and no statement is executed.
+      - GIVEN a filter value containing `' OR 1=1 --`, WHEN the query executes, THEN the value is bound as a positional parameter, the result set is the rows whose column equals that literal string, and the statement text contains no part of the value.
+      - GIVEN a request body carrying a raw SQL fragment in any field, WHEN it is parsed, THEN it is rejected by the request model before compilation; the surface accepts no field whose contents reach the database as statement text.
+      - GIVEN a valid query, WHEN it executes, THEN it reads only `ent_<entity_key>` in the caller's tenant and issues no INSERT, UPDATE, or DELETE.
+      - GIVEN the entity projection is rebuilt from the event log, WHEN the same query is re-issued, THEN the request document is unchanged and remains valid; the query surface holds no per-record state and defines no record placement states.
+      - `EntityQueryExecuted` is appended with `entity_key`, the filter field names, and the row count; filter values are not recorded.
+
+      **See:** API-06, API-10, ADP-09, TNT-01, QRY-02, QRY-03, QRY-04, QRY-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:53Z'
+    workflow: PW-10
+  QRY-02:
+    id: QRY-02
+    title: Declared filterable field allowlist
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** QRY-01, bounding the queryable surface to an explicit allowlist.
+
+      > A field SHALL be filterable or sortable only when it is a typed column of the `ent_<entity_key>` projection table or an entry in that entity type's declared `filterable_jsonb_keys`. Each `filterable_jsonb_keys` entry names a top-level key in the `payload` column and declares its type as `text`, `numeric`, `boolean`, or `timestamptz`; the compiler emits `payload ->> '<key>'` with the declared cast. A field that is neither a typed column nor a declared key SHALL be rejected with HTTP 400 `filter_field_not_allowlisted` naming the field. An undeclared key is an error, never an empty result and never a silently dropped predicate.
+
+      **Acceptance Criteria:**
+      - GIVEN entity type `production_batch` declares `filterable_jsonb_keys` of `supplier_name` (text) and `defect_rate` (numeric), WHEN a query filters on `supplier_name`, THEN the compiler emits `payload ->> 'supplier_name' = $1` and returns the matching rows.
+      - GIVEN a query filters on `payload` key `internal_note`, which is present in stored records but absent from `filterable_jsonb_keys`, WHEN the request is validated, THEN the platform returns HTTP 400 `filter_field_not_allowlisted` with `"field": "internal_note"` and executes no statement.
+      - GIVEN a query sorts on an undeclared key, WHEN the request is validated, THEN the same HTTP 400 `filter_field_not_allowlisted` is returned; the sort allowlist and the filter allowlist are the same set.
+      - GIVEN a filter applies `contains` to the numeric key `defect_rate`, WHEN the request is validated, THEN the platform returns HTTP 400 `operator_not_valid_for_type` naming the field and the operator.
+      - GIVEN a tenant admin adds `internal_note` to `filterable_jsonb_keys` with type `text`, WHEN the earlier rejected query is re-issued, THEN it executes and returns rows without any change to the request document.
+      - A typed column and a declared key of the same name resolve to the typed column; the entity type registry rejects a `filterable_jsonb_keys` entry that shadows a typed column name at declaration time.
+
+      **See:** QRY-01, QRY-03, QRY-05, ADP-09, TNT-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:54Z'
+    workflow: PW-10
+  QRY-03:
+    id: QRY-03
+    title: Keyset pagination with a bounded page size
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** API-06, applying keyset paging to the generic entity query surface.
+
+      > Pagination SHALL be keyset-based. `page_size` defaults to 50 and SHALL NOT exceed 200; a larger value returns HTTP 400 `page_size_exceeds_max` and the query is not executed. The platform SHALL append `record_id` as the final sort term on every query so the ordering key is total, and SHALL accept at most 2 client-supplied sort nodes. `cursor` is the base64url encoding of the previous page's last row ordered tuple; the platform decodes it into the keyset predicate. Offset pagination is not offered on this surface.
+
+      **Acceptance Criteria:**
+      - GIVEN `page_size` of 500, WHEN the query is validated, THEN the platform returns HTTP 400 `page_size_exceeds_max` carrying the maximum of 200, and executes no statement.
+      - GIVEN `page_size` omitted, WHEN the query executes, THEN 50 rows at most are returned and the response echoes `page_size` of 50.
+      - GIVEN a sort of `created_at desc`, WHEN the statement is compiled, THEN the ORDER BY is `created_at DESC, record_id DESC`, and two rows sharing a `created_at` value have a deterministic relative order across pages.
+      - GIVEN a page whose row count reaches `page_size`, WHEN the platform selects `LIMIT page_size + 1`, THEN the extra row is dropped from `items` and its ordered tuple is encoded as `next_cursor`; the final page returns `next_cursor` of null.
+      - GIVEN a cursor issued under a sort of `created_at desc` and a follow-up request sorting on `batch_number asc`, WHEN the cursor is decoded, THEN the platform returns HTTP 400 `cursor_sort_mismatch` and the client restarts from the first page.
+      - GIVEN a cursor that is not valid base64url or that decodes to a non-tuple, WHEN it is decoded, THEN the platform returns HTTP 400 `cursor_malformed`.
+      - GIVEN rows are inserted between two page requests, WHEN the second page is fetched with the cursor, THEN no row from the first page reappears; the cursor encodes column values, not a row offset.
+
+      **See:** API-06, QRY-01, QRY-02, ADP-09
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:55Z'
+    workflow: PW-10
+  QRY-04:
+    id: QRY-04
+    title: Empty envelope for unauthorised entity types
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** QRY-01, closing the entity type existence oracle.
+
+      > An `entity_key` that is not registered in the caller's tenant and an `entity_key` the caller has no `entity.read` grant for SHALL both return HTTP 200 with the empty envelope `{"items": [], "next_cursor": null}`. The query surface SHALL NOT return HTTP 403 or HTTP 404 for an entity type at any point, so a caller cannot use the response to establish which entity types a tenant has defined or which ones it is excluded from.
+
+      **Acceptance Criteria:**
+      - GIVEN a caller without `entity.read` on `production_batch`, WHEN it queries that entity type, THEN the platform returns HTTP 200 with `{"items": [], "next_cursor": null}`.
+      - GIVEN a caller queries `entity_key` `nonexistent_type`, WHEN the registry lookup misses, THEN the response body and headers are byte-identical to the unauthorised case above.
+      - GIVEN a caller with the grant queries an entity type holding zero matching rows, WHEN the query executes, THEN the response is the same empty envelope; the three cases are indistinguishable to the client.
+      - GIVEN an unauthorised entity type, WHEN the request also carries an undeclared filter key, THEN the authorisation outcome is decided first and the response is HTTP 200 with the empty envelope, not HTTP 400; the QRY-02 error path is not reachable without a read grant.
+      - GIVEN an unauthorised or unknown entity type, WHEN the request is handled, THEN no `ent_<entity_key>` table is queried and the response is produced from the registry lookup alone.
+      - Every empty-envelope response for an unauthorised or unknown entity type appends an audit entry naming the caller, the tenant, and the requested `entity_key`.
+
+      **See:** QRY-01, QRY-02, QRY-05, IDN-05, TNT-01, OBS-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:56Z'
+    workflow: PW-10
+  QRY-05:
+    id: QRY-05
+    title: Server-side field stripping on query results
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** QRY-01, enforcing field-level read grants on the server.
+
+      > Fields the caller has no read grant for SHALL be removed from every item before serialisation. A stripped field SHALL be absent from the JSON object, not present with a null value, an empty string, or a redaction marker, so the response carries no signal that the field exists. Stripping SHALL happen on the server; the client is never sent a value it is expected to hide. A stripped field remains usable as a filter or sort term only when the caller holds the read grant for it.
+
+      **Acceptance Criteria:**
+      - GIVEN a quality manager without `entity.read.cost`, WHEN the production batch list is queried, THEN no item carries a `unit_cost_eur` key at all.
+      - GIVEN a managing director holding `entity.read.cost`, WHEN the same query is issued, THEN every item carries `unit_cost_eur` and the row set is identical to the quality manager's row set.
+      - GIVEN a caller without the grant on `unit_cost_eur`, WHEN it filters on `unit_cost_eur`, THEN the platform returns HTTP 400 `filter_field_not_allowlisted` naming the field; an ungranted field is not a queryable field for that caller.
+      - GIVEN a caller without the grant on `unit_cost_eur`, WHEN it sorts on `unit_cost_eur`, THEN the same HTTP 400 is returned and no ordering by the ungranted field is performed.
+      - GIVEN stripping removes every field of an item except `record_id`, WHEN the response is serialised, THEN the item is still present with `record_id` alone; row visibility and field visibility are separate decisions.
+      - Stripping is applied to the serialised item after the statement returns, and the stripped field names are not listed anywhere in the response.
+
+      **See:** QRY-01, QRY-02, QRY-04, IDN-05, TNT-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:58Z'
+    workflow: PW-10
+  RND-UI-01:
+    id: RND-UI-01
+    title: Six-state renderer union and single error classifier
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** API-06, narrowing the platform error contract into a closed client-side state union.
+
+      > The SPA SHALL export the type `RendererState = 'loading' | 'success' | 'fetch-failure' | 'permission-denied' | 'stale-version' | 'rate-limit'` from `web/src/utils/classifyError.ts`, and `classifyError()` SHALL be the only function in `web/src/` that reads an HTTP status off a query error. The mapping is fixed: 401 and 403 to `permission-denied`, 409 to `stale-version`, 429 carrying `Retry-After` to `rate-limit`, every other non-2xx status and every transport failure to `fetch-failure`. `web/src/components/ui/QueryStateBoundary.tsx` SHALL be the only consumer of the union and SHALL switch on it exhaustively with a `never` default arm. Every page component under `web/src/pages/` that calls `useQuery` SHALL render its body inside `<QueryStateBoundary>`.
+
+      **Acceptance Criteria:**
+      - GIVEN a page component under `web/src/pages/` that calls `useQuery` without wrapping its body in `<QueryStateBoundary>`, WHEN the GRD-UI-02 source scan runs, THEN the scan fails with pattern name `missing-query-state-boundary` and the file path; this is a pure static scan with no HTTP.
+      - GIVEN a seventh member is added to `RendererState` without a matching switch arm, WHEN `npm run type-check` runs, THEN it exits non-zero at the `never` default arm of `QueryStateBoundary`; this is a pure static check with no HTTP.
+      - GIVEN a file under `web/src/` other than `classifyError.ts` that reads `error.response.status`, WHEN the source scan runs, THEN the scan fails with pattern name `status-read-outside-classifier`.
+      - GIVEN a Playwright E2E against the real backend drives a page through a 403 and then a successful read, WHEN each frame is inspected, THEN exactly one state subtree is present at a time and no error component is mounted beside a populated `DataTable`.
+      - GIVEN a 429 response arrives with no `Retry-After` header from the real rate limiter, WHEN `classifyError()` runs in a Playwright E2E, THEN it returns `fetch-failure` rather than `rate-limit`.
+
+      **See:** RND-UI-02, RND-UI-03, RND-UI-04, RND-UI-05, RND-UI-06, GRD-UI-02, API-06
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:10:59Z'
+    workflow: PW-13
+  RND-UI-02:
+    id: RND-UI-02
+    title: Loading state with skeleton layout
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The `loading` state SHALL render `web/src/components/ui/SkeletonLayout.tsx` with `aria-busy="true"` on the content region and five skeleton rows whose column widths match the column widths the resolved `DataTable` will use. On resolution to `success`, `aria-busy` SHALL be removed and `DataTable` SHALL receive `isLoading={false}`. No frame between navigation and resolution SHALL render an empty content region.
+
+      **Acceptance Criteria:**
+      - GIVEN a Playwright E2E navigates to the Instance List against the real backend, WHEN the first frame after navigation is captured, THEN `SkeletonLayout` is already mounted and the content region carries `aria-busy="true"`.
+      - GIVEN the same E2E waits for the query to resolve, WHEN the resolved frame is captured, THEN `aria-busy` is absent from the content region and the skeleton rows are unmounted.
+      - GIVEN the skeleton frame and the resolved frame are both captured in that E2E, WHEN the bounding box of each table column is compared between the two frames, THEN each column width is identical and no horizontal shift occurs.
+      - GIVEN a page renders `DataTable` with `isLoading={true}` outside a `QueryStateBoundary`, WHEN the GRD-UI-02 source scan runs, THEN the scan fails with pattern name `missing-query-state-boundary`; this is a pure static scan with no HTTP.
+      - The skeleton rows draw from `--color-neutral-200` and `--color-neutral-100` and hold no literal colour value, which the GRD-UI-02 scan asserts under pattern name `literal-colour`.
+
+      **See:** RND-UI-01, CMP-UI-01, CMP-UI-03, GRD-UI-02, IN-UI-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:00Z'
+    workflow: PW-13
+  RND-UI-03:
+    id: RND-UI-03
+    title: Fetch failure state with explicit retry
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The `fetch-failure` state SHALL render `web/src/components/ui/FetchError.tsx` with `role="alert"` and a single `onRetry` action bound to the query's `refetch()`. React Query automatic retry SHALL be set to 0 for every query passing through `QueryStateBoundary`, so a retry occurs only on a user action. A recovered read SHALL NOT fire a success toast.
+
+      **Acceptance Criteria:**
+      - GIVEN a Playwright E2E deletes a process definition through the real API and then navigates to that definition's detail route, WHEN the real 404 arrives, THEN `FetchError` renders with `role="alert"` and one Retry control; no HTTP mocking is used, the 404 comes from the real backend.
+      - GIVEN the same E2E restarts the API container with `docker-compose restart bpm-platform` and requests the Instance List, WHEN the transport failure surfaces, THEN `FetchError` renders and no partial table is shown.
+      - GIVEN the container reports healthy again, WHEN the user presses Retry in that E2E, THEN the state returns to `loading`, then to `success`, and the screen shows the instance rows.
+      - GIVEN a query resolves after a failed attempt, WHEN the success frame is inspected, THEN no toast is present in the toast region.
+      - GIVEN any query registered on `QueryStateBoundary`, WHEN its options object is read in a pure static scan of `web/src/hooks/`, THEN `retry` is 0 and no hook overrides it inline.
+
+      **See:** RND-UI-01, RND-UI-05, GRD-UI-02, API-06, IN-UI-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:01Z'
+    workflow: PW-13
+  RND-UI-04:
+    id: RND-UI-04
+    title: Leak-free permission denied surface
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** IDN-02, giving role enforcement a client-side surface that discloses nothing about the protected resource.
+
+      > The `permission-denied` state SHALL render `web/src/components/ui/PermissionDenied.tsx`. Its rendered subtree SHALL contain the string "You do not have access to this area. Contact your tenant administrator." and a link to the Task Inbox, and SHALL contain no HTTP status number, no `problem.type` URI, no `problem.detail` text, no resource UUID, and no backend-authored message. The state SHALL be reached on both 401 and 403 without a full page reload.
+
+      **Acceptance Criteria:**
+      - GIVEN a Playwright E2E signs in through the real Keycloak realm as a SwiftRoute driver who holds no `bpm-admin` role, WHEN the user navigates to the Definition List, THEN the real backend returns 403 and `PermissionDenied` renders; no HTTP mocking is used.
+      - GIVEN that rendered subtree, WHEN its `textContent` is matched in the same E2E against `/40[13]|application\/problem|urn:problem|[0-9a-f]{8}-[0-9a-f]{4}-/`, THEN there is no match.
+      - GIVEN that rendered subtree, WHEN its text is read, THEN it equals the fixed copy above plus the Task Inbox link label, and contains no other text node.
+      - GIVEN a user holds the role at page load and the role is revoked through the real Keycloak admin API mid-session, WHEN the next query fires in that E2E, THEN the boundary switches to `permission-denied` and the browser performs no navigation.
+      - GIVEN a page renders `PermissionDenied`, WHEN the axe scan of GRD-UI-06 runs on that surface, THEN there is no `serious` or `critical` violation.
+
+      **See:** RND-UI-01, IDN-02, IDN-05, ADM-UI-01, GRD-UI-06
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:02Z'
+    workflow: PW-13
+  RND-UI-05:
+    id: RND-UI-05
+    title: Rate limit backpressure with retry countdown
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** API-10, surfacing platform rate limiting as a bounded client-side wait rather than a bare error.
+
+      > The `rate-limit` state SHALL render `web/src/components/ui/RateLimitBackpressure.tsx` with the `retryAfter` value taken from the `Retry-After` response header. The component SHALL count down at one-second intervals inside an `aria-live="polite"` region and SHALL fire `refetch()` exactly once when the countdown reaches zero. It SHALL NOT retry a second time without a user action. A 429 without `Retry-After` SHALL classify as `fetch-failure`.
+
+      **Acceptance Criteria:**
+      - GIVEN a Playwright E2E issues requests to `GET /api/v1/instances` past the tenant's real rate limit, WHEN the real 429 with `Retry-After` arrives, THEN `RateLimitBackpressure` renders showing the header value in seconds; no HTTP mocking is used.
+      - GIVEN the countdown is running, WHEN the live region is read in that E2E at one-second intervals, THEN the announced value decreases by one each second and the region carries `aria-live="polite"`.
+      - GIVEN the countdown reaches zero, WHEN the network log for that page is inspected, THEN exactly one refetch request was issued.
+      - GIVEN the refetch also returns 429, WHEN the second response is classified, THEN a new countdown starts from the new `Retry-After` value and no request is issued before it reaches zero.
+      - GIVEN the rate limiter returns 429 with the `Retry-After` header stripped, WHEN `classifyError()` runs, THEN the state is `fetch-failure` and `FetchError` renders with its user-driven Retry action.
+
+      **See:** RND-UI-01, RND-UI-03, API-10, IN-UI-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:03Z'
+    workflow: PW-13
+  RND-UI-06:
+    id: RND-UI-06
+    title: Three-action write conflict resolution
+    stage: F8
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > **Extends:** PD-08, giving optimistic concurrency a client-side resolution surface.
+
+      > On a 409 from a write, the SPA SHALL classify the state as `stale-version`, render `web/src/components/ui/StaleVersionError.tsx`, and mount `web/src/components/ui/ConflictResolver.tsx` in a portal offering exactly three actions: Refetch latest, Merge manually, Discard mine. The SPA SHALL NOT re-issue the write automatically at any point between the 409 and a user action. Refetch latest SHALL retain the local draft in the Zustand store and surface it as a banner. Merge manually SHALL open the existing `web/src/components/ui/JsonDiffView.tsx` with the server payload on the left and the local draft on the right, and SHALL post the merged body at the version carried by `X-Resource-Version`. Discard mine SHALL route through `<ConfirmDialog confirmVariant="danger">`.
+
+      **Acceptance Criteria:**
+      - GIVEN a Playwright E2E opens the same process definition in two browser contexts against the real backend and saves from the first, WHEN the second context saves, THEN the real backend returns 409 with `X-Resource-Version` and `ConflictResolver` mounts with three actions; no HTTP mocking is used.
+      - GIVEN the resolver is mounted, WHEN the page network log is inspected between the 409 and the first user click in that E2E, THEN no `PUT` or `POST` to the definition route was issued.
+      - GIVEN the user picks Refetch latest, WHEN the view updates, THEN the server payload is displayed, the draft banner is present, and the local draft is still readable from the Zustand store.
+      - GIVEN the user picks Merge manually and saves, WHEN the outbound request is inspected, THEN its version field equals the value from `X-Resource-Version` and its body is the merged document.
+      - GIVEN the user picks Discard mine and dismisses the confirmation, WHEN the store is read, THEN the local draft is intact and no write was issued; the draft is dropped only after the `ConfirmDialog` confirm action fires.
+      - GIVEN a 409 arrives without `X-Resource-Version`, WHEN the resolver mounts, THEN Merge manually is disabled and the other two actions stay available.
+
+      **See:** RND-UI-01, CAC-UI-04, PD-08, CMP-UI-03, PD-UI-07
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:04Z'
+    workflow: PW-13
+  SBX-01:
+    id: SBX-01
+    title: Orchestrator role gate on task-spec submission
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** IDN-05, separating the orchestrating agent from the implementing agent at the API layer.
+
+      > Task-spec submission at `POST /api/v1/agent/task-specs` SHALL require the `agent.submit_task_spec` scope AND the `tenant_orchestrator` realm role on the verified token. Either credential alone SHALL return HTTP 403 `orchestrator_role_required`. The check SHALL execute in the request handler, not in a gateway rule and not by deploying the two agent classes to separate network segments, so a direct call to the service port is subject to the same gate. A principal holding both `tenant_orchestrator` and `tenant_implementer` SHALL be rejected at token verification with HTTP 403 `conflicting_agent_roles`.
+
+      **Acceptance Criteria:**
+      - GIVEN a token carrying `agent.submit_task_spec` but not the `tenant_orchestrator` realm role, WHEN a task spec is submitted, THEN the platform returns HTTP 403 `orchestrator_role_required` and writes no `task_specs` row.
+      - GIVEN a token carrying the `tenant_orchestrator` realm role but not the `agent.submit_task_spec` scope, WHEN a task spec is submitted, THEN the same HTTP 403 `orchestrator_role_required` is returned.
+      - GIVEN a token carrying both credentials, WHEN a task spec is submitted, THEN it is accepted and persisted with the server-set principal of SBX-02.
+      - GIVEN a caller bypasses the gateway and calls the service port directly with an implementer token, WHEN the handler executes, THEN the role gate still returns HTTP 403 `orchestrator_role_required`.
+      - GIVEN a token whose `realm_access.roles` carries both `tenant_orchestrator` and `tenant_implementer`, WHEN any agent endpoint is called, THEN the platform returns HTTP 403 `conflicting_agent_roles` at token verification.
+      - Every rejected submission appends `TaskSpecSubmissionRejected` naming the principal, the tenant, and which of the two credentials was absent.
+
+      **See:** IDN-05, IDN-02, SBX-02, SBX-03, AGT-02, XC-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:05Z'
+    workflow: PW-12
+  SBX-02:
+    id: SBX-02
+    title: Server-authoritative orchestrator principal
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** SBX-01, making the orchestrator identity server-authoritative.
+
+      > The task-spec handler SHALL set `spec.orchestrator_principal` to the subject of the verified token before the spec is canonicalised, and SHALL discard any `orchestrator_principal` present in the request body without raising an error. The persisted JSON is therefore authoritative, and because canonicalisation precedes hashing, the AGT-04 `spec_hash` covers the server-set value. A spec cannot be registered under an orchestrator identity the caller does not hold.
+
+      **Acceptance Criteria:**
+      - GIVEN a token whose subject is `orch-a`, WHEN a spec is submitted with no `orchestrator_principal` in the body, THEN the persisted spec carries `orchestrator_principal` of `orch-a`.
+      - GIVEN a token whose subject is `orch-a`, WHEN a spec is submitted with `"orchestrator_principal": "orch-b"` in the body, THEN the submitted value is discarded, the persisted spec carries `orch-a`, and no error is returned.
+      - GIVEN the same submission, WHEN `spec_hash` is computed, THEN it is computed over the canonical JSON carrying `orch-a`, so a client that computed its hash over `orch-b` receives HTTP 409 `spec_hash_mismatch` on artifact submission.
+      - GIVEN two orchestrators submit byte-identical spec bodies, WHEN both are persisted, THEN their canonical forms differ in `orchestrator_principal` and their `spec_hash` values differ.
+      - GIVEN a persisted spec, WHEN it is read back, THEN `orchestrator_principal` matches the token subject recorded in the `TaskSpecSubmitted` audit entry for that submission.
+      - The force-set runs before canonicalisation, so no code path hashes a client-supplied principal.
+
+      **See:** SBX-01, AGT-04, AGT-05, IDN-05, OBS-03
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:07Z'
+    workflow: PW-12
+  SBX-03:
+    id: SBX-03
+    title: Orchestrator excluded from sandbox claim
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** SBX-01, denying the orchestrator execution authority over sandboxes.
+
+      > The sandbox claim endpoint SHALL reject any caller holding the `tenant_orchestrator` realm role with HTTP 403 `orchestrator_may_not_claim`, and SHALL require the `tenant_implementer` realm role, returning HTTP 403 `implementer_role_required` otherwise. The orchestrator retains supervisory read across every sandbox in its tenant through `GET /api/v1/agent/sandboxes`, which exposes state, owner principal, and `task_spec_id` and exposes no execution endpoint. An orchestrator therefore cannot drive a sandbox while holding cross-sandbox visibility.
+
+      **Acceptance Criteria:**
+      - GIVEN a caller holding `tenant_orchestrator`, WHEN it calls the claim endpoint, THEN the platform returns HTTP 403 `orchestrator_may_not_claim` and the sandbox remains unowned.
+      - GIVEN a caller holding neither agent realm role, WHEN it calls the claim endpoint, THEN the platform returns HTTP 403 `implementer_role_required`.
+      - GIVEN a caller holding `tenant_orchestrator`, WHEN it calls `GET /api/v1/agent/sandboxes`, THEN it receives state, owner principal, and `task_spec_id` for every sandbox in its tenant and for no sandbox outside it.
+      - GIVEN a caller holding `tenant_orchestrator`, WHEN it calls any sandbox execution route, THEN the platform returns HTTP 403 `orchestrator_may_not_claim`; supervisory read grants no execution path.
+      - GIVEN a caller holding `tenant_implementer`, WHEN it calls `GET /api/v1/agent/sandboxes`, THEN the listing is restricted to sandboxes bound to that principal.
+      - Every rejected claim appends `SandboxClaimRejected` naming the acting principal, the sandbox, and the rejection identifier.
+
+      **See:** SBX-01, SBX-04, SBX-05, SBX-06, IDN-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:08Z'
+    workflow: PW-12
+  SBX-04:
+    id: SBX-04
+    title: Sandbox ownership binding at claim
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** SBX-03, binding a sandbox to exactly one implementing agent.
+
+      > A claim SHALL bind the sandbox to the triple `(tenant_id, agent_principal, task_spec_id)` under the unique index `ux_sandbox_owner`. One sandbox has exactly one owner, and one task spec has exactly one sandbox. A claim against a sandbox already bound to a different principal SHALL return HTTP 409 `sandbox_already_claimed` without naming the current owner. Every request that operates inside a claimed sandbox SHALL be checked against the bound `agent_principal`, and a mismatch SHALL return the SBX-05 sentinel rather than a distinct error.
+
+      **Acceptance Criteria:**
+      - GIVEN an unowned sandbox in the caller's tenant, WHEN an implementer claims it with a `task_spec_id`, THEN the binding row is written, `claimed_at` is set, and the platform returns HTTP 201.
+      - GIVEN a sandbox bound to principal `impl-a`, WHEN principal `impl-b` in the same tenant claims it, THEN the platform returns HTTP 409 `sandbox_already_claimed` and the response body does not name `impl-a`.
+      - GIVEN a sandbox bound to `impl-a` for `task_spec_id` T, WHEN `impl-a` claims a second sandbox for the same T, THEN the platform returns HTTP 409 `sandbox_already_claimed`; the unique index covers the task spec as well as the sandbox.
+      - GIVEN a sandbox bound to `impl-a`, WHEN `impl-b` issues an execution request inside it, THEN the platform returns HTTP 403 `sandbox_not_accessible`, the same sentinel returned for an unknown sandbox.
+      - GIVEN two implementers claim one unowned sandbox concurrently, WHEN both execute, THEN the unique index admits exactly one binding and the other receives HTTP 409 `sandbox_already_claimed`.
+      - GIVEN a released sandbox, WHEN it is claimed again, THEN a new binding row is written and the prior owner has no residual access.
+
+      **See:** SBX-03, SBX-05, SBX-06, AGT-03, TNT-01
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:09Z'
+    workflow: PW-12
+  SBX-05:
+    id: SBX-05
+    title: Single sentinel for inaccessible sandboxes
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** SBX-04, closing the sandbox existence oracle across tenants.
+
+      > A sandbox that does not exist, a sandbox owned by another tenant, and a sandbox owned by another principal in the caller's tenant SHALL all return HTTP 403 `sandbox_not_accessible` with a byte-identical response body and an identical header set. One sentinel error covers all three cases, so no response code, body, header, or latency difference can be used to establish that a `sandbox_id` exists outside the caller's ownership. The tenant scope filter SHALL be applied in the same query that loads the sandbox row, so a found-then-rejected path that would differ in timing does not exist.
+
+      **Acceptance Criteria:**
+      - GIVEN a `sandbox_id` that exists in no tenant, WHEN an implementer references it, THEN the platform returns HTTP 403 `sandbox_not_accessible`.
+      - GIVEN a `sandbox_id` that exists in another tenant, WHEN an implementer references it, THEN the response body and headers are byte-identical to the unknown-sandbox case above.
+      - GIVEN a `sandbox_id` in the caller's tenant bound to another principal, WHEN an execution request is issued, THEN the same HTTP 403 `sandbox_not_accessible` is returned.
+      - GIVEN the sentinel is returned, WHEN the row is loaded, THEN the tenant predicate is part of the loading query, so the unknown and cross-tenant cases execute the same statement shape and return in the same latency band.
+      - GIVEN a caller probing 100 sequential UUIDs, WHEN each returns the sentinel, THEN no response distinguishes an existing sandbox from a nonexistent one, and after 20 sentinel responses in one minute the principal receives HTTP 429 `probe_rate_exceeded`.
+      - HTTP 409 `sandbox_already_claimed` of SBX-04 is returned only for a sandbox already visible to the caller within its own tenant, so it discloses no cross-tenant existence.
+
+      **See:** SBX-04, SBX-06, TNT-01, XC-05, FIL-06
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:10Z'
+    workflow: PW-12
+  SBX-06:
+    id: SBX-06
+    title: Sandbox release, reclaim, and claim audit
+    stage: '17'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > **Extends:** SBX-04, defining release, reclaim, and the audit record for sandbox ownership.
+
+      > Only the bound `agent_principal` SHALL release a sandbox; a release by any other caller returns HTTP 403 `sandbox_not_accessible`. A sandbox whose owner has issued no request for 60 minutes SHALL be reclaimed by the pool manager, which clears the binding, sets state `released`, and appends `SandboxReclaimed` naming the prior owner. Claims, rejected claims, releases, and reclaims SHALL each append an audit entry carrying the acting principal, `tenant_id`, `sandbox_id`, and `task_spec_id`, so a probing burst is visible in the audit record even though SBX-05 gives the prober no response signal.
+
+      **Acceptance Criteria:**
+      - GIVEN a sandbox bound to `impl-a`, WHEN `impl-b` calls release, THEN the platform returns HTTP 403 `sandbox_not_accessible` and the binding is unchanged.
+      - GIVEN a sandbox bound to `impl-a`, WHEN an orchestrator calls release, THEN the platform returns HTTP 403 `sandbox_not_accessible`; supervisory read grants no release authority.
+      - GIVEN a sandbox bound to `impl-a`, WHEN `impl-a` calls release, THEN state becomes `released`, the binding row is cleared, and `SandboxReleased` is appended.
+      - GIVEN an owner that issues no request for 61 minutes, WHEN the pool manager evaluates idleness, THEN the sandbox is released, `SandboxReclaimed` is appended naming the prior owner, and the sandbox becomes claimable by another implementer.
+      - GIVEN a principal that triggers 30 sentinel responses in one minute, WHEN the audit log is read, THEN 30 `SandboxClaimRejected` entries name that principal and the requested `sandbox_id` values, and the entries carry the owning tenant even though no response did.
+      - GIVEN an implementing agent terminates while holding a claim, WHEN 60 minutes elapse, THEN the sandbox is reclaimed and its `task_spec_id` is claimable again without operator action.
+
+      **See:** SBX-04, SBX-05, SBX-03, OBS-03, XC-05, ADP-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:11Z'
+    workflow: PW-12
+  VLD-01:
+    id: VLD-01
+    title: Typed environment from definition context
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL build a typed environment for expression validation from the definition's own declarations: the `variable_schema`, the declared result schemas of referenced service catalog entries (REPO-07, SVC-01), the declared output schemas of referenced `module_ref` modules (PLC-01), and the field types of each human task's form schema. The declared type names map as follows: `string`, `text` and `enum` to string; `integer`, `decimal` and `money` to number; `boolean` to bool; `date` and `datetime` to timestamp; `list<T>` to a list of the mapped element type; `object` to map.
+
+      **Acceptance Criteria:**
+      - GIVEN `variable_schema` declares a type name outside the mapping table, WHEN the environment is built, THEN the platform returns HTTP 422 `UnknownVariableType` naming the variable and the type.
+      - GIVEN a SERVICE_TASK references a catalog entry that declares no result schema, WHEN the environment is built, THEN the platform returns HTTP 422 `UndeclaredResultSchema` naming the node and the reference.
+      - GIVEN two form fields in one human task scope declare the same name with different types, WHEN the environment is built, THEN the platform returns HTTP 422 `ConflictingFieldType` naming both declarations.
+      - The environment is derived from declarations only; no instance variable value contributes a type.
+      - A node output type is visible only to expression sites on nodes reachable after that node, and a form field type only inside its own human task scope.
+
+      **See:** PD-06, EE-05, REPO-07, SVC-01, PLC-01, VLD-02
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:12Z'
+    workflow: PW-02
+  VLD-02:
+    id: VLD-02
+    title: Expression compile and type check
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL compile every CEL expression carried by a definition against the VLD-01 typed environment visible at that expression's site. The sites are transition guards, human-task assignment expressions, timer delay expressions, service-task input mappings, and form `visible_when` and `computed_from` expressions. Compilation runs only after the PD-02 structure check and the PD-06 syntax check pass. Required result types are bool for a guard, duration or timestamp for a timer delay, and the declared field type for `computed_from`.
+
+      **Acceptance Criteria:**
+      - GIVEN a transition guard that compiles to a type other than bool, WHEN it is checked, THEN the platform records `TypeMismatch` naming bool as expected and the compiled type as actual.
+      - GIVEN an expression referencing an identifier absent from the environment, WHEN it is compiled, THEN the platform records `UnknownVariable` naming the identifier.
+      - GIVEN an expression adding a string operand to a number operand, WHEN it is compiled, THEN the platform records `OperandTypeError` naming the operator and both operand types.
+      - GIVEN the PD-06 syntax check fails, WHEN validation runs, THEN semantic compilation does not execute and the response carries the PD-06 diagnostics only.
+      - GIVEN an expression site holding an empty or whitespace-only string, WHEN it is checked, THEN the platform records `EmptyExpression` rather than passing the site.
+
+      **See:** PD-02, PD-06, EE-05, VLD-01, VLD-03, VLD-04
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:13Z'
+    workflow: PW-02
+  VLD-03:
+    id: VLD-03
+    title: Aggregated validation diagnostics
+    stage: '16'
+    priority: MUST
+    status: DRAFT
+    body: |-
+      > The platform SHALL report every semantic validation finding from a single pass in one HTTP 422 response. Each finding carries `node_id`, `expression_path`, `source`, `error_kind` and `message`. `error_kind` is one of `UnknownVariable`, `TypeMismatch`, `OperandTypeError`, `UnknownVariableType`, `UndeclaredResultSchema`, `ConflictingFieldType`, `EmptyExpression`.
+
+      **Acceptance Criteria:**
+      - GIVEN a definition with three failing expression sites, WHEN validation runs, THEN one HTTP 422 response contains three findings; validation does not stop at the first failure.
+      - GIVEN any finding, WHEN it is serialised, THEN it carries `node_id`, `expression_path`, `source`, `error_kind` and `message`.
+      - GIVEN a finding of kind `UnknownVariable`, WHEN the message is built, THEN it names the referenced identifier and the nearest declared identifier by edit distance.
+      - Findings are ordered by `node_id` then `expression_path`, so two validations of the same definition produce identical ordering.
+      - No `error_kind` value outside the enumerated set is emitted.
+
+      **See:** VLD-01, VLD-02, VLD-04, PD-06
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:14Z'
+    workflow: PW-02
+  VLD-04:
+    id: VLD-04
+    title: Validation gate at authoring and promotion
+    stage: '16'
+    priority: SHOULD
+    status: DRAFT
+    body: |-
+      > The platform SHALL enforce semantic validation at two points: on definition draft save and on `POST /api/v1/definitions/{id}/validate`, and again at promotion submit before the PRM-01 plan is computed. A clean pass records a `semantically_valid` verdict on the definition version together with the CEL compiler version that produced it; a verdict produced by a different compiler version is re-verified rather than trusted. Compilation is bounded at 5 seconds per definition.
+
+      **Acceptance Criteria:**
+      - GIVEN any finding at draft save, WHEN the request completes, THEN the platform returns HTTP 422 and the version is not marked `semantically_valid`.
+      - GIVEN any finding at promotion submit, WHEN the request completes, THEN the platform returns HTTP 422, computes no promotion plan and creates no `promotion_reviews` row.
+      - GIVEN a stored verdict produced by an earlier compiler version, WHEN promotion submit runs, THEN validation re-runs instead of accepting the stored verdict.
+      - GIVEN compilation exceeds 5 seconds, WHEN the budget expires, THEN the platform returns HTTP 422 `ValidationTimeout` naming the sites compiled before expiry.
+      - A clean pass appends `DEFINITION_VALIDATED`; a failure appends `DEFINITION_VALIDATION_FAILED` carrying the finding count.
+
+      **See:** VLD-02, VLD-03, PRM-01, PD-06, EE-05
+    body_source: backlog-migration-20260807
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-07T16:11:15Z'
+    workflow: PW-02
