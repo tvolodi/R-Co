@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGN-VALIDATOR",
   "file": "handoffs/WF03-GH520-20260807/step-02b-code-design-validator.json",
   "created_at": "2026-08-07T22:18:55Z",
-  "started_at": "2026-08-07T22:19:26Z",
-  "completed_at": "2026-08-07T22:20:56Z",
-  "status": "COMPLETED",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -23,7 +23,7 @@
     ]
   },
   "task": {
-    "description": "Validate src/design/gh520-backoff-schedule-deterministic-assertion.md, a Type E design fixing GH #520 / ISS-0186's flaky TC-EXP-301-05 test. The design replaces a two-separate-database-round-trip wall-clock delta measurement with a single combined query issued once immediately after Queue.markRetry returns, reading attempt_count, status, next_attempt_at, and NOW() in one statement execution, tightening the tolerance from +/-500ms to +/-50ms. Verify: (1) the tolerance justification is sound -- the design claims +/-50ms accounts for same-connection statement-dispatch latency between the UPDATE (inside markRetry) and the follow-up SELECT, and explicitly does NOT claim 0ms is safe because the two statements are not in the same transaction (so PostgreSQL's per-transaction NOW() stability doesn't apply across them) -- confirm this reasoning is technically correct against actual PostgreSQL semantics (check whether markRetry's UPDATE and the test's follow-up SELECT really do run as separate statements/transactions, or whether they could be combined further); (2) the assertion remains non-tautological -- it must still fail if markRetry's backoff interval computation regresses; (3) all four expected_backoff values (5000/30000/120000/600000ms) are still exercised; (4) no production code is touched.",
+    "description": "Validate src/design/gh520-backoff-schedule-deterministic-assertion.md, a Type E design fixing GH #520 / ISS-0186's flaky TC-EXP-301-05 test. The design replaces a two-separate-database-round-trip wall-clock delta measurement with a single combined query issued once immediately after Queue.markRetry returns, reading attempt_count, status, next_attempt_at, and NOW() in one statement execution, tightening the tolerance from +/-500ms to +/-50ms. Verify: (1) the tolerance justification is sound -- the design claims +/-50ms accounts for same-connection statement-dispatch latency between the UPDATE (inside markRetry) and the follow-up SELECT, and explicitly does NOT claim 0ms is safe because the two statements are not in the same transaction (so PostgreSQL's per-transaction NOW() stability doesn't apply across them) -- confirm this reasoning is technically correct against actual PostgreSQL semantics (check whether markRetry's UPDATE and the test's follow-up SELECT really do run as separate statements/transactions, or whether they could be combined further); (2) the assertion remains non-tautological -- it must still fail if markRetry's backoff interval computation regresses; (3) all four expected_backoff values (5000/30000/120000/600000ms) are still exercised; (4) no production code is touched. RE-CHECK: CODE-DESIGNER reworked the design after your BLOCKER finding -- corrected the transaction-semantics analysis (confirmed both markRetry and the follow-up SELECT run inside the same TestHarness-opened transaction, so NOW() is frozen and identical for both), re-derived the tolerance from 50ms to 1.0ms (pure client-side float round-trip epsilon), and reconciled why the ORIGINAL two-read test was ever flaky despite NOW() being frozen (the old delta reduced to a pure interval difference with no wall-clock component at all -- the real defect was a comparison-correctness gap, not timing jitter). Re-validate from scratch, including independently re-deriving the reconciliation argument -- do not just accept it because it sounds plausible.",
     "acceptance_criteria": [
       "The +/-50ms tolerance justification is verified against actual PostgreSQL statement/transaction semantics, not just trusted",
       "The assertion remains non-tautological and still exercises all 4 expected_backoff values",
@@ -34,19 +34,7 @@
       "fn:lint-design-artefact"
     ]
   },
-  "result": {
-    "status": "FAIL",
-    "summary": "Design artefact's central tolerance justification is factually wrong for this codebase. The design claims markRetry's UPDATE and the proposed combined SELECT run as two separate implicit transactions (autocommit per statement), so a non-zero +/-50ms tolerance is required because their respective NOW() values can differ. In reality, TC-EXP-301-05 runs entirely inside TestHarness.init()'s single explicit conn.begin() (tests/integration/helpers.zig:1085), held open until deinit()'s rollback -- both markRetry's UPDATE and the test's follow-up SELECT execute on the same &h.conn inside that ONE already-open transaction. vendor/pg/pg.zig:149-161 confirms Conn.exec/Conn.query issue only extendedQuery+readUntilReady with no implicit BEGIN/COMMIT per call -- transaction boundaries are exclusively the explicit begin()/commit()/rollback() wrappers around simpleQuery(\"BEGIN\"/\"COMMIT\"/\"ROLLBACK\"), and TC-EXP-301-05 never calls any of those itself. Per PostgreSQL semantics, NOW() (transaction_timestamp()) is frozen at transaction start and identical for every statement within that transaction -- so markRetry's NOW() + $interval and the design's proposed SELECT ... NOW() would return the exact SAME value, not two independently drifting values a few ms apart. The design's rejected alternative ('wrapping the after-read and markRetry in an explicit shared transaction to force byte-identical NOW() values... unnecessary complexity') is in fact already what happens today for free via TestHarness -- meaning a genuinely deterministic 0.0ms-tolerance assertion (next_ms - now_ms bit-exact, or simply asserting equality) was available and dismissed for a reason that does not hold in this test harness. The non-tautology check (4 distinct expected_backoff values, 5000/30000/120000/600000ms) and the no-production-code-touched claim both verified correct; lint_design_artefact.py exits 0. The tolerance-derivation error is a correctness defect in the design's core rationale, not cosmetic -- rework required.",
-    "artifacts_out": [],
-    "issues": [
-      {
-        "id": "ISS-0186-DESIGN-01",
-        "severity": "BLOCKER",
-        "description": "Tolerance justification (Public interface point 3, and the 'Why the assertion still catches a genuine backoff regression' section) is built on the premise that markRetry's UPDATE and the test's follow-up SELECT run in separate implicit transactions with independently-evaluated NOW() values. This is false for this test: both statements execute on h.conn inside the single explicit transaction opened by TestHarness.init()'s conn.begin() (tests/integration/helpers.zig:1085) and held until TestHarness.deinit()'s rollback. vendor/pg/pg.zig confirms Conn.exec/Conn.query never wrap individual calls in their own BEGIN/COMMIT (only begin()/commit()/rollback() do, via simpleQuery, and TC-EXP-301-05 never calls them). Per PostgreSQL transaction_timestamp() semantics, NOW() is identical for every statement in one transaction, so next_attempt_at (written using NOW() inside markRetry's UPDATE) and now_ms (read by the proposed SELECT's NOW()) are the SAME value read twice, not two close values with real dispatch-latency gap between them. Required fix: correct the design's transaction-semantics analysis to reflect TestHarness's actual transaction wrapping, and re-derive the tolerance -- the correct fix is very likely a 0.0ms (or near-0.0, accounting only for client-side float round-trip through EXTRACT/parseFloat, not server dispatch latency) tolerance, which is materially simpler and more deterministic than the proposed 50ms bound. The design's own 'Out of scope' section rejected exactly this shared-transaction approach on the mistaken belief it wasn't already in effect."
-      }
-    ],
-    "next_action": "Route back to CODE-DESIGNER for rework: correct the transaction-semantics analysis against TestHarness.init()'s conn.begin() wrapping and re-derive the tolerance (likely 0.0ms or a client-side-parse-only epsilon, not 50ms)."
-  },
+  "result": null,
   "rework_count": 0,
   "max_rework": 3
 }
