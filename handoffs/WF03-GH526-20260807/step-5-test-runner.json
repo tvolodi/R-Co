@@ -1,0 +1,73 @@
+{
+  "handoff_id": "87f58489-da81-4cc6-ad8d-d8f88fe400c3",
+  "run_id": "WF03-GH526-20260807",
+  "workflow_id": "WF-03",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH526-20260807/step-5-test-runner.json",
+  "created_at": "2026-08-07T20:25:00Z",
+  "started_at": "2026-08-07T20:25:00Z",
+  "completed_at": "2026-08-07T20:50:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 5 (TEST-RUNNER)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH526-20260807/step-4b-test-design-validator.json",
+      "tests/specs/ISS-0206.md",
+      "src/iss0206_rowtodefinition_errdefer_test.zig",
+      "src/design/iss0206-rowtodefinition-errdefer.md",
+      "src/definition/store.zig",
+      "docs/issues/ISS-0206.json",
+      "docs/issue-reports/ISS-0206-diagnosis.yaml",
+      "docs/issue-reports/WF03-GH526-20260807-step-4b-test-design-validator-INNER-REPORT.json"
+    ],
+    "issue_id": "GH-526",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/526",
+    "issue_title": "ISS-0206: store.zig rowToDefinition leaks on allocation failure",
+    "severity": "MAJOR"
+  },
+  "task": {
+    "description": "WF-03 Step 5 (TEST-RUNNER) for ISS-0206 / GH #526. Run the required pre-checks (DB connectivity, Keycloak health, docker services, lint_test_isolation, test_wiring, verify_test_env), then execute the narrow test target zig build test-iss0206-rowtodefinition and the aggregate zig build test. Write the YAML test report under tests/reports/, the inner report at docs/issue-reports/, complete the handoff with PASS, and update registry/log. PASS only if the ISS-0206 test target passes with no DebugAllocator leak. Pre-existing aggregate infra noise is documented as baseline, not a blocker for pure-unit tests.",
+    "acceptance_criteria": [
+      "Pre-checks documented: DB connectivity, Keycloak health, docker services, lint_test_isolation, test_wiring, verify_test_env",
+      "zig build test-iss0206-rowtodefinition exits 0 with no DebugAllocator leak output (canonical ISS-0206 evidence)",
+      "tools/lint_test_isolation.py exits 0 for the test file",
+      "tools/lint_handoffs.py: 0 BLOCKERs for WF03-GH526-20260807 handoffs",
+      "YAML test report at tests/reports/report-2026-08-07-WF03-GH526-20260807.yaml",
+      "Inner report at docs/issue-reports/WF03-GH526-20260807-step-5-test-runner-INNER-REPORT.json",
+      "Handoff result PASS with real clock-derived UTC timestamps",
+      "next_action: 'Route to RELEASE-VALIDATOR (Step 6)'",
+      "registry.json entry updated with status=COMPLETED",
+      "orchestrator.log appended with COMPLETE line",
+      "All workflow artefacts committed to feature/WF03-GH526-20260807",
+      "fn:validate-completeness + fn:register-inner-report called before fn:complete-handoff"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 5 TEST-RUNNER PASS for ISS-0206 / GH #526. The narrow test target `zig build test-iss0206-rowtodefinition` is the canonical pure-unit test for this issue and returned 5/5 tests passed in 18ms with no DebugAllocator leak output. The 3 test blocks (TC-ISS-0206-01 all fields populated, TC-ISS-0206-02 optional fields absent, TC-ISS-0206-03 regression negative control) drive std.testing.checkAllocationFailures through every forced-failure allocation index against the fixed rowToDefinitionFromFields signature. All 4 ISS-0206 acceptance criteria are MET. Pre-checks all green: DB on port 5434 reachable (192 schema_migrations), Keycloak on port 8081 healthy, docker services healthy, lint_test_isolation clean, test_wiring PASS (265 files / 78 roots / 366 reachable), verify_test_env 9/10 (only C6 stale advisory locks, pre-existing). Aggregate zig build test run hit pre-existing infrastructure noise (Zig 0.16 test runner shutdown hang, the same 21-failure baseline documented in tests/reports/report-2026-08-07-WF03-GH533-20260807.yaml for test_api08_auth.zig acquireAdvisoryLock failures), NONE of which are introduced by ISS-0206. Per build.zig wiring (run_iss0206_rowtodef_tests at line 1267 runs BEFORE run_api08_auth_tests at line 1269), the ISS-0206 test ran cleanly in the aggregate before the pre-existing failures. Test report YAML written to tests/reports/report-2026-08-07-WF03-GH526-20260807.yaml; inner report to docs/issue-reports/WF03-GH526-20260807-step-5-test-runner-INNER-REPORT.json.",
+    "artifacts_out": [
+      "handoffs/WF03-GH526-20260807/step-5-test-runner.json",
+      "docs/issue-reports/WF03-GH526-20260807-step-5-test-runner-INNER-REPORT.json",
+      "tests/reports/report-2026-08-07-WF03-GH526-20260807.yaml",
+      "scratch/_iss0206_narrow2.log",
+      "scratch/_iss0206_agg_out.log",
+      "scratch/_iss0206_agg_err.log"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (Step 6)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
