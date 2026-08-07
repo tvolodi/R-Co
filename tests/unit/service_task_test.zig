@@ -20,6 +20,10 @@ const CaptureServer = struct {
     request_count: usize = 0,
     followed_count: usize = 0,
 
+    bound_port: u16 = 0,
+    listening: std.Io.Event = .unset,
+    headers_captured: std.Io.Event = .unset,
+
     first_trace_id: [128]u8 = undefined,
     first_trace_id_len: usize = 0,
     first_idempotency_key: [256]u8 = undefined,
@@ -44,8 +48,14 @@ const CaptureServer = struct {
 
     fn run(self: *CaptureServer) void {
         const listen_address = std.Io.net.IpAddress.parse("127.0.0.1", self.port) catch return;
-        var server = listen_address.listen(std.testing.io, .{ .reuse_address = true }) catch return;
+        var server = listen_address.listen(std.testing.io, .{ .reuse_address = true }) catch {
+            self.listening.set(std.testing.io);
+            return;
+        };
         defer server.deinit(std.testing.io);
+
+        self.bound_port = server.socket.address.getPort();
+        self.listening.set(std.testing.io);
 
         while (self.request_count < self.max_requests) {
             var stream = server.accept(std.testing.io) catch return;
@@ -64,6 +74,7 @@ const CaptureServer = struct {
 
             self.request_count += 1;
             captureRequestHeaders(self, &request);
+            if (self.request_count == 1) self.headers_captured.set(std.testing.io);
 
             if (self.request_count == 1 and self.delay_first_ms > 0) {
                 std.Io.sleep(
@@ -310,7 +321,7 @@ test "TC-EXT-01-U08a: executeHttpRequest injects trace, idempotency, and configu
     const allocator = std.testing.allocator;
 
     var server = CaptureServer{
-        .port = 18181,
+        .port = 0,
         .max_requests = 1,
         .status_code = 200,
         .response_body = "{\"ok\":true}",
@@ -319,9 +330,13 @@ test "TC-EXT-01-U08a: executeHttpRequest injects trace, idempotency, and configu
     try server.start();
     defer server.join();
 
+    try server.listening.wait(std.testing.io);
+    const url_template = try std.fmt.allocPrint(allocator, "http://127.0.0.1:{d}/execute", .{server.bound_port});
+    defer allocator.free(url_template);
+
     const cfg = st.ServiceTaskConfig{
         .node_id = "svc-1",
-        .url_template = "http://127.0.0.1:18181/execute",
+        .url_template = url_template,
         .service_id = null,
         .route_kind = .inline_url,
         .warning = null,
@@ -334,6 +349,8 @@ test "TC-EXT-01-U08a: executeHttpRequest injects trace, idempotency, and configu
 
     const result = try st.executeHttpRequest(allocator, cfg, "trace-123", "idem-456");
     defer result.deinit(allocator);
+
+    try server.headers_captured.wait(std.testing.io);
 
     try std.testing.expectEqual(@as(u16, 200), result.status_code);
     try std.testing.expectEqualStrings("trace-123", server.first_trace_id[0..server.first_trace_id_len]);
