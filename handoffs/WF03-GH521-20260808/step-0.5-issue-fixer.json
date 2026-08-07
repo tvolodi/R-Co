@@ -7,12 +7,12 @@
   "to_agent": "ISSUE-FIXER",
   "file": "handoffs/WF03-GH521-20260808/step-0.5-issue-fixer.json",
   "created_at": "2026-08-07T21:48:00Z",
-  "started_at": "2026-08-07T21:47:35Z",
+  "started_at": "2026-08-07T21:48:00Z",
   "completed_at": "2026-08-07T21:48:00Z",
   "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
-    "stage": "WF-03 Step 0.5 \u2014 Registry Lookup + GitHub Filing",
+    "stage": "WF-03 Step 0.5 — Registry Lookup + GitHub Filing",
     "requirement_ids": [],
     "related_handoff_ids": [],
     "artifacts_in": [
@@ -35,12 +35,12 @@
   },
   "result": {
     "status": "PASS",
-    "summary": "ISS-0187 already exists (status=OPEN, severity=MAJOR, github_issue=https://github.com/tvolodi/R-Co/issues/521 \u2014 bidirectional link present). GitHub issue #521 was filed by BACKEND-DEV during WF03-ISS-0158-20260807 with the rco-sync-ref tag at the top of the body (verified via gh issue view 521). No new GitHub filing required \u2014 the issue is already a real, visible, filed ticket. Registry lookup fn:search-issues matches by title/affected_areas: ISS-0187 (title overlap + same affected_areas).",
+    "summary": "ISS-0187 already exists (status=OPEN, severity=MAJOR, github_issue=https://github.com/tvolodi/R-Co/issues/521 — bidirectional link present). GitHub issue #521 was filed by BACKEND-DEV during WF03-ISS-0158-20260807 with the rco-sync-ref tag at the top of the body (verified via gh issue view 521). No new GitHub filing required — the issue is already a real, visible, filed ticket. Registry lookup fn:search-issues matches by title/affected_areas: ISS-0187 (title overlap + same affected_areas).",
     "artifacts_out": [
       "docs/issues/ISS-0187.json"
     ],
     "issues": [],
-    "next_action": "Route to ISSUE-FIXER Step 1 \u2014 root-cause diagnosis"
+    "next_action": "Route to ISSUE-FIXER Step 1 — root-cause diagnosis"
   },
   "rework_count": 0,
   "max_rework": 3
