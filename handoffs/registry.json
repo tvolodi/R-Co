@@ -2537,7 +2537,63 @@
       "created_at": "2026-08-07T21:55:00Z",
       "status": "COMPLETED",
       "stage": "ADHOC Infra"
+    },
+    {
+      "handoff_id": "d8d44f86-94c7-4132-9fb5-772b83ed9f48",
+      "file": "handoffs/WF03-GH520-20260807/step-02-code-designer.json",
+      "run_id": "WF03-GH520-20260807",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-07T22:14:40Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "4f2e5412-ed9a-4a71-bf32-d2fe781c8d23",
+      "file": "handoffs/WF03-GH520-20260807/step-02b-code-design-validator.json",
+      "run_id": "WF03-GH520-20260807",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-07T22:18:55Z",
+      "status": "COMPLETED",
+      "stage": null,
+      "completed_at": "2026-08-07T22:20:56Z"
+    },
+    {
+      "handoff_id": "88ac499d-bb01-4bac-a5d1-87773b1a42af",
+      "file": "handoffs/WF03-GH520-20260807/step-03-backend-dev.json",
+      "run_id": "WF03-GH520-20260807",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-07T22:31:57Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "49581e32-e88c-4b5c-8cbd-a5a7c785b0e0",
+      "file": "handoffs/WF03-GH520-20260807/step-05-test-runner.json",
+      "run_id": "WF03-GH520-20260807",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-07T22:50:00Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "d3999934-2b09-4a93-92a8-b3859227e7b1",
+      "file": "handoffs/WF03-GH520-20260807/step-07-doc-updater.json",
+      "run_id": "WF03-GH520-20260807",
+      "step": "07",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-07T23:05:53Z",
+      "status": "COMPLETED",
+      "stage": null
     }
   ],
-  "last_updated": "2026-08-07T22:16:01Z"
+  "last_updated": "2026-08-07T23:05:53Z"
 }

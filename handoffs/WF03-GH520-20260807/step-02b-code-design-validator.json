@@ -1,0 +1,46 @@
+{
+  "handoff_id": "4f2e5412-ed9a-4a71-bf32-d2fe781c8d23",
+  "run_id": "WF03-GH520-20260807",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH520-20260807/step-02b-code-design-validator.json",
+  "created_at": "2026-08-07T22:18:55Z",
+  "started_at": "2026-08-07T22:29:21Z",
+  "completed_at": "2026-08-07T22:30:43Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/gh520-backoff-schedule-deterministic-assertion.md",
+      "docs/issues/ISS-0186.json",
+      "tests/integration/effects_subsystem_test.zig",
+      "src/effects/queue.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/gh520-backoff-schedule-deterministic-assertion.md, a Type E design fixing GH #520 / ISS-0186's flaky TC-EXP-301-05 test. The design replaces a two-separate-database-round-trip wall-clock delta measurement with a single combined query issued once immediately after Queue.markRetry returns, reading attempt_count, status, next_attempt_at, and NOW() in one statement execution, tightening the tolerance from +/-500ms to +/-50ms. Verify: (1) the tolerance justification is sound -- the design claims +/-50ms accounts for same-connection statement-dispatch latency between the UPDATE (inside markRetry) and the follow-up SELECT, and explicitly does NOT claim 0ms is safe because the two statements are not in the same transaction (so PostgreSQL's per-transaction NOW() stability doesn't apply across them) -- confirm this reasoning is technically correct against actual PostgreSQL semantics (check whether markRetry's UPDATE and the test's follow-up SELECT really do run as separate statements/transactions, or whether they could be combined further); (2) the assertion remains non-tautological -- it must still fail if markRetry's backoff interval computation regresses; (3) all four expected_backoff values (5000/30000/120000/600000ms) are still exercised; (4) no production code is touched. RE-CHECK: CODE-DESIGNER reworked the design after your BLOCKER finding -- corrected the transaction-semantics analysis (confirmed both markRetry and the follow-up SELECT run inside the same TestHarness-opened transaction, so NOW() is frozen and identical for both), re-derived the tolerance from 50ms to 1.0ms (pure client-side float round-trip epsilon), and reconciled why the ORIGINAL two-read test was ever flaky despite NOW() being frozen (the old delta reduced to a pure interval difference with no wall-clock component at all -- the real defect was a comparison-correctness gap, not timing jitter). Re-validate from scratch, including independently re-deriving the reconciliation argument -- do not just accept it because it sounds plausible.",
+    "acceptance_criteria": [
+      "The +/-50ms tolerance justification is verified against actual PostgreSQL statement/transaction semantics, not just trusted",
+      "The assertion remains non-tautological and still exercises all 4 expected_backoff values",
+      "No production code touched",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validated reworked src/design/gh520-backoff-schedule-deterministic-assertion.md after rework 1/3. Independently re-verified transaction-semantics claim against tests/integration/helpers.zig:1085 (TestHarness.init single conn.begin(), never committed) and vendor/pg/pg.zig:149-190 (exec/query issue no implicit BEGIN/COMMIT; only begin/commit/rollback touch tx state) -- confirmed all statements in TC-EXP-301-05 run in one transaction, so NOW() is frozen and identical for markRetry and the read-back. Independently re-derived the reconciliation algebra from the current test source (tests/integration/effects_subsystem_test.zig:570-696): next_ms_after - next_ms_before reduces to interval_after - interval_before with frozen_NOW cancelling exactly, confirming zero wall-clock component. Verified via git history (git diff 60fae79 HEAD) that TC-EXP-301-05 has been byte-identical since the ISS-0158 fix commit, i.e. the code ISS-0186 was filed against IS this same single-transaction test -- there is no separate-connection prior version, so the reconciliation is not inventing a convenient discrepancy. The design correctly names the actual flake mechanism as execution-order/state dependence in what the seed loop last wrote, not clock jitter, resolving the apparent contradiction with ISS-0186's original jitter theory. 1.0ms tolerance confirmed as pure float round-trip epsilon (5000x headroom vs smallest expected_backoff=5000ms). Assertion remains non-tautological (4 distinct backoff values, bound comparison retained). No production code touched (queue.zig unmodified, explicitly out of scope). lint_design_artefact.py exits 0, no BLOCKER/MAJOR.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
