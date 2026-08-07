@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGNER",
   "file": "handoffs/WF03-GH528-20260807/step-01-code-designer.json",
   "created_at": "2026-08-07T17:08:28Z",
-  "started_at": "2026-08-07T17:09:02Z",
-  "completed_at": "2026-08-07T17:11:43Z",
-  "status": "COMPLETED",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -20,7 +20,7 @@
     ]
   },
   "task": {
-    "description": "Design a fix for the flaky test TC-EXT-01-U08a in tests/unit/service_task_test.zig (GH #528 / ISS-0207). Root cause: (1) CaptureServer hardcodes TCP port 18181, a shared machine-wide resource that collides under concurrent zig build test runs / parallel workspace checkouts; (2) captured header fields (first_trace_id, first_trace_id_len, and idempotency/custom-header equivalents) are written by the CaptureServer background thread and read by the test thread at line 339 with no happens-before edge \u2014 defer server.join() runs at scope EXIT, after the assertions, so this is a data race by construction. Produce a Type E prose design (src/design/service-task-test-capture-server.md) describing: (a) CaptureServer binding an ephemeral port (port 0) and exposing the actual bound port so the test can build url_template dynamically instead of hardcoding 18181; (b) a synchronisation mechanism (e.g. a std.Thread.ResetEvent or explicit join-before-assert) establishing a happens-before edge between the server thread finishing its capture and the test thread reading the captured fields, replacing the defer-at-scope-exit pattern. Do not write implementation code \u2014 prose design only, per templates/lego-catalog.md Type E.",
+    "description": "Design a fix for the flaky test TC-EXT-01-U08a in tests/unit/service_task_test.zig (GH #528 / ISS-0207). Root cause: (1) CaptureServer hardcodes TCP port 18181, a shared machine-wide resource that collides under concurrent zig build test runs / parallel workspace checkouts; (2) captured header fields (first_trace_id, first_trace_id_len, and idempotency/custom-header equivalents) are written by the CaptureServer background thread and read by the test thread at line 339 with no happens-before edge \u2014 defer server.join() runs at scope EXIT, after the assertions, so this is a data race by construction. Produce a Type E prose design (src/design/service-task-test-capture-server.md) describing: (a) CaptureServer binding an ephemeral port (port 0) and exposing the actual bound port so the test can build url_template dynamically instead of hardcoding 18181; (b) a synchronisation mechanism (e.g. a std.Thread.ResetEvent or explicit join-before-assert) establishing a happens-before edge between the server thread finishing its capture and the test thread reading the captured fields, replacing the defer-at-scope-exit pattern. Do not write implementation code \u2014 prose design only, per templates/lego-catalog.md Type E.\n\nREWORK 1:\n- [BLOCKER] std.Thread.ResetEvent does not exist in this repo toolchain (zig 0.16.0). Use std.Io.Event (lib/std/Io.zig ~L1766-1875: wait(io)/set(io)/waitTimeout(io, timeout), acquire/release happens-before semantics; std.testing.io already available on both threads) instead. Replace every ResetEvent reference in the design.\n- [MINOR] Port-readback accessor is hedged and does not match the real API (std.Io.net.Server exposes socket/options; bound port is at server.socket.address). Reference the real field.",
     "acceptance_criteria": [
       "Design covers ephemeral port binding + dynamic url_template construction",
       "Design covers a happens-before synchronisation primitive between CaptureServer thread and test assertions",
@@ -31,13 +31,7 @@
       "fn:write-design-artefact"
     ]
   },
-  "result": {
-    "status": "PASS",
-    "summary": "Wrote Type E prose design src/design/service-task-test-capture-server.md fixing ISS-0207/GH#528. (a) CaptureServer.port becomes a request value (0 = OS-assigned ephemeral port); new bound_port field is populated from the listener's local address inside run() right after listen() succeeds; test builds url_template dynamically from bound_port instead of the hardcoded 18181 literal. (b) Two std.Thread.ResetEvent fields (listening, headers_captured) replace reliance on defer server.join() for data visibility: run() sets listening right after bind and headers_captured right after captureRequestHeaders() returns (before respond()); the test waits on listening before reading bound_port and on headers_captured (after executeHttpRequest returns, before the first assertion) before reading first_trace_id/first_idempotency_key/first_custom_header. defer server.join() is retained but documented as thread-lifecycle cleanup only, no longer load-bearing for correctness. No implementation code included (prose/pseudocode only); lint_design_artefact.py passes with no issues.",
-    "artifacts_out": ["src/design/service-task-test-capture-server.md"],
-    "issues": [],
-    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
-  },
-  "rework_count": 0,
+  "result": null,
+  "rework_count": 1,
   "max_rework": 3
 }
