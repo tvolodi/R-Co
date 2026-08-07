@@ -1,0 +1,45 @@
+{
+  "handoff_id": "cdcdc292-c82f-44fa-a6cd-44514475f8d7",
+  "run_id": "WF03-GH528-20260807",
+  "workflow_id": "WF-03",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH528-20260807/step-07-doc-updater.json",
+  "created_at": "2026-08-07T19:13:01Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/unit/service_task_test.zig",
+      "src/design/service-task-test-capture-server.md",
+      "tests/reports/report-2026-08-07-WF03-GH528-20260807.yaml",
+      "docs/issues/ISS-0207.json"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md documenting the fix for GH #528 / ISS-0207 (flaky TC-EXT-01-U08a test in tests/unit/service_task_test.zig -- CaptureServer hardcoded port collision + cross-thread data race, fixed via ephemeral port binding + std.Io.Event happens-before synchronization). Mark ISS-0207 RESOLVED in docs/issues/ISS-0207.json (resolved_at, resolved_in, resolution fields). This run has no requirement_ids to update via reqctl.py (test-infrastructure fix, not a functional requirement) -- skip render-status. This run also has no estimation.json (not a WF-02/WF-04 run) -- skip retrospective. Then perform GitHub Branch Management: create/verify PR for feature/WF03-GH528-20260807, ensure checks pass, squash-merge, delete branch, verify cleanup, and update the project board for GH #528 (target: implemented, then done -- no UAT scenario match for a test-infrastructure fix). Also update the board for the incidentally-discovered GH #556 (ISS-0612) -- leave it at in_progress since it is unresolved and queued for a future run, do not advance it.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with an entry for GH #528 / ISS-0207",
+      "docs/issues/ISS-0207.json marked status RESOLVED with resolution details",
+      "PR created (if not already) and merged via gh pr merge --squash --delete-branch",
+      "Feature branch feature/WF03-GH528-20260807 deleted from GitHub",
+      "Local repo returned to a clean, up-to-date main",
+      "GH #528 board status advanced to implemented then done",
+      "GH #556 (ISS-0612) board status verified at in_progress, NOT advanced (stays queued for its own future run)"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue",
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
