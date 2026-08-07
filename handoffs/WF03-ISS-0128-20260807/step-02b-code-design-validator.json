@@ -1,0 +1,43 @@
+{
+  "handoff_id": "a1b2c3d4-0128-4005-8000-00000000002b",
+  "run_id": "WF03-ISS-0128-20260807",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-07T08:09:27Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 2b: Design Validation (HARD GATE)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a1b2c3d4-0128-4004-8000-000000000002"
+    ],
+    "artifacts_in": [
+      "src/design/iss0128-event-store-search-path.md",
+      "docs/issues/ISS-0128.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2b: Validate fix design for ISS-0128.\n\nDesign artefact: src/design/iss0128-event-store-search-path.md\nType: E (prose design)\n\nVerify:\n1. Design covers all ISS-0128 acceptance criteria:\n   - TC-DB-03-01 passes\n   - store.append idempotency invariant holds\n   - No regression in existing event_store tests\n\n2. No implementation code present (only pseudo-code/structure)\n\n3. Error handling documented (ROLLBACK on SET LOCAL failure)\n\n4. python tools/lint_design_artefact.py src/design/iss0128-event-store-search-path.md exits 0\n\n5. Design references ISS-0130 pattern (PR #531) appropriately\n\nThis is a HARD GATE - BACKEND-DEV cannot start Step 3 until this returns PASS.",
+    "acceptance_criteria": [
+      "All ISS-0128 acceptance criteria mapped to design elements",
+      "No implementation code in design file",
+      "Error taxonomy present",
+      "Lint validation passes",
+      "Design is implementable by BACKEND-DEV"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for ISS-0128 validated \u2014 all acceptance criteria covered, lint passed, error handling documented, ISS-0130 pattern correctly applied",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-08-07T08:06:39Z",
+  "completed_at": "2026-08-07T08:07:42Z"
+}

@@ -1,0 +1,46 @@
+{
+  "handoff_id": "a1b2c3d4-0128-4004-8000-000000000002",
+  "run_id": "WF03-ISS-0128-20260807",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-07T08:04:45Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 2: Fix Design",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a1b2c3d4-0128-4003-8000-000000000001"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0128-diagnosis.yaml",
+      "docs/issues/ISS-0128.json",
+      "src/event_store/store.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2: Design fix for ISS-0128.\n\nRoot cause (from Step 1):\n- event_store.zig::append() lacks SET LOCAL search_path after BEGIN\n- Pooled connection carries stale session-level search_path\n- Unqualified query 'SELECT status FROM instance_projections WHERE instance_id = $1' fails\n\nResolution strategy:\n- Apply ISS-0130 pattern: INSERT 'SET LOCAL search_path TO <schema>,public' after BEGIN and before queries\n- Same fix that worked in migrations.zig (PR #531)\n\nCreate design artefact:\n- Type E (prose design) at src/design/iss0128-event-store-search-path.md\n- Document exact placement in store.zig::append()\n- Show pseudo-code for deriveSchemaName() and SET LOCAL\n- Error handling: ROLLBACK on SET LOCAL failure\n- List verification steps\n\nReference ISS-0130 fix as a pattern.",
+    "acceptance_criteria": [
+      "Design artefact created at src/design/iss0128-event-store-search-path.md",
+      "Covers all ISS-0128 acceptance criteria",
+      "Shows ISS-0130 pattern application",
+      "Error taxonomy defined",
+      "python tools/lint_design_artefact.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for ISS-0128 event_store search_path fix \u2014 Type E prose design applying ISS-0130 pattern",
+    "artifacts_out": [
+      "src/design/iss0128-event-store-search-path.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T08:04:50Z",
+  "completed_at": "2026-08-07T08:05:35Z"
+}
