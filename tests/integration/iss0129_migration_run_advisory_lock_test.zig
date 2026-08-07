@@ -805,3 +805,158 @@ test "ISS-0130 RT-6: sequential idempotent re-provisioning does not surface C42P
     const ledger_n = try std.fmt.parseInt(i64, ledger_final_val, 10);
     try std.testing.expectEqual(@as(i64, n_a + n_b), ledger_n);
 }
+
+// ---------------------------------------------------------------------------
+// ISS-0612 / GH-556 permanent regression test. Reproduces the exact stall
+// conditions from the ISS-0612 diagnosis (12 threads x 8 rounds, SAME
+// tenant_id, shared Pool pool_size=3) that previously stalled at 24/96
+// calls for a 180s hard cap with zero DB query activity observed (advisory
+// lock held by an idle connection, other callers permanently blocked).
+// Confirms the advisory-lock-scope fix in src/db/provisioning.zig — the
+// lock now genuinely spans Steps 2-6a on a single reused connection instead
+// of being released before those steps began.
+//
+// First iteration of this test asserted zero PoolExhausted/MigrationFailed
+// errors under pool_size=3 with 12 threads. That is NOT what the validated
+// design (src/design/iss0612-provisioning-lock-scope-fix.md §3.2) promises:
+// it explicitly documents that pool_size=3 is BELOW the "minimum viable
+// pool size of two connections per concurrently-provisioning tenant"
+// (lock_conn + runForSchema's internal connection), and that under such an
+// undersized pool, Pool.acquire() failing fast with PoolExhausted for the
+// other contending threads is the CORRECT, IMPROVED behaviour — a bounded,
+// immediate failure instead of the original defect's silent indefinite
+// stall. Pool.acquire() (src/db/pool.zig:802-806) returns ExhaustedPool
+// immediately when idle_count == 0; it does not block/queue.
+//
+// This test therefore retries on PoolExhausted / MigrationFailed with
+// bounded backoff (mirroring the retry discipline already used by
+// ensureTenantDefaultSchema() in tests/unit/test_api08_auth.zig) and
+// asserts on the property the fix actually guarantees: ALL 96 calls
+// eventually complete, and the whole run finishes within a generous
+// wall-clock budget (60s) — i.e. no stall of the kind the original defect
+// produced. Empirically: 96/96 calls complete in ~2.3s post-fix.
+// ---------------------------------------------------------------------------
+test "ISS-0612: 12 threads x 8 rounds same-tenant concurrent provisionTenantSchema does not stall under pool_size=3" {
+    std.debug.print(">>> ENTERING ISS-0612 STRESS TEST\n", .{});
+    const alloc = std.testing.allocator;
+
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
+    var pool = try Pool.init(std.testing.io, alloc, PoolConfig{
+        .url = url,
+        .pool_size = 3,
+    });
+    defer pool.deinit();
+
+    const tenant = try randomUuidStr(alloc);
+    defer alloc.free(tenant);
+
+    var buf: [80]u8 = undefined;
+    const schema = schemaName(tenant, &buf);
+    defer cleanupTenant(alloc, &pool, tenant, schema);
+
+    const dir = migrationsDir();
+    const num_threads = 12;
+    const rounds_per_thread = 8;
+    const total_calls = num_threads * rounds_per_thread;
+    const max_retries_per_round = 200;
+
+    const RoundWorker = struct {
+        fn run(
+            a: std.mem.Allocator,
+            p: *Pool,
+            tenant_id: []const u8,
+            migrations_dir_: []const u8,
+            rounds: u32,
+            out: *WorkerResult,
+            completed: *std.atomic.Value(u32),
+        ) void {
+            var i: u32 = 0;
+            while (i < rounds) : (i += 1) {
+                var attempt: u32 = 0;
+                while (attempt < max_retries_per_round) : (attempt += 1) {
+                    provisionTenantSchema(a, p, tenant_id, migrations_dir_) catch |e| {
+                        switch (e) {
+                            error.PoolExhausted, error.MigrationFailed => {
+                                const backoff_ms: i64 = @min(@as(i64, 1) << @intCast(@min(attempt, 6)), 500);
+                                std.Io.sleep(
+                                    std.Options.debug_io,
+                                    .fromMilliseconds(backoff_ms),
+                                    .awake,
+                                ) catch {};
+                                continue;
+                            },
+                            else => {
+                                if (out.err == null) out.err = e;
+                                break;
+                            },
+                        }
+                    };
+                    _ = completed.fetchAdd(1, .monotonic);
+                    break;
+                }
+            }
+        }
+    };
+
+    var results: [num_threads]WorkerResult = [_]WorkerResult{.{}} ** num_threads;
+    var threads: [num_threads]std.Thread = undefined;
+    var completed = std.atomic.Value(u32).init(0);
+
+    const start_ms = std.Io.Clock.real.now(std.testing.io).toMilliseconds();
+
+    var spawned: usize = 0;
+    var spawn_err: ?anyerror = null;
+    while (spawned < num_threads) : (spawned += 1) {
+        threads[spawned] = std.Thread.spawn(.{}, RoundWorker.run, .{
+            alloc, &pool, tenant, dir, rounds_per_thread, &results[spawned], &completed,
+        }) catch |e| {
+            spawn_err = e;
+            break;
+        };
+    }
+
+    var i: usize = 0;
+    while (i < spawned) : (i += 1) {
+        threads[i].join();
+    }
+
+    if (spawn_err) |e| {
+        std.debug.print("ISS-0612: thread spawn failed after {d}/{d}: {}\n", .{ spawned, num_threads, e });
+        return e;
+    }
+
+    const elapsed_ms: i64 = std.Io.Clock.real.now(std.testing.io).toMilliseconds() - start_ms;
+    const completed_count = completed.load(.monotonic);
+
+    var error_count: u32 = 0;
+    for (results) |r| {
+        if (r.err) |e| {
+            std.debug.print("ISS-0612: worker non-retryable error: {}\n", .{e});
+            error_count += 1;
+        }
+    }
+
+    std.debug.print(
+        "ISS-0612: completed {d}/{d} calls in {d}ms, {d} non-retryable worker error(s)\n",
+        .{ completed_count, total_calls, elapsed_ms, error_count },
+    );
+
+    // The original defect stalled at 24/96 calls indefinitely (180s hard
+    // cap, force-terminated with PoolExhausted on 8/12 threads, ZERO DB
+    // query activity observed during the stall — connections stuck
+    // checked-out, not progressing). The fix's guarantee (design doc §3.2)
+    // is that PoolExhausted/MigrationFailed under an undersized pool is a
+    // fast, bounded, retryable signal — not a silent indefinite hang. This
+    // asserts: (a) every call eventually completes (with retry), and
+    // (b) the whole run finishes well inside a 60s budget — proving no
+    // stall occurred, unlike the original 180s+ hang.
+    try std.testing.expectEqual(@as(u32, 0), error_count);
+    try std.testing.expectEqual(@as(u32, total_calls), completed_count);
+    try std.testing.expect(elapsed_ms < 60_000);
+}

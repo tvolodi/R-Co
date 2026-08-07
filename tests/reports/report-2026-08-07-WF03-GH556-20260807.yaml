@@ -1,0 +1,114 @@
+run_id: WF03-GH556-20260807
+date: "2026-08-07"
+completed_at: "2026-08-07T20:50:41Z"
+issues_tested: [GH-556, ISS-0612]
+
+pre_checks:
+  services:
+    db: healthy (r-co-2-db-1, port 5452)
+    db_test: healthy (r-co-2-db_test-1, port 5453)
+    keycloak: healthy (r-co-2-keycloak-1)
+    keycloak_gateway: healthy (r-co-2-keycloak_gateway-1)
+  migrate:
+    status: PASS
+    detail: "zig build migrate: exit 0, clean output, no new migrations to apply (108/108 already applied)"
+  test_env_verify:
+    status: HEALTHY
+    checks_passed: "10/10 (C0-C9)"
+
+target_fix_verification:
+  description: >
+    Independent re-verification of BACKEND-DEV's fix to src/db/provisioning.zig's
+    provisionTenantSchema(): the advisory lock previously closed its own scope
+    before Steps 2-6a began, so concurrent same-tenant calls raced unprotected.
+    The fix acquires lock_conn once and holds it across all real work via a
+    single defer pair covering every exit path. A defense-in-depth
+    pg_advisory_unlock_all() safety net was also added to Pool.release()
+    (src/db/pool.zig). A second-order fix removed a now-redundant/self-deadlocking
+    outer lock from tests/unit/test_api08_auth.zig's ensureTenantDefaultSchema()
+    (originally added by ISS-0209), which depended on the pre-fix lock being a
+    no-op.
+
+  full_unit_suite:
+    method: "zig build test --summary all"
+    runs: 2
+    result_per_run: "939/1003 passed, 64 skipped, 0 failed -- both runs identical, both exit 0"
+    baseline_comparison: "Matches BACKEND-DEV's reported baseline exactly (939/1003, 64 skipped)"
+    build_summary_line: "Build Summary: 83/83 steps succeeded; 939/1003 tests passed (64 skipped)"
+
+  concurrent_stress_test:
+    step_name: "zig build test-integration-iss0129"
+    file: tests/integration/iss0129_migration_run_advisory_lock_test.zig
+    scenario: "12 threads x 8 rounds same-tenant concurrent provisionTenantSchema calls, pool_size=3 (ISS-0612 regression case)"
+    runs: 2
+    result_run_1: "96/96 calls completed in 3326ms, 0 non-retryable worker errors -- Build Summary 6/6 steps succeeded, 7/7 tests passed"
+    result_run_2: "96/96 calls completed in 2254ms, 0 non-retryable worker errors -- Build Summary 6/6 steps succeeded, 7/7 tests passed"
+    baseline_comparison: >
+      Matches BACKEND-DEV's reported ~2.2s/96-96 result. Pre-fix behaviour was a
+      stall at 24/96 calls hitting the 180s hard cap with PoolExhausted on
+      force-termination and zero DB query activity during the stall -- neither
+      run here showed any stall; both completed in low single-digit seconds.
+
+  db_state_after_stress_runs:
+    non_idle_backends: "0 (only the verification psql session itself, self-terminating)"
+    stray_advisory_locks: "0 (confirmed via SELECT count(*) FROM pg_locks WHERE locktype='advisory' after both runs)"
+
+  test_api08_auth_regression_check:
+    description: >
+      Re-read docs/anti-patterns.md's ISS-0209 entry ("Destructive recovery
+      fallbacks", GH-533) to confirm the exact shape of the forbidden pattern:
+      a DROP SCHEMA IF EXISTS ... CASCADE (or DROP TABLE / TRUNCATE) inside an
+      error.<anyVariant> branch of a provisioning helper, executed on a
+      separate connection outside the lock's scope.
+    grep_result: "No DROP SCHEMA / DROP TABLE / TRUNCATE / CASCADE tokens found in tests/unit/test_api08_auth.zig"
+    manual_read: >
+      ensureTenantDefaultSchema() (lines 101-137) is the clean ISS-0209 retry
+      loop: error.MigrationFailed gets bounded exponential backoff + continue;
+      every other typed error escalates to HarnessRecoveryError.CanonicalProvisionFailed;
+      exhausting max_recovery_attempts returns RecoveryFailed. No destructive
+      SQL anywhere in the function. The redundant outer acquireAdvisoryLock/
+      releaseAdvisoryLock pair (which would have self-deadlocked against
+      provisionTenantSchema()'s now-genuine lock) has been removed, with an
+      in-code comment (lines 84-100) explaining why it was safe to remove now
+      that provisionTenantSchema() itself holds the lock across the full
+      check-then-act critical section -- i.e. satisfies the ISS-0209 anti-pattern
+      doc's own prescribed correct approach (lock must cover the entire
+      check-then-decide-then-act-then-verify sequence).
+    verdict: PASS -- ISS-0209 destructive fallback not reintroduced
+
+  pool_release_safety_net_verification:
+    method: "Code read of src/db/pool.zig, cross-checked against empirical stray-lock count"
+    findings: >
+      clearConnectionAdvisoryLocks() (pool.zig:402-410) runs
+      "SELECT pg_advisory_unlock_all()" unconditionally (a documented no-op
+      when no locks are held) and marks the connection invalid on failure
+      rather than silently returning a possibly-locked connection to idle.
+      It is called from Pool.release() (pool.zig:896), positioned after
+      resetConnectionSearchPath() (line 880) and before the mutex-protected
+      idle-set insertion (line 898+) -- i.e. it runs on every release, on
+      every code path, before the connection becomes available to any other
+      caller.
+    empirical_confirmation: >
+      The two stress-test runs exercised 192 total acquire/release cycles
+      (96 calls x 2 runs, each acquiring lock_conn once) through this exact
+      path. 0 advisory locks remained in pg_locks after either run, consistent
+      with the safety net (and the primary fix) working correctly.
+    verdict: PASS -- wired correctly, no new test needed per task instructions (existing stress test already exercises the release path heavily)
+
+migration_result:
+  status: PASS
+  detail: "zig build migrate: exit 0, clean output, 108/108 applied, no drift"
+
+cleanup:
+  stray_processes_workspace2: >
+    Two orphaned workspace-2 (C:\Users\tvolo\dev\ai-dala\2\R-Co) test.exe
+    processes were found idle (near-zero CPU time) after long-running
+    background command attempts and terminated via taskkill (PIDs 32736,
+    2996) -- verified via Get-CimInstance Win32_Process ExecutablePath
+    before each kill. Sibling-workspace (C:\Users\tvolo\dev\ai-dala\R-Co,
+    no \2\) test.exe processes were identified and left untouched.
+  db_state_final: "0 non-idle backends besides the verification query itself; 0 advisory locks"
+
+overall_status: PASS
+issues: []
+next_action: "Route to DOC-UPDATER (Step 7) -- no BLOCKER severity issue requiring RELEASE-VALIDATOR (Step 6)"

@@ -386,6 +386,29 @@ fn resetConnectionSearchPath(conn: *Conn) void {
     };
 }
 
+/// ISS-0612 / GH #556: defense-in-depth safety net called from Pool.release().
+///
+/// Unconditionally releases every session-scoped advisory lock held by this
+/// connection's underlying Postgres session before the connection re-enters
+/// the idle set. pg_advisory_unlock_all() is defined to succeed trivially
+/// when no advisory locks are held, so calling it on every release (not just
+/// ones suspected of holding a lock) is always safe and cheap. This bounds
+/// the blast radius of any future bug where a code path acquires a
+/// session-scoped advisory lock (e.g. via provisioning.zig's
+/// acquireAdvisoryLock) and, through an error path or a missed defer, fails
+/// to release it before returning the connection to the pool — instead of
+/// silently hanging every future caller that acquires this exact connection
+/// and contends on this exact key, the stale lock is cleared here.
+fn clearConnectionAdvisoryLocks(conn: *Conn) void {
+    if (!conn._is_valid) return; // already invalid; will be replaced on next acquire
+    conn.exec("SELECT pg_advisory_unlock_all()", &.{}) catch {
+        // Clear failed — mark connection invalid so Pool.release discards it,
+        // rather than silently returning a connection that may still hold a
+        // stale lock back to the idle set.
+        conn._is_valid = false;
+    };
+}
+
 const obs_metrics_mod = @import("obs_metrics");
 
 fn recordDbQueryDurationFromSql(sql: []const u8, elapsed_s: f64) void {
@@ -855,6 +878,22 @@ pub const Pool = struct {
         // TNT-03: Reset search_path to public before returning to idle pool.
         // resetConnectionSearchPath marks conn._is_valid = false on failure.
         resetConnectionSearchPath(conn);
+
+        // ISS-0612 / GH #556: defense-in-depth. Unconditionally release any
+        // session-scoped advisory locks still held by this connection before
+        // it re-enters the idle set. pg_advisory_unlock_all() is a no-op
+        // when no locks are held, so this is always safe to call. This
+        // converts any future bug of this class (a code path that acquires
+        // a session-scoped advisory lock and, through a missed defer or a
+        // new call site that forgets the release-before-pool-release
+        // discipline, fails to release it) from "silently hangs every
+        // future caller that acquires this exact connection and contends on
+        // this exact key" into a harmless no-op — the pool itself now
+        // guarantees no connection re-enters idle carrying a stale lock.
+        // Mirrors resetConnectionSearchPath's own pattern immediately above:
+        // on failure, mark the connection invalid rather than silently
+        // returning it to idle.
+        clearConnectionAdvisoryLocks(conn);
 
         self.mutex.lockUncancelable(self.io);
         defer self.mutex.unlock(self.io);

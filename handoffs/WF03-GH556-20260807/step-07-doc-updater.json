@@ -1,0 +1,53 @@
+{
+  "handoff_id": "587de1f9-d10d-4571-9308-26bccd91909e",
+  "run_id": "WF03-GH556-20260807",
+  "workflow_id": "WF-03",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH556-20260807/step-07-doc-updater.json",
+  "created_at": "2026-08-07T20:53:23Z",
+  "started_at": "2026-08-07T20:53:23Z",
+  "completed_at": "2026-08-07T20:54:55Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/db/provisioning.zig",
+      "src/db/pool.zig",
+      "src/design/iss0612-provisioning-lock-scope-fix.md",
+      "tests/reports/report-2026-08-07-WF03-GH556-20260807.yaml",
+      "docs/issues/ISS-0612.json"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md documenting the fix for GH #556 / ISS-0612 (provisionTenantSchema advisory-lock scope bug -- lock closed before the work it should protect began; fixed by holding one connection across Steps 2-6a; added Pool.release() pg_advisory_unlock_all() safety net; also removed a now-redundant lock in test_api08_auth.zig). Mark ISS-0612 RESOLVED. No requirement_ids in scope (infra bug fix). No estimation.json (not WF-02/WF-04). Perform GitHub Branch Management: merge PR, delete branch, update board for GH #556.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with an entry for GH #556 / ISS-0612",
+      "docs/issues/ISS-0612.json marked status RESOLVED with resolution details",
+      "PR created and merged via gh pr merge --squash --delete-branch",
+      "Feature branch deleted, local repo returned to clean main",
+      "GH #556 board status advanced to implemented then done"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue",
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated CHANGELOG.md with a full entry for GH #556 / ISS-0612 including the second-order test_api08_auth.zig fix. Marked docs/issues/ISS-0612.json status RESOLVED with resolved_at, resolved_in, and final_resolution fields. No requirement_ids in scope (infra bug fix), no estimation.json (not WF-02/WF-04). Proceeding to GitHub Branch Management.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0612.json"
+    ],
+    "issues": [],
+    "next_action": "Proceed to GitHub Branch Management (Step Final git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
