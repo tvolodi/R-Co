@@ -1,0 +1,47 @@
+{
+  "handoff_id": "2a7969d0-f47b-4adc-878d-635bc915b120",
+  "run_id": "WF03-ISS-0128-20260807",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-07T08:08:49Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "58782060-112e-41be-a8a3-2ba47b698d32",
+      "e6b6e6b6-0128-4009-8000-00000000006b"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0128-diagnosis.yaml",
+      "docs/issues/ISS-0128.json"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md referencing GH #418; mark docs/issues/ISS-0128.json RESOLVED with corrected resolution + prevention text; check requirement mapping.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated",
+      "ISS-0128.json status RESOLVED",
+      "requirement mapping checked"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with a full entry for ISS-0128/GH #418 documenting the corrected root cause, the fix, and verification evidence. docs/issues/ISS-0128.json updated to status=RESOLVED, resolved_at stamped, root_cause/resolution/prevention fields corrected (original search_path-race hypothesis explicitly marked SUPERSEDED, not deleted, for historical accuracy). Requirement mapping checked: DB-03 (Transactional integrity) is the only requirement associated with this area and was already status=RELEASED in docs/requirements.yaml -- no status change needed or made, since diagnosis confirmed the DB-03 guarantee itself was never broken (only the test fixture that exercises it was buggy). docs/status/requirement_status.yaml has no pending diff (git status clean) since reqctl.py set-status was correctly not invoked.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0128.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step Final git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T08:08:49Z",
+  "completed_at": "2026-08-07T08:11:25Z"
+}

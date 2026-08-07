@@ -1,0 +1,115 @@
+---
+# Release Decision CORRECTION: ISS-0128 Fix
+# WF03-ISS-0128-20260807 Step 6b: RELEASE-VALIDATOR (correction)
+#
+# This file supersedes docs/status/release-WF03-ISS-0128-20260807.yaml's
+# verdict, which cited a test report (tests/reports/report-20260807-WF03-ISS-0128.yaml)
+# that does not exist in any commit on this branch. That earlier decision's
+# "PASS" for TC-DB-03-01 was not backed by an executed test.
+
+run_id: WF03-ISS-0128-20260807
+date: 2026-08-07T08:45:00Z
+validator: RELEASE-VALIDATOR
+decision: APPROVED
+supersedes: docs/status/release-WF03-ISS-0128-20260807.yaml
+
+issue:
+  id: ISS-0128
+  title: "event_store/store.zig:337 StoreError.InstanceNotFound on TC-DB-03-01 store.append"
+  severity: BLOCKER
+  github: "https://github.com/tvolodi/R-Co/issues/418"
+  affected_area: "tests/integration/db_integration_test.zig (test-fixture defect, NOT src/event_store/store.zig)"
+  impact: "HIGH - blocked TC-DB-03-01, a MUST-requirement (DB-03) transactional-integrity test"
+
+fix_quality:
+  pattern: "Test-fixture UUID correction (parseUuid helper), NOT a search_path change"
+  implementation: "CORRECT"
+  verification: "Direct test execution, 5/5 consecutive passes, on two independently created databases"
+  notes: |
+    The prior release decision (docs/status/release-WF03-ISS-0128-20260807.yaml)
+    approved a different fix -- SET LOCAL search_path added to
+    src/event_store/store.zig::Store.append() -- on the theory that pooled
+    connections carry stale session-level search_path. That fix is RETAINED
+    on this branch (harmless, reasonable defensive hardening) but was
+    independently re-verified here and does NOT fix TC-DB-03-01 on its own:
+    checked out commit 422ac12 into an isolated git worktree, migrated a
+    freshly created database, ran `zig build test-integration`, and
+    TC-DB-03-01 FAILED IDENTICALLY (StoreError.InstanceNotFound, same call
+    site) with only that fix applied.
+
+    The actual defect: tests/integration/db_integration_test.zig's
+    TC-DB-03-01 called store.append() with a hardcoded UUID literal
+    ("db0301aa...") that was never inserted into instance_projections --
+    the test's fixture INSERT, post-append assertions, and cleanup all
+    correctly used a separate, per-run random UUID (inst_id_str) instead.
+    store.append() was correctly returning InstanceNotFound throughout.
+
+test_results:
+  verdict: PASS
+  report_note: >
+    No tests/reports/*.yaml file was produced for this WF-03 run (WF-03 does
+    not mandate a formatted test report the way WF-02/WF-04 do); the
+    verification evidence below is the direct, reproduced zig build
+    test-integration output referenced in docs/issue-reports/ISS-0128-diagnosis.yaml
+    and handoffs/WF03-ISS-0128-20260807/step-03b-backend-dev-correction.json.
+    The PRIOR release decision's citation of
+    "tests/reports/report-20260807-WF03-ISS-0128.yaml" as evidence is
+    incorrect -- no such file exists in this repository at any commit
+    reachable from this branch.
+
+  target_test:
+    id: TC-DB-03-01
+    name: "successful transaction commits both event row and state update atomically"
+    status: PASS
+    evidence: >
+      Failed 2/2 (100%) before the test-fixture fix -- once against the
+      shared db_test container (known migration-ordering drift) and once
+      against a freshly created + freshly migrated database (108/108
+      migrations applied in order), ruling out shared-DB drift as the
+      cause. Passed 5/5 consecutive `zig build test-integration` runs after
+      the fix (2 against a fresh DB, 3 against the shared DB).
+
+  regressions: >
+    None. Failing-test-name-set diff between the pre-fix baseline and all 5
+    post-fix runs shows zero new failures. The only tests that fluctuated
+    (TC-DB-01-02, TC-EXP-103-03/04, TC-SCH-303-03) appeared and disappeared
+    across the 5 post-fix runs THEMSELVES with no code change between them
+    -- the pre-existing cross-binary-concurrency flakiness class documented
+    under ISS-0141/ISS-0148/ISS-0151, not a regression from this fix.
+    TC-DB-03-02's pre-existing exit-code-3 crash (INVALID_HANDLE on
+    connection close) is present identically before and after this fix.
+
+  unit_test_baseline: >
+    `zig build test --summary all` on this feature branch: 83/83 steps
+    succeeded, 939/1003 tests passed (64 skipped) -- byte-identical to a
+    `main` worktree baseline taken via `git worktree add`, confirming zero
+    unit-test regression.
+
+risk_analysis:
+  risk_level: LOW
+  rationale: |
+    - Change is confined to a single test file's fixture wiring; no
+      production code path is touched by the fix that actually resolves
+      the failure.
+    - The concurrent workspace's SET LOCAL search_path addition to
+      src/event_store/store.zig is retained and is itself low-risk
+      (transaction-scoped, cannot leak past COMMIT/ROLLBACK), matching the
+      already-RELEASED ISS-0130 pattern, even though it does not address
+      this specific defect.
+  change_scope: "Minimal - tests/integration/db_integration_test.zig only for the fix that matters; src/event_store/store.zig carries an unrelated, harmless, already-merged defensive addition."
+
+release_recommendation: APPROVED
+
+recommendation_rationale: |
+  1. Quality: HIGH — root cause was independently reproduced and confirmed
+     via direct instrumentation (SHOW search_path traced at the exact
+     failing call site) rather than accepted from either issue's stated
+     hypothesis.
+  2. Risk: LOW — single test file, no production code path affected by the
+     fix that resolves the failure.
+  3. Test verification: PASS, backed by actual `zig build test-integration`
+     execution output, reproduced 5/5 after the fix and 0/2 (both failing)
+     before it, on two independently created databases each time.
+
+blocking_issues: []
+next_step: "Route to DOC-UPDATER (Step 7)"

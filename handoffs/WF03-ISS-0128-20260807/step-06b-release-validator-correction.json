@@ -1,0 +1,44 @@
+{
+  "handoff_id": "e6b6e6b6-0128-4009-8000-00000000006b",
+  "run_id": "WF03-ISS-0128-20260807",
+  "step": "06b",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "created_at": "2026-08-07T08:08:49Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "58782060-112e-41be-a8a3-2ba47b698d32",
+      "a1b2c3d4-0128-4008-8000-000000000006"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0128-diagnosis.yaml",
+      "docs/status/release-WF03-ISS-0128-20260807.yaml"
+    ],
+    "note": "Correction pass over the concurrent workspace step-06 release decision, which cited a non-existent test report (tests/reports/report-20260807-WF03-ISS-0128.yaml) as evidence for its PASS verdict."
+  },
+  "task": {
+    "description": "Re-validate the release decision for ISS-0128/GH #418 using real, reproduced test-execution evidence instead of the unverified prior step-06 decision.",
+    "acceptance_criteria": [
+      "Release decision backed by actual zig build test-integration output",
+      "Any fabricated/unverifiable evidence in the prior decision is named explicitly, not silently overwritten"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "APPROVED. docs/status/release-WF03-ISS-0128-20260807-correction.yaml written with the real verification evidence: TC-DB-03-01 failed 2/2 (100%) before the test-fixture fix (shared DB + independently fresh DB) and passed 5/5 consecutive zig build test-integration runs after. The prior step-06 decision (handoff a1b2c3d4-0128-4008-8000-000000000006) cited tests/reports/report-20260807-WF03-ISS-0128.yaml as evidence; that file does not exist in any commit reachable from this branch (confirmed via git ls-tree -r on both concurrent-workspace commits). This is named explicitly in the correction file rather than silently overwritten, per CLAUDE.md No Speculation / Never Call a Red Pipeline OK Without a Source.",
+    "artifacts_out": [
+      "docs/status/release-WF03-ISS-0128-20260807-correction.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (Step 07)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-08-07T08:08:49Z",
+  "completed_at": "2026-08-07T08:45:00Z"
+}

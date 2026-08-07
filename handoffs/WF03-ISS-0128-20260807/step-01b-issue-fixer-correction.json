@@ -1,0 +1,45 @@
+{
+  "handoff_id": "501ed46d-42dd-4c0f-9bee-70827af4db6c",
+  "run_id": "WF03-ISS-0128-20260807",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-07T06:54:04Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": ["a1b2c3d4-0128-4003-8000-000000000001"],
+    "artifacts_in": [
+      "docs/issues/ISS-0128.json",
+      "src/event_store/store.zig",
+      "tests/integration/db_integration_test.zig"
+    ],
+    "note": "This is an independent, concurrent Step 01 diagnosis produced by a separate workspace working the same run_id in parallel (see docs/agents/protocols/ISSUE_QUEUE.md concurrent-claim scenario). The concurrent workspace's own step-01-issue-fixer.json (handoff_id a1b2c3d4-0128-4003-8000-000000000001) proposed a different root cause (search_path race) that this diagnosis's own reproduction disproved. Renamed to step 01b to avoid overwriting the accepted upstream step-01 record; both are retained for audit."
+  },
+  "task": {
+    "description": "Diagnose ISS-0128/GH #418: TC-DB-03-01 store.append fails with StoreError.InstanceNotFound. Verify stated root-cause hypothesis (search_path race, ISS-0130-class) before applying candidate resolution.",
+    "acceptance_criteria": [
+      "Root cause confirmed via reproduction, not assumed",
+      "docs/issue-reports/ISS-0128-diagnosis.yaml written"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:reproduce-failure"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause diagnosed and CORRECTED: original hypothesis (search_path/schema-visibility race in event_store.lookup, ISS-0130-class) is disproven by direct instrumentation. Actual defect is a test-fixture bug in tests/integration/db_integration_test.zig TC-DB-03-01: store.append() is called with an unrelated hardcoded UUID literal instead of the inst_id_str used for the fixture INSERT/assertions/cleanup. Reproduced 100% (2/2) on both the shared drifted DB and a freshly migrated DB, ruling out environmental causes. No production code (store.zig, pool.zig, tenant_context.zig) is defective.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0128-diagnosis.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 03b correction) to fix tests/integration/db_integration_test.zig; the concurrent workspace's Step 02/02b/03 already merged a SET LOCAL search_path change to src/event_store/store.zig which is retained (harmless) but does not fix TC-DB-03-01"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T06:54:04Z",
+  "completed_at": "2026-08-07T07:26:43Z"
+}

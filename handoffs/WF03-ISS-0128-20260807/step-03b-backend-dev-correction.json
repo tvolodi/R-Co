@@ -1,0 +1,47 @@
+{
+  "handoff_id": "58782060-112e-41be-a8a3-2ba47b698d32",
+  "run_id": "WF03-ISS-0128-20260807",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T07:26:43Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "501ed46d-42dd-4c0f-9bee-70827af4db6c",
+      "a1b2c3d4-0128-4003-8000-000000000002"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0128-diagnosis.yaml"
+    ],
+    "note": "Renamed from step 03 to step 03b: a concurrent workspace's step-03-backend-dev.json (handoff_id a1b2c3d4-0128-4003-8000-000000000002) implemented a different, insufficient fix (SET LOCAL search_path in src/event_store/store.zig) on the same run_id in parallel. That fix was empirically re-tested here (checked out into an isolated worktree, fresh DB, zig build test-integration) and confirmed to NOT fix TC-DB-03-01 -- it is retained on this branch (harmless defensive hardening) but this step's fix is the one that actually makes TC-DB-03-01 pass. See docs/issue-reports/ISS-0128-diagnosis.yaml 'concurrent_workspace_reconciliation' section for full evidence."
+  },
+  "task": {
+    "description": "Implement the corrected fix for ISS-0128/GH #418 per diagnosis: fix test-fixture UUID mismatch in tests/integration/db_integration_test.zig TC-DB-03-01 (NOT a search_path/schema-qualification change in event_store.lookup, which the diagnosis disproved as the actual cause).",
+    "acceptance_criteria": [
+      "TC-DB-03-01 passes",
+      "store.append idempotency invariant holds",
+      "No regression in already-passing event_store tests"
+    ],
+    "functions_to_call": [
+      "zig build",
+      "zig build test-integration"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed tests/integration/db_integration_test.zig TC-DB-03-01: added local parseUuid() helper (mirrors event_store_integration_test.zig pattern) and changed store.append() to use inst_uuid derived from the same inst_id_str used for the fixture INSERT/assertions/cleanup, replacing an unrelated hardcoded literal that was never inserted into instance_projections. src/event_store/store.zig and src/db/pool.zig were UNCHANGED by this step (confirmed via git diff --stat = empty for both at the time this diagnosis was performed) -- diagnosis proved they were never defective. NOTE (added on rebase): a concurrent workspace's step-02/02b/03 subsequently added a SET LOCAL search_path change to src/event_store/store.zig on the same run_id; that change was retained on this branch after rebasing (harmless, does not conflict with this fix) but was independently verified to NOT fix TC-DB-03-01 on its own -- re-tested via isolated worktree + fresh DB, failed identically. This step's test-fixture fix is the change that actually makes TC-DB-03-01 pass, with or without the concurrent workspace's SET LOCAL addition present. Verified: zig build exit 0, no error-set output, lint_sql_param_types.py exit 0 (0 BLOCKER/MAJOR/MINOR). TC-DB-03-01 passed 5/5 consecutive zig build test-integration runs (2 against a freshly created+migrated DB, 3 against the shared db_test) after failing 2/2 (100%) before the fix on the same two DB types. Regression check: diffed full failing-test-name sets between pre-fix baseline and all 5 post-fix runs; only pre-existing, independently-flaky cross-binary-concurrency tests (TC-DB-01-02, TC-EXP-103-03/04, TC-SCH-303-03 -- documented anti-pattern class ISS-0141/ISS-0148/ISS-0151) fluctuated, each appearing and disappearing across my own 5 runs with no code changes between them, proving pre-existing flakiness unrelated to this fix. TC-DB-03-02 exit-code-3 crash is pre-existing (present identically pre- and post-fix, same INVALID_HANDLE connection-close signature, unrelated instance UUID) and out of scope (not one of the acceptance criteria; not touched).",
+    "artifacts_out": [
+      "tests/integration/db_integration_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (Step 06b correction) then DOC-UPDATER (Step 07)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T07:26:43Z",
+  "completed_at": "2026-08-07T08:08:49Z"
+}
