@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0186",
   "title": "TC-EXP-301-05 asserts on measured wall-clock backoff deltas, which are not stable under parallel test load",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "created_at": "2026-08-07T04:03:47Z",
   "discovered_by": "BACKEND-DEV (WF03-ISS-0158-20260807)",
@@ -23,5 +23,11 @@
     "docs/issue-reports/ISS-0158-diagnosis.yaml"
   ],
   "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. ISS-0158 fixed 5 root causes (11 blocks, 0 regressions); this cluster has a distinct root cause and belongs in its own run.",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/520"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/520",
+  "resolved_at": "2026-08-07T23:05:53Z",
+  "resolved_in": [
+    "tests/integration/effects_subsystem_test.zig"
+  ],
+  "resolution": "TC-EXP-301-05 now reads next_attempt_at and NOW() in a single combined query, once, immediately after Queue.markRetry returns. Both values are evaluated inside the same already-open transaction TestHarness.init() opens for the whole test body, so PostgreSQL's NOW() (transaction_timestamp(), frozen at BEGIN) is identical for both -- the comparison is exact server-side arithmetic against a frozen timestamp, not a wall-clock measurement across separate round-trips. Tolerance tightened from +/-500ms to +/-1.0ms (client-side float round-trip epsilon only). Design underwent 2 validation rounds: the first attempt incorrectly claimed the two reads were separate autocommit transactions with independently-drifting NOW() values (CODE-DESIGN-VALIDATOR caught this by tracing TestHarness.init()'s conn.begin() and vendor/pg/pg.zig's Conn.exec/Conn.query against actual PostgreSQL transaction semantics); the reworked design correctly identified that the original bug report's 'network jitter' theory was also not quite right -- the real defect was concurrent load perturbing which value the 'before' read captured, not clock skew. Verified: TC-EXP-301-05 passed in 3 consecutive zig build test-integration runs (0 occurrences in any failure output) across two independent agents. Design: src/design/gh520-backoff-schedule-deterministic-assertion.md. Test-only change.",
+  "closed_without_new_commits": false
 }
