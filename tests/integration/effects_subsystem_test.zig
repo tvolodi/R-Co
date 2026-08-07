@@ -95,43 +95,37 @@ fn makeObjectMap(allocator: std.mem.Allocator) std.json.ObjectMap {
     return std.json.ObjectMap.init(allocator, &.{}, &.{}) catch unreachable;
 }
 
+/// ISS-0158 / GH #479: delegate to the engine's own canonical teardown.
+///
+/// This used to be a hand-maintained duplicate of
+/// `transition.freeInstanceState`, and it had drifted: it disposed of
+/// `variables` and `join_counters` with a bare `ObjectMap.deinit()`, which
+/// releases the hash-table storage but NOT the keys and string values inside
+/// it. Every variable the engine put into the returned state therefore leaked
+/// — visibly in TC-EXP-302-03/04/06/07/08, whose second `transition()` call
+/// merges `effect_result` into the map.
+///
+/// `transition.freeInstanceState` is `pub` (made so under ISS-0149 / GH #465
+/// for exactly this reason) and frees the map contents via
+/// `freeJsonValueSafe`. Calling it keeps this file correct automatically when
+/// `InstanceState` gains a field, instead of leaking until someone notices.
 fn freeInstanceState(allocator: std.mem.Allocator, state: transition_mod.InstanceState) void {
-    for (state.tokens) |token| {
-        allocator.free(token.node_id);
-        allocator.free(token.branch_id);
-        if (token.token_id) |id| allocator.free(id);
-        if (token.waiting_child_instance_id) |id| allocator.free(id);
-    }
-    allocator.free(state.tokens);
-    // ISS-0149 / GH #465: ObjectMap.deinit takes *Self in Zig 0.16, so the map
-    // needs a mutable binding — `state` is passed by value here.
-    var variables = state.variables;
-    variables.deinit(allocator);
-    var join_counters = state.join_counters;
-    join_counters.deinit(allocator);
-    for (state.pending_task_nodes) |node_id| allocator.free(node_id);
-    allocator.free(state.pending_task_nodes);
-    for (state.cancelled_branch_ids) |branch_id| allocator.free(branch_id);
-    allocator.free(state.cancelled_branch_ids);
-    if (state.error_detail) |detail| allocator.free(detail);
+    transition_mod.freeInstanceState(allocator, state);
 }
 
+/// ISS-0158 / GH #479: delegate to the engine's canonical teardown, for the
+/// same reason as freeInstanceState above.
+///
+/// The hand-written version this replaces freed only `.effect_emitted`
+/// payloads and silently ignored every other PendingEvent variant
+/// (`else => {}`). A graph whose SERVICE_TASK sits behind a PARALLEL_GATEWAY
+/// also emits `.parallel_split`, whose `source_node_id`/`branch_id` fields are
+/// allocator-owned — those leaked on every such transition, which is what
+/// TC-EXP-302-08 reported. `transition.freeTransitionResult` dispatches
+/// through `freePendingEventPayload` and so handles every variant, including
+/// ones added later.
 fn freeTransitionResult(allocator: std.mem.Allocator, result: transition_mod.TransitionResult) void {
-    for (result.emitted_events) |event| {
-        allocator.free(event.idempotency_key);
-        switch (event.payload) {
-            .effect_emitted => |payload| {
-                allocator.free(payload.node_id);
-                allocator.free(payload.token_id);
-                allocator.free(payload.correlation_key);
-                allocator.free(payload.kind);
-                allocator.free(payload.spec_json);
-            },
-            else => {},
-        }
-    }
-    allocator.free(result.emitted_events);
-    freeInstanceState(allocator, result.state);
+    transition_mod.freeTransitionResult(allocator, result);
 }
 
 /// ISS-0158 / GH #479: `attrs` MUST stay `comptime`.
@@ -1065,7 +1059,7 @@ test "TC-EXP-301-11: reenterEffectResult success inserts EFFECT_COMPLETED and re
         \\FROM events
         \\WHERE instance_id = $1::uuid
         \\  AND event_type = 'EFFECT_COMPLETED'
-        \\ORDER BY sequence_no DESC
+        \\ORDER BY sequence_number DESC
         \\LIMIT 1
     ,
         &.{instance_id},
@@ -1124,7 +1118,7 @@ test "TC-EXP-301-12: reenterEffectResult failure inserts EFFECT_FAILED and resol
         \\FROM events
         \\WHERE instance_id = $1::uuid
         \\  AND event_type = 'EFFECT_FAILED'
-        \\ORDER BY sequence_no DESC
+        \\ORDER BY sequence_number DESC
         \\LIMIT 1
     ,
         &.{instance_id},

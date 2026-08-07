@@ -1,0 +1,215 @@
+issue_id: ISS-0158
+github_issue: https://github.com/tvolodi/R-Co/issues/479
+run_id: WF03-ISS-0158-20260807
+agent: BACKEND-DEV / ISSUE-FIXER
+created_at: "2026-08-07T04:03:47Z"
+severity: MAJOR
+verdict: RESOLVED (primary cluster); 3 distinct clusters forwarded
+
+headline: >-
+  The issue's stated hypothesis was wrong. transition() DOES emit effect_emitted
+  for SERVICE_TASK, and always did. The 13 failures were five independent
+  memory-ownership defects — four in production source, one in the test file's
+  hand-maintained duplicate of the engine's teardown helpers.
+
+premise_correction:
+  issue_claimed: >-
+    "transition() returns ZERO emitted events when a token enters a SERVICE_TASK
+    node" / "SERVICE_TASK nodes do not emit effects at all — the async
+    service-task path is non-functional in production".
+  actually_true: >-
+    False as of current main. src/engine/transition.zig's processNodeEntry
+    .SERVICE_TASK branch appends a PendingEvent{.effect_emitted} unconditionally
+    unless the node carries "sync_inline":true. The "zero emitted events"
+    symptom described in the issue was a DIFFERENT, already-fixed bug: the test
+    fixture makeServiceTaskGraph took `attrs` as a runtime parameter, which
+    demoted the &[_]GraphNode{...} literal from static memory to a stack local,
+    so the returned graph dangled and processNodeEntry never saw a SERVICE_TASK
+    node. That was diagnosed and fixed under GH #439/#490 (commit 8103072),
+    which landed the `comptime attrs` signature plus an explanatory comment
+    already referencing ISS-0158 — before this run started.
+  consequence: >-
+    The premise "production SERVICE_TASK is broken" is retracted. What remained
+    was a cluster of ownership bugs that only became reachable once the fixture
+    stopped dangling and the blocks actually executed.
+
+root_causes:
+
+  - id: RC-1
+    title: EffectEmittedPayload.kind aliased a static string literal
+    severity: BLOCKER
+    location: src/engine/transition.zig (EffectEmittedPayload, SERVICE_TASK emit branch, freePendingEventPayload)
+    detail: >-
+      Four of the five fields of EffectEmittedPayload were allocator-owned
+      dupes; `kind` alone stored parseEffectKind()'s return value directly,
+      which is a static "http_call"/"email" literal in read-only .rdata. Any
+      caller that freed the payload uniformly — as the struct's shape implies,
+      and as the test's freeTransitionResult did — segfaulted inside
+      Allocator.free's @memset. Mixed ownership within one struct that crosses a
+      module boundary is not expressible to the caller.
+    fix: >-
+      dupe parseEffectKind's result at the emit site, and free p.kind in
+      freePendingEventPayload alongside its siblings. Documented on the struct
+      that no field may be borrowed.
+    blocks_fixed: [TC-EXP-302-01, TC-EXP-302-02]
+
+  - id: RC-2
+    title: parseHttpEffectSpec / parseEmailEffectSpec results never freed
+    severity: MAJOR
+    location: src/effects/worker.zig deliverSpec
+    detail: >-
+      Both parsers dupe every string field they return (url, method,
+      headers_json, body_json, secret_ref / to, subject, body, secret_ref).
+      deliverSpec dropped the returned struct without freeing it, so every
+      single http_call and email delivery leaked 2-5 allocations. This is a
+      production leak on the live worker path, not a test artefact — it would
+      accumulate for the process lifetime under sustained effect traffic.
+    fix: >-
+      Added freeHttpEffectSpec / freeEmailEffectSpec and `defer`-ed them in both
+      arms of deliverSpec. Safe because the adapters only read these fields;
+      their results own separately-allocated memory.
+    blocks_fixed: [TC-EXP-301-07]
+
+  - id: RC-3
+    title: reenterEffectResult omitted the NOT NULL events.sequence_number
+    severity: BLOCKER
+    location: src/effects/worker.zig reenterEffectResult
+    detail: >-
+      The INSERT INTO events did not supply sequence_number, which is
+      BIGINT NOT NULL (migrations/001_event_store.sql:33). Every effect
+      re-entry — EFFECT_COMPLETED and EFFECT_FAILED alike — therefore failed
+      with PostgreSQL C23502 and rolled its transaction back. The async effects
+      subsystem could never close the loop on ANY delivery in production; a
+      delivered effect could not be recorded or resolve its instance_wait.
+    fix: >-
+      Reserve the next per-instance sequence inside the existing transaction
+      using the same canonical race-free pattern as src/event_store/store.zig
+      (INSERT INTO instance_sequence ... ON CONFLICT DO UPDATE
+      RETURNING next_seq - 1), rather than SELECT MAX(sequence_number)+1.
+    blocks_fixed: [TC-EXP-301-11, TC-EXP-301-12]
+
+  - id: RC-4
+    title: Three token/variable leaks on engine paths that discard state
+    severity: MAJOR
+    location: src/engine/transition.zig (putVariableSafe, .effect_completed, .effect_failed, .END)
+    detail: >-
+      (a) putVariableSafe: on the found_existing path getOrPut keeps the key
+      already in the map and leaves the caller's freshly-duped `key` orphaned;
+      nothing freed it, so every overwrite of an existing variable leaked its
+      key. (b) .effect_completed stored the caller-borrowed response body
+      directly as a map value, while every value in `variables` is freed by
+      freeInstanceState — a free of borrowed memory waiting to happen.
+      (c) .effect_failed dropped the token parked on the failed SERVICE_TASK
+      and the stale outer token array without freeing either. (d) The .END
+      branch freed discarded tokens only when the instance completed; when
+      another branch was still active the arriving END token's fields leaked.
+    fix: >-
+      Free the redundant key in putVariableSafe; dupe the response body; free
+      the dropped token and stale array in .effect_failed; free the arriving
+      END token on the still-active arm.
+    blocks_fixed: [TC-EXP-302-03, TC-EXP-302-04, TC-EXP-302-06, TC-EXP-302-07]
+
+  - id: RC-5
+    title: Test file kept drifted duplicates of the engine's teardown helpers
+    severity: MAJOR
+    location: tests/integration/effects_subsystem_test.zig (freeInstanceState, freeTransitionResult)
+    detail: >-
+      Both were hand-maintained copies of functions transition.zig already
+      exports as pub (made pub under ISS-0149/#465 for exactly this reason), and
+      both had drifted. The local freeInstanceState disposed of `variables` and
+      `join_counters` with a bare ObjectMap.deinit(), which frees the hash-table
+      storage but NOT the keys and string values inside — so every engine-set
+      variable leaked. The local freeTransitionResult handled only
+      .effect_emitted payloads and ignored all other PendingEvent variants via
+      `else => {}`, leaking .parallel_split's allocator-owned fields whenever a
+      SERVICE_TASK sat behind a PARALLEL_GATEWAY.
+    fix: >-
+      Both now delegate to transition_mod.freeInstanceState /
+      transition_mod.freeTransitionResult. This is not an assertion change — no
+      expectation was weakened; the teardown is simply correct and stays correct
+      when InstanceState or PendingEvent gains a field.
+    blocks_fixed: [TC-EXP-302-08, and contributed to the 302-03/06/07 group]
+
+measurements:
+  method: >-
+    zig build test-integration-svc against a healthy db_test on port 5453.
+    NOTE: the process env carried a stale BPM_TEST_DB_URL pointing at port 5434
+    (workspace 1's band); test-env-verify caught it (C1/C4 FAIL) and it was
+    overridden to .env's 5453 before any measurement was taken.
+  effects_subsystem_test_failing_blocks:
+    before: 13
+    after: 3
+  whole_suite:
+    before: "625 pass / 9 skip / 90 fail / 9 crash (733 total); 51 leaks"
+    after:  "634 pass / 9 skip / 88 fail / 2 crash (733 total); 49 leaks"
+  regressions: 0
+  regression_method: >-
+    Sorted the full set of failing test names before and after and diffed them.
+    comm -13 (new failures) was empty; 11 names disappeared. Crash count fell
+    from 9 to 2.
+  gates:
+    zig_build: exit 0
+    zig_build_error_set_grep: no output
+    lint_sql_param_types: "exit 0 — 0 BLOCKER, 0 MAJOR, 0 MINOR"
+    zig_build_test: "exit 0, 0 errors"
+    transition_zig_io_free: "confirmed — 0 hits for fs/net/http/process/conn/query/exec"
+
+duplicate_resolution:
+  question: Does GH #515 (ISS-0182) duplicate GH #479 (ISS-0158)?
+  answer: >-
+    Partially, and the overlap was resolved by fixing rather than by
+    reclassifying. Both were filed against the same 13 failing blocks of the
+    same file. #515 attributed them to two causes: wall-clock backoff assertions
+    and leaked allocations in "HTTP-adapter tests". The leak half was correct in
+    symptom but wrong in attribution — the leaks were in production
+    (src/effects/worker.zig deliverSpec, four paths in
+    src/engine/transition.zig) and in the test's duplicated teardown helpers,
+    not in the adapter tests themselves. Those are now fixed under this run, so
+    that half of #515 is closed by this work. The wall-clock half of #515
+    (TC-EXP-301-05) is a real and still-open distinct cause, carried forward as
+    ISS-0186 / a new GitHub issue so #515 can be closed without losing it.
+
+remaining_failures_forwarded:
+  - block: "TC-EXP-301-05: backoff schedule follows expected intervals"
+    cause: >-
+      Asserts on a measured wall-clock delta between two next_attempt_at reads
+      with a +/-500ms tolerance. Not a stable property while ~20 test binaries
+      contend for one database. This is the surviving half of ISS-0182/#515.
+    disposition: forwarded as its own issue
+  - block: "TC-EXP-301-08: duplicate EFFECT_EMITTED events ... deduplicated"
+    cause: >-
+      PoolError.ExhaustedPool at src/db/pool.zig:783 via store.append's
+      duplicate-lookup path (store.zig:428), which acquires a SECOND pool
+      connection while the first is still held. Deadlocks against a small pool
+      under parallel test execution. Distinct from anything in this issue.
+    disposition: forwarded as its own issue
+  - block: "TC-EXP-301-09: email adapter returns 200 (stub, no SMTP)"
+    cause: >-
+      Panics on `rows.rows[0][1].?` — the row exists but the column is NULL, so
+      the test's own unwrap is unguarded. Needs a decision on what the email
+      stub should record in that column before the assertion can be written
+      correctly.
+    disposition: forwarded as its own issue
+
+not_absorbed:
+  note: >-
+    Per the run's scope constraints these known separate issues were left
+    untouched and are unrelated to the above.
+  ids: ["#427", "#424", "#423", "#418", "#417", "#512", "#516", "#517", "#518"]
+
+prevention:
+  - >-
+    A struct crossing a module boundary must have uniform field ownership. If
+    one field is borrowed and the rest are owned, no caller can free it
+    correctly — RC-1 was exactly this and it segfaulted rather than leaked.
+  - >-
+    Test files must not hand-copy engine teardown helpers. RC-5 shows the copy
+    silently drifts and then under-frees, and the resulting leak gets blamed on
+    the production code whose frame appears in the allocator's stack trace.
+    transition.zig exports freeInstanceState and freeTransitionResult as pub —
+    call them.
+  - >-
+    RC-3 would have been caught immediately by any test that exercised effect
+    re-entry against a real database. It survived because the file had never
+    compiled; a NOT NULL column omitted from an INSERT is not something review
+    reliably catches.

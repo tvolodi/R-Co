@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0182",
   "title": "effects_subsystem_test: wall-clock backoff interval assertions and leaked allocations (13 blocks)",
-  "status": "OPEN",
+  "status": "RESOLVED_DUPLICATE",
   "severity": "MAJOR",
   "created_at": "2026-08-07T02:51:21Z",
   "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807 Step 01 diagnosis)",
@@ -23,5 +23,11 @@
     "docs/issue-reports/ISS-0150-diagnosis.yaml"
   ],
   "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. ISS-0150 fixed 3 root causes (33 blocks) with zero regressions; this cluster has a distinct root cause and belongs in its own run.",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/515"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/515",
+  "resolution": "De-duplicated against ISS-0158 / GH #479 during run WF03-ISS-0158-20260807. Both were filed against the same 13 failing blocks of tests/integration/effects_subsystem_test.zig. The leak half of this issue was fixed under ISS-0158 (though the leaks were in production source - src/effects/worker.zig deliverSpec and four paths in src/engine/transition.zig - plus the test file's drifted hand-copies of the engine teardown helpers, NOT in the HTTP adapter tests as stated here). The wall-clock backoff half remains open and was carried forward as ISS-0186 / GH #520 so closing this does not lose it. GitHub issue #515 closed with an explanatory comment.",
+  "resolved_at": "2026-08-07T04:03:47Z",
+  "superseded_by": [
+    "ISS-0158 / GH #479",
+    "ISS-0186 / GH #520"
+  ]
 }

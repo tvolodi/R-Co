@@ -1,662 +1,8 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-07T03:01:25Z",
-  "next_issue_id": 153,
+  "last_updated": "2026-08-07T04:15:13Z",
+  "next_issue_id": 206,
   "issues": [
-    {
-      "id": "ISS-0205",
-      "title": "src/webhook/dispatcher.zig writes webhook_deliveries.status in lowercase; CHECK constraint requires UPPERCASE (GH #400)",
-      "status": "OPEN",
-      "severity": "MAJOR",
-      "category": "schema/constraint-violation",
-      "run_id": "WF03-gh400-20260804",
-      "handoff_id": "40050000-0000-0000-0000-000000000000",
-      "affected_areas": [
-        "src/webhook/dispatcher.zig",
-        "migrations/085_iss106_webhook_deliveries_outbox.sql",
-        "tests/integration/iss205_webhook_outbox_test.zig",
-        "tests/integration/iss106_webhook_outbox_test.zig"
-      ],
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/400",
-      "created_at": "2026-08-03T21:19:11Z",
-      "resolved_at": null
-    },
-    {
-      "id": "ISS-0601-LEAK-001",
-      "title": "src/definition/store.zig:1356 parseGraphJson leaks node IDs (pre-existing)",
-      "status": "OPEN",
-      "severity": "MAJOR",
-      "category": "memory-leak / allocator-dupe-without-free",
-      "run_id": "WF03-gh406-20260803",
-      "handoff_id": "19515745-a803-4912-87b7-65d7e4e3135c",
-      "affected_areas": [
-        "src/definition/store.zig",
-        "tests/integration/iss601_state_snapshots_test.zig"
-      ],
-      "created_at": "2026-08-03T15:09:08Z",
-      "resolved_at": null,
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/406"
-    },
-    {
-      "id": "ISS-0112",
-      "title": "Migration/schema drift and shared database state break 42 integration tests",
-      "status": "RESOLVED",
-      "severity": "MAJOR",
-      "category": "schema/migration-drift",
-      "run_id": "WF03-gh375-20260801",
-      "handoff_id": "8cff840b-9d33-4d80-ae27-8a6c9c22842d",
-      "affected_areas": [
-        "migrations/",
-        "tests/integration/ext02_webhook_dispatch_test.zig",
-        "tests/integration/env01_test.zig",
-        "tests/integration/env02_test.zig",
-        "tests/integration/env03_test.zig",
-        "tests/integration/exp201_202_entities_test.zig",
-        "tests/integration/svc01_service_catalog_scope_test.zig",
-        "tests/integration/svc03_definition_activation_scope_test.zig",
-        "tests/integration/svc04_admin_api_test.zig"
-      ],
-      "created_at": "2026-08-01T08:52:13Z",
-      "resolved_at": "2026-08-01T12:19:21Z",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/375"
-    },
-    {
-      "id": "ISS-0109",
-      "title": "lint_migration_schema.py reports false-positive BLOCKER on public.<table> mentioned inside a -- prose comment (081_iss101_timers_failed_status.sql)",
-      "status": "RESOLVED",
-      "severity": "MINOR",
-      "category": "tooling / lint-false-positive-comment-text-scanned-as-sql",
-      "run_id": "WF03-iss0109-20260801",
-      "handoff_id": null,
-      "affected_areas": [
-        "tools/lint_migration_schema.py",
-        "migrations/081_iss101_timers_failed_status.sql"
-      ],
-      "created_at": "2026-07-31T23:36:06Z",
-      "resolved_at": "2026-08-01T00:14:08Z",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/370"
-    },
-    {
-      "id": "ISS-0108",
-      "title": "db_integration_test.zig TC-DB-01-01/02 use unqualified `schema_migrations` reference, which silently resolves to a stray legacy tenant_default.schema_migrations shadow table under the tenant_default,public search_path instead of public.schema_migrations",
-      "status": "RESOLVED",
-      "severity": "MINOR",
-      "category": "test-isolation / unqualified-table-reference-resolves-to-shadow-schema",
-      "run_id": "WF03-iss0108-20260801",
-      "handoff_id": "aef0e7e1-4757-4d1e-aff3-8e0bc729ca2f",
-      "affected_areas": [
-        "tests/integration/db_integration_test.zig",
-        "migrations/001_event_store.sql",
-        "migrations/055_xc06_backwards_compatibility.sql",
-        "migrations/GBL-104_iss0108_drop_stray_tenant_schema_migrations.sql"
-      ],
-      "created_at": "2026-07-31T19:43:19Z",
-      "resolved_at": "2026-07-31T23:36:06Z",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/368"
-    },
-    {
-      "id": "ISS-0107",
-      "title": "test-integration-others-internal barrier group (the ~19+ non-ISS-503 test-integration binaries) still deadlock (40P01) against each other under full concurrent `zig build test-integration`, independent of ISS-0106's ISS-503 fix",
-      "status": "RESOLVED",
-      "severity": "MAJOR",
-      "category": "test-isolation / postgres-lock-contention-under-concurrent-DDL",
-      "run_id": "WF03-iss0107-20260731",
-      "handoff_id": "90c64911-e9e3-45fe-bf11-e7863f24230a",
-      "affected_areas": [
-        "tests/integration/db_integration_test.zig",
-        "tests/integration/exp103_instance_waits_test.zig",
-        "tests/integration/tnt_schema_isolation_test.zig",
-        "tests/integration/iss205_webhook_outbox_test.zig",
-        "tests/integration/helpers.zig"
-      ],
-      "created_at": "2026-07-31T17:57:28Z",
-      "resolved_at": "2026-07-31T20:56:33Z",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/366"
-    },
-    {
-      "id": "ISS-0106",
-      "title": "db_integration_test.zig TC-DB-01-01/TC-DB-01-02 fail under full concurrent zig build test-integration: SELECT COUNT(*) FROM schema_migrations returns 0 amid Postgres 'deadlock detected' (C40P01) errors across concurrently-running DDL/migration test binaries",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "category": "test-isolation / postgres-lock-contention-under-concurrent-DDL",
-      "run_id": "WF03-iss0100-20260731",
-      "handoff_id": "wf03-iss0100-step-03f",
-      "affected_areas": [
-        "tests/integration/db_integration_test.zig",
-        "tests/integration/test_iss503_rls_removal.zig",
-        "tests/integration/helpers.zig",
-        "src/db/migrations.zig",
-        "build.zig (test-integration step, concurrent binary execution)"
-      ],
-      "created_at": "2026-07-31T14:52:41Z",
-      "resolved_at": "2026-07-31T18:29:26Z",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/364"
-    },
-    {
-      "id": "ISS-0100",
-      "title": "Integration test fixtures insert public.tenant rows without tenant_type='test', so clean_test_db.py's cleanup never removes them (leaked production-typed tenants)",
-      "status": "OPEN",
-      "severity": "MAJOR",
-      "category": "test-fixture-hygiene / shared-test-db-state-leak",
-      "run_id": "WF03-iss0099-20260731",
-      "handoff_id": "wf03-iss0099-step-verify",
-      "affected_areas": [
-        "tests/integration/helpers.zig",
-        "tools/clean_test_db.py"
-      ],
-      "created_at": "2026-07-31T07:35:00Z",
-      "resolved_at": null
-    },
-    {
-      "id": "ISS-0098",
-      "title": "spt01_provisioning_test.zig TC-SPT-01-07 expects empty tenant context to resolve search_path to tenant_default, but src/db/pool.zig intentionally implements empty-context-means-public",
-      "status": "RESOLVED",
-      "severity": "MINOR",
-      "category": "CATEGORY_E_test_code_error",
-      "run_id": "WF03-iss0098-20260731",
-      "handoff_id": "wf03-iss0098-step01-diagnose",
-      "affected_areas": [
-        "tests/integration/spt01_provisioning_test.zig",
-        "src/db/pool.zig",
-        "tests/specs/SPT-01.md"
-      ],
-      "created_at": "2026-07-31T05:16:49Z",
-      "resolved_at": "2026-07-31T06:30:32Z",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/353"
-    },
-    {
-      "id": "ISS-0099",
-      "title": "TC-SPT-01-06 fails: applyRequestStorageRouting() falls back to LEGACY_RLS/public for an unprovisioned tenant ID instead of routing to the SCHEMA path",
-      "status": "RESOLVED",
-      "severity": "MAJOR",
-      "category": "test-vs-implementation-drift (ISS-501 storage_mode resolution)",
-      "run_id": "WF03-iss0098-20260731",
-      "handoff_id": "wf03-iss0098-step05-verify",
-      "affected_areas": [
-        "tests/integration/spt01_provisioning_test.zig",
-        "src/db/pool.zig"
-      ],
-      "created_at": "2026-07-31T06:27:43Z",
-      "resolved_at": "2026-07-31T08:10:00Z",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/355"
-    },
-    {
-      "id": "ISS-0076",
-      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table — creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
-      "status": "OPEN",
-      "severity": "MAJOR",
-      "category": "migration scoping / search_path defect",
-      "run_id": "WF03-iss0074-20260730",
-      "handoff_id": "gh-289-WF03-iss0074-20260730-followup",
-      "affected_areas": [
-        "migrations/GBL-100_exp501_secrets.sql"
-      ],
-      "created_at": "2026-07-30T11:28:33Z",
-      "resolved_at": null,
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/335"
-    },
-    {
-      "id": "ISS-0074",
-      "title": "secrets/crypto.zig stores plaintext behind AES-256-GCM envelope metadata",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "category": "security - fake encryption (plaintext stored, envelope metadata is fabricated)",
-      "run_id": "WF03-iss0074-20260730",
-      "handoff_id": "gh-289-WF03-iss0074-20260730",
-      "affected_areas": [
-        "src/secrets/crypto.zig",
-        "src/secrets/store.zig"
-      ],
-      "created_at": "2026-07-30T11:28:33Z",
-      "resolved_at": "2026-07-30T11:28:33Z"
-    },
-    {
-      "id": "ISS-0073",
-      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm — signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
-      "status": "OPEN",
-      "severity": "BLOCKER",
-      "category": "logic error — singleton cache bypasses realm resolution at callback time",
-      "run_id": "WF03-oidc-callback-realm-20260616",
-      "handoff_id": "1ef2a3b4-c5d6-7890-1ef2-a3b4c5d67890",
-      "affected_areas": [
-        "web/src/pages/OidcCallbackPage.tsx",
-        "web/src/auth/OidcManager.ts",
-        "web/src/auth/tenantConfig.ts"
-      ],
-      "created_at": "2026-06-16T05:47:49Z",
-      "resolved_at": null
-    },
-    {
-      "id": "ISS-0072",
-      "title": "Tenant admin login fails after onboarding — GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
-      "status": "OPEN",
-      "severity": "BLOCKER",
-      "category": "logic error / design gap",
-      "run_id": "WF03-oidc-tenant-config-20260616",
-      "handoff_id": "1ab2c3d4-e5f6-7890-1ab2-c3d4e5f67890",
-      "affected_areas": [
-        "src/api/routes/tenant_config.zig",
-        "web/src/auth/tenantConfig.ts",
-        "web/src/auth/OidcManager.ts",
-        "web/src/pages/admin/onboarding/OnboardingResultPage.tsx"
-      ],
-      "created_at": "2026-06-16T04:42:40Z",
-      "resolved_at": null
-    },
-    {
-      "id": "ISS-0071",
-      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input — swiftroute realm-missing inconsistent state compounds scenario unverifiability",
-      "status": "OPEN",
-      "severity": "BLOCKER",
-      "category": "test harness error + backend state inconsistency",
-      "run_id": "WF03-uat-onboarding-realm-sync-20260616",
-      "handoff_id": "d3e4f5a6-b7c8-9012-d3e4-f5a6b7c89012",
-      "affected_areas": [
-        "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
-        "src/identity/onboarding.zig"
-      ],
-      "created_at": "2026-06-15T21:53:31Z",
-      "resolved_at": null
-    },
-    {
-      "id": "ISS-0070",
-      "title": "Onboarding saga background thread never transitions onboarding_registry row from 'pending' to terminal state (completed/failed)",
-      "status": "OPEN",
-      "severity": "BLOCKER",
-      "category": "backend logic error",
-      "run_id": "WF03-onboarding-saga-fix-20260615",
-      "handoff_id": "e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7081",
-      "affected_areas": [
-        "src/api/routes/onboarding.zig",
-        "src/identity/onboarding.zig"
-      ],
-      "created_at": "2026-06-15T15:05:40Z",
-      "resolved_at": null
-    },
-    {
-      "id": "ISS-0069",
-      "title": "Onboarding E2E/pipeline tests fail: pipeline.ts navigateSpa uses history.pushState + manual popstate dispatch which does not reliably trigger React Router data router re-render",
-      "status": "OPEN",
-      "severity": "BLOCKER",
-      "run_id": "WF03-onboarding-e2e-fix-20260614",
-      "handoff_id": "ed0b5d20-67f6-4486-9951-c1814c5c6d5f",
-      "affected_areas": [
-        "web/tests/e2e/pipeline.ts",
-        "web/tests/e2e/onboarding/onb-ui-01.e2e.spec.ts",
-        "web/tests/e2e/onboarding/onb-ui-02.e2e.spec.ts",
-        "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts"
-      ],
-      "created_at": "2026-06-14T18:56:48Z",
-      "resolved_at": null
-    },
-    {
-      "id": "ISS-0068",
-      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() — tenant schemas missing for all tenants",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
-      "handoff_id": "wf03-spt01-schema-20260607-005",
-      "affected_areas": [
-        "src/identity/onboarding.zig",
-        "src/db/provisioning.zig",
-        "src/main.zig"
-      ],
-      "created_at": "2026-06-07T01:04:48Z",
-      "resolved_at": "2026-06-07T01:47:30Z"
-    },
-    {
-      "id": "ISS-0067",
-      "title": "WF03 f8 batch2 rerun1: TM auth redirect caused by localhost/127 identity drift and full-suite integration rerun blocked TM scope",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-f8-b2-step4-rerun1-failures-20260607",
-      "handoff_id": "wf03-f8-b2-r1-20260607-005",
-      "affected_areas": [
-        "web/tests/e2e/helpers.ts",
-        "web/tests/e2e/tenants.e2e.spec.ts",
-        ".vscode/run-zig-test-integration.ps1",
-        ".vscode/tasks.json",
-        "build.zig",
-        "docs/issues/ISS-0067.json"
-      ],
-      "created_at": "2026-06-06T23:04:48Z",
-      "resolved_at": "2026-06-06T23:04:48Z"
-    },
-    {
-      "id": "ISS-0066",
-      "title": "WF03 f8 batch2 step4: runMigrations leaked duplicated migration-version keys when schema_migrations contained multi-schema duplicates",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-f8-b2-step4-integration-blockers-20260607",
-      "handoff_id": "wf03-f8-b2-step4-20260607-005",
-      "affected_areas": [
-        "tests/integration/helpers.zig",
-        "docs/issues/ISS-0066.json"
-      ],
-      "created_at": "2026-06-06T22:43:21Z",
-      "resolved_at": "2026-06-06T22:43:21Z"
-    },
-    {
-      "id": "ISS-0064",
-      "title": "WF03 F8 batch1 tenants edit page: missing GET /api/v1/tenants/:slug route caused Failed to load tenant; supervised integration symptom was not an actual post-cleanup stall",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-f8-b1-tenants-e2e-timeout-20260606",
-      "handoff_id": "wf03-f8-b1-tenants-e2e-timeout-20260606-005",
-      "affected_areas": [
-        "src/identity/service.zig",
-        "src/api/routes/identity.zig",
-        "src/main.zig",
-        "docs/issues/ISS-0064.json"
-      ],
-      "created_at": "2026-06-06T13:45:17Z",
-      "resolved_at": "2026-06-06T13:45:17Z"
-    },
-    {
-      "id": "ISS-0063",
-      "title": "OIDC login redirect loop: Keycloak URL port mismatch + InMemoryWebStorage state loss + tenant-config 127.0.0.1 fallback",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-login-redirect-loop-20260601",
-      "handoff_id": "d4d751ab-80f4-46c3-a920-adc7db264522",
-      "affected_areas": [
-        "infrastructure/keycloak/gateway/nginx.conf",
-        "web/src/auth/OidcManager.ts",
-        "src/api/routes/tenant_config.zig"
-      ],
-      "created_at": "2026-06-01T21:04:55Z",
-      "resolved_at": "2026-05-31T21:45:52Z"
-    },
-    {
-      "id": "ISS-0062",
-      "title": "WF03 f5 batch3 step04: PostgreSQL result rows leaked column buffers across OBS-03/OBS-04 and masked TC-IDN-02-05",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-f5-batch3-step04-fix-20260530",
-      "handoff_id": "27dfa92a-19f3-4a12-8a90-cb71d44f76c7",
-      "affected_areas": [
-        "vendor/pg/pg.zig",
-        "src/db/pool.zig",
-        "docs/issues/ISS-0062.json"
-      ],
-      "created_at": "2026-05-30T22:20:40Z",
-      "resolved_at": "2026-05-30T22:20:40Z"
-    },
-    {
-      "id": "ISS-0061",
-      "title": "WF03 f5 step04 rework2: ADM-UI fixture creation switched to UI flow to remove failing /api/v1/users dependency",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-f5-batch1-step04-fail-20260530",
-      "handoff_id": "c133f4f0-1269-4bc4-b34d-15e4f4b3f410",
-      "affected_areas": [
-        "web/tests/e2e/f5-admin-users.e2e.spec.ts",
-        "docs/issues/ISS-0061.json"
-      ],
-      "created_at": "2026-05-30T15:40:45Z",
-      "resolved_at": "2026-05-30T15:40:45Z"
-    },
-    {
-      "id": "ISS-0060",
-      "title": "WF03 f5 step04 issue-fix: ADM-UI env/test contract repaired; live OIDC browser reachability remains blocked",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-f5-batch1-step04-fail-20260530",
-      "handoff_id": "c133f4f0-1269-4bc4-b34d-15e4f4b3f410",
-      "affected_areas": [
-        "web/src/pages/admin/UsersPage.tsx",
-        "web/tests/e2e/f5-admin-users.e2e.spec.ts",
-        "web/tests/e2e/oidcf-login.e2e.spec.ts",
-        "docs/issues/ISS-0060.json"
-      ],
-      "created_at": "2026-05-30T15:08:28Z",
-      "resolved_at": "2026-05-30T15:33:03Z"
-    },
-    {
-      "id": "ISS-0059",
-      "title": "WF03 f3a inui02 fix: login redirect dropped query params and broke definition filter URL persistence after reload",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-f3a-inui02-fix-20260529",
-      "handoff_id": "wf03-f3a-step01-002",
-      "affected_areas": [
-        "web/src/pages/LoginPage.tsx",
-        "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
-        "docs/issues/ISS-0059.json"
-      ],
-      "created_at": "2026-05-29T18:53:03Z",
-      "resolved_at": "2026-05-29T18:53:03Z"
-    },
-    {
-      "id": "ISS-0058",
-      "title": "WF03 stage11 sim05-08 releasefix: deterministic verification recovered using requirement-scoped integration target",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim05-08-releasefix-20260529",
-      "handoff_id": "ffd28f71-b064-4577-bf6e-f95e79f9f4b4",
-      "affected_areas": [
-        "tests/reports/report-20260529T120047Z-WF03-stage11-sim05-08-releasefix-20260529-step01-issuefix.json",
-        "docs/issues/ISS-0058.json"
-      ],
-      "created_at": "2026-05-29T12:00:47Z",
-      "resolved_at": "2026-05-29T12:00:47Z"
-    },
-    {
-      "id": "ISS-0057",
-      "title": "WF03 stage11 sim05-08 testfix: integration startup contention at TC-DB-01-01 caused non-deterministic stall behavior",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim05-08-testfix-20260529",
-      "handoff_id": "6a7aa30d-f4fc-4788-b855-2b00a84cef56",
-      "affected_areas": [
-        "tests/integration/helpers.zig",
-        "build.zig",
-        "tests/unit/db_test.zig",
-        "tests/reports/report-20260529T104728Z-WF02-stage11-sim05-08-20260529-step04-rework2.json"
-      ],
-      "created_at": "2026-05-29T11:16:23Z",
-      "resolved_at": "2026-05-29T11:16:23Z"
-    },
-    {
-      "id": "ISS-0056",
-      "title": "WF03 stage11 releasefix rework1: TC-XC-04-04 deterministic hash test invoked canonical audit hash function with legacy argument order",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
-      "handoff_id": "54d76235-9a39-4a95-a163-98cc36567f96",
-      "affected_areas": [
-        "tests/integration/xc04_kernel_determinism_test.zig",
-        "tests/reports/WF03-stage11-sim01-04-releasefix-20260529-step-05-rework1-issue-fixer-validation.txt"
-      ],
-      "created_at": "2026-05-29T07:54:41Z",
-      "resolved_at": "2026-05-29T07:54:41Z"
-    },
-    {
-      "id": "ISS-0055",
-      "title": "WF03 stage11 releasefix: ADP-07 TC-ADP-07-01 failed because AGENT_RUNNER seed role was missing after test DB cleanup",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
-      "handoff_id": "c7c0735f-c9dd-4bb9-bcec-d2eb7c7f0b82",
-      "affected_areas": [
-        "tools/clean_test_db.py",
-        "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
-        "tests/reports/WF03-stage11-sim01-04-releasefix-20260529-step-03-issue-fixer-validation.txt"
-      ],
-      "created_at": "2026-05-29T03:31:05Z",
-      "resolved_at": "2026-05-29T03:31:05Z"
-    },
-    {
-      "id": "ISS-0054",
-      "title": "WF03 Stage11 releasefix rework1: deterministic integration run exposes ADP-09/ADP-10 assertion failures (no stall)",
-      "status": "OPEN",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
-      "handoff_id": "08624c7c-5b8a-459f-a0f3-c8f49a4442a8",
-      "affected_areas": [
-        "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-        "tests/integration/adp10_agent_io_capture_audit_test.zig",
-        "tests/reports/zig-test-integration-supervised-latest.log"
-      ],
-      "created_at": "2026-05-29T02:30:24Z",
-      "resolved_at": null
-    },
-    {
-      "id": "ISS-0053",
-      "title": "WF03 Stage11 releasefix: silent integration DB cleanup failure could leak stale fixture data and trigger DuplicateNameVersion cascades",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
-      "handoff_id": "08624c7c-5b8a-459f-a0f3-c8f49a4442a8",
-      "affected_areas": [
-        ".vscode/run-zig-test-integration.ps1",
-        "tests/reports/zig-test-integration-supervised-latest.log"
-      ],
-      "created_at": "2026-05-29T01:59:29Z",
-      "resolved_at": "2026-05-29T02:30:24Z"
-    },
-    {
-      "id": "ISS-0052",
-      "title": "WF03 Stage11 cycle3 rework2: XC-04 deterministic path and Stage11 aggregate telemetry stabilization",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim01-04-cycle3-20260529",
-      "handoff_id": "3baf01b8-4a4d-4e5f-9d1e-96d09a7c3c88",
-      "affected_areas": [
-        "build.zig",
-        "tests/integration/xc04_kernel_determinism_test.zig",
-        "tests/integration/sim01_04_simulation_mode_test.zig",
-        "tests/integration/stage11_sim_xc04_aggregate_test.zig"
-      ],
-      "created_at": "2026-05-29T01:19:26Z",
-      "resolved_at": "2026-05-29T01:19:26Z"
-    },
-    {
-      "id": "ISS-0051",
-      "title": "WF03 Stage11 cycle3 rework1: aggregate integration run remains non-deterministic/blocked after contention hardening",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim01-04-cycle3-20260529",
-      "handoff_id": "f71d4d1a-30f2-4fb1-8b24-3b2b1c6b2d11",
-      "affected_areas": [
-        "build.zig",
-        "tests/integration/helpers.zig",
-        "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-01-rework1-zig-build-test-integration.log"
-      ],
-      "created_at": "2026-05-29T01:12:44Z",
-      "resolved_at": "2026-05-29T01:19:26Z"
-    },
-    {
-      "id": "ISS-0050",
-      "title": "WF03 Stage11 cycle3: integration harness reset used all-or-nothing truncate; verification blocked by concurrent integration runners/cache lock contention",
-      "status": "OPEN",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim01-04-cycle3-20260529",
-      "handoff_id": "8e3e4f44-4f67-43f3-98d6-ee3376538ebf",
-      "affected_areas": [
-        "tests/integration/helpers.zig",
-        "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-01-zig-build-test-integration.log"
-      ],
-      "created_at": "2026-05-28T19:46:36Z",
-      "resolved_at": null
-    },
-    {
-      "id": "ISS-0049",
-      "title": "WF03 Stage11 testfix2 rework2: OIDC-35 bootstrap emitted MissingProviderType under partial IDP env",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim01-04-testfix2-20260528",
-      "handoff_id": "414d3e85-d6db-4f9f-83ea-1c293b8f1f65",
-      "affected_areas": [
-        "tests/integration/oidc35_onboarding_test.zig",
-        "tests/reports/WF03-stage11-sim01-04-testfix2-20260528-step-01-rework2-zig-build-test-integration-oidc35.log"
-      ],
-      "created_at": "2026-05-28T18:43:35Z",
-      "resolved_at": "2026-05-28T18:43:35Z"
-    },
-    {
-      "id": "ISS-0047",
-      "title": "WF03 Stage11 testfix2 rework1: SIM isolation failures resolved via per-test transient-data cleanup and default seed restoration",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim01-04-testfix2-20260528",
-      "handoff_id": "d8d7f4e0-8918-417e-a450-5f73ef353c2c",
-      "affected_areas": [
-        "tests/integration/helpers.zig",
-        "test_wf03_issuefix_rework1_latest.txt",
-        "test_wf03_oidc09_rework1.txt"
-      ],
-      "created_at": "2026-05-28T17:03:11Z",
-      "resolved_at": "2026-05-28T18:18:53Z"
-    },
-    {
-      "id": "ISS-0048",
-      "title": "WF03 Stage11 rework1: aggregate integration blocked by missing OIDC31 env prerequisites (BPM_IDP_BASE_URL/BPM_TEST_URL)",
-      "status": "OPEN",
-      "severity": "MAJOR",
-      "run_id": "WF03-stage11-sim01-04-testfix2-20260528",
-      "handoff_id": "d8d7f4e0-8918-417e-a450-5f73ef353c2c",
-      "affected_areas": [
-        "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
-        "test_wf03_issuefix_rework1_final.txt"
-      ],
-      "created_at": "2026-05-28T18:18:53Z",
-      "resolved_at": null
-    },
-    {
-      "id": "ISS-0046",
-      "title": "WF03 Stage11 testfix: SIM compile blockers, XC shim server errors, and OIDC-35 compensation leak/failure cluster",
-      "status": "RESOLVED",
-      "severity": "BLOCKER",
-      "run_id": "WF03-stage11-sim01-04-testfix-20260528",
-      "handoff_id": "ee34f66e-9d15-4d07-9530-26be33ec80f6",
-      "affected_areas": [
-        "src/simulation/tenant_store.zig",
-        "src/simulation/uuid_source.zig",
-        "src/identity/onboarding.zig",
-        "tests/integration/helpers.zig",
-        "tests/integration/oidc35_onboarding_test.zig",
-        "tests/integration/sim01_04_simulation_mode_test.zig",
-        "tests/integration/xc01_trace_propagation_test.zig"
-      ],
-      "created_at": "2026-05-28T16:18:05Z",
-      "resolved_at": "2026-05-28T16:18:05Z"
-    },
-    {
-      "id": "ISS-0045",
-      "title": "WF03 XC-02..XC-06 testfix diagnosis: mixed integration-schema drift and test expectation drift across XC suites",
-      "status": "OPEN",
-      "severity": "BLOCKER",
-      "run_id": "WF03-xc02-06-testfix-20260528",
-      "handoff_id": "87a3f494-a3be-4d36-9aa8-4c2c9f9a27cd",
-      "affected_areas": [
-        "tests/integration/xc02_audit_immutability_test.zig",
-        "tests/integration/xc03_configuration_repository_test.zig",
-        "tests/integration/xc04_kernel_determinism_test.zig",
-        "tests/integration/xc05_deterministic_replay_test.zig",
-        "tests/integration/xc06_backwards_compatibility_test.zig",
-        "migrations/052_xc03_configuration_repository.sql",
-        "src/config/loader.zig",
-        "src/repository/artifacts.zig"
-      ],
-      "created_at": "2026-05-28T12:58:52Z",
-      "resolved_at": null
-    },
-    {
-      "id": "ISS-0044",
-      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails — unique index not upgraded to named constraint",
-      "status": "RESOLVED",
-      "severity": "CRITICAL",
-      "run_id": "WF03-def-store-regression-20260528",
-      "handoff_id": "7e73f75d-77a1-4f0f-b934-25c8f868f66c",
-      "affected_areas": [
-        "src/definition/store.zig",
-        "migrations/028_adp02_tenant_scope_persistence.sql",
-        "migrations/044_fix_definition_conflict_constraint.sql"
-      ],
-      "created_at": "2026-05-28T05:55:26Z",
-      "resolved_at": "2026-05-28T05:55:26Z"
-    },
     {
       "id": "ISS-0001",
       "title": "WF04 rerun regression: API-03 integration leak and frontend no-tests failure",
@@ -1127,6 +473,327 @@
       "resolved_at": "2026-05-28T03:39:57Z"
     },
     {
+      "id": "ISS-0044",
+      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails \u2014 unique index not upgraded to named constraint",
+      "status": "RESOLVED",
+      "severity": "CRITICAL",
+      "run_id": "WF03-def-store-regression-20260528",
+      "handoff_id": "7e73f75d-77a1-4f0f-b934-25c8f868f66c",
+      "affected_areas": [
+        "src/definition/store.zig",
+        "migrations/028_adp02_tenant_scope_persistence.sql",
+        "migrations/044_fix_definition_conflict_constraint.sql"
+      ],
+      "created_at": "2026-05-28T05:55:26Z",
+      "resolved_at": "2026-05-28T05:55:26Z"
+    },
+    {
+      "id": "ISS-0045",
+      "title": "WF03 XC-02..XC-06 testfix diagnosis: mixed integration-schema drift and test expectation drift across XC suites",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF03-xc02-06-testfix-20260528",
+      "handoff_id": "87a3f494-a3be-4d36-9aa8-4c2c9f9a27cd",
+      "affected_areas": [
+        "tests/integration/xc02_audit_immutability_test.zig",
+        "tests/integration/xc03_configuration_repository_test.zig",
+        "tests/integration/xc04_kernel_determinism_test.zig",
+        "tests/integration/xc05_deterministic_replay_test.zig",
+        "tests/integration/xc06_backwards_compatibility_test.zig",
+        "migrations/052_xc03_configuration_repository.sql",
+        "src/config/loader.zig",
+        "src/repository/artifacts.zig"
+      ],
+      "created_at": "2026-05-28T12:58:52Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0046",
+      "title": "WF03 Stage11 testfix: SIM compile blockers, XC shim server errors, and OIDC-35 compensation leak/failure cluster",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-testfix-20260528",
+      "handoff_id": "ee34f66e-9d15-4d07-9530-26be33ec80f6",
+      "affected_areas": [
+        "src/simulation/tenant_store.zig",
+        "src/simulation/uuid_source.zig",
+        "src/identity/onboarding.zig",
+        "tests/integration/helpers.zig",
+        "tests/integration/oidc35_onboarding_test.zig",
+        "tests/integration/sim01_04_simulation_mode_test.zig",
+        "tests/integration/xc01_trace_propagation_test.zig"
+      ],
+      "created_at": "2026-05-28T16:18:05Z",
+      "resolved_at": "2026-05-28T16:18:05Z"
+    },
+    {
+      "id": "ISS-0047",
+      "title": "WF03 Stage11 testfix2 rework1: SIM isolation failures resolved via per-test transient-data cleanup and default seed restoration",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-testfix2-20260528",
+      "handoff_id": "d8d7f4e0-8918-417e-a450-5f73ef353c2c",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "test_wf03_issuefix_rework1_latest.txt",
+        "test_wf03_oidc09_rework1.txt"
+      ],
+      "created_at": "2026-05-28T17:03:11Z",
+      "resolved_at": "2026-05-28T18:18:53Z"
+    },
+    {
+      "id": "ISS-0048",
+      "title": "WF03 Stage11 rework1: aggregate integration blocked by missing OIDC31 env prerequisites (BPM_IDP_BASE_URL/BPM_TEST_URL)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "run_id": "WF03-stage11-sim01-04-testfix2-20260528",
+      "handoff_id": "d8d7f4e0-8918-417e-a450-5f73ef353c2c",
+      "affected_areas": [
+        "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
+        "test_wf03_issuefix_rework1_final.txt"
+      ],
+      "created_at": "2026-05-28T18:18:53Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0049",
+      "title": "WF03 Stage11 testfix2 rework2: OIDC-35 bootstrap emitted MissingProviderType under partial IDP env",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-testfix2-20260528",
+      "handoff_id": "414d3e85-d6db-4f9f-83ea-1c293b8f1f65",
+      "affected_areas": [
+        "tests/integration/oidc35_onboarding_test.zig",
+        "tests/reports/WF03-stage11-sim01-04-testfix2-20260528-step-01-rework2-zig-build-test-integration-oidc35.log"
+      ],
+      "created_at": "2026-05-28T18:43:35Z",
+      "resolved_at": "2026-05-28T18:43:35Z"
+    },
+    {
+      "id": "ISS-0050",
+      "title": "WF03 Stage11 cycle3: integration harness reset used all-or-nothing truncate; verification blocked by concurrent integration runners/cache lock contention",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-cycle3-20260529",
+      "handoff_id": "8e3e4f44-4f67-43f3-98d6-ee3376538ebf",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-01-zig-build-test-integration.log"
+      ],
+      "created_at": "2026-05-28T19:46:36Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0051",
+      "title": "WF03 Stage11 cycle3 rework1: aggregate integration run remains non-deterministic/blocked after contention hardening",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-cycle3-20260529",
+      "handoff_id": "f71d4d1a-30f2-4fb1-8b24-3b2b1c6b2d11",
+      "affected_areas": [
+        "build.zig",
+        "tests/integration/helpers.zig",
+        "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-01-rework1-zig-build-test-integration.log"
+      ],
+      "created_at": "2026-05-29T01:12:44Z",
+      "resolved_at": "2026-05-29T01:19:26Z"
+    },
+    {
+      "id": "ISS-0052",
+      "title": "WF03 Stage11 cycle3 rework2: XC-04 deterministic path and Stage11 aggregate telemetry stabilization",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-cycle3-20260529",
+      "handoff_id": "3baf01b8-4a4d-4e5f-9d1e-96d09a7c3c88",
+      "affected_areas": [
+        "build.zig",
+        "tests/integration/xc04_kernel_determinism_test.zig",
+        "tests/integration/sim01_04_simulation_mode_test.zig",
+        "tests/integration/stage11_sim_xc04_aggregate_test.zig"
+      ],
+      "created_at": "2026-05-29T01:19:26Z",
+      "resolved_at": "2026-05-29T01:19:26Z"
+    },
+    {
+      "id": "ISS-0053",
+      "title": "WF03 Stage11 releasefix: silent integration DB cleanup failure could leak stale fixture data and trigger DuplicateNameVersion cascades",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+      "handoff_id": "08624c7c-5b8a-459f-a0f3-c8f49a4442a8",
+      "affected_areas": [
+        ".vscode/run-zig-test-integration.ps1",
+        "tests/reports/zig-test-integration-supervised-latest.log"
+      ],
+      "created_at": "2026-05-29T01:59:29Z",
+      "resolved_at": "2026-05-29T02:30:24Z"
+    },
+    {
+      "id": "ISS-0054",
+      "title": "WF03 Stage11 releasefix rework1: deterministic integration run exposes ADP-09/ADP-10 assertion failures (no stall)",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+      "handoff_id": "08624c7c-5b8a-459f-a0f3-c8f49a4442a8",
+      "affected_areas": [
+        "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
+        "tests/integration/adp10_agent_io_capture_audit_test.zig",
+        "tests/reports/zig-test-integration-supervised-latest.log"
+      ],
+      "created_at": "2026-05-29T02:30:24Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0055",
+      "title": "WF03 stage11 releasefix: ADP-07 TC-ADP-07-01 failed because AGENT_RUNNER seed role was missing after test DB cleanup",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+      "handoff_id": "c7c0735f-c9dd-4bb9-bcec-d2eb7c7f0b82",
+      "affected_areas": [
+        "tools/clean_test_db.py",
+        "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
+        "tests/reports/WF03-stage11-sim01-04-releasefix-20260529-step-03-issue-fixer-validation.txt"
+      ],
+      "created_at": "2026-05-29T03:31:05Z",
+      "resolved_at": "2026-05-29T03:31:05Z"
+    },
+    {
+      "id": "ISS-0056",
+      "title": "WF03 stage11 releasefix rework1: TC-XC-04-04 deterministic hash test invoked canonical audit hash function with legacy argument order",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+      "handoff_id": "54d76235-9a39-4a95-a163-98cc36567f96",
+      "affected_areas": [
+        "tests/integration/xc04_kernel_determinism_test.zig",
+        "tests/reports/WF03-stage11-sim01-04-releasefix-20260529-step-05-rework1-issue-fixer-validation.txt"
+      ],
+      "created_at": "2026-05-29T07:54:41Z",
+      "resolved_at": "2026-05-29T07:54:41Z"
+    },
+    {
+      "id": "ISS-0057",
+      "title": "WF03 stage11 sim05-08 testfix: integration startup contention at TC-DB-01-01 caused non-deterministic stall behavior",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim05-08-testfix-20260529",
+      "handoff_id": "6a7aa30d-f4fc-4788-b855-2b00a84cef56",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "build.zig",
+        "tests/unit/db_test.zig",
+        "tests/reports/report-20260529T104728Z-WF02-stage11-sim05-08-20260529-step04-rework2.json"
+      ],
+      "created_at": "2026-05-29T11:16:23Z",
+      "resolved_at": "2026-05-29T11:16:23Z"
+    },
+    {
+      "id": "ISS-0058",
+      "title": "WF03 stage11 sim05-08 releasefix: deterministic verification recovered using requirement-scoped integration target",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim05-08-releasefix-20260529",
+      "handoff_id": "ffd28f71-b064-4577-bf6e-f95e79f9f4b4",
+      "affected_areas": [
+        "tests/reports/report-20260529T120047Z-WF03-stage11-sim05-08-releasefix-20260529-step01-issuefix.json",
+        "docs/issues/ISS-0058.json"
+      ],
+      "created_at": "2026-05-29T12:00:47Z",
+      "resolved_at": "2026-05-29T12:00:47Z"
+    },
+    {
+      "id": "ISS-0059",
+      "title": "WF03 f3a inui02 fix: login redirect dropped query params and broke definition filter URL persistence after reload",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-f3a-inui02-fix-20260529",
+      "handoff_id": "wf03-f3a-step01-002",
+      "affected_areas": [
+        "web/src/pages/LoginPage.tsx",
+        "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+        "docs/issues/ISS-0059.json"
+      ],
+      "created_at": "2026-05-29T18:53:03Z",
+      "resolved_at": "2026-05-29T18:53:03Z"
+    },
+    {
+      "id": "ISS-0060",
+      "title": "WF03 f5 step04 issue-fix: ADM-UI env/test contract repaired; live OIDC browser reachability remains blocked",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-f5-batch1-step04-fail-20260530",
+      "handoff_id": "c133f4f0-1269-4bc4-b34d-15e4f4b3f410",
+      "affected_areas": [
+        "web/src/pages/admin/UsersPage.tsx",
+        "web/tests/e2e/f5-admin-users.e2e.spec.ts",
+        "web/tests/e2e/oidcf-login.e2e.spec.ts",
+        "docs/issues/ISS-0060.json"
+      ],
+      "created_at": "2026-05-30T15:08:28Z",
+      "resolved_at": "2026-05-30T15:33:03Z"
+    },
+    {
+      "id": "ISS-0061",
+      "title": "WF03 f5 step04 rework2: ADM-UI fixture creation switched to UI flow to remove failing /api/v1/users dependency",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-f5-batch1-step04-fail-20260530",
+      "handoff_id": "c133f4f0-1269-4bc4-b34d-15e4f4b3f410",
+      "affected_areas": [
+        "web/tests/e2e/f5-admin-users.e2e.spec.ts",
+        "docs/issues/ISS-0061.json"
+      ],
+      "created_at": "2026-05-30T15:40:45Z",
+      "resolved_at": "2026-05-30T15:40:45Z"
+    },
+    {
+      "id": "ISS-0062",
+      "title": "WF03 f5 batch3 step04: PostgreSQL result rows leaked column buffers across OBS-03/OBS-04 and masked TC-IDN-02-05",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-f5-batch3-step04-fix-20260530",
+      "handoff_id": "27dfa92a-19f3-4a12-8a90-cb71d44f76c7",
+      "affected_areas": [
+        "vendor/pg/pg.zig",
+        "src/db/pool.zig",
+        "docs/issues/ISS-0062.json"
+      ],
+      "created_at": "2026-05-30T22:20:40Z",
+      "resolved_at": "2026-05-30T22:20:40Z"
+    },
+    {
+      "id": "ISS-0063",
+      "title": "OIDC login redirect loop: Keycloak URL port mismatch + InMemoryWebStorage state loss + tenant-config 127.0.0.1 fallback",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-login-redirect-loop-20260601",
+      "handoff_id": "d4d751ab-80f4-46c3-a920-adc7db264522",
+      "affected_areas": [
+        "infrastructure/keycloak/gateway/nginx.conf",
+        "web/src/auth/OidcManager.ts",
+        "src/api/routes/tenant_config.zig"
+      ],
+      "created_at": "2026-06-01T21:04:55Z",
+      "resolved_at": "2026-05-31T21:45:52Z"
+    },
+    {
+      "id": "ISS-0064",
+      "title": "WF03 F8 batch1 tenants edit page: missing GET /api/v1/tenants/:slug route caused Failed to load tenant; supervised integration symptom was not an actual post-cleanup stall",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-f8-b1-tenants-e2e-timeout-20260606",
+      "handoff_id": "wf03-f8-b1-tenants-e2e-timeout-20260606-005",
+      "affected_areas": [
+        "src/identity/service.zig",
+        "src/api/routes/identity.zig",
+        "src/main.zig",
+        "docs/issues/ISS-0064.json"
+      ],
+      "created_at": "2026-06-06T13:45:17Z",
+      "resolved_at": "2026-06-06T13:45:17Z"
+    },
+    {
       "id": "ISS-0065",
       "title": "TC-TM-UI-05 hangs: createTestTenant triggers onboarding saga that never completes",
       "status": "RESOLVED",
@@ -1138,6 +805,147 @@
       ],
       "created_at": "2026-06-06T17:22:25Z",
       "resolved_at": "2026-06-06T17:22:25Z"
+    },
+    {
+      "id": "ISS-0066",
+      "title": "WF03 f8 batch2 step4: runMigrations leaked duplicated migration-version keys when schema_migrations contained multi-schema duplicates",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-f8-b2-step4-integration-blockers-20260607",
+      "handoff_id": "wf03-f8-b2-step4-20260607-005",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "docs/issues/ISS-0066.json"
+      ],
+      "created_at": "2026-06-06T22:43:21Z",
+      "resolved_at": "2026-06-06T22:43:21Z"
+    },
+    {
+      "id": "ISS-0067",
+      "title": "WF03 f8 batch2 rerun1: TM auth redirect caused by localhost/127 identity drift and full-suite integration rerun blocked TM scope",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-f8-b2-step4-rerun1-failures-20260607",
+      "handoff_id": "wf03-f8-b2-r1-20260607-005",
+      "affected_areas": [
+        "web/tests/e2e/helpers.ts",
+        "web/tests/e2e/tenants.e2e.spec.ts",
+        ".vscode/run-zig-test-integration.ps1",
+        ".vscode/tasks.json",
+        "build.zig",
+        "docs/issues/ISS-0067.json"
+      ],
+      "created_at": "2026-06-06T23:04:48Z",
+      "resolved_at": "2026-06-06T23:04:48Z"
+    },
+    {
+      "id": "ISS-0068",
+      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() \u2014 tenant schemas missing for all tenants",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
+      "handoff_id": "wf03-spt01-schema-20260607-005",
+      "affected_areas": [
+        "src/identity/onboarding.zig",
+        "src/db/provisioning.zig",
+        "src/main.zig"
+      ],
+      "created_at": "2026-06-07T01:04:48Z",
+      "resolved_at": "2026-06-07T01:47:30Z"
+    },
+    {
+      "id": "ISS-0069",
+      "title": "Onboarding E2E/pipeline tests fail: pipeline.ts navigateSpa uses history.pushState + manual popstate dispatch which does not reliably trigger React Router data router re-render",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF03-onboarding-e2e-fix-20260614",
+      "handoff_id": "ed0b5d20-67f6-4486-9951-c1814c5c6d5f",
+      "affected_areas": [
+        "web/tests/e2e/pipeline.ts",
+        "web/tests/e2e/onboarding/onb-ui-01.e2e.spec.ts",
+        "web/tests/e2e/onboarding/onb-ui-02.e2e.spec.ts",
+        "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts"
+      ],
+      "created_at": "2026-06-14T18:56:48Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0070",
+      "title": "Onboarding saga background thread never transitions onboarding_registry row from 'pending' to terminal state (completed/failed)",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "backend logic error",
+      "run_id": "WF03-onboarding-saga-fix-20260615",
+      "handoff_id": "e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7081",
+      "affected_areas": [
+        "src/api/routes/onboarding.zig",
+        "src/identity/onboarding.zig"
+      ],
+      "created_at": "2026-06-15T15:05:40Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0071",
+      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input \u2014 swiftroute realm-missing inconsistent state compounds scenario unverifiability",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "test harness error + backend state inconsistency",
+      "run_id": "WF03-uat-onboarding-realm-sync-20260616",
+      "handoff_id": "d3e4f5a6-b7c8-9012-d3e4-f5a6b7c89012",
+      "affected_areas": [
+        "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+        "src/identity/onboarding.zig"
+      ],
+      "created_at": "2026-06-15T21:53:31Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0072",
+      "title": "Tenant admin login fails after onboarding \u2014 GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "logic error / design gap",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "handoff_id": "1ab2c3d4-e5f6-7890-1ab2-c3d4e5f67890",
+      "affected_areas": [
+        "src/api/routes/tenant_config.zig",
+        "web/src/auth/tenantConfig.ts",
+        "web/src/auth/OidcManager.ts",
+        "web/src/pages/admin/onboarding/OnboardingResultPage.tsx"
+      ],
+      "created_at": "2026-06-16T04:42:40Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0073",
+      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm \u2014 signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "logic error \u2014 singleton cache bypasses realm resolution at callback time",
+      "run_id": "WF03-oidc-callback-realm-20260616",
+      "handoff_id": "1ef2a3b4-c5d6-7890-1ef2-a3b4c5d67890",
+      "affected_areas": [
+        "web/src/pages/OidcCallbackPage.tsx",
+        "web/src/auth/OidcManager.ts",
+        "web/src/auth/tenantConfig.ts"
+      ],
+      "created_at": "2026-06-16T05:47:49Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0074",
+      "title": "secrets/crypto.zig stores plaintext behind AES-256-GCM envelope metadata",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "category": "security - fake encryption (plaintext stored, envelope metadata is fabricated)",
+      "run_id": "WF03-iss0074-20260730",
+      "handoff_id": "gh-289-WF03-iss0074-20260730",
+      "affected_areas": [
+        "src/secrets/crypto.zig",
+        "src/secrets/store.zig"
+      ],
+      "created_at": "2026-07-30T11:28:33Z",
+      "resolved_at": "2026-07-30T11:28:33Z"
     },
     {
       "id": "ISS-0075",
@@ -1152,6 +960,164 @@
       ],
       "created_at": "2026-07-30T00:00:00Z",
       "resolved_at": "2026-07-30T00:00:00Z"
+    },
+    {
+      "id": "ISS-0076",
+      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table \u2014 creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "migration scoping / search_path defect",
+      "run_id": "WF03-iss0074-20260730",
+      "handoff_id": "gh-289-WF03-iss0074-20260730-followup",
+      "affected_areas": [
+        "migrations/GBL-100_exp501_secrets.sql"
+      ],
+      "created_at": "2026-07-30T11:28:33Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/335"
+    },
+    {
+      "id": "ISS-0098",
+      "title": "spt01_provisioning_test.zig TC-SPT-01-07 expects empty tenant context to resolve search_path to tenant_default, but src/db/pool.zig intentionally implements empty-context-means-public",
+      "status": "RESOLVED",
+      "severity": "MINOR",
+      "category": "CATEGORY_E_test_code_error",
+      "run_id": "WF03-iss0098-20260731",
+      "handoff_id": "wf03-iss0098-step01-diagnose",
+      "affected_areas": [
+        "tests/integration/spt01_provisioning_test.zig",
+        "src/db/pool.zig",
+        "tests/specs/SPT-01.md"
+      ],
+      "created_at": "2026-07-31T05:16:49Z",
+      "resolved_at": "2026-07-31T06:30:32Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/353"
+    },
+    {
+      "id": "ISS-0099",
+      "title": "TC-SPT-01-06 fails: applyRequestStorageRouting() falls back to LEGACY_RLS/public for an unprovisioned tenant ID instead of routing to the SCHEMA path",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "category": "test-vs-implementation-drift (ISS-501 storage_mode resolution)",
+      "run_id": "WF03-iss0098-20260731",
+      "handoff_id": "wf03-iss0098-step05-verify",
+      "affected_areas": [
+        "tests/integration/spt01_provisioning_test.zig",
+        "src/db/pool.zig"
+      ],
+      "created_at": "2026-07-31T06:27:43Z",
+      "resolved_at": "2026-07-31T08:10:00Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/355"
+    },
+    {
+      "id": "ISS-0100",
+      "title": "Integration test fixtures insert public.tenant rows without tenant_type='test', so clean_test_db.py's cleanup never removes them (leaked production-typed tenants)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "test-fixture-hygiene / shared-test-db-state-leak",
+      "run_id": "WF03-iss0099-20260731",
+      "handoff_id": "wf03-iss0099-step-verify",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "tools/clean_test_db.py"
+      ],
+      "created_at": "2026-07-31T07:35:00Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0106",
+      "title": "db_integration_test.zig TC-DB-01-01/TC-DB-01-02 fail under full concurrent zig build test-integration: SELECT COUNT(*) FROM schema_migrations returns 0 amid Postgres 'deadlock detected' (C40P01) errors across concurrently-running DDL/migration test binaries",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "category": "test-isolation / postgres-lock-contention-under-concurrent-DDL",
+      "run_id": "WF03-iss0100-20260731",
+      "handoff_id": "wf03-iss0100-step-03f",
+      "affected_areas": [
+        "tests/integration/db_integration_test.zig",
+        "tests/integration/test_iss503_rls_removal.zig",
+        "tests/integration/helpers.zig",
+        "src/db/migrations.zig",
+        "build.zig (test-integration step, concurrent binary execution)"
+      ],
+      "created_at": "2026-07-31T14:52:41Z",
+      "resolved_at": "2026-07-31T18:29:26Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/364"
+    },
+    {
+      "id": "ISS-0107",
+      "title": "test-integration-others-internal barrier group (the ~19+ non-ISS-503 test-integration binaries) still deadlock (40P01) against each other under full concurrent `zig build test-integration`, independent of ISS-0106's ISS-503 fix",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "category": "test-isolation / postgres-lock-contention-under-concurrent-DDL",
+      "run_id": "WF03-iss0107-20260731",
+      "handoff_id": "90c64911-e9e3-45fe-bf11-e7863f24230a",
+      "affected_areas": [
+        "tests/integration/db_integration_test.zig",
+        "tests/integration/exp103_instance_waits_test.zig",
+        "tests/integration/tnt_schema_isolation_test.zig",
+        "tests/integration/iss205_webhook_outbox_test.zig",
+        "tests/integration/helpers.zig"
+      ],
+      "created_at": "2026-07-31T17:57:28Z",
+      "resolved_at": "2026-07-31T20:56:33Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/366"
+    },
+    {
+      "id": "ISS-0108",
+      "title": "db_integration_test.zig TC-DB-01-01/02 use unqualified `schema_migrations` reference, which silently resolves to a stray legacy tenant_default.schema_migrations shadow table under the tenant_default,public search_path instead of public.schema_migrations",
+      "status": "RESOLVED",
+      "severity": "MINOR",
+      "category": "test-isolation / unqualified-table-reference-resolves-to-shadow-schema",
+      "run_id": "WF03-iss0108-20260801",
+      "handoff_id": "aef0e7e1-4757-4d1e-aff3-8e0bc729ca2f",
+      "affected_areas": [
+        "tests/integration/db_integration_test.zig",
+        "migrations/001_event_store.sql",
+        "migrations/055_xc06_backwards_compatibility.sql",
+        "migrations/GBL-104_iss0108_drop_stray_tenant_schema_migrations.sql"
+      ],
+      "created_at": "2026-07-31T19:43:19Z",
+      "resolved_at": "2026-07-31T23:36:06Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/368"
+    },
+    {
+      "id": "ISS-0109",
+      "title": "lint_migration_schema.py reports false-positive BLOCKER on public.<table> mentioned inside a -- prose comment (081_iss101_timers_failed_status.sql)",
+      "status": "RESOLVED",
+      "severity": "MINOR",
+      "category": "tooling / lint-false-positive-comment-text-scanned-as-sql",
+      "run_id": "WF03-iss0109-20260801",
+      "handoff_id": null,
+      "affected_areas": [
+        "tools/lint_migration_schema.py",
+        "migrations/081_iss101_timers_failed_status.sql"
+      ],
+      "created_at": "2026-07-31T23:36:06Z",
+      "resolved_at": "2026-08-01T00:14:08Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/370"
+    },
+    {
+      "id": "ISS-0112",
+      "title": "Migration/schema drift and shared database state break 42 integration tests",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "category": "schema/migration-drift",
+      "run_id": "WF03-gh375-20260801",
+      "handoff_id": "8cff840b-9d33-4d80-ae27-8a6c9c22842d",
+      "affected_areas": [
+        "migrations/",
+        "tests/integration/ext02_webhook_dispatch_test.zig",
+        "tests/integration/env01_test.zig",
+        "tests/integration/env02_test.zig",
+        "tests/integration/env03_test.zig",
+        "tests/integration/exp201_202_entities_test.zig",
+        "tests/integration/svc01_service_catalog_scope_test.zig",
+        "tests/integration/svc03_definition_activation_scope_test.zig",
+        "tests/integration/svc04_admin_api_test.zig"
+      ],
+      "created_at": "2026-08-01T08:52:13Z",
+      "resolved_at": "2026-08-01T12:19:21Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/375"
     },
     {
       "id": "ISS-0113",
@@ -1372,7 +1338,7 @@
     },
     {
       "id": "ISS-0123",
-      "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6× alongside missing source_ref column",
+      "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6\u00d7 alongside missing source_ref column",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "schema-drift / audit-trigger-side-effect",
@@ -1573,7 +1539,7 @@
     },
     {
       "id": "ISS-0143",
-      "title": "CI 'zig build test' retry loop can report PASS despite a 'failed command:' line — status==0 alone is not trustworthy",
+      "title": "CI 'zig build test' retry loop can report PASS despite a 'failed command:' line \u2014 status==0 alone is not trustworthy",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "ci-reliability / false-positive-gate",
@@ -1719,8 +1685,26 @@
       "discovered_by": "TEST-RUNNER (WF03-gh477-20260806 Step 05)"
     },
     {
+      "id": "ISS-0158",
+      "title": "14 remaining EXP-301/EXP-302 effects_subsystem_test blocks fail; transition() emits no effect_emitted for SERVICE_TASK",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "category": "",
+      "run_id": "WF03-ISS-0158-20260807",
+      "affected_areas": [
+        "tests/integration/effects_subsystem_test.zig",
+        "src/engine/transition.zig",
+        "src/effects/worker.zig",
+        "src/effects/queue.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/479",
+      "created_at": "2026-08-06T09:54:16Z",
+      "discovered_by": "BACKEND-DEV step q149",
+      "resolved_at": "2026-08-07T04:03:47Z"
+    },
+    {
       "id": "ISS-0175",
-      "title": "Vendored LuaJIT build input luajit_relver.txt is git-ignored but required by build.zig — a fresh clone cannot build test-lua (GH #503)",
+      "title": "Vendored LuaJIT build input luajit_relver.txt is git-ignored but required by build.zig \u2014 a fresh clone cannot build test-lua (GH #503)",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "build-infrastructure/untracked-required-build-input",
@@ -1783,9 +1767,42 @@
       "resolved_at": "2026-08-07T00:19:28Z"
     },
     {
-      "id": "ISS-0182",
-      "title": "effects_subsystem_test: wall-clock backoff interval assertions and leaked allocations (13 blocks)",
+      "id": "ISS-0180",
+      "title": "verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL \u2014 C3 can report PASS against an unmigrated test database",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "category": "",
+      "run_id": "BACKEND-DEV (WF03-ISS-0180-20260807 Step 03); documented by DOC-UPDATER (Step 07)",
+      "affected_areas": [
+        "tools/verify_test_env.py",
+        "docs/guides/test_infrastructure_guide.md",
+        "docs/anti-patterns.md"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/511",
+      "created_at": "2026-08-07T00:57:21Z",
+      "discovered_by": "BACKEND-DEV (WF03-ISS-0152-20260807 Step 01 diagnosis)",
+      "resolved_at": "2026-08-07T01:34:30Z"
+    },
+    {
+      "id": "ISS-0181",
+      "title": "Retire the 184 baselined T010 hardcoded-UUID findings by migrating integration fixtures to TestHarness.newUuid()",
       "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "",
+      "run_id": "WF03-ISS-0158-20260807",
+      "affected_areas": [
+        "tests/integration/",
+        "tools/lint_test_isolation.baseline.json"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/512",
+      "created_at": "2026-08-07T00:57:21Z",
+      "discovered_by": "BACKEND-DEV (WF03-ISS-0152-20260807 Step 01 diagnosis)",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0182",
+      "title": "effects_subsystem_test: wall-clock backoff interval assertions and leaked allocations (13 blocks) [duplicate of ISS-0158]",
+      "status": "RESOLVED_DUPLICATE",
       "severity": "MAJOR",
       "category": "",
       "run_id": "WF03-ISS-0150-20260807",
@@ -1796,7 +1813,7 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/515",
       "created_at": "2026-08-07T02:51:21Z",
       "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807)",
-      "resolved_at": null
+      "resolved_at": "2026-08-07T04:15:13Z"
     },
     {
       "id": "ISS-0183",
@@ -1845,6 +1862,89 @@
       "created_at": "2026-08-07T02:51:21Z",
       "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807)",
       "resolved_at": null
+    },
+    {
+      "id": "ISS-0186",
+      "title": "TC-EXP-301-05 asserts on measured wall-clock backoff deltas, which are not stable under parallel test load",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "",
+      "run_id": "WF03-ISS-0158-20260807",
+      "affected_areas": [
+        "tests/integration/effects_subsystem_test.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/520",
+      "created_at": "2026-08-07T04:03:47Z",
+      "discovered_by": "BACKEND-DEV (WF03-ISS-0158-20260807)",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0187",
+      "title": "store.append acquires a second pool connection while holding the first, exhausting the pool (TC-EXP-301-08)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "",
+      "run_id": "WF03-ISS-0158-20260807",
+      "affected_areas": [
+        "src/event_store/store.zig",
+        "src/db/pool.zig",
+        "tests/integration/effects_subsystem_test.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/521",
+      "created_at": "2026-08-07T04:03:47Z",
+      "discovered_by": "BACKEND-DEV (WF03-ISS-0158-20260807)",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0188",
+      "title": "TC-EXP-301-09 panics unwrapping a NULL last_error column from the email stub delivery path",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "",
+      "run_id": "WF03-ISS-0158-20260807",
+      "affected_areas": [
+        "tests/integration/effects_subsystem_test.zig",
+        "src/effects/worker.zig",
+        "src/effects/adapters/"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/522",
+      "created_at": "2026-08-07T04:03:47Z",
+      "discovered_by": "BACKEND-DEV (WF03-ISS-0158-20260807)",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0205",
+      "title": "src/webhook/dispatcher.zig writes webhook_deliveries.status in lowercase; CHECK constraint requires UPPERCASE (GH #400)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "schema/constraint-violation",
+      "run_id": "WF03-gh400-20260804",
+      "handoff_id": "40050000-0000-0000-0000-000000000000",
+      "affected_areas": [
+        "src/webhook/dispatcher.zig",
+        "migrations/085_iss106_webhook_deliveries_outbox.sql",
+        "tests/integration/iss205_webhook_outbox_test.zig",
+        "tests/integration/iss106_webhook_outbox_test.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/400",
+      "created_at": "2026-08-03T21:19:11Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0601-LEAK-001",
+      "title": "src/definition/store.zig:1356 parseGraphJson leaks node IDs (pre-existing)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "memory-leak / allocator-dupe-without-free",
+      "run_id": "WF03-gh406-20260803",
+      "handoff_id": "19515745-a803-4912-87b7-65d7e4e3135c",
+      "affected_areas": [
+        "src/definition/store.zig",
+        "tests/integration/iss601_state_snapshots_test.zig"
+      ],
+      "created_at": "2026-08-03T15:09:08Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/406"
     }
   ]
 }

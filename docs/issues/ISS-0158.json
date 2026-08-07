@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0158",
   "title": "14 remaining EXP-301/EXP-302 effects_subsystem_test blocks fail; transition() emits no effect_emitted for SERVICE_TASK",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "discovered_at": "2026-08-06T09:54:16Z",
   "discovered_by": "BACKEND-DEV step q149",
@@ -13,14 +13,22 @@
     "src/effects/queue.zig"
   ],
   "symptom": "After ISS-0149 made tests/integration/effects_subsystem_test.zig compile for the first time and fixed 16 of its 30 failing blocks, 14 blocks still fail. The largest cluster is TC-EXP-302-02/03/04/06/07/08, which all panic with `index out of bounds: index 0, len 0` at `result.emitted_events[0]` \u2014 transition() returns ZERO emitted events when a token enters a SERVICE_TASK node, so the EXP-302 async-effect emission path produces nothing to assert on. TC-EXP-302-01 and TC-EXP-302-05 fail/leak against the same path. TC-EXP-301-05/07/08/09/11/12 fail or leak individually on the worker sweep and re-entry paths.",
-  "root_cause": "NOT FULLY DIAGNOSED. What IS established: (a) the file had never compiled or executed before GH #439 wired it, so none of these paths has ever had test coverage; (b) the missing effects_outbox table (fixed under ISS-0149 by migrations/1136_iss0149_exp301_effects_outbox_tenant_scope.sql) accounted for 4 of the 30 and is no longer a factor; (c) the TC-EXP-302 cluster is a genuine emitted_events gap in src/engine/transition.zig's SERVICE_TASK handling, not a fixture problem \u2014 the test asserts on emitted_events[0] and the slice is empty. Whether transition() is supposed to emit effect_emitted on SERVICE_TASK entry (EXP-302's stated contract) or the test's graph fixture fails to reach the node has not been determined.",
+  "root_cause": "PREMISE CORRECTED. transition() DOES emit effect_emitted for SERVICE_TASK and always did - the \"zero emitted events\" symptom was the dangling-graph fixture bug (makeServiceTaskGraph took attrs as a runtime parameter, demoting the node array from static to stack memory), already fixed under GH #439/#490 commit 8103072 before this run. The 13 remaining failures were FIVE independent memory-ownership defects: (RC-1) EffectEmittedPayload.kind aliased a static string literal while its four sibling fields were allocator-owned, so uniform freeing segfaulted on read-only .rdata; (RC-2) src/effects/worker.zig deliverSpec never freed parseHttpEffectSpec/parseEmailEffectSpec results - a live production leak of 2-5 allocations per delivery; (RC-3) reenterEffectResult omitted the NOT NULL events.sequence_number column, so EVERY effect re-entry failed with PostgreSQL C23502 - the async effects loop could never close in production; (RC-4) four leaks in transition.zig on paths that discard state (putVariableSafe key orphaning, borrowed response body stored as owned, .effect_failed dropped token+array, .END freed discarded tokens only when completing); (RC-5) the test file kept drifted hand-copies of freeInstanceState/freeTransitionResult that under-freed.",
   "reproduction": "1. docker-compose db_test healthy, BPM_TEST_DB_URL set.\n2. zig build test-integration-svc\n3. Observe 14 `error: 'effects_subsystem_test.test.TC-EXP-30*'` lines.",
   "impact": "EXP-301 (async effects outbox) and EXP-302 (SERVICE_TASK migration to async effects) are marked implemented but their integration tests have never passed. If TC-EXP-302's reading is correct, SERVICE_TASK nodes do not emit effects at all, meaning the async service-task path is non-functional in production, not merely untested.",
   "candidate_resolution": "Start with TC-EXP-302-02: read src/engine/transition.zig's processNodeEntry SERVICE_TASK branch against the EXP-302 requirement and determine whether effect_emitted is supposed to be produced there. That single answer decides whether the six TC-EXP-302 failures are a production defect or six wrong tests. Treat the six TC-EXP-301 failures separately \u2014 they are individual worker/re-entry assertions, not one cluster.",
   "notes": "Filed rather than fixed inline because ISS-0149's scope is the ten specific integration files named in GH #465, all ten of which now pass in isolation. effects_subsystem_test.zig is NOT one of them; it entered the picture only because GH #439's wiring commit made it a compile-blocker for the whole test-integration umbrella, which ISS-0149 had to clear to see any results at all. The compile fixes, the missing-migration fix, and 16 of the 30 failures were resolved under ISS-0149 as unavoidable unblocking work; the remaining 14 require a production-behaviour decision about EXP-302 that is properly its own diagnosis.",
   "related_issues": [
     "ISS-0149",
-    "ISS-0137"
+    "ISS-0137",
+    "ISS-0182",
+    "ISS-0186",
+    "ISS-0187",
+    "ISS-0188"
   ],
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/479"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/479",
+  "resolved_at": "2026-08-07T04:03:47Z",
+  "resolved_by": "WF03-ISS-0158-20260807",
+  "resolution": "Fixed all five root causes in source (no assertions weakened, no tests skipped). effects_subsystem_test failing blocks 13 -> 3; whole suite 90 fail/9 crash -> 88 fail/2 crash with ZERO regressions (diffed full sorted failure-name sets). zig build test exits 0. src/engine/transition.zig remains I/O-free. The 3 survivors are distinct root causes forwarded as ISS-0186/#520, ISS-0187/#521, ISS-0188/#522. GH #515 (ISS-0182) was a duplicate of this issue and was closed and de-queued.",
+  "prevention": "A struct crossing a module boundary must have uniform field ownership - a single borrowed field among owned ones is unfreeable by any caller. Test files must not hand-copy engine teardown helpers; transition.zig exports freeInstanceState and freeTransitionResult as pub precisely so they cannot drift."
 }
