@@ -37,8 +37,15 @@ pub const store = @import("definition/store.zig");
 // `checkAllAllocationFailures` without touching any other allocator state.
 // ---------------------------------------------------------------------------
 
-const UUID_A = "00000000-0000-0000-0000-000000000001";
-const UUID_B = "00000000-0000-0000-0000-000000000002";
+// Fixture identifiers — plain non-UUID strings. The `RowFields` struct
+// stores these as `[]const u8` (the same column the DB row would have
+// produced) so the function under test treats them as opaque text. They
+// never reach a database, so we use distinctive non-UUID markers to keep
+// the test clear and to satisfy tools/lint_test_isolation.py T010 (which
+// mechanically flags any literal UUID regex in a test file, even when
+// the value is a string-slice fixture, not a DB row key).
+const FIXTURE_ID_A = "iss0206-fixture-id-a";
+const FIXTURE_CREATED_BY_A = "iss0206-fixture-created-by-a";
 
 const STATUS_DRAFT: []const u8 = "DRAFT";
 const STAGE_REVIEW: []const u8 = "REVIEW";
@@ -93,13 +100,13 @@ test "TC-ISS-0206-01: rowToDefinitionFromFields leaks nothing on any allocation 
     // JSON document parsed by parseGraphJson), stage. Forces checkAllAllocationFailures
     // through every fallible dupe index plus parseGraphJson's own allocations.
     const fields: store.RowFields = .{
-        .id = UUID_A,
+        .id = FIXTURE_ID_A,
         .name = NAME_A,
         .version = VERSION_A,
         .description = DESCRIPTION_A,
         .status = STATUS_DRAFT,
         .graph_json = GRAPH_A_JSON,
-        .created_by = UUID_B,
+        .created_by = FIXTURE_CREATED_BY_A,
         .created_at_text = "1000000",
         .updated_at_text = "1000000",
         .archived_at_text = null,
@@ -117,13 +124,13 @@ test "TC-ISS-0206-02: rowToDefinitionFromFields leaks nothing on any allocation 
     // `else null` and empty-JSON (fallback.graph) branches so a different
     // sequence of allocation indices is walked than TC-01.
     const fields: store.RowFields = .{
-        .id = UUID_A,
+        .id = FIXTURE_ID_A,
         .name = NAME_A,
         .version = VERSION_A,
         .description = null,
         .status = STATUS_DRAFT,
         .graph_json = "",
-        .created_by = UUID_B,
+        .created_by = FIXTURE_CREATED_BY_A,
         .created_at_text = "1000000",
         .updated_at_text = "1000000",
         .archived_at_text = null,
@@ -152,13 +159,13 @@ test "TC-ISS-0206-03: regression — unfixed body leaks on the first forced-fail
     // leak. The revert was then discarded; only the fixed body is in the
     // repository at HEAD.
     const fields: store.RowFields = .{
-        .id = UUID_A,
+        .id = FIXTURE_ID_A,
         .name = NAME_A,
         .version = VERSION_A,
         .description = DESCRIPTION_A,
         .status = STATUS_DRAFT,
         .graph_json = GRAPH_A_JSON,
-        .created_by = UUID_B,
+        .created_by = FIXTURE_CREATED_BY_A,
         .created_at_text = "1000000",
         .updated_at_text = "1000000",
         .archived_at_text = null,
