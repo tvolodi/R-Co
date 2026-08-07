@@ -84,13 +84,23 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/484",
       "title": "test-env-verify C5 fails: 88 BLOCKER isolation violations on main",
       "severity": "BLOCKER",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI-ws2-loop",
-        "locked_at": "2026-08-07T00:49:37Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-06T21:48:41Z",
       "started_at": "2026-08-07T00:49:37Z",
+      "completed_at": "2026-08-07T01:22:37Z",
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0180",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/511",
+      "title": "verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-07T01:00:13Z",
+      "started_at": null,
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
@@ -259,19 +269,6 @@
       "status": "QUEUED",
       "lock": null,
       "added_at": "2026-08-07T00:04:27Z",
-      "started_at": null,
-      "completed_at": null,
-      "run_id": null,
-      "deferred_reason": null
-    },
-    {
-      "issue_id": "ISS-0180",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/511",
-      "title": "verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL",
-      "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T01:00:13Z",
       "started_at": null,
       "completed_at": null,
       "run_id": null,
