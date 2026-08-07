@@ -1,0 +1,41 @@
+{
+  "handoff_id": "16b8d8b0-3e93-41ad-91d4-fa2f862ca6fd",
+  "run_id": "WF03-GH556-20260807",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH556-20260807/step-02-code-designer.json",
+  "created_at": "2026-08-07T19:38:50Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0612.json",
+      "src/db/provisioning.zig",
+      "src/db/migrations.zig",
+      "src/db/pool.zig"
+    ]
+  },
+  "task": {
+    "description": "Design a fix for ISS-0612 / GH #556: src/db/provisioning.zig's advisory-lock block does not actually serialize provisionTenantSchema(). Confirmed root cause (see docs/issues/ISS-0612.json confirmed_root_cause field for full detail): the lock-acquire/release block at provisioning.zig:117-125 closes its own nested scope (releasing the lock and returning the connection to the pool) BEFORE Steps 2-6a (idempotency check, bpm_provision_tenant_schema() SQL call, runForSchema migrations, tenant_schemas timestamp update, public.tenant promotion -- lines 127-259) even begin. The lock's own comment (lines 104-105) claims it serializes 'the whole provisionTenantSchema pass', but it only serializes its own acquire-then-immediately-release micro-section. Concurrent same-tenant provisionTenantSchema() calls race unprotected through Steps 2-6a. Two contributing factors compound this: migrations.zig's MIGRATIONS_LOCK_KEY_SQL is a single GLOBAL (not per-tenant) advisory lock key that serializes ALL concurrent migration work onto one transaction at a time while holding each contending connection checked out of the pool; and bpm_provision_tenant_schema() (migrations/060_schema_per_tenant_bootstrap.sql:89) takes a THIRD, independent per-schema advisory lock uncoordinated with either Zig-side lock. Empirically confirmed via a 12-thread same-tenant stress test against a pool_size=3 pool: progress stalled at 24/96 calls, connections got stuck checked-out (never returned to idle_count), 8/12 threads returned PoolExhausted when force-terminated. Design the fix: the advisory-lock scope in provisionTenantSchema() must actually cover Steps 2 through 6a on the SAME connection (lock_conn), not just its own current 6-line micro-block. Consider: (a) restructuring so lock_conn is held and reused for the idempotency check and the bpm_provision_tenant_schema() call (or as much of Steps 2-6a as can reasonably share one connection), releasing the advisory lock only after those steps complete, immediately before pool.release(lock_conn); (b) whether runForSchema's migration work can run on a connection that already holds the session-level advisory lock without deadlocking against MIGRATIONS_LOCK_KEY_SQL's global xact-scoped lock (this needs explicit design attention -- holding a session lock on one connection while a possibly-different connection takes a global xact lock for migrations could itself deadlock, so consider whether the migration step needs to run outside the tenant-level lock's critical section, or whether MIGRATIONS_LOCK_KEY_SQL should become per-tenant to remove the need for a second independent lock layer entirely); (c) as defense-in-depth, whether Pool.release() should defensively call pg_advisory_unlock_all() on a connection before returning it to the idle set, so a future bug of this class can no longer leave a phantom held lock in the idle pool regardless of caller discipline. Do not write implementation code -- this is a Type E prose design per templates/lego-catalog.md.",
+    "acceptance_criteria": [
+      "Design covers restructuring the advisory-lock scope to actually cover Steps 2-6a of provisionTenantSchema, not just its own micro-block",
+      "Design explicitly addresses whether holding the tenant-level session lock across the migration step (runForSchema) can deadlock against MIGRATIONS_LOCK_KEY_SQL's global xact-scoped lock, and how the fix avoids that",
+      "Design addresses the three-independent-lock-layer problem (tenant-level session lock, global migration xact lock, per-schema xact lock in bpm_provision_tenant_schema) -- either by coordinating them or by explaining why leaving them independent is still safe after the fix",
+      "Design considers (and makes an explicit recommendation on) a Pool.release() defense-in-depth safety net (pg_advisory_unlock_all)",
+      "No implementation code present in the design artefact"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
