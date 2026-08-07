@@ -1432,8 +1432,16 @@ fn parseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !Definit
 ///   7  created_at   bigint (µs)
 ///   8  updated_at   bigint (µs)
 ///   9  archived_at  bigint or NULL
+///  10  stage        TEXT or NULL
 ///
 /// Parses a DB row into a Definition. Column index layout documented above.
+///
+/// ISS-0206 / GH #526: this used to be a 5-allocation sequence with no errdefer
+/// guards (4 dupes plus the parseGraphJson result). The body was refactored into
+/// `rowToDefinitionFromFields` (which takes a plain `RowFields` so
+/// `std.testing.checkAllAllocationFailures` can drive it) and this function is
+/// now a thin wrapper that extracts column strings via the existing local
+/// `col.get` / `col.getOpt` helpers and delegates.
 fn rowToDefinition(
     allocator: std.mem.Allocator,
     row: []?[]u8,
@@ -1450,42 +1458,123 @@ fn rowToDefinition(
         }
     };
 
-    const id_str = col.get(row, 0);
-    const id = parseUuid(id_str) catch std.mem.zeroes(Uuid);
+    const fields: RowFields = .{
+        .id = col.get(row, 0),
+        .name = col.get(row, 1),
+        .version = col.get(row, 2),
+        .description = col.getOpt(row, 3),
+        .status = col.get(row, 4),
+        .graph_json = col.get(row, 5),
+        .created_by = col.get(row, 6),
+        .created_at_text = col.get(row, 7),
+        .updated_at_text = col.get(row, 8),
+        .archived_at_text = col.getOpt(row, 9),
+        .stage = col.getOpt(row, 10),
+    };
+    return rowToDefinitionFromFields(allocator, &fields, fallback);
+}
 
-    const name = try allocator.dupe(u8, if (col.get(row, 1).len > 0) col.get(row, 1) else fallback.name);
-    const version = try allocator.dupe(u8, if (col.get(row, 2).len > 0) col.get(row, 2) else fallback.version);
+/// ISS-0206 / GH #526: plain-slice view of the 11 DB columns rowToDefinition
+/// extracts. Marked `pub` so the alloc-failure test at
+/// `src/iss0206_rowtodefinition_errdefer_test.zig` can construct it from
+/// stack-local string slices. Not part of the public API; production callers
+/// go through `rowToDefinition` (which builds the RowFields from a `[]?[]u8`
+/// row internally).
+pub const RowFields = struct {
+    /// Column 0 — UUID text.
+    id: []const u8,
+    /// Column 1 — name (TEXT).
+    name: []const u8,
+    /// Column 2 — version (TEXT).
+    version: []const u8,
+    /// Column 3 — description (TEXT or NULL).
+    description: ?[]const u8,
+    /// Column 4 — status (TEXT).
+    status: []const u8,
+    /// Column 5 — graph (JSONB text).
+    graph_json: []const u8,
+    /// Column 6 — created_by UUID text.
+    created_by: []const u8,
+    /// Column 7 — created_at (decimal µs).
+    created_at_text: []const u8,
+    /// Column 8 — updated_at (decimal µs).
+    updated_at_text: []const u8,
+    /// Column 9 — archived_at (decimal µs) or NULL.
+    archived_at_text: ?[]const u8,
+    /// Column 10 — stage (TEXT or NULL).
+    stage: ?[]const u8,
+};
 
-    const desc_raw = col.getOpt(row, 3);
-    const description: ?[]const u8 = if (desc_raw) |d|
+/// ISS-0206 / GH #526: the actual fallible row-to-Definition mapping. Every
+/// fallible dupe lands in a local guarded by its own `errdefer` BEFORE the next
+/// fallible statement runs; the Definition struct literal is assembled LAST.
+/// Mirrors the proven `parseGraphJson` pattern at store.zig:1318-1421.
+///
+/// Marked `pub` so the alloc-failure test at
+/// `src/iss0206_rowtodefinition_errdefer_test.zig` can drive it. Not part of
+/// the public API; production callers go through `rowToDefinition`, which
+/// builds the `RowFields` from a `[]?[]u8` row internally and delegates.
+pub fn rowToDefinitionFromFields(
+    allocator: std.mem.Allocator,
+    fields: *const RowFields,
+    fallback: CreateParams,
+) error{OutOfMemory}!Definition {
+    // ---- Block A: locals + errdefers (each `try` immediately followed by its
+    // ---- own errdefer so the cleanup order is mechanical).
+    const id = parseUuid(fields.id) catch std.mem.zeroes(Uuid);
+
+    const name = try allocator.dupe(u8, if (fields.name.len > 0) fields.name else fallback.name);
+    errdefer allocator.free(name);
+
+    const version = try allocator.dupe(u8, if (fields.version.len > 0) fields.version else fallback.version);
+    errdefer allocator.free(version);
+
+    const description: ?[]const u8 = if (fields.description) |d|
         try allocator.dupe(u8, d)
     else
         null;
+    errdefer if (description) |d| allocator.free(d);
 
-    const status = parseDefinitionStatus(col.get(row, 4)) catch .DRAFT;
+    const status = parseDefinitionStatus(fields.status) catch .DRAFT;
 
-    const graph_json_str = col.get(row, 5);
-    const graph = if (graph_json_str.len > 0)
-        parseGraphJson(allocator, graph_json_str) catch fallback.graph
+    const graph = if (fields.graph_json.len > 0)
+        parseGraphJson(allocator, fields.graph_json) catch |err| switch (err) {
+            // ISS-0206: only OOM propagates — every other parseGraphJson error
+            // was silently swallowed by the original `catch fallback.graph`,
+            // and we must preserve that behaviour at the boundary so no caller
+            // signature changes. OOM is the case the errdefer below is here
+            // to handle: parseGraphJson itself errdefer-guards its internals
+            // (ISS-0132), so on OOM it has freed its own scratch buffers and
+            // returned no DefinitionGraph — meaning `graph` was never assigned
+            // and no errdefer has been registered yet, so we just propagate.
+            error.OutOfMemory => return error.OutOfMemory,
+            else => fallback.graph,
+        }
     else
         fallback.graph;
+    // parseGraphJson's success path returned a DefinitionGraph owned by the
+    // Definition we're about to build. Register deinit BEFORE the next fallible
+    // statement so any later failure frees it. `fallback.graph` is an empty
+    // DefinitionGraph whose deinit is a no-op, so this is safe for the
+    // empty-JSON branch and the catch-else branch above too.
+    errdefer graph.deinit(allocator);
 
-    const created_by_str = col.get(row, 6);
-    const created_by = parseUuid(created_by_str) catch fallback.created_by;
+    const created_by = parseUuid(fields.created_by) catch fallback.created_by;
 
-    const created_at = std.fmt.parseInt(i64, col.get(row, 7), 10) catch 0;
-    const updated_at = std.fmt.parseInt(i64, col.get(row, 8), 10) catch 0;
-    const archived_at: ?i64 = if (col.getOpt(row, 9)) |s|
+    const created_at = std.fmt.parseInt(i64, fields.created_at_text, 10) catch 0;
+    const updated_at = std.fmt.parseInt(i64, fields.updated_at_text, 10) catch 0;
+    const archived_at: ?i64 = if (fields.archived_at_text) |s|
         std.fmt.parseInt(i64, s, 10) catch null
     else
         null;
 
-    const stage_raw = col.getOpt(row, 10);
-    const stage: ?[]const u8 = if (stage_raw) |s|
+    const stage: ?[]const u8 = if (fields.stage) |s|
         try allocator.dupe(u8, s)
     else
         null;
+    errdefer if (stage) |s| allocator.free(s);
 
+    // ---- Block B: assemble the struct literal LAST (no fallible calls here).
     return Definition{
         .id = id,
         .name = name,

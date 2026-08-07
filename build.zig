@@ -906,6 +906,30 @@ pub fn build(b: *std.Build) void {
     test_definition_store_step.dependOn(&run_definition_store_tests.step);
     test_engine_step.dependOn(&run_definition_store_tests.step);
 
+    // ISS-0206 / GH #526: rowToDefinitionFromFields alloc-failure harness.
+    // Sits at src/ (not tests/unit/) because store.zig's module graph forces
+    // the addTest root to be inside src/ — same module-root constraint that
+    // applies to src/definition_store_test_root.zig (see its doc comment).
+    // Pure unit test (no DB, no network); takes the same `pool` import shape
+    // as the definition_store_tests target above.
+    const iss0206_rowtodef_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/iss0206_rowtodefinition_errdefer_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_iss0206_rowtodef_tests = b.addRunArtifact(iss0206_rowtodef_tests);
+    const test_iss0206_rowtodef_step = b.step(
+        "test-iss0206-rowtodefinition",
+        "Run ISS-0206 rowToDefinitionFromFields alloc-failure harness (GH #526)",
+    );
+    test_iss0206_rowtodef_step.dependOn(&run_iss0206_rowtodef_tests.step);
+    test_engine_step.dependOn(&run_iss0206_rowtodef_tests.step);
+
     // ISS-0074: secrets/crypto.zig envelope-encryption unit tests (pure — no DB, no network)
     const secrets_crypto_mod = b.createModule(.{
         .root_source_file = b.path("src/secrets/crypto.zig"),
@@ -1236,6 +1260,11 @@ pub fn build(b: *std.Build) void {
     // defect (ISS-0150 / GH #466) that tools/lint_test_wiring.py guards, and the
     // same inert-test class ISS-0132 itself exists to end.
     test_step.dependOn(&run_definition_store_tests.step);
+    // ISS-0206 / GH #526: attach the rowToDefinitionFromFields alloc-failure
+    // harness to the aggregate step, not only to its narrow step — same
+    // narrow-only inert-test defect (ISS-0150 / GH #466) that the line above
+    // explicitly calls out for the parseGraphJson harness.
+    test_step.dependOn(&run_iss0206_rowtodef_tests.step);
     test_step.dependOn(&run_api_tests.step);
     test_step.dependOn(&run_api08_auth_tests.step);
     test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);
