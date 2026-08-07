@@ -1,0 +1,64 @@
+{
+  "handoff_id": "c5330004-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH533-20260807",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-07T09:25:54Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5330003-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss0209-test-api08-recovery.md",
+      "docs/issue-reports/ISS-0209-diagnosis.yaml"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2b: Code design validation (HARD GATE \u2014 implementation cannot start until this passes).\n\nRead src/design/iss0209-test-api08-recovery.md.\n\nVerify per docs/agents/shared/CHECKPOINTS.md and code-design-validator guidance:\n1. python tools/lint_design_artefact.py src/design/iss0209-test-api08-recovery.md \u2014 exit 0, no BLOCKER/MAJOR\n2. Every acceptance criterion in the diagnosis report has a corresponding design element\n3. No implementation code in the design (Type E: prose design only, no Zig function bodies, no SQL DDL)\n4. All public function signatures listed\n5. Error taxonomy exists\n6. Dependencies documented\n7. Files to modify with line ranges are listed\n8. Classification per templates/lego-catalog.md is correct\n\nFAIL if any check fails. PASS if all pass.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR",
+      "Every diagnosis acceptance criterion has a design element",
+      "No implementation code",
+      "All public function signatures listed",
+      "Error taxonomy specified",
+      "Complete enough for BACKEND-DEV to implement without ambiguity"
+    ],
+    "functions_to_call": [
+      "fn:validate-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0209 design artefact validated \u2014 Type E prose design covers all 5 diagnosis acceptance criteria; no implementation code present; public function signatures, error taxonomy, dependencies, and file-level line ranges all listed; classification rationale is sound.",
+    "artifacts_out": [
+      "src/design/iss0209-test-api08-recovery.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "E030 lint findings (7) \u2014 schema-qualified table names (public.tenant_schemas, public.schema_migrations, public.tenant) used in prose labels. MINOR-by-design for Type E prose per lint_design_artefact semantics (see bpm-design-validator-e030-prose-vs-ddl.md). No action required."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3) to implement the fix per design.",
+    "checks_performed": [
+      "lint_design_artefact.py exited 0 (BLOCKER=0 MAJOR=0 MINOR=7)",
+      "Type E classification rationale: not Type C/A/D/B \u2014 cross-cutting test-harness synchronization, no migration/CRUD/page/node. Correct per templates/lego-catalog.md.",
+      "Coverage: every diagnosis acceptance criterion (AC-1..AC-5) maps to a design element. Mapped in \u00a710 of design; reconfirmed here.",
+      "No implementation code: lint flagged 0 Zig function bodies or SQL DDL blocks; the only code blocks are docstring signatures (no bodies) and prose narrative.",
+      "Public function signatures listed: pub const advisoryLockKeyPrefix (\u00a74.1), pub fn acquireAdvisoryLock/releaseAdvisoryLock (\u00a74.2), fn ensureTenantDefaultSchema replacement signature (\u00a74.3).",
+      "Error taxonomy specified: HarnessRecoveryError {RecoveryFailed, LockAcquireTimeout, CanonicalProvisionFailed} in \u00a76.1 with full mapping table in \u00a76.2.",
+      "Files to modify with line ranges: tests/unit/test_api08_auth.zig:57-96 (and 277-603 unchanged-but-affected), src/db/provisioning.zig:73-118. Files explicitly NOT to modify also listed in \u00a73.2.",
+      "Dependencies documented: \u00a78 \u2014 new public surface in src/db/provisioning.zig, new use of acquire/release helpers in tests/unit/test_api08_auth.zig, no new imports required, MUST NOT depend on (build-level serialization, modifying definition_retrieval_test, modifying integration helpers).",
+      "Open questions (\u00a712) and prevention rules (\u00a711) operationalised into verification steps (\u00a713)."
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T09:25:54Z",
+  "completed_at": "2026-08-07T09:27:11Z"
+}

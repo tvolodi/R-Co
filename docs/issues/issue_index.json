@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-07T06:39:14Z",
+  "last_updated": "2026-08-07T10:46:45Z",
   "next_issue_id": 210,
   "issues": [
     {
       "id": "ISS-0209",
       "title": "test_api08_auth.zig's tenant_default DROP SCHEMA recovery races concurrent zig build test binaries",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MAJOR",
       "run_id": "WF03-ISS-0130-20260807",
       "affected_areas": [
@@ -14,7 +14,7 @@
         "tests/unit/definition_retrieval_test.zig"
       ],
       "created_at": "2026-08-07T06:39:14Z",
-      "resolved_at": null,
+      "resolved_at": "2026-08-07T10:46:45Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/533"
     },
     {

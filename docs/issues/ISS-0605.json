@@ -1,0 +1,35 @@
+{
+  "id": "ISS-0605",
+  "title": "test-env-verify C4 schema baseline: 5 tenants missing Postgres schemas (discovered during ADHOC-db-port-20260807)",
+  "severity": "MAJOR",
+  "category": "infrastructure",
+  "status": "OPEN",
+  "discovered_at": "2026-08-07T09:50:38Z",
+  "discovered_by": "BACKEND-DEV",
+  "discovered_in": "ADHOC-db-port-20260807 (run_id)",
+  "discovered_while": "ADHOC port fix for BPM_TEST_DB_URL 5433->5434",
+  "scope_boundary": "adjacent — not caused by port change; surfaced as side-effect of test-env-verify run",
+  "symptom": "zig build test-env-verify exits 1 because check C4 (schema baseline) fails: check_tenant_schemas_consistent reports 5 tenant rows in public.tenant whose Postgres schemas do not exist",
+  "affected_tenants": [
+    "9d40194d-d22c-4133-9b5f-ff6f70232a2c -> tenant_9d40194dd22c41339b5fff6f70232a2c",
+    "b3ebbbe3-4161-452b-9a9c-240b3b0cc6f3 -> tenant_b3ebbbe34161452b9a9c240b3b0cc6f3",
+    "a06b4eba-bf9a-46c0-a9e4-76758f8d4b5d -> tenant_a06b4ebabf9a46c0a9e476758f8d4b5d",
+    "c9f860a2-9fe8-4c75-8fcc-ddd05d8e058d -> tenant_c9f860a29fe84c758fccddd05d8e058d",
+    "dabc15e3-d2e9-4aa7-9076-e3f91745781c -> tenant_dabc15e3d2e94aa79076e3f91745781c"
+  ],
+  "root_cause_hypothesis": "Likely schema-per-tenant bootstrap (migrations 060_schema_per_tenant_bootstrap.sql + 069_retroactive_tenant_schema_provision.sql) did not run for these 5 tenants, or was rolled back by a subsequent GBL-116_tnt07_rls_cleanup / GBL-123_rls_removal step that dropped schemas without removing the public.tenant row.",
+  "evidence": "Command: python tools/verify_schema_baseline.py --check-tenants\nOutput:\n  FAIL: 1 drift condition(s) detected.\n  [OK] check_migration_ledger_count: ledger row count = 108 == files count = 108\n  [OK] check_per_migration_row_present: all 108 migrations have a ledger row\n  [FAIL] check_tenant_schemas_consistent: missing Postgres schemas for 5 tenant(s): [...]\n  [OK] check_expected_check_constraints: webhook_deliveries_status_check + tenant_storage_mode_check present\nExitCode=1",
+  "related_issues": [
+    {"id": "GH-443", "summary": "verify_schema_baseline reports drift: 2 tenant schemas missing Postgres schema objects (CLOSED 2026-08-05) — pattern repeats with 5 tenants today"},
+    {"id": "GH-375", "summary": "ISS-0112 — Migration/schema drift and shared database state break 42 integration tests (CLOSED)"}
+  ],
+  "remediation_options": [
+    "A) Run: python3 tools/verify_schema_baseline.py --check-tenants --auto-fix (the tool's auto-fix branch re-creates missing tenant schemas; per GH-458 the auto-fix path was broken for GBL-105 but is now GBL-133 — verify current state first)",
+    "B) Manually run migrations 060_schema_per_tenant_bootstrap.sql + 069_retroactive_tenant_schema_provision.sql for each missing tenant schema",
+    "C) Delete the orphaned public.tenant rows if these tenants are intentionally retired (preferred only after product owner confirms no live data)"
+  ],
+  "auto_fix_safe": "investigate first — GH-458 documented auto-fix loops; do not invoke blind",
+  "queued_to_global_queue": false,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/537",
+  "notes": "Discovered while executing ADHOC-db-port-20260807 — the port fix itself is complete (C0, C1, C3 all PASS on 5434). C4 is a separate, pre-existing infrastructure defect unrelated to the port change and out of scope for the ADHOC. Filed per CLAUDE.md 'No Issue Left Local-Only' + 'scope boundary — blocking vs. adjacent' directives. NOT fixed in this run."
+}

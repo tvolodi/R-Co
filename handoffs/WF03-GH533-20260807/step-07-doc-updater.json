@@ -1,0 +1,54 @@
+{
+  "handoff_id": "c5330007-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH533-20260807",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-07T10:46:17Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5330006-0000-0000-0000-000000000001"
+    ],
+    "artifacts_in": [
+      "src/design/iss0209-test-api08-recovery.md",
+      "docs/issue-reports/ISS-0209-diagnosis.yaml",
+      "tests/reports/report-2026-08-07-WF03-GH533-20260807.yaml"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 7: Documentation update for GH-533 / ISS-0209.\n\nActions:\n1. Update CHANGELOG.md with a new entry under the latest unreleased / current version:\n   - `## [unreleased] - 2026-08-07` (or appropriate section)\n   - Subsection `### Fixed`:\n     - `fix(test-auth): remove destructive tenant_default DROP SCHEMA recovery; use advisory-locked retry instead (ISS-0209, GH #533)`\n2. Update docs/issues/ISS-0209.json:\n   - status: RESOLVED\n   - resolved_at: <current UTC timestamp from `python tools/utcnow.py`>\n   - resolution: short description\n   - resolved_in: [\"tests/unit/test_api08_auth.zig\", \"src/db/provisioning.zig\"]\n   - github_issue: keep existing value\n   - prevent_regression_note: documented in design\n3. Update docs/issues/issue_index.json: mark ISS-0209 status RESOLVED.\n4. Append cross-reference to docs/anti-patterns.md if this anti-pattern is novel (it is: \"DROP SCHEMA CASCADE as a recovery fallback\"). Add a short bullet under a new heading `## Anti-pattern: Destructive recovery fallbacks`.\n5. Commit + push to feature branch.\n\nReturn PASS once all updates are committed.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with new entry",
+      "ISS-0209.json status=RESOLVED",
+      "issue_index.json reflects RESOLVED status",
+      "Anti-pattern documented if novel",
+      "All changes committed and pushed to feature branch"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:register-resolution"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0209/GH-533 documentation updated. CHANGELOG.md: new entry under [Unreleased] - 2026-08-07 -> Fixed. docs/issues/ISS-0209.json: status=RESOLVED, resolved_at=2026-08-07T10:46:45Z, resolved_in=[tests/unit/test_api08_auth.zig, src/db/provisioning.zig], resolution text added. docs/issues/issue_index.json: ISS-0209 status=RESOLVED, last_updated refreshed. docs/anti-patterns.md: new section appended: 'Anti-pattern: Destructive recovery fallbacks (ISS-0209 / GH-533)' with symptom, lock-scoping rationale, detection rule, four-step correct approach, verified failure mode (918/1003 -> 5 clean runs), and cross-references to diagnosis + design + GH-533. Commit 82c9f996 pushed to origin/feature/WF03-GH533-20260807 (push eb5e4fb3..82c9f996).",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0209.json",
+      "docs/issues/issue_index.json",
+      "docs/anti-patterns.md",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [],
+    "next_action": "DOC-UPDATER complete for ISS-0209/GH-533. ORCH proceeds to Step Final (BACKEND-DEV git-merge) for this run."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T10:46:17Z",
+  "completed_at": "2026-08-07T10:50:12Z"
+}

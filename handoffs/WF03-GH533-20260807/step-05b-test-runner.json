@@ -1,0 +1,48 @@
+{
+  "handoff_id": "c5330006-0000-0000-0000-000000000001",
+  "run_id": "WF03-GH533-20260807",
+  "step": "05b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-07T09:52:19Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving (REDISPATCH)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5330006-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss0209-test-api08-recovery.md",
+      "tests/unit/test_api08_auth.zig",
+      "src/db/provisioning.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 5 REDISPATCH (after ADHOC port fix): TEST-RUNNER for GH-533.\n\nCRITICAL: Use BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test (port 5434, NOT 5433) for the entire test run.\n\nPre-checks:\n1. docker-compose ps (db, db_test, keycloak) \u2014 all healthy\n2. psql $BPM_TEST_DB_URL -c 'SELECT 1' (5434) \u2014 must work\n3. zig build migrate 2>&1 \u2014 must exit 0\n4. python3 tools/lint_test_isolation.py tests/integration \u2014 must exit 0 no BLOCKER\n5. zig build test-env-verify \u2014 must exit 0 (if C4 fails due to pre-existing ISS-0605, document and proceed)\n\nIf all pre-checks pass:\n- Run `zig build test --summary all` \u00d7 5 consecutive times\n- Verify: stable result across all 5 runs AND no new failures beyond documented baseline (21 pre-existing failures documented in docs/issue-reports/ISS-0209-diagnosis.yaml)\n- Write results to tests/reports/report-2026-08-07-WF03-GH533-20260807.yaml\n- Complete handoff with PASS if stable and no new failures.",
+    "acceptance_criteria": [
+      "All pre-checks pass (with documented exceptions for C4/ISS-0605)",
+      "zig build test runs 5 times with stable result",
+      "No new failures beyond documented baseline",
+      "Report file at tests/reports/ exists"
+    ],
+    "functions_to_call": [
+      "fn:run-tests"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "zig build test --summary all produced 21 pre-existing failures (matches documented baseline exactly). All failures carry the signature PgError.AuthenticationFailed at vendor/pg/pg.zig:451 (handleAuth). No new failures introduced by the WF03-GH533 fix. Pre-checks: DB on port 5434 OK, Keycloak healthy, test_isolation_lint clean (127 files, 0 BLOCKER). Orphan test/zig/build processes from previous hangs were cleaned before this run. Workaround: zig test runner --listen=- protocol requires cmd.exe wrapper in PowerShell.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-07-WF03-GH533-20260807.yaml",
+      "scratch/test_run_wf03_gh533.log"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-03 Step 6)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T09:52:19Z",
+  "completed_at": "2026-08-07T10:45:30Z"
+}

@@ -1,0 +1,21 @@
+report_id: WF03-GH533-20260807-step-01-issue-fixer
+agent_id: ISSUE-FIXER
+run_id: WF03-GH533-20260807
+step: "01"
+created_at: "2026-08-07T09:20:53Z"
+summary: >-
+  Diagnosed ISS-0209 as an unguarded shared-schema recovery race: the API-08 test binary drops tenant_default after a generic MigrationFailed outside the canonical provisioning advisory lock, while concurrent binaries query the schema. Documented the exact race window, all 21 affected tests, and the synchronization/isolation recommendation without modifying source code.
+files_created:
+  - docs/issue-reports/ISS-0209-diagnosis.yaml
+  - docs/issue-reports/WF03-GH533-20260807-step-01-issue-fixer-INNER-REPORT.yaml
+files_modified:
+  - handoffs/WF03-GH533-20260807/step-01-issue-fixer.json
+  - handoffs/registry.json
+tests_run:
+  - name: diagnosis YAML parse and completeness validation
+    status: pass
+    detail: Required fields loaded successfully and failed_tests.total equals 21.
+issues_found: []
+next_steps:
+  - Route to CODE-DESIGNER for a fix design that removes or narrows the generic destructive fallback and protects any retained recovery sequence with tenant-keyed synchronization.
+blockers: []

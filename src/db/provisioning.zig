@@ -34,6 +34,9 @@ pub const MigrationScope = migrations.MigrationScope;
 pub const declaresPublicScopeHeader = migrations.declaresPublicScopeHeader;
 pub const declaresUnqualifiedTableWork = migrations.declaresUnqualifiedTableWork;
 
+/// Canonical advisory-lock key used to serialize same-tenant provisioning.
+pub const advisoryLockKeyPrefix = "bpm.provisioning.provisionTenantSchema:";
+
 // ---------------------------------------------------------------------------
 // Public error set
 // ---------------------------------------------------------------------------
@@ -57,6 +60,24 @@ pub const ProvisionError = error{
     /// promotion failures.
     SchemaPromotionFailed,
 };
+
+/// Acquire the canonical session-scoped tenant provisioning lock.
+/// The caller must release it on the same connection before returning that
+/// connection to the pool.
+pub fn acquireAdvisoryLock(conn: anytype, tenant_id_str: []const u8) ProvisionError!void {
+    conn.exec(
+        "SELECT pg_advisory_lock(hashtext($1 || $2)::bigint)",
+        &.{ advisoryLockKeyPrefix, tenant_id_str },
+    ) catch return ProvisionError.QueryFailed;
+}
+
+/// Release a canonical tenant provisioning lock acquired on this connection.
+pub fn releaseAdvisoryLock(conn: anytype, tenant_id_str: []const u8) ProvisionError!void {
+    conn.exec(
+        "SELECT pg_advisory_unlock(hashtext($1 || $2)::bigint)",
+        &.{ advisoryLockKeyPrefix, tenant_id_str },
+    ) catch return ProvisionError.QueryFailed;
+}
 
 // ---------------------------------------------------------------------------
 // provisionTenantSchema
@@ -93,26 +114,14 @@ pub fn provisionTenantSchema(
     // because the per-migration transactions inside runForSchema would
     // release an xact_lock prematurely. We pair it with a matching
     // pg_advisory_unlock from the same connection before pool.release.
-    const lock_key = std.fmt.allocPrint(
-        allocator,
-        "bpm.provisioning.provisionTenantSchema:{s}",
-        .{tenant_id_str},
-    ) catch return ProvisionError.QueryFailed;
-    defer allocator.free(lock_key);
     {
         const lock_conn = pool.acquire() catch |err| switch (err) {
             PoolError.ExhaustedPool => return ProvisionError.PoolExhausted,
             else => return ProvisionError.QueryFailed,
         };
         defer pool.release(lock_conn);
-        lock_conn.exec(
-            "SELECT pg_advisory_lock(hashtext($1)::bigint)",
-            &.{lock_key},
-        ) catch return ProvisionError.QueryFailed;
-        defer lock_conn.exec(
-            "SELECT pg_advisory_unlock(hashtext($1)::bigint)",
-            &.{lock_key},
-        ) catch {};
+        try acquireAdvisoryLock(lock_conn, tenant_id_str);
+        defer releaseAdvisoryLock(lock_conn, tenant_id_str) catch {};
     }
 
     // Step 2: Idempotency check.

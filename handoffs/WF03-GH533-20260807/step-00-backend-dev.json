@@ -1,0 +1,53 @@
+{
+  "handoff_id": "c5330000-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH533-20260807",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T09:10:54Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/533"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 00: git-setup for GH-533.\n\nIssue: test_api08_auth.zig's tenant_default DROP SCHEMA recovery races concurrent zig build test binaries (21 deterministic C42P01 failures)\nSeverity: MAJOR\nGitHub: https://github.com/tvolodi/R-Co/issues/533\n\nCreate and push feature branch feature/WF03-GH533-20260807 from clean main.",
+    "acceptance_criteria": [
+      "git checkout main && git pull --ff-only succeeds",
+      "Feature branch feature/WF03-GH533-20260807 created from main",
+      "Feature branch pushed to origin",
+      "Working tree clean"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "git-setup complete. main synchronized with origin/main, feature/WF03-GH533-20260807 created from main and pushed to origin, branch tracking confirmed.",
+    "artifacts_out": [
+      "branch: feature/WF03-GH533-20260807"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to next WF-03 step (ISSUE-FIXER Step 0.5 + 1) per active workflow",
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH533-20260807",
+      "commit_sha_list": [
+        "c077db0b64080581b90423f7b5732f1a3373b5e7"
+      ],
+      "remote_branch": "origin/feature/WF03-GH533-20260807",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    }
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T09:10:54Z",
+  "completed_at": "2026-08-07T09:15:11Z"
+}

@@ -1,0 +1,72 @@
+summary: >-
+  test_api08_auth.zig performs an unconditional DROP SCHEMA CASCADE for the shared tenant_default schema after a transient MigrationFailed, allowing one concurrent test binary to erase tables while sibling binaries are using them and causing deterministic C42P01 failures.
+affected_files:
+  - file: tests/unit/test_api08_auth.zig
+    lines: 57-96
+    relevance: >-
+      ensureTenantDefaultSchema() provisions the shared default tenant and, on any MigrationFailed, acquires an ordinary pool connection and drops tenant_default CASCADE before deleting registry metadata and reprovisioning; this destructive fallback is outside the provisioning lock held by provisionTenantSchema().
+  - file: tests/unit/test_api08_auth.zig
+    lines: 277-603
+    relevance: >-
+      The five DB-backed API-08 tests invoke ensureTenantDefaultSchema() and then query users/api_tokens/user_roles in tenant_default.
+  - file: tests/unit/definition_retrieval_test.zig
+    lines: 45-80, 159-565, 650-900
+    relevance: >-
+      DB-backed PD-07 tests use tenant_default and process_definitions; makePool() invokes provisionTenantSchema() but does not own or isolate the schema from an external DROP.
+  - file: tests/integration/helpers.zig
+    lines: 104-241
+    relevance: >-
+      TestHarness migration setup serializes same-schema provisioning with a tenant-keyed advisory lock, including the already-migrated check; this is the project's existing isolation pattern, but it cannot protect against the test_api08 recovery DROP because that code does not use the harness or the same lock protocol.
+  - file: src/db/provisioning.zig
+    lines: 73-181
+    relevance: >-
+      provisionTenantSchema() serializes its own complete provisioning pass under a session advisory lock, then performs the idempotency check, schema creation, migration, and registry update; ensureTenantDefaultSchema() releases this lock before executing its fallback DROP.
+  - file: build.zig
+    lines: 339-1370
+    relevance: >-
+      zig build test registers many independent test binaries, including dedicated test_api08_auth and aggregated bpm-main/definition-retrieval coverage; the build graph permits these binaries to run concurrently against the shared BPM_TEST_DB_URL.
+root_cause: >-
+  The failure is a shared-schema destructive-recovery race, not a fixture-name collision and not a missing migration in the canonical migrator. test_api08_auth's ensureTenantDefaultSchema() calls provisionTenantSchema() for tenant_default. If that call returns MigrationFailed for any reason, including a transient concurrent migration/provisioning contention, the helper treats the error as proof that the schema is corrupt. It then acquires a separate connection and executes DROP SCHEMA IF EXISTS tenant_default CASCADE, deletes tenant_schemas and schema_migrations metadata, and calls provisionTenantSchema() again. provisionTenantSchema() protects only its own sequence with a tenant-keyed session advisory lock; the fallback DROP is executed after that call has returned and its lock connection has been released, and the fallback itself does not acquire the same lock. Therefore a sibling test binary can be in the middle of provisioning tenant_default, using process_definitions/users/api_tokens/user_roles, or running a migration transaction when test_api08 removes the schema. PostgreSQL immediately removes all tenant_default relations on DROP SCHEMA CASCADE. Sibling queries that already hold connections/search_path pointing at tenant_default then fail with SQLSTATE 42P01 (C42P01) until the second provisioning pass recreates the schema and tables. The actual vulnerable interval is from the first MigrationFailed return through completion of DROP SCHEMA, registry-row deletion, migration-metadata deletion, and the subsequent reprovisioning; it is wider than the DROP statement itself because metadata is removed while peers may still be waiting or retrying. The concurrent build graph makes this reachable because test_api08_auth is a dedicated addTest root while other DB-backed test roots, including definition retrieval and integration-related binaries, independently use the same shared database and tenant_default schema.
+failed_tests:
+  total: 21
+  groups:
+    - source: tests/unit/definition_retrieval_test.zig
+      tests: TC-PD-07-01 through TC-PD-07-08, TC-PD-07-12, and TC-PD-07-14 through TC-PD-07-20
+      count: 16
+      symptom: C42P01 relation process_definitions does not exist in tenant_default
+    - source: tests/unit/test_api08_auth.zig
+      tests:
+        - TC-IDN-01-06
+        - TC-IDN-04-04a
+        - TC-IDN-04-04b
+        - TC-IDN-04-05a
+        - TC-IDN-04-05b
+      count: 5
+      symptom: C42P01 on users, api_tokens, or user_roles in tenant_default
+repro_steps:
+  - Run `zig build test --summary all` with `BPM_TEST_DB_URL` pointed at the shared test database and the normal concurrent build graph enabled.
+  - Ensure the run includes the dedicated API-08 test binary and the bpm-main/definition-retrieval DB-backed tests; no serial test ordering is imposed between them.
+  - Observe the API-08 provisioning helper receive a MigrationFailed during concurrent tenant_default setup, then enter its fallback DROP SCHEMA CASCADE path.
+  - During the interval between DROP and completion of reprovisioning, observe sibling queries against process_definitions, users, api_tokens, or user_roles fail with C42P01.
+  - Repeat on a clean origin/main worktree; the documented reproduction is deterministic across three runs with 918/1003 passing and the same 21 failures.
+candidate_fix:
+  synchronization: >-
+    If the recovery path is retained, serialize the entire check/recovery sequence with the same tenant-keyed advisory lock used by provisionTenantSchema(), including the decision to drop, metadata deletion, schema recreation, and post-recovery verification. Do not acquire and release the lock only around the initial provisioning call.
+  serialization: >-
+    Prefer eliminating the destructive fallback for a generic MigrationFailed, or route all DB-backed API-08 tests through the existing integration TestHarness and its same-schema advisory-lock protocol. Build-level serialization of every test binary would reduce concurrency but is broader and masks unsafe test behavior rather than protecting the shared resource.
+  isolation: >-
+    The strongest design is per-test/per-binary tenant schema isolation for DB-backed tests, or moving these tests from tests/unit to tests/integration so the canonical harness controls provisioning. Isolation avoids unrelated binaries sharing tenant_default, but does not justify an unguarded DROP when other callers still use the default schema.
+  recommendation: >-
+    First remove or narrow the destructive recovery triggered by a generic MigrationFailed. If a repair path remains necessary, hold the tenant advisory lock across the complete check-then-drop-then-reprovision operation and verify schema/table readiness before releasing it. Longer term, classify DB-backed tests as integration tests and give them isolated tenant schemas or the shared harness.
+acceptance_criteria:
+  - "`zig build test --summary all` completes successfully with 100% of tests passing in five consecutive runs using the shared BPM_TEST_DB_URL."
+  - No C42P01 failures occur for process_definitions, users, api_tokens, or user_roles during concurrent test execution.
+  - No code path can execute DROP SCHEMA CASCADE for tenant_default without holding the same tenant-keyed synchronization used by provisioning across the complete recovery sequence; alternatively, the destructive fallback is removed.
+  - The five API-08 DB-backed tests and the DB-backed PD-07 tests can run concurrently without one test binary deleting or invalidating another binary's schema.
+  - A regression test or equivalent harness verification demonstrates that a provisioning/recovery contention event leaves tenant_default present and all required tables available to sibling queries.
+prevention:
+  - "Treat shared-schema recovery as a critical section: the lock must cover check, destructive action, metadata repair, reprovisioning, and readiness verification."
+  - Do not interpret every MigrationFailed as schema corruption; distinguish transient contention from genuine drift before destructive repair.
+  - Keep DB-backed tests out of tests/unit and use TestHarness or per-test tenant schemas with per-test UUIDs.
+  - Maintain a build-graph audit identifying independent test binaries that share BPM_TEST_DB_URL and tenant_default.
+  - "Run repeated concurrent `zig build test --summary all` regression checks after any change to provisioning, migration, or test-database cleanup code."
