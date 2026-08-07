@@ -365,3 +365,4 @@
 2026-08-07T21:46:47Z | LOOP_ITEM_CLAIM | WF03-GH521-20260807 | r-co-1-loop | CLAIMED GH-521 (store.append nests a second pool.acquire() inside a held lease, exhausting the pool (TC-EXP-301-08))
 2026-08-07T22:09:47Z | LOOP_ITEM_DONE | WF03-GH522-20260807 | -------- | r-co-2-loop | RESOLVED (PR #560, merge 7e174ec) -- already fixed on main via PR #525/#534, issue was left open by oversight; no code changes needed, doc-only fix
 2026-08-07T22:14:40Z | ROUTE | WF03-GH520-20260807 | d8d44f86 | ORCH -> CODE-DESIGNER | PENDING
+2026-08-07T22:17:37Z | COMPLETE | WF03-GH520-20260807 | d8d44f86 | CODE-DESIGNER | PASS

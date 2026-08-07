@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGNER",
   "file": "handoffs/WF03-GH520-20260807/step-02-code-designer.json",
   "created_at": "2026-08-07T22:14:40Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-07T22:15:14Z",
+  "completed_at": "2026-08-07T22:17:37Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -33,7 +33,15 @@
       "fn:write-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Designed a test-only fix for GH #520 / ISS-0186 (TC-EXP-301-05 flaky backoff assertion). Replaces the two-separate-round-trip wall-clock delta (next_attempt_at read before markRetry, then after, subtracted) with a single combined SELECT that reads next_attempt_at and server NOW() in the same statement execution immediately after markRetry returns, comparing next_attempt_at - NOW() against expected_backoff[i] with a tightened 50ms tolerance (down from 500ms). The before-read is removed entirely except a minimal attempt_count-only pre-check retained for the dead-letter branch condition. The assertion remains non-tautological -- it still bounds against each of the four distinct expected_backoff values, so a genuine markRetry interval regression still fails the test. No production code changes.",
+    "artifacts_out": [
+      "src/design/gh520-backoff-schedule-deterministic-assertion.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
