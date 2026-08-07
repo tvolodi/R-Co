@@ -369,17 +369,22 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0188",
+      "issue_id": "GH-522",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/522",
-      "title": "TC-EXP-301-09 panics unwrapping a NULL column; email stub last_error unspecified",
+      "title": "TC-EXP-301-09 panics unwrapping a NULL column; email stub's intended last_error is unspecified",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T04:07:12Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-07T21:43:51Z"
+      },
+      "added_at": "2026-08-07T21:43:51Z",
+      "started_at": "2026-08-07T21:43:51Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 522,
+      "labels": []
     },
     {
       "issue_id": "GH-526",
