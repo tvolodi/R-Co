@@ -1,0 +1,47 @@
+{
+  "handoff_id": "c5330003-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH533-20260807",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-07T09:21:55Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5330002-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0209-diagnosis.yaml",
+      "tests/integration/auth/test_api08_auth.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2: Fix design artefact for GH-533 / ISS-0209.\n\nRead ISS-0209-diagnosis.yaml.\n\nProduce a fix design. Classify the fix per templates/lego-catalog.md:\n- If the fix is a simple parameter change \u2192 templates/specs/<name>.yaml (Type A/C/E \u2014 see catalog)\n- If it involves novel logic / synchronization / test harness changes \u2192 src/design/iss0209-test-api08-recovery.md (Type E prose per backend_developer_guide.md \u00a76)\n\nThe design must:\n- Cover every acceptance criterion from the diagnosis report\n- Specify the exact synchronization mechanism (advisory lock? schema-per-worker isolation? serial provisioning queue?)\n- List every file to be modified with line ranges and reason\n- Specify what regression tests are required\n- Error taxonomy if new error types introduced\n- NO implementation code \u2014 design only (interfaces, signatures, data flow)\n\nAdd produced artefacts under artifacts_out in the result.",
+    "acceptance_criteria": [
+      "Design file (yaml or md) exists under templates/specs/ or src/design/",
+      "Design covers all diagnosis acceptance criteria",
+      "No implementation code in the design",
+      "Files to modify listed with line ranges",
+      "Regression test plan specified"
+    ],
+    "functions_to_call": [
+      "fn:design-fix"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for ISS-0209 (test_api08_auth tenant_default DROP SCHEMA recovery race) \u2014 classification: Type E (novel test-harness synchronization logic).",
+    "artifacts_out": [
+      "src/design/iss0209-test-api08-recovery.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T09:21:55Z",
+  "completed_at": "2026-08-07T09:25:18Z"
+}

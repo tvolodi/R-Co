@@ -1,0 +1,49 @@
+{
+  "handoff_id": "c5330002-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH533-20260807",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-07T09:17:28Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5330001-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/533",
+      "docs/issues/ISS-0209.json",
+      "tests/integration/auth/test_api08_auth.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 1: Root cause diagnosis for GH-533 / ISS-0209.\n\nRead ISS-0209.json, the failing test file tests/integration/auth/test_api08_auth.zig, and any other relevant files (test harness / cleanup / schema isolation utilities).\n\nDetermine:\n- Why tenant_default DROP SCHEMA recovery races concurrent zig build test binaries\n- What 21 specific tests fail with C42P01 (table does not exist)\n- What the actual race window is (concurrent test binaries both provisioning+dropping the same schema?)\n- Whether the fix needs synchronization, serialization, or isolation\n\nWrite a diagnosis report to docs/issue-reports/ISS-0209-diagnosis.yaml with:\n- summary\n- affected_files (list each file with line range)\n- root_cause (concrete technical description)\n- repro_steps (numbered)\n- candidate_fix (high-level)\n- acceptance_criteria (testable)\n- prevention\n\nComplete handoff with PASS once report exists and is complete. Do NOT write source code.",
+    "acceptance_criteria": [
+      "docs/issue-reports/ISS-0209-diagnosis.yaml exists with all required fields",
+      "Diagnosis identifies the race window concretely",
+      "Candidate fix proposal is high-level but concrete",
+      "Acceptance criteria are testable",
+      "No source code modified"
+    ],
+    "functions_to_call": [
+      "fn:diagnose-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed ISS-0209 as an unguarded tenant_default DROP SCHEMA CASCADE recovery race and documented the concrete race window, 21 affected tests, and synchronization/isolation recommendations. No source code was modified.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0209-diagnosis.yaml",
+      "docs/issue-reports/WF03-GH533-20260807-step-01-issue-fixer-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T09:17:28Z",
+  "completed_at": "2026-08-07T09:20:53Z"
+}

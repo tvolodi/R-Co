@@ -1,0 +1,49 @@
+{
+  "handoff_id": "c5330001-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH533-20260807",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-07T09:15:53Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5330000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/533",
+      "docs/issues/issue_index.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 0.5: Registry lookup for GH-533.\n\nIssue: test_api08_auth.zig's tenant_default DROP SCHEMA recovery races concurrent zig build test binaries (21 deterministic C42P01 failures)\nGitHub: https://github.com/tvolodi/R-Co/issues/533\n\nCheck if there is already a docs/issues/ISS-NNNN.json for this GitHub issue (search by GitHub URL). If found: verify it has rco-sync-ref, severity, status appropriate, and the github_issue field is set.\n\nIf NOT found: create docs/issues/ISS-NNNN.json with:\n- issue_id: next available ISS-NNNN\n- title: matching GitHub issue title\n- severity: MAJOR (per GH-533)\n- status: OPEN\n- github_issue: https://github.com/tvolodi/R-Co/issues/533\n- description: 2-3 sentence summary of the race condition\n- detected_in: tests/integration/auth/test_api08_auth.zig\n\nALSO: file the issue on GitHub if not already filed. The GitHub issue #533 already exists per the user \u2014 do not create a duplicate. Verify it has `<!-- rco-sync-ref: ISS-NNNN -->` at the top of the body; if not, edit the issue body to add it.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-NNNN.json exists or is created",
+      "ISS-NNNN file's github_issue field matches #533",
+      "ISS-NNNN file has severity, status, title filled in",
+      "No duplicate ISS-NNNN entries for the same GitHub issue",
+      "GitHub issue #533 body has rco-sync-ref pointing to ISS-NNNN"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Registry lookup for GH-533: existing entry ISS-0209 already covers this GitHub issue with github_issue, severity=MAJOR, status=OPEN, and GH #533 body contains <!-- rco-sync-ref: ISS-0209 --> marker. No new ISS file or duplicate GitHub issue needed.",
+    "artifacts_out": [
+      "docs/issues/ISS-0209.json",
+      "docs/issues/issue_index.json"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER Step 1 (WF-03 Step 1: Diagnose)."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T09:15:53Z",
+  "completed_at": "2026-08-07T09:16:30Z"
+}

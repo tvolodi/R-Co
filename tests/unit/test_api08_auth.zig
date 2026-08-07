@@ -54,45 +54,86 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     };
 }
 
+/// ISS-0209: test-harness recovery loop. A generic MigrationFailed is no
+/// longer a license to drop the schema; the loop retries on transient
+/// contention and escalates on persistent failure without any destructive
+/// action.
+const HarnessRecoveryError = error{
+    /// Persistent provisioning failure after `max_recovery_attempts`
+    /// retries. The schema is left exactly as the canonical migrator
+    /// left it — no DROP, no metadata delete.
+    RecoveryFailed,
+    /// The advisory lock acquire itself timed out before granting.
+    LockAcquireTimeout,
+    /// A non-MigrationFailed ProvisionError variant surfaced from the
+    /// canonical path inside the recovery loop.
+    CanonicalProvisionFailed,
+};
+
 /// Ensure the tenant_default schema exists and has been migrated.
 /// After Stage 12 schema isolation, users and api_tokens live in per-tenant
 /// schemas. The DB-touching tests in this file need tenant_default to be
 /// provisioned. This helper is idempotent: if the schema is already set up
 /// it returns immediately.
-fn ensureTenantDefaultSchema(allocator: std.mem.Allocator, db_pool: *pool.Pool) !void {
+///
+/// ISS-0209: holds the canonical tenant advisory lock around the full
+/// recovery sequence. On MigrationFailed, retries the canonical call with
+/// bounded backoff; on persistent failure, escalates to RecoveryFailed —
+/// never drops the schema, never deletes metadata.
+fn ensureTenantDefaultSchema(
+    allocator: std.mem.Allocator,
+    db_pool: *pool.Pool,
+    max_recovery_attempts: u8,
+) HarnessRecoveryError!void {
     const default_tenant_id = "00000000-0000-0000-0000-000000000000";
 
-    provisioning_mod.provisionTenantSchema(
-        allocator,
-        db_pool,
-        default_tenant_id,
-        build_options.migrations_dir,
-    ) catch |err| switch (err) {
-        // Some local test DBs can carry a partially-applied tenant_default
-        // migration state from earlier runs. Repair by resetting tenant_default
-        // metadata and re-running canonical provisioning once.
-        error.MigrationFailed => {
-            const conn = try db_pool.acquire();
-            defer db_pool.release(conn);
+    const lock_conn = db_pool.acquire() catch return HarnessRecoveryError.CanonicalProvisionFailed;
+    defer db_pool.release(lock_conn);
 
-            try conn.exec("DROP SCHEMA IF EXISTS tenant_default CASCADE", &.{});
-            try conn.exec(
-                "DELETE FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
-                &[_][]const u8{default_tenant_id},
-            );
-            try conn.exec(
-                "DELETE FROM public.schema_migrations WHERE schema_name = 'tenant_default'",
-                &.{});
+    lock_conn.exec(
+        "SET lock_timeout = '90s'",
+        &.{},
+    ) catch return HarnessRecoveryError.CanonicalProvisionFailed;
+    defer lock_conn.exec(
+        "SET lock_timeout = '0'",
+        &.{},
+    ) catch {};
 
-            try provisioning_mod.provisionTenantSchema(
-                allocator,
-                db_pool,
-                default_tenant_id,
-                build_options.migrations_dir,
-            );
-        },
-        else => return err,
+    provisioning_mod.acquireAdvisoryLock(lock_conn, default_tenant_id) catch |err| switch (err) {
+        error.PoolExhausted => return HarnessRecoveryError.CanonicalProvisionFailed,
+        else => return HarnessRecoveryError.CanonicalProvisionFailed,
     };
+    defer provisioning_mod.releaseAdvisoryLock(lock_conn, default_tenant_id) catch {};
+
+    var attempt: u8 = 0;
+    while (attempt < max_recovery_attempts) : (attempt += 1) {
+        provisioning_mod.provisionTenantSchema(
+            allocator,
+            db_pool,
+            default_tenant_id,
+            build_options.migrations_dir,
+        ) catch |err| switch (err) {
+            error.MigrationFailed => {
+                const backoff_ms: u64 = @as(u64, 1) << @intCast(@min(attempt, 5));
+                const capped_ms = @min(backoff_ms * 100, 2000);
+                std.Io.sleep(
+                    std.Options.debug_io,
+                    .fromMilliseconds(@as(i64, capped_ms)),
+                    .awake,
+                ) catch {};
+                continue;
+            },
+            error.QueryFailed => return HarnessRecoveryError.CanonicalProvisionFailed,
+            error.SchemaCreationFailed => return HarnessRecoveryError.CanonicalProvisionFailed,
+            error.RegistryUpdateFailed => return HarnessRecoveryError.CanonicalProvisionFailed,
+            error.PoolExhausted => return HarnessRecoveryError.CanonicalProvisionFailed,
+            error.InvalidTenantId => return HarnessRecoveryError.CanonicalProvisionFailed,
+            error.SchemaPromotionFailed => return HarnessRecoveryError.CanonicalProvisionFailed,
+        };
+        return;
+    }
+
+    return HarnessRecoveryError.RecoveryFailed;
 }
 
 fn hashToken(allocator: std.mem.Allocator, token: []const u8) ![]u8 {
@@ -291,7 +332,7 @@ test "TC-IDN-01-06: token for INACTIVE user returns 401" {
     defer db_pool.deinit();
 
     // Ensure tenant_default schema exists (idempotent; no-op if already present).
-    try ensureTenantDefaultSchema(alloc, &db_pool);
+    try ensureTenantDefaultSchema(alloc, &db_pool, 5);
 
     const username = "tc-idn-01-06-inactive";
     cleanupInactiveAuthFixtures(&db_pool, username);
@@ -368,7 +409,7 @@ test "TC-IDN-04-04a: revoked token is rejected by auth middleware with 401" {
     defer db_pool.deinit();
 
     // Ensure tenant_default schema exists (idempotent; no-op if already present).
-    try ensureTenantDefaultSchema(alloc, &db_pool);
+    try ensureTenantDefaultSchema(alloc, &db_pool, 5);
 
     const username = "tc-idn-04-04a-revoked";
     cleanupInactiveAuthFixtures(&db_pool, username);
@@ -445,7 +486,7 @@ test "TC-IDN-04-04b: expired token is rejected by auth middleware with 401" {
     defer db_pool.deinit();
 
     // Ensure tenant_default schema exists (idempotent; no-op if already present).
-    try ensureTenantDefaultSchema(alloc, &db_pool);
+    try ensureTenantDefaultSchema(alloc, &db_pool, 5);
 
     const username = "tc-idn-04-04b-expired";
     cleanupInactiveAuthFixtures(&db_pool, username);
@@ -522,7 +563,7 @@ test "TC-IDN-04-05a: token role claims drive resolved auth role" {
     defer db_pool.deinit();
 
     // Ensure tenant_default schema exists (idempotent; no-op if already present).
-    try ensureTenantDefaultSchema(alloc, &db_pool);
+    try ensureTenantDefaultSchema(alloc, &db_pool, 5);
 
     const username = "tc-idn-04-05a-role-claims";
     cleanupInactiveAuthFixtures(&db_pool, username);
@@ -606,7 +647,7 @@ test "TC-IDN-04-05b: invalid token role claim is rejected with 401" {
     defer db_pool.deinit();
 
     // Ensure tenant_default schema exists (idempotent; no-op if already present).
-    try ensureTenantDefaultSchema(alloc, &db_pool);
+    try ensureTenantDefaultSchema(alloc, &db_pool, 5);
 
     const username = "tc-idn-04-05b-invalid-claim";
     cleanupInactiveAuthFixtures(&db_pool, username);
