@@ -1,0 +1,56 @@
+{
+  "handoff_id": "cad7fc2a-67fa-4662-b488-34c1df2f7411",
+  "run_id": "WF03-GH521-20260808",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH521-20260808/step-00-backend-dev.json",
+  "created_at": "2026-08-07T21:47:00Z",
+  "started_at": "2026-08-07T21:46:50Z",
+  "completed_at": "2026-08-07T21:47:33Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0187.json"
+    ],
+    "issue_id": "GH-521",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/521",
+    "local_issue_file": "docs/issues/ISS-0187.json"
+  },
+  "task": {
+    "description": "Create feature branch feature/WF03-GH521-20260808 and push to origin.\\n\\nThis is Step 00 (MANDATORY git-setup) for the WF-03 run resolving GH-521 (ISS-0187).",
+    "acceptance_criteria": [
+      "Feature branch feature/WF03-GH521-20260808 exists locally and is pushed to origin",
+      "Local repo on feature branch with clean working tree",
+      "git branch --show-current outputs feature/WF03-GH521-20260808",
+      "Handoff completed with result.status = PASS"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "fn:git-setup PASS \u2014 feature/WF03-GH521-20260808 created from main (origin/main @ 7920d88a) and pushed to origin (* [new branch]); local on feature/WF03-GH521-20260808 with clean working tree (untracked handoffs/WF03-GH521-20260808/ is the run directory, expected).",
+    "artifacts_out": [
+      "handoffs/WF03-GH521-20260808/step-00-backend-dev.json"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 0.5) for registry lookup + GitHub filing confirmation",
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH521-20260808",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-GH521-20260808",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    }
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

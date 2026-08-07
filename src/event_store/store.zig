@@ -446,12 +446,16 @@ pub const Store = struct {
             // Invariant #5: check events_archive for post-archival duplicate.
             // Query only the scalar sequence_number to avoid dangling string
             // pointers from rowToEventRecord. (ES-03, security: parameterised)
-            const dup_conn = self.pool.acquire() catch return StoreError.PoolExhausted;
-            defer self.pool.release(dup_conn);
+            // ISS-0187 / GH #521: reuse the already-held `conn` (rolled-back
+            // above, so it is outside any transaction and safe to read on)
+            // instead of acquiring a second pool connection. Acquiring a
+            // second connection while the first is held by defer release at
+            // line 281 was a self-deadlock-shaped pool-exhaustion bug under
+            // parallel execution (TC-EXP-301-08).
 
             const orig = orig_blk: {
                 // Check live events table first — select all columns needed by rowToEventRecord
-                const live_rows = dup_conn.query(
+                const live_rows = conn.query(
                     allocator,
                     \\SELECT event_id, instance_id, event_type, payload, actor_id,
                     \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
@@ -469,7 +473,7 @@ pub const Store = struct {
                         duplicateFromParams(params, sequence_number, metadata);
                 }
                 // Check events_archive (post-archival duplicate).
-                const arch_rows = dup_conn.query(
+                const arch_rows = conn.query(
                     allocator,
                     \\SELECT event_id, instance_id, event_type, payload, actor_id,
                     \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
