@@ -57,10 +57,10 @@ fn cleanupTenantBySlug(pool: *pool_mod.Pool, slug: []const u8) void {
 
     conn.exec(
         \\DELETE FROM users
-        \\WHERE tenant_id IN (SELECT id FROM tenant WHERE slug = $1)
+        \\WHERE tenant_id IN (SELECT id FROM public.tenant WHERE slug = $1)
     , &[_][]const u8{slug}) catch {};
 
-    conn.exec("DELETE FROM tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
+    conn.exec("DELETE FROM public.tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +87,7 @@ test "TC-OIDC-12-01: resolveTenantByRealm returns correct tenant" {
         defer pool.release(conn);
 
         try conn.exec(
-            \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+            \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
             \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3, 'test', $4::uuid)
             \\ON CONFLICT (slug) DO UPDATE
             \\SET idp_realm_id = EXCLUDED.idp_realm_id,
@@ -170,7 +170,7 @@ test "TC-OIDC-12-04: resolveRealmByTenant returns correct realm ID" {
         defer pool.release(conn);
 
         try conn.exec(
-            \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+            \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
             \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3, 'test', $4::uuid)
             \\ON CONFLICT (slug) DO UPDATE
             \\SET idp_realm_id = EXCLUDED.idp_realm_id,
@@ -185,7 +185,7 @@ test "TC-OIDC-12-04: resolveRealmByTenant returns correct realm ID" {
 
         const row = (try conn.queryRow(
             alloc,
-            "SELECT id::text FROM tenant WHERE slug = $1",
+            "SELECT id::text FROM public.tenant WHERE slug = $1",
             &[_][]const u8{tenant_slug},
         )) orelse return error.TestUnexpectedResult;
         defer freeRow(alloc, row);

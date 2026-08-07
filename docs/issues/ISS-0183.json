@@ -1,0 +1,28 @@
+{
+  "issue_id": "ISS-0183",
+  "title": "repository_test: content_hash bytea/uuid type mismatch and untyped SQL parameters (11 blocks)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "created_at": "2026-08-07T02:51:21Z",
+  "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807 Step 01 diagnosis)",
+  "discovered_while_fixing": "ISS-0150",
+  "affected_areas": [
+    "tests/integration/repository_test.zig",
+    "migrations/"
+  ],
+  "symptom": "11 test blocks in tests/integration/repository_test.zig fail. Representative errors: C42804 column \"content_hash\" is of type bytea but expression is of type uuid; C42P18 could not determine data type of parameter $1; and TC-REPO-02-01 failing at repository_test.zig:180 on `try std.testing.expect(schema.rows.len == 1)`.",
+  "root_cause_analysis": "The fixtures insert a generated UUID into repository_artifacts.content_hash, which the migration defines as bytea, so PostgreSQL rejects the assignment outright (C42804). Separately, several queries pass bare $N placeholders in positions where PostgreSQL cannot infer a type, producing C42P18 at parse time, which is the ISS-0120 pattern. TC-REPO-02-01 information_schema probe also returns 0 rows, consistent with the public/tenant_default schema-qualification issue tracked separately as ISS-0185.",
+  "impact": "11 of the 86 remaining failures in test-integration-svc. Repository artifact immutability (REPO-02) has no passing evidence.",
+  "acceptance_criteria": [
+    "Fixtures write a bytea value (for example the digest of the artifact bytes) to content_hash, not a UUID",
+    "Every placeholder in repository_test.zig carries an explicit type cast where the context is ambiguous; tools/lint_sql_param_types.py stays at 0 BLOCKER/MAJOR",
+    "TC-REPO-02-01 schema probe is qualified to the schema the table actually lives in",
+    "zig build test-integration-svc shows 0 failures attributed to repository_test.zig"
+  ],
+  "related": [
+    "ISS-0150 / GH #482 - the run that surfaced this",
+    "docs/issue-reports/ISS-0150-diagnosis.yaml"
+  ],
+  "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. ISS-0150 fixed 3 root causes (33 blocks) with zero regressions; this cluster has a distinct root cause and belongs in its own run.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/516"
+}

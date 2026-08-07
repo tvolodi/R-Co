@@ -1760,6 +1760,39 @@
       "created_at": "2026-08-07T01:40:32Z",
       "status": "COMPLETED",
       "stage": "Issue Resolution"
+    },
+    {
+      "handoff_id": "59ca5089-72bf-4da6-8eaf-08347b582707",
+      "file": "handoffs/WF03-ISS-0150-20260807/step-00-backend-dev.json",
+      "run_id": "WF03-ISS-0150-20260807",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-07T01:51:39Z",
+      "status": "COMPLETED",
+      "stage": "Issue Resolution"
+    },
+    {
+      "handoff_id": "42e268fa-71b2-482f-882d-d65167d5bea3",
+      "file": "handoffs/WF03-ISS-0150-20260807/step-01-issue-fixer.json",
+      "run_id": "WF03-ISS-0150-20260807",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-07T01:53:09Z",
+      "status": "COMPLETED",
+      "stage": "Issue Resolution"
+    },
+    {
+      "handoff_id": "a2ed7a28-27dd-4799-a539-f709155ea106",
+      "file": "handoffs/WF03-ISS-0150-20260807/step-03-backend-dev.json",
+      "run_id": "WF03-ISS-0150-20260807",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-07T02:51:21Z",
+      "status": "COMPLETED",
+      "stage": "Issue Resolution"
     }
   ],
   "last_updated": "2026-08-06T00:39:45Z"

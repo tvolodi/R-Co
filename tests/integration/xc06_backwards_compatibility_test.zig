@@ -32,11 +32,15 @@ test "TC-XC-06-01: schema migrations are idempotent" {
 
     try testing.expectEqual(@as(usize, 1), query.rows.len);
 
-    // Verify migrations have been applied (check for known tables)
+    // Verify migrations have been applied (check for known tables).
+    // Core business tables are per-tenant (non-GBL migrations apply to each
+    // tenant schema), so they live in `tenant_default`, not `public` — see
+    // docs/anti-patterns.md "Writing unqualified SQL in an integration test
+    // that exercises a GBL-prefixed (public-only) migration's effect".
     var tables_query = try harness.conn.query(
         alloc,
         \\SELECT table_name FROM information_schema.tables
-        \\WHERE table_schema = 'public'
+        \\WHERE table_schema = 'tenant_default'
         \\AND table_name IN ('instance_projections', 'events', 'audit_entries')
         \\ORDER BY table_name
     ,
@@ -67,10 +71,10 @@ test "TC-XC-06-02: instance records from prior version load correctly" {
     // Create instance (simulating V1 instance)
     // V1 instances may not have newer columns like trace_id
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, variables, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, $5, NOW())
     ,
         &.{
             instance_id,
@@ -84,7 +88,7 @@ test "TC-XC-06-02: instance records from prior version load correctly" {
     // Load instance (new version reading old schema)
     var query = try harness.conn.query(
         alloc,
-        \\SELECT instance_id, tenant_id, status, variables FROM instances
+        \\SELECT instance_id, tenant_id, status, variables FROM instance_projections
         \\WHERE instance_id = $1
     ,
         &.{instance_id},
@@ -117,10 +121,10 @@ test "TC-XC-06-03: instance continues normally after schema upgrade" {
 
     // Create V1-style instance
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, variables, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, $5, NOW())
     ,
         &.{ instance_id, tenant_id, "def-hash", "ACTIVE", "{}" },
     );
@@ -234,10 +238,10 @@ test "TC-XC-06-05: event type evolution is backwards compatible" {
 
     // Create instance
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, NOW())
     ,
         &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
     );
@@ -295,10 +299,10 @@ test "TC-XC-06-06: archived events remain queryable after upgrade" {
 
     // Create instance
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, NOW())
     ,
         &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
     );
@@ -397,10 +401,10 @@ test "TC-XC-06-07: multi-step schema evolution is supported" {
 
     // V1: Create instance
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, variables, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, $5, NOW())
     ,
         &.{
             instance_id,
@@ -471,7 +475,7 @@ test "TC-XC-06-07: multi-step schema evolution is supported" {
     // Verify instance base record is still intact
     var instance_query = try harness.conn.query(
         alloc,
-        \\SELECT status, variables FROM instances WHERE instance_id = $1
+        \\SELECT status, variables FROM instance_projections WHERE instance_id = $1
     ,
         &.{instance_id},
     );
@@ -580,10 +584,10 @@ test "TC-XC-06-09: backward-compatible defaults satisfy constraints" {
 
     // Create instance with minimal V1 fields
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, NOW())
     ,
         &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
     );
@@ -591,7 +595,7 @@ test "TC-XC-06-09: backward-compatible defaults satisfy constraints" {
     // Query instance (V2 schema may have added nullable columns with defaults)
     var query = try harness.conn.query(
         alloc,
-        \\SELECT instance_id, tenant_id, status FROM instances
+        \\SELECT instance_id, tenant_id, status FROM instance_projections
         \\WHERE instance_id = $1
     ,
         &.{instance_id},

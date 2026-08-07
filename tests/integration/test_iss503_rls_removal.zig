@@ -1,6 +1,6 @@
-//! Integration tests for ISS-503 — GBL-084 RLS removal migration.
+//! Integration tests for ISS-503 — GBL-123 RLS removal migration.
 //!
-//! migrations/GBL-084_rls_removal.sql drops legacy RLS policies, tenant_id
+//! migrations/GBL-123_rls_removal.sql drops legacy RLS policies, tenant_id
 //! columns on public business tables, and the bpm_effective_tenant_id()
 //! helper function — but only after a pre-flight guard confirms zero tenants
 //! remain in storage_mode = 'LEGACY_RLS'. The guard is a single `DO $$ ... $$`
@@ -16,7 +16,7 @@
 //! defer (even on failure paths) — no cross-test shared state.
 //!
 //! IMPORTANT — shared `public` schema semantics:
-//! GBL-084 is a GBL-prefixed (global/public-schema) migration. The regular
+//! GBL-123 is a GBL-prefixed (global/public-schema) migration. The regular
 //! test harness (tests/integration/helpers.zig runMigrations()) applies it
 //! unconditionally to the shared test database's `public` schema and records
 //! it in `public.schema_migrations`, so by the time these tests run it has
@@ -29,18 +29,18 @@
 //!
 //! To do that, every test here opens its own **direct pg.Conn** (bypassing
 //! the pool and the TestHarness rollback-per-test convention) and executes
-//! the GBL-084 SQL file's contents via simpleQuery() inside an explicit
+//! the GBL-123 SQL file's contents via simpleQuery() inside an explicit
 //! BEGIN/COMMIT or BEGIN/ROLLBACK it manages itself — mirroring the exact
 //! pattern used to validate migrations 1:1 against a live database elsewhere
 //! in this codebase (see the GBL-077 smoke-test precedent). All assertions
 //! are relative (before vs. after snapshots of pg_policies /
 //! information_schema.columns / pg_proc), so the tests are correct regardless
-//! of whether GBL-084 already ran once, globally, before this suite started.
+//! of whether GBL-123 already ran once, globally, before this suite started.
 //!
 //! IMPORTANT — relies on build.zig serializing this binary out of the
 //! concurrent test-integration group (ISS-0106 / GitHub #364):
 //! Each test above opens its own raw pg.Conn and holds an
-//! AccessExclusiveLock-taking DDL transaction (BEGIN ... GBL-084's
+//! AccessExclusiveLock-taking DDL transaction (BEGIN ... GBL-123's
 //! ALTER TABLE / DROP POLICY / DROP FUNCTION statements ... ROLLBACK) for the
 //! duration of the test body, entirely outside helpers.zig's
 //! `bpm_test_migrations_public` advisory-lock machinery. Running this binary
@@ -105,7 +105,7 @@ fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
         });
 }
 
-/// Reads migrations/GBL-084_rls_removal.sql from disk. Tries several relative
+/// Reads migrations/GBL-123_rls_removal.sql from disk. Tries several relative
 /// paths so the test works whether the test binary's cwd is the repo root
 /// (normal `zig build test-integration` invocation, cwd set via setCwd in
 /// build.zig) or a nested test-runner cwd.
@@ -129,7 +129,7 @@ fn readGbl084Sql(io: std.Io, allocator: std.mem.Allocator) ![]u8 {
     };
     defer dir.close(io);
 
-    return dir.readFileAlloc(io, "GBL-084_rls_removal.sql", allocator, std.Io.Limit.limited(16 * 1024 * 1024));
+    return dir.readFileAlloc(io, "GBL-123_rls_removal.sql", allocator, std.Io.Limit.limited(16 * 1024 * 1024));
 }
 
 /// Insert a temporary tenant row with the given storage_mode and a unique
@@ -173,7 +173,7 @@ fn countLegacyRlsTenants(allocator: std.mem.Allocator, conn: *pg.Conn) !usize {
     return std.fmt.parseInt(usize, raw, 10) catch 0;
 }
 
-/// Count RLS policies on public business tables that GBL-084 is responsible
+/// Count RLS policies on public business tables that GBL-123 is responsible
 /// for removing (the six RLS-protected tables from Group 1).
 fn countRlsPolicies(allocator: std.mem.Allocator, conn: *pg.Conn) !usize {
     var result = try conn.query(
@@ -190,7 +190,7 @@ fn countRlsPolicies(allocator: std.mem.Allocator, conn: *pg.Conn) !usize {
     return std.fmt.parseInt(usize, raw, 10) catch 0;
 }
 
-/// Count tenant_id columns remaining across every business table GBL-084
+/// Count tenant_id columns remaining across every business table GBL-123
 /// touches (Group 1 + Group 2 from the migration file).
 fn countTenantIdColumns(allocator: std.mem.Allocator, conn: *pg.Conn) !usize {
     var result = try conn.query(
@@ -216,7 +216,7 @@ fn countTenantIdColumns(allocator: std.mem.Allocator, conn: *pg.Conn) !usize {
 }
 
 /// Counts only the `public` schema's copy of bpm_effective_tenant_id().
-/// GBL-084 drops the public-schema function; SCHEMA-mode tenant schemas
+/// GBL-123 drops the public-schema function; SCHEMA-mode tenant schemas
 /// (e.g. tenant_default) legitimately keep their own per-schema copy, so
 /// this MUST filter by namespace like its siblings countRlsPolicies() and
 /// countTenantIdColumns() do, or it over-counts once any tenant schema
@@ -245,13 +245,13 @@ fn countSchemaMigrationsRows(allocator: std.mem.Allocator, conn: *pg.Conn, versi
     return std.fmt.parseInt(usize, raw, 10) catch 0;
 }
 
-const GBL084_FILENAME = "GBL-084_rls_removal.sql";
+const GBL123_FILENAME = "GBL-123_rls_removal.sql";
 
 // ---------------------------------------------------------------------------
-// TC-ISS503-01: GBL-084 pre-flight blocks when a LEGACY_RLS tenant exists
+// TC-ISS503-01: GBL-123 pre-flight blocks when a LEGACY_RLS tenant exists
 // ---------------------------------------------------------------------------
 
-test "TC-ISS503-01: GBL-084 pre-flight blocks when LEGACY_RLS tenants exist" {
+test "TC-ISS503-01: GBL-123 pre-flight blocks when LEGACY_RLS tenants exist" {
     const alloc = testing.allocator;
 
     const url = try testDbUrl(alloc);
@@ -274,7 +274,7 @@ test "TC-ISS503-01: GBL-084 pre-flight blocks when LEGACY_RLS tenants exist" {
     const policies_before = try countRlsPolicies(alloc, &conn);
     const tenant_id_cols_before = try countTenantIdColumns(alloc, &conn);
     const function_count_before = try countEffectiveTenantIdFunction(alloc, &conn);
-    const recorded_before = try countSchemaMigrationsRows(alloc, &conn, GBL084_FILENAME);
+    const recorded_before = try countSchemaMigrationsRows(alloc, &conn, GBL123_FILENAME);
 
     const sql_bytes = try readGbl084Sql(std.testing.io, alloc);
     defer alloc.free(sql_bytes);
@@ -307,15 +307,15 @@ test "TC-ISS503-01: GBL-084 pre-flight blocks when LEGACY_RLS tenants exist" {
     try testing.expectEqual(function_count_before, function_count_after);
 
     // Not recorded in schema_migrations as a NEW row from this attempt.
-    const recorded_after = try countSchemaMigrationsRows(alloc, &conn, GBL084_FILENAME);
+    const recorded_after = try countSchemaMigrationsRows(alloc, &conn, GBL123_FILENAME);
     try testing.expectEqual(recorded_before, recorded_after);
 }
 
 // ---------------------------------------------------------------------------
-// TC-ISS503-02: GBL-084 succeeds when zero LEGACY_RLS tenants remain
+// TC-ISS503-02: GBL-123 succeeds when zero LEGACY_RLS tenants remain
 // ---------------------------------------------------------------------------
 
-test "TC-ISS503-02: GBL-084 succeeds when zero LEGACY_RLS tenants remain" {
+test "TC-ISS503-02: GBL-123 succeeds when zero LEGACY_RLS tenants remain" {
     const alloc = testing.allocator;
 
     const url = try testDbUrl(alloc);
@@ -338,9 +338,9 @@ test "TC-ISS503-02: GBL-084 succeeds when zero LEGACY_RLS tenants remain" {
     //
     // Fix: do everything — the temporary flip-to-SCHEMA, the migration DDL,
     // and every assertion — inside ONE transaction that is always rolled
-    // back at the end, regardless of pass or fail. Every statement GBL-084
+    // back at the end, regardless of pass or fail. Every statement GBL-123
     // runs is ordinary transactional DDL (ALTER TABLE / DROP POLICY / DROP
-    // COLUMN / DROP FUNCTION — see migrations/GBL-084_rls_removal.sql), so
+    // COLUMN / DROP FUNCTION — see migrations/GBL-123_rls_removal.sql), so
     // Postgres guarantees the ROLLBACK fully undoes both the temporary mode
     // flip and the migration's DDL. This still exercises the pre-flight
     // guard's real global condition (zero LEGACY_RLS tenants table-wide)
@@ -383,10 +383,10 @@ test "TC-ISS503-02: GBL-084 succeeds when zero LEGACY_RLS tenants remain" {
 }
 
 // ---------------------------------------------------------------------------
-// TC-ISS503-03: GBL-084 is idempotent on re-apply
+// TC-ISS503-03: GBL-123 is idempotent on re-apply
 // ---------------------------------------------------------------------------
 
-test "TC-ISS503-03: GBL-084 is idempotent on re-apply" {
+test "TC-ISS503-03: GBL-123 is idempotent on re-apply" {
     const alloc = testing.allocator;
 
     const url = try testDbUrl(alloc);
@@ -402,7 +402,7 @@ test "TC-ISS503-03: GBL-084 is idempotent on re-apply" {
     // next invocation of this binary). Fix is identical: run the temporary
     // flip-to-SCHEMA precondition, BOTH migration applies, and every
     // assertion inside one transaction, rolled back unconditionally at the
-    // end. GBL-084's DDL is ordinary transactional DDL, so ROLLBACK fully
+    // end. GBL-123's DDL is ordinary transactional DDL, so ROLLBACK fully
     // undoes both applies and the mode flip — this test owns nothing beyond
     // its own transaction and leaves zero residue either way.
     try conn.exec("BEGIN", &.{});
@@ -483,14 +483,14 @@ test "TC-ISS503-04: SCHEMA-path CRUD requests work after RLS removal with no bpm
     // CRUD: create a process definition row through the tenant schema (a
     // real business table). tenant_default.process_definitions still has a
     // NOT NULL tenant_id column backed by tenant_default's own
-    // bpm_effective_tenant_id() (GBL-084 only drops the public-schema
+    // bpm_effective_tenant_id() (GBL-123 only drops the public-schema
     // copy — see countEffectiveTenantIdFunction's doc comment), so we
     // populate it via that function exactly like the other integration
     // tests in this suite do (see adp02/adp03/env02/env03/env05 tests).
     // The important assertion is not that tenant_id is absent from this
     // schema, but that no bpm.tenant_id RLS predicate appears in the query
     // plan below, and that the tenant scoping is enforced by the SCHEMA
-    // path (search_path), not by a public-schema RLS policy GBL-084 removed.
+    // path (search_path), not by a public-schema RLS policy GBL-123 removed.
     const def_id = try randomUuidStr(alloc);
     defer alloc.free(def_id);
 
@@ -569,7 +569,7 @@ test "TC-ISS503-04: SCHEMA-path CRUD requests work after RLS removal with no bpm
     // NOTE: unlike `public`, tenant_default.process_definitions DOES keep a
     // NOT NULL tenant_id column backed by its own per-schema
     // bpm_effective_tenant_id() default (confirmed live via `\d
-    // tenant_default.process_definitions`) — GBL-084 only removes the
+    // tenant_default.process_definitions`) — GBL-123 only removes the
     // public-schema copies of the tenant_id columns and the RLS helper
     // function; per-tenant schemas provisioned by TNT-01/GBL-077 retain
     // their own tenant_id + RLS policy by design, scoped to that one schema.
@@ -579,7 +579,7 @@ test "TC-ISS503-04: SCHEMA-path CRUD requests work after RLS removal with no bpm
     // countEffectiveTenantIdFunction() already assert against `public`
     // earlier in this suite (TC-ISS503-02/03). This block instead confirms
     // the per-tenant column that IS expected to remain is still exactly
-    // one column (i.e. GBL-084 did not accidentally cascade into
+    // one column (i.e. GBL-123 did not accidentally cascade into
     // tenant_default and drop it too).
     {
         var rows = try conn.query(

@@ -1,0 +1,27 @@
+{
+  "issue_id": "ISS-0182",
+  "title": "effects_subsystem_test: wall-clock backoff interval assertions and leaked allocations (13 blocks)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "created_at": "2026-08-07T02:51:21Z",
+  "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807 Step 01 diagnosis)",
+  "discovered_while_fixing": "ISS-0150",
+  "affected_areas": [
+    "tests/integration/effects_subsystem_test.zig",
+    "src/effects/"
+  ],
+  "symptom": "13 test blocks in tests/integration/effects_subsystem_test.zig fail under `zig build test-integration-svc` on a freshly migrated database. TC-EXP-301-05 fails at effects_subsystem_test.zig:699 `try testing.expect(observed_delta_ms >= lower_bound)`. TC-EXP-301-07 and siblings additionally report `leaked 2 allocations` originating in Allocator.dupe.",
+  "root_cause_analysis": "Two distinct defects in the same file. (1) The backoff-schedule tests assert on measured wall-clock deltas between outbox attempts, which is not a stable property when roughly 20 test binaries contend for the same database and the host is loaded. (2) Several HTTP-adapter tests dupe header strings without a matching free, so the DebugAllocator reports leaks and fails the block. Neither is related to tenant provisioning or to the schema_migrations symptom described in ISS-0150.",
+  "impact": "13 of the 86 remaining failures in test-integration-svc. Blocks the suite from exiting 0.",
+  "acceptance_criteria": [
+    "TC-EXP-301-05 and the other backoff tests assert on a deterministic property (recorded next_attempt_at ordering) rather than on measured wall-clock deltas",
+    "Every allocation in the HTTP adapter tests has a matching defer free; the suite reports 0 leaks for this file",
+    "zig build test-integration-svc shows 0 failures attributed to effects_subsystem_test.zig"
+  ],
+  "related": [
+    "ISS-0150 / GH #482 - the run that surfaced this",
+    "docs/issue-reports/ISS-0150-diagnosis.yaml"
+  ],
+  "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. ISS-0150 fixed 3 root causes (33 blocks) with zero regressions; this cluster has a distinct root cause and belongs in its own run.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/515"
+}
