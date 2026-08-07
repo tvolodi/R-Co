@@ -446,14 +446,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/542",
       "title": "pg.zig SCRAM-SHA-256 authentication failure blocks all integration tests on main",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI-loop",
-        "locked_at": "2026-08-07T12:33:14Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-07T12:33:14Z",
       "started_at": "2026-08-07T12:33:14Z",
-      "completed_at": null,
+      "completed_at": "2026-08-07T14:58:41Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 542,
