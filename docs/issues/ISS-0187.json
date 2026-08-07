@@ -1,0 +1,29 @@
+{
+  "issue_id": "ISS-0187",
+  "title": "store.append acquires a second pool connection while holding the first, exhausting the pool (TC-EXP-301-08)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "created_at": "2026-08-07T04:03:47Z",
+  "discovered_by": "BACKEND-DEV (WF03-ISS-0158-20260807)",
+  "discovered_while_fixing": "ISS-0158",
+  "affected_areas": [
+    "src/event_store/store.zig",
+    "src/db/pool.zig",
+    "tests/integration/effects_subsystem_test.zig"
+  ],
+  "symptom": "TC-EXP-301-08 fails with PoolError.ExhaustedPool raised at src/db/pool.zig:783 (`if (self.idle_count == 0) return PoolError.ExhaustedPool`), reached from src/event_store/store.zig:428 (`const dup_conn = self.pool.acquire() catch return StoreError.PoolExhausted;`), called from the test's second `store.append(allocator, params)` at tests/integration/effects_subsystem_test.zig:886.",
+  "root_cause_analysis": "On the duplicate-idempotency-key path, store.append acquires a SECOND connection from the pool to look up the original event while its first connection is still held for the in-flight transaction. Under parallel test execution the pool has no idle connection left to hand out, so the nested acquire fails. This is a connection-discipline defect in production code, not a test-fixture problem: any caller that appends a duplicate event while the pool is saturated hits it. It is self-deadlock-shaped \u2014 the same call path holds and then demands a second lease from a finite pool.",
+  "impact": "1 of the 3 remaining effects_subsystem_test failures. In production this surfaces as spurious StoreError.PoolExhausted on idempotent re-appends under load, i.e. exactly when a retry storm is in progress and dedup matters most.",
+  "acceptance_criteria": [
+    "The duplicate-lookup path no longer acquires a second pool connection while the first is held \u2014 reuse the connection already in hand, or perform the lookup after releasing it",
+    "TC-EXP-301-08 passes under a loaded parallel run",
+    "A regression test covers append-of-duplicate while the pool has zero idle connections",
+    "No other store.zig path nests pool.acquire() inside a held lease"
+  ],
+  "related": [
+    "ISS-0158 / GH #479 - the run that isolated this as a distinct cause",
+    "docs/issue-reports/ISS-0158-diagnosis.yaml"
+  ],
+  "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. Unrelated to the SERVICE_TASK effect-emission ownership defects fixed under ISS-0158.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/521"
+}

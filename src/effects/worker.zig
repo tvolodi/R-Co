@@ -125,14 +125,43 @@ pub fn reenterEffectResult(
     );
     defer allocator.free(idempotency_key);
 
+    // ISS-0158 / GH #479: events.sequence_number is NOT NULL, and this INSERT
+    // never supplied it — so EVERY effect re-entry (EFFECT_COMPLETED and
+    // EFFECT_FAILED alike) failed with C23502 and rolled the transaction back.
+    // Reserve the next per-instance sequence the same canonical way
+    // src/event_store/store.zig does (INSERT … ON CONFLICT DO UPDATE on
+    // instance_sequence), which is race-free under concurrent appends, rather
+    // than SELECT MAX(sequence_number)+1.
+    const seq_rows = conn.query(
+        allocator,
+        \\INSERT INTO instance_sequence (instance_id, next_seq)
+        \\VALUES (NULLIF($1,'')::uuid, 2)
+        \\ON CONFLICT (instance_id) DO UPDATE
+        \\  SET next_seq = instance_sequence.next_seq + 1
+        \\RETURNING next_seq - 1 AS assigned_seq
+    ,
+        &.{instance_id},
+    ) catch return error.PersistenceFailed;
+    const sequence_number: []const u8 = blk: {
+        defer {
+            var r = seq_rows;
+            r.deinit();
+        }
+        if (seq_rows.rows.len == 0 or seq_rows.rows[0].len == 0) return error.PersistenceFailed;
+        const v = seq_rows.rows[0][0] orelse return error.PersistenceFailed;
+        // `seq_rows` owns `v`; dupe before its deinit above runs.
+        break :blk allocator.dupe(u8, v) catch return error.PersistenceFailed;
+    };
+    defer allocator.free(sequence_number);
+
     conn.exec(
         \\INSERT INTO events
-        \\  (instance_id, event_type, payload, actor_id, idempotency_key, metadata, created_at)
+        \\  (instance_id, event_type, payload, actor_id, sequence_number, idempotency_key, metadata, created_at)
         \\VALUES
-        \\  (NULLIF($1,'')::uuid, $2, $3::jsonb, gen_random_uuid(), $4, '{}', NOW())
+        \\  (NULLIF($1,'')::uuid, $2, $3::jsonb, gen_random_uuid(), $5::bigint, $4, '{}', NOW())
         \\ON CONFLICT (idempotency_key) DO NOTHING
     ,
-        &.{ instance_id, event_type, payload_json, idempotency_key },
+        &.{ instance_id, event_type, payload_json, idempotency_key, sequence_number },
     ) catch return error.PersistenceFailed;
 
     // Mark the instance_waits row as resolved.
@@ -303,6 +332,13 @@ fn deliverSpec(
                     const http_spec = parseHttpEffectSpec(allocator, spec.spec_json) catch {
                         return error.InvalidSpec;
                     };
+                    // ISS-0158 / GH #479: parseHttpEffectSpec dupes url,
+                    // method, headers_json, body_json and secret_ref. Nothing
+                    // freed them, so every http_call delivery leaked 2-5
+                    // allocations. http_adapter.deliver only reads these
+                    // fields (its result owns separately-allocated memory), so
+                    // freeing after it returns is safe.
+                    defer freeHttpEffectSpec(allocator, http_spec);
                     var resolved_secret: ?[]u8 = null;
                     defer if (resolved_secret) |secret| {
                         std.crypto.secureZero(u8, secret);
@@ -317,6 +353,8 @@ fn deliverSpec(
                     const email_spec = parseEmailEffectSpec(allocator, spec.spec_json) catch {
                         return error.InvalidSpec;
                     };
+                    // ISS-0158 / GH #479: same leak as the http_call arm above.
+                    defer freeEmailEffectSpec(allocator, email_spec);
                     var resolved_secret: ?[]u8 = null;
                     defer if (resolved_secret) |secret| {
                         std.crypto.secureZero(u8, secret);
@@ -331,6 +369,25 @@ fn deliverSpec(
         },
     }
     _ = attempt;
+}
+
+/// ISS-0158 / GH #479: release everything parseHttpEffectSpec duped.
+/// Every []const u8 field it returns is allocator-owned; timeout_ms and
+/// retry_limit are scalars and need no teardown.
+fn freeHttpEffectSpec(allocator: std.mem.Allocator, s: mod.HttpEffectSpec) void {
+    allocator.free(s.url);
+    allocator.free(s.method);
+    if (s.headers_json) |h| allocator.free(h);
+    if (s.body_json) |b| allocator.free(b);
+    if (s.secret_ref) |r| allocator.free(r);
+}
+
+/// ISS-0158 / GH #479: release everything parseEmailEffectSpec duped.
+fn freeEmailEffectSpec(allocator: std.mem.Allocator, s: mod.EmailEffectSpec) void {
+    allocator.free(s.to);
+    allocator.free(s.subject);
+    allocator.free(s.body);
+    if (s.secret_ref) |r| allocator.free(r);
 }
 
 fn parseHttpEffectSpec(

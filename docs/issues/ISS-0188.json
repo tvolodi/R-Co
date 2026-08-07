@@ -1,0 +1,29 @@
+{
+  "issue_id": "ISS-0188",
+  "title": "TC-EXP-301-09 panics unwrapping a NULL last_error column from the email stub delivery path",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "created_at": "2026-08-07T04:03:47Z",
+  "discovered_by": "BACKEND-DEV (WF03-ISS-0158-20260807)",
+  "discovered_while_fixing": "ISS-0158",
+  "affected_areas": [
+    "tests/integration/effects_subsystem_test.zig",
+    "src/effects/worker.zig",
+    "src/effects/adapters/"
+  ],
+  "symptom": "TC-EXP-301-09 crashes with `thread panic: attempt to use null value` at tests/integration/effects_subsystem_test.zig:944, on `try testing.expect(std.mem.containsAtLeast(u8, rows.rows[0][1].?, 1, \"SecretResolutionFailed\"))`. The row is returned but column 1 is SQL NULL, so the `.?` unwrap panics.",
+  "root_cause_analysis": "Two things are entangled and must be separated before this can be fixed correctly. (1) The test unwraps a nullable column with no guard, so a NULL turns an assertion failure into a process crash \u2014 it cannot report what it actually found. (2) More importantly, it is not established what the email stub delivery path is SUPPOSED to record in that column. The test expects the text 'SecretResolutionFailed'; production leaves it NULL. Whether the stub should be recording a secret-resolution failure at all \u2014 the block is titled 'email adapter returns 200 (stub, no SMTP)', which reads like a success expectation, not a failure one \u2014 is the open question. Fixing the unwrap without answering that would just convert a crash into a wrong-but-quiet assertion.",
+  "impact": "1 of the 3 remaining effects_subsystem_test failures. It crashes the test process (exit code 3) rather than failing cleanly, which loses the results of the rest of that binary's run.",
+  "acceptance_criteria": [
+    "The intended behaviour of the email stub delivery path is determined against the EXP-301 requirement and stated explicitly: what status and what last_error the stub records when no SMTP is configured",
+    "Whichever side is wrong (production stub or the test expectation) is fixed \u2014 the assertion must not be weakened to accept whatever production currently does",
+    "The test guards the nullable column so a mismatch fails as an assertion with a readable message instead of panicking",
+    "TC-EXP-301-09 passes"
+  ],
+  "related": [
+    "ISS-0158 / GH #479 - the run that isolated this as a distinct cause",
+    "docs/issue-reports/ISS-0158-diagnosis.yaml"
+  ],
+  "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. Requires a production-behaviour decision about the email stub, which is why it is not folded into ISS-0158.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/522"
+}

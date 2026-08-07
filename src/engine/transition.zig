@@ -97,6 +97,19 @@ pub const EffectEmittedPayload = struct {
     correlation_key: []const u8, // "<node_id>:<token_id_or_branch_id>"
     kind: []const u8, // "http_call" | "email"
     spec_json: []const u8, // raw node attributes JSON (rendered at emit time)
+
+    // ISS-0158 / GH #479: EVERY field above is allocator-owned and must be
+    // freed by freePendingEventPayload. `kind` used to be the one exception —
+    // the emit site stored parseEffectKind's return value directly, which is a
+    // static string literal ("http_call" / "email") living in read-only .rdata.
+    // Any caller that freed the payload uniformly (as tests/integration/
+    // effects_subsystem_test.zig's freeTransitionResult does, and as any
+    // reasonable reading of the struct implies) segfaulted inside
+    // Allocator.free's @memset when it tried to scribble over that literal.
+    // Do not reintroduce a borrowed field here: a payload whose fields have
+    // mixed ownership cannot be freed by a single loop, and this struct
+    // crosses a module boundary where the borrowed/owned distinction is
+    // invisible to the caller.
 };
 
 // ---------------------------------------------------------------------------
@@ -514,8 +527,16 @@ fn putVariableSafe(
 ) !void {
     const gop = try map.getOrPut(allocator, key);
     if (gop.found_existing) {
-        // Free the old value before replacing
+        // Free the old value before replacing.
         freeJsonValueSafe(allocator, gop.value_ptr.*);
+        // ISS-0158 / GH #479: on the found_existing path getOrPut KEEPS the
+        // key already in the map and leaves `key` (which callers allocate
+        // fresh, e.g. `allocator.dupe(u8, "effect_result")` in the
+        // .effect_completed arm) unreferenced. Nothing freed it, so every
+        // overwrite of an existing variable leaked its key. Callers hand
+        // ownership of `key` to this function unconditionally, so free the
+        // redundant copy here rather than making each call site branch.
+        allocator.free(key);
     }
     gop.value_ptr.* = value;
 }
@@ -919,7 +940,14 @@ pub fn transition(
             if (payload.response_body_json) |body| {
                 const key_dup = try allocator.dupe(u8, "effect_result");
                 errdefer allocator.free(key_dup);
-                try putVariableSafe(allocator, &new_state.variables, key_dup, std.json.Value{ .string = body });
+                // ISS-0158 / GH #479: dupe the body too. `payload` is borrowed
+                // from the caller's event, but every value in `variables` is
+                // freed by freeJsonValueSafe/freeInstanceState — storing the
+                // borrowed slice would hand the state's teardown a pointer it
+                // does not own (double-free / free-of-borrowed-memory).
+                const body_dup = try allocator.dupe(u8, body);
+                errdefer allocator.free(body_dup);
+                try putVariableSafe(allocator, &new_state.variables, key_dup, std.json.Value{ .string = body_dup });
             }
             var outgoing_found = false;
             var next_node_id: []const u8 = undefined;
@@ -947,9 +975,26 @@ pub fn transition(
             var surviving = std.ArrayList(Token).empty;
             defer surviving.deinit(allocator);
             for (new_s.tokens) |t| {
-                if (!std.mem.eql(u8, t.node_id, node_id_from_key))
+                if (!std.mem.eql(u8, t.node_id, node_id_from_key)) {
+                    // Surviving tokens are moved by value — their fields keep
+                    // the same owner, so do not free them here.
                     try surviving.append(allocator, t);
+                } else {
+                    // ISS-0158 / GH #479: the token parked on the failed
+                    // SERVICE_TASK is dropped here. Its fields are
+                    // allocator-owned per the ISS-0601 ownership contract and
+                    // nothing else references them, so dropping it without
+                    // freeing leaked node_id/branch_id/token_id on EVERY
+                    // effect failure. TC-EXP-302-04 and TC-EXP-302-08 catch it.
+                    allocator.free(t.node_id);
+                    allocator.free(t.branch_id);
+                    if (t.token_id) |tid| allocator.free(tid);
+                    if (t.waiting_child_instance_id) |w| allocator.free(w);
+                }
             }
+            // ISS-0158 / GH #479: free the stale outer array too — its
+            // elements have either been moved into `surviving` or freed above.
+            allocator.free(new_s.tokens);
             new_s.tokens = try surviving.toOwnedSlice(allocator);
             break :blk new_s;
         },
@@ -1292,6 +1337,25 @@ fn processNodeEntry(
                 new_state.status = .COMPLETED;
                 new_state.tokens = &[_]Token{};
             } else {
+                // ISS-0158 / GH #479: some OTHER branch is still active, so the
+                // instance does not complete — but the token that just arrived
+                // at this END node was still filtered out of `new_tokens`
+                // above and is being discarded. Only the `!active` arm freed
+                // discarded tokens, so on this path its allocator-owned fields
+                // leaked on every END arrival that did not finish the
+                // instance. TC-EXP-302-08 (parallel branches, left completes
+                // while right is still running) catches exactly this.
+                for (state.tokens) |t| {
+                    if (std.mem.eql(u8, t.node_id, node_id)) {
+                        allocator.free(t.node_id);
+                        allocator.free(t.branch_id);
+                        if (t.token_id) |tid| allocator.free(tid);
+                        if (t.waiting_child_instance_id) |w| allocator.free(w);
+                    }
+                }
+                // Surviving tokens were copied by value into new_tokens (same
+                // field pointers), so only the stale outer array is freed.
+                allocator.free(state.tokens);
                 new_state.tokens = try new_tokens.toOwnedSlice(allocator);
             }
             return new_state;
@@ -1757,7 +1821,11 @@ fn processNodeEntry(
             }
             const stable = if (tok_id.len > 0) tok_id else br_id;
             const ckey = try std.fmt.allocPrint(allocator, "{s}:{s}", .{ node_id, stable });
-            const kstr = parseEffectKind(node_attrs);
+            // ISS-0158 / GH #479: parseEffectKind returns a static string
+            // literal; dupe it so `kind` is allocator-owned like every other
+            // field of EffectEmittedPayload. Freeing a .rdata literal
+            // segfaults — see the ownership note on EffectEmittedPayload.
+            const kstr = try allocator.dupe(u8, parseEffectKind(node_attrs));
             const sraw = node_attrs orelse "{}";
             try events.append(allocator, PendingEvent{ .effect_emitted = .{
                 .node_id = try allocator.dupe(u8, node_id),
@@ -2057,6 +2125,11 @@ fn freePendingEventPayload(allocator: std.mem.Allocator, payload: PendingEvent) 
             allocator.free(p.node_id);
             allocator.free(p.token_id);
             allocator.free(p.correlation_key);
+            // ISS-0158 / GH #479: `kind` is now duped at the emit site (it used
+            // to alias a static literal, so freeing it here would have
+            // segfaulted). It is allocator-owned like its siblings — freeing it
+            // is required, or every SERVICE_TASK activation leaks it.
+            allocator.free(p.kind);
             allocator.free(p.spec_json);
         },
     }
