@@ -1,0 +1,49 @@
+{
+  "handoff_id": "66c23ed3-0d38-4858-b08a-116deff3b215",
+  "run_id": "WF03-ISS-0132-20260807",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-07T04:51:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "db306d41-2d31-4ffa-8913-e5a27add7681"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0132.json",
+      "docs/issue-reports/ISS-0132-diagnosis.yaml"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 7 (DOC-UPDATER): record the ISS-0132 class-level fix in CHANGELOG.md; verify requirement mapping and move status only if a requirement actually maps; confirm docs/issues/ISS-0132.json is RESOLVED with resolution + prevention text cross-referencing GH #428, #406 and #526; verify docs/issues/issue_index.json consistency.",
+    "acceptance_criteria": [
+      "CHANGELOG.md documents the class-level fix, the three leaks, the corrected alloc-site counts, and the forwarded #526",
+      "requirement mapping checked against docs/requirements.yaml rather than assumed",
+      "docs/issues/ISS-0132.json status RESOLVED with resolution and prevention text",
+      "docs/issues/issue_index.json consistent for ISS-0132, ISS-0601-LEAK-001 and ISS-0206"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md entry added for ISS-0132 (GH #427): this repo now has std.testing.checkAllAllocationFailures coverage for the first time, ending a leak signature that recurred across 18 pipeline runs. Documented the split between what GH #428 (55f7768) had already landed (parseTimerConfig, cloneJsonValueSafe/cloneObjectMapSafe) and the real remaining gap (parseGraphJson in src/definition/store.zig, which had zero test blocks and was reachable from no addTest root); the corrected alloc-site counts (transition.zig 110 sites / 15 errdefer, not the issue's 51/12; store.zig 35 / 8 / 0 test blocks); the proof the new tests fail on unfixed code (TC-04 fail_index 6/25 at store.zig:1344, TC-05 fail_index 9/11 at store.zig:1366, 2 leaks, against a byte-identical parseGraphJson per git diff --stat 63 insertions / 0 deletions); the three leaks fixed (PGJ-1 latent double-free, PGJ-2/PGJ-3 partial-struct-construction); the lint_test_wiring [UNATTACHED] near-miss on criterion 4; verification numbers (83/83 steps, 939/1003, zero leak lines, +3 delta vs main baseline 81/81, 936/1000); and the forwarded ISS-0206 / GH #526 as out of REACH rather than out of scope. Requirement mapping was checked, not assumed: 26 requirements reference the two touched files (EE-*, PD-*, SCH-01, XC-04..06) and all are already RELEASED, the terminal status, and none of them specifies allocation-failure hygiene - so no reqctl set-status was run and no status was moved. ISS-0132.json was already RESOLVED with full resolution/prevention text cross-referencing #428, #406 and #526; verified rather than rewritten. issue_index.json verified consistent: ISS-0132 RESOLVED, ISS-0601-LEAK-001 RESOLVED with supersession note, ISS-0206 OPEN with GH #526, no duplicate ids, next_issue_id 207.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0132.json",
+      "docs/issues/issue_index.json",
+      "handoffs/WF03-ISS-0132-20260807/step-07-doc-updater.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step Final / fn:git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T04:51:00Z",
+  "completed_at": "2026-08-07T04:51:00Z"
+}
