@@ -940,17 +940,17 @@ test "TC-EXP-301-09: email adapter returns 200 (stub, no SMTP)" {
     );
     defer rows.deinit();
 
-    try testing.expectEqualStrings("pending", rows.rows[0][0].?);
-    try testing.expect(std.mem.containsAtLeast(u8, rows.rows[0][1].?, 1, "SecretResolutionFailed"));
+    // GH #522: The email stub (no secret_ref in spec) succeeds with 200, so the row is
+    // marked delivered — last_error stays NULL. The test title says "stub, no SMTP"
+    // which is a success path, not a SecretResolutionFailed path.
+    try testing.expectEqualStrings("delivered", rows.rows[0][0].?);
+    try testing.expect(rows.rows[0][1] == null);
 }
 
 // ---------------------------------------------------------------------------
 // TC-EXP-301-10: Worker Skips Non-Pending Rows
-// -// The email stub (no secret_ref in spec) succeeds with 200, so the row is
-    // marked delivered — last_error stays NULL. The test title says "stub, no SMTP"
-    // which is a success path, not a SecretResolutionFailed path.
-    try testing.expectEqualStrings("delivered", rows.rows[0][0].?);
-    try testing.expect(rows.rows[0][1] == null
+// ---------------------------------------------------------------------------
+
 test "TC-EXP-301-10: worker query filters out delivered and dead_lettered rows" {
     var h = try TestHarness.init(testing.allocator);
     defer h.deinit();

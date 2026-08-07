@@ -1,0 +1,33 @@
+{
+  "iss_id": "ISS-0208",
+  "title": "Botched diff from GH #522 left tests/integration/effects_subsystem_test.zig syntactically broken (compile error blocks entire test-integration suite)",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "test-infrastructure / broken-merge",
+  "reporter": "BACKEND-DEV (WF03-ISS-0130-20260807, Step 01/03 diagnosis for ISS-0130/GH #423)",
+  "run_id": "WF03-ISS-0130-20260807",
+  "affected_areas": [
+    "tests/integration/effects_subsystem_test.zig"
+  ],
+  "created_at": "2026-08-07T05:45:19Z",
+  "resolved_at": "2026-08-07T05:45:19Z",
+  "resolution": "Commit 680dba6 (PR #525, GH #522) intended to replace the assertions inside test \"TC-EXP-301-09: email adapter returns 200 (stub, no SMTP)\" (old: expectEqualStrings(\"pending\", ...) + containsAtLeast(...,\"SecretResolutionFailed\"); new: expectEqualStrings(\"delivered\", ...) + expect(last_error == null)). The diff hunk instead landed AFTER the test's closing brace, inside the comment-separator block before the next test (\"TC-EXP-301-10\"), leaving the OLD assertions still active inside TC-EXP-301-09 and inserting the NEW assertion fragment as loose top-level statements with a missing closing paren on `testing.expect(rows.rows[0][1] == null` — which then ran directly into the next `test \"TC-EXP-301-10: ...\" {` declaration. This produced a genuine Zig parse error (`expected type expression, found 'try'` at line 945) that blocked `zig ast-check`, `zig build test-integration-others-internal`, and therefore the entire `zig build test-integration` / `zig build test` suites from compiling at all. Verified as pre-existing on main (git diff main -- this file was empty before my fix; `git log -1` shows 680dba6 already merged to main before this run started). Fix: moved the new assertions (expectEqualStrings(\"delivered\", ...) + expect(rows.rows[0][1] == null)) back inside TC-EXP-301-09's body (replacing the stale old assertions), added the missing closing paren, and restored the plain comment-separator block before TC-EXP-301-10. Verified with `zig ast-check` (exit 0) and `zig build test-integration-others-internal` compiling successfully.",
+  "resolved_by_run_id": "WF03-ISS-0130-20260807",
+  "resolved_by_commits": [],
+  "notes": "Discovered incidentally while diagnosing ISS-0130/GH #423 (search_path race) — needed a green zig build test-integration baseline to measure before/after failure rates and could not get one because this file failed to compile at all. Fixed inline per the Unblock-Everything directive (a compile error blocking the entire test-integration build is a blocker for any acceptance criteria that needs `zig build test`/`test-integration` to run) and filed as its own issue per the No-Issue-Left-Local-Only directive, since it is a distinct defect from ISS-0130 with its own root cause (a botched diff merge, not a search_path race).",
+  "root_cause": "PR #525 / commit 680dba6's diff hunk for tests/integration/effects_subsystem_test.zig was malformed: it replaced the comment-separator block between two tests instead of the target test's assertion lines, leaving the file with unbalanced statement/expression grammar (though brace *count* remained balanced) starting at the TC-EXP-301-09/TC-EXP-301-10 boundary.",
+  "acceptance_criteria": [
+    "AC-1: zig ast-check tests/integration/effects_subsystem_test.zig exits 0",
+    "AC-2: zig build test-integration-others-internal compiles without error",
+    "AC-3: TC-EXP-301-09 and TC-EXP-301-10 both remain present as distinct, complete test blocks with correct assertions per GH #522's stated intent"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/532",
+  "prevention": [
+    "When reviewing a PR diff for a test file, verify the hunk context lines actually match the test the commit message claims to fix — a hunk landing in a comment block between two tests is a red flag that the patch was misapplied.",
+    "Run `zig ast-check` on any test file touched by a PR as a fast pre-merge gate; it is far cheaper than discovering the break the next time someone tries to compile the whole test-integration suite."
+  ],
+  "prior_iss_search": "No prior ISS filed for this file/symptom. Distinct from ISS-0130 (search_path race) and ISS-0131/GH #424 (C40P01 deadlock) — this is a pure compile-time syntax defect from a merge error, unrelated to migration runner concurrency.",
+  "diagnoser": "BACKEND-DEV",
+  "diagnoser_run_id": "WF03-ISS-0130-20260807",
+  "diagnosed_at": "2026-08-07T05:45:19Z"
+}
