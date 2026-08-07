@@ -60,7 +60,7 @@ fn cleanupDeletionTracker(pool: *pool_mod.Pool, realm_id: []const u8) void {
 fn cleanupTenantBySlug(pool: *pool_mod.Pool, slug: []const u8) void {
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
-    conn.exec("DELETE FROM tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
+    conn.exec("DELETE FROM public.tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
 }
 
 fn cleanupUserByRealm(pool: *pool_mod.Pool, realm: []const u8) void {
@@ -225,7 +225,7 @@ test "TC-OIDC-15-05: releaseTenantBinding clears idp_realm_id" {
         defer pool.release(conn);
 
         try conn.exec(
-            \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+            \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
             \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3, 'test', $4::uuid)
             \\ON CONFLICT (slug) DO UPDATE
             \\SET idp_realm_id = EXCLUDED.idp_realm_id,
@@ -242,7 +242,7 @@ test "TC-OIDC-15-05: releaseTenantBinding clears idp_realm_id" {
 
     const row = (try conn.queryRow(
         alloc,
-        "SELECT idp_realm_id FROM tenant WHERE slug = $1",
+        "SELECT idp_realm_id FROM public.tenant WHERE slug = $1",
         &[_][]const u8{tenant_slug},
     )) orelse return error.TestUnexpectedResult;
     defer freeRow(alloc, row);

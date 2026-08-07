@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0184",
+  "title": "Remaining test-integration-svc failures across 31 files (audit chain, webhook, entity, env, adp clusters)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "created_at": "2026-08-07T02:51:21Z",
+  "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807 Step 01 diagnosis)",
+  "discovered_while_fixing": "ISS-0150",
+  "affected_areas": [
+    "tests/integration/"
+  ],
+  "symptom": "After the ISS-0150 fixes, zig build test-integration-svc still exits 1 with 86 failing blocks on a freshly migrated database. 24 belong to ISS-0182 and ISS-0183; the remaining 62 are spread across 31 files: svc04_admin_api_test (6), xc06_backwards_compatibility_test (5), xc02_audit_immutability_test (5), obs03_audit_log_test (5), ext02_webhook_dispatch_test (5), exp401_exp402_comp_restore_test (5), exp601_tier_quota_test (4), adp09_tamper_evident_audit_chain_test (4), and 23 files with 1 to 3 each.",
+  "root_cause_analysis": "Not yet diagnosed to a single cause; this is a holding issue so the residue is scheduled rather than dropped. Observed error mix on a pristine database: 85 x C22021 invalid byte sequence for encoding UTF8 (concentrated in ext02_webhook_dispatch_test and sch02_timer_polling_test, likely a binary secret or HMAC written into a text column), 19 x C42883 operator does not exist text = uuid, 11 x C42P01 relation does not exist, 11 x C23514 check constraint violation, 11 x C23505 duplicate key, 7 x C23502 not-null violation. At least the C42883 and C42P01 groups are likely further instances of the schema-qualification pattern recorded in ISS-0185.",
+  "impact": "test-integration-svc cannot reach exit 0 while these remain, which keeps the Green-Main Gate red for every future WF-02 and WF-03 run.",
+  "acceptance_criteria": [
+    "Each listed cluster is diagnosed to a named root cause and either fixed or split into its own issue",
+    "zig build test-integration-svc exits 0 against a freshly migrated database",
+    "The run is measured before and after on two pristine databases so pre-existing failures are not mistaken for regressions"
+  ],
+  "related": [
+    "ISS-0150 / GH #482 - the run that surfaced this",
+    "docs/issue-reports/ISS-0150-diagnosis.yaml"
+  ],
+  "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. ISS-0150 fixed 3 root causes (33 blocks) with zero regressions; this cluster has a distinct root cause and belongs in its own run.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/517"
+}

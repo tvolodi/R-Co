@@ -114,7 +114,7 @@ fn ensureTenantBinding(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []cons
     defer pool.release(conn);
 
     try conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
         \\VALUES ($1::uuid, $2, $3, 'ACTIVE', $4, 'test', $5::uuid)
         \\ON CONFLICT (id) DO UPDATE
         \\SET slug = EXCLUDED.slug,

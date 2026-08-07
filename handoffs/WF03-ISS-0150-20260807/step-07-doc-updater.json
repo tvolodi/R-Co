@@ -1,0 +1,57 @@
+{
+  "handoff_id": "06d95b4c-a39e-4658-8e90-9acab4049d42",
+  "run_id": "WF03-ISS-0150-20260807",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-07T03:05:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Issue Resolution",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0150.json",
+      "docs/issue-reports/ISS-0150-diagnosis.yaml",
+      "handoffs/WF03-ISS-0150-20260807/step-03-backend-dev.json"
+    ]
+  },
+  "task": {
+    "description": "Record the ISS-0150 partial fix accurately: changelog entry naming the disproven premise and the three fixed root causes, explicit statement that test-integration-svc still exits 1, issue record updated to a non-resolved status, and requirement mapping verified rather than assumed.",
+    "acceptance_criteria": [
+      "CHANGELOG.md states the fix is partial and that the suite still exits 1",
+      "docs/issues/ISS-0150.json is NOT marked RESOLVED",
+      "Requirement mapping checked against docs/requirements.yaml, not assumed",
+      "handoffs/registry.json and handoffs/orchestrator.log updated"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Recorded ISS-0150 as an honest partial fix. CHANGELOG.md gains a '### Fixed (partial - the reported suite still fails)' section stating in its first bullet that zig build test-integration-svc still exits 1 and that GH #482 stays open; it documents the disproven per-tenant-ledger premise (canonical tracker is public.schema_migrations per src/design/iss504_migration_tracking.md; GBL-132 deliberately drops stray per-tenant copies; the 42P01 lines were a concurrent sibling's stderr misattributed to TC-ISS503-01, whose real failure was error.FileNotFound at test_iss503_rls_removal.zig:132), RC-1 (3 blocks), RC-2 (11), RC-3 (19), the 596/119 -> 629/86 pristine-database measurement with 0 regressions, the corrected 138-blocks/37-files figure against the issue's 63/34, the db_test migration-ordering trap, and the four forwarded issues #515/#516/#517/#518. docs/issues/ISS-0150.json set to PARTIALLY_RESOLVED with resolved_at REMOVED, plus open_reason, disproven_premise, root_causes_fixed, measurement_correction, measured_outcome and per-criterion acceptance_criteria_status (criterion 2 NOT MET). docs/issues/issue_index.json corrected for ISS-0150 and given the four missing ISS-0182..0185 entries filed by Step 03. Requirement mapping was checked, not assumed: XC-05, XC-06 and SIM-01..SIM-04 reference the repaired test files via test_run / implemented_in, but all six are already RELEASED (terminal) and this run implemented no requirement - it repaired test fixtures - so no reqctl set-status was run and requirement_status.yaml is unchanged.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0150.json",
+      "docs/issues/issue_index.json",
+      "handoffs/WF03-ISS-0150-20260807/step-07-doc-updater.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0150 acceptance criterion 2 remains unmet: zig build test-integration-svc still exits 1 with 86 failing blocks. GH #482 stays OPEN. Residue tracked as ISS-0182/#515, ISS-0183/#516, ISS-0184/#517, ISS-0185/#518."
+      },
+      {
+        "severity": "MINOR",
+        "description": "ISS-0150 acceptance criterion 3 (TC-DB-02-04 determinism) was not reached in this run and is recorded as NOT ADDRESSED."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step Final, fn:git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T03:05:16Z",
+  "completed_at": "2026-08-07T03:05:16Z"
+}

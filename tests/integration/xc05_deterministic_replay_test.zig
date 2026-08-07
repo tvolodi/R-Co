@@ -29,10 +29,10 @@ test "TC-XC-05-01: point-in-time reconstruction produces matching state" {
 
     // Create instance with initial state
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, variables, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, $5, NOW())
     ,
         &.{
             instance_id,
@@ -121,10 +121,10 @@ test "TC-XC-05-02: repeated reconstruction produces identical state" {
 
     // Create instance
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, variables, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, $5, NOW())
     ,
         &.{
             instance_id,
@@ -212,10 +212,10 @@ test "TC-XC-05-03: timestamp-based reconstruction works correctly" {
 
     // Create instance
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, NOW())
     ,
         &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
     );
@@ -290,10 +290,10 @@ test "TC-XC-05-04: archived events are included in reconstruction" {
 
     // Create instance
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, NOW())
     ,
         &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
     );
@@ -404,10 +404,10 @@ test "TC-XC-05-05: reconstruction accuracy across instance timeline" {
 
     // Create instance with initial counter at 0
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, variables, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, $5, NOW())
     ,
         &.{
             instance_id,
@@ -506,10 +506,10 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
 
     // Create instance
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, NOW())
     ,
         &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
     );
@@ -607,10 +607,10 @@ test "TC-XC-05-07: empty instance reconstruction returns initial state" {
     // Create instance with no events
     const initial_state = "{\"status\":\"ACTIVE\",\"counter\":0}";
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, tenant_id, definition_artifact_hash,
+        \\  status, variables, started_at
+        \\) VALUES ($1, gen_random_uuid(), $2, $3, $4, $5, NOW())
     ,
         &.{ instance_id, tenant_id, "def-hash", "ACTIVE", initial_state },
     );
@@ -618,7 +618,7 @@ test "TC-XC-05-07: empty instance reconstruction returns initial state" {
     // Query instance state (should be initial)
     var query = try harness.conn.query(
         alloc,
-        \\SELECT variables FROM instances WHERE instance_id = $1
+        \\SELECT variables FROM instance_projections WHERE instance_id = $1
     ,
         &.{instance_id},
     );
@@ -659,7 +659,7 @@ test "TC-XC-05-08: reconstruction fails gracefully for non-existent instance" {
     // Try to query non-existent instance
     var query = try harness.conn.query(
         alloc,
-        \\SELECT variables FROM instances WHERE instance_id = $1
+        \\SELECT variables FROM instance_projections WHERE instance_id = $1
     ,
         &.{non_existent_id},
     );

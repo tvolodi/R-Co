@@ -109,7 +109,7 @@ fn cleanupUserByUsername(pool: *pool_mod.Pool, username: []const u8) void {
 fn cleanupTenantById(pool: *pool_mod.Pool, tenant_id: []const u8) void {
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
-    conn.exec("DELETE FROM tenant WHERE id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
+    conn.exec("DELETE FROM public.tenant WHERE id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
 }
 
 fn cleanupTenantFixture(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []const u8, realm: []const u8) void {
@@ -132,9 +132,9 @@ fn cleanupTenantFixture(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []con
     , &[_][]const u8{tenant_id}) catch {};
 
     conn.exec("DELETE FROM users WHERE tenant_id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
-    conn.exec("DELETE FROM tenant WHERE id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
-    conn.exec("DELETE FROM tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
-    conn.exec("DELETE FROM tenant WHERE idp_realm_id = $1", &[_][]const u8{realm}) catch {};
+    conn.exec("DELETE FROM public.tenant WHERE id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
+    conn.exec("DELETE FROM public.tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
+    conn.exec("DELETE FROM public.tenant WHERE idp_realm_id = $1", &[_][]const u8{realm}) catch {};
 }
 
 fn ensureTenantBinding(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []const u8, display_name: []const u8, realm: []const u8) !void {
@@ -144,7 +144,7 @@ fn ensureTenantBinding(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []cons
     // Atomically upsert — the ON CONFLICT handles the case where tenant_id
     // already exists from a previous run (tenant table persists between runs).
     try conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
         \\VALUES ($1::uuid, $2, $3, 'ACTIVE', $4, 'test', $5::uuid)
         \\ON CONFLICT (id) DO UPDATE
         \\SET slug = EXCLUDED.slug,

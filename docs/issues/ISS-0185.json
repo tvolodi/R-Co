@@ -1,0 +1,28 @@
+{
+  "issue_id": "ISS-0185",
+  "title": "45 business tables are duplicated between public and tenant_default with diverging columns",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "created_at": "2026-08-07T02:51:21Z",
+  "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807 Step 01 diagnosis)",
+  "discovered_while_fixing": "ISS-0150",
+  "affected_areas": [
+    "migrations/",
+    "src/db/migrations.zig",
+    "tests/integration/helpers.zig"
+  ],
+  "symptom": "45 table names exist in BOTH the public schema and the tenant_default schema of a freshly migrated database, including tenant, service_catalog, sessions, onboarding_registry, event_type_registry_producers, role_permissions and 39 others. The two copies diverge in columns: public.tenant has tenant_type (added by GBL-119) while tenant_default.tenant does not.",
+  "root_cause_analysis": "GBL-prefixed migrations apply only to public; non-GBL migrations apply to every tenant schema. Tables created by early non-GBL migrations therefore got a copy in each tenant schema, and every later GBL-only ALTER landed on the public copy alone. The TestHarness search_path is tenant_default,public, so any unqualified reference silently resolves to the stale tenant_default copy. This is the anti-patterns.md entry on unqualified SQL in tests against GBL-migration effects (ISS-0089, GH #338), but the underlying schema duplication itself was never addressed, only individual call sites, repeatedly (ISS-0089, ISS-0126, ISS-0144, and again in ISS-0150 RC-3).",
+  "impact": "A recurring, silently-wrong-schema failure mode that has now been patched call-site-by-call-site at least four times. Each recurrence costs a full investigation because the symptom (column X does not exist, on a column that demonstrably exists) misdirects toward migration bugs.",
+  "acceptance_criteria": [
+    "A decision is recorded for each of the 45 duplicated tables: either it is genuinely per-tenant (and the public copy should be dropped) or it is a global registry (and the tenant_default copy should be dropped)",
+    "A migration removes the copies that should not exist, or a linter rejects unqualified references to any name that exists in both schemas",
+    "The SQL set-intersection of public and tenant_default table names returns only the intentionally-shared set"
+  ],
+  "related": [
+    "ISS-0150 / GH #482 - the run that surfaced this",
+    "docs/issue-reports/ISS-0150-diagnosis.yaml"
+  ],
+  "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. ISS-0150 fixed 3 root causes (33 blocks) with zero regressions; this cluster has a distinct root cause and belongs in its own run.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/518"
+}

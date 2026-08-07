@@ -497,7 +497,7 @@ test "TC-OIDC-35-06: onboarding saga creates tenant and binds hostname" {
     var conn = try pool.acquire();
     defer pool.release(conn);
     var tenant_q = try conn.query(alloc,
-        \\SELECT id::text, slug FROM tenant WHERE slug = $1 LIMIT 1
+        \\SELECT id::text, slug FROM public.tenant WHERE slug = $1 LIMIT 1
     , &[_][]const u8{slug});
     defer tenant_q.deinit();
     try testing.expectEqual(@as(usize, 1), tenant_q.rows.len);
@@ -575,7 +575,7 @@ test "TC-OIDC-35-07: saga compensation cleans up tenant on failure" {
     // Verify the tenant was cleaned up by compensation.
     var conn = try pool.acquire();
     defer pool.release(conn);
-    var tenant_q = try conn.query(alloc, "SELECT id::text FROM tenant WHERE slug = $1 LIMIT 1", &[_][]const u8{slug});
+    var tenant_q = try conn.query(alloc, "SELECT id::text FROM public.tenant WHERE slug = $1 LIMIT 1", &[_][]const u8{slug});
     defer tenant_q.deinit();
     try testing.expectEqual(@as(usize, 0), tenant_q.rows.len);
 
@@ -754,7 +754,7 @@ test "TC-OIDC-35-10: hostname binding enforces uniqueness" {
 
     // Create a real tenant first (FK requirement for tenant_hostnames).
     try harness.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
         \\VALUES ($1::uuid, $2, 'TC-10 Tenant', 'ACTIVE', $2, 'test', $3::uuid)
         \\ON CONFLICT (slug) DO NOTHING
     ,
@@ -811,7 +811,7 @@ test "TC-OIDC-35-11: tenant slug enforces uniqueness" {
 
     // Create first tenant.
     try harness.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
         \\VALUES ($1::uuid, $2, 'Test Tenant', 'ACTIVE', $2, 'test', $3::uuid)
         \\ON CONFLICT (slug) DO NOTHING
     ,
@@ -821,7 +821,7 @@ test "TC-OIDC-35-11: tenant slug enforces uniqueness" {
     // Attempt duplicate slug.
     var q = try harness.conn.query(
         alloc,
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
         \\VALUES ($1::uuid, $2, 'Duplicate Tenant', 'ACTIVE', $2, 'test', $3::uuid)
         \\ON CONFLICT (slug) DO NOTHING
         \\RETURNING id::text

@@ -1,0 +1,166 @@
+issue_id: ISS-0150
+github_issue: https://github.com/tvolodi/R-Co/issues/482
+run_id: WF03-ISS-0150-20260807
+agent: BACKEND-DEV / ISSUE-FIXER
+created_at: "2026-08-07T02:51:21Z"
+severity: MAJOR
+
+summary: >-
+  The issue text framed the dominant symptom as a per-tenant `schema_migrations`
+  ledger table that was never created during tenant provisioning, and asked why a
+  tenant schema is reachable without its ledger. That premise does not survive
+  measurement. The three `tenant_<uuid>.schema_migrations does not exist` lines in
+  the log are not failures of any test — they are stderr bleed from a concurrently
+  running sibling, captured inside the output block of an unrelated failing test
+  (TC-ISS503-01). Tenant provisioning is not defective. The real failures are
+  several independent, pre-existing test-fixture and schema-scoping defects.
+
+environment_note: >-
+  The process environment carried a stale BPM_TEST_DB_URL pointing at port 5434
+  (workspace 1's band), shadowing .env's 5453. All measurements below were taken
+  with the correct test database after `zig build test-env-verify` reported
+  HEALTHY (8/8 checks, 108/108 migrations applied on localhost:5453/bpm_test).
+
+measurement_method: >-
+  Counts are unreliable against the long-lived shared bpm_test database because it
+  carries accumulated fixture rows and one baked-in migration-ordering artifact
+  (below). The authoritative before/after numbers were therefore taken on two
+  freshly created, separately migrated databases (bpm_base for BEFORE with the fix
+  stashed, bpm_fresh2 for AFTER), so the two runs differ only by the source change.
+
+baseline_counts:
+  shared_bpm_test_before: "592 pass / 123 fail / 9 crash / 9 skip (733 total), exit 1"
+  pristine_before: "596 pass / 119 fail / 9 crash / 9 skip (733 total), exit 1"
+  pristine_after: "629 pass / 86 fail / 9 crash / 9 skip (733 total), exit 1"
+  net: "33 test blocks fixed, 0 regressions (set-difference of failing test names)"
+
+root_causes_identified:
+
+  - id: RC-1
+    title: "Migration file renamed GBL-084 -> GBL-123; test still reads the old filename"
+    status: FIXED
+    explains_blocks: 3
+    detail: >-
+      Commit db362fd (GH #405) renamed migrations/GBL-084_rls_removal.sql to
+      migrations/GBL-123_rls_removal.sql but left
+      tests/integration/test_iss503_rls_removal.zig reading "GBL-084_rls_removal.sql"
+      from disk. readGbl084Sql() therefore returned error.FileNotFound and
+      TC-ISS503-01/02/03 failed before executing any SQL. This is the anti-patterns.md
+      "legacy name in test after migration rename" entry, in its filename form.
+    tests_fixed:
+      - "TC-ISS503-01: GBL-123 pre-flight blocks when LEGACY_RLS tenants exist"
+      - "TC-ISS503-02: GBL-123 succeeds when zero LEGACY_RLS tenants remain"
+      - "TC-ISS503-03: GBL-123 is idempotent on re-apply"
+
+  - id: RC-2
+    title: "xc05/xc06 fixtures write to a table name that has never existed"
+    status: FIXED
+    explains_blocks: 11
+    detail: >-
+      tests/integration/xc05_deterministic_replay_test.zig and
+      xc06_backwards_compatibility_test.zig issue `INSERT INTO instances (...)` and
+      `SELECT ... FROM instances`. There is no `instances` relation in any schema in
+      this database and there never was one — the projection table is
+      `instance_projections` (created by 005_instances.sql under that name). The
+      fixtures also named a `created_at` column (the real column is `started_at`) and
+      omitted `definition_id`, which is NOT NULL with no default. Additionally
+      TC-XC-06-01 asserted the core business tables exist in `table_schema='public'`,
+      but non-GBL migrations apply per tenant schema, so they live in
+      `tenant_default` — the anti-patterns.md line-55 pattern.
+
+  - id: RC-3
+    title: "OIDC tests insert unqualified into `tenant`, hitting a stale tenant_default shadow copy"
+    status: FIXED
+    explains_blocks: 19
+    detail: >-
+      45 table names exist in BOTH `public` and `tenant_default`, and they diverge in
+      columns because GBL-prefixed migrations only ever apply to `public`.
+      `public.tenant` has the `tenant_type` column (added by
+      GBL-119_env01_tenant_type_field.sql); the stale `tenant_default.tenant` copy does
+      not. Six OIDC test files write `INSERT INTO tenant (... tenant_type ...)`
+      unqualified, and TestHarness's search_path is `tenant_default,public`, so the
+      write resolves to the shadow copy and fails C42703 `column "tenant_type" of
+      relation "tenant" does not exist` (23 occurrences). Qualifying every reference as
+      `public.tenant` fixes it. Same anti-patterns.md line-55 pattern as RC-2, applied
+      to the tenant registry rather than to business tables.
+
+non_causes_ruled_out:
+
+  - claim: "Per-tenant schema_migrations ledger is never created during provisioning"
+    verdict: NOT A DEFECT
+    evidence: >-
+      The three `tenant_<uuid>.schema_migrations does not exist` lines appear inside the
+      captured stderr block of TC-ISS503-01, whose actual failure is RC-1's FileNotFound.
+      Zig attributes a test binary's interleaved stderr to whichever test block was
+      running, so a sibling's transient output is misread as the failing test's cause.
+      GBL-132_iss0108_drop_stray_tenant_schema_migrations.sql establishes that per-tenant
+      ledger tables are deliberately dropped: the canonical tracker is
+      public.schema_migrations(schema_name, version), per src/design/iss504_migration_tracking.md.
+      A tenant schema reachable without its own ledger is therefore the intended design,
+      not the bug. Confirmed on a freshly migrated database: 108/108 migrations applied,
+      zero per-tenant ledger tables created, no such error raised.
+
+  - claim: "C23505 duplicate key on tenant_<uuid>.process_definitions is part of this issue"
+    verdict: SEPARATE / NOT REPRODUCED ON A PRISTINE DATABASE
+    evidence: >-
+      Appears only against the long-lived shared bpm_test database, from accumulated
+      fixture rows. Absent from both pristine-database runs.
+
+  - claim: "secret_ref missing from webhook_subscriptions is a source defect"
+    verdict: SHARED-DATABASE DRIFT, NOT A SOURCE DEFECT
+    evidence: >-
+      On the shared bpm_test database, 1134_iss0112_add_secret_ref_to_tenant_schemas.sql
+      is recorded applied at 2026-08-06 07:15:23Z — 43 minutes BEFORE
+      GBL-128_exp501_secrets.sql at 07:58:38Z. Because the ledger marks it applied it
+      never re-runs, so the columns were never added. On a freshly migrated database the
+      order is correct and `tenant_default.webhook_subscriptions.secret_ref` and
+      `.secret_key_id` are both present. This is one-time drift baked into that specific
+      container's database, not a defect in the migration set. It accounts for the
+      difference between the shared-DB (123) and pristine (119) BEFORE counts.
+
+fix_plan_executed:
+  - "RC-1: rename every GBL-084 reference to GBL-123 in test_iss503_rls_removal.zig and main_test.zig"
+  - "RC-2: instances -> instance_projections; created_at -> started_at; add definition_id via gen_random_uuid(); qualify TC-XC-06-01's information_schema probe to tenant_default"
+  - "RC-3: qualify tenant as public.tenant across the six OIDC test files"
+
+verification:
+  zig_build: "exit 0"
+  error_set_check: "no output"
+  lint_sql_param_types: "0 BLOCKER, 0 MAJOR, 0 MINOR"
+  lint_test_isolation: "OK — 127 files checked, no isolation issues"
+  zig_build_test: "exit 0 (no regression)"
+  test_env_verify: "exit 0, HEALTHY, 8 checks passed"
+  test_integration_svc: "still exits 1 — 86 failures remain from distinct, pre-existing root causes (forwarded below)"
+
+acceptance_criteria_status:
+  - criterion: "Root cause of tenant_<uuid>.schema_migrations does not exist identified"
+    status: MET
+    note: >-
+      Identified and disproven as a defect: it is stderr bleed from a sibling binary
+      misattributed to TC-ISS503-01, whose real cause (RC-1) is fixed. Per-tenant ledger
+      tables are intentionally absent by the ISS-504 design.
+  - criterion: "zig build test-integration-svc exits 0"
+    status: NOT MET
+    note: >-
+      Reduced 119 -> 86 failures on a pristine database with zero regressions. The
+      remaining 86 are independent pre-existing defects with their own root causes,
+      forwarded as separate issues rather than absorbed into this run per the CLAUDE.md
+      scope boundary.
+
+forwarded_clusters:
+  - iss: ISS-0182
+    severity: MAJOR
+    blocks: 13
+    title: "effects_subsystem_test: wall-clock backoff assertions and leaked allocations"
+  - iss: ISS-0183
+    severity: MAJOR
+    blocks: 11
+    title: "repository_test: content_hash bytea/uuid mismatch and untyped SQL parameters"
+  - iss: ISS-0184
+    severity: MAJOR
+    blocks: 62
+    title: "Remaining test-integration-svc failures across 31 files (audit/webhook/entity/env/adp clusters)"
+  - iss: ISS-0185
+    severity: MAJOR
+    blocks: 0
+    title: "45 business tables duplicated between public and tenant_default with diverging columns"
