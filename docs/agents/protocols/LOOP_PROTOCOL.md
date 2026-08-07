@@ -302,6 +302,97 @@ issue.
 
 ---
 
+## Requirement batch loop mode (WF-02, `docs/requirements.yaml`)
+
+**Source of truth: `docs/requirements.yaml` (status=`DRAFT` requirements). Lock registry:
+`handoffs/batch_queue.json`.** This is a second, parallel loop — distinct from the
+GitHub-issue loop above — for draining a backlog of specified-but-unimplemented
+requirements via WF-02 (Requirement Implementation), not WF-03 (Issue Resolving).
+
+**Why a separate queue file, not `global_queue.json`:** a requirement batch has no GitHub
+issue to key off, and WF-02's git wrapping differs from WF-03's (own branch naming:
+`feature/WF02-batch-<N>-<date>`, no per-issue PR). The locking *discipline* is identical —
+`tools/_queue_sync.py` (fetch-fresh-before-write), the same-machine file mutex, and the
+mandatory immediate-push-after-claim rule all apply exactly as documented above for
+`global_queue.json`, just pointed at `handoffs/batch_queue.json`.
+
+**Trigger phrases:** "start requirement loop", "drain requirements backlog", "process
+requirement batches", or equivalent — distinct from "start loop" (GitHub issues) so an
+operator can run either independently, or both (GitHub issues first, by convention, since
+bugs blocking other work should usually clear before new features build on top of a
+possibly-broken base — but nothing enforces that ordering; it is an operator choice).
+
+**Tools reference:**
+
+```
+python3 tools/reqctl_batch_plan.py [--status DRAFT] [--json]
+```
+Computes the ordered batch list from `docs/requirements.yaml`: topological order from
+each requirement's `**Extends:** <ID>` marker (a genuine directional dependency — unlike
+`**See:**`, which is symmetric cross-referencing with no ordering meaning in how this
+repo writes it; verified when this was built that the `See:` graph among the initial
+92-requirement backlog migration had 34 mutual-reference cycles while the `Extends:` graph
+was a clean DAG), workflow-clustered (keeps one feature's requirements adjacent), capped
+at 4 per batch (`ORCHESTRATOR.md`'s WF-02 hard limit), and a requirement never shares a
+batch with the thing it `Extends` even if the dependency graph says it's technically
+"ready" — CODE-DESIGNER needs the extended requirement's design settled first.
+
+```
+python3 tools/reqctl_batch_claim.py <workspace_id>
+```
+Claims the next unclaimed, non-`DONE` batch. Exit 0 = claimed (JSON on stdout), exit 2 =
+nothing left to claim, exit 3 = all unclaimed batches locked by other workspaces, exit 1 =
+error. Same exit-code semantics as `gh_claim.py`.
+
+```
+python3 tools/reqctl_batch_release.py <batch_index> <workspace_id> [--run-id RUN_ID]
+```
+Marks a claimed batch `DONE`. Same lock-ownership check as `queue_release.py` (refuses to
+release a batch locked by a different `workspace_id`).
+
+**Loop skeleton:**
+
+```
+LOOP START
+│
+├─ Check STOP_LOOP flag (same flag as the GitHub-issue loop — shared kill switch)
+│
+├─ PULL MAIN BEFORE CLAIMING (same rationale as the GitHub-issue loop):
+│   git checkout main && git pull --ff-only origin main
+│
+├─ python3 tools/reqctl_batch_claim.py <workspace_id>
+│   ├─ exit 2 → nothing left to batch → loop complete, stop
+│   ├─ exit 3 → all unclaimed batches locked → stop or retry after delay
+│   ├─ exit 1 → unexpected error → log, stop
+│   └─ exit 0 → batch claimed, JSON on stdout (requirement_ids list)
+│
+├─ PUSH THE CLAIM TO MAIN IMMEDIATELY — before any WF-02 work starts (mirrors the
+│  GitHub-issue loop's mandatory immediate-push step exactly):
+│   git add handoffs/batch_queue.json
+│   git commit -m "batch: claim batch <N> for <workspace_id>"
+│   git fetch origin main && git rebase origin/main
+│   git push origin main
+│   If rejected: fetch, check whether this batch is now locked by someone else;
+│   if so, stand down and re-run reqctl_batch_claim.py.
+│
+├─ Run WF-02 for requirement_ids (Step 00 git-setup through Step 06 doc-updater,
+│  Step Final git-merge) — own branch feature/WF02-batch-<N>-<YYYYMMDD>, own PR,
+│  own squash-merge, per ORCHESTRATOR.md's WF-02 pipeline table
+│
+├─ python3 tools/reqctl_batch_release.py <N> <workspace_id> --run-id WF02-batch-<N>-<date>
+│
+├─ Commit + push handoffs/batch_queue.json + handoffs/orchestrator.log to main
+│
+└─ goto LOOP START
+```
+
+**No cross-loop interference:** a workspace running the GitHub-issue loop and a workspace
+running the requirement-batch loop can run simultaneously without racing each other —
+they read/write different queue files (`global_queue.json` vs `batch_queue.json`) and
+target different requirement/issue spaces entirely.
+
+---
+
 ## Multi-workspace interaction diagram
 
 ```

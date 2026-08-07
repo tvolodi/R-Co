@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-06T23:35:45Z'
+last_updated: '2026-08-07T16:17:56Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4267,3 +4267,463 @@ requirements:
     test_run: tests/integration/xc06_backwards_compatibility_test.zig
     released_at: '2026-05-29T12:51:00Z'
     release_run: WF02-stage10-repo-20260528
+  AGT-01:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Agent artifact envelope with kind discrimination
+  AGT-02:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Non-production artifact environment enforcement
+  AGT-03:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Artifact submission idempotency per attempt
+  AGT-04:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Immutable task specs bound by spec hash
+  AGT-05:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Non-zero RNG seed folded into spec identity
+  AGT-06:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Dual-sweep artifact retention
+  AGT-07:
+    status: DRAFT
+    stage: '17'
+    priority: SHOULD
+    title: Deprecated envelope field names rejected
+  CAC-UI-01:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Tenant segment in every query key
+  CAC-UI-02:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Cache disposal on tenant switch and sign-out
+  CAC-UI-03:
+    status: DRAFT
+    stage: F8
+    priority: SHOULD
+    title: Cache lifetime tiers by data class
+  CAC-UI-04:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Version-pinned task payload fetch
+  CMP-UI-01:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Generated design token stylesheet
+  CMP-UI-02:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: No literal colour values in component code
+  CMP-UI-03:
+    status: DRAFT
+    stage: F8
+    priority: SHOULD
+    title: Shared UI component library
+  CMP-UI-04:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Tenant brand override at bootstrap
+  CMP-UI-05:
+    status: DRAFT
+    stage: F8
+    priority: SHOULD
+    title: Field registry extension point
+  CMP-UI-06:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Generic interpreter architecture rule
+  DDL-01:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Pure platform DDL validator
+  DDL-02:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Expand-then-constrain ordering check
+  DDL-03:
+    status: DRAFT
+    stage: '16'
+    priority: SHOULD
+    title: Phased DDL generation
+  DDL-04:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Idempotent batched backfill
+  DDL-05:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Reserved plat_ object namespace
+  FIL-01:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Human task attachment upload
+  FIL-02:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Tenant-prefixed storage object keys
+  FIL-03:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Transactional attachment quota accounting
+  FIL-04:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Per-tier single-upload size cap
+  FIL-05:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Signed time-limited attachment download URL
+  FIL-06:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Probe-safe cross-tenant attachment reads
+  FIL-07:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Attachment delete grace period and reaper sweeps
+  FIL-08:
+    status: DRAFT
+    stage: '17'
+    priority: SHOULD
+    title: Reaper ordering and predicate idempotency
+  GRD-UI-01:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Forbidlist as single guard source of truth
+  GRD-UI-02:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Frontend source scan gate
+  GRD-UI-03:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Post-build bundle scan gate
+  GRD-UI-04:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Two-sided META control per guard pattern
+  GRD-UI-05:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Redacted guard violation reporting
+  GRD-UI-06:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Accessibility gate per canonical surface
+  GRD-UI-07:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Generated per-field ARIA wiring
+  MIG-01:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Platform migration control table
+  MIG-02:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Control row commits with the DDL
+  MIG-03:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Tenant migration fanout with continue on failure
+  MIG-04:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Migration resume for pending and failed tenants
+  MIG-05:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Idempotent migration re-run
+  MIG-06:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Migration admin surface and fix-forward policy
+  OBP-01:
+    status: DRAFT
+    stage: '16'
+    priority: SHOULD
+    title: Outbox depth cap and cached depth counter
+  OBP-02:
+    status: DRAFT
+    stage: '16'
+    priority: SHOULD
+    title: External ingress refusal before transaction
+  OBP-03:
+    status: DRAFT
+    stage: '16'
+    priority: SHOULD
+    title: Typed outbox overflow on internal emit
+  OBP-04:
+    status: DRAFT
+    stage: '16'
+    priority: SHOULD
+    title: Outbox gate hysteresis and escalation
+  ORD-01:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Effect completion claim guard
+  ORD-02:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Per-correlation execute guard
+  ORD-03:
+    status: DRAFT
+    stage: '16'
+    priority: SHOULD
+    title: Sequence order guard and gap sweeping
+  ORD-04:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Cross-correlation parallelism and lag metrics
+  PAR-01:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Monthly range partitioning of the event log
+  PAR-02:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Proactive future partition creation
+  PAR-03:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Partition-scoped retention and archival
+  PAR-04:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Partition constraints declared before attach
+  PAR-05:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Online conversion to a partitioned event log
+  PAR-06:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Time-bounded instance reconstruction queries
+  PIN-01:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Dependency version resolution at instance start
+  PIN-02:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Pin set recorded in INSTANCE_STARTED
+  PIN-03:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: No fallback to latest version
+  PIN-04:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Pin resolution on replay and in sub-processes
+  PIN-05:
+    status: DRAFT
+    stage: '16'
+    priority: SHOULD
+    title: Explicit instance pin rebind
+  PRM-01:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Promotion plan and diff report
+  PRM-02:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Conflict pre-flight rejection
+  PRM-03:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Plan digest binds approval to a diff
+  PRM-04:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Promotion review state machine
+  PRM-05:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Non-skippable human approval gate
+  PRM-06:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Pre-promotion assertion re-run
+  PRM-07:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Sandbox teardown does not block promotion
+  PRM-08:
+    status: DRAFT
+    stage: '16'
+    priority: SHOULD
+    title: Promotion rollback by version pointer move
+  PRM-09:
+    status: DRAFT
+    stage: '16'
+    priority: SHOULD
+    title: Solution pack update conflict resolution
+  QRY-01:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Structured entity query surface
+  QRY-02:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Declared filterable field allowlist
+  QRY-03:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Keyset pagination with a bounded page size
+  QRY-04:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Empty envelope for unauthorised entity types
+  QRY-05:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Server-side field stripping on query results
+  RND-UI-01:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Six-state renderer union and single error classifier
+  RND-UI-02:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Loading state with skeleton layout
+  RND-UI-03:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Fetch failure state with explicit retry
+  RND-UI-04:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Leak-free permission denied surface
+  RND-UI-05:
+    status: DRAFT
+    stage: F8
+    priority: MUST
+    title: Rate limit backpressure with retry countdown
+  RND-UI-06:
+    status: DRAFT
+    stage: F8
+    priority: SHOULD
+    title: Three-action write conflict resolution
+  SBX-01:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Orchestrator role gate on task-spec submission
+  SBX-02:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Server-authoritative orchestrator principal
+  SBX-03:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Orchestrator excluded from sandbox claim
+  SBX-04:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Sandbox ownership binding at claim
+  SBX-05:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Single sentinel for inaccessible sandboxes
+  SBX-06:
+    status: DRAFT
+    stage: '17'
+    priority: MUST
+    title: Sandbox release, reclaim, and claim audit
+  VLD-01:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Typed environment from definition context
+  VLD-02:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Expression compile and type check
+  VLD-03:
+    status: DRAFT
+    stage: '16'
+    priority: MUST
+    title: Aggregated validation diagnostics
+  VLD-04:
+    status: DRAFT
+    stage: '16'
+    priority: SHOULD
+    title: Validation gate at authoring and promotion
