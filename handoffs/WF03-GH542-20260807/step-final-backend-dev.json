@@ -1,0 +1,34 @@
+{
+  "handoff_id": "c542final-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH542-20260807",
+  "step": "Final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T14:55:57Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving Step Final (git-merge)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5420007-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "WF-03 Step Final: Merge feature/WF03-GH542-20260807 to main.\n\nProcedure:\n1. Verify branch: git branch --show-current (must be feature/WF03-GH542-20260807)\n2. Rebase on main: git fetch origin main && git rebase origin/main\n3. Create PR: gh pr create --base main --title \"fix(pg.zig): suppress PostgreSQL error stderr (ISS-0607)\" --body \"Fixes #542\\n\\nAdded -Dlog-pg-errors build flag (default false) to gate stderr printing in vendor/pg/pg.zig. Prevents test runner from aborting on negative database tests. Regression test at tests/integration/iss0607_pg_stderr_suppression_test.zig.\"\n4. Merge PR: gh pr merge --squash --delete-branch\n5. Verify branch deleted: git fetch origin && git branch -r | grep feature/WF03-GH542-20260807 || echo 'Branch deleted'\n6. Return to main: git checkout main && git pull --ff-only origin main\n7. Verify clean state: git status (must show 'nothing to commit, working tree clean')\n\nReturn PASS with PR number and merge commit SHA in result.",
+    "acceptance_criteria": [
+      "PR created and merged to main",
+      "Feature branch deleted from GitHub",
+      "Local repo on main branch with clean working tree"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}

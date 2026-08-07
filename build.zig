@@ -711,7 +711,13 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "pool", .module = pool_module },
                 .{ .name = "provisioning", .module = provisioning_mod_api08 },
                 .{ .name = "migrations", .module = migrations_mod_api08 },
-                .{ .name = "build_options", .module = build_options.createModule() },
+                // GH-542 / ISS-0607: must share `build_options_mod` (not
+                // `build_options.createModule()`) so that pg_mod's transitive
+                // `build_options` import resolves to the same module. Two
+                // distinct `build_options` modules pointing at the same
+                // options.zig causes "file exists in modules 'build_options'
+                // and 'build_options0'" compile errors.
+                .{ .name = "build_options", .module = build_options_mod },
                 // ISS-0134: testDbUrl() helper uses env.globalEnviron().
                 .{ .name = "env", .module = env_mod },
             },
