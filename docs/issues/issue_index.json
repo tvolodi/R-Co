@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-07T00:04:38Z",
+  "last_updated": "2026-08-07T00:19:28Z",
   "next_issue_id": 153,
   "issues": [
     {
@@ -1767,6 +1767,21 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/507",
       "created_at": "2026-08-07T00:04:38Z",
       "discovered_by": "DOC-UPDATER (WF03-ISS-0175-20260806)"
+    },
+    {
+      "id": "ISS-0179",
+      "title": "LuaJIT built with -DLUAJIT_UNWIND_EXTERNAL but no unwinder linked on Linux: 8 undefined _Unwind_* symbols break zig build test (GH #509)",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "category": "build-infrastructure/missing-link-input-platform-specific",
+      "run_id": "WF03-ISS-0175-20260806",
+      "affected_areas": [
+        "vendor/luajit/build.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/509",
+      "created_at": "2026-08-07T00:19:28Z",
+      "discovered_by": "BACKEND-DEV (WF03-ISS-0175-20260806 Step Final)",
+      "resolved_at": "2026-08-07T00:19:28Z"
     }
   ]
 }

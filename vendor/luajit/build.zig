@@ -164,19 +164,53 @@ pub fn addLuaJit(
     });
 
     // Core VM, JIT compiler, and standard libraries.
+    //
+    // ISS-0179: -DLUAJIT_UNWIND_EXTERNAL makes lj_err.c call the system
+    // unwinder (_Unwind_RaiseException, __register_frame, ...) instead of
+    // LuaJIT's free-standing internal unwinder. Upstream enables it on any
+    // toolchain that emits unwind tables, which includes Linux/x86_64 -- so the
+    // flag itself is correct and is NOT removed here. What was missing is the
+    // library that *provides* those symbols at link time. On Windows they come
+    // from the CRT, which is why this only ever failed on Linux, and only once
+    // the ISS-0175 relver defect stopped masking it by failing earlier.
+    const unwind_external = switch (target.result.os.tag) {
+        // Add targets here only after verifying the toolchain both emits unwind
+        // tables and provides an unwinder to link against.
+        .windows, .linux, .macos => true,
+        else => false,
+    };
+
+    var c_flags: std.ArrayListUnmanaged([]const u8) = .empty;
+    c_flags.appendSlice(b.allocator, &.{
+        "-D_FILE_OFFSET_BITS=64",
+        "-D_LARGEFILE_SOURCE",
+        // Upstream builds the amalgamated core without UBSan; several
+        // hot paths rely on wrapping arithmetic and tagged-pointer tricks
+        // that trap otherwise. Same rationale as workaround (b).
+        "-fno-sanitize=undefined",
+    }) catch @panic("OOM");
+    if (unwind_external) {
+        // -funwind-tables is what upstream's TARGET_TESTUNWIND probe checks for
+        // before defining the macro: EXT unwinding requires unwind tables on
+        // *every* C frame between the throw and the catch, not just on lj_err.c.
+        c_flags.appendSlice(b.allocator, &.{
+            "-DLUAJIT_UNWIND_EXTERNAL",
+            "-funwind-tables",
+        }) catch @panic("OOM");
+    }
+
     lib.root_module.addCSourceFiles(.{
         .root = b.path(src),
         .files = &(core_sources ++ lib_sources),
-        .flags = &.{
-            "-D_FILE_OFFSET_BITS=64",
-            "-D_LARGEFILE_SOURCE",
-            "-DLUAJIT_UNWIND_EXTERNAL",
-            // Upstream builds the amalgamated core without UBSan; several
-            // hot paths rely on wrapping arithmetic and tagged-pointer tricks
-            // that trap otherwise. Same rationale as workaround (b).
-            "-fno-sanitize=undefined",
-        },
+        .flags = c_flags.items,
     });
+
+    // Provide the unwinder itself. On Linux the _Unwind_* family lives in
+    // libgcc_eh/libunwind rather than libc, so link_libc alone does not supply
+    // it; on Windows and macOS the platform runtime already does.
+    if (unwind_external and target.result.os.tag == .linux) {
+        lib.root_module.link_libcpp = true;
+    }
 
     lib.root_module.addIncludePath(b.path(src));
     // The generated headers each land in their own cache directory, so every

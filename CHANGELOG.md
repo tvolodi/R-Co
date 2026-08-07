@@ -16,6 +16,13 @@ All notable changes to the BPM Platform are documented here.
 - ISS-0177 was found and fixed **inside** this run under the Unblock-Everything directive, because it blocked the fresh-clone verification that was ISS-0175's entire acceptance criterion — the two defects masked each other.
 - **The follow-up is filed, not silently absorbed.** Both defects were invisible precisely because no CI job builds from a *clean* checkout — CI caches the workspace, so a file that exists only locally looks tracked. That gap is ISS-0178/[#507](https://github.com/tvolodi/R-Co/issues/507) and is queued, not fixed here.
 
+**ISS-0179 — LuaJIT requested the system unwinder but never linked one, breaking every Linux build** ([GitHub #509](https://github.com/tvolodi/R-Co/issues/509))
+
+- **Fixing ISS-0175 exposed a third defect that had been unreachable behind it.** With the relver error gone, CI got as far as *linking* for the first time and failed with 8 undefined symbols — `_Unwind_RaiseException`, `__register_frame` and friends — all referenced by `libluajit.a(lj_err.o)`.
+- **Cause: a macro was set without its link input.** `vendor/luajit/build.zig` compiled the core with `-DLUAJIT_UNWIND_EXTERNAL` unconditionally, which switches `lj_err.c` from LuaJIT's free-standing internal unwinder to the *system* one. On Windows the CRT supplies those symbols, so it built. On Linux they live in `libgcc_eh`/`libunwind`, which `link_libc` does not pull in — so nothing provided them.
+- **The macro was not removed.** Upstream enables it on Linux deliberately, gated on a probe that the toolchain emits unwind tables. Removing it would have made the linker stop complaining by changing what was being built; the real defect was a *missing link input*. The fix supplies the unwinder (and adds `-funwind-tables`, which upstream treats as the precondition, since EXT unwinding needs tables on every C frame between throw and catch — not just in `lj_err.c`).
+- **Pre-existing since [#496](https://github.com/tvolodi/R-Co/pull/496)/ISS-0161, confirmed not caused here** by diffing `vendor/luajit/build.zig` against `origin/main` — this run had not touched the file. It survived because every prior CI run died earlier at ISS-0175. Fixed in-run under Unblock-Everything, since it blocked this run's own criterion of turning CI green.
+
 ### Security
 
 **ISS-0169 tranche 1 — LUA-05/06/07** ([GitHub #495](https://github.com/tvolodi/R-Co/issues/495) — Lua capability enforcement did not exist; every host function ran unchecked)

@@ -1,0 +1,28 @@
+{
+  "issue_id": "ISS-0179",
+  "title": "LuaJIT built with -DLUAJIT_UNWIND_EXTERNAL but no unwinder linked on Linux: 8 undefined _Unwind_*/__register_frame symbols break `zig build test` on any Linux host",
+  "severity": "BLOCKER",
+  "status": "RESOLVED",
+  "discovered_by": "BACKEND-DEV (Step Final)",
+  "discovered_in_run": "WF03-ISS-0175-20260806",
+  "discovered_at": "2026-08-07T00:18:47Z",
+  "affected_areas": [
+    "vendor/luajit/build.zig"
+  ],
+  "symptom": "On Linux, `zig build test` fails to link the Lua test binary with 8 errors: undefined symbol _Unwind_RaiseException, _Unwind_DeleteException, _Unwind_GetCFA, _Unwind_GetIP, _Unwind_SetGR, _Unwind_SetIP, __register_frame, __deregister_frame -- all 'referenced by libluajit.a(lj_err.o)'. Windows is unaffected. Observed on CI run 31133591489 (PR #508).",
+  "root_cause": "vendor/luajit/build.zig compiled the LuaJIT core with -DLUAJIT_UNWIND_EXTERNAL unconditionally. That macro switches lj_err.c from LuaJIT's free-standing internal unwinder to the system unwinder, so the _Unwind_* family becomes an external link dependency. On Windows those symbols are supplied by the CRT, so the build succeeded there. On Linux they live in libgcc_eh/libunwind, which .link_libc = true does not pull in -- so nothing provided them and the link failed. Upstream does not hit this because its Makefile only defines the macro after probing that the toolchain emits unwind tables (TARGET_TESTUNWIND) and links via a toolchain driver that supplies the unwinder implicitly.",
+  "impact": "`zig build test` could not link on any Linux host, including every CI runner. This made the CI 'Build and unit tests' job unpassable independently of the defect PR #508 was fixing. Severity BLOCKER because it broke the build outright on the platform CI runs on.",
+  "acceptance_criteria": [
+    "`zig build test` links and runs the Lua test binary on Linux with no undefined _Unwind_* or __register_frame symbols.",
+    "Windows behaviour is unchanged: `zig build test-lua` still passes.",
+    "The fix supplies the unwinder rather than removing -DLUAJIT_UNWIND_EXTERNAL, since upstream enables that macro on Linux deliberately."
+  ],
+  "resolution": "vendor/luajit/build.zig now gates -DLUAJIT_UNWIND_EXTERNAL on the target OS (windows/linux/macos) and, on Linux, links the unwinder by setting link_libcpp on the LuaJIT module, which brings in libunwind alongside libc. It also adds -funwind-tables wherever the macro is defined: upstream's own probe treats unwind tables as the precondition for EXT unwinding, and EXT requires them on every C frame between throw and catch, not only in lj_err.c. The macro is deliberately NOT removed -- removing it would silence the linker by changing what is being built, whereas the actual defect was a missing link input.",
+  "verification": "Windows (primary checkout): `zig build` exit 0 and `zig build test-lua` exit 0 after the change. Linux: verified by CI on PR #508 -- see the run recorded in the PR; the 8 undefined-symbol errors are the exact signal this fix must clear, so a green 'Build and unit tests' job is the direct test.",
+  "prevention": "The general lesson is that this repo builds LuaJIT on Windows locally but on Linux in CI, so any vendored build flag with a platform-dependent link consequence can pass locally and fail only in CI. It stayed hidden longer than it should have because ISS-0175 failed earlier in the same job and masked it -- fixing one build defect exposed the next. ISS-0178 / GH #507 (clean-checkout CI job) covers the adjacent gap; this issue argues additionally for treating a change to vendored build flags as requiring a Linux CI result before merge, never a local Windows result alone.",
+  "notes": "Not caused by this run and not related to ISS-0175/ISS-0177 by mechanism. It was pre-existing since PR #496 / ISS-0161 (which introduced the flag) and was unreachable until now: every prior CI run died earlier at the ISS-0175 luajit_relver.txt error, so the linker was never reached. Confirmed pre-existing by diffing vendor/luajit/build.zig against origin/main, which showed this PR had not touched the file. Fixed in-run under Unblock-Everything rather than deferred, because it blocked this PR's own acceptance criterion of turning CI green.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/509",
+  "discovered_while_fixing": "ISS-0175",
+  "resolved_at": "2026-08-07T00:19:28Z",
+  "resolved_in_run": "WF03-ISS-0175-20260806"
+}
