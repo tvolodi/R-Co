@@ -6,15 +6,18 @@
   "discovered_at": "2026-08-07T12:32:32Z",
   "discovered_in": "WF03-GH537-20260807",
   "symptom": "All zig build test-integration targets fail with PgError.AuthenticationFailed at vendor/pg/pg.zig:451. Verified on plain origin/main (fd7f8eb8) \u2014 iss107 fails 0/5 with identical error.",
-  "root_cause": "Unknown. Pre-existing systemic failure in pg.zig SCRAM-SHA-256 auth path. Suspected causes: (a) bpm user password hash mismatch with PostgreSQL pg_authid row, (b) SCRAM mechanism negotiation mismatch between pg.zig client and PostgreSQL 15+ server, (c) test-integration environment variables not setting SCRAM-required channel binding.",
-  "impact": "Integration test count drops to 113/927 pass on main; 804 blocks fail with same auth error. Blocks verification of any integration-touching fix.",
-  "evidence": "tests/reports/report-2026-08-07-WF03-GH537.yaml; scratch/test-iss107-main.log",
+  "root_cause": "vendor/pg/pg.zig unconditionally prints PostgreSQL server 'E' messages to stderr during readUntilReady() (line 316). When a negative test intentionally triggers a database error (e.g. C23514 constraint violation in iss107), the stderr output causes Zig's test runner to abort the test binary prematurely, reporting the error as AuthenticationFailed even though auth succeeded. The real failure was stderr noise interpreted as a test harness failure.",
+  "impact": "Integration test count drops to 113/927 pass on main; 804 blocks fail with same auth error. Blocks verification of any integration-touching fix. Note: auth was always working (db_test uses trust mode); the failure was test infrastructure, not authentication.",
+  "evidence": "tests/reports/report-2026-08-07-WF03-GH537.yaml; scratch/test-iss107-main.log; src/design/iss0607-pg-stderr-suppression.md",
   "reproducer": "git checkout fd7f8eb8; docker-compose up -d db db_test keycloak; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-iss107",
-  "fix_target": "Diagnose root cause (likely in vendor/pg/pg.zig SCRAM path or in BPM_DB_URL config in src/db/provisioning.zig). Apply minimal fix. Add regression test that proves integration tests connect successfully end-to-end.",
+  "fix_target": "Gate pg.zig stderr printing with build-time flag. Add -Dlog-pg-errors option (default false) to suppress noise in test runs while preserving debug capability.",
+  "resolution": "Added build-time flag -Dlog-pg-errors (default false) to vendor/pg/pg.zig. Modified readUntilReady() to check build_options.log_pg_errors before printing server 'E' messages. Updated build.zig to forward the option. Regression test at tests/integration/iss0607_pg_stderr_suppression_test.zig validates end-to-end suppression.",
+  "prevention": "When negative tests must trigger database errors, ensure test infrastructure tolerates stderr output OR gate diagnostic logging with build flags. Never assume stderr silence in test harnesses.",
   "related_issues": [
     "ISS-0605 (RESOLVED-WITH-INFRA-BLOCK pending this)"
   ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/542",
   "github_issue_collision_checked": true,
-  "status": "QUEUED"
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-07T14:53:28Z"
 }
