@@ -1,0 +1,200 @@
+---
+iss_id: ISS-0128
+title: "event_store/store.zig:337 StoreError.InstanceNotFound on TC-DB-03-01 store.append"
+github_issue: "https://github.com/tvolodi/R-Co/issues/418"
+severity: BLOCKER
+category: event-store / transaction-search-path-race
+run_id: WF03-ISS-0128-20260807
+handoff_id: a1b2c3d4-0128-4003-8000-000000000001
+diagnosis_at: "2026-08-07T08:00:04Z"
+diagnosis_by: ISSUE-FIXER
+
+# --------------------------------------------------------------------------
+# ROOT CAUSE ANALYSIS
+# --------------------------------------------------------------------------
+
+root_cause: |
+  event_store/store.zig::append() transaction lacks SET LOCAL search_path
+  protection, causing instance_projections lookup to fail when the pooled
+  connection carries stale session-level search_path from prior use.
+
+root_cause_detail: |
+  The failure occurs at src/event_store/store.zig line 320-337:
+  
+  After BEGIN, store.append queries:
+    SELECT status FROM instance_projections WHERE instance_id = $1
+  
+  This query is UNQUALIFIED (no schema prefix). It relies on search_path
+  resolution to find the correct tenant's instance_projections table.
+  
+  Test flow in TC-DB-03-01:
+  1. Test acquires setup_conn from pool
+  2. setup_conn goes through applyRequestStorageRouting (src/db/pool.zig:258)
+     which sets search_path to tenant_default,public (session-level)
+  3. Test executes INSERT INTO instance_projections (unqualified, goes to
+     tenant_default.instance_projections) and autocommits
+  4. Test releases setup_conn back to pool
+  5. Test calls store.append()
+  6. store.append acquires a NEW connection from pool
+  7. New connection goes through applyRequestStorageRouting again
+  8. If this connection was previously used for a different context, its
+     session-level search_path may be stale
+  9. store.append executes BEGIN but does NOT issue SET LOCAL search_path
+  10. The unqualified SELECT query at line 320 resolves against the connection's
+      current search_path
+  11. If search_path is wrong (e.g., still 'public' from prior use), the query
+      returns 0 rows
+  12. Line 329 detects instance_rows.len == 0 and returns InstanceNotFound
+
+  The race condition:
+  - Session-level SET search_path issued by applyRequestStorageRouting is
+    necessary but not sufficient when connections are pooled
+  - Pool connections can carry stale session state from prior checkouts
+  - ISS-0130 fixed this exact pattern for migrations.zig by adding SET LOCAL
+    search_path immediately after BEGIN (PR #531 / GH #423)
+  - event_store.zig needs the same fix
+
+evidence:
+  - file: src/event_store/store.zig
+    line: 306
+    pattern: 'conn.exec("BEGIN", &.{}) catch return StoreError.TransactionFailed;'
+    issue: "No SET LOCAL search_path after BEGIN"
+  
+  - file: src/event_store/store.zig
+    line: 320
+    pattern: '"SELECT status FROM instance_projections WHERE instance_id = $1"'
+    issue: "Unqualified table name, relies on search_path resolution"
+  
+  - file: src/db/migrations.zig
+    context: "ISS-0130 fix (PR #531)"
+    pattern: 'SET LOCAL search_path TO {s},public immediately after BEGIN'
+    note: "Proven pattern for this exact race condition"
+  
+  - file: tests/integration/db_integration_test.zig
+    line: 268-280
+    pattern: |
+      const setup_conn = try pool.acquire();
+      defer pool.release(setup_conn);
+      try setup_conn.exec(
+          "INSERT INTO instance_projections ...",
+          &.{ inst_id_str, def_id_str },
+      );
+    issue: "Test uses one connection for setup, store.append() uses another"
+
+related_issues:
+  - ISS-0114: "Tenant provisioning fixed; public.tenant now populated with storage_mode=SCHEMA"
+  - ISS-0130: "migrations.zig fixed with SET LOCAL search_path after BEGIN (PR #531)"
+  - ISS-0129: "Migration advisory lock fix (related context)"
+
+timeline:
+  - event: "ISS-0114 resolved"
+    date: "2026-08-04T18:15:39Z"
+    detail: "Tenant provisioning now correctly sets storage_mode=SCHEMA"
+  
+  - event: "ISS-0128 discovered"
+    date: "2026-08-04T18:15:39Z"
+    detail: "TC-DB-03-01 fails with InstanceNotFound after ISS-0114 fix"
+    note: "Provisioning now works, revealing pre-existing search_path race"
+  
+  - event: "ISS-0130 resolved"
+    date: "2026-08-07T05:22:24Z"
+    detail: "migrations.zig fixed with SET LOCAL search_path pattern"
+  
+  - event: "ISS-0128 diagnosis"
+    date: "2026-08-07T08:00:04Z"
+    detail: "Root cause identified: event_store needs same pattern as ISS-0130 fix"
+
+# --------------------------------------------------------------------------
+# RESOLUTION STRATEGY
+# --------------------------------------------------------------------------
+
+resolution_strategy: |
+  Apply the ISS-0130 pattern (PR #531) to event_store.zig::append():
+  
+  1. After BEGIN (line 306), immediately issue SET LOCAL search_path
+  2. Use tenant_id from params to derive schema name via schemaNameForTenant
+  3. SET LOCAL is transaction-scoped, auto-reset on COMMIT/ROLLBACK
+  4. All subsequent unqualified queries in the transaction will resolve correctly
+  
+  Pattern to implement (from migrations.zig as reference):
+  
+    conn.exec("BEGIN", &.{}) catch return StoreError.TransactionFailed;
+    errdefer conn.exec("ROLLBACK", &.{}) catch {};
+    
+    // NEW: Set transaction-scoped search_path
+    const schema_name = deriveSchemaName(params.tenant_id);
+    const set_path_sql = try std.fmt.allocPrint(
+        allocator,
+        "SET LOCAL search_path TO {s},public",
+        .{schema_name}
+    );
+    defer allocator.free(set_path_sql);
+    conn.exec(set_path_sql, &.{}) catch {
+        conn.exec("ROLLBACK", &.{}) catch {};
+        return StoreError.TransactionFailed;
+    };
+    
+    // Existing: pipeline_run_id set_config
+    if (effective_pipeline_run_id.len > 0) { ... }
+    
+    // Existing: instance_projections query (now guaranteed correct schema)
+    const instance_rows = conn.query(...);
+
+files_to_change:
+  - path: src/event_store/store.zig
+    lines: [306-320]
+    change_type: insert
+    description: "Add SET LOCAL search_path immediately after BEGIN, before any query"
+  
+  - path: src/event_store/store.zig
+    lines: [1-50]
+    change_type: review
+    description: "Import schemaNameForTenant helper from db/pool.zig if needed"
+
+test_coverage:
+  - test: TC-DB-03-01
+    file: tests/integration/db_integration_test.zig
+    line: 255
+    acceptance: "Must pass after fix (currently fails with InstanceNotFound)"
+  
+  - test: "All existing event_store tests"
+    note: "Must remain passing (no regression)"
+
+acceptance_criteria:
+  - TC-DB-03-01 passes with the fixed event_store.append
+  - store.append idempotency invariant holds (ES-03)
+  - No regression in existing event_store integration tests
+  - SET LOCAL is issued exactly once per transaction
+  - search_path is correctly set for tenant_default (00000000-0000-0000-0000-000000000000)
+  - search_path is correctly set for non-default tenant UUIDs (tenant_<uuid>)
+
+prevention:
+  - rule: |
+      Every function that opens a transaction with BEGIN and issues unqualified
+      table queries MUST issue SET LOCAL search_path immediately after BEGIN
+  - pattern: "Follow ISS-0130 / PR #531 pattern for all new transactional code"
+  - verification: |
+      Grep for 'conn.exec("BEGIN"' → verify SET LOCAL search_path follows within
+      3 lines (accounting for errdefer and comments)
+
+architectural_note: |
+  This is the third instance of the stale-session-search_path pattern:
+  1. ISS-0114: pool.zig routing resolver fallback
+  2. ISS-0130: migrations.zig per-transaction SET LOCAL (RESOLVED)
+  3. ISS-0128: event_store.zig per-transaction SET LOCAL (this issue)
+  
+  The session-level SET search_path issued by applyRequestStorageRouting
+  (src/db/pool.zig:258) is a baseline but cannot be trusted when connections
+  are reused from the pool. Every transactional code path must use SET LOCAL
+  to guarantee schema visibility within its own transaction.
+
+complexity_estimate:
+  lines_changed: 15-25
+  files_changed: 1
+  risk: LOW
+  note: |
+    Identical pattern to ISS-0130 fix which passed all integration tests.
+    event_store.zig already has transaction boundaries clearly marked.
+    No schema changes, no new queries, just defensive SET LOCAL.
+
+next_step: "Route to BACKEND-DEV for implementation (WF-03 Step 2)"

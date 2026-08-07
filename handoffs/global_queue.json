@@ -175,10 +175,13 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/418",
       "title": "event_store/store.zig:337 StoreError.InstanceNotFound on TC-DB-03-01",
       "severity": "BLOCKER",
-      "status": "QUEUED",
-      "lock": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-07T07:52:29Z"
+      },
       "added_at": "2026-08-06T21:48:42Z",
-      "started_at": null,
+      "started_at": "2026-08-07T07:52:29Z",
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null

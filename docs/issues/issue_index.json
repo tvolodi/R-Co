@@ -1459,7 +1459,7 @@
     {
       "id": "ISS-0128",
       "title": "event_store/store.zig:337 StoreError.InstanceNotFound on TC-DB-03-01 store.append",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "BLOCKER",
       "category": "event-store / instance-lookup-race-after-provision",
       "run_id": "WF03-gh377-20260804",
@@ -1468,7 +1468,7 @@
         "src/event_store/store.zig"
       ],
       "created_at": "2026-08-04T18:15:39Z",
-      "resolved_at": null,
+      "resolved_at": "2026-08-07T08:32:16Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/418"
     },
     {

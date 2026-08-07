@@ -1,0 +1,41 @@
+{
+  "handoff_id": "a1b2c3d4-0128-4001-8000-000000000000",
+  "run_id": "WF03-ISS-0128-20260807",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T07:52:42Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0128.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 00: git-setup for ISS-0128.\n\nCreate and push feature branch feature/WF03-ISS-0128-20260807 from clean main.\n\nIssue: event_store/store.zig:337 StoreError.InstanceNotFound on TC-DB-03-01 store.append\nSeverity: BLOCKER\nGitHub: https://github.com/tvolodi/R-Co/issues/418",
+    "acceptance_criteria": [
+      "git checkout main && git pull --ff-only succeeds",
+      "Feature branch feature/WF03-ISS-0128-20260807 created from main",
+      "Feature branch pushed to origin",
+      "Working tree clean"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Git-setup completed: feature branch feature/WF03-ISS-0128-20260807 created and pushed to origin",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 0.5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T07:53:11Z",
+  "completed_at": "2026-08-07T07:54:39Z"
+}

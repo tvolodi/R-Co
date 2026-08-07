@@ -1,0 +1,36 @@
+{
+  "handoff_id": "a1b2c3d4-0128-4010-8000-00000000FFFF",
+  "run_id": "WF03-ISS-0128-20260807",
+  "step": "Final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T08:36:29Z",
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step Final: Merge to Main",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a1b2c3d4-0128-4009-8000-000000000007"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "WF-03 Step Final: Merge ISS-0128 fix to main.\n\nBranch: feature/WF03-ISS-0128-20260807\nAll steps complete: 00 \u2192 0.5 \u2192 1 \u2192 2 \u2192 2b \u2192 3 \u2192 5 \u2192 6 \u2192 7 \u2713\nRelease: APPROVED\n\nExecute fn:git-merge:\n1. Fetch and rebase on origin/main if needed\n2. Create GitHub PR:\n   - Title: 'fix(event-store): prevent search_path race in append() (ISS-0128)'\n   - Body: Reference ISS-0128, GH #418, describe fix\n3. Merge PR: gh pr merge --squash --delete-branch\n4. Verify branch deleted from GitHub\n5. Return to main: git checkout main && git pull --ff-only\n6. Verify clean state: git status\n\nThis is MANDATORY - every workflow must close with git-merge.",
+    "acceptance_criteria": [
+      "Feature branch rebased on main if needed",
+      "GitHub PR created and merged",
+      "Feature branch deleted from GitHub",
+      "Local repo on main with clean working tree",
+      "PR number recorded in handoff result"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-08-07T08:35:03Z",
+  "completed_at": null
+}

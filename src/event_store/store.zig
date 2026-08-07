@@ -306,6 +306,27 @@ pub const Store = struct {
         conn.exec("BEGIN", &.{}) catch return StoreError.TransactionFailed;
         errdefer conn.exec("ROLLBACK", &.{}) catch {};
 
+        // ISS-0128: SET LOCAL search_path TO <schema>,public
+        // Transaction-scoped protection against stale session-level search_path
+        // on pooled connections. Pattern from ISS-0130 (PR #531, migrations.zig).
+        var schema_buf: [80]u8 = undefined;
+        const schema_name = db.schemaNameForTenant(params.tenant_id, &schema_buf);
+
+        var set_path_buf: [128]u8 = undefined;
+        const set_path_sql = std.fmt.bufPrint(
+            &set_path_buf,
+            "SET LOCAL search_path TO {s},public",
+            .{schema_name},
+        ) catch {
+            conn.exec("ROLLBACK", &.{}) catch {};
+            return StoreError.TransactionFailed;
+        };
+
+        conn.exec(set_path_sql, &.{}) catch {
+            conn.exec("ROLLBACK", &.{}) catch {};
+            return StoreError.TransactionFailed;
+        };
+
         if (effective_pipeline_run_id.len > 0) {
             conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{effective_pipeline_run_id}) catch {
                 conn.exec("ROLLBACK", &.{}) catch {};
