@@ -442,17 +442,22 @@
       ]
     },
     {
-      "issue_id": "ISS-0607",
+      "issue_id": "GH-542",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/542",
-      "title": "pg.zig SCRAM auth failure blocks all integration tests",
-      "severity": "BLOCKER",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T12:32:55Z",
-      "started_at": null,
+      "title": "pg.zig SCRAM-SHA-256 authentication failure blocks all integration tests on main",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-07T12:33:14Z"
+      },
+      "added_at": "2026-08-07T12:33:14Z",
+      "started_at": "2026-08-07T12:33:14Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 542,
+      "labels": []
     }
   ]
 }

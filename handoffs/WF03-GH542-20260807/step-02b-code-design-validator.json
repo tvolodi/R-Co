@@ -1,0 +1,46 @@
+{
+  "handoff_id": "c5420002b-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH542-20260807",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-07T12:50:11Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving Step 2b (design-validate)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5420005-0000-0000-0000-000000000000",
+      "c5420002-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss0607-pg-stderr-suppression.md",
+      "docs/issue-reports/WF03-GH542-20260807-step-05-issue-fixer-DIAGNOSIS.yaml"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2b: Validate the fix design for GH-542 / ISS-0607.\n\nDesign: src/design/iss0607-pg-stderr-suppression.md\n\nRequired checks (per CLAUDE.md CODE-DESIGN-VALIDATOR section):\n1. python tools/lint_design_artefact.py src/design/iss0607-pg-stderr-suppression.md (must exit 0).\n2. For Type E prose design: verify NO implementation code is present (look for `pub fn`, `pub const`, executable code blocks).\n3. All public function signatures listed (Type E).\n4. Error taxonomy exists (Type E): yes \u2014 the design preserves PgError.ServerError propagation.\n5. Dependencies documented: build flag, build_options module.\n6. Classification: design correctly identifies itself as Type E (novel cross-cutting: build flag + runtime stderr gating).\n\nAdditional check: design must explain how the regression test proves the fix works (the negative test must run to completion without aborting).\n\nComplete handoff with PASS or FAIL based on the result.\nOn PASS: next_action = \"Route to BACKEND-DEV (Step 3)\".",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0",
+      "No implementation code in design",
+      "Public API impact stated",
+      "Build flag mechanism described",
+      "Regression test plan present"
+    ],
+    "functions_to_call": [
+      "fn:validate-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated ISS-0607 / GH-542 fix design at src/design/iss0607-pg-stderr-suppression.md. Design correctly classified as Type E (prose, novel cross-cutting: build flag + compile-time stderr gating). Lint exits 0; zero implementation code (zero `pub fn` / `pub const` declarations anywhere in the file; the single match in a `text`-lang pseudo-code block is a `// ... pub fn build` comment, not a declaration). Public API impact is explicit and correct: PgError enum, ConnectOptions, Conn struct layout, and every Conn method signature are unchanged \u2014 only the stderr side effect on `ServerError` is gated. Build-flag mechanism via `b.option(bool, \"log-pg-errors\", ...)` + `addOption(bool, ...)` matches the existing build_options pattern at build.zig:62-66 (verified). Regression test plan: a single negative-path test that runs `UPDATE tenant SET storage_mode='BOGUS'` and asserts `expectError(error.ServerError, ...)` \u2014 the assertion running at all is the proof the fix works. File-by-file change list cites vendor/pg/pg.zig:316 (verified: single `POSTGRES ERROR` occurrence in the file, inside the 'E' arm at lines 314-318) and build.zig:62-66 (verified). Line numbers in the design match the current source. Forwarding to BACKEND-DEV (Step 3) for implementation.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "started_at": "2026-08-07T12:50:11Z",
+  "completed_at": "2026-08-07T12:52:22Z"
+}

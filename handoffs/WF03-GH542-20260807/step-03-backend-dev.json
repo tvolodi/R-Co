@@ -1,0 +1,53 @@
+{
+  "handoff_id": "c5420003-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH542-20260807",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-07T12:52:43Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving Step 3 (implement)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5420002b-0000-0000-0000-000000000000",
+      "c5420002-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss0607-pg-stderr-suppression.md",
+      "vendor/pg/pg.zig",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 3: Implement the pg.zig stderr suppression fix per validated design.\n\nDesign: src/design/iss0607-pg-stderr-suppression.md\n\nImplementation per design:\n1. build.zig: add `-Dlog-pg-errors` build option (default false) that sets a `log_pg_errors: bool` field in build_options.\n2. vendor/pg/pg.zig: wrap the existing `std.debug.print(\"POSTGRES ERROR: ...\")` call (~line 316) in `if (build_options.log_pg_errors)` so it only fires when explicitly opted in. Default = silent.\n3. Add a regression test: tests/integration/iss0607_negative_test_runs_to_completion_test.zig that triggers a deliberate CHECK constraint violation and asserts expectError(error.ServerError, ...). The mere fact that the test runs to completion (and the binary does not abort on stderr) proves the fix.\n4. Wire the new test into build.zig as test-integration-iss0607_neg.\n\nValidate:\n- python -m py_compile (no Python changes expected)\n- zig build (must exit 0)\n- zig build test-integration-iss0607 (existing iss107 test, must now PASS \u2014 currently 0/5)\n- zig build test-integration-iss0607_neg (new regression test, must PASS)\n- zig build test-env-verify (must remain 9/9 HEALTHY)\n\nCommit on feature/WF03-GH542-20260807, push to origin, complete handoff with PASS.\n\nCritical: Do NOT regress the C4 self-heal from GH-537 (test-env-verify still 9/9 HEALTHY). Do NOT change pg.zig's return type \u2014 only suppress the stderr print.",
+    "acceptance_criteria": [
+      "build.zig has -Dlog-pg-errors option with default false",
+      "vendor/pg/pg.zig has if (log_pg_errors) gate around the POSTGRES ERROR print",
+      "Regression test added under tests/integration/",
+      "zig build exits 0",
+      "zig build test-integration-iss0607 now passes (was 0/5)",
+      "zig build test-env-verify still 9/9 HEALTHY",
+      "Committed and pushed to feature branch"
+    ],
+    "functions_to_call": [
+      "fn:implement-fix"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented vendored pg.zig stderr-suppression gate per validated design. vendor/pg/pg.zig imports build_options and wraps the unconditional std.debug.print on the ErrorResponse arm of readUntilReady in if (log_pg_errors), preserving the typed PgError.ServerError return value unchanged. build.zig declares -Dlog-pg-errors=<bool> (default false) and propagates it via build_options.addOption. Re-created pg_mod locally with build_options_mod wired in. New tests/integration/iss0607_pg_stderr_suppression_test.zig exercises a CHECK constraint violation and asserts expectError(error.ServerError, ...); the mere fact that the binary reaches the assertion proves the fix. Wired test-integration-iss0607 step and added it to the test-integration-others_step barrier.",
+    "artifacts_out": [
+      "build.zig",
+      "vendor/pg/pg.zig",
+      "tests/integration/iss0607_pg_stderr_suppression_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T12:52:43Z",
+  "completed_at": "2026-08-07T12:59:50Z"
+}
