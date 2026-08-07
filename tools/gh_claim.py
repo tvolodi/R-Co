@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+"""
+gh_claim.py — claim the newest open GitHub issue not currently being processed.
+
+SOURCE OF TRUTH: https://github.com/tvolodi/R-Co/issues  (open issues, sorted newest first)
+LOCK REGISTRY:   handoffs/global_queue.json               (IN_PROGRESS items = locked)
+
+The lock registry is NOT a backlog — it only records what is currently being worked on.
+When an issue is resolved, its lock entry stays in the file as audit history.
+
+Exit codes:
+  0 — item claimed; JSON of the claimed item printed to stdout
+  2 — no claimable issues (all open GitHub issues are locked, or GitHub reports 0 open)
+  3 — every open issue is actively locked by another workspace (try again later)
+  1 — unexpected error (gh CLI unavailable, JSON parse failure, etc.)
+
+Usage:
+  python3 tools/gh_claim.py [<workspace_id>]
+
+  <workspace_id> defaults to "<hostname>-<pid>" when omitted.
+  Use a stable value (e.g. machine name) so logs clearly identify which workspace claimed.
+
+Printed JSON on exit 0:
+  {
+    "issue_id":     "GH-533",
+    "issue_number": 533,
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/533",
+    "title":        "...",
+    "severity":     "MAJOR",
+    "labels":       [...],
+    "status":       "IN_PROGRESS",
+    "lock":         {"workspace_id": "...", "locked_at": "..."},
+    "locked_at":    "..."
+  }
+
+ORCH loop:
+  exit 0 → run full WF-03 for this item, then call queue_release.py GH-NNN <workspace>
+  exit 2 → stop the loop (no open GitHub issues remain)
+  exit 3 → stop or retry after a delay (everything is locked by other workspaces)
+"""
+
+import datetime
+import json
+import os
+import socket
+import subprocess
+import sys
+import time
+
+QUEUE_FILE  = "handoffs/global_queue.json"
+LOCK_FILE   = "handoffs/global_queue.lock"
+REPO        = "tvolodi/R-Co"
+TTL_MINUTES = 120   # stale-lock expiry
+
+
+# ── helpers ──────────────────────────────────────────────────────────────────
+
+
+def _utcnow() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _lock_expired(locked_at: str) -> bool:
+    try:
+        t = (
+            datetime.datetime
+            .strptime(locked_at, "%Y-%m-%dT%H:%M:%SZ")
+            .replace(tzinfo=datetime.timezone.utc)
+        )
+        return (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() / 60 > TTL_MINUTES
+    except Exception:
+        return True  # unparseable → treat as expired
+
+
+def _acquire_file_mutex(owner: str) -> bool:
+    """Atomically create the file-level mutex. Returns True if acquired."""
+    try:
+        fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        with os.fdopen(fd, "w") as f:
+            json.dump({"owner": owner, "at": _utcnow()}, f)
+        return True
+    except FileExistsError:
+        try:
+            with open(LOCK_FILE, encoding="utf-8-sig") as f:
+                data = json.load(f)
+            if _lock_expired(data.get("at", "")):
+                os.remove(LOCK_FILE)
+                return _acquire_file_mutex(owner)
+        except Exception:
+            pass
+        return False
+
+
+def _release_file_mutex() -> None:
+    try:
+        os.remove(LOCK_FILE)
+    except FileNotFoundError:
+        pass
+
+
+def _read_queue() -> dict:
+    if not os.path.exists(QUEUE_FILE):
+        return {"version": "1", "items": []}
+    with open(QUEUE_FILE, encoding="utf-8-sig") as f:
+        return json.load(f)
+
+
+def _write_queue(data: dict) -> None:
+    with open(QUEUE_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+
+
+def _fetch_open_issues() -> list:
+    """Return all open GitHub issues sorted newest first (highest number first)."""
+    result = subprocess.run(
+        [
+            "gh", "issue", "list",
+            "--repo", REPO,
+            "--state", "open",
+            "--limit", "500",
+            "--json", "number,title,labels,createdAt,url",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"gh issue list failed:\n{result.stderr.strip()}")
+    issues = json.loads(result.stdout)
+    issues.sort(key=lambda x: x["number"], reverse=True)  # newest = highest number
+    return issues
+
+
+def _infer_severity(issue: dict) -> str:
+    """Map GitHub labels to BLOCKER / MAJOR / MINOR. Defaults to MAJOR."""
+    names = {lbl["name"].lower() for lbl in issue.get("labels", [])}
+    if names & {"blocker", "critical", "severity: blocker", "severity:blocker"}:
+        return "BLOCKER"
+    if names & {"major", "bug", "severity: major", "severity:major"}:
+        return "MAJOR"
+    if names & {"minor", "severity: minor", "severity:minor"}:
+        return "MINOR"
+    return "MAJOR"
+
+
+# ── main ─────────────────────────────────────────────────────────────────────
+
+
+def main() -> int:
+    workspace_id = sys.argv[1] if len(sys.argv) > 1 else f"{socket.gethostname()}-{os.getpid()}"
+
+    # Retry acquiring the file mutex (another workspace may be mid-write)
+    for attempt in range(5):
+        if _acquire_file_mutex(workspace_id):
+            break
+        time.sleep(1 + attempt)
+    else:
+        print("ERROR: could not acquire queue mutex after 5 attempts", file=sys.stderr)
+        return 1
+
+    try:
+        # Read current lock registry
+        queue = _read_queue()
+
+        # Build set of GitHub URLs currently locked (and not stale)
+        active_locks: set[str] = set()
+        for item in queue["items"]:
+            if item.get("status") != "IN_PROGRESS":
+                continue
+            lock = item.get("lock") or {}
+            locked_at = lock.get("locked_at", "")
+            if not _lock_expired(locked_at):
+                active_locks.add(item["github_issue"])
+
+        # Fetch all open GitHub issues
+        try:
+            open_issues = _fetch_open_issues()
+        except RuntimeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+
+        if not open_issues:
+            return 2  # GitHub reports 0 open issues — loop is done
+
+        # Walk newest-first; find first unclaimed issue
+        all_locked = True
+        for issue in open_issues:
+            url = issue["url"]
+            if url in active_locks:
+                continue  # another workspace owns this
+
+            all_locked = False
+            now = _utcnow()
+            severity = _infer_severity(issue)
+            issue_id = f"GH-{issue['number']}"
+
+            claimed_item = {
+                "issue_id":     issue_id,
+                "issue_number": issue["number"],
+                "github_issue": url,
+                "title":        issue["title"],
+                "severity":     severity,
+                "labels":       [lbl["name"] for lbl in issue.get("labels", [])],
+                "status":       "IN_PROGRESS",
+                "lock":         {"workspace_id": workspace_id, "locked_at": now},
+                "added_at":     now,
+                "started_at":   now,
+                "completed_at": None,
+                "run_id":       None,
+                "deferred_reason": None,
+            }
+
+            # Update existing entry (if any) or append
+            existing = next(
+                (i for i in queue["items"] if i.get("github_issue") == url),
+                None,
+            )
+            if existing is not None:
+                existing.update(claimed_item)
+            else:
+                queue["items"].append(claimed_item)
+
+            _write_queue(queue)
+            print(json.dumps(claimed_item, indent=2))
+            return 0
+
+        # Reached here: every open issue is under an active lock
+        if all_locked:
+            print("All open GitHub issues are locked by other workspaces.", file=sys.stderr)
+            return 3
+
+        return 2  # nothing claimable
+
+    except Exception as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    finally:
+        _release_file_mutex()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

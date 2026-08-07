@@ -640,14 +640,17 @@ Any issue found incidentally during Steps 1-7 (not the thing currently being fix
 
 **Read:** `docs/agents/protocols/LOOP_PROTOCOL.md` before entering this mode.
 
-ORCH enters loop mode when the user says "start loop", "process the queue", "run autonomous loop", or equivalent. Each iteration resolves **exactly one issue** from `handoffs/global_queue.json`, then commits the queue state to `main`.
+ORCH enters loop mode when the user says "start loop", "process the queue", "drain issues", "run autonomous loop", or equivalent. Each iteration resolves **exactly one open GitHub issue**, then commits the lock registry state to `main`.
 
-**Trigger phrases:** "start loop", "run loop", "process the queue", "autonomous mode", "keep fixing issues".
+**Source of truth: GitHub open issues** at https://github.com/tvolodi/R-Co/issues  
+**Lock registry: `handoffs/global_queue.json`** (records what is currently being worked on; NOT a backlog)
+
+**Trigger phrases:** "start loop", "run loop", "process issues", "drain GitHub issues", "autonomous mode", "keep fixing issues".
 
 **Loop skeleton (mandatory — do not deviate):**
 
 ```python
-workspace_id = "<COMPUTERNAME or user-supplied label>"
+workspace_id = "<COMPUTERNAME or user-supplied label>"   # e.g. "TVOLODI-loop"
 stop_loop    = "handoffs/STOP_LOOP"
 
 while True:
@@ -655,22 +658,28 @@ while True:
     if os.path.exists(stop_loop):
         break
 
-    # 2. Claim one item
+    # 2. Claim the newest unclaimed GitHub issue
     result = subprocess.run(
-        ["python3", "tools/queue_claim.py", workspace_id],
+        ["python3", "tools/gh_claim.py", workspace_id],
         capture_output=True, text=True
     )
-    if result.returncode == 2:   # empty
+    if result.returncode == 2:   # no open GitHub issues → loop complete
         break
-    if result.returncode != 0:   # locked (3) or error (1)
+    if result.returncode == 3:   # all open issues locked by other workspaces
+        break
+    if result.returncode != 0:   # unexpected error
         break
     item = json.loads(result.stdout)
+    # item["issue_id"]     = "GH-533"
+    # item["issue_number"] = 533
+    # item["github_issue"] = "https://github.com/tvolodi/R-Co/issues/533"
+    # item["title"]        = "..."
 
     # 3. Run WF-03 for this single item (own branch, own PR, own merge)
-    run_id = f"WF03-{item['issue_id']}-{date_str}"
-    #   → Steps 0.5 → 1 → 2 → 2b → 3 → [4/4b] → 5 → 6 → 7 → Step Final
+    run_id = f"WF03-GH{item['issue_number']}-{date_str}"
+    #   Step 00 git-setup → Steps 0.5 → 1 → 2 → 2b → 3 → [4/4b] → 5 → [6] → 7 → Step Final
 
-    # 4. Release lock
+    # 4. Release lock in registry
     status = "RESOLVED"   # or "DEFERRED" if scope decision made during WF-03
     subprocess.run(
         ["python3", "tools/queue_release.py", item["issue_id"], workspace_id,
@@ -678,15 +687,15 @@ while True:
         check=True
     )
 
-    # 5. Commit queue state to main
+    # 5. Commit lock registry + audit log to main
     #    git add handoffs/global_queue.json handoffs/orchestrator.log
-    #    git commit -m "queue: resolve <issue_id>"
+    #    git commit -m "queue: resolve GH-<number>"
     #    git push origin main
 ```
 
 **Each item gets a full WF-03 run:** own Step 00 (git-setup), own WF-03 Steps 1–7, own Step Final (git-merge). No shared branches between items.
 
-**Incidental issues discovered during a loop iteration** are added to the *global* queue via `python3 tools/queue_add.py` (not the per-run queue), then processed in a later loop iteration. Do not inline-fix them in the current iteration.
+**Incidental issues discovered during a loop iteration** are filed as GitHub issues and added to the lock registry via `python3 tools/queue_add.py`, then picked up in a later loop iteration (`gh_claim.py` will find them because they are already open on GitHub).
 
 **Stop the loop gracefully** (current item completes, then loop exits):
 ```powershell

@@ -1,19 +1,21 @@
-# LOOP Protocol — Global Issue Queue with Multi-Workspace Locking
+# LOOP Protocol — GitHub Issues as Source of Truth, Multi-Workspace Locking
 
-**Version:** 1.0 · 2026-08-06
+**Version:** 2.0 · 2026-08-07
 **Function:** `fn:loop-mode`
 **Read by:** `ORCH` (owner); relevant to any workspace running an autonomous fix loop
-**Tools:** `tools/queue_claim.py`, `tools/queue_release.py`, `tools/queue_add.py`
+**Tools:** `tools/gh_claim.py`, `tools/queue_release.py`, `tools/queue_add.py`
 
 ---
 
 ## Purpose
 
-The ISSUE_QUEUE protocol (see `ISSUE_QUEUE.md`) covers *discovery*: what an agent does the
-moment it finds an issue it was not asked to fix — file it, then forward it here. This
-protocol covers *consumption*: how issues on that shared backlog get claimed and fixed,
-including by **two or more VS Code workspaces working autonomously** with no duplication of
-effort.
+The loop drains **all open GitHub issues** at https://github.com/tvolodi/R-Co/issues —
+bugs, BLOCKERs, requirements gaps, and anything else that appears there. The loop runs
+until GitHub reports zero open issues.
+
+`handoffs/global_queue.json` is a **lock registry only**. It records which workspace is
+currently processing which GitHub issue so two workspaces never work the same item
+simultaneously. It is NOT a backlog — the backlog is GitHub itself.
 
 The two protocols are the two halves of one flow:
 
@@ -21,12 +23,12 @@ The two protocols are the two halves of one flow:
 |---|---|---|
 | Question answered | Where does a newly-found issue go? | How does a queued issue get fixed? |
 | Actor | Any agent, mid-run | ORCH in loop mode |
-| Action | File ISS + GitHub issue, `queue_add.py` | `queue_claim.py` → full WF-03 run → `queue_release.py` |
+| Action | File ISS + GitHub issue, `queue_add.py` | `gh_claim.py` → full WF-03 run → `queue_release.py` |
 | Effect on current run | None — the run finishes its own job | Each claimed item is its own run, own branch, own PR |
 
-> **Changed 2026-08-06.** ISSUE_QUEUE.md previously specified a *per-run* queue drained
-> inline on the run's own branch. That inner loop was removed; the global queue described
-> here is now the only issue queue.
+> **Changed 2026-08-07 (v2).** Source of truth is now GitHub issues.
+> `queue_claim.py` (backlog-based) is replaced by `gh_claim.py` (GitHub-based).
+> `global_queue.json` is retained as the cross-workspace lock file only.
 
 ---
 
@@ -92,23 +94,30 @@ workspace that calls `queue_claim.py` will reclaim the item automatically.
 
 ## Tools reference
 
-### queue_claim.py
+### gh_claim.py  ← USE THIS FOR LOOP MODE
 
 ```
-python3 tools/queue_claim.py [<workspace_id>]
+python3 tools/gh_claim.py [<workspace_id>]
 ```
 
-Atomically claims the first available item and prints its JSON to stdout.
+Queries GitHub for all open issues (https://github.com/tvolodi/R-Co/issues), takes the
+**newest** one not currently locked, records the lock in `global_queue.json`, and prints
+the item JSON to stdout.
+
+**Source of truth: GitHub. Lock registry: `global_queue.json`.**
 
 | Exit | Meaning | ORCH action |
 |---|---|---|
 | 0 | Item claimed; JSON on stdout | Start WF-03 for this item |
-| 2 | Queue exhausted | Stop the loop |
-| 3 | All items locked by other workspaces | Stop or retry after delay |
-| 1 | Unexpected error | Log, stop |
+| 2 | No claimable issues (GitHub has 0 open, or all are locked) | Stop the loop |
+| 3 | All open issues locked by other workspaces | Stop or retry after delay |
+| 1 | Unexpected error (gh CLI failure, JSON error) | Log, stop |
 
 `<workspace_id>` defaults to `<hostname>-<pid>` when omitted. Use a stable value
-(e.g. machine name) if you want logs to clearly identify which workspace did the work.
+(e.g. `$env:COMPUTERNAME + "-loop"`) so logs clearly identify which workspace did the work.
+
+The claimed item JSON includes `issue_id` in the form `GH-<number>` (e.g. `GH-533`).
+Pass this as the `<issue_id>` argument to `queue_release.py`.
 
 ### queue_release.py
 
@@ -117,9 +126,10 @@ python3 tools/queue_release.py <issue_id> <workspace_id> [--status RESOLVED|DEFE
 python3 tools/queue_release.py <issue_id> <workspace_id> --deferred-reason "<text>"
 ```
 
-Clears the item lock and sets the final status. Must be called after WF-03 completes
-(whether it succeeded or the issue was deferred). The `workspace_id` must match the one
-used in `queue_claim.py`.
+Clears the item lock in `global_queue.json` and sets the final status. Must be called
+after WF-03 completes (whether it succeeded or the issue was deferred). `<workspace_id>`
+must match the one used in `gh_claim.py`. For GitHub-sourced items, `<issue_id>` is
+`GH-<number>` (e.g. `GH-533`).
 
 ### queue_add.py
 
@@ -152,36 +162,55 @@ Remove-Item handoffs/STOP_LOOP
 
 ## ORCH loop mode — step by step
 
-ORCH enters loop mode when the user says "start loop", "run autonomous loop",
-"process the queue", or equivalent. A stable `<workspace_id>` should be established
-once at loop start (e.g. `$env:COMPUTERNAME + "-loop"`).
+ORCH enters loop mode when the user says "start loop", "process issues", "run autonomous loop",
+"drain GitHub issues", or equivalent. Establish a stable `<workspace_id>` once at loop start:
+
+```powershell
+$workspace_id = $env:COMPUTERNAME + "-loop"   # e.g. "TVOLODI-loop"
+```
 
 ```
 LOOP START
 │
-├─ Check STOP_LOOP flag → if present: exit loop
+├─ Check STOP_LOOP flag
+│   Test-Path handoffs/STOP_LOOP  →  if present: exit loop gracefully
 │
-├─ python3 tools/queue_claim.py <workspace_id>
-│   ├─ exit 2 (empty)  → exit loop
-│   ├─ exit 3 (locked) → exit loop (another workspace is active)
-│   └─ exit 0          → proceed with claimed item JSON
+├─ python3 tools/gh_claim.py <workspace_id>
+│   ├─ exit 2 → GitHub has 0 open issues  →  loop complete, stop
+│   ├─ exit 3 → all open issues locked    →  stop (another workspace active)
+│   ├─ exit 1 → unexpected error          →  log, stop
+│   └─ exit 0 → item claimed, JSON on stdout
 │
-├─ Read claimed item: { issue_id, severity, github_issue, ... }
+├─ Parse claimed item:
+│   {
+│     "issue_id":     "GH-533",       ← pass to queue_release.py
+│     "issue_number": 533,
+│     "github_issue": "https://github.com/tvolodi/R-Co/issues/533",
+│     "title":        "...",
+│     "severity":     "MAJOR",
+│     ...
+│   }
 │
-├─ Run WF-03 (Steps 0.5 → 1 → 2 → 2b → 3 → [4/4b] → 5 → 6 → 7)
-│   ├─ Each step is its OWN git-setup + git-merge (one branch per item)
-│   │   Use run_id = "WF03-<issue_id>-<YYYYMMDD>"
-│   └─ On WF-03 PASS or deliberate deferral:
+├─ Determine workflow:
+│   Every GitHub issue → WF-03 (issue resolving)
+│   run_id = "WF03-GH<number>-<YYYYMMDD>"   e.g. "WF03-GH533-20260807"
 │
-├─ python3 tools/queue_release.py <issue_id> <workspace_id> [--status RESOLVED|DEFERRED]
+├─ Run WF-03:  Step 00 → 0.5 → 1 → 2 → 2b → 3 → [4/4b] → 5 → [6] → 7 → Final
+│   Own feature branch: feature/WF03-GH<number>-<YYYYMMDD>
+│   Own PR, own squash-merge
 │
-├─ Commit global_queue.json + orchestrator.log update to main
+├─ After WF-03 Step Final returns PASS (or deliberate deferral decision):
+│
+├─ python3 tools/queue_release.py GH-<number> <workspace_id> --status RESOLVED
+│   (or --status DEFERRED --deferred-reason "..." if scope decision made)
+│
+├─ Commit lock registry + audit log to main:
 │   git add handoffs/global_queue.json handoffs/orchestrator.log
-│   git commit -m "queue: resolve <issue_id>"
+│   git commit -m "queue: resolve GH-<number>"
 │   git push origin main
 │
 ├─ Append to orchestrator.log:
-│   "<ts> | LOOP_ITEM_DONE | <issue_id> | <workspace_id> | RESOLVED"
+│   "<ts> | LOOP_ITEM_DONE | WF03-GH<number>-<date> | <workspace_id> | RESOLVED (PR #NNN)"
 │
 └─ goto LOOP START
 ```
