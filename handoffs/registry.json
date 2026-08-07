@@ -2355,7 +2355,33 @@
       "created_at": "2026-08-07T15:13:30Z",
       "status": "PENDING",
       "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "78128920-b391-482c-a01e-f2aa7faf9b92",
+      "file": "handoffs/WF03-GH526-20260807/step-0.5-issue-fixer.json",
+      "run_id": "WF03-GH526-20260807",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-07T18:47:51Z",
+      "started_at": "2026-08-07T18:48:10Z",
+      "completed_at": "2026-08-07T18:48:56Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "93b33c49-9ff3-442f-8b37-e4c84170f1e1",
+      "file": "handoffs/WF03-GH526-20260807/step-1-issue-fixer.json",
+      "run_id": "WF03-GH526-20260807",
+      "step": "1",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-07T18:47:51Z",
+      "started_at": "2026-08-07T18:48:56Z",
+      "completed_at": "2026-08-07T18:49:40Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving"
     }
   ],
-  "last_updated": "2026-08-07T12:35:00Z"
+  "last_updated": "2026-08-07T18:49:40Z"
 }

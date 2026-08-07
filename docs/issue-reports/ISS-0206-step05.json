@@ -1,0 +1,35 @@
+{
+  "run_id": "WF03-GH526-20260807",
+  "step": "0.5",
+  "agent": "ISSUE-FIXER",
+  "result": "PASS",
+  "produced_at": "2026-08-07T18:48:56Z",
+  "summary": "ISS-0206 / GH-526 verified: local ISS file present with github_issue pointing to issue 526; GH #526 is OPEN and body contains the rco-sync-ref tag. No duplicate local ISS file. fn:search-issues found ISS-0132 / #427 as a prior resolved issue of the same class (parseGraphJson errdefer guards PGJ-1/PGJ-2/PGJ-3) \u2014 its resolution strategy is directly applicable to rowToDefinition.",
+  "checks": [
+    {
+      "name": "docs/issues/ISS-0206.json exists with github_issue == /issues/526",
+      "result": "PASS"
+    },
+    {
+      "name": "GH #526 body contains <!-- rco-sync-ref: ISS-0206 -->",
+      "result": "PASS"
+    },
+    {
+      "name": "GH #526 state == OPEN",
+      "result": "PASS"
+    },
+    {
+      "name": "no duplicate local ISS file pointing to GH-526",
+      "result": "PASS"
+    },
+    {
+      "name": "fn:search-issues found ISS-0132 as prior resolved match",
+      "result": "PASS"
+    },
+    {
+      "name": "ISS-0132 fix markers present in src/definition/store.zig",
+      "result": "PASS"
+    }
+  ],
+  "next_action": "Route to ISSUE-FIXER (WF-03 Step 1 \u2014 diagnosis)"
+}

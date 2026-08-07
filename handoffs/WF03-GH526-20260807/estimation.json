@@ -1,0 +1,31 @@
+{
+  "run_id": "WF03-GH526-20260807",
+  "created_at": "2026-08-07T18:47:51Z",
+  "rules_version": "1",
+  "requirement_ids": [],
+  "difficulty": 2,
+  "difficulty_rationale": "Single-function errdefer guard pattern, identical to ISS-0132's parseGraphJson fix; one src + one test file.",
+  "integration_surface": "low",
+  "integration_surface_rationale": "No callers change; only the body's error path is hardened and a new internal-only test signature is added.",
+  "steps": [
+    "issue-fixer",
+    "code-designer",
+    "code-design-validator",
+    "backend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "issue-fixer": 8,
+    "code-designer": 10,
+    "code-design-validator": 5,
+    "backend-dev": 25,
+    "test-designer": 8,
+    "test-design-validator": 5,
+    "test-runner": 12,
+    "doc-updater": 8,
+    "total": 81
+  }
+}
