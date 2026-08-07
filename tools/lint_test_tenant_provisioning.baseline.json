@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "generated_at": "2026-08-07T11:30:00Z",
+  "source": "tools/lint_test_tenant_provisioning.py --no-baseline --json tests/integration",
+  "regenerated_by": "WF03-GH537-20260807 (GH-537 / ISS-0605)",
+  "regeneration_note": "Initial baseline. The two entries below are the existing detector tests that intentionally INSERT public.tenant rows with storage_mode='SCHEMA' (or flip storage_mode via UPDATE) without going through provisionTenantSchema() — that is the test's semantic. Per src/design/iss0605-test-env-c4-orphan-selfheal.md §2.5, these tests are exempt because changing them would alter what they test. The lint catches the SAME pattern in any future test file. The fixture files in tests/integration/_fixtures/lint_tenant_provisioning/ are also exempt — they are the lint's own positive/negative controls, asserted by the regression test.",
+  "exempt_test_files": {
+    "tests/integration/tenant_config_realm_test.zig": {
+      "reason": "ISS-0072 / OIDC-F-05 — exercises public.tenant metadata without a backing schema by design (the schema is provisioned by SPT-01 integration, not here). See src/design/iss0605-test-env-c4-orphan-selfheal.md §2.5.",
+      "permit_patterns": [
+        "INSERT INTO public.tenant \\([^)]*\\)"
+      ]
+    },
+    "tests/integration/iss107_tenant_storage_mode_test.zig": {
+      "reason": "ISS-107 — directly tests the storage_mode column UPDATE; inserting without provisionTenantSchema is the test. See src/design/iss0605-test-env-c4-orphan-selfheal.md §2.5.",
+      "permit_patterns": [
+        "INSERT INTO tenant ",
+        "UPDATE tenant SET storage_mode"
+      ]
+    },
+    "tests/integration/spt01_provisioning_test.zig": {
+      "reason": "ISS-0068 / SPT-01 TC-SPT-01-06 — provisions a SCHEMA-mode tenant per-test UUID to exercise the routing branch, then DELETE-cleans in defer block. Safe by test-local UUID + explicit cleanup. Per src/design/iss0605-test-env-c4-orphan-selfheal.md §2.5, this pattern is acceptable when paired with deterministic per-test UUID cleanup.",
+      "permit_patterns": [
+        "INSERT INTO public.tenant",
+        "UPDATE public.tenant SET storage_mode"
+      ]
+    },
+    "tests/integration/test_iss503_rls_removal.zig": {
+      "reason": "ISS-503 / GBL-123 — TC-ISS503-02 and TC-ISS503-03 flip storage_mode='SCHEMA' inside a transaction that is always ROLLED BACK at the end (see the comprehensive comment in the test). No public.tenant row persists after the test, so the orphan pattern the lint catches does not arise. See src/design/iss0605-test-env-c4-orphan-selfheal.md §2.5.",
+      "permit_patterns": [
+        "UPDATE public.tenant SET storage_mode"
+      ]
+    }
+  },
+  "exempt_files": [
+    "tests/integration/_fixtures/lint_tenant_provisioning/bad_orphan_insert_test.zig",
+    "tests/integration/_fixtures/lint_tenant_provisioning/good_provisioned_insert_test.zig",
+    "tests/integration/iss0605_orphan_self_heal_test.zig"
+  ]
+}

@@ -520,6 +520,21 @@ def check_migrate() -> Check:
 
 
 def check_schema_baseline() -> Check:
+    # ISS-0605 / GH-537: C4 self-heal. Before delegating to
+    # verify_schema_baseline.py --check-tenants, run the orphan-row DELETE
+    # sweep that lives in tools/clean_test_db.py (lines 332-336, added by
+    # ISS-0140 / GH-443). The clean_test_db sweep is the only path that
+    # actually removes half-provisioned public.tenant rows with
+    # storage_mode='SCHEMA' and no matching tenant_schemas entry; the
+    # check_tenant_schemas_consistent() detector only reports them. Without
+    # this pre-step, every C4 run since the orphans were created has failed
+    # — see src/design/iss0605-test-env-c4-orphan-selfheal.md §3.1.
+    pre_step = _run_clean_test_db_sweep()
+    if pre_step.failed:
+        return pre_step
+    # SKIP is informational, not fatal — the existing BPM_TEST_DB_URL / script
+    # checks below will produce a clearer message in that case.
+
     script = REPO_ROOT / "tools" / "verify_schema_baseline.py"
     if not script.is_file():
         return Check("C4 schema baseline", SKIP, "verify_schema_baseline.py not present")
@@ -542,6 +557,43 @@ def check_schema_baseline() -> Check:
             "python3 tools/verify_schema_baseline.py --check-tenants --auto-fix",
         )
     return Check("C4 schema baseline", OK, "ledger matches migrations/")
+
+
+def _run_clean_test_db_sweep() -> Check:
+    """Helper: invoke tools/clean_test_db.py in default mode as a sub-process.
+
+    Used by C4 (check_schema_baseline) to remove orphan public.tenant rows
+    before the verify_schema_baseline.py --check-tenants detector runs. The
+    sweep is the DELETE at clean_test_db.py lines 332-336 (added by ISS-0140
+    / GH-443) which this helper trusts verbatim — it is the canonical
+    remediation.
+
+    Returns a Check whose status reports PASS/FAIL/SKIP. Never raises; a
+    non-zero exit returns a Check(BAD) with a one-line excerpt so the
+    existing C4 detail printing carries the failure forward.
+
+    The helper invokes clean_test_db.py in its DEFAULT mode (no
+    --include-fixtures) — that flag is operator-curated and C4 must not flip
+    it. Environment is inherited so BPM_TEST_DB_URL reaches the subprocess
+    the same way every other test-gate subprocess reads it.
+    """
+    name = "C4 cleanup pre-step"
+    script = REPO_ROOT / "tools" / "clean_test_db.py"
+    if not script.is_file():
+        return Check(name, SKIP, "clean_test_db.py not present")
+    if not os.environ.get("BPM_TEST_DB_URL"):
+        return Check(name, SKIP, "BPM_TEST_DB_URL not set")
+    code, out = run([sys.executable, str(script)], timeout=120)
+    if code != 0:
+        first = out.splitlines()[0] if out else "non-zero exit"
+        return Check(
+            name,
+            BAD,
+            first,
+            "python tools/clean_test_db.py — fix the cleanup failure above",
+        )
+    first = out.splitlines()[0] if out else "sweep exited 0"
+    return Check(name, OK, first)
 
 
 def check_test_isolation() -> Check:
@@ -625,6 +677,40 @@ def check_bench_env() -> Check:
     )
 
 
+def check_tenant_provisioning_lint() -> Check:
+    """C8 — lint guard against the orphan-tenant INSERT pattern.
+
+    ISS-0605 / GH-537: every test that inserts or UPDATEs public.tenant with
+    storage_mode='SCHEMA' must co-locate a provisionTenantSchema() (or
+    bpm_provision_tenant_schema()) call in the same test block. Otherwise a
+    test that crashes mid-run leaves a half-provisioned row claiming a Postgres
+    schema that was never created — the same defect class as ISS-0140 / GH-443,
+    recurring. tools/lint_test_tenant_provisioning.py is the prevention layer
+    that catches this statically; this check wires it into the gate.
+
+    The lint is a static check — it does not touch the database, so it runs
+    cheaply after the DB-touching checks (C0-C7) and never delays them.
+    """
+    script = REPO_ROOT / "tools" / "lint_test_tenant_provisioning.py"
+    if not script.is_file():
+        return Check(
+            "C8 tenant provisioning lint",
+            SKIP,
+            "lint_test_tenant_provisioning.py not present",
+        )
+    code, out = run([sys.executable, str(script), "tests/integration"], timeout=120)
+    if code != 0:
+        blockers = [l for l in out.splitlines() if "BLOCKER" in l]
+        detail = blockers[0] if blockers else (out.splitlines()[0] if out else "non-zero exit")
+        return Check(
+            "C8 tenant provisioning lint",
+            BAD,
+            detail,
+            "fix the provisioning violations above",
+        )
+    return Check("C8 tenant provisioning lint", OK, "no BLOCKER findings")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         description="Infrastructure Health Checklist (test_infrastructure_guide.md §3) as an exit code."
@@ -662,6 +748,7 @@ def main(argv: list[str]) -> int:
         checks.append(check_test_isolation())
         checks.append(check_stale_locks())
         checks.append(check_bench_env())
+        checks.append(check_tenant_provisioning_lint())
 
     failed = [c for c in checks if c.failed]
 

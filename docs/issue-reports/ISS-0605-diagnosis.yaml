@@ -1,0 +1,331 @@
+# ISS-0605 / GH-537 — Diagnosis
+#
+# WF-03 Step 1: Root cause diagnosis for test-env-verify C4 schema baseline
+# failure (5 tenants with public.tenant rows but no Postgres schemas).
+#
+# Run ID:   WF03-GH537-20260807
+# Date:     2026-08-07T11:06:07Z
+# Author:   ISSUE-FIXER
+
+issue_id: ISS-0605
+github_issue: https://github.com/tvolodi/R-Co/issues/537
+run_id: WF03-GH537-20260807
+created_at: "2026-08-07T11:06:07Z"
+severity: MAJOR
+category: test-environment data hygiene — same half-provisioned state as GH-443/ISS-0140
+
+# ---------------------------------------------------------------------------
+summary: |
+  C4 schema baseline fails because the shared db_test database (port 5434)
+  holds 5 `public.tenant` rows with `storage_mode='SCHEMA'` and slug pattern
+  `tenant-<uuid>` that were inserted by an integration test binary WITHOUT a
+  matching `public.tenant_schemas` registration or Postgres `tenant_<uuid>`
+  schema — the exact half-provisioned state previously filed as GH-443
+  / ISS-0140 (closed 2026-08-05). `tools/clean_test_db.py` already contains a
+  defensive DELETE for this exact state (lines 332-336), but `clean_test_db`
+  is not part of the `zig build test-env-verify` pipeline, so the orphans
+  survive every baseline run until an operator runs `clean_test_db.py` (or
+  a successful `zig build clean-test-db` step) by hand.
+
+# ---------------------------------------------------------------------------
+affected_files:
+  # Primary
+  - tools/verify_schema_baseline.py
+    # check_tenant_schemas_consistent() at lines 127-149 — detects the drift
+    # but provides no self-heal path other than --auto-fix, which only
+    # re-applies the iss0112 ledger-reconcile migration (lines 173-219) and
+    # does NOT touch orphaned public.tenant rows.
+  - tools/clean_test_db.py
+    # Lines 332-336 — already has the corrective DELETE for this exact state;
+    # the bug is that test-env-verify does not depend on it.
+  - tools/verify_test_env.py
+    # check_schema_baseline() at lines 523-544 — runs only
+    # `verify_schema_baseline.py --check-tenants`, never `clean_test_db.py`.
+    # C4 reports FAIL when public.tenant rows have no matching Postgres
+    # schema, but it has no path to remove the orphan row.
+  # Source of the orphan rows (caller context, not part of the fix)
+  - tests/integration/tenant_config_realm_test.zig
+    # insertTestTenant() at line ~104 — inserts a public.tenant row with
+    # storage_mode='SCHEMA' (via the column DEFAULT) but does NOT call
+    # bpm_provision_tenant_schema() or provisionTenantSchema(). Cleanup
+    # (deleteTestTenant, line ~117) only DELETEs the public.tenant row;
+    # because no schema was ever created, there is nothing to drop. Test
+    # bodies that crash, time out, or are killed BEFORE the defer fires
+    # leave behind exactly the half-provisioned row pattern observed here.
+  - tests/integration/iss107_tenant_storage_mode_test.zig
+    # Some sub-tests at lines 242-260 directly UPDATE storage_mode='SCHEMA'
+    # on a freshly-INSERTed public.tenant row without going through
+    # provisionTenantSchema(). Same pattern; deferred cleanup deletes the
+    # public.tenant row but never created a tenant_<uuid> schema.
+  # Related migration artefacts (context only — no DDL change needed)
+  - migrations/GBL-116_tnt07_rls_cleanup.sql
+    # Pre-flight gate at lines 23-58 aborts if any public.tenant row lacks
+    # tenant_schemas.migrations_applied_at IS NOT NULL — relevant because it
+    # confirms the schema-per-tenant invariant these orphans violate.
+  - migrations/GBL-123_rls_removal.sql
+    # Same pre-flight pattern (lines 27-49): zero production, non-tc-%
+    # LEGACY_RLS rows. Orphan rows here have storage_mode='SCHEMA', not
+    # 'LEGACY_RLS', so GBL-123's pre-flight never tripped on them.
+  - migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql
+    # Backfills public.tenant FROM public.tenant_schemas — only handles the
+    # inverse asymmetry (tenant_schemas row but no public.tenant row).
+    # Does NOT cover the orphan direction (public.tenant row but no
+    # tenant_schemas row), which is the asymmetry ISS-0605 reports.
+
+# ---------------------------------------------------------------------------
+root_cause:
+  direct_cause: |
+    5 `public.tenant` rows exist with `storage_mode='SCHEMA'`, slug pattern
+    `tenant-<uuid>` (matches the deterministic slug derived from
+    `provisionTenantSchema()` step 6a's INSERT), `tenant_type='production'`,
+    status='ACTIVE', and created_at between 2026-08-07T08:25:39Z and
+    2026-08-07T08:25:49Z. NONE of these 5 rows has a matching
+    `public.tenant_schemas` entry, and NONE has a matching
+    `information_schema.schemata` schema. They are foreign-keyed to no
+    other table (public.tenant has no tenant_schemas FK). Verified live
+    against the test database at BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test:
+      SELECT count(*) FROM public.tenant WHERE storage_mode='SCHEMA'  →  6
+      SELECT count(*) FROM public.tenant_schemas                       →  1
+      SELECT count(*) FROM information_schema.schemata
+        WHERE schema_name LIKE 'tenant_%'                              →  1
+    The single tenant_schemas row is the legitimate `tenant_default` entry
+    (slug='default'); the 5 `tenant-<uuid>` rows are orphans.
+  root_cause_class: |
+    (1) Caller omission: integration test fixtures insert `public.tenant`
+        rows but never call `bpm_provision_tenant_schema()` /
+        `provisionTenantSchema()`, so the Postgres schema and the
+        `tenant_schemas` registry row are never created.
+    (2) Cleanup incompleteness: `clean_test_db.py` has a defensive DELETE
+        for exactly this state (lines 332-336), but it is a manual /
+        `zig build clean-test-db` step, NOT a precondition of
+        `zig build test-env-verify`. The 5 orphans have survived every
+        baseline run since they were created ~3 hours before this handoff.
+  why_it_recurred: |
+    ISS-0140 (GH-443) closed the same defect on 2026-08-05 by adding the
+    defensive DELETE in `clean_test_db.py`. That fix removes the orphans
+    on the next manual cleanup, but it does NOT prevent the underlying
+    caller-omission bug from producing new orphans, nor does it make the
+    `zig build test-env-verify` gate self-heal — it only narrows the
+    window. Five new orphans have now accumulated, confirming the gap.
+  why_gbl_116_gbl_123_did_not_catch_it: |
+    GBL-116 pre-flight requires tenant_schemas.migrations_applied_at
+    IS NOT NULL for every public.tenant row; the orphans have no
+    tenant_schemas row at all, so GBL-116 would trip on them IF applied to
+    db_test — but GBL-116 itself only ran on production-shaped databases
+    during its own migration. GBL-123 narrows further to non-tc-%
+    production LEGACY_RLS rows; the orphans are SCHEMA-mode and tc-%
+    pattern is NOT used (their slug is `tenant-<uuid>`, not `tc-<x>`), so
+    GBL-123's pre-flight also did not fire.
+
+# ---------------------------------------------------------------------------
+repro_steps:
+  - step: 1
+    action: |
+      Confirm 5 orphans in the live test database.
+    command: |
+      $env:BPM_TEST_DB_URL = "postgres://bpm:bpm@localhost:5434/bpm_test"
+      python tools/verify_schema_baseline.py --check-tenants
+    expected: |
+      [FAIL] check_tenant_schemas_consistent: missing Postgres schemas for
+      5 tenant(s): [9d40194d-…, b3ebbbe3-…, a06b4eba-…, c9f860a2-…,
+      dabc15e3-…]
+  - step: 2
+    action: |
+      Confirm the orphan asymmetry: public.tenant has 6 SCHEMA-mode rows,
+      public.tenant_schemas has only 1 (the legitimate `tenant_default`).
+    command: |
+      psql $BPM_TEST_DB_URL -c "
+        SELECT 'public.tenant[storage_mode=SCHEMA]' AS k, count(*)
+          FROM public.tenant WHERE storage_mode='SCHEMA'
+        UNION ALL
+        SELECT 'public.tenant_schemas', count(*) FROM public.tenant_schemas
+        UNION ALL
+        SELECT 'information_schema.schemata LIKE tenant_%', count(*)
+          FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%';"
+    expected: "6 / 1 / 1"
+  - step: 3
+    action: |
+      Confirm clean_test_db.py's existing sweep removes them.
+    command: |
+      python tools/clean_test_db.py
+      python tools/verify_schema_baseline.py --check-tenants
+    expected: |
+      clean_test_db.py prints 'Dropped 0 orphaned tenant schema(s)' (no
+      schemas to drop) and silently DELETEs the 5 orphan public.tenant
+      rows via the lines 332-336 sweep. Baseline now reports
+      [OK] check_tenant_schemas_consistent.
+  - step: 4
+    action: |
+      Confirm test-env-verify gates on a clean DB.
+    command: "zig build test-env-verify"
+    expected: "exit 0, all checks C0..C7 PASS"
+
+# ---------------------------------------------------------------------------
+candidate_fix:
+  decision: |
+    The 5 orphans are immediate data-residue, not a code defect. Apply a
+    narrow, safe, self-healing fix that:
+      (a) Removes the current orphans via the existing
+          `tools/clean_test_db.py` sweep (no new DELETE statement
+          authored; the file already handles this state).
+      (b) Makes the C4 gate self-heal by having `tools/verify_test_env.py`
+          call `clean_test_db.py` BEFORE `verify_schema_baseline.py`
+          runs in --check-tenants mode. This closes the recurrence
+          window: any future half-provisioned row is removed on the
+          next `zig build test-env-verify`, so a transient race
+          (provisioning crash, killed test, parallel binary) never
+          gets to block the gate.
+      (c) Lint-level guard: tests/integration/*_test.zig that insert
+          public.tenant rows with `storage_mode='SCHEMA'` MUST also call
+          `bpm_provision_tenant_schema()` (or `provisionTenantSchema()`)
+          so the row is born in a consistent state. Add a
+          `tools/lint_test_tenant_provisioning.py` that scans
+          tests/integration for the `INSERT INTO public.tenant ... 'SCHEMA'`
+          pattern and asserts a co-located `bpm_provision_tenant_schema`
+          or `provisionTenantSchema` call within the same fn scope.
+  scope: |
+    - Modify tools/verify_test_env.py: pre-step
+      `clean_test_db.py` (or its no-op guard if BPM_TEST_DB_URL is not
+      set) immediately before C4's `verify_schema_baseline.py --check-tenants`.
+      Place the call BEFORE C3, because C3 also touches the test DB and
+      reading the test DB after the sweep is the new invariant.
+    - Optionally --auto-fix flag for verify_schema_baseline.py that
+      RE-runs `clean_test_db.py --include-fixtures` when C4 fails, so a
+      one-command path exists for `zig build test-env-verify` remediation.
+    - Add tests/integration/iss0605_orphan_self_heal_test.zig (a
+      regression test that inserts a single half-provisioned
+      public.tenant row, runs the verify_test_env.py C4 step end-to-end,
+      and asserts the row is gone and C4 reports OK).
+    - Add tests/integration/lint_tenant_provisioning_test.zig that
+      invokes the new lint script over a fixture tree containing a
+      known-bad and a known-good test file and asserts the right
+      findings.
+  why_not_just_remove_the_orphans: |
+    Deleting the 5 rows satisfies C4 today but does NOT prevent the same
+    state from recurring on the next test run, as ISS-0140 demonstrated:
+    its resolution explicitly noted "the underlying provisioning-vs-cleanup
+    race … is a larger concurrency undertaking, tracked separately if it
+    recurs" — and it has recurred. The minimum viable fix MUST (a) close
+    the recurrence window by making C4 self-heal, and (b) add a regression
+    test that fails if the gate ever regresses to a permanent FAIL.
+  what_we_are_NOT_changing: |
+    - No new migration SQL. The asymmetry direction this issue reports
+      (public.tenant row, no tenant_schemas row) is the OPPOSITE of what
+      migration 1135 backfills, and adding a new migration to clean up
+      runtime test-fixture data leaks migration-runner concerns into
+      test-environment hygiene — wrong layer.
+    - No change to `provisionTenantSchema()` Step 4 / Step 6a atomicity
+      (a single-tx fix). The earlier ISS-0140 already judged that out of
+      scope for a MINOR data-hygiene issue; it remains out of scope here.
+      If atomicity becomes urgent, file a separate ISSUE — do not bundle.
+    - No deletion of legitimate `public.tenant` rows. The sweep targets
+      `slug != 'default'` AND `storage_mode='SCHEMA'` AND
+      `NOT EXISTS (tenant_schemas)` — three predicates that
+      collectively identify only the orphan state.
+
+# ---------------------------------------------------------------------------
+acceptance_criteria:
+  - id: AC-1
+    criterion: |
+      After fix application, `python tools/verify_schema_baseline.py --check-tenants`
+      against BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test reports
+      `[OK] check_tenant_schemas_consistent: all SCHEMA-mode tenants have a Postgres schema`
+      and exits 0. Verified by direct shell invocation, not by reading logs.
+  - id: AC-2
+    criterion: |
+      After fix application, `zig build test-env-verify` exits 0 (all
+      checks C0..C7 PASS). Specifically, C4 reports OK with the same
+      detail string as AC-1.
+  - id: AC-3
+    criterion: |
+      Regression test: a new test binary `tests/integration/iss0605_orphan_self_heal_test.zig`
+      inserts exactly one orphan public.tenant row (UUID derived per-test,
+      cleanup in defer), then invokes the verify_test_env.py C4 path, and
+      asserts (a) the row count in public.tenant for that UUID drops to 0
+      after the call, and (b) the C4 step's exit code is 0. The test runs
+      against a real Postgres via BPM_TEST_DB_URL.
+  - id: AC-4
+    criterion: |
+      Lint guard: `python tools/lint_test_tenant_provisioning.py tests/integration`
+      exits 0 with no BLOCKER findings. A fixture under
+      tests/integration/_fixtures/lint_tenant_provisioning/ containing one
+      bad file (INSERT public.tenant without provisionTenantSchema) and one
+      good file (with provisionTenantSchema) produces 1 BLOCKER on the bad
+      file and 0 on the good file.
+  - id: AC-5
+    criterion: |
+      `python tools/lint_handoffs.py` exits 0 after fix (handoff file
+      conforms to schema; timestamps monotonic; log line appended).
+  - id: AC-6
+    criterion: |
+      No regressions: existing 172+ integration tests continue to pass
+      under `zig build test-integration` against BPM_TEST_DB_URL=5434,
+      and `zig build` exits 0 with no error-set warnings.
+
+# ---------------------------------------------------------------------------
+prevention:
+  test_design: |
+    - Any new test that inserts a public.tenant row with storage_mode
+      'SCHEMA' MUST co-locate a bpm_provision_tenant_schema() or
+      provisionTenantSchema() call within the same fn scope, or assert
+      `slug LIKE 'tc-%'` to opt out of C4 (C4 must be taught to
+      exempt tc-% slugs — see "gate hardening" below). Add to
+      docs/guides/test_developer_guide.md as a hard rule.
+  gate_hardening: |
+    - verify_test_env.py's C4 must self-heal: it should call
+      clean_test_db.py BEFORE verify_schema_baseline.py --check-tenants
+      in every run, so transient orphan rows never block the gate.
+    - The defensive DELETE in clean_test_db.py (lines 332-336) is the
+      canonical remediation and must be invoked by the test gate, not
+      only by operators.
+  monitoring: |
+    - tools/verify_schema_baseline.py should emit a structured
+      [WARN] (not [FAIL]) line when it finds orphans whose slug is
+      `tc-%`, `svc%`, `env%`, `exp%`, `adp%`, `webhook%`, or matches
+      the existing --include-fixtures patterns — those are
+      operator-curated and may be left alone, but their presence
+      should be visible to operators running the gate.
+  documentation: |
+    - Add a "Test fixture invariant: public.tenant ⇔ public.tenant_schemas
+      ⇔ Postgres schema" entry to docs/anti-patterns.md with the
+      half-provisioned-state diagnosis and the link to this ISS.
+    - Update docs/guides/test_developer_guide.md §11 (test isolation
+      rules) to mandate co-location of provisionTenantSchema() with
+      storage_mode='SCHEMA' INSERTs.
+
+# ---------------------------------------------------------------------------
+related_issues:
+  - id: GH-443
+    title: ISS-0140 — same defect class, closed 2026-08-05
+    note: |
+      Identical symptoms; closed by adding the clean_test_db.py sweep at
+      lines 332-336. The fix closed the IMMEDIATE symptom but did not
+      wire the gate to invoke the sweep, so the orphans recurred.
+      Current issue is the recurrence.
+  - id: GH-375
+    title: ISS-0112 — Migration/schema drift and shared DB state
+    note: |
+      Earlier instance of the same root pattern (test environment
+      accumulating schema drift that the gate cannot self-heal).
+  - id: ISS-0106
+    title: Cross-binary concurrency races in test DB cleanup
+    note: |
+      Provisioning-vs-cleanup race documented in 2026-08-05 ISS-0140
+      resolution as the upstream cause; remains out of scope for
+      this fix per candidate_fix.what_we_are_NOT_changing.
+
+# ---------------------------------------------------------------------------
+notes:
+  - |
+    Investigation boundary: diagnosis only. No source files were
+    modified in this step per the WF-03 Step 1 contract. Implementation
+    of the candidate_fix (C4 self-heal + lint guard + regression test)
+    belongs to a subsequent BACKEND-DEV step in this same WF-03 run.
+  - |
+    The `affected_files` list includes some integration test files as
+    context (caller-omission bugs); they will be addressed by the lint
+    guard during implementation, not by edits to each test file.
+  - |
+    `scratch/_iss0605_diag_query.py` and `scratch/_iss0605_diag_default.py`
+    contain the live diagnostic queries used to confirm the root cause
+    and are kept for traceability; they are git-ignored scratch files.

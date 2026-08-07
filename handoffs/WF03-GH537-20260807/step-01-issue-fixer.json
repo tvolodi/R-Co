@@ -1,0 +1,46 @@
+{
+  "handoff_id": "c5370002-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH537-20260807",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-07T11:03:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c5370001-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0605.json",
+      "tools/verify_test_env.py"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 1: Root cause diagnosis for GH-537 / ISS-0605.\n\nRead:\n- docs/issues/ISS-0605.json\n- tools/verify_test_env.py (C4 check)\n- Any tenant schema management code (search for tenant_schemas, tenant_default, provisioning)\n\nDetermine:\n- Why 5 tenants have rows in public.tenant but no Postgres schemas\n- Whether this is a provisioning race, a manual DB cleanup, or test-environment residue\n- Whether the fix is: schema cleanup verification (orphan rows), provisioning gap (rows without schema), or test-env-verify gating (C4 should accept both states)\n\nWrite diagnosis to docs/issue-reports/ISS-0605-diagnosis.yaml with:\n- summary (1 sentence)\n- affected_files\n- root_cause (concrete)\n- repro_steps\n- candidate_fix (high-level, no impl code)\n- acceptance_criteria (testable)\n- prevention\n\nComplete handoff with PASS. Do NOT modify source.",
+    "acceptance_criteria": [
+      "docs/issue-reports/ISS-0605-diagnosis.yaml exists with all required fields",
+      "Diagnosis identifies the root cause concretely",
+      "Acceptance criteria are testable",
+      "No source code modified"
+    ],
+    "functions_to_call": [
+      "fn:diagnose-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed ISS-0605 / GH-537 root cause: 5 `public.tenant` rows with storage_mode='SCHEMA' and no matching `public.tenant_schemas` row, same half-provisioned state previously filed as GH-443/ISS-0140 (closed 2026-08-05). Live verification: public.tenant[SCHEMA]=6, public.tenant_schemas=1 (tenant_default), information_schema.schemata tenant_*=1. tools/clean_test_db.py already contains the corrective DELETE (lines 332-336), but the C4 gate does not invoke it. Diagnosis report: docs/issue-reports/ISS-0605-diagnosis.yaml.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0605-diagnosis.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 3): implement candidate_fix — (a) wire tools/verify_test_env.py C4 to invoke clean_test_db.py before verify_schema_baseline.py --check-tenants; (b) add tools/lint_test_tenant_provisioning.py; (c) add regression test tests/integration/iss0605_orphan_self_heal_test.zig. Per candidate_fix.what_we_are_NOT_changing, do NOT add a new migration and do NOT modify provisionTenantSchema() atomicity."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-07T11:03:44Z",
+  "completed_at": "2026-08-07T11:07:21Z"
+}

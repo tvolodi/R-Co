@@ -1,0 +1,216 @@
+# ISS-0605 / GH-537 — CODE-DESIGN-VALIDATOR inner report (Step 2b)
+#
+# Validates: src/design/iss0605-test-env-c4-orphan-selfheal.md
+# Run ID:    WF03-GH537-20260807
+# Date:      2026-08-07T11:16:19Z
+# Author:    CODE-DESIGN-VALIDATOR
+
+issue_id: ISS-0605
+github_issue: https://github.com/tvolodi/R-Co/issues/537
+run_id: WF03-GH537-20260807
+step: 02b
+created_at: "2026-08-07T11:16:19Z"
+verdict: PASS
+severity_of_findings: MINOR
+
+# ---------------------------------------------------------------------------
+design_artefact:
+  path: src/design/iss0605-test-env-c4-orphan-selfheal.md
+  classification: Type E
+  classification_rationale: |
+    Cross-cutting test-infrastructure tooling spanning (a) a Python build-graph
+    gate wire-up (verify_test_env.py C4), (b) a new Python static-analysis lint
+    tool, and (c) a Zig integration regression test. No HTTP route, no DB
+    schema change, no admin/list page, no React Flow node. templates/lego-catalog.md
+    line 33: "When in doubt, prefer Type E."
+  classification_verified: true
+
+# ---------------------------------------------------------------------------
+lint_result:
+  command: python tools/lint_design_artefact.py src/design/iss0605-test-env-c4-orphan-selfheal.md
+  exit_code: 0
+  blocker: 0
+  major: 0
+  minor: 37
+  minor_breakdown:
+    - code: E030
+      count: 37
+      rule: "schema-qualified name — unqualified names only"
+      affected_tokens:
+        - public.tenant
+        - public.tenant_schemas
+        - public.schema_migrations
+        - information_schema.schemata
+      verdict: ACCEPT
+      reason: |
+        E030 on Type E prose is MINOR by design. The rule applies to migration
+        DDL bodies (executed SQL must work under per-tenant search_path); in
+        design prose it is a stylistic note. The 37 hits appear in:
+        (a) narrative descriptions of database state (Section 1, "5 public.tenant
+        rows with storage_mode='SCHEMA'")
+        (b) quoted SQL strings documenting what the existing code does (Section
+        1.1, the clean_test_db.py DELETE block)
+        (c) documented regex/grep patterns the new lint will use (Section 3.2.2,
+        "INSERT INTO (public\.)?tenant")
+        All three contexts are legitimate — the schema qualifier is part of the
+        actual SQL literal or the documentation of which table is referenced.
+        Per repo memory bpm-design-validator-e030-prose-vs-ddl.md and the
+        established ISS-0114 pattern (37 E030 hits, same verdict: PASS).
+        Reference: templates/lego-catalog.md does not prohibit qualified names
+        in prose; the rule is enforced on executed SQL only.
+
+# ---------------------------------------------------------------------------
+validation_checklist:
+  lint_pass:
+    status: PASS
+    detail: "lint_design_artefact.py exits 0, no BLOCKER/MAJOR."
+
+  coverage_diagnosis_acs:
+    status: PASS
+    detail: |
+      All 6 diagnosis ACs are covered by a numbered design section:
+        AC-1 (post-fix --check-tenants OK)   -> Section 7.1
+        AC-2 (zig build test-env-verify OK)  -> Section 7.1
+        AC-3 (regression test)               -> Sections 3.3 + 7.2
+        AC-4 (lint guard exits 0 / bad file -> 1 BLOCKER / good file -> 0)
+                                            -> Sections 3.2 + 7.3
+        AC-5 (lint_handoffs.py OK)           -> Section 7.4
+        AC-6 (no regressions, zig build OK)  -> Section 7.4
+      Each AC has a corresponding design element (helper function, lint
+      script, or regression test) plus a verification criterion (exit code
+      assertion or invariant check).
+
+  no_implementation_code:
+    status: PASS
+    detail: |
+      Type E prose — no SQL DDL beyond the verbatim quote of the existing
+      clean_test_db.py DELETE (Section 1.1, attributed, marked as "must be
+      preserved verbatim"). Zig blocks in Section 3.3 are skeleton with
+      explicit "(describes structure only — implementer writes the body per
+      the conventions in docs/guides/backend_developer_guide.md §3-§5)"
+      caveat. Python helper bodies in Section 3.1.1 are signature + behaviour
+      spec, not implementation.
+
+  public_function_signatures:
+    status: PASS
+    detail: |
+      Section 5 lists all new and modified interfaces:
+        - _run_clean_test_db_sweep() -> Check  (Section 3.1.1, 5.1)
+        - check_tenant_provisioning_lint() -> Check  (Section 3.2.4, 5.1)
+        - check_schema_baseline() body extension  (Section 3.1.2, 5.1)
+        - lint_test_tenant_provisioning.py CLI  (Section 5.2)
+        - iss0605_orphan_self_heal_test.zig test block  (Section 5.3)
+      No runtime API, HTTP route, or DB schema changes; no new Zig error-set
+      members. Existing C0-C7 unchanged.
+
+  error_taxonomy:
+    status: PASS
+    detail: |
+      Section 4 has a 9-row table mapping condition -> layer -> behaviour ->
+      rationale. Covers all three layers:
+        Layer 1 (3 cases): script missing -> SKIP; BPM_TEST_DB_URL unset -> SKIP;
+                            sweep exit non-zero -> FAIL with stderr detail.
+        Layer 2 (3 cases): SCHEMA-mode INSERT without provisionTenantSchema
+                            call -> BLOCKER T070; exempt file -> no finding;
+                            target path missing -> exit 2.
+        Layer 3 (3 cases): no BPM_TEST_DB_URL -> EnvironmentVariableMissing
+                            propagates; insert fails -> error propagates;
+                            orphan still present after subprocess -> FAIL
+                            with diagnostic.
+
+  files_with_line_ranges:
+    status: PASS
+    detail: |
+      Section 2 enumerates every file with line ranges:
+        - tools/verify_test_env.py: 467-488 (Check class), 511-535
+          (check_schema_baseline), 522 (subprocess call), 666 (wiring),
+          711-732 (main() reporting). Note: actual line is 522 not 511 —
+          design pre-amble (Section 2 opening) anticipates drift and
+          instructs implementer to search by symbol. Symbol verified
+          accurate against the current file.
+        - tools/clean_test_db.py: 46-61 (run_psql), 78-124 (drop_orphans),
+          313-319 (test/production tenant cleanup), 332-336 (the orphan-row
+          DELETE — verified verbatim in the current file), 338-340
+          (drop_orphaned_tenant_schemas call).
+        - tools/verify_schema_baseline.py: 127-149 (check_tenant_schemas_
+          consistent), 135 (tenant_id_s), 137-140 (schema_name), 142-148
+          (information_schema lookup), 173-219 (--auto-fix), 263-266
+          (FAIL detail), 268-270 (OK message). All verified.
+        - 5 new files (Section 2.4): lint_test_tenant_provisioning.py,
+          lint_test_tenant_provisioning.baseline.json, 2 fixture .zig files,
+          iss0605_orphan_self_heal_test.zig.
+        - 2 context-only exempt tests (Section 2.5): tenant_config_realm_
+          test.zig:80-105, iss107_tenant_storage_mode_test.zig:242-260.
+
+  classification:
+    status: PASS
+    detail: |
+      Type E per templates/lego-catalog.md line 19 + line 33 ("When in doubt,
+      prefer Type E"). Design §"Classification rationale" walks all 5 types
+      (A/B/C/D/E) with rejection rationale: no HTTP route (A), no admin page
+      (B), no DB schema change (C), no React Flow node (D). Cross-cutting
+      test-infrastructure tooling is the textbook Type E scope per
+      templates/lego-catalog.md "What stays in Type E (never templated)".
+
+  dependencies:
+    status: PASS
+    detail: |
+      Section 8 lists 10 dependencies with nature and status, all verified
+      to exist:
+        - clean_test_db.py:332-336 (orphan DELETE) — verified
+        - verify_schema_baseline.py:127-149 (drift detector) — verified
+        - src/db/provisioning.zig provisionTenantSchema() + SQL function —
+          verified (13 matches in provisioning.zig)
+        - tools/lint_test_isolation.baseline.json (format precedent) —
+          file_search confirmed it exists
+        - tenant_config_realm_test.zig randomUuidStr / fillRandom — verified
+          (insertTestTenant pattern at line 100)
+        - helpers.zig ensureSchemaReady — to be verified by BACKEND-DEV
+        - tools/lint_design_artefact.py E030 rule — verified (37 hits)
+        - docs/anti-patterns.md gate-editing prohibition — context only
+        - docker-compose exec db_test psql — unchanged, verified by
+          clean_test_db.py run_psql pattern
+
+# ---------------------------------------------------------------------------
+design_strengths:
+  - "Three-layer defense (self-heal + lint + regression) matches the ISS-0140
+    lesson: closing the immediate symptom without preventing recurrence is a
+    half-fix."
+  - "Section 1.2 explicitly enumerates 5 rejected approaches with rationale
+    tied to CLAUDE.md 'Never satisfy a gate by editing what it measures' —
+    prevents the implementer from reaching for a soft target."
+  - "Section 7.4 includes a guard 'git diff touches no file under migrations/
+    and not src/db/provisioning.zig' — catches scope drift early."
+  - "Baseline file format mirrors an existing lint's baseline verbatim
+    (lint_test_isolation.baseline.json), so the new tool reuses an established
+    pattern rather than inventing a new convention."
+  - "Two ORCH-confirmable defaults flagged in Section 9 with implementer-
+    acceptable fallbacks — does not block Step 3."
+
+# ---------------------------------------------------------------------------
+open_questions_for_orch:
+  - id: Q1
+    description: "C8 ordering in the gate (after C7 vs between C5 and C6)."
+    default_in_design: "After C7 (C8 is static lint, does not touch DB)."
+    severity: MINOR
+  - id: Q2
+    description: "_run_clean_test_db_sweep() SKIP behaviour (fall through to
+      existing C4 vs soft warning printed alongside)."
+    default_in_design: "Fall through to existing C4 drift check."
+    severity: MINOR
+
+# ---------------------------------------------------------------------------
+verdict_summary: |
+  The design is complete, internally consistent, and verified against every
+  diagnosis acceptance criterion. lint_design_artefact.py exits 0 with 0
+  BLOCKERs and 0 MAJORs. The 37 E030 MINOR findings are an established
+  Type E prose artefact per repo precedent (ISS-0114 / WF03-gh377-20260804,
+  same author family). All cross-references to existing code hold (verified
+  live: clean_test_db.py:332-336, verify_schema_baseline.py:127-149,
+  verify_test_env.py:522 [design says 511, symbol correct], provisioning.zig
+  provisionTenantSchema + bpm_provision_tenant_schema, lint_test_isolation.
+  baseline.json format). Classification (Type E) matches lego-catalog rules.
+  No implementation code; signatures, error taxonomy, line ranges, dependencies
+  all documented. Ready for BACKEND-DEV Step 3.
+
+next_action: "Route to BACKEND-DEV (Step 3) and TEST-DESIGNER (Step 4) in parallel."

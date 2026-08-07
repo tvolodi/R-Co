@@ -423,17 +423,26 @@
       "labels": []
     },
     {
-      "issue_id": "ISS-0605",
+      "issue_id": "GH-537",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/537",
-      "title": "test-env-verify C4 schema baseline: 5 tenants missing Postgres schemas",
+      "title": "ISS-0605 \u2014 test-env-verify C4 schema baseline fails: 5 tenants missing Postgres schemas (unrelated to BPM_TEST_DB_URL port fix)",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T09:51:31Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-07T10:54:18Z"
+      },
+      "added_at": "2026-08-07T10:54:18Z",
+      "started_at": "2026-08-07T10:54:18Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 537,
+      "labels": [
+        "bug",
+        "process",
+        "issue"
+      ]
     }
   ]
 }
