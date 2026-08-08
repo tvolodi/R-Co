@@ -930,6 +930,24 @@ pub fn build(b: *std.Build) void {
     test_iss0206_rowtodef_step.dependOn(&run_iss0206_rowtodef_tests.step);
     test_engine_step.dependOn(&run_iss0206_rowtodef_tests.step);
 
+    // ISS-0173 / GH-501: orphan-fix regression test (State A DELETE).
+    // Asserts that src/oidc/jwks.zig is gone and the re-export `oidc_jwks`
+    // is absent from src/main.zig. Pure — no DB, no network, no module imports.
+    const iss0173_orphan_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/iss0173_oidc_jwks_orphan_test.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_iss0173_orphan_tests = b.addRunArtifact(iss0173_orphan_tests);
+    const test_iss0173_orphan_step = b.step(
+        "test-iss0173-orphan",
+        "Run ISS-0173 src/oidc/jwks.zig orphan regression test (GH #501)",
+    );
+    test_iss0173_orphan_step.dependOn(&run_iss0173_orphan_tests.step);
+    test_engine_step.dependOn(&run_iss0173_orphan_tests.step);
+
     // ISS-0074: secrets/crypto.zig envelope-encryption unit tests (pure — no DB, no network)
     const secrets_crypto_mod = b.createModule(.{
         .root_source_file = b.path("src/secrets/crypto.zig"),
@@ -1265,6 +1283,7 @@ pub fn build(b: *std.Build) void {
     // narrow-only inert-test defect (ISS-0150 / GH #466) that the line above
     // explicitly calls out for the parseGraphJson harness.
     test_step.dependOn(&run_iss0206_rowtodef_tests.step);
+    test_step.dependOn(&run_iss0173_orphan_tests.step);
     test_step.dependOn(&run_api_tests.step);
     test_step.dependOn(&run_api08_auth_tests.step);
     test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);
