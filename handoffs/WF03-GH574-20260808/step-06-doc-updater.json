@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH574-20260808/step-06-doc-updater.json",
   "created_at": "2026-08-08T09:17:48Z",
   "started_at": "2026-08-08T09:17:48Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T09:20:51Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -35,7 +35,13 @@
       "fn:git-merge"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with a concise ISS-0621/GH-574 entry. PR #579 (fix(ISS-0621): correct ISS-0185-diagnosis.yaml classification + fix folded-scalar YAML bug) verified green across two CI runs (initial + post-changelog-push), squash-merged to main as commit 79efb063ea61d1fd3ecec945598f4043d57bc66d, feature branch feature/WF03-GH574-20260808 deleted from GitHub (confirmed via git fetch --prune). GitHub project board for issue #574 was already at 'Done' for both the implemented and done targets -- no change needed, confirmed idempotent via tools/gh_project_status.py. Repo returned to main, fast-forwarded to 79efb06, working tree clean.",
+    "artifacts_out": ["CHANGELOG.md", "PR #579 merged (squash commit 79efb063ea61d1fd3ecec945598f4043d57bc66d)"],
+    "issues": [],
+    "next_action": "Run complete"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
