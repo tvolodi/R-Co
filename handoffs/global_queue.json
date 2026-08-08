@@ -265,17 +265,22 @@
       "deferred_reason": "Fixed in-run under Unblock-Everything: it blocked the fresh-clone verification that was ISS-0175 acceptance criterion."
     },
     {
-      "issue_id": "ISS-0178",
+      "issue_id": "GH-507",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/507",
-      "title": "No CI job builds from a clean checkout, so untracked-but-required build inputs are never detected (follow-up to #503/#506)",
+      "title": "No CI job builds from a clean checkout, so untracked-but-required build inputs are never detected (follow-up to #503 / #506)",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T00:04:27Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-08T12:16:55Z"
+      },
+      "added_at": "2026-08-08T12:16:55Z",
+      "started_at": "2026-08-08T12:16:55Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 507,
+      "labels": []
     },
     {
       "issue_id": "GH-512",
