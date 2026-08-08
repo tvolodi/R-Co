@@ -464,3 +464,4 @@
 2026-08-08T09:54:28Z | ROUTE | WF03-GH573-20260808 | 655bfbe7 | ORCH -> RELEASE-VALIDATOR | IN_PROGRESS (Step 5, BLOCKER, PR #581)
 2026-08-08T09:59:47Z | COMPLETE | WF03-GH573-20260808 | 655bfbe7 | RELEASE-VALIDATOR | PASS -- APPROVED, release-WF03-GH573-20260808-2026-08-08.yaml written, CI triggered+verified green (run 31251715131), ISS-0623/GH-580 confirmed non-blocking
 2026-08-08T10:01:30Z | ROUTE | WF03-GH573-20260808 | e6a1978f | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, BLOCKER, rebase+CI-trigger required first)
+2026-08-08T10:09:25Z | COMPLETE | WF03-GH573-20260808 | e6a1978f | DOC-UPDATER | PASS -- orchestrator.log rebase conflict resolved (both sides kept, chronological order); CHANGELOG updated; genuine pull_request CI green (runs 31251961091, 31252064552); PR #581 squash-merged (3e33f05d1bb57b1b31b446a7862b0700cfdfeaad), branch deleted (confirmed via API); board already Done; main clean
