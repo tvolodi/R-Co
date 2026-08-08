@@ -269,14 +269,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/507",
       "title": "No CI job builds from a clean checkout, so untracked-but-required build inputs are never detected (follow-up to #503 / #506)",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-08T12:16:55Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-08T12:16:55Z",
       "started_at": "2026-08-08T12:16:55Z",
-      "completed_at": null,
+      "completed_at": "2026-08-08T12:31:50Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 507,
