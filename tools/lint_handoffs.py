@@ -33,6 +33,19 @@ that always fails is to stop believing it. `--changed` restricts findings to
 handoff files the branch actually touched, so CI blocks new defects while the
 backlog is worked separately.
 
+Touching a file is not the same as introducing every finding it carries: a
+branch that only strips a BOM (H008) from a file that separately has an
+unrelated, pre-existing H003 pulls that file into --changed's file-level scope
+for the first time without having caused the H003. `--changed` mode therefore
+compares each touched file's findings, per code, against its merge-base copy
+(see `preexisting_file_finding_codes`) and reports only codes that are new on
+this branch. This is not a suppression list and it changes no historical
+record — it is a same-file, same-code presence check evaluated fresh on every
+run directly from git history, so a finding that genuinely gets fixed drops
+out of "pre-existing" the next time someone else's branch touches that file,
+same as any other frozen-history entry in the ~260 backlog (tracked in
+ISS-0627 / GH #596).
+
 Exit codes: 0 = no BLOCKER/MAJOR, 1 = findings, 2 = usage error.
 """
 
@@ -112,31 +125,14 @@ def read_handoff(path: str) -> tuple[dict | None, bool, str | None]:
         return None, had_bom, str(exc)
 
 
-def lint_handoff_file(path: str, rel: str, findings: list[Finding]) -> dict | None:
-    parsed, had_bom, err = read_handoff(path)
+def _lint_parsed_handoff(parsed: dict, rel: str, findings: list[Finding]) -> None:
+    """Checks that only need the already-parsed dict (not file bytes).
 
-    if had_bom:
-        findings.append(
-            Finding(
-                "H008",
-                "MAJOR",
-                rel,
-                "File starts with a UTF-8 BOM; bare json.load(open(f)) — the form used "
-                "in CLAUDE.md's ORCH snippets — raises on it, so this handoff is "
-                "invisible to the orchestrator. Rewrite without a BOM.",
-            )
-        )
-
-    if parsed is None:
-        findings.append(Finding("H001", "BLOCKER", rel, f"Not parseable JSON: {err}"))
-        return None
-
-    if not isinstance(parsed, dict):
-        findings.append(
-            Finding("H001", "BLOCKER", rel, "Top-level JSON value is not an object.")
-        )
-        return None
-
+    Factored out of lint_handoff_file so --changed mode's pre-existing-finding
+    comparison (preexisting_file_findings) runs the exact same rules against a
+    merge-base copy fetched via `git show`, instead of a second, driftable
+    copy of the logic.
+    """
     for key in REQUIRED_KEYS:
         if key not in parsed:
             findings.append(
@@ -201,6 +197,34 @@ def lint_handoff_file(path: str, rel: str, findings: list[Finding]) -> dict | No
                     f"{sorted(LEGAL_RESULT_STATUS)}.",
                 )
             )
+
+
+def lint_handoff_file(path: str, rel: str, findings: list[Finding]) -> dict | None:
+    parsed, had_bom, err = read_handoff(path)
+
+    if had_bom:
+        findings.append(
+            Finding(
+                "H008",
+                "MAJOR",
+                rel,
+                "File starts with a UTF-8 BOM; bare json.load(open(f)) — the form used "
+                "in CLAUDE.md's ORCH snippets — raises on it, so this handoff is "
+                "invisible to the orchestrator. Rewrite without a BOM.",
+            )
+        )
+
+    if parsed is None:
+        findings.append(Finding("H001", "BLOCKER", rel, f"Not parseable JSON: {err}"))
+        return None
+
+    if not isinstance(parsed, dict):
+        findings.append(
+            Finding("H001", "BLOCKER", rel, "Top-level JSON value is not an object.")
+        )
+        return None
+
+    _lint_parsed_handoff(parsed, rel, findings)
 
     return parsed
 
@@ -397,6 +421,149 @@ def changed_handoff_files(base: str = "origin/main") -> set[str] | None:
     return None
 
 
+def merge_base_ref(base: str = "origin/main") -> str | None:
+    """Resolve the merge-base commit this branch diverged from.
+
+    Falls back to `base` itself, then None, mirroring changed_handoff_files's
+    own fallback order so both functions agree on which commit "pre-PR" means.
+    """
+    for ref in (base, "HEAD~1"):
+        try:
+            proc = subprocess.run(
+                ["git", "merge-base", ref, "HEAD"],
+                capture_output=True,
+                timeout=15,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if proc.returncode == 0:
+            out = proc.stdout.decode("ascii", "replace").strip()
+            if out:
+                return out
+    return None
+
+
+def preexisting_file_finding_codes(rel: str, merge_base: str) -> set[str] | None:
+    """Finding codes `lint_handoff_file` would already report for `rel` at `merge_base`.
+
+    Used by --changed mode to tell "this PR introduced a new defect in a file
+    it touched" apart from "this PR touched a file for an unrelated reason
+    (e.g. stripping its BOM) and thereby pulled a pre-existing, separately
+    tracked defect into --changed's file-level scope for the first time."
+    Only the second case is pre-existing history the backlog already owns
+    (see ISS-0627 / GH #596) — it must not silently fail every PR that
+    happens to touch the file next, or the gate stops being trustworthy for
+    exactly the reason CLAUDE.md warns about.
+
+    Compared by code, not by exact message, because messages legitimately
+    embed values (a timestamp, an offset) that a genuine fix would change
+    without changing whether the *category* of defect was already present.
+
+    Returns None if the file did not exist at merge_base (i.e. it's new on
+    this branch — nothing to compare against, so every finding in it counts
+    as new).
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "show", f"{merge_base}:{rel}"],
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+
+    tmp_findings: list[Finding] = []
+    had_bom = proc.stdout.startswith(b"\xef\xbb\xbf")
+    try:
+        parsed = json.loads(proc.stdout.decode("utf-8-sig"))
+        err: str | None = None
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        parsed = None
+        err = str(exc)
+
+    if had_bom:
+        tmp_findings.append(Finding("H008", "MAJOR", rel, "bom"))
+    if parsed is None:
+        tmp_findings.append(Finding("H001", "BLOCKER", rel, f"unparseable: {err}"))
+    elif not isinstance(parsed, dict):
+        tmp_findings.append(Finding("H001", "BLOCKER", rel, "not an object"))
+    else:
+        _lint_parsed_handoff(parsed, rel, tmp_findings)
+
+    return {f.code for f in tmp_findings}
+
+
+def preexisting_run_finding_codes(
+    run_dir: str, merge_base: str
+) -> dict[str, set[str]]:
+    """Per-file H009/H013 codes lint_orphans/lint_clock_skew would report at merge_base.
+
+    H009 and H013 need a whole run's step list (not just one file), so they
+    can't be answered by preexisting_file_finding_codes. Reconstructs the run
+    directory as it existed at merge_base via `git ls-tree`, reads each step
+    file's merge-base copy via `git show`, and runs the same two checks
+    against that snapshot. Returns {} (not None) on any git failure — callers
+    treat a missing/unreadable run the same as "no pre-existing findings",
+    which is the conservative direction: it may under-suppress (a finding
+    stays reported that arguably pre-existed) but never over-suppresses a
+    genuinely new one.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "ls-tree", "-r", "--name-only", merge_base, "--", run_dir],
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    if proc.returncode != 0:
+        return {}
+
+    names = [
+        n.strip().replace("\\", "/")
+        for n in proc.stdout.decode("utf-8", "replace").splitlines()
+        if n.strip().endswith(".json") and os.path.basename(n.strip()).startswith("step-")
+    ]
+    if not names:
+        return {}
+
+    pre_runs: dict[str, list[tuple[str, dict]]] = defaultdict(list)
+    for rel in names:
+        try:
+            show = subprocess.run(
+                ["git", "show", f"{merge_base}:{rel}"],
+                capture_output=True,
+                timeout=15,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if show.returncode != 0:
+            continue
+        try:
+            parsed = json.loads(show.stdout.decode("utf-8-sig"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        if not isinstance(parsed, dict):
+            continue
+        pre_run_id = parsed.get("run_id") or os.path.basename(run_dir)
+        pre_runs[pre_run_id].append((rel, parsed))
+
+    tmp_findings: list[Finding] = []
+    lint_orphans(pre_runs, tmp_findings)
+    lint_clock_skew(pre_runs, tmp_findings)
+
+    by_path: dict[str, set[str]] = defaultdict(set)
+    for f in tmp_findings:
+        by_path[f.path].add(f.code)
+    return dict(by_path)
+
+
 def main(argv: list[str]) -> int:
     args = [a for a in argv[1:] if not a.startswith("--")]
     flags = {a for a in argv[1:] if a.startswith("--")}
@@ -458,6 +625,44 @@ def main(argv: list[str]) -> int:
 
     lint_registry(os.path.join(root, "registry.json"), all_ids, findings, total)
     lint_orchestrator_log(os.path.join(root, "orchestrator.log"), findings)
+
+    # --changed mode: a file can land in only_changed for a reason unrelated
+    # to a given finding (e.g. an H008 BOM-strip pulls the file into scope,
+    # but the same file separately carries a pre-existing H003/H004/H007
+    # that this branch never touched). Drop findings whose code already
+    # applied to that same file before this branch existed, so the gate
+    # blocks genuinely new defects without re-litigating backlog debt that
+    # ISS-0627 / GH #596 already owns. A file that is new on this branch (no
+    # merge_base copy) keeps every finding, since there is nothing "pre-
+    # existing" to subtract.
+    if only_changed is not None:
+        base = merge_base_ref()
+        if base is not None:
+            pre_cache: dict[str, set[str] | None] = {}
+            run_pre_cache: dict[str, dict[str, set[str]]] = {}
+            kept: list[Finding] = []
+            for f in findings:
+                if f.path not in only_changed:
+                    kept.append(f)
+                    continue
+                if f.code in ("H009", "H013"):
+                    # Cross-file checks: reconstruct the owning run directory
+                    # at merge_base rather than the single file.
+                    run_dir = os.path.dirname(f.path)
+                    if run_dir not in run_pre_cache:
+                        run_pre_cache[run_dir] = preexisting_run_finding_codes(run_dir, base)
+                    pre_codes_run = run_pre_cache[run_dir].get(f.path, set())
+                    if f.code in pre_codes_run:
+                        continue
+                    kept.append(f)
+                    continue
+                if f.path not in pre_cache:
+                    pre_cache[f.path] = preexisting_file_finding_codes(f.path, base)
+                pre_codes = pre_cache[f.path]
+                if pre_codes is not None and f.code in pre_codes:
+                    continue  # pre-existing on this file at merge-base — not a new defect
+                kept.append(f)
+            findings = kept
 
     findings.sort(key=lambda f: (SEVERITY_ORDER.get(f.severity, 9), f.code, f.path))
 
