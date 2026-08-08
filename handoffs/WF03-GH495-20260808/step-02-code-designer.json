@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH495-20260808/step-02-code-designer.json",
   "created_at": "2026-08-08T20:56:50Z",
   "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-08T21:21:04Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -45,7 +45,15 @@
       "fn:write-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Revised src/design/iss0169-lua08-09-10-limiter-wiring.md per CDV-0169-1..4 rework. Added new \u00a72.5 Host-external watchdog: a std.Thread-based WatchdogState/WatchdogHandle (atomics only, no lua_* access, no std.Thread.Mutex per the known Zig 0.16 constraint) that tracks the same timeout_seconds deadline independently of the LUA_MASKCOUNT hook. The watchdog rides the existing ExecutionContext/host_context.contextFromState channel (one new defaulted field, active_watchdog) rather than a new registry key. call_service.zig gains two activeWatchdogFired(L) pre/post checks -- the only host_api/ touch, explicitly flagged in revised SS8. Added test specs SS5.4 (TC-LUA-10-02, blocking host call, maps to spec TC-LUA-10-03) and SS5.5 (TC-LUA-10-03, hook-disabled proof, maps to spec TC-LUA-10-04), both mutation-checkable. SS11 Open Questions now honestly names the one unresolved sub-case: true pre-emption of an in-flight blocking foreign syscall is not achievable without host_api/HTTP-client restructuring (out of this tranche), with an explicit recommendation to escalate to ORCH and file a LUA-12-scoped follow-up rather than silently deferring it. LUA-08/LUA-09 sections (SS1, SS3 aside from the watchdog-start addition, SS4) were left unchanged in substance per the rework instruction. python tools/lint_design_artefact.py exits 0 (0 BLOCKER, 0 MAJOR, 0 MINOR).",
+    "artifacts_out": [
+      "src/design/iss0169-lua08-09-10-limiter-wiring.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b rework)"
+  },
   "rework_count": 1,
   "max_rework": 3
 }
