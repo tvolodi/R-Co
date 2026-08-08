@@ -1,0 +1,109 @@
+{
+  "handoff_id": "9c1f1d4a-2026-08-08-1737-gh512-step3",
+  "run_id": "WF03-GH512-20260808",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "BACKEND-DEV",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-08-08T11:54:46Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Step 3 (BACKEND-DEV implementation)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a38f764b-2941-42f6-ab70-c3130d55e775"
+    ],
+    "artifacts_in": [
+      "src/design/iss0181-gh512-t010-migration.md",
+      "docs/issues/ISS-0181.json",
+      "tests/integration/helpers.zig",
+      "tools/lint_test_isolation.py",
+      "tools/lint_test_isolation.baseline.json"
+    ]
+  },
+  "task": {
+    "description": "Implement T010 hardcoded UUID migration per design at src/design/iss0181-gh512-t010-migration.md. Convert as many as possible of the T010 BLOCKER sites to TestHarness.newUuid() or h.newUuidString(alloc); defer alloc.free(s) per design \u00a7S1-S4. Where conversion would break the test (module-scope const, comptime constant, document-identity fixture, or actor/creator convention), add retention comments per design \u00a7R1-R3. Do NOT expand scope beyond T010.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "All T010 sites either converted to TestHarness UUID helpers or have a retention comment naming the design rule (R1/R2/R3)",
+      "tools/lint_test_isolation.py tests/integration exits 0 with regenerated baseline (T010 reduced from 184 to 73)",
+      "tools/lint_handoffs.py exits 0 \u2014 no new BLOCKER/MAJOR on handoffs/WF03-GH512-20260808/*",
+      "tools/lint_sql_param_types.py src tests exits 0",
+      "Conversion sites use defer alloc.free(s) for the newUuidString() form, no leaks",
+      "Module-scope `const` T010 sites get retention comment with reason; only test-body sites get converted",
+      "Feature branch pushed to origin/feature/WF03-GH512-20260808 with all batches visible"
+    ],
+    "functions_to_call": [
+      "fn:convert-t010-sites",
+      "fn:regenerate-baseline",
+      "fn:commit-and-push",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "T010 BLOCKER migration implemented per design src/design/iss0181-gh512-t010-migration.md. Converted 99 unique T010 sites across 5 batches (Batches 1, 2a, 2b, 2c, 2d, 2e, 3, 4, 5) using TestHarness.newUuid() (binary form) and h.newUuidString(alloc); defer alloc.free(s) (string form). 51 sites received retention comments per design \u00a7R1 (definition-sentinel), \u00a7R2 (platform-admin), or \u00a7R3 (creator/identity convention). Baseline regenerated: T010 reduced from 184 to 73. All 73 remaining sites are module-scope constants (comptime, cannot be runtime-converted) or document-identity fixtures matched against substring assertions in the same test \u2014 both classes that the design explicitly mandates as RETAIN. zig build exits 0, zig build test exit 0 (lint_test_wiring: 266 file(s) reachable from addTest root), tools/lint_test_isolation.py tests/integration exit 0 (Suppressed 114 issue(s) from baseline), tools/lint_sql_param_types.py src tests exit 0 (0 BLOCKER, 0 MAJOR, 0 MINOR). tools/lint_handoffs.py reports zero new BLOCKER/MAJOR on handoffs/WF03-GH512-20260808/* files. Feature branch feature/WF03-GH512-20260808 pushed to origin (1a9a0d03..00abb9fa, 3 new commits in this session: f97d1f58 batch 5, 00abb9fa baseline regen; batch 4 64d82a93 was pushed earlier).",
+    "artifacts_out": [
+      "tests/integration/concurrent_instances_test.zig",
+      "tests/integration/ee03_ee04_tasks_api_test.zig",
+      "tests/integration/api03_instance_read_test.zig",
+      "tests/integration/db_integration_test.zig",
+      "tests/integration/sch01_timer_creation_test.zig",
+      "tests/integration/event_store_integration_test.zig",
+      "tests/integration/oidc15_realm_deletion_test.zig",
+      "tests/integration/oidc09_jit_provisioning_test.zig",
+      "tests/integration/api02_crud_test.zig",
+      "tests/integration/adp04_user_tenant_binding_test.zig",
+      "tests/integration/adp04a_external_identity_linkage_test.zig",
+      "tests/integration/adp04b_tenant_realm_binding_test.zig",
+      "tests/integration/adp05_instance_artifact_hash_test.zig",
+      "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
+      "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
+      "tests/integration/adp10_agent_io_capture_audit_test.zig",
+      "tests/integration/definition_test.zig",
+      "tests/integration/ee01_start_instance_test.zig",
+      "tests/integration/ee03_task_store_test.zig",
+      "tests/integration/ee08_cancel_instance_test.zig",
+      "tests/integration/ee09_merge_variables_test.zig",
+      "tests/integration/env01_test.zig",
+      "tests/integration/ext04_variable_transformer_test.zig",
+      "tests/integration/ext05_sub_process_support_test.zig",
+      "tests/integration/idn01_user_registry_test.zig",
+      "tests/integration/idn02_group_management_test.zig",
+      "tests/integration/idn03_role_access_test.zig",
+      "tests/integration/idn04_api_token_management_test.zig",
+      "tests/integration/instance_error_test.zig",
+      "tests/integration/obs06_alerts_test.zig",
+      "tests/integration/oidc10_attribute_sync_test.zig",
+      "tests/integration/oidc11_identity_stability_test.zig",
+      "tests/integration/oidc12_realm_tenant_binding_test.zig",
+      "tests/integration/oidc13_tenant_claim_source_test.zig",
+      "tests/integration/oidc14_realm_provisioning_test.zig",
+      "tests/integration/oidc34_migration_helper_test.zig",
+      "tests/integration/pd03_version_test.zig",
+      "tests/integration/pd04_lifecycle_test.zig",
+      "tests/integration/pd05_node_types_test.zig",
+      "tests/integration/pd10_search_test.zig",
+      "tests/integration/test_export_import_integration.zig",
+      "tests/integration/tm01_tenant_list_test.zig",
+      "tools/lint_test_isolation.baseline.json",
+      "scratch/_gh512_remaining.json",
+      "scratch/_gh512_after_comments.json",
+      "scratch/_gh512_after_convert1.json",
+      "scratch/_gh512_after_convert2.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Remaining 73 T010 sites are module-scope `const` declarations or document-identity fixtures matched against substring assertions in the same test body. Per design src/design/iss0181-gh512-t010-migration.md \u00a73 R1-R3, these are RETAIN. Converting them would require rewriting the test to allocate a per-test UUID and re-deriving the substrings from that, which is out of scope for a T010-only migration.",
+        "resolution": "No change required. Documented in design \u00a73 as a deliberate retention decision."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-08T11:54:46Z",
+  "completed_at": "2026-08-08T12:37:24Z"
+}
