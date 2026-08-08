@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH504-20260808/step-02-code-designer.json",
   "created_at": "2026-08-08T17:44:27Z",
   "started_at": "2026-08-08T17:44:27Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T17:48:29Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -41,7 +41,15 @@
       "fn:write-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Designed minimal, honest engine-side wiring for LUA-07 criterion 2: new src/engine/lua_script_audit.zig::executeScriptForAudit calls the existing lua_executor.executeScriptWithManifest and persists ScriptResult.manifest_hash into a new purpose-built table lua_script_execution_audit (manifest_hash BYTEA NOT NULL, indexed). Rejected reusing audit_entries (trigger-fed only, never fires for script execution) and audit_log.detail (weakens the mutation test). Rejected attaching to the EXT-03 plugin_registry SERVICE_TASK dispatch point because no production bootstrap registers any handler there today -- doing so would silently build real SERVICE_TASK script dispatch, which is explicitly out of scope. The only caller of executeScriptForAudit after this fix is the new integration test (tests/integration/iss0176_lua07_audit_manifest_hash_test.zig); this is stated plainly in the function doc comment and in design sections 0, 2.3 and 6 so it cannot be mistaken for full SERVICE_TASK integration. Design confirms the mutation-check property: deleting the INSERT or the manifest_hash column binding makes the integration test fail (section 5).",
+    "artifacts_out": [
+      "src/design/iss0176-lua07-audit-manifest-hash-minimal-wiring.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
