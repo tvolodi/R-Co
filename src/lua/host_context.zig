@@ -256,7 +256,14 @@ fn tableToScriptValue(
         map.deinit();
     }
     bindings.lua_pushnil(L);
-    while (bindings.lua_next(L, idx) != 0) {
+    // After lua_pushnil, `idx` (a relative index computed BEFORE the push)
+    // no longer points to the table — it now points to the nil we just
+    // pushed. lua_next(L, idx) on a non-table raises a segfault in LuaJIT
+    // (verified in the LUA-12/15/16 integration tests on 2026-08-08: the
+    // path that triggered a registry-backed details table from
+    // platform.fail() crashed in lj_tab_next because idx resolved to nil
+    // and not to the table).
+    while (bindings.lua_next(L, idx - 1) != 0) {
         // stack: key, value
         var key_len: usize = 0;
         const key_ptr = bindings.lua_tolstring(L, -2, &key_len);

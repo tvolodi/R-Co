@@ -1909,6 +1909,31 @@ pub fn build(b: *std.Build) void {
     });
     const run_iss0176_integration_tests = addIntegrationRun(b, iss0176_integration_tests, migrations_dir, clean_test_db);
 
+    // ISS-0625 / GH-592 — LUA-12 / LUA-15 / LUA-16 production wiring
+    // integration tests (one file, three requirement families, real LuaJIT,
+    // real PostgreSQL via BPM_TEST_DB_URL).
+    //
+    // Same module-graph constraint as the ISS-0176 block above: this
+    // test deliberately does NOT use `integration_imports` (which carries
+    // `bpm`). The shared `lua_script_audit_for_integration` module is
+    // already configured (links LuaJIT, no `bpm` import), so we reuse it
+    // rather than carving out a third identical module.
+    const iss0625_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0625_lua_12_15_16_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "tenant_context", .module = tenant_context_mod },
+                .{ .name = "env", .module = env_mod },
+                .{ .name = "lua_script_audit", .module = lua_script_audit_for_integration },
+            },
+        }),
+    });
+    const run_iss0625_integration_tests = addIntegrationRun(b, iss0625_integration_tests, migrations_dir, clean_test_db);
+
     // ISS-0122: Audit chain TEXT resource_id + non-UTF-8 resilience regression tests.
     // Migration 1107 wrapped the chain-hash pipeline in EXCEPTION blocks and
     // pre-normalises non-UTF-8 bytes in NEW.resource_id; this test exercises
@@ -2085,6 +2110,8 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_exp601_integration_tests.step);
     // ISS-0176 / GH #504: LUA-07 manifest_hash audit persistence tests.
     test_integration_others_step.dependOn(&run_iss0176_integration_tests.step);
+    // ISS-0625 / GH-592: LUA-12 / LUA-15 / LUA-16 production wiring tests.
+    test_integration_others_step.dependOn(&run_iss0625_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0076_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_same_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_cross_integration_tests.step);
@@ -2169,6 +2196,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss0176_step = b.step("test-integration-iss0176", "Run ISS-0176 LUA-07 manifest_hash audit persistence tests only (requires BPM_TEST_DB_URL)");
     test_integration_iss0176_step.dependOn(&clean_test_db.step);
     test_integration_iss0176_step.dependOn(&run_iss0176_integration_tests.step);
+
+    const test_integration_iss0625_step = b.step("test-integration-iss0625", "Run ISS-0625 LUA-12/15/16 production wiring integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_iss0625_step.dependOn(&clean_test_db.step);
+    test_integration_iss0625_step.dependOn(&run_iss0625_integration_tests.step);
 
     const test_adp12_regression_step = b.step("test-adp12-regression", "Run ADP-12 default-tenant pre/post regression suite");
     test_adp12_regression_step.dependOn(&clean_test_db.step);

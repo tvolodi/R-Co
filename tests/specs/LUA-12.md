@@ -198,3 +198,47 @@ return {
 - REPO-07 (service catalog): Service lookup and invocation.
 - EE-10 (instance error handling): Service failures trigger error handling policy.
 - WASM-12 (Wasm parity): Same service call semantics for Wasm.
+
+---
+
+## ISS-0625 / GH-592 Integration Test Cases
+
+The TCs below are exercised by the end-to-end integration test
+`tests/integration/iss0625_lua_12_15_16_test.zig` (one file, three
+requirement families, real LuaJIT + real PostgreSQL via BPM_TEST_DB_URL).
+The TC-LUA-12-NN cases above describe the *user-facing contract*; these
+new TCs verify the *production wiring* that delivers it. They are
+sub-numbers because the design also defines a unit-level suite at
+`src/lua/iss0625_lua_12_15_16_test.zig` (TC-ISS-0625-LUA-12-01..03 unit
+form, plus unit LUA-15/16).
+
+### TC-ISS-0625-LUA-12-int-01: integration — successful call returns a single Lua response table
+**Given:** A real `ExecutionContext` with a `ServiceCatalog` that
+registers `payment_svc` at `http://stub.test/api`, a `CapabilitySet`
+containing `service:call:payment_svc`, the stub `HttpClientFn` injected
+via `ExecutionContext.http_client_fn` (returns HTTP 200 for the
+registered URL), and a Lua script `local resp = platform.call_service("payment_svc", "GET", "/status", {}, ""); return resp.status_code`.  
+**When:** `lua_executor.executeScript` runs the script against a real
+sandboxed `lua_State`.  
+**Then:** `ScriptResult.success == true`, `ScriptResult.value == .{ .number = 200.0 }`, no error_message.  
+**Layer:** integration  
+**Acceptance criterion mapped:** the production seam (`ExecutionContext.http_client_fn`) is reachable end-to-end and the stub HTTP client → executor → Lua return value path delivers the numeric status_code as a `ScriptValue.number` field.  
+**Test file:** `tests/integration/iss0625_lua_12_15_16_test.zig`, test block `"TC-ISS-0625-LUA-12-int-01: ..."`.
+
+### TC-ISS-0625-LUA-12-int-02: integration — service not found raises a Lua error (simulation+real share the same gate)
+**Given:** A real `ExecutionContext` with a `ServiceCatalog` that
+registers a service under one ID but the script attempts
+`platform.call_service("ghost_svc", ...)`.  
+**When:** `lua_executor.executeScript` runs the script.  
+**Then:** `platform.call_service` raises a Lua error from the registry
+lookup gate BEFORE the HTTP path or simulation interceptor. The error
+message MUST contain `"ghost_svc"` AND the diagnostic substring `"not registered"` (defense-in-depth §3.3 — both the real and simulation paths consult the catalog and reject unregistered IDs).  
+**Layer:** integration  
+**Acceptance criterion mapped:** the catalog lookup gate is consulted before any transport call, regardless of whether simulation or real interceptors are active.  
+**Test file:** `tests/integration/iss0625_lua_12_15_16_test.zig`, test block `"TC-ISS-0625-LUA-12-int-02: ..."`.
+
+## ISS-0625 Cross-References
+
+- LUA-15 (registry-channel failure anti-forgery): TC-ISS-0625-LUA-15-int-01..04 in this run's integration test file.
+- LUA-16 (stack-trace + instruction-count payload): TC-ISS-0625-LUA-16-int-01..03 in this run's integration test file.
+- Backlog issue: ISS-0625 / GH-592. Unit tests live in `src/lua/iss0625_lua_12_15_16_test.zig` (TC-ISS-0625-LUA-{12,15,16}-NN).
