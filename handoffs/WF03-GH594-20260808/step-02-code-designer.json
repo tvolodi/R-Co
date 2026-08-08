@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH594-20260808/step-02-code-designer.json",
   "created_at": "2026-08-08T22:49:36Z",
   "started_at": "2026-08-08T22:49:36Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T22:54:53Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -39,7 +39,20 @@
       "fn:write-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Designed tools/repair_handoff_bookkeeping.py (Type E) covering the safe-mechanical subset of ISS-0626: H002 (9-file JSON-string-result unwrap, verify-then-fix), H008 (88-file BOM strip, byte-identical otherwise), H010 (1868 missing registry.json entries, purely additive from each handoff files own recorded fields, explicit skip-not-invent for missing required fields / duplicate handoff_id), H006-partial (2 of 3 unambiguous status renames via closed 2-entry lookup table that structurally excludes CONDITIONAL), and H001 encoding-corruption subset (~7 of 11 files, cp1252-decode/utf8-reencode fallback accepted only if it re-parses as JSON AND a byte-diff shows only known-corrupted-character positions changed). Design is idempotent (reuses lint_handoffs.py detection predicates so a fixed file is a no-op on rerun), dry-run-first (--apply required to write), and self-verifying (temp-file write + re-parse + re-check predicate + atomic replace; rollback to FAILED bucket on any check failure, never a partial write). Explicitly excludes H001-structural/H003/H004/H005/H006-CONDITIONAL/H007/H009/H013 in a dedicated Section 8, with H013 flagged as an open policy question rather than silently resolved. Includes 6 mutation-checkable test specs (TS-H002-01, TS-H008-01, TS-H010-01, TS-H006-01, TS-H001-ENC-01, plus a cross-category idempotency check) following this repos existing reqctl.py selftest convention (plain assert-style checks, no pytest).",
+    "artifacts_out": [
+      "src/design/iss0626-handoff-bookkeeping-repair.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "H013 whole-hour-offset correction is flagged in Section 8 as an open policy question (offset is mechanically computable but causal timezone is not recorded in the file) rather than resolved -- consistent with the handoff scope, which excludes H013, but noted here per the design constraint to flag disagreement/open questions rather than silently omit them."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
