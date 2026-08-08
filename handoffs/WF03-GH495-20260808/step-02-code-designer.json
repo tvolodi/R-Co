@@ -1,0 +1,51 @@
+{
+  "handoff_id": "4f658ead-5dce-49b3-b40e-63cc255ab32b",
+  "run_id": "WF03-GH495-20260808",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH495-20260808/step-02-code-designer.json",
+  "created_at": "2026-08-08T20:56:50Z",
+  "started_at": "2026-08-08T20:56:50Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-08",
+      "LUA-09",
+      "LUA-10"
+    ],
+    "related_handoff_ids": [
+      "b322f411-aa0b-49a5-95d0-0c83851b60d0"
+    ],
+    "artifacts_in": [
+      "src/lua/instruction_limiter.zig",
+      "src/lua/memory_limiter.zig",
+      "src/lua/timeout.zig",
+      "src/lua/executor.zig",
+      "src/lua/host_context.zig",
+      "src/design/lua-integration.md"
+    ]
+  },
+  "task": {
+    "description": "Design the fix for LUA-08 (instruction limit), LUA-09 (memory limit), LUA-10 (wall-clock timeout) -- SCOPE NARROWED per human-operator-confirmed decision: GH-495/ISS-0169 originally covered 9 requirements (LUA-08..16); this run now covers ONLY the 3 limiters, since they are self-contained and share one hook installation. The remaining 6 requirements (LUA-11/13 and LUA-12/15/16) have been split into their own new issues -- ISS-0624/GH-591 and ISS-0625/GH-592 -- for future runs. Do NOT expand this design back to cover them.\n\nISSUE-FIXER's full gap assessment (Step 1, handoff b322f411) confirmed via direct source reading: all three limiter modules (instruction_limiter.zig, memory_limiter.zig, timeout.zig) compile and their core logic is correct in isolation, but NONE are wired into createSandboxedState/executeSource -- executor.zig has ZERO call sites for installHook, MemoryLimiter.alloc, or TimeoutContext outside test pins. This is genuine, documented, honest debt (the source files' own header comments say so explicitly). A test added during GH-500 calls installHook/MemoryLimiter.alloc for real but only proves they execute without crashing -- it does NOT prove actual termination/rejection, since it never drives a script through lua_pcall with a limiter installed.\n\nSPECIFIC FINDINGS TO DESIGN AROUND:\n1. LUA-08: installHook() currently stores its limiter pointer via a SCRIPT-WRITABLE Lua global (__limiter__ set via lua_setglobal) -- the same forgery class __limiter__/host_context.zig's REGISTRY_KEY pattern was built to close for capabilities. This must move to LUA_REGISTRYINDEX, reusing host_context.zig's established pattern, not the vulnerable global-based one.\n2. LUA-08's max_instructions currently only has a source via executeScriptWithManifest's manifest -- the plain executeScript path (no manifest) has no limit source at all. Design must specify what happens for unmanifested execution (a default limit? no limit, documented as intentional? -- make and justify this decision).\n3. LUA-09: MemoryLimiter.alloc() is never passed to lua_newstate (which always uses defaultAlloc, unbounded) -- design how createSandboxedState threads a configurable max_memory_bytes through and switches the allocator.\n4. LUA-10: pure host-side timeout-checking cannot interrupt a tight Lua loop by itself (per src/design/lua-integration.md section 15's own honest assessment) -- the practical mechanism is folding TimeoutContext.checkTimeout() into the SAME LUA_MASKCOUNT hook callback LUA-08 installs (check elapsed wall-clock every N instructions, not just instruction count), so LUA-08 and LUA-10 share ONE hook installation. Design this combined hook precisely.\n5. Each requirement needs a test proving the REAL failure mode: LUA-08 needs a runaway `while true do end` script actually terminated within a bounded budget (not merely that installHook can be called); LUA-09 needs a script allocating past a deliberately tiny cap actually rejected as a script failure; LUA-10 needs a runaway loop interrupted by ELAPSED TIME specifically (isolated from LUA-08's instruction-count trigger, e.g. a high/no instruction limit but a short timeout) -- these must be genuinely mutation-checkable, not just 'the function was called'.",
+    "acceptance_criteria": [
+      "installHook uses LUA_REGISTRYINDEX for its limiter pointer, not a script-writable global -- matching host_context.zig pattern",
+      "max_instructions source decided and justified for both executeScript (no manifest) and executeScriptWithManifest paths",
+      "createSandboxedState threads a configurable max_memory_bytes and switches lua_newstate to use MemoryLimiter.alloc",
+      "LUA-08 and LUA-10 share one combined hook installation checking both instruction count and elapsed wall-clock",
+      "Three genuinely mutation-checkable tests designed: LUA-08 proves actual termination of a runaway script, LUA-09 proves actual allocation rejection, LUA-10 proves interruption by elapsed time isolated from instruction count",
+      "No implementation code beyond illustrative Type E signatures",
+      "Design explicitly does not expand scope to LUA-11/12/13/15/16 (deferred to ISS-0624/ISS-0625)"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
