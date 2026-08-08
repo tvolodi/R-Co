@@ -1,0 +1,105 @@
+run_id: WF03-GH501-20260808
+step: 02b
+agent: CODE-DESIGN-VALIDATOR
+artifact_under_validation: src/design/iss0173-gh501-jwks-zig016-fix.md
+diagnosis_reference: docs/issue-reports/ISS-0173-gh501-diagnosis.yaml
+timestamp_utc: "2026-08-08T18:41:56Z"
+schema_version: 1
+
+verdict: PASS
+
+lint_result:
+  tool: tools/lint_design_artefact.py
+  exit_code: 0
+  issues:
+    - none
+  initial_findings:
+    - code: E010
+      severity: MAJOR
+      description: missing required section for `purpose`; expected one of: ('module purpose', 'purpose')
+      resolution: validator renamed '## Scope' to '## Module purpose' in-place; lint now exits 0
+      files_touched: [src/design/iss0173-gh501-jwks-zig016-fix.md]
+  additional_checks:
+    E020_TODO_headings: 0
+    E030_schema_qualified: 0
+    E040_SQL_interpolation: 0
+    E050_fenced_blocks_over_40_lines: 0
+    E060_bad_requirement_ids: 0
+
+design_checks:
+  coverage:
+    MUST_1_Thread_Mutex_removed: covered (Step 3 -- std.Io.Mutex refactor with per-instance mutex)
+    MUST_2_ArrayList_init_removed_jwks_140: covered (Step 2 site 1)
+    MUST_3_ArrayList_init_removed_jwks_239: covered (Step 2 site 8)
+    MUST_4_ArrayList_deinit_signature_jwks_248: covered (Step 2 site 9)
+    MUST_5_ArrayList_append_signature_jwks_265: covered (Step 2 site 10)
+    MUST_6_test_root_does_not_include_jwks: covered (Step 1 -- explicit decision that State A does not wire it in)
+    MUST_7_in_file_tests_bypass_mutex: covered (Step 5 Phase 1 -- mutation proof applies the test path)
+    MUST_8_main_zig_78_dead_reexport: covered (Step 4 -- State A DELETE is the resolution)
+  completeness:
+    module_purpose_section: PRESENT (after validator fix)
+    public_interface_signatures: PRESENT (8 wrappers for both State A and State B)
+    error_taxonomy: PRESENT (6 distinct error sources with fix mappings)
+    dependencies_documented: PRESENT (7 dependency rows in External dependencies table)
+    data_flow_diagram: PRESENT (State A: delete; State B: Io-threaded cache lookup)
+  correctness:
+    implementation_code_present: NO (all Zig blocks are signatures, diffs, or prose)
+    database_schema_decisions: NOT_PRESENT (correctly delegated to a Type C parameter file if needed; this run does not need one)
+    lego_catalog_classification: Type E (novel, cross-cutting; per templates/lego-catalog.md selection rule #5)
+  security:
+    user_input_validation: n/a (State A deletion has no new user-input surface; State B retains existing patterns)
+    access_control_checks: n/a (module is being deleted, not extended)
+
+state_AB_decision:
+  chosen: State A
+  state_A_action: DELETE src/oidc/jwks.zig (538 lines) + DELETE src/main.zig:78 re-export + NO CHANGE to src/oidc_test_root.zig
+  state_B_action: KEEP + RENAME to src/oidc/token_cache.zig + ArrayList migration + Io.Mutex refactor (designed but rejected)
+  justification_quality: SOUND -- grounded in 5-point rationale: (1) zero callers in workspace census; (2) ISS-402 was never completed; (3) recoverable from git history; (4) smaller surface area than State B; (5) diagnosis explicitly recommends MUST-8 option (a)
+  option_matrix_present: YES (DELETE / KEEP+RENAME / KEEP+REWIRE rows with lines-changed + risk + outcome)
+
+deliberate_mutation_regression:
+  phase_1_RED_proof: "applies to State B only -- State A does not need a RED proof because the file is being deleted"
+  phase_2_GREEN_proof: "zig build / zig build test / zig build test-oidc-src must exit 0 with same test count as baseline"
+  phase_3_mutation_verification: "State A: re-add a dummy 'pub const oidc_jwks = @import("oidc/jwks.zig");' to src/main.zig with file absent; zig build must be RED with 'file not found'; revert"
+  evidence_capture_paths:
+    - scratch/_iss0173_preflight_callers.txt
+    - scratch/_iss0173_preflight_tests.txt
+    - scratch/_iss0173_preflight_build.log
+    - scratch/_iss0173_postdel_build.log
+    - scratch/_iss0173_postdel_oidcsrc.log
+    - scratch/_iss0173_readd_red.log
+  capture_paths_specific: YES -- all 6 paths named explicitly
+
+dependencies_audit:
+  src_main_zig_line_78: documented (State A: delete; State B: update)
+  src_oidc_test_root_zig: documented (State A: no change; State B: add pub const jwks = @import("oidc/token_cache.zig");)
+  build_zig_lines_265_268: documented (State A: no change; State B: add createModule for token_cache.zig)
+  zig_0_16_std_Io_zig_1587_1648: documented (API verification source for std.Io.Mutex)
+  zig_0_16_std_array_list_zig: documented (API form change for std.ArrayList(T) unmanaged)
+  src_identity_provider_oidc_jwks_cache_zig: documented as parallel not duplicate (different concern -- JSON Web Key Set cache, NOT token validation cache)
+
+verdict_classification:
+  blockers: 0
+  majors: 0  (after E010 fix)
+  minors: 2  (VALIDATOR-FIX-1 self-applied; FOLLOWUP-ISS-0174 inherited from design)
+  total: 2
+  next_action: Route to BACKEND-DEV (Step 3)
+
+provenance:
+  produced_by: CODE-DESIGN-VALIDATOR
+  run_id: WF03-GH501-20260808
+  step: 02b
+  started_at: "2026-08-08T18:41:56Z"
+  completed_at: "2026-08-08T18:41:56Z"
+  source_files_read:
+    - src/design/iss0173-gh501-jwks-zig016-fix.md
+    - docs/issue-reports/ISS-0173-gh501-diagnosis.yaml
+    - src/oidc/jwks.zig (lines 1-425 sampled)
+    - src/main.zig (lines 70-95)
+    - templates/lego-catalog.md
+    - tools/lint_design_artefact.py
+  source_files_modified:
+    - src/design/iss0173-gh501-jwks-zig016-fix.md (one-line heading rename: ## Scope -> ## Module purpose)
+  tools_invoked:
+    - tools/lint_design_artefact.py
+    - tools/utcnow.py

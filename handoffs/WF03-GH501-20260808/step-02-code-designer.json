@@ -1,0 +1,70 @@
+{
+  "handoff_id": "3a1b9c4d-7e2f-4d6a-9b8e-1f0c2d3a4b5e",
+  "run_id": "WF03-GH501-20260808",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-08T18:32:32Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "7d3c8a51-2e0a-4f9b-8c4d-9e1a5b6c7d8e",
+      "f0b78f3c-40ac-455d-95f7-405bea658489"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0173-gh501-diagnosis.yaml",
+      "src/oidc/jwks.zig",
+      "src/identity/provider/oidc/jwks_cache.zig",
+      "src/oidc_test_root.zig",
+      "src/main.zig",
+      "build.zig",
+      "templates/lego-catalog.md",
+      "docs/guides/backend_developer_guide.md"
+    ],
+    "github_issue_number": 501,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/501",
+    "iss_id": "ISS-0173",
+    "severity": "MAJOR"
+  },
+  "task": {
+    "description": "GH-501 / ISS-0173: Design the fix per docs/issue-reports/ISS-0173-gh501-diagnosis.yaml. Write src/design/iss0173-gh501-jwks-zig016-fix.md covering all six prescribed deliverables: (1) wire file into a real test target first, (2) mechanical ArrayList unmanaged migration list, (3) non-mechanical std.Io.Mutex refactor threading Io parameter through every public wrapper, (4) orphan fate decision (delete vs rename vs rewire), (5) deliberate-mutation regression test plan, (6) classification per templates/lego-catalog.md. Decide orphan fate based on workspace caller-census evidence (already gathered by ISSUE-FIXER step: zero callers of main.oidc_jwks). Do NOT modify any source file under src/. Use real UTC timestamps from tools/utcnow.py, BOM-tolerant JSON, UTF-8 writes, append-only orchestrator log.",
+    "acceptance_criteria": [
+      "src/design/iss0173-gh501-jwks-zig016-fix.md exists, covers all 6 diagnosis-prescribed deliverables (wire-up, ArrayList, mutex refactor, orphan fate, regression, classification)",
+      "Orphan-fate decision is documented with explicit option matrix and decision rationale (State A DELETE chosen because workspace caller census confirms zero callers of main.oidc_jwks)",
+      "ArrayList migration list is exhaustive against HEAD source: 10 specific sites enumerated (jwks.zig:140,144,148,164,168,172,194,239,248,265), each with a code diff",
+      "std.Io.Mutex refactor design documents API verification against installed Zig 0.16 lib/std/Io.zig:1587-1648 and the lockUncancelable(io) vs lock(io) choice",
+      "Deliberate-mutation regression test plan has three phases (RED proof, GREEN proof, mutation verification) with specific evidence capture paths under scratch/_iss0173_*.{log,txt}",
+      "Lego-catalog classification per templates/lego-catalog.md is documented per-deliverable; overall verdict: Type E (novel — no codegen)",
+      "Pre-flight grep command sequence is documented exactly as BACKEND-DEV must run it before deleting",
+      "handoffs/orchestrator.log append-only write (UTF-8, no PowerShell >> corruption)",
+      "handoffs/registry.json updated for this handoff (status: COMPLETED, to_agent: CODE-DESIGNER)",
+      "No source files in src/ or tests/ were modified (design only)"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact (delivered to src/design/iss0173-gh501-jwks-zig016-fix.md)",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Designed the GH-501 / ISS-0173 fix as a Type E novel-work artefact at src/design/iss0173-gh501-jwks-zig016-fix.md (35,509 bytes). All 6 deliverables covered. Orphan-fate decision: DELETE (State A). Rationale grounded in the workspace caller census: Get-ChildItem -Recurse -Include *.zig,*.ts,*.tsx with Select-String -Pattern '\\boidc_jwks\\b' returns exactly ONE hit — src/main.zig:78 itself — proving the re-export has zero callers and the file is functionally dead. The real JWKS concern (src/identity/provider/oidc/jwks_cache.zig) covers a different feature (key IDs per JWKS URI, NOT token validation cache) and is NOT a substitute; deleting src/oidc/jwks.zig does NOT duplicate functionality. State B (KEEP + RENAME + Io-thread) is fully designed as the fallback (10 specific ArrayList unmanaged sites with code diffs; std.Io.Mutex refactor with API verification against installed Zig 0.16 lib/std/Io.zig:1587-1648; lockUncancelable(io) chosen for hot path; lock-ordering invariant 'cache first, denylist second' documented; 8 wrapper signatures updated to thread io: std.Io as first parameter) but is rejected for this run because State A is functionally equivalent and lower-risk. Deliberate-mutation regression plan has three phases (pre-flight baseline RED proof, post-deletion GREEN proof, Phase 3 deliberate re-add of the re-export line to confirm RED with 'file not found'). Lego classification: Type E overall — every change is novel (mechanical find/replace doesn't fit Type A/B/C/D, and the orphan-fate decision is architectural). Two follow-up ISSes surfaced: ISS-0174 for a linter that detects dead pub const re-exports in src/main.zig (SHOULD-2 from diagnosis).",
+    "artifacts_out": [
+      "src/design/iss0173-gh501-jwks-zig016-fix.md (35,509 bytes, 6-deliverable design)"
+    ],
+    "issues": [
+      {
+        "id": "FOLLOWUP-ISS-0174",
+        "severity": "MINOR",
+        "description": "SHOULD-2 from diagnosis: codebase lacks a linter that detects dead pub const X = @import(...) re-exports in src/main.zig. The MUST-8 finding in this run was discovered only by manual grep; a future ISS-0172-class blind spot in a different subsystem would re-occur unless automated. Recommend: file ISS-0174 (separate WF-03 run) to add a tools/lint_dead_reexports.py check that greps every pub const re-export in src/main.zig and reports MAJOR if zero callers exist. Out of scope for GH-501; do not bundle here."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (WF-03 Step 2b) to validate the design artefact before BACKEND-DEV (Step 3) implements the fix."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-08T18:36:01Z",
+  "completed_at": "2026-08-08T18:38:31Z"
+}

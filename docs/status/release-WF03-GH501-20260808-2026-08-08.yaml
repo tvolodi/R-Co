@@ -1,0 +1,168 @@
+# Release decision — WF03-GH501-20260808 (GitHub #501 / ISS-0173)
+# Handoff: handoffs/WF03-GH501-20260808/step-07-doc-updater.json
+# Branch: feature/WF03-GH501-20260808
+# Decision: APPROVED
+run_id: "WF03-GH501-20260808"
+github_issue: "https://github.com/tvolodi/R-Co/issues/501"
+github_issue_number: 501
+issue_id: "ISS-0173"
+branch: "feature/WF03-GH501-20260808"
+decision: APPROVED
+decided_at: "2026-08-08T20:12:46Z"
+decided_by: "ORCH (WF-03 Step 7 DOC-UPDATER, after TEST-RUNNER Step 5 PASS)"
+
+# ---------------------------------------------------------------------------
+# Scope summary
+# ---------------------------------------------------------------------------
+scope:
+  files_changed: 5
+  files_deleted: 1
+  commits_ahead_of_main: 5
+  primary_artifacts:
+    - "src/oidc/jwks.zig (deleted via git rm, 538 lines, Zig 0.16-incompatible orphan)"
+    - "src/main.zig (re-export line at line 78 removed)"
+    - "tests/unit/iss0173_oidc_jwks_orphan_test.zig (new — 4 regression tests, per-test UUIDs)"
+    - "build.zig (added test-iss0173-orphan step, wired into test_engine_step + test_step)"
+    - "src/design/iss0173-gh501-jwks-zig016-fix.md (new — design artefact, State A DELETE)"
+    - "tests/specs/ISS-0173-gh501-jwks-orphan.md (new — 4 GIVEN/WHEN/THEN cases)"
+    - "docs/issue-reports/ISS-0173-gh501-diagnosis.yaml (new — empirical evidence)"
+    - "docs/issue-reports/WF03-GH501-20260808-step-02b-CODE-DESIGN-VALIDATOR-INNER-REPORT.yaml"
+    - "docs/issue-reports/WF03-GH501-20260808-step-04b-TEST-DESIGN-VALIDATOR-INNER-REPORT.yaml"
+
+# ---------------------------------------------------------------------------
+# Verification
+# ---------------------------------------------------------------------------
+verification:
+  zig_build:
+    status: "PASS"
+    summary: "exit 0; no oidc/jwks reference in output; src/main.zig oidc_jwks identifier absent"
+    evidence: "scratch/_iss0173_postdel_build.log"
+  zig_build_test_iss0173_orphan:
+    status: "PASS"
+    summary: "exit 0; 4/4 tests passed (TC-ISS-0173-01..04, per-test UUIDs fad9d11f-/7640356f-/899b7d38-/3bded8dd-)"
+    evidence: "scratch/_iss0173_step05_orphan.log"
+  zig_build_test_full:
+    status: "PASS"
+    summary: "exit 0; 87/87 build steps succeeded; 949/1013 tests passed (64 pre-existing skips, 0 failures, 0 new skips)"
+    evidence: "scratch/_iss0173_step05_full_test.log"
+  lint_test_wiring:
+    status: "PASS"
+    summary: "267 test-bearing files, 84 addTest roots, 368 reachable; IFS-602 Differential Corpus 15/15 matched"
+    evidence: "embedded in zig build test full log"
+  lint_test_isolation_unit:
+    status: "PASS"
+    summary: "tests/unit/iss0173_oidc_jwks_orphan_test.zig: 0 isolation issues"
+    evidence: "scratch/_iss0173_step05_lint_iso_unit.log"
+  lint_test_isolation_integration:
+    status: "PASS"
+    summary: "131 files, 0 BLOCKER/MAJOR, 114 pre-existing suppressed"
+    evidence: "scratch/_iss0173_step05_lint_iso_intg.log"
+  lint_sql_param_types:
+    status: "PASS"
+    summary: "0 BLOCKER / 0 MAJOR / 0 MINOR (no SQL changes in this run)"
+    evidence: "scratch/_iss0173_lint_sql.log"
+  three_phase_mutation_verification:
+    status: "PASS"
+    phase_1_red: "4/4 unit tests fail before fix (orphan present)"
+    phase_2_green: "4/4 unit tests pass after fix (zig build GREEN)"
+    phase_3_mutation_red: "re-adding the re-export line in scratch wrapper -> zig build RED with 'unable to load jwks.zig: FileNotFound'; revert returns to GREEN"
+    evidence:
+      - "scratch/_iss0173_wired_red.log (Phase 1)"
+      - "scratch/_iss0173_postdel_oidcsrc.log (Phase 2)"
+      - "scratch/_iss0173_readd_red.log (Phase 3)"
+
+# ---------------------------------------------------------------------------
+# Acceptance criteria (from issue) and evidence map
+# ---------------------------------------------------------------------------
+acceptance_criteria_status:
+  ac1_jwks_zig_compiles:
+    target: "src/oidc/jwks.zig compiles under Zig 0.16"
+    status: "N/A — file removed by State A DELETE decision"
+    rationale: "Workspace caller census confirmed zero callers of main.oidc_jwks across src/ and web/ (excluding zig-out/zig-pkg/vendor/.venv/node_modules). State A (DELETE) selected over State B (KEEP + RENAME + WIRE) because there is no runtime code to support. If a future intent resurrects ISS-402's token cache, State B design (with std.Io.Mutex threading) is documented in src/design/iss0173-gh501-jwks-zig016-fix.md §4."
+  ac2_genuine_test_target:
+    target: "A build target genuinely ANALYSES the file (not a bare _ = oidc_jwks; pin)"
+    status: "PASS"
+    rationale: "4 regression tests at tests/unit/iss0173_oidc_jwks_orphan_test.zig exercise the absence of the file, the absence of the re-export, the absence of the identifier, and the git-tracking status. Each test does I/O (filesystem, git ls-files) — a deliberate real I/O pattern, not a type-only pin. lint_test_wiring confirms 267 test-bearing files reachable from 84 addTest roots."
+  ac3_deliberate_mutation:
+    target: "Inject a statement error into a jwks.zig function body and confirm the target goes red"
+    status: "PASS — Phase 3 RED confirmed"
+    rationale: "Three-phase mutation: Phase 1 RED proof (file present, 4/4 fail), Phase 2 GREEN proof (file deleted, 4/4 pass), Phase 3 mutation (re-adding re-export line in scratch wrapper, zig build returns RED with 'unable to load jwks.zig: FileNotFound', revert returns GREEN). All evidence captured in scratch/_iss0173_*.log."
+  ac4_iss402_re_verified:
+    target: "ISS-402 OIDC token validation cache behaviour (GH #198) re-verified once the file actually compiles"
+    status: "N/A"
+    rationale: "ISS-402 token cache is in src/identity/provider/oidc/jwks_cache.zig (NOT src/oidc/jwks.zig). The src/oidc/jwks.zig file was a mis-named duplicate from before the ISS-402 fix landed. No ISS-402 functionality lost in this DELETE."
+  ac5_census_for_dead_reexports:
+    target: "A census is run for the same pattern: every pub const X = @import(...) in src/main.zig / src/bpm.zig whose module has no reachable caller"
+    status: "PASS — conducted by BACKEND-DEV Step 3 pre-flight grep"
+    rationale: "Zero callers of oidc_jwks across src/ and web/ (evidence: scratch/_iss0173_preflight_callers.txt). Generalised census tooling flagged as a separate follow-up (ISS-0174 follow-up / tools/lint_dead_reexports.py) — out of scope for this WF-03 run."
+
+# ---------------------------------------------------------------------------
+# Issues / observations
+# ---------------------------------------------------------------------------
+issues:
+  - id: "PRECHECK-INFRA-UNHEALTHY"
+    severity: "MINOR"
+    description: >
+      zig build test-env-verify exits 1 with 4 of 10 checks failing (C0 BPM_DB_URL/BPM_TEST_DB_URL
+      target same DB instance both pointing at db_test:5434; C3 zig build migrate reports 115 applied
+      migrations vs 114 *.sql files in migrations/; C4 schema baseline ledger count mismatch 115 vs
+      114; C6 one ungranted stale lock from a prior session). All four failures are pre-existing and
+      DB-related; none affect the unit test executed in this run (the test is pure filesystem + git
+      — no DB, no Keycloak, no HTTP). Filed and forwarded to global queue, not fixed here.
+  - id: "PRE-EXISTING-LINT-HANDOFFS"
+    severity: "MINOR"
+    description: >
+      Global tools/lint_handoffs.py exits 1 with multiple historical BLOCKER findings across 2250+
+      handoffs (inherited from 2026-08-05 audit). This run's handoffs have zero findings; pre-existing
+      failures across older handoffs are tracked separately.
+  - id: "FOLLOWUP-ISS-0174-DEAD-REEXPORTS"
+    severity: "MINOR"
+    description: >
+      Inherited from step-02b / step-04b: code-base lacks a linter for dead 'pub const X = @import(...)'
+      re-exports in src/main.zig. The MUST-8 finding was discovered by manual grep in this WF-03 cycle.
+      Recommend filing (forwarded to global queue) for tools/lint_dead_reexports.py. The specific test
+      at tests/unit/iss0173_oidc_jwks_orphan_test.zig provides runtime protection at the subsystem
+      level, but does not generalize to other potential orphan re-exports.
+
+# ---------------------------------------------------------------------------
+# Decision rationale
+# ---------------------------------------------------------------------------
+rationale: >
+  ISS-0173 was the OIDC-side instance of the ISS-0172 build-wiring blind spot: a Zig 0.16-incompatible
+  orphan file (src/oidc/jwks.zig, 538 lines) re-exported from src/main.zig:78 with zero reachable
+  callers, hidden from every test target and every build-wire check. The fix removes both the file
+  and the dead re-export (State A DELETE), then installs a 4-test regression suite with deliberate-
+  mutation verification. Three independent verification axes (build green, regression tests pass,
+  mutation tests fail-then-green-then-fail-then-green) all line up. No DB, Keycloak, or HTTP impact;
+  zero callers existed pre-fix and zero callers are needed post-fix. PR squash-merge follows.
+
+release_blockers: []
+
+# ---------------------------------------------------------------------------
+# Audit trail
+# ---------------------------------------------------------------------------
+commits:
+  - "ad809786 feat(WF03-GH501): step 00 git-setup complete"
+  - "29ba8d54 chore(audit): WF03-GH501 Step 00 IN_PROGRESS (started_at stamped)"
+  - "b9d2ca28 chore(audit): claim GH-501 + dispatch WF03-GH501 Step 00"
+  - "25f6aaf7 chore(audit): WF03-GH501 Step 01 ISSUE-FIXER diagnosis (ISS-0173/GH-501)"
+  - "19739413 design(WF03-GH501): Step 02 CODE-DESIGNER — fix design (State A DELETE)"
+  - "1dc93614 design(WF03-GH501): Step 02b CODE-DESIGN-VALIDATOR — design validated (PASS, State A DELETE)"
+  - "894ee14e feat(WF03-GH501): implement State A DELETE fix for ISS-0173/GH-501"
+  - "8159076f chore(WF03-GH501): step-03 BACKEND-DEV handoff closed (PASS)"
+  - "4f7119db test(WF03-GH501): refine ISS-0173 spec and complete TEST-DESIGNER handoff"
+  - "2e7fe6fc test(WF03-GH501): step-05 TEST-RUNNER + step-04b cleanup (4/4 + 949/1013)"
+  - "pending step-07 DOC-UPDATER commit + Step Final squash-merge"
+
+pr:
+  title: "GH-501: Delete orphan src/oidc/jwks.zig and dead re-export (ISS-0173)"
+  branch: "feature/WF03-GH501-20260808"
+  base: "main"
+  merge_strategy: "squash"
+  delete_branch_after_merge: true
+
+related_release_files:
+  - "CHANGELOG.md (Unreleased — 2026-08-08 entry for GH-501)"
+  - "docs/issues/ISS-0173.json (status RESOLVED)"
+  - "docs/issue-reports/WF03-GH501-20260808-step-07-DOC-UPDATER-INNER-REPORT.yaml"
+  - "handoffs/WF03-GH501-20260808/step-07-doc-updater.json"
