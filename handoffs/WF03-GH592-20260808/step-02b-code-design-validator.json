@@ -1,0 +1,85 @@
+{
+  "handoff_id": "808dcf02-b4c9-4b3f-b811-b1c38415c578",
+  "run_id": "WF03-GH592-20260808",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-08T21:35:34Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 2b (design validation)",
+    "requirement_ids": [
+      "LUA-12",
+      "LUA-15",
+      "LUA-16"
+    ],
+    "related_handoff_ids": [
+      "e2ac745e-db7d-41e3-941c-349b4fadb529 (step-00 BACKEND-DEV git-setup, COMPLETED)",
+      "92c5d5e1-4f37-4c20-9a83-2b7e7f9c1a8a (step-01 ISSUE-FIXER diagnosis, COMPLETED)",
+      "f5920200-0000-0000-0000-000000000000 (step-02 CODE-DESIGNER, COMPLETED)"
+    ],
+    "artifacts_in": [
+      "src/design/iss0625-gh592-lua-12-15-16.md",
+      "docs/issue-reports/ISS-0625-gh592-diagnosis.yaml",
+      "docs/requirements.yaml (LUA-08/09/11/12/13/15/16 entries)",
+      "tests/specs/LUA-12.md",
+      "tests/specs/LUA-15.md",
+      "tests/specs/LUA-16.md",
+      "templates/lego-catalog.md (selection rules)"
+    ],
+    "github_issue_number": 592,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/592",
+    "iss_id": "ISS-0625",
+    "severity": "MAJOR"
+  },
+  "task": {
+    "description": "WF-03 Step 2b hard-gate review of the Type E design artefact at src/design/iss0625-gh592-lua-12-15-16.md produced by CODE-DESIGNER. Verify: (1) lint_design_artefact.py exits 0; (2) every MUST acceptance criterion is covered by a design element; (3) classification per lego-catalog.md is Type E (cross-cutting); (4) no implementation code present (only type signatures and deinit contract bodies, per repo precedent); (5) all public function signatures listed; (6) error taxonomy exists; (7) dependencies and out-of-scope items documented; (8) sequencing LUA-15->LUA-12->LUA-16 justified; (9) test plan covers 26 cases (10+8+8); (10) decisions D-1..D-4 traceable to evidence.",
+    "acceptance_criteria": [
+      "tools/lint_design_artefact.py exits 0 (no BLOCKER/MAJOR)",
+      "Type E classification per lego-catalog.md selection rules",
+      "Every MUST acceptance criterion for LUA-12/15/16 has a design element",
+      "Public function signatures listed for ScriptResult, ExecutionContext, host_context helpers, events constructors, luajit_bindings additions",
+      "Error taxonomy present (per-design \u00a74) covering all error sources",
+      "Dependencies (per-design \u00a76.1) and out-of-scope items (per-design \u00a76.2) listed",
+      "Sequencing LUA-15 -> LUA-12 -> LUA-16 justified (per-design \u00a77) and traceable to diagnosis",
+      "Test plan covers TC-LUA-12-impl-01..10, TC-LUA-15-impl-01..08, TC-LUA-16-impl-01..08 (26 total)",
+      "Decisions D-1..D-4 traceable to evidence in diagnosis YAML or lua-integration.md",
+      "No new BLOCKER introduced to lint_handoffs.py (this file must conform to schema)"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E design artefact validated against all 9 acceptance criteria. (1) lint_design_artefact.py exits 0 with no findings. (2) Type E classification correct per lego-catalog.md \u00a7Selection rules: registry-channel migration, fail/runtime discriminator on ScriptResult, conditional payload assembly, and cross-module orchestration across executor/host_api/events/service_catalog/host_context \u2014 none map to Type A (CRUD endpoint), Type B (list page), Type C (DB migration), or Type D (React Flow node). (3) All MUST acceptance criteria covered: LUA-12 (real HTTP call path, single-table return shape, catalog lookup defense-in-depth), LUA-15 (LUA_REGISTRYINDEX migration, ScriptResult.error_kind discriminator, buildScriptFailedPayload constructor), LUA-16 (lua_getstack/lua_getinfo walk, conditional ScriptErrorPayload construction, capabilities_at_failure skip-reason). (4) No implementation code violating Type E rules: 8 zig blocks contain type signatures (struct/enum/pub fn/p pub extern fn); 4 blocks include illustrative deinit method bodies consistent with repo precedent (iss0173-gh501-jwks-zig016-fix.md establishes this convention) documenting the field-ownership contract that BACKEND-DEV must replicate. No business-logic implementation, no HTTP client wiring, no executeSource branch bodies, no captureStackTrace bodies. (5) Public function signatures complete: ScriptResult.deinit, ExecutionContext.service_catalog/instruction_limiter, host_context.setExplicitFailure/readExplicitFailure/clearExplicitFailure, events.buildScriptFailedPayload/buildScriptErrorPayload, luajit_bindings extern declarations. (6) Error taxonomy (per-design \u00a74) enumerates 11 error sources across host_api/fail.zig, host_api/call_service.zig, executor.zig, luajit_bindings.zig, mapped to ScriptResult.error_kind values. (7) Dependencies (per-design \u00a76.1) and out-of-scope items (per-design \u00a76.2) explicit, including the CTX-1 service_catalog lifetime invariant, the engine-side worker boundary, and the explicit exclusion of LUA-11/13/08/09 from this branch. (8) Sequencing LUA-15 -> LUA-12 -> LUA-16 justified per per-design \u00a77: LUA-15 first establishes the ScriptResult.error_kind discriminator and the registry channel that LUA-16 reuses in the same failed-pcall branch; LUA-12 is independent and can be inserted between them, but lands second because ExecutionContext field layout is stable after LUA-15; LUA-16 lands last because it touches the most files and depends conditionally on LUA-08/09. (9) Test plan covers exactly 26 cases (TC-LUA-12-impl-01..10 = 10, TC-LUA-15-impl-01..08 = 8, TC-LUA-16-impl-01..08 = 8; verified mechanically, no gaps, no duplicates). (10) Decisions D-1..D-4 traceable: D-1 to diagnosis F-LUA-12-2 (ServiceCatalog zero callers) and lua-integration.md \u00a717.1; D-2 to diagnosis F-LUA-12-3 (return-shape divergence) and lua-integration.md \u00a717.1; D-3 to diagnosis F-LUA-16-3 (instruction_count no source) and the LUA-08 deferred status in requirements.yaml; D-4 to diagnosis F-LUA-16-1 (captureStackTrace not implemented) and vendor/luajit/src/ldebug.h (function names verified).",
+    "artifacts_out": [
+      "handoffs/WF03-GH592-20260808/step-02b-code-design-validator.json (this file)"
+    ],
+    "issues": [
+      {
+        "id": "MINOR-DEINIT-BODIES-IN-DESIGN",
+        "severity": "MINOR",
+        "description": "The design artefact includes 4 deinit method bodies (\u00a72.1 ScriptResult.deinit, \u00a72.4 ScriptErrorPayload.deinit, \u00a710.1 same body duplicated as BACKEND-DEV implementation note, \u00a710.2 EventRecord.deinit quoted from existing events.zig:54-57). These are illustrative contracts documenting the field-ownership pattern; they are consistent with the established repo precedent (iss0173-gh501-jwks-zig016-fix.md, 1 such block; validator PASS). Strict reading of 'no implementation code' would flag them as out of scope for Type E. Left as-is because (a) the bodies communicate the deinit contract that BACKEND-DEV must replicate across new fields, and (b) removing them would force BACKEND-DEV to infer the same pattern from prose alone. If a stricter reading is enforced in future, these bodies should move into the implementation-note sections and the type-definition sections should keep only field signatures."
+      },
+      {
+        "id": "MINOR-OQ-3-HTTP-CLIENT-PRODUCTION-GAP",
+        "severity": "MINOR",
+        "description": "OQ-3 documents that the production HTTP client (the function pointer the real-call path invokes) is NOT introduced in this design. Tests use a Zig function pointer stub per T-1. If the engine-side worker has no existing hook to inject the real HTTP client into ExecutionContext, this becomes a follow-up ISS. CODE-DESIGNER already raised this as MAJOR in their result.issues[0] (OPEN-LUA-12-HTTP-CLIENT-PROD). Confirmed: the design does NOT add an http_client_fn field to ExecutionContext (\u00a72.2) and the production wiring is explicitly out of scope (\u00a710.3). BACKEND-DEV must flag this during implementation if no hook exists."
+      },
+      {
+        "id": "MINOR-D-2-CHANGELOG-DEPENDENCY",
+        "severity": "MINOR",
+        "description": "D-2 (single response table for LUA-12) is a breaking change for scripts using `local body, status = platform.call_service(...)`. CHANGELOG draft text is included in \u00a710.4, but DOC-UPDATER (Step 7) must add it alongside the requirement-status update. Confirmed dependency: implementation in BACKEND-DEV can land without CHANGELOG being merged; DOC-UPDATER adds it."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3). Backend-dev implements three commits on feature/WF03-GH592-20260808 in the order: (1) LUA-15 registry migration + ScriptResult.error_kind (host_context.zig, host_api/fail.zig, executor.zig); (2) LUA-12 ServiceCatalog wiring + single-table return shape (executor.zig ExecutionContext.service_catalog, host_api/call_service.zig); (3) LUA-16 captureStackTrace + conditional ScriptErrorPayload (luajit_bindings.zig extern declarations, events.zig constructors, executor.zig ScriptResult.script_error). Each commit must pass zig build and zig build test. The OQ-3 HTTP-client-production-gap remains a follow-up ISS that BACKEND-DEV must flag if no engine-side hook exists."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-08T21:35:34Z",
+  "completed_at": "2026-08-08T21:35:34Z"
+}
