@@ -1,0 +1,42 @@
+{
+  "handoff_id": "bb327707-a7af-4e32-8d80-c36d997121ca",
+  "run_id": "WF03-GH567-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH567-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T05:14:43Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/iss0618-scheduler-lock-and-error-signaling.md",
+      "docs/issues/ISS-0618.json",
+      "src/scheduler/scheduler.zig",
+      "tests/integration/sch02_timer_polling_test.zig",
+      "tests/integration/sch303_timer_dlq_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0618-scheduler-lock-and-error-signaling.md, a Type E design fixing GH #567 / ISS-0618's two scheduler bugs. Fix 1 (TC-SCH-02-02): when the FOR UPDATE SKIP LOCKED query returns 0 rows, issue a second lock-agnostic existence query (same WHERE/ORDER BY, no FOR UPDATE) -- zero rows there means genuinely .none, one or more rows means .skipped_locked. Fix 2 (TC-SCH-02-03): only the appendTimerFiredEventInTx call site inside fire_blk changes -- on failure, still roll back and still call handleTimerFireError (preserving ISS-303's retry bookkeeping), then return SchedulerError.TransactionFailed directly instead of falling through to false/.none. Every other fire_blk step keeps its existing catch-and-swallow behavior. CODE-DESIGNER's claim: this doesn't conflict with ISS-303's own test suite (tests/integration/sch303_timer_dlq_test.zig, specifically TC-SCH-303-03/04, which trigger the SAME duplicate-idempotency-key failure) because those tests discard pollDueTimers's return value via catch {} in a polling loop and only depend on handleTimerFireError's side effects (retry count, DLQ entry), never on the return value being error-free. VERIFY THIS CLAIM YOURSELF against actual source -- read tests/integration/sch303_timer_dlq_test.zig's TC-SCH-303-03 and TC-SCH-303-04 blocks and confirm they genuinely discard/ignore pollDueTimers's return value rather than asserting on it. If they DO assert on the return value being .none or similar, this design would break them, which would be a genuine regression this handoff exists to catch before implementation.",
+    "acceptance_criteria": [
+      "Fix 1 design verified correct against actual query structure in scheduler.zig",
+      "Fix 2 design verified correct -- only the specified call site changes, others unchanged",
+      "CRITICAL: the claim that TC-SCH-303-03/04 discard pollDueTimers return value is independently verified against actual source, not trusted",
+      "No other production code paths inadvertently affected",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
