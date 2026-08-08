@@ -20,5 +20,11 @@
   ],
   "related_issues": ["ISS-0617"],
   "related_prs": [],
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/576"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/576",
+  "additional_findings": [
+    {
+      "found_in": "WF03-GH516-20260808 (ISS-0183/GH-516), incidental discovery while re-running the full zig build to check for regressions; not fixed there -- out of that run's scope",
+      "note": "TC-EXP-601-04 now also fails one layer earlier than this issue's original QuotaUsageReadFailed diagnosis: the test fixture's own INSERT INTO instance_waits (kind='sandbox', ...) at tests/integration/exp601_tier_quota_test.zig ~line 337 violates migrations/093_exp103_instance_waits.sql's CHECK (kind IN ('timer','catch_event','human_task')) constraint (Postgres C23514). 'sandbox' is not an allowed kind value. This is a second, independent bug on top of the LEGACY_RLS unqualified-read defect this issue already tracks, both blocking the same test case. Whoever implements this issue's fix should also correct (or justify) the fixture's kind literal. Queued via python3 tools/queue_add.py; commented on GH #576."
+    }
+  ]
 }

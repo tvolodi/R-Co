@@ -170,10 +170,17 @@ test "TC-REPO-02-01: immutability enforced by PRIMARY KEY on content_hash" {
     defer insert_result.deinit();
     try std.testing.expect(insert_result.rows.len == 1);
 
-    // Verify table schema: content_hash is PRIMARY KEY
+    // Verify table schema: content_hash is PRIMARY KEY.
+    // ISS-0183 / GH-516: qualified to table_schema = 'public'. repository_artifacts
+    // is a GLOBAL_REGISTRY table (canonical home = public per migrations/045); an
+    // unqualified probe against information_schema.table_constraints returns one
+    // row per schema where the same-named constraint exists, and a FK-protected
+    // tenant_default shadow (fk_artifact_versions_content, RESTRICT-blocked from
+    // being dropped by GBL-136/GBL-139) is expected to persist. Same
+    // anti-patterns.md "schema-agnostic system catalog query" pattern as ISS-0126.
     var schema = try h.conn.query(
         alloc,
-        "SELECT constraint_name FROM information_schema.table_constraints WHERE table_name = 'repository_artifacts' AND constraint_type = 'PRIMARY KEY'",
+        "SELECT constraint_name FROM information_schema.table_constraints WHERE table_schema = 'public' AND table_name = 'repository_artifacts' AND constraint_type = 'PRIMARY KEY'",
         &.{},
     );
     defer schema.deinit();
@@ -406,9 +413,12 @@ test "TC-REPO-04-01: canonical serialisation — whitespace variance produces sa
     );
     defer hash1_result.deinit();
 
+    // ISS-0183 / GH-516: was $2 with only one parameter bound ([]const u8{content2}
+    // is $1), so PostgreSQL could never determine $1's type from context (nothing
+    // references it) -- C42P18 "could not determine data type of parameter $1".
     var hash2_result = try h.conn.query(
         alloc,
-        "SELECT encode(digest($2, 'sha256'), 'hex')",
+        "SELECT encode(digest($1, 'sha256'), 'hex')",
         &.{content2},
     );
     defer hash2_result.deinit();
@@ -476,7 +486,7 @@ test "TC-REPO-05-01: form schema indexing by field type" {
     // Index form fields (simulate activation)
     var index_insert = try h.conn.query(
         alloc,
-        \\INSERT INTO form_schema_registry (registry_id, version_id, artifact_name, field_name, field_type, field_label, required, pattern)
+        \\INSERT INTO repository_form_schemas (registry_id, version_id, artifact_name, field_name, field_type, field_label, required, pattern)
         \\VALUES
         \\  (gen_random_uuid(), $1::uuid, 'order_form', 'customer_name', 'string', 'Customer Name', false, NULL),
         \\  (gen_random_uuid(), $1::uuid, 'order_form', 'order_amount', 'currency', 'Order Amount (USD)', false, NULL),
@@ -490,7 +500,7 @@ test "TC-REPO-05-01: form schema indexing by field type" {
     // Query by field_type
     var currency_query = try h.conn.query(
         alloc,
-        "SELECT field_name, field_type FROM form_schema_registry WHERE field_type = 'currency' AND artifact_name = 'order_form'",
+        "SELECT field_name, field_type FROM repository_form_schemas WHERE field_type = 'currency' AND artifact_name = 'order_form'",
         &.{},
     );
     defer currency_query.deinit();
@@ -522,10 +532,19 @@ test "TC-REPO-05-02: form schema search by field type" {
         const form_name = try std.fmt.allocPrint(alloc, "form_{}", .{i});
         defer alloc.free(form_name);
 
+        // ISS-0183 / GH-516: content_hash is BYTEA (migrations/045); gen_random_uuid()
+        // returns uuid, causing PostgreSQL C42804 "column is of type bytea but
+        // expression is of type uuid". digest($4, 'sha256') of the per-row
+        // version_id_str gives a genuine, unique bytea value instead. A dedicated
+        // $4 placeholder is required rather than reusing $1: PostgreSQL unifies a
+        // parameter's type across every use in one statement, and $1 is already
+        // inferred as uuid from the bare `version_id` column -- reusing it with an
+        // explicit ::text cast throws C42P08 "inconsistent types deduced for
+        // parameter $1: text versus uuid".
         var ver_insert = try h.conn.query(
             alloc,
-            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'form', $2, 1, gen_random_uuid(), NULL, $3::uuid, NOW())",
-            &.{ version_id_str, form_name, user_id_str },
+            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'form', $2, 1, digest($4, 'sha256'), NULL, $3::uuid, NOW())",
+            &.{ version_id_str, form_name, user_id_str, version_id_str },
         );
         defer ver_insert.deinit();
 
@@ -533,7 +552,7 @@ test "TC-REPO-05-02: form schema search by field type" {
         if (i < 2) {
             var index_insert = try h.conn.query(
                 alloc,
-                "INSERT INTO form_schema_registry (registry_id, version_id, artifact_name, field_name, field_type, field_label, required, pattern) VALUES (gen_random_uuid(), $1::uuid, $2, 'amount', 'currency', 'Amount', false, NULL)",
+                "INSERT INTO repository_form_schemas (registry_id, version_id, artifact_name, field_name, field_type, field_label, required, pattern) VALUES (gen_random_uuid(), $1::uuid, $2, 'amount', 'currency', 'Amount', false, NULL)",
                 &.{ version_id_str, form_name },
             );
             defer index_insert.deinit();
@@ -543,7 +562,7 @@ test "TC-REPO-05-02: form schema search by field type" {
     // Search for currency fields
     var result = try h.conn.query(
         alloc,
-        "SELECT COUNT(DISTINCT version_id) FROM form_schema_registry WHERE field_type = 'currency'",
+        "SELECT COUNT(DISTINCT version_id) FROM repository_form_schemas WHERE field_type = 'currency'",
         &.{},
     );
     defer result.deinit();
@@ -567,14 +586,22 @@ test "TC-REPO-06-01: event type registry with producing definition" {
     const user_id_str = try uuidToString(alloc, user_id);
     defer alloc.free(user_id_str);
 
-    // Create event type (if event_type_registry exists)
+    // Create event type (if event_type_registry exists).
+    // ISS-0183 / GH-516: the real column (migrations/002_event_type_registry.sql)
+    // is `name`, not `event_type_name`; `schema_version` is INTEGER, not the text
+    // literal '1.0'. Use a per-test-unique name (randomUuid-derived) so re-runs
+    // against a long-lived shared bpm_test don't collide with the (name,
+    // schema_version) UNIQUE constraint.
+    const event_type_name = try std.fmt.allocPrint(alloc, "OrderCreated_{s}", .{user_id_str});
+    defer alloc.free(event_type_name);
+
     var event_type_result = try h.conn.query(
         alloc,
-        \\INSERT INTO event_type_registry (id, event_type_name, schema_version, json_schema, created_at)
-        \\VALUES (gen_random_uuid(), 'OrderCreated', '1.0', '{"type":"object"}', NOW())
+        \\INSERT INTO event_type_registry (id, name, schema_version, json_schema, created_at)
+        \\VALUES (gen_random_uuid(), $1, 1, '{"type":"object"}', NOW())
         \\RETURNING id
     ,
-        &.{},
+        &.{event_type_name},
     );
     defer event_type_result.deinit();
 
@@ -585,15 +612,22 @@ test "TC-REPO-06-01: event type registry with producing definition" {
 
     const event_type_id = event_type_result.rows[0][0];
 
-    // Create definition artifact
+    // Create definition artifact.
+    // ISS-0183 / GH-516: content_hash is BYTEA; digest($3, 'sha256') of the
+    // version_id_str gives a genuine, unique bytea value instead of gen_random_uuid().
+    // A dedicated $3 placeholder is required rather than reusing $1: PostgreSQL
+    // unifies a parameter's type across every use in one statement, and $1 is
+    // already inferred as uuid from the bare `version_id` column -- reusing it
+    // with an explicit ::text cast throws C42P08 "inconsistent types deduced for
+    // parameter $1: text versus uuid".
     const version_id = randomUuid();
     const version_id_str = try uuidToString(alloc, version_id);
     defer alloc.free(version_id_str);
 
     var ver_insert = try h.conn.query(
         alloc,
-        "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'definition', 'order_process', 1, gen_random_uuid(), NULL, $2::uuid, NOW())",
-        &.{ version_id_str, user_id_str },
+        "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'definition', 'order_process', 1, digest($3, 'sha256'), NULL, $2::uuid, NOW())",
+        &.{ version_id_str, user_id_str, version_id_str },
     );
     defer ver_insert.deinit();
 
@@ -694,10 +728,14 @@ test "TC-REPO-08-01: atomic activation of multiple artifacts" {
             else => "schema",
         };
 
+        // ISS-0183 / GH-516: content_hash is BYTEA; digest($4, 'sha256') of
+        // ver_id_str gives a genuine, unique bytea value instead of gen_random_uuid().
+        // A dedicated $4 placeholder is required rather than reusing $1 -- see the
+        // C42P08 note above.
         var insert = try h.conn.query(
             alloc,
-            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), $2, 'artifact', 1, gen_random_uuid(), NULL, $3::uuid, NOW())",
-            &.{ ver_id_str, kind, user_id_str },
+            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), $2, 'artifact', 1, digest($4, 'sha256'), NULL, $3::uuid, NOW())",
+            &.{ ver_id_str, kind, user_id_str, ver_id_str },
         );
         defer insert.deinit();
     }
@@ -776,10 +814,14 @@ test "TC-REPO-09-01: activations are tenant-scoped" {
         const version_number_str = try std.fmt.allocPrint(alloc, "{d}", .{i + 1});
         defer alloc.free(version_number_str);
 
+        // ISS-0183 / GH-516: content_hash is BYTEA; digest($4, 'sha256') of
+        // ver_id_str gives a genuine, unique bytea value instead of gen_random_uuid().
+        // A dedicated $4 placeholder is required rather than reusing $1 -- see the
+        // C42P08 note above.
         var insert = try h.conn.query(
             alloc,
-            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'definition', 'test_artifact', $2, gen_random_uuid(), NULL, $3::uuid, NOW())",
-            &.{ ver_id_str, version_number_str, user_id_str },
+            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'definition', 'test_artifact', $2, digest($4, 'sha256'), NULL, $3::uuid, NOW())",
+            &.{ ver_id_str, version_number_str, user_id_str, ver_id_str },
         );
         defer insert.deinit();
     }
@@ -858,10 +900,14 @@ test "TC-REPO-10-01: activation history records all fields" {
         const version_number_str = try std.fmt.allocPrint(alloc, "{d}", .{i + 1});
         defer alloc.free(version_number_str);
 
+        // ISS-0183 / GH-516: content_hash is BYTEA; digest($4, 'sha256') of
+        // ver_id_str gives a genuine, unique bytea value instead of gen_random_uuid().
+        // A dedicated $4 placeholder is required rather than reusing $1 -- see the
+        // C42P08 note above.
         var insert = try h.conn.query(
             alloc,
-            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'definition', 'test_artifact', $2, gen_random_uuid(), NULL, $3::uuid, NOW())",
-            &.{ ver_id_str, version_number_str, user_id_str },
+            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), 'definition', 'test_artifact', $2, digest($4, 'sha256'), NULL, $3::uuid, NOW())",
+            &.{ ver_id_str, version_number_str, user_id_str, ver_id_str },
         );
         defer insert.deinit();
     }
@@ -984,10 +1030,13 @@ test "TC-REPO-11-02: create artifact with deduplication" {
     defer create1.deinit();
     try std.testing.expectEqual(@as(usize, 1), create1.rows.len);
 
-    // Second artifact with identical content should increment version_number
+    // Second artifact with identical content should increment version_number.
+    // ISS-0183 / GH-516: this INSERT...SELECT had no RETURNING clause, so
+    // create2.rows.len was always 0 regardless of whether the insert succeeded --
+    // the very next assertion (expectEqual(1, create2.rows.len)) could never pass.
     var create2 = try h.conn.query(
         alloc,
-        "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) SELECT $1, artifact_id, 'definition', 'order_process', 2, digest($2, 'sha256'), $3::uuid, $4::uuid, NOW() FROM artifact_versions WHERE version_id = $3::uuid",
+        "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) SELECT $1, artifact_id, 'definition', 'order_process', 2, digest($2, 'sha256'), $3::uuid, $4::uuid, NOW() FROM artifact_versions WHERE version_id = $3::uuid RETURNING version_id",
         &.{ version_2_str, content, version_1_str, user_id_str },
     );
     defer create2.deinit();
@@ -1160,10 +1209,14 @@ test "TC-REPO-13-01: tenant activations list returns all active artifacts" {
         const version_id_str = try uuidToString(alloc, version_ids[i]);
         defer alloc.free(version_id_str);
 
+        // ISS-0183 / GH-516: content_hash is BYTEA; digest($4, 'sha256') of
+        // version_id_str gives a genuine, unique bytea value instead of gen_random_uuid().
+        // A dedicated $4 placeholder is required rather than reusing $1 -- see the
+        // C42P08 note above.
         var insert = try h.conn.query(
             alloc,
-            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), $2, 'artifact', 1, gen_random_uuid(), NULL, $3::uuid, NOW())",
-            &.{ version_id_str, kind, user_id_str },
+            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), $2, 'artifact', 1, digest($4, 'sha256'), NULL, $3::uuid, NOW())",
+            &.{ version_id_str, kind, user_id_str, version_id_str },
         );
         defer insert.deinit();
     }
@@ -1223,10 +1276,14 @@ test "TC-REPO-13-02: tenant activations with kind filtering" {
         const version_id_str = try uuidToString(alloc, version_id);
         defer alloc.free(version_id_str);
 
+        // ISS-0183 / GH-516: content_hash is BYTEA; digest($4, 'sha256') of
+        // version_id_str gives a genuine, unique bytea value instead of gen_random_uuid().
+        // A dedicated $4 placeholder is required rather than reusing $1 -- see the
+        // C42P08 note above.
         var ver_insert = try h.conn.query(
             alloc,
-            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), $2, 'artifact', 1, gen_random_uuid(), NULL, $3::uuid, NOW())",
-            &.{ version_id_str, kind, user_id_str },
+            "INSERT INTO artifact_versions (version_id, artifact_id, artifact_kind, artifact_name, version_number, content_hash, parent_version_id, created_by, created_at) VALUES ($1, gen_random_uuid(), $2, 'artifact', 1, digest($4, 'sha256'), NULL, $3::uuid, NOW())",
+            &.{ version_id_str, kind, user_id_str, version_id_str },
         );
         defer ver_insert.deinit();
 

@@ -3068,6 +3068,39 @@
       "created_at": "2026-08-08T11:11:19Z",
       "status": "COMPLETED",
       "stage": null
+    },
+    {
+      "handoff_id": "1eeb4863-c2f3-4e61-af20-7c16e1f172a0",
+      "file": "handoffs/WF03-GH516-20260808/step-01-issue-fixer.json",
+      "run_id": "WF03-GH516-20260808",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-08T11:17:17Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "cc34ff5f-a614-4d4a-8b2c-e1b39eef0513",
+      "file": "handoffs/WF03-GH516-20260808/step-04-test-runner.json",
+      "run_id": "WF03-GH516-20260808",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-08T11:52:34Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "f337069c-d08b-49a1-9087-5e86f0a94887",
+      "file": "handoffs/WF03-GH516-20260808/step-06-doc-updater.json",
+      "run_id": "WF03-GH516-20260808",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-08T11:53:26Z",
+      "status": "IN_PROGRESS",
+      "stage": null
     }
   ],
   "last_updated": "2026-08-08T05:55:02Z"

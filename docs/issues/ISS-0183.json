@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0183",
   "title": "repository_test: content_hash bytea/uuid type mismatch and untyped SQL parameters (11 blocks)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "created_at": "2026-08-07T02:51:21Z",
   "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807 Step 01 diagnosis)",
@@ -24,5 +24,14 @@
     "docs/issue-reports/ISS-0150-diagnosis.yaml"
   ],
   "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. ISS-0150 fixed 3 root causes (33 blocks) with zero regressions; this cluster has a distinct root cause and belongs in its own run.",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/516"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/516",
+  "resolution": {
+    "resolved_at": "2026-08-08T11:48:45Z",
+    "resolved_in": "WF03-GH516-20260808 (ISSUE-FIXER)",
+    "summary": "Re-verified against a freshly-migrated bpm_test rather than trusting the original filing: the original filing's TC-REPO-02-01 description (0 rows) did not match current reality (2 rows -- an FK-protected tenant_default.repository_artifacts shadow that GBL-138's reconciliation had missed, since it only copied GBL-134's shadow list and not GBL-136's separate follow-up list). Root-caused and fixed via a new forward-fix migration (GBL-139) plus schema-qualifying the probe. The content_hash bytea/uuid mismatch (7 sites, all in artifact_versions inserts) and the untyped-parameter issue (1 genuine off-by-one $2 reference) were both real and independent of the schema issue, as predicted. Fixing content_hash surfaced 3 more previously-masked bugs in the same file (stale table/column names post-rename, a missing RETURNING clause) that had never been reached because the content_hash error aborted each transaction before those statements ran.",
+    "resolution_strategy": "1) migrations/GBL-139_iss0183_reconcile_gbl136_tenant_default_reprovision.sql -- idempotent forward-fix re-applying GBL-136's exact 8-table RESTRICT-only drop logic (GBL-134/135/136/137/138 are immutable per established convention). 2) tests/integration/repository_test.zig: schema-qualified TC-REPO-02-01's information_schema probe to table_schema='public'; replaced all 7 gen_random_uuid()-for-content_hash sites with digest(<unique-per-row-string>, 'sha256') via a dedicated extra placeholder (reusing $1 with an added ::text cast throws C42P08, since $1 was already inferred as uuid elsewhere in the same statement); fixed TC-REPO-04-01's $2-with-one-bound-param off-by-one to $1; fixed TC-REPO-06-01's event_type_name column (real name: `name`) and its '1.0' text literal for the INTEGER schema_version column; renamed all form_schema_registry references to repository_form_schemas (migration 072 renamed the table months ago); added RETURNING version_id to TC-REPO-11-02's INSERT...SELECT so its rows.len assertion is meaningful. 3) Added a dedicated `test-integration-repository` build.zig step (matching the existing ENV-01/ISS-107 pattern) for isolated re-verification.",
+    "verification": "zig build test-integration-repository: 21/21 pass (0 fail), reproduced twice. Full zig build: exit 0, no 'error set' output. zig build test (unit suite): 944/1008 pass, 64 skipped, 0 fail (pre-existing skips, unrelated). tools/lint_sql_param_types.py src tests: 0 BLOCKER/MAJOR/MINOR. tools/lint_test_isolation.py tests/integration: OK, 130 files.",
+    "prevention": "The dual-schema-shadow class of bug (anti-patterns.md) needs its reconciliation migrations (GBL-138-style) to enumerate ALL prior GBL-13x shadow-drop migrations' table lists, not just the most recent/largest one -- a follow-up migration's own follow-up list is easy to miss when reconciling after a reprovisioning event. Consider a shared source-of-truth table-name array (or a lint check comparing GBL-13x DROP lists against each other) rather than copy-pasting subsets across files.",
+    "incidental_finding": "zig build test-integration-exp601's TC-EXP-601-04 fails with a distinct, unrelated Postgres C23514 (instance_waits_kind_check rejects the fixture's 'sandbox' literal). Confirmed unrelated to this fix (different table, different file, different root cause) -- not fixed here. Filed as an additional_findings entry on the already-open ISS-0622/GH-576 (same test case, different symptom layer), commented on GH #576, and queued via tools/queue_add.py since it was not previously in handoffs/global_queue.json."
+  }
 }

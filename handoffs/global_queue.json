@@ -636,6 +636,19 @@
       "labels": [
         "bug"
       ]
+    },
+    {
+      "issue_id": "ISS-0622",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/576",
+      "title": "exp601_tier_quota_test TC-EXP-601-04: instance_waits_kind_check rejects fixture's 'sandbox' literal (kind IN timer/catch_event/human_task only), on top of the known LEGACY_RLS unqualified-read defect",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-08T11:47:49Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
