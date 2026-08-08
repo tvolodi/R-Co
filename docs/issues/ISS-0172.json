@@ -4,6 +4,17 @@
   "status": "OPEN",
   "severity": "MAJOR",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/500",
+  "rco_sync_ref": "ISS-0172",
+  "github_issue_number": 500,
+  "last_updated_at": "2026-08-08T18:28:51Z",
+  "last_updated_by": "ISSUE-FIXER WF03-GH501-20260808 Step 1 (scope reconciliation)",
+  "scope_binding_note": "ISS-0172 covers GH-500 (lua pin-form parent class). GH-501 is a CONCRETE INSTANCE of this blind spot but is its own issue under local id ISS-0173 (docs/issues/ISS-0173.json). The WF03-GH501-20260808 run was launched against GH-501; its step-00 handoff context incorrectly recorded iss_id=ISS-0172. This file's scope is GH-500 only — it does NOT cover jwks.zig. The diagnosis for GH-501 / ISS-0173 lives at docs/issue-reports/ISS-0173-gh501-diagnosis.yaml.",
+  "related_issues": {
+    "ISS-0173": "Concrete instance of the ISS-0172 blind spot in the OIDC token-cache path (src/oidc/jwks.zig). Distinct file, distinct fix; same root-cause class. See docs/issue-reports/ISS-0173-gh501-diagnosis.yaml.",
+    "ISS-0133": "Predecessor: 26 transition.zig tests wired into no addTest root.",
+    "ISS-0147": "Predecessor: src/wasm invisible to the build.",
+    "ISS-0102": "Predecessor (per anti-patterns.md): six OIDC test files wired into no build target."
+  },
   "discovered_at": "2026-08-06T22:05:22Z",
   "discovered_by": "ISSUE-FIXER WF03-ISS-0169-20260806 Step 1",
   "discovered_while_fixing": "ISS-0169",

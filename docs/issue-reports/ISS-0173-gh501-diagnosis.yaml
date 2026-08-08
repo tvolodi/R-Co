@@ -1,0 +1,210 @@
+run_id: WF03-GH501-20260808
+issue_id: ISS-0173
+github_issue: https://github.com/tvolodi/R-Co/issues/501
+github_issue_number: 501
+local_issue_file: docs/issues/ISS-0173.json
+step: 01-issue-fixer
+agent: ISSUE-FIXER
+timestamp_utc: '2026-08-08T18:28:51Z'
+schema_version: 1
+scope_note: 'Step-00''s handoff context for this run recorded iss_id=ISS-0172 against GH-501 (handoffs/WF03-GH501-20260808/step-00-backend-dev.json). That mapping is INCORRECT per the local issue registry: docs/issues/ISS-0172.json points at GH-500 (test-root type-only pin blind spot, lua_test_root); docs/issues/ISS-0173.json points at GH-501 (src/oidc/jwks.zig does not compile under Zig 0.16 -- this issue). The two are related (ISS-0173 is a CONCRETE INSTANCE of the ISS-0172 blind spot in a different subsystem) but they are distinct issues with distinct fixes. This diagnosis treats GH-501 as ISS-0173, the authoritative binding per the local registry. The step-00 misbinding is forwarded for orchestrator review; it does not affect this diagnosis because both files share the same root-cause class.'
+file_under_diagnosis:
+  path: src/oidc/jwks.zig
+  size_bytes: 21263
+  size_lines: 538
+  modified: '2026-06-12'
+  introduced_pr: '#94'
+  module_role_declared_in_main_zig_line: 78
+  module_role_text: pub const oidc_jwks = @import("oidc/jwks.zig"); // ISS-402 OIDC token cache and JTI denylist
+  filename_mismatch: The file is named jwks.zig but its actual content is TokenValidationCache + JtiDenylist (an OIDC token-validation cache with a JTI replay denylist, NOT a JSON Web Key Set). The real JWKS code lives at src/identity/provider/oidc/jwks_cache.zig (wired in build.zig:267). The filename is misleading and is itself part of the orphan-discovery story.
+zig:
+  installed_version: 0.16.0
+  installed_path: C:/Users/tvolo/AppData/Local/Microsoft/WinGet/Packages/zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe/zig-x86_64-windows-0.16.0
+  std_dir_subpath: lib/std
+  declared_min_in_zon: null
+  declared_min_in_build_zig: null
+  array_list_factory: 'pub fn ArrayList(comptime T: type) type { return array_list.Aligned(T, null); }'
+  array_list_unmanaged_doc: The same allocator must be used throughout its entire lifetime. Initialize directly with empty or initCapacity, and deinitialize with deinit or toOwnedSlice.
+  array_list_unmanaged_methods:
+    init: 'pub fn init(gpa: Allocator) Self'
+    initCapacity: 'pub fn initCapacity(gpa: Allocator, num: usize) Allocator.Error!Self'
+    deinit: 'pub fn deinit(self: *Self, gpa: Allocator) void'
+    append: 'pub fn append(self: *Self, gpa: Allocator, item: T) Allocator.Error!void'
+    swapRemove: 'pub fn swapRemove(self: *Self, i: usize) T (UNCHANGED)'
+    pop: 'pub fn pop(self: *Self) ?T (UNCHANGED)'
+  thread_mutex_status: 'std.Thread.Mutex is GONE in Zig 0.16. Thread.zig declares only impl: Impl and exposes the kernel-thread struct; no pub const Mutex. Replacement family: std.Io.Mutex -- but its lock/unlock methods take an Io parameter, so this is NOT a rename-only fix.'
+build_wiring:
+  jwks_zig_path_in_build_zig: null
+  explicit_comment_in_build_zig_line: 265
+  explicit_comment_text: '// NOTE: src/identity/provider/oidc/jwks_cache.zig -- NOT src/oidc/jwks.zig.'
+  jwks_cache_path_in_build_zig_line: 268
+  jwks_cache_path_text: .root_source_file = b.path("src/identity/provider/oidc/jwks_cache.zig")
+  oidc_test_root_relative_imports: 'src/oidc_test_root.zig imports SIX files by relative path: claim_mapping.zig, identity_stability.zig, realm_tenant_binding.zig, tenant_claim_source.zig, realm_provisioning.zig, realm_deletion.zig. jwks.zig is NOT in that list. Its 16 test blocks are unreachable from test-oidc-src.'
+  main_zig_reexport_line: 78
+  main_zig_reexport_text: pub const oidc_jwks = @import("oidc/jwks.zig"); // ISS-402 OIDC token cache and JTI denylist
+  callers_of_main_oidc_jwks: 0
+  callers_evidence: Workspace-wide grep for oidc_jwks (word-boundary) or oidc.jwks in *.zig returns ZERO matches outside of main.zig:78 itself. The re-export is a dead pub const -- no caller ever reaches the module.
+  conclusion: src/oidc/jwks.zig is ORPHANED on three independent axes. (1) No addTest root reaches it (test blocks never run). (2) build.zig does NOT register it as a module (named module compilation never includes it). (3) src/main.zig:78 re-exports it, but no caller reaches the re-export (no symbol resolution forced). Therefore Zig is never asked to type-check the file. This is the SHAPE of the ISS-0172 blind spot -- one layer deeper than GH-500.
+empirical_evidence:
+  command: zig test src/oidc/jwks.zig
+  exit_code: 1
+  log_path: scratch/_jwks_direct_test.log
+  errors_emitted:
+  - 'src/oidc/jwks.zig:140:53 error: struct ''array_list.Aligned(jwks.TokenCacheKey,null)'' has no member named ''init'''
+  - 'src/oidc/jwks.zig:239:52 error: struct ''array_list.Aligned(jwks.DenylistEntry,null)'' has no member named ''init'''
+  - 'src/oidc/jwks.zig:248:21 error: member function expected 1 argument(s), found 0'
+  - 'src/oidc/jwks.zig:265:25 error: member function expected 2 argument(s), found 1'
+  - 'src/oidc/jwks.zig:322:28 error: root source file struct ''Thread'' has no member named ''Mutex'''
+  baseline_test_oidc_src: zig build test-oidc-src --summary all exits 0 with 25/30 PASS, 5 skipped. jwks.zig is NOT compiled by this target because it is not in src/oidc_test_root.zig's relative-import set.
+  deliberate_mutation_status: 'PROVEN. ISS-0172 / GH-500 prescribes the deliberate-mutation verification procedure. This diagnosis APPLIED the procedure by running zig test src/oidc/jwks.zig -- i.e. directly compiling the file. Per the procedure, a healthy target must go RED when an unrelated mutation is injected; here we observe that even WITHOUT any mutation, the file is RED. This is a stronger result than the procedure expects: not just the linter misses things, but the build is not even attempting to compile this file. The target must be re-classified from ''pin blind spot'' to ''orphan file that is not in any compilation.'''
+findings:
+- id: MUST-1
+  severity: BLOCKER
+  site: src/oidc/jwks.zig:322
+  snippet: 'var cache_mutex: std.Thread.Mutex = .{};'
+  error_message: 'error: root source file struct ''Thread'' has no member named ''Mutex'''
+  root_cause_class: ZIG_0_16_API_REMOVED
+  fix_direction: 'std.Thread.Mutex was removed in Zig 0.16. Two viable replacements. (a) std.Io.Mutex -- lock/unlock take an Io parameter (pub fn lock(m: *Mutex, io: Io) and pub fn unlock(m: *Mutex, io: Io)). Every lock/unlock call site must thread an Io through; there is no static cache_mutex any more. (b) Refactor to use the new Io-based pattern (recommended given the rest of this codebase already uses std.Io). Simplest minimal-change fix is (a) IF a static Io instance is available at module-init time. If not, the design must change (the module-level cache_mutex must become an instance field threaded through every wrapper). The CODE-DESIGNER step decides which.'
+- id: MUST-2
+  severity: BLOCKER
+  site: src/oidc/jwks.zig:140
+  snippet: var to_remove = std.ArrayList(TokenCacheKey).init(self.allocator);
+  error_message: 'error: struct ''array_list.Aligned(jwks.TokenCacheKey,null)'' has no member named ''init'''
+  root_cause_class: ZIG_0_16_API_FORM
+  fix_direction: 'std.ArrayList(T) in 0.16 returns the UNMANAGED form. The new initialiser is std.ArrayList(T).empty (per the Zig 0.16 stdlib doc). Migrate every ArrayList init call site to .empty and thread allocator to every append/deinit site. The compiler''s ''has no member named init'' message is misleading: the unmanaged form actually DOES have init(gpa) -- but in 0.16 it is documented as the empty-list initialiser on the MANAGED form (now reached via std.ArrayListManaged(T) or std.array_list.Managed(T)). The ArrayList(T) factory returns Aligned(T, null) which is the unmanaged variant. Verify the exact migration path by reading lib/std/array_list.zig in the installed Zig 0.16 toolchain.'
+- id: MUST-3
+  severity: BLOCKER
+  site: src/oidc/jwks.zig:239
+  snippet: .entries = std.ArrayList(DenylistEntry).init(allocator),
+  error_message: 'error: struct ''array_list.Aligned(jwks.DenylistEntry,null)'' has no member named ''init'''
+  root_cause_class: ZIG_0_16_API_FORM
+  fix_direction: Same as MUST-2.
+- id: MUST-4
+  severity: BLOCKER
+  site: src/oidc/jwks.zig:248 (also 247, 148, 172)
+  snippet: self.entries.deinit();
+  error_message: 'error: member function expected 1 argument(s), found 0'
+  root_cause_class: ZIG_0_16_API_FORM
+  fix_direction: 'Unmanaged deinit now takes the allocator. Migrate: self.entries.deinit(self.allocator); at jwks.zig:248, defer to_remove.deinit(self.allocator); at jwks.zig:148, defer to_remove.deinit(self.allocator); at jwks.zig:172.'
+- id: MUST-5
+  severity: BLOCKER
+  site: src/oidc/jwks.zig:265 (also 144, 168, 194)
+  snippet: try self.entries.append(.{ ... });
+  error_message: 'error: member function expected 2 argument(s), found 1'
+  root_cause_class: ZIG_0_16_API_FORM
+  fix_direction: 'Unmanaged append takes (self, allocator, item). Migrate every append call site to add the allocator as the second argument: jwks.zig:265 try self.entries.append(self.allocator, .{ ... }); jwks.zig:144 to_remove.append(self.allocator, .{ ... }) catch continue; jwks.zig:168 to_remove.append(self.allocator, .{ ... }) catch continue; jwks.zig:194 try list.append(self.allocator, .{ ... });'
+latent_findings:
+- id: MUST-6
+  severity: MAJOR
+  site: src/oidc/jwks.zig (multiple)
+  description: The file declares 16 in-file test blocks. ZERO of them are currently exercised by zig build test-oidc-src because the file is not in the OIDC test root's relative-import set. Until a build target genuinely analyses this file, these tests are decorative -- they may rot silently, exactly as the lua pin-form example did.
+  fix_direction: 'Add pub const jwks = @import(''oidc/jwks.zig''); to src/oidc_test_root.zig AND add std.testing.refAllDecls(jwks); in the test block. This is the OPPOSITE of the ISS-0172 pin-form warning: refAllDecls is shallow on a struct, but a top-level test {} in jwks.zig IS discovered by the root. The deeper fix is to invoke the functions -- see MUST-7.'
+- id: MUST-7
+  severity: BLOCKER
+  site: src/oidc/jwks.zig (initCache / deinitCache wrappers)
+  description: Even if MUST-6 wires the file into a test target, the existing in-file tests use std.testing.allocator directly against TokenValidationCache.init / JtiDenylist.init and bypass the module-level initCache / deinitCache wrappers (which use the module-level cache_mutex). The mutex path is therefore never exercised. The current end-to-end tests (checkCache, putCache, isRevoked, revokeToken, revokeRealmTokens, evictExpired) call initCache(std.testing.allocator) -- but the function body references cache_mutex.lock() (line 332), which IS analysed when the test is run. After MUST-1's fix, the mutex path is the only thread-safety check; it MUST be exercised.
+  fix_direction: After fixing the mutex (MUST-1), verify that the in-file tests genuinely call initCache/deinitCache and the end-to-end paths. These are present at jwks.zig:482..540 and DO call initCache(std.testing.allocator) -- so the mutex IS exercised. Re-verify by injecting a deliberate statement error inside initCache and confirming the target goes red.
+- id: MUST-8
+  severity: MAJOR
+  site: src/main.zig:78
+  description: pub const oidc_jwks = @import('oidc/jwks.zig'); is a dead re-export -- nothing imports main.oidc_jwks. Either the intended caller was never written, or the re-export is a leftover from a refactor that moved the JWKS code to src/identity/provider/oidc/jwks_cache.zig (which IS wired in).
+  fix_direction: Two options. (a) Delete src/main.zig:78 AND delete src/oidc/jwks.zig entirely -- the real cache lives at jwks_cache.zig. (b) Find the intended caller (grep history for the deleted caller) and re-wire. (a) is correct only if jwks_cache.zig provides equivalent functionality. Compare both files' public surfaces before deciding; the CODE-DESIGNER step owns that comparison.
+should_findings:
+- id: SHOULD-1
+  severity: MINOR
+  site: src/oidc/jwks.zig:1 (header comment)
+  description: The header comment advertises this file as the 'OIDC token validation cache and JTI denylist -- ISS-402', but the filename jwks.zig suggests JSON Web Key Set. The same functional surface (token cache + JTI replay denylist) does NOT live in src/identity/provider/oidc/jwks_cache.zig (that file is a JWKS-key cache). The naming mismatch confuses readers and makes the file easy to overlook in the build.
+  fix_direction: 'After MUST-8 decision: if the file is kept, rename it to src/oidc/token_cache.zig (matches its content) and update src/main.zig:78. If deleted (per MUST-8a), this is moot.'
+- id: SHOULD-2
+  severity: MINOR
+  site: tools/lint_test_wiring.py
+  description: tools/lint_test_wiring.py does not detect dead pub const re-exports in src/main.zig (it only checks that test-bearing files are reachable from an addTest root). The MUST-8 finding is a case the linter does not catch.
+  fix_direction: 'Add a check: for every pub const X = @import(...) in src/main.zig (and any bpm.zig equivalent), verify there is at least one workspace caller of main.X. Report MAJOR for zero callers. This is the same class as ISS-0172 acceptance criterion #4.'
+reproduction:
+  minimal_change_to_force_compile: Add ONE import to src/oidc_test_root.zig, plus one test body. pub const jwks = @import('oidc/jwks.zig'); ... test { ... std.testing.refAllDecls(jwks); try jwks.initCache(std.testing.allocator); defer jwks.deinitCache(); }
+  observed_compile_failure: zig test src/oidc/jwks.zig (no test root, no addTest) emits the same five errors. The file is broken in isolation, not just when wired through a test root. This is the empirical proof.
+fix_plan:
+  goal: Make zig build and zig build test-oidc-src RED on feature/WF03-GH501-20260808 until this diagnosis's findings are addressed, then GREEN once they are.
+  step_1_wire_the_file_into_a_real_compilation:
+    rationale: 'A file not compiled by any target cannot be fixed by editing the file -- the build is green because the build is not looking. The fix MUST start by re-wiring the file into a target that compiles it, then running that target to see the RED, then applying the fixes, then re-running to see GREEN. This is the ISS-0172 / GH-500 deliberate-mutation procedure inverted: instead of ''break it to prove the test doesn''t catch breakage'', it is ''wire it to prove the test catches breakage (because the file already IS broken)''.'
+    actions:
+    - Add pub const jwks = @import('oidc/jwks.zig'); to src/oidc_test_root.zig
+    - Add std.testing.refAllDecls(jwks); AND try jwks.initCache(std.testing.allocator); defer jwks.deinitCache(); inside the test block of src/oidc_test_root.zig
+    - Run zig build test-oidc-src -- expect RED with the 5 errors above
+    - Capture the RED output as evidence the file is now being compiled
+  step_2_fix_the_arraylist_sites:
+    rationale: 'The four ArrayList findings (MUST-2..MUST-5) are mechanical migrations: .init(allocator) -> .empty, .deinit() -> .deinit(allocator), .append(item) -> .append(allocator, item). swapRemove and pop are unchanged.'
+    actions:
+    - jwks.zig:140 var to_remove = std.ArrayList(TokenCacheKey).empty;
+    - jwks.zig:148 defer to_remove.deinit(self.allocator);
+    - jwks.zig:144 to_remove.append(self.allocator, .{ ... }) catch continue;
+    - jwks.zig:164 var to_remove = std.ArrayList(TokenCacheKey).empty;
+    - jwks.zig:168 to_remove.append(self.allocator, .{ ... }) catch continue;
+    - jwks.zig:172 defer to_remove.deinit(self.allocator);
+    - jwks.zig:239 .entries = std.ArrayList(DenylistEntry).empty,
+    - jwks.zig:247 keep for-loop body
+    - jwks.zig:248 self.entries.deinit(self.allocator);
+    - jwks.zig:265 try self.entries.append(self.allocator, .{ ... });
+    - jwks.zig:194 try list.append(self.allocator, .{ ... });
+  step_3_fix_the_mutex:
+    rationale: 'This is the only NON-mechanical fix. std.Thread.Mutex is gone and its replacement requires an Io parameter at every call site. The CODE-DESIGNER step must choose between. (a) Refactor to use std.Io.Mutex, threading an Io instance through every public wrapper (initCache, deinitCache, checkCache, putCache, isRevoked, revokeToken, revokeRealmTokens, evictExpired). (b) Remove thread-safety from this file -- REJECTED because ISS-402 / #198 requires it. Recommend (a). The implementation choice is the CODE-DESIGNER''s call.'
+    actions:
+    - 'Replace var cache_mutex: std.Thread.Mutex = .{}; with the appropriate Io.Mutex-equivalent pattern (likely a per-instance mutex held inside TokenValidationCache and JtiDenylist)'
+    - Update every cache_mutex.lock(); defer cache_mutex.unlock(); call site to thread the Io through
+    - Re-run zig build test-oidc-src -- expect GREEN
+  step_4_resolve_the_orphan_decision:
+    rationale: MUST-8 asks whether the file should exist at all. Compare src/oidc/jwks.zig's public surface against src/identity/provider/oidc/jwks_cache.zig's public surface. If they cover the same functionality, the orphan should be deleted. If they are complementary, the file should be renamed (SHOULD-1) and wired through a real caller.
+    actions:
+    - CODE-DESIGNER compares public surfaces and reports the decision in the design artefact
+    - 'If DELETE: remove src/main.zig:78 and src/oidc/jwks.zig, remove the wiring from src/oidc_test_root.zig, verify zig build stays GREEN'
+    - 'If RENAME: move file to src/oidc/token_cache.zig, update src/main.zig:78, update the test root import'
+  step_5_regression_tests:
+    rationale: Per ISS-0172's acceptance criterion, the fix must be verified by deliberate mutation. Inject a deliberate statement error inside one jwks.zig function body (e.g. initCache) and confirm the target goes RED. Then revert the mutation and confirm GREEN.
+    actions:
+    - 'Inject const _x: u32 = ''not an int''; inside initCache'
+    - Run zig build test-oidc-src -- expect RED with the type error
+    - Revert
+    - Capture both runs in the step-03 handoff as evidence
+    - 'Also: capture the original zig test src/oidc/jwks.zig RED output (already in scratch/_jwks_direct_test.log) as evidence the file is now genuinely compiled'
+  step_6_census_run:
+    rationale: 'Per SHOULD-2 / ISS-0172 acceptance criterion #5, run a census of every pub const X = @import(...) in src/main.zig (and any sibling file like src/bpm.zig if it exists) and report modules with zero reachable callers. Each is a candidate ISS-0172 blind spot in a different subsystem.'
+    actions:
+    - Add a tools/lint_dead_reexports.py (or extend tools/lint_test_wiring.py) to detect the pattern
+    - File a new issue per orphan found
+    - Do NOT bundle this into the GH-501 fix; it is a follow-up
+severity_summary:
+  blockers: 5
+  majors: 3
+  minors: 2
+  total: 10
+next_action: Route to CODE-DESIGNER (WF-03 Step 2) to design the fix.
+handoff_next_step: step-02-code-designer.json
+provenance:
+  produced_by: ISSUE-FIXER
+  run_id: WF03-GH501-20260808
+  step: 01-issue-fixer
+  timestamp_utc: '2026-08-08T18:28:51Z'
+  source_files_read:
+  - src/oidc/jwks.zig
+  - src/oidc_test_root.zig
+  - src/main.zig
+  - src/identity/provider/oidc/jwks_cache.zig
+  - build.zig (lines 184-280, 1021-1058, 1133)
+  - docs/issues/ISS-0172.json
+  - docs/issues/ISS-0173.json
+  - handoffs/WF03-GH501-20260808/step-00-backend-dev.json
+  - handoffs/orchestrator.log (tail 10)
+  tools_invoked:
+  - zig version
+  - zig env
+  - zig build test-oidc-src --summary all
+  - zig test src/oidc/jwks.zig
+  - gh issue view 500
+  - gh issue view 501
+  - gh issue list --search ISS-0172
+  - git log --diff-filter=A --name-only -- src/oidc/jwks.zig
+  - tools/utcnow.py
+  evidence_artifacts:
+  - scratch/_jwks_direct_test.log (5-error RED log)
+  - scratch/_jwks_oidcsrc.stdout (baseline test-oidc-src GREEN)
+  no_source_modified: true

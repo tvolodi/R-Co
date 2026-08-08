@@ -1,0 +1,74 @@
+{
+  "handoff_id": "7d3c8a51-2e0a-4f9b-8c4d-9e1a5b6c7d8e",
+  "run_id": "WF03-GH501-20260808",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-08T18:13:36Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f0b78f3c-40ac-455d-95f7-405bea658489"
+    ],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/501",
+      "src/oidc/jwks.zig"
+    ],
+    "github_issue_number": 501,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/501",
+    "iss_id": "ISS-0173",
+    "iss_id_corrected_from": "ISS-0172 (step-00 misbinding; corrected per local registry)",
+    "severity": "MAJOR"
+  },
+  "task": {
+    "description": "GH-501 / ISS-0173: Diagnose why src/oidc/jwks.zig allegedly does not compile under Zig 0.16 yet zig build is green. Search prior solutions (ISS-0172 / GH-500 pattern), register/update docs/issues/ISS-0173.json, perform root cause diagnosis, write structured diagnosis to docs/issue-reports/ISS-0173-gh501-diagnosis.yaml covering MUST vs SHOULD findings, with a proposed fix path. File/comment on GitHub issue 501 mirroring local file. Use real UTC timestamps from tools/utcnow.py, BOM-tolerant JSON, UTF-8 writes, append-only orchestrator log. Do not modify source code. Step 0.5 registry update + Step 1 diagnosis.",
+    "acceptance_criteria": [
+      "Local docs/issues/ISS-0173.json updated with diagnosis summary (BOM-tolerant JSON parse OK)",
+      "docs/issue-reports/ISS-0173-gh501-diagnosis.yaml exists and parses as valid YAML with MUST/SHOULD classification",
+      "Diagnosis identifies the actual Zig 0.16 API mismatches (ArrayList unmanaged, std.Thread.Mutex removed, deinit/append allocator argument)",
+      "Diagnosis includes deliberate-mutation-style empirical evidence (zig test src/oidc/jwks.zig exits RED with 5 errors)",
+      "Diagnosis explains why zig build is GREEN (file is orphaned: no addTest root reaches it, no build.zig named module, main.zig:78 re-export has zero callers)",
+      "Proposed fix path covers: (1) wire file into a real test target, (2) fix ArrayList sites, (3) fix mutex (non-mechanical), (4) decide orphan fate (delete vs rename vs rewire caller), (5) regression test via deliberate mutation, (6) census run for same pattern",
+      "GitHub issue 501 has a comment with <!-- rco-sync-ref: ISS-0173 --> mirroring the local file",
+      "handoffs/orchestrator.log append-only write (UTF-8)",
+      "handoffs/registry.json updated for this handoff (status: COMPLETED)",
+      "No source files in src/ were modified"
+    ],
+    "functions_to_call": [
+      "fn:register-issue (ISS-0173 already existed; updated)",
+      "fn:update-issue (resolution text deferred to step-03 BACKEND-DEV)",
+      "fn:gh-issue-comment (comment posted on GH-501 with rco-sync-ref marker)",
+      "fn:write-diagnosis-report (delivered to docs/issue-reports/ISS-0173-gh501-diagnosis.yaml)",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed GH-501 / ISS-0173 root cause empirically. src/oidc/jwks.zig is ORPHANED on three independent axes (no addTest root, no build.zig named module, main.zig:78 dead re-export with zero callers), so zig build is GREEN while the file contains 5 hard Zig 0.16 compile errors. Empirical proof via `zig test src/oidc/jwks.zig` exits 1 with: (1) jwks.zig:322 std.Thread.Mutex removed in 0.16 -- not a rename-only fix; std.Io.Mutex requires Io parameter at every lock/unlock. (2-3) jwks.zig:140, 239 std.ArrayList(T).init does not exist -- Zig 0.16 returns the unmanaged form. (4) jwks.zig:248 unmanaged deinit now takes allocator (also jwks.zig:247, 148, 172). (5) jwks.zig:265 unmanaged append now takes allocator (also jwks.zig:144, 168, 194). 10 findings total: 5 BLOCKER (MUST-1..5), 3 MAJOR (MUST-6 in-file tests unreachable; MUST-7 mutex path unexercised; MUST-8 main.zig:78 dead re-export), 2 MINOR (SHOULD-1 filename/content mismatch; SHOULD-2 linter does not detect dead re-exports). Fix path defined for CODE-DESIGNER: wire file into real test target first, then mechanical ArrayList migration, then non-mechanical mutex refactor to std.Io.Mutex, then decide orphan fate (delete vs rename vs rewire caller), then deliberate-mutation regression, then census run for same pattern. Scope-binding note: step-00 handoff recorded iss_id=ISS-0172 against GH-501; per local registry GH-500=ISS-0172 (lua pin-form parent) and GH-501=ISS-0173 (this concrete instance). Diagnosis treats GH-501 as ISS-0173; misbinding forwarded to orchestrator for review.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0173-gh501-diagnosis.yaml (10 findings, fix plan, evidence)",
+      "docs/issues/ISS-0173.json (updated with findings, evidence, scope binding note)",
+      "docs/issues/ISS-0172.json (updated with cross-reference to ISS-0173 + GH-500 binding)",
+      "scratch/_jwks_direct_test.log (preserved 5-error RED log)",
+      "scratch/_jwks_oidcsrc.stdout (baseline test-oidc-src GREEN log)",
+      "GitHub issue 501 comment with <!-- rco-sync-ref: ISS-0173 --> (POSTED)",
+      "handoffs/orchestrator.log (ROUTE + COMPLETE entries appended)",
+      "handoffs/registry.json (entry updated to COMPLETED)"
+    ],
+    "issues": [
+      {
+        "id": "SCOPE-BINDING",
+        "severity": "MINOR",
+        "description": "Step-00 handoff context for WF03-GH501-20260808 recorded iss_id=ISS-0172 against GH-501. Per the local registry, GH-500 corresponds to ISS-0172 (lua pin-form parent class) and GH-501 corresponds to ISS-0173 (jwks.zig concrete instance). Diagnosis treats GH-501 as ISS-0173. Recommend orchestrator update step-00 future handoffs to verify iss_id binding against the local registry before dispatching ISSUE-FIXER. Not blocking; the diagnosis content is correct."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2) to design the fix per docs/issue-reports/ISS-0173-gh501-diagnosis.yaml fix_plan."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-08T18:26:27Z",
+  "completed_at": "2026-08-08T18:32:32Z"
+}

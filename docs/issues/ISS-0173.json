@@ -4,10 +4,50 @@
   "status": "OPEN",
   "severity": "MAJOR",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/501",
+  "github_issue_number": 501,
+  "rco_sync_ref": "ISS-0173",
   "discovered_at": "2026-08-06T23:41:00Z",
   "discovered_by": "BACKEND-DEV WF03-ISS-0169-20260806 Step 3",
   "discovered_while_fixing": "ISS-0169",
-  "run_id": null,
+  "last_updated_at": "2026-08-08T18:28:51Z",
+  "last_updated_by": "ISSUE-FIXER WF03-GH501-20260808 Step 1",
+  "diagnosis_report": "docs/issue-reports/ISS-0173-gh501-diagnosis.yaml",
+  "diagnosis_run_id": "WF03-GH501-20260808",
+  "findings": {
+    "blockers": [
+      "MUST-1 src/oidc/jwks.zig:322 std.Thread.Mutex removed in Zig 0.16 (not rename-only)",
+      "MUST-2 src/oidc/jwks.zig:140 std.ArrayList(T).init does not exist on the unmanaged form returned by std.ArrayList(T)",
+      "MUST-3 src/oidc/jwks.zig:239 same as MUST-2 for DenylistEntry",
+      "MUST-4 src/oidc/jwks.zig:248 (also 247, 148, 172) unmanaged deinit requires allocator argument",
+      "MUST-5 src/oidc/jwks.zig:265 (also 144, 168, 194) unmanaged append requires allocator argument"
+    ],
+    "majors": [
+      "MUST-6 src/oidc/jwks.zig in-file tests unreachable from any test target (must be wired into src/oidc_test_root.zig)",
+      "MUST-7 mutex path never exercised until end-to-end tests run after MUST-1 fix",
+      "MUST-8 src/main.zig:78 is a dead re-export — no caller reaches main.oidc_jwks (decision: delete file or rewire caller)"
+    ],
+    "minors": [
+      "SHOULD-1 filename 'jwks.zig' mismatches content (TokenValidationCache + JtiDenylist, NOT JSON Web Key Set)",
+      "SHOULD-2 tools/lint_test_wiring.py does not detect dead pub const re-exports (ISS-0172 acceptance criterion #5)"
+    ]
+  },
+  "empirical_evidence": {
+    "direct_compile_command": "zig test src/oidc/jwks.zig",
+    "direct_compile_exit_code": 1,
+    "direct_compile_log": "scratch/_jwks_direct_test.log",
+    "errors_emitted": [
+      "src/oidc/jwks.zig:140:53 error: struct 'array_list.Aligned(jwks.TokenCacheKey,null)' has no member named 'init'",
+      "src/oidc/jwks.zig:239:52 error: struct 'array_list.Aligned(jwks.DenylistEntry,null)' has no member named 'init'",
+      "src/oidc/jwks.zig:248:21 error: member function expected 1 argument(s), found 0",
+      "src/oidc/jwks.zig:265:25 error: member function expected 2 argument(s), found 1",
+      "src/oidc/jwks.zig:322:28 error: root source file struct 'Thread' has no member named 'Mutex'"
+    ],
+    "baseline_test_oidc_src": "PASS 25/30 (5 skipped); the file is NOT compiled by this target because it is not in src/oidc_test_root.zig's relative-import set",
+    "deliberate_mutation_status": "PROVEN — file is RED with zero mutation; stronger than ISS-0172's procedure requires (no mutation needed to surface the failures)"
+  },
+  "build_wiring_finding": "src/oidc/jwks.zig is ORPHANED on three independent axes: (1) no addTest root reaches it, (2) build.zig does not register it as a named module, (3) src/main.zig:78 re-exports it but no caller reaches main.oidc_jwks. This is why `zig build` is GREEN.",
+  "scope_binding_note": "Step-00 handoff for WF03-GH501-20260808 recorded iss_id=ISS-0172 against GH-501; that is incorrect per the local registry (GH-500=ISS-0172, GH-501=ISS-0173). Both files share the root-cause class (ISS-0172 is the parent, ISS-0173 is the concrete instance in OIDC). This diagnosis treats GH-501 as ISS-0173. Forwarded to orchestrator for review.",
+  "next_action": "Route to CODE-DESIGNER (WF-03 Step 2) for fix design",
   "affected_areas": [
     "src/oidc/jwks.zig",
     "src/main.zig",
