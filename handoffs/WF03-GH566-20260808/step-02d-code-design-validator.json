@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH566-20260808/step-02d-code-design-validator.json",
   "created_at": "2026-08-08T07:42:50Z",
   "started_at": "2026-08-08T07:43:36Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-08T07:45:42Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -40,7 +40,13 @@
       "fn:lint-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Validated src/design/iss0617-test-fixture-schema-qualification.md against source independently (not the design doc's paraphrase). Confirmed by direct read: (1) exactly two unqualified `INSERT INTO repository_artifacts` statements in tests/integration/exp601_tier_quota_test.zig -- line 53 inside insertQuotaPolicyArtifact (called from TC-01/02/04) and line 203 inline in TC-EXP-601-03; grep for 'repository_artifacts' across the file returns only these two lines, and manual read of all five test blocks found no disguised references (no string-built identifiers, no EXECUTE format()). (2) src/db/pool.zig applyRequestStorageRouting's .LEGACY_RLS branch (lines 277-283) issues exactly `SET search_path TO public` on line 279, nothing else touches search_path; resolveAndCacheStorageMode falls through to .LEGACY_RLS (line 233) when both the tenant.storage_mode and tenant_schemas lookups return 0 rows; tests/integration/helpers.zig provisionTenant (lines 1116-1124) inserts into public.tenant without ever setting storage_mode, confirming the fallthrough applies to every test tenant. src/config/loader.zig loadConfigArtifact (lines 185-222) runs its JOIN against repository_artifacts unqualified on a pool.acquire() connection, which per the above resolves unambiguously under search_path=public. (3) helpers.zig configureTestSearchPath (lines 248-256) issues exactly `SET search_path TO tenant_default,public` on TestHarness.conn, confirmed verbatim. (4) Read all five TC-EXP-601 blocks in full: the 2-line qualification does not alter column lists, parameter bindings, or any other statement, and no other assertion in any block depends on the unqualified form. (5) Design's Section 5 disposition of GBL-136 (keep, unmodified) is reasoned soundly -- it correctly shows the fix is independent of GBL-136's outcome for repository_artifacts either way, does not re-litigate the unresolved FK-direction question (properly flagged as an open question for TEST-RUNNER/RELEASE-VALIDATOR rather than guessed at), and does not paper over anything that should block this fix. (6) Design contains no implementation code -- the single code block (lines 70-78) quotes the existing loader.zig SQL query for root-cause analysis, not a proposed diff; the fix itself is described in prose and scoped to exactly 2 lines in 1 file (tests/integration/exp601_tier_quota_test.zig), confirmed via `grep -n repository_artifacts` on the test file returning only lines 53 and 203. (7) tools/lint_design_artefact.py exits 0: BLOCKER=0 MAJOR=0 MINOR=12 (all MINOR findings are expected false-positives -- E030 flags the schema-qualified `public.repository_artifacts` strings that are literally this fix's subject matter, and E060 flags the ISS-numbered requirement ID format, consistent with other ISS-linked designs in this repo). All acceptance criteria met.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2e) to implement the 2-line fix"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
