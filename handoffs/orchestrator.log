@@ -536,3 +536,13 @@
 2026-08-08T22:38:30Z | COMPLETE | WF03-GH495-20260808 | 1bd38135 | DOC-UPDATER | PASS -- CHANGELOG + LUA-08/09/10 RELEASED; PR #593 squash-merged (8de07ab), branch deleted, board Implemented (not Done, #495 stays open); GH-495 retitled/commented for narrowed remaining scope (LUA-11/12/13/15/16 -> GH-591/GH-592)
 2026-08-08T22:38:30Z | GIT_MERGE | WF03-GH495-20260808 | 1bd38135 | DOC-UPDATER | PR #593 squash-merged as 8de07abc81ac4ffd992d94f9c8f9eb44d34d3ae9; feature/WF03-GH495-20260808 deleted from remote+local; on main, clean tree
 2026-08-08T22:38:30Z | WF03_DONE | WF03-GH495-20260808 | --- | ORCH | ISS-0169 tranche 2 (LUA-08/09/10) RESOLVED. GH-495 narrowed and left OPEN (LUA-11/12/13/15/16 remain, tracked via GH-591/GH-592).
+2026-08-08T22:42:41Z | ROUTE | WF03-GH594-20260808 | f872889a | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-594/ISS-0626 handoff bookkeeping triage)
+2026-08-08T22:47:37Z | COMPLETE | WF03-GH594-20260808 | f872889a | ISSUE-FIXER | PASS -- triage complete, narrowed ISS-0626 scope to H002/H008/H010/H006-partial/H001-partial (safe-mechanical), split H003/H004/H005/H009/H013/H007/H006-CONDITIONAL/H001-structural to ISS-0627/GH-596
+2026-08-08T22:48:10Z | ISSUE_FILED | WF03-GH594-20260808 | f872889a | ISSUE-FIXER | ISS-0627 -> GH-596 (case-by-case/permanent-acknowledgment subset of lint_handoffs.py debt) added to global queue
+2026-08-08T22:49:36Z | ROUTE | WF03-GH594-20260808 | 04d20ca3 | ORCH -> CODE-DESIGNER | IN_PROGRESS (Step 2, GH-594 safe-mechanical repair script design)
+2026-08-08T22:54:53Z | COMPLETE | WF03-GH594-20260808 | 04d20ca3 | CODE-DESIGNER | PASS -> CODE-DESIGN-VALIDATOR (Step 2b)
+2026-08-08T22:57:48Z | ROUTE | WF03-GH594-20260808 | 43b54475 | ORCH -> CODE-DESIGN-VALIDATOR | IN_PROGRESS (Step 2b, GH-594 repair-script design validation)
+2026-08-08T23:01:16Z | VALIDATE | WF03-GH594-20260808 | 43b54475 | CODE-DESIGN-VALIDATOR | PASS -> BACKEND-DEV (Step 3)
+2026-08-08T23:02:29Z | ROUTE | WF03-GH594-20260808 | 11f6145e | ORCH -> BACKEND-DEV | IN_PROGRESS (Step 3, implement + apply handoff repair script)
+2026-08-08T23:12:29Z | COMPLETE | WF03-GH594-20260808 | 11f6145e | BACKEND-DEV | PASS -- repair_handoff_bookkeeping.py implemented + applied (H002 0, H008 3-of-88-unfixable-remain, H006 1-CONDITIONAL, H010 83-legit-skips-remain); see result.issues for H010 target discrepancy
+2026-08-08T23:14:30Z | ROUTE | WF03-GH594-20260808 | c204e04b | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize GH-594 bookkeeping repair)

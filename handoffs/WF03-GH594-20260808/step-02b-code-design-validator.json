@@ -1,0 +1,53 @@
+{
+  "handoff_id": "43b54475-92b6-4687-9fc3-9b93132e40f1",
+  "run_id": "WF03-GH594-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH594-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T22:57:48Z",
+  "started_at": "2026-08-08T22:57:48Z",
+  "completed_at": "2026-08-08T23:01:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f872889a-5ee6-47f9-addc-c564100a5a58",
+      "04d20ca3-f72f-4afc-b0ec-0f953dfb2528"
+    ],
+    "artifacts_in": [
+      "src/design/iss0626-handoff-bookkeeping-repair.md",
+      "tools/lint_handoffs.py",
+      "handoffs/registry.json",
+      "docs/issues/ISS-0626.json"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0626-handoff-bookkeeping-repair.md before BACKEND-DEV implements the repair script. This design covers a safe-mechanical subset (H002, H008, H010, H006-partial, H001-encoding-subset) of GH-594/ISS-0626's handoff bookkeeping debt -- ~2000 pre-existing JSON files across the project's history. A mistake in this script is expensive: it operates on the project's own audit trail.\n\nORCH already independently verified: (1) H002/H006's detection logic matches tools/lint_handoffs.py's actual source exactly (isinstance(result, str) for H002; result.status only, never top-level status, for H006), (2) found and CORRECTED a real scope-drift in the design's original section 4.2 -- it proposed also renaming a top-level status field of FAILED, but lint_handoffs.py never actually validates the top-level status field against any enum (TERMINAL_OK is defined but dead code) -- so that rename would have been the script inventing its own fix target rather than closing a real lint_handoffs.py finding. Corrected in commit e1910eb (sections 4.2, 4.3, section 10 summary). (3) Confirmed python tools/lint_design_artefact.py exits 0.\n\nYOUR JOB: run your own full independent validation -- do not just trust ORCH's correction was complete or sufficient. In particular:\n1. Read the ENTIRE design fresh, including the corrected sections 4.2/4.3, and confirm no OTHER place in the document still references a top-level status rename (search for 'top-level' yourself).\n2. Independently verify EVERY category's detection predicate against tools/lint_handoffs.py's actual source (not just H002/H006 which ORCH already checked) -- H008's BOM check, H010's registry-membership check, and confirm the H001 category truly has no discrete encoding-vs-structural split in lint_handoffs.py's own output (design section 7 claims this).\n3. Scrutinize section 0's four operating constraints (dry-run-first, idempotent, self-verifying write via C-3's re-parse-then-atomic-replace, category isolation with fixed pass ordering) for genuine soundness -- is the C-4 pass ordering (H008 -> H001-encoding -> H002 -> H006 -> H010) actually correct given what each pass reads/writes? Could any ordering produce a wrong result (e.g. running H002 before H001-encoding-subset on a file that needs both)?\n4. Scrutinize section 5's H001 byte-diff gate (`_only_known_corruption_bytes_differ`) -- is a difflib.SequenceMatcher-based opcode comparison against a fixed corruption-signature table actually sufficient to catch every possible 'something else also changed' case, or could a subtle diff-alignment edge case slip an unintended change past the gate?\n5. Confirm section 3 (H010)'s 'purely additive, no invented fields' claim holds under your own reading -- especially the duplicate-handoff_id guard (3.4) and the missing-required-field skip (3.3).\n6. Confirm the 6 test specs in section 9 are genuinely mutation-checkable (each has an explicit 'what happens if reverted' check) and that the negative/companion cases (H002's string-that-round-trips-to-a-string, H010's missing-field skip, H001's Fixture B/C) actually exercise the rejection paths, not just the happy path.\n7. Confirm scope discipline against section 8's explicit exclusions -- no design element reaches into H003/H004/H005/H006-CONDITIONAL/H007/H009/H013/H001-structural.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR",
+      "Every category detection predicate verified against real lint_handoffs.py source",
+      "No stale reference to a top-level status rename remains anywhere in the document",
+      "C-4 pass ordering verified sound, not just asserted",
+      "H001 byte-diff gate scrutinized for genuine robustness",
+      "H010 purely-additive claim verified",
+      "All 6 test specs confirmed genuinely mutation-checkable",
+      "Scope discipline against section 8 exclusions confirmed"
+    ],
+    "functions_to_call": [
+      "fn:validate-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Independently validated src/design/iss0626-handoff-bookkeeping-repair.md. python tools/lint_design_artefact.py exits 0 (no BLOCKER/MAJOR). Confirmed no stale top-level-status-rename references remain anywhere in the document (all 8 grep hits for 'top-level' are either the corrected sections 4.2/4.3 explaining the scope-narrowing, or unrelated benign uses in 1.2/9.1 referring to JSON structure, not the status field). Verified every category predicate against the real tools/lint_handoffs.py source line-by-line: H002 (lines 181-191, isinstance(result,str)) and H006 (lines 192-203, result.status only against LEGAL_RESULT_STATUS) match the cited line numbers exactly; H008 BOM check (line 105, raw.startswith(b\u00ef\u00bb\u00bf) on binary-mode read) matches; H010 registry-membership check (lines 299-304, handoff_id set-difference) matches; the file-walk predicate (name.startswith(\"step-\") and name.endswith(\".json\"), line 431) matches; REQUIRED_KEYS 7-field tuple (lines 50-58) matches design section 3.2/3.3 exactly. Confirmed section 7s claim that lint_handoffs.py has no discrete H001-encoding vs H001-structural split: grepped the source and found exactly two H001 call sites (lines 131, 136), both emitting the bare code H001 with no sub-classification - the design correctly treats its own --report as the sole source of truth for that split. Traced the C-4 pass ordering (H008->H001-encoding->H002->H006->H010) against actual read/write dependencies: H001-encoding must precede H002/H006/H010 because those categories predicate on the file already parsing as JSON; H002 must precede H006 because lint_handoffs.py itself only checks result.status inside an elif isinstance(result,dict) branch mutually exclusive with the H002 string case; H010 reads only fields none of the other categories mutate, so its placement last is conservative but not load-bearing for correctness. No ordering defect found. Scrutinized the H001 byte-diff gate (_only_known_corruption_bytes_differ): its exact-slice-equality requirement against a fixed corruption table biases every alignment-ambiguity failure mode toward safe rejection (false negative) rather than false acceptance, and section 5.4 adds an independent post-write re-verification against the git-HEAD blob rather than the scripts own in-memory copy. Residual theoretical risk of a coincidental byte-for-byte match to a table row is acknowledged as vanishingly unlikely for real-world PowerShell console corruption and is not a blocking defect for a skip-if-unsure conservative repair tool. Verified C-3s self-verifying write mechanism (temp file -> re-parse -> re-check predicate -> atomic os.replace) is correctly described and would catch a broken transformation before touching the original file. Verified H010s purely-additive claim by tracing every branch of build_registry_entry: happy path sources every field from validated non-empty parsed[key] values or the walk-discovered path itself; missing-field path returns None with no placeholder; unparseable-source path explicitly declines filename-based inference; duplicate-handoff_id path skips both files. No path produces a default/placeholder value. Confirmed all 6 test specs (9.1-9.6) are genuinely mutation-checkable with explicit reverted/absent-logic assertions, and that negative/companion cases (H002 string-that-round-trips-to-a-string, H010 missing-field skip, H001 Fixture B/C) exercise real rejection code paths, not just happy-path repetition. Confirmed scope discipline: every H003/H004/H005/H007/H009/H013 mention in the document is confined to the frontmatter summary and section 8s exclusion list, with the single H009 reference inside section 4.2 being defensive reasoning against scope creep, not an implementation touching it; H006-CONDITIONAL and H001-structural are excluded by construction (closed 2-entry lookup table; gate (a) structural rejection) not by a bolted-on runtime check.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

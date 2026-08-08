@@ -1,0 +1,48 @@
+{
+  "handoff_id": "c204e04b-7bae-4aab-aeaf-603086bbc7af",
+  "run_id": "WF03-GH594-20260808",
+  "workflow_id": "WF-03",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH594-20260808/step-06-doc-updater.json",
+  "created_at": "2026-08-08T23:14:30Z",
+  "started_at": "2026-08-08T23:14:30Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f872889a-5ee6-47f9-addc-c564100a5a58",
+      "04d20ca3-f72f-4afc-b0ec-0f953dfb2528",
+      "43b54475-92b6-4687-9fc3-9b93132e40f1",
+      "11f6145e-bdc6-4484-aa94-a39f0cb002e3"
+    ],
+    "artifacts_in": [
+      "tools/repair_handoff_bookkeeping.py",
+      "src/design/iss0626-handoff-bookkeeping-repair.md",
+      "docs/issues/ISS-0626.json",
+      "docs/issues/ISS-0627.json"
+    ]
+  },
+  "task": {
+    "description": "Finalize GH-594 / ISS-0626 (safe-mechanical subset of handoff bookkeeping debt: H002, H008, H010, H006-partial, H001-encoding-subset). Design PASSED validation (1 ORCH-caught scope correction along the way, no rework cycle needed). BACKEND-DEV implemented tools/repair_handoff_bookkeeping.py, ran its own selftest (6/6 mutation-checkable specs passed against synthetic fixtures), dry-ran against the real handoffs/ corpus, investigated and correctly explained a real discrepancy (H001-encoding matched only 2 of an estimated ~7 files -- the other 9 are genuine structural typos, correctly out of scope) rather than pushing through blindly, then applied the fix. ORCH independently re-ran python tools/lint_handoffs.py after the fact and confirmed the exact same counts BACKEND-DEV reported: H002 9->0, H008 88->3 (3 correctly unfixable BOM+structural-typo overlap files, safely rolled back by the self-verifying write), H010 82.3%->3.7% missing (1868->83, all 83 legitimately skipped per no-invented-data rules), H006 3->1 (CONDITIONAL retained), H001 11->9 (2 genuinely fixed). Total BLOCKER count dropped 263->250, MAJOR 195->110. Also independently verified: registry.json still valid JSON (2094 entries, up from 305), a sample H002 file's result field is genuinely now a dict, and a sample remaining H008 file is genuinely still structurally unparseable (confirming the rollback was correct, not a script bug).\n\nTWO MINOR findings recorded, both self-resolving, no rework needed: (1) design section 7 stated an H010 'target 0' that conflicts with the design's own section 3.2-3.4 no-invented-data mandate -- the real, correct target was always 'additive backfill of everything recoverable, skip the rest with a named reason,' which is what happened; the literal '0' in section 7 was an internal inconsistency in the design doc, not a script defect. (2) H001's real yield (2 of 11) was lower than the issue's original ~7 estimate, which was itself always an estimate pending the script's own gate evaluation, per design section 7's own caveat.\n\nYOUR JOB:\n1. Update CHANGELOG.md describing the handoff bookkeeping repair: what was fixed (H002/H008/H010/H006-partial/H001-encoding-subset), the exact before/after counts, and that the remaining categories (H001-structural, H003, H004, H005, H006-CONDITIONAL, H007, H009, H013 -- 250 BLOCKER + 110 MAJOR remaining) are tracked separately in ISS-0627/GH-596 for case-by-case future handling since they have no safely-recoverable true value (this is intentional, not incomplete work).\n2. This issue has no requirement IDs (it's pure bookkeeping tooling, not a BPM_Platform_Functional_Requirements.md item) -- skip reqctl.py set-status entirely.\n3. Skip the retrospective step -- this is a WF-03 run, no estimation.json.\n4. GH-594 disposition: this issue's acceptance criteria (triage by category, decide remediation strategy, re-run lint_handoffs.py and confirm BLOCKER trending toward 0, 'may need to be phased across multiple runs given the scale') are now FULLY satisfied by this run's phased approach (safe-mechanical subset fixed now, the rest split to ISS-0627/GH-596 as its own separate, explicitly-planned follow-up -- this was the issue's own acceptance criteria anticipating exactly this phasing, not a partial/incomplete resolution). CLOSE GH-594 with a comment summarizing the before/after counts and linking to GH-596 for the remainder.\n5. GitHub Branch Management (MANDATORY Step Final): create the PR (gh pr create --base main) -- NOTE the diff will be very large (~2000 files changed, mostly mechanical whitespace/field changes to historical JSON) -- make sure the PR body clearly explains this is a bulk, machine-verified repair, not manual review of every file, so a human reviewer isn't surprised by the diff size. Poll for real CI completion (do not assume green), squash-merge and delete the branch, verify no orphaned branch remains, update the project board for issue #594 (this is a pure MAJOR bug-type issue with no UAT scenario relevance -- check PROJECT_BOARD.md for the right non-UAT-scoped target sequence, likely implemented then done), return the repo to a clean main.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with before/after counts and ISS-0627/GH-596 pointer",
+      "GH-594 closed with a comment summarizing results and linking GH-596",
+      "PR created with a clear explanation of the large mechanical diff",
+      "CI verified genuinely green (polled, not assumed)",
+      "Squash-merged, branch deleted",
+      "Project board updated for issue #594",
+      "Repo returned to clean main"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

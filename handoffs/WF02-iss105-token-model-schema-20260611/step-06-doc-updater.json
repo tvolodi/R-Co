@@ -1,42 +1,52 @@
-﻿{
-    "handoff_id":  "0fb58f0c-dd51-4eea-9ec9-7e6446861491",
-    "run_id":  "WF02-iss105-token-model-schema-20260611",
-    "step":  "06",
-    "from_agent":  "ORCH",
-    "to_agent":  "DOC-UPDATER",
-    "created_at":  "2026-06-12T02:44:19Z",
-    "status":  "COMPLETED",
-    "priority":  "NORMAL",
-    "context":  {
-                    "stage":  "EPIC-1 / ISS-105",
-                    "requirement_ids":  [
-                                            "ISS-105"
-                                        ],
-                    "related_handoff_ids":  [
-                                                "59367a54-e5ad-45dd-a12d-83144c786e75"
-                                            ],
-                    "artifacts_in":  [
-                                         "tests/reports/report-20260611-iss105.yaml"
-                                     ]
-                },
-    "task":  {
-                 "description":  "Update CHANGELOG.md + requirement_status.yaml for ISS-105, retrospective, then fn:git-merge. ISS-105 = RELEASED. Retrospective: docs/metrics/retrospectives/WF02-iss105-token-model-schema-20260611.yaml. gh pr create --squash merge to main, delete branch, return to main clean.",
-                 "acceptance_criteria":  [
-                                             "CHANGELOG updated",
-                                             "ISS-105 = RELEASED",
-                                             "Retrospective written",
-                                             "PR merged branch deleted",
-                                             "main clean"
-                                         ],
-                 "functions_to_call":  [
-                                           "fn:update-changelog",
-                                           "fn:update-requirement-status",
-                                           "fn:git-merge"
-                                       ]
-             },
-    "result":  "{\"summary\":\"Documentation updated: CHANGELOG.md entry for ISS-105, requirement_status.yaml marked RELEASED. Retrospective written. Merged to main via squash merge.\",\"status\":\"PASS\",\"issues\":[],\"artifacts_out\":[\"CHANGELOG.md\",\"docs/status/requirement_status.yaml\",\"docs/metrics/retrospectives/WF02-iss105-token-model-schema-20260611.yaml\"],\"next_action\":\"Pipeline complete\"}",
-    "rework_count":  0,
-    "max_rework":  3,
-    "started_at":  "2026-06-12T02:44:19Z",
-    "completed_at":  "2026-06-12T03:11:30Z"
+{
+  "handoff_id": "0fb58f0c-dd51-4eea-9ec9-7e6446861491",
+  "run_id": "WF02-iss105-token-model-schema-20260611",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-06-12T02:44:19Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-1 / ISS-105",
+    "requirement_ids": [
+      "ISS-105"
+    ],
+    "related_handoff_ids": [
+      "59367a54-e5ad-45dd-a12d-83144c786e75"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260611-iss105.yaml"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md + requirement_status.yaml for ISS-105, retrospective, then fn:git-merge. ISS-105 = RELEASED. Retrospective: docs/metrics/retrospectives/WF02-iss105-token-model-schema-20260611.yaml. gh pr create --squash merge to main, delete branch, return to main clean.",
+    "acceptance_criteria": [
+      "CHANGELOG updated",
+      "ISS-105 = RELEASED",
+      "Retrospective written",
+      "PR merged branch deleted",
+      "main clean"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-requirement-status",
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "summary": "Documentation updated: CHANGELOG.md entry for ISS-105, requirement_status.yaml marked RELEASED. Retrospective written. Merged to main via squash merge.",
+    "status": "PASS",
+    "issues": [],
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/status/requirement_status.yaml",
+      "docs/metrics/retrospectives/WF02-iss105-token-model-schema-20260611.yaml"
+    ],
+    "next_action": "Pipeline complete"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-12T02:44:19Z",
+  "completed_at": "2026-06-12T03:11:30Z"
 }

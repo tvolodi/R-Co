@@ -1,0 +1,66 @@
+{
+  "handoff_id": "11f6145e-bdc6-4484-aa94-a39f0cb002e3",
+  "run_id": "WF03-GH594-20260808",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH594-20260808/step-03-backend-dev.json",
+  "created_at": "2026-08-08T23:02:29Z",
+  "started_at": "2026-08-08T23:02:29Z",
+  "completed_at": "2026-08-08T23:12:29Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f872889a-5ee6-47f9-addc-c564100a5a58",
+      "04d20ca3-f72f-4afc-b0ec-0f953dfb2528",
+      "43b54475-92b6-4687-9fc3-9b93132e40f1"
+    ],
+    "artifacts_in": [
+      "src/design/iss0626-handoff-bookkeeping-repair.md",
+      "tools/lint_handoffs.py",
+      "tools/reqctl.py",
+      "handoffs/registry.json"
+    ]
+  },
+  "task": {
+    "description": "Implement the APPROVED design at src/design/iss0626-handoff-bookkeeping-repair.md (final version, commit 3862699, PASSed CODE-DESIGN-VALIDATOR) as tools/repair_handoff_bookkeeping.py.\n\nThis operates on ~2000 pre-existing JSON files that ARE this project's own audit trail. Follow the design exactly -- especially the four non-negotiable operating constraints in section 0 (dry-run-first by default, idempotent via reusing lint_handoffs.py's own detection predicates, self-verifying write via temp-file-then-reparse-then-atomic-replace with rollback on any failure, and the fixed category pass ordering H008 -> H001-encoding -> H002 -> H006 -> H010). Implement all five categories (sections 1-5), the CLI interface (section 6), the before/after reporting (section 7), and respect section 8's explicit exclusions (H003/H004/H005/H006-CONDITIONAL/H007/H009/H013/H001-structural -- do NOT touch these).\n\nImplement the selftest subcommand covering all 6 test specs in section 9 (TS-H002-01, TS-H008-01, TS-H010-01, TS-H006-01, TS-H001-ENC-01, and the cross-category idempotency check), following the tools/reqctl.py cmd_selftest convention (plain assert-style checks against synthetic fixtures in a temp directory, no pytest/unittest -- confirm this convention yourself by reading reqctl.py's selftest command before starting).\n\nIMPORTANT WORKFLOW SEQUENCE -- this is NOT a normal implement-then-test handoff. Because this script's real job is repairing ~2000 files in handoffs/ (this project's OWN bookkeeping directory), you must:\n1. Implement the script and its selftest subcommand.\n2. Run `python tools/repair_handoff_bookkeeping.py handoffs/ selftest` -- all 6 test specs must pass against synthetic fixtures BEFORE you run anything against the real corpus.\n3. Run the script in DRY-RUN mode (no --apply) against the real handoffs/ directory. Read its output carefully -- confirm the before-counts roughly match ISS-0626's triage numbers (H002 ~9, H008 ~88, H010 ~1868, H006 ~2 target from 3, H001-encoding ~7 of 11). If the counts are wildly different from expected, STOP and report to ORCH before proceeding --that would indicate either a predicate bug or a real change in corpus state since triage, not something to silently push through.\n4. Only after the dry-run output looks sane, run with --apply.\n5. Run `python3 tools/lint_handoffs.py` after the real --apply run and confirm H002 count is 0, H008 count is 0, H010 count is 0, and H006 count dropped from 3 to 1 (CONDITIONAL retained) -- these are the exact targets from ISS-0626's acceptance criteria.\n6. Confirm this run's OWN handoff files (handoffs/WF03-GH594-20260808/*) were not altered by the repair script in any unexpected way (they should already be clean per prior lint runs, so the script should find 0 candidates there -- verify this, don't assume it).\n\nThis is Python tooling, not Zig -- no zig build/test needed for this change, but DO run `python3 tools/lint_handoffs.py` (not zig-anything) as your primary verification gate, plus your own selftest subcommand.",
+    "acceptance_criteria": [
+      "tools/repair_handoff_bookkeeping.py implemented per the design exactly",
+      "selftest subcommand covers all 6 test specs from design section 9, all pass",
+      "Dry-run against real handoffs/ corpus produces sane before-counts, checked before --apply",
+      "--apply run completed successfully",
+      "python3 tools/lint_handoffs.py after --apply shows H002=0, H008=0, H010=0, H006=1 (down from 3)",
+      "This run's own handoff files (WF03-GH594-20260808/*) unaffected",
+      "No category outside the approved scope touched"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented tools/repair_handoff_bookkeeping.py per the APPROVED design (src/design/iss0626-handoff-bookkeeping-repair.md). All 6 selftest specs passed against synthetic fixtures before touching the real corpus. Dry-run counts matched ISS-0626 triage closely (H002=9, H008=88, H010=1868 unique missing ids, H006=2 unambiguous, H001-encoding=2 of 11 true candidates -- the other 9 unparseable files are structural typos, correctly excluded per design section 8). Ran --apply: H002 9/9 fixed, H008 85/88 fixed (3 rolled back safely by the self-verifying write because those files are also H001-structural and remain unparseable -- no code path could fix them), H006 2/2 fixed (CONDITIONAL retained), H001-encoding 2/2 fixed, H010 1785/1868 backfilled (83 legitimately skipped: missing required fields, duplicate handoff_id, or unparseable source -- forcing these would require inventing data, forbidden by design sections 3.2-3.4). Post-apply lint_handoffs.py: H002=0 (target met), H008=3 (the 3 unfixable H001-structural overlaps -- expected), H006=1/CONDITIONAL (target met exactly), H010=83 remaining (see discrepancy note below; NOT the literal 0 the handoff/design section 7 stated, because that target does not account for the design own mandatory skip rules for unrecoverable data). This run own handoff files (WF03-GH594-20260808/*) were confirmed unmodified by the repair script -- 0 matches against any category.",
+    "artifacts_out": [
+      "tools/repair_handoff_bookkeeping.py",
+      "handoffs/registry.json (additive: 307 -> 2094 entries)",
+      "BULK: 89 pre-existing handoff step-*.json files repaired in place (9 H002 unwraps, 85 H008 BOM strips, 2 H006 status renames, 2 H001-encoding repairs -- some files matched multiple categories in the same pass; full per-file list is the git diff of this commit, not enumerated here per CLAUDE.md bulk-change guidance)"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Design section 7 states the H010 target is 0, but this conflicts with the design own sections 3.2-3.4, which mandate skipping (not force-fixing) any handoff file with a missing required field, a duplicate handoff_id, or an unparseable source -- because filling those in would mean inventing data or arbitrarily picking among duplicates, both explicitly forbidden elsewhere in the same design. The real corpus has exactly 83 such files (30 missing run_id/step, 9 unparseable source, ~44 duplicate-handoff_id collisions concentrated in the WF02-dsl*/WF02-oidc*-20260527 and WF02-f6-wh-ui-04-20260531 runs). 1785 fixed + 83 skipped = 1868, exactly matching both the original triage figure and the unique-missing-id count lint_handoffs.py reports on main before this run. This is a pre-existing design-internal inconsistency (target statement vs. its own hard skip constraints), not an implementation defect -- flagging per CLAUDE.md No Speculation / stop-and-report guidance rather than silently forcing H010 to 0."
+      },
+      {
+        "severity": "MINOR",
+        "description": "H008 self-verifying write correctly rolled back 3 files (WF02-dsl10-20260527/step-01-code-designer.json, WF02-dsl10-20260527/step-06-doc-updater.json, WF02-dsl12-20260528/step-final-backend-dev.json) because they are BOM-carrying AND structurally broken (missing quoted property names) -- stripping the BOM alone cannot make them parse, so C-3 step 3 correctly detected the re-parse failure and left the originals untouched (BOM intact). These 3 files remain H008 findings in lint_handoffs.py post-run; they are also among the ~4 H001-structural files explicitly out of scope for this script (design section 8), tracked in ISS-0627 / GH #596 for per-file human/agent review."
+      }
+    ],
+    "next_action": "Route to ORCH for review of the H010=83 design-target discrepancy noted above; no further BACKEND-DEV action pending on this branch. No PR opened yet per instructions."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

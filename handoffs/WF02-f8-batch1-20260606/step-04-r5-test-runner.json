@@ -37,7 +37,7 @@
     "functions_to_call": []
   },
   "result": {
-    "status": "PARTIAL_PASS",
+    "status": "PARTIAL",
     "summary": "E2E: 7/7 PASS. Integration: BLOCKED by systemic DebugAllocator leak in helpers.zig:105 (same as rerun4). TM verified via E2E.",
     "artifacts_out": [
       "tests/reports/report-20260606-WF02-f8-batch1-20260606-rerun5.yaml"

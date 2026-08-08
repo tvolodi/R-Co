@@ -4,7 +4,7 @@
     "workflow_id":  "WF-02",
     "task":  {
                  "acceptance_criteria":  [
-                                             "All implementations in src/lua/ following design document ง6 module structure",
+                                             "All implementations in src/lua/ following design document ยง6 module structure",
                                              "zig build exits 0 with zero \u0027error set\u0027 warnings",
                                              "zig build test passes all unit and integration tests",
                                              "zig build migrate applies all Lua-related schema changes (if any)",
