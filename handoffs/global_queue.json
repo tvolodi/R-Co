@@ -239,17 +239,22 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0176",
+      "issue_id": "GH-504",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/504",
-      "title": "LUA-07 criterion 2: engine must write manifest_hash into the execution audit record",
+      "title": "LUA-07 criterion 2 unsatisfied: manifest_hash produced on ScriptResult but never written to the execution audit record (ISS-0176)",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-06T23:35:18Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-08T12:32:06Z"
+      },
+      "added_at": "2026-08-08T12:32:06Z",
+      "started_at": "2026-08-08T12:32:06Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 504,
+      "labels": []
     },
     {
       "issue_id": "ISS-0177",
