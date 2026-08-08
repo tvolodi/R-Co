@@ -1,0 +1,39 @@
+{
+  "handoff_id": "b033e2cd-0ba8-48fd-b236-493add6c51a0",
+  "run_id": "WF03-GH567-20260808",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH567-20260808/step-03-backend-dev.json",
+  "created_at": "2026-08-08T05:18:12Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/iss0618-scheduler-lock-and-error-signaling.md",
+      "docs/issues/ISS-0618.json"
+    ]
+  },
+  "task": {
+    "description": "Implement the validated design at src/design/iss0618-scheduler-lock-and-error-signaling.md to fix GH #567 / ISS-0618 in src/scheduler/scheduler.zig. This is a git-setup-already-done run (branch feature/WF03-GH567-20260808 exists and is checked out) -- do NOT run git-setup again, only implement + commit. Fix 1 (TC-SCH-02-02): when the ordinary-timer FOR UPDATE SKIP LOCKED query (lines ~189-215) returns 0 rows, issue a second lock-agnostic existence query (same WHERE/ORDER BY as the original, no FOR UPDATE) before deciding the outcome -- zero rows there means genuinely PollOutcome.none, one or more rows means PollOutcome.skipped_locked. Fix 2 (TC-SCH-02-03): only the appendTimerFiredEventInTx call site inside fire_blk (line ~338) changes -- on failure, still roll back the transaction and still call handleTimerFireError (preserving ISS-303's retry bookkeeping unchanged), then return SchedulerError.TransactionFailed directly instead of falling through to false/.none. Every other fire_blk step (now_rows query, recurrence parsing, rearm, markTimerFiredInTx, etc.) keeps its existing catch-and-swallow-into-false behavior, unchanged. Read the full design doc before starting -- it has precise structure and cites the exact validated line numbers.",
+    "acceptance_criteria": [
+      "TC-SCH-02-02 passes: skipped_locked > 0 when a due timer is locked by another process",
+      "TC-SCH-02-03 passes: SchedulerError.TransactionFailed is returned on the forced duplicate-idempotency-key failure, and the timer stays PENDING (pending_count == 1)",
+      "TC-SCH-303-03 and TC-SCH-303-04 (tests/integration/sch303_timer_dlq_test.zig) continue to pass unchanged -- run them explicitly to confirm no regression",
+      "zig build exits 0, no error-set output",
+      "Only src/scheduler/scheduler.zig modified -- no test files touched (the fix must satisfy existing test expectations, not require changing them)"
+    ],
+    "functions_to_call": [
+      "fn:zig-build-test"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
