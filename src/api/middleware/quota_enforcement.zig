@@ -7,6 +7,7 @@
 const std = @import("std");
 const errors = @import("../errors.zig");
 const pool_mod = @import("pool");
+const tenant_context = @import("tenant_context");
 const quota_policy = @import("../../config/quota_policy.zig");
 
 pub const QuotaGuardTarget = enum {
@@ -140,6 +141,37 @@ pub fn check(
     return .allowed;
 }
 
+/// ISS-0622 / GH-576: resolve the PostgreSQL schema that holds this tenant's
+/// PER_TENANT-only tables (instance_projections, instance_waits,
+/// dead_letter_items), so callers can build a schema-qualified table
+/// identifier instead of relying on an unqualified `search_path`, which is
+/// structurally incomplete for `.LEGACY_RLS`-mode tenants (see
+/// src/design/iss0622-quota-usage-table-schema-qualification.md §2-4).
+///
+/// Resolved once per readUsageForDimension() call and threaded down to
+/// whichever leaf helper it dispatches to, rather than re-derived inside
+/// each helper (see design §2 for the rationale).
+///
+/// `buf` must be at least 80 bytes (matches schemaNameForTenant's own
+/// buffer-size contract). Returns a slice into `buf`.
+fn resolveTenantSchema(pool: *pool_mod.Pool, tenant_id: []const u8, buf: *[80]u8) QuotaMiddlewareError![]const u8 {
+    if (!tenant_context.hasStorageMode()) {
+        const conn = pool.acquire() catch return error.QuotaUsageReadFailed;
+        defer pool.release(conn);
+        pool_mod.resolveAndCacheStorageMode(conn, tenant_id) catch return error.QuotaUsageReadFailed;
+    }
+
+    const mode = tenant_context.getStorageMode();
+    return switch (mode) {
+        .SCHEMA => pool_mod.schemaNameForTenant(tenant_id, buf),
+        .LEGACY_RLS => blk: {
+            const result = "tenant_default";
+            @memcpy(buf[0..result.len], result);
+            break :blk buf[0..result.len];
+        },
+    };
+}
+
 fn readUsageForDimension(
     allocator: std.mem.Allocator,
     pool: *pool_mod.Pool,
@@ -147,14 +179,41 @@ fn readUsageForDimension(
     dimension: quota_policy.QuotaDimension,
     limit: u64,
 ) QuotaMiddlewareError!quota_policy.QuotaUsageSnapshot {
+    var schema_buf: [80]u8 = undefined;
+
     const used = switch (dimension) {
-        .entity_records => countRows(allocator, pool, "instance_projections", tenant_id),
-        .entity_storage => tableStorageBytes(allocator, pool, "instance_projections"),
+        .entity_records => blk: {
+            const schema = try resolveTenantSchema(pool, tenant_id, &schema_buf);
+            var qualified_buf: [128]u8 = undefined;
+            const qualified = std.fmt.bufPrint(&qualified_buf, "{s}.instance_projections", .{schema}) catch return error.QuotaUsageReadFailed;
+            break :blk countRows(allocator, pool, qualified, tenant_id);
+        },
+        .entity_storage => blk: {
+            const schema = try resolveTenantSchema(pool, tenant_id, &schema_buf);
+            var qualified_buf: [128]u8 = undefined;
+            const qualified = std.fmt.bufPrint(&qualified_buf, "{s}.instance_projections", .{schema}) catch return error.QuotaUsageReadFailed;
+            break :blk tableStorageBytes(allocator, pool, qualified);
+        },
         .file_count => countRows(allocator, pool, "repository_artifacts", tenant_id),
         .file_bytes => sumColumn(allocator, pool, "repository_artifacts", "byte_size", tenant_id),
-        .concurrent_sandboxes => countRows(allocator, pool, "instance_waits", tenant_id),
-        .agent_retry_per_job => maxColumn(allocator, pool, "dead_letter_items", "retry_count", tenant_id),
-        .agent_retry_per_day => countRowsWhereRecent(allocator, pool, "dead_letter_items", tenant_id),
+        .concurrent_sandboxes => blk: {
+            const schema = try resolveTenantSchema(pool, tenant_id, &schema_buf);
+            var qualified_buf: [128]u8 = undefined;
+            const qualified = std.fmt.bufPrint(&qualified_buf, "{s}.instance_waits", .{schema}) catch return error.QuotaUsageReadFailed;
+            break :blk countRows(allocator, pool, qualified, tenant_id);
+        },
+        .agent_retry_per_job => blk: {
+            const schema = try resolveTenantSchema(pool, tenant_id, &schema_buf);
+            var qualified_buf: [128]u8 = undefined;
+            const qualified = std.fmt.bufPrint(&qualified_buf, "{s}.dead_letter_items", .{schema}) catch return error.QuotaUsageReadFailed;
+            break :blk maxColumn(allocator, pool, qualified, "retry_count", tenant_id);
+        },
+        .agent_retry_per_day => blk: {
+            const schema = try resolveTenantSchema(pool, tenant_id, &schema_buf);
+            var qualified_buf: [128]u8 = undefined;
+            const qualified = std.fmt.bufPrint(&qualified_buf, "{s}.dead_letter_items", .{schema}) catch return error.QuotaUsageReadFailed;
+            break :blk countRowsWhereRecent(allocator, pool, qualified, tenant_id);
+        },
         .script_cpu => 0,
         .script_memory => 0,
     } catch |err| switch (err) {
@@ -178,12 +237,22 @@ fn countRows(
     table_name: []const u8,
     tenant_id: []const u8,
 ) (error{ OutOfMemory, QueryFailed } || pool_mod.PoolError)!u64 {
-    const sql = if (std.mem.eql(u8, table_name, "repository_artifacts"))
+    // NOTE (ISS-0622): repository_artifacts has a genuine canonical copy in
+    // `public` and is always passed here unqualified — left exactly as-is.
+    // instance_waits/instance_projections are genuine PER_TENANT-only tables;
+    // callers now pass an already schema-qualified identifier (e.g.
+    // "tenant_default.instance_waits") for those, so table identity here is
+    // detected via endsWith rather than exact match.
+    const is_repository_artifacts = std.mem.eql(u8, table_name, "repository_artifacts");
+    const is_instance_waits = std.mem.endsWith(u8, table_name, "instance_waits");
+
+    var sql_buf: [160]u8 = undefined;
+    const sql: []const u8 = if (is_repository_artifacts)
         "SELECT COUNT(*)::text FROM repository_artifacts WHERE tenant_id = $1::uuid"
-    else if (std.mem.eql(u8, table_name, "instance_waits"))
-        "SELECT COUNT(*)::text FROM instance_waits WHERE resolved_at IS NULL"
+    else if (is_instance_waits)
+        std.fmt.bufPrint(&sql_buf, "SELECT COUNT(*)::text FROM {s} WHERE resolved_at IS NULL", .{table_name}) catch return error.QueryFailed
     else
-        "SELECT COUNT(*)::text FROM instance_projections WHERE tenant_id = $1::uuid";
+        std.fmt.bufPrint(&sql_buf, "SELECT COUNT(*)::text FROM {s} WHERE tenant_id = $1::uuid", .{table_name}) catch return error.QueryFailed;
 
     const conn = pool.acquire() catch return error.QueryFailed;
     defer pool.release(conn);
@@ -191,7 +260,7 @@ fn countRows(
     const row = conn.queryRow(
         allocator,
         sql,
-        if (std.mem.eql(u8, table_name, "instance_waits")) &.{} else &[_][]const u8{tenant_id},
+        if (is_instance_waits) &.{} else &[_][]const u8{tenant_id},
     ) catch return error.QueryFailed;
 
     if (row == null) return 0;
@@ -213,8 +282,13 @@ fn countRowsWhereRecent(
     tenant_id: []const u8,
 ) (error{ OutOfMemory, QueryFailed } || pool_mod.PoolError)!u64 {
     _ = tenant_id;
-    const sql = if (std.mem.eql(u8, table_name, "dead_letter_items"))
-        "SELECT COUNT(*)::text FROM dead_letter_items WHERE COALESCE(last_retried_at, updated_at, created_at) >= NOW() - INTERVAL '1 day'"
+    var sql_buf: [200]u8 = undefined;
+    const sql: []const u8 = if (std.mem.endsWith(u8, table_name, "dead_letter_items"))
+        std.fmt.bufPrint(
+            &sql_buf,
+            "SELECT COUNT(*)::text FROM {s} WHERE COALESCE(last_retried_at, updated_at, created_at) >= NOW() - INTERVAL '1 day'",
+            .{table_name},
+        ) catch return error.QueryFailed
     else
         "SELECT 0::text";
 
@@ -274,16 +348,19 @@ fn maxColumn(
     tenant_id: []const u8,
 ) (error{ OutOfMemory, QueryFailed } || pool_mod.PoolError)!u64 {
     _ = tenant_id;
-    if (!std.mem.eql(u8, table_name, "dead_letter_items") or !std.mem.eql(u8, col_name, "retry_count")) {
+    if (!std.mem.endsWith(u8, table_name, "dead_letter_items") or !std.mem.eql(u8, col_name, "retry_count")) {
         return 0;
     }
+
+    var sql_buf: [160]u8 = undefined;
+    const sql = std.fmt.bufPrint(&sql_buf, "SELECT COALESCE(MAX(retry_count), 0)::text FROM {s}", .{table_name}) catch return error.QueryFailed;
 
     const conn = pool.acquire() catch return error.QueryFailed;
     defer pool.release(conn);
 
     const row = conn.queryRow(
         allocator,
-        "SELECT COALESCE(MAX(retry_count), 0)::text FROM dead_letter_items",
+        sql,
         &.{},
     ) catch return error.QueryFailed;
 

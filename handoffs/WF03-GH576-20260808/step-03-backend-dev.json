@@ -1,0 +1,55 @@
+{
+  "handoff_id": "f644ebf4-6678-4af6-a658-854f61d45ca6",
+  "run_id": "WF03-GH576-20260808",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH576-20260808/step-03-backend-dev.json",
+  "created_at": "2026-08-08T08:51:28Z",
+  "started_at": "2026-08-08T08:51:28Z",
+  "completed_at": "2026-08-08T08:58:52Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c1dc779b-2744-4a1b-8f6e-7f02edfb3635"
+    ],
+    "artifacts_in": [
+      "src/design/iss0622-quota-usage-table-schema-qualification.md",
+      "docs/issues/ISS-0622.json"
+    ]
+  },
+  "task": {
+    "description": "Implement the validated design at src/design/iss0622-quota-usage-table-schema-qualification.md (PASSED CODE-DESIGN-VALIDATOR at Step 2b). This is a git-setup-already-done run (branch feature/WF03-GH576-20260808 exists and is checked out) -- do NOT run git-setup again, only implement + commit. Read the full design doc before starting. Summary of required changes, all confined to src/api/middleware/quota_enforcement.zig: (1) add a new private resolveTenantSchema helper (see design 3.1) that resolves the tenant's schema once via pool.zig's existing resolveAndCacheStorageMode/schemaNameForTenant + tenant_context's hasStorageMode/getStorageMode, returning 'tenant_default' for .LEGACY_RLS mode; (2) readUsageForDimension calls this once and threads the schema-qualified table name down to countRows/countRowsWhereRecent/maxColumn for the instance_projections/instance_waits/dead_letter_items branches ONLY -- repository_artifacts branches in countRows/sumColumn stay exactly as-is, unqualified; (3) build the qualified SQL via std.fmt.bufPrint into a stack buffer (no heap allocation), per design 3.2; (4) per design section 7's note, also fix tableStorageBytes (.entity_storage dimension, pg_total_relation_size($1::regclass) call) the same way -- this is a 5th call site with the identical bug, CODE-DESIGN-VALIDATOR confirmed this inclusion is sound. Do NOT touch src/admin/tenant_lifecycle.zig or src/scheduler/scheduler.zig -- both are explicitly out of scope per the design's section 8.",
+    "acceptance_criteria": [
+      "resolveTenantSchema helper added exactly per design 3.1",
+      "instance_projections/instance_waits/dead_letter_items branches schema-qualified in countRows/countRowsWhereRecent/maxColumn",
+      "tableStorageBytes (.entity_storage) also fixed per design section 7 note",
+      "repository_artifacts branches in countRows/sumColumn left exactly unchanged",
+      "No heap allocation introduced -- bufPrint into stack buffers only",
+      "zig build exits 0",
+      "zig build test-integration-exp601 -- TC-EXP-601-02 and 04s quota-guard 429 assertions pass (TC-EXP-601-04s separate instance_waits INSERT issue is out of scope, may still cause an earlier failure -- not evidence against this fix)",
+      "No production code outside quota_enforcement.zig touched",
+      "src/admin/tenant_lifecycle.zig and src/scheduler/scheduler.zig NOT touched (out of scope)"
+    ],
+    "functions_to_call": [
+      "fn:zig-build-test",
+      "fn:zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented the design at src/design/iss0622-quota-usage-table-schema-qualification.md in src/api/middleware/quota_enforcement.zig only. Added private resolveTenantSchema(pool, tenant_id, buf) helper: resolves tenant storage_mode once via tenant_context.hasStorageMode()/pool_mod.resolveAndCacheStorageMode() (only on cache miss), then returns pool_mod.schemaNameForTenant(tenant_id, buf) for .SCHEMA mode or the literal 'tenant_default' for .LEGACY_RLS. readUsageForDimension now calls this once per dimension branch that touches instance_projections/instance_waits/dead_letter_items (.entity_records, .entity_storage, .concurrent_sandboxes, .agent_retry_per_job, .agent_retry_per_day) and builds a schema-qualified table identifier via std.fmt.bufPrint into a stack buffer (no heap allocation), then passes it down to countRows/countRowsWhereRecent/maxColumn/tableStorageBytes. Those four leaf helpers were changed to detect table identity via std.mem.endsWith instead of exact std.mem.eql (since they now receive 'tenant_default.instance_waits' etc. instead of bare 'instance_waits'), and build their SQL text via bufPrint with the qualified FROM/regclass target -- same WHERE clause, same params, per design 3.2. The repository_artifacts branches in countRows and sumColumn are byte-for-byte unchanged (still bare, unqualified, exact-match only), per design 5. tableStorageBytes (.entity_storage / pg_total_relation_size) was also fixed per design 7's note as a 5th call site. No exported symbol changed shape; only private helper internals changed. src/admin/tenant_lifecycle.zig and src/scheduler/scheduler.zig were not touched. zig build exits 0 with no 'error set' output. tools/lint_sql_param_types.py src tests exits 0 (0 BLOCKER/MAJOR/MINOR). zig build test-integration-exp601 results: TC-EXP-601-01, -02, -03, -05 PASS; TC-EXP-601-04 FAILS, but only at its pre-existing, separately-tracked instance_waits fixture INSERT (PgError.ServerError at tests/integration/exp601_tier_quota_test.zig line 337, harness.conn.exec(...) INSERT INTO instance_waits ...) -- never reaches the quota-guard 429 assertions, confirming this is the already-flagged, out-of-scope INSERT defect from design 6/8, not a fix regression. Also fixed a memory leak newly exposed by the fix working: TC-EXP-601-02 and TC-EXP-601-04's .rejected branches were missing `defer alloc.free(handler_result.body)` (the same ownership-transfer pattern already established and commented for TC-EXP-601-03 from the prior ISS-0617 rework) -- these tests previously never reached the .rejected branch because they failed earlier with QuotaUsageReadFailed before ISS-0622 was fixed, so the leak was previously unreachable/untested. Added the missing defer + explanatory comments to both. This is the only change outside quota_enforcement.zig, confined to test fixture code in the same test file the design's own section 6 analyzes.",
+    "artifacts_out": [
+      "src/api/middleware/quota_enforcement.zig",
+      "tests/integration/exp601_tier_quota_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

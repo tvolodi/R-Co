@@ -1,0 +1,51 @@
+{
+  "handoff_id": "dbe09af3-a8ed-4571-b4c9-1848cf478c9f",
+  "run_id": "WF03-GH576-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH576-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T08:36:42Z",
+  "started_at": "2026-08-08T08:36:42Z",
+  "completed_at": "2026-08-08T08:39:43Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0622.json",
+      "src/api/middleware/quota_enforcement.zig",
+      "src/db/pool.zig",
+      "src/config/quota_policy.zig",
+      "tests/integration/exp601_tier_quota_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Diagnose and prepare a fix for GH #576 (ISS-0622): quota_enforcement.zig reads PER_TENANT usage tables (instance_projections, instance_waits, dead_letter_items) unqualified via a pool connection, which fails for every tenant under .LEGACY_RLS storage mode (the default). docs/issues/ISS-0622.json ALREADY CONTAINS a full root_cause_analysis, verification_method, and acceptance_criteria from this issue's original filing (discovered incidentally during WF03-GH566-20260808/ISS-0617's implementation) -- read it first via fn:search-issues / direct read, confirm it is still accurate (source code may have moved since filing), and do NOT re-diagnose from scratch if it holds up. The issue's own acceptance_criteria explicitly says a design decision is needed: (a) resolve storage_mode explicitly in quota_enforcement.zig and issue schema-qualified queries (tenant_default.<table> for LEGACY_RLS tenants), or (b) create public-schema equivalents/views for these three tables so both storage modes can read them unqualified, or (c) some other approach. This decision needs CODE-DESIGNER analysis -- do not implement inline, route it through Step 2 (CODE-DESIGNER) with full context. Also check: does any OTHER middleware share this same unqualified-read-via-pool-under-LEGACY_RLS pattern against PER_TENANT-only tables? (ISS-0622's acceptance_criteria explicitly asks this -- a broader audit may be warranted, but stay within THIS issue's scope: fix quota_enforcement.zig, note findings about siblings for a future issue if any are found, don't fix them here unless truly trivial and directly required).",
+    "acceptance_criteria": [
+      "ISS-0622s existing root_cause_analysis confirmed still accurate (or updated if source moved)",
+      "Fix strategy decision made and documented (schema-qualify vs public-view vs other) with rationale",
+      "Routed to CODE-DESIGNER (Step 2) with full context, not implemented directly by ISSUE-FIXER",
+      "Any sibling middleware sharing the same pattern noted (not fixed unless trivial and in-scope)"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Verified ISS-0622s root-cause analysis independently against CURRENT source (src/api/middleware/quota_enforcement.zig, src/db/pool.zig) and live bpm_test DB -- confirmed still fully accurate: instance_projections, instance_waits, and dead_letter_items exist ONLY in tenant_default (to_regclass on all three public.* variants returns NULL, confirmed live via docker exec psql), never in public. applyRequestStorageRouting (pool.zig lines 258-301) sets search_path=public only for .LEGACY_RLS tenants (the default for any tenant never explicitly promoted to SCHEMA mode), so quota_enforcement.zigs countRows/maxColumn/countRowsWhereRecent unqualified SELECTs against these three tables are structurally unreachable for LEGACY_RLS tenants. Cross-checked against ISS-0185s diagnosis, which appeared to conflict (classified instance_waits as GLOBAL_REGISTRY, i.e. public canonical) -- resolved by reading migrations/GBL-136_iss0617_drop_remaining_global_registry_shadows.sql, whose header explicitly documents that instance_waits (plus 4 siblings) was deliberately EXCLUDED from GBL-136s public-shadow drop because GBL-135 already dropped its public copy in the opposite (PER_TENANT) direction -- so tenant_default is the sole surviving copy today, matching ISS-0622 and the live query. That diagnosis-file self-contradiction is already tracked separately as ISS-0621/GH-574 (documentation inconsistency only, no overlap with this fix). STRATEGY RECOMMENDATION: Option (a) -- resolve storage_mode explicitly inside quota_enforcement.zig and issue schema-qualified queries, using pool.zigs existing exported helpers (schemaNameForTenant() at pool.zig:137, tenant_context.getStorageMode()/hasStorageMode()/resolveAndCacheStorageMode() -- the exact same helpers applyRequestStorageRouting itself already uses to build its SET search_path statement) rather than hardcoding tenant_default. Rationale: (1) option (b) (public-schema views/copies) directly reproduces the dual-schema-shadow anti-pattern already documented in CLAUDE.md/anti-patterns.md (the 28-investigations-over-11-months entry, ISS-0185/GH-518) and already dismantled by GBL-134/135/136 -- creating a NEW public copy of a PER_TENANT-only table would be the exact regression those three migrations exist to prevent; (2) explicit schema-qualification is the established convention for code that must read PER_TENANT data from an uncertain-mode pool connection -- pool.zigs own applyRequestStorageRouting resolves storage_mode and computes the schema name before issuing SQL, and quota_enforcement.zig should follow the same pattern rather than relying on ambient search_path; (3) no new migration or schema drift risk -- the fix is confined to query construction in one file. SIBLING CALL SITES FOUND (not fixed here, in-scope note only): src/admin/tenant_lifecycle.zig::resetTestTenant() (lines 100-128, Step 2) sets tenant_context_mod.set(test_tenant_id) then pool.acquire()s and issues an UNQUALIFIED SELECT COUNT(*) FROM instance_projections -- same LEGACY_RLS-unreachable pattern, scoped to the test-tenant admin reset/delete endpoint (ENV-05). src/scheduler/scheduler.zig and src/tasks/store.zig also reference instance_projections/instance_waits unqualified via conn from a pool-acquired connection within the normal request path, but these are the core event-sourcing engine call sites (already working in production today, meaning they run under contexts where storage_mode resolution or transaction-scoped connections behave differently from quota_enforcement.zigs standalone acquire-per-read pattern) -- flagged for CODE-DESIGNER to assess whether they share the same latent defect or are protected by a different mechanism (e.g. already running inside a transaction whose connection was acquired under a caller that set tenant_context correctly), not conflated with this fix. tenant_migration.zig references these table names only in a documentation/table-list array (SPT_BUSINESS_TABLES), not as a live unqualified query -- not a sibling instance of this bug.",
+    "artifacts_out": [
+      "docs/issues/ISS-0622.json",
+      "docs/issues/issue_index.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

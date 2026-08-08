@@ -221,6 +221,14 @@ test "TC-EXP-601-02: quota middleware rejects entity writes when entity limits a
     switch (result) {
         .allowed => return error.TestUnexpectedResult,
         .rejected => |handler_result| {
+            // ISS-0622 rework: quota_middleware.check's .rejected branch
+            // transfers ownership of handler_result.body to the caller.
+            // Previously unreachable here because this test failed earlier
+            // with QuotaUsageReadFailed (ISS-0622); now that the schema
+            // qualification fix lets it reach .rejected, free it — same
+            // pattern already established at the file_write test above
+            // per the ISS-0617 rework comment.
+            defer alloc.free(handler_result.body);
             try testing.expectEqual(@as(u16, 429), handler_result.status_code);
             try testing.expect(std.mem.indexOf(u8, handler_result.body, "quota-exceeded") != null);
             try testing.expect(std.mem.indexOf(u8, handler_result.body, "entity_records") != null);
@@ -342,6 +350,8 @@ test "TC-EXP-601-04: quota middleware rejects sandbox allocation and agent retri
     switch (sandbox_result) {
         .allowed => return error.TestUnexpectedResult,
         .rejected => |handler_result| {
+            // ISS-0622 rework: see the identical note on TC-EXP-601-02 above.
+            defer alloc.free(handler_result.body);
             try testing.expectEqual(@as(u16, 429), handler_result.status_code);
             try testing.expect(std.mem.indexOf(u8, handler_result.body, "concurrent_sandboxes") != null);
         },
@@ -357,6 +367,8 @@ test "TC-EXP-601-04: quota middleware rejects sandbox allocation and agent retri
     switch (retry_result) {
         .allowed => return error.TestUnexpectedResult,
         .rejected => |handler_result| {
+            // ISS-0622 rework: see the identical note on TC-EXP-601-02 above.
+            defer alloc.free(handler_result.body);
             try testing.expectEqual(@as(u16, 429), handler_result.status_code);
             try testing.expect(std.mem.indexOf(u8, handler_result.body, "agent_retry") != null);
         },

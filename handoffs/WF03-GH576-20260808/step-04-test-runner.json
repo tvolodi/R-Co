@@ -1,0 +1,48 @@
+{
+  "handoff_id": "8d8825c5-1585-41b8-a9b3-fb26c0bc5b18",
+  "run_id": "WF03-GH576-20260808",
+  "workflow_id": "WF-03",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH576-20260808/step-04-test-runner.json",
+  "created_at": "2026-08-08T09:00:53Z",
+  "started_at": "2026-08-08T09:00:53Z",
+  "completed_at": "2026-08-08T09:00:53Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f644ebf4-6678-4af6-a658-854f61d45ca6"
+    ],
+    "artifacts_in": [
+      "src/api/middleware/quota_enforcement.zig",
+      "tests/integration/exp601_tier_quota_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Verify the schema-qualification fix for ISS-0622/GH-576 against real PostgreSQL. Run zig build, zig build test (unit suite), tools/lint_sql_param_types.py, and zig build test-integration-exp601 (independently, not trusting BACKEND-DEV's self-report). PR #578 opened for CI's clean-environment signal in parallel.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "lint_sql_param_types.py exits 0",
+      "zig build test-integration-exp601 independently rerun and results verified, not trusted from BACKEND-DEV report",
+      "GitHub Actions platform status checked before attributing any red result"
+    ],
+    "functions_to_call": [
+      "fn:zig-build-test",
+      "fn:check-github-status"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "GitHub Actions status: operational (checked via tools/check_github_status.py) -- attributable to code, not platform. zig build: PASS (exit 0, clean). zig build test (unit suite): PASS (exit 0, zero error lines) -- note: caught and corrected a leaked BPM_TEST_DB_URL shell-environment variable pointing at the WRONG workspace's database (port 5434, sibling workspace r-co-1) before this run; unset it and reran clean against this workspace's own DB (port 5453). tools/lint_sql_param_types.py src tests: PASS (0 BLOCKER, 0 MAJOR, 0 MINOR). zig build test-integration-exp601: independently reran (not trusting BACKEND-DEV's self-report) -- confirmed 4 of 5 tests pass: TC-EXP-601-01, 02, 03, 05 PASS. TC-EXP-601-04 FAILS, but independently confirmed the exact failure point: line 337, the INSERT INTO instance_waits fixture write itself (PgError.ServerError), which runs BEFORE the test ever reaches the quota-guard 429 assertions this fix targets. This is the pre-existing, already-tracked, separately-scoped defect noted in ISS-0617's own original diagnosis and the ISS-0622 design doc's section 6/8 -- not a defect in this fix. The fix's actual target (quota_enforcement.zig's usage reads) is confirmed working: TC-EXP-601-02's .entity_write quota-guard check now correctly resolves usage from tenant_default.instance_projections and rejects with 429 as expected, where it previously failed upstream with QuotaUsageReadFailed before this fix. PR #578 opened (https://github.com/tvolodi/R-Co/pull/578) for CI verification in parallel; not yet confirmed green at time of this handoff -- RELEASE-VALIDATOR should confirm CI status before final approval.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (Step 5) -- confirm PR #578 CI status before approving, per this run pattern."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
