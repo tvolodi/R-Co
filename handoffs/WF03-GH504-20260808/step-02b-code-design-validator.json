@@ -1,0 +1,49 @@
+{
+  "handoff_id": "cc1d9740-2d49-49c1-92db-f56b45a1017e",
+  "run_id": "WF03-GH504-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH504-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T17:50:06Z",
+  "started_at": "2026-08-08T17:50:06Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-07"
+    ],
+    "related_handoff_ids": [
+      "9ee764e0-d329-4842-a27a-0d8f821315d2"
+    ],
+    "artifacts_in": [
+      "src/design/iss0176-lua07-audit-manifest-hash-minimal-wiring.md",
+      "src/engine/instance.zig",
+      "src/engine/plugin_registry.zig",
+      "migrations/020_obs03_audit_entries.sql",
+      "migrations/009_audit_log.sql"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0176-lua07-audit-manifest-hash-minimal-wiring.md for GH-504/ISS-0176 (LUA-07 criterion 2). This design implements a HUMAN-OPERATOR-CONFIRMED scope decision (do not re-litigate whether minimal synthetic wiring is the right call -- that decision was made explicitly outside the pipeline). Your job is to validate the DESIGN's technical correctness and honesty, not the scope decision itself. Verify independently: (1) the design's core claim -- that no engine call site currently invokes the Lua executor -- re-confirm via your own grep of src/engine/ for ScriptResult/executeScript; (2) the EXT-03 plugin-registry rejection reasoning (design section 2.1) -- confirm registerGlobalPluginHandler/registerPluginHandler really are called only from test files, never from src/main.zig or any production bootstrap, by checking yourself; (3) confirm recordExecutionErrorEventInTx (cited as the closest existing precedent for this function's transaction-boundary convention) genuinely exists at the cited location in src/engine/instance.zig with the signature/behavior described; (4) confirm the audit-table schema decision (new dedicated table vs the two rejected alternatives) is well-reasoned against the ACTUAL schemas of audit_entries and audit_log -- read both migration files yourself; (5) confirm the mutation-test design (section 5) is genuinely mutation-checkable as claimed -- would deleting the INSERT or its manifest_hash binding actually make the test fail, or is there a gap in the reasoning; (6) confirm the design's honesty framing (the doc-comment text prescribed for the new function, explicitly stating it is NOT the SERVICE_TASK handler) is precise enough that BACKEND-DEV cannot accidentally under- or over-state what was built when writing the actual code; (7) confirm no implementation code beyond illustrative signatures is present (Type E per templates/lego-catalog.md).",
+    "acceptance_criteria": [
+      "No-engine-call-site claim independently reconfirmed",
+      "EXT-03 rejection reasoning independently confirmed against actual call sites",
+      "recordExecutionErrorEventInTx precedent confirmed to genuinely exist as cited",
+      "Audit-table schema decision confirmed well-reasoned against actual existing schemas",
+      "Mutation-test design confirmed genuinely mutation-checkable",
+      "Honesty framing confirmed precise and unambiguous for BACKEND-DEV to implement faithfully",
+      "No implementation code beyond illustrative Type E signatures",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
