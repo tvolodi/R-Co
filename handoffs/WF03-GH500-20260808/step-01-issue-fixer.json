@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH500-20260808/step-01-issue-fixer.json",
   "created_at": "2026-08-08T18:39:19Z",
   "started_at": "2026-08-08T18:39:19Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T19:03:17Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -46,7 +46,24 @@
       "fn:register-issue"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed both real bugs GH #500/ISS-0172 called out (src/lua/instruction_limiter.zig:39's discarded lua_sethook c_int return -- confirmed already correctly fixed to `_ = bindings.lua_sethook(...)` on this branch's base; src/lua/memory_limiter.zig's nonexistent std.Thread.Mutex -- confirmed already replaced with atomic counters on this branch's base). Both were already fixed on main by prior ISS-0169/ISS-0174 work before this run started; verified by reading current source and git log. Found and fixed a THIRD, previously-undiscovered real bug of the same class while strengthening the pin pattern: src/lua/structured_logger.zig's StructuredLogger.log() called std.io.getStdErr(), which does not exist in Zig 0.16 -- invisible because the method was only ever bare-pinned (`_ = lua.structured_logger.StructuredLogger;`), never called or refAllDecls'd directly. Fixed to std.debug.print, matching this codebase's established Zig-0.16 stderr idiom. Fixed the pin pattern across all 8 named test roots (src/lua_test_root.zig plus 7 others: simulation, transition, oidc, oidc_jit, config_idp, core_modules, repository). Root cause has THREE distinct blind spots, all confirmed by empirical probe against this Zig 0.16 installation: (1) a bare `_ = Module.Type;` reference resolves the type NAME but not its struct/union/enum FIELD types (Zig resolves those lazily); (2) refAllDecls(module) does not descend into an imported submodule's function bodies at all when called through a mod.zig-style aggregator (affects simulation_test_root.zig, repository_test_root.zig, which both aggregate via mod.zig); (3) refAllDecls does not descend into a struct's own METHOD bodies even when called directly on the type's enclosing single-file module, because a method is a declaration of the struct, not of the module (affects all 8 roots for any struct with methods). Fix: (a) refAllDecls called directly on every LEAF file, never only on a mod.zig aggregator; (b) a shared `pinModuleTypes(T)` helper duplicated per-file (consistent with each shim's existing self-contained-shim style) that does `_ = @sizeOf(field)` (closes gap 1) plus `refAllDecls(field)` called directly on each struct/union/enum type (closes gaps 2 and 3 together, since it forces both field-type resolution and analysis of the type's own methods). instruction_limiter.zig, memory_limiter.zig and timeout.zig's TimeoutContext keep their existing real-call coverage in lua_test_root.zig (strictly stronger than either pin). MANDATORY MUTATION TESTING PERFORMED FOR REAL (not just reasoned about), both failure shapes, on BOTH src/lua_test_root.zig (the file the issue specifically calls out) AND src/simulation_test_root.zig (the mod.zig-aggregator shape, spot-checked as the second-most-structurally-different root): (1) bad field type (std.Thread.NonExistentMutex injected into MemoryLimiter / ServiceCatalog / PlatformClock) -- confirmed target goes red in all cases, then reverted; (2) statement type-error in an unreferenced struct METHOD body (ServiceCatalog.lookup / PlatformUuidSource method / isActive()) -- confirmed target goes red in all cases (trace shows pinModuleTypes -> refAllDecls catching it), then reverted. All 7 other test roots rebuilt individually after applying the fix; zero previously-hidden errors surfaced in 6 of them (repository, oidc, oidc_jit, config_idp, core_modules, transition -- all pass same test counts as before). simulation_test_root.zig also surfaced none once mutation-reverted. Only lua_test_root.zig's OWN strengthened pins (for StructuredLogger/ServiceCatalog/Event/TimeSource, previously bare-pinned) surfaced the third real bug (structured_logger.zig), which was fixed as required by the Unblock-Everything directive. Corrected src/lua_test_root.zig's header comment ('What is actually verified here' section), which previously overclaimed mutation coverage (its cited mutation targeted a function body already reached via a register() decl, not the two ISS-0172 blind spots) -- now accurately documents both confirmed blind spots, the real mutation evidence for each, and which types get real-call coverage vs pinModuleTypes coverage. Enhanced tools/lint_test_wiring.py with an ADVISORY-only (non-blocking) check, find_type_only_pins(), that flags src/*_test_root.zig bare `_ = a.b.CapitalizedType;` pins with no @sizeOf/refAllDecls coverage for that type elsewhere in the file; validated it correctly flags the exact original ISS-0172 bug pattern (InstructionLimiter/MemoryLimiter) when run against the pre-fix git history version of lua_test_root.zig. It remains advisory (exit 0) because a regex/line-scan cannot prove a bare-pinned type has no real coverage through a call elsewhere -- consistent with every other tools/lint_*.py in this repo being line-scan-based, not semantic. Design decision: implemented directly rather than routing to CODE-DESIGNER -- despite real per-file variance in exactly which types/methods each of the 8 roots has, the generalizing fix (pinModuleTypes helper + direct-leaf refAllDecls) is mechanical and uniform once derived, and deriving it required empirical probing of Zig 0.16 semantics (which I did directly) rather than a product/architecture decision -- there was no genuine design ambiguity, only an investigation. Validation: zig build exits 0; zig build test-env-verify exits 0 HEALTHY 10/10 checks (after unsetting a stale shell-inherited BPM_TEST_DB_URL pointing at a sibling workspace's port -- pure environment artifact, not a code or infra defect, resolved as part of Unblock-Everything); zig build test exits 0, 87/87 steps succeeded, 965/1029 tests passed (64 skipped) -- identical pass/skip counts confirmed via git stash before/after, zero regressions from the pin-pattern change.",
+    "artifacts_out": [
+      "src/lua_test_root.zig",
+      "src/lua/structured_logger.zig",
+      "src/simulation_test_root.zig",
+      "src/transition_test_root.zig",
+      "src/oidc_test_root.zig",
+      "src/oidc_jit_test_root.zig",
+      "src/config_idp_test_root.zig",
+      "src/core_modules_test_root.zig",
+      "src/repository_test_root.zig",
+      "tools/lint_test_wiring.py"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4/5) per WF-03 pipeline"
+  },
   "rework_count": 0,
   "max_rework": 3
 }

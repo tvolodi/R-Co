@@ -34,12 +34,32 @@
 //! ## What is actually verified here
 //!
 //! `refAllDecls` alone is not enough to trust: it is shallow over containers.
-//! But because every host_api function is referenced from a `register()` decl
-//! that `refAllDecls` does reach, analysis does descend into function bodies —
-//! confirmed by a deliberate mutation (a type error injected into the body of
-//! `get_instance_state.platformGetInstanceState`) turning this target red. The
-//! explicit decl references below pin one concrete symbol per file so a break
-//! anywhere under `src/lua/` fails `zig build test`.
+//! Confirmed by a deliberate mutation (a type error injected into the body of
+//! `get_instance_state.platformGetInstanceState`, reached via a `register()`
+//! decl) turning this target red — but that mutation exercised a function
+//! body that IS reached by `refAllDecls`, not the two blind spots ISS-0172
+//! actually found:
+//!
+//!   1. A bare `_ = Module.SomeType;` reference resolves the type's NAME but
+//!      not its FIELD types (Zig resolves struct field types lazily) — this
+//!      is how `memory_limiter.zig`'s `mutex: std.Thread.Mutex` (removed in
+//!      0.16) stayed invisible.
+//!   2. `refAllDecls` called on a module does not descend into a struct's own
+//!      METHODS at all — a method is a declaration of the struct, not of the
+//!      enclosing module — so a bare type reference or even `refAllDecls` one
+//!      level up never analyses e.g. `StructuredLogger.log`'s body. This is
+//!      how that method's `std.io.getStdErr()` (also removed in 0.16) stayed
+//!      invisible until this fix, and was fixed alongside the original two
+//!      bugs once the strengthened pin surfaced it for the first time.
+//!
+//! Both shapes were verified by ACTUAL deliberate mutation against this exact
+//! file during the ISS-0172 fix (a bad field type, and a statement error in
+//! an unreferenced method), each independently confirmed to turn `zig build
+//! test-lua` red, then reverted. See `pinModuleTypes` below: `_ = @sizeOf(T)`
+//! closes gap 1, `refAllDecls(T)` called directly on the struct/union/enum
+//! closes gap 2. `InstructionLimiter`, `MemoryLimiter` and `TimeoutContext`
+//! get real calls in the dedicated ISS-0169 test below instead, which is
+//! strictly stronger evidence than either pin form.
 //!
 //! ## Rot this wiring caught (all previously invisible)
 //!
@@ -88,6 +108,32 @@ test {
     std.testing.refAllDecls(capability_enforcement_test);
 }
 
+/// ISS-0172 / GH #500 — forces field-type resolution AND method-body analysis
+/// for every struct/union/enum declared at `T`'s top level.
+///
+/// `refAllDecls(T)` alone does not do this for a nested type: taking the
+/// address of a type decl only proves the type NAME resolves, not that its
+/// fields do (Zig resolves struct field types lazily) — and, confirmed by
+/// mutation test, `refAllDecls` called on the ENCLOSING module does not
+/// descend into a struct's own methods at all, because a method is a
+/// declaration of the struct, not of the module. `_ = @sizeOf(field)` closes
+/// the field-type gap; `refAllDecls(field)` — called directly on the
+/// struct/union/enum itself — closes the method-body gap.
+fn pinModuleTypes(comptime T: type) void {
+    inline for (comptime std.meta.declarations(T)) |decl| {
+        const field = @field(T, decl.name);
+        if (@TypeOf(field) == type) {
+            switch (@typeInfo(field)) {
+                .@"struct", .@"union", .@"enum" => {
+                    _ = @sizeOf(field);
+                    std.testing.refAllDecls(field);
+                },
+                else => {},
+            }
+        }
+    }
+}
+
 test "ISS-0153: every file in the src/lua subsystem is analysed" {
     // One concrete decl per file, so a compile break anywhere under src/lua/
     // fails this target rather than going unnoticed as it did for 3 months.
@@ -104,17 +150,21 @@ test "ISS-0153: every file in the src/lua subsystem is analysed" {
     // an address without analysing the body. Both limiters carried hard compile
     // errors (`std.Thread.Mutex` removed in 0.16; a discarded c_int from
     // lua_sethook) THROUGH a green `zig build test-lua` for exactly that
-    // reason. The two pins below therefore force real analysis:
-    //   - @sizeOf resolves every field type, catching the Mutex class of error.
-    //   - a call inside a comptime-false-guarded but reachable branch would
-    //     still be elided, so installHook is called for real below instead.
+    // reason. `InstructionLimiter`/`MemoryLimiter`/`TimeoutContext` get real
+    // calls below (in the dedicated ISS-0169 test), which is the strongest
+    // pin available. `TimeSource`, `StructuredLogger`, `ServiceCatalog` and
+    // `Event` have no real call site anywhere in this test root, so they are
+    // routed through `pinModuleTypes` instead — @sizeOf resolves field types,
+    // and refAllDecls(field) forces analysis of the type's OWN methods (e.g.
+    // `StructuredLogger.log`, `ServiceCatalog.register/lookup`), which a bare
+    // `_ = Type;` reference does not reach.
     _ = @sizeOf(lua.instruction_limiter.InstructionLimiter); // LUA-08
     _ = @sizeOf(lua.memory_limiter.MemoryLimiter); // memory_limiter    — LUA-09
-    _ = lua.timeout.TimeoutContext; // timeout.zig       — LUA-10
-    _ = lua.time_source.TimeSource; // time_source.zig   — LUA-14
-    _ = lua.structured_logger.StructuredLogger; // structured_logger — LUA-13
-    _ = lua.service_catalog.ServiceCatalog; // service_catalog   — LUA-12
-    _ = lua.events.Event; // events.zig        — LUA-15, LUA-16
+    _ = lua.timeout.TimeoutContext; // timeout.zig       — LUA-10 (also called for real below)
+    pinModuleTypes(lua.time_source); // time_source.zig   — LUA-14
+    pinModuleTypes(lua.structured_logger); // structured_logger — LUA-13
+    pinModuleTypes(lua.service_catalog); // service_catalog   — LUA-12
+    pinModuleTypes(lua.events); // events.zig        — LUA-15, LUA-16
 
     // All eight host_api/*.zig files (LUA-05, LUA-11, LUA-12, LUA-13, LUA-15).
     const host_api = lua.host_api;
