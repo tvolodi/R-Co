@@ -1,0 +1,61 @@
+{
+  "handoff_id": "3cebe70b-c8b5-42df-93cf-aad909ea0135",
+  "run_id": "WF03-GH482-20260808",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-08T20:25:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "started_at": "2026-08-08T20:25:00Z",
+  "completed_at": "2026-08-08T20:31:57Z",
+  "rework_count": 0,
+  "max_rework": 3,
+  "context": {
+    "stage": "WF-03 Step 0.5/1",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a9a92072-2909-433c-bdb4-b7b56ff23c62"
+    ],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/482",
+      "docs/issues/ISS-0150.json",
+      "docs/issue-reports/ISS-0150-diagnosis.yaml",
+      "handoffs/WF03-GH482-20260808/step-00-inner-report.md",
+      "handoffs/WF03-GH482-20260808/step-00-backend-dev.json"
+    ]
+  },
+  "task": {
+    "description": "Step 0.5 (registry lookup + GitHub issue filing) and Step 1 (root-cause diagnosis) for GH-482. (a) Read GH-482 \u2014 it concerns test-integration-svc with 63 failing blocks across 34 files dominated by missing tenant_<uuid>.schema_migrations ledger. (b) Search docs/issues/ and prior solutions. (c) Create or update docs/issues/ISS-NNNN.json. (d) Diagnose root cause: investigate test-integration-svc target in build.zig, the schema_migrations ledger mechanism, why tenant_<uuid>.schema_migrations is missing, and relationship to GH-501/ISS-0173 sibling fix. Write diagnosis to docs/issue-reports/ISS-NNNN-gh482-diagnosis.yaml with MUST vs SHOULD findings and proposed fix path.",
+    "acceptance_criteria": [
+      "GH-482 mapped to existing ISS-0150 (PARTIALLY_RESOLVED) \u2014 no new ISS file created (collision-free)",
+      "GH-482 already filed on GitHub (URL https://github.com/tvolodi/R-Co/issues/482); rco-sync-ref ISS-0150 already present in body",
+      "Diagnosis YAML written with MUST vs SHOULD findings",
+      "Diagnosis proves the per-tenant ledger premise is intentionally absent per ISS-504 design (DISPROVEN, not a defect)",
+      "Diagnosis confirms RC-1/RC-2/RC-3 fixed at PR #519 (commit 4d593ef), 33 blocks fixed, 0 regressions",
+      "Diagnosis confirms all four forwarded siblings (ISS-0182/0183/0184/0185) are now RESOLVED in docs/issues/",
+      "Diagnosis proposes a close-out path: re-measure + close GH-482 if suite exits 0, or file one more forward",
+      "No source code modified (Step 1 is diagnosis-only)",
+      "BOM-tolerant JSON read/write used (utf-8-sig) per CLAUDE.md \u00a7Bookkeeping",
+      "orchestrator.log appended with ROUTE/STARTED/COMPLETE lines for this step",
+      "registry.json updated with step-01 entry"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue (UPDATE existing)",
+      "fn:update-issue",
+      "fn:fetch-webpage",
+      "fn:read-file"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-diagnosis of GH-482 / ISS-0150 confirms prior findings: the per-tenant schema_migrations ledger premise is intentionally absent per ISS-504/ISS-0091 design and is NOT a defect. RC-1 (filename), RC-2 (phantom table), RC-3 (shadow tenant_default.tenant) were fixed at PR #519 / commit 4d593ef (33 blocks, 0 regressions). All four forwarded siblings \u2014 ISS-0182 (effects, RESOLVED_DUPLICATE), ISS-0183 (repository, RESOLVED), ISS-0184 (residual umbrella, RESOLVED), ISS-0185 (45-table duplication, RESOLVED) \u2014 are now drained in docs/issues/. The issue is in close-out state: re-measurement of test-integration-svc on a freshly migrated DB is the gate. If the suite now exits 0, close GH-482 with a comment linking PR #519 and the four siblings; if residual blocks remain, classify and file one more forward.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0150-gh482-diagnosis.yaml",
+      "docs/issues/ISS-0150.json (updated with rediagnosis metadata + sibling drain status)"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2) \u2014 work is a close-out design, not a fix design. CODE-DESIGNER should re-measure and either close-out (if exit 0) or design a forwarding plan (if residual blocks remain)."
+  }
+}

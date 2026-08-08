@@ -111,17 +111,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0150",
+      "issue_id": "GH-482",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/482",
-      "title": "test-integration-svc: 63 failing blocks, missing tenant schema_migrations ledger",
+      "title": "test-integration-svc: 63 failing blocks across 34 files, dominated by missing tenant_<uuid>.schema_migrations ledger (pre-existing, not caused by #477)",
       "severity": "MAJOR",
-      "status": "DEFERRED",
-      "lock": null,
-      "added_at": "2026-08-06T21:48:41Z",
-      "started_at": "2026-08-07T01:51:17Z",
-      "completed_at": "2026-08-07T03:12:03Z",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-1-loop",
+        "locked_at": "2026-08-08T20:20:12Z"
+      },
+      "added_at": "2026-08-08T20:20:12Z",
+      "started_at": "2026-08-08T20:20:12Z",
+      "completed_at": null,
       "run_id": null,
-      "deferred_reason": "Partial: 3 root causes fixed (33 blocks, 0 regressions, PR #519). Suite still exits 1; remainder forwarded to ISS-0182/#515, ISS-0183/#516, ISS-0184/#517, ISS-0185/#518. GH #482 stays open."
+      "deferred_reason": null,
+      "issue_number": 482,
+      "labels": [
+        "bug"
+      ]
     },
     {
       "issue_id": "ISS-0158",
