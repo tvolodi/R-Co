@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH495-20260808/step-02-code-designer.json",
   "created_at": "2026-08-08T20:56:50Z",
   "started_at": "2026-08-08T20:56:50Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T21:01:03Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -45,7 +45,13 @@
       "fn:write-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Designed the wiring of LUA-08 (instruction limit), LUA-09 (memory limit), and LUA-10 (wall-clock timeout) into src/lua/executor.zig's createSandboxedState/executeSource. Key decisions: (1) moved the instruction limiter's pointer storage from the script-writable __limiter__ global to LUA_REGISTRYINDEX under a private key, mirroring host_context.zig's installContext/contextFromState pattern exactly (lua_pushlightuserdata + lua_setfield to install, lua_getfield + lua_type guard + lua_touserdata + lua_pop to read, null on any doubt); (2) LUA-08 and LUA-10 share a single combined LUA_MASKCOUNT hook callback (lua_sethook accepts only one callback per state) that checks both instruction count and TimeoutContext.checkTimeout() every 100 instructions -- this is the only mechanism in this codebase that can interrupt a tight `while true do end` loop, since it contains no host call for a separate watchdog to intercept; the two trip conditions are distinguished by error-message text but not by a new typed field (kept additive to the existing error taxonomy); (3) executeScript (no manifest) now uses a documented conservative default (manifest.Limits' MIN_INSTRUCTIONS/MIN_MEMORY_BYTES/MIN_TIMEOUT_SECONDS) rather than being left unlimited, because leaving it unenforced would make the unmanifested path a strictly weaker sandbox than the manifested path for no documented reason, contradicting executeScript's own doc comment that it must never become a way to bypass a gate; (4) MemoryLimiter.alloc is wired as lua_newstate's allocator function (replacing defaultAlloc) with max_memory_bytes threaded through a new internal RunLimits struct shared by both entry points. Specified three mutation-checkable tests: TC-LUA-08-01 (while-true-do-end terminated within a small instruction budget, isolated from timeout via a generous timeout_seconds, asserting error-message content and a hang under the pre-fix wiring), TC-LUA-09-01 (a large-table-building loop rejected under a tiny memory cap, isolated from instruction/timeout limits, asserting peak memory never exceeds the cap and that reverting to defaultAlloc makes the same script succeed), TC-LUA-10-01 (while-true-do-end interrupted by elapsed time specifically, isolated from instruction count via max_instructions=10,000,000 and timeout_seconds=1, asserting the TimeoutContext.timed_out flag and a materially different wall-clock outcome if the timeout branch is removed). Explicitly out-of-scope section confirms no design changes reach LUA-11/12/13/15/16 (ISS-0624/GH-591, ISS-0625/GH-592). Lint passed: BLOCKER=0 MAJOR=0 MINOR=0.",
+    "artifacts_out": ["src/design/iss0169-lua08-09-10-limiter-wiring.md"],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
