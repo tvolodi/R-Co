@@ -539,12 +539,15 @@
       "labels": [
         "bug"
       ],
-      "status": "RESOLVED",
-      "lock": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-08T05:00:24Z"
+      },
       "added_at": "2026-08-08T04:06:22Z",
       "started_at": "2026-08-08T04:06:22Z",
-      "completed_at": "2026-08-08T05:48:53Z",
-      "run_id": "WF03-GH567-20260808",
+      "completed_at": null,
+      "run_id": null,
       "deferred_reason": null
     }
   ]
