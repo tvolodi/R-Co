@@ -529,6 +529,26 @@
       "completed_at": "2026-08-08T04:05:23Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-567",
+      "issue_number": 567,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/567",
+      "title": "ISS-0618 \u2014 sch02_timer_polling_test: skip-locked count is 0 and forced-failure rollback doesn't surface TransactionFailed (2 blocks)",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-08T05:00:24Z"
+      },
+      "added_at": "2026-08-08T05:00:24Z",
+      "started_at": "2026-08-08T05:00:24Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
