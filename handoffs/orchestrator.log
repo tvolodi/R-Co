@@ -479,3 +479,8 @@
 2026-08-08T12:37:24Z | COMPLETE | WF03-GH512-20260808 | 9c1f1d4a | BACKEND-DEV | T010 BLOCKER migration: 99 sites converted, 51 sites marked RETAIN, baseline 184->73, all gates green
 2026-08-08T12:46:04Z | COMPLETE | WF03-GH512-20260808 | f8b2c19d | TEST-DESIGNER -> ORCH | step-04 PASS (TC-RG-01/02/03 green; build.zig wired)
 2026-08-08T13:28:03Z | COMPLETE | WF03-GH512-20260808 | final | BACKEND-DEV -> ORCH | PR #586 squash-merged into main (bc26d43a); ISS-0181 RESOLVED; GH-512 released; lock released; next: WF03-GH502-20260808 (ISS-0174 CapabilitySet.summary() Zig 0.16 stale ArrayList.init)
+2026-08-08T13:29:21Z | COMPLETE | WF03-GH502-20260808 | gh502-step00 | ORCH -> BACKEND-DEV -> ORCH | step-00 PASS (branch feature/WF03-GH502-20260808 created from origin/main@17930725; pushed; tracking set)
+2026-08-08T13:31:28Z | COMPLETE | WF03-GH502-20260808 | gh502-st | ISSUE-FIXER -> CODE-DESIGNER | PASS — diagnosis written to docs/issue-reports/ISS-0174-gh502-diagnosis.yaml
+2026-08-08T13:36:18Z | COMPLETE | WF03-GH502-20260808 | gh502-st | CODE-DESIGNER -> CODE-DESIGN-VALIDATOR | PASS — design artefact at src/design/iss0174-gh502-capabilityset-summary-migration.md + tests/specs/ISS-0174-gh502-capabilityset-summary.md (5 substitution rules S1-S5; 5 test cases TC-CS-01..05; decision RETAIN)
+2026-08-08T13:37:58Z | VALIDATE | WF03-GH502-20260808 | 682591cc | CODE-DESIGN-VALIDATOR | PASS -> Route to BACKEND-DEV (Step 3)
+2026-08-08T13:46:46Z | COMPLETE | WF03-GH502-20260808 | 798801f2 | BACKEND-DEV -> TEST-DESIGNER | PASS commit=30d449f6bd89f3a337be63de212d989bd38eeb67 MUST-1..5 PASS
