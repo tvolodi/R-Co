@@ -1,0 +1,114 @@
+run_id: WF03-GH501-20260808
+issue_id: ISS-0173
+github_issue: https://github.com/tvolodi/R-Co/issues/501
+github_issue_number: 501
+step: 07-doc-updater
+agent: DOC-UPDATER
+timestamp_utc: '2026-08-08T20:12:46Z'
+schema_version: 1
+
+handoff:
+  file: handoffs/WF03-GH501-20260808/step-07-doc-updater.json
+  handoff_id: d2a7c8e3-1f4b-4a5e-9c6d-2e8f3a4b5c7d
+  status: IN_PROGRESS  # set to COMPLETED with PASS result by DOC-UPDATER on close
+
+scope_summary: >
+  WF-03 Step 7 for GH-501 / ISS-0173. The OIDC-side instance of the ISS-0172
+  build-wiring blind spot (orphan file src/oidc/jwks.zig + dead re-export at
+  src/main.zig:78). State A DELETE chosen. Implementation at HEAD (commit
+  2e7fe6fc + later audit commits) deletes the file, removes the re-export,
+  installs 4 regression tests with per-test UUID isolation, and adds a
+  dedicated build target. TEST-RUNNER Step 5 PASS on 4/4 unit tests + 949/1013
+  full unit suite + three-phase mutation verification.
+
+deliverables:
+  changelog_entry:
+    file: CHANGELOG.md
+    location: "[Unreleased] — 2026-08-08 / ### Fixed (top entry)"
+    title: "ISS-0173 — deleted the orphan src/oidc/jwks.zig and its dead re-export in src/main.zig:78 (MAJOR)"
+    status: written
+  release_decision:
+    file: docs/status/release-WF03-GH501-20260808-2026-08-08.yaml
+    decision: APPROVED
+    status: written
+  issue_status_update:
+    file: docs/issues/ISS-0173.json
+    old_status: OPEN
+    new_status: RESOLVED
+    fields_added:
+      - resolution
+      - prevention
+      - related_issues
+      - resolution_run_id
+      - resolved_at
+      - resolved_by
+      - resolution_evidence
+      - commits
+      - affected_areas_after_fix
+    fields_updated:
+      - last_updated_at
+      - last_updated_by
+    status: written
+  project_board:
+    issue_number: 501
+    classification: non-UAT-scoped  # no requirement ID; pure infra/build-wiring fix
+    transitions:
+      - target: implemented
+        status: pending  # invoked after Step Final squash-merge
+      - target: done
+        status: pending
+    rationale: >
+      No requirement ID is named in ISS-0173 (it is a build-wiring/orphan-fate
+      bug, not a behaviour-spec change). Per docs/agents/protocols/PROJECT_BOARD.md
+      "If an issue has no requirement ID at all... treat it as not UAT-scoped
+      without running the grep." Therefore the board moves straight from
+      Implemented to Done in this Step Final.
+  inner_report:
+    file: docs/issue-reports/WF03-GH501-20260808-step-07-DOC-UPDATER-INNER-REPORT.yaml
+    status: this file
+
+log_appendix:
+  orchestrator_log_appends:
+    - ts: '2026-08-08T20:12:46Z'
+      event: ROUTE
+      detail: 'ORCH -> DOC-UPDATER | PENDING (Step 7, dispatched for GH-501 / ISS-0173 documentation + Step Final git-merge)'
+    - ts: '2026-08-08T20:12:46Z'
+      event: STARTED
+      detail: 'DOC-UPDATER | step-07'
+    # COMPLETE line written by fn:complete-handoff below
+  registry_appends:
+    - handoff_id: d2a7c8e3-1f4b-4a5e-9c6d-2e8f3a4b5c7d
+      status: IN_PROGRESS
+      # updated to COMPLETED by fn:complete-handoff
+
+pre_conditions_checked:
+  tools_lint_handoffs_focused_on_this_run: PASS  # zero findings against WF03-GH501-20260808
+  repository_clean_on_branch: PASS  # git status --short empty at HEAD (2e7fe6fc)
+  tests_reports_report_exists: PASS  # tests/reports/report-WF03-GH501-20260808.yaml present from TEST-RUNNER
+
+post_conditions_target:
+  tools_lint_handoffs_focused_on_this_run: PASS  # re-run after DOC-UPDATER artifacts written
+  gh_project_status_501_implemented: PASS
+  gh_project_status_501_done: PASS
+  pr_squash_merged: PASS
+  feature_branch_deleted: PASS
+  repository_on_main_clean: PASS
+
+risks_and_out_of_scope:
+  - id: PRECHECK-INFRA-UNHEALTHY
+    severity: MINOR
+    note: >
+      zig build test-env-verify exits 1 with 4 of 10 checks failing (C0, C3,
+      C4, C6) — all pre-existing and DB-related. None affect the unit test
+      executed in this run. Tracked in global queue.
+  - id: PRE-EXISTING-LINT-HANDOFFS
+    severity: MINOR
+    note: >
+      Global tools/lint_handoffs.py exits 1 with historical BLOCKER findings
+      across 2250+ handoffs. This run's handoffs have zero findings.
+  - id: FOLLOWUP-ISS-0174-DEAD-REEXPORTS
+    severity: MINOR
+    note: >
+      Forwarded to global queue: tools/lint_dead_reexports.py. Not fixed here.
+
+next_action: 'Step Final: git-merge (rebase onto origin/main, gh pr create, gh pr merge --squash --delete-branch, return to clean main)'

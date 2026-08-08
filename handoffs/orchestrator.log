@@ -506,3 +506,5 @@
 2026-08-08T20:04:47Z | STARTED | WF03-GH501-20260808 | 8a9e0c1f | TEST-RUNNER | step-05
 2026-08-08T20:06:02Z | COMPLETE | WF03-GH501-20260808 | 8a9e0c1f | TEST-RUNNER -> ORCH | FAIL | Test infrastructure unhealthy: C0, C3, C4, C6 (zig build test-env-verify exit 1). ORCH must dispatch ADHOC BACKEND-DEV to fix env, then re-run env-verify, then redispatch TEST-RUNNER.
 2026-08-08T20:08:13Z | COMPLETE | WF03-GH501-20260808 | 8a9e0c1f | TEST-RUNNER -> ORCH | PASS | zig build test-iss0173-orphan 4/4 PASS; zig build test 949/1013 passed (64 pre-existing skipped); routing to DOC-UPDATER (Step 7)
+2026-08-08T20:12:46Z | ROUTE | WF03-GH501-20260808 | d2a7c8e3 | ORCH -> DOC-UPDATER | PENDING (Step 7, dispatched for GH-501 / ISS-0173 documentation + Step Final git-merge)
+2026-08-08T20:12:46Z | STARTED | WF03-GH501-20260808 | d2a7c8e3 | DOC-UPDATER | step-07

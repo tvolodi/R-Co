@@ -1,7 +1,7 @@
 {
   "id": "ISS-0173",
-  "title": "src/oidc/jwks.zig does not compile under Zig 0.16 (stale std.Thread.Mutex and std.ArrayList(T).init) yet `zig build` is green — the ISS-0172 blind spot in the OIDC token-cache path",
-  "status": "OPEN",
+  "title": "src/oidc/jwks.zig does not compile under Zig 0.16 (stale std.Thread.Mutex and std.ArrayList(T).init) yet `zig build` is green \u2014 the ISS-0172 blind spot in the OIDC token-cache path",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/501",
   "github_issue_number": 501,
@@ -9,8 +9,8 @@
   "discovered_at": "2026-08-06T23:41:00Z",
   "discovered_by": "BACKEND-DEV WF03-ISS-0169-20260806 Step 3",
   "discovered_while_fixing": "ISS-0169",
-  "last_updated_at": "2026-08-08T18:28:51Z",
-  "last_updated_by": "ISSUE-FIXER WF03-GH501-20260808 Step 1",
+  "last_updated_at": "2026-08-08T20:12:46Z",
+  "last_updated_by": "DOC-UPDATER WF03-GH501-20260808 Step 7",
   "diagnosis_report": "docs/issue-reports/ISS-0173-gh501-diagnosis.yaml",
   "diagnosis_run_id": "WF03-GH501-20260808",
   "findings": {
@@ -24,7 +24,7 @@
     "majors": [
       "MUST-6 src/oidc/jwks.zig in-file tests unreachable from any test target (must be wired into src/oidc_test_root.zig)",
       "MUST-7 mutex path never exercised until end-to-end tests run after MUST-1 fix",
-      "MUST-8 src/main.zig:78 is a dead re-export — no caller reaches main.oidc_jwks (decision: delete file or rewire caller)"
+      "MUST-8 src/main.zig:78 is a dead re-export \u2014 no caller reaches main.oidc_jwks (decision: delete file or rewire caller)"
     ],
     "minors": [
       "SHOULD-1 filename 'jwks.zig' mismatches content (TokenValidationCache + JtiDenylist, NOT JSON Web Key Set)",
@@ -43,7 +43,7 @@
       "src/oidc/jwks.zig:322:28 error: root source file struct 'Thread' has no member named 'Mutex'"
     ],
     "baseline_test_oidc_src": "PASS 25/30 (5 skipped); the file is NOT compiled by this target because it is not in src/oidc_test_root.zig's relative-import set",
-    "deliberate_mutation_status": "PROVEN — file is RED with zero mutation; stronger than ISS-0172's procedure requires (no mutation needed to surface the failures)"
+    "deliberate_mutation_status": "PROVEN \u2014 file is RED with zero mutation; stronger than ISS-0172's procedure requires (no mutation needed to surface the failures)"
   },
   "build_wiring_finding": "src/oidc/jwks.zig is ORPHANED on three independent axes: (1) no addTest root reaches it, (2) build.zig does not register it as a named module, (3) src/main.zig:78 re-exports it but no caller reaches main.oidc_jwks. This is why `zig build` is GREEN.",
   "scope_binding_note": "Step-00 handoff for WF03-GH501-20260808 recorded iss_id=ISS-0172 against GH-501; that is incorrect per the local registry (GH-500=ISS-0172, GH-501=ISS-0173). Both files share the root-cause class (ISS-0172 is the parent, ISS-0173 is the concrete instance in OIDC). This diagnosis treats GH-501 as ISS-0173. Forwarded to orchestrator for review.",
@@ -53,13 +53,13 @@
     "src/main.zig",
     "tools/lint_test_wiring.py"
   ],
-  "symptom": "`src/oidc/jwks.zig` contains at least four hard Zig 0.16 compile errors, yet `zig build` and `zig build test` both exit 0. Verified empirically by rooting a throwaway test at src/ that imports the module and calls `initCache`/`deinitCache`:\n  - src/oidc/jwks.zig:322  `var cache_mutex: std.Thread.Mutex = .{};` — `std.Thread` has no member `Mutex` in Zig 0.16 (it moved to `std.Io.Mutex`, whose lock/unlock additionally take an `Io` parameter, so this is not a rename-only fix).\n  - src/oidc/jwks.zig:140  `std.ArrayList(TokenCacheKey).init(self.allocator)` — `std.ArrayList(T)` has no `init` in Zig 0.16.\n  - src/oidc/jwks.zig:239  `std.ArrayList(DenylistEntry).init(allocator)` — same.\n  - src/oidc/jwks.zig:248  `self.entries.deinit()` — `deinit` now requires the allocator argument.\nThe file is exported from `src/main.zig:78` (`pub const oidc_jwks = @import(\"oidc/jwks.zig\");`), so it LOOKS wired.",
+  "symptom": "`src/oidc/jwks.zig` contains at least four hard Zig 0.16 compile errors, yet `zig build` and `zig build test` both exit 0. Verified empirically by rooting a throwaway test at src/ that imports the module and calls `initCache`/`deinitCache`:\n  - src/oidc/jwks.zig:322  `var cache_mutex: std.Thread.Mutex = .{};` \u2014 `std.Thread` has no member `Mutex` in Zig 0.16 (it moved to `std.Io.Mutex`, whose lock/unlock additionally take an `Io` parameter, so this is not a rename-only fix).\n  - src/oidc/jwks.zig:140  `std.ArrayList(TokenCacheKey).init(self.allocator)` \u2014 `std.ArrayList(T)` has no `init` in Zig 0.16.\n  - src/oidc/jwks.zig:239  `std.ArrayList(DenylistEntry).init(allocator)` \u2014 same.\n  - src/oidc/jwks.zig:248  `self.entries.deinit()` \u2014 `deinit` now requires the allocator argument.\nThe file is exported from `src/main.zig:78` (`pub const oidc_jwks = @import(\"oidc/jwks.zig\");`), so it LOOKS wired.",
   "root_cause": "Exactly the ISS-0172 / GH #500 blind spot, in a second subsystem. `src/main.zig` re-exports the module, but nothing calls `initCache`, `deinitCache`, or any other function in it, and nothing instantiates the module-level `var`s. Zig resolves a top-level `var`'s type lazily and does not semantically analyse a function body that is never referenced, so neither the stale `std.Thread.Mutex` declaration nor the stale ArrayList call sites are ever reported. A plain `@import` re-export is NOT proof that a file compiles.",
   "acceptance_criteria": [
     "src/oidc/jwks.zig compiles under Zig 0.16: the mutex is replaced with a primitive usable from its call sites (std.Io.Mutex requires an Io parameter at lock/unlock, so the call sites must thread one through or the design must change), and every std.ArrayList(T).init / .deinit() call site is migrated to the 0.16 API.",
-    "A build target genuinely ANALYSES the file — a test that calls initCache/deinitCache and exercises TokenValidationCache and JtiDenylist, not a bare `_ = oidc_jwks;` pin (see ISS-0172).",
+    "A build target genuinely ANALYSES the file \u2014 a test that calls initCache/deinitCache and exercises TokenValidationCache and JtiDenylist, not a bare `_ = oidc_jwks;` pin (see ISS-0172).",
     "Deliberate-mutation verification: inject a statement error into a jwks.zig function body and confirm the target goes red.",
-    "The ISS-402 OIDC token validation cache behaviour (GH #198) is re-verified once the file actually compiles — its tests have never run.",
+    "The ISS-402 OIDC token validation cache behaviour (GH #198) is re-verified once the file actually compiles \u2014 its tests have never run.",
     "A census is run for the same pattern: every `pub const X = @import(...)` in src/main.zig / src/bpm.zig whose module has no reachable caller."
   ],
   "notes": [
@@ -67,5 +67,28 @@
     "Noticed while fixing the IDENTICAL stale `std.Thread.Mutex` spelling in src/lua/memory_limiter.zig (ISS-0169 diagnosis E4), which the ISS-0169 diagnosis had already flagged as 'whether that file is analysed was not determined here'. This issue determines it: it is not.",
     "Security-relevant: this is the OIDC token validation cache and the JTI replay denylist. Code that has never been compiled cannot be assumed to enforce a replay defence.",
     "Reproduce: create src/jwks_probe_root.zig containing `const jwks = @import(\"oidc/jwks.zig\"); test { try jwks.initCache(std.testing.allocator); jwks.deinitCache(); }` and run `zig test src/jwks_probe_root.zig`."
+  ],
+  "resolution": "src/oidc/jwks.zig (538 lines) deleted via git rm; src/main.zig:78 re-export line (pub const oidc_jwks = @import(\"oidc/jwks.zig\")) removed; tests/unit/iss0173_oidc_jwks_orphan_test.zig added with 4 regression tests (TC-ISS-0173-01..04, per-test UUID isolation) that fail the build if either the file or the re-export returns; build.zig gained test-iss0173-orphan step. Three-phase deliberate-mutation verified: Phase 1 (RED) before fix -> all 4 unit tests fail; Phase 2 (GREEN) after fix -> all 4 pass + zig build 0 + zig build test 949/1013; Phase 3 (mutation) re-adding the re-export -> zig build red with unable to load jwks.zig: FileNotFound; revert restores GREEN. State A (DELETE) chosen over State B (KEEP + RENAME + WIRE) because the workspace caller census confirmed zero callers of main.oidc_jwks across src/ and web/ (excluding zig-out/zig-pkg/vendor/.venv/node_modules); orphan-fate is the lowest-risk, lowest-LoC option.",
+  "prevention": "When a module-level @import re-export in src/main.zig has no reachable caller and is not registered as a named module in build.zig, treat as a build-wiring blind spot regardless of zig build exiting 0. A bare re-export is not proof the file compiles. Always (a) confirm the file is reachable from at least one addTest root, OR (b) confirm zero external callers via workspace grep before relying on a silent green build. tools/lint_test_wiring.py should be extended to flag dead pub const re-exports (tracked separately as ISS-0174 follow-up with tools/lint_dead_reexports.py).",
+  "related_issues": [
+    "ISS-0172 (#500)",
+    "ISS-0174 (#502)"
+  ],
+  "resolution_run_id": "WF03-GH501-20260808",
+  "resolved_at": "2026-08-08T20:12:46Z",
+  "resolved_by": "DOC-UPDATER WF03-GH501-20260808 Step 7",
+  "resolution_evidence": "docs/status/release-WF03-GH501-20260808-2026-08-08.yaml",
+  "commits": {
+    "feat": "894ee14e feat(WF03-GH501): implement State A DELETE fix for ISS-0173/GH-501",
+    "design": "1dc93614 design(WF03-GH501): Step 02b CODE-DESIGN-VALIDATOR - design validated (PASS, State A DELETE)",
+    "test_designer": "4f7119db test(WF03-GH501): refine ISS-0173 spec and complete TEST-DESIGNER handoff (4/4 + RED/GREEN mutation evidence)",
+    "test_runner": "2e7fe6fc test(WF03-GH501): step-05 TEST-RUNNER + step-04b cleanup (4/4 + 949/1013)",
+    "doc_updater": "pending step-07 commit"
+  },
+  "affected_areas_after_fix": [
+    "src/oidc/jwks.zig (deleted via git rm)",
+    "src/main.zig (re-export line at line 78 removed)",
+    "tests/unit/iss0173_oidc_jwks_orphan_test.zig (new, 4 tests, all PASS)",
+    "build.zig (added test-iss0173-orphan step, wired into test_engine_step + test_step)"
   ]
 }

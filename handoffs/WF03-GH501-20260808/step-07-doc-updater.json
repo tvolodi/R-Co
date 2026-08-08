@@ -1,0 +1,66 @@
+{
+  "handoff_id": "d2a7c8e3-1f4b-4a5e-9c6d-2e8f3a4b5c7d",
+  "run_id": "WF03-GH501-20260808",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-08T20:12:46Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 7",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "8a9e0c1f-2b3a-4d5e-9c7b-1f8e2a4d6b9c",
+      "ed41eed2-e199-4459-9508-5856db38769c",
+      "c4f81d6a-3e7b-4d5f-9a2e-8b1c0d6f7a4e",
+      "3a1b9c4d-7e2f-4d6a-9b8e-1f0c2d3a4b5e",
+      "7d3c8a51-2e0a-4f9b-8c4d-9e1a5b6c7d8e",
+      "f0b78f3c-40ac-455d-95f7-405bea658489"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-WF03-GH501-20260808.yaml",
+      "docs/issues/ISS-0173.json",
+      "CHANGELOG.md",
+      "src/design/iss0173-gh501-jwks-zig016-fix.md",
+      "tests/specs/ISS-0173-gh501-jwks-orphan.md",
+      "tests/unit/iss0173_oidc_jwks_orphan_test.zig",
+      "handoffs/WF03-GH501-20260808/step-05-test-runner.json",
+      "docs/agents/protocols/PROJECT_BOARD.md"
+    ],
+    "github_issue_number": 501,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/501",
+    "iss_id": "ISS-0173",
+    "severity": "MAJOR"
+  },
+  "task": {
+    "description": "Complete WF-03 documentation and release bookkeeping for GH-501 / ISS-0173, then perform Step Final git-merge (rebase onto origin/main, push, gh pr create, gh pr merge --squash --delete-branch, return to clean main). Mandatory deliverables: (1) CHANGELOG.md entry for GH-501; (2) docs/status/release-WF03-GH501-20260808-2026-08-08.yaml with APPROVED decision; (3) update docs/issues/ISS-0173.json status to RESOLVED with resolution/prevention/related_issues/rco_sync_ref; (4) update project board for issue 501 via tools/gh_project_status.py -- non-UAT-scoped, so implemented then done in the same Step Final; (5) inner report at docs/issue-reports/WF03-GH501-20260808-step-07-DOC-UPDATER-INNER-REPORT.yaml; (6) PR squash-merged to main with feature branch deleted; (7) repository returned to clean main with ff-pull. Update step-07 handoff + registry/log with utf-8-sig reads, utf-8 writes, append-only log, real UTC timestamps from tools/utcnow.py. Verify with tools/lint_handoffs.py before completing.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0173.json status=RESOLVED with resolution + prevention + related_issues fields",
+      "CHANGELOG.md contains GH-501 entry under [Unreleased] — 2026-08-08",
+      "docs/status/release-WF03-GH501-20260808-2026-08-08.yaml exists with decision: APPROVED",
+      "docs/issue-reports/WF03-GH501-20260808-step-07-DOC-UPDATER-INNER-REPORT.yaml exists",
+      "tools/gh_project_status.py 501 --target implemented exits 0",
+      "tools/gh_project_status.py 501 --target done exits 0",
+      "handoffs/orchestrator.log appended (UTF-8, single line, real UTC timestamp)",
+      "handoffs/registry.json updated (status COMPLETED, to_agent DOC-UPDATER)",
+      "All DOC-UPDATER artifacts committed to feature/WF03-GH501-20260808 and pushed",
+      "Step Final: rebase onto origin/main, gh pr create with title 'GH-501: Delete orphan src/oidc/jwks.zig and dead re-export (ISS-0173)', gh pr merge --squash --delete-branch",
+      "Repository returned to clean main (git branch --show-current == main, git status --short empty, git log --oneline -1 shows squash-merge commit)",
+      "tools/lint_handoffs.py exit 0 against this run's path"
+    ],
+    "functions_to_call": [
+      "fn:update-issue",
+      "fn:update-changelog",
+      "fn:register-inner-report",
+      "fn:validate-completeness",
+      "fn:complete-handoff",
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-08T20:12:46Z",
+  "completed_at": null
+}
