@@ -304,17 +304,22 @@
       "deferred_reason": "Duplicate of ISS-0158 / GH #479 - same 13 blocks of effects_subsystem_test.zig. Leak half fixed under WF03-ISS-0158-20260807; wall-clock backoff half carried forward as ISS-0186 / GH #520. GH #515 closed with explanatory comment. Do not schedule."
     },
     {
-      "issue_id": "ISS-0183",
+      "issue_id": "GH-516",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/516",
-      "title": "repository_test: content_hash bytea/uuid mismatch and untyped SQL parameters (11 blocks)",
+      "title": "repository_test: content_hash bytea/uuid type mismatch and untyped SQL parameters (11 blocks)",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-07T02:54:26Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-08T11:16:54Z"
+      },
+      "added_at": "2026-08-08T11:16:54Z",
+      "started_at": "2026-08-08T11:16:54Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 516,
+      "labels": []
     },
     {
       "issue_id": "ISS-0184",
