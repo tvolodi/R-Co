@@ -1,6 +1,6 @@
 # ISS-0173 / GH-501 — `src/oidc/jwks.zig` Zig 0.16 migration + orphan-fate
 
-## Scope
+## Module purpose
 
 This artefact designs the fix for [ISS-0173](https://github.com/tvolodi/R-Co/issues/501) (GH-501).
 The diagnosis at [docs/issue-reports/ISS-0173-gh501-diagnosis.yaml](docs/issue-reports/ISS-0173-gh501-diagnosis.yaml)
