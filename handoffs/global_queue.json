@@ -495,6 +495,24 @@
       "deferred_reason": null,
       "issue_number": 556,
       "labels": []
+    },
+    {
+      "issue_id": "GH-517",
+      "issue_number": 517,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/517",
+      "title": "Remaining test-integration-svc failures across 31 files (audit chain, webhook, entity, env, adp clusters)",
+      "severity": "MAJOR",
+      "labels": [],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-08T02:27:43Z"
+      },
+      "added_at": "2026-08-08T02:27:43Z",
+      "started_at": "2026-08-08T02:27:43Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
