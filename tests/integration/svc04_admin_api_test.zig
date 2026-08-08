@@ -143,6 +143,35 @@ fn randomServiceId(alloc: std.mem.Allocator, prefix: []const u8) ![]u8 {
     return std.fmt.allocPrint(alloc, "{s}-{s}", .{ prefix, std.fmt.bytesToHex(&rand_bytes, .lower) });
 }
 
+/// Insert a fixture row into public.tenant using a fresh pool connection so
+/// the row is COMMITTED and visible to other pool connections used by the
+/// service-catalog handlers (which check tenant existence and run
+/// bpm_active_defs_for_service). ISS-0616 / GH #565: TestHarness's h.conn
+/// is transaction-bound; INSERTs there are invisible to the handler pool.
+///
+/// Also calls bpm_provision_tenant_schema() so the tenant is registered in
+/// public.tenant_schemas, which is the table bpm_active_defs_for_service
+/// iterates when scanning per-tenant process_definitions. Without this
+/// registration, TC-SVC-04-06/08's process_definitions rows are invisible
+/// to the cross-schema helper.
+fn insertFixtureTenantViaPool(
+    pool: *Pool,
+    tenant_hex: []const u8,
+    slug: []const u8,
+    display_name: []const u8,
+    realm_id: []const u8,
+) !void {
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    try conn.exec(
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
+        \\ON CONFLICT (id) DO NOTHING
+    , &.{ tenant_hex, slug, display_name, realm_id, "00000000-0000-0000-0000-000000000000" });
+    // Provision the tenant schema so bpm_active_defs_for_service can find it.
+    try conn.exec("SELECT public.bpm_provision_tenant_schema($1::uuid)", &.{tenant_hex});
+}
+
 // ---------------------------------------------------------------------------
 // TC-SVC-04-01: admin register global service returns 201
 // ---------------------------------------------------------------------------
@@ -205,6 +234,7 @@ test "svc04: admin register tenant-scoped service returns 201" {
     // Use pre-committed fixture tenant (visible to pool connections).
     const owner_hex = try h.newUuidString(alloc);
     defer alloc.free(owner_hex);
+    try insertFixtureTenantViaPool(&pool, owner_hex, "svc04-tnt-tn", "SVC04 Tenant Tenant", "realm-svc04-tnt");
 
     const svc_id = try randomServiceId(alloc, "svc04-tnt");
     defer alloc.free(svc_id);
@@ -322,13 +352,7 @@ test "svc04: admin update service scope returns 200" {
     const owner_hex = try h.newUuidString(alloc);
 
     defer alloc.free(owner_hex);
-    try h.conn.exec(
-        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
-        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
-        \\ON CONFLICT (id) DO NOTHING
-    ,
-        &.{ owner_hex, "svc04-upd-tn", "SVC04 Update Tenant", "realm-svc04-upd", "00000000-0000-0000-0000-000000000000" },
-    );
+    try insertFixtureTenantViaPool(&pool, owner_hex, "svc04-upd-tn", "SVC04 Update Tenant", "realm-svc04-upd");
 
     const svc_id = try randomServiceId(alloc, "svc04-upd");
     defer alloc.free(svc_id);
@@ -383,20 +407,8 @@ test "svc04: scope change to tenant with conflicting active definitions returns 
     defer alloc.free(owner_hex);
     const other_tenant_hex = try h.newUuidString(alloc);
     defer alloc.free(other_tenant_hex);
-    try h.conn.exec(
-        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
-        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
-        \\ON CONFLICT (id) DO NOTHING
-    ,
-        &.{ owner_hex, "svc04-cnf-ow", "SVC04 Conflict Owner", "realm-svc04-cnf-ow", "00000000-0000-0000-0000-000000000000" },
-    );
-    try h.conn.exec(
-        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
-        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
-        \\ON CONFLICT (id) DO NOTHING
-    ,
-        &.{ other_tenant_hex, "svc04-cnf-ot", "SVC04 Conflict Other", "realm-svc04-cnf-ot", "00000000-0000-0000-0000-000000000000" },
-    );
+    try insertFixtureTenantViaPool(&pool, owner_hex, "svc04-cnf-ow", "SVC04 Conflict Owner", "realm-svc04-cnf-ow");
+    try insertFixtureTenantViaPool(&pool, other_tenant_hex, "svc04-cnf-ot", "SVC04 Conflict Other", "realm-svc04-cnf-ot");
 
     const svc_id = try randomServiceId(alloc, "svc04-cnf");
     defer alloc.free(svc_id);
@@ -411,14 +423,11 @@ test "svc04: scope change to tenant with conflicting active definitions returns 
     try std.testing.expectEqual(@as(u16, 201), r1.status_code);
 
     // Insert an ACTIVE definition for other_tenant that references svc_id.
-    // ISOLATION FIX: insert via a pool connection so the row is committed and
-    // visible to the handler's pool connections under READ COMMITTED.  A row
-    // inserted inside the open harness transaction (h.conn) would be invisible
-    // to separate pool connections used by the handler.
-    //
-    // SCHEMA FIX: after Stage-12 (GBL-073), public.process_definitions was
-    // dropped.  Use the known seed-tenant schema that has the table and set
-    // tenant_id to other_tenant_hex so bpm_active_defs_for_service finds it.
+    // The tenant schema name follows bpm_provision_tenant_schema's convention:
+    // tenant_<uuid_with_dashes_stripped>. After insertFixtureTenantViaPool
+    // above, this schema already exists and is registered in public.tenant_schemas.
+    const other_schema = try std.fmt.allocPrint(alloc, "tenant_{s}", .{other_tenant_hex[0..8] ++ other_tenant_hex[9..13] ++ other_tenant_hex[14..18] ++ other_tenant_hex[19..23] ++ other_tenant_hex[24..36]});
+    defer alloc.free(other_schema);
     const graph_json = try std.fmt.allocPrint(alloc,
         \\{{"nodes":[{{"id":"N1","node_type":"SERVICE_TASK","attributes":{{"service_id":"{s}"}}}}],"edges":[]}}
     , .{svc_id});
@@ -426,10 +435,9 @@ test "svc04: scope change to tenant with conflicting active definitions returns 
     {
         const fix_conn = try pool.acquire();
         defer pool.release(fix_conn);
-        // Create the schema and table for other_tenant so bpm_active_defs_for_service can find it.
-        try fix_conn.exec("CREATE SCHEMA IF NOT EXISTS tenant_c4300000000000000000000000000002", &.{});
-        try fix_conn.exec(
-            \\CREATE TABLE IF NOT EXISTS tenant_c4300000000000000000000000000002.process_definitions (
+        // Create the process_definitions table in the already-provisioned tenant schema.
+        const create_sql = try std.fmt.allocPrint(alloc,
+            \\CREATE TABLE IF NOT EXISTS {s}.process_definitions (
             \\  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             \\  tenant_id UUID NOT NULL,
             \\  name TEXT NOT NULL,
@@ -441,15 +449,18 @@ test "svc04: scope change to tenant with conflicting active definitions returns 
             \\  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             \\  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             \\)
-        , &.{});
-        // Set bpm.tenant_id to other_tenant_hex so the RLS policy on the
-        // tenant schema table allows the INSERT (policy checks tenant_id = bpm_effective_tenant_id()).
+        , .{other_schema});
+        defer alloc.free(create_sql);
+        try fix_conn.exec(create_sql, &.{});
+        // Set bpm.tenant_id so RLS on the tenant schema allows INSERT.
         try fix_conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{other_tenant_hex});
-        try fix_conn.exec(
-            \\INSERT INTO tenant_c4300000000000000000000000000002.process_definitions
+        const insert_sql = try std.fmt.allocPrint(alloc,
+            \\INSERT INTO {s}.process_definitions
             \\  (id, tenant_id, name, version, description, status, graph, created_by, created_at, updated_at)
             \\VALUES (gen_random_uuid(), $1::uuid, $2, '1.0.0', 'conflict test', 'ACTIVE', $3::jsonb, gen_random_uuid(), now(), now())
-        , &.{ other_tenant_hex, svc_id, graph_json });
+        , .{other_schema});
+        defer alloc.free(insert_sql);
+        try fix_conn.exec(insert_sql, &.{ other_tenant_hex, svc_id, graph_json });
     }
 
     // Attempt to change scope to tenant-scoped for owner_tenant only.
@@ -468,7 +479,9 @@ test "svc04: scope change to tenant with conflicting active definitions returns 
         const clean_conn = try pool.acquire();
         defer pool.release(clean_conn);
         try clean_conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{other_tenant_hex});
-        try clean_conn.exec("DROP TABLE IF EXISTS tenant_c4300000000000000000000000000002.process_definitions", &.{});
+        const drop_sql = try std.fmt.allocPrint(alloc, "DROP TABLE IF EXISTS {s}.process_definitions", .{other_schema});
+        defer alloc.free(drop_sql);
+        try clean_conn.exec(drop_sql, &.{});
     }
 }
 
@@ -534,13 +547,7 @@ test "svc04: delete service in use by active definition returns 409" {
     const tenant_hex = try h.newUuidString(alloc);
 
     defer alloc.free(tenant_hex);
-    try h.conn.exec(
-        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
-        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
-        \\ON CONFLICT (id) DO NOTHING
-    ,
-        &.{ tenant_hex, "svc04-inuse-t", "SVC04 InUse Tenant", "realm-svc04-inuse", "00000000-0000-0000-0000-000000000000" },
-    );
+    try insertFixtureTenantViaPool(&pool, tenant_hex, "svc04-inuse-t", "SVC04 InUse Tenant", "realm-svc04-inuse");
 
     const svc_id = try randomServiceId(alloc, "svc04-inuse");
     defer alloc.free(svc_id);
@@ -554,14 +561,11 @@ test "svc04: delete service in use by active definition returns 409" {
     try std.testing.expectEqual(@as(u16, 201), r1.status_code);
 
     // Insert an ACTIVE definition referencing this service.
-    // ISOLATION FIX: insert via a pool connection so the row is committed and
-    // visible to the handler's pool connections under READ COMMITTED.  A row
-    // inserted inside the open harness transaction (h.conn) would be invisible
-    // to separate pool connections used by the handler.
-    //
-    // SCHEMA FIX: after Stage-12 (GBL-073), public.process_definitions was
-    // dropped.  Use the known seed-tenant schema that has the table and set
-    // tenant_id to tenant_hex so bpm_active_defs_for_service finds it.
+    // The tenant schema name follows bpm_provision_tenant_schema's convention:
+    // tenant_<uuid_with_dashes_stripped>. After insertFixtureTenantViaPool
+    // above, this schema already exists and is registered in public.tenant_schemas.
+    const inuse_schema = try std.fmt.allocPrint(alloc, "tenant_{s}", .{tenant_hex[0..8] ++ tenant_hex[9..13] ++ tenant_hex[14..18] ++ tenant_hex[19..23] ++ tenant_hex[24..36]});
+    defer alloc.free(inuse_schema);
     const graph_json = try std.fmt.allocPrint(alloc,
         \\{{"nodes":[{{"id":"N1","node_type":"SERVICE_TASK","attributes":{{"service_id":"{s}"}}}}],"edges":[]}}
     , .{svc_id});
@@ -569,10 +573,8 @@ test "svc04: delete service in use by active definition returns 409" {
     {
         const fix_conn = try pool.acquire();
         defer pool.release(fix_conn);
-        // Create the schema and table for tenant so bpm_active_defs_for_service can find it.
-        try fix_conn.exec("CREATE SCHEMA IF NOT EXISTS tenant_d4400000000000000000000000000001", &.{});
-        try fix_conn.exec(
-            \\CREATE TABLE IF NOT EXISTS tenant_d4400000000000000000000000000001.process_definitions (
+        const create_sql = try std.fmt.allocPrint(alloc,
+            \\CREATE TABLE IF NOT EXISTS {s}.process_definitions (
             \\  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             \\  tenant_id UUID NOT NULL,
             \\  name TEXT NOT NULL,
@@ -584,15 +586,17 @@ test "svc04: delete service in use by active definition returns 409" {
             \\  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             \\  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             \\)
-        , &.{});
-        // Set bpm.tenant_id to tenant_hex so the RLS policy on the
-        // tenant schema table allows the INSERT (policy checks tenant_id = bpm_effective_tenant_id()).
+        , .{inuse_schema});
+        defer alloc.free(create_sql);
+        try fix_conn.exec(create_sql, &.{});
         try fix_conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_hex});
-        try fix_conn.exec(
-            \\INSERT INTO tenant_d4400000000000000000000000000001.process_definitions
+        const insert_sql = try std.fmt.allocPrint(alloc,
+            \\INSERT INTO {s}.process_definitions
             \\  (id, tenant_id, name, version, description, status, graph, created_by, created_at, updated_at)
             \\VALUES (gen_random_uuid(), $1::uuid, $2, '1.0.0', 'in-use test', 'ACTIVE', $3::jsonb, gen_random_uuid(), now(), now())
-        , &.{ tenant_hex, svc_id, graph_json });
+        , .{inuse_schema});
+        defer alloc.free(insert_sql);
+        try fix_conn.exec(insert_sql, &.{ tenant_hex, svc_id, graph_json });
     }
 
     // Delete must return 409.
@@ -605,7 +609,9 @@ test "svc04: delete service in use by active definition returns 409" {
         const clean_conn = try pool.acquire();
         defer pool.release(clean_conn);
         try clean_conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_hex});
-        try clean_conn.exec("DROP TABLE IF EXISTS tenant_d4400000000000000000000000000001.process_definitions", &.{});
+        const drop_sql = try std.fmt.allocPrint(alloc, "DROP TABLE IF EXISTS {s}.process_definitions", .{inuse_schema});
+        defer alloc.free(drop_sql);
+        try clean_conn.exec(drop_sql, &.{});
     }
 }
 
@@ -634,20 +640,8 @@ test "svc04: GET services for tenant admin excludes other tenants scoped service
     defer alloc.free(tenant_a_hex);
     const tenant_b_hex = try h.newUuidString(alloc);
     defer alloc.free(tenant_b_hex);
-    try h.conn.exec(
-        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
-        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
-        \\ON CONFLICT (id) DO NOTHING
-    ,
-        &.{ tenant_a_hex, "svc04-lst-ta", "SVC04 List TA", "realm-svc04-ta", "00000000-0000-0000-0000-000000000000" },
-    );
-    try h.conn.exec(
-        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
-        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
-        \\ON CONFLICT (id) DO NOTHING
-    ,
-        &.{ tenant_b_hex, "svc04-lst-tb", "SVC04 List TB", "realm-svc04-tb", "00000000-0000-0000-0000-000000000000" },
-    );
+    try insertFixtureTenantViaPool(&pool, tenant_a_hex, "svc04-lst-ta", "SVC04 List TA", "realm-svc04-ta");
+    try insertFixtureTenantViaPool(&pool, tenant_b_hex, "svc04-lst-tb", "SVC04 List TB", "realm-svc04-tb");
 
     const svc_global = try randomServiceId(alloc, "svc04-lst-g");
     defer alloc.free(svc_global);
@@ -710,13 +704,7 @@ test "svc04: GET admin services returns all entries" {
     const tenant_hex = try h.newUuidString(alloc);
 
     defer alloc.free(tenant_hex);
-    try h.conn.exec(
-        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
-        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
-        \\ON CONFLICT (id) DO NOTHING
-    ,
-        &.{ tenant_hex, "svc04-all-t", "SVC04 All Tenant", "realm-svc04-all", "00000000-0000-0000-0000-000000000000" },
-    );
+    try insertFixtureTenantViaPool(&pool, tenant_hex, "svc04-all-t", "SVC04 All Tenant", "realm-svc04-all");
 
     const svc_global = try randomServiceId(alloc, "svc04-all-g");
     defer alloc.free(svc_global);
