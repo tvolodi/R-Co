@@ -55,6 +55,16 @@ fn platformCallService(L: *bindings.LuaState) callconv(.c) c_int {
     // ADP-08's wildcard model is a cross-cutting follow-up (design §11.1).
     host_context.requireCapability(L, FN_NAME, required);
 
+    // LUA-10, design §2.5.4: pre-call deadline check. `call_service` is the
+    // one host function this tranche's LUA-10 acceptance criteria require to
+    // respect the timeout while blocked — the count hook (instruction_limiter.zig)
+    // cannot fire while a lua_CFunction is running, so this and the post-call
+    // check below are what makes the watchdog's detection operationally
+    // meaningful for a slow host call, not just a flag nothing ever reads.
+    if (host_context.activeWatchdogFired(L)) {
+        host_context.raiseMessage(L, "platform.call_service: wall-clock timeout exceeded");
+    }
+
     // Remaining arguments (minimum 3 overall: svc_id, method, path).
     host_context.checkArgCount(L, FN_NAME, 3);
     const nargs = bindings.lua_gettop(L);
@@ -106,11 +116,35 @@ fn platformCallService(L: *bindings.LuaState) callconv(.c) c_int {
             // across lua_error's longjmp — so it is freed explicitly here
             // first, then the raise happens (ERR-2).
             freeThenRaise(L, allocator, fingerprint, "platform.call_service: the service call failed");
-        defer response.deinit(allocator);
 
+        // LUA-10, design §2.5.4: post-call deadline check, re-checked
+        // immediately before returning a result. A call that took long enough
+        // to cross the deadline while it ran must not report success — this
+        // is what stops a script from ever observing a stale successful
+        // result past its configured timeout.
+        //
+        // ERR-2: `response` is heap-allocated (executeMockedServiceCall's
+        // caller-owns-it contract) and `lua_error`'s longjmp does NOT run any
+        // `defer` in this frame, so a plain `defer response.deinit(allocator)`
+        // registered before this check would leak on the raise path — same
+        // class of bug the `fingerprint`/`freeThenRaise` pattern above already
+        // guards against. Both `fingerprint` and `response` are therefore
+        // freed explicitly on this path before raising, not via `defer`.
+        if (host_context.activeWatchdogFired(L)) {
+            response.deinit(allocator);
+            host_context.raiseMessage(L, "platform.call_service: wall-clock timeout exceeded");
+        }
+
+        defer response.deinit(allocator);
         bindings.lua_pushlstring(L, @ptrCast(response.body.ptr), response.body.len);
         bindings.lua_pushnumber(L, @floatFromInt(response.status_code));
         return 2;
+    }
+
+    // LUA-10, design §2.5.4: post-call deadline check for the non-simulation
+    // path too — same rationale as the simulation path above.
+    if (host_context.activeWatchdogFired(L)) {
+        host_context.raiseMessage(L, "platform.call_service: wall-clock timeout exceeded");
     }
 
     // For non-simulation mode in this stage, keep a deterministic no-op response.

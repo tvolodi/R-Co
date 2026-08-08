@@ -50,6 +50,9 @@ const host_context = @import("host_context.zig");
 const capabilities = @import("capabilities.zig");
 const manifest = @import("manifest.zig");
 const stdlib = @import("stdlib.zig");
+const instruction_limiter = @import("instruction_limiter.zig");
+const memory_limiter = @import("memory_limiter.zig");
+const timeout_ctx = @import("timeout.zig");
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -250,7 +253,18 @@ fn runWithoutContext(out: []u8, src: [*:0]const u8, replacement: enum { absent, 
         .actor_id = "iss0169-failclosed-actor",
     };
 
-    const L = try executor.createSandboxedState(&ctx);
+    const limits = executor.RunLimits{
+        .max_instructions = manifest.Limits.MAX_INSTRUCTIONS,
+        .max_memory_bytes = manifest.Limits.MAX_MEMORY_BYTES,
+        .timeout_seconds = manifest.Limits.MAX_TIMEOUT_SECONDS,
+    };
+    var limiter_storage = instruction_limiter.RunLimiter{
+        .instruction = instruction_limiter.InstructionLimiter.init(std.testing.allocator, limits.max_instructions),
+        .timeout = timeout_ctx.TimeoutContext.init(limits.timeout_seconds),
+    };
+    var mem_limiter_storage = memory_limiter.MemoryLimiter.init(std.testing.allocator, limits.max_memory_bytes);
+
+    const L = try executor.createSandboxedState(&ctx, limits, &limiter_storage, &mem_limiter_storage);
     defer bindings.lua_close(L);
 
     // Sanity: the context IS installed and readable before we break it.

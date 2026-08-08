@@ -138,6 +138,26 @@ pub fn contextFromState(L: *bindings.LuaState) ?*const executor.ExecutionContext
     return @ptrCast(@alignCast(raw));
 }
 
+/// LUA-10, design §2.5.4: has the active watchdog for this execution already
+/// observed its deadline pass? Reads `context.active_watchdog` off the SAME
+/// `ExecutionContext` `contextFromState` already returns — no new registry
+/// key, the watchdog pointer rides the existing `"bpm.execution_context"`
+/// channel as one more field on the struct already installed there, same as
+/// every other `ExecutionContext` field host functions already read (e.g.
+/// `.capabilities`).
+///
+/// Returns `false` (not an error) if `contextFromState` itself returns `null`
+/// or `active_watchdog` is `null` — this is a liveness check, not a security
+/// gate, so it fails open on "no context installed" (unlike
+/// `requireCapability`'s fail-closed CAP-2 rule, which governs authorization
+/// decisions, not deadline observation — the same distinction
+/// `instruction_limiter.limiterFromState`'s `orelse return` note draws).
+pub fn activeWatchdogFired(L: *bindings.LuaState) bool {
+    const context = contextFromState(L) orelse return false;
+    const wd = context.active_watchdog orelse return false;
+    return wd.hasFired();
+}
+
 // ---------------------------------------------------------------------------
 // The capability gate (design §3)
 // ---------------------------------------------------------------------------
