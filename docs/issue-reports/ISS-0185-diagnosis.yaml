@@ -51,22 +51,32 @@ classification_table:
     the table legitimately serves both global and per-tenant rows by
     design (e.g. service_catalog) — already addressed by GBL-117.
 
-  global_registry_tenant_default_is_stray: 37
+  # NOTE (2026-08-08, ISS-0621 / GH #574): the two list keys below use a
+  # `key: N` count immediately followed by a same-indentation `- item`
+  # sequence. This is not a nested YAML sequence under the key (which
+  # would require the `-` items indented further than `key:`) — a
+  # standard YAML parser folds `key: N` plus the following unindented
+  # `- item` lines into a single plain scalar string "N - item - item...".
+  # This pre-dates this fix (confirmed present in the original a2a8c68
+  # commit) and is the real reason the ':37'/':8' labels could silently
+  # drift from the actual item count: nothing ever parsed this block as a
+  # structured list to begin with. Left as informal same-indentation
+  # bullet lists (matching the original authoring style) but the counts
+  # below are now correct; do not rely on YAML tooling to programmatically
+  # read these two fields as sequences without first fixing the indentation.
+  global_registry_tenant_default_is_stray_count: 28
+  global_registry_tenant_default_is_stray:
     - agent_bootstrap_audit
     - agent_bootstrap_state
     - agent_identity_binding
     - agent_secret_rotation
-    - api_token_audit
     - artifact_versions
-    - event_payload_store
     - event_type_registry_producers
     - federation_attribute_mapping
     - idp_adapter_audit
     - idp_federation_binding
     - idp_operation_ledger
     - idp_transaction_log
-    - instance_definition_snapshots
-    - instance_waits
     - jit_provisioning_config
     - metric_snapshots
     - obs_alert_hook_emission_state
@@ -83,26 +93,54 @@ classification_table:
     - tenant
     - tenant_artifact_activations
     - tenant_hostnames
-    - variable_schemas
     - "registry_idp_operation_ledger"
-  per_tenant_public_is_stray: 8
+  per_tenant_public_is_stray_count: 18
+  per_tenant_public_is_stray:
+    - api_token_audit
     - artifact_activation_groups
     - artifact_activation_history
     - artifact_activations
     - entity_definitions
     - entity_record_latest
     - entity_type_instances
+    - event_payload_store
     - group_roles
+    - instance_definition_snapshots
+    - instance_waits
     - role_permissions
     - sessions
     - sla_records
     - subprocess_links
     - user_groups
+    - variable_schemas
     - webhook_deliveries
 
+  # 2026-08-08 correction (ISS-0621 / GH #574): the 5 names below were
+  # originally listed under global_registry_tenant_default_is_stray
+  # (mislabeled GLOBAL_REGISTRY) while migrations/GBL-135_iss0185_drop_
+  # per_tenant_shadows.sql's v_tables array already classified and acted
+  # on them as PER_TENANT (dropped their public shadow copies). Re-verified
+  # independently against src/**/*.zig call sites (all 5 are queried via
+  # unqualified table names scoped to per-instance/per-tenant data — e.g.
+  # instance_definition_snapshots and instance_waits key off instance_id,
+  # api_token_audit/event_payload_store/variable_schemas follow the same
+  # per-tenant access pattern) and confirmed consistent with GBL-135's
+  # already-executed PER_TENANT classification. Moved to
+  # per_tenant_public_is_stray to match reality and avoid a future
+  # migration attempting to reverse already-applied, tenant-data-preserving
+  # DDL. The original ':37'/':8' labels also did not match the lists'
+  # actual lengths (33 / 13) even before this move; both labels and the
+  # totals below are corrected to the reconciled counts.
+  moved_2026_08_08_global_to_per_tenant:
+    - api_token_audit
+    - event_payload_store
+    - instance_definition_snapshots
+    - instance_waits
+    - variable_schemas
+
   intentionally_shared: 0
-  total_classified: 45
-  total_observed:   45
+  total_classified: 46
+  total_observed:   46
 
 root_causes_identified:
 
