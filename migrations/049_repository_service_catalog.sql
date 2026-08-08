@@ -5,6 +5,9 @@
 -- Covers:
 --   - REPO-07: Service catalog
 
+-- scope: public
+-- ISS-0185: this migration creates a global-registry table.
+
 CREATE TABLE IF NOT EXISTS service_catalog (
     service_id           VARCHAR(255) NOT NULL PRIMARY KEY,
     endpoint_url         VARCHAR(2048) NOT NULL,

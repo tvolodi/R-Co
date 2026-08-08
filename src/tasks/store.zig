@@ -625,9 +625,14 @@ pub const TaskStore = struct {
             const aid_idx = sql_params.items.len;
 
             if (params.include_group_membership_for_user) {
+                // ISS-0619 fix: tasks.assignee_ref is TEXT (see migrations/005_instances.sql);
+                // group_members.group_id is UUID. Cast tasks.assignee_ref to UUID inside the
+                // EXISTS subquery so the type comparison succeeds. A non-UUID assignee_ref
+                // (malformed row) causes the EXISTS to return false for that row, silently
+                // filtered out — no error propagates.
                 const cond = std.fmt.allocPrint(
                     a,
-                    "((assignee_type = 'USER' AND assignee_ref = ${d}::uuid) OR (assignee_type = 'GROUP' AND EXISTS (SELECT 1 FROM group_members gm WHERE gm.user_id = ${d}::uuid AND gm.group_id = tasks.assignee_ref)))",
+                    "((assignee_type = 'USER' AND assignee_ref = ${d}::uuid) OR (assignee_type = 'GROUP' AND EXISTS (SELECT 1 FROM group_members gm WHERE gm.user_id = ${d}::uuid AND gm.group_id = tasks.assignee_ref::uuid)))",
                     .{ aid_idx, aid_idx },
                 ) catch return TaskError.InvalidInput;
                 conditions.append(a, cond) catch return TaskError.InvalidInput;

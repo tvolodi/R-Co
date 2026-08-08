@@ -330,17 +330,19 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0185",
+      "issue_id": "GH-518",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/518",
-      "title": "45 business tables duplicated between public and tenant_default with diverging columns",
+      "title": "45 business tables are duplicated between public and tenant_default with diverging columns",
       "severity": "MAJOR",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "lock": null,
-      "added_at": "2026-08-07T02:54:27Z",
-      "started_at": null,
-      "completed_at": null,
+      "added_at": "2026-08-07T23:07:38Z",
+      "started_at": "2026-08-07T23:07:38Z",
+      "completed_at": "2026-08-08T03:25:14Z",
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 518,
+      "labels": []
     },
     {
       "issue_id": "GH-520",
@@ -512,6 +514,23 @@
       "added_at": "2026-08-08T02:27:43Z",
       "started_at": "2026-08-08T02:27:43Z",
       "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-568",
+      "issue_number": 568,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/568",
+      "title": "ISS-0619 \u2014 idn02/idn03: group task claim and role-scoped task list return 403/500 instead of 200 (3 blocks)",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "RESOLVED",
+      "lock": null,
+      "added_at": "2026-08-08T03:26:52Z",
+      "started_at": "2026-08-08T03:26:52Z",
+      "completed_at": "2026-08-08T04:05:23Z",
       "run_id": null,
       "deferred_reason": null
     }

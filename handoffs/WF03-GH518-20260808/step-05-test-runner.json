@@ -1,0 +1,57 @@
+{
+  "handoff_id": "gh518-05-test-runner-final",
+  "run_id": "WF03-GH518-20260808",
+  "step": "05",
+  "from_agent": "BACKEND-DEV",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-07T22:50:00Z",
+  "started_at": "2026-08-08T03:00:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 1",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "migrations/GBL-134_iss0185_drop_global_registry_shadows.sql",
+      "migrations/GBL-135_iss0185_drop_per_tenant_shadows.sql",
+      "tools/lint_dual_schema_table_names.py",
+      "tests/integration/iss0185_dual_schema_test.zig",
+      "src/design/iss0185_dual_schema_cleanup.md",
+      "docs/issue-reports/ISS-0185-diagnosis.yaml"
+    ],
+    "issue_id": "ISS-0185",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/518"
+  },
+  "task": {
+    "description": "Run the ISS-0185 dual-schema regression test suite and confirm it passes against the post-fix DB state. Additionally, verify that pre-existing failures on main are not caused by ISS-0185.",
+    "acceptance_criteria": [
+      "test-integration-iss0185 exits 0 with all 5 ISS-0185-specific tests passing",
+      "TC-ISS-0185-01..05 all PASS",
+      "Pre-existing failures on main baseline documented; ISS-0185 confirmed not to introduce new failures",
+      "Test report written to tests/reports/report-20260808-WF03-GH518-20260808.yaml"
+    ],
+    "functions_to_call": [
+      "fn:zig-build",
+      "fn:zig-build-test-integration-iss0185",
+      "fn:verify-test-env",
+      "fn:write-test-report",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0185 acceptance tests pass: 5/5. Baseline comparison vs main shows branch has 4 fewer failures (89→85) and 4 more passes (634→638). No new failures introduced by ISS-0185. Pre-existing failures on main are unrelated.",
+    "artifacts_out": [
+      "tests/reports/report-20260808-WF03-GH518-20260808.yaml",
+      "docs/issue-reports/ISS-0185-baseline-comparison.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-03 Step 6)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-08T03:14:00Z"
+}

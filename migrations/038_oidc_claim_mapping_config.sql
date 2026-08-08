@@ -6,6 +6,9 @@
 -- This is a configuration table, not an event-store table. It is read during
 -- startup and on config reload, never on the hot authentication path.
 
+-- scope: public
+-- ISS-0185: this migration creates a global-registry table.
+
 CREATE TABLE IF NOT EXISTS realm_claim_mapping_config (
     realm                   VARCHAR(64) PRIMARY KEY,
     tenant_id_claim         VARCHAR(128) NOT NULL DEFAULT 'tenant_id',
