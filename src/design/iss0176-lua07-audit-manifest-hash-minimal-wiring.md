@@ -2,7 +2,7 @@
 
 **Covers:** LUA-07 (second acceptance criterion only)
 **Related:** GitHub #504, ISS-0176, LUA-04 (`executeScript`), EXT-03 (`plugin_interface.zig`/`plugin_registry.zig`), OBS-03 (`audit_entries`)
-**Primary design targets:** `src/engine/lua_script_audit.zig` (new), `migrations/0NN_iss0176_audit_entries_manifest_hash.sql` (new), `tests/integration/iss0176_lua07_audit_manifest_hash_test.zig` (new)
+**Primary design targets:** `src/engine/lua_script_audit.zig` (new), `migrations/0NN_iss0176_lua_script_execution_audit.sql` (new), `tests/integration/iss0176_lua07_audit_manifest_hash_test.zig` (new)
 
 ---
 
@@ -105,7 +105,7 @@ Doc comment (verbatim intent, BACKEND-DEV must preserve this framing):
 > `processServiceTaskRuntimeInTx` or any other normal process-execution flow.
 > It exists to give the engine one real, callable place that (a) invokes
 > `lua.executor.executeScriptWithManifest` and (b) persists the resulting
-> `manifest_hash` to `audit_entries` — satisfying LUA-07's second acceptance
+> `manifest_hash` to `lua_script_execution_audit` — satisfying LUA-07's second acceptance
 > criterion end-to-end. The general SERVICE_TASK-with-script integration
 > described in `src/design/lua-integration.md` §25 remains unbuilt; when it
 > lands, that work supersedes this function rather than building on it.
@@ -192,7 +192,7 @@ the eventual SERVICE_TASK integration) — not fixed here.
 
 ### 3.2 Migration description (BACKEND-DEV implements; not written here)
 
-New file `migrations/0NN_iss0176_audit_entries_manifest_hash.sql` (BACKEND-DEV
+New file `migrations/0NN_iss0176_lua_script_execution_audit.sql` (BACKEND-DEV
 assigns the next free migration number per the project's numbering
 convention). Must:
 
