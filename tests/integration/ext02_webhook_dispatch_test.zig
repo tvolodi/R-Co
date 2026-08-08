@@ -407,8 +407,9 @@ test "TC-EXT-02-INT-03: DELETE subscription is admin-only and removes row" {
     defer if (worker_delete.body.len > 0) allocator.free(worker_delete.body);
     try testing.expectEqual(@as(u16, 403), worker_delete.status_code);
 
-    const unknown_delete = webhooks_routes.handleDeleteSubscription(allocator, &pool, adminActor(owner_id), try randomUuidStr(allocator));
-    defer allocator.free(unknown_delete.subscription_id_slice);
+    const unknown_subscription_id = try randomUuidStr(allocator);
+    defer allocator.free(unknown_subscription_id);
+    const unknown_delete = webhooks_routes.handleDeleteSubscription(allocator, &pool, adminActor(owner_id), unknown_subscription_id);
     defer if (unknown_delete.body.len > 0) allocator.free(unknown_delete.body);
     try testing.expectEqual(@as(u16, 404), unknown_delete.status_code);
 
