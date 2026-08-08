@@ -462,3 +462,4 @@
 2026-08-08T09:50:31Z | REVIEW | WF03-GH573-20260808 | fc26b70b | CODE-DESIGN-VALIDATOR | rework 1/3 re-review PASS -- 5a/5b sections resolve ISS-VALIDATOR-01/02, lint exit 0 BLOCKER=0 MAJOR=0 MINOR=3, migration files unchanged -> routing to TEST-RUNNER
 2026-08-08T09:53:06Z | COMPLETE | WF03-GH573-20260808 | f06bca4c | TEST-RUNNER | PASS (verify_test_env HEALTHY 10/10 with correct DB URL; unrelated shell env issue noted)
 2026-08-08T09:54:28Z | ROUTE | WF03-GH573-20260808 | 655bfbe7 | ORCH -> RELEASE-VALIDATOR | IN_PROGRESS (Step 5, BLOCKER, PR #581)
+2026-08-08T09:59:47Z | COMPLETE | WF03-GH573-20260808 | 655bfbe7 | RELEASE-VALIDATOR | PASS -- APPROVED, release-WF03-GH573-20260808-2026-08-08.yaml written, CI triggered+verified green (run 31251715131), ISS-0623/GH-580 confirmed non-blocking
