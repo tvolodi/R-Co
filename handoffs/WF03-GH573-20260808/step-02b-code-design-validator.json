@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH573-20260808/step-02b-code-design-validator.json",
   "created_at": "2026-08-08T09:43:38Z",
   "started_at": "2026-08-08T09:49:17Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-08T09:50:31Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": null,
@@ -44,7 +44,13 @@
       "fn:lint-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 1 re-review: 'Public interface' (5a) and 'Error taxonomy' (5b) sections added to src/design/iss0620-gbl134-per-tenant-forward-fix.md genuinely close the prior FAIL's gap -- 5a correctly identifies the migration's schema effect (4 tables, exact shape traced to migrations/094_entity_subsystem.sql and migrations/046_repository_activations.sql per Sec.4) as the interface surface since there is no Zig/HTTP surface; 5b names the single realistic failure mode (CREATE TABLE/INDEX failing for a non-'already exists' reason), correctly states IF NOT EXISTS Postgres semantics, and explicitly enumerates the 3 cases (schema missing -> skip, table exists -> no-op, pre-drop data loss -> non-recoverable/documented) that ISS-VALIDATOR-02 required be named. Content is substantive and accurate against the actual migration, not boilerplate satisfying only the linter's heading regex. python tools/lint_design_artefact.py exits 0: BLOCKER=0 MAJOR=0 MINOR=3 (identical 3 pre-existing schema-qualified-name findings from the prior pass, non-blocking, matches sibling precedent's own MINOR-only profile). Confirmed via git diff 2bd315a..HEAD that migrations/GBL-137_iss0620_recreate_per_tenant_shadows.sql, migrations/GBL-134_iss0185_drop_global_registry_shadows.sql, and tools/lint_dual_schema_table_names.py are byte-for-byte unchanged since the prior review -- rework commit ead78c2 touched only the design doc plus handoff bookkeeping. All 8 substantive acceptance criteria from the original review remain valid (untouched by this rework); the 9th (lint_design_artefact.py exit 0 no BLOCKER/MAJOR) is now also satisfied. ISS-VALIDATOR-01 (missing Public interface section) and ISS-VALIDATOR-02 (missing Error taxonomy section) are both RESOLVED.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
   "rework_count": 1,
   "max_rework": 3
 }
