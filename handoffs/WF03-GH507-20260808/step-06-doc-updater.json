@@ -1,0 +1,39 @@
+{
+  "handoff_id": "58be756c-c1fb-4c0c-99c5-97fb6cc229ad",
+  "run_id": "WF03-GH507-20260808",
+  "workflow_id": "WF-03",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH507-20260808/step-06-doc-updater.json",
+  "created_at": "2026-08-08T12:28:12Z",
+  "started_at": "2026-08-08T12:28:12Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "62efbe6e-b644-42a4-9c49-63b367775a89"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Update CHANGELOG.md for this WF-03 run (ISS-0178/GH-507, PR #585). No formal requirement ID -- do NOT run reqctl.py, no estimation.json -- skip retrospective. PR #585's own CI run already confirmed the new 'Clean-checkout LuaJIT build (test-lua)' job passes for real (1m9s, all 6 checks green) -- this was the one open verification item, now resolved. Note: another workspace (r-co-1-loop) may push to main concurrently -- rebase if needed, resolve any orchestrator.log conflict by keeping both sides chronologically. Then perform Step Final: confirm PR #585 still green, squash-merge, delete branch, update board for issue #507, return to clean main.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with a concise entry for ISS-0178/GH-507",
+      "PR #585 merged (squash) and feature branch deleted",
+      "GitHub issue #507 project board updated (implemented -> done)",
+      "Repo returned to a clean main after merge",
+      "No stale feature branch remains on GitHub"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
