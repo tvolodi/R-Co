@@ -1,0 +1,52 @@
+{
+  "handoff_id": "1fc951ea-143a-4a20-8288-26959a7fcd70",
+  "run_id": "WF03-GH517-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH517-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T03:23:04Z",
+  "started_at": "2026-08-08T03:23:45Z",
+  "completed_at": "2026-08-08T03:25:36Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/iss0184-c3-event-store-test-leak.md",
+      "docs/issue-reports/ISS-0184-diagnosis.yaml",
+      "tests/integration/event_store_integration_test.zig",
+      "src/event_store/store.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0184-c3-event-store-test-leak.md, a Type E design fixing ISS-0184 cluster C3: TC-ES-03-01 in tests/integration/event_store_integration_test.zig leaks 3 heap allocations because neither `first.record` nor `second.record` (both AppendResult values from store.append() calls) is ever deinit()'d. Design specifies defer first.record.deinit(alloc) and defer second.record.deinit(alloc) placed immediately after each append() call. CODE-DESIGNER also swept the whole file and found ZERO existing .record.deinit() calls across all 34 store.append() call sites -- a file-wide gap, not unique to this test -- and intentionally scoped the design to fix only the 2 sites in TC-ES-03-01 (matching ISS-0184 C3's MINOR, single-block scope), flagging the other 32 as an explicit out-of-scope follow-up rather than silently expanding this run. Verify: (1) the defer placement is correct and matches EventRecord.deinit()'s actual signature/behavior (src/event_store/store.zig ~line 96-100); (2) confirm the 34-call-site / 0-existing-deinit claim yourself via grep, don't just trust it; (3) confirm the scope-boundary decision (fix 2, flag 32) is the right call given ISS-0184 C3's stated severity (MINOR) and disposition (DIRECT_FIX_CANDIDATE) -- or whether CLAUDE.md's Unblock-Everything directive should actually require fixing all 34 in this run (read that directive's exact wording on 'blocking vs. adjacent' scope boundary and apply it here: does a leak in 32 OTHER tests block THIS run's acceptance criteria, or is it a genuinely separate, filed-and-forwarded concern?); (4) no production code touched.",
+    "acceptance_criteria": [
+      "defer placement verified correct against EventRecord.deinit()",
+      "34-call-site / 0-existing-deinit claim independently verified via grep",
+      "Scope-boundary decision (fix 2, flag 32) evaluated against CLAUDE.md Unblock-Everything vs. scope boundary wording, with an explicit verdict",
+      "No production code touched",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated src/design/iss0184-c3-event-store-test-leak.md (ISS-0184 C3). Defer placement for first.record.deinit(alloc) and second.record.deinit(alloc) verified correct against EventRecord.deinit() (src/event_store/store.zig lines 96-100): it only frees event_type/payload/metadata ([]const u8 fields), never sequence_number (i64), so the existing expectEqual(first.record.sequence_number, second.record.sequence_number) on line 413 -- which reads both records before either defer fires -- is unaffected. Independently re-verified the call-site claim via grep: raw count is 36 store.append( occurrences (not literally 34), but 2 of those (lines 631, 743) bind the call to an error-union used with expectError and never construct a live AppendResult on a success path, leaving exactly 34 sites that can actually leak a .record -- the design's 34-count is correct once that distinction is accounted for; 0 existing .record.deinit( calls confirmed, file-wide. Applied Unblock-Everything's blocking-vs-adjacent test to the other 32 sites: they do not block this run's acceptance criteria (TC-ES-03-01 passing clean with 0 leaks per ISS-0184 C3's stated MINOR, single-block scope) -- they are a distinct, pre-existing, file-wide gap that TC-ES-03-01 does not depend on and that this run's own test does not exercise. Unblock-Everything binds only to problems that stand in the way of finishing the current task (compile error, broken migration, masking test failure); 32 independent leaks in other already-passing-on-their-own-merits test blocks are the 'defect you merely notice' case the directive explicitly routes to file-and-forward, not fix-here. The design already does the filing correctly (Sec 5/7: flagged for ORCH/ISSUE-FIXER as a separate follow-up issue, not silently dropped). Verdict: the 2-fix/32-flag scope boundary is CORRECT. No production code touched (confirmed: only tests/integration/event_store_integration_test.zig is in scope; src/event_store/store.zig confirmed unmodified and its deinit() is exactly as the design describes). lint_design_artefact.py exits 0, no BLOCKER/MAJOR.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Design Sec 5 states 'Grepped every store.append( call site (34 total)' without noting that 2 additional store.append( occurrences exist (lines 631, 743) which were excluded because they are error-union call sites passed to expectError rather than bound AppendResult values. The 34 figure is correct but the sweep methodology (36 raw matches, 2 legitimately excluded) is not shown in the design text, which could cause a future reader to distrust the count on re-grep, as this validator initially did before reconciling it. Not a rework trigger -- informational only, safe to fold into wording next time this file is touched."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

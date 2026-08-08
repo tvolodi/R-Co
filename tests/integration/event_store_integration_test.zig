@@ -390,7 +390,7 @@ test "TC-ES-03-01: duplicate idempotency_key returns original event with is_dupl
     const inst_uuid = try parseUuid(alloc, inst_str);
     const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000004");
 
-    const first = try store.append(alloc, AppendParams{
+    var first = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES03_TYPE",
         .payload = "{}",
@@ -398,9 +398,10 @@ test "TC-ES-03-01: duplicate idempotency_key returns original event with is_dupl
         .idempotency_key = "es03-idem-001",
         .metadata = null,
     });
+    defer first.record.deinit(alloc);
     try std.testing.expect(!first.is_duplicate);
 
-    const second = try store.append(alloc, AppendParams{
+    var second = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES03_TYPE",
         .payload = "{\"x\":99}",
@@ -408,6 +409,7 @@ test "TC-ES-03-01: duplicate idempotency_key returns original event with is_dupl
         .idempotency_key = "es03-idem-001",
         .metadata = null,
     });
+    defer second.record.deinit(alloc);
     try std.testing.expect(second.is_duplicate);
     // The returned sequence_number must match the first call.
     try std.testing.expectEqual(first.record.sequence_number, second.record.sequence_number);

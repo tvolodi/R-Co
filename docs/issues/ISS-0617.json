@@ -1,0 +1,27 @@
+{
+  "issue_id": "ISS-0617",
+  "title": "exp601_tier_quota_test: tenant tier-profile override not applied — resolver returns platform default (200000) instead of configured override (10) — 4 blocks",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "created_at": "2026-08-08T02:55:00Z",
+  "discovered_by": "ISSUE-FIXER (WF03-GH517-20260808 Step 01 diagnosis of ISS-0184/GH-517)",
+  "discovered_while_fixing": "ISS-0184",
+  "affected_areas": [
+    "tests/integration/exp601_tier_quota_test.zig",
+    "src/exp (effects/quota tier-profile resolution area — exact file not yet identified)"
+  ],
+  "symptom": "TC-EXP-601-01 ('quota policy resolves the effective profile from the active config surface') asserts the resolved profile's max_entity_records_total is 10 (a deliberately small test override) but gets 200000 (the evident platform default) instead. TC-EXP-601-02, 03, 04 (quota middleware rejection tests for entity/file/sandbox-allocation writes) fail downstream of the same misresolved profile.",
+  "root_cause_analysis": "Not yet traced to the specific resolver function or table. TC-EXP-601-01 is the root: whatever config-surface lookup is supposed to find and apply a tenant-specific tier-profile override is not finding it, so the resolver falls through to (or never leaves) the platform default of 200000. Needs a read of the quota/tier-profile resolution code to determine whether this is a lookup-key mismatch (e.g. wrong tenant_id used for the lookup), a missing seed row in the test fixture, or a config-precedence bug (default evaluated/cached before the override is applied). Not observed in any prior ISS file — appears to be a genuinely new, distinct defect, not a symptom of the other ISS-0184 clusters (no SQL error in the postgres server log correlates with this test's timestamp window; it's a pure application-logic mismatch, not a query failure).",
+  "impact": "4 of the ~93 real failures in ISS-0184/GH-517's diagnosed set. Blocks the Green-Main Gate the same as every other ISS-0184 cluster. Also a genuine product-correctness concern: if tier-quota overrides silently don't apply, tenants could exceed their contracted limits in production.",
+  "acceptance_criteria": [
+    "The tier-profile override resolution path is traced from config source to the resolver's return value",
+    "Root cause identified as lookup-key mismatch, missing seed data, or precedence bug",
+    "TC-EXP-601-01 through 04 pass against a freshly migrated database"
+  ],
+  "related": [
+    "ISS-0184 / GH #517 - the holding issue this was split from",
+    "docs/issue-reports/ISS-0184-diagnosis.yaml cluster C7"
+  ],
+  "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and ISS-0184's acceptance criteria explicit split allowance. Diagnosis-only pass; root cause not fully pinned, flagged as needing a code-level read beyond this pass's scope.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/566"
+}

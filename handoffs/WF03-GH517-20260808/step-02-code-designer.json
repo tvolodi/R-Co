@@ -1,0 +1,45 @@
+{
+  "handoff_id": "fc121b52-5dac-4356-b98f-0189dfd8bbec",
+  "run_id": "WF03-GH517-20260808",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH517-20260808/step-02-code-designer.json",
+  "created_at": "2026-08-08T03:17:27Z",
+  "started_at": "2026-08-08T03:19:16Z",
+  "completed_at": "2026-08-08T03:21:29Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0184-diagnosis.yaml",
+      "tests/integration/event_store_integration_test.zig",
+      "src/event_store/store.zig"
+    ]
+  },
+  "task": {
+    "description": "Design a fix for ISS-0184 cluster C3 (docs/issue-reports/ISS-0184-diagnosis.yaml): tests/integration/event_store_integration_test.zig's TC-ES-03-01 (duplicate idempotency_key returns original event with is_duplicate=true) leaks 3 heap allocations per run. Confirmed root cause via direct source read: EventRecord (src/event_store/store.zig ~line 96) already HAS a correct deinit() that frees event_type/payload/metadata -- the bug is NOT in production code. The test itself (tests/integration/event_store_integration_test.zig lines 393-413) calls store.append() twice (first, then second with the same idempotency_key), getting back two AppendResult values whose .record fields each own 3 heap-allocated strings (event_type, payload, metadata, per rowToEventRecord / EventRecord's field docs) -- neither `first` nor `second` is ever deinit()'d in the test. This is a test-file-only fix: add `defer first.record.deinit(alloc);` immediately after the first append() call (line 393-400) and `defer second.record.deinit(alloc);` immediately after the second (line 403-410), matching the ownership-transfer pattern already used correctly elsewhere in this same test file for other Store-returned values. Read the full test function (lines 362-426) and EventRecord.deinit (store.zig ~line 96-100) before designing. Confirm no other test in this file has the same gap while you're in there (a broader sweep may be warranted, but scope the design to at minimum fix TC-ES-03-01; note if you find siblings needing the same fix, list them explicitly for BACKEND-DEV).",
+    "acceptance_criteria": [
+      "Design correctly identifies this as a test-file-only leak (EventRecord.deinit already exists and is correct)",
+      "Design specifies exact defer placement for both first.record and second.record",
+      "Design checks whether other tests in the same file have the same unfreed-AppendResult.record gap and lists any siblings found",
+      "No implementation code present in the design artefact"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Designed a test-only fix for ISS-0184 cluster C3: TC-ES-03-01 in tests/integration/event_store_integration_test.zig leaks 3 heap allocations because neither `first.record` nor `second.record` (both AppendResult values from store.append()) is ever deinit()'d. Confirmed EventRecord.deinit() (src/event_store/store.zig lines 96-100) is already correct -- production code needs no change. Design specifies `defer first.record.deinit(alloc);` and `defer second.record.deinit(alloc);` placed immediately after each append() call, matching the existing acquire-then-defer pattern already used at line 209 for store.read() results. Swept all 34 store.append( call sites in this file for the same .record.deinit() gap: found it is a file-wide gap (0 of 34 call sites ever call .record.deinit()), not unique to TC-ES-03-01. Per ISS-0184's C3 scope (MINOR, single-block direct-fix candidate), this design intentionally fixes only the 2 call sites in TC-ES-03-01 and explicitly flags the other 32 sibling call sites as out of scope, recommending they be filed as a separate follow-up issue rather than expanded into this run.",
+    "artifacts_out": ["src/design/iss0184-c3-event-store-test-leak.md"],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

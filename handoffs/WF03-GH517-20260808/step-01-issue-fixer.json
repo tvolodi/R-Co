@@ -7,9 +7,9 @@
   "to_agent": "ISSUE-FIXER",
   "file": "handoffs/WF03-GH517-20260808/step-01-issue-fixer.json",
   "created_at": "2026-08-08T02:29:13Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-08T02:29:59Z",
+  "completed_at": "2026-08-08T03:12:04Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -33,7 +33,30 @@
       "fn:register-issue"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Re-measured zig build test-integration-svc against a freshly migrated database (workspace r-co-2): 635 pass, 9 skip, 88 fail, 1 crashed, 733 total, 52 leaks -- the issue's stale 62/31-file baseline was superseded (surface shifted after 10 adjacent GH issues resolved 2026-08-07). The 85x C22021 hypothesis was a misdiagnosis: those are audit_chain_utf8_test.zig's expected, caught-and-handled internal errors proving migration 1107's guard works (all 4 of that file's tests pass). 93 real failures clustered into 11 groups, full detail in docs/issue-reports/ISS-0184-diagnosis.yaml: C1 (resource_id TEXT/::uuid cast mismatch, largest real cluster, ~18+ occurrences across 6+ files) -- collision found with already-OPEN ISS-0094/GH#348 (describes the same resource_id story from the opposite, now-resolved direction); updated ISS-0094.json + posted GH#348 comment + queued, NOT refiled. C2 (webhook_subscriptions.secret_ref never reaching freshly-provisioned tenant schemas) -- collision found with already-CLOSED ISS-0112/GH#375 whose fix (migration 1134) only covers tenants existing at migration-apply time; reopened GH#375 with reproduction + updated ISS-0112.json to REOPENED + queued, NOT refiled. C10 (env01_test 12 stale-row assertion failure) -- fully explained by already-OPEN-but-unqueued ISS-0100/GH#357 (leaked production-typed tenant fixture rows, confirmed live: 32 leaked rows found); added to queue, NOT refiled. C4 (5 ADP0x migration-column-check failures, verified live against DB) and C5 (repository_test content_hash, 10 blocks) already covered by OPEN/QUEUED ISS-0185 and ISS-0183 respectively -- no action needed. C3 (event_store store.zig:472 rowToEventRecord leaks 3 duped strings on duplicate-idempotency read-back path, same shape as already-resolved GH#526) is a small, well-understood, single-file DIRECT FIX CANDIDATE. C6 (svc04_admin_api_test, 6 blocks, HTTP validation status mismatches), C7 (exp601_tier_quota_test, 4 blocks, tier-profile override not applied), C8 (sch02_timer_polling_test, 2 blocks, scheduler skip-locked/rollback logic), C9 (idn02/idn03, 3 blocks, group-task-claim 403 + role-scoped list 500) are genuinely new, distinct, not-fully-root-caused clusters -- filed as ISS-0616/GH#565, ISS-0617/GH#566, ISS-0618/GH#567, ISS-0619/GH#568 respectively, each added to the global queue. C11 (2 OS-level socket errors, INVALID_HANDLE/CONNECTION_REFUSED under full-suite contention) noted but not filed -- likely non-deterministic infra flakiness of an already-repeatedly-fixed class (ISS-0182/0186/0187/GH-521/528/556); recommend filing only if it reproduces deterministically. Sent 3 heartbeats via queue_heartbeat.py (02:32, 02:46, 03:09), each committed to a separate main-branch commit and pushed immediately, per protocol. Updated ISS-0184.json itself to diagnosis_status TRIAGED with full cross-references to every sub-issue. Cleanup verified: zero stray test.exe/test-integration-svc.exe processes, zero non-self-referential active DB sessions in bpm_test.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0184-diagnosis.yaml",
+      "docs/issues/ISS-0184.json",
+      "docs/issues/ISS-0094.json",
+      "docs/issues/ISS-0112.json",
+      "docs/issues/ISS-0616.json",
+      "docs/issues/ISS-0617.json",
+      "docs/issues/ISS-0618.json",
+      "docs/issues/ISS-0619.json"
+    ],
+    "issues": [
+      {"id": "ISS-0616", "severity": "MAJOR", "github_issue": "https://github.com/tvolodi/R-Co/issues/565", "title": "svc04_admin_api_test: service validation returns unexpected status codes (6 blocks)"},
+      {"id": "ISS-0617", "severity": "MAJOR", "github_issue": "https://github.com/tvolodi/R-Co/issues/566", "title": "exp601_tier_quota_test: tier-profile override not applied (4 blocks)"},
+      {"id": "ISS-0618", "severity": "MAJOR", "github_issue": "https://github.com/tvolodi/R-Co/issues/567", "title": "sch02_timer_polling_test: skip-locked count 0, forced-failure rollback silent (2 blocks)"},
+      {"id": "ISS-0619", "severity": "MAJOR", "github_issue": "https://github.com/tvolodi/R-Co/issues/568", "title": "idn02/idn03: group task claim 403, role-scoped task list 500 (3 blocks)"},
+      {"id": "ISS-0094", "severity": "MAJOR", "github_issue": "https://github.com/tvolodi/R-Co/issues/348", "title": "audit_entries.resource_id TEXT vs test ::uuid cast mismatch — updated, not new (was already OPEN)"},
+      {"id": "ISS-0112", "severity": "MAJOR", "github_issue": "https://github.com/tvolodi/R-Co/issues/375", "title": "webhook_subscriptions.secret_ref never reaches freshly-provisioned tenant schemas — reopened, not new (was CLOSED prematurely)"},
+      {"id": "ISS-0100", "severity": "MAJOR", "github_issue": "https://github.com/tvolodi/R-Co/issues/357", "title": "Leaked production-typed tenant fixture rows — added to queue, not new (was OPEN but unqueued)"}
+    ],
+    "next_action": "Route to CODE-DESIGNER (Step 2) for: C3 direct-fix candidate only (src/event_store/store.zig rowToEventRecord leak on the duplicate-idempotency-key read-back path in append(), ~line 472/1178-1190; same fix shape as already-resolved GH#526). All other clusters (C1/C2/C10 via ISS-0094/ISS-0112/ISS-0100, C4/C5 via ISS-0185/ISS-0183, C6-C9 via ISS-0616-0619) are filed/queued/reopened for their own separate WF-03 runs, not this run's scope."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
