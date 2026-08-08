@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-08T18:29:04Z'
+last_updated: '2026-08-08T22:28:16Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1898,13 +1898,13 @@ requirements:
       remains unbuilt -- future roadmap item, see src/design/lua-integration.md section 25. Do not read
       this as scripts now running as part of normal process execution -- they do not yet.'
   LUA-08:
-    status: IN_PROGRESS
+    status: RELEASED
     stage: 8
     priority: MUST
     title: Instruction limit
     implemented_in:
     - src/lua/instruction_limiter.zig
-    - src/lua_test_root.zig
+    - src/lua/executor.zig
     test_spec: tests/specs/LUA-08.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
@@ -1916,13 +1916,13 @@ requirements:
       so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
       anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-09:
-    status: IN_PROGRESS
+    status: RELEASED
     stage: 8
     priority: MUST
     title: Memory limit
     implemented_in:
     - src/lua/memory_limiter.zig
-    - src/lua_test_root.zig
+    - src/lua/executor.zig
     test_spec: tests/specs/LUA-09.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
@@ -1934,13 +1934,15 @@ requirements:
       so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
       anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-10:
-    status: IN_PROGRESS
+    status: RELEASED
     stage: 8
     priority: MUST
     title: Wall clock timeout
     implemented_in:
     - src/lua/timeout.zig
-    - src/lua_test_root.zig
+    - src/lua/instruction_limiter.zig
+    - src/lua/host_api/call_service.zig
+    - src/lua/executor.zig
     test_spec: tests/specs/LUA-10.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
