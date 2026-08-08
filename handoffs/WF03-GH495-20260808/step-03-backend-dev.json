@@ -1,0 +1,60 @@
+{
+  "handoff_id": "c3f686f3-f4ee-4d1d-bb85-c0505400c153",
+  "run_id": "WF03-GH495-20260808",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH495-20260808/step-03-backend-dev.json",
+  "created_at": "2026-08-08T21:34:43Z",
+  "started_at": "2026-08-08T21:34:43Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-08",
+      "LUA-09",
+      "LUA-10"
+    ],
+    "related_handoff_ids": [
+      "4f658ead-5dce-49b3-b40e-63cc255ab32b",
+      "422903bf-0c45-459d-82e1-fc886024959b"
+    ],
+    "artifacts_in": [
+      "src/design/iss0169-lua08-09-10-limiter-wiring.md",
+      "src/lua/instruction_limiter.zig",
+      "src/lua/memory_limiter.zig",
+      "src/lua/timeout.zig",
+      "src/lua/executor.zig",
+      "src/lua/host_context.zig",
+      "src/lua/host_api/call_service.zig",
+      "src/lua/manifest.zig",
+      "src/lua/luajit_bindings.zig",
+      "tests/specs/LUA-10.md"
+    ]
+  },
+  "task": {
+    "description": "Implement the APPROVED design at src/design/iss0169-lua08-09-10-limiter-wiring.md (final version, commit 5e2b752, PASSed re-validation at commit 2afdfa1) for LUA-08 (instruction limit), LUA-09 (memory limit), LUA-10 (wall-clock timeout, including the host-external watchdog added in the design's section 2.5).\n\nKNOWN SIGNATURE CORRECTION (flagged by CODE-DESIGN-VALIDATOR as CDV-0169-5, MINOR, non-blocking -- fix it during implementation, no further design cycle needed): the design's illustrative watchdog code cites `std.Thread.sleep` for the poll loop. This repo's actual Zig 0.16.0 stdlib does NOT have `std.Thread.sleep` (confirmed via `zig env` -> lib_dir -> grep Thread.zig/time.zig) -- `std.time.sleep` was also removed. The only sleep left is `std.Io.sleep`, which takes a different calling convention (requires threading an `Io` capability parameter). Find the correct Zig 0.16 primitive for a plain OS-thread sleep in a `std.Thread.spawn`-created thread that has no `Io` instance available (check how other parts of this codebase already solved a similar problem -- e.g. search for existing std.Thread usage or a low-level wait/sleep primitive already in use elsewhere in src/). This is exactly the kind of 'implementation-detail correction within this design's intent, not a design gap' the design's own section 11 anticipates -- fix it directly, do not send back to CODE-DESIGNER.\n\nSections to implement:\n- Section 1: registry-based RunLimiter storage (replaces the lua_setglobal('__limiter__') global in instruction_limiter.zig)\n- Section 2 (2.1-2.4): combined instruction-count + elapsed-time hook\n- Section 2.5: host-external watchdog (WatchdogState/WatchdogHandle in timeout.zig; ExecutionContext gains active_watchdog field; call_service.zig gets pre/post activeWatchdogFired checks)\n- Section 3: wiring into createSandboxedState/executeSource, including RunLimits and UNMANIFESTED_DEFAULT_LIMITS\n- Section 4: memory-limiter wiring into lua_newstate\n- Section 5: all five test specs (5.1 TC-LUA-08-01, 5.2 TC-LUA-09-01, 5.3 TC-LUA-10-01, 5.4 TC-LUA-10-02/spec-TC-LUA-10-03, 5.5 TC-LUA-10-03/spec-TC-LUA-10-04) -- each MUST be written so it is genuinely mutation-checkable per its own 'Mutation check' paragraph. Do not skip the mutation-check discipline -- this run's own history (see design section 11) shows tests that merely call a function without proving real enforcement have repeatedly hidden defects in this codebase (ISS-0172/GH-500 precedent).\n\nFollow every invariant in section 9 (INV-1 through INV-4) and the design's explicit scope boundary in section 8 -- do not touch host_api/ files other than call_service.zig's pre/post watchdog checks, do not touch service_catalog.zig, events.zig, structured_logger.zig, or manifest.zig's validation logic. If implementation reveals the design cannot be followed as written for a reason beyond a small signature correction, STOP and escalate to ORCH rather than silently deviating.",
+    "acceptance_criteria": [
+      "installHook uses LUA_REGISTRYINDEX, not a script-writable global",
+      "LUA-08 and LUA-10 tight-loop share one combined lua_sethook callback",
+      "LUA-10 host-external watchdog implemented per design section 2.5, using a Zig-0.16-correct sleep primitive",
+      "MemoryLimiter.alloc wired into lua_newstate via createSandboxedState",
+      "executeScript (unmanifested) uses UNMANIFESTED_DEFAULT_LIMITS, not unlimited",
+      "All 5 test specs (5.1-5.5) implemented and genuinely mutation-checkable",
+      "zig build, zig build test, zig build migrate all exit 0",
+      "python3 tools/lint_sql_param_types.py src tests exits 0 (if any SQL touched -- likely N/A for this pure-Zig change)",
+      "No scope creep into LUA-11/12/13/15/16 or host_api/ files beyond call_service.zig pre/post checks",
+      "Self-review checklist from CLAUDE.md BACKEND-DEV section fully passed"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:run-zig-tests"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
