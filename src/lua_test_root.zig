@@ -107,11 +107,21 @@ pub const capability_enforcement_test = @import("lua/capability_enforcement_test
 // also reaches `src/simulation/*.zig` for TC-LUA-10-02, escaping src/lua/.
 pub const limiter_wiring_test = @import("lua/limiter_wiring_test.zig");
 
+// ISS-0625 / GH #592 — LUA-12 / LUA-15 / LUA-16 production-code regression
+// tests. Same module-boundary reason as execution_test above: it lives
+// under src/lua/ and is not reachable via refAllDecls from mod.zig, so it
+// is imported here explicitly. Its `test` blocks exercise the registry
+// anti-forgery channel, ServiceCatalog wiring, and the captureStackTrace +
+// conditional ScriptErrorPayload path. See
+// `src/lua/iss0625_lua_12_15_16_test.zig` for the per-test list.
+pub const iss0625_lua_12_15_16_test = @import("lua/iss0625_lua_12_15_16_test.zig");
+
 test {
     std.testing.refAllDecls(lua);
     std.testing.refAllDecls(execution_test);
     std.testing.refAllDecls(limiter_wiring_test);
     std.testing.refAllDecls(capability_enforcement_test);
+    std.testing.refAllDecls(iss0625_lua_12_15_16_test);
 }
 
 /// ISS-0172 / GH #500 — forces field-type resolution AND method-body analysis

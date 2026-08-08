@@ -35,6 +35,11 @@ pub const ServiceCatalog = struct {
         var iter = self.services.iterator();
         while (iter.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
+            // ISS-0625 / GH #592 — endpoint_url is also a heap-allocated
+            // copy made in `register` (matching `service_id`/key, and
+            // request_schema/response_schema); freeing it here closes the
+            // leak the LUA-12 regression test surfaced.
+            self.allocator.free(entry.value_ptr.endpoint_url);
             if (entry.value_ptr.request_schema) |s| {
                 self.allocator.free(s);
             }
