@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGNER",
   "file": "handoffs/WF03-GH567-20260808/step-02-code-designer.json",
   "created_at": "2026-08-08T05:08:40Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-08T05:09:38Z",
+  "completed_at": "2026-08-08T05:13:12Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -34,7 +34,15 @@
       "fn:write-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Designed both ISS-0618 fixes in src/design/iss0618-scheduler-lock-and-error-signaling.md. Investigated ISS-303 (src/design/scheduler-concurrency-epic3.md, commit f799e5d) and confirmed its fire_blk catch-all protects retry/DLQ accounting continuity across repeated pollDueTimers calls (fire_error_count increment via handleTimerFireError, eventual FAILED+DLQ after max_timer_fire_retries) -- NOT an intent to make TransactionFailed permanently unreachable. Confirmed via tests/integration/sch303_timer_dlq_test.zig (TC-SCH-303-03/04): those tests trigger the SAME duplicate-idempotency-key failure as TC-SCH-02-03 but already discard pollDueTimers return value via  in a retry loop -- so they only depend on handleTimerFireError side effects, not on the return value being non-error. Fix 1 (TC-SCH-02-02): add a lock-agnostic existence re-check (plain SELECT, no FOR UPDATE) when the SKIP LOCKED query returns 0 rows, to distinguish genuinely-empty from due-but-locked, returning .skipped_locked instead of .none for the latter. Fix 2 (TC-SCH-02-03): at the appendTimerFiredEventInTx call site only (not the whole fire_blk block), keep the existing rollback + handleTimerFireError(...) call (preserving ISS-303 retry bookkeeping unchanged) but then return SchedulerError.TransactionFailed directly instead of falling through to .none -- every other fire_blk call site (now_rows query, recurrence parsing, rearm, markTimerFiredInTx, etc.) is untouched and keeps swallowing into the existing false/handleTimerFireError/.none path. No new SchedulerError or PollOutcome variants; no test file changes required; no migrations.",
+    "artifacts_out": [
+      "src/design/iss0618-scheduler-lock-and-error-signaling.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
