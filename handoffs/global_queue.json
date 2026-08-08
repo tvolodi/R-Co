@@ -226,17 +226,22 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0174",
+      "issue_id": "GH-502",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/502",
-      "title": "CapabilitySet.summary() does not compile under Zig 0.16 (uncalled public fn body, ISS-0172 blind spot, 3rd instance)",
+      "title": "CapabilitySet.summary() does not compile under Zig 0.16 (stale std.ArrayList init) \u2014 a public, uncalled function body that `zig build test-lua` reports as green (ISS-0174)",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-06T23:02:13Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-1-loop",
+        "locked_at": "2026-08-08T13:27:38Z"
+      },
+      "added_at": "2026-08-08T13:27:38Z",
+      "started_at": "2026-08-08T13:27:38Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 502,
+      "labels": []
     },
     {
       "issue_id": "GH-504",

@@ -1,0 +1,89 @@
+{
+  "handoff_id": "90c81a45-67f3-4df7-89fc-352c47d43667",
+  "run_id": "WF03-GH502-20260808",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "CODE-DESIGNER",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH502-20260808/step-02-code-designer.json",
+  "created_at": "2026-08-08T13:36:18Z",
+  "started_at": "2026-08-08T13:36:18Z",
+  "completed_at": "2026-08-08T13:36:18Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Step 2 (CODE-DESIGNER design artefact)",
+    "requirement_ids": ["ISS-0174", "GH-502"],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/502",
+    "branch": "feature/WF03-GH502-20260808",
+    "base_sha": "179307250c6c6422c8bc3fec83c5e5d2ea6b1030",
+    "decision": "RETAIN",
+    "related_handoff_ids": [
+      "gh502-step00-2026-08-08-1328",
+      "gh502-step01-2026-08-08-1331"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0174-gh502-diagnosis.yaml",
+      "src/lua/capabilities.zig",
+      "src/lua_test_root.zig",
+      "src/lua/host_context.zig"
+    ]
+  },
+  "task": {
+    "description": "Step 2 of WF-03: produce the design artefact for the ISS-0174 / GH-502 fix. Decision (RETAIN and migrate) is locked from Step 1. Design must specify the BEFORE/AFTER for the five stale API calls in src/lua/capabilities.zig:49-60, document the longjmp-unsafe contract on summary()'s doc comment (mirroring writeGrants in src/lua/host_context.zig), produce the test specification (TC-CS-01..05), wire the new real call into src/lua_test_root.zig, and specify the deliberate-mutation verification procedure for BACKEND-DEV Step 3. Out of scope: SHOULD-1 function-level census, SHOULD-2 linter upgrade, doc-comment audit of other functions.",
+    "acceptance_criteria": [
+      "Design artefact exists at src/design/iss0174-gh502-capabilityset-summary-migration.md with all 7 sections (header, interface/type changes, longjmp-safety contract, test specification, build wiring, substitution rules, deliberate-mutation verification, out-of-scope)",
+      "Test spec exists at tests/specs/ISS-0174-gh502-capabilityset-summary.md with TC-CS-01..05 test cases",
+      "Step-02 handoff COMPLETED with result.status PASS and next_action routing to CODE-DESIGN-VALIDATOR (Step 2b)",
+      "Decision RETAIN recorded in design header and propagated to result.summary",
+      "Five substitution rules S1-S5 each one-line token edits (no multi-line rewrites)",
+      "Deliberate-mutation procedure documented with concrete shell commands (mutate, run, capture, revert, re-run)",
+      "Out-of-scope items enumerated explicitly (SHOULD-1 deferred, SHOULD-2 deferred, doc-comment audit out of scope, rename rejected, deletion rejected, refactor of CapabilitySet.grants rejected)",
+      "lint_handoffs.py exits 0 for handoffs/WF03-GH502-20260808/",
+      "registry.json and orchestrator.log updated (BOM-tolerant read, append-only log)"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design complete for ISS-0174 / GH-502. Decision RETAIN. Five substitution rules (S1-S5) for the Zig 0.15 managed -> 0.16 unmanaged ArrayList API migration in src/lua/capabilities.zig (lines 49-60): replace .init with .empty, pass allocator to deinit/appendSlice/toOwnedSlice. Longjmp-unsafe contract documented on summary()'s doc comment (mirroring writeGrants in src/lua/host_context.zig). New test block in src/lua_test_root.zig calls summary() for real (replacing the bare-type pin at line 95) with five test cases TC-CS-01..05 covering empty/single/multi-grant rendering, allocator honouring, and caller ownership. Sorted-join determinism chosen over insertion-order because std.StringHashMap iteration order is undefined. Deliberate-mutation verification procedure specified for BACKEND-DEV Step 3 (inject const _bad: u32 = 'definitely not a u32', run zig build test-lua, expect red, revert, expect green). SHOULD-1 (function-level census) and SHOULD-2 (linter upgrade) deferred to follow-up runs; rename and deletion rejected.",
+    "design_decision": "RETAIN and migrate. The function is the legitimate non-longjmp utility for host-API startup diagnostics, audit log lines, and REST error responses for missing capability metadata. Deletion would silently regress ISS-0169 / GH-495 ERR-2 architecture (the writeGrants / summary split).",
+    "must_items_addressed": [
+      "MUST-1: Migrate CapabilitySet.summary() to Zig 0.16 unmanaged ArrayList API - addressed by design section 5 (S1-S5 substitution rules)",
+      "MUST-2: Replace the bare-type pin at src/lua_test_root.zig:95 with a REAL call to summary() - addressed by design section 4 (new test block appended after ISS-0153 block)",
+      "MUST-3: Deliberate-mutation verification - addressed by design section 6 (concrete shell commands)",
+      "MUST-4: Decision recorded - addressed by design header (decision: RETAIN) and result.design_decision"
+    ],
+    "should_items_addressed": [
+      "SHOULD-1: function-level zero-callers census - DEFERRED to follow-up run; this run delivers the CapabilitySet.summary data point and the procedure (ISS-0172)",
+      "SHOULD-2: strengthen lint_test_wiring.py to flag type-only pins - DEFERRED to ISS-0172 follow-up (same item)"
+    ],
+    "artifacts_out": [
+      "src/design/iss0174-gh502-capabilityset-summary-migration.md",
+      "tests/specs/ISS-0174-gh502-capabilityset-summary.md"
+    ],
+    "substitution_rules": [
+      {"id": "S1", "before": "var buf = std.ArrayList(u8).init(allocator);", "after": "var buf: std.ArrayList(u8) = .empty;"},
+      {"id": "S2", "before": "defer buf.deinit();", "after": "defer buf.deinit(allocator);"},
+      {"id": "S3", "before": "try buf.appendSlice(\", \");", "after": "try buf.appendSlice(allocator, \", \");"},
+      {"id": "S4", "before": "try buf.appendSlice(key.*);", "after": "try buf.appendSlice(allocator, key.*);"},
+      {"id": "S5", "before": "return buf.toOwnedSlice();", "after": "return buf.toOwnedSlice(allocator);"}
+    ],
+    "test_cases_designed": [
+      {"id": "TC-CS-01", "branch": "empty grants", "asserts": "returns literal '(none)', length 6"},
+      {"id": "TC-CS-02", "branch": "single grant", "asserts": "returns grant verbatim, no separator"},
+      {"id": "TC-CS-03", "branch": "multiple grants", "asserts": "sorted lexicographically, joined by ', '"},
+      {"id": "TC-CS-04", "branch": "allocator honoured", "asserts": "implicit - leak detector returns 0"},
+      {"id": "TC-CS-05", "branch": "caller ownership", "asserts": "implicit - defer free succeeds"}
+    ],
+    "build_wiring_decision": "Option (a): new test block in src/lua_test_root.zig (preferred per design section 4). Rationale: self-contained, symmetric with ISS-0153 pin pattern, no change to runtime semantics of host-context test.",
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b) for design validation."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

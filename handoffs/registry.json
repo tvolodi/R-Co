@@ -3113,7 +3113,112 @@
       "created_at": "2026-08-08T12:46:04Z",
       "status": "COMPLETED",
       "stage": "Step 4"
+    },
+    {
+      "handoff_id": "gh502-step00-2026-08-08-1328",
+      "run_id": "WF03-GH502-20260808",
+      "workflow_id": "WF-03",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "file": "handoffs/WF03-GH502-20260808/step-00-backend-dev.json",
+      "created_at": "2026-08-08T13:29:29Z",
+      "completed_at": "2026-08-08T13:29:29Z",
+      "status": "COMPLETED",
+      "priority": "MAJOR",
+      "verdict": "PASS"
+    },
+    {
+      "handoff_id": "gh502-step01-2026-08-08-1331",
+      "file": "handoffs/WF03-GH502-20260808/step-01-issue-fixer.json",
+      "run_id": "WF03-GH502-20260808",
+      "step": "01",
+      "from_agent": "ISSUE-FIXER",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-08T13:31:28Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 1 (ISSUE-FIXER diagnosis)"
+    },
+    {
+      "handoff_id": "90c81a45-67f3-4df7-89fc-352c47d43667",
+      "file": "handoffs/WF03-GH502-20260808/step-02-code-designer.json",
+      "run_id": "WF03-GH502-20260808",
+      "step": "02",
+      "from_agent": "CODE-DESIGNER",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-08T13:36:18Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 2 (CODE-DESIGNER design artefact)"
+    },
+    {
+      "handoff_id": "682591cc-3345-4669-b64d-e74bca51fa1b",
+      "file": "handoffs/WF03-GH502-20260808/step-02b-code-design-validator.json",
+      "run_id": "WF03-GH502-20260808",
+      "step": "02b",
+      "from_agent": "CODE-DESIGN-VALIDATOR",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-08T13:37:58Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 2b"
+    },
+    {
+      "handoff_id": "798801f2-81b0-4213-8668-4dd39b886c69",
+      "file": "handoffs/WF03-GH502-20260808/step-03-backend-dev.json",
+      "run_id": "WF03-GH502-20260808",
+      "step": "03",
+      "from_agent": "BACKEND-DEV",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-08-08T13:46:28Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 3 (BACKEND-DEV implementation)"
+    },
+    {
+      "handoff_id": "gh502-step04-2026-08-08-1748",
+      "file": "handoffs/WF03-GH502-20260808/step-04-test-designer.json",
+      "run_id": "WF03-GH502-20260808",
+      "step": "04",
+      "from_agent": "TEST-DESIGNER",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-08-08T17:48:11Z",
+      "completed_at": "2026-08-08T17:49:26Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 4 (TEST-DESIGNER)"
+    },
+    {
+      "handoff_id": "gh502-step04b-2026-08-08-1754",
+      "file": "handoffs/WF03-GH502-20260808/step-04b-test-design-validator.json",
+      "run_id": "WF03-GH502-20260808",
+      "step": "04b",
+      "from_agent": "TEST-DESIGN-VALIDATOR",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-08T17:54:08Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 4b (TEST-DESIGN-VALIDATOR hard gate)",
+      "completed_at": "2026-08-08T18:07:39Z"
+    },
+    {
+      "handoff_id": "1fda52fc-8d2c-4f5a-b414-7a38cedb2bfa",
+      "file": "handoffs/WF03-GH502-20260808/step-05-test-runner.json",
+      "run_id": "WF03-GH502-20260808",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-08T17:55:23Z",
+      "status": "COMPLETED",
+      "stage": "Step 5",
+      "completed_at": "2026-08-08T18:07:39Z"
+    },
+    {
+      "handoff_id": "790dcc3c-edc2-400b-bf46-7ea0e1ecf1bb",
+      "file": "handoffs/WF03-GH502-20260808/step-07-doc-updater.json",
+      "run_id": "WF03-GH502-20260808",
+      "step": "7",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-08T18:10:50Z",
+      "status": "IN_PROGRESS",
+      "stage": "WF-03 Step 7"
     }
   ],
-  "last_updated": "2026-08-08T05:55:02Z"
+  "last_updated": "2026-08-08T13:46:46Z"
 }

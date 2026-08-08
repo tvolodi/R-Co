@@ -1,0 +1,47 @@
+{
+  "handoff_id": "gh502-step00-2026-08-08-1328",
+  "run_id": "WF03-GH502-20260808",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "BACKEND-DEV",
+  "to_agent": "ORCH",
+  "file": "handoffs/WF03-GH502-20260808/step-00-backend-dev.json",
+  "created_at": "2026-08-08T13:28:21Z",
+  "started_at": "2026-08-08T13:28:21Z",
+  "completed_at": "2026-08-08T13:28:30Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Step 0 (BACKEND-DEV git-setup)",
+    "requirement_ids": ["ISS-0174", "GH-502"],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/502",
+    "related_handoff_ids": [],
+    "artifacts_in": ["docs/issues/ISS-0174.json"]
+  },
+  "task": {
+    "description": "Step 0 git-setup: create feature branch feature/WF03-GH502-20260808 from origin/main (currently at 17930725). Push to remote. Write step-00 handoff with branch evidence.",
+    "acceptance_criteria": [
+      "feature/WF03-GH502-20260808 exists on origin",
+      "step-00 handoff COMPLETED with base_sha and bootstrap_sha evidence",
+      "lint_handoffs.py exits 0 for handoffs/WF03-GH502-20260808/"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "branch": "feature/WF03-GH502-20260808",
+    "base_sha": "179307250c6c6422c8bc3fec83c5e5d2ea6b1030",
+    "bootstrap_sha": "179307250c6c6422c8bc3fec83c5e5d2ea6b1030",
+    "remote_pushed": true,
+    "evidence": {
+      "branch": "feature/WF03-GH502-20260808",
+      "head": "179307250c6c6422c8bc3fec83c5e5d2ea6b1030",
+      "remote_head": "179307250c6c6422c8bc3fec83c5e5d2ea6b1030",
+      "origin_main": "179307250c6c6422c8bc3fec83c5e5d2ea6b1030",
+      "tracking": "origin/feature/WF03-GH502-20260808"
+    },
+    "summary": "Branch created from origin/main at 17930725 and pushed to origin. Step 0 complete.",
+    "next_action": "Route to ISSUE-FIXER (Step 1) for diagnosis."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

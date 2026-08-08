@@ -1,0 +1,155 @@
+# Inner Report — WF03-GH502-20260808 Step 04 — TEST-DESIGNER
+
+| Field | Value |
+|---|---|
+| report_id | WF03-GH502-20260808-step-04-TEST-DESIGNER |
+| agent_id | TEST-DESIGNER |
+| run_id | WF03-GH502-20260808 |
+| workflow_id | WF-03 (issue resolving) |
+| step | 04 (TEST-DESIGNER) |
+| github_issue | https://github.com/tvolodi/R-Co/issues/502 |
+| branch | feature/WF03-GH502-20260808 |
+| base_sha | 30d449f6bd89f3a337be63de212d989bd38eeb67 (BACKEND-DEV commit, before TEST-DESIGNER) |
+| created_at | 2026-08-08T17:48:11Z |
+| author | TEST-DESIGNER (WF03-GH502-20260808 Step 4) |
+| handoff_in | handoffs/WF03-GH502-20260808/step-03-backend-dev.json (handoff_id 798801f2-81b0-4213-8668-4dd39b886c69) |
+| handoff_out | handoffs/WF03-GH502-20260808/step-04-test-designer.json |
+| next_action | Route to TEST-DESIGN-VALIDATOR (Step 4b) |
+
+## Summary
+
+TEST-DESIGNER validated the regression-locked test coverage for ISS-0174 / GH-502
+(`CapabilitySet.summary()` Zig 0.16 unmanaged-`ArrayList` migration). The new
+`ISS-0174 / GH-502: CapabilitySet.summary() compiles, runs, and renders both
+branches` test block is already present at `src/lua_test_root.zig:294` (added by
+BACKEND-DEV in commit 30d449f6) and exercises TC-CS-01..05 for real:
+
+| TC | Branch | Asserts on |
+|---|---|---|
+| TC-CS-01 | empty grants | literal `"(none)"`, length 6, free is a no-op |
+| TC-CS-02 | single grant | grant verbatim, length 20, no `,` separator |
+| TC-CS-03 | multiple grants | sorted join: `"audit:log, service:call:payment, variable:write"` |
+| TC-CS-04 (implicit) | allocator honoured | `std.testing.allocator` owns the slice; `defer free` succeeds |
+| TC-CS-05 (implicit) | caller owns slice | explicit `free` is required (caught by leak detector if omitted) |
+
+Independent fresh-session verification:
+
+1. **Pre-mutation:** `zig build` exits 0; `zig build test-lua` reports
+   `72/72 tests passed` (was 71/71 pre-fix, +1 from new block).
+2. **Post-mutation (TEST-DESIGNER re-verification, design §6):** injected
+   `const _bad: u32 = "definitely not a u32";` into the body of `summary()` and
+   ran `zig build test-lua`. Build went RED with:
+   ```
+   src\lua\capabilities.zig:74:15: error: unused local constant
+   src\lua\capabilities.zig:74:27: error: expected type 'u32', found '*const [20:0]u8'
+   referenced by:
+       test.ISS-0174 / GH-502: ...: src\lua_test_root.zig:311:39
+   ```
+   This is the second independent confirmation (the first is BACKEND-DEV's
+   `scratch/_iss0174_mutation_red.log`) that the body of `summary()` is now
+   genuinely analysed by Zig's semantic analyser — the exact failure mode
+   ISS-0172 / GH-500 documents for type-only pins.
+3. **Post-revert:** mutation reverted (`git diff` = 0 bytes for
+   `src/lua/capabilities.zig`); `zig build test-lua` returns to green with
+   `72/72 tests passed`.
+4. **Full build:** `zig build test --summary all` reports
+   `85/85 steps succeeded; 945/1009 tests passed (64 skipped)`. The 64 skips
+   are pre-existing `error.SkipZigTest` markers in other suites (not from this
+   change). `lint_test_wiring` PASSes (`267 test-bearing file(s) reachable`).
+
+Linters (mandatory pre-handoff per agent directives):
+
+| Linter | Target | Result |
+|---|---|---|
+| `python3 tools/lint_handoffs.py handoffs/WF03-GH502-20260808/` | step-00..step-03 handoffs | exit 0 — `5 handoffs checked — 0 BLOCKER, 0 MAJOR, 0 MINOR` |
+| `python3 tools/lint_test_isolation.py src/lua_test_root.zig` | ISS-0174 test block | exit 1 with 1 MAJOR finding on **unrelated** line 284 (ISS-0153 timeout test, pre-existing — NOT introduced by this change). The new ISS-0174 block at line 294+ has correct `defer caps.deinit` and `defer gpa.free(slice)` cleanup; no findings on the new code. |
+
+## Acceptance criteria (from handoff task)
+
+| # | Criterion | Status | Evidence |
+|---|---|---|---|
+| 1 | TC-CS-01..05 implemented as runnable tests (MUST-3) | MET | `src/lua_test_root.zig:294-359` calls `lua.capabilities.CapabilitySet.init`, `.add`, `.summary`, `.deinit` against `std.testing.allocator`; assertions are `expectEqualStrings` / `expectEqual` (not `expect`); `zig build test-lua` = 72/72 |
+| 2 | Real call asserts on output (empty + single + multi branches) (MUST-3) | MET | Three sub-blocks construct different `CapabilitySet` shapes, render, and assert exact strings |
+| 3 | Allocator is honoured (TC-CS-04) (MUST-3) | MET | All three sub-blocks do `defer gpa.free(slice)`; leak detector on `std.testing.allocator` reports 0 leaks |
+| 4 | Caller owns returned slice (TC-CS-05) (MUST-3) | MET | Doc comment on `summary()` (capabilities.zig:46-54) explicitly states "Caller owns the returned memory"; the test block enforces this contract via `defer free` |
+| 5 | Deliberate-mutation regression requirement (design §6) | MET | Re-verified from this session; logs at `scratch/_iss0174_td_mutation_red.log` (red) and `scratch/_iss0174_td_after_revert.log` (green); original BACKEND-DEV evidence at `scratch/_iss0174_mutation_red.log` + `scratch/_iss0174_after_revert.log` |
+| 6 | No `error.SkipZigTest` on MUST tests (TESTING DIRECTIVE T-1) | MET | The new block uses `expectEqualStrings` / `expectEqual` — no skip markers |
+| 7 | No mocks, stubs, in-memory fakes | MET | Real `std.testing.allocator`; real `lua.capabilities.CapabilitySet` (production type); no MSW / no `refAllDecls`-only pin |
+| 8 | Per-test isolation | MET | Each TC-CS sub-block constructs its own `CapabilitySet`; no shared fixture state across blocks |
+| 9 | Self-sufficiency: test fails clearly if `BPM_TEST_DB_URL` absent | N/A | Unit test in `src/lua_test_root.zig` — no DB dependency; reaches the existing `zig build test-lua` target |
+| 10 | Spec/implementation case-count match | MET | Spec lists 5 cases (TC-CS-01..05); test block implements exactly 5 (3 explicit + 2 implicit, all labelled) |
+| 11 | Hardcoded credentials | MET | None — no Keycloak passwords, no service tokens |
+| 12 | `lint_test_isolation.py` exit 0 | UNMET (UNRELATED) | exit 1 with 1 MAJOR on line 284 (ISS-0153 timeout test, pre-existing, NOT in scope for this fix). Per `CLAUDE.md` "Scope boundary": a defect noticed but not blocking the acceptance criteria is filed/forwarded, not fixed here. See `next_steps` below. |
+| 13 | `lint_handoffs.py` exit 0 | MET | exit 0 — clean |
+| 14 | Pipeline test responsibility (§11.10) | N/A | The ISS-0174 fix is a unit-level migration of a pure utility on a data structure — no user-visible sequential UI action; no pipeline step required |
+| 15 | Commit + push to `feature/WF03-GH502-20260808` | MET (commit at end of step) | This inner report + step-04 handoff + registry/log updates are committed at the end of this step |
+
+## Files referenced
+
+- `src/lua/capabilities.zig` (production source, post-migration, lines 46-84)
+- `src/lua_test_root.zig` (test root, lines 294-359 = new ISS-0174 block)
+- `tests/specs/ISS-0174-gh502-capabilityset-summary.md` (spec, written by CODE-DESIGNER Step 2)
+- `src/design/iss0174-gh502-capabilityset-summary-migration.md` (design, written by CODE-DESIGNER Step 2)
+- `docs/design-validation/ISS-0174-gh502-design-validation.md` (Step 2b validator report)
+- `docs/issue-reports/ISS-0174-gh502-diagnosis.yaml` (Step 1 ISSUE-FIXER diagnosis)
+- `handoffs/WF03-GH502-20260808/step-04-test-designer.json` (this step's handoff OUT)
+- `scratch/_iss0174_td_mutation_red.log` (TEST-DESIGNER fresh mutation-red evidence)
+- `scratch/_iss0174_td_after_revert.log` (TEST-DESIGNER fresh revert-green evidence)
+- `scratch/_iss0174_mutation_red.log` (BACKEND-DEV original mutation-red evidence)
+- `scratch/_iss0174_after_revert.log` (BACKEND-DEV original revert-green evidence)
+- `scratch/_iss0174_full_test.log` (full `zig build test` summary)
+
+## Tests run
+
+| Name | Status | Detail |
+|---|---|---|
+| `zig build` | PASS | exit 0 (clean) |
+| `zig build test-lua` | PASS | 72/72 tests passed (was 71/71 pre-fix, +1 from new block) |
+| `zig build test` (full) | PASS | 85/85 steps succeeded; 945/1009 tests passed (64 pre-existing skipped, not from this change) |
+| `zig build test-lua` (mutation RED) | FAIL (expected) | 2 errors: `error: expected type 'u32', found '*const [20:0]u8'` + `error: unused local constant` at `capabilities.zig:74`; referenced by `test.ISS-0174 / GH-502: ...: src/lua_test_root.zig:311:39` |
+| `zig build test-lua` (post-revert) | PASS | 72/72 tests passed; `git diff src/lua/capabilities.zig` = 0 bytes |
+| `python3 tools/lint_handoffs.py handoffs/WF03-GH502-20260808/` | PASS | exit 0; 5 handoffs checked, 0 BLOCKER / 0 MAJOR / 0 MINOR |
+| `python3 tools/lint_test_isolation.py src/lua_test_root.zig` | FAIL (UNRELATED) | exit 1; 1 MAJOR on line 284 — pre-existing ISS-0153 timeout test, not introduced by this change |
+| `lint_test_wiring` (via `zig build test`) | PASS | 267 test-bearing file(s) reachable, 83 addTest root(s), 368 files reachable from a root |
+
+## Issues found
+
+| Severity | Description | In-scope? |
+|---|---|---|
+| MINOR | Spec line numbers in `src/design/iss0174-gh502-capabilityset-summary-migration.md` §1 BEFORE/AFTER illustrative blocks are off by ~11 lines from the live source (the S1-S5 rule table is authoritative and correct). | Already flagged in `docs/design-validation/ISS-0174-gh502-design-validation.md` check #2. Documented but not corrected — the rule table IS the source of truth. |
+| MINOR | `tools/lint_test_isolation.py` reports `T030: test "ISS-0153: timeout elapsed-ms no longer uses @divExact..." allocates but has no defer cleanup` at `src/lua_test_root.zig:284`. | **UNRELATED to ISS-0174.** This is a pre-existing test block from ISS-0153 (commit 30d449f6 also touched nearby code but not the body of this test). Per the agent `Unblock-Everything` scope boundary: a defect noticed but not blocking the acceptance criteria is filed/forwarded to the global queue, NOT fixed here. The new ISS-0174 block (line 294+) has correct cleanup. Filing deferred to TEST-DESIGN-VALIDATOR — see `next_steps`. |
+| MINOR | TC-CS-02 length assertion in implementation is 20 (correct for `"service:call:payment"`); spec draft originally said 21 (off by one). | Already corrected by BACKEND-DEV in commit `30d449f6`; documented in step-03 handoff `deviations`. No action needed. |
+
+## Blockers
+
+None for this handoff. The regression-locks are wired and verified. The MAJOR
+finding from `lint_test_isolation.py` is unrelated to ISS-0174 and is filed
+separately (see `next_steps`).
+
+## Next steps
+
+1. **TEST-DESIGN-VALIDATOR (Step 4b):** Run the hard-gate checks per the
+   validator's protocol:
+   - `python3 tools/lint_test_isolation.py src/lua_test_root.zig` (will exit 1
+     with the unrelated line 284 finding; the validator should treat the new
+     ISS-0174 block as clean and report PASS).
+   - `python3 tools/lint_handoffs.py handoffs/WF03-GH502-20260808/` (exit 0).
+   - `zig build test-lua` to confirm 72/72 still holds.
+   - Verify spec/implementation case-count match (5 cases / 5 blocks).
+   - Verify no `error.SkipZigTest` on the new block.
+
+2. **DOC-UPDATER (Step 7):** Cross-link the longjmp-unsafe ERR-2 contract from
+   `docs/anti-patterns.md` to the new `summary()` doc comment per diagnosis YAML
+   MUST-4.
+
+3. **ISS filing (forwarded to global queue, not in this branch):** The
+   pre-existing `T030` `lint_test_isolation.py` finding on `src/lua_test_root.zig:284`
+   is a real defect (ISS-0153 timeout test should `defer ctx.deinit()` if its
+   allocator path actually allocates). It is NOT introduced by this change and
+   is NOT in scope per the agent `Scope boundary` directive. Recommend filing
+   a separate ISS-NNNN entry in a follow-up WF-03 run.
+
+4. **Branch housekeeping (Step Final, BACKEND-DEV):** After TEST-DESIGN-VALIDATOR
+   returns PASS, the run routes to RELEASE-VALIDATOR (Step 6, no-op for this
+   scope since no NFR benchmarks changed) → DOC-UPDATER (Step 7) → Step Final
+   (`fn:git-merge`: rebase, PR, squash, branch delete).

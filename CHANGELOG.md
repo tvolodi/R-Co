@@ -6,6 +6,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0174 — migrated `CapabilitySet.summary()` to Zig 0.16's unmanaged `ArrayList` API (MAJOR)** ([GitHub #502](https://github.com/tvolodi/R-Co/issues/502))
+
+- Retained `CapabilitySet.summary()` for non-longjmp callers and migrated its buffer lifecycle to `.empty`, allocator-passing `appendSlice`, `toOwnedSlice`, and `deinit`.
+- Added regression coverage for empty, single-grant, sorted multi-grant, allocator-honoured, and caller-owned-slice behavior (TC-CS-01..05).
+- Verification: `zig build test-lua` 72/72 passed; `zig build test` 945/1009 passed with 64 pre-existing skips and 0 failures. Release decision: APPROVED.
+
 **ISS-0181 — retired the 184 baselined T010 hardcoded-UUID findings by migrating integration fixtures to `TestHarness.newUuid()` / `newUuidString(allocator)` (MAJOR)** ([GitHub #512](https://github.com/tvolodi/R-Co/issues/512))
 
 - **The collision-class problem ISS-0121/#387 was meant to solve, finally retired.** 110 hardcoded UUID sites across 45 test files were replaced with `TestHarness.newUuid()` (binary UUID → Zig struct field) or `newUuidString(allocator)` (SQL-bound string → heap slice with matching `defer alloc.free(...)`). 51 sites were marked RETAIN with a written reason, classified by `docs/issue-reports/ISS-0181-gh512-diagnosis.yaml` per the GH-512 design's §R1 (definition sentinel = 6), §R2 (platform-admin actor = 13), §R3 (creator/conventional = 20 + doc-identity = 34). 1 additional RETAIN was added in commit `22ac3fc0` (the canonical platform-admin UUID string `00000000-0000-0000-0000-000000000001` appears as a substring-search target inside the regression test's TC-RG-02 — design §R1, not a fixture identity).

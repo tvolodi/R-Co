@@ -1,0 +1,86 @@
+{
+  "handoff_id": "gh502-step01-2026-08-08-1331",
+  "run_id": "WF03-GH502-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ISSUE-FIXER",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH502-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T13:31:28Z",
+  "started_at": "2026-08-08T13:31:28Z",
+  "completed_at": "2026-08-08T13:31:28Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Step 1 (ISSUE-FIXER diagnosis)",
+    "requirement_ids": ["ISS-0174", "GH-502"],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/502",
+    "related_handoff_ids": ["gh502-step00-2026-08-08-1328"],
+    "artifacts_in": [
+      "docs/issues/ISS-0174.json",
+      "src/lua/capabilities.zig",
+      "src/lua_test_root.zig",
+      "src/lua/host_context.zig"
+    ]
+  },
+  "task": {
+    "description": "Step 1 of WF-03: diagnose ISS-0174 / GH-502. Confirm the stale std.ArrayList(u8).init(allocator) call at src/lua/capabilities.zig:49 and the stale defer buf.deinit() at line 50; confirm CapabilitySet.summary() has zero callers in the repo; confirm src/lua_test_root.zig only pins the type; classify the failure; recommend a fix scope; produce the diagnosis YAML and this handoff.",
+    "acceptance_criteria": [
+      "Diagnosis YAML exists at docs/issue-reports/ISS-0174-gh502-diagnosis.yaml with all six acceptance criteria mapped to MUST/SHOULD",
+      "Step-01 handoff COMPLETED with result.status PASS and next_action routing to CODE-DESIGNER",
+      "Zero callers of CapabilitySet.summary() empirically confirmed (no real .summary( call against a CapabilitySet in the repo)",
+      "lint_handoffs.py exits 0 for handoffs/WF03-GH502-20260808/",
+      "Decision recorded: RETAIN summary() and migrate to Zig 0.16 unmanaged ArrayList API",
+      "registry.json and orchestrator.log updated (BOM-tolerant read, append-only log)"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:diagnose",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed ISS-0174 / GH-502. Confirmed the stale managed ArrayList API calls (init / deinit / appendSlice / toOwnedSlice) at src/lua/capabilities.zig:49-60 are unreached by any caller; confirmed src/lua_test_root.zig:95 only pins CapabilitySet as a bare type, so Zig's lazy semantic analysis never opens the function body and zig build test-lua reports green despite a hard compile error. The two existing doc-comment mentions of summary() in src/lua/host_context.zig:175 and :359 explicitly say 'do NOT call this from a longjmp context' (ISS-0169 ERR-2). Recommendation: MIGRATE summary() to the Zig 0.16 unmanaged ArrayList API (replace .init with .empty; pass allocator to every appendSlice / toOwnedSlice / deinit call) and ADD a real test in src/lua_test_root.zig that CALLS summary() against an empty CapabilitySet and against a multi-grant CapabilitySet, asserting on both outputs. RETAIN the function (do not delete) because writeGrants in src/lua/host_context.zig is the longjmp-safe twin and summary() is the legitimate utility for non-longjmp callers. The deliberate-mutation verification (ISS-0172 / GH-500 procedure) is preserved as MUST-3. SHOULD-1 extends the ISS-0173 / GH-501 zero-callers census to function-level granularity for src/lua/.",
+    "classification": {
+      "category": "A — Logic error in source (stale managed-API call inside a never-reached function body)",
+      "category_decision": "FIX",
+      "category_rationale": "Source is wrong; the test-pin pattern that hid it is a SEPARATE defect (ISS-0172). Here we fix the source and verify the body is genuinely analysed.",
+      "related": [
+        {"id": "ISS-0172", "relation": "Sister issue — pin-form blind spot; same procedure that surfaced this issue"},
+        {"id": "ISS-0169", "relation": "Source — ERR-2 longjmp-safety rationale for keeping writeGrants separate from summary()"},
+        {"id": "ISS-0173", "relation": "Sister issue — zero-callers census extended as SHOULD-1"}
+      ]
+    },
+    "root_cause": {
+      "stale_calls": [
+        {"line": 49, "token": "var buf = std.ArrayList(u8).init(allocator);", "zig_0_16_form": "var buf: std.ArrayList(u8) = .empty;"},
+        {"line": 50, "token": "defer buf.deinit();", "zig_0_16_form": "defer buf.deinit(allocator);"},
+        {"line": 53, "token": "try buf.appendSlice(\", \");", "zig_0_16_form": "try buf.appendSlice(allocator, \", \");"},
+        {"line": 56, "token": "try buf.appendSlice(key.*);", "zig_0_16_form": "try buf.appendSlice(allocator, key.*);"},
+        {"line": 60, "token": "return buf.toOwnedSlice();", "zig_0_16_form": "return buf.toOwnedSlice(allocator);"}
+      ],
+      "mechanism": "src/lua_test_root.zig:95 pins CapabilitySet with `_ = lua.capabilities.CapabilitySet;` — a bare TYPE reference. Zig resolves struct field types lazily and does not analyse a pub fn body that nothing reachable calls. Because CapabilitySet.summary() has zero real callers (census: 3 mentions of 'summary' across the entire repo, all of them either the definition itself or doc comments in src/lua/host_context.zig instructing callers NOT to use it), its body is never opened and the stale managed-API calls are never type-checked."
+    },
+    "must_items": [
+      "MUST-1: Migrate CapabilitySet.summary() to Zig 0.16 unmanaged ArrayList API (5 line-level edits in src/lua/capabilities.zig)",
+      "MUST-2: Replace the bare-type pin at src/lua_test_root.zig:95 with a REAL call to summary() inside a test block that exercises both branches (empty -> '(none)' ; multi-grant -> joined string with ', ' separator)",
+      "MUST-3: Deliberate-mutation verification — inject a statement error into summary() body, run zig build test-lua, confirm target goes red, revert mutation, confirm target returns to green",
+      "MUST-4: Record the decision (RETAIN and migrate) in this diagnosis YAML's fix_plan.decision field; cross-link from docs/anti-patterns.md under the ISS-0169 ERR-2 entry in DOC-UPDATER Step 7"
+    ],
+    "should_items": [
+      "SHOULD-1: Extend the ISS-0173 / GH-501 zero-callers census to public pub fn declarations under src/lua/ (function-level granularity), classifying each zero-caller as (a) candidate for deletion, (b) intentionally retained public API, or (c) ISS-0172 blind-spot class",
+      "SHOULD-2: Strengthen tools/lint_test_wiring.py to flag type-only pins (same item as ISS-0172 acceptance criterion #4; may be addressed jointly)"
+    ],
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0174-gh502-diagnosis.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2) for the fix design"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

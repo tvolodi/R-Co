@@ -1,0 +1,108 @@
+{
+  "handoff_id": "798801f2-81b0-4213-8668-4dd39b886c69",
+  "run_id": "WF03-GH502-20260808",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "BACKEND-DEV",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF03-GH502-20260808/step-03-backend-dev.json",
+  "created_at": "2026-08-08T13:46:28Z",
+  "started_at": "2026-08-08T13:46:28Z",
+  "completed_at": "2026-08-08T13:46:28Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Step 3 (BACKEND-DEV implementation)",
+    "requirement_ids": [
+      "ISS-0174",
+      "GH-502"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/502",
+    "branch": "feature/WF03-GH502-20260808",
+    "base_sha": "179307250c6c6422c8bc3fec83c5e5d2ea6b1030",
+    "decision": "RETAIN",
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0174-gh502-diagnosis.yaml",
+      "src/design/iss0174-gh502-capabilityset-summary-migration.md",
+      "tests/specs/ISS-0174-gh502-capabilityset-summary.md",
+      "docs/design-validation/ISS-0174-gh502-design-validation.md",
+      "src/lua/capabilities.zig",
+      "src/lua_test_root.zig"
+    ],
+    "artifacts_out": [
+      "src/lua/capabilities.zig",
+      "src/lua_test_root.zig"
+    ]
+  },
+  "task": {
+    "description": "Step 3 implementation: migrate CapabilitySet.summary() from Zig 0.15 managed ArrayList to Zig 0.16 unmanaged API per design S1-S5. Add ISS-0174 test block to src/lua_test_root.zig covering TC-CS-01..05. Run deliberate-mutation verification per design section 6.",
+    "acceptance_criteria": [
+      "MUST-1: src/lua/capabilities.zig compiles under Zig 0.16 with body genuinely analysed",
+      "MUST-2: std.ArrayList(u8).init(allocator) migrated to unmanaged API (.empty + allocator-passing appendSlice/toOwnedSlice/deinit)",
+      "MUST-3: A build target CALLS CapabilitySet.summary() and asserts on output (TC-CS-01..05)",
+      "MUST-4: Deliberate-mutation verification: inject statement error -> zig build test-lua goes red",
+      "MUST-5: Decision recorded on whether summary() should exist at all (RETAIN)",
+      "All commits pushed to origin/feature/WF03-GH502-20260808"
+    ],
+    "functions_to_call": [
+      "fn:apply-substitutions",
+      "fn:update-doc-comment",
+      "fn:add-test-block",
+      "fn:deliberate-mutation-verify",
+      "fn:commit-and-push",
+      "fn:write-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Migrated CapabilitySet.summary() to Zig 0.16 unmanaged ArrayList per design S1-S5 (lines 49-60 of src/lua/capabilities.zig): std.ArrayList(u8).init -> .empty; defer buf.deinit() -> defer buf.deinit(allocator); appendSlice -> appendSlice(allocator, ...); toOwnedSlice -> toOwnedSlice(allocator). Sorted grant keys lexicographically before joining so TC-CS-03 is deterministic. Added longjmp-unsafe (ERR-2) doc comment mirroring writeGrants. New test block 'ISS-0174 / GH-502: CapabilitySet.summary() compiles, runs, and renders both branches' added to src/lua_test_root.zig covering TC-CS-01..05. Deliberate mutation (u32 := string) on line 55 made zig build test-lua go RED with a type error citing the new test block; mutation reverted, build is GREEN.",
+    "artifacts_out": [
+      "src/lua/capabilities.zig",
+      "src/lua_test_root.zig"
+    ],
+    "commit_sha": "30d449f6bd89f3a337be63de212d989bd38eeb67",
+    "commit_short": "30d449f6",
+    "branch": "feature/WF03-GH502-20260808",
+    "remote_pushed": true,
+    "push_evidence": "17930725..30d449f6  feature/WF03-GH502-20260808 -> feature/WF03-GH502-20260808",
+    "must_criteria": {
+      "MUST-1": {
+        "status": "PASS",
+        "evidence": "zig build exits 0; deliberate mutation makes build go RED with type error citing capabilities.zig:55:27 \u2014 proves body is genuinely analysed."
+      },
+      "MUST-2": {
+        "status": "PASS",
+        "evidence": "All 5 substitutions (S1-S5) applied to live source by token. Verified by direct read of src/lua/capabilities.zig lines 49-83."
+      },
+      "MUST-3": {
+        "status": "PASS",
+        "evidence": "zig build test-lua: 72/72 tests passed (was 71/71, +1 from new ISS-0174 block). New block exercises summary() for real across empty + single + multi-grant branches."
+      },
+      "MUST-4": {
+        "status": "PASS",
+        "evidence": "Mutation: const _bad: u32 = 'definitely not a u32'; in summary() body -> zig build test-lua exit 1 with: src\\lua\\capabilities.zig:55:27: error: expected type 'u32', found '*const [20:0]u8' AND 'test.ISS-0174 / GH-502: ...: src\\lua_test_root.zig:311:39'. Reverted -> exit 0, 72/72 passed. Logged in scratch/_iss0174_mutation_red.log and scratch/_iss0174_after_revert.log."
+      },
+      "MUST-5": {
+        "status": "PASS",
+        "evidence": "Decision: RETAIN. Recorded in: (a) diagnosis YAML fix_plan.decision (RETAIN), (b) design header 'decision: RETAIN', (c) summary() doc comment (longjmp-unsafe contract), (d) this handoff context.decision field."
+      }
+    },
+    "validation_outputs": {
+      "zig_build": "exit 0",
+      "zig_build_test_lua": "exit 0; 72/72 tests passed (was 71/71)",
+      "zig_build_test": "exit 0; 945/1009 tests passed (64 pre-existing skipped, not from this change)",
+      "lint_test_isolation": "exit 0; OK \u2014 131 file(s) checked, no isolation issues",
+      "verify_test_env": "exit 0; HEALTHY \u2014 10/10 checks passed",
+      "lint_handoffs": "exit 0 (pre-check on existing files)"
+    },
+    "deviations": [
+      "TC-CS-02 length assertion was 20 not 21 \u2014 corrected during implementation (the literal 'service:call:payment' is 20 chars, not 21). Documented in commit message.",
+      "Added a small helper `lessThanStr(_: void, lhs, rhs)` as the comparator for std.mem.sort. Required because std.mem.sort's context parameter cannot be a closure in Zig; the design did not explicitly forbid it but also did not require it. Keeping it private (file-scope, lowercase, not exported) preserves the public surface."
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 4) for test design validation. The new test block is already in place; TEST-DESIGN-VALIDATOR should run lint_test_isolation.py and lint_handoffs.py, then check (1) every MUST requirement has a runnable integration test (the ISS-0174 block IS the test \u2014 it lives in src/lua_test_root.zig and is reached by zig build test-lua), (2) no error.SkipZigTest on MUST tests (none here \u2014 all in-test assertions are std.testing.expectEqual/expectEqualStrings), (3) all fixtures use per-test UUIDs (no fixture-state across tests; each block constructs its own CapabilitySet), (4) tests clean up after themselves (defer caps.deinit + defer gpa.free(slice) in every sub-case), (5) tests fail clearly if BPM_TEST_DB_URL is absent (this is a unit test \u2014 no DB dependency)."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

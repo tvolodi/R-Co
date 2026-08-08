@@ -290,3 +290,71 @@ test "ISS-0153: timeout elapsed-ms no longer uses @divExact (would panic)" {
     try ctx.checkTimeout();
     try std.testing.expectEqual(@as(u64, 3_600_000), ctx.getTimeoutMs());
 }
+
+test "ISS-0174 / GH-502: CapabilitySet.summary() compiles, runs, and renders both branches" {
+    // GH-502 / ISS-0174: src/lua/capabilities.zig used the Zig 0.15 managed
+    // ArrayList API (init/deinit/appendSlice/toOwnedSlice without an allocator
+    // argument), which is invisible to zig build test-lua because the only pin
+    // in src/lua_test_root.zig was a bare type reference. The migration below
+    // exercises the body for real so a compile error cannot hide again.
+    //
+    // Deliberate-mutation evidence for MUST-3 / MUST-4 is captured in
+    // docs/issue-reports/ISS-0174-gh502-diagnosis.yaml (verification_strategy)
+    // and re-verified per BACKEND-DEV step 3 procedure in design §6.
+    const gpa = std.testing.allocator;
+
+    // TC-CS-01: empty set -> "(none)"
+    {
+        var caps = lua.capabilities.CapabilitySet.init(gpa);
+        defer caps.deinit();
+
+        const slice = try caps.summary(gpa);
+        defer gpa.free(slice);
+
+        try std.testing.expectEqualStrings("(none)", slice);
+        try std.testing.expectEqual(@as(usize, 6), slice.len);
+    }
+
+    // TC-CS-02: single grant -> grant verbatim, no separator
+    {
+        var caps = lua.capabilities.CapabilitySet.init(gpa);
+        defer caps.deinit();
+        try caps.add("service:call:payment");
+
+        const slice = try caps.summary(gpa);
+        defer gpa.free(slice);
+
+        try std.testing.expectEqualStrings("service:call:payment", slice);
+        try std.testing.expectEqual(@as(usize, 20), slice.len);
+        try std.testing.expect(std.mem.indexOf(u8, slice, ",") == null);
+    }
+
+    // TC-CS-03: multiple grants -> sorted, comma-separated.
+    // std.StringHashMap iteration order is undefined; summary() sorts before
+    // joining so this assertion is deterministic.
+    {
+        var caps = lua.capabilities.CapabilitySet.init(gpa);
+        defer caps.deinit();
+        try caps.add("variable:write");
+        try caps.add("service:call:payment");
+        try caps.add("audit:log");
+
+        const slice = try caps.summary(gpa);
+        defer gpa.free(slice);
+
+        try std.testing.expectEqualStrings(
+            "audit:log, service:call:payment, variable:write",
+            slice,
+        );
+    }
+
+    // TC-CS-04 (implicit): every `defer gpa.free(slice)` above succeeds only
+    // if gpa actually owns the returned slice. If summary() were returning a
+    // stack-allocated or borrowed buffer, the free would corrupt the heap and
+    // zig build test-lua's leak detector would fail the run.
+
+    // TC-CS-05 (implicit): the explicit `free` calls demonstrate the
+    // caller-owns-the-slice contract documented on summary()'s doc comment.
+    // Changing summary() to return a stack slice would corrupt the test
+    // allocator on the first defer free.
+}
