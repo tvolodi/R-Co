@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH566-20260808/step-06-doc-updater.json",
   "created_at": "2026-08-08T08:29:24Z",
   "started_at": "2026-08-08T08:29:24Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T08:34:08Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -36,7 +36,16 @@
       "fn:git-merge"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Added a CHANGELOG.md entry for ISS-0617/GH-566 (exp601 tier-quota test fixture wrote to the wrong PostgreSQL schema via search_path resolution, plus a cross-transaction-visibility bug; both fixed; test wired into build.zig for the first time via test-integration-exp601). PR #577's checks were confirmed green on head commit 4f273f0 (Build and unit tests, Frontend checks, Pipeline bookkeeping, Platform status, Source linters all pass), then squash-merged via `gh pr merge 577 --squash --delete-branch`. Merge commit 0bea260a34c2a541b81968f80d0c426090627f63 on main. Feature branch feature/WF03-GH566-20260808 confirmed deleted from GitHub (git ls-remote --heads origin returned no match after a pruning fetch). GitHub project board for issue #566 was already at 'Done' when checked (idempotent no-op on both --target implemented and --target done calls, exit 0 both times -- no BOARD_UPDATE_FAILED). Repo returned to main at the squash-merge commit with a clean working tree.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "PR #577 merged (squash) -- merge commit 0bea260a34c2a541b81968f80d0c426090627f63"
+    ],
+    "issues": [],
+    "next_action": "Run complete"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
