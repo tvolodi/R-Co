@@ -1,0 +1,45 @@
+{
+  "handoff_id": "84b6f3f4-8b2c-4f7e-8f17-57f53a42e395",
+  "run_id": "WF03-GH580-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH580-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T10:53:34Z",
+  "started_at": "2026-08-08T10:53:34Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0623.json",
+      "migrations/069_retroactive_tenant_schema_provision.sql",
+      "src/identity/onboarding.zig",
+      "src/admin/tenant_lifecycle.zig",
+      "tests/integration/spt01_iss0068_onboarding_schema_test.zig",
+      "docs/anti-patterns.md"
+    ]
+  },
+  "task": {
+    "description": "Investigate and fix GH #580 (ISS-0623, MAJOR): the shared bpm_test database's tenant_default schema was fully dropped and reprovisioned in a 2.5-second burst at 2026-08-08 08:19:53-08:19:55 UTC (75 migrations replayed from 001_event_store.sql through 1137_...backfill.sql), well after GBL-134/135/136 had already run and correctly dropped 18+ GLOBAL_REGISTRY shadow tables from it. This resurrected those tables, and python3 tools/lint_dual_schema_table_names.py now reports 21 BLOCKER duplicates against bpm_test (count has drifted from the original 18 as other fixes landed this session -- api_token_audit, event_payload_store, variable_schemas are the 3 newly-added names, matching ISS-0621's 5-name reclassification minus the 2 that ISS-0622/GBL-137 already allow-listed). workspace r-co-2's own bpm_dev remains confirmed clean (0 duplicates) -- isolated to the shared bpm_test container.\n\nORCH's OWN INVESTIGATION SO FAR (continue from here, do not restart from zero):\n1. Confirmed via schema_migrations grouped by minute: the 08:19 burst (75 rows) is the ONLY such burst -- no recurrence since. A single row at 09:38 is almost certainly GBL-137 (this session's own GH-573 fix), not a new reprovisioning event.\n2. Searched for any DROP SCHEMA logic that could target tenant_default. src/admin/tenant_lifecycle.zig's deleteTestTenant path is SAFE -- its buildSchemaName helper does NOT special-case the nil UUID (produces 'tenant_00000000000000000000000000000000', not 'tenant_default'), so it structurally cannot drop tenant_default even if called with the nil UUID.\n3. FOUND THE LIKELY MECHANISM: migrations/069_retroactive_tenant_schema_provision.sql defines public.bpm_drop_tenant_schema(p_tenant_id UUID), a permanently-installed SQL function that DOES special-case the nil UUID to 'tenant_default' (lines 13-19) before executing 'DROP SCHEMA IF EXISTS %I CASCADE'. This function, if ever called with the nil UUID ('00000000-0000-0000-0000-000000000000') from ANY source, would produce exactly the observed symptom (tenant_default dropped, later reprovisioned by the next migrate run). Two call sites found: src/identity/onboarding.zig:514 (dropTenantSchemaInDb, a saga-compensation rollback helper called from compensate() at line 407 -- only invoked with a genuinely-random freshly-generated tenant_id during a real onboarding failure, appears safe under normal operation but NOT yet proven safe under EVERY error path -- verify saga.tenant_id can truly never be nil/empty at that call site) and tests/integration/spt01_iss0068_onboarding_schema_test.zig:66 (cleanupTenantSchema, called from test defer blocks with tenant_id from randomUuidStr() -- also appears safe under normal execution, but verify what happens if randomUuidStr itself fails/returns something degenerate, or if the test panics/errors before tenant_id is assigned but after the defer is registered).\n4. Forensic dead ends: no pg_stat_statements extension installed (cannot query historical statement history); docker logs for r-co-2-db_test-1 show nothing for the relevant window (default Postgres logging does not capture individual statements).\n\nYOUR JOB: determine definitively HOW bpm_drop_tenant_schema(nil-uuid) (or some other mechanism ORCH missed) was actually invoked at 08:19:53 UTC. Check test files across the WHOLE repo (not just the one found so far) for any other call to bpm_drop_tenant_schema, deleteTestTenant, or similar cleanup/teardown helpers that might pass a nil/empty/default tenant_id under some error or edge-case path -- grep broadly, don't assume the 2 call sites already found are the only ones. Also check whether this could be a genuinely cross-workspace event (the sibling workspace, r-co-1-loop, shares this exact container per this repo's shared-bpm_test convention -- check git history/commits from that workspace's perspective if visible, or reason about what kind of test run could trigger this). Per ISS-0623's acceptance criteria: if a destructive path is confirmed, fix it (add a defensive guard rejecting the nil UUID in bpm_drop_tenant_schema, or in its callers, or both) per the GH-533 precedent in docs/anti-patterns.md. If it's genuinely a stale-binary/cross-workspace artifact with no fixable code defect, document that finding thoroughly in docs/anti-patterns.md instead. Either way, finish by re-running GBL-134/135/136 (or an equivalent targeted cleanup) against bpm_test so the 21 tables are dropped again and lint_dual_schema_table_names.py returns exit 0.",
+    "acceptance_criteria": [
+      "Root cause mechanism confirmed with concrete evidence, not just plausibility -- either a specific call site invoking bpm_drop_tenant_schema(nil-uuid) is identified, or a well-reasoned case is made for a cross-workspace/stale-binary explanation with no fixable in-repo defect",
+      "If a destructive code path is confirmed: fixed with a defensive guard (e.g. bpm_drop_tenant_schema itself refuses the nil UUID, or the calling helper validates tenant_id is non-nil before calling it) per GH-533 precedent",
+      "If no fixable code defect is found: documented thoroughly in docs/anti-patterns.md as a known risk of the shared bpm_test container",
+      "bpm_test cleaned up: 18-21 resurrected tables dropped again via GBL-134/135/136 re-application or an equivalent targeted one-off cleanup",
+      "lint_dual_schema_table_names.py returns exit 0 against bpm_test after cleanup",
+      "workspace r-co-2 own bpm_dev reconfirmed unaffected"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

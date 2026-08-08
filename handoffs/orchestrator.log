@@ -466,3 +466,4 @@
 2026-08-08T10:01:30Z | ROUTE | WF03-GH573-20260808 | e6a1978f | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, BLOCKER, rebase+CI-trigger required first)
 2026-08-08T10:09:25Z | COMPLETE | WF03-GH573-20260808 | e6a1978f | DOC-UPDATER | PASS -- orchestrator.log rebase conflict resolved (both sides kept, chronological order); CHANGELOG updated; genuine pull_request CI green (runs 31251961091, 31252064552); PR #581 squash-merged (3e33f05d1bb57b1b31b446a7862b0700cfdfeaad), branch deleted (confirmed via API); board already Done; main clean
 2026-08-08T10:21:14Z | MERGE | WF03-GH565-20260808 | --- | ORCH | PR #582 squash-merged to main; branch deleted; project board moved to Done; GH #565 closed
+2026-08-08T10:53:34Z | ROUTE | WF03-GH580-20260808 | 84b6f3f4 | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-580/ISS-0623, forensic investigation continued from ORCH)
