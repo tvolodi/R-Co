@@ -1,0 +1,44 @@
+{
+  "handoff_id": "fbe5f0d1-8eca-470d-8ead-3c82712995ee",
+  "run_id": "WF03-GH573-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH573-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T09:29:08Z",
+  "started_at": "2026-08-08T09:29:08Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0620.json",
+      "migrations/GBL-134_iss0185_drop_global_registry_shadows.sql",
+      "docs/issue-reports/ISS-0185-diagnosis.yaml",
+      "migrations/GBL-135_iss0185_drop_per_tenant_shadows.sql",
+      "migrations/GBL-136_iss0617_drop_remaining_global_registry_shadows.sql"
+    ]
+  },
+  "task": {
+    "description": "Investigate and design a fix for GH #573 (ISS-0620), a BLOCKER-severity issue: migrations/GBL-134_iss0185_drop_global_registry_shadows.sql's v_tables allow-list wrongly included 4 tables (artifact_activation_groups, entity_definitions, entity_record_latest, entity_type_instances) that ISS-0185-diagnosis.yaml's own classification_table (recently corrected by ISS-0621/GH-574, now merged) classifies as PER_TENANT -- meaning tenant_default was the canonical copy, not a stray shadow. GBL-134 unconditionally DROP TABLE ... RESTRICT'd these 4 tables' tenant_default copies with no row-count check, no backup, no guard. This has ALREADY EXECUTED against the shared bpm_test database and this workspace's (r-co-2) bpm_dev database. ORCH's own note on scope: known-affected databases are BOTH LOCAL/DEVELOPMENT-ONLY (a shared local test DB and one developer workspace's local dev DB) -- there is NO evidence in the issue of any deployed/production database being affected. This significantly bounds the real-world severity even though the CODE DEFECT itself (unconditional destructive DROP with no data-loss guard) is correctly BLOCKER-severity and must be fixed regardless of what data happened to exist. \n\nIMPORTANT SAFETY CONSTRAINT FOR THIS INVESTIGATION: You may freely READ and QUERY any database (row counts, schema inspection, migration history) to assess actual data loss scope. You may design and write a FORWARD-FIX migration (recreating tenant_default.<table> for each of the 4 tables per tenant schema going forward) and correct GBL-134's own header/safety-claim comments (GBL-134 itself, already executed, should NOT be rewritten/deleted -- add a corrective note or a NEW forward migration, matching the established pattern from GBL-135/GBL-136 in this same lineage). You may NOT execute any DROP, TRUNCATE, or other destructive/irreversible database operation as part of investigation or as an attempted 'recovery' -- if you conclude some form of data recovery is possible or necessary (e.g. restoring from a backup, WAL replay), STOP and describe exactly what you'd need to do and why in your handoff result, do NOT execute it. This will be reviewed by ORCH/the user before any such action is taken. The routine, expected part of this fix (recreating the 4 tables via a normal forward migration, correcting the diagnosis references) is NOT destructive and should proceed normally through the pipeline like any other migration -- only actual data-recovery actions (if any turn out to be needed/possible) require this extra pause.",
+    "acceptance_criteria": [
+      "Actual scope confirmed precisely: which databases have applied GBL-134, and whether any evidence of actual pre-drop row counts exists for the 4 tables (check migration logs, any application-level audit trail, WAL if accessible)",
+      "Explicitly confirm or refute whether ANY non-local/non-development database is affected -- this determines urgency",
+      "If data recovery appears possible or necessary: STOP, do not execute, describe exactly what is needed in the handoff result for review",
+      "A forward-fix migration designed (not GBL-134 rewritten) that recreates tenant_default.<table> for each of the 4 tables per tenant schema, per the established GBL-135/GBL-136 pattern",
+      "GBL-134s own header/safety-claim comments corrected with a note referencing this issue (GBL-134 itself not deleted or rewritten, since it already executed)",
+      "Routed to CODE-DESIGNER (Step 2) for the forward-fix migration design -- this needs the same rigor as GBL-136s prior design (FK dependency analysis, safety properties) given the history of errors in this migration lineage"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

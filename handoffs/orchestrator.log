@@ -453,4 +453,5 @@
 2026-08-08T09:17:01Z | COMPLETE | WF03-GH574-20260808 | 88bc740a | TEST-RUNNER | PASS (doc-only fix verified, YAML now valid, counts reconcile)
 2026-08-08T09:17:48Z | ROUTE | WF03-GH574-20260808 | eca1e18f | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, no BLOCKER finding)
 2026-08-08T09:20:51Z | COMPLETE | WF03-GH574-20260808 | eca1e18f | DOC-UPDATER | PASS -- CHANGELOG updated, PR #579 squash-merged (79efb063ea61d1fd3ecec945598f4043d57bc66d), branch deleted, board already Done, main clean
+2026-08-08T09:29:08Z | ROUTE | WF03-GH573-20260808 | fbe5f0d1 | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-573/ISS-0620, BLOCKER, no-destructive-action constraint)
 2026-08-08T09:32:09Z | CLEANUP | WF03-GH567-20260808 | 4fe97c76 | ORCH | CLEANUP -- GH-567 resolved upstream by another workspace; merge --abort + drop local/remote feature/WF03-GH567-20260808; board #567 -> Done; queue already RESOLVED (lock=None) from upstream commit 4fe97c76; main ff-only @ 26305925
