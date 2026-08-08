@@ -514,3 +514,6 @@
 2026-08-08T20:25:00Z | STARTED | WF03-GH482-20260808 | 3cebe70b | ISSUE-FIXER | step-01 (registry + diagnosis)
 2026-08-08T20:31:57Z | COMPLETE | WF03-GH482-20260808 | 3cebe70b | ISSUE-FIXER -> ORCH | PASS | Re-diagnosis confirms: per-tenant ledger premise DISPROVEN (ISS-504 design); RC-1/2/3 fixed at PR #519 (33 blocks); all 4 siblings RESOLVED; route=CODE-DESIGNER (Step 2 close-out design)
 2026-08-08T20:49:33Z | DIAG_ENV_BLOCK | WF03-GH482-20260808 | 3cebe70b | ISSUE-FIXER | test-integration-svc hangs at clean_test_db step locally; orphan test.exe/zig.exe respawn. Section 9 stays PENDING_REMEASUREMENT for Step 5.
+2026-08-08T20:56:49Z | ROUTE | WF03-GH482-20260808 | 840a08a0 | ORCH -> CODE-DESIGNER | PENDING
+2026-08-08T20:56:49Z | STARTED | WF03-GH482-20260808 | 840a08a0 | CODE-DESIGNER | IN_PROGRESS
+2026-08-08T20:58:34Z | COMPLETE | WF03-GH482-20260808 | 840a08a0 | CODE-DESIGNER | PASS -> CODE-DESIGN-VALIDATOR
