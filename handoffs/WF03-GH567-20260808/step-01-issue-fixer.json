@@ -1,0 +1,37 @@
+{
+  "handoff_id": "82a19e7a-e076-4444-888e-6ced085897f7",
+  "run_id": "WF03-GH567-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH567-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T05:01:56Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0618.json"
+    ]
+  },
+  "task": {
+    "description": "GH #567 / ISS-0618: two failures in tests/integration/sch02_timer_polling_test.zig. (1) TC-SCH-02-02 ('scheduler skips locked timers and does not fire CANCELLED timers') asserts skipped_locked > 0 but gets 0. (2) TC-SCH-02-03 ('firing rollback keeps timer PENDING when event append fails') expects error.TransactionFailed from pollDueTimers() after a deliberately-seeded idempotency-key collision, but gets a normal zero-work result instead -- no error surfaced at all. Not yet root-caused (filed as a triage split from ISS-0184/GH-517's diagnosis pass, cluster C8). Possible explanations listed in the issue: poller silently swallows the forced DB error; collision setup isn't landing before pollDueTimers runs (commit-visibility/ordering issue); poller never attempts to fire the timer for an unrelated reason; for TC-SCH-02-02, the row-lock isn't held by whatever concurrent-locker helper the test uses, or the poller's SKIP LOCKED query isn't hitting the intended row. Read tests/integration/sch02_timer_polling_test.zig (both TC-SCH-02-02 and TC-SCH-02-03 blocks) and the scheduler's pollDueTimers implementation (search src/ for it) in full. Trace the actual locking and error-propagation logic -- this needs a real BACKEND-DEV-level trace, not surface-level speculation.",
+    "acceptance_criteria": [
+      "TC-SCH-02-02 skip-locked-timer path traced: confirm whether the lock is actually held and whether the poller query correctly excludes locked rows",
+      "TC-SCH-02-03 forced-failure path traced: confirm whether the collision setup commits before polling, and whether pollDueTimers() correctly surfaces the underlying DB error",
+      "Root cause identified with file:line precision for both"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

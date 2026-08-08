@@ -2659,6 +2659,17 @@
       "created_at": "2026-08-08T04:50:42Z",
       "status": "COMPLETED",
       "stage": null
+    },
+    {
+      "handoff_id": "82a19e7a-e076-4444-888e-6ced085897f7",
+      "file": "handoffs/WF03-GH567-20260808/step-01-issue-fixer.json",
+      "run_id": "WF03-GH567-20260808",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-08T05:01:56Z",
+      "status": "PENDING",
+      "stage": null
     }
   ],
   "last_updated": "2026-08-07T23:05:53Z"
