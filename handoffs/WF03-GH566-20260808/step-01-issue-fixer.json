@@ -7,9 +7,9 @@
   "to_agent": "ISSUE-FIXER",
   "file": "handoffs/WF03-GH566-20260808/step-01-issue-fixer.json",
   "created_at": "2026-08-08T06:08:31Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-08T06:10:03Z",
+  "completed_at": "2026-08-08T06:18:55Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -31,7 +31,15 @@
       "fn:register-issue"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause confirmed for ISS-0617/GH-566: repository_artifacts is a GLOBAL_REGISTRY table whose tenant_default shadow copy should have been dropped by GBL-134 (ISS-0185) but was NOT -- GBL-134's v_tables allow-list covers only 24 of the 37 tables its own diagnosis (ISS-0185-diagnosis.yaml) classifies as GLOBAL, and repository_artifacts is one of the 13 missing. The exp601 test's fixture INSERTs run via TestHarness.conn (search_path=tenant_default,public), so the unqualified INSERT INTO repository_artifacts lands in tenant_default.repository_artifacts instead of public. The resolver (src/config/loader.zig loadConfigArtifact) runs on a pool connection with search_path=public only (LEGACY_RLS mode), so its JOIN against repository_artifacts finds 0 rows even though the matching tenant_artifact_activations row IS correctly in public (that table's shadow WAS dropped by GBL-134). loadActiveQuotaPolicy returns ConfigNotFound, and loadEffectiveQuotaProfile falls through to the platform default (200000) instead of applying the test's override (10). Confirmed via live test run (zig build test-integration-exp601-diag, temporary step) with temporary debug tracing showing tenant_default.repository_artifacts holds the row (count=1) while public.repository_artifacts has 0 matching rows for the same version_id, plus `docker exec ... psql \\dt` confirming tenant_default.repository_artifacts exists as a real relation while tenant_default.tenant_artifact_activations does not (correctly dropped). All 4 test blocks share this one root cause: TC-EXP-601-01 hits it directly; TC-EXP-601-02/03/04 call quota_middleware.check, which internally calls the same loadEffectiveQuotaProfile and inherits the same misresolved profile. TC-EXP-601-04 also has a second, distinct PgError.ServerError on an instance_waits INSERT, noted but not traced to file:line precision in this pass -- instance_waits is itself another of the 13 tables missing from GBL-134's array, so it may share the same upstream mechanism; flagged in ISS-0617 for follow-up if it persists after the GBL-134 gap is closed. All temporary debug code (src/config/loader.zig, tests/integration/exp601_tier_quota_test.zig) and the temporary build.zig diagnostic step were reverted -- git diff on all three files is empty and zig build re-verified clean.",
+    "artifacts_out": [
+      "docs/issues/ISS-0617.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
