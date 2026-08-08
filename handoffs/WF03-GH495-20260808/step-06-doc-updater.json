@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH495-20260808/step-06-doc-updater.json",
   "created_at": "2026-08-08T22:25:21Z",
   "started_at": "2026-08-08T22:25:21Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T22:38:30Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -47,7 +47,21 @@
       "fn:update-changelog"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with the ISS-0169 tranche 2 (LUA-08/09/10) entry plus the incidental service_interceptor.zig allocator fix. LUA-08, LUA-09, LUA-10 confirmed via reqctl.py show (exact IDs matched) and set to RELEASED with their implementing files; docs/status/requirement_status.yaml regenerated (462 entries). No estimation.json present (WF-03 run) so retrospective was skipped per protocol. Doc changes committed and pushed to feature/WF03-GH495-20260808, which was then rebased/merged against origin/main (2 concurrent PRs, #588 and #589/#590, had landed in the meantime) -- merge conflicts in orchestrator.log, registry.json, and CHANGELOG.md resolved by hand (append-only union for the log, both-sides-kept for registry entries and changelog sections), zig build and zig build test re-verified green post-merge. PR #593 created, all 6 CI checks (Build and unit tests, Clean-checkout LuaJIT build, Frontend checks, Pipeline bookkeeping, Platform status, Source linters) polled to genuine terminal state and confirmed PASS (no red/cancelled state encountered, so check_github_status.py was not required). Squash-merged as 8de07abc81ac4ffd992d94f9c8f9eb44d34d3ae9; feature branch confirmed deleted from remote after a fetch --prune. GH-495 disposition: commented with the release summary, retitled to reflect the narrowed remaining scope (LUA-11, LUA-12, LUA-13, LUA-15, LUA-16), body's acceptance-criteria checklist updated, left OPEN -- this matches #495's own established precedent (LUA-05/06/07 were peeled off and released via #504 earlier in this same issue's history without closing it) and the sibling precedent of #485 (fully closed only once its own complete scope was done, with the remainder forked into a brand-new issue). Project board for #495 moved to 'Implemented' only (not 'Done'), because LUA-08/09/10 have no UAT scenario match (grep against tests/simulation/scenarios/**/*.yaml returned no hits, so not UAT-scoped) but the issue itself stays open, and the protocol's own acceptance criteria forbid 'Done' while a GitHub issue remains open. Repo returned to clean main at 8de07ab, verified branch=main and status=clean.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml",
+      "handoffs/orchestrator.log",
+      "handoffs/registry.json",
+      "PR #593 (https://github.com/tvolodi/R-Co/pull/593, squash-merged 8de07abc81ac4ffd992d94f9c8f9eb44d34d3ae9)",
+      "GH-495 comment + retitle (https://github.com/tvolodi/R-Co/issues/495)"
+    ],
+    "issues": [],
+    "next_action": "ORCH marks WF03-GH495-20260808 COMPLETED. GH-591 and GH-592 remain queued as their own future WF-03 runs for the rest of #495's original scope."
+  },
   "rework_count": 0,
   "max_rework": 3
 }

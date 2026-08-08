@@ -1,0 +1,24 @@
+{
+  "id": "ISS-0626",
+  "title": "lint_handoffs.py reports 263 BLOCKER + 195 MAJOR + 1 MINOR across historical handoffs (2269 checked) -- large pre-existing bookkeeping debt, not caused by this run",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/594",
+  "discovered_at": "2026-08-08T22:38:30Z",
+  "discovered_by": "DOC-UPDATER WF03-GH495-20260808 Step 6/Final",
+  "discovered_while_fixing": "ISS-0169",
+  "run_id": null,
+  "affected_areas": [
+    "handoffs/",
+    "tools/lint_handoffs.py"
+  ],
+  "symptom": "Running `python3 tools/lint_handoffs.py` (mandatory pre-completion check per CLAUDE.md's Bookkeeping Is Not Optional directive) at the end of WF03-GH495-20260808's Step Final reports 263 BLOCKER, 195 MAJOR, and 1 MINOR findings across 2269 handoffs checked. None of the findings reference this run's own handoff files (handoffs/WF03-GH495-20260808/*) -- confirmed by grep. All findings carry timestamps from historical runs spanning 2026-05-22 through 2026-08-07 (WF01-*, WF02-*, WF03-*, ADHOC-* prefixes). Categories observed: H001 (11+ handoff files with unparseable JSON -- trailing commas, invalid control characters, wrong encoding), H002 (8 files in WF02-iss105-token-model-schema-20260611 where `result` is a JSON string instead of an object, which breaks any h['result']['status'] lookup), H003 (dozens of files where completed_at precedes started_at, i.e. inverted/local-time-labelled-UTC timestamps), H009 (~20 files where a PENDING/IN_PROGRESS step has later COMPLETED steps in the same run -- the pipeline advanced past a step it never formally closed), H010 (registry.json is missing 82.3% of all historical handoffs from its index).",
+  "root_cause": "Not yet diagnosed in detail. Consistent with the pattern CLAUDE.md's own Bookkeeping section already documents (2026-08-05 pipeline audit: 'directives about recording the work were not [followed]' -- log append rate 44%->0.4%, registry coverage 3.4%, timestamp validity 8.6%). This finding is a fresh quantification of that same long-standing gap via the tool that was built to detect it, not a new defect class.",
+  "acceptance_criteria": [
+    "Triage the 263 BLOCKER findings by category (H001/H002/H003/H009) and decide a remediation strategy per category -- likely candidates: a one-time repair script for H001 (fix parseable-but-malformed JSON), H002 (wrap bare string results in the expected object shape), H003 (cannot un-invert historical timestamps with confidence, but could at minimum flag/quarantine them so they stop corrupting retrospective variance calculations), H009 (backfill COMPLETED status on steps whose later siblings are already COMPLETED, where safe)",
+    "Decide whether registry.json's 82.3% coverage gap (H010) should be backfilled from the handoffs/ directory tree directly (a scripted reconciliation), given hand-backfilling 1868 entries is impractical",
+    "Re-run lint_handoffs.py after remediation and confirm BLOCKER count trends toward 0 (full remediation of 8+ months of historical debt may need to be phased across multiple runs)",
+    "This is a large, self-contained bookkeeping-repair task -- suitable for its own WF-03 run, not something to fold into an unrelated feature/fix branch"
+  ],
+  "notes": "Discovered incidentally while completing WF03-GH495-20260808's Step Final (DOC-UPDATER), which runs lint_handoffs.py as a mandatory pre-completion check. This run's own handoff files are clean (0 findings), so the finding did not block this run's completion -- filed and forwarded per CLAUDE.md's Unblock-Everything / No-Issue-Left-Local-Only directives rather than fixed in-scope, since remediating ~8 months of cross-run bookkeeping debt is a distinct, large body of work unrelated to ISS-0169's Lua limiter wiring."
+}
