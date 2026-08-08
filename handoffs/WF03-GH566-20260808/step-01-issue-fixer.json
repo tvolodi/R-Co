@@ -1,0 +1,37 @@
+{
+  "handoff_id": "03de710f-7973-4038-a6ff-046ca14a5e4b",
+  "run_id": "WF03-GH566-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH566-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T06:08:31Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0617.json"
+    ]
+  },
+  "task": {
+    "description": "GH #566 / ISS-0617: TC-EXP-601-01 ('quota policy resolves the effective profile from the active config surface') asserts the resolved profile's max_entity_records_total is 10 (a deliberately small test override) but gets 200000 (the evident platform default) instead. TC-EXP-601-02, 03, 04 (quota middleware rejection tests for entity/file/sandbox-allocation writes) fail downstream of the same misresolved profile. Not yet root-caused -- genuinely new, no SQL error correlates with this test's timestamp window (pure application-logic mismatch, not a query failure). Read tests/integration/exp601_tier_quota_test.zig (all 4 test blocks) and find the tier-profile/quota resolution code (search src/ for 'tier_profile', 'quota', 'max_entity_records_total', or similar) in full. Trace the actual resolution path from config source to the resolver's return value -- determine whether this is a lookup-key mismatch (e.g. wrong tenant_id used), a missing seed row in the test fixture, or a config-precedence bug. Actually run the failing test to observe the failure directly (not just read code) -- export BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test and BPM_DB_URL=postgres://bpm:bpm@localhost:5452/bpm_dev (workspace r-co-2's port band, already healthy), check build.zig for a scoped step (search 'exp601'), add temporary debug output if needed to trace runtime behavior, then revert any temporary debug code before finishing.",
+    "acceptance_criteria": [
+      "The tier-profile override resolution path traced from config source to the resolver return value, with file:line precision",
+      "Root cause identified as lookup-key mismatch, missing seed data, or precedence bug -- confirmed via an actual test run, not just code reading",
+      "All 4 test blocks (TC-EXP-601-01 through 04) understood as either sharing this root cause or having distinct causes"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
