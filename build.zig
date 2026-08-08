@@ -2218,6 +2218,26 @@ pub fn build(b: *std.Build) void {
     test_integration_exp103_step.dependOn(&run_exp103_integration_tests.step);
     test_integration_others_step.dependOn(&run_exp103_integration_tests.step); // ISS-0106: routed via barrier, not directly onto test_integration_step
 
+    // GH-512 / ISS-0181 — T010 hardcoded-UUID migration regression lock.
+    // Subprocess-driven (lint_test_isolation.py, zig build test); does NOT
+    // require BPM_TEST_DB_URL. Routed via the barrier like exp103 above so
+    // it runs in lockstep with the rest of the integration group rather than
+    // racing the umbrella step.
+    const gh512_t010_regression_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/gh512_t010_regression_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_gh512_t010_regression_tests = addIntegrationRun(b, gh512_t010_regression_tests, migrations_dir, clean_test_db);
+
+    const test_integration_gh512_step = b.step("test-integration-gh512", "Run GH-512 / ISS-0181 T010 hardcoded-UUID migration regression lock tests (no BPM_TEST_DB_URL required; subprocess-driven)");
+    test_integration_gh512_step.dependOn(&clean_test_db.step);
+    test_integration_gh512_step.dependOn(&run_gh512_t010_regression_tests.step);
+    test_integration_others_step.dependOn(&run_gh512_t010_regression_tests.step); // ISS-0106: routed via barrier, not directly onto test_integration_step
+
     const svc_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/main_test.zig"),

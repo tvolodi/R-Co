@@ -204,6 +204,9 @@ const env01_tenant_type_field_integration_file = @import("env01_tenant_type_fiel
 const exp601_tier_quota_integration = @import("exp601_tier_quota_test.zig");
 const iss206_token_multiset_integration = @import("iss206_token_multiset_test.zig");
 const repository_integration = @import("repository_test.zig");
+// GH-512 / ISS-0181 — regression lock for the T010 hardcoded-UUID migration.
+// Subprocess-driven filesystem + Zig-build checks; does not require BPM_TEST_DB_URL.
+const gh512_t010_regression_integration = @import("gh512_t010_regression_test.zig");
 
 comptime {
     _ = std;
@@ -303,6 +306,7 @@ comptime {
     _ = exp601_tier_quota_integration;
     _ = iss206_token_multiset_integration;
     _ = repository_integration;
+    _ = gh512_t010_regression_integration;
 }
 
 test "integration placeholder" {
