@@ -3079,7 +3079,7 @@
       "to_agent": "CODE-DESIGN-VALIDATOR",
       "created_at": "2026-08-08T11:53:14Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving \u2014 Step 2"
+      "stage": "WF-03 Issue Resolving — Step 2"
     },
     {
       "handoff_id": "a38f764b-2941-42f6-ab70-c3130d55e775",
@@ -3113,7 +3113,44 @@
       "created_at": "2026-08-08T12:46:04Z",
       "status": "COMPLETED",
       "stage": "Step 4"
+    },
+    {
+      "handoff_id": "e8c41067-4610-4899-a7c7-16659a132dbd",
+      "file": "handoffs/WF03-GH512-20260808/step-04b-test-design-validator.json",
+      "run_id": "WF03-GH512-20260808",
+      "step": "04b",
+      "from_agent": "TEST-DESIGN-VALIDATOR",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-08T12:47:28Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 4b (TEST-DESIGN-VALIDATOR)"
+    },
+    {
+      "handoff_id": "f8b2c19d-44a3-4d29-b0c8-1d9e3f7d2a99",
+      "file": "handoffs/WF03-GH512-20260808/step-05-test-runner.json",
+      "run_id": "WF03-GH512-20260808",
+      "step": "05",
+      "from_agent": "TEST-RUNNER",
+      "to_agent": "ORCH",
+      "created_at": "2026-08-08T13:04:23Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 5 (TEST-RUNNER)",
+      "result_status": "FAIL"
+    },
+    {
+      "handoff_id": "f8b2c19d-44a3-4d29-b0c8-1d9e3f7d2a99-rev2",
+      "run_id": "WF03-GH512-20260808",
+      "workflow_id": "WF-03",
+      "step": "05-rev2",
+      "from_agent": "TEST-RUNNER",
+      "to_agent": "ORCH",
+      "file": "handoffs/WF03-GH512-20260808/step-05-test-runner-rev2.json",
+      "created_at": "2026-08-08T13:21:31Z",
+      "completed_at": "2026-08-08T13:21:31Z",
+      "status": "COMPLETED",
+      "priority": "MAJOR",
+      "verdict": "PASS"
     }
   ],
-  "last_updated": "2026-08-08T05:55:02Z"
+  "last_updated": "2026-08-08T12:47:28Z"
 }

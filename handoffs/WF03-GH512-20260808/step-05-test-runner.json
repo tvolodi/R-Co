@@ -1,0 +1,93 @@
+{
+  "handoff_id": "f8b2c19d-44a3-4d29-b0c8-1d9e3f7d2a99",
+  "run_id": "WF03-GH512-20260808",
+  "workflow_id": "WF-03",
+  "step": "05",
+  "from_agent": "TEST-RUNNER",
+  "to_agent": "ORCH",
+  "file": "handoffs/WF03-GH512-20260808/step-05-test-runner.json",
+  "created_at": "2026-08-08T13:04:23Z",
+  "started_at": "2026-08-08T13:04:23Z",
+  "completed_at": "2026-08-08T13:04:23Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Step 5 (TEST-RUNNER)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "9c1f1d4a-2026-08-08-1737-gh512-step3",
+      "f8b2c19d-44a3-4d29-b0c8-1d9e3f7d2a04",
+      "e8c41067-4610-4899-a7c7-16659a132dbd"
+    ],
+    "artifacts_in": [
+      "tests/integration/gh512_t010_regression_test.zig",
+      "tests/specs/ISS-0181-gh512-t010-retire.md",
+      "tests/specs/fixtures/gh512-baseline-snapshot.json",
+      "tools/lint_test_isolation.baseline.json",
+      "src/design/iss0181-gh512-t010-migration.md",
+      "docs/issue-reports/ISS-0181-gh512-diagnosis.yaml",
+      "build.zig",
+      "tests/integration/main_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Execute WF-03 Step 5 (TEST-RUNNER) for GH-512 / ISS-0181 T010 hardcoded-UUID migration. Verify (1) primary target test-integration-gh512 passes (TC-RG-01/02/03), (2) secondary regression check on rest of integration does not surface new failures, (3) full unit test suite still exits 0.",
+    "acceptance_criteria": [
+      "test-integration-gh512 PASS (TC-RG-01/02/03 all pass)",
+      "test-integration-others-internal FAIL only on pre-existing failures (no new regressions from GH-512)",
+      "zig build test exit 0",
+      "tools/lint_test_isolation.baseline.json unchanged (T010 count ceiling enforced)",
+      "Test report written to tests/reports/report-20260808-WF03-GH512.yaml",
+      "lint_handoffs.py exits 0 after handoff completion"
+    ],
+    "functions_to_call": [
+      "fn:run-test-integration-gh512",
+      "fn:run-test-integration-others-internal",
+      "fn:run-zig-build-test",
+      "fn:write-test-report",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "PRIMARY target PASS — test-integration-gh512: 3/3 tests pass (TC-RG-01 T010 BLOCKER=74 <= ceiling 74; TC-RG-02 baseline matches snapshot total=115/by_code={T010=74,T020=11,T030=6,T050=22,T060=2}/platform_admin=14; TC-RG-03 zig build test exit 0). TERTIARY PASS — zig build test exit 0 (267 test-bearing files reachable, ISS-602 15/15 matched). SECONDARY FAIL — test-integration-others-internal: 1 NEW REGRESSION (compile error introduced by GH-512 batch 2b commit c8b79467 in tests/integration/ext02_webhook_dispatch_test.zig:411 — 'no field named subscription_id_slice in struct api.routes.webhooks.HandlerResult'; diff vs origin/main = 92 lines) + 14 pre-existing runtime failures (all 14 failing test files have 0 diff vs origin/main — not caused by GH-512). Build Summary: 69/86 steps succeeded, 15 failed; 206/219 tests passed (1 skipped, 12 failed). GitHub Actions status: operational. The ext02 compile error blocks compilation of that test module and prevents 12 tests from running. Baseline T010 ceiling unchanged (74 = 74). Baseline MAJOR count drifted from 41 to 40 in live scan due to step-4 adding a 'does not require BPM_TEST_DB_URL' comment to main_test.zig (a cosmetic drift; the snapshot still matches because TC-RG-02 parses the baseline file, not the live scan). RECOMMENDATION: Route to BACKEND-DEV (Step 3 rework) to fix ext02_webhook_dispatch_test.zig:410-411 compile error — replace the inline `try randomUuidStr(allocator)` with a captured local variable and free that local.",
+    "artifacts_out": [
+      "tests/reports/report-20260808-WF03-GH512.yaml",
+      "scratch/_gh512_migrate.log",
+      "scratch/_gh512_nobaseline.log",
+      "scratch/_gh512_run.log",
+      "scratch/_gh512_others.log",
+      "scratch/_gh512_unit.log",
+      "scratch/_gh512_gh_status.txt",
+      "scratch/_gh512_failures.txt",
+      "scratch/_gh512_touch_check.txt",
+      "scratch/_gh512_diff_lines.txt",
+      "scratch/_gh512_baseline_drift.txt",
+      "scratch/_gh512_live_scan.json",
+      "handoffs/WF03-GH512-20260808/step-05-test-runner.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [
+      {
+        "id": "REGRESSION-batch-2b-ext02",
+        "severity": "BLOCKER",
+        "description": "GH-512 batch 2b commit c8b79467 introduced a compile error in tests/integration/ext02_webhook_dispatch_test.zig:411: 'no field named subscription_id_slice in struct api.routes.webhooks.HandlerResult'. The HandlerResult struct (src/api/routes/webhooks.zig:10-13) only has fields status_code: u16 and body: []const u8. The diff vs origin/main is 92 lines. This blocks compilation of the ext02 test module and prevents 12 tests from running.",
+        "introduced_by": "c8b79467 feat(WF03-GH512): batch 2b — ext02_webhook_dispatch_test.zig (7 CONVERT, 0 RETAIN)",
+        "recommended_fix": "Replace the inline `try randomUuidStr(allocator)` with a captured local variable. Concretely: lines 410-411 should become: const unknown_sub_id = try randomUuidStr(allocator); defer allocator.free(unknown_sub_id); const unknown_delete = webhooks_routes.handleDeleteSubscription(allocator, &pool, adminActor(owner_id), unknown_sub_id);",
+        "routing": "BACKEND-DEV Step 3 rework"
+      },
+      {
+        "id": "PRE-EXISTING-14-runtime-failures",
+        "severity": "MAJOR",
+        "description": "14 runtime test failures on the secondary target. All 14 failing test files have ZERO diff vs origin/main (i.e., these failures pre-date GH-512 and are not regressions). Files: audit_chain_utf8_test, exp103_instance_waits_test, exp601_tier_quota_test, iss0125_cascade_test, iss0185_dual_schema_test, iss0602_cross_process_isolation_test, iss0605_orphan_self_heal_test, iss101_timers_failed_status_test, iss205_webhook_outbox_test, onboarding_realm_guard_test, sch303_timer_dlq_test, sim01_04_simulation_mode_test, spt01_iss0068_onboarding_schema_test.",
+        "policy": "Per CLAUDE.md 'filed and forwarded, not fixed here'. Not blocking the WF-03 run; will be picked up by future WF-03 runs on the global queue."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3 rework) — fix the ext02_webhook_dispatch_test.zig compile error introduced by batch 2b. Re-run TEST-RUNNER Step 5 after the fix."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

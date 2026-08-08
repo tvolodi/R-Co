@@ -1,0 +1,69 @@
+{
+  "handoff_id": "e8c41067-4610-4899-a7c7-16659a132dbd",
+  "run_id": "WF03-GH512-20260808",
+  "workflow_id": "WF-03",
+  "step": "04b",
+  "from_agent": "TEST-DESIGN-VALIDATOR",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH512-20260808/step-04b-test-design-validator.json",
+  "created_at": "2026-08-08T12:47:28Z",
+  "started_at": "2026-08-08T12:47:28Z",
+  "completed_at": "2026-08-08T12:47:28Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Step 4b",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f8b2c19d-44a3-4d29-b0c8-1d9e3f7d2a04"
+    ],
+    "artifacts_in": [
+      "tests/specs/ISS-0181-gh512-t010-retire.md",
+      "tests/integration/gh512_t010_regression_test.zig",
+      "tests/specs/fixtures/gh512-baseline-snapshot.json",
+      "src/design/iss0181-gh512-t010-migration.md",
+      "docs/issue-reports/ISS-0181-gh512-diagnosis.yaml",
+      "build.zig",
+      "tests/integration/main_test.zig",
+      "handoffs/WF03-GH512-20260808/step-04-test-designer.json"
+    ]
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER regression test design for GH-512 / ISS-0181 T010 hardcoded-UUID retirement. HARD GATE: PASS required before TEST-RUNNER can start.",
+    "acceptance_criteria": [
+      "lint_test_isolation.py exits 0 (or only the documented RETAIN)",
+      "lint_handoffs.py exits 0",
+      "Each TC-RG-01/02/03 is runnable, observable, no mocks/stubs/SkipZigTest, no BPM_TEST_DB_URL dependency",
+      "Per-test UUIDs (RETAIN only platform-admin constant)",
+      "Build.zig registration matches main_test.zig wiring",
+      "Snapshot captures per-rule counts and platform-admin count",
+      "TC-RG-01 invokes lint subprocess, parses BLOCKER=N, asserts <= ceiling",
+      "TC-RG-02 reads both JSONs, computes per-rule counts, asserts match",
+      "TC-RG-03 spawns zig build test and asserts exit 0",
+      "All subtests have cleanup (defer alloc.free)",
+      "Spec lists 3 test cases matching the 3 test blocks"
+    ],
+    "functions_to_call": [
+      "fn:lint-test-isolation",
+      "fn:lint-handoffs",
+      "fn:validate-completeness",
+      "fn:run-test-integration-gh512",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "GH-512 regression test design validated. All 11 mandatory checks pass. lint_test_isolation.py reports 1 BLOCKER on line 337 (the documented platform-admin canonical UUID substring-search target, explicitly RETAIN per design \u00a7R1 and recorded in snapshot step_04_retain_addendum) \u2014 this is the only T010 in the file and is the intentional search target of TC-RG-02, not a regression. lint_handoffs.py exits 0. The 3 test blocks (TC-RG-01/02/03) are runnable, observable, use no mocks/stubs/SkipZigTest, and require no BPM_TEST_DB_URL. The only literal UUID 00000000-0000-0000-0000-000000000001 is the canonical platform-admin constant. build.zig registers test-integration-gh512 routed via the barrier (test_integration_others_step); main_test.zig imports + comptime-silence covers the new test. Snapshot captures all per-rule counts (T010=74, T020=11, T030=6, T050=22, T060=2) and platform_admin_uuid_count=14. TC-RG-01 spawns python tools/lint_test_isolation.py --no-baseline tests/integration, parses BLOCKER=N, asserts <= 74. TC-RG-02 reads both JSONs via std.Io.Dir.cwd().readFileAlloc, computes by_code/by_severity/platform_admin_count, asserts each matches snapshot. TC-RG-03 spawns zig build test and asserts exit 0. All allocated strings are freed via defer. spec lists 3 test cases (### TC-RG-01/02/03) matching the 3 test blocks. Live run: zig build test-integration-gh512 exits 0 with 3/3 tests passing (TC-RG-01 BLOCKER=74 <= 74, TC-RG-02 total=115/by_code={T010=74,T020=11,T030=6,T050=22,T060=2}/platform_admin=14, TC-RG-03 zig build test exit 0).",
+    "artifacts_out": [
+      "handoffs/WF03-GH512-20260808/step-04b-test-design-validator.json",
+      "scratch/_gh512_validator_run.log",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
