@@ -543,3 +543,4 @@
 2026-08-08T22:08:36Z | COMPLETE | WF03-GH495-20260808 | c3f686f3 | BACKEND-DEV | PASS -- LUA-08/09/10 limiter wiring implemented, zig build/test/migrate green, mutation-tested by hand for LUA-08+LUA-10, pushed to feature/WF03-GH495-20260808 (944974d)
 2026-08-08T22:16:25Z | ROUTE | WF03-GH495-20260808 | 66f40dee | ORCH -> TEST-RUNNER | IN_PROGRESS (Step 4, full suite verification of LUA-08/09/10 wiring)
 2026-08-08T22:22:54Z | COMPLETE | WF03-GH495-20260808 | 66f40dee | TEST-RUNNER | PASS -- full suite + test-lua 81/81 + test-simulation 10/10, no regressions
+2026-08-08T22:25:21Z | ROUTE | WF03-GH495-20260808 | 1bd38135 | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize LUA-08/09/10, GH-495 partial-scope closeout)

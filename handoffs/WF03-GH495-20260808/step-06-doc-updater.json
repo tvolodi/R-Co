@@ -1,0 +1,53 @@
+{
+  "handoff_id": "1bd38135-e99d-4c1b-b24e-f8db9edd9802",
+  "run_id": "WF03-GH495-20260808",
+  "workflow_id": "WF-03",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH495-20260808/step-06-doc-updater.json",
+  "created_at": "2026-08-08T22:25:21Z",
+  "started_at": "2026-08-08T22:25:21Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-08",
+      "LUA-09",
+      "LUA-10"
+    ],
+    "related_handoff_ids": [
+      "b322f411-aa0b-49a5-95d0-0c83851b60d0",
+      "4f658ead-5dce-49b3-b40e-63cc255ab32b",
+      "422903bf-0c45-459d-82e1-fc886024959b",
+      "c3f686f3-f4ee-4d1d-bb85-c0505400c153",
+      "66f40dee-2ba7-48f7-aa68-e179cc657ba7"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-08-08-WF03-GH495-20260808.yaml",
+      "src/design/iss0169-lua08-09-10-limiter-wiring.md",
+      "docs/issues/ISS-0624.json",
+      "docs/issues/ISS-0625.json"
+    ]
+  },
+  "task": {
+    "description": "Finalize GH-495 / ISS-0169 tranche 2 (LUA-08 instruction limit, LUA-09 memory limit, LUA-10 wall-clock timeout). All prior steps PASSED: ISSUE-FIXER gap assessment -> CODE-DESIGNER design (1 rework cycle for LUA-10's host-external watchdog, CODE-DESIGN-VALIDATOR PASS on second pass) -> BACKEND-DEV implementation (independently mutation-tested by ORCH, not just self-reported) -> TEST-RUNNER full suite PASS (270/270 wired, 81/81 Lua tests, 10/10 simulation tests, independently re-run by ORCH).\n\nIMPORTANT SCOPE NOTE for CHANGELOG and GitHub issue handling: GH-495 originally covered 9 requirements (LUA-08 through LUA-16). This run resolved ONLY LUA-08/09/10. The remaining 6 requirements were split, with the human operator's explicit sign-off, into two NEW issues for future runs: ISS-0624/GH-591 (LUA-11 variable read/write, LUA-13 logging) and ISS-0625/GH-592 (LUA-12 service call, LUA-15 structured failure, LUA-16 runtime error capture -- GH-592 also gained a new deadline-awareness acceptance criterion for LUA-12's future HTTP client, added during this run's LUA-10 rework, see docs/issues/ISS-0625.json).\n\nYOUR JOB:\n1. Update CHANGELOG.md describing the LUA-08/09/10 wiring (registry-based limiter storage replacing the script-writable __limiter__ global, combined instruction+timeout hook, new host-external watchdog thread for LUA-10's blocking-call/outside-VM enforcement, memory-limiter wiring into lua_newstate, unmanifested executeScript now runs under conservative default limits instead of unlimited). Note the incidental fix to src/simulation/service_interceptor.zig's allocator-mismatch bug (discovered by the new tests, real crash risk, fixed in-scope per CLAUDE.md's Unblock-Everything directive since it directly blocked TC-LUA-10-02 from running at all).\n2. Run `python3 tools/reqctl.py set-status LUA-08 RELEASED --implemented-in src/lua/instruction_limiter.zig src/lua/executor.zig`, and the same pattern for LUA-09 (--implemented-in src/lua/memory_limiter.zig src/lua/executor.zig) and LUA-10 (--implemented-in src/lua/timeout.zig src/lua/instruction_limiter.zig src/lua/host_api/call_service.zig src/lua/executor.zig) -- verify exact requirement IDs first via `python3 tools/reqctl.py show LUA-08` etc. if these don't match.\n3. Run `python3 tools/reqctl.py render-status` to regenerate docs/status/requirement_status.yaml.\n4. GitHub issue #495 handling: since only 3 of the original 9 requirements are resolved by this PR, do NOT close #495 as fully resolved by a blind squash-merge auto-close. Add a comment to #495 explaining LUA-08/09/10 are now RELEASED (link the PR once created), and that the remaining 6 requirements are tracked separately in #591 and #592 -- then either edit #495's title to reflect the narrowed remaining scope (LUA-11 through LUA-16) and leave it OPEN, or close it with a clear comment pointing to #591/#592 as its replacement, whichever this repo's existing convention favors (check a few recently-closed/split issues via `gh issue list --state all --search 'split'` for precedent). Use your own judgment per your CLAUDE.md section's existing authority over changelog/issue bookkeeping -- do not ask ORCH which to pick, this is not a business-preference ambiguity.\n5. Retrospective: check for handoffs/WF03-GH495-20260808/estimation.json -- if absent (this is a WF-03 run, estimation files are WF-02/WF-04 only per your CLAUDE.md section), skip the retrospective step entirely.\n6. GitHub Branch Management (MANDATORY, your Step Final): create the PR (gh pr create --base main), ensure CI passes (poll gh pr checks -- wait for real completion, do not assume), squash-merge and delete the branch (gh pr merge --squash --delete-branch), verify no orphaned branch remains, update the project board per docs/agents/protocols/PROJECT_BOARD.md for issue #495 (python3 tools/gh_project_status.py 495 --target implemented, then --target done -- since the requirements this PR closes are RELEASED as MUST requirements, not merely implemented pending UAT -- check PROJECT_BOARD.md for the exact convention this repo uses for a partially-resolved multi-requirement issue), return the repo to a clean main (git checkout main; git pull --ff-only origin main; verify branch=main and status=clean).",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated describing LUA-08/09/10 wiring and the incidental service_interceptor.zig fix",
+      "LUA-08, LUA-09, LUA-10 set to RELEASED via reqctl.py with correct --implemented-in files",
+      "docs/status/requirement_status.yaml regenerated via reqctl.py render-status",
+      "GH-495 updated (comment + title/close decision) reflecting narrowed scope and pointing to GH-591/GH-592",
+      "PR created, CI verified green (not assumed), squash-merged, branch deleted",
+      "Project board updated for issue #495 per PROJECT_BOARD.md convention",
+      "Repo returned to clean main after merge"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
