@@ -1,0 +1,52 @@
+{
+  "handoff_id": "c13ca507-4cb5-4559-8cfb-a77205aa174b",
+  "run_id": "WF03-GH567-20260808",
+  "workflow_id": "WF-03",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH567-20260808/step-07-doc-updater.json",
+  "created_at": "2026-08-08T06:02:54Z",
+  "started_at": "2026-08-08T06:02:54Z",
+  "completed_at": "2026-08-08T06:02:54Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/scheduler/scheduler.zig",
+      "src/design/iss0618-scheduler-lock-and-error-signaling.md",
+      "tests/reports/report-2026-08-08-WF03-GH567-20260808.yaml",
+      "docs/issues/ISS-0618.json"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md documenting the GH-567/ISS-0618 fix including the concurrent-claim incident. Mark ISS-0618 RESOLVED. Perform GitHub Branch Management.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with an entry for GH #567 / ISS-0618",
+      "docs/issues/ISS-0618.json marked status RESOLVED with resolution details",
+      "PR created and merged via gh pr merge --squash --delete-branch",
+      "Feature branch deleted, local repo returned to clean main",
+      "GH #567 board status advanced to implemented then done"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue",
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated CHANGELOG.md with a full entry for GH #567 / ISS-0618 covering both fixes, the concurrent-claim incident and its resolution, and the latent-deadlock fix. Marked docs/issues/ISS-0618.json status RESOLVED with resolved_at/resolved_in/resolution fields. No requirement_ids in scope. No estimation.json. Proceeding to GitHub Branch Management.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0618.json"
+    ],
+    "issues": [],
+    "next_action": "Proceed to GitHub Branch Management (Step Final git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

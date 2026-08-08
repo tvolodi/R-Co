@@ -2659,7 +2659,107 @@
       "created_at": "2026-08-08T04:50:42Z",
       "status": "COMPLETED",
       "stage": null
+    },
+    {
+      "handoff_id": "82a19e7a-e076-4444-888e-6ced085897f7",
+      "file": "handoffs/WF03-GH567-20260808/step-01-issue-fixer.json",
+      "run_id": "WF03-GH567-20260808",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-08T05:01:56Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "375a58ae-4f93-4302-be00-2a3a0a36ae06",
+      "file": "handoffs/WF03-GH567-20260808/step-02-code-designer.json",
+      "run_id": "WF03-GH567-20260808",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-08T05:08:40Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "bb327707-a7af-4e32-8d80-c36d997121ca",
+      "file": "handoffs/WF03-GH567-20260808/step-02b-code-design-validator.json",
+      "run_id": "WF03-GH567-20260808",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-08T05:14:43Z",
+      "status": "COMPLETED",
+      "stage": null,
+      "completed_at": "2026-08-08T05:16:45Z"
+    },
+    {
+      "handoff_id": "b033e2cd-0ba8-48fd-b236-493add6c51a0",
+      "file": "handoffs/WF03-GH567-20260808/step-03-backend-dev.json",
+      "run_id": "WF03-GH567-20260808",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-08T05:18:12Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "a710352b-2f8a-435d-a83d-07382d95f01c",
+      "file": "handoffs/WF03-GH567-20260808/step-00-backend-dev.json",
+      "run_id": "WF03-GH567-20260808",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-08T04:06:39Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 issue fix"
+    },
+    {
+      "handoff_id": "9e2031ad-ad07-4767-91d2-35df694afe4c",
+      "file": "handoffs/WF03-GH567-20260808/step-01-issue-fixer-r-co-1-loop.json",
+      "run_id": "WF03-GH567-20260808",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-08T04:06:39Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 issue fix - diagnosis (r-co-1-loop concurrent claim; superseded by 82a19e7a)"
+    },
+    {
+      "handoff_id": "aa79586b-ca66-4fba-8b80-3eb249ff4cc1",
+      "file": "handoffs/WF03-GH567-20260808/step-02b-code-design-validator-r-co-1-loop.json",
+      "run_id": "WF03-GH567-20260808",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-08T04:10:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 design validator (r-co-1-loop concurrent claim; superseded by bb327707)"
+    },
+    {
+      "handoff_id": "3edfe585-6b0d-4e7f-b7cc-8d73cf1a8d3f",
+      "file": "handoffs/WF03-GH567-20260808/step-05-test-runner.json",
+      "run_id": "WF03-GH567-20260808",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-08T06:01:16Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "c13ca507-4cb5-4559-8cfb-a77205aa174b",
+      "file": "handoffs/WF03-GH567-20260808/step-07-doc-updater.json",
+      "run_id": "WF03-GH567-20260808",
+      "step": "07",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-08T06:02:54Z",
+      "status": "COMPLETED",
+      "stage": null
     }
   ],
-  "last_updated": "2026-08-07T23:05:53Z"
+  "last_updated": "2026-08-08T05:55:02Z"
 }

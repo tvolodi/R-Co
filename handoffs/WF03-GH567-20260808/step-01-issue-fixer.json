@@ -1,0 +1,43 @@
+{
+  "handoff_id": "82a19e7a-e076-4444-888e-6ced085897f7",
+  "run_id": "WF03-GH567-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH567-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T05:01:56Z",
+  "started_at": "2026-08-08T05:02:29Z",
+  "completed_at": "2026-08-08T05:06:42Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0618.json"
+    ]
+  },
+  "task": {
+    "description": "GH #567 / ISS-0618: two failures in tests/integration/sch02_timer_polling_test.zig. (1) TC-SCH-02-02 ('scheduler skips locked timers and does not fire CANCELLED timers') asserts skipped_locked > 0 but gets 0. (2) TC-SCH-02-03 ('firing rollback keeps timer PENDING when event append fails') expects error.TransactionFailed from pollDueTimers() after a deliberately-seeded idempotency-key collision, but gets a normal zero-work result instead -- no error surfaced at all. Not yet root-caused (filed as a triage split from ISS-0184/GH-517's diagnosis pass, cluster C8). Possible explanations listed in the issue: poller silently swallows the forced DB error; collision setup isn't landing before pollDueTimers runs (commit-visibility/ordering issue); poller never attempts to fire the timer for an unrelated reason; for TC-SCH-02-02, the row-lock isn't held by whatever concurrent-locker helper the test uses, or the poller's SKIP LOCKED query isn't hitting the intended row. Read tests/integration/sch02_timer_polling_test.zig (both TC-SCH-02-02 and TC-SCH-02-03 blocks) and the scheduler's pollDueTimers implementation (search src/ for it) in full. Trace the actual locking and error-propagation logic -- this needs a real BACKEND-DEV-level trace, not surface-level speculation.",
+    "acceptance_criteria": [
+      "TC-SCH-02-02 skip-locked-timer path traced: confirm whether the lock is actually held and whether the poller query correctly excludes locked rows",
+      "TC-SCH-02-03 forced-failure path traced: confirm whether the collision setup commits before polling, and whether pollDueTimers() correctly surfaces the underlying DB error",
+      "Root cause identified with file:line precision for both"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root-caused both TC-SCH-02-02 and TC-SCH-02-03 failures in tests/integration/sch02_timer_polling_test.zig by tracing src/scheduler/scheduler.zig and confirming with a real test run (temporary scoped build step test-integration-sch02-diag, added and reverted). TC-SCH-02-02 (scheduler.zig:189-215): the ordinary-timer SELECT ... FOR UPDATE SKIP LOCKED query returns 0 rows when the due timer's row is locked, which hits the `due_rows.rows.len == 0` branch (lines 212-215) that returns .none instead of .skipped_locked -- the .skipped_locked PollOutcome is only ever produced by the human_task_escalation branch (fireEscalationTimerInTx, line 456/295-303), never by the general timers-table SKIP LOCKED path, so skipped_locked stays 0 for plain scheduled_transition/TIMER timers. TC-SCH-02-03 (scheduler.zig:309-419): the fire_blk labeled block swallows any error from appendTimerFiredEventInTx via `catch break :fire_blk false` (line 338), including the duplicate-idempotency-key constraint violation the test seeds; !fire_ok then rolls back, calls the fully error-swallowing handleTimerFireError, and returns .none (line 400-417) -- SchedulerError.TransactionFailed is declared and used elsewhere in the file but is unreachable from this failure path. Both are independent gaps in the same function (processNextDueTimer) sharing one design pattern: a Postgres-level signal is caught and converted to a silent .none rather than surfaced through PollOutcome/SchedulerError.",
+    "artifacts_out": ["docs/issues/ISS-0618.json"],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

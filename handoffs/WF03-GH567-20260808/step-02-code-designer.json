@@ -1,0 +1,48 @@
+{
+  "handoff_id": "375a58ae-4f93-4302-be00-2a3a0a36ae06",
+  "run_id": "WF03-GH567-20260808",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH567-20260808/step-02-code-designer.json",
+  "created_at": "2026-08-08T05:08:40Z",
+  "started_at": "2026-08-08T05:09:38Z",
+  "completed_at": "2026-08-08T05:13:12Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0618.json",
+      "src/scheduler/scheduler.zig",
+      "tests/integration/sch02_timer_polling_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Design a fix for GH #567 / ISS-0618 (docs/issues/ISS-0618.json, read the confirmed_root_cause field for full detail) -- two independent bugs in src/scheduler/scheduler.zig's timer polling logic, both confirmed via code trace AND an actual failing-test run: (1) TC-SCH-02-02: the ordinary-timer SELECT ... FOR UPDATE SKIP LOCKED query (scheduler.zig lines 189-215) returns 0 rows both when there are genuinely no due timers AND when a due timer exists but is currently locked by another process -- these two cases are indistinguishable from the query result alone, so line 212-215 unconditionally maps 'zero rows' to PollOutcome.none. The .skipped_locked variant exists and IS correctly produced elsewhere (the human_task_escalation branch, lines 246-304, via fireEscalationTimerInTx returning .skipped_locked at line 295-303) but the general/ordinary-timer path never has a way to detect a lock collision at all -- it needs a second query (e.g. checking whether any due timer exists at all, ignoring locks, to distinguish 'none due' from 'due but locked') OR the main query needs restructuring to surface the distinction. (2) TC-SCH-02-03: the fire_blk labeled block (lines 309-398) deliberately catches ALL failures via catch break :fire_blk false (multiple call sites, e.g. line 338's appendTimerFiredEventInTx(...) catch break :fire_blk false) -- this was an intentional prior design decision (see the ISS-303 comment at lines 306-308: 'Wrap the entire fire path in a labeled block so any failure can be caught, the transaction rolled back, and the error count incremented without propagating errors that inflate skipped_locked/fired counters'). The problem: this swallows even a genuine, test-verifiable database constraint violation (duplicate idempotency_key) that SchedulerError.TransactionFailed exists specifically to surface -- !fire_ok (lines 400-417) always calls handleTimerFireError and returns .none, with TransactionFailed never reachable from this path at all. YOUR DESIGN MUST NOT NAIVELY UNDO ISS-303's original fix (uncontrolled error propagation was itself a prior bug this code was written to prevent -- read docs/anti-patterns.md and git log for ISS-303 / GH context if available to understand what it was protecting against before proposing a change). The likely correct direction: distinguish genuinely-retryable/expected failures (which should continue being caught and routed to handleTimerFireError, preserving ISS-303's intent) from a specific class of failure the test suite needs to verify propagates (a forced/deliberate transaction failure like a constraint violation) -- but propose the actual mechanism carefully: options might include distinguishing error types within the catch (not a blanket catch), or having handleTimerFireError itself surface certain error classes after recording them, or a different signal entirely. Read src/scheduler/scheduler.zig in full (not just the excerpted lines), tests/integration/sch02_timer_polling_test.zig's TC-SCH-02-02 and TC-SCH-02-03 blocks in full, and handleTimerFireError's implementation before designing.",
+    "acceptance_criteria": [
+      "Design fixes TC-SCH-02-02 by distinguishing \"no due timers\" from \"due timer exists but locked\" for the ordinary-timer poll path",
+      "Design fixes TC-SCH-02-03 by making SchedulerError.TransactionFailed (or an equivalent signal) reachable for the specific forced-failure scenario the test exercises",
+      "Design explicitly addresses why the fix does NOT regress ISS-303s original intent (preventing uncontrolled error propagation that inflates fired/skipped_locked counters) -- must show it understood what ISS-303 protected against",
+      "Design is precise enough that BACKEND-DEV can implement without re-deriving the error-handling strategy from scratch",
+      "No implementation code present in the design artefact"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Designed both ISS-0618 fixes in src/design/iss0618-scheduler-lock-and-error-signaling.md. Investigated ISS-303 (src/design/scheduler-concurrency-epic3.md, commit f799e5d) and confirmed its fire_blk catch-all protects retry/DLQ accounting continuity across repeated pollDueTimers calls (fire_error_count increment via handleTimerFireError, eventual FAILED+DLQ after max_timer_fire_retries) -- NOT an intent to make TransactionFailed permanently unreachable. Confirmed via tests/integration/sch303_timer_dlq_test.zig (TC-SCH-303-03/04): those tests trigger the SAME duplicate-idempotency-key failure as TC-SCH-02-03 but already discard pollDueTimers return value via  in a retry loop -- so they only depend on handleTimerFireError side effects, not on the return value being non-error. Fix 1 (TC-SCH-02-02): add a lock-agnostic existence re-check (plain SELECT, no FOR UPDATE) when the SKIP LOCKED query returns 0 rows, to distinguish genuinely-empty from due-but-locked, returning .skipped_locked instead of .none for the latter. Fix 2 (TC-SCH-02-03): at the appendTimerFiredEventInTx call site only (not the whole fire_blk block), keep the existing rollback + handleTimerFireError(...) call (preserving ISS-303 retry bookkeeping unchanged) but then return SchedulerError.TransactionFailed directly instead of falling through to .none -- every other fire_blk call site (now_rows query, recurrence parsing, rearm, markTimerFiredInTx, etc.) is untouched and keeps swallowing into the existing false/handleTimerFireError/.none path. No new SchedulerError or PollOutcome variants; no test file changes required; no migrations.",
+    "artifacts_out": [
+      "src/design/iss0618-scheduler-lock-and-error-signaling.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

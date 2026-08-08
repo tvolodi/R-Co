@@ -1876,6 +1876,18 @@ pub fn build(b: *std.Build) void {
     });
     const run_sch303_integration_tests = addIntegrationRun(b, sch303_integration_tests, migrations_dir, clean_test_db);
 
+    // ISS-0618 / GH-567: SCH-02 timer polling integration tests (lock + rollback semantics).
+    // NOTE: wired into test_integration_others_step below (after declaration).
+    const sch02_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/sch02_timer_polling_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_sch02_integration_tests = addIntegrationRun(b, sch02_integration_tests, migrations_dir, clean_test_db);
+
     // ISS-0076: secrets table creation regression coverage (GitHub #335).
     const iss0076_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1924,6 +1936,8 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_iss205_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss601_integration_tests.step);
     test_integration_others_step.dependOn(&run_sch303_integration_tests.step);
+    // ISS-0618 / GH-567: SCH-02 timer polling lock + rollback integration tests.
+    test_integration_others_step.dependOn(&run_sch02_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0076_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_same_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_cross_integration_tests.step);
@@ -2142,6 +2156,11 @@ pub fn build(b: *std.Build) void {
     const test_integration_sch303_step = b.step("test-integration-sch303", "Run EPIC-3 (ISS-301/302/303) scheduler concurrency and DLQ routing integration tests (requires BPM_TEST_DB_URL)");
     test_integration_sch303_step.dependOn(&clean_test_db.step);
     test_integration_sch303_step.dependOn(&run_sch303_integration_tests.step);
+
+    // ISS-0618 / GH-567: SCH-02 timer polling (lock + rollback) integration tests.
+    const test_integration_sch02_step = b.step("test-integration-sch02", "Run SCH-02 timer polling (lock + rollback) integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_sch02_step.dependOn(&clean_test_db.step);
+    test_integration_sch02_step.dependOn(&run_sch02_integration_tests.step);
 
     // EXP-103: instance_waits persistence layer integration tests.
     const exp103_integration_tests = b.addTest(.{
