@@ -425,3 +425,4 @@
 2026-08-08T07:11:20Z | COMPLETE | WF03-GH566-20260808 | f4c0d879 | CODE-DESIGN-VALIDATOR | PASS (recheck after rework 1/3)
 2026-08-08T07:12:46Z | ROUTE | WF03-GH566-20260808 | 16143c02 | ORCH -> BACKEND-DEV | PENDING
 2026-08-08T07:33:05Z | COMPLETE | WF03-GH566-20260808 | 16143c02 | BACKEND-DEV | PARTIAL -- repository_artifacts permanently blocked by artifact_versions FK, recommend test-fixture-level fix instead
+2026-08-08T07:34:33Z | ROUTE | WF03-GH566-20260808 | 8c4535aa | ORCH -> CODE-DESIGNER | PENDING (strategy change -- Step 2c)

@@ -1,0 +1,41 @@
+{
+  "handoff_id": "8c4535aa-a216-4a31-8fe4-0fa13f9edb86",
+  "run_id": "WF03-GH566-20260808",
+  "workflow_id": "WF-03",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH566-20260808/step-02c-code-designer-strategy-change.json",
+  "created_at": "2026-08-08T07:34:33Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0617.json",
+      "tests/integration/exp601_tier_quota_test.zig",
+      "src/config/loader.zig",
+      "migrations/GBL-136_iss0617_drop_remaining_global_registry_shadows.sql"
+    ]
+  },
+  "task": {
+    "description": "STRATEGY CHANGE required for GH #566 / ISS-0617. The previously-validated migration approach (GBL-136, already implemented and merged into this run's history at migrations/GBL-136_iss0617_drop_remaining_global_registry_shadows.sql) cannot achieve the actual goal for repository_artifacts, the direct root cause table. Confirmed via live pg_constraint query on both bpm_dev and bpm_test: tenant_default.artifact_versions has FK fk_artifact_versions_content (ON DELETE RESTRICT) pointing INTO tenant_default.repository_artifacts. Since artifact_versions itself can NEVER be dropped (permanent FK dependents from legitimate PER_TENANT tables artifact_activations, artifact_activation_history, repository_form_schemas -- already documented in the GBL-136 design), it PERMANENTLY, TRANSITIVELY blocks repository_artifacts from ever being dropped via RESTRICT too. This is not fixable by reordering the migration's table list or any other migration-level tweak -- it is a structural impossibility as long as artifact_versions exists in tenant_default. Verified empirically: GBL-136 was applied cleanly to both bpm_dev and bpm_test (6 of 8 target tables dropped successfully, exactly as expected; repository_artifacts and artifact_versions both remain, only artifact_versions was anticipated to remain). NEW RECOMMENDED STRATEGY (from BACKEND-DEV's investigation, needs your design review before implementation): the actual proximate cause per ISS-0617's confirmed_root_cause is tests/integration/exp601_tier_quota_test.zig:53's unqualified `INSERT INTO repository_artifacts` resolving via TestHarness's search_path=tenant_default,public to the wrong (stray, permanently un-droppable) shadow copy, instead of public.repository_artifacts, which is what src/config/loader.zig's loadConfigArtifact (search_path=public only) actually queries. Schema-qualifying this test fixture's INSERT (and any other unqualified repository_artifacts references in this test file -- check tests/integration/exp601_tier_quota_test.zig in full for all of them, there may be more than the one at line 53) to explicitly target public.repository_artifacts would fix TC-EXP-601-01 through 04 directly, without requiring any DROP TABLE at all. This is a test-file-only fix, much smaller and safer than the migration approach. Design this properly: confirm every repository_artifacts reference in the test file, confirm qualifying to public. is correct and doesn't break anything else the test relies on, and confirm this approach doesn't need the GBL-136 migration at all for THIS specific issue (GBL-136 may still be worth keeping/shipping for its other 6 tables' cleanup, that's a separate question from whether it's REQUIRED for GH-566).",
+    "acceptance_criteria": [
+      "Every unqualified repository_artifacts reference in tests/integration/exp601_tier_quota_test.zig identified",
+      "Design specifies schema-qualifying these references to public.repository_artifacts",
+      "Design confirms this satisfies TC-EXP-601-01 through 04 without requiring repository_artifacts to ever be dropped from tenant_default",
+      "Design states explicitly whether GBL-136 (already implemented, covers the other 6 tables) should still ship alongside this fix or be reverted -- with reasoning",
+      "No implementation code present in the design artefact"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
