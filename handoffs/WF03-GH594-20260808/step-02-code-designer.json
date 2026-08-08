@@ -49,6 +49,10 @@
       {
         "severity": "MINOR",
         "description": "H013 whole-hour-offset correction is flagged in Section 8 as an open policy question (offset is mechanically computable but causal timezone is not recorded in the file) rather than resolved -- consistent with the handoff scope, which excludes H013, but noted here per the design constraint to flag disagreement/open questions rather than silently omit them."
+      },
+      {
+        "severity": "MINOR",
+        "description": "ORCH review (2026-08-08, before Step 2b dispatch): section 4.2 originally proposed also renaming a top-level status field of FAILED alongside result.status. Verified against tools/lint_handoffs.py directly: TERMINAL_OK is defined but never referenced by any comparison, and no check anywhere in the file validates a top-level status value against a legal-value enum -- H006 only ever inspects result.status. Corrected in place (sections 4.2, 4.3, and the section 10 summary line) to scope the rename to result.status only, so the script never invents a fix for something lint_handoffs.py never actually flags. No rework cycle needed -- single precise correction, same class as the GH-504 doc-comment fix earlier this run."
       }
     ],
     "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"

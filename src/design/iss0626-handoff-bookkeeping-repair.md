@@ -359,32 +359,36 @@ table has exactly these two entries (§5.4 does test this directly).
 
 ### 4.2 Where the value appears
 
-Per `lint_handoffs.py`'s H006 check (lines 192-203), the value being
-checked is `result.status` (a nested field, only when `result` is already a
-`dict` — which for the 9 H002 files is only true *after* §1's fix has run
-in the same invocation, consistent with §0 C-4's fixed pass ordering placing
-H002 before H006). The top-level `status` field (e.g. `"COMPLETED"`,
-`"PENDING"`) is a different field with a different, larger legal set
-(`TERMINAL_OK` / `OPEN_STATUSES` in `lint_handoffs.py`) and is **not** in
-scope for this rename — only `result.status` is checked against
-`LEGAL_RESULT_STATUS`. The handoff's own task description says "wherever
-these appear as a handoff's status or result.status value"; this design
-applies the rename to both the top-level `status` field and `result.status`
-field wherever either is literally `"FAILED"` or `"PARTIAL_PASS"`, since
-`lint_handoffs.py` itself never expects `"FAILED"`/`"PARTIAL_PASS"` as a
-legal top-level `status` either (`TERMINAL_OK = {"COMPLETED", "CANCELLED",
-"ESCALATED"}`, `OPEN_STATUSES = {"PENDING", "IN_PROGRESS"}` — neither set
-contains `"FAILED"` or `"PARTIAL_PASS"`), so a top-level `status` of
-`"FAILED"` is equally a historical inconsistency worth the same
-unambiguous, table-driven rename. Both fields are checked independently
-using the identical `fix_h006` lookup.
+**Correction (ORCH review, 2026-08-08): scope narrowed to `result.status`
+only.** An earlier draft of this section proposed also renaming a top-level
+`status` field of `"FAILED"`, reasoning that `lint_handoffs.py` "never
+expects `FAILED`/`PARTIAL_PASS` as a legal top-level status either." That
+reasoning does not hold up against the actual check: `TERMINAL_OK` (line 59)
+is defined but never referenced by any comparison in the file, and the only
+place a top-level `status` value is inspected at all is the orphan-detection
+logic (H009, `handoff.get("status") not in OPEN_STATUSES`), which asks only
+"is this handoff still open," not "is this exact string legal." No H006 (or
+any other) finding is ever raised against a top-level `status` value in this
+codebase today. Renaming it here would therefore be the script inventing its
+own detection predicate rather than fixing one `lint_handoffs.py` already
+flags — exactly the kind of unverifiable, no-before/after-target change §0
+C-2's "reuse the same predicate `lint_handoffs.py` uses" principle exists to
+rule out. Reverted to the narrower, verifiable scope:
+
+Per `lint_handoffs.py`'s H006 check (lines 192-203), the value checked is
+`result.status` (a nested field, only when `result` is already a `dict` —
+which for the 9 H002 files is only true *after* §1's fix has run in the same
+invocation, consistent with §0 C-4's fixed pass ordering placing H002 before
+H006) — **and only `result.status`.** The top-level `status` field is out of
+scope for this rename; `fix_h006` is applied exclusively to
+`parsed["result"]["status"]` when `result` is a `dict`.
 
 ### 4.3 Post-write predicate re-check
 
-Neither `parsed.get("status")` nor (if `result` is a dict)
-`parsed["result"].get("status")` equals `"FAILED"` or `"PARTIAL_PASS"`
-after the write; `"CONDITIONAL"` (wherever it occurs) is byte-identical to
-before.
+If `result` is a dict, `parsed["result"].get("status")` does not equal
+`"FAILED"` or `"PARTIAL_PASS"` after the write. The top-level `status` field
+is not touched by this category (§4.2) and must be byte-identical to before,
+same as `"CONDITIONAL"` wherever it occurs.
 
 ---
 
@@ -842,8 +846,7 @@ already-fixed output.
   up to 9 files under `handoffs/WF02-iss105-token-model-schema-20260611/`
   (H002), up to 88 files corpus-wide (H008), `handoffs/registry.json` (H010,
   single additive rewrite), up to 3 files corpus-wide for the 2 unambiguous
-  H006 renames (a file may carry both a top-level and nested `status` hit,
-  still one file), up to ~7 files corpus-wide (H001-encoding-subset,
+  H006 renames (§4.2, `result.status` only), up to ~7 files corpus-wide (H001-encoding-subset,
   possibly fewer if the byte-diff gate rejects some).
 - **Not modified by this script, ever:** any file matching only an
   out-of-scope category (§8); `handoffs/orchestrator.log`;
