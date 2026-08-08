@@ -1,0 +1,31 @@
+handoff_id: f0b78f3c-40ac-455d-95f7-405bea658489
+run_id: WF03-GH501-20260808
+step: '00'
+agent: BACKEND-DEV
+completed_at: 2026-08-08T18:25:36Z
+branch:
+  name: feature/WF03-GH501-20260808
+  base_commit: b9d2ca28
+  tip_commit: 29ba8d54
+  tracking: origin/feature/WF03-GH501-20260808
+  visible_on_origin: true
+bookkeeping:
+  - commit: b9d2ca28 (origin/main)
+    message: chore(audit): claim GH-501 + dispatch WF03-GH501 Step 00
+    files:
+      - handoffs/global_queue.json
+      - handoffs/orchestrator.log
+      - handoffs/registry.json
+      - handoffs/WF03-GH501-20260808/step-00-backend-dev.json
+  - commit: 29ba8d54 (feature/WF03-GH501-20260808)
+    message: chore(audit): WF03-GH501 Step 00 IN_PROGRESS (started_at stamped)
+    files:
+      - handoffs/WF03-GH501-20260808/step-00-backend-dev.json
+acceptance_criteria:
+  feature_branch_created_and_pushed: PASS
+  zig_build_exit_0: NOT_APPLICABLE (Step 00 = git-setup; no code changes)
+  zig_build_test_exit_0: NOT_APPLICABLE (Step 00 = git-setup; no code changes)
+  no_force_push_to_main: PASS (only `git push origin main` for bookkeeping, no --force)
+  ISS-0172_file_in_docs_issues: EXISTS (existing ISS-0172; Step 0.5/ISSUE-FIXER will verify)
+working_tree_clean: true
+next_action: Route to ISSUE-FIXER (Step 0.5)

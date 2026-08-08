@@ -1,0 +1,77 @@
+{
+  "handoff_id": "a8124083-205d-41dc-aaeb-17184dcbb669",
+  "run_id": "WF03-GH501-20260808",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-08-08T19:45:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/ISS-0173-gh501-jwks-orphan.md",
+      "tests/unit/iss0173_oidc_jwks_orphan_test.zig",
+      "docs/issue-reports/ISS-0173-gh501-diagnosis.yaml",
+      "src/design/iss0173-gh501-jwks-zig016-fix.md"
+    ],
+    "github_issue_number": 501,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/501",
+    "iss_id": "ISS-0173",
+    "severity": "MAJOR"
+  },
+  "task": {
+    "description": "Validate tests/specs/ISS-0173-gh501-jwks-orphan.md against tests/unit/iss0173_oidc_jwks_orphan_test.zig at HEAD (4f7119db) on branch feature/WF03-GH501-20260808. Hard-gate checks: (1) every MUST requirement has a runnable test, (2) no error.SkipZigTest, (3) per-test UUIDs, (4) defer cleanup, (5) tests self-sufficient. Run tools/lint_test_isolation.py tests/unit and tools/lint_handoffs.py. Update step-04b handoff + registry/log with utf-8-sig reads, utf-8 writes, append-only log, real UTC timestamps from tools/utcnow.py. Return PASS routing to TEST-RUNNER (Step 5).",
+    "acceptance_criteria": [
+      "tools/lint_test_isolation.py exit 0 on tests/unit/iss0173_oidc_jwks_orphan_test.zig",
+      "tools/lint_handoffs.py has no findings against WF03-GH501-20260808 path (inherited global findings only)",
+      "Spec case count matches implementation test block count (4 vs 4)",
+      "No error.SkipZigTest / test.skip / @skip in test file",
+      "zig build test-iss0173-orphan exits 0 with 4/4 tests passed",
+      "zig build exits 0 with no oidc/jwks reference in output",
+      "git ls-files src/oidc/jwks.zig returns empty (exit 0)",
+      "src/main.zig contains zero 'oidc_jwks' matches",
+      "Inner report written to docs/issue-reports/WF03-GH501-20260808-step-04b-TEST-DESIGN-VALIDATOR-INNER-REPORT.yaml",
+      "handoffs/orchestrator.log appended (UTF-8, single line, real UTC timestamp)",
+      "handoffs/registry.json updated (status COMPLETED, to_agent TEST-DESIGN-VALIDATOR)"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0173 / GH-501 test design validated against implementation at HEAD (4f7119db). Spec tests/specs/ISS-0173-gh501-jwks-orphan.md defines 4 GIVEN/WHEN/THEN cases (TC-ISS-0173-01..04); tests/unit/iss0173_oidc_jwks_orphan_test.zig implements exactly 4 matching test blocks with per-test UUIDs from @src(). tools/lint_test_isolation.py tests/unit/iss0173_oidc_jwks_orphan_test.zig exits 0 ('no isolation issues'). tools/lint_handoffs.py reports zero findings against WF03-GH501-20260808 (global exit 1 is inherited historical noise, 263 BLOCKER in unrelated older handoffs). zig build exits 0 with no oidc/jwks reference; zig build test-iss0173-orphan exits 0 with 4/4 tests passed (UUIDs fad9d11f-/7640356f-/899b7d38-/3bded8dd-). No error.SkipZigTest or test.skip markers anywhere in the test file. All 6 acceptance criteria from the spec (AC-01..AC-06) verified at HEAD: re-export gone from src/main.zig, file absent, file untracked, identifier absent, build clean, mutation phase 3 RED/GREEN already captured at step-04. Per-test defer cleanup unconditional (TC-01/03/04 free allocations; TC-02 has no allocations). Tests self-sufficient (filesystem + git only; no DB/Keycloak/HTTP). Routing to TEST-RUNNER (Step 5).",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-GH501-20260808-step-04b-TEST-DESIGN-VALIDATOR-INNER-REPORT.yaml",
+      "scratch/_iss0173_step04b_lint_focused.log",
+      "scratch/_iss0173_step04b_lint_handoffs.log",
+      "scratch/_iss0173_step04b_focused.stdout",
+      "scratch/_iss0173_step04b_focused.stderr",
+      "scratch/_iss0173_step04b_full_test.stdout",
+      "scratch/_iss0173_step04b_full_test.stderr",
+      "scratch/_iss0173_step04b_buildcheck.out",
+      "scratch/_iss0173_step04b_parity.py",
+      "scratch/_iss0173_step04b_parity.out"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Global tools/lint_handoffs.py exits 1 with 263 historical BLOCKER findings across 2251 handoffs. Select-String filter for WF03-GH501-20260808 returns zero lines — no finding against any handoff in this run. Inherited historical noise is recorded, not fixed in this scope per scope-boundary guidance."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Inherited from step-02b: FOLLOWUP-ISS-0174 — no linter exists for dead pub const X = @import(...) re-exports in src/main.zig. Already filed as a separate ISS for a future WF-03 run. Out of scope for GH-501."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-08T20:02:27Z",
+  "completed_at": "2026-08-08T20:02:27Z"
+}

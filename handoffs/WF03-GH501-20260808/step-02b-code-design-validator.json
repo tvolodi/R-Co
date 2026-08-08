@@ -1,0 +1,81 @@
+{
+  "handoff_id": "c4f81d6a-3e7b-4d5f-9a2e-8b1c0d6f7a4e",
+  "run_id": "WF03-GH501-20260808",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-08T18:32:32Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "3a1b9c4d-7e2f-4d6a-9b8e-1f0c2d3a4b5e",
+      "7d3c8a51-2e0a-4f9b-8c4d-9e1a5b6c7d8e",
+      "f0b78f3c-40ac-455d-95f7-405bea658489"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0173-gh501-diagnosis.yaml",
+      "src/design/iss0173-gh501-jwks-zig016-fix.md",
+      "src/oidc/jwks.zig",
+      "src/main.zig",
+      "build.zig",
+      "templates/lego-catalog.md",
+      "tools/lint_design_artefact.py"
+    ],
+    "github_issue_number": 501,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/501",
+    "iss_id": "ISS-0173",
+    "severity": "MAJOR"
+  },
+  "task": {
+    "description": "Validate the Type E prose design at src/design/iss0173-gh501-jwks-zig016-fix.md against the diagnosis at docs/issue-reports/ISS-0173-gh501-diagnosis.yaml for WF-03 Step 2b. Required checks: (1) every acceptance criterion in every MUST requirement has a design element, (2) no implementation code is present (Type E), (3) all public function signatures listed or implied, (4) error taxonomy exists, (5) dependencies documented, (6) classification per templates/lego-catalog.md is correct, (7) State A/B decision is justified, (8) deliberate-mutation regression test plan exists. Run tools/lint_design_artefact.py on the design file. Update step-02b handoff + registry/log with utf-8-sig reads, utf-8 writes, append-only log, real UTC timestamps from tools/utcnow.py. Return PASS/FAIL with severity-classified issues.",
+    "acceptance_criteria": [
+      "tools/lint_design_artefact.py exits 0 on src/design/iss0173-gh501-jwks-zig016-fix.md",
+      "Every MUST-1..MUST-8 finding in the diagnosis has a corresponding design element (Step 1 wire-up; Step 2 ArrayList; Step 3 mutex; Step 4 orphan fate; Step 5 regression; Step 6 classification)",
+      "State A/B decision is documented with explicit option matrix AND the chosen path (State A DELETE) is justified against the workspace caller census (zero callers of main.oidc_jwks)",
+      "No implementation code present in the design (Type E): all Zig blocks are signatures, diffs, or prose -- no full function bodies in fenced code blocks",
+      "All public function signatures listed for both State A and State B (8 wrappers documented with their pre/post-fix signatures)",
+      "Error taxonomy exists (table mapping each compile error to its source and fix)",
+      "Dependencies documented (table listing main.zig:78, oidc_test_root.zig, build.zig:265-268, lib/std/Io.zig, lib/std/array_list.zig)",
+      "Classification per templates/lego-catalog.md is Type E (novel, cross-cutting, no codegen) and is justified per-deliverable",
+      "Deliberate-mutation regression test plan has 3 phases (RED proof, GREEN proof, mutation verification) with specific evidence capture paths under scratch/_iss0173_*.{log,txt}",
+      "Pre-flight grep command sequence documented exactly as BACKEND-DEV must run it before deleting",
+      "handoffs/orchestrator.log appended (UTF-8, single line, real UTC timestamp)",
+      "handoffs/registry.json updated for this handoff (status: COMPLETED, to_agent: CODE-DESIGN-VALIDATOR)",
+      "src/design/iss0173-gh501-jwks-zig016-fix.md modified only to satisfy lint E010 (Module purpose heading)",
+      "No source files in src/ or tests/ were modified by the validator"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated the Type E prose design at src/design/iss0173-gh501-jwks-zig016-fix.md (35,520 bytes after the lint-fix, 6 deliverables, State A DELETE). tools/lint_design_artefact.py exits 0 with zero issues after the validator applied a one-line heading fix (Scope -> Module purpose) to satisfy the E010 MAJOR rule. All 8 design checks pass: (1) MUST-1..MUST-8 coverage -- 10 specific edits enumerated across 4 mechanical + 12 mutex + 2 deletion sites; (2) no implementation code -- only signatures, diffs, and prose; (3) public interface section covers both State A and State B with all 8 wrapper signatures (initCache, deinitCache, checkCache, putCache, isRevoked, revokeToken, revokeRealmTokens, evictExpired); (4) error taxonomy table present with 6 distinct error sources and their fix mappings; (5) external dependencies table present (main.zig:78, oidc_test_root.zig, build.zig:265-268, lib/std/Io.zig, lib/std/array_list.zig, lib/std/Thread.zig, jwks_cache.zig as parallel not duplicate); (6) lego-catalog classification Type E (novel, cross-cutting, no codegen) per the selection rule 'Anything performance-sensitive / cross-cutting orchestration stays in Type E'; (7) State A/B decision is justified with explicit option matrix (DELETE / KEEP+RENAME / KEEP+REWIRE) and a 5-point rationale grounded in the workspace caller census (zero callers of main.oidc_jwks); (8) deliberate-mutation regression plan has 3 phases (RED proof, GREEN proof, mutation verification) with 6 specific evidence capture paths under scratch/_iss0173_*.{log,txt}. The one-line heading fix is the only validator-side change; the design is now lint-clean.",
+    "artifacts_out": [
+      "src/design/iss0173-gh501-jwks-zig016-fix.md (lint-clean, Module purpose heading added)",
+      "docs/issue-reports/WF03-GH501-20260808-step-02b-CODE-DESIGN-VALIDATOR-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "id": "VALIDATOR-FIX-1",
+        "severity": "MINOR",
+        "description": "Validator applied a one-line heading fix to the design artefact to satisfy the E010 MAJOR lint rule (added '## Module purpose' heading; the original ## Scope section was renamed to retain its content but satisfy the lint substring check). The fix is mechanical and does not change the design's substance -- it is a documentation-heading rename, not a content change. This is recorded for audit; it does not block PASS."
+      },
+      {
+        "id": "FOLLOWUP-ISS-0174",
+        "severity": "MINOR",
+        "description": "Inherited from CODE-DESIGNER: SHOULD-2 from diagnosis. Codebase lacks a linter that detects dead pub const X = @import(...) re-exports in src/main.zig. The MUST-8 finding was discovered only by manual grep; a future ISS-0172-class blind spot in a different subsystem would re-occur. Recommend: file ISS-0174 (separate WF-03 run) to add a tools/lint_dead_reexports.py check. Out of scope for GH-501."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3) to implement the State A DELETE fix."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-08T18:41:56Z",
+  "completed_at": "2026-08-08T18:41:56Z"
+}
