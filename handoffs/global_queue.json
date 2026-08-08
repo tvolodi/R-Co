@@ -620,14 +620,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/580",
       "title": "Shared bpm_test's tenant_default schema was fully dropped and reprovisioned mid-lineage, resurrecting 18 already-dropped GLOBAL_REGISTRY shadow tables",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-08T10:50:39Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-08T10:50:39Z",
       "started_at": "2026-08-08T10:50:39Z",
-      "completed_at": null,
+      "completed_at": "2026-08-08T11:16:39Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 580,
