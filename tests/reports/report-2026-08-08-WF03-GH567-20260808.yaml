@@ -1,0 +1,111 @@
+run_id: WF03-GH567-20260808
+date: "2026-08-08"
+completed_at: "2026-08-08T06:01:16Z"
+issues_tested: [GH-567, ISS-0618]
+
+pre_checks:
+  services:
+    db: healthy (r-co-2-db-1, port 5452)
+    db_test: healthy (r-co-2-db_test-1, port 5453)
+    keycloak: healthy (r-co-2-keycloak-1)
+    keycloak_gateway: healthy (r-co-2-keycloak_gateway-1)
+  test_env_verify:
+    status: HEALTHY
+    checks_passed: "10/10 (C0-C9)"
+    migrations_applied: "110/110"
+
+concurrent_claim_incident:
+  status: DETECTED AND RESOLVED, verified correct by independent review
+  detail: >
+    A genuine race in gh_claim.py allowed workspace r-co-1-loop to also claim
+    GH-567 (locked 2026-08-08T04:06:22Z) before this workspace's claim
+    (locked 2026-08-08T05:00:24Z) was visible -- both workspaces independently
+    diagnosed and fixed the same issue on the same branch name
+    (feature/WF03-GH567-20260808). BACKEND-DEV detected this via a push
+    rejection, merged (not force-pushed) the two histories, and made a
+    reasoned choice to keep this run's design-validated fix over the
+    competing workspace's broader change. TEST-RUNNER independently
+    re-verified this choice rather than trusting it blindly:
+      - Read both diffs directly. r-co-1-loop's fix changes the `if (!fire_ok)`
+        branch to unconditionally return SchedulerError.TransactionFailed for
+        ANY fire_blk failure (now_rows query, recurrence parsing, rearm,
+        markTimerFiredInTx, appendTimerFiredEventInTx -- all of them). This
+        run's fix scopes the change to ONLY the appendTimerFiredEventInTx call
+        site, per the explicitly validated design doc
+        (src/design/iss0618-scheduler-lock-and-error-signaling.md, which
+        reasoned specifically against a blanket change to avoid unintentionally
+        widening what SchedulerError.TransactionFailed now means for every
+        caller of pollDueTimers). This run's fix is confirmed more precisely
+        scoped and is the one that should be kept.
+      - Found the merge had prematurely marked handoffs/global_queue.json's
+        GH-567 entry RESOLVED with lock:null, before Step Final / PR merge had
+        actually happened. Corrected back to IN_PROGRESS, locked by
+        r-co-2-loop, matching the run's true state -- queue_release.py is the
+        only tool that should set RESOLVED, and only after the real merge.
+      - Verified zero unresolved git conflict markers remain in
+        src/scheduler/scheduler.zig or tests/integration/sch02_timer_polling_test.zig
+        (grep false-positive on unrelated `// ===...===` comment dividers,
+        confirmed by exact `^=======$` anchor).
+      - Verified handoffs/orchestrator.log has zero null bytes / no UTF-16
+        corruption reintroduced by the merge (the ISS-0613 corruption class
+        from earlier this session).
+      - Confirmed zig build exits 0 after the merge.
+
+target_fix_verification:
+  status: PASS
+  method: >
+    zig build test-integration-sch02 (scoped step covering TC-SCH-02-02 and
+    TC-SCH-02-03) and zig build test-integration-sch303 (regression check for
+    ISS-303's retry/DLQ machinery, TC-SCH-303-03/04), each run twice
+    independently by TEST-RUNNER in addition to BACKEND-DEV's own runs.
+  runs: 2 (TEST-RUNNER) + prior BACKEND-DEV runs
+  result_per_run:
+    test-integration-sch02: "23/23 tests passed, both runs"
+    test-integration-sch303: "4/4 tests passed, both runs"
+  conclusion: >
+    TC-SCH-02-02 (skipped_locked > 0 on lock collision) and TC-SCH-02-03
+    (SchedulerError.TransactionFailed surfaces on forced duplicate-idempotency-key
+    failure, timer stays PENDING) both pass consistently. TC-SCH-303-03/04
+    (ISS-303's retry/DLQ regression suite, which exercises the SAME
+    duplicate-idempotency-key failure this fix touches) also pass consistently
+    -- confirming the design's core safety claim (independently verified by
+    CODE-DESIGN-VALIDATOR before implementation, and re-confirmed here after
+    implementation): those tests discard pollDueTimers's return value and only
+    depend on handleTimerFireError's side effects, which remain unchanged.
+    Additionally verified: the latent self-deadlock in TC-SCH-02-02
+    (cancelInstance() blocking on a still-held FOR UPDATE lock from the test's
+    own setup, exposed only once the primary fix made the preceding assertion
+    pass) was correctly fixed by explicitly releasing the lock before
+    cancelInstance() runs -- confirmed no hang across 4 total test-integration-sch02
+    runs (2 BACKEND-DEV + 2 TEST-RUNNER).
+
+migration_result:
+  status: PASS
+  detail: "zig build migrate: exit 0, clean, 110/110 applied"
+
+db_state:
+  status: clean after every run
+  non_idle_backends: 0 (excluding the check query itself)
+
+overall_status: PASS
+issues:
+  - id: ISSUE-001
+    severity: MINOR
+    description: >
+      Confirmed gh_claim.py can still race under close timing (two claims ~54
+      minutes apart in this case, both within the 120-minute TTL, is not itself
+      surprising -- the concerning part is that gh_claim.py's OWN read of
+      origin/main at claim time did not yet reflect r-co-1-loop's earlier
+      claim, meaning the claim commit had not propagated/been pulled before
+      this workspace's claim ran). This is the same general class of issue
+      ISS-0615/GH-563 (fixed earlier this session) addressed for a different
+      manifestation (stale TTL, push-visibility-lag). This particular
+      occurrence was caught and correctly resolved via git's own
+      non-fast-forward push rejection plus careful manual reconciliation --
+      not silently lost work. Not re-filed as a new issue; noted here for
+      audit visibility. If this pattern recurs, it may warrant tightening
+      ISS-0615's fix further (e.g. always `git pull --ff-only` immediately
+      before gh_claim.py runs, which the protocol already mandates but may not
+      always be followed in practice).
+    affected_requirement: null
+next_action: "Route to DOC-UPDATER (Step 7) -- no BLOCKER severity issue against this run's own acceptance criteria; target fix verified PASS across 4 total runs (2 BACKEND-DEV + 2 TEST-RUNNER), sch303 regression confirmed clean, concurrent-claim conflict correctly resolved and independently re-verified."
