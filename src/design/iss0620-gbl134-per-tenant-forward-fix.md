@@ -114,6 +114,38 @@ New file `migrations/GBL-137_iss0620_recreate_per_tenant_shadows.sql`, following
 - Idempotent and safe to run against any tenant schema in any state (matches GBL-134's
   "Safety properties" #3).
 
+## 5a. Public interface
+
+This is a migration-only fix; there is no Zig function or HTTP surface to describe.
+The "public interface" of a migration is the schema shape it produces, which is fully
+specified in §4-§5: `GBL-137_iss0620_recreate_per_tenant_shadows.sql` creates, in every
+tenant schema, `entity_definitions`, `entity_type_instances`, `entity_record_latest`,
+and `artifact_activation_groups` tables with the exact column/constraint/index shape
+copied from `migrations/094_entity_subsystem.sql` and
+`migrations/046_repository_activations.sql` (§4). No exported Zig symbol, HTTP route, or
+public function signature changes as part of this fix — application code that already
+queries these tables (once schema-qualified per any future fix in that layer) is
+unaffected by this migration beyond the tables now existing where they previously did
+not.
+
+## 5b. Error taxonomy
+
+No new application-level error type is introduced. The migration itself has exactly one
+failure mode by design: a `CREATE TABLE` or `CREATE INDEX` statement failing for a reason
+other than "already exists" (which `IF NOT EXISTS` already suppresses) — e.g. a
+permissions error, a disk-space error, or a genuine schema conflict where an existing
+`tenant_default.<table>` has an incompatible, non-matching shape from some other source.
+Per Postgres semantics, `CREATE TABLE IF NOT EXISTS` does not validate that a pre-existing
+table matches the requested shape — it silently no-ops if the name exists at all. §4
+already confirmed (via live inspection) that no tenant schema has an incompatible version
+of these 4 tables today, so this risk is theoretical for the two known-affected
+databases, not observed. Any such failure aborts the migration transaction normally (no
+custom exception handling is added, unlike GBL-136's `artifact_versions` case, because
+§3 confirms there is no expected-failure branch to suppress here) and surfaces through
+the standard `zig build migrate` failure path already used by every other migration in
+this repository — no new `QuotaMiddlewareError`-style taxonomy or HTTP status mapping is
+needed since this fix has no request-serving code path.
+
 ## 6. Linter interaction (`tools/lint_dual_schema_table_names.py`)
 
 Checked whether this linter encodes the same 4-table misclassification per ISS-0620's
