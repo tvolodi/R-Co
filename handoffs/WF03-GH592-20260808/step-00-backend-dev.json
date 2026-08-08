@@ -1,0 +1,59 @@
+{
+  "handoff_id": "e2ac745e-db7d-41e3-941c-349b4fadb529",
+  "run_id": "WF03-GH592-20260808",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-08T21:25:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [
+      "LUA-12",
+      "LUA-15",
+      "LUA-16"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/592",
+      "src/lua/call_service.zig",
+      "src/lua/platform_fail.zig (or equivalent)",
+      "src/lua/host_context.zig",
+      "src/lua/executor.zig",
+      "src/lua/events.zig",
+      "src/lua/service_catalog.zig"
+    ],
+    "github_issue_number": 592,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/592",
+    "iss_id": "ISS-0625",
+    "severity": "MAJOR",
+    "sibling_issue": "ISS-0624 (LUA-11/13 batch 2, separate run)"
+  },
+  "task": {
+    "description": "GH-592 / ISS-0625: LUA-12 (service call), LUA-15 (structured failure), LUA-16 (runtime error capture) need production code + tests. Use git-setup to create feature/WF03-GH592-20260808 from main (currently at fd51f2c9), push it. Then route to ISSUE-FIXER for diagnosis. No source modification in this step. Note: LUA-16 depends on LUA-15 and LUA-08 (instruction-count limiter); LUA-12 depends on whether ServiceCatalog is reachable from ExecutionContext \u2014 design must decide this.",
+    "acceptance_criteria": [
+      "feature branch created and pushed",
+      "no force-push to main",
+      "ISS-0625 file in docs/issues/ updated"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "fn:git-setup executed: created feature/WF03-GH592-20260808 from origin/main (fd51f2c9), pushed to remote. Branch is now the only tracked branch for this run; other hosts see it via git fetch.",
+    "artifacts_out": [
+      "branch: feature/WF03-GH592-20260808",
+      "base_commit: fd51f2c9",
+      "remote_ref: origin/feature/WF03-GH592-20260808"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to ISSUE-FIXER (Step 0.5) for diagnosis of LUA-12 / LUA-15 / LUA-16. No source code modified in this step."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-08-08T21:21:55Z"
+}
