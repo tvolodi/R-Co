@@ -1,0 +1,42 @@
+{
+  "handoff_id": "6016aeb7-37b1-4595-a927-8bda442e0255",
+  "run_id": "WF03-GH566-20260808",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH566-20260808/step-02-code-designer.json",
+  "created_at": "2026-08-08T06:44:32Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0617.json",
+      "docs/issues/ISS-0620.json",
+      "docs/issue-reports/ISS-0185-diagnosis.yaml",
+      "migrations/GBL-134_iss0185_drop_global_registry_shadows.sql",
+      "tests/integration/exp601_tier_quota_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Design a fix for GH #566 / ISS-0617 (docs/issues/ISS-0617.json, read the confirmed_root_cause field in full). Root cause: repository_artifacts is a GLOBAL_REGISTRY table (canonical home: public) whose tenant_default shadow copy was never dropped, because migration GBL-134's v_tables allow-list (migrations/GBL-134_iss0185_drop_global_registry_shadows.sql lines 45-70) contains only 24 of the 37 tables that docs/issue-reports/ISS-0185-diagnosis.yaml itself classifies as GLOBAL_REGISTRY. 13 are missing, including repository_artifacts (this issue's direct cause) plus api_token_audit, artifact_versions, event_payload_store, event_type_registry_producers, instance_definition_snapshots, instance_waits, oidc_migration_item, oidc_migration_job, registry_idp_operation_ledger, tenant, tenant_hostnames, variable_schemas. GBL-134 has ALREADY RUN against multiple databases (confirmed: the shared bpm_test database, workspace r-co-2's bpm_dev) -- it cannot be edited in place; migrations in this repo's convention are immutable once applied. Your design must specify a NEW forward migration (following the same GBL-<NNN> naming convention and the same safety-guarded DROP TABLE pattern GBL-134 itself uses -- read that file in full for the pattern: existence checks before dropping, RESTRICT mode, per-tenant-schema loop) that completes the originally-intended 37-table GLOBAL_REGISTRY drop by covering the 13 missing names. IMPORTANT SEPARATE CONCERN YOU MUST ALSO ADDRESS: a DIFFERENT, more severe issue was found in the SAME migration during this diagnosis and has been filed separately as ISS-0620 / GH #573 (BLOCKER, potential data loss) -- GBL-134's v_tables list ALSO wrongly includes 4 tables (artifact_activation_groups, entity_definitions, entity_record_latest, entity_type_instances) that the diagnosis actually classifies as PER_TENANT (opposite direction -- tenant_default should be canonical, not public), meaning those 4 have ALREADY been incorrectly dropped from tenant_default. Read docs/issues/ISS-0620.json for full detail. YOUR DESIGN FOR THIS ISSUE (GH-566/ISS-0617) MUST NOT ATTEMPT TO FIX ISS-0620'S PROBLEM -- that is out of scope for this run and has its own separate queued issue. But your new forward migration's table list MUST be constructed by cross-referencing the diagnosis file's global_registry_tenant_default_is_stray list directly (all 37 names) MINUS the 24 already in GBL-134's original list MINUS explicitly excluding the 4 misclassified names ISS-0620 identified (do not re-verify or re-decide ISS-0620's classification question -- simply exclude those 4 from your new migration's scope since they need separate handling under ISS-0620, not silent inclusion here). This means your new migration's table list should be exactly the 13 names: api_token_audit, artifact_versions, event_payload_store, event_type_registry_producers, instance_definition_snapshots, instance_waits, oidc_migration_item, oidc_migration_job, registry_idp_operation_ledger, repository_artifacts, tenant, tenant_hostnames, variable_schemas. Read the full diagnosis file (docs/issue-reports/ISS-0185-diagnosis.yaml) and GBL-134's full source before designing.",
+    "acceptance_criteria": [
+      "Design specifies a NEW forward migration (not an edit to GBL-134) covering exactly the 13 missing GLOBAL_REGISTRY table names, explicitly excluding the 4 ISS-0620-flagged names",
+      "New migration follows GBL-134s own safety pattern (existence checks, RESTRICT, per-tenant-schema loop) -- design must show it read and understood that pattern, not invented a new one",
+      "Design explicitly states it does NOT attempt to resolve ISS-0620 in this run",
+      "Design explains how this fixes TC-EXP-601-01 through 04 (the repository_artifacts shadow removal unblocks the resolver JOIN)",
+      "No implementation code present in the design artefact (SQL migration content can be described precisely in prose/pseudocode per Type C/E convention, not as a literal runnable script)"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
