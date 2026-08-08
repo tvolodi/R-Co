@@ -3101,6 +3101,17 @@
       "created_at": "2026-08-08T11:53:26Z",
       "status": "COMPLETED",
       "stage": null
+    },
+    {
+      "handoff_id": "055c30ec-5457-4a32-8d87-5fbe6f37225c",
+      "file": "handoffs/WF03-GH507-20260808/step-01-issue-fixer.json",
+      "run_id": "WF03-GH507-20260808",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-08T12:17:38Z",
+      "status": "IN_PROGRESS",
+      "stage": null
     }
   ],
   "last_updated": "2026-08-08T05:55:02Z"

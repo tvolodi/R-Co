@@ -1,0 +1,42 @@
+{
+  "handoff_id": "055c30ec-5457-4a32-8d87-5fbe6f37225c",
+  "run_id": "WF03-GH507-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH507-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T12:17:38Z",
+  "started_at": "2026-08-08T12:17:38Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      ".github/workflows/ci.yml",
+      "build.zig",
+      "vendor/luajit/build.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement GH #507 (ISS-0178, MAJOR): add a CI job that builds from a genuinely clean checkout (no restored build cache, no reused workspace) and runs `zig build test-lua` to completion, so untracked-but-required build inputs (the ISS-0175/#503 luajit_relver.txt class) and path-dependent escaping bugs (the ISS-0177/#506 dynasm class) are caught by CI before merge, not discovered later by a human running a manual git clone. This is a .github/workflows/ci.yml change (the only workflow file in this repo), not Zig source code. Acceptance criteria per the issue: (1) fresh checkout, no cache restore, no workspace reuse -- must NOT reuse the existing 'Build and unit tests' job's Zig cache-restore step; (2) builds zig build test-lua to completion; (3) MUST fail if a required build input is absent from tracked git contents -- verify this by mutation testing (temporarily re-add luajit_relver.txt to .gitignore or remove it from tracked contents in a scratch test, confirm the new job goes red while the existing cached job stays green, then revert the mutation -- do NOT leave the repo in a mutated state); (4) runs on pull_request events targeting main; (5) if feasible without excessive runtime cost, the clean-checkout working directory path should contain a character sequence that would be an invalid C escape (e.g. a path component starting with c, s, or U) so the ISS-0177 path-escaping class is also covered, not just the missing-tracked-file class -- GitHub Actions runners' default checkout path may or may not already satisfy this; investigate and use a custom checkout path if needed (actions/checkout@v4's 'path' input).",
+    "acceptance_criteria": [
+      "New CI job added to .github/workflows/ci.yml that checks out fresh with no cache restore and no workspace reuse",
+      "Job runs zig build test-lua to completion",
+      "Mutation-tested: confirmed the job goes red when a required tracked build input is removed, then the mutation was reverted (repo left clean)",
+      "Job triggers on pull_request events targeting main",
+      "Clean-checkout path includes an invalid-C-escape character sequence if feasible without excessive runtime cost, to also cover the ISS-0177 path-escaping class",
+      "Existing Build and unit tests job unaffected/unchanged in behavior"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
