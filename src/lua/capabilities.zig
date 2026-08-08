@@ -40,26 +40,51 @@ pub const CapabilitySet = struct {
     }
 
     /// Get a summary string of granted capabilities for error messages.
-    /// Caller owns the returned memory.
+    /// Caller owns the returned memory. Grants are listed in lexicographic
+    /// order of their byte content.
+    ///
+    /// **Longjmp-unsafe (ERR-2).** This function allocates. Inside a context
+    /// that may raise via `lua_error` (which longjmps), the returned slice
+    /// would leak. The longjmp-safe twin is `writeGrants` in
+    /// `src/lua/host_context.zig`, which walks the grant set directly into
+    /// a fixed stack buffer. Use this `summary()` ONLY from contexts that
+    /// own the result's lifetime cleanly (host-API startup diagnostics,
+    /// audit log lines, REST error responses for missing capability
+    /// metadata).
     pub fn summary(self: *const CapabilitySet, allocator: std.mem.Allocator) ![]const u8 {
         if (self.grants.count() == 0) {
             return allocator.dupe(u8, "(none)");
         }
 
-        var buf = std.ArrayList(u8).init(allocator);
-        defer buf.deinit();
+        // Collect keys into a sortable list — std.StringHashMap iteration order
+        // is undefined across Zig versions and allocator instances, so TC-CS-03
+        // requires lexicographic ordering for deterministic output.
+        var keys: std.ArrayList([]const u8) = .empty;
+        defer keys.deinit(allocator);
 
         var iter = self.grants.keyIterator();
-        var first = true;
         while (iter.next()) |key| {
-            if (!first) {
-                try buf.appendSlice(", ");
-            }
-            try buf.appendSlice(key.*);
-            first = false;
+            try keys.append(allocator, key.*);
         }
 
-        return buf.toOwnedSlice();
+        std.mem.sort([]const u8, keys.items, {}, lessThanStr);
+
+        var buf: std.ArrayList(u8) = .empty;
+        defer buf.deinit(allocator);
+
+        for (keys.items, 0..) |key, i| {
+            if (i != 0) {
+                try buf.appendSlice(allocator, ", ");
+            }
+            try buf.appendSlice(allocator, key);
+        }
+
+        return buf.toOwnedSlice(allocator);
+    }
+
+    /// Comparator used by `summary` to sort grant keys lexicographically.
+    fn lessThanStr(_: void, lhs: []const u8, rhs: []const u8) bool {
+        return std.mem.lessThan(u8, lhs, rhs);
     }
 };
 
