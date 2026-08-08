@@ -204,14 +204,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/500",
       "title": "Test-root type-only pins hide compile errors: zig build test-lua is green while instruction_limiter.zig and memory_limiter.zig do not compile",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-08T18:38:48Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-08T18:38:48Z",
       "started_at": "2026-08-08T18:38:48Z",
-      "completed_at": null,
+      "completed_at": "2026-08-08T19:17:15Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 500,
