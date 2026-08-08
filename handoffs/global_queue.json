@@ -41,17 +41,22 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0169",
+      "issue_id": "GH-495",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/495",
-      "title": "LUA-05..16 host API/limiter tests against real LuaJIT",
+      "title": "LUA-05..16 remain IN_PROGRESS: host API, capability, and limiter tests not yet written against real LuaJIT",
       "severity": "MAJOR",
-      "status": "RESOLVED",
-      "lock": null,
-      "added_at": "2026-08-06T20:03:10Z",
-      "started_at": "2026-08-06T21:49:18Z",
-      "completed_at": "2026-08-06T23:42:06Z",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-08T19:17:33Z"
+      },
+      "added_at": "2026-08-08T19:17:33Z",
+      "started_at": "2026-08-08T19:17:33Z",
+      "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 495,
+      "labels": []
     },
     {
       "issue_id": "ISS-0175",
@@ -200,17 +205,19 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0172",
+      "issue_id": "GH-500",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/500",
-      "title": "Test-root type-only pins hide compile errors in instruction_limiter.zig / memory_limiter.zig",
+      "title": "Test-root type-only pins hide compile errors: zig build test-lua is green while instruction_limiter.zig and memory_limiter.zig do not compile",
       "severity": "MAJOR",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "lock": null,
-      "added_at": "2026-08-06T22:05:23Z",
-      "started_at": null,
-      "completed_at": null,
+      "added_at": "2026-08-08T18:38:48Z",
+      "started_at": "2026-08-08T18:38:48Z",
+      "completed_at": "2026-08-08T19:17:15Z",
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 500,
+      "labels": []
     },
     {
       "issue_id": "GH-501",
@@ -255,14 +262,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/504",
       "title": "LUA-07 criterion 2 unsatisfied: manifest_hash produced on ScriptResult but never written to the execution audit record (ISS-0176)",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-08T12:32:06Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-08T12:32:06Z",
       "started_at": "2026-08-08T12:32:06Z",
-      "completed_at": null,
+      "completed_at": "2026-08-08T18:38:28Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 504,

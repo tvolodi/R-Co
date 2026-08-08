@@ -25,6 +25,17 @@
 //! `refAllDecls` below forces analysis of every declaration in transition.zig,
 //! which is what causes its test blocks to be discovered and run.
 //!
+//! ## ISS-0172 / GH #500 — refAllDecls does not resolve struct field types
+//!
+//! `refAllDecls(transition)` is direct on the leaf file, so function bodies
+//! (including the 30 `test` blocks themselves) are already analysed. It does
+//! not, however, force resolution of a struct's own field types when that
+//! struct is merely declared and never instantiated by any reached code path
+//! — see src/lua_test_root.zig and src/simulation_test_root.zig for the full
+//! rationale and mutation-test evidence. `pinModuleTypes` closes that gap for
+//! transition.zig's dozen-plus struct/union/enum declarations
+//! (`InstanceState`, `TransitionResult`, `PendingEvent`, etc.).
+//!
 //! Run via `zig build test-transition` (also reached by `zig build test-engine`
 //! and `zig build test`).
 
@@ -32,6 +43,30 @@ const std = @import("std");
 
 pub const transition = @import("engine/transition.zig");
 
+/// ISS-0172 / GH #500 — forces field-type resolution AND method-body analysis
+/// for every struct/union/enum declared at `T`'s top level; see
+/// src/simulation_test_root.zig for the full rationale and mutation-test
+/// evidence (including why `refAllDecls(field)` is needed in addition to
+/// `@sizeOf` — a type's own methods are declarations of the TYPE, not of the
+/// enclosing module, so `refAllDecls` on the module alone never reaches them).
+fn pinModuleTypes(comptime T: type) void {
+    inline for (comptime std.meta.declarations(T)) |decl| {
+        const field = @field(T, decl.name);
+        if (@TypeOf(field) == type) {
+            switch (@typeInfo(field)) {
+                .@"struct", .@"union", .@"enum" => {
+                    _ = @sizeOf(field);
+                    std.testing.refAllDecls(field);
+                },
+                else => {},
+            }
+        }
+    }
+}
+
 test {
     std.testing.refAllDecls(transition);
+
+    // ISS-0172: struct/union/enum field-type resolution.
+    pinModuleTypes(transition);
 }

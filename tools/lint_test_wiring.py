@@ -367,6 +367,79 @@ def relpath(path: Path) -> str:
         return str(path)
 
 
+# ISS-0172 / GH #500 — a "type-only pin" is `_ = some.path.CapitalizedType;`:
+# it resolves the type's NAME but neither its struct/union/enum FIELD types
+# (Zig resolves those lazily) nor, separately, its own METHODS' bodies (a
+# method is a declaration of the type, not of the enclosing module, so even
+# `refAllDecls` on the module never reaches it). `zig build test-lua` reported
+# green for months while src/lua/instruction_limiter.zig and
+# src/lua/memory_limiter.zig both carried hard compile errors, because
+# src/lua_test_root.zig pinned them exactly this way. See docs/anti-patterns.md
+# and src/lua_test_root.zig's header for the full incident and the fix.
+#
+# A bare `_ = a.b.C;` reference is only a defect if nothing else in the same
+# file gives that type real coverage — a `@sizeOf(a.b.C)` (closes the
+# field-type gap), a `refAllDecls(a.b.C)` / `pinModuleTypes(a.b.C)`-style call
+# directly on the type or its enclosing single-file module (closes the
+# method-body gap), or a genuine call through the type (e.g.
+# `a.b.C.someMethod(...)`, strictly stronger than either pin). This check is a
+# regex/line-scan like every other tools/lint_*.py in this repo — it cannot
+# prove semantic reachability, only flag a *shape* that has already hidden two
+# real bugs in this codebase and ask a human/agent to confirm real coverage
+# exists. False positives are possible (e.g. a type genuinely exercised only
+# through a helper function this script doesn't parse); that is why this is
+# reported as ADVISORY, not folded into the PASS/FAIL exit code.
+BARE_TYPE_PIN = re.compile(
+    r"^\s*_\s*=\s*([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*\.[A-Z]\w*)\s*;", re.MULTILINE
+)
+SIZEOF_OR_TYPEINFO = re.compile(r"@sizeOf\(\s*([A-Za-z_][\w.]*)\s*\)")
+REF_ALL_DECLS_CALL = re.compile(r"refAllDecls\(\s*([A-Za-z_][\w.]*)\s*\)")
+
+# Only the shim/root files this issue is actually about — applying this to
+# every test-bearing file in the repo would flag unrelated, legitimate bare
+# discards (e.g. `_ = allocator;` for an unused parameter) far outside the
+# type-only-pin shape this check exists to catch.
+TEST_ROOT_GLOB = "src/*_test_root.zig"
+
+
+def find_type_only_pins() -> list[tuple[Path, str]]:
+    """Bare `_ = a.b.CapitalizedType;` pins with no @sizeOf/refAllDecls
+    coverage for that same type anywhere else in the file. Advisory only.
+    """
+    findings: list[tuple[Path, str]] = []
+    for path in sorted(REPO_ROOT.glob(TEST_ROOT_GLOB)):
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+
+        pinned = BARE_TYPE_PIN.findall(text)
+        if not pinned:
+            continue
+
+        sizeof_targets = set(SIZEOF_OR_TYPEINFO.findall(text))
+        refalldecls_targets = set(REF_ALL_DECLS_CALL.findall(text))
+
+        for expr in pinned:
+            # Covered directly: `@sizeOf(a.b.C)` or `refAllDecls(a.b.C)` for
+            # this exact expression.
+            if expr in sizeof_targets or expr in refalldecls_targets:
+                continue
+            # Covered indirectly: `refAllDecls(a.b)` on the expression's own
+            # parent module — sufficient when a.b is a single-file module
+            # whose only declarations are free functions (the oidc/core-
+            # modules/config-idp/transition shim shape), though NOT when a.b.C
+            # is itself a struct/union/enum with its own methods (the
+            # lua/simulation/repository shape) — this script cannot tell the
+            # two apart from text alone, so it stays permissive here and
+            # relies on the human/agent reviewing the ADVISORY line.
+            parent = expr.rsplit(".", 1)[0]
+            if parent in refalldecls_targets:
+                continue
+            findings.append((path, expr))
+    return findings
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument(
@@ -453,11 +526,34 @@ def main(argv: list[str]) -> int:
         )
         return 1
 
+    type_only_pins = find_type_only_pins()
+    if type_only_pins:
+        for path, expr in type_only_pins:
+            print(f"  [ADVISORY] {relpath(path)}: `_ = {expr};`")
+            print(
+                "             type-only pin with no @sizeOf/refAllDecls coverage "
+                "found for this type in the same file — resolves the type NAME "
+                "but neither its field types nor its own methods' bodies. This "
+                "exact shape hid two real compile errors in "
+                "src/lua/instruction_limiter.zig and src/lua/memory_limiter.zig "
+                "for months (ISS-0172 / GH #500). Not auto-failed: a bare-pinned "
+                "type can still have real coverage through a call this "
+                "line-scan cannot see. Verify by hand, or route through "
+                "`_ = @sizeOf(T)` + `std.testing.refAllDecls(T)` (see "
+                "src/lua_test_root.zig's `pinModuleTypes` helper)."
+            )
+        print()
+
     print(
         f"lint_test_wiring: PASS — all {len(test_bearing)} test-bearing file(s) "
         "reachable from an addTest root, and every test Run artifact is "
         "attached to a build step"
     )
+    if type_only_pins:
+        print(
+            f"lint_test_wiring: {len(type_only_pins)} type-only pin ADVISORY "
+            "finding(s) above — does not affect exit code, see ISS-0172 / GH #500"
+        )
     return 0
 
 

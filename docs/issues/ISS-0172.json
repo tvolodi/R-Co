@@ -1,7 +1,7 @@
 {
   "id": "ISS-0172",
   "title": "Test-root `_ = Module.TypeName;` pins do not force analysis of struct field types or unreferenced functions, so compile errors stay invisible while the target reports green",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/500",
   "rco_sync_ref": "ISS-0172",
@@ -18,7 +18,7 @@
   "discovered_at": "2026-08-06T22:05:22Z",
   "discovered_by": "ISSUE-FIXER WF03-ISS-0169-20260806 Step 1",
   "discovered_while_fixing": "ISS-0169",
-  "run_id": null,
+  "run_id": "WF03-GH500-20260808",
   "affected_areas": [
     "src/lua_test_root.zig",
     "src/simulation_test_root.zig",
@@ -43,5 +43,7 @@
     "Filed per ISSUE_QUEUE.md forwarding rules; not fixed inside WF03-ISS-0169-20260806.",
     "This is the same class as ISS-0133 (26 transition.zig tests wired into no addTest root) and ISS-0147 (src/wasm invisible), but one layer deeper: here the root EXISTS and the pin EXISTS, and the compile error is still not surfaced.",
     "Evidence is reproducible: add `_ = lua.memory_limiter.MemoryLimiter.alloc;` or a real `installHook` call to any target that links src/lua and the two errors appear immediately."
-  ]
+  ],
+  "resolution": "Fixed all 5 acceptance criteria. (1) Adopted a pin form forcing both struct field-type resolution and function/method-body analysis: a pinModuleTypes(T) helper duplicated per test root that does `_ = @sizeOf(field)` (field-type resolution) plus `std.testing.refAllDecls(field)` called directly on each struct/union/enum type (method-body analysis -- discovered during this fix that refAllDecls on the ENCLOSING module never reaches a struct's own methods, a third blind spot beyond the two originally filed; a method is a declaration of the struct, not of the module). refAllDecls is also now called directly on every LEAF file rather than only on a mod.zig aggregator (simulation_test_root.zig and repository_test_root.zig previously routed through mod.zig, which does not descend into leaf function bodies at all). (2) Verified by REAL deliberate mutation (not reasoning) for both failure shapes, on both src/lua_test_root.zig and src/simulation_test_root.zig (the mod.zig-aggregator shape): bad field type (std.Thread.NonExistentMutex) and statement error in an unreferenced struct method -- confirmed red in all cases, then reverted. (3) Applied to all 8 named test roots. (4) tools/lint_test_wiring.py now has an ADVISORY (non-blocking, exit-0) find_type_only_pins() check, validated against the pre-fix git history version of lua_test_root.zig to confirm it flags the exact original InstructionLimiter/MemoryLimiter pattern. (5) src/lua_test_root.zig's header 'What is actually verified here' section rewritten to accurately describe the three blind spots and the real mutation evidence for each. The strengthened pin surfaced a THIRD real bug beyond the two originally filed: src/lua/structured_logger.zig's StructuredLogger.log() called std.io.getStdErr(), which does not exist in Zig 0.16 -- fixed to std.debug.print. The two originally-filed bugs (instruction_limiter.zig's discarded lua_sethook return, memory_limiter.zig's std.Thread.Mutex) were found already fixed on main by the time this run started (prior ISS-0169/ISS-0174 work), confirmed by reading current source against the issue's line numbers. zig build / test-env-verify / test all exit 0; 965/1029 tests pass (64 pre-existing skips, unchanged), zero regressions confirmed via git stash before/after comparison.",
+  "prevention": "tools/lint_test_wiring.py's find_type_only_pins() advisory check flags future bare `_ = a.b.CapitalizedType;` pins in src/*_test_root.zig with no @sizeOf/refAllDecls coverage. Non-blocking by design (a regex/line-scan cannot prove a type has no real coverage through a call elsewhere), so it relies on a human/agent reading the ADVISORY output -- same tradeoff every other tools/lint_*.py in this repo makes."
 }

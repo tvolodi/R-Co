@@ -1238,6 +1238,65 @@ pub fn build(b: *std.Build) void {
     );
     test_lua_step.dependOn(&run_lua_tests.step);
 
+    // ISS-0176 / GH #504 — LUA-07 second acceptance criterion: minimal engine
+    // call path (src/engine/lua_script_audit.zig) that invokes the Lua
+    // executor and persists manifest_hash to a queryable audit record. Rooted
+    // at src/lua_script_audit_root.zig (src/, not src/engine/) for the same
+    // module-escape reason as lua_test_root.zig above — see that file's doc
+    // comment. Deliberately a SEPARATE module from bpm_src_mod: linking
+    // LuaJIT is scoped to exactly this module and lua_tests, not to the main
+    // server exe or the ~90 files sharing integration_imports/bpm.
+    //
+    // Named imports list factored out (not just the module) so both this
+    // unit-test target AND the ISS-0176 integration test below can each
+    // build their own inline `b.createModule(...)` — tools/lint_test_wiring.py
+    // requires `.root_source_file = b.path("...")` within a few lines of the
+    // `b.addTest(` call it belongs to, which a shared pre-built module
+    // variable (referenced via `.root_module = existing_mod`) does not
+    // satisfy.
+    const lua_script_audit_named_imports: []const std.Build.Module.Import = &.{
+        .{ .name = "pool", .module = pool_root_mod },
+        .{ .name = "tenant_context", .module = tenant_context_mod },
+        .{ .name = "pipeline_context", .module = pipeline_context_mod },
+        .{ .name = "obs_metrics", .module = obs_metrics_mod },
+        .{ .name = "json_schema", .module = json_schema_mod },
+    };
+
+    // Unit-test target so `zig build test` actually analyses this file's
+    // declarations (refAllDecls in the root shim) — an addTest root is
+    // required for that, a plain module import is not (ISS-0133 anti-pattern:
+    // in-file tests in an imported-only module never run).
+    const lua_script_audit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/lua_script_audit_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = lua_script_audit_named_imports,
+        }),
+    });
+    lua_script_audit_tests.root_module.linkLibrary(luajit_lib);
+    lua_script_audit_tests.root_module.addIncludePath(luajit_build.luajitIncludePath(b));
+    const run_lua_script_audit_tests = b.addRunArtifact(lua_script_audit_tests);
+    const test_lua_script_audit_step = b.step(
+        "test-lua-script-audit",
+        "Run src/engine/lua_script_audit.zig unit analysis (ISS-0176)",
+    );
+    test_lua_script_audit_step.dependOn(&run_lua_script_audit_tests.step);
+
+    // Second module instance for the ISS-0176 integration test below (needs
+    // its own compile unit, separate from lua_script_audit_tests, because it
+    // ALSO imports `env` for BPM_TEST_DB_URL — see that test's own module).
+    const lua_script_audit_for_integration = b.createModule(.{
+        .root_source_file = b.path("src/lua_script_audit_root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .imports = lua_script_audit_named_imports,
+    });
+    lua_script_audit_for_integration.linkLibrary(luajit_lib);
+    lua_script_audit_for_integration.addIncludePath(luajit_build.luajitIncludePath(b));
+
     const misc_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/unit/misc_unit_test_root.zig"),
@@ -1306,6 +1365,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_misc_unit_tests.step);
     // ISS-0153 / GH #471 — src/lua subsystem.
     test_step.dependOn(&run_lua_tests.step);
+    // ISS-0176 / GH #504 — src/engine/lua_script_audit.zig analysis.
+    test_step.dependOn(&run_lua_script_audit_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-differential` — ISS-602 CEL/expr differential harness
@@ -1819,6 +1880,35 @@ pub fn build(b: *std.Build) void {
     });
     const run_exp601_integration_tests = addIntegrationRun(b, exp601_integration_tests, migrations_dir, clean_test_db);
 
+    // ISS-0176 / GH #504 — LUA-07 second acceptance criterion: manifest_hash
+    // must appear in a persisted, queryable execution audit record.
+    //
+    // Deliberately NOT built with `integration_imports` (which carries
+    // `bpm`): src/lua/mod.zig (reached via lua_script_audit_for_integration)
+    // escapes into src/simulation/*, and src/bpm.zig also owns
+    // src/simulation/* as plain members of its own module — importing both
+    // `bpm` and `lua_script_audit` into one compile unit fails with "file
+    // exists in modules 'bpm' and 'lua_script_audit'" (verified empirically).
+    // This test therefore uses only the bpm-free `pool`/`tenant_context`/`env`
+    // modules plus `lua_script_audit_for_integration` (which itself links
+    // LuaJIT) — see src/lua_script_audit_root.zig and the test file's own
+    // header comment for the full account.
+    const iss0176_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0176_lua07_audit_manifest_hash_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "tenant_context", .module = tenant_context_mod },
+                .{ .name = "env", .module = env_mod },
+                .{ .name = "lua_script_audit", .module = lua_script_audit_for_integration },
+            },
+        }),
+    });
+    const run_iss0176_integration_tests = addIntegrationRun(b, iss0176_integration_tests, migrations_dir, clean_test_db);
+
     // ISS-0122: Audit chain TEXT resource_id + non-UTF-8 resilience regression tests.
     // Migration 1107 wrapped the chain-hash pipeline in EXCEPTION blocks and
     // pre-normalises non-UTF-8 bytes in NEW.resource_id; this test exercises
@@ -1993,6 +2083,8 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_sch02_integration_tests.step);
     // ISS-0617 / GH-566: EXP-601 tier-to-quota enforcement tests.
     test_integration_others_step.dependOn(&run_exp601_integration_tests.step);
+    // ISS-0176 / GH #504: LUA-07 manifest_hash audit persistence tests.
+    test_integration_others_step.dependOn(&run_iss0176_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0076_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_same_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_cross_integration_tests.step);
@@ -2073,6 +2165,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_exp601_step = b.step("test-integration-exp601", "Run EXP-601 tier-to-quota enforcement tests only (requires BPM_TEST_DB_URL)");
     test_integration_exp601_step.dependOn(&clean_test_db.step);
     test_integration_exp601_step.dependOn(&run_exp601_integration_tests.step);
+
+    const test_integration_iss0176_step = b.step("test-integration-iss0176", "Run ISS-0176 LUA-07 manifest_hash audit persistence tests only (requires BPM_TEST_DB_URL)");
+    test_integration_iss0176_step.dependOn(&clean_test_db.step);
+    test_integration_iss0176_step.dependOn(&run_iss0176_integration_tests.step);
 
     const test_adp12_regression_step = b.step("test-adp12-regression", "Run ADP-12 default-tenant pre/post regression suite");
     test_adp12_regression_step.dependOn(&clean_test_db.step);

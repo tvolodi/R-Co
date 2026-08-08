@@ -1,0 +1,54 @@
+{
+  "handoff_id": "02d68af2-c58b-49cb-97fd-9495d56f50f5",
+  "run_id": "WF03-GH504-20260808",
+  "workflow_id": "WF-03",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH504-20260808/step-04-test-runner.json",
+  "created_at": "2026-08-08T18:26:39Z",
+  "started_at": "2026-08-08T18:26:39Z",
+  "completed_at": "2026-08-08T18:26:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-07"
+    ],
+    "related_handoff_ids": [
+      "74fb552f-1304-4539-95f4-6dff435b3355"
+    ],
+    "artifacts_in": [
+      "src/engine/lua_script_audit.zig",
+      "migrations/095_iss0176_lua_script_execution_audit.sql",
+      "tests/integration/iss0176_lua07_audit_manifest_hash_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Verify BACKEND-DEV's implementation of the LUA-07 minimal audit wiring for GH-504/ISS-0176. Independently re-run zig build, the new test-integration-iss0176 target, and the full unit suite. Perform a REAL mutation test (not just reasoning about mutation-checkability) by temporarily corrupting the persisted hash and confirming the test genuinely fails, then restoring.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test-integration-iss0176 exits 0, 2/2 pass",
+      "zig build test (full unit suite) exits 0, no regressions",
+      "lint_sql_param_types.py exits 0",
+      "Zero production call sites to executeScriptForAudit confirmed",
+      "processServiceTaskRuntimeInTx / instance.zig confirmed untouched",
+      "A REAL mutation test performed (not just reasoning) confirming the test fails when persistence is broken",
+      "GitHub Actions platform status checked before attributing any red result"
+    ],
+    "functions_to_call": [
+      "fn:zig-build-test",
+      "fn:check-github-status"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "GitHub Actions status: operational (checked). Independently re-verified (not trusting BACKEND-DEV's self-report): zig build exits 0. grep confirms executeScriptForAudit appears ONLY in its own definition (src/engine/lua_script_audit.zig) and the new test file -- zero production call sites. git diff main -- src/engine/instance.zig is genuinely empty, confirming processServiceTaskRuntimeInTx is completely untouched. Doc comment inspected directly: correctly preserves the post-rework 'lua_script_execution_audit' table name, no regression of the earlier-fixed naming bug. Migration file read in full: matches design exactly, audit_entries/audit_log confirmed untouched. zig build test-integration-iss0176 (BPM_TEST_DB_URL=...5453/bpm_test): PASS, 2/2. PERFORMED A REAL MUTATION TEST (not just reasoning about it): temporarily replaced the persisted manifest_hash with an all-zero value in lua_script_audit.zig, reran the test -- TC-ISS-0176-01 genuinely FAILED with a clear expectEqualStrings mismatch (expected the real hash, found zeros), conclusively proving the test cannot pass without genuine persistence. Restored the file from a pre-mutation backup, confirmed git status clean and zig build passes again post-restore. zig build test (full unit suite): exits 0, ISS-602 differential corpus 15/15 matched, no regressions. tools/lint_sql_param_types.py src tests: 0 BLOCKER/MAJOR/MINOR.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (Step 6 + Step Final) -- no BLOCKER finding. RELEASE-VALIDATOR not required per WF-03 pipeline table, but given this is a MUST-priority requirement (LUA-07) reaching RELEASED status, DOC-UPDATER must also update requirement_status via reqctl.py."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

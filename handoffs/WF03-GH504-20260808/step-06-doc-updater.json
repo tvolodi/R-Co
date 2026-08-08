@@ -1,0 +1,56 @@
+{
+  "handoff_id": "c078234f-c823-4499-8522-4bd131e1a9d2",
+  "run_id": "WF03-GH504-20260808",
+  "workflow_id": "WF-03",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH504-20260808/step-06-doc-updater.json",
+  "created_at": "2026-08-08T18:27:41Z",
+  "started_at": "2026-08-08T18:27:41Z",
+  "completed_at": "2026-08-08T18:36:33Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-07"
+    ],
+    "related_handoff_ids": [
+      "02d68af2-c58b-49cb-97fd-9495d56f50f5"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Update CHANGELOG.md for this WF-03 run (ISS-0176/GH-504, PR #588). UNLIKE other runs today, this one DOES have a requirement to update: LUA-07 (MUST priority, currently IN_PROGRESS) should now be set to RELEASED, since both of its acceptance criteria are satisfied (criterion 1 was already done per ISS-0169; criterion 2 -- manifest_hash in the execution audit record -- is what this run closes). Run: python3 tools/reqctl.py set-status LUA-07 RELEASED --implemented-in src/engine/lua_script_audit.zig migrations/095_iss0176_lua_script_execution_audit.sql tests/integration/iss0176_lua07_audit_manifest_hash_test.zig -- then python3 tools/reqctl.py render-status to regenerate docs/status/requirement_status.yaml. IMPORTANT CAVEAT to record in the changelog and/or requirement notes: this criterion is satisfied via a deliberately minimal, human-operator-confirmed synthetic wiring path (executeScriptForAudit), NOT via the full SERVICE_TASK-with-script engine integration, which remains unbuilt (future roadmap item per src/design/lua-integration.md section 25). Do not let this be misread as 'scripts can now run as part of normal process execution' -- they cannot yet. No estimation.json exists for this run -- skip retrospective. Note: another workspace (r-co-1-loop) may push to main concurrently -- rebase if needed, resolve any orchestrator.log conflict by keeping both sides chronologically. Then perform Step Final: confirm PR #588 CI green, squash-merge, delete branch, update board for issue #504, return to clean main.",
+    "acceptance_criteria": [
+      "LUA-07 set to RELEASED via reqctl.py set-status with correct implemented_in list",
+      "docs/status/requirement_status.yaml regenerated via reqctl.py render-status",
+      "CHANGELOG.md updated with a concise entry for ISS-0176/GH-504, including the minimal-scope caveat",
+      "PR #588 merged (squash) and feature branch deleted",
+      "GitHub issue #504 project board updated (implemented -> done)",
+      "Repo returned to a clean main after merge",
+      "No stale feature branch remains on GitHub"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "LUA-07 (MUST) set to RELEASED via reqctl.py set-status (implemented_in: src/engine/lua_script_audit.zig, migrations/095_iss0176_lua_script_execution_audit.sql, tests/integration/iss0176_lua07_audit_manifest_hash_test.zig), with a caveat note recorded on the requirement documenting the minimal/synthetic wiring scope boundary. docs/status/requirement_status.yaml regenerated via render-status (462 entries). CHANGELOG.md updated with an ISS-0176/GH-504 entry including the same scope caveat. Sibling workspace (r-co-1-loop) had pushed 5 commits to main concurrently, producing a non-fast-forward rejection; rebased feature/WF03-GH504-20260808 onto fresh origin/main (14 commits replayed), resolving repeated handoffs/orchestrator.log conflicts by keeping both sides' lines in chronological timestamp order (0 lines dropped, verified by count), one handoffs/registry.json conflict (kept both sides' distinct entries), and one genuine CHANGELOG.md conflict (both entries kept, ISS-0174/GH-502 + ISS-0181/GH-512 alongside this run's own ISS-0176/GH-504 entry). Found and fixed leftover nested conflict markers in registry.json's trailing last_updated field from an earlier overlapping resolution in the same rebase session (follow-up commit 57f7832). Force-pushed the rebased branch (force-with-lease, own feature branch only, never main). PR #588 CI verified green via GitHub status check (tools/check_github_status.py: 'operational') and gh pr checks 588 (6/6 pass: Build and unit tests, Clean-checkout LuaJIT build (test-lua), Frontend checks, Pipeline bookkeeping, Platform status, Source linters). Squash-merged via gh pr merge 588 --squash --delete-branch -- fast-forwarded main from 6f299d5 to merge commit d0a68d599c3dfe10fc990c661dc6e1924330ec70. Branch deletion confirmed via direct git ls-remote (empty result) after pruning a stale local remote-tracking ref. GitHub issue #504 confirmed CLOSED; project board already at 'Done' for both --target implemented and --target done calls (no-op, already correct). Repo returned to clean main at d0a68d5.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml",
+      "handoffs/orchestrator.log",
+      "handoffs/registry.json",
+      "handoffs/WF03-GH504-20260808/step-06-doc-updater.json"
+    ],
+    "issues": [],
+    "next_action": "Run complete"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
