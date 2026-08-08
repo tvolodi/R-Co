@@ -255,14 +255,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/504",
       "title": "LUA-07 criterion 2 unsatisfied: manifest_hash produced on ScriptResult but never written to the execution audit record (ISS-0176)",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-08T12:32:06Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-08T12:32:06Z",
       "started_at": "2026-08-08T12:32:06Z",
-      "completed_at": null,
+      "completed_at": "2026-08-08T18:38:28Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 504,
