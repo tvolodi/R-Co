@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0618",
   "title": "sch02_timer_polling_test: skip-locked-timer count is 0 (expected >0) and forced-failure rollback does not surface TransactionFailed — 2 blocks",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "created_at": "2026-08-08T02:55:00Z",
   "discovered_by": "ISSUE-FIXER (WF03-GH517-20260808 Step 01 diagnosis of ISS-0184/GH-517)",
@@ -38,5 +38,12 @@
       "verified_by": "Code trace of scheduler.zig plus a real run of `zig build test-integration-sch02-diag` (temporary scoped build step, added and reverted during this diagnosis) against BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test. Observed failure: `tests/integration/sch02_timer_polling_test.zig:691: expected error.TransactionFailed, found .{ .fired = 0, .skipped_locked = 0 }` — exact match for the traced swallow-and-return-.none path."
     },
     "relationship": "Independent root causes, same file, same general design pattern (both are cases where a Postgres-level signal — SKIP LOCKED exclusion, or a constraint-violation error — is caught internally by processNextDueTimer() and converted into a silent .none/false rather than being surfaced through PollOutcome/SchedulerError). Not a shared bug; two separate gaps in the same function that a CODE-DESIGNER fix should address together since both concern how processNextDueTimer() reports non-fired outcomes to its caller."
-  }
+  },
+  "resolved_at": "2026-08-08T06:02:54Z",
+  "resolved_in": [
+    "src/scheduler/scheduler.zig",
+    "tests/integration/sch02_timer_polling_test.zig"
+  ],
+  "resolution": "Fix 1: a second lock-agnostic existence query (same predicate, no FOR UPDATE) runs when the locking query returns 0 rows, distinguishing genuinely-no-due-timers (.none) from due-but-locked (.skipped_locked). Fix 2: only the appendTimerFiredEventInTx call site inside fire_blk now returns SchedulerError.TransactionFailed directly after its existing rollback + handleTimerFireError call, instead of falling through to false/.none; every other fire_blk call site is unchanged, preserving ISS-303's retry/DLQ bookkeeping for all other failure types. Also fixed a latent self-deadlock in TC-SCH-02-02 (exposed only once Fix 1 made the preceding assertion pass) by releasing a row lock explicitly before cancelInstance() runs on a different connection. A genuine concurrent double-claim occurred on this issue (gh_claim.py race, two workspaces independently fixed it on the same branch) -- resolved via git merge (not force-push), keeping this run's more precisely-scoped, design-validated fix over a competing broader change, independently re-verified correct by TEST-RUNNER before proceeding. Verified: TC-SCH-02-02/TC-SCH-02-03 and the TC-SCH-303-03/04 regression suite each passed across 4 total independent runs with zero hangs and zero regressions. Design: src/design/iss0618-scheduler-lock-and-error-signaling.md.",
+  "closed_without_new_commits": false
 }
