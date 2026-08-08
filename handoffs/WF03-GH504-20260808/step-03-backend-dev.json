@@ -1,0 +1,49 @@
+{
+  "handoff_id": "74fb552f-1304-4539-95f4-6dff435b3355",
+  "run_id": "WF03-GH504-20260808",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH504-20260808/step-03-backend-dev.json",
+  "created_at": "2026-08-08T17:57:48Z",
+  "started_at": "2026-08-08T17:57:48Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-07"
+    ],
+    "related_handoff_ids": [
+      "cc1d9740-2d49-49c1-92db-f56b45a1017e"
+    ],
+    "artifacts_in": [
+      "src/design/iss0176-lua07-audit-manifest-hash-minimal-wiring.md",
+      "docs/issues/ISS-0176.json"
+    ]
+  },
+  "task": {
+    "description": "Implement the validated design at src/design/iss0176-lua07-audit-manifest-hash-minimal-wiring.md (PASSED CODE-DESIGN-VALIDATOR, 2 review passes) for GH-504/ISS-0176 (LUA-07 criterion 2). This is a git-setup-already-done run (branch feature/WF03-GH504-20260808 exists and is checked out) -- do NOT run git-setup again. Read the full design doc before starting -- it specifies precisely: (1) new file src/engine/lua_script_audit.zig with exactly one exported function, executeScriptForAudit, per section 4.1's signature -- preserve the doc comment text in section 2.2 VERBATIM (it correctly says lua_script_execution_audit as of the latest rework, do not reintroduce the audit_entries naming bug that was fixed and re-validated); (2) new migration migrations/0NN_iss0176_lua_script_execution_audit.sql (assign the next free migration number) per section 3.2's exact specification -- new dedicated table, NOT a column on audit_entries or audit_log; (3) new integration test tests/integration/iss0176_lua07_audit_manifest_hash_test.zig per section 5 -- must be genuinely mutation-checkable as designed (the SELECT...WHERE audit_id=$1 assertion against the persisted row, not just an in-memory ScriptResult assertion). CRITICAL: executeScriptForAudit must NOT be called from processServiceTaskRuntimeInTx or wired into any normal process-execution flow -- per the design's explicit, human-operator-confirmed scope, its ONLY caller after this fix is the new integration test itself. Do not expand scope to build real SERVICE_TASK script dispatch.",
+    "acceptance_criteria": [
+      "src/engine/lua_script_audit.zig created with executeScriptForAudit exactly per design section 4.1",
+      "Doc comment preserved verbatim from design section 2.2 (post-rework, correctly naming lua_script_execution_audit)",
+      "New migration creates lua_script_execution_audit table per design section 3.2 exactly -- audit_entries and audit_log both left unmodified",
+      "New integration test genuinely mutation-checkable per design section 5",
+      "executeScriptForAudit NOT wired into processServiceTaskRuntimeInTx or any normal execution flow -- only caller is the new test",
+      "No SQL string interpolation -- $1..$N placeholders only",
+      "tools/lint_sql_param_types.py exits 0 for the new file",
+      "zig build exits 0, zig build test-env-verify exits 0",
+      "New integration test passes against real PostgreSQL",
+      "zig build test (full unit suite) still exits 0 -- no regressions"
+    ],
+    "functions_to_call": [
+      "fn:zig-build-test",
+      "fn:zig-build-migrate"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
