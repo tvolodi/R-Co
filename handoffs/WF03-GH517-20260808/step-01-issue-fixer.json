@@ -1,0 +1,39 @@
+{
+  "handoff_id": "11c3f3d9-9e47-4f44-89e5-6273a6c9139e",
+  "run_id": "WF03-GH517-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH517-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T02:29:13Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0184.json"
+    ]
+  },
+  "task": {
+    "description": "GH #517 / ISS-0184 is a holding issue covering 62 test-integration-svc failures across 31 files, NOT yet diagnosed to individual root causes. Observed error mix on a pristine database: 85x C22021 invalid byte sequence for encoding UTF8 (concentrated in ext02_webhook_dispatch_test and sch02_timer_polling_test, likely a binary secret or HMAC written into a text column), 19x C42883 operator does not exist text = uuid, 11x C42P01 relation does not exist, 11x C23514 check constraint violation, 11x C23505 duplicate key, 7x C23502 not-null violation. The issue's own acceptance criteria state: 'Each listed cluster is diagnosed to a named root cause and either fixed or split into its own issue' -- this is NOT a single fix, it is a diagnosis-and-triage pass. Your job: (1) run zig build test-integration-svc against a freshly migrated database and capture the current failure list (the issue's 86/62 counts may be stale -- re-measure); (2) cluster failures by root cause (the error-code groupings in the issue are a starting hypothesis, verify them); (3) for each cluster, determine if it's small/well-understood enough to fix in THIS run, or if it needs its own separate issue (per the acceptance criteria's explicit 'or split into its own issue' allowance) -- given 31 files and multiple distinct SQL error classes, expect MOST clusters to become their own filed issues rather than all being fixed in one BACKEND-DEV pass; (4) if any cluster is small, clearly diagnosed, and low-risk, you may recommend fixing it directly in this run's later steps -- but do not force everything into one run just because it started as one issue. This is expected to be a LONG-RUNNING diagnosis -- call `python3 tools/queue_heartbeat.py GH-517 r-co-2-loop` (then commit+push handoffs/global_queue.json) periodically, at least every 30-60 minutes, so this workspace's claim doesn't appear stale to other workspaces' gh_claim.py while you work (this is the exact scenario the new heartbeat mechanism, ISS-0615/GH-563, was built for).",
+    "acceptance_criteria": [
+      "Current failure list re-measured against a freshly migrated database (do not trust the issue text's counts without verification)",
+      "Each failure clustered by root cause with the error-code hypothesis verified or corrected",
+      "Small/well-diagnosed/low-risk clusters identified as candidates for direct fix in this run",
+      "Larger/ambiguous/multi-cause clusters filed as their own new issues (ISS file + GitHub issue + global queue entry) per the acceptance criteria's explicit split allowance",
+      "Heartbeat sent at least every 30-60 minutes during this diagnosis via queue_heartbeat.py, committed and pushed each time"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
