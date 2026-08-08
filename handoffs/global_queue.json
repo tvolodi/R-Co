@@ -691,17 +691,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0626",
+      "issue_id": "GH-594",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/594",
-      "title": "lint_handoffs.py: 263 BLOCKER + 195 MAJOR historical bookkeeping debt",
+      "title": "lint_handoffs.py reports 263 BLOCKER + 195 MAJOR across historical handoffs (2269 checked) -- pre-existing bookkeeping debt",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-08T22:40:53Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-08T22:42:14Z"
+      },
+      "added_at": "2026-08-08T22:42:14Z",
+      "started_at": "2026-08-08T22:42:14Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 594,
+      "labels": [
+        "bug"
+      ]
     }
   ]
 }
