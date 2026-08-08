@@ -435,3 +435,4 @@
 2026-08-08T08:24:38Z | COMPLETE | WF03-GH566-20260808 | cbb47d44 | TEST-RUNNER | PARTIAL (3/5 exp601; CI green; test-integration-others-internal inconclusive locally, not CI-covered)
 2026-08-08T08:25:18Z | ROUTE | WF03-GH566-20260808 | 0eff3a9b | ORCH -> RELEASE-VALIDATOR | IN_PROGRESS (Step 5, BLOCKER incidental finding requires this gate)
 2026-08-08T08:27:41Z | COMPLETE | WF03-GH566-20260808 | 0eff3a9b | RELEASE-VALIDATOR | PASS (APPROVED - ISS-0617 root cause confirmed fixed, ISS-0622 confirmed filed/queued/non-blocking, PR #577 checks green)
+2026-08-08T08:29:24Z | ROUTE | WF03-GH566-20260808 | 56fc6ec9 | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final)
