@@ -1,0 +1,48 @@
+{
+  "handoff_id": "ee840fc9-75cd-4b3a-8afb-b07442b66388",
+  "run_id": "WF03-GH596-20260808",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH596-20260808/step-03-backend-dev.json",
+  "created_at": "2026-08-08T23:51:42Z",
+  "started_at": "2026-08-08T23:51:42Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "91df0d25-0c8d-4c48-9b19-846ffe700017",
+      "06e8f858-2ef9-4fad-8798-5a631d3c8e19",
+      "c0a17dfc-b800-481d-a225-39e2994c8e13"
+    ],
+    "artifacts_in": [
+      "src/design/iss0627-lint-handoffs-acknowledgment.md",
+      "tools/lint_handoffs.py",
+      "tools/lint_test_isolation.baseline.json",
+      "tools/lint_test_wiring.py"
+    ]
+  },
+  "task": {
+    "description": "Implement the APPROVED design at src/design/iss0627-lint-handoffs-acknowledgment.md (935 lines, commit 86e7c12, PASSed CODE-DESIGN-VALIDATOR at commit 9183e8b) -- a permanent acknowledgment baseline mechanism for tools/lint_handoffs.py covering H003 (148 BLOCKER), H004 (34 BLOCKER), H005 (5 BLOCKER), H009 (38 MAJOR).\n\nCRITICAL: implement the H009-only key fix EXACTLY as specified -- an H009 finding's key must fold in a stable, sorted fingerprint of later_completed's file paths (join sorted rel paths, per CODE-DESIGN-VALIDATOR's confirmation there's no hash-vs-list ambiguity since paths are already POSIX-normalized once in main()). Get this exactly right -- this is the one part of the design that closes a genuine safety gap (two different orphan situations on the same file with the same COUNT of later-completed steps but different actual steps must NOT collide under the same acknowledgment).\n\nKey implementation points (verify against the actual design file, this is a summary not a substitute for reading all 935 lines):\n- Baseline file: tools/lint_handoffs.baseline.json (new), matching the sibling-file convention of tools/lint_test_isolation.baseline.json and tools/lint_test_tenant_provisioning.baseline.json.\n- Header provenance fields: version, generated_at, source, regenerated_by, regeneration_note, plus a reasons map (one shared reason per category: H003/H004/H005/H009, referencing ISS-0627's already-written root-cause text -- do not write 225 individual reasons).\n- Per-finding entries keyed by severity|code|path|message (H003/H004/H005) or severity|code|path|message|<sorted-later-completed-fingerprint> (H009 only).\n- A ONE-TIME GENERATION SCRIPT that imports and calls lint_handoffs.py's EXISTING _lint_parsed_handoff and lint_orphans functions -- do NOT reimplement the H003/H004/H005/H009 predicates a second time, that risks silent drift between the baseline generator and the real linter.\n- A new ACKNOWLEDGED bucket in lint_handoffs.py's reporting: excluded from the BLOCKER/MAJOR count that decides exit code, but still individually printed (e.g. '[ACKNOWLEDGED]' prefix) so it never becomes invisible.\n- A --no-baseline flag that restores full gating and prints an audit line (e.g. 'Suppressed N issue(s) from baseline' equivalent).\n- This baseline mechanism composes as an INDEPENDENT SECOND GATE after the existing --changed mode's preexisting_file_finding_codes/preexisting_run_finding_codes logic from GH-594 -- do not merge them into one mechanism, they answer different questions.\n- Implement all 5 mutation-checkable test specs from design section 7 (likely as a selftest subcommand or extension of the existing test surface -- check whether lint_handoffs.py already has a selftest pattern or whether this needs its own, following the same convention tools/repair_handoff_bookkeeping.py established in GH-594).\n\nSEQUENCE:\n1. Implement the mechanism in tools/lint_handoffs.py plus the new one-time generation script (design section 2 -- check its exact proposed filename/location).\n2. Run whatever selftest/test mechanism the design specifies -- all specs must pass against synthetic fixtures BEFORE touching the real baseline file.\n3. Run the generation script against the REAL corpus to produce the actual tools/lint_handoffs.baseline.json with ~225 entries. Sanity-check the counts (148 H003 + 34 H004 + 5 H005 + 38 H009 = 225) before committing.\n4. Run `python tools/lint_handoffs.py` (full corpus, no flags) and confirm: BLOCKER count drops by 148+34+5=187 (H003/H004/H005 fully acknowledged), MAJOR count drops by 38 (H009 fully acknowledged), and an ACKNOWLEDGED bucket now shows 225 entries -- these findings must still be individually visible in the output, just not gating.\n5. Run `python tools/lint_handoffs.py --no-baseline` and confirm full gating is restored (counts back to pre-baseline levels).\n6. Run `python tools/lint_handoffs.py --changed` and confirm it still works correctly and independently of the new baseline mechanism (GH-594's logic must be untouched).\n7. Confirm this run's own handoff files remain unaffected/clean.",
+    "acceptance_criteria": [
+      "tools/lint_handoffs.baseline.json generated with ~225 entries (148+34+5+38)",
+      "H009 key correctly folds in sorted later_completed fingerprint",
+      "Generation script reuses _lint_parsed_handoff/lint_orphans, does not reimplement predicates",
+      "Full-corpus lint_handoffs.py run shows ACKNOWLEDGED bucket with 225 entries, BLOCKER/MAJOR reduced accordingly",
+      "--no-baseline restores full gating",
+      "--changed mode still works correctly, independent of new mechanism",
+      "All 5 mutation-checkable test specs pass",
+      "This run's own handoff files unaffected"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
