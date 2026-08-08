@@ -7,9 +7,9 @@
   "to_agent": "BACKEND-DEV",
   "file": "handoffs/WF03-GH566-20260808/step-03-backend-dev.json",
   "created_at": "2026-08-08T07:12:46Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-08T07:13:29Z",
+  "completed_at": "2026-08-08T07:33:05Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -37,7 +37,22 @@
       "fn:zig-build-migrate"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Created migrations/GBL-136_iss0617_drop_remaining_global_registry_shadows.sql per the validated design. Verified by direct application to both bpm_dev and bpm_test (after discovering zig build migrate targets BPM_DB_URL, not BPM_TEST_DB_URL -- an env var confusion during my own verification, corrected by re-running against the test DB directly). Result: 6 of 8 target tables dropped successfully (event_type_registry_producers, oidc_migration_item, oidc_migration_job, tenant, tenant_hostnames all confirmed absent from tenant_default post-migration; registry_idp_operation_ledger never existed, correct no-op). artifact_versions remains, exactly as the design predicted and intended (permanent FK dependents from legitimate PER_TENANT tables). HOWEVER: repository_artifacts -- the actual GH-566/ISS-0617 root cause table -- ALSO remains, and this was NOT predicted by the design. Root cause: tenant_default.artifact_versions has its own FK (fk_artifact_versions_content, ON DELETE RESTRICT) pointing INTO tenant_default.repository_artifacts. Since artifact_versions itself can never be dropped (permanent PER_TENANT dependents), it permanently, transitively blocks repository_artifacts from ever being dropped via RESTRICT too -- this is not a temporary ordering problem the current design can fix by reordering the table list; it is a structural impossibility as long as artifact_versions exists in tenant_default. This means the current migration-based fix strategy CANNOT achieve GH-566s actual goal for repository_artifacts. Recommend the fix pivot to the application/test level instead: tests/integration/exp601_tier_quota_test.zig:53 unqualified INSERT INTO repository_artifacts resolves via TestHarnesss search_path=tenant_default,public to the wrong (stray, but undropppable) shadow copy -- schema-qualifying this INSERT to public.repository_artifacts (matching what the production resolver in src/config/loader.zig actually reads) would fix TC-EXP-601-01 through 04 directly, without requiring the impossible DROP. Not implemented here -- this is a strategy change requiring a new CODE-DESIGNER pass, not a BACKEND-DEV-level fix-up.",
+    "artifacts_out": [
+      "migrations/GBL-136_iss0617_drop_remaining_global_registry_shadows.sql"
+    ],
+    "issues": [
+      {
+        "id": "ISSUE-001",
+        "severity": "MAJOR",
+        "description": "The validated design did not account for artifact_versions transitively blocking repository_artifacts via fk_artifact_versions_content (ON DELETE RESTRICT). This means the migration, though correctly implemented per the design, does not achieve GH-566s actual goal (repository_artifacts remains in tenant_default). Requires design rework or a strategy change to a test-fixture-level fix instead.",
+        "affected_requirement": null
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER: the migration approach cannot drop repository_artifacts due to a permanent transitive FK block from artifact_versions. Recommend pivoting to a test-fixture-level fix (schema-qualify the INSERT in exp601_tier_quota_test.zig) instead of continuing to pursue the DROP TABLE approach for this specific table. The GBL-136 migration itself (dropping the other 6 tables) remains valid and should likely still ship, just does not solve GH-566 by itself."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
