@@ -407,7 +407,8 @@ test "TC-EXT-02-INT-03: DELETE subscription is admin-only and removes row" {
     defer if (worker_delete.body.len > 0) allocator.free(worker_delete.body);
     try testing.expectEqual(@as(u16, 403), worker_delete.status_code);
 
-    const unknown_delete = webhooks_routes.handleDeleteSubscription(allocator, &pool, adminActor(owner_id), "00000000-0000-0000-0000-000000000999");
+    const unknown_delete = webhooks_routes.handleDeleteSubscription(allocator, &pool, adminActor(owner_id), try randomUuidStr(allocator));
+    defer allocator.free(unknown_delete.subscription_id_slice);
     defer if (unknown_delete.body.len > 0) allocator.free(unknown_delete.body);
     try testing.expectEqual(@as(u16, 404), unknown_delete.status_code);
 
@@ -457,9 +458,11 @@ test "TC-EXT-02-INT-04: Matching lifecycle event fans out and emits contract-com
     }, false);
     defer sub.deinit(allocator);
 
+    const inst_int04 = try randomUuidStr(allocator);
+    defer allocator.free(inst_int04);
     _ = try webhook_dispatcher.enqueueDeliveryAttempts(allocator, &pool, .{
         .event_type = .task_completed,
-        .instance_id = "11111111-1111-1111-1111-111111111111",
+        .instance_id = inst_int04,
         .timestamp = "2026-05-25T12:00:00Z",
         .payload_json = "{\"ok\":true}",
         .trace_id = "trace-ext02-int04",
@@ -521,9 +524,11 @@ test "TC-EXT-02-INT-05: Signature header is present only for secret-configured s
     }, false);
     defer unsigned_sub.deinit(allocator);
 
+    const inst_int05 = try randomUuidStr(allocator);
+    defer allocator.free(inst_int05);
     _ = try webhook_dispatcher.enqueueDeliveryAttempts(allocator, &pool, .{
         .event_type = .task_completed,
-        .instance_id = "22222222-2222-2222-2222-222222222222",
+        .instance_id = inst_int05,
         .timestamp = "2026-05-25T12:01:00Z",
         .payload_json = "{\"sig\":true}",
         .trace_id = "trace-ext02-int05",
@@ -566,9 +571,11 @@ test "TC-EXT-02-INT-06: Non-2xx and timeout failures retry with at-least-once se
     }, false);
     defer sub_500.deinit(allocator);
 
+    const inst_int06 = try randomUuidStr(allocator);
+    defer allocator.free(inst_int06);
     _ = try webhook_dispatcher.enqueueDeliveryAttempts(allocator, &pool, .{
         .event_type = .task_completed,
-        .instance_id = "33333333-3333-3333-3333-333333333333",
+        .instance_id = inst_int06,
         .timestamp = "2026-05-25T12:02:00Z",
         .payload_json = "{\"retry\":true}",
         .trace_id = "trace-ext02-int06",
@@ -621,9 +628,11 @@ test "TC-EXT-02-INT-07: Fifth consecutive failure pauses subscription and emits 
     }, false);
     defer sub.deinit(allocator);
 
+    const inst_int07 = try randomUuidStr(allocator);
+    defer allocator.free(inst_int07);
     _ = try webhook_dispatcher.enqueueDeliveryAttempts(allocator, &pool, .{
         .event_type = .task_completed,
-        .instance_id = "44444444-4444-4444-4444-444444444444",
+        .instance_id = inst_int07,
         .timestamp = "2026-05-25T12:03:00Z",
         .payload_json = "{\"pause\":true}",
         .trace_id = "trace-ext02-int07",
@@ -728,9 +737,11 @@ test "TC-EXT-02-INT-09: 2xx with invalid/non-JSON response body is success witho
     defer allocator.free(subscription_id);
     try seedWebhookSubscription(conn, subscription_id, owner_id, "http://127.0.0.1:19109/hook", "{task.completed}", null);
 
+    const inst_int09 = try randomUuidStr(allocator);
+    defer allocator.free(inst_int09);
     _ = try webhook_dispatcher.enqueueDeliveryAttempts(allocator, &pool, .{
         .event_type = .task_completed,
-        .instance_id = "55555555-5555-5555-5555-555555555555",
+        .instance_id = inst_int09,
         .timestamp = "2026-05-25T12:04:00Z",
         .payload_json = "{\"invalid\":true}",
         .trace_id = "trace-ext02-int09",
@@ -788,9 +799,11 @@ test "TC-EXT-02-INT-10: Same source event with multiple subscriptions keeps retr
     try seedWebhookSubscription(conn, ok_sub_id, owner_id, "http://127.0.0.1:19110/hook", "{task.completed}", null);
     try seedWebhookSubscription(conn, fail_sub_id, owner_id, "http://127.0.0.1:19111/hook", "{task.completed}", null);
 
+    const inst_int10 = try randomUuidStr(allocator);
+    defer allocator.free(inst_int10);
     _ = try webhook_dispatcher.enqueueDeliveryAttempts(allocator, &pool, .{
         .event_type = .task_completed,
-        .instance_id = "66666666-6666-6666-6666-666666666666",
+        .instance_id = inst_int10,
         .timestamp = "2026-05-25T12:05:00Z",
         .payload_json = "{\"fanout\":true}",
         .trace_id = "trace-ext02-int10",
