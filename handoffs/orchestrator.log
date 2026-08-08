@@ -456,3 +456,4 @@
 2026-08-08T09:29:08Z | ROUTE | WF03-GH573-20260808 | fbe5f0d1 | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-573/ISS-0620, BLOCKER, no-destructive-action constraint)
 2026-08-08T09:32:09Z | CLEANUP | WF03-GH567-20260808 | 4fe97c76 | ORCH | CLEANUP -- GH-567 resolved upstream by another workspace; merge --abort + drop local/remote feature/WF03-GH567-20260808; board #567 -> Done; queue already RESOLVED (lock=None) from upstream commit 4fe97c76; main ff-only @ 26305925
 2026-08-08T09:40:49Z | COMPLETE | WF03-GH573-20260808 | fbe5f0d1 | ISSUE-FIXER | PASS - GBL-137 forward-fix designed+implemented+applied to bpm_test+bpm_dev; GBL-134 header corrected; incidental ISS-0623/GH-580 filed+queued; next: CODE-DESIGN-VALIDATOR
+2026-08-08T09:43:38Z | ROUTE | WF03-GH573-20260808 | fc26b70b | ORCH -> CODE-DESIGN-VALIDATOR | IN_PROGRESS (Step 2b, GH-573/ISS-0620, BLOCKER, extra scrutiny required)
