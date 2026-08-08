@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGNER",
   "file": "handoffs/WF03-GH596-20260808/step-02-code-designer.json",
   "created_at": "2026-08-08T23:34:55Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-08T23:34:55Z",
+  "completed_at": "2026-08-08T23:45:36Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -45,7 +45,16 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Designed a permanent acknowledgment (baseline) mechanism for tools/lint_handoffs.py covering H003 (148 BLOCKER), H004 (34 BLOCKER), H005 (5 BLOCKER), and H009 (38 MAJOR) -- 225 findings total. Resolved the H009 collision question raised in the handoff: the message text `f\"status is {status} but {len(later_completed)} later step(s) in run {run_id} are COMPLETED...\"` embeds a COUNT of later-completed steps, not their identities, so two genuinely different orphan situations on the same file CAN produce a byte-identical message if the count happens to coincide after the run directory's file membership changes (confirmed this is a real risk, not hypothetical, by checking git history: handoff step files have been deleted/added/reorganized within run directories over the corpus's life). H003/H004/H005 were confirmed safe under plain severity|code|path|message matching (their messages embed the actual differing values, or in H005's case the predicate is binary with no room for a same-message-different-finding case). Fixed the H009 key by folding in a sorted fingerprint of later_completed's actual file paths as an extra key component (H009 only), with a worked example proving the fix. Recommended baseline location: tools/lint_handoffs.baseline.json (tools/ sibling-file convention matching the 2 existing baselines), not docs/issues/, with explicit justification. Schema: file-level header provenance (version/generated_at/source/regenerated_by/regeneration_note) plus a shared reasons map keyed by code (H003/H004/H005/H009, referencing ISS-0627's already-written root-cause text) plus per-finding entries (file/code/matching_key/reason_ref/acknowledged_at/acknowledged_by) -- decided ONE shared reason per category rather than 225 individual free-text reasons, justified explicitly (all 225 share exactly 4 root causes; per-entry text would be repetitive noise or fabricated distinctiveness). Generation mechanism is a new one-time reviewed script (tools/generate_lint_handoffs_baseline.py) that imports and reuses lint_handoffs.py's own _lint_parsed_handoff and lint_orphans rather than reimplementing predicates, with a differential selftest proving its local H009 orphan-walk copy stays byte-identical to lint_orphans's real output. Design specifies the new ACKNOWLEDGED bucket (excluded from counts['BLOCKER']/counts['MAJOR'] gating, individually printed with [ACKNOWLEDGED] prefix per lint_test_wiring.py's [KNOWN] precedent), the --no-baseline flag mirroring lint_test_tenant_provisioning.py plus its audit print line, and explicitly how this composes with --changed mode's existing preexisting_file_finding_codes/preexisting_run_finding_codes (GH-594): baseline-matching applies identically in both modes, running after --changed's own pre-existing-diff filtering, as two independent gates in series -- not merged into one mechanism. Includes 5 mutation-checkable test specs (TS-BASELINE-01 through 05) covering: baseline-matched finding excluded from gating but still printed; brand-new finding on an already-baselined file not excluded; the H009 collision scenario specifically disambiguated; --no-baseline restores full gating; generation script's H009 capture logic differentially matches lint_orphans. Does not touch tools/repair_handoff_bookkeeping.py's GH-594 scope. Explicitly excludes H013/H001-structural/H006-CONDITIONAL/H007 with a coverage-confirmation section. No implementation code written -- all code blocks are illustrative signatures/formulas per Type E convention. tools/lint_design_artefact.py src/design/iss0627-lint-handoffs-acknowledgment.md exits 0 (OK, no issues).",
+    "artifacts_out": [
+      "src/design/iss0627-lint-handoffs-acknowledgment.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "completed_at": "2026-08-08T23:45:36Z",
   "rework_count": 0,
   "max_rework": 3
 }
