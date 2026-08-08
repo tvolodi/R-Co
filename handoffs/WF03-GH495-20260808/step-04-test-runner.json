@@ -1,0 +1,63 @@
+{
+  "handoff_id": "66f40dee-2ba7-48f7-aa68-e179cc657ba7",
+  "run_id": "WF03-GH495-20260808",
+  "workflow_id": "WF-03",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH495-20260808/step-04-test-runner.json",
+  "created_at": "2026-08-08T22:16:25Z",
+  "started_at": "2026-08-08T22:16:25Z",
+  "completed_at": "2026-08-08T22:22:54Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-08",
+      "LUA-09",
+      "LUA-10"
+    ],
+    "related_handoff_ids": [
+      "c3f686f3-f4ee-4d1d-bb85-c0505400c153"
+    ],
+    "artifacts_in": [
+      "src/lua/instruction_limiter.zig",
+      "src/lua/memory_limiter.zig",
+      "src/lua/timeout.zig",
+      "src/lua/executor.zig",
+      "src/lua/host_context.zig",
+      "src/lua/host_api/call_service.zig",
+      "src/lua/limiter_wiring_test.zig",
+      "src/lua/execution_test.zig",
+      "src/lua/capability_enforcement_test.zig",
+      "src/lua_test_root.zig",
+      "src/simulation/service_interceptor.zig",
+      "src/simulation/types.zig"
+    ]
+  },
+  "task": {
+    "description": "Run the full test suite against BACKEND-DEV's LUA-08/09/10 limiter-wiring implementation (commits 944974d, 293c84c on this branch). ORCH already ran zig build test-env-verify and confirmed HEALTHY (10/10 checks) -- but ONLY after overriding a STALE shell environment variable. IMPORTANT: this Bash session's persisted BPM_TEST_DB_URL is stuck at postgres://bpm:bpm@localhost:5434/bpm_test (port 5434 -- a SIBLING workspace's port), which does NOT match this workspace's .env (port 5453, COMPOSE_PROJECT_NAME=r-co-2). The r-co-2-db_test-1 container is genuinely healthy and publishes port 5453 correctly -- this is a shell session artifact, NOT a real infrastructure problem. You MUST prefix every test/build command that reads BPM_TEST_DB_URL with an inline override: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test <command> -- or export it correctly at the start of your session -- do NOT trust whatever is already in the shell environment.\n\nORCH also independently re-verified BACKEND-DEV's work before this handoff: ran zig build (exit 0), confirmed no 'error set' output, ran zig build test-lua directly (16/16 steps succeeded, 81/81 tests passed, ~29s), and personally performed an independent mutation test on instruction_limiter.zig's installLimiter (commented out the lua_sethook call, confirmed zig build test-lua hangs past 45s as predicted, restored via git checkout, confirmed clean rebuild afterward: 81/81 tests passed again). BACKEND-DEV's own mutation-test claims (hook removal -> hang, watchdog-disable -> TC-LUA-10-02/03 failure) are corroborated, not just self-reported.\n\nRun your full standard pre-check sequence (backend services check, Infrastructure Health Checklist, zig build test-env-verify) with the BPM_TEST_DB_URL override applied throughout, then run the full test suite (zig build test, not just test-lua) to catch any regression outside the Lua subsystem -- BACKEND-DEV's changes touched execution_test.zig and capability_enforcement_test.zig (shared test infrastructure signature changes for createSandboxedState's new RunLimits parameter) and src/simulation/service_interceptor.zig + src/simulation/types.zig (an incidental allocator-mismatch bug fix + a new MockResponse.delay_ms test seam) -- confirm nothing else that depends on either shared file broke.",
+    "acceptance_criteria": [
+      "zig build test-env-verify exits 0 (HEALTHY) with the correct BPM_TEST_DB_URL override applied",
+      "zig build test exits 0 -- full suite, not just test-lua",
+      "zig build test-lua exits 0 with all limiter_wiring_test.zig cases passing",
+      "No regression in execution_test.zig, capability_enforcement_test.zig, or any simulation/ test depending on service_interceptor.zig",
+      "Full issue list with severity classification if anything fails"
+    ],
+    "functions_to_call": [
+      "fn:run-test-suite"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Full pre-check sequence HEALTHY (10/10, run twice pre- and post-suite) after working around a stale shell BPM_TEST_DB_URL (verified against .env: port 5453, container r-co-2-db_test-1). zig build test (full suite): exit 0, 270/270 test files wired, ISS-602 differential corpus 15/15 matched. zig build test-lua: 16/16 steps, 81/81 tests passed (~31s), including all five required cases (TC-LUA-08-01, TC-LUA-09-01, TC-LUA-10-01, TC-LUA-10-02, TC-LUA-10-03) plus mutation-check siblings, and execution_test.zig/capability_enforcement_test.zig (rooted in the same src/lua_test_root.zig). zig build test-simulation: 4/4 steps, 10/10 tests passed, covering the touched service_interceptor.zig and types.zig. No integration test target exists for this path (confirmed via grep) so none was skipped. No regressions found anywhere.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-08-WF03-GH495-20260808.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (Step 6) and Step Final. No BLOCKER-severity findings -- RELEASE-VALIDATOR (Step 5) not required per the WF-03 pipeline table conditional gate."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

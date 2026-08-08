@@ -20,12 +20,38 @@ const bindings = @import("luajit_bindings.zig");
 const stdlib = @import("stdlib.zig");
 const executor = @import("executor.zig");
 const capabilities = @import("capabilities.zig");
+const instruction_limiter = @import("instruction_limiter.zig");
+const memory_limiter = @import("memory_limiter.zig");
+const timeout_ctx = @import("timeout.zig");
+const manifest = @import("manifest.zig");
 
 /// Capabilities and context backing `sandboxedState`. File-scope so the
 /// pointer satisfies invariant CTX-1 (the context must outlive the state) for
 /// every test that uses the helper.
 var shared_caps: ?capabilities.CapabilitySet = null;
 var shared_context: executor.ExecutionContext = undefined;
+
+/// Storage for a state built by `sandboxedState`, returned alongside `L` so
+/// the caller can free it after `lua_close` (ISS-0169 tranche 2:
+/// `createSandboxedState` now requires caller-owned limiter storage that
+/// outlives `L` — INV-1 — which a plain `!*bindings.lua_State` return cannot
+/// carry on its own).
+pub const SandboxedState = struct {
+    L: *bindings.lua_State,
+    limiter_storage: *instruction_limiter.RunLimiter,
+    mem_limiter_storage: *memory_limiter.MemoryLimiter,
+
+    /// Close the state and free its limiter storage. Mirrors
+    /// `bindings.lua_close(L)` plus the cleanup `executeSource` performs via
+    /// its own stack-allocated storage — here heap-allocated because this
+    /// helper is called from many independent test bodies and must outlive
+    /// the call that constructs it.
+    pub fn deinit(self: SandboxedState) void {
+        bindings.lua_close(self.L);
+        std.testing.allocator.destroy(self.limiter_storage);
+        std.testing.allocator.destroy(self.mem_limiter_storage);
+    }
+};
 
 /// A fresh sandboxed state, built by THE SAME constructor the product uses.
 ///
@@ -38,8 +64,16 @@ var shared_context: executor.ExecutionContext = undefined;
 /// delegates to `executor.createSandboxedState`, which is what makes the
 /// LUA-03 evidence below mean anything.
 ///
-/// Caller must `lua_close`.
-fn sandboxedState() !*bindings.lua_State {
+/// ISS-0169 tranche 2: runs under generous limits (max bounds from
+/// `manifest.Limits`) so the LUA-01..05/EDGE tests in this file — none of
+/// which exercise limiter behaviour directly — are not incidentally affected
+/// by the new instruction/memory/timeout enforcement. Limiter-specific
+/// behaviour is exercised by the dedicated LUA-08/09/10 tests
+/// (`limiter_wiring_test.zig`).
+///
+/// Caller must call `.deinit()` on the returned `SandboxedState` (closes `L`
+/// and frees its limiter storage).
+fn sandboxedState() !SandboxedState {
     if (shared_caps == null) {
         shared_caps = capabilities.CapabilitySet.init(std.testing.allocator);
         shared_context = .{
@@ -49,7 +83,26 @@ fn sandboxedState() !*bindings.lua_State {
             .actor_id = "iss0169-sandbox-actor",
         };
     }
-    return executor.createSandboxedState(&shared_context);
+
+    const limits = executor.RunLimits{
+        .max_instructions = manifest.Limits.MAX_INSTRUCTIONS,
+        .max_memory_bytes = manifest.Limits.MAX_MEMORY_BYTES,
+        .timeout_seconds = manifest.Limits.MAX_TIMEOUT_SECONDS,
+    };
+
+    const limiter_storage = try std.testing.allocator.create(instruction_limiter.RunLimiter);
+    errdefer std.testing.allocator.destroy(limiter_storage);
+    limiter_storage.* = .{
+        .instruction = instruction_limiter.InstructionLimiter.init(std.testing.allocator, limits.max_instructions),
+        .timeout = timeout_ctx.TimeoutContext.init(limits.timeout_seconds),
+    };
+
+    const mem_limiter_storage = try std.testing.allocator.create(memory_limiter.MemoryLimiter);
+    errdefer std.testing.allocator.destroy(mem_limiter_storage);
+    mem_limiter_storage.* = memory_limiter.MemoryLimiter.init(std.testing.allocator, limits.max_memory_bytes);
+
+    const L = try executor.createSandboxedState(&shared_context, limits, limiter_storage, mem_limiter_storage);
+    return .{ .L = L, .limiter_storage = limiter_storage, .mem_limiter_storage = mem_limiter_storage };
 }
 
 /// Run `src` and return the numeric result. Errors if it does not compile,
@@ -80,8 +133,9 @@ test "TC-LUA-01-02: Lua C-interop bindings are real, not stubs" {
     // tests exist, the subsystem has silently regressed to non-executing.
     try std.testing.expect(bindings.has_real_luajit);
 
-    const L = try sandboxedState();
-    defer bindings.lua_close(L);
+    const sb = try sandboxedState();
+    defer sb.deinit();
+    const L = sb.L;
     try std.testing.expectEqual(@as(f64, 42), try evalNumber(L, "return 6 * 7"));
 }
 
@@ -91,15 +145,17 @@ test "TC-LUA-01-02: Lua C-interop bindings are real, not stubs" {
 
 test "TC-LUA-02-01: first script sets a global, a second state does not see it" {
     {
-        const L1 = try sandboxedState();
-        defer bindings.lua_close(L1);
+        const sb1 = try sandboxedState();
+        defer sb1.deinit();
+        const L1 = sb1.L;
         try std.testing.expectEqual(bindings.LUA_OK, bindings.luaL_loadstring(L1, "leaked = 99 return 1"));
         try std.testing.expectEqual(bindings.LUA_OK, bindings.lua_pcall(L1, 0, 1, 0));
     }
 
     // A separate state must not observe the first one's global.
-    const L2 = try sandboxedState();
-    defer bindings.lua_close(L2);
+    const sb2 = try sandboxedState();
+    defer sb2.deinit();
+    const L2 = sb2.L;
     try std.testing.expect(try evalsToNil(L2, "return leaked"));
 }
 
@@ -107,8 +163,9 @@ test "TC-LUA-02-03: state cleanup after script completes" {
     // Repeated create/destroy must neither leak state nor carry values across.
     var i: usize = 0;
     while (i < 25) : (i += 1) {
-        const L = try sandboxedState();
-        defer bindings.lua_close(L);
+        const sb = try sandboxedState();
+        defer sb.deinit();
+        const L = sb.L;
         try std.testing.expect(try evalsToNil(L, "return carried"));
         try std.testing.expectEqual(bindings.LUA_OK, bindings.luaL_loadstring(L, "carried = 1 return 1"));
         try std.testing.expectEqual(bindings.LUA_OK, bindings.lua_pcall(L, 0, 1, 0));
@@ -120,8 +177,9 @@ test "TC-LUA-02-03: state cleanup after script completes" {
 // ---------------------------------------------------------------------------
 
 test "TC-LUA-03-01/02/03: math, string and table are available and functional" {
-    const L = try sandboxedState();
-    defer bindings.lua_close(L);
+    const sb = try sandboxedState();
+    defer sb.deinit();
+    const L = sb.L;
 
     try std.testing.expectEqual(@as(f64, 4), try evalNumber(L, "return math.floor(4.7)"));
     try std.testing.expectEqual(@as(f64, 5), try evalNumber(L, "return string.len('hello')"));
@@ -131,8 +189,9 @@ test "TC-LUA-03-01/02/03: math, string and table are available and functional" {
 }
 
 test "TC-LUA-03-04..07: io, os, package and debug are NOT available" {
-    const L = try sandboxedState();
-    defer bindings.lua_close(L);
+    const sb = try sandboxedState();
+    defer sb.deinit();
+    const L = sb.L;
 
     // loadSafeStdlib never opens these. Each must be nil rather than a usable
     // table -- this is what stops a script reaching the filesystem, the
@@ -148,8 +207,9 @@ test "TC-LUA-03-04..07: io, os, package and debug are NOT available" {
 }
 
 test "TC-LUA-03-08..12: load, loadstring, dofile, loadfile and string.dump are removed" {
-    const L = try sandboxedState();
-    defer bindings.lua_close(L);
+    const sb = try sandboxedState();
+    defer sb.deinit();
+    const L = sb.L;
 
     // These are the escape hatches: each would let a script build new
     // executable code or read a file, defeating LUA-04's bytecode gate.
@@ -165,8 +225,9 @@ test "TC-LUA-03-08..12: load, loadstring, dofile, loadfile and string.dump are r
 }
 
 test "TC-LUA-03: calling a removed global raises, it does not silently no-op" {
-    const L = try sandboxedState();
-    defer bindings.lua_close(L);
+    const sb = try sandboxedState();
+    defer sb.deinit();
+    const L = sb.L;
 
     // Attempting to call nil must be a runtime error. If this ever passes,
     // something has re-registered an escape hatch.
@@ -526,15 +587,17 @@ test "TC-LUA-07: the plain executeScript path records no manifest hash" {
 // ---------------------------------------------------------------------------
 
 test "TC-LUA-EDGE-01: empty script executes without error" {
-    const L = try sandboxedState();
-    defer bindings.lua_close(L);
+    const sb = try sandboxedState();
+    defer sb.deinit();
+    const L = sb.L;
     try std.testing.expectEqual(bindings.LUA_OK, bindings.luaL_loadstring(L, ""));
     try std.testing.expectEqual(bindings.LUA_OK, bindings.lua_pcall(L, 0, 0, 0));
 }
 
 test "TC-LUA-EDGE-02: a very long script executes without buffer overflow" {
-    const L = try sandboxedState();
-    defer bindings.lua_close(L);
+    const sb = try sandboxedState();
+    defer sb.deinit();
+    const L = sb.L;
 
     // ~6k of source: sum 1..500 via generated statements.
     var buf: [8192]u8 = undefined;
@@ -553,8 +616,9 @@ test "TC-LUA-EDGE-02: a very long script executes without buffer overflow" {
 }
 
 test "TC-LUA-EDGE-03: syntax error returns a clear error message" {
-    const L = try sandboxedState();
-    defer bindings.lua_close(L);
+    const sb = try sandboxedState();
+    defer sb.deinit();
+    const L = sb.L;
 
     try std.testing.expectEqual(
         bindings.LUA_ERRSYNTAX,
@@ -568,8 +632,9 @@ test "TC-LUA-EDGE-03: syntax error returns a clear error message" {
 }
 
 test "TC-LUA-EDGE-05: Unicode string literals compile and execute" {
-    const L = try sandboxedState();
-    defer bindings.lua_close(L);
+    const sb = try sandboxedState();
+    defer sb.deinit();
+    const L = sb.L;
     // Lua strings are BYTE strings, so string.len returns the UTF-8 byte count,
     // not the codepoint count: 'héllo wörld' is 11 codepoints but 13 bytes
     // (é and ö are two bytes each). Asserting 13 documents the real semantics;

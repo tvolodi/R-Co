@@ -1,0 +1,28 @@
+{
+  "id": "ISS-0624",
+  "title": "LUA-11 (variable read/write) and LUA-13 (logging) need new state model + implementation, not just tests",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/591",
+  "discovered_at": "2026-08-08T20:45:00Z",
+  "discovered_by": "ISSUE-FIXER WF03-GH495-20260808 Step 1",
+  "discovered_while_fixing": "ISS-0169",
+  "run_id": null,
+  "affected_areas": [
+    "src/lua/host_api/read_variable.zig",
+    "src/lua/host_api/write_variable.zig",
+    "src/lua/host_api/log.zig",
+    "src/lua/executor.zig",
+    "src/lua/structured_logger.zig"
+  ],
+  "symptom": "LUA-11: read_variable.zig and write_variable.zig both correctly gate on capability and validate argument types, but neither touches any instance state -- read_variable always returns nil regardless of what was 'written' and write_variable never stores anything. There is no pending-writes buffer or instance-state field anywhere on ExecutionContext. LUA-13: log.zig gates on AUDIT_LOG and validates arguments, then does nothing (pushes nil). StructuredLogger.log() is fully implemented and correctly formats a structured entry, but has zero callers -- no StructuredLogger instance is reachable from ExecutionContext or host_api.",
+  "root_cause": "Both requirements' host-API entry points were written to pass capability/type-validation but the actual behavior (state mutation for LUA-11, log emission for LUA-13) was never wired to real production state, consistent with the ISS-0153 stub era this subsystem is still recovering from.",
+  "acceptance_criteria": [
+    "LUA-11: ExecutionContext gains an instance-state model (design src/design/lua-integration.md section 16.2 sketches a pending_writes staging map applied atomically on script success, discarded on failure) -- implement the actual get/put against that state from read_variable/write_variable, and the atomic-apply-on-success/discard-on-failure semantics in executeSource",
+    "LUA-11 tests per design section 16.4: read, write, write-on-success, write-on-failure/discard, ordering, read-after-write -- run through real executeScript calls",
+    "LUA-13: add a StructuredLogger (or reference) reachable from ExecutionContext; ExecutionContext needs a trace_id field (design section 18.2) it currently lacks; call the logger for real from platformLog with a real StructuredLogEntry",
+    "LUA-13 tests verifying a script's platform.log call produces an entry with the right level/message/correlation IDs -- needs either a swappable writer (test injects a buffer instead of stderr) or assertion against captured stderr, whichever pattern this codebase's test guide prefers",
+    "Both requirements restored to RELEASED with evidence, or the residual gap documented"
+  ],
+  "notes": "Split out of GH-495/ISS-0169 during WF03-GH495-20260808 per the human-operator-confirmed decision to batch that run's 9-requirement scope into 3 deliverable pieces (limiters LUA-08/09/10 tackled in that run; this issue and a sibling for LUA-12/15/16 cover the remaining 6). See docs/issues/ISS-0169.json for the full original gap assessment this issue's scope was carved from."
+}

@@ -46,6 +46,15 @@ pub const ExecutionContext = struct {
     /// manifest that granted `capabilities`. Null on the plain `executeScript`
     /// path, which performs no manifest verification.
     manifest_hash: ?[32]u8 = null,
+    /// LUA-10, design §2.5.4. Set by `executeSource` to the active
+    /// host-external watchdog for this execution, right after the watchdog
+    /// starts and before `createSandboxedState` installs the context — so
+    /// `installContext`'s existing CTX-1..CTX-4 invariants apply to it
+    /// unchanged (same pointer, same lifetime). Defaulted to `null` so no
+    /// existing construction site (tests, other callers) breaks. Read by
+    /// `host_context.activeWatchdogFired`, which `call_service.zig` calls
+    /// before and after the body of `platformCallService`.
+    active_watchdog: ?*const timeout_ctx.WatchdogState = null,
 };
 
 /// Result of script execution.
@@ -116,6 +125,27 @@ fn isBytecode(script: []const u8) bool {
     return std.mem.eql(u8, script[0..4], &BYTECODE_MAGIC);
 }
 
+/// Resource limits enforced for one script execution (LUA-08/09/10, design
+/// §3.1). Every code path that reaches `lua_pcall` carries a finite value for
+/// all three fields — see `UNMANIFESTED_DEFAULT_LIMITS` and invariant INV-3.
+pub const RunLimits = struct {
+    max_instructions: u64,
+    max_memory_bytes: u64,
+    timeout_seconds: u32,
+};
+
+/// Conservative default limits for `executeScript` (the no-manifest path),
+/// design §3.2. `executeScript`'s own doc comment says it "must never become
+/// a way to bypass a gate" — running unlimited would make it exactly that
+/// bypass relative to the manifest path, so it uses the same safe-minimum
+/// bounds `manifest.zig` already validates every manifest against, reused
+/// rather than duplicated.
+pub const UNMANIFESTED_DEFAULT_LIMITS = RunLimits{
+    .max_instructions = manifest.Limits.MIN_INSTRUCTIONS,
+    .max_memory_bytes = manifest.Limits.MIN_MEMORY_BYTES,
+    .timeout_seconds = manifest.Limits.MIN_TIMEOUT_SECONDS,
+};
+
 /// The SINGLE constructor for a sandboxed Lua state (invariant SBX-2,
 /// design §5.3).
 ///
@@ -127,22 +157,46 @@ fn isBytecode(script: []const u8) bool {
 /// constructed (diagnosis R4). Both paths now go through this function, which
 /// is what makes the LUA-03 evidence mean something.
 ///
+/// ISS-0169 tranche 2 (design §3.1): gained `limits`, `limiter_storage`, and
+/// `memory_limiter_storage`. Both storage pointers are caller-owned
+/// (stack-allocated in `executeSource`), matching the existing `context`
+/// parameter's ownership convention — this function never owns what it is
+/// given a pointer to.
+///
 /// Order is load-bearing:
-///   1. create the state
+///   1. create the state — now via `MemoryLimiter.alloc`/`memory_limiter_storage`
+///      instead of `defaultAlloc` (design §4)
 ///   2. open + prune the stdlib (invariant SBX-1 lives inside loadSafeStdlib)
-///   3. install the context — BEFORE any closure exists, so no host function is
-///      ever reachable from Lua before its context does (design §2.3)
-///   4. register the platform.* table
+///   3. install the execution context — BEFORE any closure exists, so no host
+///      function is ever reachable from Lua before its context does (design
+///      §2.3). `context.active_watchdog` (if set) rides this same channel.
+///   4. install the run limiter + combined instruction/timeout hook (design §2)
+///   5. register the platform.* table
 ///
 /// Caller owns the state and must `lua_close` it.
 pub fn createSandboxedState(
     context: *const ExecutionContext,
+    limits: RunLimits,
+    limiter_storage: *instruction_limiter.RunLimiter,
+    memory_limiter_storage: *memory_limiter.MemoryLimiter,
 ) (errors.LuaError || stdlib.LibraryError)!*bindings.LuaState {
-    const L = try createState();
+    // `limits` itself is not read here: `limiter_storage` and
+    // `memory_limiter_storage` arrive already initialized from it by the
+    // caller (`executeSource`), and the watchdog's deadline is likewise
+    // resolved by the caller before this function runs. The parameter is
+    // kept on this signature (design §3.1) so the limits a state was built
+    // under are visible at the call site rather than implicit in two opaque
+    // pointers.
+    _ = limits;
+    const L = bindings.lua_newstate(
+        memory_limiter.MemoryLimiter.alloc,
+        memory_limiter_storage,
+    ) orelse return errors.LuaError.LuaAllocFailed;
     errdefer bindings.lua_close(L);
 
     try stdlib.loadSafeStdlib(L);
     try host_context.installContext(L, context);
+    instruction_limiter.installLimiter(L, limiter_storage);
     host_api.registerAll(L, context) catch return errors.LuaError.ContextInstallFailed;
 
     return L;
@@ -155,8 +209,13 @@ pub fn createSandboxedState(
 /// keeps the sandbox, the context installation and every capability gate — the
 /// only thing it lacks relative to `executeScriptWithManifest` is manifest
 /// verification. It must never become a way to bypass a gate.
+///
+/// ISS-0169 tranche 2 (design §3.2): now runs under `UNMANIFESTED_DEFAULT_LIMITS`
+/// rather than unbounded — an unmanifested script that could run forever and
+/// allocate without bound was a strictly weaker guarantee than the manifest
+/// path for no documented reason.
 pub fn executeScript(context: *const ExecutionContext, script_source: []const u8) !ScriptResult {
-    return executeSource(context, script_source, null);
+    return executeSource(context, script_source, null, UNMANIFESTED_DEFAULT_LIMITS);
 }
 
 /// Load-time entry point (LUA-07, design §6.4).
@@ -216,18 +275,28 @@ pub fn executeScriptWithManifest(
     // CTX-2 forbids installing the address of a modified local copy of the
     // caller's context, so the hash is threaded through as a parameter and
     // written onto the result instead.
-    return executeSource(context, script_source, registered_hash);
+    //
+    // ISS-0169 tranche 2 (design §3.2): RunLimits sourced from the manifest's
+    // own already-validated fields — `validateManifest` above already
+    // rejected out-of-bound values, so executeSource never re-validates them.
+    return executeSource(context, script_source, registered_hash, RunLimits{
+        .max_instructions = script_manifest.max_instructions,
+        .max_memory_bytes = script_manifest.max_memory_bytes,
+        .timeout_seconds = script_manifest.timeout_seconds,
+    });
 }
 
 const BYTECODE_REJECTION_MESSAGE =
     "Bytecode is not allowed; only source text scripts are permitted";
 
 /// Shared body of both entry points. `manifest_hash` is recorded on the result
-/// and is null on the plain `executeScript` path.
+/// and is null on the plain `executeScript` path. `limits` is resolved by the
+/// caller (§3.2: `UNMANIFESTED_DEFAULT_LIMITS` or the verified manifest).
 fn executeSource(
     context: *const ExecutionContext,
     script_source: []const u8,
     manifest_hash: ?[32]u8,
+    limits: RunLimits,
 ) !ScriptResult {
     // Reject bytecode
     if (isBytecode(script_source)) {
@@ -239,8 +308,56 @@ fn executeSource(
         };
     }
 
+    // ISS-0169 tranche 2 (design §1.2/§3.3): storage for the combined
+    // instruction+timeout limiter and the memory limiter, stack-allocated
+    // here so both outlive the `lua_State` they are installed into (INV-1) —
+    // `defer bindings.lua_close(L)` below runs strictly before this frame
+    // returns.
+    var limiter_storage = instruction_limiter.RunLimiter{
+        .instruction = instruction_limiter.InstructionLimiter.init(
+            context.allocator,
+            limits.max_instructions,
+        ),
+        .timeout = timeout_ctx.TimeoutContext.init(limits.timeout_seconds),
+    };
+    var mem_limiter_storage = memory_limiter.MemoryLimiter.init(
+        context.allocator,
+        limits.max_memory_bytes,
+    );
+
+    // NEW (design §2.5.3): started before any Lua bytecode can possibly run
+    // (state construction has not even begun yet), stopped via `defer` on
+    // every exit path below. Spawn failure is a genuine new fallible step
+    // this design introduces (`std.Thread.spawn` can fail) — treated the
+    // same as any other setup failure: an early `ScriptResult` return rather
+    // than silently running with no watchdog or propagating a raw
+    // `SpawnError` past this function's all-failures-are-a-message
+    // convention.
+    var watchdog_state = timeout_ctx.WatchdogState.init(limits.timeout_seconds);
+    var watchdog_handle = timeout_ctx.WatchdogHandle.start(&watchdog_state) catch {
+        return ScriptResult{
+            .success = false,
+            .value = null,
+            .error_message = try context.allocator.dupe(u8, "could not start execution watchdog"),
+            .manifest_hash = manifest_hash,
+        };
+    };
+    defer watchdog_handle.stop();
+
+    // NEW (design §2.5.4): a local copy carries the watchdog pointer onward.
+    // The caller's `context.*` is never mutated (CTX-1..CTX-4 preserved) —
+    // only this local copy's `active_watchdog` field is set, and it is this
+    // local copy's address that gets installed into the registry below.
+    var context_with_watchdog = context.*;
+    context_with_watchdog.active_watchdog = &watchdog_state;
+
     // Create the sandboxed state through the single constructor (SBX-2).
-    const L = createSandboxedState(context) catch |err| {
+    const L = createSandboxedState(
+        &context_with_watchdog,
+        limits,
+        &limiter_storage,
+        &mem_limiter_storage,
+    ) catch |err| {
         return ScriptResult{
             .success = false,
             .value = null,
@@ -319,12 +436,6 @@ fn executeSource(
     return result;
 }
 
-/// Create a new Lua state with custom allocator.
-fn createState() !*bindings.LuaState {
-    const L = bindings.lua_newstate(defaultAlloc, null) orelse return errors.LuaError.LuaAllocFailed;
-    return L;
-}
-
 /// Default allocator for Lua.
 ///
 /// Uses the C allocator directly because LuaJIT calls this through a C ABI
@@ -332,10 +443,14 @@ fn createState() !*bindings.LuaState {
 /// allocator interface cannot service without the original slice length. This
 /// is why the `lua` build module sets `link_libc = true` (build.zig).
 ///
-/// ISS-0153: with the stub bindings currently in place `lua_newstate` returns
-/// null and never invokes this, but the function is kept intact (not deleted)
-/// so it is still type-checked and is correct on the day real LuaJIT is linked
-/// under ISS-0161 / GH #485.
+/// ISS-0169 tranche 2 (design §4.2): `createSandboxedState` now calls
+/// `bindings.lua_newstate` directly with `memory_limiter.MemoryLimiter.alloc`,
+/// removing the `createState()` indirection this function used to sit behind.
+/// `defaultAlloc` is deliberately RETAINED (not deleted): it remains useful as
+/// a plain, unbounded allocator for any future test harness that wants to
+/// construct a raw `lua_State` without limiter overhead. No test in this
+/// tranche relies on it being the active allocator, so keeping it
+/// unused-by-default is not a coverage gap.
 fn defaultAlloc(ud: ?*anyopaque, ptr: ?*anyopaque, osize: usize, nsize: usize) callconv(.c) ?*anyopaque {
     _ = ud;
     _ = osize;

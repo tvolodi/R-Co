@@ -1,0 +1,59 @@
+{
+  "handoff_id": "4f658ead-5dce-49b3-b40e-63cc255ab32b",
+  "run_id": "WF03-GH495-20260808",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH495-20260808/step-02-code-designer.json",
+  "created_at": "2026-08-08T20:56:50Z",
+  "started_at": null,
+  "completed_at": "2026-08-08T21:21:04Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-08",
+      "LUA-09",
+      "LUA-10"
+    ],
+    "related_handoff_ids": [
+      "b322f411-aa0b-49a5-95d0-0c83851b60d0"
+    ],
+    "artifacts_in": [
+      "src/lua/instruction_limiter.zig",
+      "src/lua/memory_limiter.zig",
+      "src/lua/timeout.zig",
+      "src/lua/executor.zig",
+      "src/lua/host_context.zig",
+      "src/design/lua-integration.md"
+    ]
+  },
+  "task": {
+    "description": "Design the fix for LUA-08 (instruction limit), LUA-09 (memory limit), LUA-10 (wall-clock timeout) -- SCOPE NARROWED per human-operator-confirmed decision: GH-495/ISS-0169 originally covered 9 requirements (LUA-08..16); this run now covers ONLY the 3 limiters, since they are self-contained and share one hook installation. The remaining 6 requirements (LUA-11/13 and LUA-12/15/16) have been split into their own new issues -- ISS-0624/GH-591 and ISS-0625/GH-592 -- for future runs. Do NOT expand this design back to cover them.\n\nISSUE-FIXER's full gap assessment (Step 1, handoff b322f411) confirmed via direct source reading: all three limiter modules (instruction_limiter.zig, memory_limiter.zig, timeout.zig) compile and their core logic is correct in isolation, but NONE are wired into createSandboxedState/executeSource -- executor.zig has ZERO call sites for installHook, MemoryLimiter.alloc, or TimeoutContext outside test pins. This is genuine, documented, honest debt (the source files' own header comments say so explicitly). A test added during GH-500 calls installHook/MemoryLimiter.alloc for real but only proves they execute without crashing -- it does NOT prove actual termination/rejection, since it never drives a script through lua_pcall with a limiter installed.\n\nSPECIFIC FINDINGS TO DESIGN AROUND:\n1. LUA-08: installHook() currently stores its limiter pointer via a SCRIPT-WRITABLE Lua global (__limiter__ set via lua_setglobal) -- the same forgery class __limiter__/host_context.zig's REGISTRY_KEY pattern was built to close for capabilities. This must move to LUA_REGISTRYINDEX, reusing host_context.zig's established pattern, not the vulnerable global-based one.\n2. LUA-08's max_instructions currently only has a source via executeScriptWithManifest's manifest -- the plain executeScript path (no manifest) has no limit source at all. Design must specify what happens for unmanifested execution (a default limit? no limit, documented as intentional? -- make and justify this decision).\n3. LUA-09: MemoryLimiter.alloc() is never passed to lua_newstate (which always uses defaultAlloc, unbounded) -- design how createSandboxedState threads a configurable max_memory_bytes through and switches the allocator.\n4. LUA-10: pure host-side timeout-checking cannot interrupt a tight Lua loop by itself (per src/design/lua-integration.md section 15's own honest assessment) -- the practical mechanism is folding TimeoutContext.checkTimeout() into the SAME LUA_MASKCOUNT hook callback LUA-08 installs (check elapsed wall-clock every N instructions, not just instruction count), so LUA-08 and LUA-10 share ONE hook installation. Design this combined hook precisely.\n5. Each requirement needs a test proving the REAL failure mode: LUA-08 needs a runaway `while true do end` script actually terminated within a bounded budget (not merely that installHook can be called); LUA-09 needs a script allocating past a deliberately tiny cap actually rejected as a script failure; LUA-10 needs a runaway loop interrupted by ELAPSED TIME specifically (isolated from LUA-08's instruction-count trigger, e.g. a high/no instruction limit but a short timeout) -- these must be genuinely mutation-checkable, not just 'the function was called'.\n\nREWORK 1 (CODE-DESIGN-VALIDATOR FAIL, handoff 422903bf):\nThe combined LUA-08/LUA-10 count-hook (LUA_MASKCOUNT) design only covers LUA-10's tight-Lua-loop sub-case. It does NOT address the requirement's own text: 'A script that blocks on a host function is still terminable within the configured timeout' and 'The timeout is enforced from outside the Lua state.' A count-hook fires only between Lua VM instruction dispatches -- it structurally cannot interrupt time spent inside a blocking lua_CFunction (e.g. platform.call_service), and it runs on the same thread/call stack as the Lua VM, which is enforcement FROM INSIDE, not from outside.\n\nYOU MUST revise the design to add a genuinely host-external mechanism for LUA-10 -- e.g. a real watchdog timer/thread (Zig std.Thread + a shared atomic deadline/cancellation flag, or an OS-level alarm/timer mechanism) that can force termination of a blocking host call independent of any Lua-side cooperation. This is a materially different technical approach for LUA-10 than the tight-loop hook alone -- it needs its own section: how the watchdog is started/stopped, how it signals termination across a blocking host_api call, what it does to lua_State / the calling thread when it fires, and how this interacts with (but does not replace) the existing count-hook's tight-loop coverage. LUA-08 (instruction limit) and the tight-loop half of LUA-10 were APPROVED as designed -- do not restructure those; only extend LUA-10's design to add real external enforcement.\n\nAlso reconcile section 5's test specs against the PRE-EXISTING tests/specs/LUA-10.md, specifically TC-LUA-10-03 (host function call respects timeout) and TC-LUA-10-04 (timeout enforced from outside Lua state) -- your revised test specs must actually exercise these scenarios, not just a renamed subset of the tight-loop case. If any sub-case is genuinely infeasible for this tranche, say so explicitly in a real 'Open Questions' entry and flag it to ORCH -- do not claim 'None' again unless it is actually true.\n\nFull validator findings: see handoffs/WF03-GH495-20260808/step-02b-code-design-validator.json result.issues (CDV-0169-1..4).",
+    "acceptance_criteria": [
+      "installHook uses LUA_REGISTRYINDEX for its limiter pointer, not a script-writable global -- matching host_context.zig pattern",
+      "max_instructions source decided and justified for both executeScript (no manifest) and executeScriptWithManifest paths",
+      "createSandboxedState threads a configurable max_memory_bytes and switches lua_newstate to use MemoryLimiter.alloc",
+      "LUA-08 and LUA-10 share one combined hook installation checking both instruction count and elapsed wall-clock",
+      "Three genuinely mutation-checkable tests designed: LUA-08 proves actual termination of a runaway script, LUA-09 proves actual allocation rejection, LUA-10 proves interruption by elapsed time isolated from instruction count",
+      "No implementation code beyond illustrative Type E signatures",
+      "Design explicitly does not expand scope to LUA-11/12/13/15/16 (deferred to ISS-0624/ISS-0625)"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Revised src/design/iss0169-lua08-09-10-limiter-wiring.md per CDV-0169-1..4 rework. Added new \u00a72.5 Host-external watchdog: a std.Thread-based WatchdogState/WatchdogHandle (atomics only, no lua_* access, no std.Thread.Mutex per the known Zig 0.16 constraint) that tracks the same timeout_seconds deadline independently of the LUA_MASKCOUNT hook. The watchdog rides the existing ExecutionContext/host_context.contextFromState channel (one new defaulted field, active_watchdog) rather than a new registry key. call_service.zig gains two activeWatchdogFired(L) pre/post checks -- the only host_api/ touch, explicitly flagged in revised SS8. Added test specs SS5.4 (TC-LUA-10-02, blocking host call, maps to spec TC-LUA-10-03) and SS5.5 (TC-LUA-10-03, hook-disabled proof, maps to spec TC-LUA-10-04), both mutation-checkable. SS11 Open Questions now honestly names the one unresolved sub-case: true pre-emption of an in-flight blocking foreign syscall is not achievable without host_api/HTTP-client restructuring (out of this tranche), with an explicit recommendation to escalate to ORCH and file a LUA-12-scoped follow-up rather than silently deferring it. LUA-08/LUA-09 sections (SS1, SS3 aside from the watchdog-start addition, SS4) were left unchanged in substance per the rework instruction. python tools/lint_design_artefact.py exits 0 (0 BLOCKER, 0 MAJOR, 0 MINOR).",
+    "artifacts_out": [
+      "src/design/iss0169-lua08-09-10-limiter-wiring.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b rework)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

@@ -102,9 +102,15 @@ pub const execution_test = @import("lua/execution_test.zig");
 // not a type pin, per the ISS-0172 caveat documented below.
 pub const capability_enforcement_test = @import("lua/capability_enforcement_test.zig");
 
+// ISS-0169 / GH #495 tranche 2 — LUA-08/09/10 limiter wiring, mutation-checkable
+// tests (design §5). Same module-boundary reason as the two files above: it
+// also reaches `src/simulation/*.zig` for TC-LUA-10-02, escaping src/lua/.
+pub const limiter_wiring_test = @import("lua/limiter_wiring_test.zig");
+
 test {
     std.testing.refAllDecls(lua);
     std.testing.refAllDecls(execution_test);
+    std.testing.refAllDecls(limiter_wiring_test);
     std.testing.refAllDecls(capability_enforcement_test);
 }
 
@@ -271,24 +277,29 @@ test "ISS-0169: the limiter FUNCTION BODIES are analysed, not just their types" 
     // nor function-body analysis. This test calls them for real, so a break
     // cannot hide behind a green target again.
     //
-    // NOTE: this proves the limiters COMPILE. It proves nothing about
-    // enforcement, and ISS-0169 tranche 1 installs neither of them:
-    // executeScript still creates its state with an unbounded allocator and no
-    // instruction hook. LUA-08/LUA-09/LUA-10 enforcement is tranche 2.
+    // NOTE: this proves the limiters COMPILE and that installLimiter can be
+    // called standalone. It does NOT prove enforcement under real execution —
+    // that is what the dedicated LUA-08/09/10 mutation-checkable tests in
+    // `limiter_wiring_test.zig` are for (ISS-0169 tranche 2, design §5).
     const bindings = lua.luajit_bindings;
 
     const L = bindings.lua_newstate(realAlloc, null) orelse
         return error.LuaStateAllocFailed;
     defer bindings.lua_close(L);
 
-    var limiter = lua.instruction_limiter.InstructionLimiter.init(
-        std.testing.allocator,
-        1_000,
-    );
-    // Calls the body containing the previously-invalid lua_sethook call site.
-    try lua.instruction_limiter.installHook(L, &limiter);
-    try std.testing.expectEqual(@as(u64, 0), lua.instruction_limiter.getInstructionCount(&limiter));
-    try std.testing.expect(!lua.instruction_limiter.wasLimitExceeded(&limiter));
+    var limiter = lua.instruction_limiter.RunLimiter{
+        .instruction = lua.instruction_limiter.InstructionLimiter.init(
+            std.testing.allocator,
+            1_000,
+        ),
+        .timeout = null,
+    };
+    // Calls the body containing the previously-invalid lua_sethook call site,
+    // now through the registry-based installLimiter (ISS-0169 tranche 2,
+    // design §1.2) rather than the removed __limiter__-global installHook.
+    lua.instruction_limiter.installLimiter(L, &limiter);
+    try std.testing.expectEqual(@as(u64, 0), lua.instruction_limiter.getInstructionCount(&limiter.instruction));
+    try std.testing.expect(!lua.instruction_limiter.wasLimitExceeded(&limiter.instruction));
 
     // Constructs the struct whose `mutex` field type did not exist under
     // Zig 0.16, and drives its allocator body through a real alloc/free pair.
@@ -318,7 +329,18 @@ test "ISS-0169: host_context and the load-time entry point are analysed" {
 
     // createSandboxedState exercises loadSafeStdlib, installContext and
     // registerAll — i.e. every file changed by this tranche.
-    const L = try lua.createSandboxedState(&ctx);
+    const limits = lua.executor.RunLimits{
+        .max_instructions = lua.manifest.Limits.MAX_INSTRUCTIONS,
+        .max_memory_bytes = lua.manifest.Limits.MAX_MEMORY_BYTES,
+        .timeout_seconds = lua.manifest.Limits.MAX_TIMEOUT_SECONDS,
+    };
+    var limiter_storage = lua.instruction_limiter.RunLimiter{
+        .instruction = lua.instruction_limiter.InstructionLimiter.init(std.testing.allocator, limits.max_instructions),
+        .timeout = lua.timeout.TimeoutContext.init(limits.timeout_seconds),
+    };
+    var mem_limiter_storage = lua.memory_limiter.MemoryLimiter.init(std.testing.allocator, limits.max_memory_bytes);
+
+    const L = try lua.createSandboxedState(&ctx, limits, &limiter_storage, &mem_limiter_storage);
     defer bindings.lua_close(L);
 
     const read_back = lua.host_context.contextFromState(L) orelse
