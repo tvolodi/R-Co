@@ -1,0 +1,53 @@
+{
+  "handoff_id": "b322f411-aa0b-49a5-95d0-0c83851b60d0",
+  "run_id": "WF03-GH495-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH495-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T20:37:01Z",
+  "started_at": "2026-08-08T20:37:01Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-08",
+      "LUA-09",
+      "LUA-10",
+      "LUA-11",
+      "LUA-12",
+      "LUA-13",
+      "LUA-14",
+      "LUA-15",
+      "LUA-16"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/lua/instruction_limiter.zig",
+      "src/lua/memory_limiter.zig",
+      "src/lua/timeout.zig",
+      "src/lua/host_api/",
+      "src/lua_test_root.zig",
+      "docs/issues/ISS-0169.json"
+    ]
+  },
+  "task": {
+    "description": "Investigate GH #495 (ISS-0169, MAJOR): LUA-08 through LUA-16 (9 MUST requirements -- LUA-05/06/07 are already RELEASED from prior work today, confirmed via reqctl.py show) need real verification tests against the now-linked, real LuaJIT interpreter (vendored and working per ISS-0161/GH-485). These requirements were never verifiable before -- with stub bindings no script could run, so no limiter/host-function/capability-check could be observed doing anything real. A genuine sandbox bypass (loadfile surviving loadSafeStdlib) was already found and fixed under the sibling issue GH-485 specifically BECAUSE the first thing actually tested against the real interpreter turned out to be broken -- this is the explicit motivating argument in the issue for completing the rest.\n\nRequirements and what needs testing:\n- LUA-08: instruction limit actually terminates a runaway loop via lua_sethook\n- LUA-09: memory limit actually rejects allocation past the cap\n- LUA-10: wall-clock timeout actually interrupts a long script\n- LUA-11: variable read/write host functions\n- LUA-12: service call host function\n- LUA-13: logging host function\n- LUA-14: time source host function\n- LUA-15: structured failure host function\n- LUA-16: runtime error capture\n\nYOUR JOB: read every relevant src/lua/*.zig file (instruction_limiter.zig, memory_limiter.zig, timeout.zig, and each host_api/*.zig file for LUA-11 through LUA-16) to understand the CURRENT state of each -- some limiters already have real-call test coverage added incidentally during GH-500's pin-pattern fix (check src/lua_test_root.zig's most recent test blocks, e.g. 'ISS-0169: the limiter FUNCTION BODIES are analysed' already calls installHook and MemoryLimiter.alloc for REAL -- determine whether this ALREADY satisfies LUA-08/09's acceptance criteria (does the existing test prove ACTUAL TERMINATION, i.e. does calling installHook or exceeding the memory cap actually stop execution, or does it merely prove the functions compile and run without crashing?). Do the same gap analysis for every one of the 9 requirements -- some may be closer to done than the issue implies, others may need substantial new test-writing. Produce a clear per-requirement gap assessment (what exists today, what's missing, what a real passing test for it would need to prove) and route to CODE-DESIGNER with this assessment -- this is real design work (how to structure 9 requirements' worth of tests, whether they share fixtures, whether some genuinely need new production code vs just new tests) -- do not implement directly.",
+    "acceptance_criteria": [
+      "Per-requirement gap assessment produced for all 9 requirements (LUA-08 through LUA-16): current test coverage, what is missing, what a real passing test needs to prove",
+      "Determine whether any requirement is ALREADY effectively satisfied by tests added incidentally during GH-500 (do not re-do work that already exists)",
+      "Identify which requirements genuinely need new production code vs. only new tests",
+      "Routed to CODE-DESIGNER with the full gap assessment, not implemented directly"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
