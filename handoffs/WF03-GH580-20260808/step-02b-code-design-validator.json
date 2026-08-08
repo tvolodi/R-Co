@@ -1,0 +1,45 @@
+{
+  "handoff_id": "5c896a36-16bd-45f4-a110-edfa28b201a6",
+  "run_id": "WF03-GH580-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH580-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T11:06:03Z",
+  "started_at": "2026-08-08T11:06:03Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "84b6f3f4-8b2c-4f7e-8f17-57f53a42e395"
+    ],
+    "artifacts_in": [
+      "migrations/GBL-138_iss0623_reconcile_tenant_default_reprovision.sql",
+      "migrations/GBL-134_iss0185_drop_global_registry_shadows.sql",
+      "migrations/GBL-135_iss0185_drop_per_tenant_shadows.sql",
+      "docs/issues/ISS-0623.json",
+      "docs/anti-patterns.md",
+      "handoffs/WF03-GH566-20260808/step-04-test-runner.json"
+    ]
+  },
+  "task": {
+    "description": "Validate migrations/GBL-138_iss0623_reconcile_tenant_default_reprovision.sql for GH-580/ISS-0623. No separate src/design/ doc was written for this fix -- ISSUE-FIXER judged (reasonably) that this migration replays already-validated GBL-134/GBL-135 DROP logic verbatim against tables resurrected by an ad-hoc manual DB action (this session's own accidental tenant_default drop during GH-566 diagnosis, NOT a code defect -- fully investigated and ruled out as a code-level bug; see docs/issues/ISS-0623.json and the new docs/anti-patterns.md entry for the full forensic trail). Given this session's migration-lineage error history (GBL-134's 4-table misclassification, GBL-136's follow-up, ISS-0621's diagnosis-file bug), apply the same scrutiny as prior GBL-13x reviews this session even though this migration's logic is not new. Verify independently: (1) the 11-name v_tenant_shadow_tables array and 7-name v_public_shadow_tables array in GBL-138 genuinely match GBL-134's and GBL-135's own table lists exactly (read all three migration files, cross-check every name -- no new classification decisions should be made here per the migration's own stated intent); (2) confirm the migration is purely additive-DROP-of-already-classified-duplicates, with the same RESTRICT-only, existence-guarded, per-table-exception-handled safety posture as its predecessors; (3) confirm the root-cause investigation in docs/issues/ISS-0623.json and docs/anti-patterns.md is well-supported -- read the cited evidence yourself (handoffs/WF03-GH566-20260808/step-04-test-runner.json's 'accidental full DB drop mid-run' quote, the schema_migrations timestamp clustering) and confirm the conclusion (ad-hoc manual action, not a code defect, not a cross-workspace binary issue) is genuinely supported rather than asserted; (4) confirm bpm_test now returns clean via tools/lint_dual_schema_table_names.py and bpm_dev remains unaffected.",
+    "acceptance_criteria": [
+      "GBL-138s two table-name arrays confirmed to exactly match GBL-134/GBL-135s own lists, no new classification decisions",
+      "Safety posture (RESTRICT-only, existence guards, per-table exception handling, idempotency) confirmed correct",
+      "Root-cause narrative in ISS-0623.json and anti-patterns.md independently verified against the cited evidence, not just trusted",
+      "bpm_test confirmed clean via lint_dual_schema_table_names.py; bpm_dev confirmed unaffected",
+      "No implementation code beyond the migration itself introduced"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
