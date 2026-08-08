@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH500-20260808/step-06-doc-updater.json",
   "created_at": "2026-08-08T19:11:58Z",
   "started_at": "2026-08-08T19:11:58Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T19:15:34Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -33,7 +33,18 @@
       "fn:git-merge"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Updated CHANGELOG.md with a concise ISS-0172/GH-500 entry (3 blind spots found vs 2 originally filed, third bug in structured_logger.zig, new lint_test_wiring.py advisory check, PR #589). All 6 PR #589 CI checks confirmed green (Build and unit tests, Clean-checkout LuaJIT build, Frontend checks, Pipeline bookkeeping, Platform status, Source linters) before merging. Squash-merged via `gh pr merge 589 --squash --delete-branch`; merge commit 46224543b34c5d3a647729372e90a869c86f439d landed on main as 4622454 (fast-forwarded cleanly, no rebase needed -- no concurrent sibling-workspace push landed on main during this step). Feature branch deletion confirmed via `git ls-remote --heads origin` (not just `git branch -r`, which showed a stale cached ref until `git fetch --prune`). Board for issue #500: gh_project_status.py reported it was already at 'Done' for both --target implemented and --target done calls (idempotent no-op) -- GitHub's PR-closes-issue linkage had already advanced it; issue #500 confirmed CLOSED via `gh issue view`. Returned to main, pulled ff-only, verified branch=main and HEAD=4622454. No requirement ID associated with this issue -- reqctl.py not run, no estimation.json existed -- retrospective correctly skipped.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "handoffs/WF03-GH500-20260808/step-06-doc-updater.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [],
+    "next_action": "Run complete"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
