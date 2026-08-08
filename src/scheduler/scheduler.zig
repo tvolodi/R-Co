@@ -210,8 +210,30 @@ pub const Scheduler = struct {
         }
 
         if (due_rows.rows.len == 0) {
+            // ISS-0618 (Fix 1): the FOR UPDATE SKIP LOCKED query above cannot tell us
+            // whether zero rows means "no due timer exists" or "a due timer exists but
+            // is locked by another process." Re-run the same predicate without any
+            // locking clause to distinguish the two cases.
+            const plain_due_rows = conn.query(
+                a,
+                \\SELECT 1 FROM timers
+                \\WHERE status = 'pending'
+                \\  AND fires_at <= NOW()
+                \\ORDER BY fires_at ASC, id ASC
+                \\LIMIT 1
+            ,
+                &.{},
+            ) catch return SchedulerError.TransactionFailed;
+            defer {
+                var r = plain_due_rows;
+                r.deinit();
+            }
+
             conn.rollback() catch {};
-            return .none;
+            if (plain_due_rows.rows.len == 0) {
+                return .none;
+            }
+            return .skipped_locked;
         }
 
         const timer_id_text = colGet(due_rows.rows[0], 0);
@@ -335,7 +357,31 @@ pub const Scheduler = struct {
                     fired_late,
                 ) catch break :fire_blk false;
 
-                appendTimerFiredEventInTx(allocator, conn, instance_id_text, timer_id_text, ext_payload) catch break :fire_blk false;
+                appendTimerFiredEventInTx(allocator, conn, instance_id_text, timer_id_text, ext_payload) catch {
+                    // ISS-0618 (Fix 2): a unique-constraint violation on
+                    // events.idempotency_key is deterministic and non-retryable (the key
+                    // is derived solely from timer_id_text). Preserve ISS-303's retry
+                    // bookkeeping (rollback + handleTimerFireError) exactly as the
+                    // !fire_ok branch below does, but then surface TransactionFailed to
+                    // the caller directly instead of folding into fire_blk's false/.none
+                    // path.
+                    const err_fields = [_]logger.LogField{
+                        .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
+                        .{ .key = "outcome", .value = .{ .string = "fire_failed" } },
+                    };
+                    logger.logWithTrace(allocator, .WARN, timer_component, timer_trace,
+                        "timer fire failed — rolling back and recording error", &err_fields) catch {};
+                    conn.rollback() catch {};
+                    handleTimerFireError(
+                        allocator,
+                        self.pool,
+                        self.config.max_timer_fire_retries,
+                        timer_id_text,
+                        instance_id_text,
+                        payload_json,
+                    );
+                    return SchedulerError.TransactionFailed;
+                };
                 markTimerFiredInTx(conn, timer_id_text) catch break :fire_blk false;
 
                 const fired_fields = [_]logger.LogField{

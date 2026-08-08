@@ -574,10 +574,22 @@ test "TC-SCH-02-02: scheduler skips locked timers and does not fire CANCELLED ti
     // hold a real row lock on the timer's own row in an open transaction —
     // the poller's SKIP LOCKED clause will then skip it, same as it would
     // skip a row locked by a concurrent poll.
+    //
+    // ISS-0618: the lock must be released (rollback + release, not deferred to
+    // function scope exit) before cancelInstance() runs below — cancelInstance
+    // issues `UPDATE timers ... WHERE instance_id = $1 AND status = 'pending'`
+    // against this same row on a *different* pool connection, which blocks
+    // indefinitely on lock_conn's still-held FOR UPDATE lock. Previously this
+    // was unreachable because the skipped_locked assertion below always failed
+    // first (the bug this fix corrects); making that assertion pass exposes
+    // this pre-existing self-deadlock, so the lock is now released explicitly
+    // once it has served its purpose (proving skipped_locked was reported).
     const lock_conn = try pool.acquire();
-    defer pool.release(lock_conn);
+    var lock_conn_released = false;
+    defer if (!lock_conn_released) pool.release(lock_conn);
     try lock_conn.begin();
-    defer lock_conn.rollback() catch {};
+    var lock_conn_rolled_back = false;
+    defer if (!lock_conn_rolled_back) lock_conn.rollback() catch {};
     try lock_conn.exec("SELECT id FROM timers WHERE id = $1::uuid FOR UPDATE", &.{timer_id_hex});
 
     var scheduler = Scheduler.init(&pool, .{});
@@ -592,6 +604,14 @@ test "TC-SCH-02-02: scheduler skips locked timers and does not fire CANCELLED ti
         &.{inst_id_hex},
     );
     try std.testing.expectEqual(@as(i64, 1), pending_before_cancel);
+
+    // Release the row lock now — its job (making the scheduler observe
+    // skipped_locked) is done, and cancelInstance() below needs to update
+    // this same row on a different connection.
+    lock_conn.rollback() catch {};
+    lock_conn_rolled_back = true;
+    pool.release(lock_conn);
+    lock_conn_released = true;
 
     const actor_id_str = try makeActorIdStr(allocator);
     defer allocator.free(actor_id_str);
