@@ -983,8 +983,8 @@ test "TC-API-05-01: handleHistory returns 200 with event items for instance with
     var ev_store = EventStore.init(alloc, &pool, &ev_registry);
     defer ev_store.deinit();
 
-// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
-    const actor_uuid = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+// GH-512: replaced hardcoded creator_uuid_str literal with TestHarness.newUuid() per GH-512.
+    const actor_uuid = h.newUuid();
     _ = try ev_store.append(alloc, AppendParams{
         .instance_id = inst_id,
         .event_type = "API05_TEST_TYPE",
@@ -1023,11 +1023,16 @@ test "TC-API-05-02: handleHistory with nonexistent instance UUID returns 404" {
     var ev_store = EventStore.init(alloc, &pool, &ev_registry);
     defer ev_store.deinit();
 
+// GH-512: replaced hardcoded not-found sentinel with TestHarness.newUuidString() per GH-512.
+// The test asserts only the 404 status code, so per-test uniqueness is preserved
+// without changing the test's semantics.
+    const nonexistent_uuid = try h.newUuidString(alloc);
+    defer alloc.free(nonexistent_uuid);
+
     const result = handleHistory(
         &ev_store,
         alloc,
-// GH-512 retention: conventional not-found UUID sentinel (used to assert 404 response paths)
-        "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        nonexistent_uuid,
         HistoryParams{},
     );
     defer alloc.free(result.body);

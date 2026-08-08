@@ -235,11 +235,16 @@ test "TC-EE-04-02: handleGetById with unknown task_id returns 404" {
 
     var task_store = TaskStore.init(&pool);
 
+// GH-512: replaced hardcoded not-found sentinel with TestHarness.newUuidString()
+// per GH-512. The test asserts only the 404 status code, not the specific UUID
+// value, so per-test uniqueness is preserved without changing semantics.
+    const nonexistent_uuid = try h.newUuidString(alloc);
+    defer alloc.free(nonexistent_uuid);
+
     const result = bpm.task_routes.handleGetById(
         &task_store,
         alloc,
-// GH-512 retention: conventional not-found UUID sentinel (used to assert 404 response paths)
-        "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        nonexistent_uuid,
     );
     defer alloc.free(result.body);
 
@@ -312,8 +317,12 @@ test "TC-EE-04-04: handleComplete returns 200 with status=ok for PENDING task" {
     var id_registry = bpm.identity_registry.Registry.init(&pool);
     var id_service = bpm.identity_service.Service.init(&id_registry);
 
+// GH-512: replaced hardcoded creator_uuid_str literal with TestHarness.newUuidString() per GH-512.
+    const actor_id_str = try h.newUuidString(alloc);
+    defer alloc.free(actor_id_str);
+
     const actor = Actor{
-        .user_id = "00000000-0000-0000-0000-000000000099",
+        .user_id = actor_id_str,
         .is_operator_or_above = true,
         .is_platform_admin = false,
     };
@@ -375,8 +384,12 @@ test "TC-EE-04-05: handleComplete on already-completed task returns 409" {
     var id_registry = bpm.identity_registry.Registry.init(&pool);
     var id_service = bpm.identity_service.Service.init(&id_registry);
 
+// GH-512: replaced hardcoded creator_uuid_str literal with TestHarness.newUuidString() per GH-512.
+    const actor_id_str = try h.newUuidString(alloc);
+    defer alloc.free(actor_id_str);
+
     const actor = Actor{
-        .user_id = "00000000-0000-0000-0000-000000000099",
+        .user_id = actor_id_str,
         .is_operator_or_above = true,
         .is_platform_admin = false,
     };
