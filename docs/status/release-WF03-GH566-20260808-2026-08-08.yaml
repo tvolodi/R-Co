@@ -1,0 +1,114 @@
+run_id: WF03-GH566-20260808
+workflow_id: WF-03
+issue: ISS-0617
+github_issue: https://github.com/tvolodi/R-Co/issues/566
+pr:
+  number: 577
+  url: https://github.com/tvolodi/R-Co/pull/577
+  branch: feature/WF03-GH566-20260808
+  title: "fix(ISS-0617): schema-qualify exp601 fixtures + fix cross-transaction visibility (GH-566)"
+  mergeable: MERGEABLE
+decision: APPROVED
+rationale: >
+  ISS-0617's stated root cause is genuinely fixed. The confirmed_root_cause in
+  docs/issues/ISS-0617.json identifies two compounding defects in
+  tests/integration/exp601_tier_quota_test.zig: (1) an unqualified
+  "INSERT INTO repository_artifacts" that resolved to tenant_default.repository_artifacts
+  instead of public.repository_artifacts under the pool connection's search_path, and
+  (2) fixture writes issued via harness.conn's rolled-back transaction, invisible to the
+  separate pool connections that quota_policy/quota_middleware read through (same class
+  as ISS-0144/GH-454). Commit 2393f5e addresses both: repository_artifacts and
+  tenant_artifact_activations INSERTs are now schema-qualified to public.*, and all
+  fixture writes for public-schema-reachable tables (artifact, activation, tenant) were
+  moved from harness.conn to pool-acquired connections. This directly targets the
+  root cause documented in ISS-0617, not merely a symptom. exp601_tier_quota_test.zig
+  was also wired into build.zig for the first time (test-integration-exp601), closing a
+  CI-invisibility gap, and an unrelated memory leak in TC-EXP-601-03 was fixed in the
+  same commit. Locally, TC-EXP-601-01, 03, 05 now pass, confirming the resolver
+  correctly finds the tenant's tier-profile override (10) instead of the platform
+  default (200000) -- the exact symptom ISS-0617 was filed against.
+
+  TC-EXP-601-02 and TC-EXP-601-04 still fail locally, but for two separate, already
+  understood, pre-existing reasons that are explicitly out of ISS-0617's scope: (a)
+  ISS-0622/GH-576 (BLOCKER, quota_enforcement.zig reads PER_TENANT usage tables
+  unqualified via pool, fails under LEGACY_RLS storage mode for every tenant, not
+  specific to this fix or this test), and (b) a distinct instance_waits insert error
+  that ISS-0617's own original diagnosis already flagged as a separate, untraced
+  issue. Neither failure was introduced by this PR's changes; both existed before this
+  fix and are downstream of infrastructure this PR does not touch.
+
+  ISS-0622 was correctly filed per the Issue Queue protocol: docs/issues/ISS-0622.json
+  exists with full root-cause analysis, GitHub issue #576 is open
+  (https://github.com/tvolodi/R-Co/issues/576), and it is present in
+  handoffs/global_queue.json with status QUEUED, severity BLOCKER, added_at
+  2026-08-08T07:58:58Z. Per CLAUDE.md's Issue Queue protocol and the Unblock-Everything
+  directive's own scope boundary, an incidentally-discovered, pre-existing defect that
+  does not block this run's acceptance criteria is filed and forwarded to its own future
+  WF-03 run -- it is not fixed on this branch and does not block this PR's release.
+  ISS-0622 does not regress anything this PR touches (repository_artifacts /
+  config-surface resolution); it affects a structurally separate code path
+  (quota_enforcement.zig's usage-table reads) that was already broken before this PR
+  and remains broken in the same way after it.
+
+  PR #577 checks are confirmed green: Build and unit tests (pass, 1m43s), Frontend
+  checks (pass), Pipeline bookkeeping (pass), Platform status (pass), Source linters
+  (pass) -- all 5 required checks pass as of this verification. GitHub Actions platform
+  status is operational (see github_status_check below), so this green result is
+  attributable to the code, not platform luck. Note per project convention: CI's
+  "Build and unit tests" job runs only the pure unit suite (zig build + zig build test);
+  it does not execute any test-integration-* target, so CI does not independently verify
+  the TC-EXP-601-01/03/05 pass / 02/04 fail result described above -- that verification
+  was performed locally against a real PostgreSQL test database by TEST-RUNNER and is
+  recorded in handoffs/WF03-GH566-20260808/step-04-test-runner.json.
+github_status_check:
+  command: tools/check_github_status.py
+  result: "GitHub Actions status: operational -- platform healthy. A red run is therefore attributable to the change under test."
+pr_checks:
+  - name: Build and unit tests
+    conclusion: pass
+    duration: 1m43s
+  - name: Frontend checks
+    conclusion: pass
+    duration: 32s
+  - name: Pipeline bookkeeping
+    conclusion: pass
+    duration: 10s
+  - name: Platform status
+    conclusion: pass
+    duration: 6s
+  - name: Source linters
+    conclusion: pass
+    duration: 11s
+known_issues:
+  - issue_id: ISS-0622
+    github_issue: https://github.com/tvolodi/R-Co/issues/576
+    severity: BLOCKER
+    status: QUEUED (handoffs/global_queue.json, added_at 2026-08-08T07:58:58Z)
+    note: >
+      Pre-existing production defect discovered incidentally during this run's
+      BACKEND-DEV implementation step, not caused by this PR's changes. Filed per
+      the Issue Queue protocol (docs/agents/protocols/ISSUE_QUEUE.md) for its own
+      future WF-03 run. Does not block this PR's release: it is structurally
+      independent of the repository_artifacts/config-surface fix this PR delivers,
+      and was already broken (in the same way, for every LEGACY_RLS-mode tenant)
+      before this PR existed.
+  - issue_id: "instance_waits insert error (TC-EXP-601-04, second failure mode)"
+    github_issue: null
+    severity: not yet filed as a separate ISS (tracked inside ISS-0617's confirmed_root_cause.test_blocks_relationship as a distinct, untraced item)
+    status: pre-existing, explicitly flagged as out-of-scope by ISS-0617's own original diagnosis
+    note: >
+      Not fixed by this PR. May share the same GBL-134 upstream mechanism as
+      ISS-0622 (instance_waits is one of the 13 tables GBL-134's drop array
+      missed) but this was not traced to file:line precision and should be
+      confirmed separately once ISS-0622's fix lands.
+  - note: >
+      Local zig build test-integration-others-internal (the ~84-binary broader
+      integration suite) showed ~100 failures in this workspace across files
+      unrelated to this fix. This suite is not run by CI, so there is no clean
+      baseline to compare against, and this workspace's local test DB had
+      accumulated manual migration-experiment drift from this run's own earlier
+      diagnosis work (GBL-136 psql experiments). Logged as an open, unresolved
+      verification gap in handoffs/WF03-GH566-20260808/step-04-test-runner.json;
+      not attributable to this PR's changes and not a release blocker for this PR.
+verified_at: "2026-08-08T08:27:41Z"
+verified_by: RELEASE-VALIDATOR
