@@ -50,9 +50,11 @@
     "issues": [],
     "git_evidence": {
       "branch_name": "feature/WF03-GH580-20260808",
-      "commit_sha_list": [],
-      "remote_branch": null,
-      "push_status": "pending",
+      "commit_sha_list": [
+        "57bceb8"
+      ],
+      "remote_branch": "origin/feature/WF03-GH580-20260808",
+      "push_status": "ok",
       "pr_url": null,
       "pr_create_error": null
     },
