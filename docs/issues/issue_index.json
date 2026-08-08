@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-07T10:46:45Z",
+  "last_updated": "2026-08-08T08:39:43Z",
   "next_issue_id": 210,
   "issues": [
     {
@@ -2048,6 +2048,22 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/542",
       "discovered_in": "WF03-GH537-20260807",
       "discovered_at": "2026-08-07T12:35:00Z"
+    },
+    {
+      "issue_id": "ISS-0622",
+      "title": "quota_enforcement.zig's readUsageForDimension reads PER_TENANT tables (instance_projections, instance_waits, dead_letter_items) unqualified via pool -- fails for every LEGACY_RLS-mode tenant",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "multi-tenant storage-mode routing / unqualified SQL",
+      "run_id": "WF03-GH576-20260808",
+      "affected_areas": [
+        "src/api/middleware/quota_enforcement.zig",
+        "tests/integration/exp601_tier_quota_test.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/576",
+      "discovered_in": "WF03-GH566-20260808 (ISS-0617/GH-566), incidental discovery during BACKEND-DEV implementation",
+      "created_at": "2026-08-08T08:36:42Z",
+      "resolved_at": null
     }
   ]
 }
