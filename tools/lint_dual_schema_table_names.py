@@ -47,6 +47,22 @@ ALLOW_LIST: set[str] = {
     # tenant registry: tenant_hostnames → tenant
     "tenant",
     "tenant_hostnames",
+    # ISS-0620 / GH-573, BLOCKER: KNOWN, INTENTIONAL, TEMPORARY duplicate —
+    # NOT a HYBRID classification. GBL-134 wrongly dropped these 4 tables'
+    # tenant_default copies (they are PER_TENANT per ISS-0185-diagnosis.yaml's
+    # classification_table.per_tenant_public_is_stray; canonical home =
+    # tenant_default). GBL-137 recreates the tenant_default structure as a
+    # non-destructive forward-fix, but GBL-135 never dropped these tables'
+    # `public` copies (they were never in its v_tables array), so `public`
+    # is now the stray shadow — genuinely a duplicate again. Dropping the
+    # stray `public` copy is a destructive DROP and is deliberately deferred
+    # to its own, separately reviewed migration/issue rather than bundled
+    # into GBL-137's additive-only forward-fix. Remove these 4 names from
+    # this allow-list once that follow-up migration lands.
+    "artifact_activation_groups",
+    "entity_definitions",
+    "entity_record_latest",
+    "entity_type_instances",
 }
 
 

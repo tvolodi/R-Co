@@ -1,0 +1,156 @@
+run_id: WF03-GH573-20260808
+workflow_id: WF-03
+issue: ISS-0620
+github_issue: https://github.com/tvolodi/R-Co/issues/573
+pr:
+  number: 581
+  url: https://github.com/tvolodi/R-Co/pull/581
+  branch: feature/WF03-GH573-20260808
+  title: "fix(ISS-0620): forward-fix recreating 4 misclassified PER_TENANT tables (GH-573, BLOCKER)"
+  mergeable: CONFLICTING (mergeStateStatus DIRTY)
+decision: APPROVED
+rationale: >
+  ISS-0620/GH-573 is BLOCKER severity because GBL-134 (already executed against the
+  shared bpm_test database and workspace r-co-2's bpm_dev database) unconditionally
+  dropped 4 tables' tenant_default copies -- artifact_activation_groups,
+  entity_definitions, entity_record_latest, entity_type_instances -- that
+  docs/issue-reports/ISS-0185-diagnosis.yaml's own classification_table places in the
+  PER_TENANT bucket (canonical home tenant_default), the opposite of what GBL-134
+  assumed. This release decision concerns only the forward-fix, GBL-137
+  (migrations/GBL-137_iss0620_recreate_per_tenant_shadows.sql), not a rewrite of
+  GBL-134 itself, which cannot be un-run.
+
+  Safety of the fix, independently re-verified in this step (not merely trusted from
+  prior handoffs):
+
+  1. ADDITIVE-ONLY, NO DESTRUCTIVE STATEMENTS. `git diff main...feature/WF03-GH573-
+  20260808 -- migrations/` touches exactly two files: GBL-137 (new, 179 lines, all
+  insertions) and a 22-line comment-only addition to GBL-134's existing header (a
+  "CORRECTION" note documenting the misclassification; zero lines of GBL-134's
+  executable DO block were changed). No other migration file is touched. A grep for
+  DROP/TRUNCATE/DELETE across GBL-137 returns only comment-text occurrences ("No DROP,
+  no TRUNCATE, no DELETE" in the safety-properties comment) and one column name
+  (deleted_at) -- there is no executable destructive statement anywhere in the file.
+  GBL-137 uses CREATE TABLE IF NOT EXISTS / CREATE INDEX IF NOT EXISTS exclusively and
+  is confirmed idempotent by TEST-RUNNER: re-running zig build migrate against both
+  bpm_test and bpm_dev reported a genuine no-op ("No new migrations to apply") in both,
+  and zig build test-env-verify reported HEALTHY 10/10 (including the C4 schema-baseline
+  check, 112/112 migrations matching the ledger) once BPM_TEST_DB_URL was correctly
+  pointed at this workspace's own database (port 5453) instead of a sibling workspace's
+  DB inherited from a pre-existing, unrelated ~/.bashrc misconfiguration.
+
+  2. NO DATA RECOVERY WAS POSSIBLE OR ATTEMPTED -- documented as a negative finding, not
+  a deferred action. ISS-0620.json's evidence trail and the GBL-137 migration header both
+  record that no WAL archiving is configured in this environment (archive_mode=off,
+  confirmed) and no backup of the pre-drop state was found. GBL-137 therefore only
+  recreates the 4 tables' empty structure going forward, exactly matching the acceptance
+  criterion "forward-fix ... not a rewrite of GBL-134" -- it does not claim, attempt, or
+  imply data recovery, and the design doc (src/design/iss0620-gbl134-per-tenant-forward-
+  fix.md) explicitly lists data recovery as out of scope with the reason (no recovery
+  path exists in this environment).
+
+  3. NO NON-LOCAL/PRODUCTION DATABASE EXPOSURE. Both confirmed-affected databases are
+  local development infrastructure only: the shared bpm_test container
+  (localhost:5453/bpm_test) and workspace r-co-2's bpm_dev
+  (localhost:5452/bpm_dev). schema_migrations was checked directly against both via
+  docker exec psql; no evidence exists that GBL-134 (or this forward-fix) has been
+  applied to any CI, staging, or production database, and this repository has no
+  deployed/production environment as of this run.
+
+  4. TWO INDEPENDENT DESIGN-VALIDATION PASSES. CODE-DESIGN-VALIDATOR reviewed the GBL-137
+  design twice at Step 2b: the first pass (handoffs/WF03-GH573-20260808/step-02b-code-
+  design-validator.json rework 0) returned FAIL, requiring "Public interface" and "Error
+  taxonomy" sections to be added to the design doc; the rework pass genuinely closed
+  that gap and returned PASS. This is real independent scrutiny (a FAIL followed by a
+  substantively different re-review), not a rubber stamp.
+
+  5. CI IS GREEN AT THE EXACT PR HEAD COMMIT. GitHub Actions platform status was checked
+  first (tools/check_github_status.py: operational) per the mandatory pre-check. `gh pr
+  checks 581` and the PR's statusCheckRollup both reported no checks, because no
+  pull_request-triggered run had ever fired for this branch (confirmed via `gh run list
+  --branch feature/WF03-GH573-20260808`: zero runs of any kind existed before this
+  verification step, and `gh api .../commits/<head-sha>/check-runs` returned
+  total_count 0) -- a real CI gap, not a false negative to explain away. This step
+  triggered CI directly via `gh workflow run ci.yml --ref feature/WF03-GH573-20260808`
+  and watched it to completion (run 31251715131): all 5 jobs (Platform status, Frontend
+  checks, Source linters, Pipeline bookkeeping, Build and unit tests) report conclusion
+  "success", overall run conclusion "success", and a full-log grep for `##[error]`
+  returns zero matches (ruling out a continue-on-error-masked failure of the kind
+  documented in CLAUDE.md's ISS-0171/GH-498 precedent). The run's headSha
+  (4da6d88870d5c5c1e4c19b16ae5770b245354a4a) was confirmed to exactly match PR #581's
+  current headRefOid -- this is genuine evidence CI is green on this exact code, even
+  though GitHub's PR UI does not list a workflow_dispatch-triggered run under
+  statusCheckRollup. The PR's mergeStateStatus is DIRTY / mergeable CONFLICTING, but the
+  only real conflict (verified via `git merge-tree` against the merge-base, which showed
+  a single <<<<<<< marker) is in the append-only handoffs/orchestrator.log, where both
+  main (an unrelated orchestrator log-append commit, 9c6a39f) and this branch appended
+  new lines near the same position -- a purely mechanical line-append conflict with no
+  ambiguity in resolution, not a code or migration conflict. No other file shows a
+  conflict marker. This is Step Final's (git-merge) responsibility to resolve via rebase,
+  per GIT_MERGE.md; it does not indicate any defect in the fix itself and is noted here
+  for visibility, not as a release blocker.
+
+  6. ISS-0623/GH-580 (incidental finding: bpm_test's tenant_default was separately
+  reprovisioned by an unrelated mechanism, resurrecting 18 previously-dropped
+  GLOBAL_REGISTRY tables) is correctly out of scope. Independently confirmed:
+  docs/issues/ISS-0623.json exists with severity MAJOR, status OPEN, and explicitly
+  documents that the 4 tables ISS-0620 concerns are NOT among its 18 findings and that
+  its root cause is unrelated to GBL-137. handoffs/global_queue.json carries the entry
+  with status QUEUED (not IN_PROGRESS, not blocking), github_issue
+  https://github.com/tvolodi/R-Co/issues/580. TEST-RUNNER's own Step 4 result
+  independently reached the same conclusion before this step re-verified it.
+github_status_check:
+  command: tools/check_github_status.py
+  result: "GitHub Actions status: operational -- platform healthy. A red run is therefore attributable to the change under test."
+pr_checks:
+  - name: Platform status
+    conclusion: success
+    duration: 5s
+  - name: Frontend checks
+    conclusion: success
+    duration: 30s
+  - name: Source linters
+    conclusion: success
+    duration: 7s
+  - name: Pipeline bookkeeping
+    conclusion: success
+    duration: 10s
+  - name: Build and unit tests
+    conclusion: success
+    duration: 24s
+  note: >
+    Triggered manually via `gh workflow run ci.yml --ref feature/WF03-GH573-20260808`
+    (run id 31251715131) because no pull_request-triggered run had ever fired for this
+    branch/PR before this verification step -- confirmed via `gh run list --branch
+    feature/WF03-GH573-20260808` (empty) and the GitHub check-runs API for the PR head
+    commit (total_count 0). The triggered run's headSha
+    (4da6d88870d5c5c1e4c19b16ae5770b245354a4a) exactly matches PR #581's current
+    headRefOid, so this is a valid green result for the PR's current code despite not
+    appearing in the PR's statusCheckRollup (workflow_dispatch runs are not attached to
+    a PR's check rollup by GitHub, unlike pull_request-triggered runs). Full run log
+    grepped for `##[error]`: zero matches, ruling out a continue-on-error-masked
+    failure.
+known_issues:
+  - issue_id: ISS-0623
+    github_issue: https://github.com/tvolodi/R-Co/issues/580
+    severity: MAJOR
+    status: QUEUED (handoffs/global_queue.json)
+    note: >
+      Pre-existing, unrelated condition in the shared bpm_test database (tenant_default
+      schema was separately dropped and reprovisioned by an unidentified mechanism
+      between GBL-136 and this run, resurrecting 18 previously-dropped GLOBAL_REGISTRY
+      shadow tables). Discovered incidentally while validating this fix. Independently
+      confirmed the 4 tables this fix (GBL-137) concerns are excluded from ISS-0623's
+      finding list, and that ISS-0623's root cause is structurally unrelated to GBL-137.
+      Correctly filed (ISS file + GitHub issue #580) and forwarded to the global queue
+      per the Issue Queue protocol; does not block this release.
+  - note: >
+      PR #581 shows mergeStateStatus DIRTY / mergeable CONFLICTING against main. Verified
+      via `git merge-tree` that the only real conflict is in the append-only
+      handoffs/orchestrator.log (both main and this branch appended log lines near the
+      same position) -- a mechanical, unambiguous line-append conflict, not a code or
+      migration conflict. No file under migrations/, src/, or tests/ shows a conflict
+      marker. This is expected to be resolved automatically at Step Final (git-merge) via
+      the standard rebase-onto-main flow and is not a release blocker.
+verified_at: "2026-08-08T09:59:00Z"
+verified_by: RELEASE-VALIDATOR

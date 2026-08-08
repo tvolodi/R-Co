@@ -1,0 +1,56 @@
+{
+  "handoff_id": "fc26b70b-b3c6-4e3c-999f-91b2201d96fd",
+  "run_id": "WF03-GH573-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH573-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T09:43:38Z",
+  "started_at": "2026-08-08T09:49:17Z",
+  "completed_at": "2026-08-08T09:50:31Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "fbe5f0d1-8eca-470d-8ead-3c82712995ee"
+    ],
+    "artifacts_in": [
+      "src/design/iss0620-gbl134-per-tenant-forward-fix.md",
+      "migrations/GBL-137_iss0620_recreate_per_tenant_shadows.sql",
+      "migrations/GBL-134_iss0185_drop_global_registry_shadows.sql",
+      "migrations/094_entity_subsystem.sql",
+      "migrations/046_repository_activations.sql",
+      "tools/lint_dual_schema_table_names.py",
+      "docs/issues/ISS-0620.json"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0620-gbl134-per-tenant-forward-fix.md and the migration it specifies, migrations/GBL-137_iss0620_recreate_per_tenant_shadows.sql, for GH-573/ISS-0620 (BLOCKER -- a 4-table misclassification in GBL-134 that already executed a destructive DROP against tenant_default in 2 databases with no guard). This migration lineage (GBL-134/135/136) has a documented history of 2 prior classification errors -- apply extra scrutiny. GBL-137 is purely additive (CREATE TABLE IF NOT EXISTS / CREATE INDEX IF NOT EXISTS only, no DROP/TRUNCATE/DELETE) recreating tenant_default copies of 4 tables (artifact_activation_groups, entity_definitions, entity_record_latest, entity_type_instances) that GBL-134 wrongly dropped. Verify independently: (1) the recreated schema in GBL-137 matches migrations/094_entity_subsystem.sql and migrations/046_repository_activations.sql EXACTLY (column names, types, constraints, defaults, indexes) -- read all three files yourself, do not trust the design doc's transcription; (2) confirm zero FK dependents on any of the 4 tables anywhere in src/ or migrations/ (the design claims this, independently grep and confirm); (3) confirm the migration is genuinely idempotent and safe to run against a tenant schema that already has these tables (bpm_test, due to an unrelated reprovisioning event) AND one that's still missing them (bpm_dev) -- read the DO block's guard logic; (4) confirm GBL-134's header correction is a comment-only change, migration body byte-for-byte unchanged (run git diff or compare); (5) confirm this migration does NOT attempt to drop the now-stray public copies of these 4 tables (that's explicitly out of scope, deferred to a future migration) -- verify no DROP statement anywhere in GBL-137; (6) confirm the tools/lint_dual_schema_table_names.py ALLOW_LIST addition is scoped to exactly these 4 names with a clear temporary/pending-followup explanation, not a silent permanent suppression; (7) independently re-verify ISSUE-FIXER's claim that no non-local/production database is affected (grep docker-compose*.yml, .github/workflows/*.yml yourself); (8) confirm the incidental ISS-0623/GH-580 finding is correctly filed/queued and NOT bundled into this fix's scope.\n\nREWORK 1 (completed directly by ORCH, not re-dispatched to CODE-DESIGNER, since the fix is a 2-section documentation addition with content already fully specified by the validator's own ISS-VALIDATOR-01/02 descriptions):\n- Added '## 5a. Public interface' section: identifies GBL-137 itself as the interface surface (filename, no parameters, public-pass GBL migration, externally-observable effect of idempotent per-tenant CREATE TABLE/INDEX IF NOT EXISTS for the 4 named tables), matching the pattern in src/design/iss0617-gbl134-missing-tables-followup.md section 2.\n- Added '## 5b. Error taxonomy' section: consolidates the schema-exists guard/skip behavior and the 'no recovery path found' finding under an explicit heading, naming the 3 cases per ISS-VALIDATOR-02's own description (schema missing -> skipped cleanly; table already exists -> safe no-op; pre-drop data loss -> not recoverable, documented as a known irreversible condition).\n- Verified via python tools/lint_design_artefact.py: exit 0, BLOCKER=0, MAJOR=0, MINOR=3 (same 3 pre-existing MINOR schema-qualified-name findings the validator already noted as non-blocking).\nNo change made to migrations/GBL-137_iss0620_recreate_per_tenant_shadows.sql, migrations/GBL-134_iss0185_drop_global_registry_shadows.sql, or tools/lint_dual_schema_table_names.py, per the validator's own explicit statement that none of these three required rework.",
+    "acceptance_criteria": [
+      "Recreated schema in GBL-137 confirmed byte-for-byte equivalent to original creating migrations",
+      "Zero FK dependents independently confirmed",
+      "Idempotency and existence-guard logic confirmed correct for both known database states",
+      "GBL-134 header correction confirmed comment-only, body byte-for-byte unchanged",
+      "No destructive statement (DROP/TRUNCATE/DELETE) anywhere in GBL-137",
+      "lint_dual_schema_table_names.py ALLOW_LIST change confirmed scoped and clearly temporary",
+      "Non-local/production exposure claim independently re-verified",
+      "ISS-0623/GH-580 confirmed correctly filed and not bundled into this fix",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 1 re-review: 'Public interface' (5a) and 'Error taxonomy' (5b) sections added to src/design/iss0620-gbl134-per-tenant-forward-fix.md genuinely close the prior FAIL's gap -- 5a correctly identifies the migration's schema effect (4 tables, exact shape traced to migrations/094_entity_subsystem.sql and migrations/046_repository_activations.sql per Sec.4) as the interface surface since there is no Zig/HTTP surface; 5b names the single realistic failure mode (CREATE TABLE/INDEX failing for a non-'already exists' reason), correctly states IF NOT EXISTS Postgres semantics, and explicitly enumerates the 3 cases (schema missing -> skip, table exists -> no-op, pre-drop data loss -> non-recoverable/documented) that ISS-VALIDATOR-02 required be named. Content is substantive and accurate against the actual migration, not boilerplate satisfying only the linter's heading regex. python tools/lint_design_artefact.py exits 0: BLOCKER=0 MAJOR=0 MINOR=3 (identical 3 pre-existing schema-qualified-name findings from the prior pass, non-blocking, matches sibling precedent's own MINOR-only profile). Confirmed via git diff 2bd315a..HEAD that migrations/GBL-137_iss0620_recreate_per_tenant_shadows.sql, migrations/GBL-134_iss0185_drop_global_registry_shadows.sql, and tools/lint_dual_schema_table_names.py are byte-for-byte unchanged since the prior review -- rework commit ead78c2 touched only the design doc plus handoff bookkeeping. All 8 substantive acceptance criteria from the original review remain valid (untouched by this rework); the 9th (lint_design_artefact.py exit 0 no BLOCKER/MAJOR) is now also satisfied. ISS-VALIDATOR-01 (missing Public interface section) and ISS-VALIDATOR-02 (missing Error taxonomy section) are both RESOLVED.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

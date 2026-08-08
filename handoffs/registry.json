@@ -2968,6 +2968,61 @@
       "created_at": "2026-08-08T09:17:48Z",
       "status": "COMPLETED",
       "stage": null
+    },
+    {
+      "handoff_id": "fbe5f0d1-8eca-470d-8ead-3c82712995ee",
+      "file": "handoffs/WF03-GH573-20260808/step-01-issue-fixer.json",
+      "run_id": "WF03-GH573-20260808",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-08T09:29:08Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "fc26b70b-b3c6-4e3c-999f-91b2201d96fd",
+      "file": "handoffs/WF03-GH573-20260808/step-02b-code-design-validator.json",
+      "run_id": "WF03-GH573-20260808",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-08T09:43:38Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "f06bca4c-59f8-4938-b05e-1bb7f322110c",
+      "file": "handoffs/WF03-GH573-20260808/step-04-test-runner.json",
+      "run_id": "WF03-GH573-20260808",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-08T09:53:06Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "655bfbe7-9c5a-4920-9aa3-a9996f22ad64",
+      "file": "handoffs/WF03-GH573-20260808/step-05-release-validator.json",
+      "run_id": "WF03-GH573-20260808",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "RELEASE-VALIDATOR",
+      "created_at": "2026-08-08T09:54:28Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "e6a1978f-0df5-4eff-8738-e31ed8afe976",
+      "file": "handoffs/WF03-GH573-20260808/step-06-doc-updater.json",
+      "run_id": "WF03-GH573-20260808",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-08T10:01:30Z",
+      "status": "IN_PROGRESS",
+      "stage": null
     }
   ],
   "last_updated": "2026-08-08T05:55:02Z"

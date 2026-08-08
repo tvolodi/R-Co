@@ -1,0 +1,45 @@
+{
+  "handoff_id": "e6a1978f-0df5-4eff-8738-e31ed8afe976",
+  "run_id": "WF03-GH573-20260808",
+  "workflow_id": "WF-03",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH573-20260808/step-06-doc-updater.json",
+  "created_at": "2026-08-08T10:01:30Z",
+  "started_at": "2026-08-08T10:01:30Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "655bfbe7-9c5a-4920-9aa3-a9996f22ad64"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0620.json",
+      "docs/status/release-WF03-GH573-20260808-2026-08-08.yaml"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md for this WF-03 run (ISS-0620/GH-573, BLOCKER, PR #581). No formal requirement ID -- do NOT run reqctl.py, no estimation.json -- skip retrospective. Then perform Step Final with TWO known preconditions to resolve first: (1) PR #581 currently shows mergeStateStatus=DIRTY / mergeable=CONFLICTING -- RELEASE-VALIDATOR traced this to a single mechanical conflict in the append-only handoffs/orchestrator.log (both main and this branch appended lines near the same position; NOT a code/migration conflict). Rebase onto origin/main (git fetch origin main && git rebase origin/main), resolve the orchestrator.log conflict by keeping BOTH sets of appended lines in chronological order (this file is append-only per CLAUDE.md -- never drop lines, only merge them in timestamp order), then force-push with --force-with-lease (safe here since this is your own feature branch, verify no one else's commits would be lost first). (2) PR #581 currently shows NO status checks at all (statusCheckRollup empty) because RELEASE-VALIDATOR's verification used a manually-triggered workflow_dispatch run, not a real pull_request event -- after the rebase+force-push above, a genuine pull_request-triggered CI run will fire naturally; wait for and confirm it before merging. Once both are resolved: confirm CI green, squash-merge, delete branch, update board for issue #573, return to clean main.",
+    "acceptance_criteria": [
+      "orchestrator.log conflict resolved by merging both sides chronologically, not dropping either",
+      "PR #581 rebased cleanly, force-pushed with --force-with-lease",
+      "A genuine pull_request-triggered CI run confirmed green (not just the earlier manual workflow_dispatch run)",
+      "CHANGELOG.md updated with a concise entry for ISS-0620/GH-573",
+      "PR #581 merged (squash) and feature branch deleted",
+      "GitHub issue #573 project board updated (implemented -> done)",
+      "Repo returned to a clean main after merge",
+      "No stale feature branch remains on GitHub"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
