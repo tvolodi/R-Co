@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGN-VALIDATOR",
   "file": "handoffs/WF03-GH566-20260808/step-02b-code-design-validator.json",
   "created_at": "2026-08-08T06:53:37Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-08T07:09:21Z",
+  "completed_at": "2026-08-08T07:11:20Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -39,7 +39,13 @@
       "fn:lint-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Re-checked reworked design after rework 1/3. Independently recomputed the 13-name gap (diagnosis 37-name list minus GBL-134's 24-name v_tables) and confirmed the 4 ISS-0620 names are absent from it. Independently recomputed 13 minus GBL-135's actual 12-name v_tables overlap (5 names: api_token_audit, event_payload_store, instance_definition_snapshots, instance_waits, variable_schemas) = 8 remaining names, and confirmed exact match to the design's claimed 8-name GBL-136 scope (artifact_versions, event_type_registry_producers, oidc_migration_item, oidc_migration_job, registry_idp_operation_ledger, repository_artifacts, tenant, tenant_hostnames). repository_artifacts (GH-566 root cause) confirmed in scope. Live pg_constraint query against tenant_default on bpm_test confirmed all FK edges in the design's table exactly, including the newly-added fk_form_schema_version (repository_form_schemas.version_id -> artifact_versions.version_id, ON DELETE CASCADE) and the sole artifact_versions -> repository_artifacts edge (direction confirms repository_artifacts is undropped-blocking-free). Confirmed tenant has exactly one local dependent (tenant_hostnames) and registry_idp_operation_ledger exists in neither schema, matching the design's claims. Section 6's instance_waits correction is internally consistent across the whole document -- no stale contradictory claim found. Only design/handoff artefacts changed on this branch; no production or test files touched. lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0 MINOR=4, all MINOR schema-qualification style notes).",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
