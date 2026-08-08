@@ -1,0 +1,335 @@
+issue_id: ISS-0184
+github_issue: https://github.com/tvolodi/R-Co/issues/517
+diagnosed_by: ISSUE-FIXER (WF03-GH517-20260808 Step 01)
+diagnosed_at: "2026-08-08T02:29:00Z"
+measurement_window: "2026-08-08T02:29 - 2026-08-08T02:42 (zig build test-integration-svc)"
+
+summary: >
+  ISS-0184's own counts were stale. Re-measured against a freshly migrated database
+  (workspace r-co-2, ports 5452/5453; zig build migrate reported "No new migrations to
+  apply" -- schema was already current): 635 pass, 9 skip, 88 fail, 1 crashed, 733 total,
+  52 leaks. This does NOT match the issue's stated 62-failures-across-31-files baseline;
+  the failure surface has shifted since ISS-0184 was filed (2026-08-07), most likely
+  because several adjacent fixes landed in between (GH #520, #521, #522, #526, #528,
+  #533, #537, #542, #545, #556 all RESOLVED on 2026-08-07 per handoffs/global_queue.json).
+  The issue's error-mix hypothesis (85x C22021, 19x C42883, 11x C42P01, 11x C23514,
+  11x C23505, 7x C23502) is PARTIALLY CORRECT but the 85x C22021 figure is a
+  misdiagnosis: those 85 "invalid byte sequence" errors are the postgres-server-log
+  footprint of tests/integration/audit_chain_utf8_test.zig deliberately feeding 0xAA
+  bytes into the audit chain trigger to prove migration 1107's EXCEPTION guard catches
+  them -- that file's 4 tests (TC-ISS-0122-01..04) are NOT in the current failure list.
+  They are expected internal errors, caught and handled; not a defect.
+
+  93 real failures were clustered by root cause into 11 groups. During triage, 3 of those
+  groups turned out to be recurrences of issues that were already filed and (incorrectly)
+  believed resolved/closed -- ISS-0094/GH#348, ISS-0112/GH#375, ISS-0100/GH#357 -- rather
+  than new defects, so they were updated/reopened with the current reproduction instead of
+  being filed as new issue numbers. 2 further groups are already-covered by two OPEN,
+  QUEUED issues (ISS-0185, ISS-0183) and needed no action. 1 small, well-understood,
+  single-file production leak is flagged as a direct-fix candidate for this run's later
+  steps. 4 remaining distinct clusters are genuinely new and were filed as ISS-0616
+  through ISS-0619.
+
+clusters:
+  - id: C1
+    title: "audit_entries.resource_id is TEXT but 6+ test files bind the query param as ::uuid"
+    signature: 'PostgreSQL C42883 "operator does not exist: text = uuid" (18 occurrences in db log)'
+    affected_tests:
+      - "ext02_webhook_dispatch_test.zig (TC-EXT-02-INT-02,03,04,05,06,07,08,09,10 -- cascading in-transaction aborts from the first hit)"
+      - "obs03_audit_log_test.zig (TC-OBS-03-INT-01,02,03,06)"
+      - "obs05_dlq_test.zig (TC-OBS-05-INT-02,03)"
+      - "adp02_tenant_scope_test.zig (TC-ADP-02-05)"
+      - "adp06_pipeline_run_correlation_test.zig (TC-ADP-06-02,03)"
+      - "oidc09_jit_provisioning_test.zig (TC-OIDC-09-06)"
+      - "xc02_audit_immutability_test.zig (TC-XC-02-04,05,07)"
+      - "xc06_backwards_compatibility_test.zig (TC-XC-06-03,05,06,07)"
+      - "exp201_202_entities_test.zig, exp401_exp402_comp_restore_test.zig, exp601_tier_quota_test.zig, repository_test.zig, sim01_04_simulation_mode_test.zig (further cascades, same signature)"
+    root_cause_hypothesis: >
+      migrations/GBL-081/GBL-082 changed audit_entries.resource_id from UUID to TEXT
+      (confirmed live: \d tenant_default.audit_entries shows resource_id | text). Many
+      test files still write "resource_id = $N::uuid" when querying it. Reproduced
+      directly: `PREPARE q(text) AS SELECT ... WHERE resource_id = $1; EXECUTE q(...)`
+      against tenant_default raises exactly "operator does not exist: text = uuid" via
+      psql. Confirmed 6 files with 18+ occurrences via
+      `grep -rn "resource_id = \$[0-9]::uuid" tests/integration/`.
+      This is the single largest real cluster in the current run (accounts for the
+      majority of the 42 "PgError.ServerError"-signature failures once cascading
+      same-transaction aborts are collapsed to their root statement).
+    collision_found: >
+      GH #348 / ISS-0094 ("GBL-081/GBL-082 ... never apply to tenant_default") is OPEN
+      and describes the SAME resource_id/TEXT/UUID story but from the OPPOSITE direction:
+      it recorded the column staying UUID-typed (dispatch bug never applying the type
+      migration to tenant schemas). Live verification shows that original defect is now
+      RESOLVED -- resource_id is genuinely TEXT on tenant_default today. What C1 found is
+      a follow-on: the column type got fixed, but 6+ test call sites were never updated
+      to match, so they still cast the bind param to ::uuid. Same underlying story,
+      inverse-direction defect.
+    disposition: REUSED_EXISTING_ISSUE
+    action_taken: >
+      Did not file a new issue. Updated docs/issues/ISS-0094.json (new title, new
+      resolution text marking the original premise resolved, new occurrence entry with
+      full C1 reproduction) and posted an update comment to GH #348 with the same
+      information. Added GH-348 to handoffs/global_queue.json (severity MAJOR) since it
+      was not previously queued.
+      Fix is mechanical: remove the ::uuid cast from resource_id bind params in the
+      6 affected files.
+    tracked_as: ISS-0094 / GH #348 (reopened content, issue stayed open throughout)
+    severity: MAJOR
+
+  - id: C2
+    title: "webhook_subscriptions.secret_ref/secret_key_id columns exist in migration file but never reach freshly-provisioned tenant schemas"
+    signature: 'PostgreSQL C42703 "column \"secret_ref\" of relation \"webhook_subscriptions\" does not exist" (8 occurrences) and "column s.secret_ref does not exist" (2 occurrences)'
+    affected_tests:
+      - "ext02_webhook_dispatch_test.zig TC-EXT-02-INT-01 (expected 201, found 500 -- the observable symptom)"
+    root_cause_hypothesis: >
+      migrations/1134_iss0112_add_secret_ref_to_tenant_schemas.sql adds the columns via
+      a `-- scope: public`-tagged DO-block that iterates `SELECT id, slug FROM
+      public.tenant WHERE storage_mode='SCHEMA'` **at migration-apply time** and ALTERs
+      each existing tenant schema found then. It is not part of the per-tenant DDL that
+      src/db/provisioning.zig's provisionTenantSchema() -> migrations.Migrations.runForSchema()
+      applies when a NEW tenant schema is created after migrations have already run --
+      confirmed by reading provisioning.zig and migrations.zig: runForSchema applies only
+      migrations whose scope is per-tenant (non-GBL, no `scope: public` header); 1134 is
+      explicitly public-only. Every test-created tenant (which is every test tenant,
+      since tenant creation happens at test run time, long after migration 1134 already
+      ran once against whatever tenants existed then) therefore never gets these two
+      columns. src/api/routes/webhooks.zig reads/writes both columns unconditionally.
+    collision_found: >
+      GH #375 / ISS-0112 ("Migration/schema drift ... break 42 integration tests") was
+      CLOSED (PR #413, migration 1134, run WF03-gh375-20260804) with acceptance criteria
+      explicitly listing "webhook_subscriptions.secret_ref" as fixed. The closure was
+      premature: PR #413's fix only covers tenants that existed at migration-apply time,
+      not tenants created afterward (i.e. every test tenant), so the exact symptom GH#375
+      claimed to fix still reproduces today.
+    disposition: REOPENED_EXISTING_ISSUE
+    action_taken: >
+      Reopened GH #375 with `gh issue reopen` and a comment explaining the incomplete
+      fix, reproduction, and the correct fix direction (move the ADD COLUMN DDL into a
+      proper per-tenant-scoped migration file instead of a one-time public-only DO-block).
+      Updated docs/issues/ISS-0112.json status to REOPENED, cleared resolved_at, added a
+      "PARTIAL / REOPENED" resolution note preserving the original (now-superseded) text
+      for history. Added GH-375 to handoffs/global_queue.json (severity MAJOR).
+    tracked_as: ISS-0112 / GH #375 (reopened)
+    severity: MAJOR
+
+  - id: C3
+    title: "store.zig rowToEventRecord leaks 3 duped strings on the duplicate-idempotency-key read-back path"
+    signature: "DebugAllocator leak, 3 allocations, in dupe__anon_* called from rowToEventRecord"
+    affected_tests:
+      - "event_store_integration_test.zig TC-ES-03-01 (duplicate idempotency_key returns original event with is_duplicate=true)"
+    root_cause_hypothesis: >
+      src/event_store/store.zig:472 `append()`'s duplicate-idempotency-key path calls
+      `rowToEventRecord(allocator, live_rows.rows[0], "")` to re-read and return the
+      original event. rowToEventRecord itself (lines 1178, 1180, 1190) allocator.dupe()s
+      event_type, payload, and metadata into the returned record -- but on this
+      already-exists code path in append(), the caller never frees or takes ownership of
+      those 3 strings once the record is constructed and returned up through the test.
+      Exact same shape as the already-RESOLVED GH #526 (store.zig rowToDefinition leak,
+      zero errdefer guards) -- this is a second, sibling instance of the same missing-
+      ownership-transfer pattern in the same file, on a different function.
+    disposition: DIRECT_FIX_CANDIDATE
+    rationale_for_direct_fix: >
+      Single file, single function, small fix (either free the 3 fields when the
+      duplicate branch discards the record, or make ownership explicit at the call
+      site). Same shape and same file as the already-resolved GH #526, so the fix
+      pattern is proven. Low risk, no schema/migration involvement.
+    severity: MINOR
+
+  - id: C4
+    title: "5 ADP0x migration-verification tests hardcode table_schema='public' for columns that only exist in tenant_default -- ALREADY COVERED by ISS-0185"
+    signature: 'Zig assertion "expected N, found 0" against information_schema.columns row counts'
+    affected_tests:
+      - "adp02_tenant_scope_test.zig TC-ADP-02-01 (expected 6, found 0)"
+      - "adp05_instance_artifact_hash_test.zig TC-ADP-05-01 (definition_artifact_hash)"
+      - "adp06_pipeline_run_correlation_test.zig TC-ADP-06-01 (pipeline_run_id)"
+      - "adp09_tamper_evident_audit_chain_test.zig TC-ADP-09-01 (chain_hash, prev_chain_hash)"
+      - "adp10_agent_io_capture_audit_test.zig TC-ADP-10-01 (payload_full)"
+    root_cause_hypothesis: >
+      Verified directly against the live database for 4 of the 5: chain_hash,
+      prev_chain_hash, definition_artifact_hash, pipeline_run_id, and payload_full all
+      exist ONLY in tenant_default.audit_entries / tenant_default.instance_projections,
+      never in public -- while every one of these test files' verification queries
+      hardcodes `WHERE table_schema = 'public'`. This is exactly the symptom documented
+      in ISS-0185 ("45 business tables are duplicated between public and tenant_default
+      with diverging columns" / "public.tenant has tenant_type while tenant_default.tenant
+      does not" -- same GBL-vs-non-GBL migration-scope split, same silently-wrong-schema
+      failure mode). ISS-0185 is already OPEN, QUEUED, and its acceptance criteria
+      ("a decision is recorded for each of the 45 duplicated tables... a migration
+      removes the copies that should not exist... the SQL set-intersection... returns
+      only the intentionally-shared set") will resolve all 5 of these test failures as a
+      byproduct once fixed.
+    disposition: ALREADY_COVERED
+    covered_by: ISS-0185 (GH #518, QUEUED)
+    note: >
+      Not re-filed. Flagging here only so whoever picks up ISS-0185 knows these 5
+      specific tests are affected and can use them as acceptance-check regression cases.
+    severity: n/a (tracked under ISS-0185)
+
+  - id: C5
+    title: "repository_test.zig content_hash bytea/uuid mismatch and untyped params -- ALREADY COVERED by ISS-0183"
+    signature: 'PostgreSQL C42804 "column \"content_hash\" is of type bytea but expression is of type uuid" (6 occurrences) plus "current transaction is aborted" cascades'
+    affected_tests:
+      - "repository_test.zig TC-REPO-02-01, 04-01, 05-02, 06-01, 08-01, 09-01, 10-01, 11-02, 13-01, 13-02 (10 blocks)"
+    root_cause_hypothesis: >
+      Matches ISS-0183's already-recorded root cause verbatim: fixtures insert a
+      generated UUID into repository_artifacts.content_hash (bytea column), rejected
+      outright by postgres; separately, several queries pass untyped $N placeholders
+      PostgreSQL cannot infer types for. ISS-0183 / GH #516 already exists for this,
+      status QUEUED.
+    disposition: ALREADY_COVERED
+    covered_by: ISS-0183 (GH #516, QUEUED)
+    severity: n/a (tracked under ISS-0183)
+
+  - id: C6
+    title: "svc04_admin_api_test: service registration/scope-change validation returns unexpected status codes (422/500/200 vs expected 201/200/409)"
+    signature: "Zig assertion mismatches on HTTP status codes: expected 201 found 422 (x3), expected 200 found 500, expected 409 found 500, expected 409 found 200"
+    affected_tests:
+      - "svc04_admin_api_test.zig: admin register tenant-scoped service returns 201; admin update service scope returns 200; scope change to tenant with conflicting active definitions returns 409; delete service in use by active definition returns 409; GET services for tenant admin excludes other tenants scoped services; GET admin services returns all entries (6 blocks, all in one file)"
+    root_cause_hypothesis: >
+      Not yet diagnosed to a single statement-level cause -- these are HTTP-layer
+      validation-outcome mismatches (422 Unprocessable / 500 Internal / wrong 200-vs-409),
+      not raw SQL errors, so the DB server log does not directly point at the failing
+      statement the way clusters C1/C2 did. The first test in the file (register returns
+      422 instead of 201) is the most likely root trigger, with the remaining 5 failures
+      plausibly cascading from fixture state the first test was supposed to establish
+      (a conflicting-active-definitions setup, an in-use service) never getting created.
+      Possible contributing factor: ISS-0100/GH#357 (leaked production-typed tenant
+      fixture rows -- 32 found live in the test database after this run) explicitly names
+      svc04_admin_api_test.zig as an affected area, though this was not confirmed as the
+      actual cause in this pass. Needs a CODE-DESIGNER/BACKEND-DEV-level read of the
+      service-catalog admin route's validation branch to confirm, which is out of scope
+      for this diagnosis pass.
+    disposition: SPLIT
+    filed_as: ISS-0616
+    github_issue: https://github.com/tvolodi/R-Co/issues/565
+    severity: MAJOR
+
+  - id: C7
+    title: "exp601_tier_quota_test: tenant tier-profile override not applied -- middleware reads default (200000) instead of configured override (10)"
+    signature: "Zig assertion: expected 10, found 200000 (max_entity_records_total)"
+    affected_tests:
+      - "exp601_tier_quota_test.zig TC-EXP-601-01 (quota policy resolves effective profile from active config surface) -- root"
+      - "TC-EXP-601-02, 03, 04 (quota middleware rejection tests) -- downstream of the same misconfigured/misresolved profile"
+    root_cause_hypothesis: >
+      TC-EXP-601-01 asserts the resolved quota profile's max_entity_records_total is 10
+      (a deliberately-small test override) but the resolver returns 200000 (evidently the
+      platform default), meaning whatever config-surface lookup is supposed to find and
+      apply the tenant-specific override is not finding it. Not yet traced to the specific
+      resolver function/table -- needs a read of the quota/tier-profile resolution code
+      (src/exp -- effects/quota area) to pin down whether this is a lookup-key mismatch,
+      a missing seed row, or a config-precedence bug. Flagged as a genuinely new, distinct
+      cluster; not observed in any prior ISS file.
+    disposition: SPLIT
+    filed_as: ISS-0617
+    github_issue: https://github.com/tvolodi/R-Co/issues/566
+    severity: MAJOR
+
+  - id: C8
+    title: "sch02_timer_polling_test: 2 scheduler-behavior assertions fail (skip-locked-timer count, forced-failure rollback)"
+    signature: "Zig assertion: skipped_locked > 0 (found 0); expected error.TransactionFailed found {fired:0, skipped_locked:0}"
+    affected_tests:
+      - "sch02_timer_polling_test.zig TC-SCH-02-02 (scheduler skips locked timers and does not fire CANCELLED timers)"
+      - "sch02_timer_polling_test.zig TC-SCH-02-03 (firing rollback keeps timer PENDING when event append fails)"
+    root_cause_hypothesis: >
+      Not fully traced. TC-SCH-02-03 sets up a duplicate idempotency_key collision on
+      purpose to force pollDueTimers() into a transaction failure, but the poller instead
+      returns a normal {fired:0, skipped_locked:0} result -- suggesting the poller may be
+      silently swallowing the forced DB error rather than surfacing
+      SchedulerError.TransactionFailed, or the collision setup itself isn't landing
+      (needs verification the INSERT that pre-seeds the conflicting idempotency_key
+      actually commits before pollDueTimers runs). TC-SCH-02-02's locked-timer skip count
+      being 0 instead of >0 suggests either the row-lock isn't being held by the
+      concurrent locker helper the test expects, or the poller's SKIP LOCKED query isn't
+      hitting the intended row. Two related but distinct scheduler-logic questions in one
+      file; needs a scheduler-code read (src/scheduler or bpm.scheduler_poller) beyond
+      this diagnosis pass's scope.
+    disposition: SPLIT
+    filed_as: ISS-0618
+    github_issue: https://github.com/tvolodi/R-Co/issues/567
+    severity: MAJOR
+
+  - id: C9
+    title: "idn02/idn03: group-task-claim and role-scoped task list return 403/500 instead of 200"
+    signature: "Zig assertion: expected 200 found 403 (x2); expected 200 found 500"
+    affected_tests:
+      - "idn02_group_management_test.zig TC-IDN-02-06 (ACTIVE group member can claim and complete a GROUP-assigned task)"
+      - "idn02_group_management_test.zig TC-IDN-02-07 (removing a member does not mutate an already-assigned GROUP task)"
+      - "idn03_role_access_test.zig TC-IDN-03-03b (TASK_WORKER GET /tasks returns own and group-member tasks only)"
+    root_cause_hypothesis: >
+      Not traced to a specific statement or authorization check. 403 on a claim/complete
+      action that the test expects to succeed suggests an authorization-scope check
+      (group membership resolution, or role-permission lookup) is rejecting a request the
+      test fixture believes is properly set up; the 500 on idn03 suggests a distinct
+      server error in the "own and group-member tasks" query path. Given both files sit
+      in the identity/authorization subsystem, they may share a root cause (e.g. a
+      group-membership join query broken the same way in both), but this diagnosis pass
+      did not confirm that -- needs a read of src/api routes for group task claim +
+      the group-scoped task list query.
+    disposition: SPLIT
+    filed_as: ISS-0619
+    github_issue: https://github.com/tvolodi/R-Co/issues/568
+    severity: MAJOR
+
+  - id: C10
+    title: "env01_test: 12 stale tenant_type-misconfigured rows found where 0 expected -- ALREADY COVERED by ISS-0100"
+    signature: "Zig assertion: expected 0, found 12 (tenant rows with tenant_type != 'production' and production_tenant_id set)"
+    affected_tests:
+      - "env01_test.zig TC-ENV-01-03 (existing tenant rows have tenant_type='production' and production_tenant_id IS NULL)"
+    root_cause_hypothesis: >
+      Cross-test pollution, confirmed. GH #357 / ISS-0100 ("Integration test fixtures leak
+      production-typed tenant rows ... clean_test_db.py cleanup misses them") is OPEN and
+      describes exactly this symptom. Live verification after this run's test pass:
+      `SELECT tenant_type, storage_mode, count(*) FROM public.tenant GROUP BY 1,2` shows
+      15 production/LEGACY_RLS + 17 production/SCHEMA = 32 leaked production-typed rows
+      sitting in the database, matching ISS-0100's documented mechanism (most INSERT INTO
+      public.tenant statements across the test suite, including the shared
+      ensureDefaultOidcSeeds() harness seed, omit tenant_type, defaulting it to
+      'production'; tools/clean_test_db.py only sweeps tenant_type='test' rows). This
+      fully explains env01_test's "expected 0, found 12" -- distinguishing hypothesis (a)
+      genuine backfill gap vs (b) cross-test pollution from the original cluster
+      description: it is (b), confirmed.
+    disposition: ALREADY_COVERED
+    covered_by: ISS-0100 (GH #357, OPEN, not previously queued)
+    action_taken: >
+      Not re-filed as a new issue -- would have been a pure duplicate of #357's own
+      documented mechanism and affected-areas list. Added GH-357 to
+      handoffs/global_queue.json (severity MAJOR) since it was not previously queued
+      despite being open since 2026-07-31.
+    severity: n/a (tracked under ISS-0100)
+
+  - id: C11
+    title: "Two OS-level socket errors (INVALID_HANDLE, CONNECTION_REFUSED) under full-suite connection contention"
+    signature: "error.Unexpected NTSTATUS=0xc0000008 (INVALID_HANDLE); error.Unexpected NTSTATUS=0xc0000236 (CONNECTION_REFUSED)"
+    affected_tests:
+      - "db_integration_test.zig TC-DB-03-02 (exited with code 3 / crashed)"
+      - "xc02_audit_immutability_test.zig TC-XC-02-01"
+    root_cause_hypothesis: >
+      Not a code defect in either test. Both are low-level Windows socket errors during
+      connection teardown/rollback under ~20 concurrent test binaries contending for the
+      same PostgreSQL instance -- the same class of infra flakiness already fixed for
+      other symptoms in ISS-0182/ISS-0186/ISS-0187/GH-521/GH-528/GH-556 (pool exhaustion,
+      advisory-lock contention, port contention). Given this class has been repeatedly
+      fixed piecemeal rather than systemically, filing a new piecemeal fix for these two
+      specific occurrences is unlikely to be durable; recommend treating as noise unless
+      it reproduces deterministically on a re-run. Not filed as a new issue in this pass
+      -- flagging for awareness only. If it reproduces on a subsequent
+      test-integration-svc run, it should be filed then with the reproduction evidence.
+    disposition: NOTED_NOT_FILED
+    severity: n/a
+
+verification_note: >
+  Per ISS-0184's own acceptance criteria ("measured before and after on two pristine
+  databases so pre-existing failures are not mistaken for regressions"), only a single
+  pristine-database measurement was taken in this diagnosis pass (the "before" state).
+  A second post-fix measurement is deferred to whichever run(s) implement the fixes for
+  ISS-0094/GH-348, ISS-0112/GH-375, ISS-0100/GH-357, ISS-0616, ISS-0617, ISS-0618,
+  ISS-0619, C3's direct fix, and ISS-0183/ISS-0185 -- each of those runs' own TEST-RUNNER
+  step re-measures against a fresh database as standard WF-03 practice.
+
+disposition_summary:
+  total_failing_blocks: 93   # 88 fail + 1 crash + ~4 double-counted leak/fail overlaps resolved to 93 unique test blocks
+  reused_or_reopened_existing_issues: 3   # C1 -> ISS-0094/GH-348 (updated), C2 -> ISS-0112/GH-375 (reopened), C10 -> ISS-0100/GH-357 (queued, was open but unqueued)
+  filed_as_new_issues: 4   # ISS-0616 (C6), ISS-0617 (C7), ISS-0618 (C8), ISS-0619 (C9)
+  already_covered_by_existing_queued_issues: 15   # C4 (5 blocks, ISS-0185) + C5 (10 blocks, ISS-0183)
+  direct_fix_candidates_this_run: 1   # C3 (event_store leak, 1 block / 3 leaked allocations)
+  noted_not_filed: 2   # C11 (infra flakiness, not reproducible-on-demand)

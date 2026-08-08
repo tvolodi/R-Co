@@ -1,0 +1,29 @@
+{
+  "issue_id": "ISS-0619",
+  "title": "idn02/idn03: group task claim and role-scoped task list return 403/500 instead of 200 — 3 blocks",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "created_at": "2026-08-08T02:55:00Z",
+  "discovered_by": "ISSUE-FIXER (WF03-GH517-20260808 Step 01 diagnosis of ISS-0184/GH-517)",
+  "discovered_while_fixing": "ISS-0184",
+  "affected_areas": [
+    "tests/integration/idn02_group_management_test.zig",
+    "tests/integration/idn03_role_access_test.zig",
+    "src/api routes for group task claim/complete and group-scoped task listing (route file not yet identified)"
+  ],
+  "symptom": "idn02_group_management_test.zig TC-IDN-02-06 ('ACTIVE group member can claim and complete a GROUP-assigned task') expects 200 on the complete action but gets 403. TC-IDN-02-07 ('removing a member does not mutate an already-assigned GROUP task') also expects 200 but gets 403. idn03_role_access_test.zig TC-IDN-03-03b ('TASK_WORKER GET /tasks returns own and group-member tasks only') expects 200 but gets 500.",
+  "root_cause_analysis": "Not traced to a specific statement or authorization check in this pass. The 403s on idn02's claim/complete actions suggest an authorization-scope check (group membership resolution, or role-permission lookup) is rejecting a request the test fixture believes is properly set up as an ACTIVE group member. The 500 on idn03's group-member task list suggests a distinct server error in that query path (possibly a join or missing-relation issue, though no correlating postgres server-log error was found in this run's log window for this specific test, suggesting the 500 may originate from an application-level panic/unhandled error rather than a raw SQL failure). Both files sit in the identity/authorization subsystem and may share a root cause (e.g. a group-membership join query broken the same way in both group-claim authorization and group-scoped task listing), but this diagnosis pass did not confirm a shared cause — needs a read of the group task claim route and the group-scoped task list query to determine whether the group-membership check itself is the common thread.",
+  "impact": "3 of the ~93 real failures in ISS-0184/GH-517's diagnosed set. Blocks the Green-Main Gate the same as every other ISS-0184 cluster. Also a genuine product-correctness concern: incorrect 403s block legitimate group-task workflows; a 500 on a routine GET is a robustness gap.",
+  "acceptance_criteria": [
+    "TC-IDN-02-06 and TC-IDN-02-07's 403 responses traced to the specific authorization check rejecting them, and confirmed whether the group-membership fixture setup is correct",
+    "TC-IDN-03-03b's 500 response traced to its root cause (SQL failure, unhandled error, or logic bug)",
+    "Determine whether idn02 and idn03's failures share a root cause or are independent",
+    "All 3 tests pass against a freshly migrated database"
+  ],
+  "related": [
+    "ISS-0184 / GH #517 - the holding issue this was split from",
+    "docs/issue-reports/ISS-0184-diagnosis.yaml cluster C9"
+  ],
+  "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and ISS-0184's acceptance criteria explicit split allowance. Diagnosis-only pass; root cause not fully pinned, flagged as needing a code-level read beyond this pass's scope.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/568"
+}

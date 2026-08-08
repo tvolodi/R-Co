@@ -1,0 +1,28 @@
+{
+  "issue_id": "ISS-0616",
+  "title": "svc04_admin_api_test: service registration/scope-change validation returns unexpected status codes (422/500/200 vs expected 201/200/409) — 6 blocks",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "created_at": "2026-08-08T02:55:00Z",
+  "discovered_by": "ISSUE-FIXER (WF03-GH517-20260808 Step 01 diagnosis of ISS-0184/GH-517)",
+  "discovered_while_fixing": "ISS-0184",
+  "affected_areas": [
+    "tests/integration/svc04_admin_api_test.zig",
+    "src/api/routes/services.zig (or equivalent service-catalog admin route)"
+  ],
+  "symptom": "All 6 test cases in svc04_admin_api_test.zig fail against a freshly migrated database: 'admin register tenant-scoped service returns 201' gets 422 instead; 'admin update service scope returns 200' gets 500; 'scope change to tenant with conflicting active definitions returns 409' gets 500; 'delete service in use by active definition returns 409' gets 200; 'GET services for tenant admin excludes other tenants scoped services' gets 422; 'GET admin services returns all entries' gets 422.",
+  "root_cause_analysis": "Not yet diagnosed to a single statement-level cause. These are HTTP-layer validation-outcome mismatches (422 Unprocessable / 500 Internal / wrong 200-vs-409), not raw SQL errors visible in the postgres server log, so the usual DB-log cross-reference technique used for the other ISS-0184 clusters does not directly point at the failing statement. The first test in the file (register returns 422 instead of 201) is the most likely root trigger, with the remaining 5 failures plausibly cascading from fixture state the first test was supposed to establish (a conflicting-active-definitions setup, an in-use service) never getting created. A possible contributing factor: ISS-0100/GH-357 (leaked production-typed tenant fixture rows, 32 found live in the test database after a full suite run) explicitly names svc04_admin_api_test.zig as an affected area; if this file's 'GET services for tenant admin excludes other tenants scoped services' style assertions are not perfectly tenant-scoped, leaked fixture tenants from earlier-run files could explain some of the count/status mismatches. Not confirmed — needs a CODE-DESIGNER/BACKEND-DEV-level read of the service-catalog admin route's validation branch, and ideally an isolated single-file run (zig build test-integration-svc04 alone against a fresh database) to see if the failures reproduce without other files' fixture pollution.",
+  "impact": "6 of the ~93 real failures in ISS-0184/GH-517's diagnosed set. Blocks the Green-Main Gate the same as every other ISS-0184 cluster.",
+  "acceptance_criteria": [
+    "Each of the 6 svc04_admin_api_test.zig failures is traced to its actual cause (validation logic bug, fixture-setup bug, or cross-test pollution)",
+    "If cross-test pollution from ISS-0100 is the cause, that dependency is recorded and this issue is resolved once ISS-0100 lands (or the test is isolated so it no longer depends on ISS-0100's fix)",
+    "svc04_admin_api_test.zig passes 6/6 in isolation and inside the full test-integration-svc run"
+  ],
+  "related": [
+    "ISS-0184 / GH #517 - the holding issue this was split from",
+    "ISS-0100 / GH #357 - possibly contributing (leaked tenant fixture rows, explicitly names this file)",
+    "docs/issue-reports/ISS-0184-diagnosis.yaml cluster C6"
+  ],
+  "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and ISS-0184's acceptance criteria explicit split allowance. Diagnosis-only pass; root cause not fully pinned, flagged as needing a code-level read beyond this pass's scope.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/565"
+}
