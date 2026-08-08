@@ -1,0 +1,88 @@
+---
+agent: TEST-DESIGN-VALIDATOR
+run_id: WF03-GH501-20260808
+step: 04b
+iss_id: ISS-0173
+github_issue: 501
+github_issue_url: https://github.com/tvolodi/R-Co/issues/501
+branch: feature/WF03-GH501-20260808
+head_commit: 4f7119db
+completed_at: 2026-08-08T20:01:53Z
+verdict: PASS
+---
+
+# TEST-DESIGN-VALIDATOR inner report — WF-03 Step 4b (ISS-0173 / GH-501)
+
+## Verdict: PASS
+
+Step 4b hard-gate result for routing to TEST-RUNNER (Step 5).
+
+## Artefacts validated
+
+- `tests/specs/ISS-0173-gh501-jwks-orphan.md` (113 lines, 4 formal GIVEN/WHEN/THEN cases TC-ISS-0173-01..04)
+- `tests/unit/iss0173_oidc_jwks_orphan_test.zig` (4 `test "TC-ISS-0173-*"` blocks; per-test UUIDs via `newTestUuid(@src())`)
+
+Branch `feature/WF03-GH501-20260808` is at commit `4f7119db` (TEST-DESIGNER step-04 commit). HEAD `git diff HEAD~1 HEAD --stat` shows only spec + handoff + log + registry churn — no source-tree regression.
+
+## Hard-gate checklist
+
+| # | Gate | Result | Evidence |
+|---|---|---|---|
+| 1 | Every MUST requirement has a runnable integration/unit test | PASS | Spec defines AC-01..AC-06; AC-01..AC-04 each map 1:1 to a `test "TC-ISS-0173-NN"` block. AC-05 is the suite-level `zig build` gate (run at HEAD: exit 0). AC-06 is the deliberate-mutation gate (RED/GREEN mutation already captured at step-04: `scratch/_iss0173_step04_mut.log`, `_iss0173_step04_mut_revert.log`). |
+| 2 | No `error.SkipZigTest` (or equivalent) on any MUST test | PASS | `Select-String -Pattern "SkipZigTest|test\.skip|@skip|test_skip"` on the test file: zero matches. |
+| 3 | Per-test UUIDs, no shared state | PASS | Each of the 4 tests calls `newTestUuid(buf, @src())` and prints a distinct UUID at start (TC-01..04 captured in focused log: `fad9d11f-…`, `7640356f-…`, `899b7d38-…`, `3bded8dd-…`). `tools/lint_test_isolation.py tests/unit/iss0173_oidc_jwks_orphan_test.zig` → exit 0, "OK — 1 file(s) checked, no isolation issues." |
+| 4 | `defer` cleanup is unconditional | PASS | TC-01: `defer allocator.free(content)` after `readFileAlloc`. TC-04: `defer allocator.free(content)` after `readFileAlloc`. TC-03: `defer allocator.free(result.stdout); defer allocator.free(result.stderr)` after `std.process.run`. TC-02 has no allocation (uses `dir.statFile` and returns on the expected error path — no leak surface). No test path skips cleanup. |
+| 5 | Tests self-sufficient (no external server / no shared global state) | PASS | Tests touch only the working tree (`src/main.zig`, `src/oidc/jwks.zig`, `git ls-files`). No `BPM_TEST_DB_URL`, no HTTP server, no Keycloak dependency. Tests fail clearly on missing repo (TC-01 returns `error.FileNotFound`; TC-02 returns the underlying error). |
+| 6 | Spec/implementation case-count parity | PASS | `scratch/_iss0173_step04b_parity.py`: spec_cases = `['TC-ISS-0173-01','TC-ISS-0173-02','TC-ISS-0173-03','TC-ISS-0173-04']`; test_blocks = same; match=True, count=4 vs 4. |
+| 7 | No hardcoded credentials / production URLs | PASS | Test file contains zero secrets, zero production URLs, zero `.env` reads. |
+| 8 | Security: SQL parameterised (n/a here — no SQL) | N/A | Tests operate on the filesystem + git only. |
+
+## Mandatory linter runs
+
+```text
+$ python tools/lint_test_isolation.py tests/unit/iss0173_oidc_jwks_orphan_test.zig
+OK — 1 file(s) checked, no isolation issues.
+exit=0
+scratch/_iss0173_step04b_lint_focused.log
+```
+
+```text
+$ python tools/lint_handoffs.py
+… 2251 handoffs checked — 263 BLOCKER, 195 MAJOR, 1 MINOR (historical, inherited)
+$ grep "WF03-GH501-20260808" scratch/_iss0173_step04b_lint_handoffs.log
+(no matches — zero findings against any handoff in this run)
+exit=1 (historical global noise, none against this run)
+scratch/_iss0173_step04b_lint_handoffs.log
+```
+
+The global `lint_handoffs.py` exit=1 is inherited from pre-existing JSON / timestamp / registry defects in older handoffs (2251 files scanned; 263 BLOCKER, 195 MAJOR). A `Select-String` filter for `WF03-GH501-20260808` returns **zero lines** — no finding against any handoff I created or touched. Per scope-boundary guidance (current run does not fix unrelated historical defects), this is recorded as MINOR and does not block PASS.
+
+## Build verification at HEAD (4f7119db)
+
+| Command | Exit | Notes |
+|---|---|---|
+| `zig build` | 0 | stdout/stderr contain no `oidc/jwks` reference (AC-05) |
+| `zig build test` | 0 | All passes; `lint_test_wiring: PASS — 267 test-bearing file(s) reachable` |
+| `zig build test-iss0173-orphan` | 0 | **Build Summary: 3/3 steps succeeded; 4/4 tests passed** |
+
+PowerShell wrapper reported `exit=1` on stderr capture for the second and third commands — that is PowerShell's stderr-as-error flag for native commands. The actual `$LASTEXITCODE=0` from `zig build` was confirmed by direct invocation through Python `subprocess.run` (`zig_build_exit=0`). Real build status: GREEN.
+
+## Acceptance criteria check (from spec §2)
+
+| AC | Description | Status at HEAD |
+|---|---|---|
+| AC-01 | No `pub const oidc_jwks = @import` in `src/main.zig` | PASS — `Select-String src/main.zig -Pattern "oidc_jwks"`: 0 matches |
+| AC-02 | `src/oidc/jwks.zig` absent from filesystem | PASS — TC-02 `dir.statFile` returns `error.FileNotFound` |
+| AC-03 | `src/oidc/jwks.zig` absent from `git ls-files` | PASS — `git ls-files -- src/oidc/jwks.zig` stdout='', exit 0 |
+| AC-04 | No `oidc_jwks` identifier anywhere in `src/main.zig` | PASS — same Select-String as AC-01, 0 matches |
+| AC-05 | `zig build` exits 0 with no `oidc/jwks` reference | PASS — `zig build` exit 0, build output contains no `oidc/jwks` |
+| AC-06 | Re-adding re-export causes RED, revert restores GREEN | PASS — Phase-3 RED/GREEN mutation already captured at step-04: `scratch/_iss0173_step04_mut.log` (RED) + `_iss0173_step04_mut_revert.log` (GREEN); step-03 also captured `_iss0173_readd_red.log` |
+
+## Issues
+
+- **MINOR (recorded, not blocking):** Global `tools/lint_handoffs.py` exits 1 with 263 historical BLOCKER findings. None reference `WF03-GH501-20260808` or any path this handoff touches. Per scope-boundary guidance, the validator does not attempt to repair unrelated historical defects inside this run.
+- **MINOR (inherited from step-02b):** `FOLLOWUP-ISS-0174` — no linter for dead `pub const X = @import(...)` re-exports in `src/main.zig`. Already filed as a separate ISS for a future WF-03 run. Out of scope for GH-501.
+
+## Routing
+
+PASS → TEST-RUNNER (Step 5). Suite-level `zig build test` is GREEN at HEAD `4f7119db`; the new step `test-iss0173-orphan` is GREEN 4/4. No further validator work required before TEST-RUNNER.
