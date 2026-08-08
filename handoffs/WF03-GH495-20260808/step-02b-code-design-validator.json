@@ -1,0 +1,55 @@
+{
+  "handoff_id": "422903bf-0c45-459d-82e1-fc886024959b",
+  "run_id": "WF03-GH495-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH495-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T21:05:47Z",
+  "started_at": "2026-08-08T21:05:47Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-08",
+      "LUA-09",
+      "LUA-10"
+    ],
+    "related_handoff_ids": [
+      "4f658ead-5dce-49b3-b40e-63cc255ab32b"
+    ],
+    "artifacts_in": [
+      "src/design/iss0169-lua08-09-10-limiter-wiring.md",
+      "src/lua/instruction_limiter.zig",
+      "src/lua/memory_limiter.zig",
+      "src/lua/timeout.zig",
+      "src/lua/executor.zig",
+      "src/lua/host_context.zig",
+      "src/lua/manifest.zig",
+      "src/lua/luajit_bindings.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0169-lua08-09-10-limiter-wiring.md (commit 360560a) before BACKEND-DEV implements it. ORCH has already independently spot-checked this design's most load-bearing technical claims against real source (not just trusted the CODE-DESIGNER report):\n- host_context.zig's installContext/contextFromState functions genuinely use LUA_REGISTRYINDEX + lua_setfield/lua_getfield + lua_type guard + lua_pop(L,1) -- confirmed by direct read, matches the design's \u00a71.2 claim field-for-field.\n- instruction_limiter.zig's CURRENT installHook genuinely uses lua_setglobal(L, \"__limiter__\") (script-writable global) and is called from NO code path in executor.zig -- confirmed, matches design \u00a71.1's defect claim.\n- luajit_bindings.zig genuinely declares lua_sethook(L, f, mask, count) c_int, LUA_MASKCOUNT=8, LUA_TLIGHTUSERDATA=2, lua_newstate(f: lua_Alloc, ud) -- all signatures the design assumes are real, not invented.\n- memory_limiter.zig's MemoryLimiter.init and timeout.zig's TimeoutContext.init genuinely do not allocate (confirmed by reading both) -- matches design \u00a73.4's claim used to justify no new error variant.\n- manifest.zig's Limits struct genuinely has MIN_INSTRUCTIONS=1_000, MAX_INSTRUCTIONS=10_000_000, MIN_MEMORY_BYTES=1_048_576, MIN_TIMEOUT_SECONDS=1 -- confirmed, matches every numeric value the design cites in \u00a73.2 and its test specs.\n- executor.zig genuinely has createSandboxedState, executeScript, executeScriptWithManifest, executeSource, createState, defaultAlloc, and errors.LuaError.LuaAllocFailed already exists as an error variant -- confirmed, the design's \u00a74.2 replacement plan targets real, existing code.\n\nThis pre-verification does NOT substitute for your own independent review -- run your own full check per your standard procedure (lint_design_artefact.py, acceptance-criteria coverage against all 3 requirements, confirm no implementation code beyond illustrative Type E signatures, confirm scope discipline against \u00a78's explicit LUA-11/12/13/15/16 exclusion). python tools/lint_design_artefact.py src/design/iss0169-lua08-09-10-limiter-wiring.md already returns exit 0 (0 BLOCKER, 0 MAJOR) as of this handoff.\n\nPay particular attention to: (1) whether \u00a72's combined LUA-08/LUA-10 hook design actually satisfies BOTH requirements' acceptance criteria independently and testably (not just 'a hook fires'), (2) whether \u00a73.2's policy decision for executeScript's unmanifested path is adequately justified and does not silently change behavior in an undocumented way for existing callers (LUA-04's tests), (3) whether the three test specs in \u00a75 are genuinely mutation-checkable as written (each includes an explicit 'what must happen if the wiring is reverted' check) or whether any is vague enough that a BACKEND-DEV implementation could satisfy the letter without the substance.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR",
+      "Every LUA-08/09/10 acceptance criterion has a corresponding design element",
+      "No implementation code present beyond illustrative Type E signatures",
+      "All public function signatures listed and consistent with real source",
+      "Error taxonomy addressed (existing LuaError.LuaAllocFailed reused, no gaps)",
+      "Dependencies documented (host_context.zig, manifest.zig, luajit_bindings.zig)",
+      "Scope discipline: design does not reach into LUA-11/12/13/15/16",
+      "Combined hook design (\u00a72) genuinely satisfies both LUA-08 and LUA-10 independently and testably",
+      "Three test specs (\u00a75) are genuinely mutation-checkable, not just call-without-crash assertions"
+    ],
+    "functions_to_call": [
+      "fn:validate-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
