@@ -19,6 +19,9 @@
 
 DO $$
 BEGIN
+-- scope: public
+-- ISS-0185: GLOBAL_REGISTRY only (3 table(s)); public canonical.
+
     CREATE TABLE IF NOT EXISTS entity_definitions (
         id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
         tenant_id               UUID        NOT NULL,

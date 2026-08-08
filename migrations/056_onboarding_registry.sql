@@ -3,6 +3,9 @@
 -- Stores onboarding request/response for idempotent replay, saga state,
 -- and hostname-based lookup.
 
+-- scope: public
+-- ISS-0185: this migration creates a global-registry table.
+
 CREATE TABLE IF NOT EXISTS onboarding_registry (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     onboarding_id       UUID        NOT NULL,

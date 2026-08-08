@@ -1,6 +1,9 @@
 -- 022_obs06_alerting_state.sql
 -- Stage 6: OBS-06 alert trigger state and per-hook emission dedupe state.
 
+-- scope: public
+-- ISS-0185: this migration creates a global-registry table.
+
 CREATE TABLE IF NOT EXISTS obs_alert_trigger_state (
     trigger_key TEXT PRIMARY KEY,
     is_armed BOOLEAN NOT NULL DEFAULT TRUE,

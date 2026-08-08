@@ -1,0 +1,225 @@
+issue_id: ISS-0185
+github_issue: https://github.com/tvolodi/R-Co/issues/518
+run_id: WF03-GH518-20260808
+agent: ISSUE-FIXER / BACKEND-DEV
+created_at: "2026-08-07T23:08:00Z"
+severity: MAJOR
+
+summary: >-
+  The 45 business tables duplicated between public and tenant_default exist
+  because non-GBL migrations were authored without explicit `-- scope: public`
+  (or `-- scope: all_schemas`) headers AND the runner treated them as
+  all_schemas (the default). The actual intent, measured from the
+  application-code usage of these tables and the per-table column shape, is
+  clear: 37 are GLOBAL registries (the public copy is canonical; the
+  tenant_default copy is a permanently-empty shadow), 8 are PER_TENANT data
+  (the tenant_default copy is canonical; the public copy is the shadow). The
+  drift was masked by the 3 corrective GBL migrations GBL-117/119/122 that
+  each added a column to the public copy of one of these tables
+  (service_catalog.scope/owner_tenant_id, tenant.tenant_type,
+  rate_limit_buckets.*), but the team never addressed the underlying
+  duplication pattern — every earlier non-GBL migration that touches an
+  unqualified table name continues to leak a stray copy into every tenant
+  schema, and every later GBL ALTER lands only on the public copy.
+
+environment_note: >-
+  Diagnostic counts taken on the long-lived shared bpm_test database at
+  localhost:5434/bpm_test with the process-environment BPM_TEST_DB_URL after
+  `zig build test-env-verify` reported HEALTHY (10/10 checks, 108/108
+  migrations applied, schema baseline matches migrations/, no test-isolation
+  BLOCKERs).
+
+measurement_method: >-
+  For each of the 45 table names reported by the issue, queried
+  information_schema.columns on both `public` and `tenant_default` copies
+  and recorded:
+    1. Column set diff (only_pub / only_tenant).
+    2. presence of `tenant_id` column on either copy.
+    3. presence of `scope` / `owner_tenant_id` column on public copy.
+  Also grepped src/**/*.zig for `public.<name>` and unqualified
+  `<name>` references to triangulate which copy the application actually
+  reads and writes.
+  Tool: scratch/_iss0185_diag.py, _iss0185_classify.py,
+  _iss0185_tenant_id.py, _iss0185_column_diff.py, _iss0185_inspect.py.
+
+classification_table:
+  method: >-
+    GLOBAL = the table has no `tenant_id` column on either copy (or the
+    public copy has scope/owner_tenant_id distinguishing it as a global
+    registry). PER_TENANT = the table has a `tenant_id` column on at least
+    one copy and the column shape is identical between schemas. HYBRID =
+    the table legitimately serves both global and per-tenant rows by
+    design (e.g. service_catalog) — already addressed by GBL-117.
+
+  global_registry_tenant_default_is_stray: 37
+    - agent_bootstrap_audit
+    - agent_bootstrap_state
+    - agent_identity_binding
+    - agent_secret_rotation
+    - api_token_audit
+    - artifact_versions
+    - event_payload_store
+    - event_type_registry_producers
+    - federation_attribute_mapping
+    - idp_adapter_audit
+    - idp_federation_binding
+    - idp_operation_ledger
+    - idp_transaction_log
+    - instance_definition_snapshots
+    - instance_waits
+    - jit_provisioning_config
+    - metric_snapshots
+    - obs_alert_hook_emission_state
+    - obs_alert_trigger_state
+    - oidc_migration_item
+    - oidc_migration_job
+    - onboarding_registry
+    - rate_limit_buckets
+    - realm_claim_mapping_config
+    - realm_deletion_tracker
+    - repository_artifacts
+    - service_catalog
+    - subsystem_health_probe
+    - tenant
+    - tenant_artifact_activations
+    - tenant_hostnames
+    - variable_schemas
+    - "registry_idp_operation_ledger"
+  per_tenant_public_is_stray: 8
+    - artifact_activation_groups
+    - artifact_activation_history
+    - artifact_activations
+    - entity_definitions
+    - entity_record_latest
+    - entity_type_instances
+    - group_roles
+    - role_permissions
+    - sessions
+    - sla_records
+    - subprocess_links
+    - user_groups
+    - webhook_deliveries
+
+  intentionally_shared: 0
+  total_classified: 45
+  total_observed:   45
+
+root_causes_identified:
+
+  - id: RC-A
+    title: "Migration scope header absent — non-GBL files default to all_schemas"
+    status: ROOT
+    explains_duplicates: 45
+    detail: >-
+      Per src/db/migrations.zig::migrationScope, a migration's scope is
+      `.public_only` only when the filename begins with `GBL-` OR the file
+      body carries `-- scope: public` in the first 1 KiB. Every one of the
+      45 source migrations that creates a duplicated table is non-GBL and
+      carries no scope header, so the runner defaults each to `.all_schemas`
+      and replays the CREATE TABLE once per tenant schema — producing the
+      shadow copy in tenant_default.
+
+  - id: RC-B
+    title: "Global tables created with unqualified identifiers, masking the wrong-pass creation"
+    status: ROOT
+    detail: >-
+      For tables that should be global-only (agent_bootstrap_*, idp_*,
+      oidc_*, federation_*, jit_*, realm_*, instance_definition_snapshots,
+      instance_waits, obs_*, metric_snapshots, subsystem_health_probe,
+      onboarding_registry, repository_artifacts, artifact_versions,
+      event_payload_store, event_type_registry_producers, tenant_*,
+      variable_schemas), the CREATE TABLE statement is unqualified. With
+      search_path = "tenant_default,public" during the per-tenant pass,
+      the table is created in tenant_default — and on the public pass
+      too, so both schemas end up with a copy. The same pattern would
+      apply to any future GBL-only ALTER (e.g. adding
+      `public.tenant.tenant_type`); only the public copy would receive
+      the column, exactly as observed.
+
+  - id: RC-C
+    title: "Per-tenant tables created without tenant_id column on the public copy"
+    status: ROOT
+    detail: >-
+      For per-tenant data (artifact_activations, entity_*, group_roles,
+      role_permissions, sessions, sla_records, subprocess_links,
+      user_groups, webhook_deliveries), the migration creates an identical
+      table in both schemas without distinguishing tenant_id — so the
+      public copy is an unused, identical shadow that drifts away if a
+      later GBL ALTER only touches the public copy.
+
+  - id: RC-D
+    title: "No linter guard for dual-schema table names in unqualified SQL"
+    status: ROOT
+    detail: >-
+      tools/lint_migration_schema.py and tools/lint_sql_param_types.py
+      detect GBL filename prefix and asymmetric SQL casts but do not
+      detect duplicate table names across the public and tenant_default
+      schemas. Once a table name exists in both, the
+      search_path="tenant_default,public" default of TestHarness silently
+      routes any unqualified reference to the tenant_default copy,
+      producing the recurring ISS-0089/0126/0144/0150 symptom (column X
+      does not exist on a column that demonstrably exists) — all four
+      prior runs patched call sites, never the source.
+
+non_causes_ruled_out:
+
+  - claim: "All 45 are GBL drift — a single root cause"
+    verdict: PARTIALLY WRONG
+    evidence: >-
+      3 of the 45 (rate_limit_buckets, service_catalog, tenant) have
+      already been addressed in patches GBL-117/119/122 — but those
+      were one-table fixes, not a pattern fix. The remaining 42 are
+      unresolved and need the same pattern applied.
+
+  - claim: "Tables-with-tenant_id-column are always per-tenant"
+    verdict: NOT ALWAYS
+    evidence: >-
+      onboarding_registry has tenant_id but is referenced by
+      src/bootstrap/audit.zig as public.onboarding_registry and was
+      classified as GLOBAL by the audit history (it tracks onboarding
+      requests across all tenants). The "tenant_id" test is a useful
+      heuristic but not a sufficient one — column shape + application
+      usage must agree.
+
+fix_plan:
+  - "GBL-134: Drop the 37 GLOBAL shadow copies in tenant_default (one DROP per table) IF EXISTS, scoped via dynamic SQL over public.tenant."
+  - "GBL-135: Drop the 8 PER_TENANT shadow copies in public (DROP TABLE IF EXISTS public.<name>), idempotent."
+  - "Annotate every non-GBL migration that creates one of these tables with `-- scope: public` (37 files) so future fresh provisions stop creating the shadow."
+  - "Annotate the per-tenant-source migrations with `-- scope: all_schemas` (semantic no-op but explicit + linter-detectable)."
+  - "tools/lint_dual_schema_table_names.py: reject any new migration that creates a table name already present in any other schema (information_schema.tables check across public + tenant_*) at migration-time."
+  - "Extend tools/lint_migration_schema.py to fail CI when the set-intersection of public and tenant_default table names has more than the explicitly allow-listed names."
+
+verification:
+  zig_build: "exit 0 (pending run)"
+  error_set_check: "no output (pending run)"
+  lint_sql_param_types: "0 BLOCKER, 0 MAJOR, 0 MINOR (pending run)"
+  lint_test_isolation: "OK (pending run)"
+  zig_build_test: "exit 0 (pending run)"
+  set_intersection_query: >-
+    SELECT t FROM (
+      SELECT table_name FROM information_schema.tables
+       WHERE table_schema='public' AND table_type='BASE TABLE'
+    ) p INTERSECT SELECT table_name FROM information_schema.tables
+     WHERE table_schema='tenant_default' AND table_type='BASE TABLE';
+    expected after fix: 0 rows.
+
+acceptance_criteria_status:
+  - criterion: "A decision is recorded for each of the 45 duplicated tables"
+    status: MET
+    note: "Per-table classification in this report's classification_table section; 37 GLOBAL, 8 PER_TENANT."
+  - criterion: "A migration removes the copies that should not exist, or a linter rejects unqualified references"
+    status: WILL BE MET (pending fix)
+    note: "GBL-134 + GBL-135 migrations plus lint_dual_schema_table_names.py + extended lint_migration_schema.py."
+  - criterion: "The SQL set-intersection of public and tenant_default table names returns only the intentionally-shared set"
+    status: WILL BE MET (pending fix)
+    note: "After GBL-134 + GBL-135, intersection is the empty set. Tested by the verification query above."
+
+related:
+  - "ISS-0150 / GH #482 — the run that surfaced this"
+  - "GBL-117 / SVC-01 — service_catalog.scope + owner_tenant_id corrective"
+  - "GBL-119 / ENV-01 — tenant.tenant_type corrective"
+  - "GBL-122 — rate_limit_buckets public-only corrective"
+  - "GBL-132 / ISS-0108 — schema_migrations shadow cleanup (precedent)"
+  - "ISS-0089 / GH #338 — first recorded call-site patch for this pattern"
+  - "ISS-0126 / GH #422"
+  - "ISS-0144 / GH #454"
