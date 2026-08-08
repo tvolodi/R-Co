@@ -1,0 +1,103 @@
+{
+  "handoff_id": "f5920200-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH592-20260808",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-08T21:29:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 2 (design)",
+    "requirement_ids": [
+      "LUA-12",
+      "LUA-15",
+      "LUA-16"
+    ],
+    "related_handoff_ids": [
+      "e2ac745e-db7d-41e3-941c-349b4fadb529 (step-00 BACKEND-DEV git-setup, COMPLETED)",
+      "92c5d5e1-4f37-4c20-9a83-2b7e7f9c1a8a (step-01 ISSUE-FIXER diagnosis, COMPLETED)"
+    ],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/592",
+      "docs/issues/ISS-0625.json",
+      "docs/issue-reports/ISS-0625-gh592-diagnosis.yaml",
+      "src/lua/executor.zig",
+      "src/lua/host_api/call_service.zig",
+      "src/lua/host_api/fail.zig",
+      "src/lua/host_context.zig",
+      "src/lua/events.zig",
+      "src/lua/service_catalog.zig",
+      "src/lua/instruction_limiter.zig",
+      "src/lua/memory_limiter.zig",
+      "src/lua/luajit_bindings.zig",
+      "src/lua/errors.zig",
+      "src/lua/capabilities.zig",
+      "src/lua/host_api/mod.zig",
+      "src/design/lua-integration.md (§17.1, §20.1-20.3, §21.1-21.4)",
+      "tests/specs/LUA-08.md",
+      "tests/specs/LUA-12.md",
+      "tests/specs/LUA-15.md",
+      "tests/specs/LUA-16.md",
+      "docs/status/requirement_status.yaml"
+    ],
+    "github_issue_number": 592,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/592",
+    "iss_id": "ISS-0625",
+    "severity": "MAJOR",
+    "sibling_issue": "GH #591 / ISS-0624 (batch 2, LUA-11/13, separate run)",
+    "parent": "GH #495 / ISS-0169 (LUA-08..16 verification tranche, scoped into 3 batches)"
+  },
+  "task": {
+    "description": "GH-592 / ISS-0625 Step 2: produce a Type E design artefact at src/design/iss0625-gh592-lua-12-15-16.md. Resolve the three decisions flagged by the Step-01 diagnosis (LUA-12 ServiceCatalog scope, LUA-12 return shape, LUA-16 conditional payload), the LUA-15→LUA-16 sequencing constraint, and produce a test plan per LUA-12/15/16. Document the migration of the failure globals from _G to LUA_REGISTRYINDEX following the host_context.zig pattern. Document the captureStackTrace walk via lua_getstack/lua_getinfo and the conditional ScriptErrorPayload construction that depends on the LUA-08 instruction-count source landing in the same run. NO source modifications in this step.",
+    "acceptance_criteria": [
+      "Design artefact created at src/design/iss0625-gh592-lua-12-15-16.md with: decisions table (D-1 through D-4), module purpose, public interface (ScriptResult, ExecutionContext, host_context helpers, events constructors, luajit_bindings additions), data flow diagrams for LUA-15/16/12, error taxonomy, dependencies, sequencing (LUA-15 → LUA-12 → LUA-16), open questions, test plan, implementation notes, and acceptance criteria",
+      "Decision D-1 (LUA-12 scope): ExecutionContext gains *const ServiceCatalog field; non-simulation path performs a real HTTP call after lookup() validates svc_id; simulation branch also performs lookup() first (defense-in-depth)",
+      "Decision D-2 (LUA-12 return shape): single response table per design §17.1 (breaking change documented in CHANGELOG)",
+      "Decision D-3 (LUA-16 conditional payload): ScriptErrorPayload construction conditional on LUA-08 wiring landing in the same run; otherwise record skip reason in capabilities_at_failure",
+      "Decision D-4 (LUA-16 stack-trace source): lua_getstack/lua_getinfo walk with field 'Sl'; requires new extern declarations in luajit_bindings.zig",
+      "Classification: Type E cross-cutting per templates/lego-catalog.md §Selection rules",
+      "Test plan covers TC-LUA-12 (impl-01..10), TC-LUA-15 (impl-01..08), TC-LUA-16 (impl-01..08)",
+      "Open questions OQ-1..OQ-5 documented with resolution",
+      "No source code modified in this step (only the design artefact + this handoff)",
+      "lint_handoffs.py exits 0 (BLOCKER-free)",
+      "Registry.json entry updated to status COMPLETED for this handoff_id"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E design artefact at src/design/iss0625-gh592-lua-12-15-16.md. Four irreversible decisions recorded: D-1 ExecutionContext gains *const ServiceCatalog + real HTTP path (simulation remains with defense-in-depth lookup); D-2 single response table per design §17.1 (breaking change, CHANGELOG note required); D-3 ScriptErrorPayload construction conditional on LUA-08 wiring in the same run (skip reason string otherwise); D-4 lua_getstack/lua_getinfo walk requires new extern declarations in luajit_bindings.zig. Sequencing LUA-15 → LUA-12 → LUA-16 in three reviewable commits. Public interface covers ScriptResult.ErrorKind enum, ExecutionContext.service_catalog + instruction_limiter fields, host_context set/read/clearExplicitFailure helpers, events.buildScriptFailedPayload + buildScriptErrorPayload constructors. Data flow diagrams for each requirement. Error taxonomy lists all error sources and their ScriptResult mapping. Test plan per TC-LUA-12 (impl-01..10), TC-LUA-15 (impl-01..08), TC-LUA-16 (impl-01..08); HTTP client is a function-pointer stub in tests (T-1 compliance — no MSW/HTTP mocking). Per-test UUID fixture isolation mandatory. All decisions documented with rationale. Out-of-scope items explicit (engine-side worker, simulation interceptor internals, sibling batch 2 ExecutionContext fields). Implementation notes for BACKEND-DEV include the ScriptErrorPayload deinit-after-free pattern, EventRecord.deinit ownership, and the OQ-3 HTTP-client-resolution. No source code modified in this step.",
+    "artifacts_out": [
+      "src/design/iss0625-gh592-lua-12-15-16.md",
+      "handoffs/WF03-GH592-20260808/step-02-code-designer.json (this file)"
+    ],
+    "issues": [
+      {
+        "id": "OPEN-LUA-12-HTTP-CLIENT-PROD",
+        "severity": "MAJOR",
+        "description": "OQ-3: the production HTTP client (the function pointer that the real-call path invokes) is NOT introduced in this design. Tests use a Zig function pointer stub. In production the engine-side worker must inject the real HTTP client; if no such hook exists, this becomes a follow-up ISS. BACKEND-DEV should flag this during implementation if no hook is present in the engine."
+      },
+      {
+        "id": "OPEN-LUA-16-CONDITIONAL-PAYLOAD-LINT",
+        "severity": "MINOR",
+        "description": "D-3 means the test for the LUA-08 NOT-installed case asserts capabilities_at_failure equals the literal skip-reason string. Any future edit of that string is a test change. Consider extracting to a named constant in events.zig (e.g., SKIP_REASON_NO_INSTRUCTION_LIMITER) — left as a follow-up cleanup."
+      },
+      {
+        "id": "BACKWARD-COMPAT-LUA-12-TUPLE-SCRIPTS",
+        "severity": "MINOR",
+        "description": "D-2 is a breaking change for any script written against the current (string, number) tuple return. CHANGELOG entry required (text drafted in §10.4). DOC-UPDATER (Step 6 of WF-03) must add the note alongside the requirement-status update."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (WF-03 Step 2b) for hard-gate review. validator must run: tools/lint_design_artefact.py src/design/iss0625-gh592-lua-12-15-16.md; verify every acceptance criterion in §11 maps to a code element; verify the classification per templates/lego-catalog.md is Type E (cross-cutting); verify the file does not contain implementation code (function bodies, SQL DDL)."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-08-08T21:29:39Z"
+}
