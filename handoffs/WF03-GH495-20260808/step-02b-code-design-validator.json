@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH495-20260808/step-02b-code-design-validator.json",
   "created_at": "2026-08-08T21:05:47Z",
   "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-08T21:30:49Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -49,7 +49,19 @@
       "fn:validate-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validated src/design/iss0169-lua08-09-10-limiter-wiring.md (rework 1, commit 5e2b752) independently against real source. All four prior findings resolved: CDV-0169-1/2 (BLOCKER) -- the new sec2.5 host-external watchdog (WatchdogState/WatchdogHandle, std.Thread + std.atomic.Value, no lua_* calls from the watchdog thread) genuinely satisfies LUA-10 acceptance criterion 1 (blocking host call terminable, via activeWatchdogFired() pre/post checks wired into call_service.zig, confirmed against the real header comment stating today's implementation has no real blocking I/O to interrupt) and criterion 2 (enforced from outside the Lua state, via a thread with no dependency on lua_sethook, confirmed structurally sound) for the detection half, with the residual true-pre-emption-of-a-blocking-syscall gap honestly scoped, named, and forwarded to ISS-0625/GH-592 rather than smuggled back in as complete. CDV-0169-3 (MAJOR) -- sec11 no longer claims None; it lists 3 concrete open items with the pre-emption gap correctly labelled non-blocking for this tranche. CDV-0169-4 (MAJOR) -- verified sec5.4/5.5 against tests/specs/LUA-10.md by hand: sec5.4 genuinely exercises TC-LUA-10-03 (blocking host call, via a sleeping simulation handler seam, with a real mutation check distinguishing wait-out-full-sleep vs cut-off-early) and sec5.5 genuinely exercises TC-LUA-10-04 (hook disabled/delayed, timeout still fires via watchdog with a mutation check that removes the watchdog thread specifically), not renamed subsets of the tight-loop case. Confirmed sec1/sec3/sec4 (LUA-08/09, previously APPROVED) are unchanged in substance via git diff 360560a..5e2b752 -- only the one flagged additive ExecutionContext.active_watchdog field and the watchdog start/stop block inside executeSource were added; RunLimiter/RunLimits/MemoryLimiter shapes are untouched. Independently re-derived sec2.5.5's no-lock atomics reasoning against the actual field list (fired: watchdog-thread-only writer, stop_requested: owning-thread-only writer, timed_out: plain bool never touched by the watchdog thread per timeout.zig) -- holds up as a genuine disjoint-write-set, single-writer-per-field pattern, not just asserted. Confirmed scope discipline: no reach into LUA-11/12/13/15/16, service_catalog.zig, events.zig, structured_logger.zig, or manifest.zig validation logic beyond read-only reuse of existing Limits constants; the one flagged host_api/call_service.zig touch (two activeWatchdogFired checks) does not alter the function's existing behavior, capability gate, or simulation branching. lint_design_artefact.py exits 0. One new MINOR finding recorded (not blocking): sec2.5.3/sec10/sec11 cite std.Thread.sleep as an available primitive for the watchdog's 10ms poll loop; verified against this repo's actual Zig 0.16.0 stdlib (zig env) that std.Thread.sleep does not exist as a Thread member and std.time.sleep was also removed -- the only sleep in this build is std.Io.sleep, which requires threading an Io capability parameter (a materially different calling convention, not a rename). This is the exact class of implementation-detail correction sec11's closing paragraph already pre-scopes as non-blocking for BACKEND-DEV to resolve (e.g. via std.Io.Threaded or a raw OS primitive), so it does not require another CODE-DESIGNER rework cycle, but is recorded so BACKEND-DEV does not discover it only via a compile error.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "CDV-0169-5",
+        "severity": "MINOR",
+        "description": "src/design/iss0169-lua08-09-10-limiter-wiring.md sec2.5.3 (code comment on watchdogLoop), sec10 (External dependencies bullet list), and sec11 item 3 all cite std.Thread.sleep as the mechanism for the watchdog thread's 10ms poll interval. Verified against the actual Zig 0.16.0 stdlib this repo builds with (via zig env -> lib_dir, grep for 'pub fn sleep' in Thread.zig and time.zig): std.Thread.sleep does not exist (Thread.zig has no sleep member at all) and std.time.sleep was also removed in this version (time.zig now contains only constants and the epoch submodule) -- the only sleep primitive in this stdlib is std.Io.sleep (Io.zig), which takes an Io capability parameter and returns Cancelable!void, a materially different calling convention than a bare blocking call, not just a renamed method. A raw OS primitive (nanosleep) or std.Io.Threaded is reachable as a substitute. sec10's own closing sentence already hedges this (should be confirmed against the actual zig version before implementation) and pre-authorizes a signature correction as non-blocking per sec11's closing paragraph, so this does not invalidate the design's mechanism (a separate std.Thread polling shared atomics) or require CODE-DESIGNER rework -- recorded so BACKEND-DEV corrects it deliberately rather than discovering it via a first-try compile failure."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
   "rework_count": 1,
   "max_rework": 3
 }

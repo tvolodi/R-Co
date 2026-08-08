@@ -538,3 +538,4 @@
 2026-08-08T21:11:02Z | REWORK | WF03-GH495-20260808 | 4f658ead | CODE-DESIGNER | REWORK(1/3) -- LUA-10 blocking-call + outside-Lua-state enforcement missing (CDV-0169-1/2 BLOCKER)
 2026-08-08T21:21:04Z | COMPLETE | WF03-GH495-20260808 | 4f658ead | CODE-DESIGNER | PASS -- rework 1 addressed CDV-0169-1..4, added SS2.5 host-external watchdog for LUA-10, next: CODE-DESIGN-VALIDATOR (Step 2b rework)
 2026-08-08T21:23:51Z | REWORK | WF03-GH495-20260808 | 422903bf | CODE-DESIGN-VALIDATOR | REWORK(1/3) -- re-validate LUA-10 watchdog fix for CDV-0169-1..4; ORCH signed off section 11 item 1 escalation via ISS-0625/GH-592
+2026-08-08T21:30:49Z | VALIDATE | WF03-GH495-20260808 | 422903bf | CODE-DESIGN-VALIDATOR | PASS (rework 1) -> next: BACKEND-DEV Step 3
