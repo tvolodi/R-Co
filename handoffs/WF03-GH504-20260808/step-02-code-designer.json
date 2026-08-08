@@ -1,0 +1,47 @@
+{
+  "handoff_id": "9ee764e0-d329-4842-a27a-0d8f821315d2",
+  "run_id": "WF03-GH504-20260808",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH504-20260808/step-02-code-designer.json",
+  "created_at": "2026-08-08T17:44:27Z",
+  "started_at": "2026-08-08T17:44:27Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-07"
+    ],
+    "related_handoff_ids": [
+      "8f052f0f-0f47-4c9d-bd45-d6bfa2dd3913"
+    ],
+    "artifacts_in": [
+      "src/design/lua-capability-enforcement.md",
+      "src/design/lua-integration.md",
+      "src/lua/executor.zig",
+      "src/lua/manifest.zig",
+      "migrations/020_obs03_audit_entries.sql",
+      "migrations/009_audit_log.sql"
+    ]
+  },
+  "task": {
+    "description": "Design a fix for GH #504 / ISS-0176 (LUA-07 criterion 2). ISSUE-FIXER's investigation (Step 1, handoff 8f052f0f) found something significant: there is currently NO engine call site invoking the Lua executor at all -- grep -rn 'ScriptResult|executeScript' src/engine/ returns zero matches, and src/design/lua-integration.md's full 3-phase Implementation Roadmap (section 25) never lists actual SERVICE_TASK-with-script engine invocation as in-scope for any phase. ScriptResult/executeScriptWithManifest are currently only ever called from src/lua/'s own test files. This means the issue's literal acceptance criteria (an integration test where 'executing a script' produces an audit row) cannot be satisfied via a small plumbing fix to an EXISTING call site, because no such call site exists.\n\nUSER-CONFIRMED SCOPE DECISION (via ORCH, explicit business decision, not an autonomous inference): build MINIMAL, NARROW synthetic engine-side wiring -- a real, genuine call path in src/engine/ that invokes the Lua executor (executeScriptWithManifest or equivalent) and writes manifest_hash to an audit row -- WITHOUT building the full SERVICE_TASK integration described across all 3 roadmap phases. This is deliberately narrower than a complete feature: it should be the smallest real (not fake/mocked) code path that satisfies LUA-07's literal acceptance criteria (engine consumes ScriptResult, persists manifest_hash to a queryable audit record, integration test proves it end-to-end, mutation-checked). Design this scope precisely: what is the minimal, real trigger point in the engine for 'a script executes' that doesn't require building the full SERVICE_TASK node-type handling described in lua-integration.md's roadmap? Consider: is there an existing engine extension point (a hook, a pluggable executor interface) that a narrow Lua-invocation path could attach to without a large surrounding feature? Or does a defensible minimal scope mean creating a small, explicitly-labeled 'synthetic execution entry point' used ONLY by this fix's integration test, clearly documented as a stand-in for the eventual full SERVICE_TASK wiring, not presented as if it were that wiring? Also design the audit-record schema change (ISSUE-FIXER found neither audit_entries nor audit_log has a manifest_hash column -- decide new column vs new table vs reuse of audit_log.detail JSONB, with rationale) -- this needs a migration.",
+    "acceptance_criteria": [
+      "A precise, minimal scope defined for the engine-side call path -- explicitly narrower than the full SERVICE_TASK roadmap feature, and honestly labeled as such (not disguised as complete engine integration)",
+      "Audit-record schema decision made with rationale (new column / new table / reuse existing JSONB) and a migration designed if needed",
+      "Design confirms the resulting integration test genuinely exercises real code (not a mock), satisfying LUA-07s literal acceptance criteria",
+      "Design explicitly notes what remains out of scope (full SERVICE_TASK engine integration) so this is not mistaken for that larger feature being complete",
+      "No implementation code present in the design artefact"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
