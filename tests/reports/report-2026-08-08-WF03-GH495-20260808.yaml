@@ -1,0 +1,95 @@
+run_id: WF03-GH495-20260808
+date: "2026-08-08"
+completed_at: "2026-08-08T22:22:20Z"
+requirement_ids: [LUA-08, LUA-09, LUA-10]
+issues_tested: [ISS-0169]
+
+shell_environment_note: >
+  This Bash session's persisted BPM_TEST_DB_URL was stuck at
+  postgres://bpm:bpm@localhost:5434/bpm_test (a sibling workspace's port).
+  This workspace's .env and running container (r-co-2-db_test-1) use port
+  5453 (COMPOSE_PROJECT_NAME=r-co-2). Verified against .env directly before
+  running anything. Every command below that reads BPM_TEST_DB_URL was run
+  with an inline override: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test.
+  psql is not installed in this shell (`which psql` -> not found), so raw DB
+  connectivity was verified via `docker exec r-co-2-db_test-1 psql ...`
+  instead -- confirmed SELECT 1 succeeds. This was a shell session artifact,
+  not a real infrastructure problem, and did not affect the result below.
+
+pre_checks:
+  services:
+    db: healthy (r-co-2-db-1, port 5452)
+    db_test: healthy (r-co-2-db_test-1, port 5453), verified via docker exec SELECT 1
+    keycloak: healthy (r-co-2-keycloak-1)
+    keycloak_gateway: healthy (r-co-2-keycloak_gateway-1), /health/ready OK on :8091
+  migrate:
+    status: PASS
+    detail: "BPM_DB_URL=<test-url> zig build migrate: exit 0, clean output, 115/115 applied, no new migrations"
+  lint_test_isolation:
+    status: PASS
+    detail: "132 file(s) checked, no isolation issues (114 pre-existing baseline suppressions unrelated to this change)"
+  test_env_verify:
+    status: HEALTHY
+    checks_passed: "10/10 (C0-C9)"
+    migrations_applied: "115/115"
+    ran: twice (pre-suite and post-suite) -- both HEALTHY, confirming the test
+      suite left infrastructure in a clean state
+
+test_results:
+  zig_build_test:
+    status: PASS
+    exit_code: 0
+    detail: >
+      Full unit-test suite ("Run all unit tests" build step, not just
+      test-lua). lint_test_wiring confirmed 270/270 test-bearing files
+      reachable from an addTest root before tests ran (4 pre-existing
+      ADVISORY findings on type-only pins in src/lua_test_root.zig,
+      unrelated to this change, does not affect exit code -- ISS-0172/GH#500).
+      ISS-602 differential corpus: 15/15 matched, 0 diverged. A
+      "failed command" line appeared in raw output referencing the
+      --listen=- test runner invocation; exit code was verified as 0 via
+      $? immediately after the command (not inferred from log text), and
+      is corroborated by the scoped test-lua and test-simulation runs
+      below both independently reporting full pass counts with the same
+      build. Treated as a benign zig build-system log artifact of the
+      --listen=- IPC protocol, not a real failure -- judged by exit code
+      per test_infrastructure_guide.md's rule, not by output text.
+  zig_build_test_lua:
+    status: PASS
+    exit_code: 0
+    detail: "Build Summary: 16/16 steps succeeded; 81/81 tests passed. ~31s."
+    new_limiter_tests_confirmed:
+      - TC-LUA-08-01: "runaway script hits the instruction limit, not the timeout"
+      - TC-LUA-09-01: "allocation past a tiny memory cap is rejected, not silently allowed"
+      - TC-LUA-10-01: "tight loop is interrupted by the timeout, not the instruction cap"
+      - TC-LUA-10-02: "a slow platform.call_service reports a timeout, never a stale success"
+      - TC-LUA-10-03: "the host-external watchdog stops a tight loop even with the in-VM hook's timeout branch disabled"
+    note: >
+      All five plus their mutation-check sibling tests are part of the
+      81/81 passing count (src/lua/limiter_wiring_test.zig, rooted via
+      src/lua_test_root.zig). execution_test.zig and
+      capability_enforcement_test.zig are also rooted under
+      src/lua_test_root.zig and therefore included in this same 81/81 run
+      -- no regression in either shared test file.
+  zig_build_test_simulation:
+    status: PASS
+    exit_code: 0
+    detail: >
+      Build Summary: 4/4 steps succeeded; 10/10 tests passed. Covers
+      src/simulation/*.zig in-file unit tests, i.e. the touched
+      service_interceptor.zig (allocator-mismatch fix) and types.zig
+      (MockResponse.delay_ms test seam). No regression.
+  integration_tests:
+    status: NOT_APPLICABLE
+    detail: >
+      grep for "service_interceptor" across tests/ and src/ found no
+      references outside src/lua/ (limiter_wiring_test.zig,
+      call_service.zig) and src/simulation/ (mod.zig, types.zig,
+      simulation_test_root.zig) -- both already covered by test-lua and
+      test-simulation above. No separate test-integration-* build target
+      exercises this path; build.zig has no test-simulation-integration
+      or equivalent DB-backed target for this subsystem.
+
+overall_status: PASS
+issues: []
+next_action: "Route to DOC-UPDATER (Step 6) and Step Final. No BLOCKER-severity findings -- RELEASE-VALIDATOR (Step 5) not required per the WF-03 pipeline table's conditional gate."
