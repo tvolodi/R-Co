@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH495-20260808/step-03-backend-dev.json",
   "created_at": "2026-08-08T21:34:43Z",
   "started_at": "2026-08-08T21:34:43Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T22:08:36Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -54,7 +54,42 @@
       "fn:run-zig-tests"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ISS-0169/GH-495 tranche 2 design (LUA-08/09/10 limiter wiring) exactly as specified in src/design/iss0169-lua08-09-10-limiter-wiring.md, sections 1-5. instruction_limiter.zig: replaced lua_setglobal('__limiter__') with LUA_REGISTRYINDEX-based RunLimiter storage (installLimiter/limiterFromState), reusing host_context.zig's exact pattern; one combined lua_sethook(LUA_MASKCOUNT, 100) callback checks instruction count then TimeoutContext.checkTimeout(). timeout.zig: added WatchdogState/WatchdogHandle (host-external watchdog on a separate std.Thread, atomics-only, no lock, INV-6). executor.zig: createSandboxedState gained RunLimits + caller-owned limiter_storage/memory_limiter_storage params; lua_newstate now uses MemoryLimiter.alloc; executeScript runs under UNMANIFESTED_DEFAULT_LIMITS instead of unlimited; executeScriptWithManifest sources RunLimits from the validated manifest; executeSource starts/stops the watchdog via defer and threads context.active_watchdog through a local ExecutionContext copy (CTX-1..CTX-4 preserved). host_context.zig: added activeWatchdogFired() reading context.active_watchdog off the existing registry channel. call_service.zig: added pre-call and post-call activeWatchdogFired checks raising 'platform.call_service: wall-clock timeout exceeded' (also fixed an ERR-2 leak my own new raise point introduced: response/fingerprint now freed explicitly before raising, not via defer, matching the existing freeThenRaise pattern). Five mutation-checkable tests (design section 5.1-5.5 / TC-LUA-08-01, TC-LUA-09-01, TC-LUA-10-01, TC-LUA-10-02, TC-LUA-10-03) added in new src/lua/limiter_wiring_test.zig, wired into src/lua_test_root.zig. Updated the two pre-existing createSandboxedState call sites (execution_test.zig, capability_enforcement_test.zig) plus lua_test_root.zig for the new signature. KNOWN SIGNATURE CORRECTION applied per CDV-0169-5 (pre-authorized, design section 11): std.Thread.sleep does not exist in this repo's Zig 0.16.0 (std.Thread only has spawn/join/detach/yield/getName/setName). std.c.nanosleep is declared for every native_os including windows, but does not actually work on Windows because std.c.time_t resolves to void there (confirmed via a genuine zig build test-lua compile error: 'expected integer or vector, found void' on std.c.timespec.sec). Final implementation uses Win32 Sleep() from kernel32.dll on Windows (declared directly, matching time_source.zig's own precedent of reaching into windows.ntdll when std does not provide a primitive) and std.c.nanosleep on POSIX, branched on builtin.os.tag == .windows, same pattern time_source.zig's currentNanoTimestamp already uses. INCIDENTAL FIX (test-infra, in-scope per design section 11 item 3): TC-LUA-10-02 needed a way to make a mocked platform.call_service response take real wall-clock time, which the existing simulation harness had no seam for. Added MockResponse.delay_ms (default 0, zero production impact) honoured by service_interceptor.executeMockedServiceCall via a libc-free busy-poll wait (this module is compiled both with and without link_libc, so it cannot use timeout.zig's sleepNanos). While building that seam, discovered and fixed a genuine pre-existing bug: executeMockedServiceCall discarded its allocator parameter entirely and always cloned the response via the catalog's own allocator; any caller freeing the result with a different allocator (exactly what call_service.zig always did) corrupts allocator state on free. This was previously unreachable/unobserved because nothing in the codebase exercised the simulation path against a real activated simulation_runtime before this test existed. Fixed by re-cloning the response with the caller-supplied allocator in service_interceptor.zig. Mutation-tested by hand per instructions: (1) commented out the lua_sethook call inside installLimiter -- ran zig build test-lua, confirmed TC-LUA-08-01 and TC-LUA-10-01 hang the test binary indefinitely (process had to be killed) rather than completing with a limit-exceeded result, exactly as the design's mutation-check paragraphs predict; restored the exact original code and confirmed zig build test-lua is clean again. (2) disabled watchdogLoop's deadline check (kept the poll loop running but never set fired) -- ran zig build test-lua, confirmed TC-LUA-10-02 and TC-LUA-10-03 both fail (hasFired() stays false, watchdog check in call_service.zig never trips) exactly as predicted; restored the exact original code and confirmed zig build test-lua is clean again. One test-writing judgment call beyond the known sleep correction, documented inline: design section 5.4's assertion 'the call returns within a bounded window... under 2 seconds' is not achievable for a single synchronous blocking mock call, because executeMockedServiceCall is in-process/synchronous and the post-check can only run after it returns -- this is exactly what design section 2.5.4's own 'Honest scope limit' and section 11 item 1 already state (pre-check/post-check brackets the call, cannot make it return early). Implemented the test to assert the achievable claim instead: the call returns with success=false and the timeout message, taking at least the mock delay (not less) rather than materially less than it -- consistent with the design's own stated scope, not a silent weakening.",
+    "artifacts_out": [
+      "src/lua/instruction_limiter.zig",
+      "src/lua/timeout.zig",
+      "src/lua/executor.zig",
+      "src/lua/host_context.zig",
+      "src/lua/host_api/call_service.zig",
+      "src/lua/limiter_wiring_test.zig",
+      "src/lua/execution_test.zig",
+      "src/lua/capability_enforcement_test.zig",
+      "src/lua_test_root.zig",
+      "src/simulation/types.zig",
+      "src/simulation/service_interceptor.zig"
+    ],
+    "issues": [
+      {
+        "id": "MINOR-1",
+        "severity": "MINOR",
+        "description": "design section 5.4's stated assertion (call returns in under 2s while the mock sleeps 3s) is unachievable for a single synchronous blocking mocked call given executeMockedServiceCall is in-process/synchronous -- this is consistent with, not contradicting, the design's own section 2.5.4 'Honest scope limit' and section 11 item 1. Test written to assert the achievable claim (timeout error, elapsed >= mock delay) instead of the literal <2s upper bound. Documented inline in limiter_wiring_test.zig. Not filed as a GitHub issue: this is a test-implementation-level clarification of an already-self-acknowledged design limit, not a new defect.",
+        "affected_requirement": "LUA-10"
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH495-20260808",
+      "commit_sha_list": [
+        "944974da9b1739703513032ba8969c228301bfc6"
+      ],
+      "remote_branch": "origin/feature/WF03-GH495-20260808",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-DESIGNER (Step 3) / or TEST-RUNNER per WF-03 pipeline -- implementation complete, zig build/test/migrate all green, mutation-tested by hand for LUA-08 and LUA-10."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
