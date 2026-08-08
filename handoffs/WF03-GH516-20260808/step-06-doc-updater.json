@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH516-20260808/step-06-doc-updater.json",
   "created_at": "2026-08-08T11:53:26Z",
   "started_at": "2026-08-08T11:53:26Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T11:56:06Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -33,7 +33,18 @@
       "fn:git-merge"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Updated CHANGELOG.md with a concise ISS-0183/GH-516 entry covering the content_hash bytea/uuid type mismatch, the 4 transaction-masked bugs it unmasked (TC-REPO-04-01 off-by-one placeholder, TC-REPO-06-01 wrong column/type, TC-REPO-05-01/05-02 stale table name, TC-REPO-11-02 missing RETURNING), and the GBL-139 reconciliation migration (GBL-138 had replayed only GBL-134's shadow-table list, not GBL-136's separate 8-name list). Step Final: PR #584 all 5 CI checks green (Build and unit tests, Frontend checks, Pipeline bookkeeping, Platform status, Source linters) -- squash-merged to main at 395c6728c63bde867f11565a4f2817c0cdcf97b5. Feature branch feature/WF03-GH516-20260808 confirmed deleted from GitHub after fetch --prune. Project board for issue #516 was already at 'Done' when checked (both --target implemented and --target done calls reported no-op, no BOARD_UPDATE_FAILED). Returned to main, pulled ff-only, working tree clean before this commit. No concurrent-push rebase was needed for this step -- pull was already fast-forward.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "handoffs/WF03-GH516-20260808/step-06-doc-updater.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [],
+    "next_action": "Run complete"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
