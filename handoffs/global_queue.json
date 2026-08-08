@@ -41,17 +41,22 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0169",
+      "issue_id": "GH-495",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/495",
-      "title": "LUA-05..16 host API/limiter tests against real LuaJIT",
+      "title": "LUA-05..16 remain IN_PROGRESS: host API, capability, and limiter tests not yet written against real LuaJIT",
       "severity": "MAJOR",
-      "status": "RESOLVED",
-      "lock": null,
-      "added_at": "2026-08-06T20:03:10Z",
-      "started_at": "2026-08-06T21:49:18Z",
-      "completed_at": "2026-08-06T23:42:06Z",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-08T19:17:33Z"
+      },
+      "added_at": "2026-08-08T19:17:33Z",
+      "started_at": "2026-08-08T19:17:33Z",
+      "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 495,
+      "labels": []
     },
     {
       "issue_id": "ISS-0175",
