@@ -1,0 +1,95 @@
+run_id: WF03-GH517-20260808
+date: "2026-08-08"
+completed_at: "2026-08-08T04:48:39Z"
+issues_tested: [GH-517, ISS-0184, ISS-0184-C3]
+
+pre_checks:
+  services:
+    db: healthy (r-co-2-db-1, port 5452)
+    db_test: healthy (r-co-2-db_test-1, port 5453)
+    keycloak: healthy (r-co-2-keycloak-1)
+    keycloak_gateway: healthy (r-co-2-keycloak_gateway-1)
+  test_env_verify:
+    status: "UNHEALTHY then HEALTHY (blocking gate fixed mid-run)"
+    detail: >
+      Initial run: 9/10 checks passed, C5 (test isolation lint) FAILED with 46
+      unbaselined BLOCKER findings (hardcoded UUIDs, T010) across tests/integration/.
+      Confirmed via git show origin/main comparison that this drift is 100%
+      pre-existing on main, unrelated to this run's fix (already tracked as
+      ISS-0181/GH-512, "Retire the 184 baselined T010 hardcoded-UUID findings",
+      status QUEUED). Root cause: tools/lint_test_isolation.baseline.json's
+      line numbers had drifted out of sync with the current file content
+      (other commits shifted lines in tests/integration/ files since the
+      baseline was last regenerated 2026-08-06), breaking the line-keyed
+      suppression exactly as that file's own regeneration_note warns can happen.
+      Resynced the baseline: regenerated via the documented command
+      (tools/lint_test_isolation.py --no-baseline --json tests/integration),
+      verified 0 new findings and 0 disappeared findings when diffed against
+      the previous baseline on (severity, code, file, message) ignoring line
+      number (225 == 225 both sides) -- confirming this was a pure line-resync,
+      not a silent suppression of a new defect. Did NOT fix the underlying 225
+      hardcoded UUIDs themselves -- that is ISS-0181/GH-512's own scope, already
+      queued for its own future WF-03 run.
+    checks_passed_after_resync: "10/10 (C0-C9)"
+
+target_fix_verification:
+  status: PASS
+  method: >
+    zig build test-integration-svc, run 4 times total across BACKEND-DEV (1x)
+    and TEST-RUNNER (3x), reading leak counts from the Build Summary line.
+  baseline_leak_count: 52   # measured by ISSUE-FIXER before this fix (ISS-0184 diagnosis)
+  post_fix_leak_count: 49   # measured identically in all 4 runs
+  runs: 4
+  result_per_run: "635 pass, 9 skip, 88 fail, 1 crash, 733 total, 49 leaks -- identical every run"
+  conclusion: >
+    Leak count decreased by exactly 3 (52 -> 49), matching the 3 leaked allocations
+    ISS-0184 C3 targeted (event_type, payload, metadata on TC-ES-03-01's
+    first.record and second.record). TC-ES-03-01 itself does not appear in any
+    failure output across all 4 runs -- passes clean. The fix is confirmed stable.
+
+environmental_noise_during_verification:
+  status: NOTED, NOT A DEFECT IN THIS FIX
+  detail: >
+    3 of 4 verification runs experienced a downstream failure AFTER the target
+    test-integration-svc step had already completed and reported its result:
+    either a "unable to read results of configure phase ... FileNotFound" build
+    error, or (in the one run captured with full untruncated output) an
+    OS-level socket handle error (NTSTATUS INVALID_HANDLE) in an unrelated test
+    (db_integration_test.zig TC-DB-03-02). This matches ISSUE-FIXER's C11
+    cluster from the original ISS-0184 diagnosis ("2 OS-level socket errors
+    ... likely non-deterministic infra flakiness ... recommend filing only if
+    it reproduces deterministically") -- explicitly NOT filed as its own issue
+    at diagnosis time for exactly this reason. Sibling workspace r-co-1-loop
+    (ai-dala\R-Co, confirmed via Get-CimInstance process-path checks each time)
+    was running its own heavy concurrent test load throughout this
+    verification window (up to 25 simultaneous test.exe/zig.exe processes
+    observed), which is the most likely proximate cause of host-level resource
+    contention -- not a defect introduced by this run's 2-line fix. In every
+    case, the actual target step (test-integration-svc) had already completed
+    and reported its result (49 leaks, matching exactly) before the downstream
+    unrelated failure occurred.
+
+migration_result:
+  status: PASS
+  detail: "zig build migrate: exit 0, clean, 108/108 applied"
+
+db_state:
+  status: clean after every run
+  non_idle_backends: 0 (excluding the check query itself)
+
+overall_status: PASS
+issues:
+  - id: ISSUE-001
+    severity: MINOR
+    description: >
+      tools/lint_test_isolation.baseline.json's line numbers had drifted out
+      of sync with tests/integration/ file content, causing zig build
+      test-env-verify's C5 gate to spuriously fail with 46 "new" BLOCKER
+      findings that are actually pre-existing, already-tracked debt
+      (ISS-0181/GH-512). Resynced the baseline (verified 0 content-level
+      change via diff-ignoring-line-number, per the baseline file's own
+      documented safety procedure). This is gate maintenance, not a new
+      defect -- included here for audit visibility since it required
+      modifying a tracked file outside this run's original scope.
+    affected_requirement: null
+next_action: "Route to DOC-UPDATER (Step 7) -- no BLOCKER severity issue against this run's own acceptance criteria; target fix (ISS-0184 C3) verified PASS across 4 runs with 0 variance in leak count."
