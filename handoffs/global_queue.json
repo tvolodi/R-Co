@@ -569,14 +569,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/573",
       "title": "GBL-134 dropped tenant_default copies of 4 PER_TENANT-classified tables \u2014 possible data loss, already executed",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-08T09:22:16Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-08T09:22:16Z",
       "started_at": "2026-08-08T09:22:16Z",
-      "completed_at": null,
+      "completed_at": "2026-08-08T10:11:24Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 573,
