@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH580-20260808/step-01-issue-fixer.json",
   "created_at": "2026-08-08T10:53:34Z",
   "started_at": "2026-08-08T10:53:34Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T11:03:52Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -39,7 +39,25 @@
       "fn:register-issue"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Investigated GH-580/ISS-0623 (tenant_default's 75-migration reprovisioning burst at 2026-08-08 08:19:53-08:19:55 UTC in this workspace's bpm_test). NO IN-REPO CODE DEFECT FOUND. Root cause confirmed via this workspace's OWN handoff records: WF03-GH566-20260808 (ISS-0617/GH-566, running concurrently in this exact workspace) had BACKEND-DEV Step 03 (07:13:29-07:33:05Z) verify GBL-136 via direct ad-hoc psql application against bpm_test (after discovering/correcting a BPM_DB_URL vs BPM_TEST_DB_URL env-var mixup), and that SAME run's TEST-RUNNER Step 04 handoff self-reports, verbatim, 'an accidental full DB drop mid-run while investigating.' This fully explains the observed evidence: the burst window falls between Step 03's window and the next BACKEND-DEV step (07:47:11Z). Both of ORCH's original candidate mechanisms were ruled out WITH EVIDENCE: (1) bpm_drop_tenant_schema(nil-uuid) via a code path -- exhaustively grepped every call site across src/, tests/, tools/ (only 2 real callers: onboarding.zig saga compensate(), and spt01_iss0068_onboarding_schema_test.zig cleanupTenantSchema). Both are provably safe: tenant_id is only ever bound from gen_random_uuid() (SQL RETURNING) or std.testing.io.random() (Zig test), and the defer/errdefer invoking the drop is registered strictly AFTER that binding succeeds -- a failure before assignment returns before the defer line is reached, so it can never fire with a stale/nil/empty tenant_id. tools/clean_test_db.py's orphan-schema sweep also checked: explicitly excludes 'tenant_default' by name in every WHERE clause plus a ^tenant_[0-9a-f]{32}$ regex guard tenant_default never satisfies. src/db/provisioning.zig has no GH-533-class destructive recovery fallback (MigrationFailed just returns a typed error). (2) stale cross-workspace binary -- DISPROVEN via .env inspection: this workspace's bpm_test (port 5453, COMPOSE_PROJECT_NAME=r-co-2) is a genuinely separate Docker container/volume from the sibling checkout's bpm_test (port 5443, COMPOSE_PROJECT_NAME=r-co) -- not shared at all, so a stale binary from that sibling could not physically reach this container. This corrects ISS-0623's original filing, which had left this theory open. RESOLUTION: documented as an ad-hoc/unlogged manual DB-administration action taken during live debugging of an unrelated, concurrently-running WF-03 run in this same workspace -- new docs/anti-patterns.md entry added (Database/Migrations table) describing the pattern, the evidence trail, and the correct approach (retarget the committed zig build migrate tool via BPM_DB_URL override rather than ad-hoc psql during live diagnosis). CLEANUP: wrote migrations/GBL-138_iss0623_reconcile_tenant_default_reprovision.sql, a new forward-fix migration that re-applies GBL-134's and GBL-135's exact DROP logic (same table lists, same RESTRICT-only safety posture, same existence guards) against the resurrected duplicates -- GBL-134/GBL-135 themselves are immutable per this lineage's established convention (matching GBL-136/GBL-137's treatment of prior defects in this same chain). Applied via `zig build migrate` with BPM_DB_URL overridden to bpm_test's URL (the standard workaround for this repo's documented dev-vs-test migrate-target anti-pattern): 1 migration applied, tools/lint_dual_schema_table_names.py now returns exit 0 (0 duplicates) against bpm_test (was 18 BLOCKER findings). Also applied to bpm_dev (idempotent no-op, confirmed still 0 duplicates -- unaffected throughout, as ISS-0623 originally established). zig build: PASS (exit 0, silent/no errors). docs/issues/ISS-0623.json updated to status RESOLVED with full resolution narrative.",
+    "artifacts_out": [
+      "migrations/GBL-138_iss0623_reconcile_tenant_default_reprovision.sql",
+      "docs/anti-patterns.md",
+      "docs/issues/ISS-0623.json"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH580-20260808",
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": "pending",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b) \u2014 a new migration file (GBL-138) was written this step, and this session's own migration-lineage error history (GBL-134's 4-table misclassification/ISS-0620, GBL-136's follow-up, ISS-0621's diagnosis-file bug) is exactly the kind of recurring defect class CLAUDE.md's WF-03 pipeline table mandates a design-validator gate for before any migration is considered final. Even though GBL-138 only replays already-reviewed GBL-134/GBL-135 logic verbatim (no new classification decisions), the hard-gate table in CLAUDE.md's WF-03 pipeline (Step 2b, 'Always') does not carve out an exception for migrations that reuse prior logic, and this lineage's own track record argues against skipping the gate on a judgment call."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
