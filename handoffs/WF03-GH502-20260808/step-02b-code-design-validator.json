@@ -1,0 +1,137 @@
+{
+  "handoff_id": "682591cc-3345-4669-b64d-e74bca51fa1b",
+  "run_id": "WF03-GH502-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "CODE-DESIGN-VALIDATOR",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-08T13:37:58Z",
+  "started_at": "2026-08-08T13:37:58Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Step 2b (CODE-DESIGN-VALIDATOR)",
+    "requirement_ids": [
+      "ISS-0174",
+      "GH-502"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/502",
+    "branch": "feature/WF03-GH502-20260808",
+    "base_sha": "179307250c6c6422c8bc3fec83c5e5d2ea6b1030",
+    "decision": "RETAIN",
+    "related_handoff_ids": [
+      "90c81a45-67f3-4df7-89fc-352c47d43667"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0174-gh502-diagnosis.yaml",
+      "src/design/iss0174-gh502-capabilityset-summary-migration.md",
+      "tests/specs/ISS-0174-gh502-capabilityset-summary.md",
+      "src/lua/capabilities.zig",
+      "src/lua_test_root.zig",
+      "src/lua/host_context.zig"
+    ],
+    "artifacts_out": [
+      "docs/design-validation/ISS-0174-gh502-design-validation.md"
+    ]
+  },
+  "task": {
+    "description": "Validate the design artefact for ISS-0174 / GH-502 against the 11 mandatory checks (acceptance criteria coverage, S1-S5 substitution rule correctness, no implementation code in design, test spec concreteness, build wiring ambiguity, longjmp-unsafe contract, Zig 0.16 API mechanical correctness, deliberate-mutation procedure concreteness, SHOULD items deferred, regression risk bounded, lint clean).",
+    "acceptance_criteria": [
+      "python tools/lint_handoffs.py handoffs/WF03-GH502-20260808/ exits 0",
+      "registry.json update committed alongside audit log line",
+      "orchestrator.log VALIDATE line appended with UTC timestamp",
+      "Validation report at docs/design-validation/ISS-0174-gh502-design-validation.md with all 11 checks PASS/FAIL"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 11 validation checks PASS. Design artefact for ISS-0174 / GH-502 is complete, correct, and unambiguous. Decision RETAIN is recorded in four sections. Five substitution rules (S1-S5) are token-anchored and verified against Zig 0.16 unmanaged ArrayList API contracts. Longjmp-unsafe contract mirrors writeGrants doc comment style at host_context.zig:359. Test specification (TC-CS-01..05) is concrete with explicit expected outputs and allocator/ownership assertions. Build wiring is unambiguous: new test block appended after ISS-0153 block in src/lua_test_root.zig. Deliberate-mutation procedure is concrete (inject const _bad: u32 = 'definitely not a u32'; after defer buf.deinit(allocator);; run zig build test-lua; expect red; revert; expect green). SHOULD-1 and SHOULD-2 deferred to follow-up runs with explicit status. Regression risk bounded (signature unchanged, zero existing callers, new sort contract is a strict improvement over the previous unspecified HashMap iteration order). One MINOR caveat noted: the illustrative BEFORE/AFTER line numbers in design section 1 do not match the live source file (off by 11 lines); the S1-S5 rule table is the authoritative source and is correct. BACKEND-DEV should apply S1-S5 by token, not by line number.",
+    "check_results": [
+      {
+        "id": 1,
+        "check": "Acceptance criteria coverage",
+        "verdict": "PASS",
+        "evidence": "design sections 1, 2, 3, 4, 5, 6, 7 each cite a diagnosis YAML criterion"
+      },
+      {
+        "id": 2,
+        "check": "Interface / type completeness (S1-S5)",
+        "verdict": "PASS",
+        "evidence": "each rule from S1 to S5 verified by code-reading against actual source lines 49, 50, 53, 56, 60. MINOR caveat: illustrative line numbers in design section 1 BEFORE/AFTER blocks are off by 11 lines from the live source; the substitution rule table is the authoritative source and is correct"
+      },
+      {
+        "id": 3,
+        "check": "No implementation code in design",
+        "verdict": "PASS",
+        "evidence": "only stylised BEFORE/AFTER illustrative blocks; no live file modifications, no git apply blocks, no SQL DDL, no JSX"
+      },
+      {
+        "id": 4,
+        "check": "Test specification is concrete",
+        "verdict": "PASS",
+        "evidence": "TC-CS-01 literal (none) length 6; TC-CS-02 literal service:call:payment length 21; TC-CS-03 literal sorted audit:log, service:call:payment, variable:write; TC-CS-04 and TC-CS-05 implicit via leak detector"
+      },
+      {
+        "id": 5,
+        "check": "Build wiring is unambiguous",
+        "verdict": "PASS",
+        "evidence": "design section 4 specifies src/lua_test_root.zig insertion point after ISS-0153 block, test name string, and rationale for option (a) over option (b)"
+      },
+      {
+        "id": 6,
+        "check": "Longjmp-unsafe contract documented",
+        "verdict": "PASS",
+        "evidence": "design section 2 specifies doc comment that mirrors host_context.zig:359 writeGrants style; both halves reference ERR-2 and reference the other function"
+      },
+      {
+        "id": 7,
+        "check": "Substitution rules mechanically correct (Zig 0.16)",
+        "verdict": "PASS",
+        "evidence": "S1 .empty is the documented unmanaged constructor; S2-S5 unmanaged methods take (self, allocator, ...) signatures; empty-grants short-circuit unchanged because Allocator.dupe is receiver-shaped"
+      },
+      {
+        "id": 8,
+        "check": "Deliberate-mutation verification",
+        "verdict": "PASS",
+        "evidence": "design section 6 specifies concrete statement (const _bad: u32 = 'definitely not a u32';), concrete anchor (after defer buf.deinit(allocator);;), concrete expected outcomes (red then green), concrete revert command (git checkout src/lua/capabilities.zig)"
+      },
+      {
+        "id": 9,
+        "check": "SHOULD items deferred explicitly",
+        "verdict": "PASS",
+        "evidence": "design section 7 enumerates SHOULD-1, SHOULD-2, doc-comment audit, rename, and deletion in a dedicated table with status and rationale"
+      },
+      {
+        "id": 10,
+        "check": "Regression risk bounded",
+        "verdict": "PASS",
+        "evidence": "behavioural regression: signature unchanged, zero existing callers. Build-system regression: real call (not refAllDecls, not if-false-guarded). Iteration order: new sort contract is a strict improvement over the previous unspecified HashMap order. Allocator contract: error.OutOfMemory was already covered by managed ArrayList under 0.16"
+      },
+      {
+        "id": 11,
+        "check": "Lint clean",
+        "verdict": "PASS",
+        "evidence": "python tools/lint_handoffs.py handoffs/WF03-GH502-20260808/ exits 0 with 0 BLOCKER, 0 MAJOR, 0 MINOR"
+      }
+    ],
+    "checks_passed": 11,
+    "checks_total": 11,
+    "minor_caveats": [
+      "Illustrative BEFORE/AFTER line numbers in design section 1 do not match the live source file. The substitution rule table (S1-S5) is the authoritative source of edits and is correct. BACKEND-DEV should apply S1-S5 by token, not by line number."
+    ],
+    "artifacts_out": [
+      "docs/design-validation/ISS-0174-gh502-design-validation.md",
+      "handoffs/WF03-GH502-20260808/step-02b-code-design-validator.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3) for migration implementation. Apply S1-S5 by token against live source lines 49-60 of src/lua/capabilities.zig; append new test block at src/lua_test_root.zig after the ISS-0153 block; execute deliberate-mutation procedure from design section 6; capture mutation exit code in step-03-backend-dev.json result.must3_evidence field."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-08T13:37:58Z"
+}

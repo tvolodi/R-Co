@@ -1,0 +1,173 @@
+issue_id: "ISS-0174"
+severity: "MAJOR"
+gh_issue: "https://github.com/tvolodi/R-Co/issues/502"
+run_id: "WF03-GH502-20260808"
+diagnosed_at: "2026-08-08T13:31:28Z"
+diagnosed_by: "ISSUE-FIXER (WF-03 Step 1)"
+
+symptoms:
+  - "`src/lua/capabilities.zig:49` calls `std.ArrayList(u8).init(allocator)`, which has no `init` member under Zig 0.16 (the type is unmanaged; construction is spelled `.empty` with allocator passed per call)."
+  - "`src/lua/capabilities.zig:50` invokes `defer buf.deinit();` against the same unmanaged `ArrayList`, also using the managed-deinit signature."
+  - "`zig build test-lua` reports 71/71 tests passed; `zig build test` is green. The stale calls are never reached by any reachable code path, so Zig's lazy semantic analysis never opens the function body."
+  - "ISS-0169 design §4.4 / invariant ERR-2 established that this exact function allocates, and that allocating across `lua_error`'s `longjmp` would leak. `src/lua/host_context.zig:175` and `src/lua/host_context.zig:359` both comment that `writeGrants` walks the grant set directly into a fixed stack buffer precisely BECAUSE `CapabilitySet.summary()` is unsafe across `longjmp`."
+
+classification_table:
+  category: "A — Logic error in source (stale managed-API call inside a never-reached function body)"
+  category_decision: "FIX"
+  rationale: "Source is wrong. The test pinning pattern (ISS-0172 / GH-500) is a SEPARATE defect handled by a sibling issue; here we are concerned only with making the file compile and verifying that the body is genuinely analysed. The decision (retain vs delete `summary`) is what determines the fix shape — see `fix_plan`."
+  related_classification:
+    - id: "ISS-0172"
+      relation: "Sister issue. ISS-0172 / GH-500 documents that `_ = Module.TypeName` and `_ = someFn` pins do not force field-type resolution or function-body analysis. ISS-0174 is a CONCRETE INSTANCE of the blind spot ISS-0172 generalises, discovered by the deliberate-mutation procedure ISS-0172 prescribes."
+    - id: "ISS-0169 / GH-495"
+      relation: "Source. ERR-2 (no allocations across `lua_error` longjmp) was the original reason `summary()` was bypassed in favour of `writeGrants`. The current ISS-0174 case is the residual: `summary()` was kept for hypothetical external callers that never materialised."
+    - id: "ISS-0173 / GH-501"
+      relation: "Sister issue. Census of never-reached code; ISS-0174 is the `summary()` data point on that census, and acceptance criterion #6 asks the census to be extended to public functions with zero callers."
+
+root_cause:
+  precise_location:
+    - file: "src/lua/capabilities.zig"
+      lines: "44-63 (function `CapabilitySet.summary`)"
+      stale_calls:
+        - line: 49
+          token: "var buf = std.ArrayList(u8).init(allocator);"
+          zig_version: "0.16"
+          why_fails: "Unmanaged `std.ArrayList(u8)` has no `init`. Correct construction is `var buf: std.ArrayList(u8) = .empty;` (or `std.ArrayList(u8){}` with `undefined` items, but `.empty` is the documented idiom)."
+        - line: 50
+          token: "defer buf.deinit();"
+          zig_version: "0.16"
+          why_fails: "Unmanaged `deinit` requires the allocator argument: `defer buf.deinit(allocator);`. Without the allocator, `deinit` cannot free the backing storage."
+        - line: 53
+          token: "try buf.appendSlice(\", \");"
+          zig_version: "0.16"
+          why_fails: "Unmanaged `appendSlice` signature is `appendSlice(self: *Self, allocator: Allocator, items: []const T) !void`. Caller must pass `allocator`. Same for `line: 56` (`try buf.appendSlice(key.*);`)."
+        - line: 60
+          token: "return buf.toOwnedSlice();"
+          zig_version: "0.16"
+          why_fails: "Unmanaged `toOwnedSlice` signature is `toOwnedSlice(self: *Self, allocator: Allocator) ![]T`. Caller must pass `allocator`."
+  mechanism:
+    summary: "`src/lua_test_root.zig:95` pins the file with a BARE TYPE reference: `_ = lua.capabilities.CapabilitySet;`. Zig resolves struct field types lazily and never analyses a `pub fn` body that nothing reachable calls. Because `CapabilitySet.summary` has zero callers in the repository, its body is never opened, the stale `ArrayList.init` / `defer buf.deinit` / `appendSlice` / `toOwnedSlice` calls are never type-checked, and `zig build test-lua` reports green despite a hard compile error."
+    evidence_caller_census: "Searched every `.zig` file in the repository (excluding `zig-out/`, `zig-pkg/`, `.git/`, `node_modules/`, `_incoming/`, `memories/`) for any reference to `CapabilitySet.summary` or `.summary(` on a capability context. Result: 3 hits, all of them either (a) the definition itself in `src/lua/capabilities.zig:44`, or (b) two doc-comment references in `src/lua/host_context.zig:175` and `:359` that explicitly instruct callers NOT to use `summary()`. Zero real callers."
+    evidence_pin_pattern: "`src/lua_test_root.zig:95` reads `_ = lua.capabilities.CapabilitySet;` — bare type. ISS-0172 already documents that this form neither forces field-type resolution nor function-body analysis. The deliberate-mutation procedure ISS-0172 prescribes (inject a statement error into the unreferenced body, watch the target stay green) is what surfaced this issue."
+    evidence_longjmp_safety: "`src/lua/host_context.zig:175` and `:359` document ERR-2 and the rationale for `writeGrants`: `summary()` allocates, its result would leak across `lua_error`'s `longjmp`. Any future caller must either own the lifetime cleanly OR not call `summary` from a context that may raise Lua errors."
+  why_existing_gates_missed:
+    - "`zig build test` does not include `test-lua` (separate target). Even if it did, see next bullet."
+    - "`zig build test-lua` exits 0 because `refAllDecls` is documented shallow and the explicit pin is a bare type. Statement-level errors inside the body of an unreferenced `pub fn` are not surfaced."
+    - "`tools/lint_test_wiring.py` only checks that test-bearing files are reachable from an `addTest` root; it does not introspect the pin form. ISS-0172 acceptance criterion #4 calls for an upgrade; ISS-0174 inherits that gap."
+
+fix_plan:
+  decision: "MIGRATE `summary()` to the Zig 0.16 unmanaged ArrayList API and ADD a real call from a test that exercises both branches (empty + multi-grant). DO NOT delete."
+  decision_rationale:
+    - "Deletion would silently regress ISS-0169 ERR-2 reasoning: the function is a legitimate non-longjmp utility for any host API path that builds a message string OUTSIDE the Lua error frame (e.g. `host_api` startup diagnostics, audit log lines, REST-layer error responses for missing capability metadata). Deletion would force every such caller to duplicate the grant-iteration loop, which is exactly what `host_context.zig` did NOT do and instead built a private `Writer` for."
+    - "The function is small, the migration is mechanical (~10 lines), and a real test will lock in its semantics and prevent future regressions."
+    - "Retention is consistent with how the codebase already handles `summary()`-class utilities elsewhere: `writeGrants` exists as a private twin because it must be allocator-free inside the error frame, and `summary()` exists for every other context. Keeping both, with the unsafe one explicitly labelled as longjmp-unsafe, is the ISS-0169-prescribed architecture."
+  must_items:
+    - id: "MUST-1"
+      title: "Migrate `CapabilitySet.summary()` to Zig 0.16 unmanaged ArrayList API"
+      file: "src/lua/capabilities.zig"
+      lines: "44-63"
+      changes:
+        - "Replace `var buf = std.ArrayList(u8).init(allocator);` with `var buf: std.ArrayList(u8) = .empty;`."
+        - "Replace `defer buf.deinit();` with `defer buf.deinit(allocator);`."
+        - "Replace `try buf.appendSlice(\", \");` with `try buf.appendSlice(allocator, \", \");`."
+        - "Replace `try buf.appendSlice(key.*);` with `try buf.appendSlice(allocator, key.*);`."
+        - "Replace `return buf.toOwnedSlice();` with `return buf.toOwnedSlice(allocator);`."
+    - id: "MUST-2"
+      title: "Replace the bare-type pin in `src/lua_test_root.zig` with a real call to `summary()` for `src/lua/capabilities.zig`"
+      file: "src/lua_test_root.zig"
+      line: 95
+      reason: "ISS-0172 already documents that `_ = lua.capabilities.CapabilitySet;` does not force field-type resolution or function-body analysis. The fix is to make the test target ACTUALLY INVOKE the function — not merely pin its type."
+      proposed_form: "Either (a) add a `test \"ISS-0174: CapabilitySet.summary() compiles and renders both branches\"` block in `src/lua_test_root.zig` that constructs an empty `CapabilitySet`, asserts `summary(std.testing.allocator)` returns `\"(none)\"`, then adds two grants and asserts the joined string contains both grant strings and the `, ` separator; OR (b) call `summary()` from the existing `ISS-0169: the context round-trips through the registry` test path in `src/lua/host_context.zig:447`+ so the build target genuinely analyses the body. Option (a) is cleaner because it keeps the test root self-contained and does not change runtime semantics of the host-context test."
+    - id: "MUST-3"
+      title: "Deliberate-mutation verification of MUST-2"
+      procedure: "After MUST-2 lands, inject a deliberately bogus statement into the body of `CapabilitySet.summary` (e.g. `const _x: u32 = \"not an int\";`) and run `zig build test-lua`. The target MUST go red with a type error pointing at the injected statement. Revert the mutation. Capture the red exit in the step-02 (CODE-DESIGNER) and step-03 (BACKEND-DEV) handoffs as evidence the body is now genuinely analysed. This is the same procedure ISS-0172 prescribes and that originally surfaced this issue."
+    - id: "MUST-4"
+      title: "Decide and record: retain `summary()` or delete"
+      location: "This diagnosis YAML's `decision` field (above) is the recorded decision for the issue. The decision will also be cross-linked from `docs/anti-patterns.md` under the existing ISS-0169 ERR-2 entry once Step 7 (DOC-UPDATER) lands, so future readers can find the longjmp-safety rationale next to the function."
+      decision_recorded: "RETAIN. Migrate to 0.16 unmanaged API. The ERR-2 longjmp-unsafe contract is preserved by leaving the existing `writeGrants` allocator-free twin in place; `summary()` is the safe-to-use utility for non-longjmp call sites."
+  should_items:
+    - id: "SHOULD-1"
+      title: "Extend the ISS-0173 / GH-501 zero-callers census to all public functions in `src/lua/` (and optionally the rest of the repo)"
+      scope: "Public `pub fn` declarations in `src/lua/*.zig` that have zero callers. The function-level census adds data points beyond the existing file-level / module-level reachability check."
+      deliverable: "Append a new section to `docs/issues/ISS-0173.json` (or a follow-up report under `docs/issue-reports/`) listing every `pub fn` under `src/lua/` that has zero callers, classified as either (a) genuinely unused → candidate for deletion in a separate cleanup run, (b) intentionally retained as a public API surface for external callers, (c) test-only helper that exists for clarity but is not exercised (these are the ISS-0172 blind-spot class — flag each one explicitly)."
+      rationale: "ISS-0174 proves the census matters: a `pub fn` that is never called is a `pub fn` whose compile errors are invisible. Without a function-level census, the next stale-API call inside a `summary()`-class function will pass the build the same way."
+    - id: "SHOULD-2"
+      title: "Strengthen `tools/lint_test_wiring.py` to flag type-only pins"
+      rationale: "ISS-0172 acceptance criterion #4 already calls for this; SHOULD-2 is the same item restated here so the implementation team can address both ISS-0172 and ISS-0174 in a single linter upgrade. If the linter already detects this case (it does not, as of this diagnosis), SHOULD-2 is satisfied by reference."
+      check: "A test root whose only pins are bare type references (`_ = Module.TypeName;`) is flagged MAJOR with the message `pin is type-only — see ISS-0172 / ISS-0174 for the failure mode this bypasses`."
+
+regression_risk:
+  overall: "LOW for behavioural regression. MEDIUM for build-system regression if MUST-2 is implemented as an `if (false)`-guarded call (see caveat below)."
+  behavioural:
+    - "Migration to unmanaged ArrayList preserves `summary`'s public contract: `pub fn summary(self: *const CapabilitySet, allocator: std.mem.Allocator) ![]const u8`. Caller signature is unchanged. Return value (an owned slice) is unchanged. The only observable difference is the runtime behaviour on allocation failure, which now matches the documented `error{OutOfMemory}` of unmanaged ArrayList (was already the case for managed ArrayList under 0.16)."
+    - "Zero existing callers, so no caller can observe a behavioural change."
+  build_system:
+    - "If MUST-2 is implemented as an `if (false)`-guarded call, Zig's comptime-elimination MAY remove the body before semantic analysis in some configurations. The safe form is a non-comptime-eliminated call: e.g. `const slice = caps.summary(std.testing.allocator) catch unreachable; defer std.testing.allocator.free(slice);` inside a real `test` block, with the assertion gated on a runtime input."
+    - "`std.testing.refAllDecls` is shallow and does NOT close this gap on its own; MUST-2 must be a real call, not a refAllDecls entry."
+  longjmp_safety:
+    - "Migration does NOT change `summary`'s longjmp-unsafe status. The existing `writeGrants` path in `src/lua/host_context.zig` remains the only safe-to-call-with-`lua_error` path. If a future maintainer is tempted to use `summary()` inside a `lua_error`-raising context, the ERR-2 comment in `src/lua/host_context.zig:175` is the existing safeguard and is unaffected by this change."
+  related_areas_unchanged:
+    - "Every other file that calls `CapabilitySet.init`, `CapabilitySet.add`, `CapabilitySet.has`, or `CapabilitySet.deinit` is unaffected — only `summary()` changes."
+    - "`src/lua/host_context.zig`, `src/lua/executor.zig`, `src/lua/manifest.zig`, `src/lua/capability_enforcement_test.zig`, `src/lua/execution_test.zig` all call only the `init`/`add`/`has`/`deinit` surface; none of them import or call `summary`."
+
+verification_strategy:
+  pre_change_baseline:
+    - "`zig build test-lua` exits 0 with 71/71 tests passed."
+    - "`zig build test` exits 0."
+    - "`tools/verify_test_env.py` exits 0 (full infrastructure healthy — DB + Keycloak up)."
+  post_change_validation:
+    must_pass:
+      - "`zig build test-lua` exits 0 with the migrated `summary()` and the new real-call test."
+      - "`zig build test` exits 0."
+      - "`zig build test-env-verify` exits 0."
+      - "The new test (`ISS-0174: CapabilitySet.summary() compiles and renders both branches`) passes and asserts on (a) the empty-grants branch returning the literal `\"(none)\"`, (b) the multi-grant branch containing every inserted grant string and the `, ` separator, (c) the returned slice being a valid 0-terminator-free `[]const u8` (length matches a known sum of inserted-grant-len + 2 between each pair)."
+    mutation_test:
+      - "Inject `const _bad: u32 = \"definitely not a u32\";` into the body of `summary()` (anywhere after `defer buf.deinit(allocator);`)."
+      - "Run `zig build test-lua`. Target MUST exit non-zero with a Zig type error citing the injected statement. Capture the failure mode in the step-03 (BACKEND-DEV) handoff."
+      - "Revert the mutation. Re-run `zig build test-lua` to confirm the target returns to green."
+    lint:
+      - "`python tools/lint_handoffs.py handoffs/WF03-GH502-20260808/` exits 0 after every step handoff write."
+      - "`python tools/lint_test_isolation.py tests/integration` shows no new findings (this issue is `src/lua/`-scoped, not integration, so a delta here would indicate scope creep)."
+      - "`python tools/lint_test_wiring.py` is unchanged (SHOULD-2 is a follow-up, not a blocker)."
+  out_of_scope:
+    - "ISS-0172 / GH-500 (the pin-form upgrade and the linter upgrade) is handled in its own WF-03 run. This diagnosis treats ISS-0172 as a known context, not as scope to fix here."
+    - "ISS-0173 / GH-501 (zero-callers census) is acknowledged as SHOULD-1 but not in scope for this run."
+    - "Renaming or removing `summary()` is rejected per the fix_plan decision; not in scope."
+
+references_to_priors:
+  - "ISS-0169 / GH-495 — original ERR-2 design rationale for `writeGrants` vs `summary()` split."
+  - "ISS-0172 / GH-500 — pin-form blind spot. The procedure that surfaced this issue."
+  - "ISS-0173 / GH-501 — zero-callers census. SHOULD-1 in this diagnosis is the function-level extension of that census."
+  - "`src/lua/host_context.zig:175` and `:359` — existing doc comments explaining why `summary()` is longjmp-unsafe and why `writeGrants` exists."
+  - "Zig 0.16 release notes (`std.ArrayList` unmanaged migration) — authoritative source for the API change."
+
+acceptance_criteria_reproduced:
+  - criterion: "`src/lua/capabilities.zig` compiles under Zig 0.16 with function bodies genuinely analysed"
+    classification: "MUST"
+    addresses: ["MUST-1", "MUST-2"]
+    evidence_artifact: "`zig build test-lua` exits 0 after MUST-2 lands, AND the MUST-3 mutation test demonstrates the body is now opened by semantic analysis."
+  - criterion: "`std.ArrayList(u8).init(allocator)` migrated to unmanaged 0.16 API (`.empty` + allocator-passing `appendSlice`/`toOwnedSlice`/`deinit`)"
+    classification: "MUST"
+    addresses: ["MUST-1"]
+    evidence_artifact: "Diff of `src/lua/capabilities.zig` lines 49-60; new file content uses `.empty`, `appendSlice(allocator, …)`, `toOwnedSlice(allocator)`, `deinit(allocator)`."
+  - criterion: "A build target CALLS `CapabilitySet.summary()` and asserts on its output (empty + multi-grant)"
+    classification: "MUST"
+    addresses: ["MUST-2"]
+    evidence_artifact: "New `test` block in `src/lua_test_root.zig` (preferred) or in `src/lua/host_context.zig` test path. Asserts both the `\"(none)\"` branch and a multi-grant branch with at least two distinct capability strings."
+  - criterion: "Deliberate-mutation verification: inject statement error → `zig build test-lua` goes red"
+    classification: "MUST"
+    addresses: ["MUST-3"]
+    evidence_artifact: "Capture of `zig build test-lua` exit code 1 with the injected mutation, captured in the step-03 (BACKEND-DEV) handoff. Mutation is reverted before the run ends."
+  - criterion: "Decision recorded on whether `summary()` should exist at all (retain for non-longjmp callers or delete)"
+    classification: "MUST"
+    addresses: ["MUST-4"]
+    evidence_artifact: "This diagnosis YAML's `fix_plan.decision` field (RETAIN) and the cross-link from `docs/anti-patterns.md` (added in DOC-UPDATER Step 7)."
+  - criterion: "Census from #501 extended to public functions with zero callers"
+    classification: "SHOULD"
+    addresses: ["SHOULD-1"]
+    evidence_artifact: "Appended section in `docs/issues/ISS-0173.json` listing public `pub fn` declarations under `src/lua/` with zero callers, classified into the three buckets in SHOULD-1. Implementation may be deferred to a follow-up run; the requirement is to RECORD the census, not to fix every zero-caller it surfaces."
+
+classification_summary:
+  total_acceptance_criteria: 6
+  must: 5
+  should: 1
+  scope_note: "This is a diagnosis plan; no source files were modified in Step 1. Code changes are owned by Step 2 (CODE-DESIGNER), Step 3 (BACKEND-DEV), and the linter upgrade is owned by a separate run against ISS-0172."
