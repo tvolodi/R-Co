@@ -24,6 +24,8 @@ Checks (BLOCKER unless noted):
 Usage:
     python3 tools/lint_handoffs.py [handoffs_dir] [--quiet]
     python3 tools/lint_handoffs.py --changed         # only files changed vs origin/main
+    python3 tools/lint_handoffs.py --no-baseline     # disable ACKNOWLEDGED bucket
+    python3 tools/lint_handoffs.py selftest          # synthetic-fixture self-tests
 
 `--changed` is the CI mode. The corpus carries ~260 pre-existing BLOCKERs from
 before these checks existed (inverted timestamps, BOMs, hand-edited JSON). Those
@@ -32,6 +34,17 @@ defects the author did not introduce, and the predictable response to a gate
 that always fails is to stop believing it. `--changed` restricts findings to
 handoff files the branch actually touched, so CI blocks new defects while the
 backlog is worked separately.
+
+Separately, `tools/lint_handoffs.baseline.json` (ISS-0627 / GH #596) gives a
+225-finding subset of that same backlog — H003/H004/H005/H009, none of which
+has a recoverable correct value anywhere in the file that produced it — a
+third outcome: permanently ACKNOWLEDGED. An acknowledged finding is still
+individually printed on every run, under its own `[ACKNOWLEDGED]` label; it is
+excluded from exactly one thing, the BLOCKER/MAJOR count that decides the exit
+code. This composes as an independent second gate, after `--changed`'s own
+pre-existing-diff logic, not merged into it — see `load_lint_handoffs_baseline`
+and `matching_key_for` below. `--no-baseline` disables it, for validating the
+mechanism itself.
 
 Touching a file is not the same as introducing every finding it carries: a
 branch that only strips a BOM (H008) from a file that separately has an
@@ -58,6 +71,10 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_LINT_HANDOFFS_BASELINE = REPO_ROOT / "tools" / "lint_handoffs.baseline.json"
 
 LEGAL_RESULT_STATUS = {"PASS", "FAIL", "PARTIAL", "BLOCKED", "SKIPPED"}
 REQUIRED_KEYS = (
@@ -229,8 +246,26 @@ def lint_handoff_file(path: str, rel: str, findings: list[Finding]) -> dict | No
     return parsed
 
 
-def lint_orphans(runs: dict[str, list[tuple[str, dict]]], findings: list[Finding]) -> None:
-    """Report open handoffs that later steps in the same run ran past."""
+def lint_orphans(
+    runs: dict[str, list[tuple[str, dict]]],
+    findings: list[Finding],
+    capture: dict[int, list[str]] | None = None,
+) -> None:
+    """Report open handoffs that later steps in the same run ran past.
+
+    `capture`, when provided, records `later_completed`'s path list keyed by
+    `id(finding)` for each H009 Finding appended to `findings` — the same
+    intermediate value this function already computes internally but
+    otherwise discards after formatting the message. This is purely additive:
+    every existing caller (main()'s pre-baseline call path,
+    preexisting_run_finding_codes) omits the argument and is unaffected. It
+    exists so H009's baseline-matching key (§0.2/§1.3 of
+    src/design/iss0627-lint-handoffs-acknowledgment.md) can fold in the
+    sorted fingerprint of *which* later steps bypassed the orphan, not just
+    the count already embedded in the message — a plain
+    severity|code|path|message key cannot distinguish two different orphan
+    situations that happen to share the same later-completed count.
+    """
     for run_id, entries in runs.items():
         ordered = sorted(entries, key=lambda e: step_sort_key(e[1].get("step", "")))
         for idx, (rel, handoff) in enumerate(ordered):
@@ -242,16 +277,17 @@ def lint_orphans(runs: dict[str, list[tuple[str, dict]]], findings: list[Finding
                 if oh.get("status") == "COMPLETED"
             ]
             if later_completed:
-                findings.append(
-                    Finding(
-                        "H009",
-                        "MAJOR",
-                        rel,
-                        f"status is {handoff.get('status')} but {len(later_completed)} "
-                        f"later step(s) in run {run_id} are COMPLETED — the pipeline "
-                        "advanced past a step it never closed.",
-                    )
+                finding = Finding(
+                    "H009",
+                    "MAJOR",
+                    rel,
+                    f"status is {handoff.get('status')} but {len(later_completed)} "
+                    f"later step(s) in run {run_id} are COMPLETED — the pipeline "
+                    "advanced past a step it never closed.",
                 )
+                findings.append(finding)
+                if capture is not None:
+                    capture[id(finding)] = list(later_completed)
 
 
 def lint_clock_skew(
@@ -391,6 +427,96 @@ def lint_orchestrator_log(log_path: str, findings: list[Finding]) -> None:
                 'append-only: always open it with mode "a", never "w".',
             )
         )
+
+
+# --------------------------------------------------------------------------
+# ISS-0627 / GH #596: permanent-acknowledgment baseline (H003/H004/H005/H009)
+#
+# See src/design/iss0627-lint-handoffs-acknowledgment.md for the full design.
+# This is a strictly separate, independently-composed second gate from the
+# --changed mode's preexisting_file_finding_codes/preexisting_run_finding_codes
+# logic above (§4 of the design): that logic answers "did THIS branch
+# introduce this finding"; this baseline answers "has this specific
+# historical finding already been reviewed and accepted as permanent
+# record". Neither is aware of the other's internal logic.
+# --------------------------------------------------------------------------
+
+
+def matching_key_for(
+    finding: Finding, later_completed_by_id: dict[int, list[str]] | None = None
+) -> str:
+    """The baseline-matching key for `finding`, per design §1.3.
+
+    H003/H004/H005: `severity|code|path|message` — the message already
+    embeds the actual differing timestamp values (H003/H004) or is a fixed
+    string backed by a binary predicate with no third variable (H005), so
+    plain message-text matching is safe (design §0.1).
+
+    H009 only: the same string, plus a `|later_completed:<sorted,comma-joined
+    paths>` suffix. H009's message embeds only a COUNT of later-completed
+    steps, never which steps — two genuinely different orphan situations on
+    the same file can share an identical message (design §0.2's worked
+    collision scenario). The suffix is what prevents that collision; sorting
+    is explicit so key construction never depends on `later_completed`'s
+    incidental input ordering.
+    """
+    base = f"{finding.severity}|{finding.code}|{finding.path}|{finding.message}"
+    if finding.code != "H009":
+        return base
+    paths: list[str] = []
+    if later_completed_by_id is not None:
+        paths = later_completed_by_id.get(id(finding), [])
+    return base + f"|later_completed:{','.join(sorted(paths))}"
+
+
+def load_lint_handoffs_baseline(path: Path) -> dict:
+    """Load tools/lint_handoffs.baseline.json.
+
+    Returns {} (not None) if the file is absent or malformed — matching
+    tools/lint_test_isolation.py's load_baseline defensive pattern exactly
+    (design §6 error taxonomy): every H003/H004/H005/H009 finding then
+    reports normally, as if --no-baseline were passed. Not a crash, not a
+    silent full-suppression.
+    """
+    if not path.exists():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    issues = raw.get("issues", [])
+    if not isinstance(issues, list):
+        return {}
+
+    entries: dict[str, dict] = {}
+    for item in issues:
+        if not isinstance(item, dict):
+            continue
+        key = item.get("matching_key")
+        if not isinstance(key, str):
+            continue
+        entries[key] = item
+    return {"entries": entries, "reasons": raw.get("reasons", {})}
+
+
+def baseline_reason_for(baseline: dict, entry: dict) -> str:
+    """Resolve an entry's reason_ref to display text, per design §6 error
+    taxonomy: a reason_ref that can't be resolved degrades to a visible
+    placeholder string, never a crash or silent blank."""
+    ref = entry.get("reason_ref")
+    if not isinstance(ref, str):
+        return "(no reason_ref recorded)"
+    if ref.startswith("adhoc:"):
+        return ref[len("adhoc:") :]
+    reasons = baseline.get("reasons", {})
+    if isinstance(reasons, dict) and ref in reasons:
+        return reasons[ref]
+    return (
+        f"(reason_ref {ref!r} not found in baseline reasons map — "
+        "see tools/lint_handoffs.baseline.json)"
+    )
 
 
 def changed_handoff_files(base: str = "origin/main") -> set[str] | None:
@@ -564,9 +690,225 @@ def preexisting_run_finding_codes(
     return dict(by_path)
 
 
+# --------------------------------------------------------------------------
+# selftest -- plain assert-style checks against synthetic fixtures
+#
+# Follows the tools/reqctl.py cmd_selftest convention (also used by
+# tools/repair_handoff_bookkeeping.py's own selftest subcommand): plain
+# assert-style comparisons against synthetic fixtures, no pytest/unittest.
+# Covers TS-BASELINE-01..04 from
+# src/design/iss0627-lint-handoffs-acknowledgment.md §7. TS-BASELINE-05 (the
+# generation script's differential check against lint_orphans) lives in
+# tools/generate_lint_handoffs_baseline.py's own selftest, since it exercises
+# that script's local orphan-walk copy, not anything in this file.
+# --------------------------------------------------------------------------
+
+
+def _apply_baseline_filter(
+    findings: list[Finding],
+    baseline_entries: dict[str, dict],
+    later_completed_by_id: dict[int, list[str]] | None = None,
+) -> tuple[list[Finding], list[Finding]]:
+    """Split findings into (remaining, acknowledged) per matching_key_for.
+
+    Factored out of main() so selftest exercises the exact same filtering
+    logic the CLI path runs, not a reimplementation of it.
+    """
+    remaining: list[Finding] = []
+    acknowledged: list[Finding] = []
+    for f in findings:
+        key = matching_key_for(f, later_completed_by_id)
+        if key in baseline_entries:
+            acknowledged.append(f)
+        else:
+            remaining.append(f)
+    return remaining, acknowledged
+
+
+def cmd_selftest() -> int:
+    failures: list[str] = []
+
+    def check(name: str, got, want) -> None:
+        if got != want:
+            failures.append(f"{name}: got {got!r}, want {want!r}")
+
+    def check_true(name: str, cond: bool) -> None:
+        if not cond:
+            failures.append(f"{name}: expected True, got False")
+
+    # ---- TS-BASELINE-01: a baseline-matched finding is excluded from the
+    # gating count but still printed ----
+    f_h003 = Finding(
+        "H003",
+        "BLOCKER",
+        "handoffs/FIX-01/step-01-x.json",
+        "completed_at (2026-05-23T01:10:00Z) is earlier than started_at "
+        "(2026-05-23T04:40:00Z). Timestamps must come from the shell clock, "
+        "never from session context. This corrupts retrospective variance "
+        "calculations.",
+    )
+    key_01 = matching_key_for(f_h003)
+    baseline_entries_01 = {key_01: {"reason_ref": "H003", "acknowledged_at": "t", "acknowledged_by": "who"}}
+    remaining_01, acked_01 = _apply_baseline_filter([f_h003], baseline_entries_01)
+    counts_01 = defaultdict(int)
+    for f in remaining_01:
+        counts_01[f.severity] += 1
+    check("TS-BASELINE-01 BLOCKER count excludes acknowledged", counts_01["BLOCKER"], 0)
+    check_true("TS-BASELINE-01 acknowledged contains the finding", len(acked_01) == 1 and acked_01[0] is f_h003)
+    exit_code_01 = 1 if (counts_01["BLOCKER"] or counts_01["MAJOR"]) else 0
+    check("TS-BASELINE-01 exit code is 0", exit_code_01, 0)
+    # Mutation check: skip the filtering step entirely -> BLOCKER count is 1, exit is 1.
+    counts_01_nofilter = defaultdict(int)
+    for f in [f_h003]:
+        counts_01_nofilter[f.severity] += 1
+    check("TS-BASELINE-01 mutation check: no filter -> BLOCKER=1", counts_01_nofilter["BLOCKER"], 1)
+    check(
+        "TS-BASELINE-01 mutation check: no filter -> exit=1",
+        1 if (counts_01_nofilter["BLOCKER"] or counts_01_nofilter["MAJOR"]) else 0,
+        1,
+    )
+
+    # ---- TS-BASELINE-02: a brand-new finding is NOT excluded, even on a
+    # file with existing baseline entries ----
+    f_h003_pair_b = Finding(
+        "H003",
+        "BLOCKER",
+        "handoffs/FIX-01/step-01-x.json",
+        "completed_at (2026-06-01T01:10:00Z) is earlier than started_at "
+        "(2026-06-01T04:40:00Z). Timestamps must come from the shell clock, "
+        "never from session context. This corrupts retrospective variance "
+        "calculations.",
+    )
+    key_02 = matching_key_for(f_h003_pair_b)
+    check_true("TS-BASELINE-02 pair A/B keys differ", key_02 != key_01)
+    remaining_02, acked_02 = _apply_baseline_filter([f_h003_pair_b], baseline_entries_01)
+    counts_02 = defaultdict(int)
+    for f in remaining_02:
+        counts_02[f.severity] += 1
+    check("TS-BASELINE-02 BLOCKER count is 1 (new finding reports)", counts_02["BLOCKER"], 1)
+    check("TS-BASELINE-02 acknowledged is empty", len(acked_02), 0)
+    # Mutation check: weaken the key to severity|code|path only (drop message).
+    weak_key_a = f"{f_h003.severity}|{f_h003.code}|{f_h003.path}"
+    weak_key_b = f"{f_h003_pair_b.severity}|{f_h003_pair_b.code}|{f_h003_pair_b.path}"
+    check_true(
+        "TS-BASELINE-02 mutation check: weak key collides A/B",
+        weak_key_a == weak_key_b,
+    )
+
+    # ---- TS-BASELINE-03: H009 collision case from design §0.2/§1.4 is
+    # correctly disambiguated ----
+    f_h009_snap1 = Finding(
+        "H009",
+        "MAJOR",
+        "handoffs/WF02-x/step-02a-....json",
+        "status is PENDING but 2 later step(s) in run WF02-x are COMPLETED "
+        "— the pipeline advanced past a step it never closed.",
+    )
+    later_completed_snap1 = {
+        id(f_h009_snap1): [
+            "handoffs/WF02-x/step-03-....json",
+            "handoffs/WF02-x/step-04-....json",
+        ]
+    }
+    key_h009_snap1 = matching_key_for(f_h009_snap1, later_completed_snap1)
+
+    f_h009_snap2 = Finding(
+        "H009",
+        "MAJOR",
+        "handoffs/WF02-x/step-02a-....json",
+        "status is PENDING but 2 later step(s) in run WF02-x are COMPLETED "
+        "— the pipeline advanced past a step it never closed.",
+    )
+    later_completed_snap2 = {
+        id(f_h009_snap2): [
+            "handoffs/WF02-x/step-04-....json",
+            "handoffs/WF02-x/step-05-....json",
+        ]
+    }
+    key_h009_snap2 = matching_key_for(f_h009_snap2, later_completed_snap2)
+
+    plain_key_snap1 = f"{f_h009_snap1.severity}|{f_h009_snap1.code}|{f_h009_snap1.path}|{f_h009_snap1.message}"
+    plain_key_snap2 = f"{f_h009_snap2.severity}|{f_h009_snap2.code}|{f_h009_snap2.path}|{f_h009_snap2.message}"
+    check_true("TS-BASELINE-03 plain message-only keys are equal (the collision is real)", plain_key_snap1 == plain_key_snap2)
+    check_true("TS-BASELINE-03 full matching_key (with fingerprint) differs", key_h009_snap1 != key_h009_snap2)
+
+    baseline_entries_03 = {key_h009_snap1: {"reason_ref": "H009", "acknowledged_at": "t", "acknowledged_by": "who"}}
+    remaining_03, acked_03 = _apply_baseline_filter([f_h009_snap2], baseline_entries_03, later_completed_snap2)
+    counts_03 = defaultdict(int)
+    for f in remaining_03:
+        counts_03[f.severity] += 1
+    check("TS-BASELINE-03 MAJOR count is 1 (new H009 reports)", counts_03["MAJOR"], 1)
+    check("TS-BASELINE-03 acknowledged is empty", len(acked_03), 0)
+    # Mutation check: revert to the plain (insufficient) key scheme -> Snapshot
+    # 2 wrongly matches Snapshot 1's baseline entry.
+    baseline_entries_03_weak = {plain_key_snap1: {"reason_ref": "H009", "acknowledged_at": "t", "acknowledged_by": "who"}}
+    check_true(
+        "TS-BASELINE-03 mutation check: plain key wrongly matches",
+        plain_key_snap2 in baseline_entries_03_weak,
+    )
+
+    # ---- TS-BASELINE-04: --no-baseline restores full gating ----
+    # Simulates main()'s no_baseline branch: baseline entries never loaded /
+    # filter never applied.
+    findings_04 = [f_h003]
+    counts_04 = defaultdict(int)
+    for f in findings_04:
+        counts_04[f.severity] += 1
+    check("TS-BASELINE-04 BLOCKER count is 1 under --no-baseline", counts_04["BLOCKER"], 1)
+    exit_code_04 = 1 if (counts_04["BLOCKER"] or counts_04["MAJOR"]) else 0
+    check("TS-BASELINE-04 exit code is 1 under --no-baseline", exit_code_04, 1)
+    # Mutation check: flag wired to hide the print only, while still filtering
+    # (defeats the audit purpose) -> BLOCKER count would incorrectly be 0.
+    remaining_04_mutated, _ = _apply_baseline_filter(findings_04, baseline_entries_01)
+    counts_04_mutated = defaultdict(int)
+    for f in remaining_04_mutated:
+        counts_04_mutated[f.severity] += 1
+    check_true(
+        "TS-BASELINE-04 mutation check: print-only-suppression bug drops BLOCKER to 0",
+        counts_04_mutated["BLOCKER"] == 0,
+    )
+
+    for f in failures:
+        print(f"FAIL  {f}")
+    if failures:
+        print(f"\n{len(failures)} selftest failure(s)")
+        return 1
+    print("lint_handoffs selftest: all checks passed")
+    return 0
+
+
 def main(argv: list[str]) -> int:
-    args = [a for a in argv[1:] if not a.startswith("--")]
-    flags = {a for a in argv[1:] if a.startswith("--")}
+    rest = argv[1:]
+
+    if rest and rest[0] == "selftest":
+        return cmd_selftest()
+
+    baseline_path = DEFAULT_LINT_HANDOFFS_BASELINE
+    no_baseline = False
+    positional: list[str] = []
+    flags: set[str] = set()
+    i = 0
+    while i < len(rest):
+        a = rest[i]
+        if a == "--baseline":
+            if i + 1 >= len(rest):
+                print("error: --baseline requires a PATH argument", file=sys.stderr)
+                return 2
+            baseline_path = Path(rest[i + 1])
+            i += 2
+            continue
+        if a == "--no-baseline":
+            no_baseline = True
+            i += 1
+            continue
+        if a.startswith("--"):
+            flags.add(a)
+            i += 1
+            continue
+        positional.append(a)
+        i += 1
+
+    args = positional
     quiet = "--quiet" in flags
 
     only_changed: set[str] | None = None
@@ -611,7 +953,8 @@ def main(argv: list[str]) -> int:
             run_id = parsed.get("run_id") or os.path.basename(root)
             runs[run_id].append((rel, parsed))
 
-    lint_orphans(runs, findings)
+    later_completed_by_id: dict[int, list[str]] = {}
+    lint_orphans(runs, findings, capture=later_completed_by_id)
     lint_clock_skew(runs, findings)
 
     # The registry and log live at the handoffs/ root, not inside a run dir.
@@ -664,22 +1007,63 @@ def main(argv: list[str]) -> int:
                 kept.append(f)
             findings = kept
 
+    # ISS-0627 / GH #596 permanent-acknowledgment baseline. Runs AFTER the
+    # --changed pre-existing-diff block above, operating on whatever findings
+    # list that block already produced (design §4's composition rule) — an
+    # independent second gate, not merged into --changed's own logic.
+    acknowledged: list[Finding] = []
+    baseline: dict = {}
+    if not no_baseline:
+        baseline = load_lint_handoffs_baseline(Path(baseline_path).resolve())
+        entries = baseline.get("entries", {}) if baseline else {}
+        if entries:
+            remaining: list[Finding] = []
+            for f in findings:
+                key = matching_key_for(f, later_completed_by_id)
+                if key in entries:
+                    acknowledged.append(f)
+                    continue
+                remaining.append(f)
+            findings = remaining
+
     findings.sort(key=lambda f: (SEVERITY_ORDER.get(f.severity, 9), f.code, f.path))
+    acknowledged.sort(key=lambda f: (SEVERITY_ORDER.get(f.severity, 9), f.code, f.path))
 
     counts = defaultdict(int)
     for f in findings:
         counts[f.severity] += 1
+    ack_count = len(acknowledged)
 
     if not quiet:
         for f in findings:
             print(f)
-        if findings:
+        if acknowledged:
+            print()
+            entries = baseline.get("entries", {}) if baseline else {}
+            for f in acknowledged:
+                key = matching_key_for(f, later_completed_by_id)
+                entry = entries.get(key, {})
+                reason = baseline_reason_for(baseline, entry)
+                print(f"[ACKNOWLEDGED] {f.severity:7s} {f.code}  {f.path}")
+                print(f"               {f.message}")
+                print(
+                    f"               reason: {reason}  "
+                    f"(acknowledged {entry.get('acknowledged_at', '?')} "
+                    f"by {entry.get('acknowledged_by', '?')})"
+                )
+        if findings or acknowledged:
             print()
 
-    print(
+    if ack_count and not no_baseline:
+        print(f"Acknowledged {ack_count} issue(s) from baseline: {baseline_path}")
+
+    summary = (
         f"lint_handoffs: {total} handoffs checked — "
         f"{counts['BLOCKER']} BLOCKER, {counts['MAJOR']} MAJOR, {counts['MINOR']} MINOR"
     )
+    if ack_count:
+        summary += f", {ack_count} ACKNOWLEDGED"
+    print(summary)
 
     return 1 if (counts["BLOCKER"] or counts["MAJOR"]) else 0
 
