@@ -1,0 +1,55 @@
+{
+  "handoff_id": "cc1d9740-2d49-49c1-92db-f56b45a1017e",
+  "run_id": "WF03-GH504-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH504-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T17:50:06Z",
+  "started_at": "2026-08-08T17:55:25Z",
+  "completed_at": "2026-08-08T17:56:41Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-07"
+    ],
+    "related_handoff_ids": [
+      "9ee764e0-d329-4842-a27a-0d8f821315d2"
+    ],
+    "artifacts_in": [
+      "src/design/iss0176-lua07-audit-manifest-hash-minimal-wiring.md",
+      "src/engine/instance.zig",
+      "src/engine/plugin_registry.zig",
+      "migrations/020_obs03_audit_entries.sql",
+      "migrations/009_audit_log.sql"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0176-lua07-audit-manifest-hash-minimal-wiring.md for GH-504/ISS-0176 (LUA-07 criterion 2). This design implements a HUMAN-OPERATOR-CONFIRMED scope decision (do not re-litigate whether minimal synthetic wiring is the right call -- that decision was made explicitly outside the pipeline). Your job is to validate the DESIGN's technical correctness and honesty, not the scope decision itself. Verify independently: (1) the design's core claim -- that no engine call site currently invokes the Lua executor -- re-confirm via your own grep of src/engine/ for ScriptResult/executeScript; (2) the EXT-03 plugin-registry rejection reasoning (design section 2.1) -- confirm registerGlobalPluginHandler/registerPluginHandler really are called only from test files, never from src/main.zig or any production bootstrap, by checking yourself; (3) confirm recordExecutionErrorEventInTx (cited as the closest existing precedent for this function's transaction-boundary convention) genuinely exists at the cited location in src/engine/instance.zig with the signature/behavior described; (4) confirm the audit-table schema decision (new dedicated table vs the two rejected alternatives) is well-reasoned against the ACTUAL schemas of audit_entries and audit_log -- read both migration files yourself; (5) confirm the mutation-test design (section 5) is genuinely mutation-checkable as claimed -- would deleting the INSERT or its manifest_hash binding actually make the test fail, or is there a gap in the reasoning; (6) confirm the design's honesty framing (the doc-comment text prescribed for the new function, explicitly stating it is NOT the SERVICE_TASK handler) is precise enough that BACKEND-DEV cannot accidentally under- or over-state what was built when writing the actual code; (7) confirm no implementation code beyond illustrative signatures is present (Type E per templates/lego-catalog.md).\n\nREWORK 1 (completed directly by ORCH, not re-dispatched to CODE-DESIGNER, since both fixes are exactly the single-line-plus-cosmetic corrections the validator itself named precisely, with no remaining ambiguity):\n- ISS-0176-DESIGN-REVIEW-1 (MAJOR): line 108's doc-comment text corrected from 'audit_entries' to 'lua_script_execution_audit', matching Sec.3.1/3.2's actual, unchanged, correct table decision.\n- ISS-0176-DESIGN-REVIEW-2 (MINOR): illustrative migration filename in the header (line 5) and Sec.3.2 corrected from 'migrations/0NN_iss0176_audit_entries_manifest_hash.sql' to 'migrations/0NN_iss0176_lua_script_execution_audit.sql'.\n- Verified via grep: all 7 remaining 'audit_entries' references in the document are legitimate (citing the real, unchanged, existing audit_entries table in rejection/comparison contexts, e.g. 'same convention as audit_entries.actor_id') -- none refer to the new table incorrectly.\n- Re-ran python tools/lint_design_artefact.py: exit 0, no issues.\nNo other change made -- all 5 core technical claims and the mutation-test design were already independently confirmed accurate by this same validation pass.",
+    "acceptance_criteria": [
+      "No-engine-call-site claim independently reconfirmed",
+      "EXT-03 rejection reasoning independently confirmed against actual call sites",
+      "recordExecutionErrorEventInTx precedent confirmed to genuinely exist as cited",
+      "Audit-table schema decision confirmed well-reasoned against actual existing schemas",
+      "Mutation-test design confirmed genuinely mutation-checkable",
+      "Honesty framing confirmed precise and unambiguous for BACKEND-DEV to implement faithfully",
+      "No implementation code beyond illustrative Type E signatures",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 1 re-review of src/design/iss0176-lua07-audit-manifest-hash-minimal-wiring.md: both findings from the prior FAIL are confirmed closed. Line 108's doc-comment text now correctly reads 'lua_script_execution_audit' (was 'audit_entries'), matching the design's own unchanged, correct table decision in Sec.3.1/3.2 (ISS-0176-DESIGN-REVIEW-1, MAJOR, closed). The illustrative migration filename in the header (line 5) and Sec.3.2 now reads 'migrations/0NN_iss0176_lua_script_execution_audit.sql' (was '...audit_entries_manifest_hash.sql') (ISS-0176-DESIGN-REVIEW-2, MINOR, closed). Grep confirms all 7 remaining 'audit_entries' references in the document are legitimate citations of the real, unchanged, existing audit_entries table (OBS-03 header citation, Sec.3.1 rejected-alternative analysis, Sec.3.2 column-convention citations, Sec.6 out-of-scope note) -- none refer to the new lua_script_execution_audit table incorrectly. git diff 17e4410..HEAD shows only these two corrections; no other content drift. python tools/lint_design_artefact.py exits 0, no issues. The 5 previously-confirmed substantive claims (no-engine-call-site, EXT-03 rejection, recordExecutionErrorEventInTx precedent, audit-table schema decision, mutation-test design) were untouched by this rework and remain accurate.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

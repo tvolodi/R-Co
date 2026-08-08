@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-07T16:44:06Z'
+last_updated: '2026-08-08T18:29:04Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1878,27 +1878,25 @@ requirements:
       so luajit_bindings.zig is pure-Zig stubs and NO Lua script executes. RELEASED was not backed by
       anything runnable. Real runtime tracked by ISS-0161 / GH #474.'
   LUA-07:
-    status: IN_PROGRESS
+    status: RELEASED
     stage: 8
     priority: MUST
     title: Capability manifest validation
     implemented_in:
-    - src/lua/manifest.zig
-    - src/lua/executor.zig
+    - src/engine/lua_script_audit.zig
+    - migrations/095_iss0176_lua_script_execution_audit.sql
+    - tests/integration/iss0176_lua07_audit_manifest_hash_test.zig
     test_spec: tests/specs/LUA-07.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    note: 'PARTIAL (ISS-0169 tranche 1, WF03-ISS-0169-20260806). Criterion 1 SATISFIED in src/lua: manifest.zig
-      digests script source + sorted 0x00-separated capabilities; verifyManifestHash is constant-time;
-      executeScriptWithManifest rejects a hash mismatch before any Lua state is created. Criterion 2 NOT
-      SATISFIED: the hash must appear in the execution audit record, but the audit row is written by the
-      engine, not by src/lua -- manifest_hash is produced on ScriptResult and consumed by nobody. Deliberately
-      NOT set RELEASED: TEST-DESIGN-VALIDATOR Step 4b ruled criterion 2 only partially satisfiable within
-      src/lua, and releasing on the satisfied half would repeat the ISS-0153 pattern ISS-0169 exists to
-      correct. Engine-side write filed as ISS-0176 / https://github.com/tvolodi/R-Co/issues/504 and queued.
-      See src/design/lua-capability-enforcement.md section 11 follow-up 2.'
+    note: 'RELEASED via ISS-0176/GH-504/PR#588. Criterion 2 (manifest_hash in execution audit record)
+      is satisfied via a deliberately minimal, human-operator-confirmed SYNTHETIC wiring path: executeScriptForAudit
+      (src/engine/lua_script_audit.zig) is real code but its only caller is the new integration test (tests/integration/iss0176_lua07_audit_manifest_hash_test.zig),
+      NOT the engine''s normal process-execution flow. The full SERVICE_TASK-with-script engine integration
+      remains unbuilt -- future roadmap item, see src/design/lua-integration.md section 25. Do not read
+      this as scripts now running as part of normal process execution -- they do not yet.'
   LUA-08:
     status: IN_PROGRESS
     stage: 8
