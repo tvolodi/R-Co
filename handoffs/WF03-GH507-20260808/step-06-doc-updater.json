@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH507-20260808/step-06-doc-updater.json",
   "created_at": "2026-08-08T12:28:12Z",
   "started_at": "2026-08-08T12:28:12Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T12:30:48Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -33,7 +33,15 @@
       "fn:git-merge"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Updated CHANGELOG.md with ISS-0178/GH-507 entry (clean-checkout CI job, mutation-tested + confirmed green on real PR CI run). PR #585 confirmed all 6 checks green (including Clean-checkout LuaJIT build (test-lua), 1m9s) then squash-merged (merge commit 9b47a19215d7a71c137b4b0ba82eb0496dfeb164), feature branch deleted from GitHub and pruned locally. Project board for issue #507 confirmed at Done (already advanced; both implemented and done target calls were no-ops). Repo returned to clean main at 9b47a19.",
+    "artifacts_out": [
+      "CHANGELOG.md"
+    ],
+    "issues": [],
+    "next_action": "Run complete"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
