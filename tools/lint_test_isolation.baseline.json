@@ -2,9 +2,9 @@
   "version": 2,
   "generated_at": "2026-08-08T05:30:00Z",
   "source": "tools/lint_test_isolation.py --no-baseline --json tests/integration",
-  "regenerated_by": "WF03-GH512-20260808 (GitHub #512 / ISS-0181, T010 hardcoded UUID migration)",
-  "regeneration_note": "T010 baseline reduced from 184 to 73: 111 sites converted to TestHarness.newUuid()/newUuidString(allocator) (batches 1-5) and 51 sites marked RETAIN with comment. The baseline now reflects only the remaining T010 sites. Diff on (severity, code, file, message) FIRST and confirm the new-findings count is 0 (computed in the verification step).",
-  "last_line_sync": "2026-08-08T04:01:42Z",
+  "regenerated_by": "WF03-GH512-20260808 (GitHub #512 / ISS-0181, T010 hardcoded UUID migration); +1 RETAIN (GH-512 platform-admin UUID substring-search target in gh512_t010_regression_test.zig:336 — design §R1)",
+  "regeneration_note": "T010 baseline 184→73 after migration. +1 RETAIN (GH-512 TC-RG-02 substring-search target on the canonical platform-admin UUID; design §R1 — not a fixture identity, it is the literal being counted). New T010 count = 74 entries in the baseline.",
+  "last_line_sync": "2026-08-08T12:42:18Z",
   "issues": [
     {
       "severity": "MAJOR",
@@ -803,6 +803,13 @@
       "file": "tests/integration/tm01_tenant_list_test.zig",
       "line": 60,
       "message": "hardcoded UUID `00000000-0000-0000-0000-000000000002` — generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
+      "file": "tests/integration/gh512_t010_regression_test.zig",
+      "line": 337,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
     }
   ]
 }
