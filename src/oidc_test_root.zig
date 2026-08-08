@@ -37,6 +37,20 @@
 //! `pool` reference in claim_mapping.zig is a function-parameter type, not a
 //! test-body connection. These 44 blocks are correct on `zig build test`.
 //!
+//! ## ISS-0172 / GH #500 — refAllDecls does not resolve struct field types
+//!
+//! Each `refAllDecls` call below IS direct on the leaf file (no `mod.zig`
+//! aggregator in between), so function bodies in these six files are already
+//! analysed. But `refAllDecls` still does not force resolution of a struct's
+//! OWN field types when that struct is merely declared, never instantiated —
+//! the same blind spot ISS-0172 found in src/lua/memory_limiter.zig's
+//! `mutex: std.Thread.Mutex` field (see src/lua_test_root.zig and
+//! src/simulation_test_root.zig for the full rationale and mutation-test
+//! evidence). `pinModuleTypes` closes that gap for every struct/union/enum
+//! these six files declare (~50 types across realm_deletion.zig,
+//! tenant_claim_source.zig, realm_tenant_binding.zig, realm_provisioning.zig,
+//! identity_stability.zig and claim_mapping.zig).
+//!
 //! Run via `zig build test-oidc-src` (also reached by `zig build test`).
 
 const std = @import("std");
@@ -48,6 +62,27 @@ pub const tenant_claim_source = @import("oidc/tenant_claim_source.zig");
 pub const realm_provisioning = @import("oidc/realm_provisioning.zig");
 pub const realm_deletion = @import("oidc/realm_deletion.zig");
 
+/// ISS-0172 / GH #500 — forces field-type resolution AND method-body analysis
+/// for every struct/union/enum declared at `T`'s top level; see
+/// src/simulation_test_root.zig for the full rationale and mutation-test
+/// evidence (including why `refAllDecls(field)` is needed in addition to
+/// `@sizeOf` — a type's own methods are declarations of the TYPE, not of the
+/// enclosing module, so `refAllDecls` on the module alone never reaches them).
+fn pinModuleTypes(comptime T: type) void {
+    inline for (comptime std.meta.declarations(T)) |decl| {
+        const field = @field(T, decl.name);
+        if (@TypeOf(field) == type) {
+            switch (@typeInfo(field)) {
+                .@"struct", .@"union", .@"enum" => {
+                    _ = @sizeOf(field);
+                    std.testing.refAllDecls(field);
+                },
+                else => {},
+            }
+        }
+    }
+}
+
 test {
     std.testing.refAllDecls(claim_mapping);
     std.testing.refAllDecls(identity_stability);
@@ -55,4 +90,12 @@ test {
     std.testing.refAllDecls(tenant_claim_source);
     std.testing.refAllDecls(realm_provisioning);
     std.testing.refAllDecls(realm_deletion);
+
+    // ISS-0172: struct/union/enum field-type resolution per leaf.
+    pinModuleTypes(claim_mapping);
+    pinModuleTypes(identity_stability);
+    pinModuleTypes(realm_tenant_binding);
+    pinModuleTypes(tenant_claim_source);
+    pinModuleTypes(realm_provisioning);
+    pinModuleTypes(realm_deletion);
 }

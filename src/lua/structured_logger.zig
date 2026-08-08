@@ -70,8 +70,19 @@ pub const StructuredLogger = struct {
         };
         defer self.allocator.free(message);
 
-        // Write to stderr (or a real logging backend in production)
-        const stderr = std.io.getStdErr();
-        _ = try stderr.writeAll(message);
+        // Write to stderr (or a real logging backend in production).
+        //
+        // ISS-0172 / GH #500: `std.io.getStdErr()` does not exist in Zig
+        // 0.16 ("root source file struct 'std' has no member named 'io'").
+        // This call site had never been analysed — src/lua_test_root.zig
+        // pinned StructuredLogger with a bare `_ = StructuredLogger;` type
+        // reference, which resolves the type name but neither its fields nor
+        // its methods' bodies, so the break stayed invisible through a green
+        // `zig build test-lua` until the pin was strengthened to force real
+        // analysis of this method. `std.debug.print` is this codebase's
+        // established 0.16-era stderr pattern (see the fallback error path
+        // immediately above, and src/config.zig/src/expr/benchmark.zig for
+        // the same idiom elsewhere).
+        std.debug.print("{s}", .{message});
     }
 };

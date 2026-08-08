@@ -1,0 +1,39 @@
+{
+  "handoff_id": "7e72c60f-5fb5-4741-b48a-969810439ad1",
+  "run_id": "WF03-GH500-20260808",
+  "workflow_id": "WF-03",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH500-20260808/step-06-doc-updater.json",
+  "created_at": "2026-08-08T19:11:58Z",
+  "started_at": "2026-08-08T19:11:58Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "e9462d21-b9e8-4998-b1b6-274eb4212638"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Update CHANGELOG.md for this WF-03 run (ISS-0172/GH-500, PR #589). No formal requirement ID -- do NOT run reqctl.py, no estimation.json -- skip retrospective. Note: another workspace (r-co-1-loop) may push to main concurrently -- rebase if needed, resolve any orchestrator.log conflict by keeping both sides chronologically (this session has already hit real conflicts on this file multiple times today, follow the same careful merge-both-sides discipline). Then perform Step Final: confirm PR #589 CI green, squash-merge, delete branch, update board for issue #500, return to clean main.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with a concise entry for ISS-0172/GH-500",
+      "PR #589 merged (squash) and feature branch deleted",
+      "GitHub issue #500 project board updated (implemented -> done)",
+      "Repo returned to a clean main after merge",
+      "No stale feature branch remains on GitHub"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
