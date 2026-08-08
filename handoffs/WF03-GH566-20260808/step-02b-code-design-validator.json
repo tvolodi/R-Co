@@ -1,0 +1,45 @@
+{
+  "handoff_id": "f4c0d879-831d-45b7-bb0f-fff599263995",
+  "run_id": "WF03-GH566-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH566-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T06:53:37Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/iss0617-gbl134-missing-tables-followup.md",
+      "docs/issues/ISS-0617.json",
+      "docs/issues/ISS-0620.json",
+      "docs/issue-reports/ISS-0185-diagnosis.yaml",
+      "migrations/GBL-134_iss0185_drop_global_registry_shadows.sql",
+      "migrations/GBL-135_iss0185_drop_per_tenant_shadows.sql"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0617-gbl134-missing-tables-followup.md, which designs a NEW forward migration GBL-136 to complete GBL-134's incomplete GLOBAL_REGISTRY table drop (13 missing table names, listed in the design). This is a database migration touching a table set already affected by ISS-0620's separate data-loss finding -- scrutinize carefully. Verify: (1) the exact 13-name list matches docs/issue-reports/ISS-0185-diagnosis.yaml's classification precisely -- cross-check yourself, do not trust the design doc's transcription; (2) the 4 ISS-0620-flagged names (artifact_activation_groups, entity_definitions, entity_record_latest, entity_type_instances) are genuinely absent from GBL-136's table list; (3) the FK-dependency analysis is correct -- independently query pg_constraint (or read the relevant table-creation migrations) to confirm artifact_versions genuinely has live FK dependents from PER_TENANT tables (artifact_activations, artifact_activation_history) that make it permanently un-droppable via RESTRICT, and confirm tenant_hostnames -> tenant is the only in-scope-to-in-scope dependency requiring drop ordering; (4) the exception-handling design (wrapping each drop in its own BEGIN...EXCEPTION WHEN dependent_objects_still_exist...END so one un-droppable table doesn't abort the whole migration) is a genuine, necessary deviation from GBL-134's bare structure -- confirm GBL-134's original pattern really would abort the whole transaction on a RESTRICT failure (read GBL-134's actual DO $$ block structure to confirm no existing exception handling); (5) the flagged GBL-135 discrepancy (claims 5 names reclassified PER_TENANT with public copies dropped, but design says live inspection shows all 5 public copies still exist) -- verify this claim yourself too, since if true it may need its own incidental-discovery filing (do not file it yourself, just confirm/deny it exists so ORCH can decide); (6) confirm no production code or test files are touched -- this should be pure migration design.",
+    "acceptance_criteria": [
+      "The 13-name table list independently verified correct against the diagnosis file",
+      "ISS-0620s 4 flagged names confirmed absent from GBL-136s scope",
+      "FK-dependency analysis (artifact_versions un-droppable, tenant_hostnames->tenant ordering) independently verified against pg_constraint or source, not trusted",
+      "Exception-handling deviation from GBL-134s pattern confirmed necessary (not a fabricated justification)",
+      "GBL-135 discrepancy claim independently checked (confirm or deny, do not file anything)",
+      "No production code or test files touched",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
