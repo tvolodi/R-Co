@@ -1,0 +1,35 @@
+{
+  "run_id": "WF03-GH565-20260808",
+  "created_at": "2026-08-08T10:01:35Z",
+  "rules_version": "1.1",
+  "requirement_ids": [
+    "ISS-0616"
+  ],
+  "difficulty": 2,
+  "difficulty_rationale": "Test-fixture isolation fix: tests create fixture tenants in harness transaction that pool connections cannot see. Single test file edit.",
+  "integration_surface": "low",
+  "integration_surface_rationale": "Only tests/integration/svc04_admin_api_test.zig is modified; no source/migration changes.",
+  "steps": [
+    "issue-fixer",
+    "code-designer",
+    "code-design-validator",
+    "backend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "release-validator",
+    "doc-updater",
+    "final"
+  ],
+  "estimated_minutes": {
+    "code-designer": 2,
+    "code-design-validator": 5,
+    "backend-dev": 6,
+    "test-designer": 1,
+    "test-design-validator": 7,
+    "test-runner": 2,
+    "release-validator": 1,
+    "doc-updater": 2,
+    "total": 26
+  }
+}

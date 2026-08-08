@@ -1,0 +1,51 @@
+{
+  "handoff_id": "95565859-3db0-4c3b-81c8-4cbb2355054b",
+  "run_id": "WF03-GH565-20260808",
+  "workflow_id": "WF-03",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-08T10:01:36Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "ISS-0616 fix",
+    "issue": {
+      "id": "ISS-0616",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/565",
+      "title": "svc04_admin_api_test: 6 validation/status-code failures",
+      "severity": "MAJOR"
+    },
+    "requirement_ids": [
+      "ISS-0616"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/integration/svc04_admin_api_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Design fix: each test that creates a fixture tenant via h.conn.exec must instead use a fresh pool connection (commit + visible to other connections). Pattern already established in TC-SVC-04-06/08 (process_definitions). For svc04-02 (register tenant-scoped), svc04-05 (update), svc04-09 (list), svc04-10 (admin list) \u2014 convert tenant inserts to use pool.acquire().",
+    "acceptance_criteria": [
+      "Fix design documented",
+      "All 6 affected tests mapped to fix pattern",
+      "No new dependencies"
+    ],
+    "functions_to_call": [
+      "fn:design-fix"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fix design: add insertFixtureTenantViaPool helper + schema-registration in provision step",
+    "artifacts_out": [
+      "tests/integration/svc04_admin_api_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Continue to next step"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-08-08T10:18:16Z"
+}

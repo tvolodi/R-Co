@@ -1,0 +1,53 @@
+{
+  "handoff_id": "43ebf5cb-278e-4de1-b158-a401c41944ec",
+  "run_id": "WF03-GH565-20260808",
+  "workflow_id": "WF-03",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-08T10:01:36Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "ISS-0616 fix",
+    "issue": {
+      "id": "ISS-0616",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/565",
+      "title": "svc04_admin_api_test: 6 validation/status-code failures",
+      "severity": "MAJOR"
+    },
+    "requirement_ids": [
+      "ISS-0616"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "handoffs/WF03-GH565-20260808/step-7-doc-updater.json"
+    ]
+  },
+  "task": {
+    "description": "Git-merge: create PR for feature/WF03-GH565-20260808, ensure all checks pass, squash-merge to main, delete branch, return to clean main. Update project board: GH #565 implemented \u2192 done.",
+    "acceptance_criteria": [
+      "PR created and merged",
+      "Feature branch deleted on GitHub",
+      "Local repo on main with clean state",
+      "Project board GH #565 = done"
+    ],
+    "functions_to_call": [
+      "fn:git-merge",
+      "fn:gh-project-status"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "git-merge: squash-merge to main, branch deleted",
+    "artifacts_out": [
+      "tests/integration/svc04_admin_api_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Issue closed; lock release + project board update"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-08-08T10:18:16Z"
+}
