@@ -245,14 +245,21 @@ def main() -> int:
         # this local checkout hasn't pulled yet. See _queue_sync.py.
         queue = sync_queue_from_origin(_read_queue())
 
-        # Build set of GitHub URLs currently locked (and not stale)
+        # Build set of GitHub URLs currently locked (and not stale).
+        # A workspace still actively working an item can extend its lock's
+        # life past TTL_MINUTES by calling queue_heartbeat.py periodically
+        # (see that tool's docstring — this closes the gap where a lock aged
+        # out by wall-clock alone while the claimant was still genuinely
+        # working, observed 2026-08-07 on GH-526). heartbeat_at, when
+        # present, is checked instead of locked_at; a lock that has never
+        # been heartbeated falls back to locked_at exactly as before.
         active_locks: set[str] = set()
         for item in queue["items"]:
             if item.get("status") != "IN_PROGRESS":
                 continue
             lock = item.get("lock") or {}
-            locked_at = lock.get("locked_at", "")
-            if not _lock_expired(locked_at):
+            freshness_ts = lock.get("heartbeat_at") or lock.get("locked_at", "")
+            if not _lock_expired(freshness_ts):
                 active_locks.add(item["github_issue"])
 
         # Fetch all open GitHub issues

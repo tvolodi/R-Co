@@ -181,6 +181,22 @@ Adds a new item to the global queue. Exit 4 = duplicate (already present).
 Every item added here must already have a corresponding `docs/issues/ISS-NNNN.json`
 and a GitHub issue filed — `queue_add.py` does not create them.
 
+### queue_heartbeat.py
+
+```
+python3 tools/queue_heartbeat.py <issue_id> <workspace_id>
+```
+
+Refreshes `lock.heartbeat_at` (leaving `lock.locked_at` untouched — that field keeps
+its original "claim started" audit meaning) for an item this workspace still owns.
+Call periodically during a long WF-03 run — after each major step transition is a
+reasonable cadence — and push immediately after each call, same discipline as a claim.
+`gh_claim.py`'s staleness check (`TTL_MINUTES` = 120) considers `heartbeat_at` when
+present, falling back to `locked_at` if the item was never heartbeated, so a workspace
+sending regular heartbeats keeps its claim alive past 120 minutes of genuine ongoing
+work while one that has actually stalled or died still ages out normally. Exit 1 if the
+item isn't found, isn't locked by `<workspace_id>`, or isn't `IN_PROGRESS`.
+
 ---
 
 ## Stop flag
@@ -244,10 +260,11 @@ LOOP START
 │   ├─ exit 1 → unexpected error          →  log, stop
 │   └─ exit 0 → item claimed, JSON on stdout
 │
-├─ PUSH THE CLAIM TO MAIN IMMEDIATELY — before any WF-03 work starts. This step remains
-│  mandatory even after pulling first above: the pull only closes the window before
-│  gh_claim.py runs, not a second race against another workspace claiming between your
-│  pull and your push. Treat this as defense-in-depth, not redundant:
+├─ PUSH THE CLAIM TO MAIN IMMEDIATELY — before any WF-03 work starts, INCLUDING Step 00
+│  git-setup (creating the feature branch). This step remains mandatory even after
+│  pulling first above: the pull only closes the window before gh_claim.py runs, not a
+│  second race against another workspace claiming between your pull and your push.
+│  Treat this as defense-in-depth, not redundant:
 │   git add handoffs/global_queue.json
 │   git commit -m "queue: claim GH-<number> for <workspace_id>"
 │   git fetch origin main && git rebase origin/main   ← resolve any interleaving here
@@ -259,6 +276,43 @@ LOOP START
 │   workspaces; gh_claim.py itself only writes the LOCAL file and never pushes —
 │   skipping this step is what caused two workspaces to both claim GH-542 on
 │   2026-08-07 (see docs/anti-patterns.md).
+│
+├─ VERIFY THE PUSH LANDED — do not proceed to Step 00 on the strength of "git push
+│  exited 0" alone. A local push can report success to the calling process while a
+│  slow agent turn, a subsequent unrelated step, or simply time pressure delays the
+│  actual network completion being visible to a concurrent reader — or the workspace
+│  can simply move on to git-setup before confirming, which is what actually happened
+│  on 2026-08-07 (GH-518: workspace r-co-1-loop committed its claim, pushed its OWN
+│  feature branch, and began Step 00 work, all without the claim commit having reached
+│  origin/main — a second workspace's gh_claim.py, reading a main that still showed
+│  GH-518 unclaimed, was handed the same issue and had to detect the collision itself
+│  via a manual branch check, costing several minutes neither workspace's protocol
+│  compliance actually required). Confirm explicitly:
+│   git fetch origin main
+│   git log --oneline -1 origin/main   ← must show YOUR claim commit's message/hash
+│   If it does not: your push has not actually landed yet (or was superseded — check
+│   for a rejection first). Do not proceed to Step 00 until this check passes. Retry
+│   the push-then-verify pair (bounded — a handful of attempts with a short pause
+│   between) rather than looping indefinitely; if it still hasn't landed after several
+│   tries, treat it as an unexpected error (log, stop) rather than guessing.
+│
+├─ HEARTBEAT DURING LONG RUNS — a lock older than TTL_MINUTES (120) becomes reclaimable
+│  by another workspace's gh_claim.py even if the original claimant is still actively
+│  working (this happened 2026-08-07: GH-526's lock, claimed by r-co-1-loop, was
+│  reclaimed by a second workspace after 120+ minutes while r-co-1-loop was still
+│  committing to its branch every few minutes — no double-run resulted only because
+│  the original run finished and merged moments after the reclaim attempt). Call
+│  periodically during a WF-03 run for the claimed item — after each major step
+│  transition is a reasonable cadence, no need to call more often than every few
+│  minutes:
+│   python3 tools/queue_heartbeat.py GH-<number> <workspace_id>
+│   git add handoffs/global_queue.json
+│   git commit -m "queue: heartbeat GH-<number> for <workspace_id>"
+│   git fetch origin main && git rebase origin/main
+│   git push origin main
+│  An un-pushed heartbeat provides no protection — the push is not optional bookkeeping,
+│  it is the mechanism. gh_claim.py checks lock.heartbeat_at (falling back to
+│  lock.locked_at if no heartbeat was ever sent) when deciding staleness.
 │
 ├─ Parse claimed item:
 │   {
@@ -484,7 +538,10 @@ subprocess.run([
 - [ ] Every item in the global queue has a corresponding GitHub issue (`github_issue` field non-empty)
 - [ ] `gh_claim.py` is the ONLY writer for the `lock` field — no agent sets it directly
 - [ ] `queue_release.py` is the ONLY writer that clears the `lock` field
+- [ ] `queue_heartbeat.py` is the ONLY writer for `lock.heartbeat_at` — no agent sets it directly
 - [ ] `handoffs/global_queue.json` is committed AND PUSHED to `main` immediately after every claim — never deferred to end-of-run (see "ORCH loop mode — step by step" above; a deferred push is what let two workspaces both claim GH-542 on 2026-08-07, see `docs/anti-patterns.md`)
 - [ ] `handoffs/global_queue.json` is committed to `main` after every release
+- [ ] `handoffs/global_queue.json` is committed AND PUSHED to `main` after every heartbeat, same discipline as a claim — an un-pushed heartbeat protects nothing
 - [ ] `handoffs/global_queue.lock` is NEVER committed to git (transient mutex file)
-- [ ] Before starting WF-03 implementation work, re-fetch `origin/main` and confirm this workspace's lock for the claimed issue is still the one on `main` — a rejected/raced push means stand down, not proceed
+- [ ] **Before Step 00 (git-setup), not just before "implementation work"**: re-fetch `origin/main` and confirm `git log --oneline -1 origin/main` actually shows this workspace's claim commit — not merely that the earlier `git push` command exited 0. A push that reports success locally is not the same as a push whose result a concurrent reader can see; verify by reading the ref back. A rejected/raced/not-yet-landed push means stand down or retry, not proceed to branch creation (see "VERIFY THE PUSH LANDED" above; skipping this exact check is what let workspace r-co-1-loop start Step 00 on GH-518 before its claim was visible on `main`, on 2026-08-07 — no double-run resulted only because the second workspace caught the collision manually via a branch check, see `docs/anti-patterns.md`)
+- [ ] For any WF-03 run expected to run longer than ~30-60 minutes, a heartbeat is sent at least once every ~30-60 minutes (well inside the 120-minute TTL) so a still-active claim is never seen as stale by another workspace's `gh_claim.py`
