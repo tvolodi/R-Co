@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0184",
   "title": "Remaining test-integration-svc failures across 31 files (audit chain, webhook, entity, env, adp clusters)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "created_at": "2026-08-07T02:51:21Z",
   "discovered_by": "BACKEND-DEV (WF03-ISS-0150-20260807 Step 01 diagnosis)",
@@ -33,5 +33,11 @@
   ],
   "notes": "Filed per CLAUDE.md 'No Issue Left Local-Only' and the 'filed and forwarded, not fixed here' scope boundary. ISS-0150 fixed 3 root causes (33 blocks) with zero regressions; this cluster has a distinct root cause and belongs in its own run. Diagnosis-and-triage pass (2026-08-08) split the residue into 11 sub-clusters: 3 reused/reopened existing issues, 2 already covered by other queued issues, 4 filed as new issues, 1 direct-fix candidate, 1 noted-not-filed (flaky infra). This holding issue itself has no more independent work beyond what its sub-issues now track -- recommend closing once C3's direct fix lands, since every other cluster is now tracked elsewhere.",
   "diagnosis_status": "TRIAGED",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/517"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/517",
+  "resolved_at": "2026-08-08T04:50:42Z",
+  "resolved_in": [
+    "tests/integration/event_store_integration_test.zig"
+  ],
+  "resolution": "This holding issue's own acceptance criteria ('each listed cluster is diagnosed to a named root cause and either fixed or split into its own issue') are now fully satisfied. All 11 clusters from the 2026-08-08 diagnosis have a disposition: C1/C2/C10 reused/reopened existing issues (ISS-0094/GH-348, ISS-0112/GH-375, ISS-0100/GH-357, all QUEUED), C4/C5 already covered by other queued issues (ISS-0185, ISS-0183), C6-C9 filed as new issues (ISS-0616/GH-565, ISS-0617/GH-566, ISS-0618/GH-567, ISS-0619/GH-568, all QUEUED), C11 noted but not filed (non-reproducible-on-demand infra flakiness), and C3 (event_store_integration_test.zig TC-ES-03-01 leaking 3 heap allocations via unfreed AppendResult.record on both store.append() calls) fixed directly in this run -- verified via 4 independent zig build test-integration-svc runs, leak count 52 -> 49 (-3) every time, TC-ES-03-01 passing clean in all 4. This holding issue has no more independent work: every other cluster is now tracked in its own issue for its own future WF-03 run. Closing GH-517 per ISSUE-FIXER's own diagnosis-time recommendation.",
+  "closed_without_new_commits": false
 }

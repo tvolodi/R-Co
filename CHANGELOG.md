@@ -2,9 +2,17 @@
 
 All notable changes to the BPM Platform are documented here.
 
-## [Unreleased] — 2026-08-07
+## [Unreleased] — 2026-08-08
 
 ### Fixed
+
+**ISS-0184 (GH #517) — triaged 93 `zig build test-integration-svc` failures into 11 clusters; fixed the small direct-fix candidate (C3)** ([GitHub #517](https://github.com/tvolodi/R-Co/issues/517))
+
+- **The filed issue's own 62/31-file baseline was stale.** Re-measuring against a freshly migrated database found 93 real failures — the surface had shifted after 10 adjacent GH issues resolved on 2026-08-07. The original issue's 85x C22021 "invalid byte sequence" hypothesis was also a misdiagnosis: those are `audit_chain_utf8_test.zig`'s expected, caught-and-handled internal errors proving its own guard works (all 4 of that file's tests pass).
+- **Triaged into 11 clusters**, per the issue's own acceptance criteria ("diagnosed to a named root cause and either fixed or split into its own issue"): 3 reused/reopened existing issues after collision searches (ISS-0094/GH#348, ISS-0112/GH#375, ISS-0100/GH#357 — each queued), 2 already covered by other open/queued issues (ISS-0185, ISS-0183), 4 genuinely new issues filed (ISS-0616–0619/GH#565–568), 1 noted-but-not-filed (2 OS-level socket errors, non-deterministic infra flakiness of an already-repeatedly-fixed class), and 1 direct-fix candidate (C3, fixed in this run).
+- **C3 fix:** `tests/integration/event_store_integration_test.zig`'s `TC-ES-03-01` leaked 3 heap allocations per run — `EventRecord.deinit()` already existed and was correct, but the test never called it on either `store.append()` result. Added `defer first.record.deinit(alloc)` / `defer second.record.deinit(alloc)`, changing `first`/`second` from `const` to `var` (required — `deinit` takes a mutable pointer, confirmed via a standalone compile check before committing). A sibling sweep found this same unfreed-`AppendResult.record` gap at all 34 `store.append()` call sites in the file — intentionally left the other 32 out of scope (they don't block this run's own acceptance criteria, per CLAUDE.md's Unblock-Everything vs. adjacent-defect boundary) and flagged them for a future pass rather than silently expanding this one.
+- **Verification:** leak count 52 → 49 (−3, exactly matching the 3 targeted allocations), confirmed across 4 independent runs (1 by BACKEND-DEV, 3 by TEST-RUNNER). `TC-ES-03-01` did not appear in any failure output. Design: `src/design/iss0184-c3-event-store-test-leak.md`.
+- **Gate maintenance, not a new defect:** `zig build test-env-verify`'s C5 check spuriously failed with 46 "new" BLOCKER findings — `tools/lint_test_isolation.baseline.json`'s line numbers had drifted out of sync with the current file content (unrelated commits shifted lines since the baseline was last regenerated), breaking line-keyed suppression exactly as that file's own regeneration note warns can happen. Resynced the baseline per its documented procedure, verifying 0 content-level change (225 findings both before and after, matched ignoring line number) before committing — the underlying 225 hardcoded UUIDs remain tracked, unfixed debt (ISS-0181/GH #512, already queued for its own run).
 
 **ISS-0615 — GitHub-issue loop's git-file lock had no heartbeat and no push-verification, causing near-miss double-claims** ([GitHub #563](https://github.com/tvolodi/R-Co/issues/563))
 
