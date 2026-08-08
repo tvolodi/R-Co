@@ -1613,6 +1613,24 @@ pub fn build(b: *std.Build) void {
     });
     const run_iss107_integration_tests = addIntegrationRun(b, iss107_integration_tests, migrations_dir, clean_test_db);
 
+    // ISS-0183 / GH-516: dedicated narrow root + step for repository_test.zig
+    // (REPO-01..13). Reachable via main_test.zig, but given its own addTest
+    // root here so the 26 REPO-* blocks can be exercised in isolation without
+    // the noise of the ~30-binary umbrella — the same rationale as the ENV-01
+    // and ISS-107 dedicated roots above.
+    const repository_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/repository_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_repository_integration_tests = addIntegrationRun(b, repository_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_repository_step = b.step("test-integration-repository", "Run REPO-01..13 (repository_test.zig) integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_repository_step.dependOn(&clean_test_db.step);
+    test_integration_repository_step.dependOn(&run_repository_integration_tests.step);
+
     // ISS-0605 / GH-537: regression test for the C4 schema-baseline self-heal.
     // Verifies that `_run_clean_test_db_sweep()` (the GH-443 / ISS-0140 orphan-row
     // DELETE sweep) runs before verify_schema_baseline.py --check-tenants, so the
