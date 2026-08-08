@@ -516,6 +516,26 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-568",
+      "issue_number": 568,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/568",
+      "title": "ISS-0619 \u2014 idn02/idn03: group task claim and role-scoped task list return 403/500 instead of 200 (3 blocks)",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-1-loop",
+        "locked_at": "2026-08-08T03:26:52Z"
+      },
+      "added_at": "2026-08-08T03:26:52Z",
+      "started_at": "2026-08-08T03:26:52Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

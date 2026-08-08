@@ -1,0 +1,33 @@
+{
+  "handoff_id": "f7c5e8d9-0001-4000-8000-000000000000",
+  "run_id": "WF03-GH568-20260808",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-08T03:36:42Z",
+  "started_at": "2026-08-08T03:36:42Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 git-setup",
+    "requirement_ids": ["ISS-0619"],
+    "github_issue": 568,
+    "related_handoff_ids": [],
+    "artifacts_in": ["docs/issues/ISS-0619.json"]
+  },
+  "task": {
+    "description": "Set up feature branch feature/WF03-GH568-20260808 for issue GH-568 (ISS-0619). Branch created from main, clean working tree confirmed.",
+    "acceptance_criteria": ["git branch --show-current outputs feature/WF03-GH568-20260808"],
+    "functions_to_call": ["fn:git-setup"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Feature branch feature/WF03-GH568-20260808 created from main. Working tree shows only docs/issues/ISS-0619.json (untracked) and handoffs/global_queue.json (modified by queue claim).",
+    "artifacts_out": ["docs/issues/ISS-0619.json"],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 0.5/1)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-08T03:36:43Z"
+}

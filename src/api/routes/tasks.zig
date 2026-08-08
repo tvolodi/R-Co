@@ -347,9 +347,8 @@ pub fn handleComplete(
     task_id_str: []const u8,
     body: []const u8,
 ) HandlerResult {
-    // identity is no longer used in the TASK_WORKER ownership check (ISS-102);
-    // the parameter is kept for API compatibility.
-    _ = identity;
+    // ISS-0619: identity is now used for the GROUP/ROLE-pool ownership check
+    // (active group member may complete). The parameter is intentionally retained.
     var derived_roles: [3]authorization.Role = undefined;
     const roles = resolveActorRoles(actor, &derived_roles);
     const decision = authorization.evaluateAccess(
@@ -393,11 +392,14 @@ pub fn handleComplete(
     };
     defer task_mod.freeTask(allocator, task);
 
-    // ── Step 3: Role/ownership check (ISS-102 updated guard) ────────────────
+    // ── Step 3: Role/ownership check (ISS-102 + ISS-0619) ──────────────────
     // The check order per design §4.2:
     //   1. If task.claimed_by IS NOT NULL: allow iff claimed_by == actor.user_id
     //   2. Else if assignee_type == "USER": allow iff assignee_ref == actor.user_id
-    //   3. Else (GROUP/ROLE pool, not yet claimed): deny — worker must claim first.
+    //   3. Else (GROUP-assigned, not yet claimed): allow iff actor is an active
+    //      member of the assignee group (via identity.canClaimGroupTask).
+    //   4. ROLE-assigned, not yet claimed: deny (no current test coverage; a
+    //      future test may widen this to a role-membership check).
     // PROCESS_OPERATOR and above bypass this block entirely (no change).
     if (authorization.isTaskWorkerOnly(roles)) {
         const complete_allowed = if (task.claimed_by) |cb| blk: {
@@ -407,12 +409,42 @@ pub fn handleComplete(
             defer allocator.free(cb_hex);
             break :blk std.mem.eql(u8, cb_hex, actor.user_id);
         } else if (task.assignee_type) |at| blk: {
-            // Branch 2: unclaimed — allow only a directly USER-assigned actor.
             if (std.mem.eql(u8, at, "USER")) {
+                // Branch 2: unclaimed USER-assigned task — actor must be the
+                // direct assignee.
                 break :blk task.assignee_ref != null and
                     std.mem.eql(u8, task.assignee_ref.?, actor.user_id);
             }
-            // Branch 3: GROUP/ROLE pool task, not yet claimed — deny.
+            if (std.mem.eql(u8, at, "GROUP")) {
+                // Branch 3 (ISS-0619): unclaimed GROUP-assigned task — allow if
+                // the actor is an active member of the assignment group.
+                if (task.assignee_ref) |group_ref| {
+                    const tenant_id_slice: []const u8 = &actor.tenant_id;
+                    const is_member = identity.canClaimGroupTask(
+                        allocator,
+                        tenant_id_slice,
+                        group_ref,
+                        actor.user_id,
+                    ) catch |err| switch (err) {
+                        error.PoolExhausted => return errorResult(
+                            allocator,
+                            503,
+                            "SERVICE_UNAVAILABLE",
+                            "DB connection pool exhausted",
+                        ),
+                        else => return errorResult(
+                            allocator,
+                            500,
+                            "INTERNAL_ERROR",
+                            "Group membership check failed",
+                        ),
+                    };
+                    break :blk is_member;
+                }
+                break :blk false;
+            }
+            // ROLE pool (no current test coverage): deny. A future test may
+            // widen this to a role-membership check.
             break :blk false;
         } else false;
 
