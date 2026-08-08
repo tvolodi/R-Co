@@ -447,3 +447,4 @@
 2026-08-08T08:58:52Z | COMPLETE | WF03-GH576-20260808 | f644ebf4 | BACKEND-DEV | PASS -- quota_enforcement.zig schema-qualified, exp601 4/5 pass (TC-EXP-601-04 fails only at pre-existing out-of-scope instance_waits INSERT)
 2026-08-08T09:00:53Z | COMPLETE | WF03-GH576-20260808 | 8d8825c5 | TEST-RUNNER | PASS (4/5 exp601, 5th pre-existing/out-of-scope; PR #578 opened)
 2026-08-08T09:02:47Z | ROUTE | WF03-GH576-20260808 | 8757c531 | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, no BLOCKER finding -> RELEASE-VALIDATOR skipped)
+2026-08-08T09:05:50Z | COMPLETE | WF03-GH576-20260808 | 8757c531 | DOC-UPDATER | PASS -- CHANGELOG updated, PR #578 squash-merged (58c9f08058d28550e2d256b0b53e0c1b6edbd9cf), branch deleted, board already Done, main clean
