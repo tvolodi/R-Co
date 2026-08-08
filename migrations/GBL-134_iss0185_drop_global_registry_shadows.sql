@@ -31,6 +31,28 @@
 --      in a single transaction so partial failures roll back cleanly.
 --   4. NOT data-destructive on the public side. The public copy is the
 --      canonical one and is left untouched.
+--
+-- CORRECTION (2026-08-08, ISS-0620 / GH-573, BLOCKER): the safety claim
+-- above ("verified via pg_constraint + pg_depend queries") did not catch a
+-- 4-table misclassification. `artifact_activation_groups`,
+-- `entity_definitions`, `entity_record_latest`, and `entity_type_instances`
+-- (all 4 present in the v_tables array below) are classified PER_TENANT
+-- (canonical home = tenant_default) by docs/issue-reports/ISS-0185-
+-- diagnosis.yaml's own classification_table.per_tenant_public_is_stray
+-- list — the OPPOSITE of GLOBAL_REGISTRY, which this migration assumed for
+-- all 24 names. This migration already ran against the shared bpm_test
+-- database and workspace r-co-2's bpm_dev database, unconditionally
+-- dropping these 4 tables' tenant_default copies with no data-loss guard;
+-- it is treated as immutable per this lineage's established convention
+-- (see GBL-136's identical treatment of GBL-134's other defect) and is left
+-- unmodified below. The forward-fix that recreates the 4 tables' structure
+-- in tenant_default going forward is migrations/GBL-137_iss0620_recreate_
+-- per_tenant_shadows.sql. See docs/issues/ISS-0620.json and
+-- src/design/iss0620-gbl134-per-tenant-forward-fix.md for full detail,
+-- including the scope confirmation (both affected databases are local
+-- development infrastructure only; no evidence any deployed/production
+-- database is affected) and why no data recovery was attempted (no WAL
+-- archiving configured, no backup found).
 
 DO $$
 DECLARE

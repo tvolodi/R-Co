@@ -617,6 +617,19 @@
       "labels": [
         "bug"
       ]
+    },
+    {
+      "issue_id": "ISS-0623",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/580",
+      "title": "Shared bpm_test tenant_default reprovisioned mid-lineage, resurrecting 18 dropped GLOBAL_REGISTRY shadow tables",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-08T09:40:22Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
