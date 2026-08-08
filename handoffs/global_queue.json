@@ -284,11 +284,11 @@
       "severity": "MAJOR",
       "status": "IN_PROGRESS",
       "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-08T11:58:08Z"
+        "workspace_id": "r-co-1-loop",
+        "locked_at": "2026-08-08T11:24:06Z"
       },
-      "added_at": "2026-08-08T11:58:08Z",
-      "started_at": "2026-08-08T11:58:08Z",
+      "added_at": "2026-08-08T11:24:06Z",
+      "started_at": "2026-08-08T11:24:06Z",
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null,
