@@ -566,6 +566,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0620",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/573",
+      "title": "GBL-134 dropped tenant_default copies of 4 PER_TENANT tables -- possible data loss",
+      "severity": "BLOCKER",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-08T06:26:36Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
