@@ -1,0 +1,39 @@
+{
+  "handoff_id": "1eeb4863-c2f3-4e61-af20-7c16e1f172a0",
+  "run_id": "WF03-GH516-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH516-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T11:17:17Z",
+  "started_at": "2026-08-08T11:17:17Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/integration/repository_test.zig",
+      "docs/issue-reports/ISS-0150-diagnosis.yaml"
+    ]
+  },
+  "task": {
+    "description": "Diagnose and fix GH #516 (ISS-0183, MAJOR): 11 test blocks in tests/integration/repository_test.zig fail. Two distinct root causes per the issue's own filing: (1) fixtures insert a generated UUID into repository_artifacts.content_hash, which the migration defines as bytea -- PostgreSQL rejects the assignment (C42804); several queries also pass bare $N placeholders where PostgreSQL cannot infer a type (C42P18, the ISS-0120 pattern). (2) TC-REPO-02-01's information_schema probe returns 0 rows because it queries unqualified (no schema prefix), which this session's own earlier work (WF03-GH566/GH576/GH574/GH573/GH580, all merged) has been actively fixing across this exact table -- IMPORTANT: before diagnosing this as still-broken, first independently re-verify TC-REPO-02-01's actual current failure mode against a freshly-migrated bpm_test, since GBL-134 through GBL-138 (all now merged to main) may have already resolved the schema-duplication half of this issue as a side effect -- do not assume the issue's original filing (before those fixes existed) still accurately describes the current failure. The content_hash bytea/uuid type mismatch and the untyped-placeholder issue are independent of the schema-dedup work and almost certainly still need fixing regardless.",
+    "acceptance_criteria": [
+      "Fixtures write a genuine bytea value (e.g. digest of artifact bytes) to content_hash, not a UUID",
+      "Every ambiguous placeholder in repository_test.zig carries an explicit type cast; tools/lint_sql_param_types.py stays at 0 BLOCKER/MAJOR",
+      "TC-REPO-02-01s schema probe re-verified against current (post GBL-134..138) database state -- fixed if still broken, confirmed already-resolved if not",
+      "zig build test-integration-svc (or the correct target covering repository_test.zig -- verify the actual build.zig step name) shows 0 failures attributed to repository_test.zig"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
