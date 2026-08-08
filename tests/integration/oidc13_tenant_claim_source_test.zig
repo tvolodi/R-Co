@@ -102,5 +102,6 @@ test "TC-OIDC-13-07: buildTenantIdMapperBody produces valid Keycloak JSON" {
 
     try testing.expect(body.len > 0);
     try testing.expect(std.mem.indexOf(u8, body, "oidc-hardcoded-claim-mapper") != null);
+// GH-512 retention: doc-identity fixture (matched against substring assertions in payload/correlation_id checks)
     try testing.expect(std.mem.indexOf(u8, body, "11111111-1111-1111-1111-111111111111") != null);
 }

@@ -18,7 +18,9 @@ const SnapshotStore = bpm.snapshot.SnapshotStore;
 const InstanceStore = bpm.engine.InstanceStore;
 const TaskStore = bpm.tasks.TaskStore;
 
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
+// GH-512 retention: platform-admin user_id (system actor); preserve identity for RBAC/role-guard assertions
 const actor_id_str = "00000000-0000-0000-0000-000000000001";
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {

@@ -59,10 +59,13 @@ const HistoryParams = bpm.instance_routes.HistoryParams;
 // ---------------------------------------------------------------------------
 
 /// Fake "created_by" UUID; no FK constraint on process_definitions.created_by.
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 /// UUID guaranteed absent from any real test run.
+// GH-512 retention: conventional not-found UUID sentinel (used to assert 404 response paths)
 const nonexistent_uuid_str = "ffffffff-ffff-ffff-ffff-ffffffffffff";
 /// Valid UUID used as actor_id for cancelInstance (must be valid UUID for events.actor_id column).
+// GH-512 retention: platform-admin user_id (system actor); preserve identity for RBAC/role-guard assertions
 const cancel_actor_uuid = "00000000-0000-0000-0000-000000000001";
 
 // ---------------------------------------------------------------------------
@@ -980,6 +983,7 @@ test "TC-API-05-01: handleHistory returns 200 with event items for instance with
     var ev_store = EventStore.init(alloc, &pool, &ev_registry);
     defer ev_store.deinit();
 
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
     const actor_uuid = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
     _ = try ev_store.append(alloc, AppendParams{
         .instance_id = inst_id,
@@ -1022,6 +1026,7 @@ test "TC-API-05-02: handleHistory with nonexistent instance UUID returns 404" {
     const result = handleHistory(
         &ev_store,
         alloc,
+// GH-512 retention: conventional not-found UUID sentinel (used to assert 404 response paths)
         "ffffffff-ffff-ffff-ffff-ffffffffffff",
         HistoryParams{},
     );

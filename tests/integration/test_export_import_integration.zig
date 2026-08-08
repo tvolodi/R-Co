@@ -41,9 +41,11 @@ const EXPORT_SCHEMA_VERSION = bpm.export_import.EXPORT_SCHEMA_VERSION;
 // ---------------------------------------------------------------------------
 
 /// Fake "created_by" UUID; no FK constraint on process_definitions.created_by.
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
 /// A definition_id guaranteed not to exist in any test run.
+// GH-512 retention: conventional not-found UUID sentinel (used to assert 404 response paths)
 const unknown_def_str = "ffffffff-ffff-ffff-ffff-ffffffffffff";
 
 // ---------------------------------------------------------------------------

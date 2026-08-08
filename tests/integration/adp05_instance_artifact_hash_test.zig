@@ -21,6 +21,7 @@ const InstanceStore = bpm.engine.InstanceStore;
 const InstanceError = bpm.engine.InstanceError;
 const reconstruction_mod = bpm.reconstruction;
 
+// GH-512 retention: adp05 creator_uuid_str module-scope fixture (deterministic)
 const creator_uuid_str = "00000000-0000-0000-0000-00000000ad05";
 
 const minimal_nodes = [_]GraphNode{

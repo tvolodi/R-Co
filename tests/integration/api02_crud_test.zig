@@ -130,6 +130,7 @@ fn hasCode(violations: []const bpm.definition.Violation, code: []const u8) bool 
 }
 
 /// Fixed creator UUID used in all tests — no FK constraint on created_by.
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
 // ---------------------------------------------------------------------------

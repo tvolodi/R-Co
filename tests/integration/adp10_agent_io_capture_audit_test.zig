@@ -46,6 +46,7 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
     defer harness.deinit();
 
     const tenant_id = "00000000-0000-0000-0000-000000000000";
+// GH-512 retention: deterministic actor fixture for audit-chain / IO-capture tests (matches SQL VALUES and expectEqualStrings)
     const agent_user_id = "a1000000-0000-0000-0000-000000000001";
 
     try harness.conn.exec(
@@ -167,6 +168,7 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
     const agent_row = rows.rows[0];
     const non_agent_row = rows.rows[1];
 
+// GH-512 retention: deterministic actor fixture for audit-chain / IO-capture tests (matches SQL VALUES and expectEqualStrings)
     try testing.expectEqualStrings("a1000000-0000-0000-0000-000000000101", agent_row[0] orelse "");
     try testing.expectEqualStrings("definition.update", agent_row[1] orelse "");
     try testing.expectEqualStrings("definition", agent_row[2] orelse "");
@@ -178,6 +180,7 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
     try testing.expectEqualStrings("t", agent_row[8] orelse "f");
     try testing.expectEqualStrings("t", agent_row[9] orelse "f");
 
+// GH-512 retention: deterministic actor fixture for audit-chain / IO-capture tests (matches SQL VALUES and expectEqualStrings)
     try testing.expectEqualStrings("a1000000-0000-0000-0000-000000000102", non_agent_row[0] orelse "");
     try testing.expectEqualStrings("definition.update", non_agent_row[1] orelse "");
     try testing.expectEqualStrings("definition", non_agent_row[2] orelse "");

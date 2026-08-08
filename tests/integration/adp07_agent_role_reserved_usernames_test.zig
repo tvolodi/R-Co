@@ -213,6 +213,7 @@ test "TC-ADP-07-04: JIT OIDC path rejects reserved agent username prefix" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
+// GH-512 retention: doc-identity fixture (matched against substring assertions in payload/correlation_id checks)
     try ensureTenantBinding(&pool, "33333333-3333-3333-3333-333333333333", "adp07-tenant", "ADP07 Tenant", "kc-realm-adp07");
 
     var registry = identity_registry.Registry.init(&pool);

@@ -33,6 +33,7 @@ const Actor = bpm.task_routes.Actor;
 // Fixed test UUIDs and constants
 // ---------------------------------------------------------------------------
 
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
 // ---------------------------------------------------------------------------
@@ -237,6 +238,7 @@ test "TC-EE-04-02: handleGetById with unknown task_id returns 404" {
     const result = bpm.task_routes.handleGetById(
         &task_store,
         alloc,
+// GH-512 retention: conventional not-found UUID sentinel (used to assert 404 response paths)
         "ffffffff-ffff-ffff-ffff-ffffffffffff",
     );
     defer alloc.free(result.body);

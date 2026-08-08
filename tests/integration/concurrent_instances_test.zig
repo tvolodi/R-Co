@@ -284,6 +284,7 @@ test "TC-EE-12-01/03: 100 concurrent task completions on distinct instances all 
     var def_store = DefinitionStore.init(allocator, &pool);
     defer def_store.deinit();
 
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
     const creator_id = try parseUuid(allocator, "00000000-0000-0000-0000-000000000099");
     const draft = try def_store.create(allocator, CreateParams{
         .name = "ee12-concurrent-test",
@@ -403,6 +404,7 @@ test "TC-EE-12-02/04: same-instance contention returns ConcurrentModification th
     var def_store = DefinitionStore.init(allocator, &pool);
     defer def_store.deinit();
 
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
     const creator_id = try parseUuid(allocator, "00000000-0000-0000-0000-000000000099");
     const draft = try def_store.create(allocator, CreateParams{
         .name = "ee12-contention-test",

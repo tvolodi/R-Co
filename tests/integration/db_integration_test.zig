@@ -404,6 +404,7 @@ test "TC-DB-03-02: failed transaction rolls back both writes atomically" {
             "INSERT INTO events " ++
                 "(instance_id, event_type, payload, actor_id, sequence_number, idempotency_key, global_seq) " ++
                 "VALUES ($1::uuid, 'DB03_ROLLBACK', '{}', $2::uuid, 1, 'db03-02-idem', nextval('events_global_seq'))",
+// GH-512 retention: deterministic actor fixture for db_integration_test
             &.{ inst_id_str, "acac0000-0000-0000-0000-000000000002" },
         );
 

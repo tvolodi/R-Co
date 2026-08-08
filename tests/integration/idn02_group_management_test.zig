@@ -409,6 +409,7 @@ test "TC-IDN-02-04: missing user or missing group returns HTTP 404" {
         &service,
         alloc,
         adminActor(),
+// GH-512 retention: doc-identity fixture (matched against substring assertions in payload/correlation_id checks)
         "11111111-1111-1111-1111-111111111111",
         add_body,
     );
