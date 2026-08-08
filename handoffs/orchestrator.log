@@ -553,7 +553,11 @@
 2026-08-08T22:57:48Z | ROUTE | WF03-GH594-20260808 | 43b54475 | ORCH -> CODE-DESIGN-VALIDATOR | IN_PROGRESS (Step 2b, GH-594 repair-script design validation)
 2026-08-08T23:01:16Z | VALIDATE | WF03-GH594-20260808 | 43b54475 | CODE-DESIGN-VALIDATOR | PASS -> BACKEND-DEV (Step 3)
 2026-08-08T23:02:29Z | ROUTE | WF03-GH594-20260808 | 11f6145e | ORCH -> BACKEND-DEV | IN_PROGRESS (Step 3, implement + apply handoff repair script)
+2026-08-08T23:03:13Z | COMPLETE | WF03-GH592-20260808 | 7e6b3a8e | TEST-DESIGN-VALIDATOR | Step 4b PASS — 9/9 TCs validated; integration tests committed (52c85455); ISS-0626/GH-595 filed for LuaJIT 2.1 stack-trace limitation
+2026-08-08T23:03:13Z | COMPLETE | WF03-GH592-20260808 | a3d8e7f4 | TEST-RUNNER | Step 5 PASS — 9/9 integration TCs pass; report at tests/reports/report-2026-08-08-WF03-GH592-20260808.yaml
 2026-08-08T23:12:29Z | COMPLETE | WF03-GH594-20260808 | 11f6145e | BACKEND-DEV | PASS -- repair_handoff_bookkeeping.py implemented + applied (H002 0, H008 3-of-88-unfixable-remain, H006 1-CONDITIONAL, H010 83-legit-skips-remain); see result.issues for H010 target discrepancy
+2026-08-08T23:13:03Z | COMPLETE | WF03-GH592-20260808 | f7a08d3c | DOC-UPDATER | Step 7 PASS — LUA-12/15/16 released; CHANGELOG/docs/issues/ISS-0625.json updated; GH-592 board -> implemented -> done (NOT UAT-scoped); release decision at docs/status/release-WF03-GH592-2026-08-08.yaml
+2026-08-08T23:13:03Z | ROUTE | WF03-GH592-20260808 | f7a08d3c | ORCH -> BACKEND-DEV | PENDING — Step Final git-merge
 2026-08-08T23:14:30Z | ROUTE | WF03-GH594-20260808 | c204e04b | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize GH-594 bookkeeping repair)
 2026-08-08T23:29:08Z | COMPLETE | WF03-GH594-20260808 | c204e04b | DOC-UPDATER | PASS -- CHANGELOG updated, PR #597 merged (2799866c0dc3056e183bc6d8bcc131abf1c85942), GH-594 closed, board Done, main clean
 2026-08-08T23:29:08Z | GATE_FIX | WF03-GH594-20260808 | c204e04b | DOC-UPDATER | tools/lint_handoffs.py --changed now compares per-file findings against merge-base (blocked PR #597 by re-flagging pre-existing ISS-0627 debt as new)
