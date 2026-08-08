@@ -475,8 +475,10 @@ test "TC-SCH-01-05: cancelled instance rejects timer creation" {
     try conn.begin();
     defer conn.rollback() catch {};
 
-// GH-512 retention: definition-sentinel UUID (deterministic fixture for graph/edge tests)
-    const attempted_timer_id = try parseUuid("00000000-0000-4000-8000-000000000123");
+// GH-512: replaced hardcoded definition-sentinel with TestHarness.newUuid() per GH-512.
+// The test asserts only that the insert errors with InstanceCancelled, so the specific
+// timer_id value does not matter — per-test uniqueness is preserved.
+    const attempted_timer_id = h.newUuid();
 
     const insert_result = scheduler_store.insertPendingTimerInTx(
         allocator,
