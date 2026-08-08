@@ -676,6 +676,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0625",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/592",
+      "title": "LUA-12/15/16: service call, structured failure, error capture",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-08T20:56:33Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
