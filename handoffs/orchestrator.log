@@ -539,3 +539,4 @@
 2026-08-08T22:42:41Z | ROUTE | WF03-GH594-20260808 | f872889a | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-594/ISS-0626 handoff bookkeeping triage)
 2026-08-08T22:47:37Z | COMPLETE | WF03-GH594-20260808 | f872889a | ISSUE-FIXER | PASS -- triage complete, narrowed ISS-0626 scope to H002/H008/H010/H006-partial/H001-partial (safe-mechanical), split H003/H004/H005/H009/H013/H007/H006-CONDITIONAL/H001-structural to ISS-0627/GH-596
 2026-08-08T22:48:10Z | ISSUE_FILED | WF03-GH594-20260808 | f872889a | ISSUE-FIXER | ISS-0627 -> GH-596 (case-by-case/permanent-acknowledgment subset of lint_handoffs.py debt) added to global queue
+2026-08-08T22:49:36Z | ROUTE | WF03-GH594-20260808 | 04d20ca3 | ORCH -> CODE-DESIGNER | IN_PROGRESS (Step 2, GH-594 safe-mechanical repair script design)

@@ -1,0 +1,45 @@
+{
+  "handoff_id": "04d20ca3-f72f-4afc-b0ec-0f953dfb2528",
+  "run_id": "WF03-GH594-20260808",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH594-20260808/step-02-code-designer.json",
+  "created_at": "2026-08-08T22:49:36Z",
+  "started_at": "2026-08-08T22:49:36Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f872889a-5ee6-47f9-addc-c564100a5a58"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0626.json",
+      "docs/issues/ISS-0627.json",
+      "tools/lint_handoffs.py",
+      "handoffs/registry.json"
+    ]
+  },
+  "task": {
+    "description": "Design a repair script for the SAFE-MECHANICAL subset of GH-594/ISS-0626's handoff bookkeeping debt (narrowed by ISSUE-FIXER's Step 1 triage, handoff f872889a -- read docs/issues/ISS-0626.json for full detail). Scope, and ONLY this scope:\n\n1. H002 (9 files, all in handoffs/WF02-iss105-token-model-schema-20260611/): the 'result' field is stored as a JSON STRING instead of an object. Fix: json.loads(h['result']) and replace the field with the parsed object, IF AND ONLY IF it round-trips cleanly (verified by ISSUE-FIXER's sample check -- design the script so it verifies this itself per-file too, not just trusts the sample).\n2. H008 (88 files): UTF-8 BOM present. Fix: read with utf-8-sig, re-write with plain utf-8 (no BOM), byte content otherwise IDENTICAL.\n3. H010 (1868 of 2270 handoffs missing from handoffs/registry.json): purely ADDITIVE reconciliation -- scan the handoffs/ directory tree for every *.json handoff file, and for any not already present in registry.json's entries (matched by handoff_id), add an entry using ONLY that file's own recorded fields (handoff_id, run_id/workflow context, step, from_agent, to_agent, created_at, status) -- never invent or infer a field the file itself doesn't already contain.\n4. H006 partial (2 of 3 findings only): unambiguous status-string renames -- 'FAILED' -> 'FAIL', 'PARTIAL_PASS' -> 'PARTIAL' (wherever these appear as a handoff's status or result.status value). The THIRD H006 finding (CONDITIONAL, ambiguous target) is explicitly OUT OF SCOPE -- do not touch it.\n5. H001 encoding-corruption subset (~7 of 11 H001 files, NOT all 11): PowerShell curly-quote / cp1252-encoding corruption. Fix: attempt a cp1252-decode-then-utf8-reencode fallback, but ONLY accept the fix if (a) the result re-parses as valid JSON, AND (b) a byte-level diff against the original shows ONLY the known-corrupted characters changed (nothing else in the file was touched). If either check fails for a specific file, SKIP that file and leave it flagged -- do not force a fix. The remaining ~4 H001 files (structural bracket/delimiter typos) are OUT OF SCOPE -- explicitly excluded, tracked in ISS-0627/GH-596 instead.\n\nEVERYTHING ELSE found by lint_handoffs.py (H003 148 findings, H004 34, H005 5, H006-CONDITIONAL 1, H007 69, H009 38, H013 53, H001-structural ~4) is EXPLICITLY OUT OF SCOPE for this design -- these have no recoverable true value in the file (timestamps, orphaned pipeline steps) or need an explicit schema-migration decision (H007) and are tracked separately in ISS-0627/GH-596. Do NOT design a fix for any of these -- if you're tempted to 'also handle' one because it looks easy, that is scope creep into exactly the fabrication risk ISSUE-FIXER's triage warned against. Flag it in your design's Open Questions if you disagree with the exclusion, do not silently include it.\n\nDESIGN REQUIREMENTS:\n- This is Type E (novel, cross-cutting -- a one-off repair script operating on ~2000+ JSON files, not a CRUD/migration/list-page pattern). Prose design per templates/lego-catalog.md's Type E rules -- no implementation code beyond illustrative signatures.\n- The script MUST be idempotent (safe to re-run; a file already fixed should be a no-op, not double-processed or corrupted further) and MUST operate in a dry-run-first mode (report what it WOULD change, require an explicit --apply flag or equivalent to actually write) -- this handles hundreds of files across the whole project's history, a mistake here is expensive to unwind.\n- The script MUST produce a clear before/after count per category so TEST-RUNNER/DOC-UPDATER can verify lint_handoffs.py's H002/H008/H010/H006 counts actually reach the target (H002->0, H008->0, H010->0, H006: 3->1).\n- Every file the script modifies must remain valid JSON after the change (the script should self-verify by re-parsing its own output before considering a file 'fixed').\n- Design a small number of mutation-checkable tests: e.g. a synthetic H002-shaped test fixture (string-wrapped result) that must become an object after the script runs; a synthetic BOM'd file that must lose its BOM but keep identical content; a synthetic registry.json missing a known handoff that must gain exactly that entry with no other changes.",
+    "acceptance_criteria": [
+      "Design covers ONLY H002, H008, H010, H006-partial (2/3), H001-encoding-subset (~7/11)",
+      "Script design is idempotent and dry-run-first",
+      "H010 reconciliation is purely additive, no invented fields",
+      "H001 fix design includes explicit verify-before-accept (re-parse + byte-diff check)",
+      "Design explicitly excludes H003/H004/H005/H006-CONDITIONAL/H007/H009/H013/H001-structural",
+      "Mutation-checkable test specs for at least H002, H008, H010",
+      "No implementation code beyond illustrative Type E signatures"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
