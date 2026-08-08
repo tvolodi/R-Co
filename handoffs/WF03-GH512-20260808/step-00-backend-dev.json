@@ -1,0 +1,54 @@
+{
+  "handoff_id": "7f64a7de-3cc2-4b0c-8dc2-9a0ad6a4d512",
+  "run_id": "WF03-GH512-20260808",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH512-20260808/step-00-backend-dev.json",
+  "created_at": "2026-08-08T11:20:39Z",
+  "started_at": "2026-08-08T11:22:13Z",
+  "completed_at": "2026-08-08T11:43:37Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/512"
+    ]
+  },
+  "task": {
+    "description": "Perform mandatory git-setup for WF-03 issue GH-512. Read GitHub issue #512 and establish the feature branch feature/WF03-GH512-20260808 from current main, update the handoff with branch evidence, and push the branch. Do not implement the fix in this step.",
+    "acceptance_criteria": [
+      "git-setup completes",
+      "current branch is feature/WF03-GH512-20260808",
+      "remote feature branch exists",
+      "handoff and registry audit fields are updated"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "git-setup complete: branch feature/WF03-GH512-20260808 created from origin/main (fast-forwarded to ae69e257), bookkeeping committed (2fa0b534), branch pushed to remote.",
+    "artifacts_out": [
+      "handoffs/WF03-GH512-20260808/step-00-backend-dev.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 0.5 + Step 1) for ISS registration and root-cause diagnosis",
+    "branch": "feature/WF03-GH512-20260808",
+    "base_commit": "ae69e257",
+    "bootstrap_commit": "2fa0b534",
+    "remote": "origin/feature/WF03-GH512-20260808"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
