@@ -1,0 +1,23 @@
+{
+  "id": "ISS-0619",
+  "title": "idn02/idn03: group task claim and role-scoped task list return 403/500 instead of 200 (3 blocks)",
+  "status": "REGISTERED",
+  "severity": "MAJOR",
+  "workflow": "WF-03",
+  "run_id": "WF03-GH568-20260808",
+  "handoff_id": null,
+  "created_at": "2026-08-08T03:36:42Z",
+  "updated_at": "2026-08-08T03:36:42Z",
+  "resolved_at": null,
+  "failure_report": "https://github.com/tvolodi/R-Co/issues/568",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/568",
+  "root_cause": {
+    "category": "A — Logic error",
+    "description": "TBD — diagnosis in progress"
+  },
+  "resolution": {
+    "summary": "TBD",
+    "files_modified": []
+  },
+  "prevention": "TBD"
+}
