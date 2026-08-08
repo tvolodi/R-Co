@@ -1,0 +1,54 @@
+{
+  "handoff_id": "01978635-4950-4ce9-84ca-b2e73520f5aa",
+  "run_id": "WF03-GH574-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH574-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T09:09:33Z",
+  "started_at": "2026-08-08T09:09:33Z",
+  "completed_at": null,
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0621.json",
+      "docs/issue-reports/ISS-0185-diagnosis.yaml",
+      "migrations/GBL-134_iss0185_drop_global_registry_shadows.sql",
+      "migrations/GBL-135_iss0185_drop_per_tenant_shadows.sql",
+      "migrations/GBL-136_iss0617_drop_remaining_global_registry_shadows.sql"
+    ]
+  },
+  "task": {
+    "description": "Diagnose and fix GH #574 (ISS-0621): docs/issue-reports/ISS-0185-diagnosis.yaml's classification_table section has inconsistent list-length labels and (per the filed issue) allegedly double-classifies 5 table names into both GLOBAL_REGISTRY and PER_TENANT lists simultaneously. IMPORTANT -- ORCH's own direct read of the CURRENT file (docs/issue-reports/ISS-0185-diagnosis.yaml lines 45-105) found: the ':37' label on global_registry_tenant_default_is_stray does not match its actual 33 items; the ':8' label on per_tenant_public_is_stray does not match its actual 13 items; total_classified/total_observed both say 45 which matches neither 33+13=46 nor any obvious correct total. HOWEVER, ORCH could NOT find the 5 disputed names (api_token_audit, event_payload_store, instance_definition_snapshots, instance_waits, variable_schemas) appearing in the per_tenant_public_is_stray list at all -- they currently appear ONLY in global_registry_tenant_default_is_stray (once each), plus once more each in unrelated prose text (root_causes_identified RC-B, which is a narrative example list, not a second classification list). This means ISS-0621's core claim of active double-classification within the file's two lists may not match the file's CURRENT actual content -- git log shows this file has not been edited since before ISS-0621 was filed (only one commit ever touched it, a2a8c68, predating the issue). DO NOT assume the filed issue's claim is correct. Re-verify from scratch: read the full classification_table section yourself, count both lists precisely, and determine what actually needs fixing. It is possible the double-classification claim was based on a different/earlier version of this file, a related-but-different file (e.g. cross-referencing against migrations/GBL-134 or GBL-135's actual v_tables arrays, which is where the OPERATIONAL contradiction ISS-0621's root_cause_analysis field describes actually lives -- GBL-135's v_tables array may include these 5 names even though the diagnosis file's classification_table doesn't list them under PER_TENANT), or a genuine error in the original issue filing that needs correcting/narrowing rather than blindly implemented. Check migrations/GBL-135_iss0185_drop_per_tenant_shadows.sql's actual v_tables array for these 5 names to understand the real operational discrepancy ISS-0621 is pointing at (between the diagnosis file's classification_table and what GBL-135 actually did), which may be the real, correct scope of this fix even if the issue's literal 'double-classified within the same file' wording is imprecise.",
+    "acceptance_criteria": [
+      "Independently re-verified whether the 5 disputed names are genuinely double-classified within ISS-0185-diagnosis.yaml itself, or whether the real discrepancy is between the diagnosis file and GBL-135s actual v_tables array (or some other source) -- documented clearly either way",
+      "The :37/:8 list-length label mismatch is corrected to match actual list lengths",
+      "total_classified/total_observed reconciled to correct counts",
+      "The 5 disputed names classification decision made and justified per the diagnosis files own stated classification method (tenant_id column presence/shape), not assumed from GBL-135s precedent alone",
+      "tools/lint_dual_schema_table_names.py checked for whether it also encodes any stale/incorrect classification",
+      "This is a documentation-only fix (YAML file), no production code or migration changes -- if the investigation reveals a genuine migration-level problem beyond documentation, file that as a SEPARATE issue rather than fixing it here (do not scope-creep into ISS-0620 territory, which already covers a related but distinct migration-execution problem)"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-verified GH #574/ISS-0621 from scratch, independently of both the original filing and ORCH's preliminary check. CONFIRMED: the 5 disputed names (api_token_audit, event_payload_store, instance_definition_snapshots, instance_waits, variable_schemas) were NOT double-classified within ISS-0185-diagnosis.yaml's own two classification lists -- each appeared exactly once, only in global_registry_tenant_default_is_stray (4 of 5 also appear a second time each, but only in RC-B's narrative prose, an explanatory example list, not a second formal classification). git log confirms the file was unmodified since before the issue was filed. The REAL defect matches the issue's own root_cause_analysis hypothesis: a contradiction between this diagnosis file and migrations/GBL-135_iss0185_drop_per_tenant_shadows.sql, whose v_tables array (12 names) already includes and acted on all 5 disputed names as PER_TENANT (dropped their public shadow copies against live bpm_test), while the diagnosis file still classified them as GLOBAL_REGISTRY. Independently verified PER_TENANT is correct (not merely deferred to GBL-135's precedent) by reading src/**/*.zig call sites for all 5 tables: every query is unqualified and scoped to per-instance/per-tenant data, consistent with tenant-scoped search_path resolution. A live DB check found no tenant_id column remains on any of the 5 post-GBL-135 (so the file's literal tenant_id-presence test could not be applied directly), so application-code triangulation was used instead, per the file's own stated measurement_method. Also found and fixed a pre-existing, more fundamental defect in the same section: 'key: N' followed by a same-indentation bullet list does not parse as a nested YAML sequence -- it folds into a single plain-scalar string. This existed in the file's original commit (a2a8c68) and is the actual root cause of the ':37'/':8' label drift going undetected: the lists were never machine-readable. Fixed docs/issue-reports/ISS-0185-diagnosis.yaml: moved the 5 names to per_tenant_public_is_stray; corrected the YAML structure so both fields are real sequences (added _count keys, proper indentation); corrected labels/counts to 28/18 (was mislabeled 37/8; actual pre-fix counts were 33/13); reconciled total_classified/total_observed to 46; added a dated inline note documenting the move and justification. Checked tools/lint_dual_schema_table_names.py in full: it is state-based (queries live DB), its ALLOW_LIST is HYBRID-only and does not reference any of the 5 disputed names -- no change needed, no incidental issue to file. Updated docs/issues/ISS-0621.json to RESOLVED with the corrected understanding, fix applied, and verification steps. Documentation-only fix -- no migration files (GBL-134/135/136) or production Zig code touched.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0185-diagnosis.yaml",
+      "docs/issues/ISS-0621.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-08T09:14:43Z"
+}
