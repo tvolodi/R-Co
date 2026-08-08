@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH594-20260808/step-01-issue-fixer.json",
   "created_at": "2026-08-08T22:42:41Z",
   "started_at": "2026-08-08T22:42:41Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T22:47:37Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -36,7 +36,21 @@
       "fn:register-issue"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "DIAGNOSIS/TRIAGE COMPLETE (no fixes implemented, per Step 1->Step 2 boundary). Re-ran `python3 tools/lint_handoffs.py` (via .venv/Scripts/python.exe -- python3 is not on PATH in this workspace) against the full corpus: 2270 handoffs checked, 263 BLOCKER + 195 MAJOR + 1 MINOR = 459 findings, broken out by check code: H003 148, H008 88, H007 69, H013 53, H009 38, H004 34, H001 11, H002 9, H005 5, H006 3, H010 1. Read tools/lint_handoffs.py source in full to ground triage in actual check logic (H001-H013, 13 codes total; only 11 appear in current findings -- H011/H012 orchestrator.log checks currently clean). Sample-checked 2-3 real files per category rather than trusting the summary text alone.\n\nTRIAGE VERDICT:\nSAFE MECHANICAL FIX (this run's remit, routed to CODE-DESIGNER):\n  - H002 (9 files, all WF02-iss105-token-model-schema-20260611): result field is a JSON string; json.loads(result) round-trips cleanly into the exact expected object (verified on step-00-backend-dev-gitsetup.json). Deterministic unwrap, no data invented.\n  - H008 (88 files): UTF-8 BOM prefix strip. Pure byte-level operation, content unchanged.\n  - H010 (1 finding covering 1868/2270 files): registry.json reconciliation is purely additive -- scan handoffs/ tree, add any handoff_id missing from registry.entries using that handoff's OWN recorded created_at/status/etc, never inventing data. Worst case is a stale/duplicate entry, not a fabricated fact.\n  - H006 partial (2 of 3): 'FAILED'->'FAIL' and 'PARTIAL_PASS'->'PARTIAL' are unambiguous synonym-normalizations; safe to fold into the same script. The 3rd value 'CONDITIONAL' has no 1:1 mapping and is excluded.\n  - H001 partial (~7 of 11): PowerShell curly-quote/cp1252-encoding corruption (verified: WF02-lua06-16-20260528/step-02-backend-dev.json decodes cleanly as cp1252 and re-parses as valid JSON with identical key structure). Recoverable IF the repair script only accepts a fix when the repaired file re-parses AND a byte-diff shows only the targeted corrupted characters changed (verify-before-write, not blind pattern substitution).\n\nNEEDS CASE-BY-CASE JUDGMENT OR PERMANENT ACKNOWLEDGMENT (split to follow-up issue, NOT this run):\n  - H003 (148 BLOCKER): completed_at < started_at, non-whole-hour. No source in the file recovers the true timestamp -- any fix is fabrication.\n  - H004 (34 BLOCKER): started_at < created_at. Same unrecoverable-history problem, opposite direction.\n  - H013 (53 BLOCKER): whole-hour-offset clock skew (confirmed 3.9-4.0h clustering on samples -- the documented .ToUniversalTime()-omission signature). Offset is computable but the causal timezone is not recorded in the file; correcting it still requires inferring an unrecorded fact.\n  - H005 (5 BLOCKER): status COMPLETED but completed_at unset outright. Nothing to recover from.\n  - H009 (38 MAJOR): PENDING/IN_PROGRESS step with later COMPLETED siblings in the same run. Marking it COMPLETED/FAILED after the fact fabricates evidence that was never recorded -- this is a real historical process irregularity (exactly the fabrication risk the handoff's own task.description warned about), not a data-entry error.\n  - H001 remainder (~4 of 11): genuine structural typos, e.g. handoffs/ADHOC-gh402-db-cleanup-hang-20260803/step-00-backend-dev-db-cleanup.json line 46 closes an object with ']' instead of '}' -- requires understanding which delimiter was intended, i.e. per-file judgment, not a blind pattern.\n  - H006 CONDITIONAL (1 of 3): no unambiguous target value; needs the file's own context read by hand, or LEGAL_RESULT_STATUS may need to grow to accept it as a legitimate pre-enum historical state.\n  - H007 (69 findings, ~10 distinct files, all WF02-api07-20260523): early alternate schema (workflow_id+sequence instead of run_id+step) -- values are present, just under different key names. Renaming keys on historical record files is a schema-migration decision that needs explicit sign-off, not a silent script alongside H002/H008/H010.\n\nFILED FOLLOW-UP: docs/issues/ISS-0627.json / GitHub #596 (https://github.com/tvolodi/R-Co/issues/596) covers all 8 needs-judgment categories above (292 of 459 findings), added to the global queue via tools/queue_add.py for a future WF-03 run -- same phased-split pattern used for GH-495 -> ISS-0624/ISS-0625. docs/issues/ISS-0626.json's own scope was narrowed in place to cover only the safe-mechanical subset (H002/H008/H010/H006-partial/H001-partial, ~98 of 459 findings) that CODE-DESIGNER designs a repair for next.\n\nNote: an early `queue_add.py --help` probe accidentally wrote a malformed placeholder entry into handoffs/global_queue.json (issue_id '--help', since the script has no flag parser and treats the first arg as a literal issue_id) -- caught and reverted immediately before any commit; queue_add.py has no --help/-h support, first positional arg is always the issue_id.",
+    "artifacts_out": [
+      "docs/issues/ISS-0626.json",
+      "docs/issues/ISS-0627.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "queue_add.py has no --help/-h flag handling; an unrecognized flag-like first argument is silently treated as a literal issue_id and written to the queue. Low risk (caught by review before commit) but worth a follow-up hardening pass: reject args starting with '--' that aren't recognized flags instead of accepting them as issue_id."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2) with this triage. Design scope: a single mechanical repair script covering ISS-0626's narrowed remit only -- H002 (unwrap JSON-string result), H008 (strip UTF-8 BOM), H010 (additive registry.json reconciliation from handoffs/ tree), H006 partial (FAILED->FAIL, PARTIAL_PASS->PARTIAL only), and H001 partial (~7 encoding-corruption files, verify-before-write: accept a repair only if the output re-parses as valid JSON AND a byte-diff confirms only the corrupted characters changed). Do NOT design fixes for H003/H004/H005/H009/H013/H007/H006-CONDITIONAL/H001-structural -- those are explicitly out of scope, tracked under ISS-0627/GH-596."
+  },
   "rework_count": 0,
   "max_rework": 3
 }

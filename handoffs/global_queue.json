@@ -709,6 +709,19 @@
       "labels": [
         "bug"
       ]
+    },
+    {
+      "issue_id": "ISS-0627",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/596",
+      "title": "lint_handoffs.py debt needing case-by-case judgment or permanent acknowledgment (H001/H003/H004/H005/H006/H007/H009/H013)",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-08T22:46:50Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
