@@ -1,0 +1,1084 @@
+issue_id: "ISS-0181"
+severity: "MAJOR"
+gh_issue: "https://github.com/tvolodi/R-Co/issues/512"
+symptoms:
+  - "--no-baseline lint reports 184 T010 BLOCKERs across 45 integration files; all are currently baselined."
+  - "Fixed UUID fixtures can collide when test binaries share bpm_test (INV-TI-2)."
+root_cause: "The linter uses a lexical UUID-literal rule (T010) and the affected Zig integration fixtures predate the CSPRNG-backed TestHarness UUID helpers. The literals are reused across concurrent binaries, so database rows can collide. T020 detects module-level mutable var declarations; T030 detects allocation-like calls in a test block without defer; T050 requires BPM_TEST_DB_URL; T060 detects production-defaulting tenant creation with non-allowlisted slugs. These are distinct checks and must not be conflated with this T010 migration."
+linter_classification:
+  T010: "Any quoted canonical UUID except the all-zero sentinel; BLOCKER."
+  T011: "Deterministic seed UUID generator; BLOCKER."
+  T020: "Column-zero module-level mutable var; MAJOR."
+  T030: "Allocation-like call in a test block without defer; MAJOR."
+  T040: "SkipZigTest in a block carrying requirement coverage hint; BLOCKER."
+  T050: "Integration file lacks BPM_TEST_DB_URL reference; MAJOR."
+  T060: "Unprefixed production-defaulting tenant creation or raw tenant INSERT omitting tenant_type; MAJOR."
+helpers:
+  file: "tests/integration/helpers.zig"
+  newUuid_signature: "pub fn newUuid(self: *TestHarness) bpm.uuid.Uuid"
+  newUuidString_signature: "pub fn newUuidString(self: *TestHarness, allocator: std.mem.Allocator) ![]u8"
+  implementation: "CSPRNG UUID v4; newUuid is allocation-free, newUuidString allocates canonical 36-byte representation; caller frees returned slice."
+  substitution_limits:
+    - "Compile-time constants and declarations requiring comptime values cannot call runtime helpers."
+    - "SQL text or expected values that intentionally assert a documented system identity must retain the fixed UUID."
+    - "Call sites must have a live TestHarness and allocator, and defer allocator.free for allocated strings."
+affected_files:
+  - file: "tests/integration/event_store_integration_test.zig"
+    finding_count: 59
+    convert_count: 59
+    retain_count: 0
+    findings:
+      - line: 64
+        uuid: "aabbccdd-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 183
+        uuid: "e5010000-0001-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 184
+        uuid: "defdef00-0001-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 189
+        uuid: "acac0000-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 249
+        uuid: "e5020000-0002-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 250
+        uuid: "defdef00-0002-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 255
+        uuid: "acac0000-0000-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 303
+        uuid: "e5020000-0003-0000-0000-000000000003"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 304
+        uuid: "defdef00-0003-0000-0000-000000000003"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 309
+        uuid: "acac0000-0000-0000-0000-000000000003"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 385
+        uuid: "e5030000-0003-0000-0000-000000000003"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 386
+        uuid: "defdef00-0003-0000-0000-000000000003"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 391
+        uuid: "acac0000-0000-0000-0000-000000000004"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 460
+        uuid: "e5040000-0004-0000-0000-00000000000a"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 461
+        uuid: "e5040000-0004-0000-0000-00000000000b"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 462
+        uuid: "defdef00-0004-0000-0000-00000000000a"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 463
+        uuid: "defdef00-0004-0000-0000-00000000000b"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 471
+        uuid: "acac0000-0000-0000-0000-000000000005"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 551
+        uuid: "e504c0b0-0004-0000-0000-000000000004"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 552
+        uuid: "defdef00-0004-0000-0000-000000000004"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 560
+        uuid: "acac0000-0000-0000-0000-000000000006"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 625
+        uuid: "e5050000-0005-0000-0000-000000000005"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 626
+        uuid: "defdef00-0005-0000-0000-000000000005"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 631
+        uuid: "acac0000-0000-0000-0000-000000000007"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 811
+        uuid: "e5060000-0006-0000-0000-000000000006"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 812
+        uuid: "defdef00-0006-0000-0000-000000000006"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 819
+        uuid: "acac0000-0000-0000-0000-000000000008"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 912
+        uuid: "e506b000-0006-0000-0000-000000000006"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 913
+        uuid: "defdef00-0006-0000-0000-000000000006"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 921
+        uuid: "acac0000-0000-0000-0000-000000000009"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 987
+        uuid: "e5070000-0007-0000-0000-000000000007"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 988
+        uuid: "defdef00-0007-0000-0000-000000000007"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1000
+        uuid: "acac0000-0000-0000-0000-000000000010"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1105
+        uuid: "ad110000-0002-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1106
+        uuid: "defdef00-ad11-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1119
+        uuid: "acac0000-0000-0000-0000-000000000031"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1181
+        uuid: "ad110000-0003-0000-0000-000000000003"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1182
+        uuid: "defdef00-ad11-0000-0000-000000000003"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1193
+        uuid: "acac0000-0000-0000-0000-000000000032"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1276
+        uuid: "e5080000-0008-0000-0000-000000000008"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1277
+        uuid: "defdef00-0008-0000-0000-000000000008"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1282
+        uuid: "acac0000-0000-0000-0000-000000000011"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1324
+        uuid: "ad010000-0001-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1325
+        uuid: "defdef00-ad01-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1330
+        uuid: "acac0000-0000-0000-0000-000000000021"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1395
+        uuid: "ad010000-0002-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1396
+        uuid: "defdef00-ad01-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1401
+        uuid: "acac0000-0000-0000-0000-000000000022"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1402
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1544
+        uuid: "ad010000-0004-0000-0000-000000000004"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1545
+        uuid: "defdef00-ad01-0000-0000-000000000004"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1550
+        uuid: "acac0000-0000-0000-0000-000000000024"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1605
+        uuid: "e5010500-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1640
+        uuid: "e5010600-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1641
+        uuid: "acac0000-0000-0000-0000-000000000025"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1674
+        uuid: "e5030200-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1675
+        uuid: "acac0000-0000-0000-0000-000000000026"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1708
+        uuid: "e5030300-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1709
+        uuid: "acac0000-0000-0000-0000-000000000027"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/test_snapshot_integration.zig"
+    finding_count: 10
+    convert_count: 10
+    retain_count: 0
+    findings:
+      - line: 43
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 46
+        uuid: "00000000-0000-0000-0000-000000000801"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 48
+        uuid: "00000000-0000-0000-0000-000000000802"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 50
+        uuid: "00000000-0000-0000-0000-000000000803"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 52
+        uuid: "00000000-0000-0000-0000-000000000804"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 54
+        uuid: "00000000-0000-0000-0000-000000000805"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 56
+        uuid: "00000000-0000-0000-0000-000000000806"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 58
+        uuid: "00000000-0000-0000-0000-000000000807"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 59
+        uuid: "00000000-0000-0000-0000-000000000808"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 62
+        uuid: "ffffffff-ffff-ffff-ffff-ffffffffffff"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/obs06_alerts_test.zig"
+    finding_count: 9
+    convert_count: 9
+    retain_count: 0
+    findings:
+      - line: 100
+        uuid: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 100
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 101
+        uuid: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 101
+        uuid: "22222222-2222-2222-2222-222222222222"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 164
+        uuid: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 164
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 391
+        uuid: "a1111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 392
+        uuid: "b2222222-2222-2222-2222-222222222222"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 393
+        uuid: "c3333333-3333-3333-3333-333333333333"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig"
+    finding_count: 8
+    convert_count: 8
+    retain_count: 0
+    findings:
+      - line: 46
+        uuid: "10000000-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 62
+        uuid: "10000000-0000-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 76
+        uuid: "20000000-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 129
+        uuid: "40000000-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 171
+        uuid: "40000000-0000-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 189
+        uuid: "70000000-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 193
+        uuid: "20000000-0000-0000-0000-000000000011"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 202
+        uuid: "70000000-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/ext02_webhook_dispatch_test.zig"
+    finding_count: 7
+    convert_count: 7
+    retain_count: 0
+    findings:
+      - line: 410
+        uuid: "00000000-0000-0000-0000-000000000999"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 462
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 526
+        uuid: "22222222-2222-2222-2222-222222222222"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 571
+        uuid: "33333333-3333-3333-3333-333333333333"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 626
+        uuid: "44444444-4444-4444-4444-444444444444"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 733
+        uuid: "55555555-5555-5555-5555-555555555555"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 793
+        uuid: "66666666-6666-6666-6666-666666666666"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/oidc15_realm_deletion_test.zig"
+    finding_count: 6
+    convert_count: 6
+    retain_count: 0
+    findings:
+      - line: 26
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 124
+        uuid: "00000000-0000-0000-0000-000000000111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 166
+        uuid: "00000000-0000-0000-0000-000000000111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 274
+        uuid: "00000000-0000-0000-0000-000000000111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 364
+        uuid: "00000000-0000-0000-0000-000000000111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 429
+        uuid: "00000000-0000-0000-0000-000000000111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/api02_crud_test.zig"
+    finding_count: 5
+    convert_count: 5
+    retain_count: 0
+    findings:
+      - line: 114
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 401
+        uuid: "ffffffff-ffff-ffff-ffff-ffffffffffff"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 545
+        uuid: "ffffffff-ffff-ffff-ffff-fffffffffff2"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 745
+        uuid: "ffffffff-ffff-ffff-ffff-fffffffffff3"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1079
+        uuid: "ffffffff-ffff-ffff-ffff-fffffffffff4"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/api03_instance_read_test.zig"
+    finding_count: 5
+    convert_count: 4
+    retain_count: 1
+    findings:
+      - line: 62
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 64
+        uuid: "ffffffff-ffff-ffff-ffff-ffffffffffff"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 66
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+      - line: 983
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 1025
+        uuid: "ffffffff-ffff-ffff-ffff-ffffffffffff"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/oidc09_jit_provisioning_test.zig"
+    finding_count: 5
+    convert_count: 5
+    retain_count: 0
+    findings:
+      - line: 29
+        uuid: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 30
+        uuid: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 31
+        uuid: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa05"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 32
+        uuid: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa06"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 33
+        uuid: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa07"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/adp07_agent_role_reserved_usernames_test.zig"
+    finding_count: 4
+    convert_count: 3
+    retain_count: 1
+    findings:
+      - line: 37
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+      - line: 47
+        uuid: "00000000-0000-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 216
+        uuid: "33333333-3333-3333-3333-333333333333"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 222
+        uuid: "33333333-3333-3333-3333-333333333333"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/ee03_ee04_tasks_api_test.zig"
+    finding_count: 4
+    convert_count: 4
+    retain_count: 0
+    findings:
+      - line: 36
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 240
+        uuid: "ffffffff-ffff-ffff-ffff-ffffffffffff"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 314
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 377
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/oidc11_identity_stability_test.zig"
+    finding_count: 4
+    convert_count: 4
+    retain_count: 0
+    findings:
+      - line: 28
+        uuid: "51111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 29
+        uuid: "53333333-3333-3333-3333-333333333333"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 30
+        uuid: "54444444-4444-4444-4444-444444444444"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 31
+        uuid: "58888888-8888-8888-8888-888888888888"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/adp04_user_tenant_binding_test.zig"
+    finding_count: 3
+    convert_count: 2
+    retain_count: 1
+    findings:
+      - line: 15
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 16
+        uuid: "22222222-2222-2222-2222-222222222222"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 38
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+  - file: "tests/integration/adp10_agent_io_capture_audit_test.zig"
+    finding_count: 3
+    convert_count: 3
+    retain_count: 0
+    findings:
+      - line: 49
+        uuid: "a1000000-0000-0000-0000-000000000001"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 170
+        uuid: "a1000000-0000-0000-0000-000000000101"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 181
+        uuid: "a1000000-0000-0000-0000-000000000102"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/ee08_cancel_instance_test.zig"
+    finding_count: 3
+    convert_count: 2
+    retain_count: 1
+    findings:
+      - line: 44
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 46
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+      - line: 48
+        uuid: "00000000-0000-4000-8000-000000000000"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/oidc14_realm_provisioning_test.zig"
+    finding_count: 3
+    convert_count: 3
+    retain_count: 0
+    findings:
+      - line: 26
+        uuid: "22222222-2222-2222-2222-222222222222"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 45
+        uuid: "33333333-3333-3333-3333-333333333333"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 97
+        uuid: "44444444-4444-4444-4444-444444444444"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/sch01_timer_creation_test.zig"
+    finding_count: 3
+    convert_count: 2
+    retain_count: 1
+    findings:
+      - line: 28
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 29
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+      - line: 476
+        uuid: "00000000-0000-4000-8000-000000000123"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/adp04a_external_identity_linkage_test.zig"
+    finding_count: 2
+    convert_count: 2
+    retain_count: 0
+    findings:
+      - line: 12
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 13
+        uuid: "22222222-2222-2222-2222-222222222222"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/adp09_tamper_evident_audit_chain_test.zig"
+    finding_count: 2
+    convert_count: 2
+    retain_count: 0
+    findings:
+      - line: 308
+        uuid: "c9000000-0000-0000-0000-000000000102"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 310
+        uuid: "c9000000-0000-0000-0000-000000000103"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/concurrent_instances_test.zig"
+    finding_count: 2
+    convert_count: 2
+    retain_count: 0
+    findings:
+      - line: 287
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 406
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/ee01_start_instance_test.zig"
+    finding_count: 2
+    convert_count: 2
+    retain_count: 0
+    findings:
+      - line: 44
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 46
+        uuid: "00000000-0000-4000-8000-000000000000"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/env01_test.zig"
+    finding_count: 2
+    convert_count: 1
+    retain_count: 1
+    findings:
+      - line: 132
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+      - line: 466
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/ext05_sub_process_support_test.zig"
+    finding_count: 2
+    convert_count: 1
+    retain_count: 1
+    findings:
+      - line: 21
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 22
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+  - file: "tests/integration/idn02_group_management_test.zig"
+    finding_count: 2
+    convert_count: 1
+    retain_count: 1
+    findings:
+      - line: 50
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+      - line: 412
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/idn04_api_token_management_test.zig"
+    finding_count: 2
+    convert_count: 1
+    retain_count: 1
+    findings:
+      - line: 34
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+      - line: 44
+        uuid: "00000000-0000-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/oidc10_attribute_sync_test.zig"
+    finding_count: 2
+    convert_count: 2
+    retain_count: 0
+    findings:
+      - line: 28
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 29
+        uuid: "22222222-2222-2222-2222-222222222222"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/oidc12_realm_tenant_binding_test.zig"
+    finding_count: 2
+    convert_count: 2
+    retain_count: 0
+    findings:
+      - line: 26
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 215
+        uuid: "00000000-0000-0000-0000-ffffffffffff"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/oidc13_tenant_claim_source_test.zig"
+    finding_count: 2
+    convert_count: 2
+    retain_count: 0
+    findings:
+      - line: 94
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 105
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/oidc34_migration_helper_test.zig"
+    finding_count: 2
+    convert_count: 2
+    retain_count: 0
+    findings:
+      - line: 16
+        uuid: "11111111-1111-1111-1111-111111111111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 17
+        uuid: "22222222-2222-2222-2222-222222222222"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/pd04_lifecycle_test.zig"
+    finding_count: 2
+    convert_count: 2
+    retain_count: 0
+    findings:
+      - line: 96
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 99
+        uuid: "00000000-0000-4000-8000-000000000000"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/test_export_import_integration.zig"
+    finding_count: 2
+    convert_count: 2
+    retain_count: 0
+    findings:
+      - line: 44
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+      - line: 47
+        uuid: "ffffffff-ffff-ffff-ffff-ffffffffffff"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/tm01_tenant_list_test.zig"
+    finding_count: 2
+    convert_count: 1
+    retain_count: 1
+    findings:
+      - line: 48
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+      - line: 60
+        uuid: "00000000-0000-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/adp04b_tenant_realm_binding_test.zig"
+    finding_count: 1
+    convert_count: 1
+    retain_count: 0
+    findings:
+      - line: 43
+        uuid: "00000000-0000-0000-0000-000000000111"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/adp05_instance_artifact_hash_test.zig"
+    finding_count: 1
+    convert_count: 1
+    retain_count: 0
+    findings:
+      - line: 24
+        uuid: "00000000-0000-0000-0000-00000000ad05"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/db_integration_test.zig"
+    finding_count: 1
+    convert_count: 1
+    retain_count: 0
+    findings:
+      - line: 407
+        uuid: "acac0000-0000-0000-0000-000000000002"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/definition_test.zig"
+    finding_count: 1
+    convert_count: 1
+    retain_count: 0
+    findings:
+      - line: 95
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/ee03_task_store_test.zig"
+    finding_count: 1
+    convert_count: 1
+    retain_count: 0
+    findings:
+      - line: 37
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/ee09_merge_variables_test.zig"
+    finding_count: 1
+    convert_count: 1
+    retain_count: 0
+    findings:
+      - line: 43
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/ext04_variable_transformer_test.zig"
+    finding_count: 1
+    convert_count: 1
+    retain_count: 0
+    findings:
+      - line: 24
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/idn01_user_registry_test.zig"
+    finding_count: 1
+    convert_count: 0
+    retain_count: 1
+    findings:
+      - line: 37
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+  - file: "tests/integration/idn03_role_access_test.zig"
+    finding_count: 1
+    convert_count: 0
+    retain_count: 1
+    findings:
+      - line: 47
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+  - file: "tests/integration/instance_error_test.zig"
+    finding_count: 1
+    convert_count: 0
+    retain_count: 1
+    findings:
+      - line: 761
+        uuid: "00000000-0000-0000-0000-000000000001"
+        action: "RETAIN"
+        reason: "Conventional platform-admin user_id (system actor); preserve identity semantics."
+  - file: "tests/integration/pd03_version_test.zig"
+    finding_count: 1
+    convert_count: 1
+    retain_count: 0
+    findings:
+      - line: 112
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/pd05_node_types_test.zig"
+    finding_count: 1
+    convert_count: 1
+    retain_count: 0
+    findings:
+      - line: 97
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+  - file: "tests/integration/pd10_search_test.zig"
+    finding_count: 1
+    convert_count: 1
+    retain_count: 0
+    findings:
+      - line: 43
+        uuid: "00000000-0000-0000-0000-000000000099"
+        action: "CONVERT"
+        reason: "Fixture identifier; generate at runtime with TestHarness.newUuid() or newUuidString(allocator)."
+retention_reasons:
+  - uuid: "00000000-0000-0000-0000-000000000001"
+    occurrences: 13
+    reason: "Platform-admin user_id/system actor; preserving this identity is required by authorization and audit fixtures."
+    locations:
+      - "tests/integration/adp04_user_tenant_binding_test.zig:38"
+      - "tests/integration/adp07_agent_role_reserved_usernames_test.zig:37"
+      - "tests/integration/api03_instance_read_test.zig:66"
+      - "tests/integration/ee08_cancel_instance_test.zig:46"
+      - "tests/integration/env01_test.zig:132"
+      - "tests/integration/ext05_sub_process_support_test.zig:22"
+      - "tests/integration/idn01_user_registry_test.zig:37"
+      - "tests/integration/idn02_group_management_test.zig:50"
+      - "tests/integration/idn03_role_access_test.zig:47"
+      - "tests/integration/idn04_api_token_management_test.zig:34"
+      - "tests/integration/instance_error_test.zig:761"
+      - "tests/integration/sch01_timer_creation_test.zig:29"
+      - "tests/integration/tm01_tenant_list_test.zig:48"
+recommended_batch_order:
+  - batch: 1
+    files:
+      - "tests/integration/event_store_integration_test.zig"
+    findings: 59
+    goal: "Largest contributor; establish conversion patterns and maximize early T010 reduction."
+  - batch: 2
+    files:
+      - "tests/integration/test_snapshot_integration.zig"
+      - "tests/integration/obs06_alerts_test.zig"
+      - "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig"
+      - "tests/integration/ext02_webhook_dispatch_test.zig"
+    findings: 34
+    goal: "High-volume fixture groups."
+  - batch: 3
+    files:
+      - "tests/integration/oidc15_realm_deletion_test.zig"
+      - "tests/integration/api02_crud_test.zig"
+      - "tests/integration/api03_instance_read_test.zig"
+      - "tests/integration/oidc09_jit_provisioning_test.zig"
+    findings: 21
+    goal: "Medium-volume API and identity fixtures; review retained admin references in api03."
+  - batch: 4
+    files:
+      - "tests/integration/adp07_agent_role_reserved_usernames_test.zig"
+      - "tests/integration/ee03_ee04_tasks_api_test.zig"
+      - "tests/integration/oidc11_identity_stability_test.zig"
+      - "tests/integration/adp04_user_tenant_binding_test.zig"
+      - "tests/integration/adp10_agent_io_capture_audit_test.zig"
+      - "tests/integration/ee08_cancel_instance_test.zig"
+      - "tests/integration/oidc14_realm_provisioning_test.zig"
+      - "tests/integration/sch01_timer_creation_test.zig"
+      - "tests/integration/adp04a_external_identity_linkage_test.zig"
+      - "tests/integration/adp09_tamper_evident_audit_chain_test.zig"
+      - "tests/integration/concurrent_instances_test.zig"
+      - "tests/integration/ee01_start_instance_test.zig"
+      - "tests/integration/env01_test.zig"
+      - "tests/integration/ext05_sub_process_support_test.zig"
+      - "tests/integration/idn02_group_management_test.zig"
+      - "tests/integration/idn04_api_token_management_test.zig"
+      - "tests/integration/oidc10_attribute_sync_test.zig"
+      - "tests/integration/oidc12_realm_tenant_binding_test.zig"
+      - "tests/integration/oidc13_tenant_claim_source_test.zig"
+      - "tests/integration/oidc34_migration_helper_test.zig"
+      - "tests/integration/pd04_lifecycle_test.zig"
+      - "tests/integration/test_export_import_integration.zig"
+      - "tests/integration/tm01_tenant_list_test.zig"
+      - "tests/integration/adp04b_tenant_realm_binding_test.zig"
+      - "tests/integration/adp05_instance_artifact_hash_test.zig"
+      - "tests/integration/db_integration_test.zig"
+      - "tests/integration/definition_test.zig"
+      - "tests/integration/ee03_task_store_test.zig"
+      - "tests/integration/ee09_merge_variables_test.zig"
+      - "tests/integration/ext04_variable_transformer_test.zig"
+      - "tests/integration/idn01_user_registry_test.zig"
+      - "tests/integration/idn03_role_access_test.zig"
+      - "tests/integration/instance_error_test.zig"
+      - "tests/integration/pd03_version_test.zig"
+      - "tests/integration/pd05_node_types_test.zig"
+      - "tests/integration/pd10_search_test.zig"
+    findings: 70
+    goal: "Remaining low-volume files, grouped by subsystem and compiled after each small group."
+references_to_priors:
+  - "PR #387 / ISS-0121: introduced TestHarness.newUuid and newUuidString."
+  - "ISS-0152 / GH #484: identified residual T010 debt after C5 symptom resolution."
+  - "PR #498 / GH #498: baseline line-resync and audit concern."
+  - "GH #454: concurrent integration instability."
+  - "GH #402: prior partial T010 reduction effort."
+acceptance_criteria_reproduced:
+  - "Each of the 184 T010 findings is either converted to TestHarness.newUuid()/newUuidString() or retained in the baseline with an individual written reason identifying it as a genuine fixed system constant"
+  - "The baseline shrinks by the number converted and gains no new entries"
+  - "Every touched integration test still compiles and passes, measured against a pre-change baseline run so that pre-existing failures (#482, #479, #427, #424, #423, #418, #417) are not mistaken for regressions"
+  - "zig build test-env-verify still exits 0"
+classification_summary:
+  total: 184
+  convert: 171
+  retain: 13
+  platform_admin_occurrences: 13
+  baseline_entries_to_remove_after_conversion: 171
+  note: "This is a diagnosis plan; no source files or baseline entries were modified."

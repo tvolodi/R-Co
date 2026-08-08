@@ -1,0 +1,59 @@
+{
+  "handoff_id": "11d76ffa-4363-4189-9e56-dadc86c00fc6",
+  "run_id": "WF03-GH512-20260808",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "CODE-DESIGNER",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-08T11:53:14Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Step 2 (CODE-DESIGNER)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "de9c1c33-96bc-49a6-9b12-2fe19470ccdd"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0181.json",
+      "docs/issue-reports/ISS-0181-gh512-diagnosis.yaml",
+      "tests/integration/helpers.zig",
+      "tools/lint_test_isolation.py",
+      "tools/lint_test_isolation.baseline.json",
+      "tests/integration/event_store_integration_test.zig",
+      "handoffs/WF03-GH512-20260808/step-01-issue-fixer.json"
+    ],
+    "artifacts_out": [
+      "src/design/iss0181-gh512-t010-migration.md"
+    ]
+  },
+  "task": {
+    "description": "Produce a Type E prose design at src/design/iss0181-gh512-t010-migration.md that retires the 184 baselined T010 hardcoded-UUID BLOCKERs by substituting TestHarness.newUuid()/newUuidString(allocator) at CONVERT sites and retaining the 13 platform-admin user_id literals with auditable per-entry comments. Do NOT modify any source code in this turn.",
+    "acceptance_criteria": [
+      "Design covers goal/scope, substitution rules (S1-S4), retention rules (R1-R3), 5-batch migration order, helper-API analysis (none added), validation criteria, risks/edge cases, and effort estimate",
+      "Design correctly maps the 171 CONVERT and 13 RETAIN counts from the diagnosis",
+      "Design identifies the platform-admin user_id UUID as the only RETAIN literal and lists all 13 file/line locations",
+      "Design documents the 'try h.newUuidString(alloc); defer alloc.free(slice);' allocation pattern from helpers.zig",
+      "Design flags the defer ordering risk in event_store_integration_test.zig (cleanupInstance defer vs alloc.free defer)",
+      "Design requires zero production code change and zero migration change"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Designed the 184-T010 retirement at src/design/iss0181-gh512-t010-migration.md (Type E prose). 171 CONVERT sites routed through substitution rules S1 (bpm.uuid.Uuid value, allocation-free via newUuid()) and S2 (heap-allocated string via newUuidString(allocator) with defer alloc.free); S3 collapses to S2 (no file-scope shared literals); S4 defers to R3 retention. 13 RETAIN sites are all the conventional platform-admin user_id 00000000-0000-0000-0000-000000000001 with a '// GH-512 retention:' comment added above each. 5-batch migration order: Batch 1 event_store_integration_test.zig (59 sites, biggest early signal), Batch 2 high-volume (40 sites), Batch 3 medium (37 sites), Batch 4 small (32 sites), Batch 5 edge-case verification. No TestHarness API additions required. Validation criteria: linter T010 drops 184\u219213, baseline shrinks 225\u219254 with 0 new entries, zig build test exit 0, pre-existing failures (#482/479/427/424/423/418/417) not regressed, no error.SkipZigTest added. Effort: 130 minutes total, surface area medium, difficulty Standard(3). No source files modified.",
+    "artifacts_out": [
+      "src/design/iss0181-gh512-t010-migration.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-08-08T11:53:14Z"
+}
