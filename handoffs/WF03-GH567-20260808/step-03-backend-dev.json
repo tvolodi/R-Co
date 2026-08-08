@@ -7,9 +7,9 @@
   "to_agent": "BACKEND-DEV",
   "file": "handoffs/WF03-GH567-20260808/step-03-backend-dev.json",
   "created_at": "2026-08-08T05:18:12Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-08T05:18:49Z",
+  "completed_at": "2026-08-08T05:54:07Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -33,7 +33,21 @@
       "fn:zig-build-test"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented both fixes per the validated design (src/design/iss0618-scheduler-lock-and-error-signaling.md): (1) processNextDueTimer's ordinary-timer path now re-runs the due-timer predicate without FOR UPDATE when the SKIP LOCKED query returns 0 rows, distinguishing genuinely-no-due-timer (.none) from due-but-locked (.skipped_locked). (2) appendTimerFiredEventInTx's call site inside fire_blk now preserves ISS-303's rollback + handleTimerFireError retry bookkeeping but then returns SchedulerError.TransactionFailed directly instead of folding into fire_blk's false/.none path; every other fire_blk call site is byte-identical to before. TC-SCH-02-02 and TC-SCH-02-03 pass; TC-SCH-303-03/04 regression-checked and still pass (no change to ISS-303's retry/DLQ machinery). zig build exits 0 with no error-set output. lint_sql_param_types.py exits 0 (0 BLOCKER/MAJOR/MINOR). IMPORTANT DEVIATION FROM ACCEPTANCE CRITERION 5: tests/integration/sch02_timer_polling_test.zig was also modified (not just scheduler.zig). Root cause: TC-SCH-02-02 has a pre-existing latent self-deadlock -- its lock_conn holds a FOR UPDATE row lock via a `defer` that only fires at test-function scope exit, but the test calls inst_store.cancelInstance() (which does UPDATE timers on that same locked row via a different pool connection) BEFORE that defer runs. This was unreachable before this fix because TC-SCH-02-02's skipped_locked>0 assertion (which precedes the cancelInstance call) always failed first -- confirmed by running the ORIGINAL unmodified scheduler.zig against this exact test file: 21/23 pass, with TC-SCH-02-02 and TC-SCH-02-03 failing at their assertions, never reaching cancelInstance. With the fix applied, the assertion now passes and execution reaches cancelInstance for the first time, exposing the deadlock (confirmed via pg_stat_activity: cancelInstance's UPDATE timers genuinely blocked >1 minute on lock_conn's held lock, reproduced twice). Fixed per CLAUDE.md's Unblock-Everything directive (this blocks TC-SCH-02-02 from ever completing, and is a direct causal consequence of correctly implementing the assigned fix, not an unrelated defect) by releasing lock_conn's lock explicitly right after its purpose (proving skipped_locked) is served, before cancelInstance runs -- no assertions or test logic changed, only lock lifetime. CONCURRENT-RUN CONFLICT ENCOUNTERED AND RESOLVED: origin/feature/WF03-GH567-20260808 had been force-updated by a second, independent WF-03 run (workspace r-co-1-loop, which per handoffs/global_queue.json had locked GH-567 at 2026-08-08T04:06:22Z -- earlier than r-co-2-loop's 05:00:24Z lock, indicating a race in the queue-claim tooling gh_claim.py that let both workspaces claim the same issue). That run's scheduler.zig fix used a broader approach explicitly ruled out by the validated design doc (unconditionally returns TransactionFailed for every fire_blk failure via the !fire_ok branch, not just the appendTimerFiredEventInTx call site) -- verified in an isolated worktree that it does not regress sch303 as currently written, but it is architecturally less precise than the design doc's reasoning. Resolved via `git merge` (no force-push): kept this run's scheduler.zig and test fix, preserved the other run's audit-trail files (step-00 git-setup handoff, alternate design doc, ISS-0618.json fields) where non-conflicting, renamed the other run's step-01/step-02b handoff files to *-r-co-1-loop.json to avoid overwriting this run's canonical versions while keeping their content for the record, and chronologically merged handoffs/orchestrator.log (both runs' entries interleaved by timestamp, not concatenated). handoffs/global_queue.json's GH-567 entry corrected to reflect the true earlier lock time and marked RESOLVED. Full merge commit created (no force-push, no destructive git ops). Note: tools/lint_handoffs.py reports pre-existing repo-wide debt (263 BLOCKER / 195 MAJOR) spanning many unrelated historical runs across the whole repo -- none reference WF03-GH567-20260808 (confirmed via grep) -- this is adjacent, not blocking, and out of scope for this fix per CLAUDE.md's Unblock-Everything scope boundary.",
+    "artifacts_out": [
+      "src/scheduler/scheduler.zig",
+      "tests/integration/sch02_timer_polling_test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "tools/lint_handoffs.py reports 263 BLOCKER / 195 MAJOR across the whole repo's handoff history (pre-existing, unrelated to this run -- none reference WF03-GH567-20260808). Not filed as a new issue since it is a long-standing, repo-wide condition already implicitly known (H009/H010 categories), not a new discovery from this run."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }

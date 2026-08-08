@@ -1,0 +1,42 @@
+{
+  "handoff_id": "aa79586b-ca66-4fba-8b80-3eb249ff4cc1",
+  "run_id": "WF03-GH567-20260808",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-08T04:10:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 design validator",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/iss-0618-scheduler-poll-failure-surfacing.md",
+      "src/scheduler/scheduler.zig",
+      "tests/integration/sch02_timer_polling_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate the design artifact for ISS-0618",
+    "acceptance_criteria": [
+      "Design covers both TC-SCH-02-02 and TC-SCH-02-03 root causes",
+      "Risk analysis present and correct",
+      "Implementation plan unambiguous"
+    ],
+    "functions_to_call": [
+      "fn:validate-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design PASS. Both root causes identified with specific line numbers in src/scheduler/scheduler.zig. Fix plan: (1) add non-locking EXISTS probe before FOR UPDATE SKIP LOCKED to distinguish locked rows from no-rows; (2) propagate SchedulerError.TransactionFailed when fire path fails (after handleTimerFireError records the failure for retry/DLQ). Risk analysis covers all 39 pollDueTimers callers — none in production code, only tests, most on happy path. Acceptance criteria cover the 2 failing tests + regression of others.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 3) for implementation"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-08T04:10:30Z",
+  "completed_at": "2026-08-08T04:11:00Z"
+}
