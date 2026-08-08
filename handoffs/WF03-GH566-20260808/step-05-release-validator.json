@@ -1,0 +1,55 @@
+{
+  "handoff_id": "0eff3a9b-906f-420f-be3b-16b9cfcb55c3",
+  "run_id": "WF03-GH566-20260808",
+  "workflow_id": "WF-03",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF03-GH566-20260808/step-05-release-validator.json",
+  "created_at": "2026-08-08T08:25:18Z",
+  "started_at": "2026-08-08T08:25:18Z",
+  "completed_at": "2026-08-08T08:27:41Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "cbb47d44-f629-464c-91a1-5346fffba2e5"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0617.json",
+      "docs/issues/ISS-0622.json",
+      "tests/integration/exp601_tier_quota_test.zig",
+      "handoffs/global_queue.json"
+    ]
+  },
+  "task": {
+    "description": "Release decision for WF03-GH566-20260808 (ISS-0617/GH-566). Dispatched because a BLOCKER-severity issue (ISS-0622/GH-576) was discovered incidentally during this run's TEST-RUNNER step. Per CLAUDE.md's Issue Queue protocol, ISS-0622 is filed and forwarded to the global queue for its OWN future WF-03 run -- it does not block or expand THIS run's scope. Your job: confirm ISS-0617's actual stated scope (repository_artifacts / config-surface resolution root cause) is genuinely fixed, confirm ISS-0622 is correctly filed (docs/issues/ISS-0622.json, GH #576, present in handoffs/global_queue.json) and does NOT block release of THIS run's changes (since it's a pre-existing defect this run did not cause and is not required to fix), and render a release decision for this PR (#577) specifically -- not for ISS-0622's remaining work.",
+    "acceptance_criteria": [
+      "ISS-0617s stated scope (repository_artifacts/config resolution) confirmed fixed",
+      "ISS-0622 confirmed correctly filed (ISS file + GH issue + global queue entry) and confirmed NOT to block this runs release",
+      "PR #577 checks confirmed green",
+      "Release decision recorded in docs/status/release-<stage>-<date>.yaml"
+    ],
+    "functions_to_call": [
+      "fn:check-github-status"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0617 root cause (repository_artifacts unqualified INSERT resolving to tenant_default via search_path, plus cross-transaction fixture-visibility gap) confirmed genuinely fixed by commit 2393f5e -- schema-qualified INSERTs to public.repository_artifacts/public.tenant_artifact_activations plus fixture writes moved to pool-acquired connections. TC-EXP-601-01/03/05 pass locally, confirming the resolver now finds the tenant override (10) instead of the platform default (200000). ISS-0622 (BLOCKER, incidental discovery, quota_enforcement.zig unqualified PER_TENANT table reads under LEGACY_RLS) confirmed correctly filed: docs/issues/ISS-0622.json exists with full analysis, GitHub issue #576 is OPEN, and it is present in handoffs/global_queue.json (status QUEUED, added_at 2026-08-08T07:58:58Z). Per the Issue Queue protocol, ISS-0622 is structurally independent of this fix and does not block this PRs release. check_github_status.py reports platform operational. PR #577 checks all pass (Build and unit tests, Frontend checks, Pipeline bookkeeping, Platform status, Source linters -- verified via gh run watch after an in-progress rerun completed). Release decision: APPROVED. Recorded in docs/status/release-WF03-GH566-20260808-2026-08-08.yaml.",
+    "artifacts_out": [
+      "docs/status/release-WF03-GH566-20260808-2026-08-08.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "ISS-0622 (BLOCKER, GH #576) remains open and queued -- pre-existing, incidentally discovered, not caused by this PR, and correctly deferred to its own future WF-03 run per the Issue Queue protocol. Does not block this release."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 6)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

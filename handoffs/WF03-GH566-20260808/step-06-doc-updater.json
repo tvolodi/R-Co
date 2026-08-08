@@ -1,0 +1,42 @@
+{
+  "handoff_id": "56fc6ec9-9941-43c7-8dc0-a9b692c60a6e",
+  "run_id": "WF03-GH566-20260808",
+  "workflow_id": "WF-03",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH566-20260808/step-06-doc-updater.json",
+  "created_at": "2026-08-08T08:29:24Z",
+  "started_at": "2026-08-08T08:29:24Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "0eff3a9b-906f-420f-be3b-16b9cfcb55c3"
+    ],
+    "artifacts_in": [
+      "docs/status/release-WF03-GH566-20260808-2026-08-08.yaml",
+      "docs/issues/ISS-0617.json"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md for this WF-03 run (ISS-0617/GH-566, PR #577, RELEASE-VALIDATOR APPROVED). No formal requirement ID is associated with this issue (it's a bug-fix WF-03 run, not a WF-02 feature run) -- do NOT run reqctl.py set-status/render-status for this run; there is no docs/requirements.yaml entry to update. No estimation.json exists for this run either -- skip the retrospective procedure. Then perform Step Final: git-merge. PR #577 is already open (https://github.com/tvolodi/R-Co/pull/577), checks are green, RELEASE-VALIDATOR approved. Squash-merge it, delete the branch, update the GitHub project board for issue #566 (non-UAT-scoped -- move to implemented then done), and return the repo to a clean main.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with a concise entry for ISS-0617/GH-566",
+      "PR #577 merged (squash) and feature branch deleted",
+      "GitHub issue #566 project board updated (implemented -> done)",
+      "Repo returned to a clean main after merge",
+      "No stale feature branch remains on GitHub"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
