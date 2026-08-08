@@ -1,0 +1,35 @@
+{
+  "issue_id": "GH-567",
+  "local_id": "ISS-0618",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/567",
+  "github_number": 567,
+  "title": "sch02_timer_polling_test: skip-locked count is 0 and forced-failure rollback does not surface TransactionFailed (2 blocks)",
+  "severity": "MAJOR",
+  "priority": "P1",
+  "status": "REGISTERED",
+  "registered_at": "2026-08-08T04:06:39Z",
+  "run_id": "WF03-GH567-20260808",
+  "affected_areas": [
+    "src/scheduler",
+    "tests/integration/sch02_timer_polling_test.zig"
+  ],
+  "reproduction_tests": [
+    "TC-SCH-02-02",
+    "TC-SCH-02-03"
+  ],
+  "summary": "TC-SCH-02-02 expects skipped_locked > 0 but gets 0. TC-SCH-02-03 expects pollDueTimers() to surface error.TransactionFailed after a forced idempotency_key collision, but the poller returns a normal zero-work result.",
+  "root_cause_hypothesis": [
+    "poller silently swallows forced DB error rather than surfacing it",
+    "collision setup does not commit before pollDueTimers runs (commit-visibility)",
+    "poller never attempts to fire the timer for an unrelated reason",
+    "row-lock not held by concurrent-locker helper used in test",
+    "poller SKIP LOCKED query not hitting the intended row"
+  ],
+  "acceptance_criteria": [
+    "TC-SCH-02-02 skip-locked path traced; lock confirmed held; query correctly excludes locked rows",
+    "TC-SCH-02-03 forced-failure path traced; collision commits before polling; pollDueTimers surfaces underlying DB error",
+    "Both tests pass against a freshly migrated database"
+  ],
+  "linked_gh_issue": "GH-567",
+  "rco_sync_ref": "ISS-0618"
+}

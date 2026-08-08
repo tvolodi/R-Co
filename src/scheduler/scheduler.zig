@@ -186,6 +186,27 @@ pub const Scheduler = struct {
         conn.begin() catch return SchedulerError.TransactionFailed;
         errdefer conn.rollback() catch {};
 
+        // ISS-0618 / GH-567: probe for any due pending timers (no locking) so we can
+        // distinguish "no due timers exist" (.none) from "due timers exist but are all
+        // locked" (.skipped_locked) when the FOR UPDATE SKIP LOCKED query returns 0 rows.
+        const probe_rows = conn.query(
+            a,
+            \\SELECT EXISTS (
+            \\  SELECT 1 FROM timers
+            \\  WHERE status = 'pending'
+            \\    AND fires_at <= NOW()
+            \\) AS has_due
+        ,
+            &.{},
+        ) catch return SchedulerError.TransactionFailed;
+        defer {
+            var r = probe_rows;
+            r.deinit();
+        }
+
+        if (probe_rows.rows.len == 0) return SchedulerError.TransactionFailed;
+        const has_due = std.mem.eql(u8, colGet(probe_rows.rows[0], 0), "t");
+
         const due_rows = conn.query(
             a,
             \\SELECT id::text, instance_id::text, timer_type, step_name, action_type,
@@ -211,7 +232,11 @@ pub const Scheduler = struct {
 
         if (due_rows.rows.len == 0) {
             conn.rollback() catch {};
-            return .none;
+            // ISS-0618 / GH-567: probe saw due timers but the SKIP LOCKED query returned
+            // nothing — all due rows are locked by concurrent workers. Report
+            // .skipped_locked so the caller learns the poller saw work it could not
+            // process this cycle.
+            return if (has_due) .skipped_locked else .none;
         }
 
         const timer_id_text = colGet(due_rows.rows[0], 0);
@@ -399,6 +424,11 @@ pub const Scheduler = struct {
 
             if (!fire_ok) {
                 // ISS-303: Tx1 failed — rollback, then record the error on a new connection.
+                // ISS-0618 / GH-567: now also surface the failure as TransactionFailed so
+                // the caller learns the fire path failed (was previously .none, which made
+                // pollDueTimers silently swallow e.g. events.idempotency_key collisions).
+                // handleTimerFireError still increments fire_error_count and DLQs after
+                // max_timer_fire_retries, so the retry/DLQ path is preserved.
                 const err_fields = [_]logger.LogField{
                     .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
                     .{ .key = "outcome", .value = .{ .string = "fire_failed" } },
@@ -414,7 +444,7 @@ pub const Scheduler = struct {
                     instance_id_text,
                     payload_json,
                 );
-                return .none;
+                return SchedulerError.TransactionFailed;
             }
         }
 
