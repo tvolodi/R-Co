@@ -43,17 +43,23 @@ import reqctl_batch_plan  # noqa: E402
 
 BATCH_QUEUE_FILE = "handoffs/batch_queue.json"
 LOCK_FILE = "handoffs/batch_queue.lock"
-TTL_MINUTES = 120
+
+# TTL for the LOCAL FILE MUTEX (LOCK_FILE) only — a same-machine crash-recovery
+# mechanism, unrelated to a batch claim's lifetime. An IN_PROGRESS batch is
+# never reclaimed on wall-clock time alone (see the active_locks loop below) —
+# same fix as gh_claim.py/queue_claim.py, see docs/anti-patterns.md's
+# 2026-08-07 GH-526 entry for why a TTL-based reclaim is wrong here.
+MUTEX_TTL_MINUTES = 5
 
 
 def _utcnow() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _lock_expired(locked_at: str) -> bool:
+def _mutex_expired(locked_at: str) -> bool:
     try:
         t = datetime.datetime.strptime(locked_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
-        return (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() / 60 > TTL_MINUTES
+        return (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() / 60 > MUTEX_TTL_MINUTES
     except Exception:
         return True
 
@@ -68,7 +74,7 @@ def _acquire_file_mutex(owner: str) -> bool:
         try:
             with open(LOCK_FILE, encoding="utf-8-sig") as f:
                 data = json.load(f)
-            if _lock_expired(data.get("at", "")):
+            if _mutex_expired(data.get("at", "")):
                 os.remove(LOCK_FILE)
                 return _acquire_file_mutex(owner)
         except Exception:
@@ -139,9 +145,9 @@ def main() -> int:
             if item.get("status") == "DONE":
                 done_indices.add(idx)
             elif item.get("status") == "IN_PROGRESS":
-                lock = item.get("lock") or {}
-                if not _lock_expired(lock.get("locked_at", "")):
-                    active_locks.add(idx)
+                # Never reclaimed on wall-clock time alone — see MUTEX_TTL_MINUTES
+                # comment above.
+                active_locks.add(idx)
 
         any_actively_locked = False
         for idx, batch_ids in enumerate(batches):

@@ -66,10 +66,17 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _queue_sync import sync_queue_from_origin  # noqa: E402
 
-QUEUE_FILE  = "handoffs/global_queue.json"
-LOCK_FILE   = "handoffs/global_queue.lock"
-REPO        = "tvolodi/R-Co"
-TTL_MINUTES = 120   # stale-lock expiry
+QUEUE_FILE = "handoffs/global_queue.json"
+LOCK_FILE  = "handoffs/global_queue.lock"
+REPO       = "tvolodi/R-Co"
+
+# TTL for the LOCAL FILE MUTEX (LOCK_FILE) only — a same-machine, same-process
+# crash-recovery mechanism that should only ever be held for the few
+# milliseconds it takes one gh_claim.py invocation to read-modify-write
+# global_queue.json. This is unrelated to, and must not be confused with,
+# an IN_PROGRESS issue claim's lifetime — see the note above active_locks
+# below for why THAT no longer expires on wall-clock time at all.
+MUTEX_TTL_MINUTES = 5
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -79,14 +86,14 @@ def _utcnow() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _lock_expired(locked_at: str) -> bool:
+def _mutex_expired(locked_at: str) -> bool:
     try:
         t = (
             datetime.datetime
             .strptime(locked_at, "%Y-%m-%dT%H:%M:%SZ")
             .replace(tzinfo=datetime.timezone.utc)
         )
-        return (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() / 60 > TTL_MINUTES
+        return (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() / 60 > MUTEX_TTL_MINUTES
     except Exception:
         return True  # unparseable → treat as expired
 
@@ -102,7 +109,7 @@ def _acquire_file_mutex(owner: str) -> bool:
         try:
             with open(LOCK_FILE, encoding="utf-8-sig") as f:
                 data = json.load(f)
-            if _lock_expired(data.get("at", "")):
+            if _mutex_expired(data.get("at", "")):
                 os.remove(LOCK_FILE)
                 return _acquire_file_mutex(owner)
         except Exception:
@@ -245,22 +252,22 @@ def main() -> int:
         # this local checkout hasn't pulled yet. See _queue_sync.py.
         queue = sync_queue_from_origin(_read_queue())
 
-        # Build set of GitHub URLs currently locked (and not stale).
-        # A workspace still actively working an item can extend its lock's
-        # life past TTL_MINUTES by calling queue_heartbeat.py periodically
-        # (see that tool's docstring — this closes the gap where a lock aged
-        # out by wall-clock alone while the claimant was still genuinely
-        # working, observed 2026-08-07 on GH-526). heartbeat_at, when
-        # present, is checked instead of locked_at; a lock that has never
-        # been heartbeated falls back to locked_at exactly as before.
-        active_locks: set[str] = set()
-        for item in queue["items"]:
-            if item.get("status") != "IN_PROGRESS":
-                continue
-            lock = item.get("lock") or {}
-            freshness_ts = lock.get("heartbeat_at") or lock.get("locked_at", "")
-            if not _lock_expired(freshness_ts):
-                active_locks.add(item["github_issue"])
+        # Build set of GitHub URLs currently locked. An IN_PROGRESS claim
+        # never expires on wall-clock time alone — a workspace may
+        # legitimately spend a long time investigating/designing/reworking
+        # before its next commit, and a TTL-based reclaim let a second
+        # workspace steal a still-active claim (observed 2026-08-07 on
+        # GH-526, see docs/anti-patterns.md; queue_heartbeat.py was an
+        # earlier, weaker mitigation that required the claimant to remember
+        # to call it periodically — removed here in favor of no expiry at
+        # all, per explicit instruction). The ONLY way an IN_PROGRESS lock
+        # is released is an explicit queue_release.py call (normal
+        # completion) or manual intervention on a genuinely abandoned item.
+        active_locks: set[str] = {
+            item["github_issue"]
+            for item in queue["items"]
+            if item.get("status") == "IN_PROGRESS"
+        }
 
         # Fetch all open GitHub issues
         try:

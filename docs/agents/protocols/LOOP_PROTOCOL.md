@@ -181,21 +181,16 @@ Adds a new item to the global queue. Exit 4 = duplicate (already present).
 Every item added here must already have a corresponding `docs/issues/ISS-NNNN.json`
 and a GitHub issue filed — `queue_add.py` does not create them.
 
-### queue_heartbeat.py
+### queue_heartbeat.py — deprecated, no longer needed
 
-```
-python3 tools/queue_heartbeat.py <issue_id> <workspace_id>
-```
-
-Refreshes `lock.heartbeat_at` (leaving `lock.locked_at` untouched — that field keeps
-its original "claim started" audit meaning) for an item this workspace still owns.
-Call periodically during a long WF-03 run — after each major step transition is a
-reasonable cadence — and push immediately after each call, same discipline as a claim.
-`gh_claim.py`'s staleness check (`TTL_MINUTES` = 120) considers `heartbeat_at` when
-present, falling back to `locked_at` if the item was never heartbeated, so a workspace
-sending regular heartbeats keeps its claim alive past 120 minutes of genuine ongoing
-work while one that has actually stalled or died still ages out normally. Exit 1 if the
-item isn't found, isn't locked by `<workspace_id>`, or isn't `IN_PROGRESS`.
+An `IN_PROGRESS` claim no longer expires on wall-clock time at all (see
+`gh_claim.py`'s `active_locks` comment) — the only way a claim is released is an
+explicit `queue_release.py` call or manual intervention on a genuinely abandoned
+item. `queue_heartbeat.py` existed to extend a claim's life past the old
+`TTL_MINUTES` = 120 staleness window; that window no longer applies to issue
+claims, so there is nothing left to extend. The tool file is left in place (some
+older handoffs may still reference it) but calling it is a no-op you don't need to
+perform — do not add new call sites for it.
 
 ---
 
@@ -296,23 +291,19 @@ LOOP START
 │   between) rather than looping indefinitely; if it still hasn't landed after several
 │   tries, treat it as an unexpected error (log, stop) rather than guessing.
 │
-├─ HEARTBEAT DURING LONG RUNS — a lock older than TTL_MINUTES (120) becomes reclaimable
-│  by another workspace's gh_claim.py even if the original claimant is still actively
-│  working (this happened 2026-08-07: GH-526's lock, claimed by r-co-1-loop, was
-│  reclaimed by a second workspace after 120+ minutes while r-co-1-loop was still
-│  committing to its branch every few minutes — no double-run resulted only because
-│  the original run finished and merged moments after the reclaim attempt). Call
-│  periodically during a WF-03 run for the claimed item — after each major step
-│  transition is a reasonable cadence, no need to call more often than every few
-│  minutes:
-│   python3 tools/queue_heartbeat.py GH-<number> <workspace_id>
-│   git add handoffs/global_queue.json
-│   git commit -m "queue: heartbeat GH-<number> for <workspace_id>"
-│   git fetch origin main && git rebase origin/main
-│   git push origin main
-│  An un-pushed heartbeat provides no protection — the push is not optional bookkeeping,
-│  it is the mechanism. gh_claim.py checks lock.heartbeat_at (falling back to
-│  lock.locked_at if no heartbeat was ever sent) when deciding staleness.
+├─ NO TTL ON A CLAIM — once `gh_claim.py` returns exit 0 for an item, that lock
+│  stays IN_PROGRESS indefinitely for this workspace, no matter how long the run
+│  takes (design work, rework loops, and investigation-heavy issues can
+│  legitimately run for a long time between commits). No other workspace's
+│  gh_claim.py can reclaim it. Nothing needs to be called periodically to keep the
+│  claim alive — do not add heartbeat calls to a run's steps. The ONLY way this
+│  claim is released is your own `queue_release.py` call at the end of the run (or
+│  manual intervention if a workspace is known to have genuinely abandoned an
+│  item — that is a human/ORCH judgment call, not something a TTL should decide
+│  automatically). This replaces an earlier TTL_MINUTES=120 mechanism that caused
+│  a real incident (2026-08-07, GH-526: a still-actively-working claim was
+│  reclaimed by a second workspace purely because 120 minutes had elapsed) — see
+│  `docs/anti-patterns.md`.
 │
 ├─ Parse claimed item:
 │   {
@@ -538,10 +529,8 @@ subprocess.run([
 - [ ] Every item in the global queue has a corresponding GitHub issue (`github_issue` field non-empty)
 - [ ] `gh_claim.py` is the ONLY writer for the `lock` field — no agent sets it directly
 - [ ] `queue_release.py` is the ONLY writer that clears the `lock` field
-- [ ] `queue_heartbeat.py` is the ONLY writer for `lock.heartbeat_at` — no agent sets it directly
 - [ ] `handoffs/global_queue.json` is committed AND PUSHED to `main` immediately after every claim — never deferred to end-of-run (see "ORCH loop mode — step by step" above; a deferred push is what let two workspaces both claim GH-542 on 2026-08-07, see `docs/anti-patterns.md`)
 - [ ] `handoffs/global_queue.json` is committed to `main` after every release
-- [ ] `handoffs/global_queue.json` is committed AND PUSHED to `main` after every heartbeat, same discipline as a claim — an un-pushed heartbeat protects nothing
 - [ ] `handoffs/global_queue.lock` is NEVER committed to git (transient mutex file)
 - [ ] **Before Step 00 (git-setup), not just before "implementation work"**: re-fetch `origin/main` and confirm `git log --oneline -1 origin/main` actually shows this workspace's claim commit — not merely that the earlier `git push` command exited 0. A push that reports success locally is not the same as a push whose result a concurrent reader can see; verify by reading the ref back. A rejected/raced/not-yet-landed push means stand down or retry, not proceed to branch creation (see "VERIFY THE PUSH LANDED" above; skipping this exact check is what let workspace r-co-1-loop start Step 00 on GH-518 before its claim was visible on `main`, on 2026-08-07 — no double-run resulted only because the second workspace caught the collision manually via a branch check, see `docs/anti-patterns.md`)
-- [ ] For any WF-03 run expected to run longer than ~30-60 minutes, a heartbeat is sent at least once every ~30-60 minutes (well inside the 120-minute TTL) so a still-active claim is never seen as stale by another workspace's `gh_claim.py`
+- [ ] An `IN_PROGRESS` claim is never treated as reclaimable due to elapsed time — a run may legitimately take a long time between commits (design work, rework loops, investigation-heavy issues); no heartbeat call is needed or expected
