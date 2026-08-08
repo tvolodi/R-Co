@@ -1,0 +1,42 @@
+{
+  "handoff_id": "dbe09af3-a8ed-4571-b4c9-1848cf478c9f",
+  "run_id": "WF03-GH576-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH576-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T08:36:42Z",
+  "started_at": "2026-08-08T08:36:42Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0622.json",
+      "src/api/middleware/quota_enforcement.zig",
+      "src/db/pool.zig",
+      "src/config/quota_policy.zig",
+      "tests/integration/exp601_tier_quota_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Diagnose and prepare a fix for GH #576 (ISS-0622): quota_enforcement.zig reads PER_TENANT usage tables (instance_projections, instance_waits, dead_letter_items) unqualified via a pool connection, which fails for every tenant under .LEGACY_RLS storage mode (the default). docs/issues/ISS-0622.json ALREADY CONTAINS a full root_cause_analysis, verification_method, and acceptance_criteria from this issue's original filing (discovered incidentally during WF03-GH566-20260808/ISS-0617's implementation) -- read it first via fn:search-issues / direct read, confirm it is still accurate (source code may have moved since filing), and do NOT re-diagnose from scratch if it holds up. The issue's own acceptance_criteria explicitly says a design decision is needed: (a) resolve storage_mode explicitly in quota_enforcement.zig and issue schema-qualified queries (tenant_default.<table> for LEGACY_RLS tenants), or (b) create public-schema equivalents/views for these three tables so both storage modes can read them unqualified, or (c) some other approach. This decision needs CODE-DESIGNER analysis -- do not implement inline, route it through Step 2 (CODE-DESIGNER) with full context. Also check: does any OTHER middleware share this same unqualified-read-via-pool-under-LEGACY_RLS pattern against PER_TENANT-only tables? (ISS-0622's acceptance_criteria explicitly asks this -- a broader audit may be warranted, but stay within THIS issue's scope: fix quota_enforcement.zig, note findings about siblings for a future issue if any are found, don't fix them here unless truly trivial and directly required).",
+    "acceptance_criteria": [
+      "ISS-0622s existing root_cause_analysis confirmed still accurate (or updated if source moved)",
+      "Fix strategy decision made and documented (schema-qualify vs public-view vs other) with rationale",
+      "Routed to CODE-DESIGNER (Step 2) with full context, not implemented directly by ISSUE-FIXER",
+      "Any sibling middleware sharing the same pattern noted (not fixed unless trivial and in-scope)"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
