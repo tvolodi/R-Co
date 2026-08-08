@@ -1,0 +1,52 @@
+{
+  "handoff_id": "a7b5c0b8-d9a1-465f-944d-f10dfb96be94",
+  "run_id": "WF03-GH500-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH500-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T18:39:19Z",
+  "started_at": "2026-08-08T18:39:19Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/lua_test_root.zig",
+      "src/lua/instruction_limiter.zig",
+      "src/lua/memory_limiter.zig",
+      "src/simulation_test_root.zig",
+      "src/transition_test_root.zig",
+      "src/oidc_test_root.zig",
+      "src/oidc_jit_test_root.zig",
+      "src/config_idp_test_root.zig",
+      "src/core_modules_test_root.zig",
+      "src/repository_test_root.zig",
+      "tools/lint_test_wiring.py"
+    ]
+  },
+  "task": {
+    "description": "Fix GH #500 (ISS-0172, MAJOR): src/lua_test_root.zig's type-only pin pattern (`_ = lua.instruction_limiter.InstructionLimiter;`) does not force struct field-type resolution or function-body analysis, so zig build test-lua reports green while src/lua/instruction_limiter.zig:39 (a discarded c_int return value from lua_sethook) and src/lua/memory_limiter.zig:13 (std.Thread.Mutex, which does not exist in Zig 0.16) both contain hard compile errors that are never surfaced. This affects 8 test roots using the same pattern: src/lua_test_root.zig, src/simulation_test_root.zig, src/transition_test_root.zig, src/oidc_test_root.zig, src/oidc_jit_test_root.zig, src/config_idp_test_root.zig, src/core_modules_test_root.zig, src/repository_test_root.zig. This is a two-part fix: (1) FIX THE 2 REAL BUGS this gap hid -- instruction_limiter.zig's discarded c_int return (use `_ = bindings.lua_sethook(...)` or handle the return value properly per whatever the correct behavior is) and memory_limiter.zig's nonexistent std.Thread.Mutex field (Zig 0.16's actual Mutex type -- check std.Thread's current API, it likely moved or was renamed); (2) FIX THE PIN PATTERN across all 8 test roots to a form that forces both struct field-type resolution (e.g. `_ = @sizeOf(T);` or `_ = @typeInfo(T).@\"struct\".fields;`) and function-body analysis (a real, non-comptime-eliminated call or @TypeOf-based reference), per the issue's own acceptance criteria. Verify by DELIBERATE MUTATION for BOTH failure shapes (a bad field type in a struct, and a statement error in an unreferenced function) -- the target must go red in both cases, and you must actually perform this mutation test, not just reason about it. Also correct src/lua_test_root.zig's header comment, which currently overclaims what its prior mutation-verification covered. This is a real, well-specified fix with concrete mechanical steps across 8 files plus 2 genuine bug fixes -- work through it methodically, file-by-file. If the pin-pattern fix and the tools/lint_test_wiring.py enhancement (flagging type-only pins) require a non-trivial design decision about exactly which @typeInfo/@sizeOf incantation generalizes cleanly across all 8 files' different type shapes, route to CODE-DESIGNER; if it's mechanical enough to do directly, you may implement yourself and route straight to TEST-RUNNER -- use your judgment, explain either way.",
+    "acceptance_criteria": [
+      "instruction_limiter.zig c_int discard fixed with correct handling",
+      "memory_limiter.zig std.Thread.Mutex fixed to whatever Zig 0.16 actually provides",
+      "Pin pattern fixed across all 8 named test roots to force both struct field-type resolution and function-body analysis",
+      "Deliberate mutation test ACTUALLY PERFORMED for both failure shapes (bad field type, statement error in unreferenced function) -- target confirmed to go red in both cases",
+      "tools/lint_test_wiring.py enhanced to flag a test root whose pins are type-only",
+      "src/lua_test_root.zig header comment corrected to accurately state what mutation shapes were tested",
+      "zig build exits 0 after all fixes (the 2 real bugs are now fixed, not just detected)",
+      "zig build test-env-verify exits 0"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
