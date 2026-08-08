@@ -1,0 +1,20 @@
+# GH-502 / ISS-0174 release decision
+run_id: WF03-GH502-20260808
+issue: ISS-0174
+github_issue: 502
+scope: unit-level pure utility migration
+requirements: []
+verification:
+  zig_build_test_lua: "PASS — 72/72 tests passed, including TC-CS-01 through TC-CS-05"
+  zig_build_test: "PASS — 945/1009 passed, 0 failures, 64 pre-existing skips"
+  test_environment: "PASS — HEALTHY 10/10"
+  lint_test_isolation: "PASS for the new ISS-0174 block; unrelated pre-existing T030 remains at src/lua_test_root.zig:284"
+  mutation_verification: "PASS — deliberate type mutation made zig build test-lua fail; reverted mutation restored green"
+decision: APPROVED
+rationale: >-
+  CapabilitySet.summary() was migrated to Zig 0.16's unmanaged ArrayList API,
+  its public callable body is exercised by dedicated regression coverage, and
+  the complete unit/build verification passed with no regression introduced by
+  this change.
+release_blockers: []
+reviewed_at: 2026-08-08T18:07:39Z
