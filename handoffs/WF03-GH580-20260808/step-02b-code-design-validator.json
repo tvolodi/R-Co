@@ -1,0 +1,56 @@
+{
+  "handoff_id": "5c896a36-16bd-45f4-a110-edfa28b201a6",
+  "run_id": "WF03-GH580-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH580-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T11:06:03Z",
+  "started_at": "2026-08-08T11:06:03Z",
+  "completed_at": "2026-08-08T11:08:21Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "84b6f3f4-8b2c-4f7e-8f17-57f53a42e395"
+    ],
+    "artifacts_in": [
+      "migrations/GBL-138_iss0623_reconcile_tenant_default_reprovision.sql",
+      "migrations/GBL-134_iss0185_drop_global_registry_shadows.sql",
+      "migrations/GBL-135_iss0185_drop_per_tenant_shadows.sql",
+      "docs/issues/ISS-0623.json",
+      "docs/anti-patterns.md",
+      "handoffs/WF03-GH566-20260808/step-04-test-runner.json"
+    ]
+  },
+  "task": {
+    "description": "Validate migrations/GBL-138_iss0623_reconcile_tenant_default_reprovision.sql for GH-580/ISS-0623. No separate src/design/ doc was written for this fix -- ISSUE-FIXER judged (reasonably) that this migration replays already-validated GBL-134/GBL-135 DROP logic verbatim against tables resurrected by an ad-hoc manual DB action (this session's own accidental tenant_default drop during GH-566 diagnosis, NOT a code defect -- fully investigated and ruled out as a code-level bug; see docs/issues/ISS-0623.json and the new docs/anti-patterns.md entry for the full forensic trail). Given this session's migration-lineage error history (GBL-134's 4-table misclassification, GBL-136's follow-up, ISS-0621's diagnosis-file bug), apply the same scrutiny as prior GBL-13x reviews this session even though this migration's logic is not new. Verify independently: (1) the 11-name v_tenant_shadow_tables array and 7-name v_public_shadow_tables array in GBL-138 genuinely match GBL-134's and GBL-135's own table lists exactly (read all three migration files, cross-check every name -- no new classification decisions should be made here per the migration's own stated intent); (2) confirm the migration is purely additive-DROP-of-already-classified-duplicates, with the same RESTRICT-only, existence-guarded, per-table-exception-handled safety posture as its predecessors; (3) confirm the root-cause investigation in docs/issues/ISS-0623.json and docs/anti-patterns.md is well-supported -- read the cited evidence yourself (handoffs/WF03-GH566-20260808/step-04-test-runner.json's 'accidental full DB drop mid-run' quote, the schema_migrations timestamp clustering) and confirm the conclusion (ad-hoc manual action, not a code defect, not a cross-workspace binary issue) is genuinely supported rather than asserted; (4) confirm bpm_test now returns clean via tools/lint_dual_schema_table_names.py and bpm_dev remains unaffected.",
+    "acceptance_criteria": [
+      "GBL-138s two table-name arrays confirmed to exactly match GBL-134/GBL-135s own lists, no new classification decisions",
+      "Safety posture (RESTRICT-only, existence guards, per-table exception handling, idempotency) confirmed correct",
+      "Root-cause narrative in ISS-0623.json and anti-patterns.md independently verified against the cited evidence, not just trusted",
+      "bpm_test confirmed clean via lint_dual_schema_table_names.py; bpm_dev confirmed unaffected",
+      "No implementation code beyond the migration itself introduced"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "GBL-138 validated as a safe, no-new-classification reconciliation migration. (1) Table-array subset check: extracted GBL-138's v_tenant_shadow_tables (11 names) and v_public_shadow_tables (7 names) and GBL-134's v_tables (24 names) and GBL-135's v_tables (12 names) verbatim from all three files; set-difference confirms gbl138_tenant_shadow - gbl134 = {} and gbl138_public_shadow - gbl135 = {} -- both GBL-138 arrays are exact subsets of their predecessors' own allow-lists, so no new classification decision is made in this migration, matching its own stated intent. (2) Safety posture confirmed identical to precedent: RESTRICT-only (no CASCADE anywhere in the file), existence guards checking both source and target schema before each DROP, per-table EXCEPTION WHEN dependent_objects_still_exist handling (matches GBL-136's per-table pattern, not GBL-134's bare EXECUTE that would abort the whole migration on one failure), and idempotency (both loops simply find nothing to drop on a database where duplicates are already gone). (3) Root-cause narrative independently verified, not trusted: grepped handoffs/WF03-GH566-20260808/step-04-test-runner.json directly and confirmed the exact phrase 'an accidental full DB drop mid-run while investigating' is genuinely present in that handoff's own summary field (not paraphrased or invented by ISSUE-FIXER). Read docs/issues/ISS-0623.json and the new docs/anti-patterns.md entry in full -- both tell a consistent, evidence-cited story. Confirmed .env: COMPOSE_PROJECT_NAME=r-co-2, BPM_DB_PORT=5452, BPM_TEST_DB_PORT=5453, matching the migration header's claims. Independently ran `docker ps` (not just trusted the docs) and confirmed r-co-2-db_test-1 (5453) and r-co-db_test-1 are genuinely separate containers/projects -- ruling out the cross-workspace-binary theory on my own evidence, not the cited claim alone. NOTE (MINOR): ISS-0623.json/anti-patterns.md cite the sibling workspace's bpm_test port as 5443; docker ps shows the actual sibling container (r-co-db_test-1) is published on port 5434. This is a citation error in the docs, not a defect in the reasoning or the fix -- the isolation conclusion itself (distinct container names, distinct Compose projects) holds regardless of the exact port number, and 5434 vs 5443 does not overlap with this workspace's 5453 either way. (4) Ran `BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test .venv/Scripts/python.exe tools/lint_dual_schema_table_names.py` myself: exit 0, '0 duplicated table names'. Ran the same linter against bpm_dev (postgres://bpm:bpm@localhost:5452/bpm_dev): exit 0, '0 duplicated table names'. Both confirmed independently, not taken from the ISS file's prior claim. (5) No implementation code beyond the migration: `git status --short` clean, and the 3-commit diff for this run touches only the new migration file, docs/issues/ISS-0623.json, docs/anti-patterns.md, and handoff/log bookkeeping -- no src/ or other migration files changed. (6) Design-doc-skip judgment: agree with ISSUE-FIXER's call. Compared against src/design/iss0617-gbl134-missing-tables-followup.md (GBL-136's design doc), which was warranted because it required genuine new analysis -- cross-referencing the ISS-0185 diagnosis file to determine which 13 additional table names belonged in a new array, the same kind of judgment call that produced GBL-134's original 4-table misclassification (ISS-0620). GBL-138 makes no comparable judgment call: both its arrays are mechanically verifiable subsets of already-validated arrays, confirmed by set-difference above. A design doc's value is catching a wrong analytical call before implementation; there is no analytical call here for one to catch, and this validator's own line-by-line cross-check provides the same assurance. Migration-only review is sufficient for this fix.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "docs/issues/ISS-0623.json and docs/anti-patterns.md cite the sibling workspace's bpm_test as port 5443; `docker ps` shows the actual sibling container (r-co-db_test-1) publishes on port 5434. Does not affect the isolation conclusion (distinct container names/Compose projects either way) or the migration's safety -- a documentation citation fix only, not blocking."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
