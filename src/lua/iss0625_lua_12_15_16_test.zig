@@ -46,6 +46,9 @@ const events = @import("events.zig");
 const host_context = @import("host_context.zig");
 const service_catalog = @import("service_catalog.zig");
 const executor = @import("executor.zig");
+const instruction_limiter = @import("instruction_limiter.zig");
+const memory_limiter = @import("memory_limiter.zig");
+const timeout = @import("timeout.zig");
 const luajit_bindings = @import("luajit_bindings.zig");
 const capabilities = @import("capabilities.zig");
 const ExecutionContext = lua_mod.ExecutionContext;
@@ -73,13 +76,14 @@ fn freshContext() ExecutionContext {
     };
 }
 
-/// Construct a sandboxed lua_State for a per-test fixture. Returns null when
-/// LuaJIT is unavailable in this build profile (the empirical signal that
-/// `executor.createSandboxedState` cannot link against the static archive);
-/// callers should skip in that case. Caller must `lua_close(L)`.
-fn freshState(ctx: *ExecutionContext) ?*luajit_bindings.lua_State {
-    return executor.createSandboxedState(ctx) catch null;
-}
+/// LUA-08/09/10: createSandboxedState now requires limits + storage.
+/// Each test must declare its own limiter storage variables in the test scope
+/// (not in a helper function) so they remain alive for the lua_State's lifetime.
+const test_limits = executor.RunLimits{
+    .max_instructions = 1_000_000,
+    .max_memory_bytes = 50_000_000,
+    .timeout_seconds = 30,
+};
 
 // ---------------------------------------------------------------------------
 // LUA-15: registry-channel failure anti-forgery
@@ -92,7 +96,14 @@ test "TC-ISS-0625-LUA-15-01: pre-ISS-0625 globals are absent on a freshly create
     // here means a stray write survived from a previous test, which would be
     // a serious anti-forgery regression.
     var ctx = freshContext();
-    const L = freshState(&ctx) orelse return error.SkipZigTest;
+    
+    var limiter_storage = instruction_limiter.RunLimiter{
+        .instruction = instruction_limiter.InstructionLimiter.init(testing.allocator, test_limits.max_instructions),
+        .timeout = timeout.TimeoutContext.init(test_limits.timeout_seconds),
+    };
+    var mem_limiter_storage = memory_limiter.MemoryLimiter.init(testing.allocator, test_limits.max_memory_bytes);
+    
+    const L = executor.createSandboxedState(&ctx, test_limits, &limiter_storage, &mem_limiter_storage) catch return error.SkipZigTest;
     defer luajit_bindings.lua_close(L);
 
     for ([_][]const u8{
@@ -112,7 +123,14 @@ test "TC-ISS-0625-LUA-15-02: setExplicitFailure + readExplicitFailure round-trip
     // setExplicitFailure, the flag is set, the reason is set, and
     // readExplicitFailure returns the same reason.
     var ctx = freshContext();
-    const L = freshState(&ctx) orelse return error.SkipZigTest;
+    
+    var limiter_storage = instruction_limiter.RunLimiter{
+        .instruction = instruction_limiter.InstructionLimiter.init(testing.allocator, test_limits.max_instructions),
+        .timeout = timeout.TimeoutContext.init(test_limits.timeout_seconds),
+    };
+    var mem_limiter_storage = memory_limiter.MemoryLimiter.init(testing.allocator, test_limits.max_memory_bytes);
+    
+    const L = executor.createSandboxedState(&ctx, test_limits, &limiter_storage, &mem_limiter_storage) catch return error.SkipZigTest;
     defer luajit_bindings.lua_close(L);
 
     // Pass .None so the helper does not try to read index 2 (which would be
@@ -137,7 +155,14 @@ test "TC-ISS-0625-LUA-15-03: explicit-failure keys live in LUA_REGISTRYINDEX, no
     // If any of them is, a script could forge or nil it — the same defect
     // class that motivated the migration.
     var ctx = freshContext();
-    const L = freshState(&ctx) orelse return error.SkipZigTest;
+    
+    var limiter_storage = instruction_limiter.RunLimiter{
+        .instruction = instruction_limiter.InstructionLimiter.init(testing.allocator, test_limits.max_instructions),
+        .timeout = timeout.TimeoutContext.init(test_limits.timeout_seconds),
+    };
+    var mem_limiter_storage = memory_limiter.MemoryLimiter.init(testing.allocator, test_limits.max_memory_bytes);
+    
+    const L = executor.createSandboxedState(&ctx, test_limits, &limiter_storage, &mem_limiter_storage) catch return error.SkipZigTest;
     defer luajit_bindings.lua_close(L);
 
     for ([_][*:0]const u8{
@@ -246,7 +271,14 @@ test "TC-ISS-0625-LUA-16-01: lua_getstack / lua_getinfo are declared in luajit_b
 
 test "TC-ISS-0625-LUA-16-02: captureStackTrace is callable and empty on idle stack" {
     var ctx = freshContext();
-    const L = freshState(&ctx) orelse return error.SkipZigTest;
+    
+    var limiter_storage = instruction_limiter.RunLimiter{
+        .instruction = instruction_limiter.InstructionLimiter.init(testing.allocator, test_limits.max_instructions),
+        .timeout = timeout.TimeoutContext.init(test_limits.timeout_seconds),
+    };
+    var mem_limiter_storage = memory_limiter.MemoryLimiter.init(testing.allocator, test_limits.max_memory_bytes);
+    
+    const L = executor.createSandboxedState(&ctx, test_limits, &limiter_storage, &mem_limiter_storage) catch return error.SkipZigTest;
     defer luajit_bindings.lua_close(L);
 
     // `captureStackTrace` walks the *active* Lua call stack — `lua_getstack`
