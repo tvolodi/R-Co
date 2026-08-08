@@ -505,15 +505,11 @@
       "title": "Remaining test-integration-svc failures across 31 files (audit chain, webhook, entity, env, adp clusters)",
       "severity": "MAJOR",
       "labels": [],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-08T02:27:43Z",
-        "heartbeat_at": "2026-08-08T03:09:36Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-08T02:27:43Z",
       "started_at": "2026-08-08T02:27:43Z",
-      "completed_at": null,
+      "completed_at": "2026-08-08T04:59:36Z",
       "run_id": null,
       "deferred_reason": null
     },
