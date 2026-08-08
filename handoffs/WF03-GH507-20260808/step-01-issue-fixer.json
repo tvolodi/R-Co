@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH507-20260808/step-01-issue-fixer.json",
   "created_at": "2026-08-08T12:17:38Z",
   "started_at": "2026-08-08T12:17:38Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-08T12:23:08Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -36,7 +36,13 @@
       "fn:register-issue"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Added a new 'Clean-checkout LuaJIT build (test-lua)' job to .github/workflows/ci.yml, running on ubuntu-latest in its own job (GitHub Actions gives every job in a workflow an independently-provisioned VM by platform guarantee, so no cache/workspace state can carry over from the 'Build and unit tests' job even before the further precautions below). The job: (1) checks out fresh via actions/checkout@v4 with no fetch-depth override and no restored artifact; (2) installs Zig via mlugg/setup-zig@v2 with 'use-cache: false' explicitly, since that action defaults to true and would otherwise restore a persistent actions/cache keyed on the Zig version -- the exact state-carryover mechanism the issue is about, even though no actions/cache step is visible directly in ci.yml; (3) runs `zig build test-lua -j2` to completion; (4) is covered by the workflow-level `on: pull_request: branches: [main]` trigger already in ci.yml, so no per-job trigger was needed. Existing 'Build and unit tests' job is byte-for-byte unchanged -- `git diff --stat` shows 78 insertions, 0 deletions in ci.yml. Mutation-tested locally (not in real CI, since this session cannot trigger/observe an Actions run): cloned the current branch (commit 214992b) into a scratch directory via `git clone` (a genuine fresh clone, not a worktree), ran `zig build test-lua` with an isolated/never-before-used cache dir to simulate a cold CI runner -- baseline passed 71/71 tests. Then deleted vendor/luajit/src/luajit_relver.txt from that clone only (the ISS-0175 regression class) and rebuilt with a second fresh, never-used cache dir: the build failed exactly as the new CI job would -- \"error: failed to check cache: '...luajit_relver.txt' file_hash FileNotFound\", Build Summary 4/16 steps succeeded (1 failed), exit code 1. The scratch clone was deleted afterward; `git status --porcelain` on the real tracked repo shows only the intended ci.yml edit, confirming no mutation touched tracked content. Criterion 4 (invalid-C-escape path sequence) was investigated and found structurally inapplicable to the current runner: ISS-0177's dynasm bug only manifests via BACKSLASH path separators, and every job in this workflow (existing and new) runs on ubuntu-latest, whose checkout paths use forward slashes exclusively -- there is no backslash for a `path:` input to place a `\\c`/`\\s`/`\\U` sequence into on that OS. Reproducing this class would require adding a windows-latest runner, a materially larger cost (extra toolchain fetch + full native build on every PR) than this issue's scope; documented as an explicit follow-up in the new job's comment block rather than silently skipped. Status is PARTIAL, not PASS, for two reasons: (a) the mutation test is a strong local approximation (real git clone, real fresh cache, real zig build test-lua, real failure reproduced) but was not observed inside an actual GitHub Actions run of this new job -- that still needs confirming once this PR's own CI executes; (b) criterion 4 is met by documented investigation and reasoned inapplicability on ubuntu-latest, not by an executed positive test, since no backslash-path runner exists in this workflow.",
+    "artifacts_out": [".github/workflows/ci.yml"],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 5) to observe the new clean_checkout_lua_build job execute for real once this PR's CI runs, and confirm it goes green on the current tree (positive case) -- the mutation/negative case was already verified locally in this step and is documented above, not left for TEST-RUNNER to redo. No further design ambiguity remains; this is a CI-workflow-only change with a fully specified target."
+  },
   "rework_count": 0,
   "max_rework": 3
 }

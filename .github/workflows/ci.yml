@@ -303,6 +303,84 @@ jobs:
         run: zig build test-transition -j2
 
   # ---------------------------------------------------------------------------
+  # Clean-checkout LuaJIT build (ISS-0178 / GH #507).
+  #
+  # The `build` job above restores a persistent cache: mlugg/setup-zig@v2
+  # defaults `use-cache: true`, which wraps actions/cache keyed on the Zig
+  # version and lockfile — so a build input that is PRESENT on disk but not
+  # TRACKED in git can go on satisfying that job indefinitely, because the
+  # cache (or the runner's on-disk state from a prior successful run with
+  # that input present) papers over its absence. This job exists to test the
+  # property the cached job cannot: that the tracked contents of the repo,
+  # alone, are sufficient to build. Two real defects of exactly this shape
+  # were found only by a human running a manual `git clone` (ISS-0175 —
+  # vendor/luajit/src/luajit_relver.txt was gitignored but required by
+  # build.zig's genversion step; ISS-0177 — dynasm emitted #line directives
+  # that were only broken from a checkout path with certain letters after a
+  # backslash). Neither was ever red in the `build` job.
+  #
+  # Two independent guarantees, not one:
+  #   1. actions/checkout@v4 here runs in ITS OWN job. GitHub Actions assigns
+  #      every job in a workflow a separate, independently-provisioned VM —
+  #      jobs never share a filesystem, workspace, or on-disk state, with or
+  #      without actions/cache (this is a platform guarantee, not a
+  #      configuration choice: https://docs.github.com/en/actions/using-jobs/using-jobs-in-a-workflow
+  #      — "each job runs in a fresh instance of the virtual environment").
+  #      So even reusing the plain `actions/checkout@v4` step is already a
+  #      clean environment; the further precautions below hardstop against
+  #      any *future* edit to this job accidentally adding a cache.
+  #   2. `use-cache: false` on setup-zig, and no actions/cache step anywhere
+  #      in this job, so nothing here can restore Zig's build cache from a
+  #      previous run even in principle.
+  #
+  # Path-escaping coverage (ISS-0178 criterion 4, ISS-0177's class): the
+  # dynasm bug that ISS-0177 fixed only manifests with BACKSLASH path
+  # separators (vendor/luajit/dynasm/dynasm.lua emitted #line directives with
+  # unescaped `\`, so the failure depended on which letters followed each
+  # backslash in the absolute checkout path — see ISS-0177). Every job in
+  # this workflow, this one included, runs on ubuntu-latest, whose checkout
+  # paths use forward slashes exclusively (e.g.
+  # /home/runner/work/R-Co/R-Co) — there is no backslash for any `path:`
+  # input to place a `\c`/`\s`/`\U` sequence into, so this defect class is
+  # structurally unreachable on this runner OS regardless of directory
+  # naming. ISS-0177's own regression fix (backslash escaping in
+  # dynasm.lua's g_fname interpolation, and the CI-adjacent verification of
+  # it) was already validated directly against a Windows-path clone as part
+  # of resolving ISS-0177/ISS-0175 — see docs/issues/ISS-0177.json
+  # `verification`. Reproducing it here would require a windows-latest
+  # runner; adding one is a larger, separate cost/tradeoff (an extra
+  # toolchain fetch + build on every PR) than this issue's scope, so it is
+  # intentionally left for a follow-up rather than bundled in silently. If a
+  # Windows runner is later added to this workflow for other reasons, giving
+  # its checkout `path:` a component starting with a lowercase c/s/l or
+  # uppercase U would extend this same coverage to that class for free.
+  # ---------------------------------------------------------------------------
+  clean_checkout_lua_build:
+    name: Clean-checkout LuaJIT build (test-lua)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        # No fetch-depth override, no restored cache path, no artifact
+        # download from a prior job — this step's only input is the tracked
+        # git tree at the PR's merge commit.
+
+      - name: Install Zig (no cache)
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+          # Default is true, which restores a persistent actions/cache
+          # keyed on the Zig version — exactly the state-carryover this job
+          # exists to rule out. See job-level comment above.
+          use-cache: false
+
+      - name: Confirm Zig is on PATH
+        run: zig version
+
+      - name: zig build test-lua (clean checkout, no cache)
+        run: zig build test-lua -j2
+
+  # ---------------------------------------------------------------------------
   # Frontend. Skipped entirely when web/ is untouched.
   # ---------------------------------------------------------------------------
   frontend:
