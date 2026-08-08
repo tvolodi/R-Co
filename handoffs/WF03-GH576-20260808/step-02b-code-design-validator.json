@@ -1,0 +1,46 @@
+{
+  "handoff_id": "c1dc779b-2744-4a1b-8f6e-7f02edfb3635",
+  "run_id": "WF03-GH576-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH576-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T08:48:31Z",
+  "started_at": "2026-08-08T08:48:31Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "5a1c9fac-4afd-44d1-ae0c-c26c11612962"
+    ],
+    "artifacts_in": [
+      "src/design/iss0622-quota-usage-table-schema-qualification.md",
+      "src/api/middleware/quota_enforcement.zig",
+      "src/db/pool.zig",
+      "docs/issues/ISS-0622.json"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0622-quota-usage-table-schema-qualification.md (fix design for GH-576/ISS-0622). Independently verify: (1) schemaNameForTenant's implementation (src/db/pool.zig:137-155) really has no SQL-metacharacter risk given the design's injection-safety claim in section 3.3 -- read the function yourself, don't trust the design doc's transcription; (2) resolveAndCacheStorageMode and applyRequestStorageRouting (pool.zig:183-301) really behave as section 4 describes for .LEGACY_RLS mode -- confirm tenant_default is genuinely the only applicable schema name, no other candidate exists; (3) the current structure of src/api/middleware/quota_enforcement.zig's readUsageForDimension/countRows/countRowsWhereRecent/maxColumn/sumColumn/tableStorageBytes matches what the design describes (line numbers, branch structure) -- read the file in full; (4) the design's decision to resolve schema once in readUsageForDimension rather than per-helper is followable as an implementation instruction (i.e. concrete enough for BACKEND-DEV to implement without re-deriving design decisions); (5) confirm the repository_artifacts branches are correctly identified as untouched/already-correct; (6) confirm the tableStorageBytes finding (a 5th call site with the same bug, not in the original task's named helper list) is a genuine, well-reasoned recommendation and not a scope-creep error -- should BACKEND-DEV fix it in the same pass or should it be split out? Use your judgement, but note the design's own reasoning for including it (same file, same bug, same caller) is sound if you don't find a reason to disagree; (7) confirm the design contains no implementation code (prose/pseudocode signatures are fine per Type E, but no full function bodies) and correctly scopes to quota_enforcement.zig only; (8) run lint_design_artefact.py and require exit 0 with no BLOCKER/MAJOR.",
+    "acceptance_criteria": [
+      "schemaNameForTenant injection-safety claim independently verified against source",
+      ".LEGACY_RLS -> tenant_default conclusion independently verified against pool.zig source",
+      "quota_enforcement.zig structure (line numbers, branches) confirmed to match the design",
+      "Design is concrete enough for BACKEND-DEV to implement without re-deriving decisions",
+      "repository_artifacts branches confirmed correctly identified as untouched",
+      "tableStorageBytes 5th-call-site recommendation judged sound or flagged",
+      "No implementation code present; scope confirmed as quota_enforcement.zig only",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
