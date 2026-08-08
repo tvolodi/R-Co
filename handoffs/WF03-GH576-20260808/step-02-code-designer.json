@@ -1,0 +1,44 @@
+{
+  "handoff_id": "5a1c9fac-4afd-44d1-ae0c-c26c11612962",
+  "run_id": "WF03-GH576-20260808",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH576-20260808/step-02-code-designer.json",
+  "created_at": "2026-08-08T08:41:40Z",
+  "started_at": "2026-08-08T08:41:40Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "dbe09af3-a8ed-4571-b4c9-1848cf478c9f"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0622.json",
+      "src/api/middleware/quota_enforcement.zig",
+      "src/db/pool.zig",
+      "src/api/tenant_context.zig"
+    ]
+  },
+  "task": {
+    "description": "Design the fix for GH #576 / ISS-0622, per ISSUE-FIXER's verified diagnosis and recommended strategy (Step 1, handoff dbe09af3). CONFIRMED root cause: src/api/middleware/quota_enforcement.zig's readUsageForDimension -> countRows / maxColumn / countRowsWhereRecent each call pool.acquire() and issue UNQUALIFIED SQL against instance_projections, instance_waits, and dead_letter_items -- three tables that exist ONLY in tenant_default (and per-tenant SCHEMA-mode schemas), never in public. Under .LEGACY_RLS storage mode (the default for any tenant never promoted to SCHEMA mode), pool.zig's applyRequestStorageRouting sets search_path=public only, so these reads are structurally unreachable -- confirmed live (to_regclass on all three public.* variants returns NULL) and empirically (TC-EXP-601-02/04 fail exactly here). APPROVED STRATEGY: explicit schema-qualification, mirroring how src/db/pool.zig's applyRequestStorageRouting itself resolves storage_mode and computes a schema name before issuing SQL. Use the SAME exported helpers pool.zig already provides: schemaNameForTenant() (pool.zig:137) for the SCHEMA-mode schema name, and tenant_context.getStorageMode()/hasStorageMode()/resolveAndCacheStorageMode() to determine which mode applies. Design exactly how readUsageForDimension/countRows/etc should resolve and inject the correct schema prefix (tenant_default for LEGACY_RLS, tenant_{slug} for SCHEMA mode) into each of the currently-unqualified queries against instance_projections, instance_waits, dead_letter_items -- WITHOUT touching repository_artifacts (already correctly public-qualified, untouched by GH-566/ISS-0617) or any other table these functions reference. REJECTED ALTERNATIVE (documented, do not revisit): creating public-schema views/copies of these three tables -- this would reproduce the dual-schema-shadow anti-pattern GBL-134/135/136 exist to dismantle (see docs/anti-patterns.md, ISS-0185/GH-518 entry). SIBLING FINDING (note only, do NOT fix in this design): src/admin/tenant_lifecycle.zig::resetTestTenant() (lines 100-128) has the identical unqualified-read-via-pool pattern against instance_projections. Assess whether it's genuinely the same latent defect (if trivial to note, mention in the design's out-of-scope section for a future issue) -- do not fix it here, this issue's scope is quota_enforcement.zig only. Also assess (for your own understanding, note findings but do not act unless directly blocking): src/scheduler/scheduler.zig's appendEventInTx receives a *db.Conn parameter rather than self-acquiring from pool, so its search_path is set by whatever caller passes the connection in -- structurally different from quota_enforcement.zig's self-acquire-per-call pattern, likely NOT the same bug class, but worth one sentence of due diligence in the design doc so a future reader doesn't have to re-derive this.",
+    "acceptance_criteria": [
+      "Design specifies exactly how each of the 3 affected queries (instance_projections, instance_waits, dead_letter_items reads) gets schema-qualified per resolved storage_mode",
+      "Design reuses pool.zigs existing schemaNameForTenant/tenant_context helpers rather than inventing new ones",
+      "Design confirms repository_artifacts / file_count / file_bytes dimension reads are untouched (already correct)",
+      "Design confirms TC-EXP-601-02 and TC-EXP-601-04 (the quota-guard assertions, not the separate instance_waits fixture-insert issue already tracked elsewhere) will pass after the fix",
+      "Sibling tenant_lifecycle.zig finding noted in an out-of-scope section, not fixed",
+      "No implementation code present in the design artefact"
+    ],
+    "functions_to_call": [
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
