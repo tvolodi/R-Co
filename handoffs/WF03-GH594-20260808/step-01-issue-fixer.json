@@ -1,0 +1,42 @@
+{
+  "handoff_id": "f872889a-5ee6-47f9-addc-c564100a5a58",
+  "run_id": "WF03-GH594-20260808",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH594-20260808/step-01-issue-fixer.json",
+  "created_at": "2026-08-08T22:42:41Z",
+  "started_at": "2026-08-08T22:42:41Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0626.json",
+      "tools/lint_handoffs.py",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ]
+  },
+  "task": {
+    "description": "Investigate GH #594 (ISS-0626, MAJOR): python3 tools/lint_handoffs.py reports 263 BLOCKER + 195 MAJOR + 1 MINOR across 2269 historical handoffs (checked 2026-05-22 through 2026-08-07). This was discovered incidentally during WF03-GH495-20260808's Step Final and filed per CLAUDE.md's No Issue Left Local-Only directive -- it is NOT a new defect class, it is a fresh quantification of the long-standing bookkeeping gap CLAUDE.md's own Bookkeeping Is Not Optional section already documents (2026-08-05 audit: log-append rate 44%->0.4%, registry coverage 3.4%, timestamp validity 8.6%).\n\nCategories per the issue body (docs/issues/ISS-0626.json has the full detail -- read it):\n- H001 (11+ files): unparseable JSON -- trailing commas, invalid control characters, one file that fails to decode as UTF-8 at all\n- H002 (8 files, all in WF02-iss105-token-model-schema-20260611): 'result' field is a JSON STRING instead of an object -- any h['result']['status'] lookup raises TypeError\n- H003 (dozens of files): completed_at precedes started_at -- inverted or local-time-labelled-Z timestamps, corrupting retrospective variance calculations\n- H009 (~20 files): a PENDING/IN_PROGRESS step has later COMPLETED steps in the same run -- pipeline advanced past a step it never formally closed\n- H010: handoffs/registry.json is missing 82.3% of all historical handoffs from its index\n\nTHIS IS A LARGE, MULTI-CATEGORY ISSUE spanning ~3 months of project history. Per CLAUDE.md's batch-cap philosophy (the same principle that led to narrowing GH-495's scope earlier in this loop), do NOT attempt to fix all 2269 handoffs' worth of findings in one WF-03 run. Your job is DIAGNOSIS AND TRIAGE, not blind bulk-fixing:\n\n1. Run `python3 tools/lint_handoffs.py` yourself and capture the full categorized output.\n2. For EACH category (H001, H002, H003, H009, H010), determine: is this safely auto-fixable by a mechanical script (e.g. H001's JSON syntax errors, H002's string-vs-object result field, H010's registry reconciliation against the handoffs/ directory tree), or does it require case-by-case judgment (e.g. H003's timestamp inversions -- can you always safely infer the correct timestamp, or would guessing wrong make the audit trail WORSE than leaving it flagged)? For H009 (pipeline advanced past an unclosed step), determine whether the safe fix is to mark the orphaned step COMPLETED retroactively (with what evidence?) or FAILED/ABANDONED, or whether it must be left as a permanent, honest record of an irregularity that already happened and cannot be un-happened.\n3. Propose a PHASED remediation plan: which categories can be fixed by a single mechanical script in THIS run (low-risk, high-confidence), and which need to be split into separate follow-up issues for careful case-by-case handling (same pattern as GH-495 -> ISS-0624/ISS-0625). Do not assume everything must be fixed in this one run -- a wrong-guess fix to an audit trail is worse than an honestly-flagged gap.\n4. Route to CODE-DESIGNER with this triage and remediation plan -- CODE-DESIGNER will design the actual mechanical-fix script(s) for whichever categories you determine are safe to fix now. Do not implement fixes yourself.",
+    "acceptance_criteria": [
+      "Full categorized lint_handoffs.py output captured and read",
+      "Each category (H001/H002/H003/H009/H010) assessed for safe-mechanical-fix vs needs-case-by-case-judgment",
+      "Phased remediation plan proposed: what this run fixes now vs. what gets split into follow-up issues",
+      "Routed to CODE-DESIGNER with the triage, not implemented directly",
+      "No blind bulk-fix that risks corrupting the audit trail further"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
