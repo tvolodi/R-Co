@@ -9,14 +9,17 @@
 //! always terminate itself, and denying that would only force it to `error()`
 //! instead. LUA-15.
 //!
-//! ## Known follow-up, deliberately NOT fixed here (design §11.3)
+//! ## LUA-15 (iss0625-gh592-lua-12-15-16.md): bytes go through the REGISTRY,
+//! not `_G`.
 //!
-//! `__failure_reason__`, `__failure_details__` and `__explicit_failure__` are
-//! ordinary GLOBALS, so a script can forge or nil them — the same defect class
-//! that made `_G` unusable as the execution-context channel. They are also
-//! never read back by anything. Moving them into `LUA_REGISTRYINDEX` following
-//! the `host_context.zig` pattern belongs to tranche 4 (LUA-15); ISS-0169
-//! tranche 1 fixes only the read-past-end bug below.
+//! The pre-ISS-0625 implementation wrote `__failure_reason__`,
+//! `__failure_details__` and `__explicit_failure__` as ordinary globals.
+//! Any script could forge or nil them — the same defect class that made `_G`
+//! unusable as the execution-context channel. These globals are no longer
+//! read by anything (the executor reads `bpm.failure_*` from the registry
+//! via `host_context.readExplicitFailure`), so the writes themselves are
+//! deleted, not migrated. The `host_context` helper `setExplicitFailure` is
+//! the single sanctioned entry point.
 
 const std = @import("std");
 const bindings = @import("../luajit_bindings.zig");
@@ -37,22 +40,22 @@ fn platformFail(L: *bindings.LuaState) callconv(.c) c_int {
     // Ungated by design — no requireCapability call here.
     const reason = host_context.checkString(L, FN_NAME, 1);
 
-    // ISS-0169 §4.4: `lua_pushstring` takes [*:0]const u8, so
-    // `@ptrCast(reason.ptr)` on a Zig slice with no NUL terminator read past
-    // the end of Lua's string buffer. `lua_pushlstring` carries the length.
-    bindings.lua_pushlstring(L, reason.ptr, reason.len);
-    bindings.lua_setglobal(L, "__failure_reason__");
+    // Optional details: a real Lua table at index 2, else no details.
+    const details_kind: host_context.DetailsKind = blk: {
+        if (bindings.lua_gettop(L) >= 2 and bindings.lua_istable(L, 2) != 0) {
+            break :blk host_context.DetailsKind.Table;
+        }
+        break :blk host_context.DetailsKind.None;
+    };
 
-    // Optional details at index 2.
-    // ISS-0153: `&&` is not a Zig operator (C habit); Zig spells logical AND
-    // as `and`. Never compiled — this file was analysed by no build target.
-    if (bindings.lua_gettop(L) >= 2 and bindings.lua_istable(L, 2) != 0) {
-        bindings.lua_pushvalue(L, 2);
-        bindings.lua_setglobal(L, "__failure_details__");
-    }
-
-    bindings.lua_pushboolean(L, 1);
-    bindings.lua_setglobal(L, "__explicit_failure__");
+    // LUA-15: write the discriminator to the REGISTRYINDEX channel, not to
+    // `_G`. The script cannot name the registry key (no `debug`, no
+    // `package`), so a forged reason/details/explicit-failure is structurally
+    // impossible. The executor reads it back via
+    // `host_context.readExplicitFailure` after the failed pcall.
+    const ctx = host_context.contextFromState(L) orelse
+        host_context.raiseMessage(L, "platform.fail: no execution context installed");
+    host_context.setExplicitFailure(L, ctx.allocator, reason, details_kind);
 
     // ERR-1: raise with the reason as the error value, not with whatever
     // happened to be on the stack top.

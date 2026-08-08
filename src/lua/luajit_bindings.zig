@@ -157,6 +157,13 @@ pub extern fn lua_rawset(L: *lua_State, idx: c_int) void;
 pub extern fn lua_rawgeti(L: *lua_State, idx: c_int, n: c_int) void;
 pub extern fn lua_rawseti(L: *lua_State, idx: c_int, n: c_int) void;
 
+// Table iteration / table write — used by host_context.setExplicitFailure
+// and tableToScriptValue (LUA-15). lua_next pops the key, pushes the next
+// (key, value) pair; lua_settable writes top-of-stack into the table at
+// idx, keying by the value one below the top.
+pub extern fn lua_next(L: *lua_State, idx: c_int) c_int;
+pub extern fn lua_settable(L: *lua_State, idx: c_int) void;
+
 // Calls
 pub extern fn lua_call(L: *lua_State, nargs: c_int, nresults: c_int) void;
 pub extern fn lua_pcall(L: *lua_State, nargs: c_int, nresults: c_int, errfunc: c_int) c_int;
@@ -165,6 +172,13 @@ pub extern fn lua_error(L: *lua_State) c_int;
 // Debug / hooks (LUA-08 instruction limiting)
 pub extern fn lua_sethook(L: *lua_State, f: ?lua_Hook, mask: c_int, count: c_int) c_int;
 pub extern fn lua_gethookcount(L: *lua_State) c_int;
+
+// LUA-16: stack-walk helpers for `captureStackTrace`. Both are LuaJIT 2.1
+// (Lua 5.1) API symbols that the bindings file never declared. They are
+// real symbols in the static archive — verified against
+// `vendor/luajit/src/ldebug.h` (function names `lua_getstack`, `lua_getinfo`).
+pub extern fn lua_getstack(L: *lua_State, level: c_int, ar: ?*lua_Debug) c_int;
+pub extern fn lua_getinfo(L: *lua_State, what: [*:0]const u8, ar: ?*lua_Debug) c_int;
 
 // Standard libraries (lualib.h) — LUA-03 opens only the permitted subset.
 pub extern fn luaopen_base(L: *lua_State) c_int;

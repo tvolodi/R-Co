@@ -46,6 +46,10 @@ pub const ExecutionContext = struct {
     /// manifest that granted `capabilities`. Null on the plain `executeScript`
     /// path, which performs no manifest verification.
     manifest_hash: ?[32]u8 = null,
+    // WF03-GH592 rebase merge (ISS-0625 rco-sync): both GH-495's
+    // active_watchdog (LUA-10) and GH-592's service_catalog + http_client_*
+    // + instruction_limiter fields are required. Both fields default to null
+    // and are caller-installed, so combining them is non-conflicting.
     /// LUA-10, design §2.5.4. Set by `executeSource` to the active
     /// host-external watchdog for this execution, right after the watchdog
     /// starts and before `createSandboxedState` installs the context — so
@@ -55,7 +59,85 @@ pub const ExecutionContext = struct {
     /// `host_context.activeWatchdogFired`, which `call_service.zig` calls
     /// before and after the body of `platformCallService`.
     active_watchdog: ?*const timeout_ctx.WatchdogState = null,
+    /// LUA-12 (D-1). The catalog a real (non-simulation) `call_service`
+    /// consults to resolve `svc_id` -> `RegisteredService`. Caller-owned,
+    /// must outlive the context (CTX-1 invariant). Null when the caller
+    /// has no catalog — in that case the real `call_service` path raises
+    /// `"no service catalog installed"` for any non-simulation call, and
+    /// the simulation path also raises the same. The simulation branch
+    /// ALSO reads this field (defense-in-depth — design §3.3): a script
+    /// calling `platform.call_service('unknown_svc', ...)` in simulation
+    /// mode raises `"service '<id>' not registered"` rather than hitting
+    /// the interceptor with a bogus fingerprint.
+    service_catalog: ?*const service_catalog.ServiceCatalog = null,
+    /// LUA-12 HTTP client. Function pointer; the engine injects the real
+    /// implementation in production. Callers (tests) may inject a stub
+    /// that returns a deterministic `ServiceCallResponse`. The signature
+    /// matches the executor's contract: in arguments `endpoint`, `method`,
+    /// `path`, `headers` slice, `body`, `auth_token` slice (or null);
+    /// out is a `ServiceCallResponse` and an `HttpError` on transport
+    /// failure (the stub returns a successful response).
+    ///
+    /// When `null`, the real `call_service` path raises `"no HTTP client
+    /// installed"` — the engine-side worker is supposed to set this
+    /// field; its absence is a misconfiguration, not a soft fallback.
+    http_client_fn: ?*const HttpClientFn = null,
+    /// LUA-12 HTTP client context. Opaque pointer passed alongside
+    /// `http_client_fn` so the client can carry state. Lifetime is the
+    /// caller's responsibility (must outlive the context; CTX-1).
+    http_client_ctx: ?*const anyopaque = null,
+    /// LUA-16 (D-3). Pointer to the limiter the executor reads after a
+    /// failed pcall to populate `ScriptResult.script_error.instruction_count`.
+    /// If null, the payload's `instruction_count` is 0 and the executor
+    /// stamps `capabilities_at_failure` with the literal skip reason
+    /// (`SKIP_REASON_NO_INSTRUCTION_LIMITER`). The pointer is set by
+    /// `executeScript` itself in a future LUA-08 wiring; this run leaves
+    /// it null (the default), so the payload is built in the
+    /// "LUA-08 deferred" branch unconditionally.
+    instruction_limiter: ?*const instruction_limiter.InstructionLimiter = null,
 };
+
+/// LUA-12 Response shape returned by the HTTP client function pointer.
+/// Heap-allocated by the client; caller (the executor) frees via `deinit`.
+pub const ServiceCallResponse = struct {
+    status_code: i32,
+    body: []const u8,
+    headers: std.ArrayList([]const u8),
+    allocator: std.mem.Allocator,
+
+    pub fn deinit(self: *ServiceCallResponse) void {
+        self.allocator.free(self.body);
+        for (self.headers.items) |h| self.allocator.free(h);
+        self.headers.deinit(self.allocator);
+    }
+};
+
+/// LUA-12 HTTP error. The client returns this on transport-level failure
+/// (connection refused, timeout, DNS, TLS). The executor maps it to a
+/// structured Lua table `{error = "...", status_code = 0}` and pushes it
+/// to the script. A 4xx/5xx is NOT an error here — the executor sees the
+/// status code in `status_code` and pushes a normal response table.
+pub const HttpError = error{
+    ConnectionRefused,
+    Timeout,
+    DnsFailure,
+    TlsFailure,
+    UnknownTransportError,
+};
+
+/// LUA-12 HTTP client function pointer signature. The engine injects the
+/// real implementation; tests inject a stub that returns deterministic
+/// responses.
+pub const HttpClientFn = fn (
+    ctx: ?*const anyopaque,
+    endpoint: []const u8,
+    method: []const u8,
+    path: []const u8,
+    headers: []const []const u8,
+    body: []const u8,
+    auth_token: ?[]const u8,
+    allocator: std.mem.Allocator,
+) HttpError!ServiceCallResponse;
 
 /// Result of script execution.
 pub const ScriptResult = struct {
@@ -67,6 +149,17 @@ pub const ScriptResult = struct {
     /// executor performs no I/O, consistent with the transition.zig precedent).
     /// See design §6.4 and §11 follow-up 2.
     manifest_hash: ?[32]u8 = null,
+    /// LUA-15: discriminator between runtime Lua errors, explicit
+    /// `platform.fail` calls, and load-time compile failures. `.Success` is
+    /// the only kind that has `value` set; the others have `error_message`
+    /// set (and `.RuntimeError` may additionally have `script_error` set —
+    /// see LUA-16).
+    error_kind: ErrorKind = .Success,
+    /// LUA-16: populated only when `error_kind == .RuntimeError` AND the
+    /// LUA-08 instruction-count source was installed in this run. Null
+    /// otherwise (the executor still records the skip reason in the
+    /// payload's `capabilities_at_failure` slot when the limiter is null).
+    script_error: ?events.ScriptErrorPayload = null,
 
     pub fn deinit(self: *ScriptResult, allocator: std.mem.Allocator) void {
         if (self.error_message) |msg| {
@@ -75,7 +168,26 @@ pub const ScriptResult = struct {
         if (self.value) |val| {
             val.deinit(allocator);
         }
+        if (self.script_error) |*payload| {
+            payload.deinit(allocator);
+        }
     }
+};
+
+/// LUA-15 / LUA-16 discriminator.
+///
+/// The order is meaningful: `.Success` first because that is the common
+/// path, and the switch in `executeSource` must be exhaustive over all
+/// four without a fallthrough. `.CompileError` covers both bytecode
+/// rejection and `luaL_loadbuffer` failures; `.RuntimeError` covers
+/// everything `lua_pcall` reports; `.ExplicitFailure` is set only when
+/// the LUA-15 discriminator reads `bpm.explicit_failure` truthy from the
+/// registry.
+pub const ErrorKind = enum {
+    Success,
+    CompileError,
+    RuntimeError,
+    ExplicitFailure,
 };
 
 /// Script return value (can be nil, bool, number, string, or table).
@@ -289,6 +401,14 @@ pub fn executeScriptWithManifest(
 const BYTECODE_REJECTION_MESSAGE =
     "Bytecode is not allowed; only source text scripts are permitted";
 
+/// LUA-16: skip reason written to `ScriptErrorPayload.capabilities_at_failure`
+/// when the LUA-08 instruction-count source is NOT installed in this run
+/// (decision D-3 in src/design/iss0625-gh592-lua-12-15-16.md). Any future
+/// edit of this string is a test change — both TC-LUA-16-impl-05 and the
+/// executor's payload construction assert against it.
+pub const SKIP_REASON_NO_INSTRUCTION_LIMITER: []const u8 =
+    "skip: instruction_count source not installed (LUA-08 deferred)";
+
 /// Shared body of both entry points. `manifest_hash` is recorded on the result
 /// and is null on the plain `executeScript` path. `limits` is resolved by the
 /// caller (§3.2: `UNMANIFESTED_DEFAULT_LIMITS` or the verified manifest).
@@ -305,9 +425,19 @@ fn executeSource(
             .value = null,
             .error_message = try context.allocator.dupe(u8, BYTECODE_REJECTION_MESSAGE),
             .manifest_hash = manifest_hash,
+            .error_kind = .CompileError,
         };
     }
 
+    // WF03-GH592 rebase merge (ISS-0625 rco-sync): both GH-495's combined
+    // limiter+watchdog (LUA-08/09/10) and GH-592's setActive for the
+    // ServiceCatalog+HTTPLClient+LUA-16 instruction-limiter pointer
+    // (LUA-12/16) belong in this scope. They are independent initializations
+    // — main's block starts the watchdog and binds the local
+    // `context_with_watchdog`; branch's block wires the thread-local catalog.
+    // Order: storage first (no side effects), then watchdog (so the local
+    // context copy can be set), then setActive (which is just a thread-local
+    // write). Both scoped by their own defer.
     // ISS-0169 tranche 2 (design §1.2/§3.3): storage for the combined
     // instruction+timeout limiter and the memory limiter, stack-allocated
     // here so both outlive the `lua_State` they are installed into (INV-1) —
@@ -351,6 +481,17 @@ fn executeSource(
     var context_with_watchdog = context.*;
     context_with_watchdog.active_watchdog = &watchdog_state;
 
+    // LUA-12 (D-1): wire the active catalog and http_client_fn for this
+    // script invocation. platform.call_service reads them from
+    // thread-locals set by host_api.call_service.setActive. The active set
+    // is restored to null on scope exit so the next script starts clean.
+    host_api.call_service.setActive(
+        context.service_catalog,
+        context.http_client_fn,
+        context.http_client_ctx,
+    );
+    defer host_api.call_service.setActive(null, null, null);
+
     // Create the sandboxed state through the single constructor (SBX-2).
     const L = createSandboxedState(
         &context_with_watchdog,
@@ -363,6 +504,7 @@ fn executeSource(
             .value = null,
             .error_message = try context.allocator.dupe(u8, describeSetupError(err)),
             .manifest_hash = manifest_hash,
+            .error_kind = .CompileError,
         };
     };
     defer bindings.lua_close(L);
@@ -387,6 +529,7 @@ fn executeSource(
             .value = null,
             .error_message = try context.allocator.dupe(u8, err_msg),
             .manifest_hash = manifest_hash,
+            .error_kind = .CompileError,
         };
     }
 
@@ -401,11 +544,73 @@ fn executeSource(
     if (call_status != 0) {
         const err_str = bindings.lua_tostring(L, -1);
         const err_msg = std.mem.span(err_str);
+
+        // LUA-15 / LUA-16: classify the failure. The LUA-15 discriminator
+        // (`bpm.explicit_failure`) is read FIRST so an explicit failure is
+        // never mis-classified as a runtime error. If it is explicit, no
+        // stack trace is captured (explicit failure is a deliberate API,
+        // not a debug signal). If it is not explicit, capture the stack
+        // trace and build a `ScriptErrorPayload` conditionally on the
+        // LUA-08 instruction-count source.
+        const view = host_context.readExplicitFailure(L, context.allocator);
+        defer {
+            // Free the owned copies inside the view.
+            if (view.reason) |r| context.allocator.free(r);
+            if (view.details) |*d| d.deinit(context.allocator);
+        }
+        // Always clear the discriminator so a subsequent script (or a
+        // subsequent fail call from the same call stack) does not inherit
+        // stale state.
+        host_context.clearExplicitFailure(L);
+
+        if (view.kind == .Explicit) {
+            // LUA-15: explicit failure. Use the registry's reason as the
+            // authoritative text (defense-in-depth: the script may have
+            // raised with a different Lua error message), but the
+            // `lua_pcall` error message is what reached the script author
+            // — keep that for the side-channel.
+            const reason_for_msg = view.reason orelse err_msg;
+            return ScriptResult{
+                .success = false,
+                .value = null,
+                .error_message = try context.allocator.dupe(u8, reason_for_msg),
+                .manifest_hash = manifest_hash,
+                .error_kind = .ExplicitFailure,
+                .script_error = null,
+            };
+        }
+
+        // LUA-16: runtime error. Capture the stack trace and build the
+        // payload conditionally (D-3 of the design).
+        const stack_trace = captureStackTrace(L, context.allocator) catch "";
+        defer if (stack_trace.len > 0) context.allocator.free(stack_trace);
+
+        const payload = events.buildScriptErrorPayload(
+            err_msg,
+            stack_trace,
+            context.instruction_limiter,
+            SKIP_REASON_NO_INSTRUCTION_LIMITER,
+            context.allocator,
+        ) catch {
+            // builder failed; report a minimal discriminator so the caller
+            // still has the error_message.
+            return ScriptResult{
+                .success = false,
+                .value = null,
+                .error_message = try context.allocator.dupe(u8, err_msg),
+                .manifest_hash = manifest_hash,
+                .error_kind = .RuntimeError,
+                .script_error = null,
+            };
+        };
+
         return ScriptResult{
             .success = false,
             .value = null,
             .error_message = try context.allocator.dupe(u8, err_msg),
             .manifest_hash = manifest_hash,
+            .error_kind = .RuntimeError,
+            .script_error = payload,
         };
     }
 
@@ -477,6 +682,60 @@ fn describeSetupError(err: (errors.LuaError || stdlib.LibraryError)) []const u8 
         error.FailedToLoadLibrary => "Failed to load the sandboxed standard library",
         else => |lua_err| errors.errorDescription(lua_err),
     };
+}
+
+/// LUA-16: capture a stack trace of the failing execution via
+/// `lua_getstack` / `lua_getinfo` (decision D-4 in src/design/iss0625-gh592-lua-12-15-16.md).
+///
+/// Returns a single allocated string of the form
+/// `  at <chunk>:<line> in '<name>'\n` per frame, the deepest frame first.
+/// Allocator is the caller's `allocator`. Empty walk = empty string (NOT
+/// null). On any unwrap failure the function returns an empty string and
+/// leaves the cursor at a clean stack depth — the caller must still call
+/// `lua_pop` if it expected a value on the stack.
+///
+/// The walk uses `lua_getinfo`'s `"Sl"` (Source, current Line) field set
+/// (LUJIT 2.1 / Lua 5.1 API). `name` is the local function name if
+/// available; the chunk is the source name set at `luaL_loadbuffer` time
+/// (`"bpm_script"` for our entry point).
+pub fn captureStackTrace(L: *bindings.LuaState, allocator: std.mem.Allocator) ![]u8 {
+    var out = std.ArrayList(u8).empty;
+    defer out.deinit(allocator);
+
+    var level: c_int = 0;
+    var ar: bindings.lua_Debug = .{
+        .event = 0,
+        .name = null,
+        .namewhat = null,
+        .what = null,
+        .source = null,
+        .currentline = 0,
+        .nups = 0,
+        .linedefined = 0,
+        .lastlinedefined = 0,
+        .short_src = [_]u8{0} ** 60,
+        .i_ci = 0,
+    };
+
+    while (bindings.lua_getstack(L, level, &ar) != 0) : (level += 1) {
+        // "Sl" = source + current line. Returns 0 on failure.
+        if (bindings.lua_getinfo(L, "Sl", &ar) == 0) {
+            continue;
+        }
+
+        const source = if (ar.source) |s| std.mem.span(s) else "bpm_script";
+        const line = ar.currentline;
+        const name = if (ar.name) |n| std.mem.span(n) else "";
+
+        const frame = if (name.len > 0)
+            try std.fmt.allocPrint(allocator, "  at {s}:{d} in '{s}'\n", .{ source, line, name })
+        else
+            try std.fmt.allocPrint(allocator, "  at {s}:{d}\n", .{ source, line });
+        defer allocator.free(frame);
+        try out.appendSlice(allocator, frame);
+    }
+
+    return try out.toOwnedSlice(allocator);
 }
 
 /// Extract a value from the Lua stack at the given index.
