@@ -334,14 +334,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/518",
       "title": "45 business tables are duplicated between public and tenant_default with diverging columns",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-1-loop",
-        "locked_at": "2026-08-07T23:07:38Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-07T23:07:38Z",
       "started_at": "2026-08-07T23:07:38Z",
-      "completed_at": null,
+      "completed_at": "2026-08-08T03:25:14Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 518,
