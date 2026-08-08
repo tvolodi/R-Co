@@ -35,6 +35,11 @@ test "TC-OIDC-17-01: idp_operation_ledger enforces idempotency key uniqueness pe
 
     const conn = &h.conn;
 
+    const op1_id = try h.newUuidString(testing.allocator);
+    defer testing.allocator.free(op1_id);
+    const op2_id = try h.newUuidString(testing.allocator);
+    defer testing.allocator.free(op2_id);
+
     try conn.exec(
         \\INSERT INTO idp_operation_ledger (
         \\  operation_id, endpoint_fingerprint, idempotency_key, scope,
@@ -43,7 +48,7 @@ test "TC-OIDC-17-01: idp_operation_ledger enforces idempotency key uniqueness pe
         \\  $1::uuid, $2, $3, $4, decode($5, 'hex'), 201, '{}'::jsonb, 'COMPLETED', $6, NOW() + INTERVAL '1 day'
         \\)
     , &[_][]const u8{
-        "10000000-0000-0000-0000-000000000001",
+        op1_id,
         "POST:/api/v1/idp/provisioning:bundle",
         "idem-oidc17-01",
         "bundle_provision",
@@ -59,7 +64,7 @@ test "TC-OIDC-17-01: idp_operation_ledger enforces idempotency key uniqueness pe
         \\  $1::uuid, $2, $3, $4, decode($5, 'hex'), 200, '{}'::jsonb, 'COMPLETED', $6, NOW() + INTERVAL '1 day'
         \\)
     , &[_][]const u8{
-        "10000000-0000-0000-0000-000000000002",
+        op2_id,
         "POST:/api/v1/idp/provisioning:bundle",
         "idem-oidc17-01",
         "bundle_provision",
@@ -73,7 +78,8 @@ test "TC-OIDC-18-01: transaction log supports forward plus reverse-order compens
     defer h.deinit();
 
     const conn = &h.conn;
-    const tx = "20000000-0000-0000-0000-000000000001";
+    const tx = try h.newUuidString(testing.allocator);
+    defer testing.allocator.free(tx);
 
     try conn.exec(
         \\INSERT INTO idp_transaction_log (transaction_id, step_index, step_kind, direction, status)
@@ -126,7 +132,10 @@ test "TC-OIDC-21-01: overlapping secret rotations become non-pending after final
     defer h.deinit();
 
     const conn = &h.conn;
-    const rotation_id = "40000000-0000-0000-0000-000000000001";
+    const rotation_id = try h.newUuidString(testing.allocator);
+    defer testing.allocator.free(rotation_id);
+    const bad_rotation_id = try h.newUuidString(testing.allocator);
+    defer testing.allocator.free(bad_rotation_id);
 
     try conn.exec(
         \\INSERT INTO agent_secret_rotation (
@@ -168,7 +177,7 @@ test "TC-OIDC-21-01: overlapping secret rotations become non-pending after final
         \\) VALUES (
         \\  $1::uuid, $2, $3, $4, $5, NOW() + INTERVAL '1 hour', 'BROKEN_STATE', $6
         \\)
-    , &[_][]const u8{ "40000000-0000-0000-0000-000000000002", "realm-a", "client-orch-a", "old-fp-2", "new-fp-2", "agent:test-designer" });
+    , &[_][]const u8{ bad_rotation_id, "realm-a", "client-orch-a", "old-fp-2", "new-fp-2", "agent:test-designer" });
 }
 
 test "TC-OIDC-19-01: redacted adapter audit payload row is persisted" {
@@ -176,6 +185,11 @@ test "TC-OIDC-19-01: redacted adapter audit payload row is persisted" {
     defer h.deinit();
 
     const conn = &h.conn;
+
+    const audit_id_v = try h.newUuidString(testing.allocator);
+    defer testing.allocator.free(audit_id_v);
+    const transaction_id_v = try h.newUuidString(testing.allocator);
+    defer testing.allocator.free(transaction_id_v);
 
     try conn.exec(
         \\INSERT INTO idp_adapter_audit (
@@ -186,11 +200,11 @@ test "TC-OIDC-19-01: redacted adapter audit payload row is persisted" {
         \\  $3, $4, $5::uuid, $6::jsonb, $7::jsonb, true
         \\)
     , &[_][]const u8{
-        "70000000-0000-0000-0000-000000000001",
+        audit_id_v,
         "agent:test-designer",
         "realm-a",
         "client-orch-a",
-        "20000000-0000-0000-0000-000000000011",
+        transaction_id_v,
         "{\"client_secret\":\"[REDACTED]\"}",
         "{\"status\":\"ok\"}",
     });
@@ -199,7 +213,7 @@ test "TC-OIDC-19-01: redacted adapter audit payload row is persisted" {
         \\SELECT redaction_applied::text
         \\FROM idp_adapter_audit
         \\WHERE audit_id = $1::uuid
-    , &[_][]const u8{"70000000-0000-0000-0000-000000000001"});
+    , &[_][]const u8{audit_id_v});
     defer result.deinit();
     if (result.rows.len == 0) return error.TestUnexpectedResult;
 

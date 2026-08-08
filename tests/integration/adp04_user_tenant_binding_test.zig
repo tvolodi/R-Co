@@ -12,7 +12,9 @@ const identity_registry = bpm.identity_registry;
 const identity_service = bpm.identity_service;
 const identity_routes = bpm.identity_routes;
 
+// GH-512 retention: doc-identity fixture (matched against substring assertions in payload/correlation_id checks)
 const tenant_a = "11111111-1111-1111-1111-111111111111";
+// GH-512 retention: doc-identity fixture (matched against substring assertions in payload/correlation_id checks)
 const tenant_b = "22222222-2222-2222-2222-222222222222";
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {

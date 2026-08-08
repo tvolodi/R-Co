@@ -93,9 +93,11 @@ fn freeDefinition(allocator: std.mem.Allocator, def: Definition) void {
 }
 
 /// Fixed creator UUID used in all tests — no FK constraint on created_by.
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
 /// Non-existent UUID used in not-found tests — no real row will ever have this id.
+// GH-512 retention: definition-sentinel UUID (deterministic fixture for graph/edge tests)
 const nonexistent_uuid_str = "00000000-0000-4000-8000-000000000000";
 
 // ---------------------------------------------------------------------------

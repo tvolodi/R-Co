@@ -23,6 +23,7 @@ const pool_mod = bpm.db_pool;
 // ---------------------------------------------------------------------------
 
 const default_tenant = "00000000-0000-0000-0000-000000000000";
+// GH-512 retention: doc-identity fixture (matched against substring assertions in payload/correlation_id checks)
 const tenant_a = "11111111-1111-1111-1111-111111111111";
 
 // ---------------------------------------------------------------------------
@@ -212,6 +213,7 @@ test "TC-OIDC-12-05: resolveRealmByTenant returns NotFound for unknown tenant" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
+// GH-512 retention: max-UUID sentinel (used as 'no tenants bound' marker)
     const fake_tenant_id = "00000000-0000-0000-0000-ffffffffffff";
     const result = realm_tenant_binding.resolveRealmByTenant(alloc, &pool, fake_tenant_id);
 

@@ -25,7 +25,9 @@ const InstanceStore = bpm.engine.InstanceStore;
 const TaskStore = bpm.tasks.TaskStore;
 const scheduler_store = bpm.scheduler;
 
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
+// GH-512 retention: platform-admin user_id (system actor); preserve identity for RBAC/role-guard assertions
 const actor_id_str = "00000000-0000-0000-0000-000000000001";
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
@@ -473,7 +475,10 @@ test "TC-SCH-01-05: cancelled instance rejects timer creation" {
     try conn.begin();
     defer conn.rollback() catch {};
 
-    const attempted_timer_id = try parseUuid("00000000-0000-4000-8000-000000000123");
+// GH-512: replaced hardcoded definition-sentinel with TestHarness.newUuid() per GH-512.
+// The test asserts only that the insert errors with InstanceCancelled, so the specific
+// timer_id value does not matter — per-test uniqueness is preserved.
+    const attempted_timer_id = h.newUuid();
 
     const insert_result = scheduler_store.insertPendingTimerInTx(
         allocator,

@@ -24,13 +24,10 @@ const identity_service = bpm.identity_service;
 // Test constants
 // ---------------------------------------------------------------------------
 
-// Per-test unique tenant UUIDs to avoid cross-test data pollution
-// from shared DB state (tenant table persists across test binaries).
-const tenant_01 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01";
-const tenant_02 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02";
-const tenant_05 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa05";
-const tenant_06 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa06";
-const tenant_07 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa07";
+// GH-512: per-test tenant UUIDs are now generated inside each test block via
+// randomActorId() rather than as file-scope compile-time constants. File-scope
+// UUID literals would be flagged by lint_test_isolation T010; runtime
+// generation avoids the cross-binary collision class.
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -49,6 +46,20 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// GH-512: generate a per-test actor/tenant UUID. Caller owns the returned slice.
+fn randomActorId(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40;
+    raw[8] = (raw[8] & 0x3f) | 0x80;
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
 }
 
 fn freeRow(allocator: std.mem.Allocator, row: []?[]u8) void {
@@ -157,6 +168,8 @@ test "TC-OIDC-09-01: first auth creates new user record with auth_source=oidc" {
     const realm = "kc-realm-oidc09-01";
     const external_id = "sub-oidc09-01";
     const username = "tc-oidc-09-01-user";
+    const tenant_01 = try randomActorId(alloc);
+    defer alloc.free(tenant_01);
 
     cleanupUserByUsername(&pool, username);
     cleanupUserByExternalIdentity(&pool, realm, external_id);
@@ -234,6 +247,8 @@ test "TC-OIDC-09-02: subsequent auth returns existing user no duplicate" {
     const realm = "kc-realm-oidc09-02";
     const external_id = "sub-oidc09-02";
     const username = "tc-oidc-09-02-user";
+    const tenant_02 = try randomActorId(alloc);
+    defer alloc.free(tenant_02);
 
     cleanupUserByUsername(&pool, username);
     cleanupUserByExternalIdentity(&pool, realm, external_id);
@@ -369,6 +384,8 @@ test "TC-OIDC-09-05: duplicate preferred_username with existing internal user" {
     const realm = "kc-realm-oidc09-05";
     const existing_username = "tc-oidc-09-05-internal";
     const oidc_external_id = "sub-oidc09-05";
+    const tenant_05 = try randomActorId(alloc);
+    defer alloc.free(tenant_05);
 
     cleanupUserByUsername(&pool, existing_username);
     cleanupUserByExternalIdentity(&pool, realm, oidc_external_id);
@@ -439,6 +456,8 @@ test "TC-OIDC-09-06: JIT provisioning emits audit event on creation" {
     const realm = "kc-realm-oidc09-06";
     const external_id = "sub-oidc09-06";
     const username = "tc-oidc-09-06-user";
+    const tenant_06 = try randomActorId(alloc);
+    defer alloc.free(tenant_06);
 
     cleanupUserByUsername(&pool, username);
     cleanupUserByExternalIdentity(&pool, realm, external_id);
@@ -512,6 +531,8 @@ test "TC-OIDC-09-07: attributes map correctly from input to user record" {
     const realm = "kc-realm-oidc09-07";
     const external_id = "sub-oidc09-07";
     const username = "tc-oidc-09-07-user";
+    const tenant_07 = try randomActorId(alloc);
+    defer alloc.free(tenant_07);
 
     cleanupUserByUsername(&pool, username);
     cleanupUserByExternalIdentity(&pool, realm, external_id);

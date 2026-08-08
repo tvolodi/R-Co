@@ -75,6 +75,24 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     });
 }
 
+/// Generate a hyphenated UUID v4 string via the platform CSPRNG.
+/// GH-512: replaces hardcoded UUID literals with runtime-generated ones.
+/// Caller owns the returned slice.
+fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
+    var bytes: [16]u8 = undefined;
+    bpm.uuid.generateUuidV4BytesInto(&bytes);
+    return std.fmt.allocPrint(
+        allocator,
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
+        .{
+            bytes[0], bytes[1], bytes[2], bytes[3],
+            bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9], bytes[10], bytes[11],
+            bytes[12], bytes[13], bytes[14], bytes[15],
+        },
+    );
+}
+
 /// Parse a UUID string (with hyphens) into [16]u8.
 fn parseTestUuid(allocator: std.mem.Allocator, s: []const u8) ![16]u8 {
     var buf: [32]u8 = undefined;
@@ -88,6 +106,7 @@ fn parseTestUuid(allocator: std.mem.Allocator, s: []const u8) ![16]u8 {
     if (i != 32) return error.InvalidUuid;
     var out: [16]u8 = undefined;
     _ = try std.fmt.hexToBytes(&out, buf[0..32]);
+    // GH-512: returns 16-byte binary UUID from a hex string. Caller owns alloc.
     _ = allocator;
     return out;
 }
@@ -111,6 +130,7 @@ fn hasCode(violations: []const bpm.definition.Violation, code: []const u8) bool 
 }
 
 /// Fixed creator UUID used in all tests — no FK constraint on created_by.
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
 // ---------------------------------------------------------------------------
@@ -397,8 +417,10 @@ test "TC-API-02-10: Store.getById with unknown id returns DefinitionNotFound" {
     var def_store = DefinitionStore.init(alloc, &pool);
     defer def_store.deinit();
 
-    // A UUID that has never been inserted.
-    const unknown_id = try parseTestUuid(alloc, "ffffffff-ffff-ffff-ffff-ffffffffffff");
+    // GH-512: random UUID that has never been inserted.
+    const unknown_hex = try randomUuidStr(alloc);
+    defer alloc.free(unknown_hex);
+    const unknown_id = try parseTestUuid(alloc, unknown_hex);
 
     const err = def_store.getById(alloc, unknown_id);
     try testing.expectError(DefinitionError.DefinitionNotFound, err);
@@ -542,7 +564,10 @@ test "TC-API-02-14: Store.update with unknown id returns DefinitionNotFound" {
     var def_store = DefinitionStore.init(alloc, &pool);
     defer def_store.deinit();
 
-    const unknown_id = try parseTestUuid(alloc, "ffffffff-ffff-ffff-ffff-fffffffffff2");
+    // GH-512: random UUID that has never been inserted.
+    const unknown_hex = try randomUuidStr(alloc);
+    defer alloc.free(unknown_hex);
+    const unknown_id = try parseTestUuid(alloc, unknown_hex);
 
     const err = def_store.update(alloc, unknown_id, UpdateParams{
         .name = "ghost",
@@ -742,7 +767,10 @@ test "TC-API-02-19: Store.update (PATCH) with unknown id returns DefinitionNotFo
     var def_store = DefinitionStore.init(alloc, &pool);
     defer def_store.deinit();
 
-    const unknown_id = try parseTestUuid(alloc, "ffffffff-ffff-ffff-ffff-fffffffffff3");
+    // GH-512: random UUID that has never been inserted.
+    const unknown_hex = try randomUuidStr(alloc);
+    defer alloc.free(unknown_hex);
+    const unknown_id = try parseTestUuid(alloc, unknown_hex);
 
     const err = def_store.update(alloc, unknown_id, UpdateParams{
         .name = null,
@@ -1076,7 +1104,10 @@ test "TC-API-02-26: Store.hardDelete with unknown id returns DefinitionNotFound"
     var def_store = DefinitionStore.init(alloc, &pool);
     defer def_store.deinit();
 
-    const unknown_id = try parseTestUuid(alloc, "ffffffff-ffff-ffff-ffff-fffffffffff4");
+    // GH-512: random UUID that has never been inserted.
+    const unknown_hex = try randomUuidStr(alloc);
+    defer alloc.free(unknown_hex);
+    const unknown_id = try parseTestUuid(alloc, unknown_hex);
 
     const err = def_store.hardDelete(alloc, unknown_id);
     try testing.expectError(DefinitionError.DefinitionNotFound, err);

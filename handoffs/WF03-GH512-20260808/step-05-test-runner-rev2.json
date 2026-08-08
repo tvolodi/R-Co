@@ -1,0 +1,95 @@
+{
+  "handoff_id": "f8b2c19d-44a3-4d29-b0c8-1d9e3f7d2a99-rev2",
+  "run_id": "WF03-GH512-20260808",
+  "workflow_id": "WF-03",
+  "step": "05",
+  "from_agent": "TEST-RUNNER",
+  "to_agent": "ORCH",
+  "file": "handoffs/WF03-GH512-20260808/step-05-test-runner-rev2.json",
+  "created_at": "2026-08-08T13:14:00Z",
+  "started_at": "2026-08-08T13:14:00Z",
+  "completed_at": "2026-08-08T13:14:00Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Step 5 (TEST-RUNNER) — re-verification after ext02 fix",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "9c1f1d4a-2026-08-08-1737-gh512-step3",
+      "f8b2c19d-44a3-4d29-b0c8-1d9e3f7d2a04",
+      "e8c41067-4610-4899-a7c7-16659a132dbd",
+      "f8b2c19d-44a3-4d29-b0c8-1d9e3f7d2a99"
+    ],
+    "artifacts_in": [
+      "tests/integration/gh512_t010_regression_test.zig",
+      "tests/specs/ISS-0181-gh512-t010-retire.md",
+      "tests/specs/fixtures/gh512-baseline-snapshot.json",
+      "tools/lint_test_isolation.baseline.json",
+      "src/design/iss0181-gh512-t010-migration.md",
+      "docs/issue-reports/ISS-0181-gh512-diagnosis.yaml",
+      "build.zig",
+      "tests/integration/main_test.zig",
+      "tests/integration/ext02_webhook_dispatch_test.zig (regression fix 06b8b327)",
+      "tools/lint_test_isolation.baseline.json (revised line 22ac3fc0)"
+    ]
+  },
+  "task": {
+    "description": "Re-verify WF-03 Step 5 (TEST-RUNNER) for GH-512 / ISS-0181 after (a) commit 06b8b327 fixed the ext02 compile regression and (b) commit 22ac3fc0 added the missing T010 baseline entry for the regression test itself. Confirm primary + tertiary still PASS and the C5 isolation lint gate now passes.",
+    "acceptance_criteria": [
+      "test-integration-gh512 PASS (TC-RG-01/02/03 all pass)",
+      "tools/lint_test_isolation.py exits 0 (C5 isolation lint green)",
+      "verify_test_env.py exits HEALTHY (all 10 checks green)",
+      "zig build test exit 0",
+      "test report rewritten at tests/reports/report-20260808-WF03-GH512.yaml with overall verdict PASS",
+      "lint_handoffs.py exits 0 for handoffs/WF03-GH512-20260808/"
+    ],
+    "functions_to_call": [
+      "fn:run-test-integration-gh512",
+      "fn:run-lint-test-isolation",
+      "fn:run-verify-test-env",
+      "fn:run-zig-build-test",
+      "fn:write-test-report-rev2",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "VERIFIED. (1) test-integration-gh512 PASS 3/3 — TC-RG-01 T010 BLOCKER=74 <= ceiling 74; TC-RG-02 baseline matches snapshot total=115/by_code={T010=74,T020:11,T030:6,T050:22,T060:2}/platform_admin=14; TC-RG-03 zig build test exit 0. (2) lint_test_isolation.py exits 0 — C5 green; the canonical platform-admin UUID in gh512_t010_regression_test.zig:337 is a documented RETAIN (design §R1 — substring-search target, not a fixture identity) and is suppressed via the updated baseline entry. (3) verify_test_env.py exits HEALTHY — 10/10 checks PASS (C0..C9). (4) zig build exit 0. (5) ext02_webhook_dispatch_test.zig compile error (commit c8b79467) is fixed in commit 06b8b327 — the bogus 'subscription_id_slice' defer target was replaced with a local variable that owns the heap allocation. (6) lint_handoffs.py on handoffs/WF03-GH512-20260808/ exits 0 — 0 BLOCKER, 0 MAJOR, 0 MINOR. RECOMMENDATION: Route to DOC-UPDATER (Step 7) to update CHANGELOG.md and ISS-0181 status, then to BACKEND-DEV (Step Final) to merge feature branch and clean up.",
+    "artifacts_out": [
+      "tests/reports/report-20260808-WF03-GH512.yaml (rewritten with PASS verdict)",
+      "scratch/_gh512_final.log",
+      "scratch/_gh512_zig_build.log",
+      "scratch/_gh512_v2.log",
+      "scratch/_verify_env.log",
+      "scratch/_verify_env2.log",
+      "handoffs/WF03-GH512-20260808/step-05-test-runner-rev2.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [
+      {
+        "id": "RESOLVED-batch-2b-ext02",
+        "severity": "INFO",
+        "description": "GH-512 batch 2b compile regression in ext02_webhook_dispatch_test.zig:411 was fixed in commit 06b8b327 (HandlerResult has no subscription_id_slice field — replaced with a captured local variable that owns the heap allocation). Verifies via clean `zig build test` exit 0.",
+        "introduced_by": "c8b79467",
+        "fixed_by": "06b8b327"
+      },
+      {
+        "id": "RESOLVED-c5-isolation-lint",
+        "severity": "INFO",
+        "description": "C5 (test isolation lint) was failing because the canonical platform-admin UUID substring-search target in gh512_t010_regression_test.zig:337 was not in the baseline. Fixed in commit 22ac3fc0 — added the missing T010 BLOCKER entry with updated regenerated_by note explaining the +1 RETAIN (design §R1).",
+        "introduced_by": "MISSING_BASELINE_ENTRY",
+        "fixed_by": "22ac3fc0"
+      },
+      {
+        "id": "PRE-EXISTING-14-runtime-failures",
+        "severity": "MAJOR",
+        "description": "14 runtime test failures on the secondary target. All 14 failing test files have ZERO diff vs origin/main (i.e., these failures pre-date GH-512 and are not regressions).",
+        "policy": "Per CLAUDE.md 'filed and forwarded, not fixed here'. Not blocking the WF-03 run; will be picked up by future WF-03 runs on the global queue."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 7) — update CHANGELOG.md with GH-512 fix entry and set ISS-0181 status to RELEASED via tools/reqctl.py. Then BACKEND-DEV (Step Final) to merge feature/WF03-GH512-20260808 into main and clean up."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

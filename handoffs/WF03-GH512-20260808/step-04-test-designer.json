@@ -1,0 +1,61 @@
+{
+  "handoff_id": "f8b2c19d-44a3-4d29-b0c8-1d9e3f7d2a04",
+  "run_id": "WF03-GH512-20260808",
+  "workflow_id": "WF-03",
+  "step": "04",
+  "from_agent": "TEST-DESIGNER",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH512-20260808/step-04-test-designer.json",
+  "created_at": "2026-08-08T12:46:04Z",
+  "started_at": "2026-08-08T12:46:04Z",
+  "completed_at": "2026-08-08T12:46:04Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "7f64a7de-3cc2-4b0c-8dc2-9a0ad6a4d512"
+    ],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/512",
+      "src/design/iss0181-gh512-t010-migration.md",
+      "docs/issue-reports/ISS-0181-gh512-diagnosis.yaml"
+    ]
+  },
+  "task": {
+    "description": "Write regression tests for GH-512 / ISS-0181 T010 hardcoded-UUID migration. Three tests: TC-RG-01 (T010 BLOCKER ceiling), TC-RG-02 (baseline shape), TC-RG-03 (zig build test exit 0). Subprocess-driven, no BPM_TEST_DB_URL required.",
+    "acceptance_criteria": [
+      "zig build test-integration-gh512 compiles (exit 0)",
+      "All 3 regression tests pass (TC-RG-01, TC-RG-02, TC-RG-03)",
+      "No mocks, no SkipZigTest, no BPM_TEST_DB_URL dependency",
+      "Per-test UUIDs used wherever a fixture ID is created"
+    ],
+    "functions_to_call": [
+      "fn:write-test-spec",
+      "fn:lint-test-isolation",
+      "fn:lint-handoffs"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "3 regression tests added at tests/integration/gh512_t010_regression_test.zig, all pass. Build target `test-integration-gh512` added to build.zig and wired through main_test.zig. Test spec at tests/specs/ISS-0181-gh512-t010-retire.md; baseline snapshot at tests/specs/fixtures/gh512-baseline-snapshot.json. Subprocess-driven (linter + zig build), so BPM_TEST_DB_URL not required. After back-end-dev's std.fs.cwd() -> std.Io.Dir.cwd().readFileAlloc() correction (Zig 0.16 fs API), compile is clean and all three tests pass: TC-RG-01 reports T010 count = 74 against ceiling 74, TC-RG-02 confirms baseline shape, TC-RG-03 confirms zig build test exits 0.",
+    "artifacts_out": [
+      "tests/specs/ISS-0181-gh512-t010-retire.md",
+      "tests/integration/gh512_t010_regression_test.zig",
+      "tests/specs/fixtures/gh512-baseline-snapshot.json",
+      "build.zig",
+      "tests/integration/main_test.zig"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0181-step4-001",
+        "severity": "MINOR",
+        "description": "Original subagent draft used std.fs.cwd().readFileAlloc() and a pointless _ = argv_buf discard + wrong argv slice type. Backend-dev (me) corrected to std.Io.Dir.cwd().readFileAlloc(io, path, alloc, std.Io.Limit.limited(N)) and rebuilt argv as a clean []const []const u8. No functional impact on the migration; just compile-fix pass."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 4b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

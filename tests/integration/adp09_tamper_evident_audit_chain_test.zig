@@ -305,8 +305,10 @@ test "TC-ADP-09-03: chain validation reports tampered row first and descendants 
     defer issues.deinit();
 
     try testing.expect(issues.rows.len >= 2);
+// GH-512 retention: deterministic actor fixture for audit-chain / IO-capture tests (matches SQL VALUES and expectEqualStrings)
     try testing.expectEqualStrings("c9000000-0000-0000-0000-000000000102", issues.rows[0][0] orelse "");
     try testing.expectEqualStrings("ChainHashMismatch", issues.rows[0][2] orelse "");
+// GH-512 retention: deterministic actor fixture for audit-chain / IO-capture tests (matches SQL VALUES and expectEqualStrings)
     try testing.expectEqualStrings("c9000000-0000-0000-0000-000000000103", issues.rows[1][0] orelse "");
     try testing.expectEqualStrings("PrevHashMismatch", issues.rows[1][2] orelse "");
 }

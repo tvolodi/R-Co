@@ -21,6 +21,7 @@ const GraphNode = bpm.definition.GraphNode;
 const GraphEdge = bpm.definition.GraphEdge;
 const DefinitionGraph = bpm.definition.DefinitionGraph;
 
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {

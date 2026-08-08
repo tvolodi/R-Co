@@ -1,6 +1,7 @@
 const std = @import("std");
 const portable_env = @import("env");
 const testing = std.testing;
+const helpers = @import("helpers.zig");
 
 const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
@@ -96,6 +97,13 @@ test "TC-OBS-06-INT-01: ERROR-duration emits per-instance alerts with one-shot a
     defer state.deinit();
 
     const now_us: i64 = 1_717_000_000_000_000;
+    // GH-512: keep as system constant: literals feed ErrorInstanceSnapshot whose
+    // .instance_id and .definition_id flow into evaluateAlertRules() output;
+    // the same literals are also matched against payload_json and
+    // correlation_id substrings in assertions below. Substituting these would
+    // break those substring assertions. The diagnosis marked CONVERT but the
+    // design §3 S4 (R3) requires retention because the UUIDs are documented
+    // identities being asserted against.
     const snapshots = [_]obs_alerts.ErrorInstanceSnapshot{
         .{ .instance_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", .definition_id = "11111111-1111-1111-1111-111111111111", .error_reason = "timeout", .error_since_us = now_us - (11 * 60 * 1_000_000) },
         .{ .instance_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", .definition_id = "22222222-2222-2222-2222-222222222222", .error_reason = "validation", .error_since_us = now_us - (20 * 60 * 1_000_000) },
@@ -160,6 +168,8 @@ test "TC-OBS-06-INT-01: ERROR-duration emits per-instance alerts with one-shot a
     defer testing.allocator.free(recovered);
     try testing.expectEqual(@as(usize, 0), recovered.len);
 
+    // GH-512: keep as system constant: see comment above the first ErrorInstanceSnapshot
+    // array in this test. Same documented-identity semantics.
     const returned_error = [_]obs_alerts.ErrorInstanceSnapshot{
         .{ .instance_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", .definition_id = "11111111-1111-1111-1111-111111111111", .error_reason = "timeout", .error_since_us = (now_us + 3_000_000) - (11 * 60 * 1_000_000) },
     };
@@ -370,6 +380,10 @@ test "TC-OBS-06-INT-04: deterministic correlation and payload envelope fields" {
 
 test "TC-OBS-06-INT-05: DLQ depth query and trigger-state persistence are DB-visible" {
     const allocator = testing.allocator;
+    // GH-512: harness added solely for runtime UUID generation.
+    var h = try helpers.TestHarness.init(allocator);
+    defer h.deinit();
+
     const url = try testDbUrl(allocator);
     defer allocator.free(url);
 
@@ -388,9 +402,16 @@ test "TC-OBS-06-INT-05: DLQ depth query and trigger-state persistence are DB-vis
 
     const baseline_depth = try obs_alerts.readDlqDepth(allocator, &pool);
 
-    try insertDlqRow(conn, "a1111111-1111-1111-1111-111111111111", "obs06-depth-pending", "pending");
-    try insertDlqRow(conn, "b2222222-2222-2222-2222-222222222222", "obs06-depth-retrying", "retrying");
-    try insertDlqRow(conn, "c3333333-3333-3333-3333-333333333333", "obs06-depth-discarded", "discarded");
+    // GH-512: per-test UUIDs generated at runtime.
+    const pending_id = try h.newUuidString(allocator);
+    defer allocator.free(pending_id);
+    const retrying_id = try h.newUuidString(allocator);
+    defer allocator.free(retrying_id);
+    const discarded_id = try h.newUuidString(allocator);
+    defer allocator.free(discarded_id);
+    try insertDlqRow(conn, pending_id, "obs06-depth-pending", "pending");
+    try insertDlqRow(conn, retrying_id, "obs06-depth-retrying", "retrying");
+    try insertDlqRow(conn, discarded_id, "obs06-depth-discarded", "discarded");
 
     const depth = try obs_alerts.readDlqDepth(allocator, &pool);
     try testing.expectEqual(baseline_depth + 2, depth);

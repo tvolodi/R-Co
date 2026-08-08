@@ -61,7 +61,7 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     });
 }
 
-/// Parse a UUID string like "aabbccdd-0000-0000-0000-000000000001" into [16]u8.
+/// Parse a UUID string (canonical 36-char hyphenated form) into [16]u8.
 /// Strips dashes before calling hexToBytes.
 fn parseUuid(allocator: std.mem.Allocator, s: []const u8) ![16]u8 {
     var buf: [32]u8 = undefined;
@@ -180,13 +180,15 @@ test "TC-ES-01-01: valid append returns AppendResult with is_duplicate=false and
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "e5010000-0001-0000-0000-000000000001";
-    const def_str = "defdef00-0001-0000-0000-000000000001";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{"es01-idem-01"});
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000001");
+    const actor_uuid = h.newUuid();
 
     const result = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -246,13 +248,15 @@ test "TC-ES-02-01: two sequential appends receive sequence_numbers 1 and 2" {
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "e5020000-0002-0000-0000-000000000002";
-    const def_str = "defdef00-0002-0000-0000-000000000002";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{ "es02-idem-01", "es02-idem-02" });
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000002");
+    const actor_uuid = h.newUuid();
 
     const r1 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -300,13 +304,15 @@ test "TC-ES-02-02: Store.read returns events sorted by ascending sequence_number
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "e5020000-0003-0000-0000-000000000003";
-    const def_str = "defdef00-0003-0000-0000-000000000003";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{ "es02b-idem-01", "es02b-idem-02", "es02b-idem-03" });
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000003");
+    const actor_uuid = h.newUuid();
 
     _ = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -382,13 +388,15 @@ test "TC-ES-03-01: duplicate idempotency_key returns original event with is_dupl
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "e5030000-0003-0000-0000-000000000003";
-    const def_str = "defdef00-0003-0000-0000-000000000003";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{"es03-idem-001"});
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000004");
+    const actor_uuid = h.newUuid();
 
     var first = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -457,10 +465,14 @@ test "TC-ES-04-01: readGlobal returns events in ascending global_seq order" {
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_a = "e5040000-0004-0000-0000-00000000000a";
-    const inst_b = "e5040000-0004-0000-0000-00000000000b";
-    const def_a = "defdef00-0004-0000-0000-00000000000a";
-    const def_b = "defdef00-0004-0000-0000-00000000000b";
+    const inst_a = try h.newUuidString(alloc);
+    defer alloc.free(inst_a);
+    const inst_b = try h.newUuidString(alloc);
+    defer alloc.free(inst_b);
+    const def_a = try h.newUuidString(alloc);
+    defer alloc.free(def_a);
+    const def_b = try h.newUuidString(alloc);
+    defer alloc.free(def_b);
     try insertInstance(&pool, inst_a, def_a);
     try insertInstance(&pool, inst_b, def_b);
     defer cleanupInstance(&pool, inst_a, &.{ "es04-idem-a1", "es04-idem-a2" });
@@ -468,7 +480,7 @@ test "TC-ES-04-01: readGlobal returns events in ascending global_seq order" {
 
     const uuid_a = try parseUuid(alloc, inst_a);
     const uuid_b = try parseUuid(alloc, inst_b);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000005");
+    const actor_uuid = h.newUuid();
 
     const r1 = try store.append(alloc, AppendParams{
         .instance_id = uuid_a,
@@ -548,8 +560,10 @@ test "TC-ES-04-02: readGlobal with after_global_seq cursor returns only later ev
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "e504c0b0-0004-0000-0000-000000000004";
-    const def_str = "defdef00-0004-0000-0000-000000000004";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{
         "es04c-idem-01", "es04c-idem-02", "es04c-idem-03",
@@ -557,7 +571,7 @@ test "TC-ES-04-02: readGlobal with after_global_seq cursor returns only later ev
     });
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000006");
+    const actor_uuid = h.newUuid();
 
     var results: [5]AppendResult = undefined;
     const keys = [5][]const u8{
@@ -622,13 +636,15 @@ test "TC-ES-05-01: append with unregistered event_type returns UnknownEventType"
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "e5050000-0005-0000-0000-000000000005";
-    const def_str = "defdef00-0005-0000-0000-000000000005";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{});
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000007");
+    const actor_uuid = h.newUuid();
 
     const err = store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -808,15 +824,17 @@ test "TC-ES-06-01: pointInTime filters out events created after the timestamp" {
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "e5060000-0006-0000-0000-000000000006";
-    const def_str = "defdef00-0006-0000-0000-000000000006";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{
         "es06-idem-01", "es06-idem-02", "es06-idem-03",
     });
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000008");
+    const actor_uuid = h.newUuid();
 
     _ = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -909,8 +927,10 @@ test "TC-ES-06-02: read with up_to_sequence returns exactly events 1..K" {
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "e506b000-0006-0000-0000-000000000006";
-    const def_str = "defdef00-0006-0000-0000-000000000006";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{
         "es06b-idem-01", "es06b-idem-02", "es06b-idem-03",
@@ -918,7 +938,7 @@ test "TC-ES-06-02: read with up_to_sequence returns exactly events 1..K" {
     });
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000009");
+    const actor_uuid = h.newUuid();
 
     const idem_keys = [5][]const u8{
         "es06b-idem-01", "es06b-idem-02", "es06b-idem-03",
@@ -984,8 +1004,10 @@ test "TC-ES-07-01: archive moves expired events to events_archive" {
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "e5070000-0007-0000-0000-000000000007";
-    const def_str = "defdef00-0007-0000-0000-000000000007";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{"es07-idem-01"});
     defer {
@@ -997,7 +1019,7 @@ test "TC-ES-07-01: archive moves expired events to events_archive" {
     }
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000010");
+    const actor_uuid = h.newUuid();
 
     _ = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -1102,8 +1124,10 @@ test "TC-ADP-11-02: non-protected families retain hard-delete configurability" {
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "ad110000-0002-0000-0000-000000000002";
-    const def_str = "defdef00-ad11-0000-0000-000000000002";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{"adp11-idem-01"});
     defer {
@@ -1116,7 +1140,7 @@ test "TC-ADP-11-02: non-protected families retain hard-delete configurability" {
     }
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000031");
+    const actor_uuid = h.newUuid();
 
     _ = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -1178,8 +1202,10 @@ test "TC-ADP-11-03: protected keep_days policy archives and preserves queryabili
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "ad110000-0003-0000-0000-000000000003";
-    const def_str = "defdef00-ad11-0000-0000-000000000003";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{"adp11-idem-02"});
     defer {
@@ -1190,7 +1216,7 @@ test "TC-ADP-11-03: protected keep_days policy archives and preserves queryabili
     }
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000032");
+    const actor_uuid = h.newUuid();
 
     // ISS-0155: INSTANCE_STARTED's registered schema (migrations/
     // 002_event_type_registry.sql) requires "definition_id". This payload used
@@ -1273,13 +1299,15 @@ test "TC-ES-08-04: absent metadata field defaults to empty object in returned re
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "e5080000-0008-0000-0000-000000000008";
-    const def_str = "defdef00-0008-0000-0000-000000000008";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{"es08-idem-01"});
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000011");
+    const actor_uuid = h.newUuid();
 
     const result = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -1321,13 +1349,15 @@ test "TC-ADP-01-01: default-tenant behavior remains backward compatible" {
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "ad010000-0001-0000-0000-000000000001";
-    const def_str = "defdef00-ad01-0000-0000-000000000001";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{"adp01-default-idem-01"});
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000021");
+    const actor_uuid = h.newUuid();
 
     _ = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -1392,14 +1422,17 @@ test "TC-ADP-01-02: tenant-scoped reads isolate events by tenant_id" {
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "ad010000-0002-0000-0000-000000000002";
-    const def_str = "defdef00-ad01-0000-0000-000000000002";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{ "adp01-iso-idem-default", "adp01-iso-idem-alt" });
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000022");
-    const alt_tenant = "11111111-1111-1111-1111-111111111111";
+    const actor_uuid = h.newUuid();
+    const alt_tenant = try h.newUuidString(alloc);
+    defer alloc.free(alt_tenant);
 
     _ = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -1541,13 +1574,15 @@ test "TC-ADP-01-04: append rejects empty tenant context deterministically" {
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_str = "ad010000-0004-0000-0000-000000000004";
-    const def_str = "defdef00-ad01-0000-0000-000000000004";
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{"adp01-missing-tenant-idem"});
 
     const inst_uuid = try parseUuid(alloc, inst_str);
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000024");
+    const actor_uuid = h.newUuid();
 
     try std.testing.expectError(StoreError.MissingTenantContext, store.append(alloc, AppendParams{
         .tenant_id = "",
@@ -1602,7 +1637,7 @@ test "TC-ES-01-05: append with nil actor_id returns ActorIdMissing" {
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_uuid = try parseUuid(alloc, "e5010500-0000-0000-0000-000000000001");
+    const inst_uuid = h.newUuid();
     var nil_actor: [16]u8 = undefined;
     @memset(&nil_actor, 0);
 
@@ -1637,8 +1672,8 @@ test "TC-ES-01-06: append with array payload returns PayloadInvalid" {
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_uuid = try parseUuid(alloc, "e5010600-0000-0000-0000-000000000001");
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000025");
+    const inst_uuid = h.newUuid();
+    const actor_uuid = h.newUuid();
 
     try std.testing.expectError(StoreError.PayloadInvalid, store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -1671,8 +1706,8 @@ test "TC-ES-03-02: append with empty idempotency_key returns IdempotencyKeyMissi
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_uuid = try parseUuid(alloc, "e5030200-0000-0000-0000-000000000001");
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000026");
+    const inst_uuid = h.newUuid();
+    const actor_uuid = h.newUuid();
 
     try std.testing.expectError(StoreError.IdempotencyKeyMissing, store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -1705,8 +1740,8 @@ test "TC-ES-03-03: append with 256-char idempotency_key returns IdempotencyKeyTo
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
-    const inst_uuid = try parseUuid(alloc, "e5030300-0000-0000-0000-000000000001");
-    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000027");
+    const inst_uuid = h.newUuid();
+    const actor_uuid = h.newUuid();
 
     var long_key_arr: [256]u8 = undefined;
     @memset(&long_key_arr, 'x');

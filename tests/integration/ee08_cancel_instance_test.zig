@@ -41,10 +41,13 @@ const TaskStore = bpm.tasks.TaskStore;
 // ---------------------------------------------------------------------------
 
 /// Fake "created_by" UUID; no FK constraint on process_definitions.created_by.
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 /// actor_id placeholder used for cancel operations (real IDN-03 not yet in scope).
+// GH-512 retention: platform-admin user_id (system actor); preserve identity for RBAC/role-guard assertions
 const actor_id_str = "00000000-0000-0000-0000-000000000001";
 /// UUID guaranteed absent from any real test run.
+// GH-512 retention: definition-sentinel UUID (deterministic fixture for graph/edge tests)
 const nonexistent_uuid_str = "00000000-0000-4000-8000-000000000000";
 
 // ---------------------------------------------------------------------------

@@ -400,11 +400,15 @@ test "TC-DB-03-02: failed transaction rolls back both writes atomically" {
         );
 
         // Insert an events row inside the same transaction.
+// GH-512: replaced hardcoded actor fixture with TestHarness.newUuidString() per GH-512.
+// The idempotency_key 'db03-02-idem' is the unique discriminator; actor_id value is irrelevant.
+        const actor_id_str = try h_phase1.newUuidString(alloc);
+        defer alloc.free(actor_id_str);
         try h_phase1.conn.exec(
             "INSERT INTO events " ++
                 "(instance_id, event_type, payload, actor_id, sequence_number, idempotency_key, global_seq) " ++
                 "VALUES ($1::uuid, 'DB03_ROLLBACK', '{}', $2::uuid, 1, 'db03-02-idem', nextval('events_global_seq'))",
-            &.{ inst_id_str, "acac0000-0000-0000-0000-000000000002" },
+            &.{ inst_id_str, actor_id_str },
         );
 
         // Inject a constraint violation: duplicate primary key on instance_projections.

@@ -36,30 +36,12 @@ const SnapshotError = bpm.snapshot.SnapshotError;
 const Snapshot = bpm.snapshot.Snapshot;
 
 // ---------------------------------------------------------------------------
-// Fixed test UUIDs (deterministic — no RNG dependency)
+// Fixed test UUIDs — none.
+//
+// GH-512 retirement: per-test UUIDs are generated at runtime inside each test
+// block via TestHarness.newUuidString(). There are no file-scope UUID literals
+// because file-scope declarations cannot call a runtime harness helper.
 // ---------------------------------------------------------------------------
-
-/// Fake "created_by" UUID; no FK constraint on process_definitions.created_by.
-const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
-
-/// Instance UUID prefix for TC-PD-08-01
-const inst_01_str = "00000000-0000-0000-0000-000000000801";
-/// Instance UUID for TC-PD-08-02
-const inst_02_str = "00000000-0000-0000-0000-000000000802";
-/// Instance UUID for TC-PD-08-03
-const inst_03_str = "00000000-0000-0000-0000-000000000803";
-/// Instance UUID for TC-PD-08-04
-const inst_04_str = "00000000-0000-0000-0000-000000000804";
-/// Instance UUID for TC-PD-08-05 (no snapshot written)
-const inst_05_str = "00000000-0000-0000-0000-000000000805";
-/// Instance UUID for TC-PD-08-06
-const inst_06_str = "00000000-0000-0000-0000-000000000806";
-/// Instance UUIDs A and B for TC-PD-08-07
-const inst_07a_str = "00000000-0000-0000-0000-000000000807";
-const inst_07b_str = "00000000-0000-0000-0000-000000000808";
-
-/// A definition_id guaranteed not to exist in any test run.
-const unknown_def_str = "ffffffff-ffff-ffff-ffff-ffffffffffff";
 
 // ---------------------------------------------------------------------------
 // Minimal valid graph: START → HUMAN_TASK → END  (3 nodes, 2 edges)
@@ -234,6 +216,11 @@ test "TC-PD-08-01: SnapshotStore.create — happy path returns Snapshot with mat
     const def_name = "TC-PD-08-01 Process";
     const def_ver = "1.0.0";
 
+    // GH-512: per-test UUIDs generated at runtime.
+    const inst_01_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_01_str);
+    const creator_uuid_str = try h.newUuidString(alloc);
+    defer alloc.free(creator_uuid_str);
     const instance_id = try parseUuid(alloc, inst_01_str);
     const creator = try parseUuid(alloc, creator_uuid_str);
 
@@ -285,6 +272,11 @@ test "TC-PD-08-02: SnapshotStore.getByInstanceId — returns original graph afte
     defer pool.deinit();
 
     const def_name = "TC-PD-08-02 Process";
+    // GH-512: per-test UUIDs generated at runtime.
+    const inst_02_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_02_str);
+    const creator_uuid_str = try h.newUuidString(alloc);
+    defer alloc.free(creator_uuid_str);
     const instance_id = try parseUuid(alloc, inst_02_str);
     const creator = try parseUuid(alloc, creator_uuid_str);
 
@@ -345,6 +337,11 @@ test "TC-PD-08-03: SnapshotStore.create — duplicate instance_id returns Snapsh
     defer pool.deinit();
 
     const def_name = "TC-PD-08-03 Process";
+    // GH-512: per-test UUIDs generated at runtime.
+    const inst_03_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_03_str);
+    const creator_uuid_str = try h.newUuidString(alloc);
+    defer alloc.free(creator_uuid_str);
     const instance_id = try parseUuid(alloc, inst_03_str);
     const creator = try parseUuid(alloc, creator_uuid_str);
 
@@ -393,6 +390,11 @@ test "TC-PD-08-04: SnapshotStore.create — unknown definition_id returns Defini
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
+    // GH-512: per-test UUIDs generated at runtime.
+    const inst_04_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_04_str);
+    const unknown_def_str = try h.newUuidString(alloc);
+    defer alloc.free(unknown_def_str);
     const instance_id = try parseUuid(alloc, inst_04_str);
     const unknown_def_id = try parseUuid(alloc, unknown_def_str);
 
@@ -418,6 +420,9 @@ test "TC-PD-08-05: SnapshotStore.getByInstanceId — no snapshot returns Definit
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
+    // GH-512: per-test UUIDs generated at runtime.
+    const inst_05_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_05_str);
     const instance_id = try parseUuid(alloc, inst_05_str);
 
     var snap_store = SnapshotStore{ .pool = &pool };
@@ -444,6 +449,11 @@ test "TC-PD-08-06: SnapshotStore round-trip preserves node types, edge condition
     defer pool.deinit();
 
     const def_name = "TC-PD-08-06 Process";
+    // GH-512: per-test UUIDs generated at runtime.
+    const inst_06_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_06_str);
+    const creator_uuid_str = try h.newUuidString(alloc);
+    defer alloc.free(creator_uuid_str);
     const instance_id = try parseUuid(alloc, inst_06_str);
     const creator = try parseUuid(alloc, creator_uuid_str);
 
@@ -524,6 +534,13 @@ test "TC-PD-08-07: SnapshotStore — two instance snapshots from same definition
     defer pool.deinit();
 
     const def_name = "TC-PD-08-07 Process";
+    // GH-512: per-test UUIDs generated at runtime.
+    const inst_07a_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_07a_str);
+    const inst_07b_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_07b_str);
+    const creator_uuid_str = try h.newUuidString(alloc);
+    defer alloc.free(creator_uuid_str);
     const instance_id_a = try parseUuid(alloc, inst_07a_str);
     const instance_id_b = try parseUuid(alloc, inst_07b_str);
     const creator = try parseUuid(alloc, creator_uuid_str);

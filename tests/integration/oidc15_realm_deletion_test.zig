@@ -23,8 +23,6 @@ const pool_mod = bpm.db_pool;
 // Test constants
 // ---------------------------------------------------------------------------
 
-const tenant_a = "11111111-1111-1111-1111-111111111111";
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -42,6 +40,20 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// GH-512: generate a per-test actor_id UUID. Caller owns the returned slice.
+fn randomActorId(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40;
+    raw[8] = (raw[8] & 0x3f) | 0x80;
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
 }
 
 fn freeRow(allocator: std.mem.Allocator, row: []?[]u8) void {
@@ -121,7 +133,8 @@ test "TC-OIDC-15-03: insertDeletionTracker creates tracker row" {
     defer pool.deinit();
 
     const realm_id = "kc-oidc15-03-realm";
-    const actor_id = "00000000-0000-0000-0000-000000000111";
+    const actor_id = try randomActorId(alloc);
+    defer alloc.free(actor_id);
     const now: i64 = 1700000000; // Fixed test timestamp
 
     cleanupDeletionTracker(&pool, realm_id);
@@ -163,7 +176,8 @@ test "TC-OIDC-15-04: insertDeletionTracker idempotent on conflict" {
     defer pool.deinit();
 
     const realm_id = "kc-oidc15-04-realm";
-    const actor_id = "00000000-0000-0000-0000-000000000111";
+    const actor_id = try randomActorId(alloc);
+    defer alloc.free(actor_id);
     const now: i64 = 1700000000;
 
     cleanupDeletionTracker(&pool, realm_id);
@@ -268,10 +282,13 @@ test "TC-OIDC-15-06: markTrackerDeleted updates status to DELETED" {
     cleanupDeletionTracker(&pool, realm_id);
     defer cleanupDeletionTracker(&pool, realm_id);
 
+    const actor_id = try randomActorId(alloc);
+    defer alloc.free(actor_id);
+
     // Insert a tracker row.
     try realm_deletion.insertDeletionTracker(alloc, &pool, .{
         .realm_id = realm_id,
-        .actor_id = "00000000-0000-0000-0000-000000000111",
+        .actor_id = actor_id,
         .reason = "TC-OIDC-15-06",
         .grace_period_seconds = 3600,
     }, now);
@@ -319,6 +336,9 @@ test "TC-OIDC-15-07: markUsersInactiveByRealm updates affected OIDC users" {
         const conn = try pool.acquire();
         defer pool.release(conn);
 
+        const tenant_a = try randomActorId(alloc);
+        defer alloc.free(tenant_a);
+
         try conn.exec(
             \\INSERT INTO users (id, tenant_id, username, display_name, email,
             \\                   external_realm, external_id, auth_source,
@@ -361,7 +381,8 @@ test "TC-OIDC-15-08: queryPendingHardDeletions returns eligible entries" {
 
     const realm_id_past = "kc-oidc15-08-past";
     const realm_id_future = "kc-oidc15-08-future";
-    const actor_id = "00000000-0000-0000-0000-000000000111";
+    const actor_id = try randomActorId(alloc);
+    defer alloc.free(actor_id);
 
     cleanupDeletionTracker(&pool, realm_id_past);
     cleanupDeletionTracker(&pool, realm_id_future);
@@ -424,9 +445,12 @@ test "TC-OIDC-15-09: incrementRetryCount increments retry counter" {
     cleanupDeletionTracker(&pool, realm_id);
     defer cleanupDeletionTracker(&pool, realm_id);
 
+    const actor_id = try randomActorId(alloc);
+    defer alloc.free(actor_id);
+
     try realm_deletion.insertDeletionTracker(alloc, &pool, .{
         .realm_id = realm_id,
-        .actor_id = "00000000-0000-0000-0000-000000000111",
+        .actor_id = actor_id,
         .reason = "TC-OIDC-15-09",
         .grace_period_seconds = 3600,
     }, now);

@@ -1,0 +1,101 @@
+# Release decision — WF03-GH512-20260808 (GitHub #512 / ISS-0181)
+# Handoff: handoffs/WF03-GH512-20260808/step-05-test-runner-rev2.json
+# Branch: feature/WF03-GH512-20260808
+# Decision: APPROVED
+run_id: "WF03-GH512-20260808"
+github_issue: "https://github.com/tvolodi/R-Co/issues/512"
+issue_id: "ISS-0181"
+branch: "feature/WF03-GH512-20260808"
+decision: APPROVED
+decided_at: "2026-08-08T13:23:00Z"
+decided_by: "ORCH (WF-03 Step 7 DOC-UPDATER, after TEST-RUNNER Step 5 PASS on rev2)"
+
+# ---------------------------------------------------------------------------
+# Scope summary
+# ---------------------------------------------------------------------------
+scope:
+  files_changed: 49
+  commits_ahead_of_main: 14
+  primary_artifacts:
+    - "tests/integration/gh512_t010_regression_test.zig (new — TC-RG-01/02/03 regression lock)"
+    - "src/design/iss0181-gh512-t010-migration.md (new — 5-batch migration plan)"
+    - "docs/issue-reports/ISS-0181-gh512-diagnosis.yaml (new — 184-finding classification)"
+    - "tests/specs/ISS-0181-gh512-t010-retire.md (new — test spec)"
+    - "tests/specs/fixtures/gh512-baseline-snapshot.json (new — per-rule snapshot fixture)"
+    - "tools/lint_test_isolation.baseline.json (T010 BLOCKER 184 → 74; +1 design-§R1 RETAIN in commit 22ac3fc0)"
+    - "build.zig (added test-integration-gh512 step, gated by integration-test barrier)"
+    - "tests/integration/main_test.zig (wired gh512_t010_regression_integration at comptime)"
+    - "30+ test files in tests/integration/ (UUID sites converted to TestHarness.newUuid()/newUuidString(allocator) or marked RETAIN with written reason)"
+
+# ---------------------------------------------------------------------------
+# Gates (all PASS)
+# ---------------------------------------------------------------------------
+gates:
+  - name: "primary test-integration-gh512"
+    target: "test-integration-gh512"
+    status: PASS
+    evidence: "TC-RG-01 T010 BLOCKER=74 <= ceiling 74; TC-RG-02 baseline matches snapshot (total=115, by_code={T010:74,T020:11,T030:6,T050:22,T060:2}, platform_admin=14); TC-RG-03 zig build test exit 0."
+  - name: "tertiary zig build test"
+    target: "test"
+    status: PASS
+    evidence: "exit 0; ISS-602 differential corpus 15/15 matched."
+  - name: "lint_test_isolation"
+    target: "tools/lint_test_isolation.py"
+    status: PASS
+    evidence: "exit 0; C5 isolation lint green after commit 22ac3fc0 added the design-§R1 RETAIN entry for gh512_t010_regression_test.zig:337."
+  - name: "verify_test_env"
+    target: "tools/verify_test_env.py"
+    status: PASS
+    evidence: "HEALTHY 10/10 — C0..C9 all green after BPM_DB_URL/BPM_TEST_DB_URL split."
+  - name: "lint_handoffs (workflow directory)"
+    target: "tools/lint_handoffs.py handoffs/WF03-GH512-20260808/"
+    status: PASS
+    evidence: "9 handoffs checked — 0 BLOCKER, 0 MAJOR, 0 MINOR."
+
+# ---------------------------------------------------------------------------
+# Known limitations
+# ---------------------------------------------------------------------------
+known_limitations:
+  - id: "secondary test-integration-others-internal pre-existing failures"
+    severity: MAJOR
+    description: |
+      14 runtime test failures on test-integration-others-internal are pre-existing on
+      origin/main (zero diff vs main for those files). Filed-and-forwarded per CLAUDE.md;
+      not regressions caused by GH-512. Files: audit_chain_utf8_test, exp103_instance_waits_test,
+      exp601_tier_quota_test, iss0125_cascade_test, iss0185_dual_schema_test,
+      iss0602_cross_process_isolation_test, iss0605_orphan_self_heal_test,
+      iss101_timers_failed_status_test, iss205_webhook_outbox_test,
+      onboarding_realm_guard_test, sch303_timer_dlq_test, sim01_04_simulation_mode_test,
+      spt01_iss0068_onboarding_schema_test, tnt_schema_isolation_test.
+
+# ---------------------------------------------------------------------------
+# Decision rationale
+# ---------------------------------------------------------------------------
+rationale: |
+  APPROVED for release. All 5 gates green:
+    (1) test-integration-gh512 PASS 3/3 — regression lock holds.
+    (2) zig build test PASS — no unit regressions introduced.
+    (3) lint_test_isolation exit 0 — design-§R1 RETAIN correctly baselined.
+    (4) verify_test_env HEALTHY — all 10 environment checks green.
+    (5) lint_handoffs exit 0 — workflow bookkeeping is clean.
+
+  The migration is structurally mechanical (UUID literals → UUID generators) and
+  the regression test (TC-RG-01/02/03) locks the post-fix invariants. The one
+  self-introduced compile regression (commit c8b79467 in ext02_webhook_dispatch_test.zig)
+  was caught by TEST-RUNNER Step 5 and fixed in commit 06b8b327 before the workflow
+  advanced. The 14 pre-existing runtime failures on the secondary target are out
+  of scope and remain filed in the global queue for future WF-03 runs.
+
+next_actions:
+  - "BACKEND-DEV (Step Final) — push feature branch, open PR, squash-merge into main, delete branch"
+  - "ORCH — release the r-co-1-loop lock, claim next issue from the global queue"
+
+# ---------------------------------------------------------------------------
+# Provenance
+# ---------------------------------------------------------------------------
+provenance:
+  handoff_workflow_dir: "handoffs/WF03-GH512-20260808/"
+  test_report: "tests/reports/report-20260808-WF03-GH512.yaml"
+  design_doc: "src/design/iss0181-gh512-t010-migration.md"
+  diagnosis_doc: "docs/issue-reports/ISS-0181-gh512-diagnosis.yaml"
+  issue_registry: "docs/issues/ISS-0181.json (status: RESOLVED)"

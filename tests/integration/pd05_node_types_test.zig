@@ -94,6 +94,7 @@ fn freeDefinition(allocator: std.mem.Allocator, def: bpm.definition.Definition) 
     bpm.definition.freeDefinitionGraph(allocator, def.graph);
 }
 
+// GH-512 retention: conventional creator_uuid_str module-scope fixture (no FK constraint, stable identity for created_by column)
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
 // ---------------------------------------------------------------------------
