@@ -496,6 +496,7 @@
 2026-08-08T12:28:12Z | ROUTE | WF03-GH507-20260808 | 58be756c | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, new CI job confirmed green in real run)
 2026-08-08T12:30:48Z | COMPLETE | WF03-GH507-20260808 | 58be756c | DOC-UPDATER | PASS - PR #585 squash-merged (9b47a19215d7a71c137b4b0ba82eb0496dfeb164), branch deleted, board Done, CHANGELOG updated
 2026-08-08T12:32:40Z | ROUTE | WF03-GH504-20260808 | 8f052f0f | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-504/ISS-0176, LUA-07)
+2026-08-08T12:34:06Z | COMPLETE | WF03-GH504-20260808 | 8f052f0f | ISSUE-FIXER | PASS -- engine call site absent (no ScriptResult consumer in src/engine/); audit tables (audit_entries, audit_log) lack manifest_hash column; migration needed once engine integration lands -- next: CODE-DESIGNER (Step 2)
 2026-08-08T12:37:24Z | COMPLETE | WF03-GH512-20260808 | 9c1f1d4a | BACKEND-DEV | T010 BLOCKER migration: 99 sites converted, 51 sites marked RETAIN, baseline 184->73, all gates green
 2026-08-08T12:46:04Z | COMPLETE | WF03-GH512-20260808 | f8b2c19d | TEST-DESIGNER -> ORCH | step-04 PASS (TC-RG-01/02/03 green; build.zig wired)
 2026-08-08T13:28:03Z | COMPLETE | WF03-GH512-20260808 | final | BACKEND-DEV -> ORCH | PR #586 squash-merged into main (bc26d43a); ISS-0181 RESOLVED; GH-512 released; lock released; next: WF03-GH502-20260808 (ISS-0174 CapabilitySet.summary() Zig 0.16 stale ArrayList.init)

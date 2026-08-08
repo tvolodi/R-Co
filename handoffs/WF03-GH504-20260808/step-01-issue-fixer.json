@@ -8,8 +8,7 @@
   "file": "handoffs/WF03-GH504-20260808/step-01-issue-fixer.json",
   "created_at": "2026-08-08T12:32:40Z",
   "started_at": "2026-08-08T12:32:40Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -36,7 +35,14 @@
       "fn:register-issue"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosis confirms this is a genuine scope-boundary gap, not a defect. (1) src/design/lua-capability-enforcement.md section 6.4 states: 'Rendering that hash into the persisted audit record is the caller's responsibility -- src/lua/ returns the value, the engine writes the row... The corresponding audit-record write is in scope for whichever run owns the engine-side integration; this design commits src/lua/ to producing the value and to nothing else.' Section 11 item 2 restates this as an explicitly deliberate follow-up: 'This design commits src/lua/ to producing the hash on ScriptResult. The engine-side write into the audit row belongs to the engine-integration run; LUA-07's second criterion is only end-to-end satisfied when that lands.' (2) Engine call site: there is currently NO call site at all. `grep -rn \"ScriptResult\\|executeScript\" src/engine/` returns zero matches -- neither transition.zig nor instance.zig references the Lua executor, ScriptResult, or any script/SERVICE_TASK-with-script concept. src/design/lua-integration.md section 6 (Execution Model) still lists script invocation only as a future-stage trigger ('SERVICE_TASK with scriptable behavior', roadmap Phase 2/3 in section 25) -- the engine-to-lua wiring itself has not been built yet, so 'nothing in the engine consumes it and writes it to the audit row' is literally true: nothing in the engine consumes ScriptResult at all yet. (3) Audit-record schema: two generic audit tables exist -- audit_entries (migrations/020_obs03_audit_entries.sql, trigger-driven before/after JSONB snapshots on business tables: process_definitions, instance_projections, tasks, users, groups, group_members, api_tokens, dead_letter_queue) and audit_log (migrations/009_audit_log.sql, append-only with actor/action/entity/detail JSONB columns). Neither has a manifest_hash column or any script-execution-specific shape, and neither is currently populated by any Lua/script code path. A schema migration IS needed once the engine-side integration exists -- either a new column on one of these generic tables, a new script-execution-specific audit table, or use of audit_log's existing flexible `detail JSONB` column (a design decision, not diagnosed here). CONCLUSION: this is exactly the scope-boundary gap the design doc itself documents and defers; the fix requires (a) a design decision on where/how the engine invokes executeScriptWithManifest and (b) a design decision on the audit write path/schema -- both belong to CODE-DESIGNER, not to further diagnosis.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
   "rework_count": 0,
-  "max_rework": 3
+  "max_rework": 3,
+  "completed_at": "2026-08-08T12:34:06Z"
 }
