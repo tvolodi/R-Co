@@ -432,3 +432,5 @@
 2026-08-08T07:47:11Z | ROUTE | WF03-GH566-20260808 | 64863801 | ORCH -> BACKEND-DEV | IN_PROGRESS (Step 2e, direct implementation)
 2026-08-08T07:59:09Z | ISSUE_FILED | WF03-GH566-20260808 | --- | ORCH | ISS-0622 (BLOCKER) GH-576 filed and queued -- incidental discovery, quota_enforcement.zig LEGACY_RLS PER_TENANT read gap
 2026-08-08T07:59:21Z | COMPLETE | WF03-GH566-20260808 | 64863801 | BACKEND-DEV | PARTIAL (3/4 exp601 tests pass; ISS-0622 filed for remainder)
+2026-08-08T08:24:38Z | COMPLETE | WF03-GH566-20260808 | cbb47d44 | TEST-RUNNER | PARTIAL (3/5 exp601; CI green; test-integration-others-internal inconclusive locally, not CI-covered)
+2026-08-08T08:25:18Z | ROUTE | WF03-GH566-20260808 | 0eff3a9b | ORCH -> RELEASE-VALIDATOR | IN_PROGRESS (Step 5, BLOCKER incidental finding requires this gate)

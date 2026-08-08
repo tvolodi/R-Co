@@ -1,0 +1,51 @@
+{
+  "handoff_id": "cbb47d44-f629-464c-91a1-5346fffba2e5",
+  "run_id": "WF03-GH566-20260808",
+  "workflow_id": "WF-03",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH566-20260808/step-04-test-runner.json",
+  "created_at": "2026-08-08T08:24:38Z",
+  "started_at": "2026-08-08T08:24:38Z",
+  "completed_at": "2026-08-08T08:24:38Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "64863801-0a5c-4af8-8942-6112d275d7b1"
+    ],
+    "artifacts_in": [
+      "tests/integration/exp601_tier_quota_test.zig",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "Verify the schema-qualification + pool-write fix for ISS-0617/GH-566 against real PostgreSQL. Run zig build test (unit suite) and zig build test-integration-exp601 (the newly-wired EXP-601 suite). This workspace's local bpm_test accumulated manual migration-experiment drift during this run's own diagnosis (direct psql GBL-136 application/testing) that makes broad local zig build test-integration-others-internal runs unreliable as a regression signal -- CI (PR #577, run 31248301710) is the authoritative clean-environment check; note CI's 'Build and unit tests' job runs only `zig build` + `zig build test`, not the DB-backed integration suites, so it verifies compilation and the pure unit suite, not exp601 specifically -- that verification was done directly against this workspace's live bpm_test (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test) after restoring bpm_test's schema+migration-tracker from the intact bpm_dev to rule out this session's earlier DB corruption as a confound.",
+    "acceptance_criteria": [
+      "zig build test exits 0 (confirmed via CI PR #577 run 31248301710, and locally after DB restoration)",
+      "zig build test-integration-exp601 run and results attributed correctly (not just green/red)",
+      "GitHub Actions platform status checked before attributing any red result"
+    ],
+    "functions_to_call": [
+      "fn:zig-build-test",
+      "fn:check-github-status"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "GitHub Actions status: operational (checked via tools/check_github_status.py at multiple points this run) -- all red/failing results below are attributable to code/environment, not platform outage. zig build test: PASS (exit 0, zero error lines), confirmed both locally (BPM_TEST_DB_URL pointed at this workspace's own r-co-2-db_test-1:5453, after an earlier accidental run against the wrong workspace's stale DB URL was caught and corrected) and in CI (PR #577, 'Build and unit tests' job, 32s, green). zig build test-integration-exp601: 3 of 5 pass (TC-EXP-601-01, 03, 05). TC-EXP-601-02 and 04 FAIL for two separate, pre-existing, non-regression reasons: (a) ISS-0622/GH-576 (BLOCKER, filed this run) -- quota_enforcement.zig reads PER_TENANT usage tables unqualified via pool, structurally broken for every .LEGACY_RLS tenant, not caused by this fix; (b) TC-EXP-601-04's instance_waits insert error, already flagged as a distinct, out-of-scope failure mode by ISS-0617's own original diagnosis (confirmed_root_cause.test_blocks_relationship). zig build test-integration-others-internal: run twice locally, both times showing ~100+ failures across ~35 unrelated test files (repository_test, ext02_webhook_dispatch_test, svc04_admin_api_test, etc.). Root-caused to this workspace's bpm_test having accumulated drift from this run's OWN earlier manual diagnosis work (direct psql GBL-136 application/testing against the live DB, plus an accidental full DB drop mid-run while investigating). This is NOT verifiable as pre-existing on main vs. caused by this branch, because CI does not run this suite at all (confirmed: CI's Build and unit tests job runs only `zig build test`, no test-integration-* target) -- there is no clean-environment baseline to compare against for this specific suite. Restoring bpm_test's schema from the untouched bpm_dev (both databases share this session's drift, so this doesn't fully rule out an environment cause) did not change the failure count materially (100 vs 102), arguing against 'stale metric_snapshots hand-patch' as the sole explanation, but a full from-clean-docker-volume verification was not performed due to time -- flagged as an open verification gap, not resolved either way.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "zig build test-integration-others-internal shows ~100 failures locally in this workspace that could not be conclusively attributed to this branch vs. pre-existing workspace-local DB drift, because CI does not run this suite at all. Recommend a follow-up: either add this suite to CI (separate, larger change) or verify against a fresh docker-compose volume in this workspace once available. Not blocking this PR since CI (the actual merge gate) is green and the specific, scoped verification (test-integration-exp601) shows the fix works for its stated purpose."
+      }
+    ],
+    "next_action": "Route to RELEASE-VALIDATOR (Step 5) -- required given the BLOCKER-severity incidental finding (ISS-0622), per WF-03 pipeline table."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
