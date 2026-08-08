@@ -3079,7 +3079,7 @@
       "to_agent": "CODE-DESIGN-VALIDATOR",
       "created_at": "2026-08-08T11:53:14Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — Step 2"
+      "stage": "WF-03 Issue Resolving \u2014 Step 2"
     },
     {
       "handoff_id": "a38f764b-2941-42f6-ab70-c3130d55e775",
@@ -3242,6 +3242,17 @@
       "created_at": "2026-08-08T18:13:36Z",
       "status": "COMPLETED",
       "stage": "WF-03 Step 1"
+    },
+    {
+      "handoff_id": "3a1b9c4d-7e2f-4d6a-9b8e-1f0c2d3a4b5e",
+      "file": "handoffs/WF03-GH501-20260808/step-02-code-designer.json",
+      "run_id": "WF03-GH501-20260808",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-08T18:32:32Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 2"
     }
   ],
   "last_updated": "2026-08-08T18:25:36Z"
