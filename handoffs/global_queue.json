@@ -592,6 +592,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0622",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/576",
+      "title": "quota_enforcement.zig reads PER_TENANT usage tables unqualified via pool -- fails for every LEGACY_RLS tenant",
+      "severity": "BLOCKER",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-08T07:58:58Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

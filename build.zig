@@ -1766,6 +1766,22 @@ pub fn build(b: *std.Build) void {
     });
     const run_iss0125_integration_tests = addIntegrationRun(b, iss0125_integration_tests, migrations_dir, clean_test_db);
 
+    // ISS-0617 / GH-566: EXP-601 tier-to-quota enforcement tests. Never wired
+    // into any build target since the file's introduction (#102) — confirmed
+    // absent from build.zig prior to this change, which is why its TC-EXP-601
+    // failures were invisible to `zig build test-integration` / CI and had to
+    // be diagnosed via a temporary, reverted build step (see ISS-0617.json's
+    // verification_method). Wiring it permanently closes that gap.
+    const exp601_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/exp601_tier_quota_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_exp601_integration_tests = addIntegrationRun(b, exp601_integration_tests, migrations_dir, clean_test_db);
+
     // ISS-0122: Audit chain TEXT resource_id + non-UTF-8 resilience regression tests.
     // Migration 1107 wrapped the chain-hash pipeline in EXCEPTION blocks and
     // pre-normalises non-UTF-8 bytes in NEW.resource_id; this test exercises
@@ -1938,6 +1954,8 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_sch303_integration_tests.step);
     // ISS-0618 / GH-567: SCH-02 timer polling lock + rollback integration tests.
     test_integration_others_step.dependOn(&run_sch02_integration_tests.step);
+    // ISS-0617 / GH-566: EXP-601 tier-to-quota enforcement tests.
+    test_integration_others_step.dependOn(&run_exp601_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0076_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_same_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_cross_integration_tests.step);
@@ -2014,6 +2032,10 @@ pub fn build(b: *std.Build) void {
 
     const test_integration_iss0076_step = b.step("test-integration-iss0076", "Run ISS-0076 secrets table regression tests only (requires BPM_TEST_DB_URL)");
     test_integration_iss0076_step.dependOn(&run_iss0076_integration_tests.step);
+
+    const test_integration_exp601_step = b.step("test-integration-exp601", "Run EXP-601 tier-to-quota enforcement tests only (requires BPM_TEST_DB_URL)");
+    test_integration_exp601_step.dependOn(&clean_test_db.step);
+    test_integration_exp601_step.dependOn(&run_exp601_integration_tests.step);
 
     const test_adp12_regression_step = b.step("test-adp12-regression", "Run ADP-12 default-tenant pre/post regression suite");
     test_adp12_regression_step.dependOn(&clean_test_db.step);

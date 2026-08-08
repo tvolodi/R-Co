@@ -48,9 +48,25 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 3 });
 }
 
-fn insertQuotaPolicyArtifact(conn: *pg.Conn, artifact_id: []const u8, version_id: []const u8, content_json: []const u8) !void {
+// ISS-0617 / GH-566: every fixture helper below writes via `pool` (a
+// separate, immediately-committing connection), never via `harness.conn`.
+// TestHarness.init() holds `harness.conn` inside an explicit transaction
+// that is only ever rolled back in deinit() (by design, for per-test
+// isolation) — a row inserted there is invisible to any other session
+// under Postgres's default READ COMMITTED isolation, including a separate
+// pool.acquire() connection. quota_policy.loadEffectiveQuotaProfile and
+// quota_middleware.check both read exclusively through `pool`, so any
+// fixture row they must see has to be written through `pool` too. This is
+// the same class of bug documented in svc01_service_catalog_scope_test.zig's
+// insertTenantViaPool() (ISS-0144 / GH-454) — schema-qualifying the target
+// table alone (public.repository_artifacts) fixes the wrong-schema part of
+// ISS-0617 but not this separate, pre-existing cross-transaction-visibility
+// gap in the same fixture code.
+fn insertQuotaPolicyArtifact(pool: *Pool, artifact_id: []const u8, version_id: []const u8, content_json: []const u8) !void {
+    const conn = try pool.acquire();
+    defer pool.release(conn);
     try conn.exec(
-        \\INSERT INTO repository_artifacts (
+        \\INSERT INTO public.repository_artifacts (
         \\  content_hash, content_type, byte_size,
         \\  artifact_id, version_id, artifact_kind, artifact_name,
         \\  content_json, parent_version_id, created_at
@@ -64,15 +80,44 @@ fn insertQuotaPolicyArtifact(conn: *pg.Conn, artifact_id: []const u8, version_id
     , &.{ artifact_id, version_id, "tier_quota_policy", content_json });
 }
 
-fn ensureQuotaPolicyActivation(conn: *pg.Conn, tenant_id: []const u8, version_id: []const u8) !void {
+fn ensureQuotaPolicyActivation(pool: *Pool, tenant_id: []const u8, version_id: []const u8) !void {
+    const conn = try pool.acquire();
+    defer pool.release(conn);
     try conn.exec(
-        \\INSERT INTO tenant_artifact_activations (
+        \\INSERT INTO public.tenant_artifact_activations (
         \\  tenant_id, artifact_kind, artifact_name, active_version_id, activated_at
         \\) VALUES ($1::uuid, 'config', 'tier_quota_policy', $2::uuid, NOW())
         \\ON CONFLICT (tenant_id, artifact_kind, artifact_name) DO UPDATE
         \\SET active_version_id = EXCLUDED.active_version_id,
         \\    activated_at = NOW()
     , &.{ tenant_id, version_id });
+}
+
+/// Insert the `public.tenant` row via `pool` instead of `harness.conn`.
+/// Mirrors insertTenantViaPool() in svc01_service_catalog_scope_test.zig
+/// (ISS-0144 / GH-454) — resolveAndCacheStorageMode() and every quota-module
+/// read below run on `pool` connections, which cannot see a row inserted
+/// inside harness.conn's uncommitted, roll-back-only transaction.
+fn provisionTenantViaPool(pool: *Pool, tenant_id: []const u8) !void {
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    try conn.exec(
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $2, $2, now(), 'test', $3::uuid)
+        \\ON CONFLICT (id) DO NOTHING
+    , &.{ tenant_id, tenant_id, bpm.api_tenant_context.DEFAULT_TENANT_ID });
+}
+
+/// Insert a row into `instance_projections`, `instance_waits`, or
+/// `dead_letter_items` via `pool`. quota_enforcement.zig's
+/// readUsageForDimension() reads all three exclusively through `pool` (see
+/// countRows/maxColumn/countRowsWhereRecent in src/api/middleware/quota_enforcement.zig),
+/// so their fixture rows need the same pool-write treatment as the artifact
+/// and activation rows above.
+fn execViaPool(pool: *Pool, sql: []const u8, params: []const []const u8) !void {
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    try conn.exec(sql, params);
 }
 
 fn zeroQuotaPolicyJson() []const u8 {
@@ -98,8 +143,8 @@ test "TC-EXP-601-01: quota policy resolves the effective profile from the active
     const tenant_without_policy = try harness.newUuidString(alloc);
     defer alloc.free(tenant_without_policy);
 
-    try harness.provisionTenant(tenant_with_policy);
-    try harness.provisionTenant(tenant_without_policy);
+    try provisionTenantViaPool(&pool, tenant_with_policy);
+    try provisionTenantViaPool(&pool, tenant_without_policy);
     harness.setTenant(tenant_with_policy);
 
     const artifact_id = try harness.newUuidString(alloc);
@@ -107,8 +152,8 @@ test "TC-EXP-601-01: quota policy resolves the effective profile from the active
     const version_id = try harness.newUuidString(alloc);
     defer alloc.free(version_id);
 
-    try insertQuotaPolicyArtifact(&harness.conn, artifact_id, version_id, generousQuotaPolicyJson());
-    try ensureQuotaPolicyActivation(&harness.conn, tenant_with_policy, version_id);
+    try insertQuotaPolicyArtifact(&pool, artifact_id, version_id, generousQuotaPolicyJson());
+    try ensureQuotaPolicyActivation(&pool, tenant_with_policy, version_id);
 
     harness.setTenant(tenant_with_policy);
     const with_profile = try quota_policy.loadEffectiveQuotaProfile(alloc, &pool, tenant_with_policy);
@@ -136,7 +181,7 @@ test "TC-EXP-601-02: quota middleware rejects entity writes when entity limits a
 
     const tenant_id = try harness.newUuidString(alloc);
     defer alloc.free(tenant_id);
-    try harness.provisionTenant(tenant_id);
+    try provisionTenantViaPool(&pool, tenant_id);
     harness.setTenant(tenant_id);
 
     const artifact_id = try harness.newUuidString(alloc);
@@ -148,8 +193,18 @@ test "TC-EXP-601-02: quota middleware rejects entity writes when entity limits a
     const definition_id = try harness.newUuidString(alloc);
     defer alloc.free(definition_id);
 
-    try insertQuotaPolicyArtifact(&harness.conn, artifact_id, version_id, zeroQuotaPolicyJson());
-    try ensureQuotaPolicyActivation(&harness.conn, tenant_id, version_id);
+    try insertQuotaPolicyArtifact(&pool, artifact_id, version_id, zeroQuotaPolicyJson());
+    try ensureQuotaPolicyActivation(&pool, tenant_id, version_id);
+    // ISS-0622 (filed, not fixed here): instance_projections is a genuine
+    // PER_TENANT table with no public copy — it must be written where
+    // readUsageForDimension's unqualified pool-connection reads can see it.
+    // But quota_enforcement.zig's countRows() reads it via an unqualified
+    // query on a `pool`-acquired connection under this tenant's storage_mode
+    // (LEGACY_RLS => search_path=public only, since provisionTenantViaPool
+    // never sets tenant.storage_mode), so no schema placement of this fixture
+    // row is visible to that read path — writing it via harness.conn (correct
+    // schema, tenant_default, but a different, uncommitted transaction) is
+    // preserved here as the least-wrong option pending ISS-0622's fix.
     try harness.conn.exec("INSERT INTO instance_projections (instance_id, definition_id) VALUES ($1::uuid, $2::uuid)", &.{ instance_id, definition_id });
 
     try quota_middleware.init(alloc);
@@ -185,7 +240,7 @@ test "TC-EXP-601-03: quota middleware rejects file writes when file limits are e
 
     const tenant_id = try harness.newUuidString(alloc);
     defer alloc.free(tenant_id);
-    try harness.provisionTenant(tenant_id);
+    try provisionTenantViaPool(&pool, tenant_id);
     harness.setTenant(tenant_id);
 
     const artifact_id = try harness.newUuidString(alloc);
@@ -197,10 +252,10 @@ test "TC-EXP-601-03: quota middleware rejects file writes when file limits are e
     const file_version_id = try harness.newUuidString(alloc);
     defer alloc.free(file_version_id);
 
-    try insertQuotaPolicyArtifact(&harness.conn, artifact_id, version_id, zeroQuotaPolicyJson());
-    try ensureQuotaPolicyActivation(&harness.conn, tenant_id, version_id);
-    try harness.conn.exec(
-        \\INSERT INTO repository_artifacts (
+    try insertQuotaPolicyArtifact(&pool, artifact_id, version_id, zeroQuotaPolicyJson());
+    try ensureQuotaPolicyActivation(&pool, tenant_id, version_id);
+    try execViaPool(&pool,
+        \\INSERT INTO public.repository_artifacts (
         \\  content_hash, content_type, byte_size,
         \\  artifact_id, version_id, artifact_kind, artifact_name,
         \\  content_json, parent_version_id, created_at
@@ -227,6 +282,12 @@ test "TC-EXP-601-03: quota middleware rejects file writes when file limits are e
     switch (result) {
         .allowed => return error.TestUnexpectedResult,
         .rejected => |handler_result| {
+            // ISS-0617 rework: quota_middleware.check's .rejected branch
+            // transfers ownership of handler_result.body to the caller
+            // (production: the request handler in main.zig; here: this
+            // test). TC-EXP-601-02 never exercises this since it fails
+            // earlier (ISS-0622), so this leak was previously unreachable.
+            defer alloc.free(handler_result.body);
             try testing.expectEqual(@as(u16, 429), handler_result.status_code);
             try testing.expect(std.mem.indexOf(u8, handler_result.body, "quota-exceeded") != null);
             try testing.expect(std.mem.indexOf(u8, handler_result.body, "file_count") != null or std.mem.indexOf(u8, handler_result.body, "file_bytes") != null);
@@ -246,7 +307,7 @@ test "TC-EXP-601-04: quota middleware rejects sandbox allocation and agent retri
 
     const tenant_id = try harness.newUuidString(alloc);
     defer alloc.free(tenant_id);
-    try harness.provisionTenant(tenant_id);
+    try provisionTenantViaPool(&pool, tenant_id);
     harness.setTenant(tenant_id);
 
     const artifact_id = try harness.newUuidString(alloc);
@@ -260,8 +321,11 @@ test "TC-EXP-601-04: quota middleware rejects sandbox allocation and agent retri
     const dlq_id = try harness.newUuidString(alloc);
     defer alloc.free(dlq_id);
 
-    try insertQuotaPolicyArtifact(&harness.conn, artifact_id, version_id, zeroQuotaPolicyJson());
-    try ensureQuotaPolicyActivation(&harness.conn, tenant_id, version_id);
+    try insertQuotaPolicyArtifact(&pool, artifact_id, version_id, zeroQuotaPolicyJson());
+    try ensureQuotaPolicyActivation(&pool, tenant_id, version_id);
+    // ISS-0622 (filed, not fixed here): instance_waits and dead_letter_items
+    // are genuine PER_TENANT tables with no public copy, same reasoning as
+    // instance_projections above — kept on harness.conn pending ISS-0622.
     try harness.conn.exec("INSERT INTO instance_waits (instance_id, kind, ref_id, node_id, fire_at) VALUES ($1::uuid, 'sandbox', $2::uuid, 'EXP601_NODE', NOW()) ON CONFLICT (instance_id, ref_id) DO NOTHING", &.{ wait_instance_id, wait_ref_id });
     try harness.conn.exec("INSERT INTO dead_letter_items (id, tenant_id, retry_count, created_at, updated_at) VALUES ($1::uuid, $2::uuid, 1, NOW(), NOW())", &.{ dlq_id, tenant_id });
 
