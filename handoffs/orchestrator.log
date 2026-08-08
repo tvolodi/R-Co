@@ -478,3 +478,4 @@
 2026-08-08T11:54:45Z | COMPLETE | WF03-GH512-20260808 | a38f764b | CODE-DESIGN-VALIDATOR → BACKEND-DEV | PASS — design validated for src/design/iss0181-gh512-t010-migration.md (171 CONVERT + 13 RETAIN, baseline 225→54)
 2026-08-08T12:37:24Z | COMPLETE | WF03-GH512-20260808 | 9c1f1d4a | BACKEND-DEV | T010 BLOCKER migration: 99 sites converted, 51 sites marked RETAIN, baseline 184->73, all gates green
 2026-08-08T12:46:04Z | COMPLETE | WF03-GH512-20260808 | f8b2c19d | TEST-DESIGNER -> ORCH | step-04 PASS (TC-RG-01/02/03 green; build.zig wired)
+2026-08-08T13:28:03Z | COMPLETE | WF03-GH512-20260808 | final | BACKEND-DEV -> ORCH | PR #586 squash-merged into main (bc26d43a); ISS-0181 RESOLVED; GH-512 released; lock released; next: WF03-GH502-20260808 (ISS-0174 CapabilitySet.summary() Zig 0.16 stale ArrayList.init)
