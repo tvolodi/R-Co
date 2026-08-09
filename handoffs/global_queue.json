@@ -1239,6 +1239,26 @@
       "completed_at": "2026-08-09T18:48:45Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-338",
+      "issue_number": 338,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/338",
+      "title": "ISS-0089 \u2014 svc01_service_catalog_scope_test.zig writes unqualified SQL that resolves against tenant_default instead of public",
+      "severity": "MAJOR",
+      "labels": [
+        "issue"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T18:49:04Z"
+      },
+      "added_at": "2026-08-09T18:49:04Z",
+      "started_at": "2026-08-09T18:49:04Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
