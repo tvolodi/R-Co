@@ -22012,6 +22012,28 @@
       "created_at": "2026-08-09T06:24:13Z",
       "status": "COMPLETED",
       "stage": "WF-03 Step 00"
+    },
+    {
+      "handoff_id": "c942e21f-0cfb-43e7-aa4c-a4c30165f6d5",
+      "file": "handoffs/WF03-GH382-20260809/step-0.5-issue-fixer.json",
+      "run_id": "WF03-GH382-20260809",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T06:27:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 0.5"
+    },
+    {
+      "handoff_id": "79d56a2e-1432-4fc7-b6e1-d24434c41607",
+      "file": "handoffs/WF03-GH382-20260809/step-1-issue-fixer.json",
+      "run_id": "WF03-GH382-20260809",
+      "step": "1",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T06:27:29Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 1"
     }
   ],
   "last_updated": "2026-08-09T05:43:39Z"
