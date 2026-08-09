@@ -23035,6 +23035,94 @@
       "created_at": "2026-08-09T15:53:33Z",
       "status": "COMPLETED",
       "stage": "Step 1 diagnosis"
+    },
+    {
+      "handoff_id": "e93ff5dc-ce6e-4c6e-b3ab-4793fedf415e",
+      "file": "handoffs/WF03-GH637-20260809/step-00-backend-dev.json",
+      "run_id": "WF03-GH637-20260809",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-09T16:15:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 git-setup"
+    },
+    {
+      "handoff_id": "7cca2897-3b96-4bc4-988f-6a1ecf8862fd",
+      "file": "handoffs/WF03-GH637-20260809/step-0.5-issue-fixer.json",
+      "run_id": "WF03-GH637-20260809",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T16:16:00Z",
+      "status": "COMPLETED",
+      "stage": "Step 0.5"
+    },
+    {
+      "handoff_id": "6c5e7466-b18e-4e68-92ce-990188abc9f5",
+      "file": "handoffs/WF03-GH637-20260809/step-1-issue-fixer.json",
+      "run_id": "WF03-GH637-20260809",
+      "step": "1",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T16:16:00Z",
+      "status": "COMPLETED",
+      "stage": "Step 1"
+    },
+    {
+      "handoff_id": "9b894a0f-e633-4291-a9a3-87f2c5eccba0",
+      "file": "handoffs/WF03-GH637-20260809/step-02-code-designer.json",
+      "run_id": "WF03-GH637-20260809",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-09T16:35:00Z",
+      "status": "COMPLETED",
+      "stage": "Step 2"
+    },
+    {
+      "handoff_id": "ec3c9aa8-6da8-48c8-93a8-2b88fb7687c0",
+      "file": "handoffs/WF03-GH637-20260809/step-02b-code-design-validator.json",
+      "run_id": "WF03-GH637-20260809",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-09T16:40:00Z",
+      "status": "COMPLETED",
+      "stage": "Step 2b"
+    },
+    {
+      "handoff_id": "d879af32-8d6e-4fcc-adcd-7240516ab042",
+      "file": "handoffs/WF03-GH637-20260809/step-03-backend-dev.json",
+      "run_id": "WF03-GH637-20260809",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-09T16:41:00Z",
+      "status": "COMPLETED",
+      "stage": "Step 3"
+    },
+    {
+      "handoff_id": "aa9024e0-1a13-4644-af1f-996bbeea9b09",
+      "file": "handoffs/WF03-GH637-20260809/step-05-test-runner.json",
+      "run_id": "WF03-GH637-20260809",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-09T16:55:00Z",
+      "status": "COMPLETED",
+      "stage": "Step 5"
+    },
+    {
+      "handoff_id": "55b8aad1-0c19-4464-8c62-4ff51ee0aa59",
+      "file": "handoffs/WF03-GH637-20260809/step-07-doc-updater.json",
+      "run_id": "WF03-GH637-20260809",
+      "step": "07",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-09T16:58:00Z",
+      "status": "COMPLETED",
+      "stage": "Step 7"
     }
   ],
   "last_updated": "2026-08-09T15:59:12Z"

@@ -46,6 +46,15 @@ CREATE INDEX IF NOT EXISTS idx_def_fts
 -- ── Definition snapshots ──────────────────────────────────────────────────────
 -- PD-08: immutable copy of the graph at instance start time.
 -- Running instances are unaffected by later definition changes.
+-- ISS-0641 / GH-637: PER_TENANT (canonical home = tenant_default), keyed
+-- by instance_id (tenant-schema process instance data).
+-- migrations.zig's migrationScope() has no per-table scope primitive (only
+-- whole-file .public_only vs .all_schemas), so this file correctly keeps
+-- running in every schema pass to create the tenant_default copy, but that
+-- also creates an unwanted public shadow. See
+-- docs/issue-reports/ISS-0185-diagnosis.yaml and
+-- migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql, which drops the
+-- public shadow (idempotent, re-run after any cold-start replay).
 
 CREATE TABLE IF NOT EXISTS instance_definition_snapshots (
     instance_id     UUID        PRIMARY KEY,

@@ -30,6 +30,14 @@ CREATE INDEX IF NOT EXISTS idx_wsub_active ON webhook_subscriptions(is_active)
 
 -- ── Webhook deliveries ────────────────────────────────────────────────────────
 -- WH-02: one row per delivery attempt per subscription.
+-- ISS-0641 / GH-637: PER_TENANT (canonical home = tenant_default).
+-- migrations.zig's migrationScope() has no per-table scope primitive (only
+-- whole-file .public_only vs .all_schemas), so this file correctly keeps
+-- running in every schema pass to create the tenant_default copy, but that
+-- also creates an unwanted public shadow. See
+-- docs/issue-reports/ISS-0185-diagnosis.yaml and
+-- migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql, which drops the
+-- public shadow (idempotent, re-run after any cold-start replay).
 
 CREATE TABLE IF NOT EXISTS webhook_deliveries (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

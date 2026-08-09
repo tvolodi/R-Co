@@ -1,0 +1,20 @@
+{
+  "id": "ISS-0644",
+  "title": "migrations.zig has no tenant-only scope primitive — 13 PER_TENANT shadow tables from ISS-0641 will keep recurring on cold-start",
+  "status": "OPEN",
+  "severity": "MINOR",
+  "category": "migration-runner / structural",
+  "run_id": "WF03-GH637-20260809",
+  "handoff_id": null,
+  "affected_areas": [
+    "src/db/migrations.zig",
+    "migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql",
+    "migrations/058_repo_artifacts_tenant_activation.sql",
+    "tools/lint_dual_schema_table_names.py"
+  ],
+  "created_at": "2026-08-09T16:58:48Z",
+  "resolved_at": null,
+  "notes": "Discovered incidentally while resolving ISS-0641/GH-637 (14 dual-schema shadow tables). GBL-141 cleans the 14 shadows, but for 13 of the 14 (PER_TENANT tables whose canonical home is tenant_default), the fix is cleanup-only: src/db/migrations.zig::migrationScope() has no primitive that suppresses just the public-pass copy of a table while keeping the tenant_default-pass copy. The only two scopes are .public_only (GBL- filename prefix or a `-- scope: public` header) and the default .all_schemas. Confirmed by live reproduction: after a full cold-start `zig build migrate` + `zig build test-integration` replay (which provisions fresh tenant schemas), tenant_artifact_activations (the 1 GLOBAL_REGISTRY table in ISS-0641, same problem in the opposite direction) reappeared in tenant_default even with GBL-141 applied and recorded in the ledger -- the ledger only prevents GBL-141 itself from re-running, not migration 058_repo_artifacts_tenant_activation.sql (a .all_schemas-scope file, correctly so for its other table repository_artifacts which is HYBRID) from creating a fresh shadow in any newly-provisioned tenant schema. Manually restored db_test to steady state for this run's completion; the underlying gap remains.",
+  "candidate_resolution": "1. Add a third MigrationScope value (e.g. .tenant_only, selected by a new `-- scope: tenant_only` header) that runs a migration file in every per-tenant schema pass but skips the public pass entirely -- the mirror of the existing .public_only primitive. 2. Apply it to the source migrations creating GBL-141's 13 PER_TENANT tables so public-pass creation stops permanently. 3. For migration files that mix classifications in one file (like 058_repo_artifacts_tenant_activation.sql: HYBRID repository_artifacts + GLOBAL_REGISTRY tenant_artifact_activations), either split into two new migration files (each single-scope) or design a per-statement/per-table annotation mechanism -- evaluate cost/benefit, this is the larger of the two options. 4. Extend tools/lint_dual_schema_table_names.py (or a new pre-merge lint per ISS-0641/GH-637 suggestion #3, also not yet built) to flag when a corrective GBL migration exists to clean a shadow but the creating source migration still has no scope primitive that would prevent recurrence, making this class of \"cleanup only, not closed\" defect visible without a live cold-start reproduction. Severity MINOR: does not block current pipeline operation -- the corrective-migration pattern (GBL-134 through GBL-141 in this lineage) is well-established and low-cost to re-apply on each recurrence; this is a structural/DX improvement to end the recurring detect-clean-recur cycle, not a live defect.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/643"
+}

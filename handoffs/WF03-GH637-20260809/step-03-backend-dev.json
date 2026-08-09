@@ -1,0 +1,60 @@
+{
+  "handoff_id": "d879af32-8d6e-4fcc-adcd-7240516ab042",
+  "run_id": "WF03-GH637-20260809",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T16:41:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 3",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/637",
+    "issue_id": "ISS-0641",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/fix-ISS-0641.md"
+    ]
+  },
+  "task": {
+    "description": "Step 3: implement the fix per design -- add ISS-0641/GH-637 documentation comments to the 10 source migrations, create migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql, apply to bpm_test and bpm_dev, verify idempotency and zero regressions.",
+    "acceptance_criteria": [
+      "zig build exits 0, no error-set output",
+      "tools/lint_sql_param_types.py 0 BLOCKER/MAJOR",
+      "tools/lint_dual_schema_table_names.py reports 0 duplicates after fix",
+      "zig build migrate idempotent (two consecutive runs)"
+    ],
+    "functions_to_call": [
+      "fn:implement-fix"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Patched 10 source migrations (004, 007, 008, 010, 012, 019, 026, 058, 093, 095) with ISS-0641/GH-637 documentation comments recording each table's classification. Added migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql (drops 13 PER_TENANT public shadows + 1 GLOBAL_REGISTRY tenant-schema shadow, idempotent, RESTRICT-only, per-table dependent_objects_still_exist guards, loops public.tenant for multi-tenant coverage). Applied via `BPM_DB_URL=$BPM_TEST_DB_URL zig build migrate` and against bpm_dev. Two self-caught defects during implementation, both fixed before finalizing: (1) an initial attempt added a file-level `-- scope: public` header to 058_repo_artifacts_tenant_activation.sql copying the ISS-0101/GBL-140 pattern directly, which would have wrongly suppressed the HYBRID repository_artifacts table's tenant_default copy in the same file -- caught by running the full cold-start test-integration suite and observing TC-ISS-0185-03/TC-EXP-103-03 regressions, reverted to documentation-only for that file; (2) a comment draft contained the literal substring '-- scope: public' inside backtick-quoted prose explaining what not to do, which migrationScope()'s naive substring search matched, triggering a MigrationScopeMismatch build error on cold-start migrate -- reworded to remove the literal trigger string. zig build exits 0 with no error-set output. lint_sql_param_types.py: 0 BLOCKER/MAJOR/MINOR. lint_dual_schema_table_names.py: 14 -> 0 on both bpm_test and bpm_dev. zig build migrate idempotent (two consecutive runs report 'No new migrations to apply').",
+    "artifacts_out": [
+      "migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql",
+      "migrations/004_definitions.sql",
+      "migrations/007_timers.sql",
+      "migrations/008_identity.sql",
+      "migrations/010_dlq.sql",
+      "migrations/012_event_retention.sql",
+      "migrations/019_idn04_api_token_management.sql",
+      "migrations/026_ext05_subprocess_links.sql",
+      "migrations/058_repo_artifacts_tenant_activation.sql",
+      "migrations/093_exp103_instance_waits.sql",
+      "migrations/095_iss0176_lua_script_execution_audit.sql"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Two self-caught implementation mistakes (wrong scope header on 058; literal trigger-string match in a comment) were corrected before merge -- see result summary."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 5) -- no business logic added/modified, Steps 4/4b skipped per WF-03 pipeline table condition"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T16:41:00Z",
+  "completed_at": "2026-08-09T16:55:00Z"
+}

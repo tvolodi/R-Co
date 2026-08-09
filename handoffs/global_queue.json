@@ -1163,6 +1163,19 @@
       "labels": [
         "bug"
       ]
+    },
+    {
+      "issue_id": "GH-643",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/643",
+      "title": "migrations.zig has no tenant-only scope primitive (ISS-0644)",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-09T16:59:16Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

@@ -38,6 +38,14 @@ CREATE TABLE IF NOT EXISTS roles (
 );
 
 -- IDN-06: permissions per role (resource + action scoped)
+-- ISS-0641 / GH-637: PER_TENANT (canonical home = tenant_default). This
+-- file has no per-table scope primitive available (migrations.zig's
+-- migrationScope() only supports whole-file .public_only vs .all_schemas),
+-- so role_permissions correctly keeps running in every schema pass to
+-- create its tenant_default copy, but that also creates an unwanted public
+-- shadow. See docs/issue-reports/ISS-0185-diagnosis.yaml and
+-- migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql, which drops the
+-- public shadow (idempotent, re-run after any cold-start replay).
 CREATE TABLE IF NOT EXISTS role_permissions (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     role_id     UUID        NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
@@ -76,6 +84,9 @@ CREATE TABLE IF NOT EXISTS groups (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- ISS-0641 / GH-637: PER_TENANT (canonical home = tenant_default). See the
+-- role_permissions comment above — same file-scope limitation applies;
+-- GBL-141 drops the public shadow.
 CREATE TABLE IF NOT EXISTS user_groups (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -86,6 +97,9 @@ CREATE TABLE IF NOT EXISTS user_groups (
     UNIQUE (user_id, group_id)
 );
 
+-- ISS-0641 / GH-637: PER_TENANT (canonical home = tenant_default). See the
+-- role_permissions comment above — same file-scope limitation applies;
+-- GBL-141 drops the public shadow.
 CREATE TABLE IF NOT EXISTS group_roles (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id    UUID        NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
@@ -102,6 +116,9 @@ CREATE INDEX IF NOT EXISTS idx_gr_group ON group_roles(group_id);
 
 -- ── Sessions ──────────────────────────────────────────────────────────────────
 -- IDN-04: JWT sessions with refresh tokens and revocation
+-- ISS-0641 / GH-637: PER_TENANT (canonical home = tenant_default). See the
+-- role_permissions comment above — same file-scope limitation applies;
+-- GBL-141 drops the public shadow.
 
 CREATE TABLE IF NOT EXISTS sessions (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
