@@ -1,0 +1,53 @@
+{
+  "handoff_id": "fc155180-e8e8-4ce5-a45c-3d6cc6d5478b",
+  "run_id": "WF03-GH595-20260809",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH595-20260809/step-03-backend-dev.json",
+  "created_at": "2026-08-09T00:39:08Z",
+  "started_at": "2026-08-09T00:39:08Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-16"
+    ],
+    "related_handoff_ids": [
+      "b47646df-dcd4-4a70-a622-70e54cb966af",
+      "1e6d4a5c-8b3f-4a2e-9c7d-5f8a2b6e4d10",
+      "0b7fc05c-4fa5-47c8-b6db-31c789058f46"
+    ],
+    "artifacts_in": [
+      "src/design/iss0628-lua16-errfunc-stacktrace.md",
+      "src/lua/executor.zig",
+      "src/lua/host_context.zig",
+      "src/lua/luajit_bindings.zig",
+      "src/lua/iss0625_lua_12_15_16_test.zig",
+      "tests/integration/iss0625_lua_12_15_16_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement the APPROVED design at src/design/iss0628-lua16-errfunc-stacktrace.md (494 lines, PASSed CODE-DESIGN-VALIDATOR at commit de39920). Fixes GH-595: LUA-16's ScriptErrorPayload.stack_trace is always empty because lua_pcall installs no message handler.\n\nImplement exactly per the design:\n1. src/lua/executor.zig: new errfuncHandler (lua_CFunction, callconv(.c)) and writeStackFrames (shared, allocator-free walk over a fixed STACK_TRACE_BUFFER_BYTES=4096 buffer) -- captureStackTrace's existing signature stays unchanged, internally delegates to writeStackFrames.\n2. Push ordering at the executeSource call site: push errfuncHandler via lua_pushcclosure BEFORE luaL_loadbuffer, capture handler_index via lua_gettop immediately after pushing the handler (before pushing anything else), then lua_pcall's 4th argument becomes handler_index instead of the current hardcoded 0.\n3. src/lua/host_context.zig: new STACK_TRACE_KEY registry key and readStackTrace helper, mirroring the EXACT shape of the existing readExplicitFailure/FAILURE_REASON_KEY pattern (lua_getfield + type guard + lua_tolstring + allocator.dupe + lua_pop). errfuncHandler writes the captured trace into this key via lua_pushlstring + lua_setfield, then returns the ORIGINAL error value unchanged (transparent pass-through -- do not modify what's on the stack).\n4. Replace the production call site's captureStackTrace(L, context.allocator) catch \"\" (executor.zig ~L585) with host_context.readStackTrace(L, context.allocator). err_msg extraction (~L545) and the LUA-15 explicit-failure branch (~L555-581) require ZERO changes -- do not touch them.\n5. Test updates: TC-ISS-0625-LUA-16-02 (src/lua/iss0625_lua_12_15_16_test.zig) stays unchanged. TC-ISS-0625-LUA-16-int-01 (tests/integration/iss0625_lua_12_15_16_test.zig): flip the stack_trace.len == 0 assertion to > 0, add a content assertion that the trace contains \"f3\" (the function name from the test's own f3->f2->f1->main script), and correct the stale comment block/title (currently cites debug.traceback as 'the proper fix' and references ISS-0626 -- both wrong, per design section 4.2). Add new TC-ISS-0628-LUA-16-stacktrace-01 per design section 4.3: a DISTINCT script chain (not sharing TC-ISS-0625-LUA-16-int-01's fixture) with a named failing function, asserting stack_trace contains that function's name AND has at least as many '  at ' frame markers as the chain's nesting depth.\n\nMANDATORY MUTATION TEST for the new TC (per this session's established discipline): temporarily revert the errfunc installation (restore lua_pcall's 4th arg to literal 0), run the new test, confirm it genuinely fails via an empty stack_trace as the design predicts, then restore the exact original code and confirm clean build + passing test again. Do not skip this -- do it yourself, don't just trust that it would work.\n\nAlso verify: does this run's own build target need any build.zig changes to pick up the modified test files, or are they already wired into an existing test step from the prior GH-592 merge? Check before assuming.",
+    "acceptance_criteria": [
+      "errfuncHandler + writeStackFrames implemented per design section 1",
+      "Push ordering implemented exactly per design section 2 (handler before chunk, absolute index via lua_gettop)",
+      "STACK_TRACE_KEY + readStackTrace implemented mirroring FAILURE_REASON_KEY/readExplicitFailure exactly",
+      "err_msg extraction and LUA-15 branch genuinely unchanged",
+      "TC-ISS-0625-LUA-16-int-01 flipped + corrected per design section 4.2",
+      "New TC-ISS-0628-LUA-16-stacktrace-01 implemented per design section 4.3",
+      "Mutation test performed by hand: revert errfunc install -> new test fails empty; restore -> passes",
+      "zig build, zig build test both exit 0",
+      "No error set output from zig build"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
