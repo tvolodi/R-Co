@@ -1011,6 +1011,26 @@
       "completed_at": "2026-08-09T11:34:42Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-375",
+      "issue_number": 375,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/375",
+      "title": "ISS-0112 \u2014 Migration/schema drift and shared database state break 42 integration tests",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T11:35:02Z"
+      },
+      "added_at": "2026-08-09T11:35:02Z",
+      "started_at": "2026-08-09T11:35:02Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
