@@ -124,16 +124,28 @@ const UNGATED = [_][]const u8{ "now", "fail" };
 ///
 /// CTX-1: `caps` and `ctx` live in this frame and `executeScript` closes its
 /// state before returning, so the context strictly outlives the `lua_State`.
+/// ISS-0624 / GH #591: wires a real, per-call `InstanceState` rather than
+/// leaving `instance_state` at its `dummy_instance_state` singleton default
+/// — see the matching note on `execution_test.zig::runWithGrants` for why:
+/// `std.testing.allocator` is reset and leak-checked per test, and a commit
+/// into the shared dummy singleton that survives past this test's boundary
+/// corrupts a LATER test's fresh allocator instance when that instance
+/// eventually frees the entry (reproduced empirically as a `DebugAllocator`
+/// bucket-ownership assertion failure).
 fn runWithGrants(grants: []const []const u8, src: []const u8) !lua.ScriptResult {
     var caps = capabilities.CapabilitySet.init(std.testing.allocator);
     defer caps.deinit();
     for (grants) |g| try caps.add(g);
+
+    var state = executor.InstanceState.init(std.testing.allocator, "iss0169-cap-instance");
+    defer state.deinit();
 
     const ctx = executor.ExecutionContext{
         .allocator = std.testing.allocator,
         .capabilities = &caps,
         .instance_id = "iss0169-cap-instance",
         .actor_id = "iss0169-cap-actor",
+        .instance_state = &state,
     };
     return executor.executeScript(&ctx, src);
 }

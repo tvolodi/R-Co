@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-09T01:19:57Z'
+generated_at: '2026-08-09T02:48:03Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -4994,7 +4994,7 @@ requirements:
     title: Variable read/write
     stage: 8
     priority: MUST
-    status: IN_PROGRESS
+    status: RELEASED
     body: |-
       > `platform.read_variable(name)` MUST return the current value or `nil`. `platform.write_variable(name, value)` MUST stage a write; writes are applied atomically on script success and discarded on script failure.
 
@@ -5009,13 +5009,12 @@ requirements:
     - src/lua/executor.zig
     - src/lua/host_api/read_variable.zig
     - src/lua/host_api/write_variable.zig
-    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-11.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    last_updated: '2026-08-06T11:45:45Z'
+    last_updated: '2026-08-09T02:47:59Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
@@ -5060,7 +5059,7 @@ requirements:
     title: Logging
     stage: 8
     priority: MUST
-    status: IN_PROGRESS
+    status: RELEASED
     body: |-
       > `platform.log(level, message, context)` MUST emit a structured log entry tagged with the script's identity, instance ID, and trace ID.
 
@@ -5071,15 +5070,15 @@ requirements:
     body_source: functional-doc
     alt_sources: []
     implemented_in:
-    - src/lua/structured_logger.zig
     - src/lua/host_api/log.zig
-    - src/lua_test_root.zig
+    - src/lua/structured_logger.zig
+    - src/lua/executor.zig
     test_spec: tests/specs/LUA-13.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    last_updated: '2026-08-06T11:45:47Z'
+    last_updated: '2026-08-09T02:48:03Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo

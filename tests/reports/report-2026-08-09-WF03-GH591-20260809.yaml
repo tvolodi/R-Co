@@ -1,0 +1,119 @@
+run_id: WF03-GH591-20260809
+date: "2026-08-09"
+completed_at: "2026-08-09T02:43:48Z"
+issues_tested: [GH-591, ISS-0624]
+requirement_ids: [LUA-11, LUA-13]
+
+pre_checks:
+  services:
+    db: healthy (r-co-2-db-1, port 5452)
+    db_test: healthy (r-co-2-db_test-1, port 5453)
+    keycloak: healthy (r-co-2-keycloak-1)
+    keycloak_gateway: healthy (r-co-2-keycloak_gateway-1)
+  migrate:
+    status: PASS
+    detail: "zig build migrate: exit 0, clean output, no new migrations to apply"
+  schema_baseline:
+    status: PASS
+    detail: "tools/verify_schema_baseline.py: ledger row count = 115 == files count = 115; all 115 migrations have a ledger row; expected check constraints present"
+  lint_test_isolation:
+    status: PASS
+    detail: "133 file(s) checked, no isolation issues (114 baseline-suppressed)"
+  test_env_verify:
+    status: HEALTHY
+    checks_passed: "10/10 (C0-C9)"
+    migrations_applied: "115/115"
+
+full_suite:
+  status: PASS
+  command: "zig build test"
+  exit_code: 0
+  detail: >
+    Full suite (includes lint_test_wiring: 273 test-bearing files, 87 addTest
+    roots, 375 files reachable) passed clean. 4 pre-existing ADVISORY findings
+    on type-only pins in src/lua_test_root.zig (ISS-0172/GH#500, does not
+    affect exit code, unrelated to this run's changes). ISS-602 differential
+    corpus: 15/15 matched, 0 diverged.
+
+test_lua_target_verification:
+  status: PASS
+  method: >
+    zig build test-lua run 5 times independently (plus 1 additional run with
+    --summary all for explicit pass-count evidence = 6 total), given this
+    branch touches the previously-flaky TC-LUA-10-03 via a combined fix
+    (2B-iteration tight loop AND yield-spin retry, reconciling two
+    independent diagnoses from GH-600/ISS-0629 and this branch's own
+    BACKEND-DEV work).
+  runs: 6
+  result_per_run: "112/112 tests passed, all 6 runs, zero failures, zero flakes"
+  tc_lua_10_03_stability: >
+    TC-LUA-10-03 ("the host-external watchdog stops a tight loop even with
+    the in-VM hook's timeout branch disabled") and its mutation-check sibling
+    in src/lua/limiter_wiring_test.zig ran clean across all 6 runs. No
+    error.SkipZigTest, no timeout, no assertion failure observed in any run.
+
+new_test_cases_iss0624_lua_11_13:
+  status: PASS
+  file: src/lua/iss0624_lua_11_13_test.zig
+  wired_via: "src/lua_test_root.zig refAllDecls(iss0624_lua_11_13_test), confirmed present"
+  count_verified: "21 test cases (12 LUA-11 + 9 LUA-13), counted directly against file source"
+  lua_11_cases:
+    - "TC-ISS-0624-LUA-11-01: successful write_variable lands in instance_state.variables on success"
+    - "TC-ISS-0624-LUA-11-02: read_variable on an absent key returns nil"
+    - "TC-ISS-0624-LUA-11-03: read_variable returns a previously committed string and number"
+    - "TC-ISS-0624-LUA-11-04: write_variable then platform.fail discards the write"
+    - "TC-ISS-0624-LUA-11-05: write_variable then a runtime error discards the write"
+    - "TC-ISS-0624-LUA-11-06: writing the same key three times commits the final value"
+    - "TC-ISS-0624-LUA-11-07: read-after-write reflects the staged increment before commit"
+    - "TC-ISS-0624-LUA-11-08: write_variable persists a table with its entries"
+    - "TC-ISS-0624-LUA-11-09: writing nil to an existing key drops the committed entry"
+    - "TC-ISS-0624-LUA-11-10: two instances' writes land only in their own instance_state"
+    - "TC-ISS-0624-LUA-11-11: read_variable without variable:read is still denied"
+    - "TC-ISS-0624-LUA-11-12: an ExecutionContext with only defaults leaves read/write as safe no-ops"
+  lua_13_cases:
+    - "TC-ISS-0624-LUA-13-01: platform.log emits a captured entry with level, message, instance, actor, trace"
+    - "TC-ISS-0624-LUA-13-02: WARN, ERROR, and DEBUG levels are captured verbatim"
+    - "TC-ISS-0624-LUA-13-03: context table entries (string and number) appear in the captured output"
+    - "TC-ISS-0624-LUA-13-04: platform.log with no third argument succeeds with a null context"
+    - "TC-ISS-0624-LUA-13-05: an unrecognised log level raises a runtime error"
+    - "TC-ISS-0624-LUA-13-06: platform.log without audit:log is denied"
+    - "TC-ISS-0624-LUA-13-07: each script's own trace_id lands in its own entry, never the other's"
+    - "TC-ISS-0624-LUA-13-08: structured_logger left at its null default is a fail-open no-op"
+    - "TC-ISS-0624-LUA-13-09: multiple platform.log calls are captured in invocation order"
+  result: "All 21 cases included in every clean test-lua run (112/112 total), 6/6 runs"
+
+regression_check_instance_state_wiring:
+  status: PASS
+  files: [src/lua/execution_test.zig, src/lua/capability_enforcement_test.zig]
+  detail: >
+    Verified via git diff main...HEAD: both files' shared `runWithGrants`
+    test helpers now construct a real, per-call `executor.InstanceState.init`
+    (freed via `defer state.deinit()`) and wire it into `ExecutionContext`,
+    replacing the previous default of an unset `instance_state` (the shared
+    `dummy_instance_state` singleton). Documented root cause in both diffs:
+    std.testing.allocator's DebugAllocator resets and leak-checks per test,
+    and a write_variable commit into the shared singleton surviving past its
+    own test's boundary corrupted a LATER test's fresh allocator instance's
+    bucket bookkeeping (reproduced empirically as a DebugAllocator
+    bucket-ownership assertion failure during LUA-11 implementation). Both
+    files are wired into src/lua_test_root.zig via refAllDecls and compiled
+    and passed cleanly in all 6 test-lua runs above -- no regression.
+
+merge_reconciliation_reverification:
+  status: VERIFIED BY ORCH, RE-CONFIRMED BY TEST-RUNNER
+  detail: >
+    ORCH's handoff documents combining two independent flaky-test fixes for
+    TC-LUA-10-03: this branch's own BACKEND-DEV fix (200M -> 2B iteration
+    tight loop, diagnosed as JIT-compiled completion under 1s) and
+    GH-600/ISS-0629's main-branch fix (yield-spin retry loop, diagnosed as a
+    scheduling race), reconciled after this branch was cut before GH-600
+    merged to main. TEST-RUNNER independently re-confirms: 6 consecutive
+    test-lua runs (112/112 each) with zero flakes on TC-LUA-10-03 is
+    consistent with both fixes being correctly present and non-conflicting.
+
+db_state:
+  status: clean after every run
+
+overall_status: PASS
+issues: []
+next_action: "Route to DOC-UPDATER (Step 6) and Step Final -- no BLOCKER, no MAJOR, no MINOR issues found against this run's acceptance criteria. RELEASE-VALIDATOR not needed (no BLOCKER severity). All 5 acceptance criteria met: test-env-verify HEALTHY, zig build test exit 0, zig build test-lua exit 0 across 6 runs all clean, 21 new LUA-11/13 cases confirmed passing, zero regression in execution_test.zig/capability_enforcement_test.zig."

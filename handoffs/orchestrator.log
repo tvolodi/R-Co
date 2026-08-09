@@ -577,6 +577,9 @@
 2026-08-09T00:21:40Z | ROUTE | WF03-GH595-20260809 | b47646df | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-595 LUA-16 stack trace errfunc fix)
 2026-08-09T00:23:32Z | COMPLETE | WF03-GH595-20260809 | b47646df | ISSUE-FIXER | PASS -- diagnosis confirmed, debug.traceback not viable (debug lib never opened), custom errfunc closure needed; ISS-0628 filed
 2026-08-09T00:23:32Z | ROUTE | WF03-GH595-20260809 | 1e6d4a5c | ISSUE-FIXER -> CODE-DESIGNER | PENDING
+2026-08-09T00:24:37Z | COMPLETE | WF03-GH591-20260809 | 68d37b1f | ISSUE-FIXER | PASS -> Route to CODE-DESIGNER (Step 2, LUA-11/LUA-13 fix design artefact). Diagnosis at docs/issue-reports/WF03-GH591-20260809-step-01-ISSUE-FIXER.yaml. ISS-0624/GH-591 still OPEN (no source touched).
+2026-08-09T00:27:20Z | COMPLETE | WF03-GH591-20260809 | 7c1c0a52 | CODE-DESIGNER | PASS -- design artefact src/design/iss0624-gh591-lua-11-13-fix.md (lint 0); 5 production files + 1 new test file; next: CODE-DESIGN-VALIDATOR (Step 2b)
+2026-08-09T00:30:00Z | ROUTE | WF03-GH591-20260809 | f4d8a3c2 | CODE-DESIGN-VALIDATOR -> BACKEND-DEV | PASS (1 MINOR)
 2026-08-09T00:30:56Z | COMPLETE | WF03-GH595-20260809 | 1e6d4a5c | CODE-DESIGNER | PASS -> CODE-DESIGN-VALIDATOR (Step 2b)
 2026-08-09T00:32:54Z | ROUTE | WF03-GH595-20260809 | 0b7fc05c | ORCH -> CODE-DESIGN-VALIDATOR | IN_PROGRESS (Step 2b, GH-595 errfunc stack trace design validation)
 2026-08-09T00:37:10Z | VALIDATE | WF03-GH595-20260809 | 0b7fc05c | CODE-DESIGN-VALIDATOR | PASS -> routing to BACKEND-DEV (Step 3)
@@ -603,3 +606,8 @@
 2026-08-09T01:56:00Z | ROUTE | WF03-GH600-20260809 | e45c9e67 | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize GH-600 flake fix)
 2026-08-09T02:00:05Z | COMPLETE | WF03-GH600-20260809 | e45c9e67 | DOC-UPDATER | PASS -- CHANGELOG updated, PR #602 merged (squash, 8d49717), branch deleted, issue #600 closed, board at Done, main clean
 2026-08-09T02:00:05Z | MERGE | WF03-GH600-20260809 | e45c9e67 | DOC-UPDATER | PR #602 squash-merged to main (8d49717), feature/WF03-GH600-20260809 deleted
+2026-08-09T02:03:39Z | ROUTE | WF03-GH591-20260809 | f0d48007 | ORCH -> BACKEND-DEV | IN_PROGRESS (Step 3, implement LUA-11/13 per pre-existing APPROVED design recovered from stash)
+2026-08-09T02:26:34Z | COMPLETE | WF03-GH591-20260809 | f0d48007 | BACKEND-DEV | PASS -- LUA-11/13 implemented (executor.zig 4 new ExecutionContext fields + InstanceState + atomic apply/discard, read_variable/write_variable/log.zig real bodies, structured_logger.zig Writer injection); 21 new tests (iss0624_lua_11_13_test.zig) + 3 pre-existing test/fixture fixes (Unblock-Everything); mutation test confirmed 5 tests fail when commit-on-success is broken; zig build + test-lua 112/112 green x3 runs; next: TEST-DESIGNER (Step 4)
+2026-08-09T02:34:53Z | ROUTE | WF03-GH591-20260809 | 8e15c289 | ORCH -> TEST-RUNNER | IN_PROGRESS (Step 4, full suite verification of LUA-11/13 + reconciled TC-LUA-10-03 fix)
+2026-08-09T02:44:29Z | COMPLETE | WF03-GH591-20260809 | 8e15c289 | TEST-RUNNER | PASS -- 112/112 test-lua x6 runs, 21 new LUA-11/13 cases confirmed, no regression
+2026-08-09T02:46:06Z | ROUTE | WF03-GH591-20260809 | 4c00f70d | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize GH-591 LUA-11/13)

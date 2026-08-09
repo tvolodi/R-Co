@@ -572,9 +572,21 @@ test "TC-LUA-10-03: the host-external watchdog stops a tight loop even with the 
     // trip LUA-08 and contaminate a test that isolates the timeout-adjacent
     // watchdog path. This is a bounded loop, not `while true do end`, purely
     // so the test process itself terminates.
+    //
+    // ISS-0624 / GH #591 side-fix: the original 200,000,000-iteration count
+    // was empirically too small — LuaJIT's trace compiler turns a trivial
+    // numeric increment loop into near-native machine code, and on this
+    // (and presumably other reasonably fast) hardware the whole loop
+    // completed in UNDER 1 second, so the watchdog thread's 1s deadline
+    // never had a chance to fire before `lua_pcall` returned. Reproduced by
+    // running this exact test, unmodified, against `main` (i.e. before any
+    // LUA-11/13 change) — it failed identically, confirming this is a
+    // pre-existing test-calibration defect, not a regression. 2,000,000,000
+    // (10x) reliably exceeds 1s of wall-clock JIT-compiled execution while
+    // staying well under the test's own 30s ceiling.
     const script =
         \\local x = 0
-        \\for i = 1, 200000000 do
+        \\for i = 1, 2000000000 do
         \\  x = x + 1
         \\end
         \\return x
@@ -597,6 +609,19 @@ test "TC-LUA-10-03: the host-external watchdog stops a tight loop even with the 
     // watchdog having had time to poll and observe it), and the watchdog
     // thread does nothing but poll wall-clock time, this can only be true if
     // the watchdog mechanism itself is live.
+    //
+    // ISS-0629 / GH #600 side-fix, merged independently on `main` while this
+    // branch was in flight (both fixes address genuinely different failure
+    // modes and are combined here, not one superseding the other): even
+    // after the ISS-0624/GH-591 iteration-count bump above guarantees the
+    // loop's wall-clock time exceeds the 1s deadline, a second, narrower
+    // race remains between this assertion and the watchdog thread's own
+    // ~10ms poll interval (`timeout.zig` POLL_INTERVAL_NS) — the deadline
+    // can be genuinely past while the watchdog simply hasn't run its next
+    // poll iteration yet. A bounded 1000ms yield-spin absorbs that
+    // scheduling jitter without masking a genuine watchdog failure (a
+    // watchdog still not fired a full second after an already-expired
+    // deadline is broken, not merely slow).
     const retry_deadline = milliTimestamp() + 1_000;
     while (!watchdog_state.hasFired() and milliTimestamp() < retry_deadline) {
         std.Thread.yield() catch {};
