@@ -1256,6 +1256,26 @@
       "completed_at": "2026-08-09T18:50:47Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-301",
+      "issue_number": 301,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/301",
+      "title": "ISS-0086 (GOV-02) \u2014 Decide whether requirements get an explicit depends_on field",
+      "severity": "MAJOR",
+      "labels": [
+        "issue"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T18:51:15Z"
+      },
+      "added_at": "2026-08-09T18:51:15Z",
+      "started_at": "2026-08-09T18:51:15Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
