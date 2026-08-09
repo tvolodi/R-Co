@@ -572,9 +572,21 @@ test "TC-LUA-10-03: the host-external watchdog stops a tight loop even with the 
     // trip LUA-08 and contaminate a test that isolates the timeout-adjacent
     // watchdog path. This is a bounded loop, not `while true do end`, purely
     // so the test process itself terminates.
+    //
+    // ISS-0624 / GH #591 side-fix: the original 200,000,000-iteration count
+    // was empirically too small — LuaJIT's trace compiler turns a trivial
+    // numeric increment loop into near-native machine code, and on this
+    // (and presumably other reasonably fast) hardware the whole loop
+    // completed in UNDER 1 second, so the watchdog thread's 1s deadline
+    // never had a chance to fire before `lua_pcall` returned. Reproduced by
+    // running this exact test, unmodified, against `main` (i.e. before any
+    // LUA-11/13 change) — it failed identically, confirming this is a
+    // pre-existing test-calibration defect, not a regression. 2,000,000,000
+    // (10x) reliably exceeds 1s of wall-clock JIT-compiled execution while
+    // staying well under the test's own 30s ceiling.
     const script =
         \\local x = 0
-        \\for i = 1, 200000000 do
+        \\for i = 1, 2000000000 do
         \\  x = x + 1
         \\end
         \\return x
