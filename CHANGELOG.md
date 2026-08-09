@@ -6,6 +6,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0118 — Webhook delivery status test assertions updated to match current enum values (MAJOR)** ([GitHub #381](https://github.com/tvolodi/R-Co/issues/381))
+
+- **Root cause:** Migration 085 and ISS-0205/GH-400 updated the `dispatcher.zig` to write uppercase status values (`PENDING`, `DELIVERED`, `FAILED`) matching the `webhook_deliveries_status_check` constraint. The test file `tests/integration/ext02_webhook_dispatch_test.zig` was not updated — three `expectEqualStrings` assertions still referenced legacy lowercase/obsolete values: line 589 expected `'failed'` (should be `'FAILED'`), line 654 expected `'exhausted'` (should be `'FAILED'`; `'exhausted'` was remapped by migration 085 step 3), line 754 expected `'success'` (should be `'DELIVERED'`; `'success'` likewise remapped).
+- **The fix (WF03-GH381-20260809):** Updated the three `expectEqualStrings` assertions in `tests/integration/ext02_webhook_dispatch_test.zig`: `'failed'`→`'FAILED'`, `'exhausted'`→`'FAILED'`, `'success'`→`'DELIVERED'`. No production code changes required.
+- **Verified:** TC-EXT-02-INT-06, TC-EXT-02-INT-07, and TC-EXT-02-INT-09 now pass. ISS-0118 marked RESOLVED.
+
 **ISS-0119 — Timer retry/pending/locking/rollback semantics (TC-SCH-02-02, TC-SCH-02-03) verified fixed (MAJOR)** ([GitHub #382](https://github.com/tvolodi/R-Co/issues/382))
 
 - **The original defects:** (1) `processNextDueTimer()` returned `.none` instead of `.skipped_locked` when `SELECT … SKIP LOCKED` returned 0 rows in the ordinary-timer branch — causing TC-SCH-02-02 to fail with an unexpected return value. (2) A `catch break:fire_blk false` pattern in the timer-fire block silently swallowed `appendTimerFiredEventInTx` errors, preventing `TransactionFailed` from surfacing — causing TC-SCH-02-03 to fail by not observing the expected error.

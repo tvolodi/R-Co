@@ -1,10 +1,10 @@
 {
   "id": "ISS-0118",
   "title": "Webhook delivery status values disagree with database constraint",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "webhook-status-constraint",
-  "run_id": "WF03-gh364-20260801",
+  "run_id": "WF03-GH381-20260809",
   "handoff_id": null,
   "affected_areas": [
     "tests/integration/ext02_webhook_dispatch_test.zig",
@@ -12,12 +12,16 @@
     "migrations/"
   ],
   "created_at": "2026-08-01T08:52:13Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T07:32:11Z",
   "notes": "Cluster G from the final integration run: webhook transaction rollback, orphan pickup, and pause-subscription target tests insert pending, failed, or BOGUS values that violate webhook_deliveries_status_check. Evidence: _integration_final.log lines 6576-6730.",
-  "root_cause": "Category D (test error). Migration 085 and ISS-0205 (GH #400) corrected dispatcher.zig to write uppercase status values (PENDING, DELIVERED, FAILED) matching the CHECK constraint. The test file tests/integration/ext02_webhook_dispatch_test.zig was not updated — three expectEqualStrings assertions still reference legacy lowercase/obsolete values: line 589 expects 'failed' (should be 'FAILED'), line 654 expects 'exhausted' (should be 'FAILED'; 'exhausted' was remapped by migration 085 step 3 and is outside the constraint domain), line 754 expects 'success' (should be 'DELIVERED'; 'success' likewise remapped and outside domain).",
-  "candidate_resolution": "Update three expectEqualStrings calls in tests/integration/ext02_webhook_dispatch_test.zig: line 589 'failed'->'FAILED', line 654 'exhausted'->'FAILED', line 754 'success'->'DELIVERED'. No production code changes required.",
-  "resolution": null,
-  "files_to_change": ["tests/integration/ext02_webhook_dispatch_test.zig"],
+  "root_cause": "Category D (test error). Migration 085 and ISS-0205 corrected dispatcher.zig to write uppercase status values (PENDING, DELIVERED, FAILED) matching the CHECK constraint. The test file ext02_webhook_dispatch_test.zig was not updated: line 589 expected 'failed' (should be 'FAILED'), line 654 expected 'exhausted' (should be 'FAILED'), line 754 expected 'success' (should be 'DELIVERED').",
+  "candidate_resolution": "Update three expectEqualStrings calls in tests/integration/ext02_webhook_dispatch_test.zig: 'failed'->'FAILED', 'exhausted'->'FAILED', 'success'->'DELIVERED'. No production code changes required.",
+  "resolution": "Updated three expectEqualStrings assertions in tests/integration/ext02_webhook_dispatch_test.zig: 'failed'->'FAILED', 'exhausted'->'FAILED', 'success'->'DELIVERED'. TC-EXT-02-INT-06/07/09 now pass. WF03-GH381-20260809.",
+  "files_to_change": [
+    "tests/integration/ext02_webhook_dispatch_test.zig"
+  ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/381",
-  "prevention": []
+  "prevention": [
+    "After any migration that renames or remaps status enum values, update all test assertions in the same commit."
+  ]
 }
