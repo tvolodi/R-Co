@@ -987,14 +987,11 @@
       "labels": [
         "bug"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-09T10:23:46Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T10:23:46Z",
       "started_at": "2026-08-09T10:23:46Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T11:09:39Z",
       "run_id": null,
       "deferred_reason": null
     }
