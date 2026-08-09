@@ -859,14 +859,11 @@
       "labels": [
         "bug"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI-loop",
-        "locked_at": "2026-08-09T06:23:36Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T06:23:36Z",
       "started_at": "2026-08-09T06:23:36Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T06:34:13Z",
       "run_id": null,
       "deferred_reason": null
     }
