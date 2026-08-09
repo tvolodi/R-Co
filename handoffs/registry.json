@@ -21437,7 +21437,7 @@
       "from_agent": "ORCH",
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-08-09T02:34:53Z",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETED",
       "stage": null
     }
   ],
