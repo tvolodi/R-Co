@@ -435,8 +435,8 @@ test "TC-DB-03-02: failed transaction rolls back both writes atomically" {
         );
 
         // Insert an events row inside the same transaction.
-// GH-512: replaced hardcoded actor fixture with TestHarness.newUuidString() per GH-512.
-// The idempotency_key 'db03-02-idem' is the unique discriminator; actor_id value is irrelevant.
+        // GH-512: replaced hardcoded actor fixture with TestHarness.newUuidString() per GH-512.
+        // The idempotency_key 'db03-02-idem' is the unique discriminator; actor_id value is irrelevant.
         const actor_id_str = try h_phase1.newUuidString(alloc);
         defer alloc.free(actor_id_str);
         try h_phase1.conn.exec(

@@ -6,6 +6,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0635 — Migration 1138 corrective fix adds `secret_ref`/`secret_key_id` to all tenant schemas where missing (MAJOR)** ([GitHub #616](https://github.com/tvolodi/R-Co/issues/616))
+
+- **Root cause:** Migration `1134_iss0112_add_secret_ref_to_tenant_schemas.sql` was recorded as applied in `schema_migrations` but the `secret_ref` and `secret_key_id` columns were absent from `tenant_default.webhook_subscriptions`. `GBL-128` also failed to add them because it targets the `public` schema while `webhook_subscriptions` lives in the tenant schema. The gap caused `C42703: column does not exist` errors at runtime for any code path that referenced these columns.
+- **The fix (WF03-GH616-20260809):** New corrective migration `migrations/1138_iss0635_webhook_secret_ref_corrective.sql` iterates over every schema in `information_schema.schemata` that contains `webhook_subscriptions`, and idempotently `ADD COLUMN IF NOT EXISTS` for `secret_ref TEXT NOT NULL DEFAULT ''` and `secret_key_id UUID`. Applied to all tenant schemas during `TestHarness.init()` and on API server restart via `provisionTenantSchema`.
+- **Verified:** `secret_ref` and `secret_key_id` columns confirmed present in `tenant_default.webhook_subscriptions` after `zig build migrate` + `TestHarness.init()`. 7 of 9 TC-EXT-02 integration tests PASS; the 2 remaining failures (TC-EXT-02-INT-05 and TC-EXT-02-INT-08) are pre-existing bugs (ISS-0636 and ISS-0637) exposed only now that the C42703 blocker is removed — not regressions of this fix. ISS-0635 marked RESOLVED.
+
 **ISS-0118 — Webhook delivery status test assertions updated to match current enum values (MAJOR)** ([GitHub #381](https://github.com/tvolodi/R-Co/issues/381))
 
 - **Root cause:** Migration 085 and ISS-0205/GH-400 updated the `dispatcher.zig` to write uppercase status values (`PENDING`, `DELIVERED`, `FAILED`) matching the `webhook_deliveries_status_check` constraint. The test file `tests/integration/ext02_webhook_dispatch_test.zig` was not updated — three `expectEqualStrings` assertions still referenced legacy lowercase/obsolete values: line 589 expected `'failed'` (should be `'FAILED'`), line 654 expected `'exhausted'` (should be `'FAILED'`; `'exhausted'` was remapped by migration 085 step 3), line 754 expected `'success'` (should be `'DELIVERED'`; `'success'` likewise remapped).

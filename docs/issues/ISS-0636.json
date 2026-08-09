@@ -1,0 +1,20 @@
+{
+  "id": "ISS-0636",
+  "title": "createSubscription ignores req.secret — webhook signing never activated via .secret field",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "discovered_in": "WF03-GH616-20260809",
+  "discovered_at": "2026-08-09T08:28:27Z",
+  "affected_areas": [
+    "src/webhook/subscription_store.zig",
+    "src/webhook/dispatcher.zig"
+  ],
+  "symptom": "TC-EXT-02-INT-05: signed_receiver.signature_seen = false after passing .secret = value to createSubscription",
+  "root_cause": "CreateSubscriptionRequest.secret field is accepted but not persisted to secret_ref column. The INSERT stores req.secret_ref (NULL -> empty string) but ignores req.secret. webhook_dispatcher only signs when secret_ref.len > 0.",
+  "acceptance_criteria": [
+    "createSubscription converts req.secret to a secret_ref value and stores it",
+    "TC-EXT-02-INT-05 passes"
+  ],
+  "notes": "Pre-existing bug hidden by C42703 (column secret_ref does not exist) before ISS-0635 migration 1138 added the column.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/618"
+}

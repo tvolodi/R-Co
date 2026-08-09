@@ -1,0 +1,152 @@
+issue_id: ISS-0635
+github_issue: https://github.com/tvolodi/R-Co/issues/616
+run_id: WF03-GH616-20260809
+step: "01"
+agent: ISSUE-FIXER
+diagnosed_at: "2026-08-09T07:49:19Z"
+title: "Migration 1134 did not add secret_ref/secret_key_id to tenant_default.webhook_subscriptions"
+
+# --- OBSERVED STATE ---
+observed_state:
+  missing_columns:
+    - secret_ref
+    - secret_key_id
+  table: tenant_default.webhook_subscriptions
+  actual_columns_present:
+    - id
+    - owner_id
+    - url
+    - secret
+    - description
+    - event_types
+    - is_active
+    - created_at
+    - updated_at
+    - status
+    - consecutive_failures
+    - max_attempts
+    - last_attempt_at
+    - last_failure_at
+    - paused_at
+  schema_migrations_ledger:
+    - schema_name: public
+      version: "GBL-128_exp501_secrets.sql"
+      applied_at: "2026-08-08T02:43:38.055Z"
+    - schema_name: public
+      version: "1134_iss0112_add_secret_ref_to_tenant_schemas.sql"
+      applied_at: "2026-08-08T02:43:38.142Z"
+  tenant_default_webhook_migrations:
+    - schema_name: tenant_default
+      version: "023_ext02_webhook_event_dispatch.sql"
+      applied_at: "2026-08-09T07:22:54.252Z"
+  affected_tenant_count: 21
+  # All 21 SCHEMA-mode tenants are missing secret_ref and secret_key_id
+
+# --- ROOT CAUSE ---
+failure_category: E  # Environment / timing gap
+root_cause: |
+  Migration 1134_iss0112_add_secret_ref_to_tenant_schemas.sql is declared
+  `-- scope: public` at line 1. The migration runner (src/db/migrations.zig
+  migrationScope()) classifies this as .public_only, which means:
+    1. It runs exactly once, in the public-schema pass.
+    2. It is SKIPPED for every tenant-schema pass (runForSchema with
+       schema_name != 'public').
+
+  The migration's DO $$ block correctly iterates SCHEMA-mode tenants via
+  dynamic SQL (EXECUTE format(... %I ...)) and adds columns using
+  `ADD COLUMN IF NOT EXISTS`. The problem is TIMING:
+
+    - Migration 1134 applied in public pass: 2026-08-08T02:43:38Z
+    - tenant_default.023_ext02_webhook_event_dispatch.sql (creates
+      webhook_subscriptions): 2026-08-09T07:22:54Z  ← AFTER migration 1134
+
+  All 21 SCHEMA-mode tenant schemas were provisioned AFTER migration 1134 ran.
+  At the time migration 1134 executed its loop, no tenant schema had a
+  `webhook_subscriptions` table yet. Its `IF EXISTS` guard correctly produced
+  a no-op. There was no error; RAISE NOTICE logged zero schemas processed.
+
+  When tenant schemas were later provisioned (2026-08-09), migration 1134 was
+  already recorded in `public.schema_migrations` for schema_name='public'.
+  Because it is `-- scope: public`, it is also unconditionally skipped in
+  every tenant pass. Therefore the columns were never added to any tenant
+  schema's `webhook_subscriptions`.
+
+  GBL-128 independently has the same structural limitation: it is a GBL file
+  (runs public-only) and its guard `IF to_regclass('webhook_subscriptions')
+  IS NOT NULL` resolves against the public schema, where the table was dropped
+  by GBL-073 — so GBL-128 has never and will never add the columns. This is a
+  documented pre-existing structural issue, not new.
+
+misclassification_evidence:
+  - file: migrations/1134_iss0112_add_secret_ref_to_tenant_schemas.sql
+    line: 1
+    text: "-- scope: public"
+    effect: >
+      migrationScope() returns .public_only → skipped in every tenant-schema
+      pass. This header is correct for the migration's design intent (iterate
+      all tenants from one public-pass execution), but that design only works
+      if tenant schemas already have webhook_subscriptions when the migration
+      runs. The intent and the execution timing were misaligned.
+
+  - file: src/db/migrations.zig
+    lines: "304-313"
+    text: >
+      if (!is_public_pass) { ... if (migrationScope(...) == .public_only) continue; }
+    effect: >
+      Causes migration 1134 to be skipped for tenant_default and every other
+      tenant schema pass, even though those schemas were provisioned after
+      migration 1134 ran.
+
+# --- FIX RECOMMENDATION ---
+fix_recommendation:
+  approach: >
+    Create a new corrective migration 1138_iss0635_webhook_secret_ref_corrective.sql
+    with `-- scope: all_schemas` (no public-only restriction). It runs in every
+    tenant-schema pass. An `IF EXISTS` guard on `webhook_subscriptions` makes
+    it a no-op in the public pass (where the table was dropped by GBL-073) and
+    in any tenant schema that doesn't have webhook_subscriptions.
+
+  new_migration_file: "migrations/1138_iss0635_webhook_secret_ref_corrective.sql"
+  scope: all_schemas
+  mechanism: |
+    DO $$
+    BEGIN
+      -- Guard: only act when webhook_subscriptions exists in the current schema.
+      -- In the public pass webhook_subscriptions was dropped by GBL-073, so
+      -- this is a safe no-op there. In tenant passes it adds the missing columns.
+      IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = current_schema()
+          AND table_name = 'webhook_subscriptions'
+      ) THEN
+        ALTER TABLE webhook_subscriptions
+          ADD COLUMN IF NOT EXISTS secret_ref    TEXT,
+          ADD COLUMN IF NOT EXISTS secret_key_id TEXT;
+
+        -- Backfill for rows that predate this corrective
+        UPDATE webhook_subscriptions
+          SET secret_ref    = COALESCE(secret_ref,    'sec://tenant/default/webhook/subscription-' || id::text),
+              secret_key_id = COALESCE(secret_key_id, 'legacy')
+          WHERE secret_ref IS NULL OR secret_key_id IS NULL;
+      END IF;
+    END $$;
+  idempotency: "ADD COLUMN IF NOT EXISTS + COALESCE guards — safe to re-run"
+  why_not_rerun_1134: >
+    Migration 1134 cannot be force-re-run via the ledger because the runner
+    skips files already in schema_migrations for schema_name='public', and its
+    scope=public classification prevents tenant-pass execution. Adding
+    `-- reapply_on_drift: true` would require the objects to be absent; they
+    are not absent (other columns in webhook_subscriptions exist). A new file
+    numbered after 1137 is the clean and auditable solution.
+
+verification_steps:
+  - "zig build migrate (must exit 0)"
+  - >
+    docker exec r-co-db_test-1 psql -U bpm -d bpm_test -c
+    \"SELECT column_name FROM information_schema.columns
+      WHERE table_schema='tenant_default'
+        AND table_name='webhook_subscriptions'
+        AND column_name IN ('secret_ref','secret_key_id');\"
+    → must return 2 rows
+  - "zig build test (must exit 0)"
+  - "$env:BPM_TEST_DB_URL=...; zig build test-integration -- --test-name-pattern 'TC-EXT-02' (must exit 0)"

@@ -1,0 +1,61 @@
+{
+  "handoff_id": "4a55dc20-cd55-4acb-a6d6-810eeba081b4",
+  "run_id": "WF03-GH616-20260809",
+  "step": "05b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-09T08:11:00Z",
+  "started_at": "2026-08-09T08:12:31Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 5",
+    "requirement_ids": [
+      "ISS-0635"
+    ],
+    "related_handoff_ids": [
+      "11f20005-0b75-4f45-a242-a9e030f14caa"
+    ],
+    "artifacts_in": [
+      "migrations/1138_iss0635_webhook_secret_ref_corrective.sql"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 5: Verify corrective migration 1138 for ISS-0635.\n1. Run zig build test (unit tests, must exit 0)\n2. Verify tenant_default.webhook_subscriptions has secret_ref and secret_key_id columns\n3. Run zig build test-integration -- --test-name-pattern TC-EXT-02",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "tenant_default.webhook_subscriptions has secret_ref and secret_key_id columns",
+      "TC-EXT-02 integration tests pass"
+    ],
+    "functions_to_call": [
+      "fn:write-test-report",
+      "fn:validate-completeness",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Unit tests PASS (exit 0). Corrective migration 1138 applied correctly: secret_ref and secret_key_id columns now exist in tenant_default.webhook_subscriptions. TC-EXT-02 integration: 2 PRE-EXISTING bugs exposed by the fix (INT-05: createSubscription ignores req.secret for signing; INT-08: conn loses search_path after commit on audit_entries query). 7 of 9 TC-EXT-02 tests PASS. 2 new ISS entries to file: ISS-0636 and ISS-0637.",
+    "artifacts_out": [
+      "tests/reports/report-20260809-WF03-GH616-20260809.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "TC-EXT-02-INT-05 FAIL: createSubscription() ignores req.secret field. Dispatcher signs only when secret_ref.len > 0 but req.secret is not persisted to secret_ref. Pre-existing bug hidden by C42703 before migration 1138. New issue: ISS-0636."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "TC-EXT-02-INT-08 FAIL: conn.queryRow fails with PgError.ServerError on audit_entries query. Suspected search_path loss after COMMIT. Pre-existing bug hidden by C42703 before migration 1138. New issue: ISS-0637."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Migration 1138 not applied to tenant_default by zig build migrate CLI (src/tools/migrate.zig only does public pass; provisionTenantSchema likely failed silently). Applied correctly by TestHarness.init() during test run. Production deployments apply per-tenant migrations on first API server restart."
+      }
+    ],
+    "next_action": "ORCH: file ISS-0636 and ISS-0637 as GitHub issues, add to global queue. Migration correctness VERIFIED. Route to RELEASE-VALIDATOR if severity allows skip."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T08:28:27Z"
+}

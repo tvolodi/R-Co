@@ -992,7 +992,6 @@ pub fn captureStackTrace(L: *bindings.LuaState, allocator: std.mem.Allocator) ![
     return try allocator.dupe(u8, buffer[0..len]);
 }
 
-
 /// LUA-11, design §4.1/§4.2 (ISS-0624 / GH #591). Discard every staged
 /// write: free each key and each `ScriptValue`'s owned bytes (recursively —
 /// `ScriptValue.deinit` already handles nested tables), then release the
@@ -1108,4 +1107,3 @@ pub fn extractValueInto(
         else => return errors.LuaError.TypeError,
     }
 }
-

@@ -879,6 +879,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0637",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/619",
+      "title": "TC-EXT-02-INT-08 conn loses search_path after COMMIT \u2014 audit_entries query fails",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-09T08:31:08Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

@@ -1,0 +1,128 @@
+run_id: WF03-GH616-20260809
+step: "05"
+agent: TEST-RUNNER
+report_date: "2026-08-09T08:28:27Z"
+issue: ISS-0635
+github_issue: "https://github.com/tvolodi/R-Co/issues/616"
+
+summary: >
+  WF-03 Step 5 TEST-RUNNER for ISS-0635 (missing secret_ref/secret_key_id columns
+  in tenant webhook_subscriptions). Unit tests PASS. Corrective migration 1138 applied
+  successfully to tenant_default schema via provisionTenantSchema. Columns verified.
+  TC-EXT-02 integration: 2 pre-existing bugs exposed by the fix; all other TC-EXT-02
+  tests PASS.
+
+overall_result: FAIL
+
+layers:
+  unit_tests:
+    command: "zig build test --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "All unit tests passed."
+
+  schema_verification:
+    command: >
+      docker-compose exec -T db_test psql -U bpm -d bpm_test
+      -c "\d tenant_default.webhook_subscriptions"
+    result: PASS
+    columns_present:
+      - name: secret_ref
+        type: text
+        nullable: YES
+      - name: secret_key_id
+        type: text
+        nullable: YES
+    notes: >
+      Columns were absent before test run. Applied via provisionTenantSchema
+      during TestHarness.init() (integration test binary startup). Migration 1138
+      applied to: public, tenant_default, tenant_2f66b39b..., tenant_d32a5e3e...,
+      tenant_2999a964..., tenant_f35c3b25... (6 schemas total).
+    migration_framework_note: >
+      zig build migrate CLI (src/tools/migrate.zig) only runs the public-schema pass.
+      Per-tenant application of all_schemas migrations happens via provisionTenantSchema(),
+      called from TestHarness.init() and from API server startup (main.zig).
+      In this run, zig build migrate (run at 08:11:25Z) did NOT apply 1138 to
+      tenant_default — most likely provisionTenantSchema failed silently (error caught
+      by the migrate.zig catch |err| warn block). The TestHarness then applied it
+      correctly at 08:12:31Z. Production deployments apply per-tenant migrations
+      on first API server restart after zig build migrate.
+
+  integration_tc_ext02:
+    command: >
+      zig build test-integration -- --test-name-pattern "TC-EXT-02"
+      (env: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test)
+    exit_code: 1
+    result: FAIL
+    svc_binary_summary: "8 pass, 5 fail (13 total)"
+    tc_ext02_breakdown:
+      passing:
+        - TC-EXT-02-INT-01
+        - TC-EXT-02-INT-02
+        - TC-EXT-02-INT-03
+        - TC-EXT-02-INT-04
+        - TC-EXT-02-INT-06
+        - TC-EXT-02-INT-07
+        - TC-EXT-02-INT-09
+      failing:
+        - id: TC-EXT-02-INT-05
+          name: "Signature header is present only for secret-configured subscription and matches body HMAC"
+          failure: "signed_receiver.signature_seen = false (expected true)"
+          location: "tests/integration/ext02_webhook_dispatch_test.zig:539"
+          root_cause: >
+            createSubscription() ignores CreateSubscriptionRequest.secret field.
+            The INSERT stores req.secret_ref (NULL -> '') but not req.secret.
+            webhook_dispatcher signs only when secret_ref.len > 0. Test passes
+            .secret = "ext02-secret" but that field is not persisted to secret_ref,
+            so no signing occurs.
+          classification: PRE_EXISTING_BUG — was previously hidden by C42703
+            (column secret_ref does not exist) before migration 1138 added the column.
+
+        - id: TC-EXT-02-INT-08
+          name: "Create/delete operations write OBS-03 audit rows atomically"
+          failure: "queryRow failed with PgError.ServerError"
+          location: "tests/integration/ext02_webhook_dispatch_test.zig:681"
+          root_cause: >
+            conn.queryRow on audit_entries fails with a PostgreSQL server error.
+            Suspected cause: conn loses its session-level search_path after the
+            prepareExt02Owner transaction commits (SET LOCAL search_path is
+            transaction-scoped; session reverts to default after COMMIT), causing
+            the SELECT on audit_entries to target public schema where the table
+            does not exist (42P01). Requires further diagnosis.
+          classification: PRE_EXISTING_BUG — was previously hidden by C42703
+            before migration 1138 added the column.
+
+  other_failures:
+    - description: >
+        3 non-TC-EXT-02 failures in the svc test binary (svc01, svc02 etc.) —
+        pre-existing, not related to ISS-0635.
+    - description: >
+        Multiple failures in test-integration-others-internal (iss101_timers,
+        exp103, idn03, etc.) — pre-existing, not related to ISS-0635.
+
+migration_correctness:
+  verdict: PASS
+  evidence:
+    - "secret_ref column: EXISTS in tenant_default.webhook_subscriptions (data_type: text, is_nullable: YES)"
+    - "secret_key_id column: EXISTS in tenant_default.webhook_subscriptions (data_type: text, is_nullable: YES)"
+    - "Migration 1138 recorded in schema_migrations for tenant_default"
+    - "Backfill: 0 rows in tenant_default.webhook_subscriptions (clean test env, no rows to backfill)"
+
+new_issues_to_file:
+  - local_id: ISS-0636
+    title: "createSubscription ignores req.secret field — webhook signing never activated via .secret"
+    severity: MAJOR
+    requirement: TC-EXT-02-INT-05
+    description: >
+      CreateSubscriptionRequest.secret is accepted but not persisted to the secret_ref
+      column. The dispatcher reads secret_ref to decide signing. Callers that pass
+      .secret = "value" expect signing but receive unsigned deliveries.
+
+  - local_id: ISS-0637
+    title: "TC-EXT-02-INT-08 conn loses search_path after transaction COMMIT — audit_entries query fails"
+    severity: MAJOR
+    requirement: TC-EXT-02-INT-08
+    description: >
+      The direct pool.Conn used for audit_entries verification in INT-08 appears to
+      lose its search_path after the prepareExt02Owner transaction commits.
+      SELECT on audit_entries returns PgError.ServerError (likely 42P01).

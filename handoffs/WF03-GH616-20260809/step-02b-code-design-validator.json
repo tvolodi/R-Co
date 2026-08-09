@@ -1,0 +1,55 @@
+{
+  "handoff_id": "7393ba03-bb5b-45ab-a200-6d3aef5c1231",
+  "run_id": "WF03-GH616-20260809",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-09T07:54:22Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 2b - Design validation",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/616",
+    "requirement_ids": [
+      "ISS-0635"
+    ],
+    "related_handoff_ids": [
+      "7a4d9185-aa6e-47f3-ad01-9f9853aa0040"
+    ],
+    "artifacts_in": [
+      "src/design/iss0635-gh616-webhook-secret-ref-migration.md"
+    ]
+  },
+  "task": {
+    "description": "Step 2b: Validate the corrective migration design for ISS-0635. Verify: (1) lint_design_artefact.py exits 0 with no BLOCKER/MAJOR, (2) migration is idempotent (ADD COLUMN IF NOT EXISTS + conditional UPDATE), (3) all_schemas scope (no -- scope: public header), (4) webhook_subscriptions table-existence guard present, (5) ADD COLUMN IF NOT EXISTS syntax correct for both columns.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0 with BLOCKER=0 MAJOR=0",
+      "Migration idempotency documented (ADD COLUMN IF NOT EXISTS + UPDATE WHERE IS NULL)",
+      "all_schemas scope confirmed (no -- scope: public header)",
+      "Table-existence guard via information_schema.tables confirmed",
+      "ADD COLUMN IF NOT EXISTS secret_ref TEXT and secret_key_id TEXT syntax correct"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/iss0635-gh616-webhook-secret-ref-migration.md validated. lint_design_artefact.py: BLOCKER=0 MAJOR=0 MINOR=7 exit=0. All four targeted checks PASS: (1) idempotent \u2014 ADD COLUMN IF NOT EXISTS + UPDATE WHERE secret_ref IS NULL OR secret_key_id IS NULL; (2) all_schemas scope \u2014 no -- scope: public header, documented in scope annotation table; (3) table-existence guard \u2014 IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = v_schema AND table_name = 'webhook_subscriptions'); (4) ADD COLUMN IF NOT EXISTS syntax correct for both columns. E030 MINORs are schema-qualified names in prose/SQL sketch \u2014 expected for corrective migration design (confirmed: MINOR-by-design per prior WF03 runs).",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "E030 x7 \u2014 schema-qualified names (information_schema.tables, public.tenant, public.schema_migrations) in prose/SQL block. Expected for corrective migration design; unavoidable in the SQL reference. Does not block PASS.",
+        "code": "E030"
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3) \u2014 implement migrations/1138_iss0635_webhook_secret_ref_corrective.sql"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T07:59:00Z",
+  "completed_at": "2026-08-09T07:59:00Z"
+}

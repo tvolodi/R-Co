@@ -1,0 +1,20 @@
+{
+  "id": "ISS-0637",
+  "title": "TC-EXT-02-INT-08: conn loses search_path after COMMIT — audit_entries query returns ServerError",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "discovered_in": "WF03-GH616-20260809",
+  "discovered_at": "2026-08-09T08:28:27Z",
+  "affected_areas": [
+    "tests/integration/ext02_webhook_dispatch_test.zig",
+    "src/db/pool.zig"
+  ],
+  "symptom": "TC-EXT-02-INT-08: queryRow fails with PgError.ServerError when querying audit_entries after prepareExt02Owner transaction commit",
+  "root_cause": "Suspected: pool.Conn loses search_path after transaction COMMIT. If SET search_path was SET LOCAL (transaction-scoped), the connection reverts to DB default after COMMIT and audit_entries lookup hits public schema (42P01 relation does not exist). Needs further diagnosis.",
+  "acceptance_criteria": [
+    "TC-EXT-02-INT-08 passes",
+    "Audit entries for webhook_subscription.create/delete are queryable via pool.Conn after commit"
+  ],
+  "notes": "Pre-existing bug hidden by C42703 before ISS-0635 migration 1138 added the column.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/619"
+}
