@@ -19,8 +19,15 @@
 
 DO $$
 BEGIN
--- scope: public
+-- scope: all_schemas
 -- ISS-0185: GLOBAL_REGISTRY only (3 table(s)); public canonical.
+-- ISS-0630 correction: this file also seeds event_type_registry (an
+-- unqualified, per-tenant business table per TNT-02 / lint_migration_schema.py
+-- BUSINESS_TABLES), so it cannot be declared -- scope: public (that would
+-- wrongly force event_type_registry to be public.-qualified, breaking its
+-- search_path-resolved per-tenant semantics and violating M001). all_schemas
+-- is safe here: the three CREATE TABLE IF NOT EXISTS ... public.* statements
+-- above are idempotent and correctly re-run harmlessly on the per-tenant pass.
 
     CREATE TABLE IF NOT EXISTS public.entity_definitions (
         id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -99,7 +106,7 @@ CREATE INDEX IF NOT EXISTS idx_erl_tenant_type_updated
 -- Register ENTITY_RECORD_CREATED, ENTITY_RECORD_UPDATED, ENTITY_RECORD_DELETED
 -- in event_type_registry so the event store can validate their payloads.
 
-INSERT INTO public.event_type_registry (name, schema_version, json_schema, description)
+INSERT INTO event_type_registry (name, schema_version, json_schema, description)
 VALUES
     ('ENTITY_RECORD_CREATED', 1,
      '{"type":"object","required":["entity_type","entity_def_version","record_id","field_values"],"properties":{"entity_type":{"type":"string","minLength":1,"maxLength":128},"entity_def_version":{"type":"integer","minimum":1},"record_id":{"type":"string","format":"uuid"},"field_values":{"type":"object"}}}'::jsonb,
