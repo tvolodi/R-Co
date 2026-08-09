@@ -300,11 +300,21 @@ test "svc01: on_delete_cascade removes scoped service when owner tenant deleted"
     try std.testing.expect(before.rows.len == 1);
 
     // Delete the owning tenant — CASCADE should remove the service.
+    // Two-part fix (ISS-0640 / GH-631):
+    //   1. Schema-qualify: TestHarness search_path='tenant_default,public' would
+    //      resolve unqualified 'tenant' to tenant_default.tenant, so the FK
+    //      cascade to public.service_catalog never fires.
+    //   2. Restore session_replication_role: TestHarness sets 'replica' to suppress
+    //      audit triggers, but RI_FKey_cascade_del has tgenabled='O' (origin-only)
+    //      and is therefore also disabled. Restore DEFAULT for this DELETE so the
+    //      cascade fires, then reset to 'replica' afterwards.
+    try h.conn.exec("SET session_replication_role = DEFAULT", &.{});
     try h.conn.exec(
-        \\DELETE FROM tenant WHERE id = $1::uuid
+        \\DELETE FROM public.tenant WHERE id = $1::uuid
     ,
         &.{tenant_hex},
     );
+    try h.conn.exec("SET session_replication_role = 'replica'", &.{});
 
     const after = try h.conn.query(
         std.testing.allocator,
