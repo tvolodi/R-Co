@@ -960,6 +960,26 @@
       "completed_at": "2026-08-09T09:59:31Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-380",
+      "issue_number": 380,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/380",
+      "title": "ISS-0117 \u2014 EXP-401 definition creation accepts invalid process graphs",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T09:59:51Z"
+      },
+      "added_at": "2026-08-09T09:59:51Z",
+      "started_at": "2026-08-09T09:59:51Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
