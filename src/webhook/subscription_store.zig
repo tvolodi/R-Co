@@ -1,5 +1,8 @@
 const std = @import("std");
 const db = @import("pool");
+const secrets = @import("../secrets/mod.zig");
+const webhook_keys = @import("../secrets/integration/webhook_keys.zig");
+const uuid = @import("../util/uuid.zig");
 
 pub const WebhookEventType = enum {
     instance_started,
@@ -113,6 +116,7 @@ pub fn validateCreateRequest(req: CreateSubscriptionRequest, production_mode: bo
         }
     }
     if (req.event_types.len == 0) return error.ValidationFailed;
+    if (req.secret != null and req.secret_ref != null) return error.ValidationFailed;
 }
 
 pub fn createSubscription(
@@ -123,6 +127,29 @@ pub fn createSubscription(
     production_mode: bool,
 ) SubscriptionStoreError!WebhookSubscription {
     try validateCreateRequest(req, production_mode);
+
+    // Convert a plaintext req.secret into a stored secret_ref/key_id BEFORE
+    // acquiring the connection for the INSERT below — putSecret() acquires its
+    // own connection internally, and nesting a second pool.acquire() inside an
+    // already-held lease exhausts the pool (see GH-521 / ISS-0130).
+    var owned_secret_ref: ?[]u8 = null;
+    defer if (owned_secret_ref) |value| allocator.free(value);
+    var owned_secret_key_id: ?[]u8 = null;
+    defer if (owned_secret_key_id) |value| allocator.free(value);
+
+    if (req.secret) |plaintext| {
+        const stored = storeWebhookSecret(allocator, pool, actor_id, plaintext) catch |err| switch (err) {
+            error.PoolExhausted => return error.PoolExhausted,
+            error.OutOfMemory => return error.OutOfMemory,
+            else => return error.PersistenceFailed,
+        };
+        defer stored.deinit(allocator);
+        owned_secret_ref = allocator.dupe(u8, stored.secret_ref) catch return error.OutOfMemory;
+        owned_secret_key_id = allocator.dupe(u8, stored.key_id) catch return error.OutOfMemory;
+    }
+
+    const effective_secret_ref: ?[]const u8 = if (owned_secret_ref) |value| value else req.secret_ref;
+    const effective_secret_key_id: ?[]const u8 = if (owned_secret_key_id) |value| value else req.secret_key_id;
 
     const conn = pool.acquire() catch |err| switch (err) {
         db.PoolError.ExhaustedPool => return error.PoolExhausted,
@@ -167,7 +194,7 @@ pub fn createSubscription(
         \\  secret_ref,
         \\  secret_key_id
     ,
-        &.{ owner_id, req.target_url, req.secret_ref orelse "", req.secret_key_id orelse "", event_types_pg },
+        &.{ owner_id, req.target_url, effective_secret_ref orelse "", effective_secret_key_id orelse "", event_types_pg },
     ) catch return error.PersistenceFailed;
     if (rows.rows.len == 0) return error.PersistenceFailed;
 
@@ -175,7 +202,7 @@ pub fn createSubscription(
     const subscription_id = allocator.dupe(u8, row[0] orelse "") catch return error.OutOfMemory;
     defer allocator.free(subscription_id);
 
-    const created = try rowToSubscription(allocator, row, req.secret_ref != null);
+    const created = try rowToSubscription(allocator, row, effective_secret_ref != null);
     errdefer created.deinit(allocator);
 
     var inserted_rows = rows;
@@ -183,6 +210,32 @@ pub fn createSubscription(
 
     conn.commit() catch return error.PersistenceFailed;
     return created;
+}
+
+fn storeWebhookSecret(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    actor_id: []const u8,
+    secret_value: []const u8,
+) secrets.SecretError!secrets.PutSecretOutput {
+    var secret_store = try secrets.Store.init(allocator, pool, .{
+        .wrapping_key_ref = "local:master",
+        .wrapping_key_version = "v1",
+        .master_key_hex = "0000000000000000000000000000000000000000000000000000000000000000",
+    });
+    var owner = webhook_keys.WebhookKeyOwner{ .store = &secret_store };
+    const suffix = try uuid.newUuidV4(allocator);
+    defer allocator.free(suffix);
+    const secret_name = try std.fmt.allocPrint(allocator, "subscription-{s}", .{suffix});
+    defer allocator.free(secret_name);
+
+    return owner.putWebhookHmacSecret(
+        allocator,
+        "default",
+        secret_name,
+        secret_value,
+        actor_id,
+    );
 }
 
 fn resolveOwnerUserId(allocator: std.mem.Allocator, conn: anytype, actor_id: []const u8) ![]u8 {

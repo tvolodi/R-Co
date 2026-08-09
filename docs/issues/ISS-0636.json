@@ -1,7 +1,7 @@
 {
   "id": "ISS-0636",
   "title": "createSubscription ignores req.secret — webhook signing never activated via .secret field",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "discovered_in": "WF03-GH616-20260809",
   "discovered_at": "2026-08-09T08:28:27Z",
@@ -16,5 +16,8 @@
     "TC-EXT-02-INT-05 passes"
   ],
   "notes": "Pre-existing bug hidden by C42703 (column secret_ref does not exist) before ISS-0635 migration 1138 added the column.",
+  "run_id": "WF03-GH618-20260809",
+  "workflow_id": "WF-03",
+  "resolution": "src/webhook/subscription_store.zig: createSubscription now converts a non-null req.secret into a real secret_ref/secret_key_id pair via secrets.Store.putSecret (through the existing webhook_keys.WebhookKeyOwner.putWebhookHmacSecret helper, same convention already used by src/api/routes/webhooks.zig's HTTP route layer), BEFORE acquiring the connection used for the INSERT (putSecret acquires its own connection internally; nesting a second pool.acquire() inside an already-held lease would exhaust the pool, per GH-521/ISS-0130). validateCreateRequest now also rejects req.secret and req.secret_ref both being non-null (mirrors the HTTP layer's existing secret_conflict check). src/api/routes/webhooks.zig's handleCreateSubscription is unchanged — it already pre-converts and passes secret=null, so the new in-store conversion is a no-op on that path. Design: src/design/fix-ISS-0636.md.",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/618"
 }
