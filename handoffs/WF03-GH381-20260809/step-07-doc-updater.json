@@ -1,0 +1,52 @@
+{
+  "handoff_id": "98549edf-5b3a-468c-9a55-2d695f7cb098",
+  "run_id": "WF03-GH381-20260809",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-09T07:32:20Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 7 - Documentation update",
+    "requirement_ids": [
+      "ISS-0118"
+    ],
+    "related_handoff_ids": [
+      "0af9a3b7-9006-43f3-93eb-2c06b5bcd769"
+    ],
+    "artifacts_in": [
+      "tests/integration/ext02_webhook_dispatch_test.zig",
+      "tests/reports/report-20260809-WF03-GH381-20260809.yaml"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md with ISS-0118/GH-381 fix entry. Update docs/issues/ISS-0118.json to RESOLVED. Close GitHub issue #381.",
+    "acceptance_criteria": [
+      "CHANGELOG.md has a fix entry for ISS-0118 under [Unreleased]",
+      "docs/issues/ISS-0118.json status = RESOLVED with resolved_at and resolution fields",
+      "GitHub issue #381 is closed"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with ISS-0118 fix entry. ISS-0118.json set to RESOLVED (resolved_at 2026-08-09T07:32:11Z). GitHub issue #381 closed with fix comment. Registry cleanup done.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0118.json",
+      "handoffs/WF03-GH381-20260809/step-07-doc-updater.json",
+      "handoffs/registry.json"
+    ],
+    "issues": [],
+    "next_action": "Step Final \u2014 git-merge (squash PR, delete branch, return to main)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T07:32:20Z",
+  "completed_at": "2026-08-09T07:39:38Z"
+}

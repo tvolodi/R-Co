@@ -1,0 +1,19 @@
+{
+  "discovered_by": "TEST-RUNNER WF03-GH381-20260809 step-05",
+  "id": "ISS-0634",
+  "acceptance_criteria": [
+    "TC-EXT-02-INT-08 passes",
+    "OBS-03 audit rows written on create/delete in tenant schema"
+  ],
+  "severity": "MAJOR",
+  "description": "TC-EXT-02-INT-08 (Create/delete operations write OBS-03 audit rows atomically) fails with PgError.ServerError at ext02_webhook_dispatch_test.zig:681 when querying webhook_subscription_audit or related audit table. The test expects audit rows to be written atomically on subscription create/delete. Either the audit table does not exist in the tenant schema, a required column is missing, or the query is using wrong schema context.",
+  "affected_areas": [
+    "src/webhook/subscription_store.zig",
+    "tests/integration/ext02_webhook_dispatch_test.zig",
+    "migrations/"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/615",
+  "status": "OPEN",
+  "title": "TC-EXT-02-INT-08: PgError.ServerError querying OBS-03 audit rows for webhook subscription",
+  "discovered_at": "2026-08-09T07:27:46Z"
+}

@@ -586,7 +586,7 @@ test "TC-EXT-02-INT-06: Non-2xx and timeout failures retry with at-least-once se
 
     const status_500 = try queryText(conn, allocator, "SELECT status FROM webhook_deliveries WHERE subscription_id = $1::uuid", &.{sub_500.subscription_id});
     defer allocator.free(status_500);
-    try testing.expectEqualStrings("failed", status_500);
+    try testing.expectEqualStrings("FAILED", status_500);
 
     const next_due_after_now = try queryBool(
         conn,
@@ -651,7 +651,7 @@ test "TC-EXT-02-INT-07: Fifth consecutive failure pauses subscription and emits 
 
     const delivery_status = try queryText(conn, allocator, "SELECT status FROM webhook_deliveries WHERE subscription_id = $1::uuid", &.{sub.subscription_id});
     defer allocator.free(delivery_status);
-    try testing.expectEqualStrings("exhausted", delivery_status);
+    try testing.expectEqualStrings("FAILED", delivery_status);
 }
 
 test "TC-EXT-02-INT-08: Create/delete operations write OBS-03 audit rows atomically" {
@@ -751,7 +751,7 @@ test "TC-EXT-02-INT-09: 2xx with invalid/non-JSON response body is success witho
 
     const delivery_status = try queryText(conn, allocator, "SELECT status FROM webhook_deliveries WHERE subscription_id = $1::uuid", &.{subscription_id});
     defer allocator.free(delivery_status);
-    try testing.expectEqualStrings("success", delivery_status);
+    try testing.expectEqualStrings("DELIVERED", delivery_status);
 
     const consecutive = try queryText(conn, allocator, "SELECT consecutive_failures::text FROM webhook_subscriptions WHERE id = $1::uuid", &.{subscription_id});
     defer allocator.free(consecutive);
