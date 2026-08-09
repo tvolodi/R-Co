@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0632 — `lint_sql_param_types.py` extended to detect 42P18 (bare `$N` in `jsonb_build_object` variadic-any calls) (MINOR)** ([GitHub #610](https://github.com/tvolodi/R-Co/issues/610))
+
+- **The gap:** `lint_sql_param_types.py` only detected C42883 patterns (asymmetric `col::text = $N` casts and integer literals vs TEXT columns). It did not detect bare `$N` parameters used inside variadic-any functions (`jsonb_build_object`, `json_build_object`, `format`, `row`) where PostgreSQL cannot infer the parameter type at prepare time, producing `ERROR 42P18: could not determine data type of parameter $N` at runtime — the same class of error that produced ISS-0120/GH-383.
+- **The fix:** four additions to `tools/lint_sql_param_types.py`: a `VARIADIC_ANY_FUNCS` frozenset, a `FUNC_CALL_RE` pattern matching variadic-any function calls in SQL strings, a `BARE_PARAM_IN_VARIADIC_RE` pattern matching uncast `$N` inside those calls, a `_extract_paren_block()` helper that handles nested parentheses, and a `lint_variadic_params()` function integrated into `lint_file()` as a new MAJOR-severity rule. Bare `$N` inside these functions now emits `[MAJOR] 42P18: bare parameter $N in jsonb_build_object call (needs explicit ::type cast)`.
+- **Verified:** `python3 tools/lint_sql_param_types.py src tests` exits 0 with 0 BLOCKER/0 MAJOR/0 MINOR on the current codebase (the one known occurrence — `$2` in `markRestoredOrphanInTx` — was already fixed by ISS-0120/GH-383). Synthetic detection test confirmed: a temporary file containing a bare `$2` in `jsonb_build_object` emits `[MAJOR]`, and `$2::text` does not. `zig build test` exits 0 (all suites passed). Test report: `tests/reports/report-20260809-WF03-GH610-20260809.yaml`.
+- **No requirement IDs involved** — linter tooling improvement, not a requirement change. Design: `src/design/iss0632-gh610-lint-42p18.md`.
+
 **ISS-0120 — EXP-402 `markRestoredOrphanInTx` 42P18 error fixed by adding `::text` cast to SQL parameter `$2` (MAJOR)** ([GitHub #383](https://github.com/tvolodi/R-Co/issues/383))
 
 - **The bug:** `markRestoredOrphanInTx` in `src/engine/reconstruction.zig` used `$2` in a `jsonb_build_object(...)` call where PostgreSQL could not infer the parameter's data type, producing `ERROR 42P18: could not determine data type of parameter $2` and causing TC-EXP-402-02 to fail at runtime.
