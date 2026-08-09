@@ -1,0 +1,31 @@
+run_id: WF03-GH631-20260809
+report_date: "2026-08-09T12:41:25Z"
+agent: TEST-RUNNER
+workflow_step: "5"
+
+issue_ref: ISS-0640
+github_issue: "https://github.com/tvolodi/R-Co/issues/631"
+fix_commit: 7bb708f3
+
+layers:
+  - name: unit
+    command: "zig build test --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "All unit tests passed (exit 0)"
+
+  - name: integration-svc
+    command: "zig build test-integration-svc --summary all"
+    env:
+      BPM_TEST_DB_URL: "postgres://bpm:bpm@localhost:5434/bpm_test"
+      BPM_DB_URL: "postgres://bpm:bpm@localhost:5434/bpm_test"
+      BPM_IDP_BASE_URL: "http://localhost:8081"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 6/6 steps succeeded; 35/35 tests passed"
+    tests_total: 35
+    tests_passed: 35
+    tests_failed: 0
+
+overall_result: PASS
+issues: []
