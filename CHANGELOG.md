@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0116 — TC-OBS-05-INT-02/03 dead-letter queue audit and SAVEPOINT isolation fixed (MAJOR)** ([GitHub #379](https://github.com/tvolodi/R-Co/issues/379))
+
+- **Root cause (three layers):** (1) `obs05_dlq_test.zig` queried `audit_entries.resource_id = $1::uuid` but `GBL-120`/ISS-103 changed that column from `UUID` to `TEXT` — producing `C42804` at runtime. (2) GBL-121 fixed `bpm_audit_resource_info` in the `public` schema to handle `dead_letter_items`, but tenant schemas skipped GBL-* migrations — `tenant_default.bpm_audit_resource_info` still referenced the old `dead_letter_queue` table name, so `r_id` returned `NULL` and `bpm_audit_on_mutation` wrote no audit rows. (3) `TC-OBS-05-INT-03` placed a `SAVEPOINT` outside a transaction block and created a trigger inside an uncommitted transaction invisible to `handleDiscard`'s separate pool connection.
+- **The fix (WF03-GH379-20260809):** (1) Removed `::uuid` casts from both `resource_id = $1` queries in `obs05_dlq_test.zig` (lines 395, 462). (2) New migration `1139_iss0116_fix_bpm_audit_resource_info_dead_letter_items.sql` recreates `bpm_audit_resource_info` in tenant schemas to handle `dead_letter_items` with `resource_type = 'dlq'`. (3) Replaced `SAVEPOINT`-based isolation in TC-OBS-05-INT-03 with defer-based cleanup and autocommit DDL so the trigger is visible to `handleDiscard`'s pool connection.
+- **Verified:** `zig build test` exits 0. TC-OBS-05-INT-02 and TC-OBS-05-INT-03 both PASS. TC-SCH-303 4/4 PASS. Test report: `tests/reports/report-20260809-WF03-GH379-20260809.yaml`.
+- **No requirement status change** — bugfix in DLQ audit trigger and test isolation.
+
 **ISS-0636 — `createSubscription` now converts `req.secret` to a stored `secret_ref` (MAJOR)** ([GitHub #618](https://github.com/tvolodi/R-Co/issues/618))
 
 - **Root cause:** `webhook.subscription_store.createSubscription` accepted a `CreateSubscriptionRequest.secret` field but never referenced it after reading it into the struct — the `INSERT` only ever wrote `req.secret_ref orelse ""`. Any direct caller supplying plaintext `.secret` (bypassing the HTTP layer's own pre-conversion) got a subscription with no `secret_ref`, so `dispatcher.zig`'s `secret_ref.len > 0` check never signed its webhook deliveries. `src/api/routes/webhooks.zig`'s HTTP route was already unaffected — it pre-converts `secret` → `secret_ref` via `secrets.Store.putSecret` before calling the store.
