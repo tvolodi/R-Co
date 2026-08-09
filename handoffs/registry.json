@@ -21659,6 +21659,28 @@
       "created_at": "2026-08-09T04:08:00Z",
       "status": "COMPLETED",
       "stage": "Step 00 - git-setup"
+    },
+    {
+      "handoff_id": "5ba7c894-838e-4fff-8da1-790085bf1670",
+      "file": "handoffs/WF03-GH606-20260809/step-00.5-issue-fixer.json",
+      "run_id": "WF03-GH606-20260809",
+      "step": "00.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T04:11:37Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 0.5"
+    },
+    {
+      "handoff_id": "aa1837f0-cadd-4a25-9c7b-389940b238f0",
+      "file": "handoffs/WF03-GH606-20260809/step-01-issue-fixer.json",
+      "run_id": "WF03-GH606-20260809",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T04:12:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 1"
     }
   ],
   "last_updated": "2026-08-09T02:26:34Z"

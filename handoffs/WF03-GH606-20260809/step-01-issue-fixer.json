@@ -1,0 +1,73 @@
+{
+  "handoff_id": "aa1837f0-cadd-4a25-9c7b-389940b238f0",
+  "run_id": "WF03-GH606-20260809",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T04:12:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 1",
+    "requirement_ids": ["DB-02"],
+    "related_handoff_ids": ["5ba7c894-838e-4fff-8da1-790085bf1670"],
+    "artifacts_in": [
+      "docs/issues/ISS-0631.json",
+      "docs/issues/ISS-0150.json",
+      "tests/integration/db_integration_test.zig",
+      "src/db/pool.zig",
+      "docker-compose.yml"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 1: Root-cause diagnosis for TC-DB-02-04 flakiness under concurrent-binary contention. Read src/db/pool.zig and tests/integration/db_integration_test.zig. Find TC-DB-02-04 test. Identify why it flakes under concurrent test binary runs. Look for shared-state, hardcoded UUIDs, race conditions, or connection-count assumptions.",
+    "acceptance_criteria": [
+      "Root cause identified with file:line evidence",
+      "Failure category classified (A=Logic/D=Test/E=Environment)",
+      "Fix scope identified (≤5 files)"
+    ],
+    "functions_to_call": ["fn:search-issues"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause confirmed: Category A — test-design logic error compounded by environment constraint. TC-DB-02-04 at tests/integration/db_integration_test.zig:229-267 calls Pool.init(pool_size=200) which eagerly opens 200 PostgreSQL connections in src/db/pool.zig:757 (`pg.Conn.connectUrl catch return ConnectionFailed`). docker-compose.yml line 60 sets db_test max_connections=250. When zig build test-integration runs 20+ binaries in parallel, aggregate connections exceed 50, leaving <200 slots free, so the 200th connectUrl call is rejected by PostgreSQL and Pool.init returns ConnectionFailed instead of the expected success.",
+    "artifacts_out": [],
+    "issues": [],
+    "diagnosis": {
+      "failure_category": "A",
+      "category_description": "Test-design logic error: TC-DB-02-04's upper-boundary live-connection sub-test (pool_size=200) assumes exclusive access to the database's full connection budget, which is never true during zig build test-integration.",
+      "root_cause": {
+        "mechanism": "Pool.init() opens all pool_size connections eagerly at startup (src/db/pool.zig line ~757: `pg.Conn.connectUrl(io, allocator, config.url) catch return PoolError.ConnectionFailed`). The test calls Pool.init(pool_size=200) requiring 200 free slots. docker-compose.yml sets max_connections=250 for db_test (line 60). Concurrent test binaries (20+ during zig build test-integration) each hold 1-5 connections via TestHarness and makePool(pool_size=5). Aggregate concurrent connections frequently exceed 50, leaving <200 free slots. The 200th connectUrl call is rejected by PostgreSQL with 'FATAL: too many connections', which Pool.init surfaces as ConnectionFailed — the test then fails with `error.ConnectionFailed` instead of succeeding.",
+        "evidence": [
+          "src/db/pool.zig:~757 — Pool.init loop: `pg.Conn.connectUrl(io, allocator, config.url) catch return PoolError.ConnectionFailed`",
+          "src/db/pool.zig:~734 — Pool.init validates pool_size first (< 2 or > 200 → InvalidPoolSize), then opens connections — no early return on valid pool_size",
+          "tests/integration/db_integration_test.zig:229 — `test \"TC-DB-02-04: invalid pool_size returns InvalidPoolSize; boundary values succeed\"`",
+          "tests/integration/db_integration_test.zig:261-267 — `var pool200 = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 200 });` with no pre-check for available connections",
+          "docker-compose.yml:60 — `command: postgres -c max_connections=250` (db_test service)",
+          "ISS-0150.json additional_flaky_finding: 'observed failing in 1 of 3 runs, passing in 2'"
+        ],
+        "not_a_race_condition": "The failure is not a classic data race — there is no shared mutable state between test binaries beyond the PostgreSQL connection count. The contention is purely at the PostgreSQL server's max_connections limit.",
+        "not_hardcoded_uuid": "TC-DB-02-04 does not use hardcoded UUIDs. The flakiness is connection-count-driven, not isolation-driven."
+      },
+      "fix_scope": {
+        "files": [
+          {
+            "path": "tests/integration/db_integration_test.zig",
+            "change": "In TC-DB-02-04, before Pool.init(pool_size=200): query `SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()` via a makePool(url) connection to get current_conn, and `SHOW max_connections` to get max_conn. Compute safe_pool_size = @min(200, max_conn_int - current_conn_int - 5). If safe_pool_size < 2: skip upper-boundary live test with std.debug.print diagnostic. Otherwise: call Pool.init(pool_size=safe_pool_size) and verify it succeeds. The pool_size=201 InvalidPoolSize check (dummy URL, no network call) remains unchanged."
+          },
+          {
+            "path": "docker-compose.yml",
+            "change": "Raise db_test max_connections from 250 to 500. This reduces pressure under normal concurrent runs, making the safe_pool_size pre-check a safety net rather than the primary fix."
+          }
+        ],
+        "max_files": 2,
+        "rationale": "Two files. docker-compose.yml raises the capacity ceiling so normal runs have sufficient headroom. The test pre-check makes the test deterministic even under extreme parallelism or degraded environments where even 500 connections are insufficient."
+      }
+    },
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2) for fix design artefact"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T04:12:00Z",
+  "completed_at": "2026-08-09T04:14:22Z"
+}
