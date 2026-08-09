@@ -1071,14 +1071,11 @@
       "labels": [
         "bug"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI-loop",
-        "locked_at": "2026-08-09T12:46:58Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T12:46:58Z",
       "started_at": "2026-08-09T12:46:58Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T12:56:10Z",
       "run_id": null,
       "deferred_reason": null
     }
