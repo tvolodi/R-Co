@@ -5182,12 +5182,13 @@ requirements:
     - src/lua/executor.zig
     - src/lua/events.zig
     - src/lua/luajit_bindings.zig
+    - src/lua/host_context.zig
     test_spec: tests/specs/LUA-16.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    last_updated: '2026-08-08T23:11:31Z'
+    last_updated: '2026-08-09T01:19:57Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo

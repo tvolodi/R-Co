@@ -1,0 +1,64 @@
+{
+  "handoff_id": "0b7fc05c-4fa5-47c8-b6db-31c789058f46",
+  "run_id": "WF03-GH595-20260809",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH595-20260809/step-02b-code-design-validator.json",
+  "created_at": "2026-08-09T00:32:54Z",
+  "started_at": "2026-08-09T00:32:54Z",
+  "completed_at": "2026-08-09T00:37:10Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-16"
+    ],
+    "related_handoff_ids": [
+      "b47646df-dcd4-4a70-a622-70e54cb966af",
+      "1e6d4a5c-8b3f-4a2e-9c7d-5f8a2b6e4d10"
+    ],
+    "artifacts_in": [
+      "src/design/iss0628-lua16-errfunc-stacktrace.md",
+      "src/lua/executor.zig",
+      "src/lua/host_context.zig",
+      "src/lua/luajit_bindings.zig",
+      "src/lua/iss0625_lua_12_15_16_test.zig",
+      "tests/integration/iss0625_lua_12_15_16_test.zig",
+      "docs/issues/ISS-0628.json"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0628-lua16-errfunc-stacktrace.md before BACKEND-DEV implements it. This design fixes GH-595: ScriptErrorPayload.stack_trace is always empty for real LuaJIT runtime errors because executor.zig's lua_pcall call has no message handler installed. The design installs a custom lua_CFunction message handler (NOT debug.traceback, which is unreachable since the sandbox never opens the debug library) that captures the trace while call frames are still live, storing it on a new LUA_REGISTRYINDEX channel (mirroring LUA-15's existing FAILURE_REASON_KEY pattern) so the existing err_msg extraction code needs zero changes.\n\nORCH already independently verified several of this design's most load-bearing claims against real source: (1) confirmed the exact stack shape at the lua_pcall call site (luaL_loadbuffer is genuinely the first thing pushed after createSandboxedState returns, matching design section 2.1's claim), (2) confirmed host_context.zig genuinely has FAILURE_REASON_KEY / readExplicitFailure / clearExplicitFailure as an existing, working precedent for the registry-channel pattern the design proposes extending with a new STACK_TRACE_KEY, (3) confirmed stdlib.zig's loadSafeStdlib genuinely never opens debug (SBX-1), confirming the design's central correction to GH-595's own filed body is accurate, (4) confirmed lint_design_artefact.py exits 0.\n\nYOUR JOB: run your own full independent validation. In particular:\n1. Read the ENTIRE design fresh (494 lines).\n2. Verify section 1's fixed-buffer-not-allocator decision is genuinely necessary (not just asserted) -- confirm a lua_CFunction's callconv(.c) signature really cannot carry an allocator parameter, and that the reasoning against routing through host_context.contextFromState (no defined ownership for a failed allocation mid-unwind) is sound.\n3. Verify section 2's push-ordering instructions are precise enough for BACKEND-DEV to implement without ambiguity -- trace through the exact sequence yourself and confirm there's no missing step or wrong-order trap.\n4. Verify section 3's registry-channel trace-propagation decision against the ACTUAL host_context.zig readExplicitFailure/setExplicitFailure/clearExplicitFailure code (read it yourself, don't just trust the design's description) -- confirm the proposed readStackTrace/STACK_TRACE_KEY genuinely mirrors that pattern correctly, and confirm the claim that err_msg extraction at executor.zig needs zero changes is actually true given how the handler is specified to behave (transparent pass-through, does not modify the stack value it receives).\n5. Verify section 4's test updates are complete and genuinely mutation-checkable -- read the actual TC-ISS-0625-LUA-16-02 and TC-ISS-0625-LUA-16-int-01 tests yourself to confirm the design's characterization of their current state (including the claimed stale debug.traceback comment and wrong ISS-0626 cross-reference) is accurate, and that the new TC-ISS-0628-LUA-16-stacktrace-01's mutation check (revert handler installation -> test must fail via empty trace) is well-specified.\n6. Verify section 5's limiter-interaction decision (accepted in-scope, no suppression) is adequately justified -- confirm independently that no existing test asserts an empty stack trace conditioned on a limiter trip (grep for it yourself).\n7. Verify section 6's claim that LUA-15's explicit-failure path is completely unaffected, including the second-order note about a stale STACK_TRACE_KEY value after an explicit failure being harmless -- trace through the control flow yourself to confirm no behavior-visible staleness is actually possible.\n8. Confirm the error taxonomy section is adequate (no new LuaError variant, fail-soft convention preserved).",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR",
+      "Fixed-buffer decision verified necessary against real callconv(.c) constraints",
+      "Push-ordering instructions verified precise and unambiguous",
+      "Registry-channel trace propagation verified against real host_context.zig code",
+      "err_msg-unchanged claim verified true",
+      "Test update claims verified against real current test file content",
+      "Mutation check for new test verified well-specified",
+      "Limiter-interaction decision verified adequately justified",
+      "LUA-15 non-interference claim verified via control-flow trace"
+    ],
+    "functions_to_call": [
+      "fn:validate-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Independently validated src/design/iss0628-lua16-errfunc-stacktrace.md against real source (executor.zig, host_context.zig, luajit_bindings.zig, instruction_limiter.zig, stdlib.zig, both test files). lint_design_artefact.py exits 0. All load-bearing claims confirmed accurate: stack shape at call site, FAILURE_REASON_KEY/readExplicitFailure mirroring, lua_CFunction callconv(.c) signature (no allocator param), push-ordering sequence, err_msg-unchanged claim (transparent pass-through semantics), stale test comment/title/ISS-0626 cross-ref, LUA-15 non-interference control flow, and the no-existing-test-conditions-empty-trace-on-limiter-trip grep. One MINOR wording note (not a defect) filed below.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Section 1.1's rejection of the registry-channel/contextFromState allocator route states 'the handler cannot errdefer across a callconv(.c) boundary the way a normal Zig function can' -- this is imprecise as literally written: defer/errdefer work normally inside any function body regardless of its callconv, including a lua_CFunction. Verified: MemoryLimiter.alloc/defaultAlloc (the actual lua_Alloc callbacks) are also callconv(.c) and are ordinary Zig functions internally. The real constraint the design is reaching for is different and still valid: errfuncHandler's signature returns c_int, not a Zig error union, so a fallible allocation inside it has no way to propagate error.OutOfMemory to a caller that could act on it -- any failure must be caught and squashed to a c_int/side-effect inline, which is exactly what the fixed buffer already achieves without ever touching an allocator. The design's conclusion (fixed buffer, no allocator) is correct and adequately justified by this actual reason and by direct analogy to raiseLimit/raiseMessage's proven precedent (both confirmed by source read) -- only the one sentence's phrasing of why is loose. Does not block BACKEND-DEV: the public interface and push-ordering sections BACKEND-DEV implements against are unaffected by this wording. Recommend CODE-DESIGNER tighten the sentence in a future pass, not a rework cycle."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
