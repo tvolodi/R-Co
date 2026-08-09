@@ -1682,6 +1682,16 @@ pub fn build(b: *std.Build) void {
     });
     const run_iss102_integration_tests = addIntegrationRun(b, iss102_integration_tests, migrations_dir, clean_test_db);
 
+    const idn02_group_management_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/idn02_group_management_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_idn02_group_management_integration_tests = addIntegrationRun(b, idn02_group_management_integration_tests, migrations_dir, clean_test_db);
+
     const iss103_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/audit_iss103_test.zig"),
@@ -2322,6 +2332,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss102_step = b.step("test-integration-iss102", "Run ISS-102 tasks.claimed_by and real claim path integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss102_step.dependOn(&clean_test_db.step);
     test_integration_iss102_step.dependOn(&run_iss102_integration_tests.step);
+
+    const test_integration_idn02_step = b.step("test-integration-idn02", "Run IDN-02 group management integration tests, including group-task claim/complete authorization (requires BPM_TEST_DB_URL)");
+    test_integration_idn02_step.dependOn(&clean_test_db.step);
+    test_integration_idn02_step.dependOn(&run_idn02_group_management_integration_tests.step);
 
     const test_integration_iss103_step = b.step("test-integration-iss103", "Run ISS-103 audit_entries.resource_id TEXT migration integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss103_step.dependOn(&clean_test_db.step);
