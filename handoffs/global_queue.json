@@ -449,14 +449,11 @@
       "labels": [
         "bug"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-09T02:01:32Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T02:01:32Z",
       "started_at": "2026-08-09T02:01:32Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T03:14:29Z",
       "run_id": null,
       "deferred_reason": null
     },

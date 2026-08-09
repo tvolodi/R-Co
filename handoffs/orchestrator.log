@@ -611,3 +611,7 @@
 2026-08-09T02:34:53Z | ROUTE | WF03-GH591-20260809 | 8e15c289 | ORCH -> TEST-RUNNER | IN_PROGRESS (Step 4, full suite verification of LUA-11/13 + reconciled TC-LUA-10-03 fix)
 2026-08-09T02:44:29Z | COMPLETE | WF03-GH591-20260809 | 8e15c289 | TEST-RUNNER | PASS -- 112/112 test-lua x6 runs, 21 new LUA-11/13 cases confirmed, no regression
 2026-08-09T02:46:06Z | ROUTE | WF03-GH591-20260809 | 4c00f70d | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize GH-591 LUA-11/13)
+2026-08-09T03:14:37Z | COMPLETE | WF03-GH591-20260809 | 4c00f70d | DOC-UPDATER | PASS -- CHANGELOG + LUA-11/13 RELEASED, PR #603 created
+2026-08-09T03:14:37Z | GIT_MERGE | WF03-GH591-20260809 | 4c00f70d | DOC-UPDATER | PR #603 squash-merged to main (890c522ca0dc75fdd7fe76e9039bb5b9dbce087c); resolved genuine conflict against GH-595/GH-600 (merged to main mid-flight) -- CHANGELOG both entries kept, orchestrator.log chronological union, registry.json union by handoff_id, global_queue.json union by issue_id + stale GH-600 lock released; branch feature/WF03-GH591-20260809 deleted (verified via git ls-remote); GH #591 auto-closed
+2026-08-09T03:14:37Z | BOARD_UPDATE | WF03-GH591-20260809 | 4c00f70d | DOC-UPDATER | Issue #591 project board already at Done (non-UAT-scoped, auto-advanced on close); implemented+done targets both no-op confirmed
+2026-08-09T03:14:37Z | WF03_COMPLETE | WF03-GH591-20260809 | -------- | ORCH | ISS-0624/GH-591 RESOLVED. Repo on clean main at 890c522.
