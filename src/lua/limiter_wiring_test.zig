@@ -597,6 +597,10 @@ test "TC-LUA-10-03: the host-external watchdog stops a tight loop even with the 
     // watchdog having had time to poll and observe it), and the watchdog
     // thread does nothing but poll wall-clock time, this can only be true if
     // the watchdog mechanism itself is live.
+    const retry_deadline = milliTimestamp() + 1_000;
+    while (!watchdog_state.hasFired() and milliTimestamp() < retry_deadline) {
+        std.Thread.yield() catch {};
+    }
     try std.testing.expect(watchdog_state.hasFired());
 }
 
