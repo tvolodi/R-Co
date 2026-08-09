@@ -601,3 +601,5 @@
 2026-08-09T01:48:03Z | ROUTE | WF03-GH600-20260809 | 2e5c0532 | ORCH -> TEST-RUNNER | IN_PROGRESS (Step 4, GH-600 flake fix verification)
 2026-08-09T01:54:48Z | COMPLETE | WF03-GH600-20260809 | 2e5c0532 | TEST-RUNNER | PASS -- zig build test exit0, zig build test-lua 8/8 runs 91/91 clean, 19 cumulative clean post-fix runs
 2026-08-09T01:56:00Z | ROUTE | WF03-GH600-20260809 | e45c9e67 | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize GH-600 flake fix)
+2026-08-09T02:00:05Z | COMPLETE | WF03-GH600-20260809 | e45c9e67 | DOC-UPDATER | PASS -- CHANGELOG updated, PR #602 merged (squash, 8d49717), branch deleted, issue #600 closed, board at Done, main clean
+2026-08-09T02:00:05Z | MERGE | WF03-GH600-20260809 | e45c9e67 | DOC-UPDATER | PR #602 squash-merged to main (8d49717), feature/WF03-GH600-20260809 deleted
