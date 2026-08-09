@@ -1166,14 +1166,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/643",
       "title": "migrations.zig has no tenant-only scope primitive \u2014 13 PER_TENANT shadow tables from ISS-0641 will keep recurring on cold-start",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-09T17:08:43Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T17:08:43Z",
       "started_at": "2026-08-09T17:08:43Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T17:22:00Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 643,
