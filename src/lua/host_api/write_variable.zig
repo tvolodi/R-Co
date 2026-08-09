@@ -118,51 +118,6 @@ fn platformWriteVariable(L: *bindings.LuaState) callconv(.c) c_int {
         host_context.raiseMessage(L, "write_variable: out of memory staging variable");
     };
 
-    const ctx = host_context.contextFromState(L) orelse {
-        // No context installed: nothing to stage into. Same permissive
-        // no-op as a null pending_writes (design §5.3).
-        bindings.lua_pushnil(L);
-        return 1;
-    };
-
-    const pw = ctx.pending_writes orelse {
-        // Caller did not wire the staging map. No-op (design §5.3).
-        bindings.lua_pushnil(L);
-        return 1;
-    };
-
-    const key_copy = ctx.allocator.dupe(u8, key) catch {
-        host_context.raiseMessage(L, "write_variable: out of memory");
-    };
-    errdefer ctx.allocator.free(key_copy);
-
-    var value: executor.ScriptValue = undefined;
-    executor.extractValueInto(L, 2, ctx.allocator, &value) catch |err| switch (err) {
-        error.OutOfMemory => {
-            ctx.allocator.free(key_copy);
-            host_context.raiseMessage(L, "write_variable: out of memory");
-        },
-        else => {
-            ctx.allocator.free(key_copy);
-            host_context.raiseInvalidArgument(L, FN_NAME, 2, "a Lua-representable value (string-keyed table, string, number, boolean, or nil)");
-        },
-    };
-
-    // Writing the same key twice within one execution: the later call
-    // wins. Free the stale staged entry (if any) before overwriting so we
-    // never leak the earlier key/value.
-    if (pw.fetchRemove(key_copy)) |old| {
-        ctx.allocator.free(old.key);
-        var old_value = old.value;
-        old_value.deinit(ctx.allocator);
-    }
-    pw.put(key_copy, value) catch {
-        var v = value;
-        v.deinit(ctx.allocator);
-        ctx.allocator.free(key_copy);
-        host_context.raiseMessage(L, "write_variable: out of memory");
-    };
-
     bindings.lua_pushnil(L);
     return 1;
 }

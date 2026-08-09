@@ -37,34 +37,6 @@ pub fn register(L: *bindings.LuaState, context: *const executor.ExecutionContext
 }
 
 /// Push a `ScriptValue` onto the Lua stack. Mirrors `extractValueInto`'s
-/// table branch but is the inverse direction (ScriptValue -> Lua stack
-/// push). Strings are pushed via `lua_pushlstring` (explicit length).
-/// Tables are walked recursively; nil/bool/number are pushed directly.
-///
-/// Returns `error.OutOfMemory` on allocation failure. Tables: `{key=value,...}`.
-fn pushScriptValue(
-    L: *bindings.LuaState,
-    value: executor.ScriptValue,
-) std.mem.Allocator.Error!void {
-    switch (value) {
-        .nil_value => bindings.lua_pushnil(L),
-        .boolean => |b| bindings.lua_pushboolean(L, if (b) 1 else 0),
-        .number => |n| bindings.lua_pushnumber(L, n),
-        .string => |s| bindings.lua_pushlstring(L, s.ptr, s.len),
-        .table => |t| {
-            bindings.lua_newtable(L);
-            var it = t.iterator();
-            while (it.next()) |entry| {
-                // key
-                bindings.lua_pushlstring(L, entry.key_ptr.*.ptr, entry.key_ptr.*.len);
-                // value
-                try pushScriptValue(L, entry.value_ptr.*);
-                bindings.lua_settable(L, -3);
-            }
-        },
-    }
-}
-
 /// Lua C function: platform.read_variable(key)
 fn platformReadVariable(L: *bindings.LuaState) callconv(.c) c_int {
     // CAP-1: the capability check precedes every argument read and every state
