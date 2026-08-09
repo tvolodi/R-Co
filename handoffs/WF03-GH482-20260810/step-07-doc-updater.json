@@ -1,0 +1,45 @@
+{
+  "handoff_id": "2094253f-8388-4290-8f4c-6d6d29fd5623",
+  "run_id": "WF03-GH482-20260810",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-09T22:23:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0150.json",
+      "docs/issues/ISS-0645.json"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md for ISS-0150's 2026-08-10 pass. No requirement status change (test-fixture fix, no requirement ID attached).",
+    "acceptance_criteria": [
+      "CHANGELOG.md entry added",
+      "ISS-0150.json reflects current disposition",
+      "ISS-0645.json filed with GitHub issue and queue entry"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Added CHANGELOG.md entry under [Unreleased] -- 2026-08-10 documenting the ISS-0150/GH-482 close-out re-measurement, the 6-file adp0x fix (4 files fully resolved, adp09/adp10 forwarded), and the ISS-0645/GH-649 split. No requirement status change -- this is a test-fixture query-literal fix with no requirement ID attached, so reqctl.py set-status/render-status were not applicable. docs/issues/ISS-0150.json updated with closeout_20260810 section preserving full history. docs/issues/ISS-0645.json created and cross-referenced with github_issue field (https://github.com/tvolodi/R-Co/issues/649).",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0150.json",
+      "docs/issues/ISS-0645.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step Final) for git-merge"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T22:23:44Z",
+  "completed_at": "2026-08-09T22:23:44Z"
+}
