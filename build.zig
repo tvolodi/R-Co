@@ -1545,6 +1545,35 @@ pub fn build(b: *std.Build) void {
     });
     const run_obs04_integration_tests = addIntegrationRun(b, obs04_integration_tests, migrations_dir, clean_test_db);
 
+    // ISS-0116 / GH-379: narrow step for OBS-05 DLQ persistence/retry/discard
+    // tests only, mirrors the ext02/adp02 targets added for ISS-0637/ISS-0638.
+    const obs05_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obs05_dlq_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_obs05_integration_tests = addIntegrationRun(b, obs05_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_obs05_step = b.step("test-integration-obs05", "Run OBS-05 DLQ integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_obs05_step.dependOn(&clean_test_db.step);
+    test_integration_obs05_step.dependOn(&run_obs05_integration_tests.step);
+
+    // ISS-0116 / GH-379: narrow step for OBS-06 alert-state integration tests.
+    const obs06_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obs06_alerts_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_obs06_integration_tests = addIntegrationRun(b, obs06_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_obs06_step = b.step("test-integration-obs06", "Run OBS-06 alert-state integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_obs06_step.dependOn(&clean_test_db.step);
+    test_integration_obs06_step.dependOn(&run_obs06_integration_tests.step);
+
     const adp12_regression_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/adp12_default_tenant_regression_test.zig"),
@@ -2212,6 +2241,23 @@ pub fn build(b: *std.Build) void {
     const test_integration_adp02_step = b.step("test-integration-adp02", "Run ADP-02 tenant scope integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_adp02_step.dependOn(&clean_test_db.step);
     test_integration_adp02_step.dependOn(&run_adp02_integration_tests.step);
+
+    // ISS-0117 / GH-380: narrow step for EXP-401 definition-creation graph
+    // validation + EXP-402 restore reconciliation tests. This file was not
+    // previously wired into build.zig at all (no step of any kind ran it).
+    const exp401_exp402_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/exp401_exp402_comp_restore_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_exp401_exp402_integration_tests = addIntegrationRun(b, exp401_exp402_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_exp401_exp402_step = b.step("test-integration-exp401-exp402", "Run EXP-401 graph validation + EXP-402 restore reconciliation tests only (requires BPM_TEST_DB_URL)");
+    test_integration_exp401_exp402_step.dependOn(&clean_test_db.step);
+    test_integration_exp401_exp402_step.dependOn(&run_exp401_exp402_integration_tests.step);
+    test_integration_others_step.dependOn(&run_exp401_exp402_integration_tests.step);
 
     const test_integration_obs04_step = b.step("test-integration-obs04", "Run OBS-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs04_step.dependOn(&clean_test_db.step);

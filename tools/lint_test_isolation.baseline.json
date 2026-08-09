@@ -87,21 +87,21 @@
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/helpers.zig",
-      "line": 432,
+      "line": 473,
       "message": "module-level mutable var `cached_owner_tag` shared across test blocks"
     },
     {
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/helpers.zig",
-      "line": 437,
+      "line": 478,
       "message": "module-level mutable var `tag_repr_storage` shared across test blocks"
     },
     {
       "severity": "MAJOR",
       "code": "T020",
       "file": "tests/integration/helpers.zig",
-      "line": 438,
+      "line": 479,
       "message": "module-level mutable var `tag_repr_lock` shared across test blocks"
     },
     {

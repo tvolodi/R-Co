@@ -242,6 +242,26 @@ pub const Store = struct {
         }
         allocator.free(transform_result.violations);
 
+        // [B4] Compensation-handler metadata validation (ISS-0117 / GH-380):
+        // unknown scope, unreachable handler target, or reverse_order=false.
+        const comp_result = graph_mod.validateCompensationHandlers(self.allocator, params.graph) catch
+            return DefinitionError.TransactionFailed;
+        if (!comp_result.valid) {
+            self.last_violations = comp_result.violations;
+            return DefinitionError.GraphValidationFailed;
+        }
+        allocator.free(comp_result.violations);
+
+        // [B5] Reversibility validation (ISS-0117 / GH-380): compensation or
+        // error-boundary metadata declared on a non-reversible node type.
+        const reversibility_result = graph_mod.validateReversibility(self.allocator, params.graph) catch
+            return DefinitionError.TransactionFailed;
+        if (!reversibility_result.valid) {
+            self.last_violations = reversibility_result.violations;
+            return DefinitionError.GraphValidationFailed;
+        }
+        allocator.free(reversibility_result.violations);
+
         // [C] Acquire pool connection.
         const conn = self.pool.acquire() catch |err| switch (err) {
             PoolError.ExhaustedPool => return DefinitionError.PoolExhausted,
@@ -607,6 +627,26 @@ pub const Store = struct {
             }
             allocator.free(transform_result.violations);
 
+            // Compensation-handler metadata validation (ISS-0117 / GH-380):
+            // unknown scope, unreachable handler target, or reverse_order=false.
+            const comp_result = graph_mod.validateCompensationHandlers(self.allocator, graph_to_validate) catch
+                return DefinitionError.TransactionFailed;
+            if (!comp_result.valid) {
+                self.last_violations = comp_result.violations;
+                return DefinitionError.GraphValidationFailed;
+            }
+            allocator.free(comp_result.violations);
+
+            // Reversibility validation (ISS-0117 / GH-380): compensation or
+            // error-boundary metadata declared on a non-reversible node type.
+            const reversibility_result = graph_mod.validateReversibility(self.allocator, graph_to_validate) catch
+                return DefinitionError.TransactionFailed;
+            if (!reversibility_result.valid) {
+                self.last_violations = reversibility_result.violations;
+                return DefinitionError.GraphValidationFailed;
+            }
+            allocator.free(reversibility_result.violations);
+
             // [SVC-03] Service/plugin scope validation (runs before SQL transaction).
             // Skip when no validator injected or no tenant context (platform-admin bypass).
             if (self.service_scope_validator) |v| {
@@ -924,6 +964,26 @@ pub const Store = struct {
                 return DefinitionError.GraphValidationFailed;
             }
             allocator.free(transform_result.violations);
+
+            // Compensation-handler metadata validation (ISS-0117 / GH-380):
+            // unknown scope, unreachable handler target, or reverse_order=false.
+            const comp_result = graph_mod.validateCompensationHandlers(self.allocator, g) catch
+                return DefinitionError.TransactionFailed;
+            if (!comp_result.valid) {
+                self.last_violations = comp_result.violations;
+                return DefinitionError.GraphValidationFailed;
+            }
+            allocator.free(comp_result.violations);
+
+            // Reversibility validation (ISS-0117 / GH-380): compensation or
+            // error-boundary metadata declared on a non-reversible node type.
+            const reversibility_result = graph_mod.validateReversibility(self.allocator, g) catch
+                return DefinitionError.TransactionFailed;
+            if (!reversibility_result.valid) {
+                self.last_violations = reversibility_result.violations;
+                return DefinitionError.GraphValidationFailed;
+            }
+            allocator.free(reversibility_result.violations);
         }
 
         // [B] Acquire pool connection.

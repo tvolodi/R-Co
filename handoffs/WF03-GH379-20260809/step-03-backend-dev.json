@@ -1,0 +1,44 @@
+{
+  "handoff_id": "d520e5b3-8602-4c35-8ba9-0a34d018c913",
+  "run_id": "WF03-GH379-20260809",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T10:02:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/fix-ISS-0116.md"
+    ]
+  },
+  "task": {
+    "description": "Step 3: implement the fix per src/design/fix-ISS-0116.md. Remove stale ::uuid casts in obs05_dlq_test.zig; write migrations/1139_iss0116_audit_dlq_rename_tenant_functions.sql; generalize helpers.zig's runMigrationsForSchema fast path; replace SAVEPOINT-based cleanup with plain defer in TC-OBS-05-INT-03; add build.zig narrow targets test-integration-obs05/-obs06.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build 2>&1 | grep -i \"error set\" empty",
+      "lint_sql_param_types.py src tests: 0 BLOCKER/0 MAJOR",
+      "zig build migrate applies migration 1139 idempotently"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented all 4 parts of the design. zig build exits 0, no error-set output, lint_sql_param_types.py 0 BLOCKER/0 MAJOR. Migration 1139 applies cleanly and idempotently against bpm_dev (BPM_DB_URL). Iterative diagnosis during implementation found and fixed a real cross-connection self-deadlock in the SAVEPOINT fix attempt before landing on the plain-defer approach (see result.issues on step 01 / CHANGELOG for detail).",
+    "artifacts_out": [
+      "tests/integration/obs05_dlq_test.zig",
+      "migrations/1139_iss0116_audit_dlq_rename_tenant_functions.sql",
+      "tests/integration/helpers.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 5) \u2014 existing tests already cover all 4 acceptance criteria once production code/schema is fixed, no new TEST-DESIGNER step needed"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T10:10:00Z",
+  "completed_at": "2026-08-09T10:57:15Z"
+}

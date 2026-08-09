@@ -1,23 +1,31 @@
 {
   "id": "ISS-0117",
   "title": "EXP-401 definition creation accepts invalid process graphs",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "graph-validation",
-  "run_id": "WF03-gh364-20260801",
+  "run_id": "WF03-GH380-20260809",
   "handoff_id": null,
   "affected_areas": [
     "tests/integration/exp401_exp402_comp_restore_test.zig",
-    "src/engine/",
-    "src/definitions/"
+    "src/definition/store.zig",
+    "src/definition/graph.zig",
+    "build.zig"
   ],
   "created_at": "2026-08-01T08:52:13Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T10:09:54Z",
   "notes": "Cluster F from the final integration run: TC-EXP-401-02/03/04/05 expected error.GraphValidationFailed, but definition creation succeeded for invalid graphs. Evidence: _integration_final.log lines 42353-42497.",
-  "root_cause": "Initial hypothesis: the EXP-401 definition-creation path does not invoke graph validation, or invokes it after persistence without propagating GraphValidationFailed.",
+  "root_cause": "src/definition/graph.zig defines validateCompensationHandlers() and validateReversibility(), both already returning correct typed violations, but neither was ever called from src/definition/store.zig's three graph-mutating paths (create/promote/update) — only validateGraph/validateNodeAttributes/validateEdgeConditions/validateEdgeTransforms ran before persistence. Secondary bug: parseErrorBoundaryConfig() rejected empty on_error_event/on_cancel_event strings as error.InvalidInput before validateCompensationHandlers()'s ERROR_BOUNDARY_EVENTS_MISSING check could run, making that check unreachable dead code. (Investigated and ruled out: tests/integration/exp401_exp402_comp_restore_test.zig is NOT missing from build.zig — it is reached indirectly via tests/integration/main_test.zig's existing @import + pin, per the ISS-0137/GH-439 pattern, and was already executed under zig build test-integration all along.)",
   "candidate_resolution": "Run canonical graph validation before any definition persistence, propagate typed GraphValidationFailed errors, and ensure all invalid graph classes leave no stored definition or side effects.",
-  "resolution": null,
-  "files_to_change": [],
+  "resolution": "store.zig: added calls to validateCompensationHandlers() and validateReversibility() in create(), promote(), and update(), in the same pre-DB-write fail-fast position as the existing four validation stages. graph.zig: parseErrorBoundaryConfig() now lets empty on_error_event/on_cancel_event strings parse through so the specific ERROR_BOUNDARY_EVENTS_MISSING violation fires instead of the generic ERROR_BOUNDARY_INVALID. build.zig: added a new narrow test-integration-exp401-exp402 step for fast iteration on this one file (convenience only — the file's tests were already reachable via main_test.zig's @import and ran under the full test-integration umbrella beforehand). Verified via zig build test-integration-exp401-exp402 (7/7 pass, including previously-failing TC-EXP-401-02/03/04/05), zig build test (exit 0), zig build migrate (exit 0), lint_sql_param_types.py (0 BLOCKER/MAJOR).",
+  "files_to_change": [
+    "src/definition/store.zig",
+    "src/definition/graph.zig",
+    "build.zig"
+  ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/380",
-  "prevention": []
+  "prevention": [
+    "When adding a new graph-validation function to graph.zig, grep store.zig's three graph-mutating paths (create/promote/update) to confirm the new function is actually called in all three — a validator that compiles and has correct logic but is never invoked produces no compile error and no test failure until a test specifically exercises it.",
+    "When checking whether a tests/integration/*.zig file is wired into the build, grep tests/integration/main_test.zig's @import list (and any other umbrella root) in addition to build.zig itself — files are commonly wired in indirectly via an @import + `_ = x;` pin in main_test.zig (ISS-0137/GH-439 pattern) rather than getting their own build.zig b.addTest entry. Grepping build.zig alone gives a false negative."
+  ]
 }

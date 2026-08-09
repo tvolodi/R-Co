@@ -552,12 +552,18 @@ fn parseErrorBoundaryConfig(value: std.json.Value) error{InvalidInput}!ErrorBoun
         .string => |s| if (s.len > 0) s else return error.InvalidInput,
         else => return error.InvalidInput,
     };
+    // Empty strings are allowed to parse through here (not rejected as
+    // InvalidInput) so that validateCompensationHandlers() can report the
+    // more specific ERROR_BOUNDARY_EVENTS_MISSING violation for them below,
+    // rather than the generic ERROR_BOUNDARY_INVALID (ISS-0117 / GH-380:
+    // an empty on_cancel_event previously short-circuited into
+    // ERROR_BOUNDARY_INVALID and never reached the events-missing check).
     const on_error_event = switch (on_error) {
-        .string => |s| if (s.len > 0) s else return error.InvalidInput,
+        .string => |s| s,
         else => return error.InvalidInput,
     };
     const on_cancel_event = switch (on_cancel) {
-        .string => |s| if (s.len > 0) s else return error.InvalidInput,
+        .string => |s| s,
         else => return error.InvalidInput,
     };
 
