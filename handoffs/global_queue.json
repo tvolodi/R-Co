@@ -6,14 +6,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/495",
       "title": "LUA-05..16 remain IN_PROGRESS: host API, capability, and limiter tests not yet written against real LuaJIT",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-08T19:17:33Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-08T19:17:33Z",
       "started_at": "2026-08-08T19:17:33Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T22:36:13Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 495,
