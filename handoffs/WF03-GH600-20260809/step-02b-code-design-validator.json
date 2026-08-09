@@ -1,0 +1,43 @@
+{
+  "handoff_id": "7217db5f-26b0-412c-84a1-48e85650d555",
+  "run_id": "WF03-GH600-20260809",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH600-20260809/step-02b-code-design-validator.json",
+  "created_at": "2026-08-09T01:35:49Z",
+  "started_at": "2026-08-09T01:35:49Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "b7a5cd19-9e15-4cbf-b869-7c015a7fadfd",
+      "3f0e6a1c-6b3d-4e2a-9d5b-7a1c2f9e4b6d"
+    ],
+    "artifacts_in": [
+      "src/design/iss0629-tc-lua-10-03-flake-fix.md",
+      "src/lua/limiter_wiring_test.zig",
+      "src/lua/timeout.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0629-tc-lua-10-03-flake-fix.md before BACKEND-DEV implements it. This is a small, test-only fix for GH-600: TC-LUA-10-03 in src/lua/limiter_wiring_test.zig intermittently fails due to a race between the watchdog thread's own 10ms poll interval and an immediate post-return assertion. Fix: replace the single assertion with a bounded (1000ms) yield-spin retry loop.\n\nORCH already independently verified: (1) POLL_INTERVAL_NS is genuinely 10ms in timeout.zig, (2) std.Thread.yield() is genuinely already used elsewhere in limiter_wiring_test.zig (line 623, the adjacent mutation-check test), (3) milliTimestamp() is genuinely a locally-defined helper already used throughout the file, (4) lint_design_artefact.py exits 0.\n\nYOUR JOB: run your own full independent validation.\n1. Read the design fresh.\n2. Confirm the retry loop's placement and logic is correct -- verify it truly cannot mask a genuine watchdog failure (the loop only starts after the 1s deadline has already passed, since the 200M-iteration script takes far longer than 1s to run) -- trace through this reasoning yourself against the actual test file.\n3. Confirm no production code (src/lua/timeout.zig) needs to change.\n4. Confirm the scope-confirmation section's claim that TC-LUA-10-01, TC-LUA-10-02, and the TC-LUA-10-03 mutation-check test do NOT share this race pattern -- read those three tests yourself, don't just trust the design's characterization.\n5. Confirm the yield-spin-over-sleep-based decision is well-justified (avoids needing to make timeout.zig's private sleepNanos public or re-deriving the same Windows/POSIX branch logic in test code).",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0",
+      "Retry loop placement/logic verified correct, cannot mask genuine failure",
+      "No production code changes confirmed necessary",
+      "Scope-confirmation claims verified against real other-test source",
+      "Yield-spin decision confirmed well-justified"
+    ],
+    "functions_to_call": [
+      "fn:validate-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
