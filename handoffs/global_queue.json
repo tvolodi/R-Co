@@ -1195,6 +1195,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-285",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/285",
+      "title": "Onboarding saga background-thread persistOnboardingResult UPDATE tenant_default.onboarding_registry fails post-GBL-134 (table dropped; canonical home is public)",
+      "severity": "BLOCKER",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-09T17:29:16Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

@@ -2,10 +2,12 @@
   "issue_id": "ISS-0070",
   "title": "Onboarding saga background thread never transitions onboarding_registry row from 'pending' to terminal state (completed/failed)",
   "description": "POST /api/v1/onboarding inserts a 'pending' row into tenant_default.onboarding_registry and returns 201. A detached background thread (runSagaBackground in src/api/routes/onboarding.zig, spawned via std.Thread.spawn + thread.detach()) is expected to call onboarding_mod.executeSaga and then persistOnboardingResult to update the row to 'completed' or 'failed'. The update never happens — 20/20 rows observed during the WF03-onboarding-e2e-fix-20260614 Step 04 test run remain state='pending', response_status=201, completed_at=NULL indefinitely. This blocks onb-ui-03 (saga terminal), onb-ui-04 (completed result + page-reload restore), the onboarding pipeline test, and the real onboarding user journey. Keycloak (localhost:8081) and DB (localhost:5433) were both healthy during the test run.",
-  "root_cause": "Threadlocal tenant context isolation: the request thread sets tenant_context._current (threadlocal) to the platform admin tenant, causing pool.acquire() to apply search_path=tenant_default on connections. The background saga thread (runSagaBackground) runs in a DIFFERENT thread and has the DEFAULT threadlocal state (no tenant set). When persistOnboardingResult acquires a pool connection from the background thread, that connection gets search_path=public (or no tenant schema). The UPDATE onboarding_registry WHERE onboarding_id=... therefore hits public.onboarding_registry (always empty) rather than tenant_default.onboarding_registry (where the row was inserted by the request thread). 0 rows are matched, the state never transitions, and the catch {} swallows the no-op silently.","
+  "root_cause": "Threadlocal tenant context isolation: the request thread sets tenant_context._current (threadlocal) to the platform admin tenant, causing pool.acquire() to apply search_path=tenant_default on connections. The background saga thread (runSagaBackground) runs in a DIFFERENT thread and has the DEFAULT threadlocal state (no tenant set). When persistOnboardingResult acquires a pool connection from the background thread, that connection gets search_path=public (or no tenant schema). The UPDATE onboarding_registry WHERE onboarding_id=... therefore hits public.onboarding_registry (always empty) rather than tenant_default.onboarding_registry (where the row was inserted by the request thread). 0 rows are matched, the state never transitions, and the catch {} swallows the no-op silently. UPDATE 2026-08-09 (discovered during WF03-GH352-20260809 / ISS-0097 investigation): the fix applied for this issue (persistOnboardingResult in src/api/routes/onboarding.zig, ~line 537) hardcodes 'UPDATE tenant_default.onboarding_registry ...'. migrations/056_onboarding_registry.sql declares '-- scope: public' and creates the table only in public; a tenant_default copy existed for a time as an unintended dual-schema shadow (see docs/anti-patterns.md), which is why the tenant_default-qualified UPDATE worked when this fix was written. migrations/GBL-134_iss0185_drop_global_registry_shadows.sql (ISS-0185, GH #518) subsequently dropped onboarding_registry from tenant_default as one of the shadow tables it correctly cleaned up, but persistOnboardingResult's hardcoded qualifier was never updated to match. Confirmed live against this workspace's bpm_test on 2026-08-09T17:27Z: a direct 'UPDATE tenant_default.onboarding_registry ...' throws 'ERROR: relation \"tenant_default.onboarding_registry\" does not exist'; pg_class/pg_namespace confirms onboarding_registry now exists only in public. Every background-thread saga completion (success or failure path) now fails to persist its terminal state via this NEW mechanism, reproducing this issue's original symptom (rows stuck at state='pending' forever). This was never verified fixed in the first place: GH-285's own 2026-07-29 triage note reads 'LIKELY_FIXED ... Confirm with a test run, then set RESOLVED' and that confirmation never happened before GBL-134 invalidated the fix anyway. The correct qualifier is 'public.onboarding_registry', not 'tenant_default.onboarding_registry'.",
   "affected_areas": [
-    "src/api/routes/onboarding.zig (runSagaBackground ~lines 247-270, persistOnboardingResult ~lines 456-473, SagaContext ~lines 163-170)",
-    "src/identity/onboarding.zig (executeSaga ~lines 174-330)"
+    "src/api/routes/onboarding.zig (runSagaBackground ~lines 247-270, persistOnboardingResult ~lines 516-544, SagaContext ~lines 163-170)",
+    "src/identity/onboarding.zig (executeSaga ~lines 174-330)",
+    "migrations/056_onboarding_registry.sql (scope: public — canonical, sole home)",
+    "migrations/GBL-134_iss0185_drop_global_registry_shadows.sql (dropped the tenant_default shadow copy persistOnboardingResult's fix had come to depend on)"
   ],
   "error_detail": "All 20 rows in tenant_default.onboarding_registry stuck at state='pending', response_status=201, completed_at=NULL. The detached background thread never updates the row, indicating a silent panic, deadlock, or early return inside runSagaBackground / executeSaga before persistOnboardingResult is reached.",
   "status": "OPEN",
@@ -21,6 +23,15 @@
     {
       "issue_id": "ISS-0065",
       "relation": "prior partial match — same symptom (saga stuck pending) was worked around by rewriting tests to avoid createTestTenant; underlying backend defect was never fixed"
+    },
+    {
+      "issue_id": "ISS-0185",
+      "relation": "GBL-134 (ISS-0185 global-registry shadow-table cleanup, GH #518) dropped tenant_default.onboarding_registry, which persistOnboardingResult had been relying on since this issue's original fix. The cleanup itself was correct per ISS-0185's goal; this call site's hardcoded schema qualifier was never updated to match."
+    },
+    {
+      "issue_id": "ISS-0097",
+      "relation": "discovered incidentally while investigating ISS-0097 (GH-352)'s requested production-impact grep for std.Thread.spawn call sites that touch pool.acquire(). Same architectural root (threadlocal tenant_context does not propagate across a std.Thread.spawn boundary), different concrete symptom and fix."
     }
-  ]
+  ],
+  "regression_discovered_at": "2026-08-09T17:27:41Z"
 }
