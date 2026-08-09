@@ -257,7 +257,7 @@ test "TC-DB-02-04: invalid pool_size returns InvalidPoolSize; boundary values su
 
     // Probe the server to compute a safe upper-boundary pool size.
     // Prevents flakiness when parallel test binaries exhaust connection slots.
-    const safe_pool_size: u16 = blk: {
+    const safe_pool_size: u8 = blk: {
         const probe = try pool2.acquire();
         defer pool2.release(probe);
 
