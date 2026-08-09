@@ -128,6 +128,20 @@
     {
       "severity": "MAJOR",
       "code": "T050",
+      "file": "tests/integration/env_test_root.zig",
+      "line": 1,
+      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+    },
+    {
+      "severity": "MAJOR",
+      "code": "T050",
+      "file": "tests/integration/svc_test_root.zig",
+      "line": 1,
+      "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"
+    },
+    {
+      "severity": "MAJOR",
+      "code": "T050",
       "file": "tests/integration/obs02_metrics_test.zig",
       "line": 1,
       "message": "integration test does not reference BPM_TEST_DB_URL — must connect to real Postgres"

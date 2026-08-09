@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-09T02:53:58Z'
+last_updated: '2026-08-09T15:05:53Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1182,13 +1182,15 @@ requirements:
     title: Entity command API -> event family
     implemented_in:
     - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
+    - migrations/1140_iss0112_entity_tables_tenant_scope_corrective.sql
     test_spec: tests/specs/EXP-202.md
     test_run: tests/reports/report-2026-06-14-WF02-exp201-202-20260612-step04-rework.yaml
     tested_at: '2026-06-14'
     released_at: '2026-06-14'
     release_run: WF02-exp201-202-20260612
     release_decision: docs/status/release-exp201-202-20260614.yaml
-    note: 'ISS-0112 fix: entity command API contract on baseline schema'
+    note: 'ISS-0112/GH-375: fixed entity_type_instances/entity_record_latest missing from tenant schemas
+      (WF03-GH375-20260809)'
   EXP-203:
     status: UNTRACKED
     title: Typed projection tables (generated DDL) + projector

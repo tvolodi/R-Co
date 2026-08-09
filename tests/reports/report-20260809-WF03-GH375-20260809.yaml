@@ -1,0 +1,112 @@
+run_id: WF03-GH375-20260809
+report_date: "2026-08-09"
+agent: TEST-RUNNER
+branch: feature/WF03-GH375-20260809
+issue: GH-375
+issue_local: ISS-0112
+
+summary:
+  verdict: PASS
+  scope_note: >
+    This run fixes only the entity-subsystem (EXP-201/EXP-202) slice of
+    GH-375's originally-reported 42-failure cluster. The ext02 webhook
+    dispatch slice (10 tests) was already fixed earlier in this session by
+    GH-619/ISS-0637 (PR #622) and GH-618/ISS-0636 (PR #624). The remaining
+    slice (ADP/OIDC migration checks, env01/02/03, service catalog, and
+    other cases -- 53 distinct failing tests observed in the current
+    test-integration-svc/test-integration-env umbrella, which are aliases
+    of the same tests/integration/main_test.zig aggregate) is a broad,
+    multi-root-cause cluster already comprehensively tracked under GH-482
+    (open, filed 2026-08-06), which lists the same affected files
+    (exp201_202_entities_test, env01_test, env02_test, env03_test,
+    svc01_service_catalog_scope_test, and the ADP/OIDC files) under its own
+    dominant root cause (missing tenant_<uuid>.schema_migrations ledger --
+    different and broader than the entity-subsystem defect fixed here).
+    Not duplicated in a new issue; left under GH-482's existing tracking.
+  unit_tests: PASS
+  integration_exp: PASS (13/13, was 8/13 before fix)
+  pre_existing_failures_in_broader_umbrella: 53
+  pre_existing_failures_related_to_this_fix: 0
+
+layers:
+  - layer: unit
+    command: "zig build test"
+    exit_code: 0
+    result: PASS
+    log: scratch/unit_test_out.txt
+
+  - layer: build
+    command: "zig build"
+    exit_code: 0
+    result: PASS
+    note: "grep -i 'error set' on stderr produced no matches"
+
+  - layer: sql_lint
+    command: "./.venv/Scripts/python.exe tools/lint_sql_param_types.py src tests"
+    exit_code: 0
+    result: PASS
+    note: "0 BLOCKER, 0 MAJOR, 0 MINOR"
+
+  - layer: migrate
+    command: "zig build migrate (BPM_DB_URL, dev DB)"
+    exit_code: 0
+    result: PASS
+    note: >
+      Migration 1140 applied cleanly on first run; second run (idempotency
+      check) reports 'No new migrations to apply.'
+
+  - layer: test_env_verify
+    command: "zig build test-env-verify"
+    exit_code: 0
+    result: PASS
+    note: "10/10 checks HEALTHY; C3 reports 119/119 migrations applied on BPM_TEST_DB_URL"
+
+  - layer: integration_exp
+    command: "zig build test-integration-exp --summary all"
+    exit_code: 0
+    result: PASS
+    tests_passed: 13
+    tests_total: 13
+    note: >
+      Was 8/13 before the fix (5 failures, all in the EXP-202
+      create/update/delete/idempotency/pool-size-3-duplicate-append group,
+      all crashing inside getOrCreateEntityTypeInstance with
+      'relation tenant_default.entity_type_instances does not exist').
+      Re-run twice after applying migration 1140 for determinism; exit 0
+      both times, 13/13 both times.
+    log: scratch/exp_final.txt, scratch/exp_summary.txt
+
+acceptance_criteria_check:
+  - criterion: "A deterministic database bootstrap produces the intended tenant-schema objects (narrowed: entity_type_instances, entity_record_latest)"
+    met: true
+  - criterion: "Public and tenant-schema migration ledgers match actual objects after migration"
+    met: true
+    note: "Verified via test-env-verify C4 schema baseline PASS"
+  - criterion: "The affected integration targets pass from a clean database and on an idempotent second migration run"
+    met: true
+    note: "test-integration-exp umbrella includes clean_test_db + fresh migrate on every invocation; verified twice"
+  - criterion: "Corrective migrations preserve existing valid data"
+    met: true
+    note: "Migration 1140 is additive-only (CREATE TABLE/INDEX IF NOT EXISTS), no DROP/ALTER/DELETE"
+
+fixes_verified:
+  - file: migrations/1140_iss0112_entity_tables_tenant_scope_corrective.sql
+    change: >
+      New corrective migration (all_schemas scope by default -- no GBL-
+      prefix, no scope header) re-declaring entity_type_instances and
+      entity_record_latest with UNQUALIFIED CREATE TABLE/INDEX IF NOT
+      EXISTS statements, so runForSchema()'s per-tenant search_path
+      mechanism places them into every tenant schema (existing or
+      future/reprovisioned), correcting migration 094's public.-qualified
+      statements which silently no-op during every tenant pass.
+    commit: 7ef5042
+
+not_in_scope_this_run:
+  - description: "ADP/OIDC migration checks (~8 originally reported)"
+    disposition: "Tracked under GH-482 (open)"
+  - description: "env01/env02/env03 (~7 originally reported)"
+    disposition: "Tracked under GH-482 (open); files explicitly named in GH-482"
+  - description: "Service catalog (~6 originally reported)"
+    disposition: "Tracked under GH-482 (open); svc01_service_catalog_scope_test explicitly named"
+  - description: "8 other cases (unspecified in original GH-375 report)"
+    disposition: "Subsumed into the 53-failure umbrella already tracked under GH-482"
