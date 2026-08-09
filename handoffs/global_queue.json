@@ -977,6 +977,26 @@
       "completed_at": "2026-08-09T10:22:07Z",
       "run_id": "WF03-GH380-20260809",
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-379",
+      "issue_number": 379,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/379",
+      "title": "ISS-0116 \u2014 Dead-letter queue persistence, retry, discard, and alert behavior fails",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T10:23:46Z"
+      },
+      "added_at": "2026-08-09T10:23:46Z",
+      "started_at": "2026-08-09T10:23:46Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
