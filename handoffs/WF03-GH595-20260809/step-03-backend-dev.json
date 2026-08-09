@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH595-20260809/step-03-backend-dev.json",
   "created_at": "2026-08-09T00:39:08Z",
   "started_at": "2026-08-09T00:39:08Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-09T01:06:42Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -47,7 +47,24 @@
       "fn:check-zig-build"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ISS-0628/GH-595 per approved design: errfuncHandler + writeStackFrames in executor.zig (message handler installed as lua_pcall errfunc), STACK_TRACE_KEY + readStackTrace in host_context.zig mirroring readExplicitFailure exactly, TC-ISS-0625-LUA-16-int-01 flipped to non-empty+content assertion with corrected comments, new TC-ISS-0628-LUA-16-stacktrace-01 with a distinct deepFn fixture. Fixed lua_getinfo selector from Sl to Sln (required for frame names to populate) and converted both integration test fixtures from tail-call to non-tail-call recursion (Lua 5.1 proper tail calls collapse intermediate frames, making them invisible to lua_getstack/lua_getinfo). Also fixed a pre-existing createSandboxedState call-signature mismatch that was blocking the whole integration test file from compiling (unblock-everything). Mutation test performed by hand: reverting errfunc install to literal 0 makes both LUA-16 stack-trace tests genuinely fail on empty trace; restore passes. zig build and zig build test-lua both exit 0, no error-set output. zig build test-integration-iss0625 exits 0 (10/10 pass) against BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test. Incidentally discovered and filed (not fixed): ISS-0629/GH-600, an unrelated intermittent timing flake in TC-LUA-10-03 (limiter_wiring_test.zig), forwarded to the global queue.",
+    "artifacts_out": [
+      "src/lua/executor.zig",
+      "src/lua/host_context.zig",
+      "tests/integration/iss0625_lua_12_15_16_test.zig",
+      "tests/specs/LUA-16.md",
+      "docs/issues/ISS-0629.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Incidental discovery: TC-LUA-10-03 (src/lua/limiter_wiring_test.zig) is an intermittently flaky timing test unrelated to this LUA-16 module. Filed as ISS-0629, GitHub issue https://github.com/tvolodi/R-Co/issues/600, forwarded to handoffs/global_queue.json for a separate future run."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER or TEST-RUNNER per WF-03 pipeline (business logic added/modified: LUA-16 stack-trace capture) \u2014 no PR opened yet per instructions."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
