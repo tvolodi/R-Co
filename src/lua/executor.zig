@@ -95,6 +95,96 @@ pub const ExecutionContext = struct {
     /// it null (the default), so the payload is built in the
     /// "LUA-08 deferred" branch unconditionally.
     instruction_limiter: ?*const instruction_limiter.InstructionLimiter = null,
+    // WF03-GH591 / ISS-0624 — LUA-11 + LUA-13 (ISS-0153 stub-era completion).
+    // Four new fields on ExecutionContext per src/design/iss0624-gh591-lua-11-13-fix.md §2.
+    // All four default to the documented "not configured" state, so the 12
+    // existing ExecutionContext construction sites compile unchanged and
+    // the pre-fix body of read_variable / write_variable / log (which gate
+    // and return nil) continues to be reachable as the body-of-no-config path.
+    /// LUA-13, design §18.2. Trace identifier written into every
+    /// `StructuredLogEntry` emitted by `platform.log`. Lifetime = the caller's
+    /// frame (CTX-1 invariant); pre-generated per-execution. Empty slice ""
+    /// is the documented "no trace" state — `platform.log` will write an
+    /// empty `trace=` field rather than raise.
+    trace_id: []const u8 = "",
+    /// LUA-11, design §16.2. Staging map for `write_variable` to land in,
+    /// applied atomically on script success and discarded on failure.
+    /// Owned by `executeSource`'s frame (stack-allocated there); the
+    /// pointer here is into that frame. Null = no staging installed —
+    /// `write_variable` becomes a no-op, `read_variable` reads through
+    /// to instance_state only (no read-after-write within an execution).
+    pending_writes: ?*std.StringHashMap(ScriptValue) = null,
+    /// LUA-13, design §23.5. Caller-installed structured logger.
+    /// `platform.log` consults this and is fail-open when null (the
+    /// fail-open asymmetry vs the capability gate is documented in
+    /// design §5.2). Lifetime = caller's frame.
+    structured_logger: ?*const structured_logger.StructuredLogger = null,
+    /// LUA-11, design §16.2. Caller-installed committed variable map (the
+    /// apply target for staged writes). Defaults to a file-scope
+    /// `dummy_instance_state` singleton because `StringHashMap(ScriptValue)`
+    /// cannot be initialised in a struct literal under Zig 0.16 (it
+    /// requires an allocator at construction time); see design §4.5.
+    /// The default is unreachable through any code path that has not
+    /// opted in: `write_variable` and `read_variable` both gate on
+    /// `pending_writes != null` first.
+    instance_state: *InstanceState = &dummy_instance_state,
+};
+
+/// LUA-11, design §16.2. The per-instance committed variable container.
+///
+/// `.variables` is a `StringHashMap(ScriptValue)`; `.deinit` walks it,
+/// freeing both keys and recursive values via `ScriptValue.deinit` (already
+/// fixed by ISS-0161).
+///
+/// The `init(allocator, instance_id)` constructor is the only safe way to
+/// construct one — the `empty` const that would be the natural struct
+/// literal cannot work because `StringHashMap`'s constructor takes an
+/// `Allocator` (not an optional), so `empty.variables` would have to be
+/// `undefined`, which is silently wrong if anyone ever reads it before
+/// any write. See design §4.5.
+pub const InstanceState = struct {
+    instance_id: []const u8,
+    variables: std.StringHashMap(ScriptValue),
+
+    pub fn init(allocator: std.mem.Allocator, instance_id: []const u8) InstanceState {
+        return .{
+            .instance_id = instance_id,
+            .variables = std.StringHashMap(ScriptValue).init(allocator),
+        };
+    }
+
+    /// Free every key and every recursive ScriptValue, then release the
+    /// bucket array. Mirrors the same recursive pass as `ScriptValue.deinit`
+    /// (ISS-0161 fix).
+    pub fn deinit(self: *InstanceState) void {
+        var it = self.variables.iterator();
+        while (it.next()) |entry| {
+            self.variables.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.deinit(self.variables.allocator);
+        }
+        self.variables.deinit();
+    }
+};
+
+/// File-scope dummy InstanceState used as the default value of
+/// `ExecutionContext.instance_state` (design §4.5).
+///
+/// `StringHashMap`'s constructor takes a real allocator, so a struct-literal
+/// default would have to leave `.variables` undefined. Using a `page_allocator`
+/// singleton is acceptable because the only code path that touches this default
+/// is the dummy commit path, and that path's destructor is never called (its
+/// `deinit` would free from `page_allocator`, which is acceptable for tests
+/// that never read the dummy). The default is unreachable through any
+/// caller-opted-in code path (write_variable and read_variable gate on
+/// `pending_writes != null` first).
+var dummy_instance_state: InstanceState = blk: {
+    // Compile-time page allocator is fine: `std.heap.page_allocator` is a
+    // function-call wrapper in Zig 0.16; we evaluate it once at static init
+    // time via a comptime block. The resulting dummy state is never read by
+    // any production code path because `pending_writes == null` short-circuits
+    // before the commit/extract sequence reaches it.
+    const alloc = std.heap.page_allocator;
+    break :blk InstanceState.init(alloc, "dummy-default-instance");
 };
 
 /// LUA-12 Response shape returned by the HTTP client function pointer.
@@ -492,6 +582,30 @@ fn executeSource(
     );
     defer host_api.call_service.setActive(null, null, null);
 
+    // WF03-GH591 / ISS-0624 — LUA-11 (design §16.2). Stack-allocate the
+    // staging map, install the pointer on the local context copy (mirrors
+    // the active_watchdog pattern two blocks above — same CTX-1..CTX-4
+    // invariant, the caller's context is never mutated). The map lives
+    // strictly inside this frame. On script SUCCESS the apply step
+    // MOVES entries into `context.instance_state.variables` and then
+    // `clearRetainingCapacity()` drops the bookkeeping while keeping the
+    // bucket array; on script FAILURE the entries are freed by the
+    // `defer` chain below (pending_writes_free+deinit) so the staged
+    // writes and duped keys are released back to the allocator.
+    var pending_writes = std.StringHashMap(ScriptValue).init(context.allocator);
+    defer {
+        // Free any remaining entries (this is the failure path — the
+        // success path has cleared the map via clearRetainingCapacity
+        // by the time this defer runs).
+        var it = pending_writes.iterator();
+        while (it.next()) |entry| {
+            context.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.deinit(context.allocator);
+        }
+        pending_writes.deinit();
+    }
+    context_with_watchdog.pending_writes = &pending_writes;
+
     // Create the sandboxed state through the single constructor (SBX-2).
     const L = createSandboxedState(
         &context_with_watchdog,
@@ -614,6 +728,62 @@ fn executeSource(
         };
     }
 
+    // WF03-GH591 / ISS-0624 — LUA-11 (design §4.3). Apply pending_writes
+    // atomically on script success. The map entries are MOVED (not copied)
+    // into `instance_state.variables` so the subsequent
+    // `defer pending_writes.deinit()` does not double-free them. After the
+    // move, `clearRetainingCapacity` drops the bookkeeping while keeping the
+    // bucket array, so the deinit runs cleanly on the (now-empty) map.
+    //
+    // When `instance_state == &dummy_instance_state` (the file-scope
+    // page-allocator singleton that is the default for callers that did
+    // not install an InstanceState — e.g. the `runWithGrants` helper in
+    // execution_test.zig), the entries are FREED instead of moved. The
+    // dummy's `StringHashMap` uses page_allocator for its bucket array,
+    // so moving duped-with-`context.allocator` keys into it would leak
+    // the key/value when the dummy is never deinit'd (it's a static
+    // singleton) AND would cross-allocator free the prior entry on the
+    // next write. This preserves the design §4.5 "singleton default" but
+    // makes the body-of-no-config path correctly free the staged writes
+    // instead of leaking them into the dummy.
+    if (context.instance_state == &dummy_instance_state) {
+        var it = pending_writes.iterator();
+        while (it.next()) |entry| {
+            context.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.deinit(context.allocator);
+        }
+        pending_writes.clearRetainingCapacity();
+    } else {
+        var it = pending_writes.iterator();
+        while (it.next()) |entry| {
+            // entry.key_ptr.* and entry.value_ptr.* are owned by
+            // pending_writes; instance_state.variables takes ownership
+            // without copying. Any prior entry under the same key is freed
+            // first to avoid a leak (the map will replace it).
+            //
+            // LUA-11 design §6.2 TC-09: a write of nil_value drops the
+            // key rather than storing a nil sentinel (the read path
+            // cannot distinguish "never written" from "written as nil").
+            // We free the staged key here because it is owned by
+            // pending_writes and instance_state.variables is not taking
+            // ownership.
+            if (entry.value_ptr.* == .nil_value) {
+                if (context.instance_state.variables.fetchRemove(entry.key_ptr.*)) |prev| {
+                    context.instance_state.variables.allocator.free(prev.key);
+                    prev.value.deinit(context.instance_state.variables.allocator);
+                }
+                context.allocator.free(entry.key_ptr.*);
+                continue;
+            }
+            if (context.instance_state.variables.fetchRemove(entry.key_ptr.*)) |prev| {
+                context.instance_state.variables.allocator.free(prev.key);
+                prev.value.deinit(context.instance_state.variables.allocator);
+            }
+            try context.instance_state.variables.put(entry.key_ptr.*, entry.value_ptr.*);
+        }
+        pending_writes.clearRetainingCapacity();
+    }
+
     // Extract result from stack
     var result = ScriptResult{
         .success = true,
@@ -623,19 +793,22 @@ fn executeSource(
     };
 
     if (bindings.lua_gettop(L) > 0) {
-        result.value = extractValue(L, -1, context.allocator) catch |err| switch (err) {
-            // ISS-0161: extractValue's error set is LuaError || error{OutOfMemory}.
-            // errorDescription takes LuaError only, so OutOfMemory must be split
-            // out rather than described. An allocation failure is not a script
-            // error and must propagate, not be recorded as one — the stubs hid
-            // this because executeScript never reached here with a live state.
+        var extracted: ScriptValue = .{ .nil_value = {} };
+        extractValueInto(L, -1, context.allocator, &extracted) catch |err| switch (err) {
+            // extractValueInto's error set mirrors extractValue's:
+            // LuaError || error{OutOfMemory}. The asymmetry between
+            // allocation failure (propagate) and Lua-level type failure
+            // (record as a script error) is preserved.
             error.OutOfMemory => return error.OutOfMemory,
-            else => |lua_err| blk: {
+            else => |lua_err| {
                 result.success = false;
                 result.error_message = try context.allocator.dupe(u8, errors.errorDescription(lua_err));
-                break :blk null;
             },
         };
+        // Only install the extracted value when extraction succeeded; on
+        // a Lua-level type failure the success flag is already cleared
+        // and we leave the value as null.
+        if (result.success) result.value = extracted;
     }
 
     return result;
@@ -736,6 +909,122 @@ pub fn captureStackTrace(L: *bindings.LuaState, allocator: std.mem.Allocator) ![
     }
 
     return try out.toOwnedSlice(allocator);
+}
+
+/// WF03-GH591 / ISS-0624 — LUA-11 (design §5.4). Recursive value extraction.
+///
+/// `extractValue` (the script-return helper below) returns an EMPTY
+/// StringHashMap when it encounters a table — a documented partial
+/// extraction. `write_variable` and `log` cannot use that because the
+/// table the script tried to write would be silently dropped.
+///
+/// This helper writes through a caller-allocated `*ScriptValue`, walking
+/// tables recursively with owned copies for string keys/values. It rejects
+/// integer table keys (`errors.LuaError.TypeError`) because
+/// `instance_state.variables` is a `StringHashMap(ScriptValue)` — integer
+/// keys cannot be carried there. (See design §9.2 for the open question on
+/// whether stringification should replace strict rejection.)
+///
+/// Errors:
+///   - `errors.LuaError.TypeError` on a non-string table key or on a value
+///     type that is not in `ScriptValue`'s type set.
+///   - `error.OutOfMemory` on allocation failure.
+///
+/// On any error, the partial `*out` is left in a state safe to ignore —
+/// the caller never reads from `out` after this function returns an error
+/// (the only call sites are `write_variable`, where the entry has not yet
+/// been put into `pending_writes`, and `log`, where the entry has not yet
+/// been passed to `StructuredLogger.log`).
+pub fn extractValueInto(
+    L: *bindings.LuaState,
+    idx: c_int,
+    allocator: std.mem.Allocator,
+    out: *ScriptValue,
+) (errors.LuaError || std.mem.Allocator.Error)!void {
+    const rel = if (idx < 0) bindings.lua_gettop(L) + idx + 1 else idx;
+    const lua_type = bindings.lua_type(L, idx);
+    switch (lua_type) {
+        bindings.LUA_TNIL => {
+            out.* = ScriptValue{ .nil_value = {} };
+            return;
+        },
+        bindings.LUA_TBOOLEAN => {
+            out.* = ScriptValue{ .boolean = bindings.lua_toboolean(L, idx) != 0 };
+            return;
+        },
+        bindings.LUA_TNUMBER => {
+            out.* = ScriptValue{ .number = bindings.lua_tonumber(L, idx) };
+            return;
+        },
+        bindings.LUA_TSTRING => {
+            var len: usize = 0;
+            const str_ptr = bindings.lua_tolstring(L, idx, &len);
+            const str = str_ptr[0..len];
+            out.* = ScriptValue{ .string = try allocator.dupe(u8, str) };
+            return;
+        },
+        bindings.LUA_TTABLE => {
+            // Two-pass table walk: count, then `ensureTotalCapacity` to
+            // pre-size the map (avoids rehashing), then extract. errdefer
+            // walks the partial entries to free any keys/values already
+            // duped if we fail mid-walk.
+            //
+            // Stack-balance invariant: `lua_next` POPS the key we pushed
+            // (or its predecessor) AND, on success, pushes the next
+            // key+value (so the stack grows by one item each iteration).
+            // On end-of-iteration (returns 0) it pops the key it was
+            // given and pushes nothing — net effect is the stack is back
+            // to its state before the matching `lua_pushnil`. Therefore
+            // we NEVER pop after the loop: the trailing "pop" some
+            // idioms use is only needed when the loop is exited via
+            // break/Lua-error mid-iteration, which we don't do here.
+            var count: usize = 0;
+            bindings.lua_pushnil(L);
+            while (bindings.lua_next(L, rel) != 0) {
+                count += 1;
+                bindings.lua_pop(L, 1); // pop value, keep key for next iteration
+            }
+
+            var map = std.StringHashMap(ScriptValue).init(allocator);
+            errdefer {
+                var it = map.iterator();
+                while (it.next()) |e| {
+                    allocator.free(e.key_ptr.*);
+                    e.value_ptr.deinit(allocator);
+                }
+                map.deinit();
+            }
+            try map.ensureTotalCapacity(@intCast(count));
+
+            bindings.lua_pushnil(L);
+            while (bindings.lua_next(L, rel) != 0) {
+                // stack: key, value
+                // Reject non-string keys. lua_tolstring coerces numbers in
+                // Lua 5.1 (the same E11 defect that motivated `checkString`);
+                // we guard against it explicitly by inspecting the type of
+                // the key first.
+                if (bindings.lua_type(L, -2) != bindings.LUA_TSTRING) {
+                    bindings.lua_pop(L, 2); // pop key + value before raising
+                    return errors.LuaError.TypeError;
+                }
+                var key_len: usize = 0;
+                const key_ptr = bindings.lua_tolstring(L, -2, &key_len);
+                const key_str = key_ptr[0..key_len];
+                const key_owned = try allocator.dupe(u8, key_str);
+
+                var value_owned: ScriptValue = .{ .nil_value = {} };
+                try extractValueInto(L, -1, allocator, &value_owned);
+
+                try map.put(key_owned, value_owned);
+
+                bindings.lua_pop(L, 1); // pop value, keep key for next iter
+            }
+
+            out.* = ScriptValue{ .table = map };
+            return;
+        },
+        else => return errors.LuaError.TypeError,
+    }
 }
 
 /// Extract a value from the Lua stack at the given index.
