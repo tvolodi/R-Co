@@ -6,7 +6,7 @@
   "registered_by": "ISSUE-FIXER (WF03-GH606-20260809 Step 0.5)",
   "related_to": ["ISS-0150"],
   "severity": "MAJOR",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "run_id": "WF03-GH606-20260809",
   "category": "test-flakiness/connection-pressure-contention",
   "affected_areas": [
@@ -36,5 +36,5 @@
     "docker-compose.yml — raise db_test max_connections from 250 to 500 to reduce contention pressure in practice"
   ],
   "discovered_while_fixing": "ISS-0150",
-  "resolved_at": null
+  "resolved_at": "2026-08-09T05:04:03Z"
 }

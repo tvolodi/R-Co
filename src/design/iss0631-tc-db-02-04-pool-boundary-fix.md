@@ -77,100 +77,47 @@ TC-DB-02-04 test
 
 ### 1. `tests/integration/db_integration_test.zig` — replace TC-DB-02-04 test block
 
-The full replacement for the test block (lines 229–267 in the current file):
+Pattern sketch for the TC-DB-02-04 replacement (pseudocode; exact implementation in BACKEND-DEV step):
 
-```zig
-// TC-DB-02-04
-// Verifies that Pool.init() returns PoolError.InvalidPoolSize for pool_size
-// values outside the valid range [2, 200] (NFR-06), and succeeds at the
-// boundary values 2 and ≤200.
-//
-// ISS-0631 / GH #606: the original upper-boundary sub-test called
-// Pool.init(pool_size=200) unconditionally.  Under concurrent zig build
-// test-integration runs (20+ binaries), aggregate pg_stat_activity connections
-// can exceed 50, leaving <200 free slots in the db_test service (formerly
-// max_connections=250).  The fix queries the live connection budget first and
-// uses a safe_pool_size = @min(200, max_conn - current_conn - 5).
-// If safe_pool_size < 2 the sub-test is skipped (SkipZigTest) with a diagnostic.
-test "TC-DB-02-04: invalid pool_size returns InvalidPoolSize; boundary values succeed" {
-    const alloc = std.testing.allocator;
+```
+// Pseudocode sketch — TC-DB-02-04 replacement pattern
 
-    // Out-of-range lower bound: pool_size = 1.
-    // InvalidPoolSize is returned before any network call, so a dummy URL works.
-    try std.testing.expectError(error.InvalidPoolSize, Pool.init(
-        std.testing.io,
-        alloc,
-        PoolConfig{ .url = "postgres://localhost/test", .pool_size = 1 },
-    ));
+// 1. Out-of-range guards (no network; dummy URL)
+expectError(InvalidPoolSize, Pool.init(..., pool_size=1))
+expectError(InvalidPoolSize, Pool.init(..., pool_size=201))
 
-    // Out-of-range upper bound: pool_size = 201.
-    try std.testing.expectError(error.InvalidPoolSize, Pool.init(
-        std.testing.io,
-        alloc,
-        PoolConfig{ .url = "postgres://localhost/test", .pool_size = 201 },
-    ));
+// 2. Lower-boundary live test
+pool2 = Pool.init(url, pool_size=2)   // must succeed
 
-    // Live-connection sub-tests require a real database.
-    const url = try testDbUrl(alloc);
-    defer alloc.free(url);
+// 3. (a) blk: label idiom — compute safe_pool_size at runtime
+const safe_pool_size: u16 = blk: {
+    probe = pool2.acquire()     // borrows one slot from pool2
+    defer pool2.release(probe)
 
-    // Valid lower boundary: pool_size = 2.
-    // Two slots are always available when the database is reachable at all;
-    // failure here is a genuine connectivity problem, not a flake.
-    var pool2 = try Pool.init(std.testing.io, alloc, PoolConfig{
-        .url = url,
-        .pool_size = 2,
-    });
-    defer pool2.deinit();
+    // (b) Query 1 — SHOW max_connections → single text row, e.g. "500"; fallback 250
+    max_res  = probe.query("SHOW max_connections", &.{})
+    max_conn = parseInt(max_res.rows[0][0]) else 250
 
-    // Valid upper boundary: determine safe_pool_size from the live server to
-    // avoid exhausting the db_test connection budget under concurrent binary
-    // runs.  ISS-0631 / GH #606.
-    const safe_pool_size: u16 = blk: {
-        const probe = try pool2.acquire();
-        defer pool2.release(probe);
+    // (b) Query 2 — count live connections to this DB (incl. pool2's own 2 slots)
+    act_res = probe.query(
+        "SELECT count(*)::text FROM pg_stat_activity WHERE datname = current_database()",
+        &.{},
+    )
+    current_conn = parseInt(act_res.rows[0][0]) else 50
 
-        // SHOW max_connections returns one text row, e.g. "500".
-        var max_res = try probe.query(alloc, "SHOW max_connections", &.{});
-        defer max_res.deinit();
-        const max_conn: i64 = if (max_res.rows.len > 0 and max_res.rows[0][0] != null)
-            std.fmt.parseInt(i64, max_res.rows[0][0].?, 10) catch 250
-        else
-            250;
+    available = max_conn - current_conn - 5   // 5-slot headroom
 
-        // Count active connections to this database (includes pool2's own 2 conns).
-        var act_res = try probe.query(
-            alloc,
-            "SELECT count(*)::text FROM pg_stat_activity WHERE datname = current_database()",
-            &.{},
-        );
-        defer act_res.deinit();
-        const current_conn: i64 = if (act_res.rows.len > 0 and act_res.rows[0][0] != null)
-            std.fmt.parseInt(i64, act_res.rows[0][0].?, 10) catch 50
-        else
-            50;
+    if (available < 2) {
+        print("TC-DB-02-04: skipping — available={d}", .{available})
+        break :blk 0   // (c) sentinel-0: causes SkipZigTest below
+    }
+    // (d) @min(200, available) caps at Pool.init's upper limit; @intCast safe
+    break :blk @intCast(@min(@as(i64, 200), available))
+};
+if (safe_pool_size < 2) return error.SkipZigTest   // (c) sentinel-0 check
 
-        // Reserve 5 slots as headroom; cap at 200 (Pool.init's own upper limit).
-        const available = max_conn - current_conn - 5;
-        if (available < 2) {
-            std.debug.print(
-                "TC-DB-02-04: skipping upper-boundary live test — " ++
-                    "available={d} (max_conn={d}, current_conn={d}, headroom=5)\n",
-                .{ available, max_conn, current_conn },
-            );
-            break :blk 0; // sentinel: triggers SkipZigTest below
-        }
-        // @intCast is safe: available is in [2, 200] after @min(200, ...).
-        break :blk @intCast(@min(@as(i64, 200), available));
-    };
-    if (safe_pool_size < 2) return error.SkipZigTest;
-
-    var pool200 = try Pool.init(std.testing.io, alloc, PoolConfig{
-        .url = url,
-        .pool_size = safe_pool_size,
-    });
-    defer pool200.deinit();
-}
+// 4. Upper-boundary live test with runtime-derived size
+pool200 = Pool.init(url, pool_size=safe_pool_size)  // must succeed
 ```
 
 **Key invariants preserved:**

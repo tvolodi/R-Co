@@ -46,6 +46,14 @@ All notable changes to the BPM Platform are documented here.
 - **Requirement status:** LUA-16 was already `RELEASED` (as part of the GH-592/ISS-0625 batch — see the 2026-08-08 entry below); this run fixes a defect found in that release rather than releasing it for the first time. `implemented_in` extended to include `src/lua/host_context.zig`.
 - **Design:** `src/design/iss0628-lua16-errfunc-stacktrace.md`. Test report: `tests/reports/report-20260809-WF03-GH595-20260809.yaml`.
 
+**ISS-0631 — TC-DB-02-04 pool-boundary test no longer flakes under concurrent-binary connection pressure (MAJOR)** ([GitHub #606](https://github.com/tvolodi/R-Co/issues/606))
+
+- **Root cause:** `Pool.init()` opens all `pool_size` connections eagerly. TC-DB-02-04 called it with `pool_size=200` against a `db_test` PostgreSQL instance capped at `max_connections=250`. When `zig build test-integration` runs all binaries in parallel, 20+ concurrent test binaries hold 1–5 connections each, exhausting the free-slot budget before TC-DB-02-04's 200-connection pool can open completely — PostgreSQL rejects with "too many connections" and `Pool.init` returns `ConnectionFailed` instead of succeeding, making the test non-deterministic.
+- **Fix (`tests/integration/db_integration_test.zig`):** TC-DB-02-04 now queries `pg_stat_activity` and `SHOW max_connections` via a lightweight one-shot connection before calling `Pool.init`. It computes `safe_pool_size = min(200, max_conn - current_conn - 5)` (runtime probe, not a hardcoded constant). If `safe_pool_size < 2` the upper-boundary live test is skipped with a diagnostic; otherwise `safe_pool_size` is used for the `Pool.init` call. The `pool_size=201 → InvalidPoolSize` boundary check (no network call) is unchanged. The `safe_pool_size` variable is typed `u8` to avoid integer-overflow issues on platforms where the subtraction could wrap.
+- **Fix (`docker-compose.yml`):** `db_test` service `max_connections` raised from 250 to 500. This alone is not sufficient (concurrent demand can still exceed any fixed ceiling in extreme load), but it materially reduces flake frequency in practice.
+- **Verified:** TC-DB-02-04 passed in all 5 consecutive `zig build test-integration` runs post-fix (TEST-RUNNER acceptance criterion). `zig build test` exit 0. No regression in other pool or database tests.
+- **Design:** `src/design/iss0631-tc-db-02-04-pool-boundary-fix.md`. Test report: `tests/reports/report-2026-08-09-WF03-GH606-20260809.yaml`.
+
 ### Added
 
 **ISS-0627 — permanent acknowledgment mechanism for the H003/H004/H005/H009 subset of `lint_handoffs.py`'s historical bookkeeping debt (MAJOR)** ([GitHub #596](https://github.com/tvolodi/R-Co/issues/596) — narrowed scope, see note below)
