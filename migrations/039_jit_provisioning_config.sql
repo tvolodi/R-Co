@@ -9,7 +9,7 @@
 -- scope: public
 -- ISS-0185: this migration creates a global-registry table.
 
-CREATE TABLE IF NOT EXISTS jit_provisioning_config (
+CREATE TABLE IF NOT EXISTS public.jit_provisioning_config (
     realm           VARCHAR(64) PRIMARY KEY,
     enabled         BOOLEAN     NOT NULL DEFAULT TRUE,
     default_status  TEXT        NOT NULL DEFAULT 'ACTIVE'
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS jit_provisioning_config (
 );
 
 -- Seed the default realm with JIT enabled, ACTIVE status, no default roles.
-INSERT INTO jit_provisioning_config (realm, enabled, default_status, default_roles)
+INSERT INTO public.jit_provisioning_config (realm, enabled, default_status, default_roles)
 VALUES ('bpm-default', TRUE, 'ACTIVE', '[]' ::jsonb)
 ON CONFLICT (realm) DO NOTHING;
 
@@ -35,7 +35,7 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_jit_provisioning_config_updated_at ON jit_provisioning_config;
+DROP TRIGGER IF EXISTS trg_jit_provisioning_config_updated_at ON public.jit_provisioning_config;
 CREATE TRIGGER trg_jit_provisioning_config_updated_at
-BEFORE UPDATE ON jit_provisioning_config
+BEFORE UPDATE ON public.jit_provisioning_config
 FOR EACH ROW EXECUTE FUNCTION jit_provisioning_config_set_updated_at();

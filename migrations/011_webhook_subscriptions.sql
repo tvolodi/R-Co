@@ -9,7 +9,7 @@
 -- scope: public
 -- ISS-0185: this migration creates a global-registry table.
 
-CREATE TABLE IF NOT EXISTS metric_snapshots (
+CREATE TABLE IF NOT EXISTS public.metric_snapshots (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT        NOT NULL,
     labels      JSONB       NOT NULL DEFAULT '{}',
@@ -18,13 +18,13 @@ CREATE TABLE IF NOT EXISTS metric_snapshots (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ms_name_time
-    ON metric_snapshots(name, captured_at DESC);
+    ON public.metric_snapshots(name, captured_at DESC);
 
 -- ── Rate limit buckets ────────────────────────────────────────────────────────
 -- Per-token sliding window state for the ratelimit middleware (API-07).
 -- Rows are upserted by the middleware; TTL cleanup by a background job.
 
-CREATE TABLE IF NOT EXISTS rate_limit_buckets (
+CREATE TABLE IF NOT EXISTS public.rate_limit_buckets (
     token_id        TEXT        NOT NULL,
     window_start    TIMESTAMPTZ NOT NULL,
     request_count   INTEGER     NOT NULL DEFAULT 0,
@@ -34,4 +34,4 @@ CREATE TABLE IF NOT EXISTS rate_limit_buckets (
 );
 
 CREATE INDEX IF NOT EXISTS idx_rlb_cleanup
-    ON rate_limit_buckets(window_start);
+    ON public.rate_limit_buckets(window_start);

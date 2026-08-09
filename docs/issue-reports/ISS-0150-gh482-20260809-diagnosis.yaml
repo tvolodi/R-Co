@@ -1,0 +1,142 @@
+issue_id: ISS-0150
+github_issue: https://github.com/tvolodi/R-Co/issues/482
+run_id: WF03-GH482-20260809
+step: "1"
+agent: ISSUE-FIXER
+diagnosed_at: "2026-08-09T03:40:35Z"
+status: PASS
+
+summary: >
+  Third diagnosis pass on GH-482 / ISS-0150. Confirms the 2026-08-07/08 finding
+  that the filed premise (missing per-tenant schema_migrations ledger) is
+  disproven by design. Attempting the fresh-database re-measurement mandated by
+  the 2026-08-08 close-out design (src/design/iss0150-gh482-test-integration-svc-closeout.md)
+  surfaced a genuine, new, currently-blocking production defect: fresh-database
+  migration bootstrap is broken on main at migrations/011_webhook_subscriptions.sql,
+  caused by commit a2a8c68 (ISS-0185 / GH#518, merged 2026-08-08). Filed as
+  ISS-0630 / GH#605 (BLOCKER) and routed to CODE-DESIGNER. GH-482 itself stays
+  open, now explicitly blocked on ISS-0630's fix before a trustworthy
+  fresh-database measurement of its own acceptance criterion is possible.
+
+prior_state:
+  status_before_this_run: PARTIALLY_RESOLVED
+  established_2026-08-07: "RC-1/2/3 fixed at PR #519 (33 blocks, 0 regressions); disproven-premise finding stands"
+  established_2026-08-08_unmerged_branch: "feature/WF03-GH482-20260808 independently re-confirmed disproven premise, all 4 forwarded siblings resolved, produced close-out design (src/design/iss0150-gh482-test-integration-svc-closeout.md), never merged/completed"
+  siblings_forwarded_and_closed:
+    - {id: ISS-0182, github: GH-515, status: CLOSED}
+    - {id: ISS-0183, github: GH-516, status: CLOSED}
+    - {id: ISS-0184, github: GH-517, status: CLOSED}
+    - {id: ISS-0185, github: GH-518, status: CLOSED}
+
+this_run_findings:
+  reproduction_against_shared_db_test:
+    command: "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-svc"
+    result: "661 pass / 9 skip / 65 fail / 1 crash (736 total); 49 leaks; exit 1"
+    original_error_signatures_present: false
+    note: >
+      Neither "42P01 ... tenant_<uuid>.schema_migrations does not exist" nor
+      "C23505 ... process_definitions_pkey" appear anywhere in this run's full
+      log. Both confirmed resolved as of the 2026-08-07 RC-1 fix (stale
+      GBL-084 filename reference causing stderr-bleed misattribution).
+    unique_failing_test_names: 35
+    overlap_with_closed_siblings: >
+      Several failing names (xc02_audit_immutability_test, xc06_backwards_
+      compatibility_test, exp401_exp402_comp_restore_test, effects_subsystem_test,
+      oidc12/15, svc01, adp02) match test files explicitly named in the closed
+      ISS-0182/ISS-0184 issue bodies, motivating the fresh-database check below
+      rather than treating this as settled evidence of regression on a
+      known-unreliable shared database.
+
+  fresh_database_check:
+    procedure: >
+      Followed src/design/iss0150-gh482-test-integration-svc-closeout.md
+      Section 3 (re-measurement procedure): created a throwaway database inside
+      the running db_test Postgres instance, ran zig build migrate against it
+      with BPM_DB_URL pointed at the fresh database.
+    result: "FAILS -- migration bootstrap itself is broken, before any test runs"
+    failing_migration: migrations/011_webhook_subscriptions.sql
+    error: >
+      "Migration scope mismatch: 011_webhook_subscriptions.sql is declared
+      public-only (GBL- prefix or '-- scope: public') but performs unqualified
+      table work that needs the per-tenant pass."
+    confirmed_systemic: >
+      Pre-seeding the ledger row for 011 and re-running migrate reproduces the
+      identical error at the next affected file, 022_obs06_alerting_state.sql.
+      A full scan found 9 affected files total, all last touched by the same
+      commit.
+    root_cause_commit: a2a8c68 (PR #569, ISS-0185 / GH #518, merged 2026-08-08)
+    root_cause_mechanism: >
+      a2a8c68 added '-- scope: public' headers to 9 numeric migration files as
+      part of ISS-0185's dual-schema-shadow cleanup, without qualifying those
+      files' CREATE TABLE / INSERT INTO statements with 'public.'. The
+      scope-mismatch guard (declaresUnqualifiedTableWork() in
+      src/db/migrations.zig, built by ISS-0604/GH-470 for exactly this defect
+      class) correctly fires on fresh apply.
+    why_invisible_until_now: >
+      db_test container created 2026-08-06, three days before a2a8c68 merged
+      2026-08-08. public.schema_migrations already recorded all 9 files as
+      applied before the defect entered their content, so migrate silently
+      skips re-evaluating them on any long-lived shared database. This is the
+      shared_db_container_trap pattern already documented in
+      docs/anti-patterns.md from ISS-0150's own 2026-08-07 resolution,
+      recurring against a different migration set.
+    affected_files:
+      - migrations/011_webhook_subscriptions.sql
+      - migrations/022_obs06_alerting_state.sql
+      - migrations/038_oidc_claim_mapping_config.sql
+      - migrations/039_jit_provisioning_config.sql
+      - migrations/041_oidc15_realm_deletion_tracker.sql
+      - migrations/042_oidc16_26_agent_lifecycle_foundations.sql
+      - migrations/049_repository_service_catalog.sql
+      - migrations/056_onboarding_registry.sql
+      - migrations/094_entity_subsystem.sql
+    filed_as: {id: ISS-0630, github: GH-605, severity: BLOCKER}
+
+  secondary_modes_from_original_filing:
+    c23505_process_definitions_pkey:
+      status: RESOLVED
+      evidence: "0 occurrences in current full log; fixed alongside RC-1/2/3 on 2026-08-07 (stderr-bleed misattribution, not a live failure)"
+      shares_root_cause_with_iss0630: false
+    tc_iss503_gbl084_removal:
+      status: RESOLVED
+      evidence: "test_iss503_rls_removal.zig now correctly reads GBL-123_rls_removal.sql; 0 occurrences of TC-ISS503/iss503 in current failure output"
+      shares_root_cause_with_iss0630: false
+
+  tc_db_02_04_flake:
+    status: "absent from this run (0 occurrences); consistent with documented ~1-in-3 intermittent rate"
+    existing_tracking_issue: "none found (gh issue list --search)"
+    filed_as: {id: ISS-0631, github: GH-606, severity: MINOR}
+    folded_into_this_run: false
+    reason: "unrelated root cause (connection-pool contention vs. migration-file content); not currently reproducing; explicitly scoped out in original GH-482 filing"
+
+phasing_decision:
+  approach: "phase into two issues in dependency order, do not fix the 35 residual test-integration-svc failures in this run"
+  reasoning: >
+    The 35 currently-failing test-integration-svc blocks cannot be reliably
+    classified as pre-existing-on-main / branch-new / already-covered-by-a-
+    closed-sibling until a trustworthy fresh-database measurement is possible.
+    ISS-0630 is what blocks that measurement. Fixing ISS-0630 first is a small,
+    well-bounded, single-root-cause, single-commit-introduced change (9 files,
+    add 'public.' qualification). Attempting to fix or even definitively
+    classify the 35 residual failures now would mean diagnosing against the
+    same category of unreliable shared-database evidence that ISS-0150's own
+    2026-08-07 resolution already proved produces phantom failure counts.
+  this_run_routes: ISS-0630 (BLOCKER, small fix) to CODE-DESIGNER
+  gh_482_iss_0150_disposition: >
+    Stays OPEN / PARTIALLY_RESOLVED. Not closed by this run. Explicitly now
+    blocked on ISS-0630. Once ISS-0630 is fixed, re-run the close-out design's
+    fresh-database procedure (already written, still valid, no changes needed)
+    to classify and finally resolve the residual test-integration-svc failures.
+  precedent: "same batch-cap discipline as GH-495 -> ISS-0624/ISS-0625 earlier this session"
+
+production_vs_test_harness:
+  classification: PRODUCTION
+  rationale: >
+    ISS-0630 lives in migrations/*.sql, deployed to every environment (dev, CI,
+    staging, production) -- not confined to tests/. It breaks fresh-database
+    bootstrap for any consumer, not merely the test suite. Satisfies GH-482's
+    and ISS-0150's own acceptance criterion: "any real production defect found
+    during triage is fixed, not just its test."
+  residual_35_failures: "not yet classified; that is the explicit, stated reason GH-482 stays open"
+
+next_action: "Route to CODE-DESIGNER for ISS-0630 (Step 2 of WF-03)"

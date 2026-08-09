@@ -11,7 +11,7 @@
 -- scope: public
 -- ISS-0185: this migration creates a global-registry table.
 
-CREATE TABLE IF NOT EXISTS realm_deletion_tracker (
+CREATE TABLE IF NOT EXISTS public.realm_deletion_tracker (
     realm_id TEXT PRIMARY KEY,
     status TEXT NOT NULL DEFAULT 'MARKED_FOR_DELETION'
         CHECK (status IN ('MARKED_FOR_DELETION', 'DELETING', 'DELETED')),

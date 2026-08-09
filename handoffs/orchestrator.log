@@ -615,11 +615,20 @@
 2026-08-09T03:14:37Z | GIT_MERGE | WF03-GH591-20260809 | 4c00f70d | DOC-UPDATER | PR #603 squash-merged to main (890c522ca0dc75fdd7fe76e9039bb5b9dbce087c); resolved genuine conflict against GH-595/GH-600 (merged to main mid-flight) -- CHANGELOG both entries kept, orchestrator.log chronological union, registry.json union by handoff_id, global_queue.json union by issue_id + stale GH-600 lock released; branch feature/WF03-GH591-20260809 deleted (verified via git ls-remote); GH #591 auto-closed
 2026-08-09T03:14:37Z | BOARD_UPDATE | WF03-GH591-20260809 | 4c00f70d | DOC-UPDATER | Issue #591 project board already at Done (non-UAT-scoped, auto-advanced on close); implemented+done targets both no-op confirmed
 2026-08-09T03:14:37Z | WF03_COMPLETE | WF03-GH591-20260809 | -------- | ORCH | ISS-0624/GH-591 RESOLVED. Repo on clean main at 890c522.
+2026-08-09T03:21:59Z | ROUTE | WF03-GH482-20260809 | aebd28ab | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-482 test-integration-svc 63-failure diagnosis)
 2026-08-09T03:27:11Z | ROUTE | WF03-GH424-20260809 | a4240000 | ORCH -> BACKEND-DEV | PENDING
 2026-08-09T03:27:11Z | GIT_SETUP | WF03-GH424-20260809 | a4240000 | BACKEND-DEV | branch=feature/WF03-GH424-20260809 base=8d35c42d push=ok COMPLETED
 2026-08-09T03:43:28Z | ROUTE | WF03-GH424-20260809 | 75b3a560 | ORCH -> ISSUE-FIXER | STEP 0.5 COMPLETED — ISS-0131 already registered (GH-424), no refiling needed
 2026-08-09T03:43:28Z | ROUTE | WF03-GH424-20260809 | d512febe | ORCH -> ISSUE-FIXER | STEP 1 COMPLETED — root cause: pre-ISS-0612 sibling connections in provisionTenantSchema; fix already on main via ISS-0612/GH-556 (2dc07ddf)
+2026-08-09T03:44:14Z | ROUTE | WF03-GH482-20260809 | 190b154e | ISSUE-FIXER -> CODE-DESIGNER | PENDING
+2026-08-09T03:45:11Z | COMPLETE | WF03-GH482-20260809 | aebd28ab | ISSUE-FIXER | PASS - routed ISS-0630 to CODE-DESIGNER
+2026-08-09T03:51:09Z | COMPLETE | WF03-GH482-20260809 | 190b154e | CODE-DESIGNER | PASS -> CODE-DESIGN-VALIDATOR
+2026-08-09T03:52:47Z | ROUTE | WF03-GH482-20260809 | b95272cd | ORCH -> CODE-DESIGN-VALIDATOR | IN_PROGRESS (Step 2b, GH-482/ISS-0630 migration scope-mismatch design validation)
+2026-08-09T03:55:23Z | COMPLETE | WF03-GH482-20260809 | b95272cd | CODE-DESIGN-VALIDATOR | PASS -> BACKEND-DEV (Step 3)
+2026-08-09T03:56:52Z | ROUTE | WF03-GH482-20260809 | 85fb02d1 | ORCH -> BACKEND-DEV | IN_PROGRESS (Step 3, implement migration scope-qualification fix for 9 files)
 2026-08-09T04:00:44Z | COMPLETE | WF03-GH424-20260809 | a9d7b772 | TEST-RUNNER | PASS — zero C40P01, TC-TNT-01-01 PASS, RT-3/4/5 PASS; 80 pre-existing failures unrelated to ISS-0131 (exit 1)
+2026-08-09T04:02:57Z | COMPLETE | WF03-GH482-20260809 | 85fb02d1 | BACKEND-DEV | PASS -- 9 migration files public.-qualified + fresh_database_migration CI job added; fresh-DB migrate verified exit 0
 2026-08-09T04:04:43Z | ROUTE   | WF03-GH424-20260809 | b5d20c64 | ORCH → DOC-UPDATER | step-07 PENDING
 2026-08-09T04:04:43Z | COMPLETE| WF03-GH424-20260809 | b5d20c64 | DOC-UPDATER | step-07 PASS
+2026-08-09T04:04:44Z | ROUTE | WF03-GH482-20260809 | abefcd70 | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize ISS-0630/GH-605, GH-482 stays open)
 2026-08-09T04:06:14Z | MERGE | WF03-GH424-20260809 | 11f79cbd | BACKEND-DEV | PR #607 squash-merged commit 3bd9d81b, branch deleted, main clean

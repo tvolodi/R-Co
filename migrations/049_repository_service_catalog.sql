@@ -8,7 +8,7 @@
 -- scope: public
 -- ISS-0185: this migration creates a global-registry table.
 
-CREATE TABLE IF NOT EXISTS service_catalog (
+CREATE TABLE IF NOT EXISTS public.service_catalog (
     service_id           VARCHAR(255) NOT NULL PRIMARY KEY,
     endpoint_url         VARCHAR(2048) NOT NULL,
     request_schema       TEXT NOT NULL,                  -- JSON Schema bytes
@@ -25,20 +25,20 @@ CREATE TABLE IF NOT EXISTS service_catalog (
 );
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS idx_service_catalog_created ON service_catalog (created_at);
-CREATE INDEX IF NOT EXISTS idx_service_catalog_updated ON service_catalog (updated_at);
+CREATE INDEX IF NOT EXISTS idx_service_catalog_created ON public.service_catalog (created_at);
+CREATE INDEX IF NOT EXISTS idx_service_catalog_updated ON public.service_catalog (updated_at);
 
-COMMENT ON TABLE service_catalog IS 'Service registry for SERVICE_TASK nodes and Lua service.call() (REPO-07).';
-COMMENT ON COLUMN service_catalog.service_id IS 'Stable, unique identifier (e.g., "crm.customer_lookup").';
-COMMENT ON COLUMN service_catalog.endpoint_url IS 'HTTPS endpoint URL to invoke.';
-COMMENT ON COLUMN service_catalog.request_schema IS 'JSON Schema defining request body shape.';
-COMMENT ON COLUMN service_catalog.response_schema IS 'JSON Schema defining response body shape.';
-COMMENT ON COLUMN service_catalog.required_auth IS 'Authentication method: NONE, API_KEY, OAUTH2, or MUTUAL_TLS.';
-COMMENT ON COLUMN service_catalog.timeout_ms IS 'Maximum request duration in milliseconds (1ms..1hour).';
-COMMENT ON COLUMN service_catalog.retry_policy IS 'JSON object defining retry strategy and max attempts.';
-COMMENT ON COLUMN service_catalog.created_at IS 'UTC timestamp when service was registered.';
-COMMENT ON COLUMN service_catalog.updated_at IS 'UTC timestamp of most recent service update.';
+COMMENT ON TABLE public.service_catalog IS 'Service registry for SERVICE_TASK nodes and Lua service.call() (REPO-07).';
+COMMENT ON COLUMN public.service_catalog.service_id IS 'Stable, unique identifier (e.g., "crm.customer_lookup").';
+COMMENT ON COLUMN public.service_catalog.endpoint_url IS 'HTTPS endpoint URL to invoke.';
+COMMENT ON COLUMN public.service_catalog.request_schema IS 'JSON Schema defining request body shape.';
+COMMENT ON COLUMN public.service_catalog.response_schema IS 'JSON Schema defining response body shape.';
+COMMENT ON COLUMN public.service_catalog.required_auth IS 'Authentication method: NONE, API_KEY, OAUTH2, or MUTUAL_TLS.';
+COMMENT ON COLUMN public.service_catalog.timeout_ms IS 'Maximum request duration in milliseconds (1ms..1hour).';
+COMMENT ON COLUMN public.service_catalog.retry_policy IS 'JSON object defining retry strategy and max attempts.';
+COMMENT ON COLUMN public.service_catalog.created_at IS 'UTC timestamp when service was registered.';
+COMMENT ON COLUMN public.service_catalog.updated_at IS 'UTC timestamp of most recent service update.';
 
 -- Indexes (created separately)
-CREATE INDEX IF NOT EXISTS idx_service_catalog_created ON service_catalog (created_at);
-CREATE INDEX IF NOT EXISTS idx_service_catalog_updated ON service_catalog (updated_at);
+CREATE INDEX IF NOT EXISTS idx_service_catalog_created ON public.service_catalog (created_at);
+CREATE INDEX IF NOT EXISTS idx_service_catalog_updated ON public.service_catalog (updated_at);

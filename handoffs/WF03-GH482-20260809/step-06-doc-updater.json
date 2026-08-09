@@ -1,0 +1,50 @@
+{
+  "handoff_id": "abefcd70-fcae-4866-8872-e6fac4383505",
+  "run_id": "WF03-GH482-20260809",
+  "workflow_id": "WF-03",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH482-20260809/step-06-doc-updater.json",
+  "created_at": "2026-08-09T04:04:44Z",
+  "started_at": "2026-08-09T04:04:44Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "aebd28ab-5be3-4044-a232-150a105bf876",
+      "190b154e-6cba-4874-9314-57fc6ff02d27",
+      "b95272cd-523a-4386-842e-ed1c0235c909",
+      "85fb02d1-e11a-4d85-ae2d-5bced6c73371"
+    ],
+    "artifacts_in": [
+      "src/design/iss0630-migration-scope-qualification-fix.md",
+      "docs/issues/ISS-0630.json",
+      "docs/issues/ISS-0631.json",
+      "docs/issue-reports/ISS-0150-gh482-20260809-diagnosis.yaml"
+    ]
+  },
+  "task": {
+    "description": "Finalize ISS-0630/GH-605 (BLOCKER, migration scope-mismatch fix) -- this run's actual deliverable. ORCH independently reproduced BOTH the original bug (fresh database migrate fails at 011_webhook_subscriptions.sql) AND the fix (fresh database migrate now succeeds, 115/115 migrations applied) via direct docker exec + zig build migrate against genuinely fresh throwaway databases -- not just trusting BACKEND-DEV's report. Also confirmed the existing long-lived database is unaffected (no new migrations applied, pure no-op) and the new fresh_database_migration CI job is genuinely present in .github/workflows/ci.yml.\n\nIMPORTANT CONTEXT -- this run's actual scope vs. the originally-claimed GH-482 issue: GH-482/ISS-0150's ORIGINAL premise (missing per-tenant schema_migrations ledger) was found by ISSUE-FIXER to already be STALE/DISPROVEN by prior work (RC-1/2/3 fixes from PR #519, sibling issues ISS-0182-0185/GH#515-518 already closed). While re-measuring GH-482 with a fresh database (per an abandoned prior close-out design), ISSUE-FIXER discovered a NEW, more severe, genuinely still-open BLOCKER (ISS-0630/GH-605, this run's actual fix) that was blocking the very fresh-database measurement GH-482's own closeout needed. This run fixes ISS-0630 ONLY. GH-482/ISS-0150 itself remains OPEN, explicitly noted as PARTIALLY_RESOLVED and blocked on this fix landing -- do NOT close GH-482 in this run. A separate follow-up run is needed to re-measure test-integration-svc against a genuinely fresh database now that ISS-0630 is fixed, and sort the 35 residual failures into pre-existing/already-fixed/genuinely-new. A separate MINOR flake issue (ISS-0631/GH-606, TC-DB-02-04 connection-pool boundary test) was also filed, unrelated and out of scope for this run.\n\nYOUR JOB:\n1. Update CHANGELOG.md: describe ISS-0630's fix (9 migration files corrected to properly qualify public. tables, fresh-database bootstrap restored, new CI gate added to prevent recurrence -- this is the SECOND occurrence of this defect class, per ISS-0603/GH-467 and ISS-0604/GH-470). Note that GH-482/ISS-0150 remains open and blocked on this fix, to be re-measured in a follow-up run.\n2. No requirement IDs involved -- skip reqctl.py.\n3. Skip retrospective (WF-03 run, no estimation.json).\n4. GH-605 (ISS-0630) disposition: fully resolved by this run -- close it with 'Closes #605'.\n5. GH-482 (ISS-0150) disposition: DO NOT CLOSE. Add a comment explaining this run found and fixed a blocking prerequisite defect (GH-605) during re-measurement, and that GH-482 itself needs a follow-up run to complete its own re-measurement now that the prerequisite is fixed. Leave GH-482 open, do not retitle unless it would clarify the blocked-on relationship.\n6. GH-606 (ISS-0631, the TC-DB-02-04 flake) -- confirm it's correctly filed and left open for a future run, no action needed from you here beyond confirming it exists.\n7. GitHub Branch Management (MANDATORY Step Final): create the PR (gh pr create --base main), title/body should be clear this fixes ISS-0630 (migration scope-mismatch), reference 'Closes #605' only (NOT #482, since that stays open). Poll for genuine CI completion -- NOTE this PR adds a new CI job (fresh_database_migration) so watch for it appearing and passing as a NEW check, not just the existing 6. Squash-merge and delete branch, verify no orphaned branch, update project board for issue #605 only (not #482, which stays in its current state since it's still open/blocked), return repo to clean main.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated for ISS-0630, noting GH-482 remains open/blocked",
+      "GH-605 (ISS-0630) closed",
+      "GH-482 (ISS-0150) explicitly left OPEN with an explanatory comment",
+      "GH-606 (ISS-0631) confirmed filed and left open",
+      "PR references Closes #605 only, not #482",
+      "CI verified genuinely green including the NEW fresh_database_migration job",
+      "Squash-merged, branch deleted",
+      "Project board updated for issue #605 only",
+      "Repo returned to clean main"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
