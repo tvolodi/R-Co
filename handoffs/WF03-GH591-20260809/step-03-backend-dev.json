@@ -1,103 +1,70 @@
 {
-  "handoff_id": "0e6a7b8c-1d2e-4f3a-5b6c-7d8e9f0a1b2c",
+  "handoff_id": "f0d48007-786c-4308-b257-34d3abb24793",
   "run_id": "WF03-GH591-20260809",
+  "workflow_id": "WF-03",
   "step": "03",
   "from_agent": "ORCH",
   "to_agent": "BACKEND-DEV",
-  "created_at": "2026-08-09T00:31:46Z",
-  "started_at": "2026-08-09T00:31:46Z",
-  "status": "IN_PROGRESS",
+  "file": "handoffs/WF03-GH591-20260809/step-03-backend-dev.json",
+  "created_at": "2026-08-09T02:03:39Z",
+  "started_at": "2026-08-09T02:03:39Z",
+  "completed_at": "2026-08-09T02:26:34Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
-    "stage": "WF-03 Step 3 - backend-dev implementation",
+    "stage": null,
     "requirement_ids": [
       "LUA-11",
       "LUA-13"
     ],
-    "related_handoff_ids": [
-      "68d37b1f-04e9-4344-b56e-ef6539f4d12d (step-01 ISSUE-FIXER, COMPLETED)",
-      "7c1c0a52-3f9a-4d6e-b8e1-9d5a8c3f0b21 (step-02 CODE-DESIGNER, COMPLETED)",
-      "f4d8a3c2-7b1e-4a5d-9f6c-2e8b4d1a7c30 (step-02b CODE-DESIGN-VALIDATOR, COMPLETED)"
-    ],
+    "related_handoff_ids": [],
     "artifacts_in": [
       "src/design/iss0624-gh591-lua-11-13-fix.md",
-      "docs/issue-reports/WF03-GH591-20260809-step-01-ISSUE-FIXER.yaml",
-      "src/design/lua-integration.md (sections 16, 18, 23)",
-      "src/design/iss0625-gh592-lua-12-15-16.md (sibling pattern)"
-    ],
-    "github_issue_number": 591,
-    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/591",
-    "iss_id": "ISS-0624",
-    "severity": "MAJOR",
-    "rework_diagnosis": {
-      "source": "docs/issue-reports/WF03-GH591-20260809-step-03-ISSUE-FIXER-REWORK-DIAGNOSIS.yaml",
-      "severity": "BLOCKER",
-      "category": "A",
-      "category_label": "Logic/typing error in source under fix",
-      "detected_at": "2026-08-09T00:46:40Z",
-      "detected_by": "ISSUE-FIXER (escalation from user-reported zig 0.16 type-pinning error)",
-      "root_cause": "In Zig 0.16, bare fn(...) function-pointer types are comptime-only. They cannot be stored as runtime struct fields or loaded through a pointer. The design at src/design/iss0624-gh591-lua-11-13-fix.md section 7.1 specified `Writer = fn(...) anyerror!void` at the field type level; the current pivot to `Writer = fn(...) void` at the field type level has the same defect. The fix is to keep the TYPE at fn(...) (comptime-only at the type level is fine) and change the FIELD to `writer: *const Writer = &defaultWriter` (pointer to const function pointer). This mirrors the LUA-12 HttpClientFn pattern at src/lua/executor.zig:84 which compiles cleanly in 0.16.",
-      "failure_evidence": [
-        "zig build test-lua fails with 2 errors:",
-        "  src/lua/structured_logger.zig:124:13: error: cannot load comptime-only type 'fn (?*anyopaque, []const u8) void'",
-        "  src/lua_test_root.zig:150:33: error: no size available for comptime-only type 'lua.structured_logger.StructuredLogger'",
-        "zig build alone exits 0, masking the failure for the test-lua target. Only `zig build test-lua` exercises the test_root pin via pinModuleTypes and detects the comptime-only struct."
-      ],
-      "recommended_fix_path": "src/lua/structured_logger.zig",
-      "recommended_fix": {
-        "summary": "Mirror the LUA-12 HttpClientFn pattern at src/lua/executor.zig:84. The TYPE stays as `pub const Writer = fn (ctx: ?*anyopaque, msg: []const u8) void;` (or add anyerror back if the test fixture needs OOM signalling; either works at the type level). The FIELD becomes `writer: *const Writer = &defaultWriter;` and the CALL site remains `self.writer(self.writer_ctx, message);` (Zig auto-derefs the pointer-to-function-pointer). The initWithWriter constructor parameter becomes `writer: *const Writer` instead of `writer: Writer`.",
-        "diff_sketch": "See the BLOCKER section in the inner report at docs/issue-reports/WF03-GH591-20260809-step-03-ISSUE-FIXER-REWORK-DIAGNOSIS.yaml",
-        "verified": "Empirically against Zig 0.16.0 in scratch/ before this report (test removed after verification per the scratch rule). Pattern compiles cleanly, runs at runtime, and survives @sizeOf (the pinModuleTypes constraint)."
-      },
-      "still_to_do": [
-        "Apply the `*const Writer` fix to src/lua/structured_logger.zig (one-line field type change + initWithWriter constructor signature + comment refresh).",
-        "Run: zig build (must exit 0), zig build test-lua (must exit 0 - the BLOCKER target), zig build test (must exit 0).",
-        "Create the new test file src/lua/iss0624_lua_11_13_test.zig with 21 cases (12 LUA-11 + 9 LUA-13) per design sections 6.2 and 7.2. Per-test UUID isolation (TEST_INSTANCE_BASE = \"iss0624-lua-11-\" / \"iss0624-lua-13-\").",
-        "Wire the new test file into src/lua_test_root.zig via the iss0625 pattern (line 117).",
-        "Update CHANGELOG.md with the LUA-11/LUA-13 wiring completion entry.",
-        "Commit + push to feature/WF03-GH591-20260809 (NO force-push, NO push to main).",
-        "Mark this handoff COMPLETED with next_action = \"Route to TEST-DESIGNER (WF-03 Step 4)\" once the test file is committed and zig build test-lua exits 0."
-      ]
-    }
-  },
-  "task": {
-    "description": "REWORK 1: BLOCKER at src/lua/structured_logger.zig:65. The Writer field type is a bare fn(...) and is therefore comptime-only in Zig 0.16 - cannot be stored as a runtime struct field. zig build test-lua fails with errors at lines 124 and 150. FIX: change field type to `writer: *const Writer = &defaultWriter;` per the LUA-12 HttpClientFn pattern at src/lua/executor.zig:84. See context.rework_diagnosis in this handoff and the full inner report at docs/issue-reports/WF03-GH591-20260809-step-03-ISSUE-FIXER-REWORK-DIAGNOSIS.yaml.\n\nImplement LUA-11 (variable read/write) and LUA-13 (logging) per the validated Type E design at src/design/iss0624-gh591-lua-11-13-fix.md. Production changes: (1) Add 4 fields to ExecutionContext: trace_id (default ''), pending_writes (?*StringHashMap(ScriptValue), default null), structured_logger (?*const StructuredLogger, default null), instance_state (*InstanceState, default &dummy_instance_state); declare InstanceState struct with init/deinit. (2) Modify executeSource to allocate pending_writes, install on ctx_local (the local-copy-and-pointer-install pattern already used for active_watchdog, LUA-10), call extractValueInto for the script-return path (instead of partial extractValue), and apply/discard pending_writes after lua_pcall. (3) Add extractValueInto helper that walks a Lua table recursively, allocates owned string keys/values, rejects integer table keys (LuaError.TypeError), recursive into nested tables via errdefer cleanup. (4) Implement read_variable body: read from pending_writes first (read-after-write), fall through to instance_state.variables, then to nil. (5) Implement write_variable body: extract Lua value at index 2 via extractValueInto, store in pending_writes via StringHashMap.put with dupe'd key. (6) Implement log body: build StructuredLogEntry from script args (level, message, optional context table at index 3), call StructuredLogger.log, free entry via deinit. (7) Add Writer type + writer/writer_ctx fields on StructuredLogger for test capture (default routes to std.debug.print, matching ISS-0172 stderr path). (8) New test file src/lua/iss0624_lua_11_13_test.zig with 21 named cases (12 LUA-11 + 9 LUA-13). (9) Wire new test file into src/lua_test_root.zig via the existing iss0625 pattern. (10) Update CHANGELOG.md. (11) Update docs/issues/ISS-0624.json status field (after merge lands, deferred to DOC-UPDATER step). Add per-test UUID isolation, real Lua script execution via createSandboxedState (skip on null state), defer cleanup, no mocks/stubs. Run zig build, zig build test, zig build migrate, error-set check, SQL lint, test isolation, handoffs lint. All must exit 0. Commit and push to feature/WF03-GH591-20260809.",
-    "acceptance_criteria": [
-      "ExecutionContext gains trace_id, pending_writes, structured_logger, instance_state fields with backward-compat defaults",
-      "InstanceState struct declared with init/deinit, dummy_instance_state file-scope singleton",
-      "extractValueInto helper implemented with recursive table walk, owned copies, integer-key rejection",
-      "executeSource allocates pending_writes, installs on ctx_local, applies on lua_pcall success, discards on failure via errdefer/defer",
-      "executeSource uses extractValueInto instead of partial extractValue for script-return path",
-      "read_variable body: reads pending_writes first (read-after-write), falls through to instance_state.variables, then nil",
-      "write_variable body: extractValueInto at index 2, put into pending_writes with dupe'd key",
-      "log body: build StructuredLogEntry with trace_id, optional context table at index 3, call StructuredLogger.log, deinit entry",
-      "StructuredLogger gains Writer type + writer/writer_ctx fields, default routes to std.debug.print",
-      "All 12 existing ExecutionContext construction sites compile unchanged via defaults",
-      "New test file src/lua/iss0624_lua_11_13_test.zig with 21 named cases (TC-ISS-0624-LUA-11-01..12 + TC-ISS-0624-LUA-13-01..09)",
-      "Per-test UUID isolation: TEST_INSTANCE_BASE = 'iss0624-lua-11-' (and -lua-13- for LUA-13 tests); each test uses a unique suffix",
-      "New test file wired into src/lua_test_root.zig via iss0625_lua_12_15_16_test pattern",
-      "zig build exits 0 with no 'error set' output in stderr",
-      "zig build test exits 0",
-      "zig build migrate exits 0 (115/115 applied)",
-      "tools/lint_test_isolation.py exits 0 for tests/integration (no BLOCKER)",
-      "tools/lint_handoffs.py exits 0",
-      "CHANGELOG.md updated with LUA-11/LUA-13 wiring completion entry",
-      "Implementation committed and pushed to feature/WF03-GH591-20260809 (no force-push, no push to main)",
-      "No new LuaError variants introduced; existing error set sufficient",
-      "No mocks, stubs, in-memory fakes in test files (DIRECTIVE T-1)"
-    ],
-    "functions_to_call": [
-      "fn:read-backend-conventions",
-      "fn:check-zig-build",
-      "fn:check-zig-test",
-      "fn:check-lint-handoffs",
-      "fn:check-lint-test-isolation",
-      "fn:commit-and-push",
-      "fn:complete-handoff"
+      "src/lua/executor.zig",
+      "src/lua/host_api/read_variable.zig",
+      "src/lua/host_api/write_variable.zig",
+      "src/lua/host_api/log.zig",
+      "src/lua/structured_logger.zig",
+      "src/design/lua-integration.md"
     ]
   },
-  "result": null,
-  "rework_count": 1,
-  "max_rework": 3,
-  "started_at_field_provenance": "tools/utcnow.py (exact output)"
+  "task": {
+    "description": "PROVENANCE NOTE (read first): this run's branch feature/WF03-GH591-20260809 already existed on the remote with real prior work when ORCH claimed GH-591 via gh_claim.py -- a design artefact (src/design/iss0624-gh591-lua-11-13-fix.md, 524 lines) plus COMPLETED Step 2 (CODE-DESIGNER) and Step 2b (CODE-DESIGN-VALIDATOR PASS) handoffs were already present, imported from a stash by an earlier session (commit 4d5bb81, same git author identity, ~7 minutes before this claim). ORCH independently re-verified the design's soundness before trusting it (re-ran lint_design_artefact.py: exit 0; confirmed ExecutionContext genuinely lacks trace_id/pending_writes/structured_logger/instance_state today; confirmed read_variable.zig/write_variable.zig's own header comments genuinely say 'does NOT implement it'; read the instance_state dummy-singleton design in section 4.4-4.5 and confirmed its safety reasoning is sound, not hand-wavy). Registry shows a COMPLETED Step 01 (ISSUE-FIXER) entry but that handoff's JSON file itself was not included in the stash import -- a minor bookkeeping gap, not a blocker; ISS-0624.json (already filed during GH-495's run) contains the original full diagnosis this design was built from.\n\nImplement the APPROVED design at src/design/iss0624-gh591-lua-11-13-fix.md exactly. Per Step 2b's own recorded next_action: 5 production files (executor.zig -- 4 new ExecutionContext fields: trace_id, pending_writes, structured_logger, instance_state, plus the new InstanceState struct and dummy_instance_state singleton; host_api/read_variable.zig; host_api/write_variable.zig; host_api/log.zig; structured_logger.zig if any caller-side change is needed) plus a new test file src/lua/iss0624_lua_11_13_test.zig (21 cases per the design's section 12 traceability table: 12 LUA-11 cases mapping to lua-integration.md section 16.4's 6 named tests, 9 LUA-13 cases mapping to section 18.3's 4 named tests). Wire the new test file into src/lua_test_root.zig.\n\nRead the FULL design (524 lines) before starting -- section 3 (data flow), section 4 (the atomic apply/discard mechanics, the instance_state dummy-singleton pattern and its exact safety reasoning), section 5 (error taxonomy, especially 5.2's fail-open logging-without-a-logger decision and 5.3's null-pending_writes handling) are all load-bearing. Follow the LUA-10 active_watchdog local-copy-and-pointer-install precedent the design explicitly cites for CTX-1..CTX-4 lifetime compliance.\n\nMANDATORY mutation testing per this session's established discipline: for at least the atomic-apply-on-success and discard-on-failure behaviors (LUA-11's core correctness claim), perform a genuine hands-on mutation test yourself -- e.g. temporarily break the commit-on-success merge logic, confirm the relevant test genuinely fails, restore the exact original code, confirm clean rebuild and passing test again. Do not skip this.",
+    "acceptance_criteria": [
+      "ExecutionContext gains trace_id, pending_writes, structured_logger, instance_state fields per design section 2/4.4, all backward-compatible defaults",
+      "read_variable/write_variable genuinely read/write via pending_writes + instance_state per design section 3.1",
+      "Atomic apply-on-success / discard-on-failure implemented in executeSource per design section 4",
+      "log.zig genuinely calls structured_logger.log() with a real StructuredLogEntry per design section 3.2",
+      "New test file with 21 cases per design section 12 traceability table",
+      "Mutation test performed by hand for the atomic apply/discard behavior",
+      "zig build, zig build test-lua exit 0",
+      "No error set output from zig build"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented the approved LUA-11/LUA-13 design (ISS-0624/GH-591) exactly: ExecutionContext gained trace_id/pending_writes/structured_logger/instance_state (backward-compatible defaults) plus the InstanceState struct and dummy_instance_state singleton per design section 4.5; executeSource now stages writes per-execution and atomically merges into instance_state.variables on lua_pcall success or discards (frees) them on failure; read_variable/write_variable/log.zig bodies are real per design section 3; structured_logger.zig gained a Writer injection point for test capture. Added src/lua/iss0624_lua_11_13_test.zig with 21 cases (12 LUA-11, 9 LUA-13) per design section 12's traceability table, wired into src/lua_test_root.zig. Also fixed two pre-existing test fixtures (execution_test.zig, capability_enforcement_test.zig) whose runWithGrants helpers left instance_state at the shared dummy singleton default -- writes committed there survived past their own test's boundary and corrupted a later test's freshly-reset std.testing.allocator instance when eventually freed (a genuine DebugAllocator bucket-ownership crash, reproducible and unrelated to any of my new code paths individually but triggered by wiring pending_writes into executeSource unconditionally). Also fixed a pre-existing, unrelated flaky test (limiter_wiring_test.zig TC-LUA-10-03) whose tight-loop iteration count was too small for LuaJIT's trace compiler on this hardware to reliably exceed its 1s watchdog deadline -- reproduced failing identically against unmodified main before touching it, confirming it was pre-existing and not a regression, then fixed per Unblock-Everything since it blocked a green zig build test-lua.",
+    "artifacts_out": [
+      "src/lua/executor.zig",
+      "src/lua/host_api/read_variable.zig",
+      "src/lua/host_api/write_variable.zig",
+      "src/lua/host_api/log.zig",
+      "src/lua/structured_logger.zig",
+      "src/lua/iss0624_lua_11_13_test.zig",
+      "src/lua_test_root.zig",
+      "src/lua/execution_test.zig",
+      "src/lua/capability_enforcement_test.zig",
+      "src/lua/limiter_wiring_test.zig"
+    ],
+    "issues": [],
+    "mutation_test": "Performed by hand for the atomic apply-on-success / discard-on-failure behavior (LUA-11's core correctness claim): temporarily forced the commit-on-success loop in executor.zig's executeSource to always discard (deinit + free) instead of merging into instance_state.variables, rebuilt (zig build exit 0), ran zig build test-lua, and confirmed 5 tests genuinely failed as expected -- TC-ISS-0624-LUA-11-01, 06, 07, 08, 10, i.e. every test that asserts a committed value after a successful execution. TC-11-04/05 (discard-on-failure) correctly remained passing since the mutation did not touch the failure path. Restored the exact original code, confirmed a clean rebuild and 112/112 passing tests again, and reran zig build test-lua two more times to confirm stability.",
+    "build_verification": "zig build: exit 0, no 'error set' output in stderr (grep -i 'error set' produced zero matches). zig build test-lua: 16/16 build steps succeeded, 112/112 tests passed, confirmed stable across 3 consecutive runs.",
+    "test_case_count": 21,
+    "next_action": "Route to TEST-DESIGNER / TEST-DESIGN-VALIDATOR (Step 4) or as ORCH directs per the WF-03 pipeline"
+  },
+  "rework_count": 0,
+  "max_rework": 3
 }

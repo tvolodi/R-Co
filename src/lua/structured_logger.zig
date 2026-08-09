@@ -45,46 +45,26 @@ pub const StructuredLogEntry = struct {
     }
 };
 
-/// WF03-GH591 / ISS-0624 — LUA-13 (design §7.1). Writer injection point.
-///
-/// The default writer routes through `std.debug.print` (the same
-/// ISS-0172-established 0.16-era stderr pattern the prior body used).
-/// Tests inject a `Writer` that appends to an `std.ArrayList(u8)` so the
-/// captured entry can be asserted on. The signature mirrors the
-/// `HttpClientFn` pattern already used by LUA-12 — function pointer
-/// plus opaque context — keeping the codebase's dependency-injection
-/// convention uniform.
-///
-/// The bare `fn (...)` type stays at the TYPE level (comptime-only is fine
-/// at the type level; what is forbidden is storing a bare fn as a *field*).
-/// The FIELD below uses `*const Writer` — pointer to const function pointer —
-/// which is the runtime-known form Zig 0.16 accepts. This mirrors the
-/// LUA-12 HttpClientFn pattern at src/lua/executor.zig:84.
-///
-/// Return type is `void` (NOT `anyerror!void`) because function-pointer
-/// types whose return includes `anyerror` are comptime-only in Zig 0.16
-/// — they cannot be stored as a struct field or loaded through a pointer.
-/// The writer never fails in the only path the platform exercises today
-/// (`std.debug.print`), and a test writer that appends to an `ArrayList`
-/// propagates its own OOM via the arraylist methods which we call from
-/// the writer closure; the writer itself never errors.
-pub const Writer = fn (ctx: ?*anyopaque, msg: []const u8) void;
+/// ISS-0624 / GH #591 (LUA-13, design §7.1). Swap-in writer for
+/// `StructuredLogger.log`'s output. The default (`defaultWriter`) preserves
+/// pre-fix behaviour (routes to `std.debug.print`); tests inject a writer
+/// that appends to a captured buffer instead, because `std.debug.print`
+/// output cannot be portably captured in Zig 0.16 without a fragile
+/// file-descriptor redirect. Same "inject a function pointer / capture into
+/// a buffer" pattern the executor already uses for `HttpClientFn` (LUA-12) —
+/// this codebase's established DI convention for tests.
+pub const Writer = *const fn (ctx: ?*anyopaque, msg: []const u8) anyerror!void;
 
-fn defaultWriter(ctx: ?*anyopaque, msg: []const u8) void {
+/// Default writer: routes to `std.debug.print`, exactly as `log()` did
+/// before this field existed.
+fn defaultWriter(ctx: ?*anyopaque, msg: []const u8) anyerror!void {
     _ = ctx;
     std.debug.print("{s}", .{msg});
 }
 
 pub const StructuredLogger = struct {
     allocator: std.mem.Allocator,
-    /// *const Writer — pointer to const fn-pointer — is the runtime-known
-    /// form Zig 0.16 requires for function-pointer fields. Default
-    /// `&defaultWriter` is a real function address; tests override the
-    /// pointer via `initWithWriter` with a function that captures into an
-    /// ArrayList. Zig auto-derefs the pointer at the call site.
-    writer: *const Writer = &defaultWriter,
-    /// Opaque pointer passed alongside `writer`. Lifetime is the caller's
-    /// responsibility — the logger does not own this pointer.
+    writer: Writer = defaultWriter,
     writer_ctx: ?*anyopaque = null,
 
     pub fn init(allocator: std.mem.Allocator) StructuredLogger {
@@ -93,25 +73,16 @@ pub const StructuredLogger = struct {
         };
     }
 
-    /// WF03-GH591 / ISS-0624 — LUA-13. Initialise with a custom writer +
-    /// context for test capture. The `writer` parameter is `*const Writer`
-    /// (pointer to const fn), matching the field shape — pass a function
-    /// address, e.g. `&BufWriter.f`. The `writer_ctx` pointer must outlive
-    /// the logger; the logger does not free it.
-    pub fn initWithWriter(
-        allocator: std.mem.Allocator,
-        writer: *const Writer,
-        writer_ctx: ?*anyopaque,
-    ) StructuredLogger {
-        return StructuredLogger{
-            .allocator = allocator,
-            .writer = writer,
-            .writer_ctx = writer_ctx,
-        };
-    }
-
-    /// Log a structured entry. For MVP, this logs to stderr in JSON format.
-    pub fn log(self: *StructuredLogger, entry: StructuredLogEntry) !void {
+    /// Log a structured entry. Routes formatted output through `self.writer`
+    /// (defaulting to stderr via `std.debug.print`).
+    ///
+    /// `self` is `*const`: this method reads `self.allocator` and
+    /// `self.writer`/`self.writer_ctx` only — it never mutates the logger —
+    /// which lets `ExecutionContext.structured_logger` be a
+    /// `?*const StructuredLogger` (CTX-3-style const-through-the-call-path
+    /// discipline, consistent with the rest of `ExecutionContext`'s
+    /// caller-installed pointers).
+    pub fn log(self: *const StructuredLogger, entry: StructuredLogEntry) !void {
         const iso_time = try entry.timestamp.formatISO8601(self.allocator);
         defer self.allocator.free(iso_time);
 
@@ -126,13 +97,21 @@ pub const StructuredLogger = struct {
         };
         defer self.allocator.free(message);
 
-        // Route through the injected writer. The default `defaultWriter`
-        // reproduces the ISS-0172 stderr path; tests inject a capture
-        // writer that appends to an in-memory buffer. Writer signature
-        // returns `void` (see Writer type doc) so no error union to
-        // unwrap here. `self.writer` is `*const Writer`; the call site
-        // auto-derefs the pointer-to-function-pointer and invokes the
-        // underlying function (same as the LUA-12 HttpClientFn pattern).
-        self.writer(self.writer_ctx, message);
+        // Write via the injected writer (or a real logging backend in
+        // production). Defaults to stderr.
+        //
+        // ISS-0172 / GH #500: `std.io.getStdErr()` does not exist in Zig
+        // 0.16 ("root source file struct 'std' has no member named 'io'").
+        // This call site had never been analysed — src/lua_test_root.zig
+        // pinned StructuredLogger with a bare `_ = StructuredLogger;` type
+        // reference, which resolves the type name but neither its fields nor
+        // its methods' bodies, so the break stayed invisible through a green
+        // `zig build test-lua` until the pin was strengthened to force real
+        // analysis of this method. `std.debug.print` (via `defaultWriter`)
+        // is this codebase's established 0.16-era stderr pattern (see the
+        // fallback error path immediately above, and
+        // src/config.zig/src/expr/benchmark.zig for the same idiom
+        // elsewhere).
+        try self.writer(self.writer_ctx, message);
     }
 };
