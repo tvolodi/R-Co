@@ -911,6 +911,24 @@
       "labels": [
         "bug"
       ]
+    },
+    {
+      "issue_id": "GH-618",
+      "issue_number": 618,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/618",
+      "title": "ISS-0636: createSubscription ignores req.secret \u2014 webhook signing never activated via .secret field",
+      "severity": "MAJOR",
+      "labels": [],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T09:44:42Z"
+      },
+      "added_at": "2026-08-09T09:44:42Z",
+      "started_at": "2026-08-09T09:44:42Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
