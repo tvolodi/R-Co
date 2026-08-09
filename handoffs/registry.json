@@ -21890,7 +21890,18 @@
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-08-09T05:41:40Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 7 — documentation"
+      "stage": "WF-03 Step 7 \u2014 documentation"
+    },
+    {
+      "handoff_id": "5ff58680-b488-4300-9377-0f3c46451f4b",
+      "file": "handoffs/WF03-GH383-20260809/step-final-backend-dev.json",
+      "run_id": "WF03-GH383-20260809",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-09T05:48:58Z",
+      "status": "COMPLETED",
+      "stage": "Step Final"
     }
   ],
   "last_updated": "2026-08-09T05:43:39Z"

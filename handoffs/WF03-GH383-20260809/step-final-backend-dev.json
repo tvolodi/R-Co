@@ -1,0 +1,47 @@
+{
+  "handoff_id": "5ff58680-b488-4300-9377-0f3c46451f4b",
+  "run_id": "WF03-GH383-20260809",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T05:48:58Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step Final",
+    "requirement_ids": [
+      "ISS-0120"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "handoffs/WF03-GH383-20260809/step-07-doc-updater.json"
+    ]
+  },
+  "task": {
+    "description": "fn:git-merge \u2014 Merge feature/WF03-GH383-20260809 into main via PR #611, clean up branch, verify main.",
+    "acceptance_criteria": [
+      "PR #611 merged (squash) to main",
+      "feature/WF03-GH383-20260809 deleted from GitHub",
+      "main is clean and at squash-merge commit a549b49b",
+      "GH-383 project board moved to Done",
+      "GH-383 queue entry status RESOLVED"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step Final PASS \u2014 PR #611 squash-merged to main (a549b49b), feature/WF03-GH383-20260809 deleted, GH-383 board Done, queue RESOLVED.",
+    "artifacts_out": [
+      "PR #611",
+      "merge_commit=a549b49b"
+    ],
+    "issues": [],
+    "next_action": "None \u2014 WF03-GH383-20260809 complete"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T05:48:58Z",
+  "completed_at": "2026-08-09T05:49:30Z"
+}
