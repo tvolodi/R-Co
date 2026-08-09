@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH482-20260809/step-01-issue-fixer.json",
   "created_at": "2026-08-09T03:21:59Z",
   "started_at": "2026-08-09T03:21:59Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-09T03:45:11Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -36,7 +36,29 @@
       "fn:search-issues"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Third diagnosis pass on GH-482 / ISS-0150. Confirmed (again) that the originally\nfiled premise -- a missing per-tenant schema_migrations ledger -- is disproven by\ndesign (src/design/iss504_migration_tracking.md): public.schema_migrations\n(schema_name, version) is the canonical, single-source-of-truth tracker; stray\nper-tenant copies are intentionally dropped by GBL-132. RC-1/2/3 (fixed at PR #519,\n2026-08-07) hold: neither original error signature (42P01 tenant schema_migrations,\nC23505 process_definitions_pkey) appears anywhere in a fresh full reproduction run.\nAll 4 previously-forwarded sibling issues (ISS-0182/GH515, ISS-0183/GH516,\nISS-0184/GH517, ISS-0185/GH518) are closed.\n\nDiscovered an independent, unmerged branch from the prior day (feature/WF03-GH482-20260808)\nthat had already re-diagnosed to the same conclusion and progressed to a CODE-DESIGNER\nclose-out design (src/design/iss0150-gh482-test-integration-svc-closeout.md) mandating\na fresh, workspace-owned database re-measurement before GH-482 can be closed. That\nbranch stalled at Step 2 and was never merged. This run independently re-executed\nthat design's fresh-database procedure (source is identical to origin/main -- verified\nvia git diff, this run's branch carries no source changes).\n\nTHE KEY FINDING: the fresh-database re-measurement itself failed at the migration\nstep, before any test could run. zig build migrate against a genuinely fresh database\nfails at migrations/011_webhook_subscriptions.sql with a scope-mismatch guard error\n(declaresUnqualifiedTableWork in src/db/migrations.zig). Root-caused to commit a2a8c68\n(ISS-0185 / GH#518, merged 2026-08-08) which added '-- scope: public' headers to 9\nmigration files without qualifying their CREATE TABLE / INSERT INTO statements with\n'public.'. Confirmed systemic (not just file 011) by pre-seeding the ledger past 011\nand re-running migrate, which hit the identical error at the next affected file\n(022_obs06_alerting_state.sql); a full scan found 9 affected files total, all last\ntouched by a2a8c68. Invisible until now because every long-lived db_test container\n(created 2026-08-06, before a2a8c68 merged 2026-08-08) already has these files\nledger-recorded as applied, so migrate silently skips re-evaluating their broken\ncontent -- the exact shared_db_container_trap pattern ISS-0150's own 2026-08-07\nresolution documented, recurring against a different migration set.\n\nThis is a genuine, currently-live PRODUCTION defect (migrations/*.sql, deployed to\nevery environment) that breaks fresh-database bootstrap on main, and it is what\ncurrently blocks any trustworthy fresh-database measurement of GH-482's own\nacceptance criterion. Filed as ISS-0630 / GH#605 (BLOCKER), registered locally,\nqueued via tools/queue_add.py, and routed to CODE-DESIGNER (Step 2 of this run) as\nthis run's actual implementation target.\n\nSecondary findings from the original filing (C23505 duplicate-key, TC-ISS503-02/03\nGBL-084 removal) are both confirmed RESOLVED (0 occurrences in current output;\nalready fixed by the 2026-08-07 RC-1 fix) and do NOT share ISS-0630's root cause.\n\nTC-DB-02-04 (the explicitly-out-of-scope connection-pool-boundary flake) is confirmed\nabsent from this run and has no prior tracking issue; filed as its own follow-up,\nISS-0631 / GH#606 (MINOR), and queued -- not folded into this run since it is\nunrelated and not currently reproducing.\n\nPHASING DECISION: this run does NOT attempt to fix or classify the 35 residual\ntest-integration-svc failures observed against the shared db_test database. They\ncannot be reliably sorted into pre-existing/branch-new/already-covered-by-a-closed-\nsibling until ISS-0630 is fixed and a trustworthy fresh-database measurement becomes\npossible -- attempting that classification now would repeat the exact\nunreliable-shared-database mistake ISS-0150's own resolution already identified.\nISS-0630 (small, well-bounded, single-commit-introduced, 9-file fix) is routed now;\nGH-482 / ISS-0150 stays OPEN / PARTIALLY_RESOLVED, explicitly blocked on ISS-0630,\nfor a follow-up run to re-execute the already-written close-out design once unblocked.\nThis mirrors the batch-cap discipline used for GH-495 -> ISS-0624/ISS-0625 earlier\nthis session.",
+    "artifacts_out": [
+      "docs/issues/ISS-0630.json",
+      "docs/issues/ISS-0631.json",
+      "docs/issues/ISS-0150.json",
+      "docs/issue-reports/ISS-0150-gh482-20260809-diagnosis.yaml",
+      "handoffs/WF03-GH482-20260809/step-01-inner-report.md",
+      "handoffs/WF03-GH482-20260809/step-02-code-designer.json"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "ISS-0630 / GH#605: 9 migration files break fresh-database bootstrap (routed to CODE-DESIGNER this run)"
+      },
+      {
+        "severity": "MINOR",
+        "description": "ISS-0631 / GH#606: TC-DB-02-04 connection-pool flake, filed as its own follow-up per original issue framing"
+      }
+    ],
+    "next_action": "Route to CODE-DESIGNER (Step 2) for ISS-0630. GH-482/ISS-0150 itself stays open, blocked on ISS-0630."
+  },
   "rework_count": 0,
   "max_rework": 3
 }

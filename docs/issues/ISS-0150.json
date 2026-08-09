@@ -175,5 +175,21 @@
   },
   "shared_db_container_trap": "The shared db_test container has 1134_iss0112_add_secret_ref_to_tenant_schemas.sql recorded applied at 2026-08-06T07:15:23Z, 43 minutes BEFORE GBL-128_exp501_secrets.sql at 07:58:38Z which creates the table it alters. Because the ledger marks it applied it never re-runs, so secret_ref/secret_key_id were never added and never will be on that database, though both are present on any freshly migrated one. This accounts for the entire gap between the shared-DB (123) and pristine (119) BEFORE counts. Recorded in docs/anti-patterns.md.",
   "run_id_partial_fix": "WF03-ISS-0150-20260807",
-  "requirement_status_note": "No requirement status was moved. XC-05, XC-06 and SIM-01..SIM-04 reference the repaired test files via test_run/implemented_in but are all already RELEASED (terminal). This run repaired test fixtures and implemented no requirement."
+  "requirement_status_note": "No requirement status was moved. XC-05, XC-06 and SIM-01..SIM-04 reference the repaired test files via test_run/implemented_in but are all already RELEASED (terminal). This run repaired test fixtures and implemented no requirement.",
+  "redisagnosis_20260808": {
+    "run_id": "WF03-GH482-20260808",
+    "branch": "feature/WF03-GH482-20260808",
+    "merged": false,
+    "note": "Independent re-diagnosis reached the same disproven-premise conclusion and confirmed all 4 forwarded siblings resolved. Progressed to CODE-DESIGNER (Step 2) and produced src/design/iss0150-gh482-test-integration-svc-closeout.md, a Type E close-out design requiring a fresh workspace-owned database measurement. Never carried past Step 2; branch left unmerged."
+  },
+  "rediagnosis_20260809": {
+    "run_id": "WF03-GH482-20260809",
+    "branch": "feature/WF03-GH482-20260809",
+    "diagnosis_report": "docs/issue-reports/ISS-0150-gh482-20260809-diagnosis.yaml",
+    "finding": "Following the 2026-08-08 close-out design's mandated fresh-database re-measurement surfaced a new, currently-blocking production defect: fresh-database migration bootstrap fails at migrations/011_webhook_subscriptions.sql (and 8 more files), introduced by a2a8c68 (ISS-0185 / GH#518, merged 2026-08-08). Filed as ISS-0630 / GH#605 (BLOCKER) and routed to CODE-DESIGNER.",
+    "shared_db_reproduction": "661 pass / 9 skip / 65 fail / 1 crash (736 total) against the long-lived shared db_test; original ISS-0150 error signatures (42P01 schema_migrations, C23505 process_definitions_pkey) confirmed ABSENT -- both remain resolved from the 2026-08-07 RC-1 fix.",
+    "tc_db_02_04_flake": "confirmed absent this run; no existing tracking issue found; filed as ISS-0631 / GH#606 (MINOR)",
+    "disposition": "GH-482 stays OPEN / PARTIALLY_RESOLVED, now explicitly blocked on ISS-0630. The 35 residual test-integration-svc failures observed on the shared database remain unclassified (pre-existing vs. branch-new vs. already-covered) pending ISS-0630's fix, which is required before the close-out design's fresh-database measurement can succeed.",
+    "blocked_on": "ISS-0630"
+  }
 }

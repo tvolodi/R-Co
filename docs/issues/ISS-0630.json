@@ -1,0 +1,36 @@
+{
+  "issue_id": "ISS-0630",
+  "title": "migrate: 9 '-- scope: public' migrations write unqualified tables, breaking fresh-database bootstrap at 011 (from ISS-0185/GH#518)",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/605",
+  "registered_at": "2026-08-09T03:40:35Z",
+  "registered_by": "ISSUE-FIXER (WF03-GH482-20260809 Step 01, incidental discovery during GH-482/ISS-0150 fresh-database re-measurement)",
+  "related_to": ["ISS-0150", "ISS-0185", "ISS-0603", "ISS-0604"],
+  "severity": "BLOCKER",
+  "status": "OPEN",
+  "run_id": "WF03-GH482-20260809",
+  "category": "migration-hygiene/scope-mismatch",
+  "affected_areas": [
+    "migrations/011_webhook_subscriptions.sql",
+    "migrations/022_obs06_alerting_state.sql",
+    "migrations/038_oidc_claim_mapping_config.sql",
+    "migrations/039_jit_provisioning_config.sql",
+    "migrations/041_oidc15_realm_deletion_tracker.sql",
+    "migrations/042_oidc16_26_agent_lifecycle_foundations.sql",
+    "migrations/049_repository_service_catalog.sql",
+    "migrations/056_onboarding_registry.sql",
+    "migrations/094_entity_subsystem.sql"
+  ],
+  "symptom": "zig build migrate against a genuinely fresh, empty database fails at 011_webhook_subscriptions.sql with 'Migration scope mismatch: ... is declared public-only ... but performs unqualified table work that needs the per-tenant pass.' Pre-seeding past 011 reproduces the identical error at the next affected file, 022_obs06_alerting_state.sql, confirming a systemic pattern across at least 9 files.",
+  "reproduction": "docker exec <db_test-container> psql -U bpm -d postgres -c \"CREATE DATABASE bpm_fresh_check OWNER bpm;\"; BPM_DB_URL=postgres://bpm:bpm@localhost:<port>/bpm_fresh_check zig build migrate  # fails at 011_webhook_subscriptions.sql",
+  "root_cause_analysis": "Commit a2a8c68 (ISS-0185 / GH #518, merged 2026-08-08, PR #569) added '-- scope: public' headers to 9 numeric migration files as part of dual-schema-shadow cleanup, without qualifying those files' CREATE TABLE / INSERT INTO statements with 'public.'. The scope-mismatch guard (declaresUnqualifiedTableWork() in src/db/migrations.zig, added by ISS-0604/GH-470 specifically to catch this defect class) correctly fires on any fresh apply of these files.",
+  "pre_existing": false,
+  "introduced_by": "a2a8c68 (PR #569, ISS-0185 / GH #518, merged 2026-08-08)",
+  "shared_db_masking": "Every workspace's db_test container has run continuously since 2026-08-06 (before a2a8c68 merged 2026-08-08), so public.schema_migrations already recorded all 9 files as applied before the defect was introduced into their content. zig build migrate skips already-applied files, so the guard never evaluated the broken content on any long-lived shared database. Only a genuinely fresh database triggers it -- the exact 'shared_db_container_trap' pattern documented in docs/anti-patterns.md from ISS-0150's own resolution.",
+  "impact": "Fresh-database bootstrap is broken on main. Blocks new developer onboarding, new CI/test infrastructure, disaster recovery, staging cutover, and blocks a trustworthy fresh-database measurement of GH-482 / ISS-0150's own acceptance criterion 2 (zig build test-integration-svc exits 0 against a healthy test database), since the close-out design for that issue (src/design/iss0150-gh482-test-integration-svc-closeout.md) requires a fresh workspace-owned database.",
+  "acceptance_criteria": [
+    "Every migration file identified above either qualifies its unqualified CREATE TABLE/ALTER TABLE/INSERT INTO statements with public., or has its scope header corrected to '-- scope: all_schemas' (public.-qualification expected, since all 9 tables appear genuinely global)",
+    "zig build migrate against a genuinely fresh, empty database exits 0 and applies all migration files without a scope-mismatch error",
+    "A regression check exists (or is confirmed already present) that migrates a fresh database, not only the long-lived shared one, to prevent recurrence -- this is the second occurrence of this defect class (see ISS-0603/GH-467, ISS-0604/GH-470)"
+  ],
+  "discovered_while_fixing": "ISS-0150"
+}

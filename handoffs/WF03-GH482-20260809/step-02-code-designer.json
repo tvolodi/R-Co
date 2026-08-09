@@ -1,0 +1,50 @@
+{
+  "handoff_id": "190b154e-6cba-4874-9314-57fc6ff02d27",
+  "run_id": "WF03-GH482-20260809",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ISSUE-FIXER",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH482-20260809/step-02-code-designer.json",
+  "created_at": "2026-08-09T03:44:14Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "aebd28ab-5be3-4044-a232-150a105bf876"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0630.json",
+      "docs/issue-reports/ISS-0150-gh482-20260809-diagnosis.yaml",
+      "handoffs/WF03-GH482-20260809/step-01-inner-report.md",
+      "migrations/011_webhook_subscriptions.sql",
+      "migrations/022_obs06_alerting_state.sql",
+      "migrations/038_oidc_claim_mapping_config.sql",
+      "migrations/039_jit_provisioning_config.sql",
+      "migrations/041_oidc15_realm_deletion_tracker.sql",
+      "migrations/042_oidc16_26_agent_lifecycle_foundations.sql",
+      "migrations/049_repository_service_catalog.sql",
+      "migrations/056_onboarding_registry.sql",
+      "migrations/094_entity_subsystem.sql",
+      "src/db/migrations.zig"
+    ]
+  },
+  "task": {
+    "description": "Design the fix for ISS-0630 / GH #605 (BLOCKER): 9 migration files declare\n'-- scope: public' but perform unqualified CREATE TABLE / INSERT INTO work,\nwhich trips the declaresUnqualifiedTableWork() scope-mismatch guard\n(src/db/migrations.zig) on any genuinely fresh database. This breaks fresh-\ndatabase migration bootstrap on main. The defect was introduced by commit\na2a8c68 (ISS-0185 / GH#518, merged 2026-08-08), which added the scope headers\nwithout qualifying the table statements with public. It is invisible on every\nlong-lived shared db_test container because those files' ledger rows were\nalready recorded applied before the defect entered their content.\n\nAffected files and their unqualified statements (confirmed by direct inspection):\n- migrations/011_webhook_subscriptions.sql: CREATE TABLE metric_snapshots, CREATE TABLE rate_limit_buckets\n- migrations/022_obs06_alerting_state.sql: CREATE TABLE obs_alert_trigger_state, CREATE TABLE obs_alert_hook_emission_state\n- migrations/038_oidc_claim_mapping_config.sql: CREATE TABLE realm_claim_mapping_config\n- migrations/039_jit_provisioning_config.sql: CREATE TABLE jit_provisioning_config, INSERT INTO jit_provisioning_config\n- migrations/041_oidc15_realm_deletion_tracker.sql: CREATE TABLE realm_deletion_tracker\n- migrations/042_oidc16_26_agent_lifecycle_foundations.sql: CREATE TABLE idp_operation_ledger, idp_transaction_log, idp_adapter_audit\n- migrations/049_repository_service_catalog.sql: CREATE TABLE service_catalog\n- migrations/056_onboarding_registry.sql: CREATE TABLE onboarding_registry\n- migrations/094_entity_subsystem.sql: INSERT INTO event_type_registry\n\nAll nine tables are genuinely global/platform-wide (metrics, rate limiting,\nOIDC realm config, onboarding registry, service catalog, alerting state, entity\nevent-type registry) -- none are per-tenant business data. The fix should\ntherefore qualify each unqualified CREATE TABLE / ALTER TABLE / INSERT INTO\nstatement with the public. schema prefix, NOT change the scope header to\n'-- scope: all_schemas' (that would incorrectly cause the migration runner to\napply per-tenant work that these tables do not need).\n\nIMPORTANT: these 9 files have ALREADY been applied (ledger-recorded) on every\nexisting long-lived db_test/dev database, with CREATE TABLE IF NOT EXISTS making\nthem idempotent no-ops on those databases going forward -- so this is a pure\ncontent-correctness fix for future fresh-database bootstraps, not a data migration\nor backfill. Do not write a corrective/backfill migration; edit the 9 files in place.\n\nDesign should also state whether any test/CI gate should be added or updated to\ncatch this defect class on a fresh database going forward (this is the second\noccurrence -- see ISS-0603/GH-467 and ISS-0604/GH-470, the latter of which built\nthe very guard that caught this one) -- note in the design if such a gate already\nexists and simply was not run against a fresh database, versus needing to be built.\n\nThis is a small, well-bounded, single-root-cause fix. Do not expand scope to the\n35 residual test-integration-svc failures noted in the diagnosis -- those remain\nexplicitly out of scope for this run, blocked on this fix landing first, and will\nbe addressed in a later run once a trustworthy fresh-database measurement is possible.",
+    "acceptance_criteria": [
+      "Design covers all 9 affected migration files",
+      "Design specifies public.-qualification (not scope-header change) for each unqualified statement, consistent with these tables being genuinely global",
+      "Design explicitly excludes the 35 residual test-integration-svc failures from this fix scope",
+      "Design notes whether a fresh-database CI/test gate already exists or needs to be added to prevent recurrence",
+      "No design element requires a backfill or corrective data migration -- these are idempotent CREATE TABLE IF NOT EXISTS / already-applied-elsewhere statements"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
