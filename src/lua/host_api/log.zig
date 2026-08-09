@@ -31,7 +31,7 @@ pub fn register(L: *bindings.LuaState, context: *const executor.ExecutionContext
     bindings.lua_setfield(L, -2, "log");
 }
 
-/// Lua C function: platform.log(level, message)
+/// Lua C function: platform.log(level, message[, context_table])
 fn platformLog(L: *bindings.LuaState) callconv(.c) c_int {
     // CAP-1: gate before any argument is read.
     host_context.requireCapability(L, FN_NAME, capabilities.StandardCapabilities.AUDIT_LOG);
