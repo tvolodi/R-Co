@@ -1078,6 +1078,26 @@
       "completed_at": "2026-08-09T12:56:10Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-360",
+      "issue_number": 360,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/360",
+      "title": "ISS-0102 \u2014 6 OIDC integration test files (oidc09/10/11/12/15/35) not wired into any zig build target, never execute",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-09T12:56:46Z"
+      },
+      "added_at": "2026-08-09T12:56:46Z",
+      "started_at": "2026-08-09T12:56:46Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

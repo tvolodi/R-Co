@@ -1,7 +1,7 @@
 {
   "id": "ISS-0102",
   "title": "tests/integration/oidc09_jit_provisioning_test.zig, oidc10_attribute_sync_test.zig, oidc11_identity_stability_test.zig (and oidc12/15/35) are not wired into any zig build target -- their test blocks never run",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MINOR",
   "category": "test-build-wiring-gap",
   "run_id": "WF03-iss0100-20260731",
@@ -17,7 +17,8 @@
     "build.zig"
   ],
   "created_at": "2026-07-31T10:10:19Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T12:58:58Z",
+  "resolution": "Fixed by ISS-0137 bulk wiring (PR #490, commit 8103072d, 2026-08-06). All 6 files imported in tests/integration/main_test.zig lines 183-195 and execute via zig build test-integration-others-internal. GH #360 closed via WF03-GH360-20260809 Step Final.",
   "notes": "Discovered while implementing ISS-0100 (GitHub #357) Iteration 3 (oidc09/10/11 tenant fixture hygiene fix). While applying the fix, confirmed via grep that none of oidc09_jit_provisioning_test.zig, oidc10_attribute_sync_test.zig, oidc11_identity_stability_test.zig, oidc12_realm_tenant_binding_test.zig, oidc15_realm_deletion_test.zig, or oidc35_onboarding_test.zig are imported by tests/integration/main_test.zig or referenced by any build.zig addTest/step block (`grep -n \"oidc09\\|oidc10_attribute\\|oidc11_identity\\|oidc12_realm\\|oidc15_realm\\|oidc35_onboarding\" tests/integration/main_test.zig build.zig` returns zero matches). These 6 files collectively contain dozens of test blocks (oidc09 alone has 10) that cannot currently execute via `zig build test-integration` or any per-suite target -- they are dead code from a CI/build perspective, regardless of their own correctness. This means whatever OIDC JIT-provisioning, attribute-sync, identity-stability, realm-tenant-binding, realm-deletion, and onboarding behavior these tests were meant to verify has had zero automated coverage for an unknown period, and the ISS-0100 fixture-hygiene fix applied to oidc09/10/11 in this same run is itself currently unverified by CI (it was hand-verified via direct `zig test` invocation outside the normal build graph during ISS-0100 Iteration 3, not via a wired build step).",
   "candidate_resolution": "Add the missing files to tests/integration/main_test.zig's import list (matching the pattern used for already-wired sibling files like adp07_agent_role_reserved_usernames_test.zig) and confirm they run as part of the test-integration / test-integration-svc aggregate step, or -- if there is a reason they were deliberately excluded (e.g. known-broken, superseded by a later test, or intentionally quarantined) -- document that reason inline and either delete the dead files or add an explicit skip marker with a linked issue, rather than leaving them silently unreachable. Needs its own WF-03 scoping decision; not part of ISS-0100's fix.",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/360"
