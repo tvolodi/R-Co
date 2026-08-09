@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH600-20260809/step-01-issue-fixer.json",
   "created_at": "2026-08-09T01:29:01Z",
   "started_at": "2026-08-09T01:29:01Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-09T01:31:33Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -34,7 +34,15 @@
       "fn:search-issues"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause CONFIRMED against real source (not assumed): TC-LUA-10-03 (src/lua/limiter_wiring_test.zig L515-600) runs a 200,000,000-iteration Lua loop via lua_pcall on the main test thread, deliberately taking well over the 1s watchdog deadline, then asserts watchdog_state.hasFired() (L600) on the very next line with zero allowance for the watchdog thread's own scheduling. timeout.zig confirms the mechanism: WatchdogHandle.start() (L211-214) spawns watchdogLoop (L187-200) on a separate std.Thread that polls every POLL_INTERVAL_NS = 10ms (L84) and only flips state.fired via release-store (L194) after observing now >= deadline_ns. This is a genuine, narrow race between the watchdog thread's own post-deadline poll/schedule latency (~10ms nominal, wider under system load/CPU contention) and the test's zero-tolerance immediate read -- NOT a logic defect in WatchdogState/watchdogLoop, which behaves correctly per its own design (src/design/iss0169-lua08-09-10-limiter-wiring.md section 2.5) and per the passing runs' own evidence. Matches ISS-0629's evidence exactly (3 fail / 2 pass across 5 runs, zero code changes).\n\nRecommended fix (test-only, src/lua/limiter_wiring_test.zig L600 only): replace the single immediate assertion with a bounded retry loop -- either yield-spin against the milliTimestamp() helper already used in this test (preferred, avoids the sleep-primitive complications timeout.zig itself documents at L96-104 for this Zig 0.16.0 target), or 20ms sleep-based polling (2x the watchdog's own 10ms interval) -- up to a total budget of 1000ms (100x the watchdog's nominal poll interval, negligible against the test's existing 30s upper bound on elapsed_ms), then a final try std.testing.expect(watchdog_state.hasFired()) that still fails the test if the flag never becomes true within budget. This absorbs scheduling jitter only -- it cannot mask a genuine watchdog failure, since the 1s deadline has already passed by construction before the retry loop even starts.\n\nConfirmed test-only: no change needed to src/lua/timeout.zig or any other production file; WatchdogState/WatchdogHandle/watchdogLoop are correct as-is.\n\nChecked for the same pattern elsewhere: TC-LUA-10-01 does not call hasFired() at all (asserts on the in-VM hook's timeout error path). TC-LUA-10-02 does exercise the watchdog via platformCallService -> host_context.zig activeWatchdogFired() -> wd.hasFired(), but that read happens synchronously inline within the same blocking host-call chain the test's own assertions key off of, and its lower-bound assertion (elapsed_ms >= 1400ms, past the 1500ms mock delay and the 1s deadline) already rules out the analogous race -- no fix needed there. TC-LUA-10-03's own mutation-check test (L603-633) asserts !hasFired() with no watchdog thread ever spawned, so nothing can flip that flag -- no race possible. Explicit scope decision: fix is correctly scoped to the single TC-LUA-10-03 assertion at L600 per GH-600's own framing; no other test needs the same treatment, and no batch-cap concern applies since only one test is affected.",
+    "artifacts_out": [
+      "handoffs/WF03-GH600-20260809/step-02-code-designer.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }

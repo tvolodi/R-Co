@@ -591,3 +591,5 @@
 2026-08-09T01:26:26Z | BOARD_UPDATE | WF03-GH595-20260809 | 9b1994c0 | DOC-UPDATER | Issue #595 project board already at Done (non-UAT-scoped, auto-advanced on close); implemented+done targets both no-op confirmed
 2026-08-09T01:26:26Z | WF03_COMPLETE | WF03-GH595-20260809 | -------- | ORCH | ISS-0628/GH-595 RESOLVED. Repo on clean main at d0083e1.
 2026-08-09T01:29:01Z | ROUTE | WF03-GH600-20260809 | b7a5cd19 | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-600 TC-LUA-10-03 flaky test)
+2026-08-09T01:31:33Z | COMPLETE | WF03-GH600-20260809 | b7a5cd19 | ISSUE-FIXER | PASS - root cause confirmed, routed to CODE-DESIGNER
+2026-08-09T01:31:33Z | ROUTE | WF03-GH600-20260809 | 3f0e6a1c | ISSUE-FIXER -> CODE-DESIGNER | PENDING
