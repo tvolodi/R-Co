@@ -1132,14 +1132,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/637",
       "title": "lint_dual_schema_table_names: 14 tables duplicated between public/tenant_default after cold-start replay (ISS-0185-class, discovered via ISS-0101/GH-359)",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-09T16:20:34Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T16:20:34Z",
       "started_at": "2026-08-09T16:20:34Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T17:08:22Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 637,
