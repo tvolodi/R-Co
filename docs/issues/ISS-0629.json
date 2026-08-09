@@ -1,0 +1,28 @@
+{
+  "id": "ISS-0629",
+  "title": "TC-LUA-10-03 (src/lua/limiter_wiring_test.zig) is intermittently flaky: watchdog thread has not always fired by assertion time under system load",
+  "status": "OPEN",
+  "severity": "MINOR",
+  "run_id": "WF03-GH595-20260809",
+  "affected_areas": [
+    "src/lua/limiter_wiring_test.zig"
+  ],
+  "created_at": "2026-08-09T00:59:02Z",
+  "resolved_at": null,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/600",
+  "description": "Discovered incidentally while validating ISS-0628 / GH-595 (LUA-16 errfunc stack-trace fix, unrelated module). `zig build test-lua` intermittently fails 'TC-LUA-10-03: the host-external watchdog stops a tight loop even with the in-VM hook's timeout branch disabled' with `watchdog_state.hasFired()` == false, then passes cleanly on immediate rerun with no code change. Observed both failing and passing across 5 consecutive `zig build test-lua` runs on the same unmodified worktree state.",
+  "root_cause_hypothesis": "The test (src/lua/limiter_wiring_test.zig ~L575-600) runs a raw `lua_pcall` over a 200,000,000-iteration Lua loop with no host-side yield point, timed against a 1-second watchdog deadline, and asserts the watchdog polling thread observed the deadline by the time the pcall returns. Under system load the 200M-iteration loop's real wall-clock duration (and/or the watchdog poll thread's own scheduling latency) varies enough that the watchdog occasionally has not yet flipped `hasFired()` by the time the test's own assertion runs, even though `elapsed_ms` safely exceeds the 1s deadline in both outcomes. This is a timing-margin flake in the test's own assertion window, not a defect in the watchdog mechanism itself (LUA-08/09/10, GH-495) — the pcall consistently completes within the test's own 30s upper bound and `LUA_OK` status check.",
+  "acceptance_criteria": [
+    "TC-LUA-10-03 passes consistently across >=20 consecutive `zig build test-lua` runs on a moderately loaded machine, OR",
+    "the test is restructured to poll `hasFired()` with a bounded retry/backoff instead of asserting immediately on `lua_pcall` return, removing the race between the watchdog thread's own scheduling latency and the assertion"
+  ],
+  "evidence": [
+    "zig build test-lua run A: 90 pass, 1 fail (TC-LUA-10-03)",
+    "zig build test-lua run B (immediate rerun, no code change): 91 pass, 0 fail",
+    "zig build test-lua run C: 90 pass, 1 fail (TC-LUA-10-03)",
+    "zig build test-lua run D: 91 pass, 0 fail",
+    "zig build test-lua run E: 90 pass, 1 fail (TC-LUA-10-03)",
+    "git diff HEAD -- src/lua/limiter_wiring_test.zig: empty (file untouched by the ISS-0628 change under validation)"
+  ],
+  "not_in_scope_of": "ISS-0628 / GH-595 (LUA-16 stack-trace capture) — this run's own src/lua/executor.zig and src/lua/host_context.zig changes do not touch limiter_wiring_test.zig or the watchdog mechanism it tests."
+}

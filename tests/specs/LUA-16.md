@@ -259,13 +259,22 @@ sub-numbers because the design also defines a unit-level suite at
 `src/lua/iss0625_lua_12_15_16_test.zig` (TC-ISS-0625-LUA-16-01..03 unit
 form).
 
-### TC-ISS-0625-LUA-16-int-01: integration — runtime error captures error_message (KNOWN LIMITATION: stack_trace empty on LuaJIT 2.1)
-**Given:** A real `ExecutionContext` and a Lua script that raises a runtime error from a nested call chain (`f3 -> f2 -> f1 -> main`, with `f3` calling `error("boom in f3")`).  
+### TC-ISS-0625-LUA-16-int-01: integration — runtime error captures error_message and stack_trace
+**Given:** A real `ExecutionContext` and a Lua script that raises a runtime error from a nested, non-tail-call chain (`f3 -> f2 -> f1 -> main`, with `f3` calling `error("boom in f3")`; each caller uses `local r = fN(); return r` rather than `return fN()` so every level keeps its own live stack frame — see ISS-0628 note below).  
 **When:** `lua_executor.executeScript` runs the script.  
-**Then:** `ScriptResult.success == false`, `ScriptResult.error_kind == .RuntimeError`, `ScriptResult.script_error != null`, `ScriptErrorPayload.error_message` contains the substring `"boom in f3"`. **KNOWN LIMITATION:** `ScriptErrorPayload.stack_trace` is empty because LuaJIT 2.1 (Lua 5.1 API) unwinds the call stack before `lua_pcall` returns to C, so `lua_getstack` returns 0 by the time `captureStackTrace` runs. The proper fix is to install `debug.traceback` as the `errfunc` argument to `lua_pcall`. Today the trace is empty; the TC asserts this as the invariant and flips when the limitation is fixed. Tracking: ISS-0626 (to be filed).  
+**Then:** `ScriptResult.success == false`, `ScriptResult.error_kind == .RuntimeError`, `ScriptResult.script_error != null`, `ScriptErrorPayload.error_message` contains the substring `"boom in f3"`, and `ScriptErrorPayload.stack_trace.len > 0` and contains the substring `"f3"`.  
+**FIXED (ISS-0628 / GH-595):** a message-handler closure (`executor.errfuncHandler`) is installed as `lua_pcall`'s `errfunc` argument, so the stack walk runs while the erroring call frames are still live, instead of after `lua_pcall` has already unwound them. The trace travels via a private `LUA_REGISTRYINDEX` key (`host_context.STACK_TRACE_KEY`), read back by `host_context.readStackTrace`. This does NOT install `debug.traceback` — the `debug` library remains permanently unopened (SBX-1).  
 **Layer:** integration  
-**Acceptance criterion mapped:** LUA-16 end-to-end — the `lua_pcall` error message reaches `ScriptErrorPayload.error_message`; classification as `.RuntimeError` is correct.  
+**Acceptance criterion mapped:** LUA-16 end-to-end — the `lua_pcall` error message reaches `ScriptErrorPayload.error_message`; classification as `.RuntimeError` is correct; the stack trace is now genuinely captured.  
 **Test file:** `tests/integration/iss0625_lua_12_15_16_test.zig`, test block `"TC-ISS-0625-LUA-16-int-01: ..."`.
+
+### TC-ISS-0628-LUA-16-stacktrace-01: integration — stack_trace contains the failing function name and one frame marker per nesting level
+**Given:** A real `ExecutionContext` and a Lua script distinct from TC-ISS-0625-LUA-16-int-01's fixture: `deepFn(n)` recurses (non-tail-call form) until `n >= 3`, then raises `error("boom in deepFn")`.  
+**When:** `lua_executor.executeScript` runs the script.  
+**Then:** `ScriptResult.success == false`, `ScriptResult.error_kind == .RuntimeError`, `ScriptErrorPayload.stack_trace.len > 0`, the trace contains the substring `"deepFn"`, and the trace has at least as many `"  at "` frame markers as the fixture's nesting depth (3) — proving multiple live frames were captured, not just the innermost one.  
+**Layer:** integration  
+**Acceptance criterion mapped:** ISS-0628 / GH-595 — the errfunc-based stack-trace capture produces genuine, multi-frame, named content, not merely a non-empty placeholder.  
+**Test file:** `tests/integration/iss0625_lua_12_15_16_test.zig`, test block `"TC-ISS-0628-LUA-16-stacktrace-01: ..."`.
 
 ### TC-ISS-0625-LUA-16-int-02: integration — instruction_count == 0 (LUA-08 instruction limiter not installed)
 **Given:** A real `ExecutionContext` (with `instruction_limiter = null` — the LUA-08 source is not installed in this run, per design D-3) and a Lua script that raises via nil indexing (`local x = nil; return x.field`).  
@@ -287,4 +296,5 @@ form).
 
 - LUA-12 (service call): TC-ISS-0625-LUA-12-int-01..02 in this run's integration test file.
 - LUA-15 (registry-channel failure anti-forgery): TC-ISS-0625-LUA-15-int-01..04 in this run's integration test file.
-- Backlog issue: ISS-0625 / GH-592. Unit tests live in `src/lua/iss0625_lua_12_15_16_test.zig` (TC-ISS-0625-LUA-{12,15,16}-NN). Limitation follow-up: ISS-0626 (LUA-16 stack-trace empty on LuaJIT 2.1 — install `debug.traceback` as the `errfunc` to `lua_pcall`).
+- Backlog issue: ISS-0625 / GH-592. Unit tests live in `src/lua/iss0625_lua_12_15_16_test.zig` (TC-ISS-0625-LUA-{12,15,16}-NN).
+- ISS-0628 / GH-595 (RESOLVED): the LUA-16 stack-trace-empty limitation is fixed via an `errfunc` message-handler closure (`executor.errfuncHandler`) installed as `lua_pcall`'s 4th argument, NOT `debug.traceback` (the `debug` library stays permanently unopened per SBX-1). See `src/design/iss0628-lua16-errfunc-stacktrace.md` for the full design. TC-ISS-0625-LUA-16-int-01's assertion flipped from empty to non-empty + content-checked; new TC-ISS-0628-LUA-16-stacktrace-01 added for multi-frame, named-content proof.

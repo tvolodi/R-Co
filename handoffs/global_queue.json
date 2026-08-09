@@ -749,6 +749,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0629",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/600",
+      "title": "TC-LUA-10-03 flaky watchdog assertion timing",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-09T00:59:55Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

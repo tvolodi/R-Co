@@ -509,6 +509,17 @@ fn executeSource(
     };
     defer bindings.lua_close(L);
 
+    // ISS-0628 / GH-595 (design §2): push the message handler BEFORE the
+    // chunk, and capture its ABSOLUTE stack index via lua_gettop immediately
+    // after — before anything else is pushed. The Lua message-handler
+    // contract requires the handler to be pushed before the
+    // function-to-be-called and its arguments, and requires an absolute
+    // index (not relative/negative) as lua_pcall's 4th argument, because by
+    // the time lua_pcall is invoked the chunk has already been pushed on
+    // top of the handler.
+    bindings.lua_pushcclosure(L, errfuncHandler, 0);
+    const handler_index = bindings.lua_gettop(L);
+
     // Compile the script.
     //
     // luaL_loadbuffer with an EXPLICIT length, not luaL_loadstring: the latter
@@ -540,7 +551,12 @@ fn executeSource(
     // arrives as a non-zero status with the structured denial message on the
     // stack. That is how LUA-06's "raises a Lua error carrying function name,
     // capability required and capabilities granted" reaches the caller.
-    const call_status = bindings.lua_pcall(L, 0, 1, 0);
+    //
+    // ISS-0628 / GH-595 (design §2.2 step 5): the only line-level change to
+    // the call itself — errfunc argument is handler_index instead of the
+    // literal 0, so errfuncHandler runs while the erroring frames are still
+    // live.
+    const call_status = bindings.lua_pcall(L, 0, 1, handler_index);
     if (call_status != 0) {
         const err_str = bindings.lua_tostring(L, -1);
         const err_msg = std.mem.span(err_str);
@@ -580,9 +596,13 @@ fn executeSource(
             };
         }
 
-        // LUA-16: runtime error. Capture the stack trace and build the
-        // payload conditionally (D-3 of the design).
-        const stack_trace = captureStackTrace(L, context.allocator) catch "";
+        // LUA-16: runtime error. Read the stack trace errfuncHandler already
+        // captured while the erroring frames were still live (ISS-0628 /
+        // GH-595, design §3.3 — captureStackTrace can no longer be called
+        // here directly: by this point lua_pcall has already returned and
+        // the frames are gone) and build the payload conditionally (D-3 of
+        // the design).
+        const stack_trace = host_context.readStackTrace(L, context.allocator);
         defer if (stack_trace.len > 0) context.allocator.free(stack_trace);
 
         const payload = events.buildScriptErrorPayload(
@@ -684,6 +704,126 @@ fn describeSetupError(err: (errors.LuaError || stdlib.LibraryError)) []const u8 
     };
 }
 
+/// ISS-0628 / GH-595: fixed size of the stack buffer `writeStackFrames`
+/// writes into from inside `errfuncHandler`. `errfuncHandler` runs during
+/// `lua_pcall`'s own error unwind, before control returns to any Zig frame
+/// that owns an allocator reference in scope (design §1.1) — it must never
+/// allocate, so the buffer is fixed-size and truncates rather than growing
+/// unboundedly. 4096 is not a regression on any currently-passing test:
+/// `captureStackTrace` had no depth cap before this change either, and the
+/// deepest chain in the existing test suite (4 frames) uses a small
+/// fraction of this.
+const STACK_TRACE_BUFFER_BYTES: usize = 4096;
+
+/// Append-only writer over a caller-owned fixed buffer, used by
+/// `writeStackFrames`. Silent truncation past capacity is an accepted
+/// degradation (design §1.1) — a truncated trace, not a failure — the same
+/// judgement call `host_context.zig`'s own `Writer` makes for diagnostic
+/// text.
+const FixedWriter = struct {
+    buf: []u8,
+    len: usize = 0,
+
+    fn init(buf: []u8) FixedWriter {
+        return .{ .buf = buf };
+    }
+
+    fn put(self: *FixedWriter, text: []const u8) void {
+        if (self.len >= self.buf.len) return;
+        const room = self.buf.len - self.len;
+        const n = @min(room, text.len);
+        @memcpy(self.buf[self.len .. self.len + n], text[0..n]);
+        self.len += n;
+    }
+
+    fn putInt(self: *FixedWriter, value: c_int) void {
+        var scratch: [24]u8 = undefined;
+        const rendered = std.fmt.bufPrint(&scratch, "{d}", .{value}) catch return;
+        self.put(rendered);
+    }
+
+    /// Append one frame in the shared `"  at <chunk>:<line> in '<name>'\n"`
+    /// format (or `"  at <chunk>:<line>\n"` when the frame has no name) —
+    /// identical shape to `captureStackTrace`'s pre-existing per-frame
+    /// output, now the single place this formatting lives (design §1.1).
+    fn writeFrame(self: *FixedWriter, ar: *const bindings.lua_Debug) void {
+        const source = if (ar.source) |s| std.mem.span(s) else "bpm_script";
+        const name = if (ar.name) |n| std.mem.span(n) else "";
+
+        self.put("  at ");
+        self.put(source);
+        self.put(":");
+        self.putInt(ar.currentline);
+        if (name.len > 0) {
+            self.put(" in '");
+            self.put(name);
+            self.put("'");
+        }
+        self.put("\n");
+    }
+};
+
+/// LUA-16 / ISS-0628: shared, allocator-free walk of the live Lua call
+/// stack via `lua_getstack` / `lua_getinfo`, writing formatted frames into
+/// `buf`. Used both by `errfuncHandler` (called live, during `lua_pcall`'s
+/// unwind, buffer-based per design §1.1) and by `captureStackTrace` below
+/// (allocator-based entry point, kept for TC-ISS-0625-LUA-16-02). Returns
+/// the number of bytes written.
+///
+/// The walk uses `lua_getinfo`'s `"Sl"` (Source, current Line) field set
+/// (LuaJIT 2.1 / Lua 5.1 API). `name` is the local function name if
+/// available; the chunk is the source name set at `luaL_loadbuffer` time
+/// (`"bpm_script"` for our entry point).
+fn writeStackFrames(L: *bindings.LuaState, buf: []u8) usize {
+    var writer = FixedWriter.init(buf);
+    var level: c_int = 0;
+    var ar: bindings.lua_Debug = .{};
+
+    while (bindings.lua_getstack(L, level, &ar) != 0) : (level += 1) {
+        // "Sln" = source + current line + name/namewhat. The "n" selector is
+        // required for lj_debug_getinfo to populate ar.name at all
+        // (vendor/luajit/src/lj_debug.c: the 'n' branch is the only one that
+        // calls lj_debug_funcname; without it ar->name is left as whatever
+        // was in the (possibly stale) struct, which for a fresh lua_Debug is
+        // always null) — omitting it silently produced frames with no name
+        // in every case, which is why writeFrame's `if (name.len > 0)`
+        // branch was previously unreachable in practice. Returns 0 on
+        // failure to look up the frame.
+        if (bindings.lua_getinfo(L, "Sln", &ar) == 0) {
+            continue;
+        }
+        writer.writeFrame(&ar);
+    }
+
+    return writer.len;
+}
+
+/// ISS-0628 / GH-595: message-handler (`errfunc`) installed as `lua_pcall`'s
+/// 4th argument (§2). Per the Lua 5.1 / LuaJIT 2.1 `lua_pcall` contract,
+/// this is invoked *at the moment the error is raised*, while the erroring
+/// call frames are still live on the stack — unlike `captureStackTrace`
+/// called after `lua_pcall` has already returned, where the frames are gone.
+///
+/// Writes the captured trace into `host_context.STACK_TRACE_KEY` on the Lua
+/// registry (design §3.2), then returns the ORIGINAL error value completely
+/// unchanged: a transparent pass-through. This function must not allocate
+/// (design §1.1) — it runs during `lua_pcall`'s own unwind, before control
+/// returns to any Zig frame that owns an allocator reference in scope.
+fn errfuncHandler(L: *bindings.LuaState) callconv(.c) c_int {
+    var buffer: [STACK_TRACE_BUFFER_BYTES]u8 = undefined;
+    const len = writeStackFrames(L, &buffer);
+
+    bindings.lua_pushlstring(L, &buffer, len);
+    bindings.lua_setfield(L, bindings.LUA_REGISTRYINDEX, host_context.STACK_TRACE_KEY);
+
+    // Transparent pass-through: the error value passed as this handler's
+    // sole argument (stack index 1) is left exactly where it started — not
+    // popped, not replaced — so whatever is on the stack when this function
+    // returns becomes lua_pcall's error object, bit-for-bit identical to
+    // what the script itself raised (design §3.2).
+    return 1;
+}
+
 /// LUA-16: capture a stack trace of the failing execution via
 /// `lua_getstack` / `lua_getinfo` (decision D-4 in src/design/iss0625-gh592-lua-12-15-16.md).
 ///
@@ -694,48 +834,18 @@ fn describeSetupError(err: (errors.LuaError || stdlib.LibraryError)) []const u8 
 /// leaves the cursor at a clean stack depth — the caller must still call
 /// `lua_pop` if it expected a value on the stack.
 ///
-/// The walk uses `lua_getinfo`'s `"Sl"` (Source, current Line) field set
-/// (LUJIT 2.1 / Lua 5.1 API). `name` is the local function name if
-/// available; the chunk is the source name set at `luaL_loadbuffer` time
-/// (`"bpm_script"` for our entry point).
+/// ISS-0628 / GH-595: internally delegates to the shared, allocator-free
+/// `writeStackFrames` primitive (also used by `errfuncHandler`) via a fixed
+/// scratch buffer — kept as the allocator-based entry point for
+/// TC-ISS-0625-LUA-16-02 (idle-stack unit test). The *production* call site
+/// in `executeSource` no longer calls this function directly; it reads the
+/// trace `errfuncHandler` already captured via `host_context.readStackTrace`
+/// instead (design §3.3), because by the time `executeSource` would call
+/// this function the erroring frames are already gone.
 pub fn captureStackTrace(L: *bindings.LuaState, allocator: std.mem.Allocator) ![]u8 {
-    var out = std.ArrayList(u8).empty;
-    defer out.deinit(allocator);
-
-    var level: c_int = 0;
-    var ar: bindings.lua_Debug = .{
-        .event = 0,
-        .name = null,
-        .namewhat = null,
-        .what = null,
-        .source = null,
-        .currentline = 0,
-        .nups = 0,
-        .linedefined = 0,
-        .lastlinedefined = 0,
-        .short_src = [_]u8{0} ** 60,
-        .i_ci = 0,
-    };
-
-    while (bindings.lua_getstack(L, level, &ar) != 0) : (level += 1) {
-        // "Sl" = source + current line. Returns 0 on failure.
-        if (bindings.lua_getinfo(L, "Sl", &ar) == 0) {
-            continue;
-        }
-
-        const source = if (ar.source) |s| std.mem.span(s) else "bpm_script";
-        const line = ar.currentline;
-        const name = if (ar.name) |n| std.mem.span(n) else "";
-
-        const frame = if (name.len > 0)
-            try std.fmt.allocPrint(allocator, "  at {s}:{d} in '{s}'\n", .{ source, line, name })
-        else
-            try std.fmt.allocPrint(allocator, "  at {s}:{d}\n", .{ source, line });
-        defer allocator.free(frame);
-        try out.appendSlice(allocator, frame);
-    }
-
-    return try out.toOwnedSlice(allocator);
+    var buffer: [STACK_TRACE_BUFFER_BYTES]u8 = undefined;
+    const len = writeStackFrames(L, &buffer);
+    return try allocator.dupe(u8, buffer[0..len]);
 }
 
 /// Extract a value from the Lua stack at the given index.
