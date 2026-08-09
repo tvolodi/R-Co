@@ -14,10 +14,10 @@
   "created_at": "2026-08-01T08:52:13Z",
   "resolved_at": null,
   "notes": "Cluster G from the final integration run: webhook transaction rollback, orphan pickup, and pause-subscription target tests insert pending, failed, or BOGUS values that violate webhook_deliveries_status_check. Evidence: _integration_final.log lines 6576-6730.",
-  "root_cause": "Initial hypothesis: application/test status vocabulary and the live webhook_deliveries_status_check domain diverged across migrations, leaving valid workflow states rejected or tests targeting obsolete values.",
-  "candidate_resolution": "Establish the canonical webhook-delivery status enum, migrate the constraint and persisted data consistently, and update repository transitions/tests to use only that domain while retaining explicit invalid-status rejection coverage.",
+  "root_cause": "Category D (test error). Migration 085 and ISS-0205 (GH #400) corrected dispatcher.zig to write uppercase status values (PENDING, DELIVERED, FAILED) matching the CHECK constraint. The test file tests/integration/ext02_webhook_dispatch_test.zig was not updated — three expectEqualStrings assertions still reference legacy lowercase/obsolete values: line 589 expects 'failed' (should be 'FAILED'), line 654 expects 'exhausted' (should be 'FAILED'; 'exhausted' was remapped by migration 085 step 3 and is outside the constraint domain), line 754 expects 'success' (should be 'DELIVERED'; 'success' likewise remapped and outside domain).",
+  "candidate_resolution": "Update three expectEqualStrings calls in tests/integration/ext02_webhook_dispatch_test.zig: line 589 'failed'->'FAILED', line 654 'exhausted'->'FAILED', line 754 'success'->'DELIVERED'. No production code changes required.",
   "resolution": null,
-  "files_to_change": [],
+  "files_to_change": ["tests/integration/ext02_webhook_dispatch_test.zig"],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/381",
   "prevention": []
 }
