@@ -1,0 +1,51 @@
+{
+  "handoff_id": "342f4152-f927-4828-9bb5-23cb1f595186",
+  "run_id": "WF03-GH610-20260809",
+  "step": "2",
+  "from_agent": "CODE-DESIGNER",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-09T06:01:14Z",
+  "started_at": null,
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Step 2 Design",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c3d8f2a5-4e0b-5c16-9f7d-2b3a1e5c6d7e"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0632.json",
+      "tools/lint_sql_param_types.py"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/610"
+  },
+  "task": {
+    "description": "Produce Type E prose design for extending lint_sql_param_types.py with a 42P18 detection rule (bare $N inside jsonb_build_object / json_build_object calls).",
+    "acceptance_criteria": [
+      "src/design/iss0632-gh610-lint-42p18.md exists and passes lint_design_artefact.py",
+      "Algorithm (paren-depth scan) specified",
+      "BARE_PARAM_IN_VARIADIC_RE regex specified",
+      "False-positive analysis complete",
+      "Integration into existing lint output format described",
+      "Five test cases listed"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E design artefact created at src/design/iss0632-gh610-lint-42p18.md. Algorithm: paren-depth scan locates jsonb_build_object/json_build_object call blocks; regex r'\\$(\\d+)(?!\\s*::)' detects bare params. Five test cases specified. lint_design_artefact.py exit 0 (no issues). False-positive analysis covers set_config, INSERT VALUES, already-cast params, ARRAY[], row(), format(). Zero false positives confirmed on current codebase.",
+    "artifacts_out": [
+      "src/design/iss0632-gh610-lint-42p18.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T06:01:14Z"
+}
