@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0104 — `test-integration-env` now runs only ENV-01..05 subset (36 tests) instead of full suite (961 tests) (MINOR)** ([GitHub #362](https://github.com/tvolodi/R-Co/issues/362))
+
+- **Root cause:** `build.zig`'s `test-integration-env` step used `root_source_file = "tests/integration/main_test.zig"` — the identical 961-test aggregate root as the main `test-integration` step — instead of a dedicated ENV-scoped aggregator. The step name implied a narrowly-scoped ENV subset, but it compiled and ran the full suite as a second binary, providing no isolation at all.
+- **The fix (WF03-GH362-20260809):** Added `tests/integration/env_test_root.zig` — a new aggregator that imports only the 5 ENV test files (`env01_test.zig`, `env01_tt_test.zig`, `env02_test.zig`, `env03_test.zig`, `env05_test.zig`). Updated `build.zig`'s `test-integration-env` step to use this aggregator as `root_source_file`. No test assertions changed; no existing test step removed.
+- **Verified:** `zig build test-integration-env` — 36 tests (vs 961 in the full suite). `zig build test` exits 0. `zig build` exits 0. Two pre-existing failures (TC-ENV-01-03, TC-ENV-02-01) unrelated to this change and confirmed failing on `main` before the branch. Design: `src/design/iss0104-env-test-root-scoping.md`.
+- **No requirement status change** — build-tooling naming/isolation fix; no new requirement introduced.
+
 **ISS-0115 — Task claim and group authorization behavior violates integration expectations (MAJOR, verification-only)** ([GitHub #378](https://github.com/tvolodi/R-Co/issues/378))
 
 - **Finding:** Already resolved on `main` before this WF-03 run started. All 6 named tests (`TC-ISS-102-02/04/05/08`, `TC-IDN-02-06/07`) plus their 9 sibling tests in the same two files (15 total) pass repeatedly (6 consecutive runs each) against a live, freshly migrated PostgreSQL test database — including `TC-ISS-102-02`, the two-real-OS-thread concurrent-claim test.
