@@ -27,6 +27,73 @@ import sys
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
+# Patterns that cause 42P18: bare $N in variadic-any functions
+# ---------------------------------------------------------------------------
+
+# Functions that accept variadic-any arguments — PostgreSQL cannot infer $N type at PREPARE time
+VARIADIC_ANY_FUNCS: frozenset[str] = frozenset({"jsonb_build_object", "json_build_object"})
+
+FUNC_CALL_RE = re.compile(
+    r'\b(jsonb_build_object|json_build_object)\s*\(',
+    re.IGNORECASE,
+)
+
+# $N not followed by ::type  (negative lookahead)
+BARE_PARAM_IN_VARIADIC_RE = re.compile(r'\$(\d+)(?!\s*::)')
+
+
+def _extract_paren_block(content: str, open_paren: int) -> int:
+    """Walk from open_paren (index of '(') to the matching ')'. Returns -1 if unterminated."""
+    depth = 1
+    i = open_paren + 1
+    in_string = False
+    while i < len(content):
+        ch = content[i]
+        if in_string:
+            if ch == "'" and content[i - 1] != "\\":
+                in_string = False
+        else:
+            if ch == "'":
+                in_string = True
+            elif ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    return i
+        i += 1
+    return -1
+
+
+def lint_variadic_params(content: str, path: Path) -> list:
+    """Find bare $N params inside jsonb_build_object/json_build_object calls. Returns MAJOR findings."""
+    issues = []
+    for m in FUNC_CALL_RE.finditer(content):
+        # Comment-skip: check whether the line containing this match starts with //
+        line_start = content.rfind('\n', 0, m.start()) + 1
+        line_text = content[line_start:content.find('\n', m.start())].lstrip()
+        if line_text.startswith('//'):
+            continue
+
+        open_paren = m.end() - 1  # index of '('
+        close_paren = _extract_paren_block(content, open_paren)
+        if close_paren < 0:
+            continue
+
+        block = content[open_paren + 1:close_paren]
+        for bm in BARE_PARAM_IN_VARIADIC_RE.finditer(block):
+            abs_offset = open_paren + 1 + bm.start()
+            lineno = content[:abs_offset].count('\n') + 1
+            param = bm.group(1)
+            issues.append((
+                "MAJOR", str(path), lineno,
+                f"bare ${param} inside {m.group(1).lower()}() — add ::<type> cast "
+                f"(e.g. ${param}::text). 42P18 risk (ISS-0632).",
+            ))
+    return issues
+
+
+# ---------------------------------------------------------------------------
 # Patterns that cause real C42883 errors
 # ---------------------------------------------------------------------------
 
@@ -88,6 +155,7 @@ def lint_file(path: Path) -> list:
                 f"use '{val}' (string literal) instead. C42883 risk (ISS-0124).",
             ))
 
+    issues.extend(lint_variadic_params(content, path))
     return issues
 
 
