@@ -1,0 +1,59 @@
+{
+  "handoff_id": "7a4d9185-aa6e-47f3-ad01-9f9853aa0040",
+  "run_id": "WF03-GH616-20260809",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-09T07:54:22Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 2 - Design artefact",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/616",
+    "requirement_ids": [
+      "ISS-0635"
+    ],
+    "related_handoff_ids": [
+      "8c774813-f663-4820-8e9e-e146997d056a"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0635.json",
+      "docs/issue-reports/ISS-0635-diagnosis.yaml",
+      "migrations/1134_iss0112_add_secret_ref_to_tenant_schemas.sql"
+    ]
+  },
+  "task": {
+    "description": "Step 2: Produce a corrective migration design for ISS-0635. Create migration 1138 design artefact specifying ADD COLUMN IF NOT EXISTS secret_ref and secret_key_id on webhook_subscriptions in all tenant schemas (all_schemas scope, no -- scope: public header). Include exact SQL with table-existence guard.",
+    "acceptance_criteria": [
+      "Design artefact at src/design/iss0635-gh616-webhook-secret-ref-migration.md created",
+      "SQL specifies ADD COLUMN IF NOT EXISTS secret_ref TEXT and secret_key_id TEXT",
+      "Migration uses all_schemas scope (no -- scope: public header)",
+      "webhook_subscriptions table-existence guard present",
+      "lint_design_artefact.py exits 0 (no BLOCKER/MAJOR)"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact created for corrective migration 1138. Specifies ADD COLUMN IF NOT EXISTS secret_ref TEXT and secret_key_id TEXT on webhook_subscriptions in all tenant schemas. all_schemas scope (no -- scope: public header). Table-existence guard via information_schema.tables. lint_design_artefact.py: BLOCKER=0 MAJOR=0 MINOR=7 exit=0.",
+    "artifacts_out": [
+      "src/design/iss0635-gh616-webhook-secret-ref-migration.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "E030 schema-qualified names (information_schema.tables, public.tenant, public.schema_migrations) in SQL block \u2014 expected for a corrective migration design; cannot avoid in the SQL reference",
+        "code": "E030"
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T07:54:22Z",
+  "completed_at": "2026-08-09T07:57:22Z"
+}
