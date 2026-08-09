@@ -893,7 +893,7 @@
       "added_at": "2026-08-09T08:31:08Z",
       "started_at": "2026-08-09T08:59:25Z",
       "completed_at": null,
-      "run_id": null,
+      "run_id": "WF03-GH619-20260809",
       "deferred_reason": null,
       "issue_number": 619,
       "labels": []
