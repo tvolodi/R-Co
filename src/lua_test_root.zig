@@ -116,12 +116,21 @@ pub const limiter_wiring_test = @import("lua/limiter_wiring_test.zig");
 // `src/lua/iss0625_lua_12_15_16_test.zig` for the per-test list.
 pub const iss0625_lua_12_15_16_test = @import("lua/iss0625_lua_12_15_16_test.zig");
 
+// ISS-0624 / GH #591 — LUA-11 / LUA-13 production-code regression tests
+// (variable read/write staging + atomic commit/discard; structured
+// logging). Same module-boundary reason as the files above: it lives under
+// src/lua/ and is not reachable via refAllDecls from mod.zig, so it is
+// imported here explicitly. See `src/lua/iss0624_lua_11_13_test.zig` for
+// the per-test list (21 cases: 12 LUA-11, 9 LUA-13).
+pub const iss0624_lua_11_13_test = @import("lua/iss0624_lua_11_13_test.zig");
+
 test {
     std.testing.refAllDecls(lua);
     std.testing.refAllDecls(execution_test);
     std.testing.refAllDecls(limiter_wiring_test);
     std.testing.refAllDecls(capability_enforcement_test);
     std.testing.refAllDecls(iss0625_lua_12_15_16_test);
+    std.testing.refAllDecls(iss0624_lua_11_13_test);
 }
 
 /// ISS-0172 / GH #500 — forces field-type resolution AND method-body analysis
@@ -140,6 +149,12 @@ fn pinModuleTypes(comptime T: type) void {
         const field = @field(T, decl.name);
         if (@TypeOf(field) == type) {
             switch (@typeInfo(field)) {
+                // WF03-GH591 / ISS-0624 — LUA-13 added a `Writer = fn ...
+                // anyerror!void` field-type on StructuredLogger. Function
+                // pointer types with `anyerror` are comptime-only in
+                // Zig 0.16 — @sizeOf on them is a compile error — so
+                // they are filtered out before the @sizeOf call below.
+                .@"fn" => {},
                 .@"struct", .@"union", .@"enum" => {
                     _ = @sizeOf(field);
                     std.testing.refAllDecls(field);

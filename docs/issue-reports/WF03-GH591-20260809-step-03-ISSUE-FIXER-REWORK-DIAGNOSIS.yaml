@@ -1,0 +1,280 @@
+run_id: WF03-GH591-20260809
+handoff_id: 0e6a7b8c-1d2e-4f3a-5b6c-7d8e9f0a1b2c
+agent: ISSUE-FIXER
+status: REWORK-DIAGNOSIS
+step: 03
+to_agent: BACKEND-DEV
+severity: BLOCKER
+category: A
+category_label: Logic/typing error in source under fix
+detected_at: 2026-08-09T00:46:40Z
+detected_while: User escalation — BACKEND-DEV reported "the design's writer injection approach has failed with `expected type '*const io.GenericWriter(...)', found '*const io.Writer'`, and the current attempted code has not completed."
+
+summary: >
+  Step 3 BACKEND-DEV implementation is blocked by a Zig 0.16 type-system rule
+  the design did not anticipate and the current workaround also violates. The
+  `Writer = fn (ctx: ?*anyopaque, msg: []const u8) void;` field type on
+  `StructuredLogger` is comptime-only in Zig 0.16 — bare `fn(...)` types cannot
+  be stored as runtime struct fields or loaded through a pointer. `zig build`
+  exits 0 (no test root analysis), but `zig build test-lua` fails with two
+  hard errors at src/lua/structured_logger.zig:124 and src/lua_test_root.zig:150.
+  The fix is mechanical: change the field type to `*const Writer` (mirror the
+  LUA-12 `HttpClientFn` pattern already in src/lua/executor.zig:84) and
+  dereference-then-call at the call site. Verified empirically against Zig
+  0.16.0 in scratch/ before releasing this report.
+
+diagnosis:
+  category: A
+  category_label: Logic/typing error in source under fix
+  root_cause: >
+    In Zig 0.16, a bare function-pointer type (`fn (T) U`, with or without
+    `anyerror` in the return) is a comptime-only type. It cannot be loaded
+    through a pointer (`self.writer(...)`) nor stored as a plain field of a
+    runtime struct. The design at src/design/iss0624-gh591-lua-11-13-fix.md §7.1
+    specified `Writer = fn (ctx: ?*anyopaque, msg: []const u8) anyerror!void;`
+    as a struct field type — this compiles in Zig 0.13/0.14 but not in 0.16.
+    The current `void` (no error) workaround in src/lua/structured_logger.zig:65
+    also fails because the comptime-only restriction applies to ALL `fn(...)`
+    types, not just `anyerror!void`. The codebase's established pattern for
+    this in Zig 0.16 is `pub const Writer = fn (...) Return;` (the type) +
+    `writer: *const Writer = &defaultWriter;` (the field) — pointer to const
+    function pointer. The same pattern is already used for LUA-12's
+    `HttpClientFn` at src/lua/executor.zig:84 (`http_client_fn: ?*const
+    HttpClientFn = null`).
+
+  evidence:
+    - "zig build" exits 0 (no test root analysis).
+    - "zig build test-lua" fails with 2 hard errors:
+        src/lua/structured_logger.zig:124:13: error: cannot load comptime-only type 'fn (?*anyopaque, []const u8) void'
+            self.writer(self.writer_ctx, message);
+        src/lua_test_root.zig:150:33: error: no size available for comptime-only type 'lua.structured_logger.StructuredLogger'
+                    _ = @sizeOf(field);
+        referenced by: platformLog: src/lua/host_api/log.zig:120:23
+    - Verified pattern compiles standalone:
+        const Writer = fn (ctx: ?*anyopaque, msg: []const u8) void;
+        const Logger = struct {
+            writer: *const Writer = &defaultWriter,
+            ctx: ?*anyopaque = null,
+            pub fn log(self: *Logger, msg: []const u8) void {
+                self.writer(self.ctx, msg);  // pointer-to-fn deref + call
+            }
+        };
+        zig test ⇒ OK (1 passed); zig build-exe + run ⇒ "hello direct\nCUSTOM: hello custom\n"
+    - The vtable-style alternative (Sink { ptr, writeFn: *const fn(...) }) also
+      works in 0.16 but is more verbose than the *const Writer idiom and
+      diverges from the LUA-12 HttpClientFn pattern; recommend the *const Writer
+      pattern for consistency.
+    - The user's quoted error message (`expected type '*const io.GenericWriter(...)',
+      found '*const io.Writer'`) is from a Zig 0.13/0.14-era compiler. In Zig
+      0.16, `std.io` no longer exists; `GenericWriter` was replaced by a
+      vtable-based `std.Io.Writer` (`std.Io.Writer.Allocating` is the closest
+      pattern, see src/effects/adapters/http.zig:46, src/webhook/dispatcher.zig:509).
+      The user's error message is from the design's pre-fix attempt before the
+      BACKEND-DEV pivoted to the bare `void` Writer — both attempts fail in 0.16,
+      and the failure is the same root cause (bare `fn(...)` field type).
+
+  affected_files:
+    - path: src/lua/structured_logger.zig
+      severity: BLOCKER
+      line: 65  # pub const Writer = fn (ctx: ?*anyopaque, msg: []const u8) void;
+      line: 77  # writer: Writer = defaultWriter,
+      line: 124 # self.writer(self.writer_ctx, message);
+    - path: src/lua/host_api/log.zig
+      severity: NONE
+      note: Construction site for the test fixture. Will compile unchanged once structured_logger.zig is fixed; the const-cast at line 119 (@constCast(logger)) is independent of the Writer type and remains correct.
+    - path: src/lua_test_root.zig
+      severity: BLOCKER outcome
+      line: 150 # _ = @sizeOf(field);  (inside pinModuleTypes)
+      note: pinModuleTypes already filters out .@"fn" declarations at the type level (lines 142-148), but @sizeOf on the OUTER struct (StructuredLogger) still fails because the struct contains a function-pointer field. The fix to structured_logger.zig resolves this transitively.
+
+  suppression_pinned:
+    description: >
+      The `pinModuleTypes` filter at src/lua_test_root.zig:142-148 explicitly
+      documents this exact failure mode in a comment:
+        "WF03-GH591 / ISS-0624 — LUA-13 added a `Writer = fn ... anyerror!void`
+         field-type on StructuredLogger. Function pointer types with `anyerror`
+         are comptime-only in Zig 0.16 — @sizeOf on them is a compile error —
+         so they are filtered out before the @sizeOf call below."
+      The comment correctly anticipates the anyerror case but the same
+      restriction applies to `void` (no error) — the filter is necessary
+      regardless of the return type.
+
+  pattern_recommendation:
+    primary: "*const Writer idiom (recommended)"
+    description: >
+      Mirror the LUA-12 HttpClientFn pattern verbatim. The TYPE level stays
+      as `pub const Writer = fn (ctx: ?*anyopaque, msg: []const u8) void;`
+      (or add anyerror back — at the TYPE level, *NOT* the field level, this
+      is fine for tests that need to surface allocation failure; the LUA-12
+      precedent chooses `anyerror!ServiceCallResponse` for the type but the
+      field stores `*const HttpClientFn` which is `*const fn(...) Error!T`).
+      The FIELD level becomes `writer: *const Writer = &defaultWriter;` and
+      `defaultWriter` is a real function whose address is a runtime-known
+      constant. The CALL site is unchanged: `self.writer(self.writer_ctx,
+      message);` — Zig auto-derefs the pointer-to-function-pointer.
+    sketch: |
+      pub const Writer = fn (ctx: ?*anyopaque, msg: []const u8) void;  // TYPE stays as-is
+
+      fn defaultWriter(ctx: ?*anyopaque, msg: []const u8) void {       // existing default
+          _ = ctx;
+          std.debug.print("{s}", .{msg});
+      }
+
+      pub const StructuredLogger = struct {
+          allocator: std.mem.Allocator,
+          writer: *const Writer = &defaultWriter,                       // FIELD: pointer to const fn
+          writer_ctx: ?*anyopaque = null,
+          ...
+          pub fn log(self: *StructuredLogger, entry: StructuredLogEntry) !void {
+              ...
+              self.writer(self.writer_ctx, message);                     // CALL: unchanged
+          }
+      };
+
+      // Test injection becomes:
+      var buf: std.ArrayList(u8) = .empty;
+      const BufWriter = struct {
+          fn f(ctx: ?*anyopaque, msg: []const u8) void {
+              const p: *std.ArrayList(u8) = @ptrCast(@alignCast(ctx.?));
+              p.appendSlice(msg) catch {};
+          }
+      }.f;
+      var logger = StructuredLogger.initWithWriter(
+          std.testing.allocator,
+          BufWriter,
+          @ptrCast(&buf),
+      );
+      _ = try logger.log(entry);
+      // assert buf.items contains expected substrings
+      defer buf.deinit(std.testing.allocator);
+
+    alternative: "Vtable-style (Sink { ptr, writeFn })"
+    description: >
+      Same shape as the codebase's std.Io.Writer pool pattern (see
+      src/effects/adapters/http.zig:46, src/obs/logger.zig:138). Use a struct
+      `Sink { ptr: *anyopaque, writeFn: *const fn (...)) void }` and store
+      that as a single field. Slightly more verbose at the call site but
+      aligns with the std.Io.Writer idiom the rest of the codebase already
+      uses. NOT recommended for THIS fix because it diverges from the LUA-12
+      HttpClientFn precedent this design explicitly chose to mirror.
+    sketch: |
+      const Sink = struct {
+          ptr: *anyopaque,
+          writeFn: *const fn (ptr: *anyopaque, msg: []const u8) void,
+      };
+      pub const StructuredLogger = struct {
+          allocator: std.mem.Allocator,
+          sink: Sink = .{ .ptr = undefined, .writeFn = &defaultWriterVtable },
+          ...
+          pub fn log(self: *StructuredLogger, entry: StructuredLogEntry) !void {
+              ...
+              self.sink.writeFn(self.sink.ptr, message);
+          }
+      };
+
+  why_this_is_NOT_category_B: >
+    The behaviour "test injects a writer that captures bytes" is already
+    documented in the design at §7.1 and accepted by the validator at
+    step-02b. The blocker is the Zig 0.16 type-system constraint, not an
+    ambiguity in the spec. The fix is a Type-TYPE adjustment to the existing
+    Writer-injection pattern, not a re-design.
+
+  why_this_is_NOT_category_C: >
+    The design's intent (function-pointer + opaque ctx, mirroring LUA-12's
+    HttpClientFn) is preserved; only the type-level construct is adjusted
+    to satisfy Zig 0.16's comptime-only-on-bare-fn-types rule. No design
+    decision is involved.
+
+  why_this_is_NOT_category_E: >
+    The test environment is healthy (verify_test_env.py exits 0;
+    zig build exits 0; the failing target is /test-lua/, not test-integration).
+    The failure is purely a compile-time language-typing issue, not an
+    environment-, database-, or service-availability issue.
+
+recommended_fix:
+  file: src/lua/structured_logger.zig
+  diff: |
+    --- a/src/lua/structured_logger.zig
+    +++ b/src/lua/structured_logger.zig
+    @@ -62,9 +62,9 @@
+    -/// Return type is `void` (NOT `anyerror!void`) because function-pointer
+    -/// types whose return includes `anyerror` are comptime-only in Zig 0.16
+    -//  — they cannot be stored as a struct field or loaded through a pointer.
+    -//  The writer never fails in the only path the platform exercises today
+    -//  (`std.debug.print`), and a test writer that appends to an `ArrayList`
+    -//  propagates its own OOM via the arraylist methods which we call from
+    -//  the writer closure; the writer itself never errors.
+    +/// The bare `fn (...)` type stays at the TYPE level (comptime-only is fine
+    +/// at the type level; what is forbidden is storing a bare fn as a *field*).
+    +/// The FIELD below uses `*const Writer` — pointer to const function pointer —
+    +/// which is the runtime-known form Zig 0.16 accepts. This mirrors the
+    +/// LUA-12 HttpClientFn pattern at src/lua/executor.zig:84.
+    +/// Return type is `void` (NOT `anyerror!void`) because the writer never
+    +/// fails in the only path the platform exercises today
+    +/// (`std.debug.print`), and a test writer that appends to an `ArrayList`
+    +/// propagates its own OOM via the arraylist methods which we call from
+    +/// the writer closure; the writer itself never errors.
+     pub const Writer = fn (ctx: ?*anyopaque, msg: []const u8) void;
+
+     fn defaultWriter(ctx: ?*anyopaque, msg: []const u8) void {
+    @@ -74,7 +74,7 @@
+     pub const StructuredLogger = struct {
+         allocator: std.mem.Allocator,
+    -    /// Optional injection point for the underlying byte sink. Default
+    -    /// routes through `std.debug.print` so production code paths need
+    -    /// no setup. Tests override this via `initWithWriter`.
+    -    writer: Writer = defaultWriter,
+    +    /// *const Writer — pointer to const fn-pointer — is the runtime-known
+    +    /// form Zig 0.16 requires for function-pointer fields. Default &
+    +    /// defaultWriter is a real function address; tests override the pointer
+    +    /// via initWithWriter with a function that captures into an ArrayList.
+    +    writer: *const Writer = &defaultWriter,
+         /// Opaque pointer passed alongside `writer`. Lifetime is the caller's
+         /// responsibility — the logger does not own this pointer.
+         writer_ctx: ?*anyopaque = null,
+    @@ -88,10 +88,13 @@
+    +    // Caller-supplied writer and writer_ctx overwrite the field defaults.
+    +    // The initWithWriter constructor takes a *const Writer (pointer to
+    +    // const fn); the call site (self.writer(...)) auto-derefs.
+         pub fn initWithWriter(
+             allocator: std.mem.Allocator,
+    -        writer: Writer,
+    +        writer: *const Writer,
+             writer_ctx: ?*anyopaque,
+         ) StructuredLogger {
+             return StructuredLogger{
+    @@ -116,7 +119,7 @@
+    -        //     the writer itself never errors.
+    +        // self.writer is *const Writer; the call site auto-derefs the
+    +        // pointer-to-function-pointer, invoking the underlying fn.
+             self.writer(self.writer_ctx, message);
+         }
+     };
+
+  test: |
+    After applying the fix, run:
+      zig build          # exits 0 (already passes)
+      zig build test-lua # exits 0 (this is the BLOCKEr — must now pass)
+      zig build test     # exits 0 (full unit test suite)
+    The new test file src/lua/iss0624_lua_11_13_test.zig is still UNWRITTEN —
+    the BACKEND-DEV must also create it (21 cases per design §6.2 and §7.2)
+    and wire it into src/lua_test_root.zig (per the iss0625 pattern at line 117).
+
+  downstream_agents:
+    - "BACKEND-DEV (rework) — apply the recommended_fix diff and complete the
+       remaining Step 3 acceptance criteria (the test file creation + wiring
+       + CHANGELOG entry that were NOT touched by this diagnosis)."
+    - "ORCH — does NOT need to re-dispatch ISS-0624 or Step 2b (the design
+       is still valid; the bug is purely in the BACKEND-DEV's type-level
+       implementation, not the type-E design). Increment rework_count on
+       step-03-backend-dev.json from 0 to 1."
+
+  prevention:
+    - "Add a `tools/lint_function_pointer_fields.py` that greps for `pub const
+       Writer = fn (...)` followed by `writer: Writer =` (no `*const`) in the
+       same file; emit BLOCKER when matched. Out of scope for this fix but
+       recommended as a follow-up handoff to add to the existing lint suite."
+    - "Update the LUA-12/15/16 pattern note in
+       src/design/iss0625-gh592-lua-12-15-16.md to add a §'Function-pointer
+       fields in Zig 0.16' subsection documenting the *const T rule, so future
+       Type E designs that mirror this pattern do not repeat the mistake."

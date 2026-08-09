@@ -293,16 +293,32 @@ test "TC-LUA-04-02: source text still works after the bytecode check" {
 
 /// Run `src` through the real `executeScript` with exactly `grants` granted.
 /// Returns the ScriptResult; caller deinits.
+///
+/// ISS-0624 / GH #591: wires a real, per-call `InstanceState` rather than
+/// leaving `instance_state` at its `dummy_instance_state` singleton default.
+/// `std.testing.allocator`'s `DebugAllocator` is reset and leak-checked
+/// PER TEST (see `test_runner.zig`'s `testing.allocator_instance = .{}`
+/// before each test body), so any write that commits into the file-scope
+/// dummy singleton and survives past the end of ITS test corrupts the next
+/// test's fresh allocator instance's bucket bookkeeping when that later
+/// test's commit path eventually frees it — this is not hypothetical, it
+/// was reproduced empirically (a `DebugAllocator` bucket-ownership assertion
+/// failure) while implementing LUA-11's write path. Every caller of this
+/// helper that exercises `write_variable` needs its own freeable state.
 fn runWithGrants(grants: []const []const u8, src: []const u8) !lua.ScriptResult {
     var caps = lua.capabilities.CapabilitySet.init(std.testing.allocator);
     defer caps.deinit();
     for (grants) |g| try caps.add(g);
+
+    var state = lua.executor.InstanceState.init(std.testing.allocator, "iss0169-instance");
+    defer state.deinit();
 
     const ctx = lua.ExecutionContext{
         .allocator = std.testing.allocator,
         .capabilities = &caps,
         .instance_id = "iss0169-instance",
         .actor_id = "iss0169-actor",
+        .instance_state = &state,
     };
     return lua.executeScript(&ctx, src);
 }

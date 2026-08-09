@@ -1,0 +1,57 @@
+{
+  "handoff_id": "8e15c289-86e8-436f-aea2-c6b8896ccc1e",
+  "run_id": "WF03-GH591-20260809",
+  "workflow_id": "WF-03",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH591-20260809/step-04-test-runner.json",
+  "created_at": "2026-08-09T02:34:53Z",
+  "started_at": "2026-08-09T02:34:53Z",
+  "completed_at": "2026-08-09T02:44:29Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-11",
+      "LUA-13"
+    ],
+    "related_handoff_ids": [
+      "f0d48007-786c-4308-b257-34d3abb24793"
+    ],
+    "artifacts_in": [
+      "src/lua/executor.zig",
+      "src/lua/host_api/read_variable.zig",
+      "src/lua/host_api/write_variable.zig",
+      "src/lua/host_api/log.zig",
+      "src/lua/structured_logger.zig",
+      "src/lua/iss0624_lua_11_13_test.zig",
+      "src/lua/limiter_wiring_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Run the full test suite against BACKEND-DEV's LUA-11/13 implementation (commits 81c9198, 2ae289b, plus ORCH's reconciliation commit 317ac9f). ORCH already independently: (1) re-verified the design's soundness before implementation started, (2) performed a hands-on mutation test on the atomic commit-on-success logic (disabled the merge block, confirmed 6 tests genuinely fail, restored exact original code, confirmed clean rebuild 112/112), (3) verified the dummy_instance_state cross-test-corruption bug fix is real and well-documented, (4) discovered and resolved a genuine merge conflict: this branch was cut before GH-600/ISS-0629's TC-LUA-10-03 flake fix merged to main, and BACKEND-DEV independently hit the same flake and diagnosed a DIFFERENT root cause (200M iterations completing under 1s due to JIT compilation, vs. GH-600's scheduling-race diagnosis) -- ORCH combined both fixes (2B iterations AND the yield-spin retry loop) since both are genuinely valid for different failure modes, verified with 4 consecutive clean test-lua runs.\n\nIMPORTANT: this Bash session's persisted BPM_TEST_DB_URL is stuck at port 5434 (sibling workspace). Override inline: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test <command>.\n\nRun your standard pre-check sequence (already confirmed HEALTHY by ORCH) then the full suite: zig build test, zig build test-lua (expect 112/112 or current total -- run at least 3 times given this branch also touches the previously-flaky TC-LUA-10-03), and confirm the new 21 LUA-11/13 test cases specifically pass. Also check for any regression in execution_test.zig/capability_enforcement_test.zig given BACKEND-DEV's InstanceState wiring changes there.",
+    "acceptance_criteria": [
+      "zig build test-env-verify HEALTHY",
+      "zig build test exits 0",
+      "zig build test-lua exits 0, run 3+ times, all clean",
+      "New 21 LUA-11/13 test cases pass",
+      "No regression in execution_test.zig/capability_enforcement_test.zig"
+    ],
+    "functions_to_call": [
+      "fn:run-test-suite"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Full pre-check sequence HEALTHY (10/10 checks). zig build test exit 0. zig build test-lua run 6 times (5 + 1 with --summary all), 112/112 tests passed every run, zero flakes -- including TC-LUA-10-03 and its mutation-check sibling. Confirmed all 21 new LUA-11/13 test cases present and passing (12 LUA-11 + 9 LUA-13, counted directly against src/lua/iss0624_lua_11_13_test.zig). Confirmed no regression in execution_test.zig/capability_enforcement_test.zig -- both correctly wire a real per-call InstanceState (freed via defer) instead of the shared dummy_instance_state singleton, matching the documented cross-test allocator-corruption fix.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-09-WF03-GH591-20260809.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (Step 6) and Step Final -- no BLOCKER expected, RELEASE-VALIDATOR not needed."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

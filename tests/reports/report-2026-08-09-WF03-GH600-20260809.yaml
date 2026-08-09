@@ -1,0 +1,108 @@
+run_id: WF03-GH600-20260809
+workflow_id: WF-03
+handoff_id: 2e5c0532-9573-4464-b3a0-f6edce1b8000
+timestamp: 2026-08-09T01:54:11Z
+requirement_ids:
+  - LUA-10
+github_issue: GH-600
+related_issue_ids:
+  - ISS-0629
+
+infrastructure_health_checklist:
+  status: NOT_REQUIRED
+  note: >
+    This is a test-only change to src/lua/limiter_wiring_test.zig (TC-LUA-10-03
+    watchdog assertion) with no database/Keycloak dependency. Per handoff
+    instructions, standard lightweight pre-checks were still run: docker-compose
+    services (db, db_test, keycloak, keycloak_gateway) all reported healthy in
+    this workspace (r-co-2, ws2 port band), confirming the environment is not
+    degraded even though this specific suite does not touch it.
+
+commands_run:
+  - command: "zig build test"
+    exit_code: 0
+    result: PASS
+    detail: >
+      Full unit suite compiled and ran clean, exit 0. lint_test_wiring PASS
+      (272 test-bearing files reachable from an addTest root, 374 files
+      reachable overall). 4 pre-existing ADVISORY-only type-pin findings in
+      src/lua_test_root.zig (ISS-0172/GH-500), unrelated to this change,
+      non-blocking. ISS-602 differential corpus: 15/15 matched, 0 diverged.
+  - command: "zig build test-lua (silent, exit-code only)"
+    exit_code: "0, 0, 0, 0 (4 consecutive runs)"
+    result: PASS
+    detail: "Runs 1-4: all exit 0 (default zig test runner prints nothing on full pass)."
+  - command: "zig build test-lua --summary all"
+    exit_code: "0, 0, 0, 0 (4 consecutive runs)"
+    result: PASS
+    detail: >
+      Run A (initial summary confirmation): Build Summary 16/16 steps
+      succeeded; 91/91 tests passed. Run B: 91/91 tests passed, exit 0.
+      Run C: 91/91 tests passed, exit 0. Run D: 91/91 tests passed, exit 0.
+      TC-LUA-10-03 passed in every run alongside the other 90 tests.
+
+summary:
+  total: 559
+  passed: 559
+  failed: 0
+  skipped: 0
+  note: >
+    zig build test (full unit suite incl. non-Lua) exit 0, plus 8 total
+    zig build test-lua runs this step (4 silent + 4 with --summary all),
+    every one 91/91 passing, 0 failures, exit 0 throughout.
+
+failures: []
+
+known_issues: []
+
+flake_fix_verification:
+  target: TC-LUA-10-03
+  file: src/lua/limiter_wiring_test.zig
+  fix_commit: c71b5ce
+  fix_description: >
+    Replaced the zero-tolerance watchdog_state.hasFired() assertion with a
+    bounded 1000ms yield-spin retry loop, giving the watchdog thread's ~10ms
+    poll cycle a fair window to observe a deadline that has, by construction,
+    already passed by the time lua_pcall returns.
+  pre_fix_evidence:
+    - "Original bug report (ISS-0629/GH-600): 3 fail / 2 pass across 5 runs."
+    - >
+      report-20260809-WF03-GH595-20260809.yaml (independent, same-day, prior
+      GH-595 verification pass): TC-LUA-10-03 failed 2 of 3 zig build test-lua
+      attempts with the identical assertion message
+      "try std.testing.expect(watchdog_state.hasFired()) failed" before this
+      fix landed — corroborates the flake was real and reproducible.
+  post_fix_evidence:
+    - "BACKEND-DEV (Step 3, this run): 8 consecutive zig build test-lua runs, all 91/91 clean."
+    - "ORCH (independent spot-check, this run): 3 additional runs, all 91/91 clean."
+    - "TEST-RUNNER (this step, Step 4): 8 additional runs (4 silent exit-0 + 4 --summary all), all 91/91 clean."
+  cumulative_clean_runs: 19
+  conclusion: >
+    19 consecutive clean zig build test-lua runs across three independent
+    agents (BACKEND-DEV, ORCH, TEST-RUNNER) post-fix, zero failures, versus a
+    pre-fix failure rate of roughly 40-67% observed in two independent
+    pre-fix samples (5-run original report, 3-run GH595 corroboration). High
+    confidence the race is genuinely resolved.
+
+regression_check:
+  scope: "Test-only change (4 lines added) to src/lua/limiter_wiring_test.zig; no production code touched."
+  result: >
+    zig build test (full suite) green with no new failures anywhere else in
+    the codebase. No production file was modified by this fix, so no
+    consumer regression surface exists beyond the test file itself.
+
+coverage:
+  note: "Line coverage tooling not run this step; acceptance criteria verified via explicit exit-code and pass-count checks across 8 repeated zig build test-lua invocations, per handoff instructions."
+
+nfr_results: []
+
+conclusion: >
+  PASS. zig build test exits 0 with no regressions. zig build test-lua run 8
+  additional times this step (4 silent + 4 with --summary all): every single
+  run reports 91/91 tests passed, exit 0 — including TC-LUA-10-03 every time.
+  Combined with BACKEND-DEV's 8 clean runs and ORCH's 3 clean runs earlier in
+  this WF-03 run, that is 19 consecutive clean runs post-fix across three
+  independent agents, against a documented pre-fix failure rate from two
+  independent samples. The flake is resolved. No BLOCKER or MAJOR issues.
+  RELEASE-VALIDATOR not required (test-only change, no NFR surface). Ready
+  to route to DOC-UPDATER (Step 6) and Step Final.

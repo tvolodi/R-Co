@@ -1,0 +1,71 @@
+{
+  "handoff_id": "f4d8a3c2-7b1e-4a5d-9f6c-2e8b4d1a7c30",
+  "run_id": "WF03-GH591-20260809",
+  "step": "02b",
+  "from_agent": "CODE-DESIGN-VALIDATOR",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T00:30:00Z",
+  "started_at": "2026-08-09T00:30:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 2b - design validation",
+    "requirement_ids": [
+      "LUA-11",
+      "LUA-13"
+    ],
+    "related_handoff_ids": [
+      "7c1c0a52-3f9a-4d6e-b8e1-9d5a8c3f0b21"
+    ],
+    "artifacts_in": [
+      "src/design/iss0624-gh591-lua-11-13-fix.md",
+      "docs/issues/ISS-0624.json",
+      "src/design/lua-integration.md",
+      "src/design/iss0625-gh592-lua-12-15-16.md",
+      "src/lua/executor.zig",
+      "src/lua/host_api/read_variable.zig",
+      "src/lua/host_api/write_variable.zig",
+      "src/lua/host_api/log.zig",
+      "src/lua/structured_logger.zig",
+      "src/lua/host_context.zig",
+      "src/lua/iss0625_lua_12_15-16_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate the design artefact for LUA-11 + LUA-13 (ISS-0624 / GH-591). Confirm: (a) lint_design_artefact.py exits 0 with no BLOCKER/MAJOR; (b) every acceptance criterion in ISS-0624.json (1..5) is covered by a design element; (c) every test listed in lua-integration.md §16.4 (read, write, write-on-success, write-on-failure, write-ordering, read-after-write) and §18.3 (log_info, log_with_context, log_correlation_ids, log_capability_denied) has a corresponding TC-ISS-0624-LUA-XX-NN; (d) signatures, contracts, error taxonomy, ownership/lifetimes, dependencies are unambiguous; (e) no implementation code or SQL DDL is present (Type E rule); (f) classification (Type E) is correct per lego-catalog.md.",
+    "acceptance_criteria": [
+      "tools/lint_design_artefact.py src/design/iss0624-gh591-lua-11-13-fix.md exits 0 with no BLOCKER/MAJOR",
+      "ISS-0624 acceptance criteria 1..5 each mapped to a design section",
+      "Every entry in lua-integration.md §16.4 and §18.3 test list has a covering TC-ISS-0624-LUA-XX-NN",
+      "No fenced code block > 40 lines (lint E050)",
+      "No SQL DDL, no CREATE TABLE / ALTER TABLE patterns",
+      "Type E classification confirmed (cross-cutting, registry-channel, novel state model -- not a Type A CRUD endpoint)",
+      "Error taxonomy is complete: no new LuaError variants; existing variants cover every documented failure",
+      "ExecutionContext lifetime rules: pending_writes is owned by executeSource frame; the local-copy-and-pointer-install pattern matches the LUA-10 active_watchdog precedent",
+      "Handoff completed with status PASS and next_action -> BACKEND-DEV (Step 3)"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated src/design/iss0624-gh591-lua-11-13-fix.md. lint_design_artefact.py exits 0 (no BLOCKER/MAJOR/MINOR). All 5 ISS-0624 acceptance criteria mapped to design sections (§12 traceability). All 6 §16.4 named tests + all 4 §18.3 named tests have covering TC-ISS-0624-LUA-11-NN (12 cases) / TC-ISS-0624-LUA-13-NN (9 cases). Type E classification correct. ExecutionContext lifetime rules match the LUA-10 active_watchdog local-copy precedent (CTX-1..CTX-4 preserved). Error taxonomy: no new LuaError variants; existing set covers TypeError / OutOfMemory / RuntimeError. Backward-compat defaults (trace_id='', pending_writes=null, structured_logger=null, instance_state=&dummy_instance_state) preserve all 12 existing ExecutionContext construction sites. One MINOR issue noted: §12 traceability table cites TC-LUA-13-09 and TC-LUA-13-10 as §18.3 entries not covered, but §18.3 only lists 4 named tests without those IDs -- the 4 named items are fully covered; the reference is a documentation slip, not a coverage gap. On PASS route to BACKEND-DEV (Step 3).",
+    "artifacts_out": [
+      "handoffs/WF03-GH591-20260809/step-02b-code-design-validator.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "§12 traceability table cites 'TC-LUA-13-09 (nested table)' and 'TC-LUA-13-10 (timestamp ISO 8601)' as items from lua-integration.md §18.3 not covered, but §18.3 only contains 4 named tests (test_log_info, test_log_with_context, test_log_correlation_ids, test_log_capability_denied) -- those identifiers do not exist in the canonical design. All 4 named items ARE covered (TC-13-01 covers log_info + correlation_ids; TC-13-03 covers log_with_context; TC-13-06 covers log_capability_denied). Documentation slip in the traceability sentence, not a coverage gap. Recommend CODE-DESIGNER rephrase the sentence in any future rework to avoid confusion."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 3) -- implement per design: 5 production files (executor.zig, host_api/{read,write}_variable.zig, host_api/log.zig, structured_logger.zig) plus new test file src/lua/iss0624_lua_11_13_test.zig (21 cases); wire the test into src/lua_test_root.zig; CHANGELOG entry; ISS-0624.json status update after merge."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at_field_provenance": "tools/utcnow.py (exact output -- 2026-08-09T00:30:00Z; validator dispatched immediately on receipt of step-02 handoff)",
+  "completed_at": "2026-08-09T00:30:00Z"
+}

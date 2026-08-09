@@ -1,0 +1,83 @@
+{
+  "handoff_id": "4c1d2e3f-4a5b-4c6d-9e7f-8a9b0c1d2e3f",
+  "run_id": "WF03-GH591-20260809",
+  "step": "04",
+  "from_agent": "TEST-DESIGNER",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-08-09T01:55:57Z",
+  "started_at": "2026-08-09T01:55:57Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 4 - test design",
+    "requirement_ids": [
+      "LUA-11",
+      "LUA-13"
+    ],
+    "related_handoff_ids": [
+      "68d37b1f-04e9-4344-b56e-ef6539f4d12d (step-01 ISSUE-FIXER, COMPLETED)",
+      "7c1c0a52-3f9a-4d6e-b8e1-9d5a8c3f0b21 (step-02 CODE-DESIGNER, COMPLETED)",
+      "f4d8a3c2-7b1e-4a5d-9f6c-2e8b4d1a7c30 (step-02b CODE-DESIGN-VALIDATOR, COMPLETED)",
+      "0e6a7b8c-1d2e-4f3a-5b6c-7d8e9f0a1b2c (step-03 BACKEND-DEV, IN_PROGRESS — rework 1/3)"
+    ],
+    "artifacts_in": [
+      "src/design/iss0624-gh591-lua-11-13-fix.md",
+      "src/lua/iss0624_lua_11_13_test.zig (BACKEND-DEV-authored, reviewed by TEST-DESIGNER)",
+      "src/lua_test_root.zig (test wired at line 125)",
+      "docs/issue-reports/WF03-GH591-20260809-step-03-ISSUE-FIXER-REWORK-DIAGNOSIS.yaml",
+      "src/design/lua-integration.md (§16.4 LUA-11 test list, §18.3 LUA-13 test list)"
+    ],
+    "github_issue_number": 591,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/591",
+    "iss_id": "ISS-0624",
+    "pre_handoff_lint_results": {
+      "tools/lint_test_isolation.py tests/integration": "PASS (exit 0; 133 files, 114 baseline-suppressed, no isolation issues)",
+      "tools/lint_test_isolation.py src/lua/iss0624_lua_11_13_test.zig": "MAJOR T030 (false positive — StructuredLogger.init is allocation-free today; no deinit method exists on the struct to defer against; see handoff result.issues)",
+      "tools/lint_handoffs.py": "2292 handoffs checked; 63 BLOCKER / 72 MAJOR / 1 MINOR / 225 ACKNOWLEDGED — all historical, zero hits against this run's handoff files (filter GH591 returns empty)"
+    }
+  },
+  "task": {
+    "description": "Produce/verify regression test specification and source for LUA-11 + LUA-13 (ISS-0624 / GH-591). Step 4 of WF-03.",
+    "acceptance_criteria": [
+      "Test spec at tests/specs/ISS-0624-LUA-11-13.md documents all 21 named MUST cases (12 LUA-11 + 9 LUA-13) plus 2 type-shape regression assertions",
+      "Test source at src/lua/iss0624_lua_11_13_test.zig contains 23 named test blocks: 12 LUA-11 cases (TC-01..12) + 9 LUA-13 cases (TC-01..09) + 2 type-shape assertions",
+      "Per-test UUID isolation: TEST_INSTANCE_BASE_LUA11 = 'iss0624-lua-11-', TEST_INSTANCE_BASE_LUA13 = 'iss0624-lua-13-'; 21 unique suffix values across the 21 fixture-using tests",
+      "Cleanup pattern: every test calls `defer fx.deinit();`; every executeScript call has `defer r.deinit(testing.allocator);`",
+      "No hardcoded credentials (verified: clean of admin-pass, task-worker-pass, postgres://)",
+      "No `error.SkipZigTest` on MUST tests except as a defensive guard when executeScript returns an error (LuaJIT static archive unavailable); the guard does NOT mask production failures where executeScript returns success=false",
+      "Test file is wired into src/lua_test_root.zig via the iss0625 sibling pattern (line 125: `pub const iss0624_lua_11_13_test = @import(\"lua/iss0624_lua_11_13_test.zig\");`)",
+      "tools/lint_test_isolation.py tests/integration exits 0",
+      "zig build test-lua compiles cleanly (the BLOCKER-target per the rework diagnosis — confirms the *const Writer pointer pattern is in place)",
+      "zig build test compiles cleanly"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test design for LUA-11 + LUA-13 (ISS-0624 / GH-591) is complete. Spec at tests/specs/ISS-0624-LUA-11-13.md covers all 21 named MUST cases (12 LUA-11 + 9 LUA-13) plus 2 type-shape regression assertions that document the BLOCKER-fix pattern (Writer is *const fn, runtime-known) and the four new ExecutionContext fields. Test source at src/lua/iss0624_lua_11_13_test.zig contains 23 named test blocks wired into src/lua_test_root.zig:125 via the iss0625 sibling pattern. Per-test UUID isolation enforced via TEST_INSTANCE_BASE_LUA11/13; 21 unique fixture suffixes across the 21 fixture-using tests (verified by automated count). All tests use `defer fx.deinit()` + `defer r.deinit(testing.allocator)` for unconditional cleanup. SkipZigTest used as a defensive guard ONLY when executeScript itself returns an error (LuaJIT static archive unavailable) — does NOT mask production failures where the script returns success=false. zig build test-lua compiles cleanly (the BLOCKER-target per the rework diagnosis at docs/issue-reports/WF03-GH591-20260809-step-03-ISSUE-FIXER-REWORK-DIAGNOSIS.yaml), confirming the *const Writer pointer pattern is in place at src/lua/structured_logger.zig:85. zig build test also compiles cleanly. tools/lint_test_isolation.py tests/integration exits 0. tools/lint_handoffs.py reports zero hits against this run's files (the 63/72/1/225 historical issues are pre-existing and acknowledged in tools/lint_handoffs.baseline.json per GH-596). One MINOR finding noted in `issues` for awareness: TC-ISS-0624-LUA-11-09 ('write nil to an existing key drops it') currently FAILS at runtime under `zig build test` — this is the test correctly detecting a production-code defect (write_variable.zig raises an error when given nil at index 2, contrary to design §6.2 TC-09 which prescribes 'drop the key'). NOT a test-design defect; the test correctly validates the design. Test design PASSES Step 4; the production fix is BACKEND-DEV's responsibility (Step 3 is IN_PROGRESS at rework_count=1; ORCH will route the TC-09 finding back through standard WF-03 rework after TEST-RUNNER reports it).",
+    "artifacts_out": [
+      "tests/specs/ISS-0624-LUA-11-13.md",
+      "src/lua/iss0624_lua_11_13_test.zig",
+      "handoffs/WF03-GH591-20260809/step-04-test-designer.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "tools/lint_test_isolation.py src/lua/iss0624_lua_11_13_test.zig reports MAJOR T030 at line 915 — 'test allocates but has no defer cleanup'. The flag is a false positive: StructuredLogger.init(allocator) at src/lua/structured_logger.zig:90-94 is allocation-free (returns a struct literal with the allocator field only); the struct has no deinit method. The test binds the result to a `const` for @typeInfo inspection only. A defensive `defer logger.deinit()` was attempted during Step 4 but rejected because the method does not exist on the type (compile error at src/lua/iss0624_lua_11_13_test.zig:928:17). The mandated pre-handoff lint target `tools/lint_test_isolation.py tests/integration` exits 0, so the MINOR does not block Step 4 PASS."
+      },
+      {
+        "severity": "MINOR",
+        "description": "TC-ISS-0624-LUA-11-09 ('write nil to an existing key drops it') currently FAILS under zig build test — `try testing.expect(r.success)` at src/lua/iss0624_lua_11_13_test.zig:496 reports `r.success == false`. The test correctly validates design §6.2 TC-09 ('write of nil_value drops the key rather than storing a nil sentinel'); the failure signals a real production-code defect in src/lua/host_api/write_variable.zig where the write path raises a Lua error for nil instead of staging .nil_value and letting the apply path at src/lua/executor.zig:770-777 drop the key. NOT a test-design defect; the test correctly detects the issue. Resolution path: BACKEND-DEV (rework 2/3) examines extractValueInto's nil branch and write_variable's orelse-error-raise branch — per design, nil must stage and the apply path must drop, not raise. The test will pass once the production path is fixed."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-03 Step 4b) — spec and test source are complete; the validator checks schema conformance, per-test UUID isolation, cleanup pattern, and the spec/implementation case-count match (23 spec cases + 23 implementation test blocks)."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at_field_provenance": "tools/utcnow.py (exact output — 2026-08-09T01:55:57Z; TEST-DESIGNER dispatched at session start)",
+  "completed_at": "2026-08-09T01:55:57Z"
+}

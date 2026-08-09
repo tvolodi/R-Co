@@ -1,0 +1,83 @@
+{
+  "handoff_id": "7c1c0a52-3f9a-4d6e-b8e1-9d5a8c3f0b21",
+  "run_id": "WF03-GH591-20260809",
+  "step": "02",
+  "from_agent": "CODE-DESIGNER",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-09T00:27:20Z",
+  "started_at": "2026-08-09T00:27:20Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 2 - design",
+    "requirement_ids": [
+      "LUA-11",
+      "LUA-13"
+    ],
+    "related_handoff_ids": [
+      "68d37b1f-04e9-4344-b56e-ef6539f4d12d"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0624.json",
+      "https://github.com/tvolodi/R-Co/issues/591",
+      "src/design/lua-integration.md (sections 16, 18, 23)",
+      "src/design/iss0625-gh592-lua-12-15-16.md (sibling pattern)",
+      "src/lua/executor.zig",
+      "src/lua/host_api/read_variable.zig",
+      "src/lua/host_api/write_variable.zig",
+      "src/lua/host_api/log.zig",
+      "src/lua/structured_logger.zig",
+      "src/lua/host_context.zig",
+      "src/lua/events.zig",
+      "src/lua/iss0625_lua_12_15_16_test.zig (sibling test pattern)"
+    ]
+  },
+  "task": {
+    "description": "Produce fix design artefact for LUA-11 (variable read/write) and LUA-13 (logging). Cover ExecutionContext fields trace_id/pending_writes/structured_logger, atomic apply/discard semantics, read-after-write, logging schema, ownership/lifetimes, error taxonomy, and test cases for LUA-11/13. DO NOT IMPLEMENT ZIG OR TESTS.",
+    "acceptance_criteria": [
+      "Design artefact written to src/design/iss0624-gh591-lua-11-13-fix.md",
+      "Design covers ExecutionContext field additions (trace_id, pending_writes, structured_logger, instance_state) with lifetime + ownership rules",
+      "Design covers atomic apply-on-success / discard-on-failure semantics in executeSource",
+      "Design covers read-after-write behaviour for read_variable",
+      "Design covers LUA-13 structured-logging schema (timestamp, level, message, correlation IDs, optional context table)",
+      "Design covers error taxonomy (no new LuaError variants; existing set sufficient)",
+      "Design covers LUA-11 test cases (read, write, atomic-apply, atomic-discard for explicit fail + runtime error, ordering, read-after-write, table values, isolation, capability denial re-assertion)",
+      "Design covers LUA-13 test cases (level emission, context table, no-context, invalid level, capability denial re-assertion, isolation, fail-open default, multi-call ordering)",
+      "Design passes python3 tools/lint_design_artefact.py with exit 0",
+      "Design artefact references the design §23.1 ExecutionContext shape and §16.2 staging map prescribed by lua-integration.md",
+      "Design names 5 production files (matches diagnosis estimate) plus 1 new test file",
+      "Handoff completed (status COMPLETED, next_action -> CODE-DESIGN-VALIDATOR)"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/iss0624-gh591-lua-11-13-fix.md covers LUA-11 + LUA-13 fix. Adds trace_id/pending_writes/structured_logger/instance_state fields on ExecutionContext (all defaulted for backward compatibility); implements atomic apply-on-success/discard-on-failure via a local-copy-and-pointer-install pattern (mirrors the existing LUA-10 active_watchdog approach). read_variable reads pending_writes first (read-after-write), then falls through to instance_state.variables. write_variable extracts the Lua value via a new extractValueInto helper (recursive tables, owned copies, integer-key rejection), stages in pending_writes. log builds a StructuredLogEntry from script args + ExecutionContext, calls StructuredLogger.log; adds a Writer function-pointer field to StructuredLogger (defaults to std.debug.print) for test capture. New test file src/lua/iss0624_lua_11_13_test.zig covers 21 named cases (12 LUA-11 + 9 LUA-13). Total production files touched: 5 (executor.zig + read_variable.zig + write_variable.zig + log.zig + structured_logger.zig -- matches diagnosis estimate). lint_design_artefact.py exits 0.",
+    "artifacts_out": [
+      "src/design/iss0624-gh591-lua-11-13-fix.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Open question §9.1: instance_state default is a file-scope dummy_instance_state singleton (Zig 0.16 StringHashMap cannot be initialised to undefined in a struct literal; see §4.5). A cleaner design is a mandatory init() at every construction site -- the cost is ~8 line updates to existing test helpers. Recommend accepting §4.5's singleton for this run's scope; flagging as a follow-up if the singleton becomes a source of confusion in review."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Open question §9.2: extractValueInto rejects integer table keys with errors.LuaError.TypeError. Lua's table model allows them; StringHashMap(ScriptValue) does not. Alternative is stringification via tostring. Recommend strict rejection for this run; flagging as a usability follow-up."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Open question §9.3: StructuredLogger gains a Writer injection point -- this contradicts the diagnosis's 'verify-only' stance on structured_logger.zig. The injection is minimal (one function pointer field, default to existing std.debug.print); recommend accepting it because (a) it matches the LUA-12 HttpClientFn injection pattern, and (b) without it LUA-13 tests cannot capture entries portably across Zig 0.16 / Windows."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (WF-03 Step 2b) -- validate the LUA-11 + LUA-13 fix design artefact against the canonical lua-integration.md sections 16, 18, 23, and verify the lint passes"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at_field_provenance": "tools/utcnow.py (exact output -- 2026-08-09T00:27:20Z; stamped equal to created_at as the autonomous CODE-DESIGNER step does not have a distinct ORCH dispatch event)",
+  "completed_at": "2026-08-09T00:27:20Z"
+}

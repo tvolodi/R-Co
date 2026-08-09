@@ -1,0 +1,59 @@
+{
+  "handoff_id": "0a888546-1af2-46b9-98d0-c24415351806",
+  "run_id": "WF03-GH595-20260809",
+  "workflow_id": "WF-03",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH595-20260809/step-04-test-runner.json",
+  "created_at": "2026-08-09T01:10:46Z",
+  "started_at": "2026-08-09T01:10:46Z",
+  "completed_at": "2026-08-09T01:16:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-16"
+    ],
+    "related_handoff_ids": [
+      "fc155180-e8e8-4ce5-a45c-3d6cc6d5478b"
+    ],
+    "artifacts_in": [
+      "src/lua/executor.zig",
+      "src/lua/host_context.zig",
+      "tests/integration/iss0625_lua_12_15_16_test.zig",
+      "src/lua/iss0625_lua_12_15_16_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Run the full test suite against BACKEND-DEV's LUA-16 errfunc stack-trace fix (commits 1f9e42a, 4fe3b9d on this branch). ORCH already independently re-verified: zig build test-lua (91/91 pass), zig build test-integration-iss0625 with BPM_TEST_DB_URL overridden to port 5453 (10/10 pass), AND personally performed the mutation test by hand (reverted lua_pcall's 4th arg to literal 0 + silenced the now-unused handler_index, confirmed BOTH TC-ISS-0625-LUA-16-int-01 and the new TC-ISS-0628-LUA-16-stacktrace-01 genuinely fail with an empty stack_trace as predicted, restored the exact original code via git checkout --, confirmed clean rebuild: 10/10 pass again).\n\nIMPORTANT: this Bash session's persisted BPM_TEST_DB_URL is stuck at port 5434 (a sibling workspace's port). This workspace's .env and running container use port 5453. Override inline for every command that reads it: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test <command>.\n\nRun your standard pre-check sequence (services, migrate, lint_test_isolation, test-env-verify -- already confirmed HEALTHY by ORCH with the port-5453 override) then the full suite: zig build test (not just test-lua, since this run also touched host_context.zig and the shared StateProbe wrapper BACKEND-DEV introduced to fix a pre-existing, unrelated compile blocker in the integration test file's createSandboxedState call sites -- confirm nothing else that depends on host_context.zig or executor.zig broke), zig build test-lua specifically, and zig build test-integration-iss0625.",
+    "acceptance_criteria": [
+      "zig build test-env-verify exits 0 (HEALTHY) with the correct BPM_TEST_DB_URL override",
+      "zig build test exits 0 -- full suite",
+      "zig build test-lua exits 0 -- 91/91 or better",
+      "zig build test-integration-iss0625 exits 0 -- 10/10",
+      "No regression outside src/lua/ from the StateProbe wrapper fix",
+      "Full issue list with severity if anything fails"
+    ],
+    "functions_to_call": [
+      "fn:run-test-suite"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Infrastructure Health Checklist HEALTHY (10/10 checks via zig build test-env-verify with BPM_TEST_DB_URL override to port 5453). zig build test: full unit suite exits 0. zig build test-lua: 91/91 achieved on a clean run (3rd attempt); the only failures observed across 3 attempts were the pre-existing, already-filed TC-LUA-10-03 watchdog-timing flake (ISS-0629/GH-600) -- unrelated to this change, 2 of 3 runs showed it, every other test passed every run. zig build test-integration-iss0625 (BPM_TEST_DB_URL override applied): 10/10 pass, including TC-ISS-0625-LUA-16-int-01 and the new TC-ISS-0628-LUA-16-stacktrace-01, confirming the lua_pcall errfunc fix resolves GH-595's empty stack_trace bug. Verified no regression in other consumers of host_context.zig/executor.zig/createSandboxedState (limiter_wiring_test.zig, capability_enforcement_test.zig, execution_test.zig, stdlib.zig, mod.zig, host_api/*) -- all exercised and green via zig build test / test-lua.",
+    "artifacts_out": [
+      "tests/reports/report-20260809-WF03-GH595-20260809.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "TC-LUA-10-03 (src/lua/limiter_wiring_test.zig) intermittently fails under system load -- known, pre-existing, already tracked as ISS-0629/GH-600. Not a new blocker for this run; observed failing 2 of 3 test-lua attempts and passing the 3rd, consistent with the documented flake."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 6) and Step Final -- no BLOCKER, RELEASE-VALIDATOR (Step 5) not needed"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
