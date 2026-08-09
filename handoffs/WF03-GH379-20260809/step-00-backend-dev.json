@@ -1,0 +1,36 @@
+{
+  "handoff_id": "1214a791-6531-4da0-88f5-104135e9c897",
+  "run_id": "WF03-GH379-20260809",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T10:02:12Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 00 — git-setup",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/379"
+  },
+  "task": {
+    "description": "WF-03 git-setup for GH-379. Create feature/WF03-GH379-20260809 from main, push to remote.",
+    "acceptance_criteria": [
+      "feature/WF03-GH379-20260809 branch exists on remote",
+      "branch is at HEAD of main"
+    ],
+    "functions_to_call": ["fn:git-setup"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created and pushed feature/WF03-GH379-20260809 from main (already up to date).",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 0.5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T10:02:12Z",
+  "completed_at": "2026-08-09T10:02:12Z"
+}
