@@ -1,20 +1,20 @@
 {
   "id": "ISS-0638",
   "title": "TC-ADP-02-05: adp02_tenant_scope_test.zig has the same audit_entries.resource_id = $1::uuid vs TEXT column mismatch as ISS-0637 (C42883)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "test_code_error",
   "discovered_in": "WF03-GH619-20260809",
   "discovered_at": "2026-08-09T09:20:32Z",
-  "run_id": null,
-  "workflow_id": null,
+  "run_id": "WF03-GH621-20260809",
+  "workflow_id": "WF-03",
   "requirement_ids": ["ADP-02"],
   "affected_areas": [
     "tests/integration/adp02_tenant_scope_test.zig"
   ],
   "symptom": "TC-ADP-02-05 (\"audit persistence is tenant-scoped for audit_entries and audit_log\") fails with PgError.ServerError. Standalone reproduction with -Dlog-pg-errors=true shows: POSTGRES ERROR: C42883 operator does not exist: text = uuid, at tests/integration/adp02_tenant_scope_test.zig:530 (conn.query with `resource_id = $1::uuid AND tenant_id = $2::uuid`, and the mirrored query at line 549).",
   "root_cause": "Same root cause as ISS-0637 (GH-619): migration GBL-120_iss103_audit_resource_id_text.sql (ISS-103) changed audit_entries.resource_id from UUID to TEXT in every schema. This test still casts the parameter to ::uuid when comparing against resource_id, which PostgreSQL rejects (no implicit text/uuid cast) with C42883. Discovered incidentally while confirming ISS-0637's fix pattern was correctly scoped and checking for the same bug class elsewhere in the test suite (grep for `resource_id = $1::uuid` across tests/integration/).",
-  "resolution": null,
+  "resolution": "tests/integration/adp02_tenant_scope_test.zig: removed the `::uuid` cast on both `resource_id = $1` comparisons (lines 532, 549), matching the TEXT column type audit_entries.resource_id has carried since GBL-120. The mirrored audit_log.entity_id comparisons on the same lines were left untouched — confirmed via migrations/009_audit_log.sql that audit_log.entity_id is genuinely UUID-typed and unaffected by GBL-120 (which only touches audit_entries.resource_id). Verified via new `zig build test-integration-adp02` narrow target: 4/5 tests pass; the remaining failure (TC-ADP-02-01, `expected 6, found 0`) is the pre-existing, separately-tracked provisioning-gap issue GH-482/ISS-0150, unrelated to this fix.",
   "acceptance_criteria": [
     "TC-ADP-02-05 passes",
     "resource_id comparisons in adp02_tenant_scope_test.zig match the TEXT column type (no ::uuid cast on resource_id)"
