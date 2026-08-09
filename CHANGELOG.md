@@ -6,6 +6,11 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0102 — 6 OIDC integration test files (oidc09/10/11/12/15/35) not wired into any zig build target — verified resolved (MINOR)** ([GitHub #360](https://github.com/tvolodi/R-Co/issues/360))
+
+- **Finding:** Already resolved on `main` before this WF-03 run. All 6 files (`oidc09_jit_provisioning_test.zig`, `oidc10_attribute_sync_test.zig`, `oidc11_identity_stability_test.zig`, `oidc12_realm_tenant_binding_test.zig`, `oidc15_realm_deletion_test.zig`, `oidc35_onboarding_test.zig`) are imported in `tests/integration/main_test.zig` at lines 183–195 via ISS-0137 bulk wiring (PR #490, 2026-08-06). All 6 execute via `zig build test-integration-others-internal`.
+- **No production code changes** — verification-only; GH-360 closed referencing ISS-0137/PR#490.
+
 **ISS-0103 — oidc35_onboarding_test.zig compile drift (AuthContext.principal / OnboardingInput.tenant_type) verified resolved (MINOR)** ([GitHub #361](https://github.com/tvolodi/R-Co/issues/361))
 
 - **Finding:** Already resolved on `main` before this WF-03 run. Both struct-literal drift issues were corrected by prior work (ISS-0137/GH#439): `AuthContext.principal` field added and `OnboardingInput.tenant_type`/`.production_tenant_id` fields added in `tests/integration/oidc35_onboarding_test.zig`. Build-wiring gap (ISS-0102/GH#360) also already resolved — file is present in `tests/integration/main_test.zig`. `zig build` and `zig build test` both exit 0.

@@ -786,3 +786,4 @@
 2026-08-09T12:57:04Z | ROUTE | WF03-GH360-20260809 | 787301ae | ORCH -> BACKEND-DEV | git-setup PASS: branch feature/WF03-GH360-20260809 created and pushed
 2026-08-09T12:58:58Z | COMPLETE | WF03-GH360-20260809 | 864ec7ff | ISSUE-FIXER | Step 0.5 PASS — ISS-0102 found, github_issue=GH#360, fix already on main via PR#490
 2026-08-09T12:58:58Z | COMPLETE | WF03-GH360-20260809 | 3ad3f19f | ISSUE-FIXER | Step 1 PASS — Category D (already fixed). oidc09/10/11/12/15/35 all wired in main_test.zig since PR#490 (ISS-0137). ISS-0102 marked RESOLVED.
+2026-08-09T13:01:10Z | COMPLETE | WF03-GH360-20260809 | cfbcbfa2 | DOC-UPDATER | Step 7 PASS — CHANGELOG updated; GH-360 closed referencing ISS-0137/PR#490
