@@ -1222,6 +1222,26 @@
       "completed_at": "2026-08-09T18:39:06Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-348",
+      "issue_number": 348,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/348",
+      "title": "ISS-0094 \u2014 GBL-081/GBL-082 audit_entries.resource_id fix never applies to tenant_default or any per-tenant schema (runForSchema blanket-skips GBL-* for non-public)",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T18:39:29Z"
+      },
+      "added_at": "2026-08-09T18:39:29Z",
+      "started_at": "2026-08-09T18:39:29Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
