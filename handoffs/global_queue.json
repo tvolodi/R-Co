@@ -1046,17 +1046,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0640",
+      "issue_id": "GH-631",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/631",
-      "title": "svc01 on_delete_cascade test fails -- unqualified DELETE hits wrong schema",
+      "title": "ISS-0640: svc01 on_delete_cascade test fails -- unqualified DELETE hits wrong schema",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-09T12:20:02Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-09T12:26:10Z"
+      },
+      "added_at": "2026-08-09T12:26:10Z",
+      "started_at": "2026-08-09T12:26:10Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 631,
+      "labels": [
+        "bug"
+      ]
     }
   ]
 }

@@ -1,0 +1,42 @@
+{
+  "handoff_id": "acc19747-04fa-401f-a4ce-3e7ff05724f0",
+  "run_id": "WF03-GH631-20260809",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T12:20:00Z",
+  "started_at": "2026-08-09T12:20:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 0.5",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0640.json"
+    ]
+  },
+  "task": {
+    "description": "Registry lookup for ISS-0640 / GH-631: svc01 on_delete_cascade test fails \u2014 unqualified DELETE hits wrong schema",
+    "acceptance_criteria": [
+      "ISS-0640.json exists with github_issue link",
+      "GH-631 confirmed linked"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0640 found in registry. GH-631 confirmed linked: https://github.com/tvolodi/R-Co/issues/631. Root cause hypothesis verified: unqualified DELETE FROM tenant resolves to tenant_default.tenant under search_path=tenant_default,public; FK cascade to public.service_catalog never fires.",
+    "artifacts_out": [
+      "docs/issues/ISS-0640.json"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER Step 1 (diagnose and fix)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T12:20:30Z"
+}

@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0640 — `svc01` on_delete_cascade test now schema-qualifies DELETE and resets session_replication_role (MAJOR)** ([GitHub #631](https://github.com/tvolodi/R-Co/issues/631))
+
+- **Root cause:** `tests/integration/svc01_service_catalog_scope_test.zig`'s on_delete_cascade test used `DELETE FROM tenant` (unqualified). `TestHarness` sets `search_path = 'tenant_default,public'`, so the unqualified reference resolved to `tenant_default.tenant` — not `public.tenant` where the test's setup `INSERT` landed. No row was deleted from `public.tenant`, so the FK cascade trigger (`RI_FKey_cascade_del`) never fired and the scoped `public.service_catalog` row survived. Second root cause: `TestHarness` pre-sets `session_replication_role = replica`, which sets `tgenabled = O` on referential-integrity triggers, disabling them entirely regardless of schema qualification.
+- **The fix (WF03-GH631-20260809):** Two-part change in `tests/integration/svc01_service_catalog_scope_test.zig`: (1) Changed `DELETE FROM tenant` to `DELETE FROM public.tenant` to bypass the `tenant_default`-first search_path. (2) Added `SET session_replication_role = DEFAULT` before the DELETE (re-enabling FK triggers), followed by `SET session_replication_role = replica` to restore the harness state after.
+- **Verified:** `zig build test-integration-svc` — 35/35 SVC tests pass. `zig build test` exits 0.
+- **No requirement status change** — test-infrastructure fix; no production code changed.
+
 **ISS-0639 — `test-integration-svc` now runs only SVC-01..04 subset (35 tests) instead of full suite (~940 tests) (MINOR)** ([GitHub #629](https://github.com/tvolodi/R-Co/issues/629))
 
 - **Root cause:** `build.zig`'s `test-integration-svc` step used `root_source_file = "tests/integration/main_test.zig"` — the same ~940-test aggregate root as the main `test-integration` step — instead of a dedicated SVC-scoped aggregator. The step name implied a narrowly-scoped SVC-01..04 subset, but it compiled and ran the full suite, providing no isolation at all. Identical defect to ISS-0104 (`test-integration-env`).
