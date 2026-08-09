@@ -885,11 +885,8 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/619",
       "title": "ISS-0637: TC-EXT-02-INT-08 conn loses search_path after COMMIT \u2014 audit_entries query fails",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI-loop",
-        "locked_at": "2026-08-09T08:37:52Z"
-      },
+      "status": "PENDING",
+      "lock": null,
       "added_at": "2026-08-09T08:37:52Z",
       "started_at": "2026-08-09T08:37:52Z",
       "completed_at": null,
