@@ -42,80 +42,53 @@ fn platformWriteVariable(L: *bindings.LuaState) callconv(.c) c_int {
     // numeric key. `checkString` is lua_type == LUA_TSTRING — no coercion.
     const key = host_context.checkString(L, FN_NAME, 1);
 
-    // Value (arg 2) is optional: absent or nil both mean "drop the key".
-    // In Lua 5.1 / LuaJIT, trailing nil arguments may not be pushed onto
-    // the stack by the caller, so lua_gettop(L) can be 1 even for the
-    // call `platform.write_variable("k", nil)`. We detect both cases via
-    // lua_type: LUA_TNONE (-1) = absent, LUA_TNIL (0) = explicit nil.
-    // Both stage a nil_value which the apply step interprets as "delete key".
-    // A one-argument call is therefore a valid nil-write, not an error.
+    // The value is argument 2 and may be of any type. It must still be
+    // PRESENT: a one-argument call is a caller mistake, not a nil write.
+    host_context.checkArgCount(L, FN_NAME, 2);
 
-    // WF03-GH591 / ISS-0624 — LUA-11. Stage the value in `pending_writes`
-    // (design §16.2). The capability gate already ensures a context is
-    // installed (host_context.installContext is called before the platform
-    // table is registered in createSandboxedState); the orelse on the
-    // context itself is defensive. The `pending_writes orelse` short-circuits
-    // to a no-op when the executor did not wire staging (legacy
-    // executeScript path), keeping the body-of-no-config path free of panics.
-    const context = host_context.contextFromState(L) orelse {
-        bindings.lua_pushnil(L);
-        return 1;
-    };
-    const pending_writes = context.pending_writes orelse {
-        // No staging map — write is silently dropped (fail-open for the
-        // body-of-no-config path; the capability gate is still fail-closed).
+    const ctx = host_context.contextFromState(L) orelse {
+        // No context installed: nothing to stage into. Same permissive
+        // no-op as a null pending_writes (design §5.3).
         bindings.lua_pushnil(L);
         return 1;
     };
 
-    // Extract the Lua value at index 2. LUA_TNONE (absent) and LUA_TNIL
-    // (explicit nil) both stage nil_value which drops the key on apply (TC-09).
-    // extractValueInto rejects non-string table keys (errors.LuaError.TypeError)
-    // and returns error.OutOfMemory on allocator failure.
-    var value: executor.ScriptValue = .{ .nil_value = {} };
-    const val_type = bindings.lua_type(L, 2);
-    if (val_type != bindings.LUA_TNONE and val_type != bindings.LUA_TNIL) {
-        if (executor.extractValueInto(L, 2, context.allocator, &value)) |_| {
-            // success — fall through to put
-        } else |err| switch (err) {
-            error.OutOfMemory => host_context.raiseMessage(
-                L,
-                "write_variable: out of memory staging variable",
-            ),
-            else => host_context.raiseMessage(
-                L,
-                "write_variable: value type is not representable (integer table keys are not supported)",
-            ),
-        }
+    const pw = ctx.pending_writes orelse {
+        // Caller did not wire the staging map. No-op (design §5.3).
+        bindings.lua_pushnil(L);
+        return 1;
+    };
+
+    const key_copy = ctx.allocator.dupe(u8, key) catch {
+        host_context.raiseMessage(L, "write_variable: out of memory");
+    };
+    errdefer ctx.allocator.free(key_copy);
+
+    var value: executor.ScriptValue = undefined;
+    executor.extractValueInto(L, 2, ctx.allocator, &value) catch |err| switch (err) {
+        error.OutOfMemory => {
+            ctx.allocator.free(key_copy);
+            host_context.raiseMessage(L, "write_variable: out of memory");
+        },
+        else => {
+            ctx.allocator.free(key_copy);
+            host_context.raiseInvalidArgument(L, FN_NAME, 2, "a Lua-representable value (string-keyed table, string, number, boolean, or nil)");
+        },
+    };
+
+    // Writing the same key twice within one execution: the later call
+    // wins. Free the stale staged entry (if any) before overwriting so we
+    // never leak the earlier key/value.
+    if (pw.fetchRemove(key_copy)) |old| {
+        ctx.allocator.free(old.key);
+        var old_value = old.value;
+        old_value.deinit(ctx.allocator);
     }
-    // If val_type is NONE or NIL, value stays as nil_value -> key is dropped on apply
-
-    // Dupe the key — `pending_writes` owns its keys outright so the deinit
-    // pass can free them. The put itself returns error.OutOfMemory on
-    // allocator failure; same propagation as above.
-    const key_owned = context.allocator.dupe(u8, key) catch
-        host_context.raiseMessage(L, "write_variable: out of memory staging variable");
-
-    // StringHashMap.put replaces an existing entry's value but does NOT free
-    // the previous key or call value.deinit on the displaced value. So when
-    // the same script key is written multiple times (e.g. three calls of
-    // `platform.write_variable("k", v)` with different v's), the intermediate
-    // keys+values would leak. Free the displaced entry first via fetchRemove,
-    // then re-install the new one. fetchRemove uses the lookup key to find the
-    // entry but does not consume it, so key_owned remains usable.
-    if (pending_writes.fetchRemove(key_owned)) |prev_entry| {
-        context.allocator.free(prev_entry.key);
-        prev_entry.value.deinit(context.allocator);
-    }
-
-    pending_writes.put(key_owned, value) catch {
-        // Allocation failure during the put — free the key we just duped
-        // (the value went into the put path and was NOT added, so value.deinit
-        // is the caller's responsibility here since the entry was never
-        // installed). Then raise.
-        value.deinit(context.allocator);
-        context.allocator.free(key_owned);
-        host_context.raiseMessage(L, "write_variable: out of memory staging variable");
+    pw.put(key_copy, value) catch {
+        var v = value;
+        v.deinit(ctx.allocator);
+        ctx.allocator.free(key_copy);
+        host_context.raiseMessage(L, "write_variable: out of memory");
     };
 
     bindings.lua_pushnil(L);
