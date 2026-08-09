@@ -1031,6 +1031,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0639",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/629",
+      "title": "build.zig test-integration-svc step implies SVC-01..04 scope but runs full suite",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-09T11:44:03Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

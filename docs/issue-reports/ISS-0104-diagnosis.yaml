@@ -1,0 +1,41 @@
+id: ISS-0104-diagnosis
+run_id: WF03-GH362-20260809
+step: "1"
+agent: ISSUE-FIXER
+created_at: "2026-08-09T11:41:27Z"
+github_issue: "https://github.com/tvolodi/R-Co/issues/362"
+
+failure_category: "A — structural build-tooling defect"
+
+root_cause: >
+  build.zig defines env_integration_tests (backing test-integration-env) with
+  root_source_file = 'tests/integration/main_test.zig'. main_test.zig is the full
+  integration suite aggregate (130+ imports, 700+ test blocks). The step description
+  says "Run Stage 14 ENV-01..ENV-05 integration tests" but actually runs everything.
+
+evidence:
+  env_integration_tests_root: "tests/integration/main_test.zig (build.zig lines 2492-2504)"
+  full_suite_test_count: "700+"
+  env_specific_files_in_main_test:
+    - "env01_test.zig"
+    - "env02_test.zig"
+    - "env03_test.zig"
+    - "env05_test.zig"
+    - "env01_tenant_type_field_test.zig"
+  correct_scoped_pattern: "test-integration-ext02 (GH-619) uses ext02_webhook_dispatch_test.zig as root directly"
+
+fix_decision: "Option B — create tests/integration/env_test_root.zig as scoped root"
+
+fix_steps:
+  - "Create tests/integration/env_test_root.zig importing the 5 ENV test files only"
+  - "Change env_integration_tests.root_module.root_source_file to env_test_root.zig"
+  - "Add test_integration_others_step.dependOn(&run_env_integration_tests.step) per ISS-0150 policy"
+
+umbrella_coverage_impact: >
+  None. ENV files remain in main_test.zig and run through the umbrella via integration_tests.
+
+incidental_finding:
+  description: >
+    test-integration-svc (svc_integration_tests, build.zig ~line 2478) has the identical defect:
+    uses main_test.zig as root despite the step claiming SVC-01..SVC-04 scope.
+  action: "File as separate GitHub issue and add to global queue — not fixed in this run"
