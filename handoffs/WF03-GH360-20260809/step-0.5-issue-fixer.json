@@ -1,0 +1,46 @@
+{
+  "handoff_id": "864ec7ff-e929-4322-84a7-03ff5fea1b63",
+  "run_id": "WF03-GH360-20260809",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T12:58:58Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 0.5 \u2014 registry lookup + GitHub issue filing",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "787301ae-044c-4fee-97c3-0cc581d7ed91"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0102.json"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/360",
+    "issue_title": "ISS-0102 \u2014 6 OIDC integration test files (oidc09/10/11/12/15/35) not wired into any zig build target, never execute"
+  },
+  "task": {
+    "description": "Step 0.5: fn:search-issues \u2014 check if ISS-0102 exists and is linked to GH #360. Confirm GitHub issue status.",
+    "acceptance_criteria": [
+      "ISS-0102.json found in docs/issues/",
+      "github_issue field populated with https://github.com/tvolodi/R-Co/issues/360",
+      "GH #360 state checked"
+    ],
+    "functions_to_call": [
+      "fn:search-issues"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0102 found in registry with github_issue=https://github.com/tvolodi/R-Co/issues/360. GH #360 is still OPEN. Fix was already applied on main via PR #490 (ISS-0137 bulk wiring, commit 8103072d) on 2026-08-06 \u2014 oidc09/10/11/12/15/35 are now imported in tests/integration/main_test.zig lines 183-195. ISS-0102.json updated to RESOLVED.",
+    "artifacts_out": [
+      "docs/issues/ISS-0102.json"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER Step 1 (diagnosis)"
+  },
+  "started_at": "2026-08-09T12:58:58Z",
+  "completed_at": "2026-08-09T12:58:58Z",
+  "rework_count": 0,
+  "max_rework": 3
+}
