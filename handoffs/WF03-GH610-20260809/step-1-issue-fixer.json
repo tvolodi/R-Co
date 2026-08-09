@@ -1,0 +1,107 @@
+{
+  "handoff_id": "c3d8f2a5-4e0b-5c16-9f7d-2b3a1e5c6d7e",
+  "run_id": "WF03-GH610-20260809",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T05:56:44Z",
+  "started_at": "2026-08-09T05:56:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 1 Diagnosis",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "b2c7e1f4-3d9a-4b05-8e6c-1a2f0d3e4b5c"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0632.json",
+      "tools/lint_sql_param_types.py"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/610"
+  },
+  "task": {
+    "description": "Diagnose ISS-0632: lint_sql_param_types.py does not detect 42P18 (untyped param in variadic-any context). Read the linter source and the codebase. Classify failure category. Produce design recommendation.",
+    "acceptance_criteria": [
+      "Failure category classified (A/B/C/D/E)",
+      "Root cause confirmed with evidence",
+      "Design recommendation produced",
+      "New regex/algorithm for detecting bare $N inside jsonb_build_object specified",
+      "Confirmed zero false positives on current codebase"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Category D (Tool error — the linter is wrong; production code is correct). Root cause: lint_sql_param_types.py ASYMMETRIC_TEXT_CAST_RE and TEXT_COLUMNS_VS_INT_RE cover only C42883 patterns. No rule exists for 42P18 (untyped parameter in variadic-any function context). Design recommendation produced. Zero false positives confirmed on current clean codebase.",
+    "artifacts_out": [
+      "docs/issues/ISS-0632.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2) — Type E design artefact for lint_sql_param_types.py 42P18 rule"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T05:56:44Z",
+  "diagnosis": {
+    "failure_category": "D",
+    "failure_category_label": "Tool error — linter missing a rule; production code is correct",
+    "root_cause": {
+      "summary": "lint_sql_param_types.py only checks two C42883 patterns. It has no rule for 42P18.",
+      "detail": [
+        "ASYMMETRIC_TEXT_CAST_RE detects: col::text = $N where $N lacks ::type (C42883 asymmetric cast on named UUID/bigint columns).",
+        "TEXT_COLUMNS_VS_INT_RE detects: WHERE version = <integer_literal> (integer literal compared to TEXT column).",
+        "No rule exists for: bare $N inside jsonb_build_object(...) or json_build_object(...) variadic-any function calls (42P18 untyped parameter).",
+        "PostgreSQL cannot infer parameter type for variadic-any functions at PREPARE time, raising ERROR 42P18: could not determine data type of parameter $N.",
+        "The ISS-0120 regression (WF03-GH383) was exactly this: jsonb_build_object('restored_orphan_reason', $2) with no ::text cast. The linter did not catch it."
+      ]
+    },
+    "evidence": [
+      "tools/lint_sql_param_types.py: two regex rules only, both target C42883.",
+      "src/engine/reconstruction.zig:319 (fixed): was jsonb_build_object('restored_orphan_reason', $2) — bare, no cast. Now $2::text.",
+      "src/definition/promotion.zig:422 comment: 'This avoids the pg.zig parameter-type-inference failure that occurs when $N parameters appear inside jsonb_build_object() variadic arguments.'",
+      "Baseline scan (scratch/_iss0632_scan.py over src/ + tests/): zero existing bare $N in jsonb_build_object blocks — codebase is currently clean.",
+      "python3 tools/lint_sql_param_types.py src tests → Summary: 0 BLOCKER, 0 MAJOR, 0 MINOR (exit 0). Confirms new rule will NOT break the current clean state."
+    ],
+    "design_recommendation": {
+      "approach": "Add a new MAJOR rule using a paren-depth scan (not pure line-by-line regex) to find bare $N parameters inside jsonb_build_object / json_build_object blocks.",
+      "algorithm": [
+        "1. For each .zig file, read full text content.",
+        "2. For each occurrence of 'jsonb_build_object(' or 'json_build_object(' (case-insensitive):",
+        "   a. Walk forward tracking paren depth to find the matching closing paren.",
+        "   b. Extract the full block content (between the outer parens).",
+        "   c. Within the block, find all $N occurrences using re.finditer(r'\\$(\\d+)(?!\\s*::)', block).",
+        "   d. For each match: compute line number from offset, emit a MAJOR finding.",
+        "3. Integrate into the existing lint_file() function or a new lint_file_variadic() helper called from lint_tree().",
+        "4. Severity: MAJOR (not BLOCKER) — same as TEXT_COLUMNS_VS_INT_RE, consistent with the ISS-0632 candidate_resolution."
+      ],
+      "message_template": "bare parameter $N inside {func}() variadic-any call — PostgreSQL cannot infer type at PREPARE time (42P18). Add $N::type cast (e.g. $N::text, $N::uuid, $N::bigint). See ISS-0632.",
+      "false_positive_analysis": {
+        "set_config": "set_config('key', $1, false) — NOT variadic-any; PostgreSQL infers types from fixed signature. NOT flagged (function name not in scope list).",
+        "insert_values": "INSERT INTO t (...) VALUES ('literal', $N, ...) — NOT inside jsonb_build_object; NOT flagged by paren-depth scan.",
+        "already_cast_params": "jsonb_build_object('k', $N::text) — $N::text has :: so regex (?!\\s*::) does not match. NOT flagged.",
+        "expression_values": "jsonb_build_object('k', gen_random_uuid()::text) — no $N pattern. NOT flagged.",
+        "confirmed_zero_fp": "Baseline scan over current src/ + tests/ produced zero findings, confirming no false positives on clean code."
+      },
+      "files_to_change": [
+        "tools/lint_sql_param_types.py"
+      ],
+      "test_cases_needed": [
+        "Unit test: file containing jsonb_build_object('key', $1) → linter emits MAJOR, exits 1.",
+        "Unit test: file containing jsonb_build_object('key', $1::text) → linter emits nothing, exits 0.",
+        "Unit test: multi-line jsonb_build_object with one bare $N on a different line → linter emits MAJOR.",
+        "Unit test: INSERT VALUES ('lit', $1, 'lit2', $2) (no jsonb_build_object) → NOT flagged.",
+        "Regression: python3 tools/lint_sql_param_types.py src tests → still exits 0."
+      ],
+      "scope_notes": [
+        "json_build_object() has the same variadic-any signature as jsonb_build_object — include both.",
+        "format() is a variadic-any SQL function but rarely used as a parameterised query in this codebase — include as MINOR for now to avoid over-flagging.",
+        "row() constructor is variadic-any but has no current usages with $N — out of scope for this fix.",
+        "ARRAY[$N] constructor — PostgreSQL CAN infer element type from ARRAY context if all elements are the same type; leave out of scope."
+      ]
+    }
+  }
+}
