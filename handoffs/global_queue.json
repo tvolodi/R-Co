@@ -1141,14 +1141,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/639",
       "title": "queue_add.py silently drops a same-session, not-yet-pushed prior addition (sync_queue_from_origin overwrite)",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-09T16:11:40Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T16:11:40Z",
       "started_at": "2026-08-09T16:11:40Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T16:17:33Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 639,
