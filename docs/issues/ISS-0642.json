@@ -1,7 +1,7 @@
 {
   "id": "ISS-0642",
   "title": "lint_test_isolation.py T050 false positive on env_test_root.zig / svc_test_root.zig aggregator files — blocks zig build test-env-verify C5",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MINOR",
   "category": "lint-false-positive / test-infrastructure",
   "run_id": "WF03-GH359-20260809",
@@ -13,8 +13,10 @@
     "tools/verify_test_env.py (C5 check)"
   ],
   "created_at": "2026-08-09T15:41:55Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T16:25:00Z",
   "notes": "Discovered incidentally while resolving ISS-0101 (GH-359) -- running `zig build test-env-verify` as part of Step 5 verification surfaced C5 (test isolation lint) FAIL: `tools/lint_test_isolation.py tests/integration` reports 2 MAJOR T050 findings: `tests/integration/env_test_root.zig:1` and `tests/integration/svc_test_root.zig:1` -- 'integration test does not reference BPM_TEST_DB_URL -- must connect to real Postgres'.\n\nBoth files are pure aggregator/re-export roots (see their own doc comments: 'Used as root_source_file for the test-integration-env/-svc build step so that the step runs only Stage 14 ENV / Stage 13 SVC tests rather than the full main_test.zig suite'). Neither file contains any test body of its own -- they only `@import` the real test files (env01_test.zig, svc01_service_catalog_scope_test.zig, etc.), which DO reference BPM_TEST_DB_URL individually. The T050 heuristic (tools/lint_test_isolation.py line ~202) flags any test-bearing file lacking a literal BPM_TEST_DB_URL string match, which is a false positive for a file whose only role is aggregation via re-export.\n\nBoth files were introduced in already-merged PRs (env_test_root.zig: ISS-0104/GH-362, commit 1314f66; svc_test_root.zig: ISS-0639/GH-629, commit d17bad1), well before this WF-03 run, and are NOT in tools/lint_test_isolation.baseline.json's suppression list -- so the finding has been live since svc_test_root.zig's introduction, silently failing `zig build test-env-verify`'s C5 check (and by extension ORCH's mandatory pre-TEST-RUNNER health gate) for anyone who runs it, unless the caller is unaware and proceeds anyway.\n\nOut of scope for ISS-0101/GH-359: unrelated to the tenant/tenant_hostnames shadow-table fix; both files predate this run and neither was touched by it.",
   "candidate_resolution": "Either (a) extend the T050 heuristic in tools/lint_test_isolation.py to recognize a pure-aggregator file (one whose only top-level statements are `@import`/`const X = @import(...)` re-exports with zero direct DB-touching code) and skip it, or (b) add both files to tools/lint_test_isolation.baseline.json's suppression list with a comment explaining why (pure aggregator, no direct BPM_TEST_DB_URL usage needed), matching the precedent already used for 114 other suppressed findings in that same baseline file. Option (a) is more robust since it will also cover any future *_test_root.zig aggregator file created by the same pattern (this session has already produced two independently, for ENV and SVC stages, and PIPELINE conventions in docs/guides/test_developer_guide.md suggest more may follow for other stages).",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/638"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/638",
+  "resolution": "Already resolved via candidate resolution (b), applied incidentally by the concurrent WF03-GH375-20260809 run's own Step Final CI-unblock (commit 28bf140, PR #636, commit message 'fix(WF03-GH375-20260809): suppress T050 false positive on env_test_root.zig/svc_test_root.zig'): both files were added to tools/lint_test_isolation.baseline.json's suppression list. Confirmed on current main: `python tools/lint_test_isolation.py tests/integration` no longer reports either file, and `zig build test-env-verify` passes cleanly (C5 PASS: 'no BLOCKER findings'). No further code change needed here. Candidate resolution (a) (extending the T050 heuristic to auto-recognize pure-aggregator files) remains a valid future robustness improvement for any *_test_root.zig file introduced later, but is not required to close this issue's reported symptom.",
+  "no_code_change": true
 }
