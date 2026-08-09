@@ -1249,14 +1249,11 @@
       "labels": [
         "issue"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-09T18:49:04Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T18:49:04Z",
       "started_at": "2026-08-09T18:49:04Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T18:50:47Z",
       "run_id": null,
       "deferred_reason": null
     }
