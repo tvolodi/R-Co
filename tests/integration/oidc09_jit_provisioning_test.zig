@@ -499,7 +499,7 @@ test "TC-OIDC-09-06: JIT provisioning emits audit event on creation" {
         \\FROM audit_entries
         \\WHERE action = 'user.jit_provision'
         \\  AND resource_type = 'user'
-        \\  AND resource_id = $1::uuid
+        \\  AND resource_id = $1
         \\ORDER BY "timestamp" DESC
         \\LIMIT 1
     ,
