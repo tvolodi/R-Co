@@ -107,14 +107,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/512",
       "title": "Retire the 184 baselined T010 hardcoded-UUID findings by migrating integration fixtures to TestHarness.newUuid()",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-1-loop",
-        "locked_at": "2026-08-08T11:24:06Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-08T11:24:06Z",
       "started_at": "2026-08-08T11:24:06Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T21:05:58Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 512,
