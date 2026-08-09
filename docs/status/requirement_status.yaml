@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-08T23:11:49Z'
+last_updated: '2026-08-09T01:20:01Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -2057,6 +2057,7 @@ requirements:
     - src/lua/executor.zig
     - src/lua/events.zig
     - src/lua/luajit_bindings.zig
+    - src/lua/host_context.zig
     test_spec: tests/specs/LUA-16.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'

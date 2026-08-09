@@ -93,6 +93,13 @@ pub const FAILURE_REASON_KEY: [*:0]const u8 = "bpm.failure_reason";
 pub const FAILURE_DETAILS_KEY: [*:0]const u8 = "bpm.failure_details";
 pub const FAILURE_EXPLICIT_KEY: [*:0]const u8 = "bpm.explicit_failure";
 
+/// ISS-0628 / GH-595: private registry key holding the stack trace captured
+/// by `executor.errfuncHandler` while the erroring call frames were still
+/// live (installed as `lua_pcall`'s message handler). Same channel pattern
+/// as `FAILURE_REASON_KEY` above — not in `_G`, not in upvalues, not
+/// script-reachable.
+pub const STACK_TRACE_KEY: [*:0]const u8 = "bpm.stack_trace";
+
 /// Maximum length of a formatted diagnostic message. Generous: a denial message
 /// renders the whole granted set so the failure is diagnosable rather than
 /// merely fatal. Overflow truncates the *message* with an ellipsis — never a
@@ -362,6 +369,39 @@ pub fn clearExplicitFailure(L: *bindings.LuaState) void {
 
     bindings.lua_pushnil(L);
     bindings.lua_setfield(L, bindings.LUA_REGISTRYINDEX, FAILURE_DETAILS_KEY);
+}
+
+// ---------------------------------------------------------------------------
+// ISS-0628 / GH-595: stack-trace side channel (design §3.3)
+// ---------------------------------------------------------------------------
+
+/// Read the stack trace `executor.errfuncHandler` stashed on
+/// `STACK_TRACE_KEY` while the erroring call frames were still live, and
+/// clear the key immediately after — mirrors `readExplicitFailure`'s exact
+/// shape (`lua_getfield` + `LUA_TSTRING` type guard + `lua_tolstring` +
+/// `allocator.dupe` + `lua_pop`), so a script that succeeds after a prior
+/// script's failure never observes a stale trace (same "never let stale
+/// state leak into the next script" discipline as `clearExplicitFailure`).
+///
+/// Fail-soft (design's Error taxonomy, §"Error taxonomy"): a missing or
+/// malformed value degrades to an empty string rather than propagating an
+/// error, matching the production call site's prior
+/// `captureStackTrace(...) catch ""` convention.
+pub fn readStackTrace(L: *bindings.LuaState, allocator: std.mem.Allocator) []const u8 {
+    bindings.lua_getfield(L, bindings.LUA_REGISTRYINDEX, STACK_TRACE_KEY);
+    var trace_owned: []const u8 = "";
+    if (bindings.lua_type(L, -1) == bindings.LUA_TSTRING) {
+        var tlen: usize = 0;
+        const tptr = bindings.lua_tolstring(L, -1, &tlen);
+        trace_owned = allocator.dupe(u8, tptr[0..tlen]) catch "";
+    }
+    bindings.lua_pop(L, 1);
+
+    // Clear so a subsequent script never inherits a stale trace.
+    bindings.lua_pushnil(L);
+    bindings.lua_setfield(L, bindings.LUA_REGISTRYINDEX, STACK_TRACE_KEY);
+
+    return trace_owned;
 }
 
 // ---------------------------------------------------------------------------

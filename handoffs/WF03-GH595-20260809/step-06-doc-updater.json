@@ -1,0 +1,51 @@
+{
+  "handoff_id": "9b1994c0-3158-40ba-9102-cd54bf5e74ea",
+  "run_id": "WF03-GH595-20260809",
+  "workflow_id": "WF-03",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH595-20260809/step-06-doc-updater.json",
+  "created_at": "2026-08-09T01:17:51Z",
+  "started_at": "2026-08-09T01:17:51Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-16"
+    ],
+    "related_handoff_ids": [
+      "b47646df-dcd4-4a70-a622-70e54cb966af",
+      "1e6d4a5c-8b3f-4a2e-9c7d-5f8a2b6e4d10",
+      "0b7fc05c-4fa5-47c8-b6db-31c789058f46",
+      "fc155180-e8e8-4ce5-a45c-3d6cc6d5478b",
+      "0a888546-1af2-46b9-98d0-c24415351806"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260809-WF03-GH595-20260809.yaml",
+      "src/design/iss0628-lua16-errfunc-stacktrace.md",
+      "docs/issues/ISS-0628.json"
+    ]
+  },
+  "task": {
+    "description": "Finalize GH-595 / ISS-0628 (LUA-16 stack_trace always empty on LuaJIT 2.1). Design PASSED validation cleanly (no rework cycle, one non-blocking wording nitpick). BACKEND-DEV implemented a lua_pcall message handler that captures the stack trace while call frames are live, plus discovered and fixed two additional real issues beyond the original design: (1) lua_getinfo needed 'Sln' not 'Sl' to populate function names, (2) Lua 5.1/LuaJIT proper tail calls collapse intermediate frames, requiring the test fixtures to avoid tail-call position. BACKEND-DEV also fixed an unrelated PRE-EXISTING compile blocker in the integration test file (createSandboxedState signature mismatch, via a new StateProbe wrapper) per Unblock-Everything, and filed an incidental flaky-test finding (ISS-0629/GH-600, TC-LUA-10-03 timing flake) rather than fixing it in-scope.\n\nTEST-RUNNER PASSED: zig build test (full suite) exit 0, zig build test-lua 91/91 (with 2 additional runs showing the KNOWN ISS-0629/GH-600 flake and nothing else), zig build test-integration-iss0625 10/10. ORCH independently re-verified via its own hands-on mutation test: reverted lua_pcall's errfunc argument to the literal 0, confirmed both TC-ISS-0625-LUA-16-int-01 and the new TC-ISS-0628-LUA-16-stacktrace-01 genuinely fail with an empty stack_trace as predicted, restored the exact original code, confirmed clean rebuild (10/10 pass again).\n\nYOUR JOB:\n1. Update CHANGELOG.md: describe the fix (LUA-16's stack_trace field now genuinely captures a live call-frame trace via a lua_pcall message handler, instead of always being empty), and note the corrected GH-595 filing (the issue itself incorrectly suggested debug.traceback, which is unreachable in the sandbox -- the actual fix uses a custom handler).\n2. LUA-16 already has status IN_PROGRESS in requirements.yaml (set during the earlier GH-592 merge). Run `python3 tools/reqctl.py show LUA-16` to check current state, and if this fix is what completes its acceptance criteria (stack trace non-empty for runtime errors), set it to RELEASED via reqctl.py set-status with --implemented-in listing src/lua/executor.zig, src/lua/host_context.zig. If LUA-16's acceptance criteria need anything beyond what this fix provides, leave it IN_PROGRESS and note why in your handoff result.\n3. Run `python3 tools/reqctl.py render-status`.\n4. Skip retrospective (WF-03 run, no estimation.json).\n5. GH-595 disposition: this issue's acceptance criteria (non-empty stack_trace, errfunc installed, new TC added, existing assertion flipped) are fully met by this run -- close it with 'Closes #595' in the PR, or a closing comment if not auto-closed.\n6. GitHub Branch Management (MANDATORY Step Final): create the PR (gh pr create --base main), explain the fix and the two additional discoveries (Sln selector, tail-call frame collapse) in the body. Poll for genuine CI completion, squash-merge and delete branch, verify no orphaned branch, update project board for issue #595 (likely straight to done since it's non-UAT-scoped and fully resolved), return repo to clean main.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated",
+      "LUA-16 status checked and updated appropriately via reqctl.py",
+      "GH-595 closed",
+      "PR created with clear body explaining the fix and discoveries",
+      "CI verified genuinely green (polled, not assumed)",
+      "Squash-merged, branch deleted",
+      "Project board updated for issue #595",
+      "Repo returned to clean main"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
