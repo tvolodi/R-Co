@@ -1092,6 +1092,26 @@
       "completed_at": "2026-08-09T13:02:58Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-359",
+      "issue_number": 359,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/359",
+      "title": "ISS-0101 \u2014 tenant_default shadow table + OutOfOrderMigration false-positive on cold-start db_test",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T15:18:58Z"
+      },
+      "added_at": "2026-08-09T15:18:58Z",
+      "started_at": "2026-08-09T15:18:58Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
