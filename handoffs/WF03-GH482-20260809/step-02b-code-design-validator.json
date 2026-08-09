@@ -1,0 +1,53 @@
+{
+  "handoff_id": "b95272cd-523a-4386-842e-ed1c0235c909",
+  "run_id": "WF03-GH482-20260809",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH482-20260809/step-02b-code-design-validator.json",
+  "created_at": "2026-08-09T03:52:47Z",
+  "started_at": "2026-08-09T03:52:47Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "aebd28ab-5be3-4044-a232-150a105bf876",
+      "190b154e-6cba-4874-9314-57fc6ff02d27"
+    ],
+    "artifacts_in": [
+      "src/design/iss0630-migration-scope-qualification-fix.md",
+      "src/db/migrations.zig",
+      "migrations/011_webhook_subscriptions.sql",
+      "migrations/022_obs06_alerting_state.sql",
+      "migrations/038_oidc_claim_mapping_config.sql",
+      "migrations/039_jit_provisioning_config.sql",
+      "migrations/041_oidc15_realm_deletion_tracker.sql",
+      "migrations/042_oidc16_26_agent_lifecycle_foundations.sql",
+      "migrations/049_repository_service_catalog.sql",
+      "migrations/056_onboarding_registry.sql",
+      "migrations/094_entity_subsystem.sql",
+      ".github/workflows/ci.yml"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0630-migration-scope-qualification-fix.md before BACKEND-DEV implements it. This is ISS-0630/GH-605, a BLOCKER: 9 migration files declare '-- scope: public' but contain unqualified table statements, breaking fresh-database migration bootstrap.\n\nORCH already independently verified the core claims with hands-on reproduction: (1) created a genuinely fresh PostgreSQL database and ran zig build migrate against it directly -- confirmed it fails at 011_webhook_subscriptions.sql with the exact scope-mismatch error the issue describes; (2) confirmed this workspace's own long-lived db_test container has 011 already recorded as applied since 2026-08-06, before the defect-introducing commit a2a8c68 merged on 2026-08-08 -- confirming the 'shared_db_masking' narrative precisely; (3) read src/db/migrations.zig's declaresUnqualifiedTableWork() directly and confirmed its exact heads list (CREATE/ALTER/DROP TABLE, INSERT INTO -- NOT CREATE INDEX) and line-by-line whole-file scanning behavior matches the design's characterization exactly; (4) confirmed migrations/094_entity_subsystem.sql genuinely has its scope comment at line 22 and an INSERT INTO at line 102 (80 lines away, outside any DO block the 3 CREATE TABLEs might be inside) -- confirming the design's claim that all 4 statements in this file need qualification, not just the 3 near the header; (5) confirmed lint_design_artefact.py exits 0 (29 expected MINOR E030 findings for the public.-qualified names the design itself specifies, non-blocking).\n\nYOUR JOB: run your own full independent validation.\n1. Read the design fresh.\n2. Re-verify all 9 files' exact required edits yourself against the real file content -- don't just trust the design's table.\n3. Confirm the design's claim of zero intra-file FK/REFERENCES needing qualification is accurate (grep the 9 files yourself).\n4. Verify the new fresh_database_migration CI job design (Postgres service container, migrate against empty DB, judged by exit code) is well-specified and consistent with CLAUDE.md's 'prefer exit code over string match' gate-design principle.\n5. Confirm the design's claim that no existing CI job already covers this (check .github/workflows/ci.yml yourself for any Postgres service block).\n6. Confirm scope discipline: no backfill/corrective migration proposed, the 35 residual test-integration-svc failures explicitly excluded.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0",
+      "All 9 files' required edits independently re-verified against real content",
+      "Zero intra-file FK/REFERENCES needing qualification confirmed",
+      "New CI gate design well-specified, exit-code-judged",
+      "No existing CI gate covers this confirmed",
+      "Scope discipline confirmed (no backfill, 35 residual failures excluded)"
+    ],
+    "functions_to_call": [
+      "fn:validate-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
