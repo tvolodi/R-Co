@@ -201,17 +201,58 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
         if (already_migrated) |*result| {
             defer result.deinit();
             if (result.rows.len > 0) {
-                var needs_reconcile = try conn.query(
+                // ISS-0116 / GH-379: this used to probe for a single
+                // hardcoded historical version
+                // ('1106_iss0125_instance_definition_snapshots_cascade.sql')
+                // as a proxy for "this schema was migrated by the current,
+                // post-ISS-0091 generation of the harness" — a one-time
+                // migration-of-the-tracking-itself signal, not a
+                // freshness check. On a long-lived bpm_test container
+                // (tenant_default is deliberately never dropped by
+                // tools/clean_test_db.py), that made the fast path skip
+                // runForSchema() forever after the first successful run,
+                // silently hiding every plain-numeric migration filed
+                // after 1106 from tenant_default until the whole DB was
+                // reprovisioned from scratch. Confirmed live: migration
+                // 1139_iss0116_audit_dlq_rename_tenant_functions.sql
+                // applied to `public` immediately but never reached
+                // `tenant_default`, and neither did any migration between
+                // 1107 and 1139 unless something else happened to force a
+                // fresh reconcile first.
+                //
+                // Generalize the probe: compare the count of plain-numeric
+                // (non-GBL-prefixed) migrations applied to `public` — which
+                // runMigrations() above just brought fully current,
+                // unconditionally, with no fast-path skip of its own —
+                // against the count applied to this schema. GBL-prefixed
+                // migrations are excluded because they only ever apply to
+                // `public` (Migrations.run() == runForSchema(...,
+                // "public", ...)); comparing raw totals would make this
+                // schema perpetually appear behind. Equal counts means
+                // every migration `public` has, this schema also has, so
+                // the fast path may still skip; any shortfall means new
+                // migrations have landed since this schema's last full
+                // apply, and the code must fall through to the real
+                // runForSchema() call below.
+                var counts = try conn.query(
                     allocator,
-                    "SELECT 1 FROM public.schema_migrations WHERE schema_name = $1 AND version = '1106_iss0125_instance_definition_snapshots_cascade.sql'",
+                    \\SELECT
+                    \\  (SELECT COUNT(*)::text FROM public.schema_migrations WHERE schema_name = 'public' AND version NOT LIKE 'GBL-%'),
+                    \\  (SELECT COUNT(*)::text FROM public.schema_migrations WHERE schema_name = $1 AND version NOT LIKE 'GBL-%')
+                ,
                     &.{schema},
                 );
-                defer needs_reconcile.deinit();
-                if (needs_reconcile.rows.len > 0) {
-                    const set_path_sql = try std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{schema});
-                    defer allocator.free(set_path_sql);
-                    try conn.exec(set_path_sql, &.{});
-                    return;
+                defer counts.deinit();
+                if (counts.rows.len > 0) {
+                    const row = counts.rows[0];
+                    const public_count = std.fmt.parseInt(u64, row[0] orelse "0", 10) catch 0;
+                    const schema_count = std.fmt.parseInt(u64, row[1] orelse "0", 10) catch 0;
+                    if (schema_count >= public_count) {
+                        const set_path_sql = try std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{schema});
+                        defer allocator.free(set_path_sql);
+                        try conn.exec(set_path_sql, &.{});
+                        return;
+                    }
                 }
             }
         }
