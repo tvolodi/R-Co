@@ -43,7 +43,7 @@
         "unit_tests": "zig build test completes in 2.4s with expected results",
         "integration_test_sample": "zig build test-integration-iss0121 completes in 5.7s, exit 0",
         "integration_test_suite": "zig build test-integration-tm completes in 2.9s, exit 0"
-      ]
+      }
     },
     "artifacts_out": [
       "tests/integration/helpers.zig (killIdleConnections, resetTestData, deleteTableBestEffort functions)",

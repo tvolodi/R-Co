@@ -1,7 +1,7 @@
 {
   "handoff_id": "a0900002-2605-4000-8009-202605230002",
-  "workflow_id": "WF02-api09-20260523",
-  "sequence": 2,
+  "run_id": "WF02-api09-20260523",
+  "step": "02",
   "from_agent": "ORCH",
   "to_agent": "BACKEND-DEV",
   "created_at": "2026-05-23T11:05:30Z",
@@ -9,9 +9,13 @@
   "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
-    "stage": "Stage 4 — API Layer",
-    "requirement_ids": ["API-09"],
-    "related_handoff_ids": ["a0900001-2605-4000-8009-202605230001"],
+    "stage": "Stage 4 \u2014 API Layer",
+    "requirement_ids": [
+      "API-09"
+    ],
+    "related_handoff_ids": [
+      "a0900001-2605-4000-8009-202605230001"
+    ],
     "artifacts_in": [
       "src/design/api-tracing.md",
       "docs/BPM_Platform_Functional_Requirements.md",
@@ -24,7 +28,7 @@
     ]
   },
   "task": {
-    "description": "Implement API-09 (Request tracing) per the design artefact at src/design/api-tracing.md.\n\nAPI-09 requirements:\n- Every request assigned a UUID v4 trace_id at request start\n- If caller provides X-Trace-Id request header, use that value (propagation)\n- X-Trace-Id header included in every response\n- trace_id appears in every log entry during that request\n- trace_id appears in the trace_id field of any error response body\n- Trace ID still assigned/returned even if auth fails (HTTP 401)\n- Incoming X-Trace-Id that is not a valid UUID must be accepted as-is\n\nKey implementation tasks (follow design artefact for details):\n1. Create src/api/middleware/trace.zig — trace middleware (runs FIRST, before auth)\n2. Create src/api/trace_context.zig — thread-local storage for trace ID\n3. Modify src/api/errors.zig — add trace_id field to ProblemDetails and error responses\n4. Modify src/obs/logger.zig — read trace_context and inject trace_id into each log entry\n5. Wire trace middleware into the request chain in src/api/api_mod.zig (as first middleware)\n\nValidate with:\n  zig build\n  zig build test\n\nBoth must exit 0.",
+    "description": "Implement API-09 (Request tracing) per the design artefact at src/design/api-tracing.md.\n\nAPI-09 requirements:\n- Every request assigned a UUID v4 trace_id at request start\n- If caller provides X-Trace-Id request header, use that value (propagation)\n- X-Trace-Id header included in every response\n- trace_id appears in every log entry during that request\n- trace_id appears in the trace_id field of any error response body\n- Trace ID still assigned/returned even if auth fails (HTTP 401)\n- Incoming X-Trace-Id that is not a valid UUID must be accepted as-is\n\nKey implementation tasks (follow design artefact for details):\n1. Create src/api/middleware/trace.zig \u2014 trace middleware (runs FIRST, before auth)\n2. Create src/api/trace_context.zig \u2014 thread-local storage for trace ID\n3. Modify src/api/errors.zig \u2014 add trace_id field to ProblemDetails and error responses\n4. Modify src/obs/logger.zig \u2014 read trace_context and inject trace_id into each log entry\n5. Wire trace middleware into the request chain in src/api/api_mod.zig (as first middleware)\n\nValidate with:\n  zig build\n  zig build test\n\nBoth must exit 0.",
     "acceptance_criteria": [
       "src/api/middleware/trace.zig created: generates UUID v4, propagates X-Trace-Id, sets X-Trace-Id on response",
       "src/api/trace_context.zig created: thread-local trace ID storage with get/set/clear",
@@ -34,7 +38,10 @@
       "zig build exits 0",
       "zig build test exits 0"
     ],
-    "functions_to_call": ["fn:read-backend-conventions", "fn:check-zig-build"]
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
   },
   "result": {
     "status": "PASS",

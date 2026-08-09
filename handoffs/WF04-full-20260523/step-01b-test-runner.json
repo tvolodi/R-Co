@@ -1,7 +1,7 @@
 {
   "handoff_id": "wf04001b-2605-4000-8001-202605230001",
-  "workflow_id": "WF-04",
-  "sequence": 1,
+  "run_id": "WF04-full-20260523",
+  "step": "01b",
   "from_agent": "ORCH",
   "to_agent": "TEST-RUNNER",
   "created_at": "2026-05-23T06:20:00Z",

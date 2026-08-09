@@ -1,7 +1,7 @@
 {
   "handoff_id": "a0700004b-2605-4000-8007-202605230004",
-  "workflow_id": "WF02-api07-20260523",
-  "sequence": 4,
+  "run_id": "WF02-api07-20260523",
+  "step": "04b",
   "from_agent": "ORCH",
   "to_agent": "TEST-RUNNER",
   "created_at": "2026-05-23T04:41:59Z",

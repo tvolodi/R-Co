@@ -124,7 +124,7 @@
                                   }
                               ],
                    "summary":  "Comprehensive test suite executed. 3 of 5 test layers passed (unit tests, E2E tests, benchmarks). Backend integration tests ran with database connection but found 37 failures (4.5% failure rate). Primary issues: DuplicateNameVersion database constraint violations (28 tests) and DSL expression evaluation failures (5 tests). All failures are runtime, not compilation-related.",
-                   "status":  "CONDITIONAL",
+                   "status":  "PARTIAL",
                    "artifacts_out":  [
                                          "tests/reports/ADHOC-full-test-20260527-comprehensive.json",
                                          "tests/reports/ADHOC-full-test-20260528-integration-results.json"

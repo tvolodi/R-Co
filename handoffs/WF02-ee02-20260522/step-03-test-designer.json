@@ -17,7 +17,6 @@
       "src/engine/transition.zig",
       "docs/BPM_Platform_Functional_Requirements.md",
       "docs/guides/test_developer_guide.md",
-    "started_at": "2026-05-21T06:00:00Z",
       "tests/unit/"
     ]
   },
