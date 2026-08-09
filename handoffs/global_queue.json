@@ -1061,6 +1061,26 @@
       "labels": [
         "bug"
       ]
+    },
+    {
+      "issue_id": "GH-361",
+      "issue_number": 361,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/361",
+      "title": "oidc35_onboarding_test.zig does not compile: struct literals stale against AuthContext.principal (ISS-403) and OnboardingInput.tenant_type (ENV-01)",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-09T12:46:58Z"
+      },
+      "added_at": "2026-08-09T12:46:58Z",
+      "started_at": "2026-08-09T12:46:58Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
