@@ -802,17 +802,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0631",
+      "issue_id": "GH-606",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/606",
-      "title": "TC-DB-02-04 connection-pool-boundary flake",
-      "severity": "MINOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-09T03:42:06Z",
-      "started_at": null,
+      "title": "db_integration_test.TC-DB-02-04: connection-pool-boundary test flakes under concurrent-binary contention (ISS-0631, split from ISS-0150/GH#482)",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T04:23:08Z"
+      },
+      "added_at": "2026-08-09T04:23:08Z",
+      "started_at": "2026-08-09T04:23:08Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 606,
+      "labels": [
+        "bug"
+      ]
     }
   ]
 }
