@@ -1,0 +1,50 @@
+{
+  "handoff_id": "f9d2b134-7e8a-4c0d-a5b7-2e1f8d3c9a47",
+  "run_id": "WF03-GH362-20260809",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-09T12:06:02Z",
+  "started_at": "2026-08-09T12:06:02Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step Final — git merge + cleanup",
+    "requirement_ids": [
+      "ISS-0104"
+    ],
+    "related_handoff_ids": [
+      "e4c7a821-3d5f-47b9-b2c1-9f0e3a6d8c51"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH362-20260809/step-07-doc-updater.json"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/362"
+  },
+  "task": {
+    "description": "Step Final: gh pr create, gh pr merge --squash --delete-branch, return to main, update project board, release queue lock.",
+    "acceptance_criteria": [
+      "PR created and squash-merged to main",
+      "feature/WF03-GH362-20260809 branch deleted from GitHub",
+      "Repo on clean main with squash-merge commit",
+      "Project board issue 362 moved to done",
+      "Queue lock released"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PR #630 created and squash-merged to main (commit 1314f668). Branch feature/WF03-GH362-20260809 deleted from GitHub. Repo returned to clean main. Project board issue #362 moved to Done. Queue: GH-362 was not in global_queue (ran outside standard queue mechanism — no lock to release). ISS-0104/GH-362 fully resolved.",
+    "artifacts_out": [
+      "PR #630",
+      "main commit 1314f668"
+    ],
+    "issues": [],
+    "next_action": "Run complete — WF03-GH362-20260809 CLOSED"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T12:06:02Z"
+}

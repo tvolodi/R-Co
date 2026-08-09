@@ -22573,6 +22573,17 @@
       "created_at": "2026-08-09T12:03:32Z",
       "status": "COMPLETED",
       "stage": "WF-03 Step 7"
+    },
+    {
+      "handoff_id": "f9d2b134-7e8a-4c0d-a5b7-2e1f8d3c9a47",
+      "file": "handoffs/WF03-GH362-20260809/step-final-doc-updater.json",
+      "run_id": "WF03-GH362-20260809",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-09T12:06:02Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step Final"
     }
   ],
   "last_updated": "2026-08-09T10:18:47Z"
