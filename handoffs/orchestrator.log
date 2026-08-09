@@ -652,3 +652,6 @@
 2026-08-09T05:07:00Z | COMPLETE | WF03-GH606-20260809 | c4f2a1e8 | DOC-UPDATER | PASS — CHANGELOG + ISS-0631 RESOLVED + GH-606 closed
 2026-08-09T05:12:26Z | MERGE | WF03-GH606-20260809 | f9a3c2e1 | BACKEND-DEV | PR #609 squash-merged commit 541cc388, branch deleted, main clean. GH-606 Done. Lock RESOLVED.
 2026-08-09T05:14:34Z | ROUTE | WF03-GH383-20260809 | 258a23d7 | ORCH -> BACKEND-DEV | git-setup COMPLETED — branch feature/WF03-GH383-20260809 pushed to origin
+2026-08-09T05:17:16Z | ROUTE | WF03-GH383-20260809 | 7593b805 | ORCH -> ISSUE-FIXER | Step 0.5 COMPLETED — ISS-0120 confirmed, GH#383 linked
+2026-08-09T05:17:16Z | ROUTE | WF03-GH383-20260809 | a3b7c9d2 | ORCH -> ISSUE-FIXER | Step 1 COMPLETED — root cause: reconstruction.zig markRestoredOrphanInTx  untyped in jsonb_build_object → 42P18; fix: ::text
+2026-08-09T05:17:16Z | INCIDENTAL | WF03-GH383-20260809 | --- | ISSUE-FIXER | ISS-0632 filed GH#610 — lint_sql_param_types.py misses 42P18 variadic-any pattern
