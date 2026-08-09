@@ -1,0 +1,37 @@
+{
+  "handoff_id": "d671b493-d65b-4228-a86a-e17c4f65c18e",
+  "run_id": "WF03-GH380-20260809",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T09:55:00Z",
+  "started_at": "2026-08-09T09:58:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [
+      "EXP-401"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/380"
+  },
+  "task": {
+    "description": "Diagnose root cause of TC-EXP-401-02/03/04/05 failures in tests/integration/exp401_exp402_comp_restore_test.zig. Read the test file, the EXP-401 definition-creation path (src/definition/store.zig), and the canonical process graph validator (src/definition/graph.zig). Determine exactly why invalid graphs are accepted.",
+    "acceptance_criteria": [
+      "Root cause identified with evidence (code reading + test run), not guessed"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause found: src/definition/graph.zig defines validateCompensationHandlers() and validateReversibility(), both already returning the correct typed violations (COMPENSATION_HANDLER_SCOPE_UNKNOWN, COMPENSATION_HANDLER_NOT_REVERSED, NON_REVERSIBLE_ACTIVITY, ERROR_BOUNDARY_EVENTS_MISSING), but neither function is called anywhere. src/definition/store.zig's three graph-mutating paths (create/promote/update) only call validateGraph/validateNodeAttributes/validateEdgeConditions/validateEdgeTransforms before persistence. Confirmed by running zig build test-integration-exp401-exp402 (new narrow target added for this run) on the unmodified code: TC-EXP-401-02/03/04 failed as expected (definition created without error), TC-EXP-401-05 also failed for a second, related reason (parseErrorBoundaryConfig() rejected empty on_error_event/on_cancel_event as error.InvalidInput before validateCompensationHandlers()'s dedicated ERROR_BOUNDARY_EVENTS_MISSING check could run). A third investigation thread (whether tests/integration/exp401_exp402_comp_restore_test.zig was wired into build.zig) was pursued and initially misdiagnosed as a wiring gap; corrected after finding tests/integration/main_test.zig already @imports and pins the file per the ISS-0137/GH-439 pattern, so it was already reachable and executed under zig build test-integration.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T09:58:00Z"
+}

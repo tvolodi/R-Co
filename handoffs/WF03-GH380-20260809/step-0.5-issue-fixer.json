@@ -1,0 +1,39 @@
+{
+  "handoff_id": "03591c24-48e8-4928-8d86-10a293e1d3eb",
+  "run_id": "WF03-GH380-20260809",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T09:55:00Z",
+  "started_at": "2026-08-09T09:55:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [
+      "EXP-401"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/380"
+  },
+  "task": {
+    "description": "Registry lookup for GH-380/ISS-0117: read docs/issues/ISS-0117.json (status OPEN, from prior discovery run WF03-gh364-20260801), confirm it matches this issue, update in place rather than recreate.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0117.json read and confirmed as the matching existing entry"
+    ],
+    "functions_to_call": [
+      "fn:search-issues"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Confirmed docs/issues/ISS-0117.json is the matching prior registration (status OPEN, category graph-validation, github_issue already points to #380). Will update in place at Step 7 rather than create a new ISS file.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 1) for root-cause diagnosis"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T09:58:00Z"
+}

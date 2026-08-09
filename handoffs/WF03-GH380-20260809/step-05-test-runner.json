@@ -1,0 +1,38 @@
+{
+  "handoff_id": "e4f03e3b-d174-404c-9ced-2d6404a5c302",
+  "run_id": "WF03-GH380-20260809",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-09T10:06:00Z",
+  "started_at": "2026-08-09T10:09:54Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [
+      "EXP-401"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/380"
+  },
+  "task": {
+    "description": "Run zig build test-integration-exp401-exp402 to confirm TC-EXP-401-02/03/04/05 (previously failing) now pass and TC-EXP-401-01/TC-EXP-402-01/02 (previously passing or unrelated) still pass. Run zig build test (full unit suite) to check for regressions.",
+    "acceptance_criteria": [
+      "All 7 tests in exp401_exp402_comp_restore_test.zig pass",
+      "zig build test exits 0 with no new failures vs main baseline"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "zig build test-integration-exp401-exp402: 7/7 pass (TC-EXP-401-01..05, TC-EXP-402-01/02), confirmed stable across 2 consecutive runs. zig build test: exit 0, lint_test_wiring PASS (273 test-bearing files, 4 pre-existing ADVISORY-only findings unrelated to this change). python tools/lint_test_isolation.py tests/integration: OK, no isolation issues.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (Step 7) \u2014 no BLOCKER severity issues, RELEASE-VALIDATOR (Step 6) skipped"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T10:09:54Z"
+}
