@@ -47,8 +47,35 @@ import subprocess
 QUEUE_PATH_IN_REPO = "handoffs/global_queue.json"
 
 
+def _merge_items_by_issue_id(origin_q: dict, local_fallback: dict) -> dict:
+    """Union origin's items with local_fallback's by issue_id.
+
+    Origin's copy wins for any issue_id present in both (it is the
+    authoritative, already-pushed state for that item — this is what
+    protects against the cross-workspace race sync_queue_from_origin exists
+    for). Any issue_id present ONLY in local_fallback is carried over
+    as-is: this is what a same-session, not-yet-pushed queue_add.py call
+    made moments ago, and origin has no opinion on it yet because it was
+    never pushed. Dropping it here would silently discard a same-session
+    addition the moment a second queue tool call ran before the first one's
+    result was pushed — see ISS-0643 / GH-639.
+
+    Non-"items" top-level keys (e.g. "version") are taken from origin.
+    """
+    merged = dict(origin_q)
+    origin_items = origin_q.get("items", [])
+    origin_ids = {item["issue_id"] for item in origin_items}
+    local_only = [
+        item for item in local_fallback.get("items", [])
+        if item["issue_id"] not in origin_ids
+    ]
+    merged["items"] = origin_items + local_only
+    return merged
+
+
 def sync_queue_from_origin(local_fallback: dict, queue_path: str = QUEUE_PATH_IN_REPO) -> dict:
-    """Return the queue as it exists on origin/main, fetching first.
+    """Return the queue as it exists on origin/main, fetching first, merged
+    with any items local_fallback has that origin doesn't know about yet.
 
     `queue_path` defaults to the GitHub-issue lock file
     (handoffs/global_queue.json) but any repo-relative JSON queue file using
@@ -58,12 +85,20 @@ def sync_queue_from_origin(local_fallback: dict, queue_path: str = QUEUE_PATH_IN
     to "a JSON file two independent checkouts each hold a stale copy of,"
     not specific to the GitHub-issue queue.
 
-    Falls back to `local_fallback` (the caller's already-read local copy) if
-    the fetch or remote read fails for any reason (offline, no remote
-    configured, network hiccup) — a queue tool must remain usable without
-    network access, just with the pre-existing (weaker) staleness guarantee
-    in that case. Every fallback path is logged to stderr so a silent
-    same-machine-only guarantee is never mistaken for the cross-workspace one.
+    The merge (see _merge_items_by_issue_id) preserves two guarantees at
+    once: origin's copy is authoritative for any issue_id it already knows
+    about (the cross-workspace race this module was built for), while an
+    issue_id that exists ONLY in local_fallback — e.g. a second same-session
+    queue_add.py call for a different issue, made before the first call's
+    addition was ever pushed — is preserved rather than silently dropped
+    (ISS-0643 / GH-639).
+
+    Falls back to `local_fallback` unmerged if the fetch or remote read
+    fails for any reason (offline, no remote configured, network hiccup) —
+    a queue tool must remain usable without network access, just with the
+    pre-existing (weaker) staleness guarantee in that case. Every fallback
+    path is logged to stderr so a silent same-machine-only guarantee is
+    never mistaken for the cross-workspace one.
     """
     import sys
 
@@ -85,7 +120,8 @@ def sync_queue_from_origin(local_fallback: dict, queue_path: str = QUEUE_PATH_IN
             timeout=15,
             check=True,
         )
-        return json.loads(proc.stdout.decode("utf-8-sig"))
+        origin_q = json.loads(proc.stdout.decode("utf-8-sig"))
+        return _merge_items_by_issue_id(origin_q, local_fallback)
     except Exception as exc:
         print(f"[_queue_sync] could not read {queue_path} from origin/main ({exc}); using local copy (may be genuinely new/uncommitted) — staleness guarantee weakened to same-machine only", file=sys.stderr)
         return local_fallback
