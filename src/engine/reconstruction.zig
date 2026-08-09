@@ -316,7 +316,7 @@ pub fn markRestoredOrphanInTx(
     conn.exec(
         \\UPDATE instance_projections
         \\SET status = 'RESTORED_ORPHAN',
-        \\    error_detail = jsonb_build_object('restored_orphan_reason', $2),
+        \\    error_detail = jsonb_build_object('restored_orphan_reason', $2::text),
         \\    updated_at = NOW()
         \\WHERE instance_id = $1::uuid
     ,
