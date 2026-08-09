@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH482-20260809/step-06-doc-updater.json",
   "created_at": "2026-08-09T04:04:44Z",
   "started_at": "2026-08-09T04:04:44Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-09T04:20:57Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -44,7 +44,18 @@
       "fn:update-changelog"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Finalized ISS-0630/GH-605. CHANGELOG.md updated with the fix description and an explicit note that GH-482/ISS-0150 remains open/blocked pending a follow-up re-measurement run. PR #608 created ('Closes #605' only), reviewed and self-corrected a genuine defect its own new Source linters check caught (migration 094_entity_subsystem.sql wrongly public.-qualified event_type_registry, a per-tenant business table per TNT-02/BUSINESS_TABLES -- reverted the qualification and corrected the file's scope header from 'public' to 'all_schemas', since the file legitimately mixes 3 public tables with 1 per-tenant seed insert), then re-verified end-to-end against a fresh throwaway database before pushing the fix. All 7 CI checks passed genuinely green, including the NEW fresh_database_migration job (39s, pass) -- the exact regression gate for this defect class. Squash-merged (commit 065c543ba1ece53885deb7cf8c85d59482f98850), branch feature/WF03-GH482-20260809 confirmed deleted (git fetch --prune shows [deleted]). GH-605 closed (state COMPLETED). GH-482 left explicitly OPEN with an explanatory comment (issuecomment-5229697250) describing the prerequisite fix and the still-needed follow-up re-measurement; its project board card confirmed untouched at 'Todo'. GH-606 (ISS-0631 flake) confirmed OPEN, no action taken. Project board for #605 confirmed at 'Done' (gh_project_status.py --target implemented then --target done, both idempotent no-ops since GitHub's own close-issue automation had already advanced it). Merge with concurrent origin/main advance (WF03-GH424/WF03-GH591 landed mid-flight) required manual conflict resolution in CHANGELOG.md, handoffs/orchestrator.log, and handoffs/registry.json (all resolved via keep-both/union per established pattern); fresh-database migration fix re-verified working after the merge and again after the final squash-merge to main. zig build exits 0 throughout.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "migrations/094_entity_subsystem.sql",
+      "handoffs/orchestrator.log",
+      "handoffs/registry.json"
+    ],
+    "issues": [],
+    "next_action": "WF03-GH482-20260809 complete for ISS-0630/GH-605. GH-482/ISS-0150 requires a separate follow-up WF-03 run to complete its fresh-database re-measurement of test-integration-svc using the now-unblocked bootstrap and classify its 35 residual failing test names."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
