@@ -6,6 +6,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0131 — C40P01 deadlock at TC-TNT-01-01 (`provisionTenantSchema` concurrent migration race) verified fixed (MAJOR)** ([GitHub #424](https://github.com/tvolodi/R-Co/issues/424))
+
+- **Root cause:** `provisionTenantSchema()` acquired a separate pool connection for each of Steps 2, 4, 6, and 6a, allowing up to five independent PostgreSQL connections per logical provisioning call under full-suite concurrency. The advisory lock scope closed before Step 2 began (ISS-0612 diagnosis), leaving the inter-step window unserialised and creating an AccessShareLock / ShareLock cycle with concurrent binaries.
+- **Fix (ISS-0612 / GH-556, commit 2dc07ddf, 2026-08-07):** `provisionTenantSchema()` now acquires one pool connection (`lock_conn`) and holds it — together with the session-scoped advisory lock — across all of Steps 2–6a. Steps 2, 4, 6, 6a reuse `lock_conn` sequentially; only `runForSchema` (Step 5) uses its own internal connection (required by signature; safe because the lock stays held on `lock_conn`). Pool.release() gains `pg_advisory_unlock_all()` as defence-in-depth.
+- **Verification (WF03-GH424-20260809, 2026-08-09):** `zig build test-integration` run with the ISS-0612 fix already merged to `main`. TC-TNT-01-01 PASSED with zero C40P01 occurrences. ISS-0129 regression tests RT-3/RT-4/RT-5 (`iss0129_migration_run_advisory_lock_test.zig`) PASSED — no regression introduced.
+
 **ISS-0624 — LUA-11 (variable read/write) and LUA-13 (structured logging) restored to a real, runnable implementation (MAJOR)** ([GitHub #591](https://github.com/tvolodi/R-Co/issues/591))
 
 - **The gap this closes:** since the ISS-0153 / GH-471 downgrade, both requirements' host-API entry points correctly gated on capability and validated argument types, but neither touched real production state. `read_variable` always returned `nil` regardless of any prior `write_variable` call, and there was no pending-writes buffer or instance-state field anywhere on `ExecutionContext`. `platform.log` gated correctly and then did nothing — `StructuredLogger.log()` was fully implemented but had zero callers reachable from `ExecutionContext` or `host_api`.
