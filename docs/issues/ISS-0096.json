@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0096",
   "title": "6 integration test files still INSERT/SELECT against the stale table name 'dead_letter_queue', renamed to 'dead_letter_items' by migration 072_tnt01_rename_legacy_tables.sql",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/351",
   "severity": "MINOR",
   "category": "test-environment / stale-table-name-reference",
@@ -22,7 +22,7 @@
     "tests/integration/iss207_error_retry_test.zig -- same",
     "tests/integration/sch02_timer_polling_test.zig -- same"
   ],
-  "resolution": null,
+  "resolution": "Already resolved. Confirmed on current main: `grep -rn dead_letter_queue tests/integration/` returns zero matches in any of the 6 originally-named files (obs05_dlq_test.zig, obs06_alerts_test.zig, ext01_service_task_test.zig, ext02_webhook_dispatch_test.zig, iss207_error_retry_test.zig, sch02_timer_polling_test.zig) -- all six were already fixed by earlier, separately-tracked work in this session or before (obs05_dlq_test.zig specifically was touched by WF03-GH379-20260809's DLQ fix). The only remaining source-tree occurrence of the literal string 'dead_letter_queue' is in tests/integration/iss0123_regression_test.zig, which is a deliberate meta-regression test (TC-ISS-0123-01) whose entire purpose is to search src/ and tests/integration/ for exactly this stale literal and fail if found anywhere -- it is the search target string, not a live bug. Ran `zig build test-integration-iss0123` directly: 2/2 pass, confirming zero other files carry the stale reference. No code change made; issue closed as already-resolved.",
   "occurrences": [
     {
       "occurred_at": "2026-07-31T05:16:49Z",
@@ -34,7 +34,7 @@
   ],
   "files_changed": [],
   "created_at": "2026-07-31T05:16:49Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T18:45:00Z",
   "prevention": [
     "A CI check or zig build step that verifies string-literal table names in test files exist in the live schema would catch this class of defect at build time rather than at test-run time -- same prevention note as ISS-0088."
   ]
