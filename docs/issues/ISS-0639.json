@@ -1,0 +1,17 @@
+{
+  "id": "ISS-0639",
+  "title": "build.zig 'test-integration-svc' step name implies scoped SVC-01..04 subset but runs the full integration suite (same defect as ISS-0104)",
+  "status": "OPEN",
+  "severity": "MINOR",
+  "category": "build-tooling-naming / test-isolation-tooling",
+  "run_id": "WF03-GH362-20260809",
+  "handoff_id": "b4f0d2c3-5a8e-4b9f-ad1e-2c3d4e5f6a7b",
+  "affected_areas": [
+    "build.zig"
+  ],
+  "created_at": "2026-08-09T11:41:27Z",
+  "resolved_at": null,
+  "notes": "Incidental finding during ISS-0104 (GH-362) Step 1 diagnosis. build.zig lines ~2478-2490 define svc_integration_tests with root_source_file = 'tests/integration/main_test.zig'. This is the same root as the primary integration_tests artifact. The step description says 'Run Stage 13 SVC-01..SVC-04 integration tests' but actually compiles and runs the full ~700-test suite. Identical defect to ISS-0104 (env_integration_tests). Fix: create tests/integration/svc_test_root.zig importing only svc01_service_catalog_scope_test.zig, svc02_plugin_dispatch_scope_test.zig, svc03_definition_activation_scope_test.zig, svc04_admin_api_test.zig, then update svc_integration_tests.root_module.root_source_file and attach to test_integration_others_step per ISS-0150 policy.",
+  "candidate_resolution": "Create tests/integration/svc_test_root.zig as a thin shim importing the four SVC test files, update svc_integration_tests root to svc_test_root.zig, and attach run_svc_integration_tests to test_integration_others_step per ISS-0150 policy. Mirrors the ISS-0104 fix.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/629"
+}

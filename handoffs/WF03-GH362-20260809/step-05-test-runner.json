@@ -1,0 +1,58 @@
+{
+  "handoff_id": "b27df725-b40a-43bb-a194-08574d09462d",
+  "run_id": "WF03-GH362-20260809",
+  "step": "05",
+  "from_agent": "TEST-RUNNER",
+  "to_agent": "ORCH",
+  "created_at": "2026-08-09T12:00:27Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 5 \u2014 test verification",
+    "requirement_ids": [
+      "ISS-0104"
+    ],
+    "related_handoff_ids": [
+      "dafa0c61-b24f-4d49-a413-e8ddb7ec2936"
+    ],
+    "artifacts_in": [
+      "tests/integration/env_test_root.zig",
+      "build.zig"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/362"
+  },
+  "task": {
+    "description": "Step 5 (TEST-RUNNER): Run zig build test (unit) and zig build test-integration-env (scoped ENV subset). Verify ENV scope is correct and count is much smaller than full suite.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "test-integration-env runs only ENV-subset tests (env01..env05)",
+      "ENV test count much smaller than full integration suite",
+      "No new test failures introduced by WF03-GH362 change"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "test-integration-env confirmed as ENV-only scope: 36 tests (env01/env01_tt/env02/env03/env05 only), vs 961 tests in full integration suite (3.7% subset). zig build test: exit 0 (all unit tests pass). 2 test failures (TC-ENV-01-03, TC-ENV-02-01) are pre-existing \u2014 confirmed failing in scratch/_iss0131_run1.log before this branch. Not introduced by ISS-0104 change. 45 DebugAllocator leaks are known tag_repr_storage process-lifetime intentional allocation. ISS-0104 / GH-362 acceptance criteria met: scoping is correct.",
+    "artifacts_out": [
+      "docs/test-reports/report-20260809-WF03-GH362-20260809.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "TC-ENV-01-03 (env01_test.zig): pre-existing failure \u2014 existing tenant rows tenant_type check. Confirmed failing before this branch.",
+        "pre_existing": true
+      },
+      {
+        "severity": "MAJOR",
+        "description": "TC-ENV-02-01 (env02_test.zig): pre-existing failure \u2014 search_path isolation check. Confirmed failing before this branch.",
+        "pre_existing": true
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (WF-03 Step 7) \u2014 BLOCKER severity only triggers RELEASE-VALIDATOR (Step 6); no BLOCKERs present"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T12:00:27Z",
+  "completed_at": "2026-08-09T12:00:27Z"
+}

@@ -2491,7 +2491,8 @@ pub fn build(b: *std.Build) void {
 
     const env_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/integration/main_test.zig"),
+            // ISS-0104 / GH-362: was main_test.zig (ran full suite); now scoped shim
+            .root_source_file = b.path("tests/integration/env_test_root.zig"),
             .target = target,
             .optimize = optimize,
             .imports = integration_imports,
@@ -2518,6 +2519,7 @@ pub fn build(b: *std.Build) void {
     test_integration_iss0072_step.dependOn(&clean_test_db.step);
     test_integration_iss0072_step.dependOn(&run_iss0072_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0072_integration_tests.step); // ISS-0106: routed via barrier, not directly onto test_integration_step
+    test_integration_others_step.dependOn(&run_env_integration_tests.step); // ISS-0104 / GH-362: ENV-01..05 scoped step must also run under umbrella
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

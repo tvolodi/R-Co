@@ -1,0 +1,77 @@
+run_id: WF03-GH362-20260809
+step: "05"
+agent: TEST-RUNNER
+generated_at: "2026-08-09T12:00:27Z"
+issue: ISS-0104
+github_issue: "https://github.com/tvolodi/R-Co/issues/362"
+
+summary: >
+  Step 5 TEST-RUNNER verification for WF03-GH362-20260809 (ISS-0104 / GH-362).
+  Primary goal: confirm test-integration-env runs only ENV-subset tests, not the
+  full main_test.zig suite. PASS — scoping is correct. 2 pre-existing ENV test
+  failures are unrelated to this change.
+
+verdict: PASS
+
+unit_tests:
+  command: "zig build test --summary all"
+  exit_code: 0
+  result: PASS
+  log: "scratch/_wf03_gh362_step5_unit.log"
+
+integration_env_tests:
+  command: "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-env"
+  exit_code: 1
+  result: PARTIAL_PASS
+  build_summary: "4/6 steps succeeded (1 failed); 34/36 tests passed (2 failed)"
+  total_tests: 36
+  passed: 34
+  failed: 2
+  leaks: 45
+  log: "scratch/_wf03_gh362_step5_env.log"
+  scope_check:
+    verdict: PASS
+    detail: >
+      env_test_root.zig imports only env01_test.zig, env01_tenant_type_field_test.zig,
+      env02_test.zig, env03_test.zig, env05_test.zig. No non-ENV tests included.
+      36 tests vs 961 in full integration suite — confirmed much smaller subset.
+
+full_suite_reference:
+  source: "scratch/_iss0131_run1.log (2026-08-09T08:59Z)"
+  total_tests: 961
+  ratio: "36 / 961 = 3.7% — ENV subset is correctly scoped"
+
+failures:
+  - test: "TC-ENV-01-03: existing tenant rows have tenant_type='production' and production_tenant_id IS NULL"
+    file: tests/integration/env01_test.zig
+    pre_existing: true
+    evidence: "Same test fails in scratch/_iss0131_run1.log (full suite run before this WF-03 branch)"
+    severity: MAJOR
+    related_issue: "Pre-existing, not introduced by WF03-GH362 (ISS-0104)"
+
+  - test: "TC-ENV-02-01: T-test connection search_path contains T-test schema and not T schema"
+    file: tests/integration/env02_test.zig
+    pre_existing: true
+    evidence: "Same test fails in scratch/_iss0131_run1.log (full suite run before this WF-03 branch)"
+    severity: MAJOR
+    related_issue: "Pre-existing, not introduced by WF03-GH362 (ISS-0104)"
+
+leaks_note: >
+  45 DebugAllocator leaks are the known tag_repr_storage process-lifetime intentional
+  allocation per repo memory (bpm-test-runner-port-and-shim-traps.md §4). Not introduced
+  by this change.
+
+acceptance_criteria_check:
+  - criterion: "test-integration-env runs only ENV-subset tests"
+    result: PASS
+    detail: "36 total tests from env01..env05 only"
+  - criterion: "ENV test count much smaller than full integration suite"
+    result: PASS
+    detail: "36 vs 961 (full suite)"
+  - criterion: "zig build test exits 0"
+    result: PASS
+  - criterion: "No new test failures introduced by ISS-0104 change"
+    result: PASS
+    detail: "Both failures confirmed pre-existing in _iss0131_run1.log"
+
+next_action: "Route to RELEASE-VALIDATOR (WF-03 Step 6 — BLOCKER severity only)"

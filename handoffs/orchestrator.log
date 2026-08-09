@@ -745,3 +745,12 @@
 2026-08-09T11:29:06Z | COMPLETE | WF03-GH378-20260809 | 589979c9 | DOC-UPDATER | PASS
 2026-08-09T11:36:40Z | MERGE | WF03-GH379-20260809 | ce7f5abe | BACKEND-DEV | PR #628 squash-merged 781bad66; branch deleted; GH-379 closed; ISS-0116 RESOLVED
 2026-08-09T11:36:40Z | COMPLETE | WF03-GH379-20260809 | ce7f5abe | ORCH | WF-03 run COMPLETE — GH-379 resolved
+2026-08-09T11:37:54Z | ROUTE | WF03-GH362-20260809 | 36097324 | ORCH -> BACKEND-DEV | Step 00 git-setup COMPLETED — branch feature/WF03-GH362-20260809 pushed to origin
+
+2026-08-09T11:41:27Z | ROUTE | WF03-GH362-20260809 | a3e9c1b2 | ORCH -> ISSUE-FIXER | Step 0.5 COMPLETED — ISS-0104 OPEN, GH-362 confirmed
+2026-08-09T11:41:27Z | ROUTE | WF03-GH362-20260809 | b4f0d2c3 | ORCH -> ISSUE-FIXER | Step 1 COMPLETED — Cat-A, Option B (scope env_test_root.zig), incidental SVC step filed
+2026-08-09T11:46:48Z | ROUTE | WF03-GH362-20260809 | c5e1f3d4 | CODE-DESIGNER | Step 02 COMPLETED — Type E design artefact src/design/iss0104-gh362-env-test-root.md created, lint_design_artefact.py exits 0
+2026-08-09T11:49:27Z | COMPLETED | WF03-GH362-20260809 | 7d1ebf7a | CODE-DESIGN-VALIDATOR | PASS — lint_design_artefact exit 0; env_test_root.zig scoping correct; build.zig change 1 & 2 documented; all 5 ENV files confirmed
+2026-08-09T11:55:41Z | COMPLETE | WF03-GH362-20260809 | dafa0c61 | BACKEND-DEV | PASS: env_test_root.zig + build.zig implemented, zig build + zig build test green, pushed to feature/WF03-GH362-20260809
+2026-08-09T12:00:27Z | COMPLETE | WF03-GH362-20260809 | b27df725 | TEST-RUNNER | PASS — test-integration-env scoped to ENV-only (36/961 tests); 2 pre-existing failures; no new failures
+2026-08-09T12:03:32Z | COMPLETE | WF03-GH362-20260809 | e4c7a821 | DOC-UPDATER | PASS — CHANGELOG + ISS-0104 RESOLVED + GH-362 closed
