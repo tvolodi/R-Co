@@ -936,14 +936,11 @@
       "labels": [
         "bug"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-09T09:57:05Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T09:57:05Z",
       "started_at": "2026-08-09T09:57:05Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T09:58:06Z",
       "run_id": null,
       "deferred_reason": null
     }
