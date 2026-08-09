@@ -111,19 +111,16 @@ fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
     std.testing.io.random(&raw);
     raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
     raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
-    return std.fmt.allocPrint(allocator,
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
-        .{
-            raw[0],  raw[1],  raw[2],  raw[3],
-            raw[4],  raw[5],
-            raw[6],  raw[7],
-            raw[8],  raw[9],
-            raw[10], raw[11], raw[12], raw[13], raw[14], raw[15],
-        });
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
 }
 
 fn schemaName(uuid_str: []const u8, buf: *[80]u8) []const u8 {
@@ -146,7 +143,7 @@ fn createTenantRow(
     defer allocator.free(realm);
 
     try conn.exec(
-        "INSERT INTO tenant (id, slug, display_name, status, idp_realm_id) VALUES ($1::uuid, $2, 'ISS-502 Test Tenant', 'ACTIVE', $3)",
+        "INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id) VALUES ($1::uuid, $2, 'ISS-502 Test Tenant', 'ACTIVE', $3, 'test', '00000000-0000-0000-0000-000000000000'::uuid)",
         &.{ tenant_id_str, slug, realm },
     );
 }
@@ -289,7 +286,7 @@ fn getStorageMode(
 
     const row = try conn.queryRow(
         allocator,
-        "SELECT storage_mode FROM tenant WHERE id = $1::uuid",
+        "SELECT storage_mode FROM public.tenant WHERE id = $1::uuid",
         &.{tenant_id_str},
     );
     if (row) |r| {

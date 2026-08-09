@@ -65,6 +65,7 @@ fn cleanupTenantSchema(pool: *Pool, tenant_id: []const u8) void {
 
     conn.exec("SELECT public.bpm_drop_tenant_schema($1::uuid)", &.{tenant_id}) catch {};
     conn.exec("DELETE FROM public.tenant_schemas WHERE tenant_id = $1::uuid", &.{tenant_id}) catch {};
+    conn.exec("DELETE FROM public.tenant WHERE id = $1::uuid", &.{tenant_id}) catch {};
 }
 
 test "TC-SPT-01-ISS68-01: provisioning creates tenant_schemas row and physical schema" {

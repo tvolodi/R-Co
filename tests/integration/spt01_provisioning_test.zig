@@ -75,19 +75,16 @@ fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
     // Set version 4 and variant bits per RFC 4122.
     raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
     raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
-    return std.fmt.allocPrint(allocator,
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
-        .{
-            raw[0], raw[1], raw[2],  raw[3],
-            raw[4], raw[5],
-            raw[6], raw[7],
-            raw[8], raw[9],
-            raw[10], raw[11], raw[12], raw[13], raw[14], raw[15],
-        });
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
 }
 
 /// Derive schema name from a UUID string using the same logic as schemaNameForTenant.
@@ -437,8 +434,8 @@ test "TC-SPT-01-06: pool checkout sets search_path to tenant schema for non-defa
         const setup_conn = try pool.acquire();
         defer pool.release(setup_conn);
         try setup_conn.exec(
-            "INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, storage_mode) " ++
-                "VALUES ($1::uuid, 'iss0099-spt0106', 'ISS-0099 TC-SPT-01-06 Test Tenant', 'ACTIVE', 'realm-iss0099-spt0106', 'SCHEMA')",
+            "INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, storage_mode, tenant_type, production_tenant_id) " ++
+                "VALUES ($1::uuid, 'iss0099-spt0106', 'ISS-0099 TC-SPT-01-06 Test Tenant', 'ACTIVE', 'realm-iss0099-spt0106', 'SCHEMA', 'test', '00000000-0000-0000-0000-000000000000'::uuid)",
             &.{test_uuid},
         );
     }

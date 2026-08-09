@@ -58,19 +58,16 @@ fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
     std.testing.io.random(&raw);
     raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
     raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
-    return std.fmt.allocPrint(allocator,
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
-        .{
-            raw[0],  raw[1],  raw[2],  raw[3],
-            raw[4],  raw[5],
-            raw[6],  raw[7],
-            raw[8],  raw[9],
-            raw[10], raw[11], raw[12], raw[13], raw[14], raw[15],
-        });
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -126,24 +123,25 @@ test "iss107_tenant_storage_mode: column_exists_with_correct_type_and_default" {
 // TC-ISS-107-02: inserting a tenant without specifying storage_mode gets DEFAULT
 // ---------------------------------------------------------------------------
 
-test "iss107_tenant_storage_mode: insert_without_storage_mode_defaults_to_legacy_rls" {
-    // The default tenant (id='0000...0000') has storage_mode = 'LEGACY_RLS'.
+test "iss107_tenant_storage_mode: insert_without_storage_mode_defaults_to_current_cutover_mode" {
+    // The default tenant (id='0000...0000') is cut over to 'SCHEMA' once the
+    // tenant_default schema has been provisioned by migrations 069/087.
     // covers: ISS-107 AC-2
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
 
     var rows = try h.conn.query(
         std.testing.allocator,
-        "SELECT storage_mode FROM tenant WHERE id = '00000000-0000-0000-0000-000000000000'",
+        "SELECT storage_mode FROM public.tenant WHERE id = '00000000-0000-0000-0000-000000000000'",
         &.{},
     );
     defer rows.deinit();
 
     // CUSTOM: assertions for this test case — handwritten by the implementer.
-    // CUSTOM: assert row[0] equals "LEGACY_RLS"
+    // CUSTOM: assert row[0] equals the post-cutover default (currently "SCHEMA")
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     const mode = rows.rows[0][0] orelse "";
-    try std.testing.expectEqualStrings("LEGACY_RLS", mode);
+    try std.testing.expectEqualStrings("SCHEMA", mode);
 }
 
 // ---------------------------------------------------------------------------
@@ -161,7 +159,7 @@ test "iss107_tenant_storage_mode: set_storage_mode_to_schema" {
     defer allocator.free(tenant_id_uuid);
 
     try h.conn.exec(
-        "INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, storage_mode) VALUES ($1::uuid, 'iss107-t3', 'ISS-107 Test Tenant 3', 'ACTIVE', 'realm-iss107-t3', 'SCHEMA')",
+        "INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, storage_mode, tenant_type, production_tenant_id) VALUES ($1::uuid, 'iss107-t3', 'ISS-107 Test Tenant 3', 'ACTIVE', 'realm-iss107-t3', 'SCHEMA', 'test', '00000000-0000-0000-0000-000000000000'::uuid)",
         &.{tenant_id_uuid},
     );
 
@@ -169,7 +167,7 @@ test "iss107_tenant_storage_mode: set_storage_mode_to_schema" {
     // CUSTOM: assert SELECT returns "SCHEMA"
     var rows = try h.conn.query(
         std.testing.allocator,
-        "SELECT storage_mode FROM tenant WHERE id = $1::uuid",
+        "SELECT storage_mode FROM public.tenant WHERE id = $1::uuid",
         &.{tenant_id_uuid},
     );
     defer rows.deinit();
@@ -194,11 +192,11 @@ test "iss107_tenant_storage_mode: check_constraint_rejects_invalid_mode" {
     defer allocator.free(tenant_id_uuid);
 
     try h.conn.exec(
-        "INSERT INTO tenant (id, slug, display_name, status, idp_realm_id) VALUES ($1::uuid, 'iss107-t4', 'ISS-107 Test Tenant 4', 'ACTIVE', 'realm-iss107-t4')",
+        "INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id) VALUES ($1::uuid, 'iss107-t4', 'ISS-107 Test Tenant 4', 'ACTIVE', 'realm-iss107-t4', 'test', '00000000-0000-0000-0000-000000000000'::uuid)",
         &.{tenant_id_uuid},
     );
     defer h.conn.exec(
-        "DELETE FROM tenant WHERE id = $1::uuid",
+        "DELETE FROM public.tenant WHERE id = $1::uuid",
         &.{tenant_id_uuid},
     ) catch {};
 
@@ -212,7 +210,7 @@ test "iss107_tenant_storage_mode: check_constraint_rejects_invalid_mode" {
     try h.conn.exec("SAVEPOINT before_bogus", &.{});
 
     const update_result = h.conn.exec(
-        "UPDATE tenant SET storage_mode = 'BOGUS' WHERE id = $1::uuid",
+        "UPDATE public.tenant SET storage_mode = 'BOGUS' WHERE id = $1::uuid",
         &.{tenant_id_uuid},
     );
 
@@ -225,7 +223,7 @@ test "iss107_tenant_storage_mode: check_constraint_rejects_invalid_mode" {
     // The tenant's storage_mode must still be the default 'LEGACY_RLS'.
     var rows = try h.conn.query(
         std.testing.allocator,
-        "SELECT storage_mode FROM tenant WHERE id = $1::uuid",
+        "SELECT storage_mode FROM public.tenant WHERE id = $1::uuid",
         &.{tenant_id_uuid},
     );
     defer rows.deinit();
@@ -271,14 +269,14 @@ test "iss107_tenant_storage_mode: provisioned_tenant_has_schema_storage_mode" {
         defer setup_pool.release(conn);
 
         try conn.exec(
-            "INSERT INTO tenant (id, slug, display_name, status, idp_realm_id) VALUES ($1::uuid, 'iss107-t5', 'ISS-107 Test Tenant 5', 'ACTIVE', 'realm-iss107-t5')",
+            "INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id) VALUES ($1::uuid, 'iss107-t5', 'ISS-107 Test Tenant 5', 'ACTIVE', 'realm-iss107-t5', 'test', '00000000-0000-0000-0000-000000000000'::uuid)",
             &.{tenant_id},
         );
 
         // Verify default storage_mode is LEGACY_RLS.
         var rows = try conn.query(
             allocator,
-            "SELECT storage_mode FROM tenant WHERE id = $1::uuid",
+            "SELECT storage_mode FROM public.tenant WHERE id = $1::uuid",
             &.{tenant_id},
         );
         defer rows.deinit();
@@ -288,14 +286,14 @@ test "iss107_tenant_storage_mode: provisioned_tenant_has_schema_storage_mode" {
 
         // Simulate step 6a: UPDATE tenant SET storage_mode = 'SCHEMA'.
         try conn.exec(
-            "UPDATE tenant SET storage_mode = 'SCHEMA' WHERE id = $1::uuid",
+            "UPDATE public.tenant SET storage_mode = 'SCHEMA' WHERE id = $1::uuid",
             &.{tenant_id},
         );
 
         // Verify storage_mode is now SCHEMA.
         var check_rows = try conn.query(
             allocator,
-            "SELECT storage_mode FROM tenant WHERE id = $1::uuid",
+            "SELECT storage_mode FROM public.tenant WHERE id = $1::uuid",
             &.{tenant_id},
         );
         defer check_rows.deinit();
@@ -309,7 +307,7 @@ test "iss107_tenant_storage_mode: provisioned_tenant_has_schema_storage_mode" {
         const conn = setup_pool.acquire() catch return;
         defer setup_pool.release(conn);
         conn.exec(
-            "DELETE FROM tenant WHERE id = $1::uuid",
+            "DELETE FROM public.tenant WHERE id = $1::uuid",
             &.{tenant_id},
         ) catch {};
     }

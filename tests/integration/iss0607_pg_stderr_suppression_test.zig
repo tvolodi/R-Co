@@ -97,8 +97,8 @@ test "regression: ISS-0607 — negative-path test runs to completion (no stderr 
     // Slug starts with the test-fixture prefix 'tc-' so the GBL-103 ISS-503
     // guard excludes it from production code paths (lint_test_isolation C5).
     try h.conn.exec(
-        "INSERT INTO tenant (id, slug, display_name, status, idp_realm_id) " ++
-            "VALUES ($1::uuid, 'tc-iss0607-neg', 'ISS-0607 Negative Test', 'ACTIVE', 'realm-iss0607')",
+        "INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id) " ++
+            "VALUES ($1::uuid, 'tc-iss0607-neg', 'ISS-0607 Negative Test', 'ACTIVE', 'realm-iss0607', 'test', '00000000-0000-0000-0000-000000000000'::uuid)",
         &.{tenant_id_uuid},
     );
 
@@ -107,7 +107,7 @@ test "regression: ISS-0607 — negative-path test runs to completion (no stderr 
     try h.conn.exec("SAVEPOINT before_bogus", &.{});
 
     const update_result = h.conn.exec(
-        "UPDATE tenant SET storage_mode = 'BOGUS' WHERE id = $1::uuid",
+        "UPDATE public.tenant SET storage_mode = 'BOGUS' WHERE id = $1::uuid",
         &.{tenant_id_uuid},
     );
 

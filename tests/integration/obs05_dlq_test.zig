@@ -508,4 +508,3 @@ test "TC-OBS-05-INT-03: POST /dlq/:id/discard appends audit and rolls back on au
     );
     try testing.expectEqual(@as(usize, 1), still_exists);
 }
-

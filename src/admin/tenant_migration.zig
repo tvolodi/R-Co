@@ -438,7 +438,7 @@ pub fn executeSptCutover(
     // Step 2: Idempotency guard.
     const mode_row = conn.queryRow(
         allocator,
-        "SELECT storage_mode FROM tenant WHERE id = $1::uuid LIMIT 1",
+        "SELECT storage_mode FROM public.tenant WHERE id = $1::uuid LIMIT 1",
         &.{tenant_id_str},
     ) catch {
         conn.rollback() catch {};
@@ -646,7 +646,7 @@ pub fn executeSptCutover(
 
     // Step 5: Flip storage_mode.
     conn.exec(
-        "UPDATE tenant SET storage_mode = 'SCHEMA', updated_at = NOW() WHERE id = $1::uuid",
+        "UPDATE public.tenant SET storage_mode = 'SCHEMA', updated_at = NOW() WHERE id = $1::uuid",
         &.{tenant_id_str},
     ) catch {
         conn.rollback() catch {};
@@ -705,14 +705,14 @@ fn generateUuidV4(buf: *[36]u8) []const u8 {
     // Set version 4 and variant bits.
     raw[6] = (raw[6] & 0x0f) | 0x40;
     raw[8] = (raw[8] & 0x3f) | 0x80;
-    _ = std.fmt.bufPrint(buf,
+    _ = std.fmt.bufPrint(
+        buf,
         "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
         .{
             raw[0],  raw[1],  raw[2],  raw[3],
-            raw[4],  raw[5],
-            raw[6],  raw[7],
-            raw[8],  raw[9],
-            raw[10], raw[11], raw[12], raw[13], raw[14], raw[15],
+            raw[4],  raw[5],  raw[6],  raw[7],
+            raw[8],  raw[9],  raw[10], raw[11],
+            raw[12], raw[13], raw[14], raw[15],
         },
     ) catch {};
     return buf[0..36];
