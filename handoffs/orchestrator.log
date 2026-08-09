@@ -690,3 +690,5 @@
 2026-08-09T07:42:39Z | MERGE | WF03-GH381-20260809 | 72f058a4 | BACKEND-DEV | PR #617 squash-merged to main; branch deleted; GH-381 DONE; ISS-0118 RESOLVED
 2026-08-09T07:44:44Z | ROUTE | WF03-GH616-20260809 | b92c01b4 | ORCH -> BACKEND-DEV | Step 00 git-setup PENDING
 2026-08-09T07:44:44Z | COMPLETE | WF03-GH616-20260809 | b92c01b4 | BACKEND-DEV | Step 00 git-setup PASS — branch feature/WF03-GH616-20260809 pushed
+2026-08-09T07:49:19Z | ROUTE | WF03-GH616-20260809 | c3590c30 | ORCH -> ISSUE-FIXER | Step 0.5: ISS-0635 registry confirmed, GH-616 linked
+2026-08-09T07:49:19Z | ROUTE | WF03-GH616-20260809 | 8c774813 | ORCH -> ISSUE-FIXER | Step 1: Root cause diagnosed — timing gap, migration 1134 ran before tenant schemas had webhook_subscriptions

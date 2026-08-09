@@ -1,0 +1,50 @@
+{
+  "handoff_id": "8c774813-f663-4820-8e9e-e146997d056a",
+  "run_id": "WF03-GH616-20260809",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T07:49:19Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 1 - Root cause diagnosis",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/616",
+    "requirement_ids": [
+      "ISS-0635"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0635.json",
+      "migrations/1134_iss0112_add_secret_ref_to_tenant_schemas.sql",
+      "migrations/GBL-128_exp501_secrets.sql",
+      "src/db/migrations.zig"
+    ]
+  },
+  "task": {
+    "description": "Step 1: Diagnose root cause of missing secret_ref/secret_key_id in tenant_default.webhook_subscriptions despite migration 1134 being recorded as applied.",
+    "acceptance_criteria": [
+      "Confirm which columns are missing",
+      "Confirm migration 1134 ledger state",
+      "Explain exactly why columns were not added",
+      "Produce fix recommendation"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Category E (Environment/Timing gap). Migration 1134 ran in public pass on 2026-08-08T02:43:38Z. All 21 SCHEMA-mode tenant schemas (including tenant_default) were provisioned AFTER this timestamp, so webhook_subscriptions did not exist in any tenant schema when migration 1134 iterated tenants. Its IF EXISTS guard correctly no-opped, but was never re-run since the public-pass ledger row prevents re-application. Fix: new migration 1138_iss0635_webhook_secret_ref_corrective.sql with scope all_schemas (runs in every tenant pass, idempotent ADD COLUMN IF NOT EXISTS).",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0635-diagnosis.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2) to implement migration 1138"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T07:49:19Z",
+  "completed_at": "2026-08-09T07:49:19Z"
+}
