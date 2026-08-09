@@ -1037,12 +1037,12 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/629",
       "title": "build.zig test-integration-svc step implies SVC-01..04 scope but runs full suite",
       "severity": "MINOR",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "lock": null,
       "added_at": "2026-08-09T11:44:03Z",
       "started_at": null,
-      "completed_at": null,
-      "run_id": null,
+      "completed_at": "2026-08-09T12:25:00Z",
+      "run_id": "WF03-GH629-20260809",
       "deferred_reason": null
     },
     {
