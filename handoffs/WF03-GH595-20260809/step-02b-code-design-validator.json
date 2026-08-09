@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH595-20260809/step-02b-code-design-validator.json",
   "created_at": "2026-08-09T00:32:54Z",
   "started_at": "2026-08-09T00:32:54Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-09T00:37:10Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -47,7 +47,18 @@
       "fn:validate-design-artefact"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Independently validated src/design/iss0628-lua16-errfunc-stacktrace.md against real source (executor.zig, host_context.zig, luajit_bindings.zig, instruction_limiter.zig, stdlib.zig, both test files). lint_design_artefact.py exits 0. All load-bearing claims confirmed accurate: stack shape at call site, FAILURE_REASON_KEY/readExplicitFailure mirroring, lua_CFunction callconv(.c) signature (no allocator param), push-ordering sequence, err_msg-unchanged claim (transparent pass-through semantics), stale test comment/title/ISS-0626 cross-ref, LUA-15 non-interference control flow, and the no-existing-test-conditions-empty-trace-on-limiter-trip grep. One MINOR wording note (not a defect) filed below.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Section 1.1's rejection of the registry-channel/contextFromState allocator route states 'the handler cannot errdefer across a callconv(.c) boundary the way a normal Zig function can' -- this is imprecise as literally written: defer/errdefer work normally inside any function body regardless of its callconv, including a lua_CFunction. Verified: MemoryLimiter.alloc/defaultAlloc (the actual lua_Alloc callbacks) are also callconv(.c) and are ordinary Zig functions internally. The real constraint the design is reaching for is different and still valid: errfuncHandler's signature returns c_int, not a Zig error union, so a fallible allocation inside it has no way to propagate error.OutOfMemory to a caller that could act on it -- any failure must be caught and squashed to a c_int/side-effect inline, which is exactly what the fixed buffer already achieves without ever touching an allocator. The design's conclusion (fixed buffer, no allocator) is correct and adequately justified by this actual reason and by direct analogy to raiseLimit/raiseMessage's proven precedent (both confirmed by source read) -- only the one sentence's phrasing of why is loose. Does not block BACKEND-DEV: the public interface and push-ordering sections BACKEND-DEV implements against are unaffected by this wording. Recommend CODE-DESIGNER tighten the sentence in a future pass, not a rework cycle."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
