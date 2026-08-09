@@ -590,3 +590,4 @@
 2026-08-09T01:26:26Z | CI_RETRY | WF03-GH595-20260809 | 9b1994c0 | DOC-UPDATER | First CI run: Build and unit tests FAIL on known pre-existing ISS-0629/GH-600 flake (TC-LUA-10-03, file untouched by this branch); check_github_status.py confirmed platform operational; gh run rerun --failed -> all 6 checks pass clean
 2026-08-09T01:26:26Z | BOARD_UPDATE | WF03-GH595-20260809 | 9b1994c0 | DOC-UPDATER | Issue #595 project board already at Done (non-UAT-scoped, auto-advanced on close); implemented+done targets both no-op confirmed
 2026-08-09T01:26:26Z | WF03_COMPLETE | WF03-GH595-20260809 | -------- | ORCH | ISS-0628/GH-595 RESOLVED. Repo on clean main at d0083e1.
+2026-08-09T01:29:01Z | ROUTE | WF03-GH600-20260809 | b7a5cd19 | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-600 TC-LUA-10-03 flaky test)
