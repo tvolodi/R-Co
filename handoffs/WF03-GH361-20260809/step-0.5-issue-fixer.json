@@ -1,0 +1,39 @@
+{
+  "handoff_id": "aaee1b61-92c9-4ac4-b154-af308f0cbfb2",
+  "run_id": "WF03-GH361-20260809",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T12:45:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 0.5 \u2014 Registry lookup",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Registry lookup for GH-361 / ISS-0103: oidc35_onboarding_test.zig compile failures (stale AuthContext.principal and OnboardingInput.tenant_type/production_tenant_id)",
+    "acceptance_criteria": [
+      "Find matching ISS entry",
+      "Confirm or file GitHub issue"
+    ],
+    "functions_to_call": [
+      "fn:search-issues"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Found ISS-0103 (exact match for GH-361). GitHub issue already filed at https://github.com/tvolodi/R-Co/issues/361. The issue is in OPEN state in the registry. Prior resolution strategy documented in candidate_resolution: fix stale struct literals in oidc35_onboarding_test.zig (AuthContext.principal and OnboardingInput.tenant_type/production_tenant_id). Discovered that both fixes were already applied (by ISS-0137/GH#439 work) and the file is now wired into build via main_test.zig. No new GitHub issue filing needed.",
+    "artifacts_out": [
+      "docs/issues/ISS-0103.json"
+    ],
+    "issues": [],
+    "next_action": "Route to Step 1 \u2014 Diagnose"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T12:45:00Z",
+  "completed_at": "2026-08-09T12:50:05Z"
+}
