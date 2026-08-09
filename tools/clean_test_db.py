@@ -161,6 +161,32 @@ def drop_orphaned_tenant_schemas() -> None:
     # names come from the database anyway". Names failing it are reported via
     # the `skipped` channel below and are never interpolated into DDL.
     #
+    # ISS-0101 / GH-359: cold-start guard. On a genuinely empty database (zero
+    # migrations ever applied -- e.g. db_test recreated from a fresh Docker
+    # volume), public.tenant_schemas does not exist yet, because this sweep
+    # runs BEFORE the test binary's own TestHarness.init() migration pass
+    # (build.zig wires clean_test_db as an ordering predecessor of every
+    # test-integration run step -- see src/design/iss0148_clean_test_db_
+    # ordering_and_lock.md). The script below is a single ON_ERROR_STOP=1
+    # psql session (needed so the advisory lock and the sweep share one
+    # transaction -- see run_psql_script's docstring), so an undefined-relation
+    # error on `public.tenant_schemas` aborts the whole script and the
+    # transaction rolls back -- unlike run_psql()/run_psql_query() above, this
+    # helper has no missing-relation tolerance of its own. There is nothing to
+    # sweep on a database that has never been migrated, so detect that case
+    # with a cheap best-effort existence probe and skip the transactional sweep
+    # entirely rather than let it hard-fail the whole integration run before a
+    # single migration has had a chance to create the table it is about to
+    # query.
+    probe = run_psql_query("SELECT to_regclass('public.tenant_schemas')")
+    if not probe or probe[0].strip() == "":
+        print(
+            "Skipping orphaned-tenant-schema sweep: public.tenant_schemas does "
+            "not exist yet (cold-start database, no migrations applied).",
+            flush=True,
+        )
+        return
+
     # tenant_default is never dropped -- it is the harness's persistent fixture.
     script = f"""
 BEGIN;

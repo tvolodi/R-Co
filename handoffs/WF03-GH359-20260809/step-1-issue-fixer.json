@@ -1,0 +1,77 @@
+{
+  "handoff_id": "3afe7006-8baf-47ec-8341-2fa34691fac7",
+  "run_id": "WF03-GH359-20260809",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T13:11:20Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 1 -- root cause diagnosis",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/359",
+    "issue_id": "ISS-0101",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "10ecd97f-1749-452d-a58f-5ad72781da0f"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0101.json",
+      "migrations/031_adp04b_tenant_realm_binding.sql",
+      "src/db/migrations.zig",
+      "migrations/GBL-133_iss0112_schema_ledger_reconcile.sql",
+      "migrations/GBL-134_iss0185_drop_global_registry_shadows.sql",
+      "migrations/GBL-135_iss0185_drop_per_tenant_shadows.sql",
+      "migrations/GBL-138_iss0623_reconcile_tenant_default_reprovision.sql",
+      "migrations/GBL-139_iss0183_reconcile_gbl136_tenant_default_reprovision.sql"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 1: diagnose current reproduction state of ISS-0101 (shadow tenant_default.tenant + OutOfOrderMigration). Verify via: (1) psql query for tenant table in all schemas, (2) column drift check, (3) zig build migrate exit code, (4) migrations.zig out-of-order logic review.",
+    "acceptance_criteria": [
+      "Confirm whether tenant_default.tenant shadow still exists",
+      "Confirm whether zig build migrate reports OutOfOrderMigration",
+      "Classify each sub-defect as OPEN/RESOLVED and explain why",
+      "Identify why prior GBL-139 fix did not eliminate the shadow"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosis complete. See issues[] for full breakdown. Defect 1 (shadow table) STILL OPEN. Defect 2 (OutOfOrderMigration) RESOLVED by ISS-0603/GBL-133. Root cause of persistence: 031 still runs all_schemas (no scope: public header); GBL-139 DROP skipped due to FK chain (tenant_hostnames -> tenant); both shadows re-resurrected post-GBL-139 by accidental tenant_default reprovision during WF03-GH566-20260808.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "D1",
+        "severity": "MAJOR",
+        "description": "STILL OPEN \u2014 tenant_default.tenant shadow table exists with 5 rows and schema drift (missing tenant_type, production_tenant_id columns vs public.tenant). tenant_default.tenant_hostnames also exists as shadow (FK: tenant_hostnames.tenant_id -> tenant_default.tenant). Root cause: migrations/031_adp04b_tenant_realm_binding.sql has no -- scope: public header, so it runs in all_schemas scope and CREATE TABLE IF NOT EXISTS tenant executes in the tenant_default pass, creating the shadow on every fresh provision.",
+        "evidence": [
+          "docker exec r-co-db_test-1 psql ... SELECT table_schema, table_name FROM information_schema.tables WHERE table_name=tenant: returns public|tenant AND tenant_default|tenant",
+          "Column diff: tenant_default.tenant missing tenant_type and production_tenant_id (added by GBL-080 and later \u2014 GBL-only, skipped in tenant passes)",
+          "zig build migrate exit=0 (warmed db \u2014 no error on warm start)",
+          "migrations/031_adp04b_tenant_realm_binding.sql line 4: CREATE TABLE IF NOT EXISTS tenant (... \u2014 no -- scope: public header present",
+          "GBL-139 v_tables includes tenant and tenant_hostnames but DROP TABLE tenant_default.tenant RESTRICT fails: tenant_default.tenant_hostnames FK references it; tenant_hostnames was re-created AFTER GBL-139 ran (accidental tenant_default drop+reprovision during WF03-GH566-20260808 at 2026-08-08 08:19Z per GBL-138 forensics)"
+        ],
+        "resolution_path": "Two-step fix: (a) GBL-140 migration: DROP tenant_default.tenant_hostnames first (no FK dependents), then DROP tenant_default.tenant (FK chain broken) \u2014 use existence guards + RESTRICT; (b) add -- scope: public header to migrations/031_adp04b_tenant_realm_binding.sql to prevent re-creation on future provisions. Verify public.tenant.tenant_type and production_tenant_id data is authoritative and no test reads tenant_default.tenant directly."
+      },
+      {
+        "id": "D2",
+        "severity": "INFO",
+        "description": "RESOLVED \u2014 OutOfOrderMigration false-positive on cold-start. ISS-0603 (GH-467) replaced global max_applied_order watermark with walked_order (highest order seen in THIS run). Duplicate numbers 050_tenant_hostnames.sql and 050_xc01_trace_id_audit.sql both return migrationOrder()=50; the out-of-order check is strict less-than (50 < 50 = false), so same-order pairs never trigger it. GBL-133 reconciles the ledger for all 97 migration files. zig build migrate exits 0 on current warmed db_test confirming no regression.",
+        "evidence": [
+          "src/db/migrations.zig line 398: return MigrationError.OutOfOrderMigration only when file_order < walked_order (strict less-than)",
+          "migrationOrder(050_xc01...) = 50, migrationOrder(050_tenant...) = 50 \u2192 neither triggers 50 < 50",
+          "zig build migrate exit=0, all migrations show skip (already applied)",
+          "GBL-133 v_filenames lists both 050_tenant_hostnames.sql and 050_xc01_trace_id_audit.sql explicitly"
+        ],
+        "resolution_path": "No action needed. Mark sub-defect D2 resolved in ISS-0101. Close the OutOfOrderMigration part of GH-359 in release notes."
+      }
+    ],
+    "category": "A",
+    "next_action": "Route to CODE-DESIGNER (Step 2): design GBL-140 migration (drop shadow tables in dependency order) + 031_adp04b scope fix. Verify no test reads tenant_default.tenant directly before issuing DROP."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T13:11:20Z",
+  "completed_at": "2026-08-09T13:11:36Z"
+}

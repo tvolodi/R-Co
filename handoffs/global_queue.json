@@ -1112,6 +1112,45 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-638",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/638",
+      "title": "lint_test_isolation T050 false positive on aggregator test-root files (ISS-0642)",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-09T16:00:00Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-637",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/637",
+      "title": "lint_dual_schema_table_names: 14 tables duplicated public/tenant_default after cold-start (ISS-0641)",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-09T15:41:57Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-639",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/639",
+      "title": "queue_add.py silently drops a same-session, not-yet-pushed prior addition (ISS-0643)",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-09T16:00:00Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
