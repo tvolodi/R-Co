@@ -1,0 +1,49 @@
+{
+  "handoff_id": "4c00f70d-81a2-43b5-b41c-f04d093185d6",
+  "run_id": "WF03-GH591-20260809",
+  "workflow_id": "WF-03",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH591-20260809/step-06-doc-updater.json",
+  "created_at": "2026-08-09T02:46:06Z",
+  "started_at": "2026-08-09T02:46:06Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-11",
+      "LUA-13"
+    ],
+    "related_handoff_ids": [
+      "f0d48007-786c-4308-b257-34d3abb24793",
+      "8e15c289-86e8-436f-aea2-c6b8896ccc1e"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-08-09-WF03-GH591-20260809.yaml",
+      "src/design/iss0624-gh591-lua-11-13-fix.md",
+      "docs/issues/ISS-0624.json"
+    ]
+  },
+  "task": {
+    "description": "Finalize GH-591 / ISS-0624 (LUA-11 variable read/write real state model + LUA-13 structured logging). This run's branch had genuine prior work recovered from a stash (design + Step 2/2b handoffs already PASSed) -- ORCH independently re-verified that work's soundness before trusting it. BACKEND-DEV implemented the full state model (ExecutionContext gains trace_id/pending_writes/structured_logger/instance_state, atomic commit-on-success/discard-on-failure), real read_variable/write_variable/log.zig bodies, and 21 new test cases. ORCH independently mutation-tested the atomic-commit logic by hand (disabled it, confirmed 6 tests genuinely fail, restored exact original, confirmed clean rebuild). ORCH also discovered and reconciled a genuine merge conflict: this branch (cut before GH-600 merged) and GH-600/ISS-0629 both independently fixed the same TC-LUA-10-03 flaky test with two DIFFERENT, complementary root-cause diagnoses (JIT-speed iteration-count calibration vs. watchdog-poll scheduling race) -- combined both fixes rather than picking one, verified with 4+6 = 10 total clean zig build test-lua runs across ORCH and TEST-RUNNER. TEST-RUNNER PASSED with the full suite green (112/112, 6 consecutive clean runs).\n\nPROVENANCE NOTE for your own bookkeeping: this run's Step 01 (ISSUE-FIXER) handoff JSON file was not recovered from the stash import (registry shows it COMPLETED but the file itself is missing) -- a minor pre-existing bookkeeping gap, not something to fix now (would require fabricating a historical record) but worth noting in your own completion summary for transparency.\n\nYOUR JOB:\n1. Update CHANGELOG.md: describe both fixes (LUA-11's real instance-state model with atomic transactional semantics, LUA-13's structured logging wiring) and briefly mention the TC-LUA-10-03 fix reconciliation (two independent, complementary diagnoses combined).\n2. Check LUA-11 and LUA-13's current status via `python3 tools/reqctl.py show LUA-11` and `show LUA-13`. If this run satisfies their acceptance criteria, set both to RELEASED via reqctl.py set-status with --implemented-in listing the touched files (src/lua/executor.zig, src/lua/host_api/read_variable.zig, src/lua/host_api/write_variable.zig for LUA-11; src/lua/host_api/log.zig, src/lua/structured_logger.zig, src/lua/executor.zig for LUA-13).\n3. Run `python3 tools/reqctl.py render-status`.\n4. Skip retrospective (WF-03 run, no estimation.json).\n5. GH-591 disposition: this issue's acceptance criteria (both requirements restored to RELEASED with evidence) are fully met -- close it with 'Closes #591'.\n6. GitHub Branch Management (MANDATORY Step Final): create the PR (gh pr create --base main), explain the LUA-11/13 implementation AND the TC-LUA-10-03 fix reconciliation clearly in the body (a reviewer should understand why this PR touches a seemingly-unrelated watchdog test). Poll for genuine CI completion, squash-merge and delete branch, verify no orphaned branch, update project board for issue #591, return repo to clean main.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated covering both LUA-11/13 fixes and the TC-LUA-10-03 reconciliation",
+      "LUA-11 and LUA-13 status checked and updated via reqctl.py if appropriate",
+      "GH-591 closed",
+      "PR created with clear body explaining both the main fix and the incidental test-fix reconciliation",
+      "CI verified genuinely green",
+      "Squash-merged, branch deleted",
+      "Project board updated for issue #591",
+      "Repo returned to clean main"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
