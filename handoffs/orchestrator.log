@@ -622,3 +622,4 @@
 2026-08-09T03:52:47Z | ROUTE | WF03-GH482-20260809 | b95272cd | ORCH -> CODE-DESIGN-VALIDATOR | IN_PROGRESS (Step 2b, GH-482/ISS-0630 migration scope-mismatch design validation)
 2026-08-09T03:55:23Z | COMPLETE | WF03-GH482-20260809 | b95272cd | CODE-DESIGN-VALIDATOR | PASS -> BACKEND-DEV (Step 3)
 2026-08-09T03:56:52Z | ROUTE | WF03-GH482-20260809 | 85fb02d1 | ORCH -> BACKEND-DEV | IN_PROGRESS (Step 3, implement migration scope-qualification fix for 9 files)
+2026-08-09T04:02:57Z | COMPLETE | WF03-GH482-20260809 | 85fb02d1 | BACKEND-DEV | PASS -- 9 migration files public.-qualified + fresh_database_migration CI job added; fresh-DB migrate verified exit 0
