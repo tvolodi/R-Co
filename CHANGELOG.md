@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0629 — `TC-LUA-10-03` intermittently flaky watchdog-timing assertion in `src/lua/limiter_wiring_test.zig` (MINOR)** ([GitHub #600](https://github.com/tvolodi/R-Co/issues/600))
+
+- **The flake:** the test read `watchdog_state.hasFired()` immediately after `lua_pcall` returned, with a zero-tolerance assertion and no allowance for the LUA-10 watchdog thread's own ~10ms poll interval (`timeout.zig`'s `POLL_INTERVAL_NS`) plus ordinary OS scheduling delay before the watchdog thread got to run and observe its already-past deadline — a race between the test's post-hoc read and the watchdog's independent polling schedule, not a defect in the watchdog mechanism itself.
+- **The fix:** the single zero-tolerance assertion is replaced with a bounded 1000ms yield-spin retry loop (`std.Thread.yield()` against `milliTimestamp()`, both already used elsewhere in the same test file) that gives the watchdog thread a fair window to catch up to a deadline that has, by construction, already passed. No production file is touched (`src/lua/timeout.zig` and the public `WatchdogState`/`WatchdogHandle` surface are unchanged); no failure mode the original assertion caught is masked — a genuinely non-firing watchdog still fails the test after the retry window elapses.
+- **Verified:** 19 consecutive clean `zig build test-lua` runs post-fix across three independent agents/checks (BACKEND-DEV 8, ORCH 3, TEST-RUNNER 8), against a pre-fix failure rate of roughly 40-67% observed in two independent pre-fix samples.
+- **No requirement IDs involved** — test-only fix, not a requirement change. Design: `src/design/iss0629-tc-lua-10-03-flake-fix.md`. Test report: `tests/reports/report-2026-08-09-WF03-GH600-20260809.yaml`.
+
 **ISS-0628 — LUA-16 `ScriptErrorPayload.stack_trace` was always empty for real LuaJIT runtime errors (MINOR)** ([GitHub #595](https://github.com/tvolodi/R-Co/issues/595))
 
 - **The bug:** `executor.zig`'s `lua_pcall(L, 0, 1, 0)` call installed no message handler (`errfunc=0`). `captureStackTrace` ran only *after* `lua_pcall` returned — by which point the erroring Lua call frames had already unwound, so `lua_getstack(level=0)` always returned 0 and `stack_trace` was unconditionally empty for every genuine runtime error.
