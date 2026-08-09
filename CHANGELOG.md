@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0636 — `createSubscription` now converts `req.secret` to a stored `secret_ref` (MAJOR)** ([GitHub #618](https://github.com/tvolodi/R-Co/issues/618))
+
+- **Root cause:** `webhook.subscription_store.createSubscription` accepted a `CreateSubscriptionRequest.secret` field but never referenced it after reading it into the struct — the `INSERT` only ever wrote `req.secret_ref orelse ""`. Any direct caller supplying plaintext `.secret` (bypassing the HTTP layer's own pre-conversion) got a subscription with no `secret_ref`, so `dispatcher.zig`'s `secret_ref.len > 0` check never signed its webhook deliveries. `src/api/routes/webhooks.zig`'s HTTP route was already unaffected — it pre-converts `secret` → `secret_ref` via `secrets.Store.putSecret` before calling the store.
+- **The fix (WF03-GH618-20260809):** Moved the same conversion (`secrets.Store.putSecret` via `webhook_keys.WebhookKeyOwner.putWebhookHmacSecret`, namespace `"webhook"`, purpose `.webhook_hmac`) into `createSubscription` itself, so every caller gets correct behavior, not just the HTTP route. The conversion runs *before* acquiring the connection used for the `INSERT`, since `putSecret` acquires its own connection internally — nesting a second `pool.acquire()` inside an already-held lease would exhaust the pool (the exact bug fixed previously in GH-521/ISS-0130). `validateCreateRequest` now also rejects `req.secret` and `req.secret_ref` both being set, mirroring the HTTP layer's existing `secret_conflict` check. `webhooks.zig`'s route is unchanged (it already passes `secret = null`, so the new conversion is a no-op there — no double-conversion).
+- **Verified:** `zig build test-integration-ext02` — 10/10 tests pass (both TC-EXT-02-INT-05 and TC-EXT-02-INT-08 now green). `zig build test-integration-adp02` unaffected (4/5, same pre-existing TC-ADP-02-01 failure as before). Design: `src/design/fix-ISS-0636.md`.
+- **No requirement status change** — bugfix in existing webhook subscription logic.
+
 **ISS-0638 — TC-ADP-02-05 `audit_entries.resource_id` TEXT vs `::uuid` cast mismatch (MAJOR)** ([GitHub #621](https://github.com/tvolodi/R-Co/issues/621))
 
 - **Root cause:** Same as ISS-0637/GH-619 — migration `GBL-120` (ISS-103) changed `audit_entries.resource_id` from `UUID` to `TEXT` in every schema; `tests/integration/adp02_tenant_scope_test.zig` still compared `resource_id = $1::uuid`, producing `C42883`. Discovered incidentally while fixing ISS-0637.
