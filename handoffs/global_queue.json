@@ -994,6 +994,26 @@
       "completed_at": "2026-08-09T11:09:39Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-378",
+      "issue_number": 378,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/378",
+      "title": "ISS-0115 \u2014 Task claim and group authorization behavior violates integration expectations",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T11:10:10Z"
+      },
+      "added_at": "2026-08-09T11:10:10Z",
+      "started_at": "2026-08-09T11:10:10Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
