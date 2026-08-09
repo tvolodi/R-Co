@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0089",
   "title": "svc01_service_catalog_scope_test.zig (and likely sibling GBL-migration-verifying tests) write unqualified SQL that resolves against tenant_default instead of public, hitting columns/behavior that only exist in public",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/338",
   "severity": "MINOR",
   "category": "test-authoring / search_path routing defect",
@@ -18,7 +18,7 @@
     "tests/integration/svc01_service_catalog_scope_test.zig",
     "possibly other integration tests exercising GBL-prefixed migrations via TestHarness's tenant-scoped h.conn -- needs a full audit, not yet enumerated"
   ],
-  "resolution": null,
+  "resolution": "All acceptance criteria already met by prior work, confirmed on current main (2026-08-09): (1) svc01_service_catalog_scope_test.zig fully qualifies every service_catalog reference as public.service_catalog (grep confirms zero unqualified INSERT/SELECT/UPDATE against the bare table name) -- fixed as part of GH-454/ISS-0144's fix for a REGRESSION of this exact issue (the file's own comment at line 55 references 'ISS-0144 / GitHub #454'). (2) The requested sibling audit is satisfied: svc03_definition_activation_scope_test.zig and svc04_admin_api_test.zig were checked and neither references service_catalog at all (0 occurrences, qualified or not), so neither needed the fix. (3) docs/anti-patterns.md already has the requested sibling entry (line 55, 'Writing unqualified SQL in an integration test that exercises a GBL-prefixed...') explicitly covering this pattern and cross-referencing both GH-338 and its GH-454 recurrence. (4) Verified via zig build test-integration-svc: 35/35 tests pass, including svc01's suite.",
   "occurrences": [
     {
       "occurred_at": "2026-07-30T12:09:49Z",
@@ -30,7 +30,7 @@
   ],
   "files_changed": [],
   "created_at": "2026-07-30T12:43:17Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T19:00:00Z",
   "prevention": [
     "docs/anti-patterns.md already documents 'guarding a migration DO block with to_regclass() against a table only visible under a different schema than the migration runs in' (added for ISS-0076/#335). Add a sibling entry: 'writing unqualified SQL in an integration test that exercises a GBL-prefixed (public-only) migration's effect, while running under TestHarness's tenant_default-first search_path' -- with the fix being to open a direct public-schema connection or explicitly qualify table names as public.<table> in tests that verify GBL-migration DDL.",
     "A CODE-DESIGN-VALIDATOR / TEST-DESIGN-VALIDATOR check: any integration test file whose test cases are named after a GBL-prefixed migration's requirement ID should be flagged for schema-qualification review."
