@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-09T02:48:03Z'
+generated_at: '2026-08-09T15:05:48Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -2861,16 +2861,18 @@ requirements:
     alt_sources: []
     implemented_in:
     - migrations/GBL-133_iss0112_schema_ledger_reconcile.sql
+    - migrations/1140_iss0112_entity_tables_tenant_scope_corrective.sql
     test_spec: tests/specs/EXP-202.md
     test_run: tests/reports/report-2026-06-14-WF02-exp201-202-20260612-step04-rework.yaml
     tested_at: '2026-06-14'
     released_at: '2026-06-14'
     release_run: WF02-exp201-202-20260612
     release_decision: docs/status/release-exp201-202-20260614.yaml
-    last_updated: '2026-08-01T12:19:43Z'
+    last_updated: '2026-08-09T15:05:48Z'
     type: requirement
     backlog_tier: P0
-    note: 'ISS-0112 fix: entity command API contract on baseline schema'
+    note: 'ISS-0112/GH-375: fixed entity_type_instances/entity_record_latest missing from tenant schemas
+      (WF03-GH375-20260809)'
   EXP-203:
     id: EXP-203
     title: Typed projection tables (generated DDL) + projector

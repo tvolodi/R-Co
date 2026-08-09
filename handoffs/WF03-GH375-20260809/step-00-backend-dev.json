@@ -1,0 +1,43 @@
+{
+  "handoff_id": "8e9ad5b6-c93c-46b8-aeb4-9a60e1c53701",
+  "run_id": "WF03-GH375-20260809",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T15:02:01Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 00",
+    "requirement_ids": [
+      "EXP-201",
+      "EXP-202"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/375"
+  },
+  "task": {
+    "description": "WF-03 git-setup for GH-375. Create feature/WF03-GH375-20260809 from main, push to remote.",
+    "acceptance_criteria": [
+      "feature/WF03-GH375-20260809 branch exists on remote",
+      "branch is at HEAD of main"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created and pushed feature/WF03-GH375-20260809 from main (fast-forwarded to latest main first).",
+    "artifacts_out": [
+      "branch: feature/WF03-GH375-20260809"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 0.5) for rescope triage"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T15:02:01Z",
+  "completed_at": "2026-08-09T15:02:01Z"
+}

@@ -1,0 +1,50 @@
+{
+  "handoff_id": "2aba02e6-684b-4d1d-9475-603564731439",
+  "run_id": "WF03-GH375-20260809",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-09T15:05:48Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 7",
+    "requirement_ids": [
+      "EXP-201",
+      "EXP-202"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/reports/report-20260809-WF03-GH375-20260809.yaml"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/375"
+  },
+  "task": {
+    "description": "Update CHANGELOG.md, docs/issues/ISS-0112.json (mark SPLIT with three-piece resolution), requirement status for EXP-201/EXP-202 (implemented_in), and close GH-375 on GitHub with a comment explaining the split (linking GH-619/GH-618 for ext02, this run for entity-subsystem, GH-482 for the remaining scope).",
+    "acceptance_criteria": [
+      "CHANGELOG.md has an ISS-0112 entry explaining the three-piece split",
+      "docs/issues/ISS-0112.json status=SPLIT with split_into field",
+      "docs/status/requirement_status.yaml regenerated via reqctl render-status",
+      "GH-375 closed on GitHub with explanatory comment"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with ISS-0112 entry documenting the three-piece split. docs/issues/ISS-0112.json updated: status SPLIT, resolved_at stamped, resolution field documents all three pieces, split_into field cross-references GH-619/GH-618 (ext02), this run (entity-subsystem), and GH-482 (remaining scope). EXP-202 implemented_in updated via reqctl set-status (status unchanged, RELEASED) to include migrations/1140_iss0112_entity_tables_tenant_scope_corrective.sql. docs/status/requirement_status.yaml regenerated (462 entries). GH-375 closed on GitHub with a comment explaining the split and linking GH-619, GH-618, and GH-482.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0112.json",
+      "docs/status/requirement_status.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step Final) for git-merge"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T15:05:48Z",
+  "completed_at": "2026-08-09T15:05:48Z"
+}
