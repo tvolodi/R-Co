@@ -628,3 +628,4 @@
 2026-08-09T04:12:00Z | PASS  | WF03-GH606-20260809 | 5ba7c894 | ISSUE-FIXER -> ORCH | Step 0.5 COMPLETED: ISS-0631 registered, GH#606 linked
 2026-08-09T04:12:00Z | ROUTE | WF03-GH606-20260809 | aa1837f0 | ORCH -> ISSUE-FIXER | Step 1 root-cause diagnosis PENDING
 2026-08-09T04:14:22Z | PASS  | WF03-GH606-20260809 | aa1837f0 | ISSUE-FIXER -> ORCH | Step 1 COMPLETED: Category-A diagnosis, fix scope 2 files
+2026-08-09T04:18:29Z | COMPLETE | WF03-GH606-20260809 | d6a78f96 | CODE-DESIGNER | PASS — Type E design artefact produced: src/design/iss0631-tc-db-02-04-pool-boundary-fix.md
