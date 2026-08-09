@@ -1,0 +1,24 @@
+{
+  "id": "ISS-0638",
+  "title": "TC-ADP-02-05: adp02_tenant_scope_test.zig has the same audit_entries.resource_id = $1::uuid vs TEXT column mismatch as ISS-0637 (C42883)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "test_code_error",
+  "discovered_in": "WF03-GH619-20260809",
+  "discovered_at": "2026-08-09T09:20:32Z",
+  "run_id": null,
+  "workflow_id": null,
+  "requirement_ids": ["ADP-02"],
+  "affected_areas": [
+    "tests/integration/adp02_tenant_scope_test.zig"
+  ],
+  "symptom": "TC-ADP-02-05 (\"audit persistence is tenant-scoped for audit_entries and audit_log\") fails with PgError.ServerError. Standalone reproduction with -Dlog-pg-errors=true shows: POSTGRES ERROR: C42883 operator does not exist: text = uuid, at tests/integration/adp02_tenant_scope_test.zig:530 (conn.query with `resource_id = $1::uuid AND tenant_id = $2::uuid`, and the mirrored query at line 549).",
+  "root_cause": "Same root cause as ISS-0637 (GH-619): migration GBL-120_iss103_audit_resource_id_text.sql (ISS-103) changed audit_entries.resource_id from UUID to TEXT in every schema. This test still casts the parameter to ::uuid when comparing against resource_id, which PostgreSQL rejects (no implicit text/uuid cast) with C42883. Discovered incidentally while confirming ISS-0637's fix pattern was correctly scoped and checking for the same bug class elsewhere in the test suite (grep for `resource_id = $1::uuid` across tests/integration/).",
+  "resolution": null,
+  "acceptance_criteria": [
+    "TC-ADP-02-05 passes",
+    "resource_id comparisons in adp02_tenant_scope_test.zig match the TEXT column type (no ::uuid cast on resource_id)"
+  ],
+  "notes": "Also observed independently in the same standalone run: TC-ADP-02-01 (\"migration provisions tenant columns, tenant indexes, and tenant policies\") fails with `expected 6, found 0` — a different, unrelated symptom, consistent with the broader pre-existing test-integration-svc provisioning-gap failures already tracked under GitHub #482 / ISS-0150 (34 affected files including adp02_tenant_scope_test and ext02_webhook_dispatch_test, dominant symptom `relation tenant_<uuid>.schema_migrations does not exist`). TC-ADP-02-01's failure was not separately diagnosed here — likely covered by #482's existing scope; not re-filed. This ISS-0638 is scoped narrowly to the C42883 resource_id type-mismatch pattern only, which is a distinct, independently-actionable root cause from #482's provisioning-gap symptom. Not fixed on the GH-619/ISS-0637 branch — filed and forwarded to the global queue per the one-issue-one-run rule.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/621"
+}

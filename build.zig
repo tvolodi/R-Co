@@ -2182,6 +2182,22 @@ pub fn build(b: *std.Build) void {
     test_integration_obs03_step.dependOn(&clean_test_db.step);
     test_integration_obs03_step.dependOn(&run_obs03_integration_tests.step);
 
+    // ISS-0637 / GH-619: narrow step for EXT-02 webhook dispatch + audit
+    // tests only, so TC-EXT-02-INT-08 (and siblings) can be iterated on
+    // without paying for the full ~40-binary test-integration umbrella.
+    const ext02_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/ext02_webhook_dispatch_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_ext02_integration_tests = addIntegrationRun(b, ext02_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_ext02_step = b.step("test-integration-ext02", "Run EXT-02 webhook dispatch integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_ext02_step.dependOn(&clean_test_db.step);
+    test_integration_ext02_step.dependOn(&run_ext02_integration_tests.step);
+
     const test_integration_obs04_step = b.step("test-integration-obs04", "Run OBS-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs04_step.dependOn(&clean_test_db.step);
     test_integration_obs04_step.dependOn(&run_obs04_integration_tests.step);

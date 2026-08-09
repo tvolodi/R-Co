@@ -1,20 +1,24 @@
 {
   "id": "ISS-0637",
-  "title": "TC-EXT-02-INT-08: conn loses search_path after COMMIT — audit_entries query returns ServerError",
-  "status": "OPEN",
+  "title": "TC-EXT-02-INT-08: audit_entries.resource_id is TEXT (since ISS-103/GBL-120) but test still casts $1::uuid — C42883",
+  "status": "RESOLVED",
   "severity": "MAJOR",
+  "category": "test_code_error",
   "discovered_in": "WF03-GH616-20260809",
   "discovered_at": "2026-08-09T08:28:27Z",
+  "run_id": "WF03-GH619-20260809",
+  "workflow_id": "WF-03",
+  "requirement_ids": ["OBS-03", "EXT-02"],
   "affected_areas": [
-    "tests/integration/ext02_webhook_dispatch_test.zig",
-    "src/db/pool.zig"
+    "tests/integration/ext02_webhook_dispatch_test.zig"
   ],
-  "symptom": "TC-EXT-02-INT-08: queryRow fails with PgError.ServerError when querying audit_entries after prepareExt02Owner transaction commit",
-  "root_cause": "Suspected: pool.Conn loses search_path after transaction COMMIT. If SET search_path was SET LOCAL (transaction-scoped), the connection reverts to DB default after COMMIT and audit_entries lookup hits public schema (42P01 relation does not exist). Needs further diagnosis.",
+  "symptom": "TC-EXT-02-INT-08: queryRow fails with PgError.ServerError when querying audit_entries after prepareExt02Owner transaction commit. Original issue body speculated the underlying PostgreSQL error was 42P01 (relation does not exist) caused by pool.Conn losing search_path after COMMIT.",
+  "root_cause": "CONFIRMED (not the suspected search_path theory). Reproduced standalone with a new diagnostic build step (`zig build test-integration-ext02 -Dlog-pg-errors=true`) added temporarily to build.zig to capture the actual PostgreSQL wire-protocol ErrorResponse text, which the vendored pg client (vendor/pg/pg.zig) otherwise swallows by default (log_pg_errors defaults to false, per ISS-0607/GH-542). The real server error is:\n\n  C42883 operator does not exist: text = uuid\n\nRoot cause: migration GBL-120_iss103_audit_resource_id_text.sql (ISS-103) altered audit_entries.resource_id from UUID to TEXT in every schema (it iterates current_schema(), not just public — despite the GBL- filename prefix, it is NOT a public-only/GLOBAL_REGISTRY migration; it patches every provisioned schema including tenant_default). tests/integration/ext02_webhook_dispatch_test.zig's TC-EXT-02-INT-08 (lines 687 and 702) still compares `resource_id = $1::uuid`, which is a TEXT = UUID comparison — PostgreSQL has no implicit cast between text and uuid, so this always raises C42883, unconditionally, regardless of search_path or schema routing. src/db/pool.zig's connection routing (`applyRequestStorageRouting`) was independently verified correct: it issues a plain session-scoped `SET search_path TO tenant_default,public` on every Pool.acquire() (never `SET LOCAL`), which persists for the life of the held connection and is only reset to `public` in Pool.release(). There is no `SET LOCAL search_path` anywhere in pool.zig; that pattern exists only in the unrelated src/db/migrations.zig and src/event_store/store.zig (ISS-0128/ISS-0130), which the original issue's author appears to have pattern-matched from without confirming against this code path. This bug was pre-existing since GBL-120 (ISS-103) shipped, and was previously masked in this test by an earlier compile/relation error (C42703 per the original issue's 'Pre-existing' note, fixed by ISS-0635's migration 1138) that made the test fail earlier for an unrelated reason before ever reaching this query.",
+  "resolution": "tests/integration/ext02_webhook_dispatch_test.zig: removed the `::uuid` cast on both `resource_id = $1` comparisons in TC-EXT-02-INT-08 (lines 687, 702), matching the TEXT column type audit_entries.resource_id has carried since GBL-120. `created.subscription_id` is already a UUID-format string, which compares correctly against a TEXT column with no cast needed on either side.",
   "acceptance_criteria": [
     "TC-EXT-02-INT-08 passes",
     "Audit entries for webhook_subscription.create/delete are queryable via pool.Conn after commit"
   ],
-  "notes": "Pre-existing bug hidden by C42703 before ISS-0635 migration 1138 added the column.",
+  "notes": "Pre-existing bug hidden by C42703 before ISS-0635 migration 1138 added the secret_ref/secret_key_id columns. The search_path/pool.Conn theory in the original issue body is REFUTED — pool.zig's routing was verified correct by reading vendor/pg/pg.zig (unnamed prepared statements, no implicit BEGIN/COMMIT wrapping) and src/db/pool.zig (plain session-scoped SET, not SET LOCAL). Similar `resource_id = $1::uuid` casts also exist in tests/integration/adp02_tenant_scope_test.zig (TC-ADP-02-05, a LEGACY_RLS-path public.audit_entries test with an additional tenant_id column) — left untouched as out of scope for this issue; not confirmed broken, filed separately only if independently reproduced.",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/619"
 }
