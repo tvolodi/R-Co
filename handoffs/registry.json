@@ -22353,6 +22353,83 @@
       "created_at": "2026-08-09T10:02:47Z",
       "status": "COMPLETED",
       "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "ce7c1905-337a-4d13-bc18-3538275ae9f2",
+      "file": "handoffs/WF03-GH378-20260809/step-00.json",
+      "run_id": "WF03-GH378-20260809",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-09T11:29:06Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 00"
+    },
+    {
+      "handoff_id": "0bb1aecc-2dd2-4b4d-ac19-985860a16d26",
+      "file": "handoffs/WF03-GH378-20260809/step-01.json",
+      "run_id": "WF03-GH378-20260809",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T11:29:06Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 01"
+    },
+    {
+      "handoff_id": "c5152a60-38a4-4cab-a3d7-9217afc2de09",
+      "file": "handoffs/WF03-GH378-20260809/step-02.json",
+      "run_id": "WF03-GH378-20260809",
+      "step": "02",
+      "from_agent": "ISSUE-FIXER",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-09T11:29:06Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 02"
+    },
+    {
+      "handoff_id": "ddf200b3-bca2-4ec2-81a0-5e6993edc50c",
+      "file": "handoffs/WF03-GH378-20260809/step-02b.json",
+      "run_id": "WF03-GH378-20260809",
+      "step": "02b",
+      "from_agent": "CODE-DESIGNER",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-09T11:29:06Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 02b"
+    },
+    {
+      "handoff_id": "ff68f5f0-72e6-477e-919e-10259a1dbd36",
+      "file": "handoffs/WF03-GH378-20260809/step-03.json",
+      "run_id": "WF03-GH378-20260809",
+      "step": "03",
+      "from_agent": "CODE-DESIGN-VALIDATOR",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-09T11:29:06Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 03"
+    },
+    {
+      "handoff_id": "3fc95cde-ca9c-4db4-ad08-8bd096656ec5",
+      "file": "handoffs/WF03-GH378-20260809/step-05.json",
+      "run_id": "WF03-GH378-20260809",
+      "step": "05",
+      "from_agent": "BACKEND-DEV",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-09T11:29:06Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 05"
+    },
+    {
+      "handoff_id": "589979c9-0845-4536-a118-4ac103d0ea4f",
+      "file": "handoffs/WF03-GH378-20260809/step-07.json",
+      "run_id": "WF03-GH378-20260809",
+      "step": "07",
+      "from_agent": "TEST-RUNNER",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-09T11:29:06Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 07"
     }
   ],
   "last_updated": "2026-08-09T10:18:47Z"
