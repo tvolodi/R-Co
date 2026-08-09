@@ -44,9 +44,16 @@ ALLOW_LIST: set[str] = {
     "oidc_migration_item",            # FK → public.oidc_migration_job
     "oidc_migration_job",
     "repository_artifacts",
-    # tenant registry: tenant_hostnames → tenant
-    "tenant",
-    "tenant_hostnames",
+    # ISS-0101 / GH-359: `tenant` and `tenant_hostnames` were previously
+    # allow-listed here as a KNOWN duplicate while GBL-140 and the
+    # 031/050 scope-header patch were pending. Both are GLOBAL_REGISTRY
+    # (canonical home = public) and no longer belong on this allow-list —
+    # migrations/GBL-140_iss0101_drop_shadow_tenant_tables.sql removes the
+    # tenant_default shadow, and migrations/031_adp04b_tenant_realm_binding.sql
+    # / migrations/050_tenant_hostnames.sql now carry `-- scope: public`
+    # headers (plus public.-qualified DDL) so no future reprovision can
+    # recreate the shadow. Removed from the allow-list deliberately so a
+    # regression here fails this linter instead of passing silently.
     # ISS-0620 / GH-573, BLOCKER: KNOWN, INTENTIONAL, TEMPORARY duplicate —
     # NOT a HYBRID classification. GBL-134 wrongly dropped these 4 tables'
     # tenant_default copies (they are PER_TENANT per ISS-0185-diagnosis.yaml's

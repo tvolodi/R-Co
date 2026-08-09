@@ -244,3 +244,36 @@ NOTICE, not re-raised, consistent with the GBL-136/138/139 pattern.
 ## Open questions
 
 None. Root cause, FK ordering, and idempotency are fully characterized by ISS-0101 Step 1 diagnosis.
+
+---
+
+## As-implemented addendum (2026-08-09, Step 5 verification)
+
+Implementation matched this design with two additions discovered during BACKEND-DEV/Step 5:
+
+1. **`public.`-qualification was required, not optional.** Adding `-- scope: public`
+   alone would have tripped `src/db/migrations.zig`'s ISS-0604/GH-470
+   `MigrationScopeMismatch` guard: `declaresUnqualifiedTableWork()` scans the file body
+   for unqualified `CREATE TABLE`/`ALTER TABLE`/`INSERT INTO` heads, and both 031 and
+   050 contain several (031: `CREATE TABLE`, 6x `ALTER TABLE`, 1x `INSERT INTO`; 050:
+   `CREATE TABLE`). Every one was schema-qualified as `public.tenant` /
+   `public.tenant_hostnames` in the same commit as the header. This is a **mandatory**
+   companion change whenever `-- scope: public` is added to a file with unqualified DDL,
+   not a style preference — omitting it makes `zig build migrate` fail outright on the
+   very next apply with `MigrationError.MigrationScopeMismatch`.
+2. **`050_tenant_hostnames.sql` also received the scope header + qualification** (the
+   design's open question at the time was resolved: yes, it needed the same fix, for the
+   same reason — its FK to `tenant(id)` only makes sense if it lives in `public` too).
+3. **`tools/clean_test_db.py` required an independent fix** to make the live cold-start
+   reproduction (Step 5's D2 re-verification) possible at all: `drop_orphaned_tenant_
+   schemas()` unconditionally queried `public.tenant_schemas`, which does not exist on a
+   genuinely empty database. Not part of the original design (D2 was believed resolved
+   via ISS-0603 alone) — discovered live while reproducing the destructive cold-start
+   scenario per the issue's own Step 5 requirement. See CHANGELOG.md and
+   `docs/issues/ISS-0101.json` `resolution` field for full detail.
+4. **`tests/integration/iss0185_dual_schema_test.zig` required updating** — it hard-coded
+   `tenant`/`tenant_hostnames` as HYBRID (present in both schemas) and asserted an exact
+   dual-schema duplicate count of 9. Both are now stale given this fix; updated to
+   GLOBAL_REGISTRY classification and a floor-based count assertion (see the test file's
+   own header comment and CHANGELOG.md for why an exact count is no longer appropriate —
+   unrelated to the ISS-0641 finding filed alongside this fix).

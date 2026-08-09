@@ -1,0 +1,55 @@
+{
+  "handoff_id": "f32882fe-b1e1-40e1-b0b8-fc8c1e96b34f",
+  "run_id": "WF03-GH359-20260809",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T15:52:33Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 3",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/359",
+    "issue_id": "ISS-0101",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "step-02b"
+    ],
+    "artifacts_in": [
+      "src/design/iss0101-gh359-shadow-tenant-table-fix.md",
+      "handoffs/WF03-GH359-20260809/step-02b-code-design-validator.json",
+      "migrations/031_adp04b_tenant_realm_binding.sql",
+      "migrations/050_tenant_hostnames.sql",
+      "migrations/GBL-139_iss0183_reconcile_gbl136_tenant_default_reprovision.sql"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 3: implement ISS-0101 fix per design -- GBL-140 corrective migration + 031/050 scope-header patch, plus any guard-satisfying schema qualification.",
+    "acceptance_criteria": [
+      "migrations/GBL-140_iss0101_drop_shadow_tenant_tables.sql created, FK-ordered, existence-guarded, RESTRICT-only",
+      "migrations/031_adp04b_tenant_realm_binding.sql carries -- scope: public header and public.-qualified DDL",
+      "migrations/050_tenant_hostnames.sql carries -- scope: public header and public.-qualified DDL",
+      "zig build migrate exits 0 against db_test and bpm_dev, idempotent on second run",
+      "tenant_default.tenant / tenant_default.tenant_hostnames confirmed absent via direct query after migrate",
+      "zig build and zig build test exit 0",
+      "tools/lint_sql_param_types.py src tests exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented per design plus the MinOR guard note from Step 2b. Created migrations/GBL-140_iss0101_drop_shadow_tenant_tables.sql (FK-ordered DROP: tenant_hostnames then tenant, both RESTRICT + existence-guarded). Patched migrations/031_adp04b_tenant_realm_binding.sql with -- scope: public header AND schema-qualified every CREATE TABLE/ALTER TABLE/INSERT INTO as public.tenant (required to satisfy src/db/migrations.zig's MigrationScopeMismatch guard -- declaresUnqualifiedTableWork() would otherwise reject the header given the file's pre-existing unqualified DDL). Same treatment for migrations/050_tenant_hostnames.sql (public.tenant_hostnames, FK to public.tenant(id)). Removed the tenant/tenant_hostnames allow-list entries from tools/lint_dual_schema_table_names.py (previously a deliberate interim entry pending this exact fix) with an explanatory comment. Verified: zig build migrate against db_test (port 5453) applied GBL-140 cleanly, exit 0; direct psql query confirmed tenant_default.tenant/tenant_hostnames absent, public copies untouched; re-ran migrate twice more (idempotent, 'No new migrations to apply' both times) and against bpm_dev (port 5452, no-op since bpm_dev never had the shadow). zig build exit 0. zig build test: Build Summary 89/89 steps succeeded (verified via --summary all per the documented stale-progress-bar anti-pattern, not the raw 'failed command' text). tools/lint_sql_param_types.py src tests: 0 BLOCKER/MAJOR/MINOR.",
+    "artifacts_out": [
+      "migrations/GBL-140_iss0101_drop_shadow_tenant_tables.sql",
+      "migrations/031_adp04b_tenant_realm_binding.sql",
+      "migrations/050_tenant_hostnames.sql",
+      "tools/lint_dual_schema_table_names.py"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 5) for live cold-start reproduction of sub-problem 2 and full-suite verification"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T15:52:33Z",
+  "completed_at": "2026-08-09T15:52:33Z"
+}

@@ -1,0 +1,50 @@
+{
+  "handoff_id": "b65667a2-c99d-4e69-ae87-f031194984d5",
+  "run_id": "WF03-GH359-20260809",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-09T15:51:40Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 2b",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/359",
+    "issue_id": "ISS-0101",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "7ff9305b-d13a-4d4b-bd2e-04fd376a1b23"
+    ],
+    "artifacts_in": [
+      "src/design/iss0101-gh359-shadow-tenant-table-fix.md",
+      "handoffs/WF03-GH359-20260809/step-02-code-designer.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2b: validate src/design/iss0101-gh359-shadow-tenant-table-fix.md before implementation begins.",
+    "acceptance_criteria": [
+      "src/design/iss0101-gh359-shadow-tenant-table-fix.md passes lint_design_artefact.py (BLOCKER=0)",
+      "FK drop ordering (tenant_hostnames before tenant) is documented and correct",
+      "Scope header mechanism (migrationScope()) is correctly explained",
+      "No implementation code present in the design (Type E prose only)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design validated. python3 tools/lint_design_artefact.py src/design/iss0101-gh359-shadow-tenant-table-fix.md: BLOCKER=0 MAJOR=0 MINOR=6 (E030 schema-qualified names in SQL code blocks -- expected/unavoidable for a migration design, same as originally noted by CODE-DESIGNER). FK ordering (tenant_hostnames FK child dropped first, tenant FK parent second) verified correct against the live schema (tenant_hostnames.tenant_id -> tenant_default.tenant.id, confirmed via pg_constraint query). Scope header mechanism correctly cites migrationScope()/declaresPublicScopeHeader() at the correct line numbers. Design is Type E prose only, no implementation code. One gap identified during validation (not a BLOCKER, flagged for BACKEND-DEV attention): the design's 'Migration runner interaction' section does not mention the ISS-0604/GH-470 MigrationScopeMismatch guard (declaresUnqualifiedTableWork()), which will reject the -- scope: public header on 031/050 unless their unqualified DDL is also schema-qualified in the same change. Routed to BACKEND-DEV with this note rather than sent back for rework, since the design's core approach (scope header + corrective drop) is correct and complete; the qualification requirement is a mechanical consequence BACKEND-DEV must apply during implementation, not a design defect.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "V1",
+        "severity": "MINOR",
+        "description": "Design does not mention the MigrationScopeMismatch guard's unqualified-DDL check; BACKEND-DEV must schema-qualify 031/050's table references in the same commit as the scope header or zig build migrate will fail with MigrationError.MigrationScopeMismatch."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T15:51:40Z",
+  "completed_at": "2026-08-09T15:51:40Z"
+}
