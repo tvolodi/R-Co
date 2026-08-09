@@ -629,3 +629,7 @@
 2026-08-09T04:12:00Z | ROUTE | WF03-GH606-20260809 | aa1837f0 | ORCH -> ISSUE-FIXER | Step 1 root-cause diagnosis PENDING
 2026-08-09T04:14:22Z | PASS  | WF03-GH606-20260809 | aa1837f0 | ISSUE-FIXER -> ORCH | Step 1 COMPLETED: Category-A diagnosis, fix scope 2 files
 2026-08-09T04:18:29Z | COMPLETE | WF03-GH606-20260809 | d6a78f96 | CODE-DESIGNER | PASS — Type E design artefact produced: src/design/iss0631-tc-db-02-04-pool-boundary-fix.md
+2026-08-09T04:21:54Z | VALIDATE | WF03-GH606-20260809 | 6fe32a64 | CODE-DESIGN-VALIDATOR | FAIL — E050 MAJOR: Exact-changes section code block exceeds 40 lines; routing back to CODE-DESIGNER for rework
+2026-08-09T04:25:58Z | REWORK | WF03-GH606-20260809 | d6a78f96 | CODE-DESIGNER | REWORK(1/3): <=40-line pseudocode sketch; lint exits 0
+2026-08-09T04:33:37Z | VALIDATE | WF03-GH606-20260809 | 6fe32a64 | CODE-DESIGN-VALIDATOR | PASS(rework 1): lint exits 0; <=40-line pseudocode; all checklist items pass
+2026-08-09T04:37:50Z | COMPLETE | WF03-GH606-20260809 | a3e91c57 | BACKEND-DEV | PASS — TC-DB-02-04 safe_pool_size probe + docker-compose max_connections=500; zig build+test green
