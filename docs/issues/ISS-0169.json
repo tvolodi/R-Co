@@ -1,7 +1,7 @@
 {
   "id": "ISS-0169",
   "title": "LUA-05..16 remain IN_PROGRESS: host API, capability, and limiter tests not yet written against real LuaJIT",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/495",
   "discovered_at": "2026-08-06T20:03:10Z",
@@ -100,5 +100,8 @@
       "ISS-0172 / https://github.com/tvolodi/R-Co/issues/500"
     ],
     "next_action": "Route to CODE-DESIGNER (Step 2)"
-  }
+  },
+  "resolved_at": "2026-08-10T03:20:00Z",
+  "run_id_final": "WF03-GH495-20260810",
+  "resolution": "Already resolved by the tranche 3/4 sibling issues, both merged and closed before this run started: GH-591/ISS-0624 (LUA-11, LUA-13 -- closed 2026-08-09T03:13:41Z) and GH-592/ISS-0625 (LUA-12, LUA-15, LUA-16 -- closed 2026-08-08T23:13:01Z). Verified on current main: docs/status/requirement_status.yaml shows all 5 (LUA-11, LUA-12, LUA-13, LUA-15, LUA-16) as status RELEASED with implemented_in file lists and a test_run reference. Real test coverage confirmed present and wired into the build: src/lua/iss0624_lua_11_13_test.zig (21 test cases) and src/lua/iss0625_lua_12_15_16_test.zig (10 test cases), both imported and refAllDecls'd in src/lua_test_root.zig. zig build test-lua exits 0 (full LuaJIT suite, no failures). GH-495's own stated closing condition ('will close once #591 and #592 both land') is satisfied. No code change needed -- this was a bookkeeping gap where the tracking issue was never closed after its two blocking sub-issues landed."
 }
