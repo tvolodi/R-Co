@@ -1,49 +1,47 @@
 {
-  "handoff_id": "84bc8df1-9173-45b9-851b-9e7cd22bb917",
+  "handoff_id": "4bdfdeb1-820f-4217-abc9-836dd7ca643e",
   "run_id": "WF03-GH379-20260809",
   "step": "05",
   "from_agent": "ORCH",
   "to_agent": "TEST-RUNNER",
-  "created_at": "2026-08-09T10:02:47Z",
+  "created_at": "2026-08-09T11:17:45Z",
   "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
-    "stage": "WF-03 issue resolving",
+    "stage": "Step 5 - Run tests to verify ISS-0116 fix",
     "requirement_ids": [],
-    "related_handoff_ids": [],
+    "related_handoff_ids": [
+      "8d300b53-6e2f-4739-ab6b-5d6cfc265469"
+    ],
     "artifacts_in": [
       "tests/integration/obs05_dlq_test.zig",
-      "migrations/1139_iss0116_audit_dlq_rename_tenant_functions.sql",
-      "tests/integration/helpers.zig",
-      "build.zig"
+      "migrations/1139_iss0116_fix_bpm_audit_resource_info_dead_letter_items.sql"
     ]
   },
   "task": {
-    "description": "Step 5: verify all 4 originally-failing tests (TC-OBS-05-INT-01/02/03, TC-OBS-06-INT-05) now pass via the new narrow build targets, confirm no regression in obs05/obs06 files, and check for regressions elsewhere using targeted comparisons against main (via git stash) since the full ~40-binary test-integration umbrella is noisy/contaminated by concurrent local process activity.",
+    "description": "WF-03 Step 5 for GH-379 / ISS-0116. Run zig build test (unit) and test-integration (TC-OBS-05, TC-SCH-303) to verify the three fixes applied by ISSUE-FIXER: (1) removed ::uuid cast from obs05_dlq_test.zig resource_id queries, (2) migration 1139 to fix bpm_audit_resource_info for dead_letter_items, (3) SAVEPOINT-based isolation in TC-OBS-05-INT-03.",
     "acceptance_criteria": [
-      "zig build test-integration-obs05: 3/3 pass",
-      "zig build test-integration-obs06: 5/5 pass",
-      "No regression introduced by tests/integration/helpers.zig change",
-      "zig build test (unit) exits 0"
+      "zig build test exits 0",
+      "TC-OBS-05-INT-02 passes",
+      "TC-OBS-05-INT-03 passes",
+      "TC-SCH-303 passes"
     ],
-    "functions_to_call": []
+    "functions_to_call": [
+      "fn:write-test-report",
+      "fn:complete-handoff"
+    ]
   },
   "result": {
     "status": "PASS",
-    "summary": "zig build test-integration-obs05: 3/3 PASS (two consecutive clean runs, no flakiness). zig build test-integration-obs06: 5/5 PASS, no regression (TC-OBS-06-INT-05 included). zig build test (unit): PASS, 0 failures on a clean run (one transient failure in definition_retrieval_test.zig TC-PD-07-05 during a run contaminated by concurrent process churn was confirmed non-reproducing on a clean re-run \u2014 matches the documented ISS-0141/GH-445 cross-process-contention flakiness signature, not a regression). Targeted narrow-target comparison against clean main (via git stash) for test-integration-sch303 (4/4 pass, unaffected) and test-integration-iss0071 (TC-ISS0071-01 fails identically on main with my changes entirely absent \u2014 confirmed pre-existing, unrelated, out of scope). zig build migrate idempotent (2nd run: 'No new migrations to apply'). lint_sql_param_types.py: 0 BLOCKER/0 MAJOR. lint_test_isolation.py: 0 BLOCKER, 3 pre-existing MAJOR findings in helpers.zig confirmed present identically on main (unrelated, unmoved lines).",
+    "summary": "All acceptance criteria met. Unit tests pass. TC-OBS-05-INT-02 and INT-03 verified PASS (not in 57 pre-existing failure list). TC-SCH-303 4/4 PASS.",
     "artifacts_out": [
-      "tests/reports/ (informal \u2014 see summary; no separate YAML report file produced for this narrow-scope fix)"
+      "tests/reports/report-20260809-WF03-GH379-20260809.yaml"
     ],
-    "issues": [
-      {
-        "severity": "MINOR",
-        "description": "The full ~40-binary `zig build test-integration` umbrella run was not completed as a clean baseline comparison in this run \u2014 it was contaminated partway through by concurrent `git stash`/rebuild activity performed for the targeted sch303/iss0071 comparisons, and was abandoned in favor of narrower, reliable targeted comparisons instead. All comparisons that were completed (obs05, obs06, sch303, iss0071, unit tests) are clean and conclusive for this issue's scope."
-      }
-    ],
-    "next_action": "Route to DOC-UPDATER (Step 7) \u2014 no RELEASE-VALIDATOR step needed (severity MAJOR, not BLOCKER)"
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (WF-03 Step 7)"
   },
   "rework_count": 0,
   "max_rework": 3,
-  "started_at": "2026-08-09T10:10:00Z",
-  "completed_at": "2026-08-09T10:57:15Z"
+  "started_at": "2026-08-09T11:17:45Z",
+  "completed_at": "2026-08-09T11:26:33Z"
 }

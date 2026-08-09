@@ -464,44 +464,19 @@ test "TC-OBS-05-INT-03: POST /dlq/:id/discard appends audit and rolls back on au
     );
     try testing.expect(audit_count >= 1);
 
-    // Install the deliberate audit-failure trigger, and guarantee its
-    // unconditional removal (both success and early-return/error paths)
-    // via `defer`, so trg_bpm_test_fail_audit_insert /
-    // bpm_test_fail_audit_insert can never leak into the next test
-    // process. An earlier implementation used a happy-path-only defer that
-    // did not fire on early return, letting the trigger persist in db_test
-    // and fire P0001 'audit_entries is immutable' on legitimate mutations
-    // in adp09 / oidc22.
-    //
-    // ISS-0116 / GH-379: a later implementation wrapped this section in
-    // `conn.begin()` + `SAVEPOINT` to get the same unconditional-cleanup
-    // guarantee via ROLLBACK. That doesn't work here: `handleDiscard()`
-    // below acquires its OWN pool connection (not `conn`) to run the
-    // INSERT that the trigger intercepts, and DDL from an uncommitted
-    // transaction on `conn` is invisible to that other connection until
-    // `conn` commits — so the trigger would never fire for it at all.
-    // Worse, `CREATE TRIGGER ... ON audit_entries` takes an ACCESS
-    // EXCLUSIVE lock that a same-session-but-different-connection writer
-    // then blocks on for the lifetime of the held transaction, producing a
-    // genuine cross-connection self-deadlock (observed live: `conn` idle
-    // in an open transaction holding the DDL lock while the second pool
-    // connection's `INSERT INTO audit_entries` — fired by
-    // `dlq_store.discard()`'s own `DELETE FROM dead_letter_items` trigger
-    // — waited on it forever). `conn` is a plain `pool.acquire()`
-    // connection with no ambient transaction (matching every other query
-    // in this test file), so the DDL below runs in autocommit and is
-    // immediately visible cross-connection, and `SAVEPOINT` (which
-    // requires an open transaction block) is simply not needed: `DROP
-    // TRIGGER IF EXISTS` / `DROP FUNCTION IF EXISTS` are themselves
-    // idempotent and unconditionally safe to run via a plain `defer`,
-    // without any savepoint/rollback machinery.
+    // Create the deliberate audit-failure trigger in autocommit so it is
+    // immediately visible to handleDiscard's separate pool connection.
+    // Drop unconditionally via defer (covers both happy path and early return).
+    // A SAVEPOINT approach cannot work here: SAVEPOINT requires an active
+    // transaction, and DDL inside an uncommitted transaction is not visible
+    // to other sessions (including handleDiscard's pool connection).
+    conn.exec("DROP TRIGGER IF EXISTS trg_bpm_test_fail_audit_insert ON audit_entries", &.{}) catch {};
+    conn.exec("DROP FUNCTION IF EXISTS bpm_test_fail_audit_insert()", &.{}) catch {};
     defer {
         conn.exec("DROP TRIGGER IF EXISTS trg_bpm_test_fail_audit_insert ON audit_entries", &.{}) catch {};
         conn.exec("DROP FUNCTION IF EXISTS bpm_test_fail_audit_insert()", &.{}) catch {};
     }
 
-    conn.exec("DROP TRIGGER IF EXISTS trg_bpm_test_fail_audit_insert ON audit_entries", &.{}) catch {};
-    conn.exec("DROP FUNCTION IF EXISTS bpm_test_fail_audit_insert()", &.{}) catch {};
     try conn.exec(
         \\CREATE OR REPLACE FUNCTION bpm_test_fail_audit_insert()
         \\RETURNS trigger

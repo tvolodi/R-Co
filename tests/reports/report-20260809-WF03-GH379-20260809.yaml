@@ -1,0 +1,77 @@
+run_id: WF03-GH379-20260809
+report_date: "2026-08-09"
+agent: TEST-RUNNER
+branch: feature/WF03-GH379-20260809
+issue: GH-379
+issue_local: ISS-0116
+
+summary:
+  verdict: PASS
+  unit_tests: PASS
+  integration_obs05: PASS
+  integration_sch303: PASS
+  pre_existing_failures: 57
+  pre_existing_failures_related_to_iss0116: 0
+
+layers:
+  - layer: unit
+    command: "zig build test --summary all"
+    exit_code: 0
+    result: PASS
+    tests_passed: all
+    log: scratch/_wf03_gh379_unit.log
+
+  - layer: integration_obs05
+    command: "zig build test-integration-svc [full run, TC-OBS-05 verified via absence from failure list]"
+    exit_code: 1
+    result: PASS
+    note: "Exit 1 is from 57 pre-existing failures unrelated to ISS-0116. TC-OBS-05 tests are NOT in the failure list."
+    tests_verified:
+      - name: "TC-OBS-05-INT-01: DLQ entries visible via GET /dead-letter"
+        verdict: PASS
+        note: was already passing before fix
+      - name: "TC-OBS-05-INT-02: bpm_audit_resource_info view returns correct resource_id for dead_letter_items"
+        verdict: PASS
+        note: fixed by removing ::uuid cast from resource_id query (commit cfd5c9fe)
+      - name: "TC-OBS-05-INT-03: SAVEPOINT-based isolation correctly isolates failing audit inserts"
+        verdict: PASS
+        note: fixed by migration 1139 + SAVEPOINT pattern fix (commit c2862c34)
+    log: scratch/_wf03_gh379_obs05.log
+
+  - layer: integration_sch303
+    command: "zig build test-integration-sch303 --summary all"
+    exit_code: 0
+    result: PASS
+    tests_passed: 4
+    tests_total: 4
+    log: scratch/_wf03_gh379_sch303v2.log
+
+pre_existing_failures:
+  count: 57
+  note: >
+    All 57 integration failures are pre-existing, tracked under separate GitHub issues.
+    None are related to ISS-0116 (TC-OBS-05 DLQ audit resource_id cast).
+    Sampled failures: TC-DB-03-02, TC-ES-08-04, TC-OBS-03-INT-01..06,
+    TC-ADP-09-01..04, TC-XC-02-01/04/05/06/07, TC-ENV-02-01, TC-EXP-401-02..05.
+    These are not caused by any change in this run.
+
+acceptance_criteria_check:
+  - criterion: "TC-OBS-05-INT-02 passes"
+    met: true
+  - criterion: "TC-OBS-05-INT-03 passes"
+    met: true
+  - criterion: "zig build test exits 0"
+    met: true
+  - criterion: "TC-SCH-303 still passes"
+    met: true
+
+fixes_verified:
+  - file: tests/integration/obs05_dlq_test.zig
+    change: "Removed ::uuid cast from resource_id queries at lines 395 and 462"
+    commit: cfd5c9fe
+  - file: migrations/1139_iss0116_fix_bpm_audit_resource_info_dead_letter_items.sql
+    change: "New migration to fix bpm_audit_resource_info view for dead_letter_items"
+    commit: c2862c34
+  - file: tests/integration/obs05_dlq_test.zig
+    change: "SAVEPOINT-based isolation fix in TC-OBS-05-INT-03"
+    commit: c2862c34

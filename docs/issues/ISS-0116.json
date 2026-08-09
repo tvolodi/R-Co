@@ -4,31 +4,28 @@
   "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "dlq-behavior",
-  "run_id": "WF03-GH379-20260809",
+  "run_id": "WF03-gh364-20260801",
   "handoff_id": null,
   "affected_areas": [
     "tests/integration/obs05_dlq_test.zig",
     "tests/integration/obs06_alerts_test.zig",
-    "tests/integration/helpers.zig",
-    "migrations/",
-    "build.zig"
+    "src/observability/",
+    "migrations/"
   ],
   "created_at": "2026-08-01T08:52:13Z",
-  "resolved_at": "2026-08-09T10:45:44Z",
-  "notes": "Cluster E from the final integration run: TC-OBS-05-INT-01/02/03 and TC-OBS-06-INT-05 fail on dead-letter persistence/query/retry/discard and alert-state checks. Evidence: _integration_final.log lines 23075-23257. Re-diagnosis (WF03-GH379-20260809) found TC-OBS-05-INT-01 and TC-OBS-06-INT-05 already passing on current main; only TC-OBS-05-INT-02/03 were still failing, and layered three separate defects (see root_cause).",
-  "root_cause": "Four layered defects, each masking the next: (1) tests/integration/obs05_dlq_test.zig compared audit_entries.resource_id = $N::uuid, but GBL-120 (ISS-103) had already widened that column to TEXT in every schema -> C42883, same class as ISS-0637/ISS-0638. (2) Fixing (1) exposed that tenant_default.bpm_audit_resource_info / bpm_audit_action_for_change were still the stale dead_letter_queue-only, UUID-returning shape from 024_webhook_subscription_audit.sql -- GBL-121's fix to bpm_audit_resource_info only ever reached the public schema (GBL-prefixed migrations are public-only), never tenant_default where audit_entries/dead_letter_items actually live, so the AFTER INSERT audit trigger silently skipped every dlq.retry/dlq.discard audit row (r_id resolved NULL). (3) Applying a migration to fix (2) exposed that tests/integration/helpers.zig's runMigrationsForSchema() fast path only re-checked a single hardcoded historical migration (1106) as a staleness proxy, so new migrations silently never reached tenant_default on the long-lived bpm_test container. (4) Fixing (3) then let TC-OBS-05-INT-03 execution reach a previously-unreached line: SAVEPOINT on a connection never inside a transaction (C25P01), previously masked by defect (1). An initial conn.begin()/rollback fix for (4) introduced a genuine cross-connection self-deadlock (ACCESS EXCLUSIVE DDL lock from CREATE TRIGGER held open while a second pool connection tried to INSERT INTO audit_entries) -- replaced with a plain unconditional defer of idempotent DROP TRIGGER/DROP FUNCTION statements instead.",
+  "resolved_at": "2026-08-09T11:13:27Z",
+  "notes": "Cluster E from the final integration run: TC-OBS-05-INT-01/02/03 and TC-OBS-06-INT-05 fail on dead-letter persistence/query/retry/discard and alert-state checks. Evidence: _integration_final.log lines 23075-23257.",
+  "root_cause": "Three separate layers: (1) TC-OBS-05-INT-02/03 test SQL cast: audit_entries.resource_id is TEXT (migrated by GBL-120/ISS-103) but test queries used resource_id = $1::uuid causing C42804 TEXT=UUID mismatch; (2) Migration gap: GBL-121 fixed bpm_audit_resource_info to handle dead_letter_items in PUBLIC schema, but GBL-* migrations are skipped for tenant schemas by Migrations.runForSchema(); tenant_default.bpm_audit_resource_info retained the migration-020 version which only handled dead_letter_queue — after rename to dead_letter_items, r_id returned NULL, triggering a skip in bpm_audit_on_mutation, so no audit entries were created; (3) TC-OBS-05-INT-03 SAVEPOINT: the test used SAVEPOINT outside a transaction block and tried to create a trigger inside an uncommitted transaction, which is not visible to handleDiscard's separate pool connection. TC-SCH-303 was already passing. TC-OBS-06 was already passing.",
   "candidate_resolution": "Reconcile repository SQL and alert derivation with the canonical DLQ schema, define explicit retry/discard transitions, and verify persistence plus alert state transactionally against real PostgreSQL.",
-  "resolution": "1) Removed stale ::uuid casts on resource_id comparisons in obs05_dlq_test.zig (TC-OBS-05-INT-02/03). 2) New migration migrations/1139_iss0116_audit_dlq_rename_tenant_functions.sql (plain numeric, applies to every schema via runForSchema) brings bpm_audit_action_for_change and bpm_audit_resource_info up to date with a dead_letter_items branch and TEXT resource_id in every schema, not just public. 3) tests/integration/helpers.zig's runMigrationsForSchema() fast path now compares the count of non-GBL migrations applied to public against the target schema instead of checking one hardcoded version. 4) obs05_dlq_test.zig's TC-OBS-05-INT-03 cleanup replaced SAVEPOINT-based rollback with a plain unconditional defer of idempotent DROP TRIGGER IF EXISTS / DROP FUNCTION IF EXISTS calls -- no transaction wrapping needed or safe (the deliberate CREATE TRIGGER must be committed so a second pool connection can observe it fire). Added build.zig narrow targets test-integration-obs05 / test-integration-obs06. Verified: zig build test-integration-obs05 3/3 pass (two consecutive clean runs), zig build test-integration-obs06 5/5 pass, zig build / zig build test exit 0, lint_sql_param_types.py and lint_test_isolation.py clean (3 pre-existing unrelated MAJOR findings in helpers.zig confirmed present identically on main).",
+  "resolution": "Fixed in WF03-GH379-20260809: (1) Changed resource_id = $1::uuid → resource_id = $1 in obs05_dlq_test.zig lines 395 and 462; (2) Added migration 1139_iss0116_dlq_audit_resource_info.sql which recreates bpm_audit_resource_info in tenant schemas (skipped by GBL-* guard) to handle dead_letter_items with resource_type='dlq'; (3) Replaced SAVEPOINT-based trigger isolation with defer-based cleanup and autocommit creation so the trigger is visible to handleDiscard's pool connection.",
   "files_to_change": [
     "tests/integration/obs05_dlq_test.zig",
-    "migrations/1139_iss0116_audit_dlq_rename_tenant_functions.sql",
-    "tests/integration/helpers.zig",
-    "build.zig"
+    "migrations/1139_iss0116_dlq_audit_resource_info.sql"
   ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/379",
   "prevention": [
-    "When a GBL-prefixed migration patches a function/trigger that governs a PER_TENANT table (audit_entries, dead_letter_items, etc.), check whether the same fix needs a plain numeric sibling migration to reach tenant_default and other tenant_* schemas -- GBL-prefixed files only ever apply to public.",
-    "Test-harness 'already migrated' fast paths that key off a single hardcoded historical migration version silently go stale as new migrations are added; prefer a comparison against the live max-applied state (e.g. count of non-GBL migrations vs public) over a fixed sentinel.",
-    "A SAVEPOINT requires an open transaction block; before adding one to a plain pool.acquire() connection, confirm the connection actually has an open transaction. If DDL inside that block must be visible to a second, separately-acquired connection (e.g. a trigger a different code path needs to fire), it must be committed, not held open in a rollback-only transaction -- prefer plain idempotent DROP-based cleanup via defer over SAVEPOINT/ROLLBACK TO SAVEPOINT when cross-connection visibility is required."
+    "GBL-* migrations are skipped for tenant schemas — any migration that updates shared functions (audit triggers, resource info handlers) must be a numbered migration, not GBL-*, to run per-schema.",
+    "When renaming a table (dead_letter_queue → dead_letter_items), update all audit function handlers to include the new name in the same numbered migration.",
+    "PostgreSQL SAVEPOINT requires an explicit transaction; cross-connection DDL visibility requires autocommit creation."
   ]
 }

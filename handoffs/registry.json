@@ -22430,6 +22430,61 @@
       "created_at": "2026-08-09T11:29:06Z",
       "status": "COMPLETED",
       "stage": "WF-03 Step 07"
+    },
+    {
+      "handoff_id": "1214a791-6b2e-4a5f-9a3d-000000000000",
+      "file": "handoffs/WF03-GH379-20260809/step-00-backend-dev.json",
+      "run_id": "WF03-GH379-20260809",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-09T10:02:12Z",
+      "status": "COMPLETED",
+      "stage": "Step 00"
+    },
+    {
+      "handoff_id": "2c0e27e1-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-GH379-20260809/step-0.5-issue-fixer.json",
+      "run_id": "WF03-GH379-20260809",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T10:29:55Z",
+      "status": "COMPLETED",
+      "stage": "Step 0.5"
+    },
+    {
+      "handoff_id": "8d300b53-6e2f-4739-ab6b-5d6cfc265469",
+      "file": "handoffs/WF03-GH379-20260809/step-1-issue-fixer.json",
+      "run_id": "WF03-GH379-20260809",
+      "step": "1",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T10:29:55Z",
+      "status": "COMPLETED",
+      "stage": "Step 1"
+    },
+    {
+      "handoff_id": "4bdfdeb1-820f-4217-abc9-836dd7ca643e",
+      "file": "handoffs/WF03-GH379-20260809/step-05-test-runner.json",
+      "run_id": "WF03-GH379-20260809",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-09T11:17:45Z",
+      "status": "COMPLETED",
+      "stage": "Step 5"
+    },
+    {
+      "handoff_id": "b8922472-7c7d-44d7-9359-a0af1a22f385",
+      "file": "handoffs/WF03-GH379-20260809/step-07-doc-updater.json",
+      "run_id": "WF03-GH379-20260809",
+      "step": "07",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-09T11:26:40Z",
+      "status": "COMPLETED",
+      "stage": "Step 7"
     }
   ],
   "last_updated": "2026-08-09T10:18:47Z"
