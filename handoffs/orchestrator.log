@@ -650,3 +650,4 @@
 2026-08-09T04:37:50Z | COMPLETE | WF03-GH606-20260809 | a3e91c57 | BACKEND-DEV | PASS — TC-DB-02-04 safe_pool_size probe + docker-compose max_connections=500; zig build+test green
 2026-08-09T05:01:39Z | COMPLETE | WF03-GH606-20260809 | d8ad27ea | TEST-RUNNER | PASS — TC-DB-02-04 no longer fails (safe_pool_size probe + u8 fix); 86 pre-existing failures unrelated
 2026-08-09T05:07:00Z | COMPLETE | WF03-GH606-20260809 | c4f2a1e8 | DOC-UPDATER | PASS — CHANGELOG + ISS-0631 RESOLVED + GH-606 closed
+2026-08-09T05:12:26Z | MERGE | WF03-GH606-20260809 | f9a3c2e1 | BACKEND-DEV | PR #609 squash-merged commit 541cc388, branch deleted, main clean. GH-606 Done. Lock RESOLVED.

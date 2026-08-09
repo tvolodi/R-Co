@@ -810,14 +810,11 @@
       "labels": [
         "bug"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI-loop",
-        "locked_at": "2026-08-09T04:07:52Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T04:07:52Z",
       "started_at": "2026-08-09T04:07:52Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T05:12:22Z",
       "run_id": null,
       "deferred_reason": null
     }
