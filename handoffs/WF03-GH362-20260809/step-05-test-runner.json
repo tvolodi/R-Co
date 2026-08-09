@@ -35,7 +35,7 @@
     "status": "PASS",
     "summary": "test-integration-env confirmed as ENV-only scope: 36 tests (env01/env01_tt/env02/env03/env05 only), vs 961 tests in full integration suite (3.7% subset). zig build test: exit 0 (all unit tests pass). 2 test failures (TC-ENV-01-03, TC-ENV-02-01) are pre-existing \u2014 confirmed failing in scratch/_iss0131_run1.log before this branch. Not introduced by ISS-0104 change. 45 DebugAllocator leaks are known tag_repr_storage process-lifetime intentional allocation. ISS-0104 / GH-362 acceptance criteria met: scoping is correct.",
     "artifacts_out": [
-      "tests/reports/report-20260809-WF03-GH362-20260809.yaml"
+      "docs/test-reports/report-20260809-WF03-GH362-20260809.yaml"
     ],
     "issues": [
       {
