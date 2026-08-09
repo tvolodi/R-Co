@@ -943,6 +943,26 @@
       "completed_at": "2026-08-09T09:58:06Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-614",
+      "issue_number": 614,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/614",
+      "title": "ISS-0633: TC-EXT-02-INT-05 HMAC webhook signature header not seen during dispatch",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T09:58:33Z"
+      },
+      "added_at": "2026-08-09T09:58:33Z",
+      "started_at": "2026-08-09T09:58:33Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
