@@ -6,6 +6,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0119 — Timer retry/pending/locking/rollback semantics (TC-SCH-02-02, TC-SCH-02-03) verified fixed (MAJOR)** ([GitHub #382](https://github.com/tvolodi/R-Co/issues/382))
+
+- **The original defects:** (1) `processNextDueTimer()` returned `.none` instead of `.skipped_locked` when `SELECT … SKIP LOCKED` returned 0 rows in the ordinary-timer branch — causing TC-SCH-02-02 to fail with an unexpected return value. (2) A `catch break:fire_blk false` pattern in the timer-fire block silently swallowed `appendTimerFiredEventInTx` errors, preventing `TransactionFailed` from surfacing — causing TC-SCH-02-03 to fail by not observing the expected error.
+- **The fix:** commit `6b042542` (WF03-GH567 / PR #572, merged 2026-08-08) fixed both: the ordinary-timer SKIP-LOCKED branch now counts `skipped_locked`, and the fire block propagates `appendTimerFiredEventInTx` errors rather than swallowing them.
+- **Verified (WF03-GH382-20260809, 2026-08-09):** `zig build test-integration-sch02` — 23/23 passed; `zig build test-integration-sch303` — 4/4 passed. TC-SCH-02-02 and TC-SCH-02-03 both PASS on current `main`. ISS-0119 marked RESOLVED.
+
 **ISS-0632 — `lint_sql_param_types.py` extended to detect 42P18 (bare `$N` in `jsonb_build_object` variadic-any calls) (MINOR)** ([GitHub #610](https://github.com/tvolodi/R-Co/issues/610))
 
 - **The gap:** `lint_sql_param_types.py` only detected C42883 patterns (asymmetric `col::text = $N` casts and integer literals vs TEXT columns). It did not detect bare `$N` parameters used inside variadic-any functions (`jsonb_build_object`, `json_build_object`, `format`, `row`) where PostgreSQL cannot infer the parameter type at prepare time, producing `ERROR 42P18: could not determine data type of parameter $N` at runtime — the same class of error that produced ISS-0120/GH-383.
