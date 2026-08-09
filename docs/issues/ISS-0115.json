@@ -1,24 +1,32 @@
 {
   "id": "ISS-0115",
   "title": "Task claim and group authorization behavior violates integration expectations",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "task-claim-group-behavior",
-  "run_id": "WF03-gh364-20260801",
+  "run_id": "WF03-GH378-20260809",
   "handoff_id": null,
   "affected_areas": [
     "tests/integration/iss102_claim_test.zig",
-    "tests/integration/idn02_group_tasks_test.zig",
+    "tests/integration/idn02_group_management_test.zig",
     "src/tasks/",
     "src/identity/"
   ],
   "created_at": "2026-08-01T08:52:13Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T11:27:09Z",
   "notes": "Cluster D from the final integration run: TC-ISS-102-02/04/05/08 and TC-IDN-02-06/07 fail around concurrent claim winner selection, NotPending, completion by the claimed user, authorization, and group membership behavior. Evidence: _integration_final.log lines 8595-8686 and 16875-23074.",
-  "root_cause": "TBD. Initial hypothesis: task state-transition predicates and group-membership authorization are inconsistent between claim and completion paths, with concurrency exposing non-atomic winner/state checks.",
+  "root_cause": "Already resolved by two later, separately-tracked fixes before this WF-03 run started: (1) ISS-0619/GH-568 (commit eea8b9f, 2026-08-08) replaced an unconditional deny in src/api/routes/tasks.zig handleComplete Branch 3 with a live identity.canClaimGroupTask(...) group-membership check, fixing TC-IDN-02-06/07. (2) ISS-0124/GH-390 (commit 3bc063b, 2026-08-02) fixed 15+ PostgreSQL C42883 asymmetric type-cast errors across 8 files one day after this issue was filed, from the same failing full-suite run window; TC-ISS-102-02/04/05/08 exercise TaskStore.claimTask's single-statement atomic UPDATE ... WHERE claimed_by IS NULL AND status='PENDING' RETURNING ... compare-and-swap (already correct at the time of filing) and task_routes.handleComplete's claimed_by-only ownership check — a C42883 error on a related query path is the most plausible explanation for the original failures, since it surfaces to Zig as a generic PoolError/InvalidInput indistinguishable from a logic defect on first read.",
   "candidate_resolution": "Define one transactional claim/complete state machine, enforce atomic pending-to-claimed updates, and centralize user/group authorization checks against the same membership source used by both operations.",
-  "resolution": null,
+  "resolution": {
+    "summary": "Verification-only WF-03 run. Re-ran all 6 named tests (plus their 9 sibling tests in the same 2 files, 15 total) against a live, freshly migrated PostgreSQL test database, 6 consecutive times each -- 100% pass, including the two-real-OS-thread concurrency test TC-ISS-102-02. No production code changes were needed; the claim/complete authorization logic already satisfies all 4 ISS-0115 acceptance criteria (atomic single-statement claim CAS, claimed_by-only completion, USER-assignee completion, GROUP-membership completion). Added a dedicated `zig build test-integration-idn02` narrow target (build.zig, additive only) so tests/integration/idn02_group_management_test.zig has the same fast isolated regression coverage as the existing test-integration-iss102 target, instead of only being reachable via the full test-integration aggregate. No test assertions were loosened; no authorization check was widened.",
+    "files_modified": [
+      "build.zig"
+    ]
+  },
   "files_to_change": [],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/378",
-  "prevention": []
+  "prevention": [
+    "When a full-suite integration run reports a generic InvalidInput/500-mapped failure for a claim/complete test, check for PostgreSQL C42883 (asymmetric type cast) in the query path before assuming an authorization-logic defect -- a cast error and a logic defect surface identically to the Zig caller.",
+    "Added zig build test-integration-idn02 as a narrow, fast target for tests/integration/idn02_group_management_test.zig so this cluster's regression status can be checked in ~1s instead of via the multi-minute full test-integration aggregate."
+  ]
 }

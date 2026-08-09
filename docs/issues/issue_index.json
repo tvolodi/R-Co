@@ -1188,19 +1188,19 @@
     {
       "id": "ISS-0115",
       "title": "Task claim and group authorization behavior violates integration expectations",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "task-claim-group-behavior",
-      "run_id": "WF03-gh364-20260801",
+      "run_id": "WF03-GH378-20260809",
       "handoff_id": null,
       "affected_areas": [
         "tests/integration/iss102_claim_test.zig",
-        "tests/integration/idn02_group_tasks_test.zig",
+        "tests/integration/idn02_group_management_test.zig",
         "src/tasks/",
         "src/identity/"
       ],
       "created_at": "2026-08-01T08:52:13Z",
-      "resolved_at": null,
+      "resolved_at": "2026-08-09T11:27:09Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/378"
     },
     {
