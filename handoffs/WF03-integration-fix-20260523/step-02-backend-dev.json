@@ -1,7 +1,7 @@
 {
   "handoff_id": "wf030002-2605-4000-8002-202605230002",
-  "workflow_id": "WF-03",
-  "sequence": 2,
+  "run_id": "WF03-integration-fix-20260523",
+  "step": "02",
   "from_agent": "ORCH",
   "to_agent": "BACKEND-DEV",
   "created_at": "2026-05-23T06:40:00Z",
@@ -10,23 +10,33 @@
   "priority": "HIGH",
   "context": {
     "stage": "All stages (1-4)",
-    "requirement_ids": ["EE-01", "EE-10", "API-03"],
-    "related_handoff_ids": ["wf030001-2605-4000-8001-202605230001"],
-    "artifacts_in": ["handoffs/WF03-integration-fix-20260523/step-01-issue-fixer.json"]
+    "requirement_ids": [
+      "EE-01",
+      "EE-10",
+      "API-03"
+    ],
+    "related_handoff_ids": [
+      "wf030001-2605-4000-8001-202605230001"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-integration-fix-20260523/step-01-issue-fixer.json"
+    ]
   },
   "task": {
-    "description": "Fix 8 remaining integration test failures caused by InstanceStore.create() not triggering the initial transition from START node.\n\nContext: After ISSUE-FIXER resolved 12 of 21 failures (137/146 pass), 8 tests still fail because when an instance is created, the system doesn't automatically execute the initial transition from the START node — so no tasks are created (tasks_list.len == 0).\n\nThis affects tests in:\n- EE-01 (instance creation/initialization tests)\n- EE-10 (error transition tests that depend on initial tasks)\n- API-03 (instance read/cancel tests that depend on initial state)\n\nFix: In InstanceStore.create() (src/engine/ or src/definition/), after creating the instance, trigger the initial transition from the START node to create the first set of tasks. This is a core engine behavior. DO NOT put I/O in src/engine/transition.zig — keep that pure. The I/O should happen in the store/handler layer.\n\nAfter fixing, verify with: zig build && zig build test-integration",
+    "description": "Fix 8 remaining integration test failures caused by InstanceStore.create() not triggering the initial transition from START node.\n\nContext: After ISSUE-FIXER resolved 12 of 21 failures (137/146 pass), 8 tests still fail because when an instance is created, the system doesn't automatically execute the initial transition from the START node \u2014 so no tasks are created (tasks_list.len == 0).\n\nThis affects tests in:\n- EE-01 (instance creation/initialization tests)\n- EE-10 (error transition tests that depend on initial tasks)\n- API-03 (instance read/cancel tests that depend on initial state)\n\nFix: In InstanceStore.create() (src/engine/ or src/definition/), after creating the instance, trigger the initial transition from the START node to create the first set of tasks. This is a core engine behavior. DO NOT put I/O in src/engine/transition.zig \u2014 keep that pure. The I/O should happen in the store/handler layer.\n\nAfter fixing, verify with: zig build && zig build test-integration",
     "acceptance_criteria": [
       "At least the 8 task-creation tests pass (ideally all 146 pass)",
       "No new failures introduced",
-      "zig build test-integration shows ≤1 remaining failures (the pre-existing race test TC-EE-10-05)",
+      "zig build test-integration shows \u22641 remaining failures (the pre-existing race test TC-EE-10-05)",
       "No I/O in src/engine/transition.zig"
     ],
-    "functions_to_call": ["fn:run-integration-tests"]
+    "functions_to_call": [
+      "fn:run-integration-tests"
+    ]
   },
   "result": {
     "status": "PASS",
-    "summary": "Fixed InstanceStore.create() to trigger the initial transition from the START node when a new instance is created. After INSERTing the instance row, the function now calls transition() (pure function, no I/O) with the instance_started event, then persists the resulting state (UPDATE instance_projections with current_nodes and variables, INSERT event row, INSERT token rows, INSERT task rows) in a single DB transaction. Also fixed completeTask's gateway_node_id detection to follow outgoing edges from the task node instead of searching tokens (which never reach the gateway before NoMatchingEdge fires). Updated 5 integration tests that used START→END graphs (now complete immediately) to use START→SERVICE_TASK→END graphs that stay ACTIVE. Fixed 2 tests with incorrect expectations (SchemaViolationError→InstanceInError, TASK_COMPLETED→task_completed). Result: 145/146 tests pass (was 125/146 before any fixes, was 137/146 after ISSUE-FIXER). Only remaining failure is TC-EE-10-05 (pre-existing concurrent ERROR race condition).",
+    "summary": "Fixed InstanceStore.create() to trigger the initial transition from the START node when a new instance is created. After INSERTing the instance row, the function now calls transition() (pure function, no I/O) with the instance_started event, then persists the resulting state (UPDATE instance_projections with current_nodes and variables, INSERT event row, INSERT token rows, INSERT task rows) in a single DB transaction. Also fixed completeTask's gateway_node_id detection to follow outgoing edges from the task node instead of searching tokens (which never reach the gateway before NoMatchingEdge fires). Updated 5 integration tests that used START\u2192END graphs (now complete immediately) to use START\u2192SERVICE_TASK\u2192END graphs that stay ACTIVE. Fixed 2 tests with incorrect expectations (SchemaViolationError\u2192InstanceInError, TASK_COMPLETED\u2192task_completed). Result: 145/146 tests pass (was 125/146 before any fixes, was 137/146 after ISSUE-FIXER). Only remaining failure is TC-EE-10-05 (pre-existing concurrent ERROR race condition).",
     "artifacts_out": [
       "src/engine/instance.zig",
       "tests/integration/ee08_cancel_instance_test.zig",
@@ -37,7 +47,7 @@
       {
         "id": "ISSUE-PRE-002",
         "severity": "MAJOR",
-        "description": "TC-EE-10-05 concurrent ERROR race test fails — pre-existing race condition in setInstanceError concurrency test.",
+        "description": "TC-EE-10-05 concurrent ERROR race test fails \u2014 pre-existing race condition in setInstanceError concurrency test.",
         "affected_requirement": "EE-10"
       }
     ],

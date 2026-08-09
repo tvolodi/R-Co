@@ -1,7 +1,7 @@
 {
   "handoff_id": "wf040006-2605-4000-8006-202605230006",
-  "workflow_id": "WF-04",
-  "sequence": 6,
+  "run_id": "WF04-full-20260523",
+  "step": "06",
   "from_agent": "ORCH",
   "to_agent": "RELEASE-VALIDATOR",
   "created_at": "2026-05-23T06:55:00Z",
@@ -10,8 +10,12 @@
   "priority": "HIGH",
   "context": {
     "stage": "All stages (1-4)",
-    "requirement_ids": ["all-Stage1-thru-Stage4"],
-    "related_handoff_ids": ["wf040005-2605-4000-8005-202605230005"],
+    "requirement_ids": [
+      "all-Stage1-thru-Stage4"
+    ],
+    "related_handoff_ids": [
+      "wf040005-2605-4000-8005-202605230005"
+    ],
     "artifacts_in": [
       "tests/reports/WF04-full-20260523-step01-build-check.md",
       "tests/reports/WF04-full-20260523-step02-unit-tests.md",
@@ -21,17 +25,19 @@
     ]
   },
   "task": {
-    "description": "WF-04 Step 6 — NFR Benchmarks.\n\nRun NFR benchmark checks:\n- NFR-01: p99 read ≤ 200ms; p99 write ≤ 500ms\n- NFR-02: event append ≥ 1,000/sec sustained\n- NFR-04: 10,000-event replay ≤ 5 seconds\n\nIf benchmarks cannot run (e.g., no HTTP server), run `zig build bench` for any available benchmarks and report results.\nIf no benchmarks are configured, report PASS with SKIP note — this is acceptable.\n\nAdditionally, compile a summary of all previous steps (1-5) for the final report.",
+    "description": "WF-04 Step 6 \u2014 NFR Benchmarks.\n\nRun NFR benchmark checks:\n- NFR-01: p99 read \u2264 200ms; p99 write \u2264 500ms\n- NFR-02: event append \u2265 1,000/sec sustained\n- NFR-04: 10,000-event replay \u2264 5 seconds\n\nIf benchmarks cannot run (e.g., no HTTP server), run `zig build bench` for any available benchmarks and report results.\nIf no benchmarks are configured, report PASS with SKIP note \u2014 this is acceptable.\n\nAdditionally, compile a summary of all previous steps (1-5) for the final report.",
     "acceptance_criteria": [
       "NFR benchmarks run (or SKIP with documented reason)",
       "Summary of Steps 1-5 compiled",
       "Report written to tests/reports/WF04-full-20260523-step06-nfr-benchmarks.md"
     ],
-    "functions_to_call": ["fn:run-nfr-benchmarks"]
+    "functions_to_call": [
+      "fn:run-nfr-benchmarks"
+    ]
   },
   "result": {
     "status": "FAIL",
-    "summary": "Release BLOCKED for all stages (1-4). Integration tests have 15 BLOCKER failures on MUST requirements (EE-01, EE-09, EE-10, PD-08) primarily due to DuplicateNameVersion and GraphValidationFailed. NFR benchmarks SKIP (not yet implemented). Two MUST requirements (API-09 Request tracing, API-12 Health endpoints) remain in VALIDATED status — not TESTED or RELEASED. Decision written to docs/status/release-all-stages-20260523.json.",
+    "summary": "Release BLOCKED for all stages (1-4). Integration tests have 15 BLOCKER failures on MUST requirements (EE-01, EE-09, EE-10, PD-08) primarily due to DuplicateNameVersion and GraphValidationFailed. NFR benchmarks SKIP (not yet implemented). Two MUST requirements (API-09 Request tracing, API-12 Health endpoints) remain in VALIDATED status \u2014 not TESTED or RELEASED. Decision written to docs/status/release-all-stages-20260523.json.",
     "artifacts_out": [
       "tests/reports/WF04-full-20260523-step06-nfr-benchmarks.md",
       "docs/status/release-all-stages-20260523.json"
@@ -46,13 +52,13 @@
       {
         "id": "ISSUE-RV-002",
         "severity": "BLOCKER",
-        "description": "API-09 (Request tracing) is a MUST requirement in VALIDATED status — needs implementation and testing",
+        "description": "API-09 (Request tracing) is a MUST requirement in VALIDATED status \u2014 needs implementation and testing",
         "affected_requirement": "API-09"
       },
       {
         "id": "ISSUE-RV-003",
         "severity": "BLOCKER",
-        "description": "API-12 (Health endpoints) is a MUST requirement in VALIDATED status — needs implementation and testing",
+        "description": "API-12 (Health endpoints) is a MUST requirement in VALIDATED status \u2014 needs implementation and testing",
         "affected_requirement": "API-12"
       },
       {

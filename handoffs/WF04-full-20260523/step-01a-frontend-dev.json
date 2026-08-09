@@ -1,7 +1,7 @@
 {
   "handoff_id": "wf04001a-2605-4000-8001-202605230001",
-  "workflow_id": "WF-04",
-  "sequence": 1,
+  "run_id": "WF04-full-20260523",
+  "step": "01a",
   "from_agent": "ORCH",
   "to_agent": "FRONTEND-DEV",
   "created_at": "2026-05-23T06:15:00Z",

@@ -1,7 +1,7 @@
 {
   "handoff_id": "a0800004-2605-4000-8008-202605230004",
-  "workflow_id": "WF02-api08-20260523",
-  "sequence": 4,
+  "run_id": "WF02-api08-20260523",
+  "step": "04",
   "from_agent": "ORCH",
   "to_agent": "TEST-RUNNER",
   "created_at": "2026-05-23T05:44:04Z",
@@ -9,8 +9,10 @@
   "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
-    "stage": "Stage 4 — API Layer",
-    "requirement_ids": ["API-08"],
+    "stage": "Stage 4 \u2014 API Layer",
+    "requirement_ids": [
+      "API-08"
+    ],
     "related_handoff_ids": [
       "a0800001-2605-4000-8008-202605230001",
       "a0800002-2605-4000-8008-202605230002",
@@ -22,18 +24,23 @@
     ]
   },
   "task": {
-    "description": "Run the API-08 test suite and produce a structured test report.\n\nCommands:\n1. zig build test\n\nReport: tests/reports/API-08-test-report.md per test guide §8.\n\nNote: Some tests may conditionally skip (bootstrap token, DB). That's expected. Verify all active tests pass and zig build test exits 0.",
+    "description": "Run the API-08 test suite and produce a structured test report.\n\nCommands:\n1. zig build test\n\nReport: tests/reports/API-08-test-report.md per test guide \u00a78.\n\nNote: Some tests may conditionally skip (bootstrap token, DB). That's expected. Verify all active tests pass and zig build test exits 0.",
     "acceptance_criteria": [
       "zig build test exits 0",
       "All active API-08 tests pass (skips allowed)",
       "Structured test report at tests/reports/API-08-test-report.md"
     ],
-    "functions_to_call": ["fn:run-zig-tests", "fn:write-test-report"]
+    "functions_to_call": [
+      "fn:run-zig-tests",
+      "fn:write-test-report"
+    ]
   },
   "result": {
     "status": "PASS",
-    "summary": "API-08 unit tests: 4 passed, 0 failed, 5 skipped. All active tests pass. Skipped tests are environment-dependent (bootstrap token not set, not in production mode) or cover defensive code paths — expected to be validated at integration layer. zig build test exits 0.",
-    "artifacts_out": ["tests/reports/API-08-test-report.md"],
+    "summary": "API-08 unit tests: 4 passed, 0 failed, 5 skipped. All active tests pass. Skipped tests are environment-dependent (bootstrap token not set, not in production mode) or cover defensive code paths \u2014 expected to be validated at integration layer. zig build test exits 0.",
+    "artifacts_out": [
+      "tests/reports/API-08-test-report.md"
+    ],
     "issues": [],
     "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5) or next step as determined by ORCH"
   },

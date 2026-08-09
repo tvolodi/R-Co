@@ -2,9 +2,18 @@
 
 All notable changes to the BPM Platform are documented here.
 
-## [Unreleased] — 2026-08-09
+## [Unreleased] — 2026-08-10
 
 ### Fixed
+
+**ISS-0627 — remaining lint_handoffs.py historical debt resolved: H013, H001-structural, H006-CONDITIONAL, H007 (MAJOR)** ([GitHub #596](https://github.com/tvolodi/R-Co/issues/596))
+
+- **H006** (1 finding): `CONDITIONAL` result status mapped to `PARTIAL`, matching the established convention for a mostly-passing-with-diagnosed-failures test run (3/5 layers clean, 1 layer 95.5% pass rate with root-caused failures).
+- **H007** (53 findings — larger than the originally-estimated 69/~10-file scope): `workflow_id`/`sequence` renamed to `run_id`/`step` across `WF02-api07/08/09-20260523`, `WF03-integration-fix-20260523`, `WF04-full-20260523`. Caught and corrected a subtlety mid-fix: two runs' `workflow_id` held the workflow-type label (`"WF-03"`/`"WF-04"`), not the run identifier — fixed by deriving `run_id` from the run's own directory name instead. Two structurally-different files (a misfiled `docs/issues/`-shaped record, a genuinely truncated handoff) were acknowledged in the baseline rather than fabricated into the schema.
+- **H001-structural** (8 files — more than the ~4 estimated): each read and fixed on its own evidence — a stray `]` closing an object instead of `}` (the exact example the issue named), raw unescaped newlines inside a JSON string, smart-quote + mojibake em-dash corruption (3 files, `PowerShell`-curly-quote pattern), a stray misplaced field pasted inside an unrelated array, an invalid `\$` JSON escape, and a file truncated mid-object (missing its final closing brace). Two of these fixes revealed pre-existing H004/H005 findings the unparseable JSON had been masking — added to the baseline under the existing categories.
+- **H013** (53 findings): correction **rejected**, folded into the H003/H004/H005/H009 acknowledgment mechanism per this issue's own stated fallback. The 53 whole-hour-clock-skew offsets cluster around multiple different values (1h/2h/4h/5h/7h/8h/~10h) with no single consistent correction, and a spot-check of the least-round-number pair found a 9h55m23s gap that doesn't resolve to any clean hour value — confirming a uniform correction script would be actively wrong for at least some entries.
+- **Verified:** `tools/lint_handoffs.py` — 63 BLOCKER + 72 MAJOR (this issue's four-category scope) → 1 BLOCKER + 1 MAJOR remaining, both from concurrent same-day workspace activity outside this issue's historical scope. `zig build` exits 0.
+- **No requirement status change** — historical audit-trail data repair. Design: `src/design/fix-ISS-0627-h013-h001-h006-h007.md`.
 
 **ISS-0094 — final 3 files with stale `resource_id = $N::uuid` casts fixed (MAJOR)** ([GitHub #348](https://github.com/tvolodi/R-Co/issues/348))
 

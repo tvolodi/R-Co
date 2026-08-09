@@ -26,10 +26,7 @@
     ]
   },
   "task": {
-    "description": "Update the orchestration documentation and function references so the new registry layout becomes the documented contract.\n\nRequired updates:\n- docs/agents/AGENT_SYSTEM.md\n- docs/agents/ORCHESTRATOR.md\n- docs/agents/functions/fn-register-handoff.md\n- docs/agents/functions/fn-create-handoff.md\n- docs/agents/functions/fn-load-handoff.md\n- Any other docs/agents files that still describe the registry as a single append-only file\n\nUse src/design/registry-layout.md as the source of truth. The docs should clearly describe:\n- active registry vs per-run registries\n- ORCH ownership of the active registry and run-registry creation
-- how agents resolve handoffs from run-local files
-- backward compatibility during migration
-- failure/recovery behavior when a registry file is missing or stale\n\nDo not change source code in this step; keep it documentation-only.",
+    "description": "Update the orchestration documentation and function references so the new registry layout becomes the documented contract.\n\nRequired updates:\n- docs/agents/AGENT_SYSTEM.md\n- docs/agents/ORCHESTRATOR.md\n- docs/agents/functions/fn-register-handoff.md\n- docs/agents/functions/fn-create-handoff.md\n- docs/agents/functions/fn-load-handoff.md\n- Any other docs/agents files that still describe the registry as a single append-only file\n\nUse src/design/registry-layout.md as the source of truth. The docs should clearly describe:\n- active registry vs per-run registries\n- ORCH ownership of the active registry and run-registry creation\n- how agents resolve handoffs from run-local files\n- backward compatibility during migration\n- failure/recovery behavior when a registry file is missing or stale\n\nDo not change source code in this step; keep it documentation-only.",
     "acceptance_criteria": [
       "Docs mention the new registry split and no longer describe a single-file-only contract",
       "ORCH create/load/complete procedures are updated consistently",

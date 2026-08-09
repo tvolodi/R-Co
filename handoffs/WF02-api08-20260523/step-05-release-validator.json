@@ -1,7 +1,7 @@
 {
   "handoff_id": "a0800005-2605-4000-8008-202605230005",
-  "workflow_id": "WF02-api08-20260523",
-  "sequence": 5,
+  "run_id": "WF02-api08-20260523",
+  "step": "05",
   "from_agent": "ORCH",
   "to_agent": "RELEASE-VALIDATOR",
   "created_at": "2026-05-23T05:49:46Z",
@@ -9,8 +9,10 @@
   "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
-    "stage": "Stage 4 — API Layer",
-    "requirement_ids": ["API-08"],
+    "stage": "Stage 4 \u2014 API Layer",
+    "requirement_ids": [
+      "API-08"
+    ],
     "related_handoff_ids": [
       "a0800001-2605-4000-8008-202605230001",
       "a0800002-2605-4000-8008-202605230002",
@@ -26,17 +28,19 @@
     ]
   },
   "task": {
-    "description": "Validate API-08 (Bearer token auth) for release.\n\nCheck all acceptance criteria from docs/requirements/API-08.md:\n- Missing Authorization → 401 + WWW-Authenticate\n- Unknown/revoked token → 401\n- Insufficient role → 403\n- Bootstrap token in non-production → PLATFORM_ADMIN\n- Bootstrap token in production → fatal startup error\n- 4/9 tests pass, 5 skip (requires env/DB), 0 fail, 0 leaks\n\nWrite release decision to docs/status/release-API-08-20260523.json.",
+    "description": "Validate API-08 (Bearer token auth) for release.\n\nCheck all acceptance criteria from docs/requirements/API-08.md:\n- Missing Authorization \u2192 401 + WWW-Authenticate\n- Unknown/revoked token \u2192 401\n- Insufficient role \u2192 403\n- Bootstrap token in non-production \u2192 PLATFORM_ADMIN\n- Bootstrap token in production \u2192 fatal startup error\n- 4/9 tests pass, 5 skip (requires env/DB), 0 fail, 0 leaks\n\nWrite release decision to docs/status/release-API-08-20260523.json.",
     "acceptance_criteria": [
       "All API-08 acceptance criteria verified",
       "No regressions in test suite",
       "Release decision written to docs/status/"
     ],
-    "functions_to_call": ["fn:check-acceptance-criteria"]
+    "functions_to_call": [
+      "fn:check-acceptance-criteria"
+    ]
   },
   "result": {
     "status": "PASS",
-    "summary": "API-08 (Bearer token auth) APPROVED for release. 4/9 unit tests pass, 0 fail, 5 skip (env-dependent or integration-deferred). Build exits 0. No regressions. All unit-testable acceptance criteria met. AC2 (unknown/revoked token) and AC3 (insufficient role → 403) deferred to integration tests. NFR benchmarks not available (suite not yet implemented) — non-blocking for auth middleware.",
+    "summary": "API-08 (Bearer token auth) APPROVED for release. 4/9 unit tests pass, 0 fail, 5 skip (env-dependent or integration-deferred). Build exits 0. No regressions. All unit-testable acceptance criteria met. AC2 (unknown/revoked token) and AC3 (insufficient role \u2192 403) deferred to integration tests. NFR benchmarks not available (suite not yet implemented) \u2014 non-blocking for auth middleware.",
     "artifacts_out": [
       "docs/status/release-API-08-20260523.json",
       "docs/issue-reports/WF02-api08-20260523-step-05-release-validator-INNER-REPORT.json"

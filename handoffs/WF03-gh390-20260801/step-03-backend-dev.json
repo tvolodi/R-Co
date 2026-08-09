@@ -34,7 +34,7 @@
                                        ]
              },
     "result":  {
-                   "summary":  "Fixed C42883 PostgreSQL errors by correcting SQL type casting asymmetry across 8 files (15+ queries). Asymmetric pattern 'column::type = \$N' changed to symmetric 'column = \$N::type'. Integration tests confirm C42883 errors eliminated.",
+                   "summary":  "Fixed C42883 PostgreSQL errors by correcting SQL type casting asymmetry across 8 files (15+ queries). Asymmetric pattern 'column::type = $N' changed to symmetric 'column = $N::type'. Integration tests confirm C42883 errors eliminated.",
                    "status":  "PASS",
                    "artifacts_out":  [
                                          "src/api/middleware/auth.zig",
