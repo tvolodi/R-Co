@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0638 — TC-ADP-02-05 `audit_entries.resource_id` TEXT vs `::uuid` cast mismatch (MAJOR)** ([GitHub #621](https://github.com/tvolodi/R-Co/issues/621))
+
+- **Root cause:** Same as ISS-0637/GH-619 — migration `GBL-120` (ISS-103) changed `audit_entries.resource_id` from `UUID` to `TEXT` in every schema; `tests/integration/adp02_tenant_scope_test.zig` still compared `resource_id = $1::uuid`, producing `C42883`. Discovered incidentally while fixing ISS-0637.
+- **The fix (WF03-GH621-20260809):** Removed the stale `::uuid` cast on both `resource_id = $1` comparisons (lines 532, 549). The mirrored `audit_log.entity_id = $1::uuid` comparisons on the same lines were left untouched — `audit_log.entity_id` is genuinely `UUID`-typed (confirmed via `migrations/009_audit_log.sql`) and unaffected by `GBL-120`.
+- **Verified:** New narrow `zig build test-integration-adp02` target (mirrors `test-integration-ext02`) — 4/5 tests pass; TC-ADP-02-05 passes. The remaining failure, TC-ADP-02-01 (`expected 6, found 0`), is the pre-existing, separately-tracked provisioning-gap issue GH-482/ISS-0150 — not a regression of this fix.
+- **No requirement status change** — test-code type-cast fix. Requirement ADP-02 was already implemented.
+
 **ISS-0637 — TC-EXT-02-INT-08 `audit_entries.resource_id` TEXT vs `::uuid` cast mismatch (MAJOR)** ([GitHub #619](https://github.com/tvolodi/R-Co/issues/619))
 
 - **Root cause:** The issue as filed suspected `pool.Conn` losing `search_path` after `COMMIT` (mistakenly pattern-matched from an unrelated `SET LOCAL` usage in `src/db/migrations.zig`/`src/event_store/store.zig`). That theory is REFUTED — `src/db/pool.zig`'s `applyRequestStorageRouting` uses a plain session-scoped `SET search_path` on every `Pool.acquire()`, never `SET LOCAL`, and holds it for the connection's full lifetime. The actual cause: migration `GBL-120` (ISS-103) changed `audit_entries.resource_id` from `UUID` to `TEXT` in every schema, but `TC-EXT-02-INT-08` still compared `resource_id = $1::uuid`, which PostgreSQL rejects unconditionally with `C42883: operator does not exist: text = uuid` — confirmed via a new diagnostic build step (`zig build test-integration-ext02 -Dlog-pg-errors=true`) that surfaces the real Postgres wire-protocol error text otherwise swallowed by the vendored `pg` client.

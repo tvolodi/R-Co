@@ -529,7 +529,7 @@ test "TC-ADP-02-05: audit persistence is tenant-scoped for audit_entries and aud
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
     var entry_rows_a = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM audit_entries WHERE action = 'instance.update' AND resource_id = $1::uuid AND tenant_id = $2::uuid",
+        "SELECT COUNT(*) FROM audit_entries WHERE action = 'instance.update' AND resource_id = $1 AND tenant_id = $2::uuid",
         &.{ audit_target_a, tenant_a },
     );
     defer entry_rows_a.deinit();
@@ -546,7 +546,7 @@ test "TC-ADP-02-05: audit persistence is tenant-scoped for audit_entries and aud
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
     var entry_rows_b = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM audit_entries WHERE action = 'instance.update' AND resource_id = $1::uuid AND tenant_id = $2::uuid",
+        "SELECT COUNT(*) FROM audit_entries WHERE action = 'instance.update' AND resource_id = $1 AND tenant_id = $2::uuid",
         &.{ audit_target_b, tenant_b },
     );
     defer entry_rows_b.deinit();

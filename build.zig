@@ -2198,6 +2198,21 @@ pub fn build(b: *std.Build) void {
     test_integration_ext02_step.dependOn(&clean_test_db.step);
     test_integration_ext02_step.dependOn(&run_ext02_integration_tests.step);
 
+    // ISS-0638 / GH-621: narrow step for ADP-02 tenant scope tests only,
+    // mirrors the ext02 target added for ISS-0637 / GH-619.
+    const adp02_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/adp02_tenant_scope_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_adp02_integration_tests = addIntegrationRun(b, adp02_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_adp02_step = b.step("test-integration-adp02", "Run ADP-02 tenant scope integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_adp02_step.dependOn(&clean_test_db.step);
+    test_integration_adp02_step.dependOn(&run_adp02_integration_tests.step);
+
     const test_integration_obs04_step = b.step("test-integration-obs04", "Run OBS-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs04_step.dependOn(&clean_test_db.step);
     test_integration_obs04_step.dependOn(&run_obs04_integration_tests.step);
