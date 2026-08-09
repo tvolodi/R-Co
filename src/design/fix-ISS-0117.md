@@ -33,11 +33,24 @@ already return the exact violation codes the tests assert
 `COMPENSATION_HANDLER_NOT_REVERSED`, `TC-EXP-401-04` →
 `NON_REVERSIBLE_ACTIVITY`, `TC-EXP-401-05` → `ERROR_BOUNDARY_EVENTS_MISSING`).
 
-A secondary defect: `tests/integration/exp401_exp402_comp_restore_test.zig`
-is not referenced anywhere in `build.zig`, so none of its tests (EXP-401 or
-EXP-402) currently run under any `zig build test*` step. A narrow test step
-must be added so the fix is verifiable and the regression is guarded going
-forward.
+`tests/integration/exp401_exp402_comp_restore_test.zig` is not referenced
+directly in `build.zig`, but it IS reached indirectly: `tests/integration/
+main_test.zig` (`build.zig`'s `integration_tests` root, run via
+`run_integration_tests`, which is the first dependency of
+`test_integration_others_step`) does
+`@import("exp401_exp402_comp_restore_test.zig")` and pins it with
+`_ = exp401_exp402_comp_restore_integration;`, per the established
+ISS-0137/GH-439 pattern used for ~30 other integration test files in that
+file. So this file's tests already run under `zig build test-integration`
+today — no wiring gap here. (Initial investigation mistakenly concluded
+otherwise by grepping `build.zig` alone without checking `main_test.zig`'s
+own `@import` list; corrected before this fix landed.)
+
+For fast, targeted iteration while fixing this specific issue, a new narrow
+step `test-integration-exp401-exp402` is still added (mirroring the
+`ext02_integration_tests` / `adp02_integration_tests` precedent), but this is
+a convenience addition, not a defect fix — the file was already exercised by
+the full `test-integration` umbrella beforehand.
 
 ## Fix
 
@@ -88,7 +101,7 @@ No other code changes. No SQL changes. No new error variants needed —
 `DefinitionError.GraphValidationFailed` and `DefinitionError.TransactionFailed`
 already exist and are already the return type of the enclosing functions.
 
-### 2. `build.zig` — add a narrow integration-test step for this file
+### 2. `build.zig` — add a narrow integration-test step for this file (convenience, not a fix)
 
 Add a `b.addTest` entry for
 `tests/integration/exp401_exp402_comp_restore_test.zig` using the shared
@@ -96,11 +109,12 @@ Add a `b.addTest` entry for
 same shape as the other `integration_imports`-based narrow steps such as
 `ext02_integration_tests` / `adp02_integration_tests`), wrapped with
 `addIntegrationRun(b, ..., migrations_dir, clean_test_db)`, exposed as a new
-step `test-integration-exp401-exp402`, and also added as a dependency of
-`test_integration_others_step` so it is swept into the full
-`test-integration` umbrella going forward. Follow the exact placement/style
-used for `ext02_integration_tests` / `adp02_integration_tests` (ISS-0637/0638
-precedent) in `build.zig`.
+step `test-integration-exp401-exp402`. This file's tests already run under
+the full `test-integration` umbrella via `main_test.zig`'s `@import`
+(see Problem section above) — the new narrow step exists only so this one
+file's 7 tests can be iterated on without paying for the ~40-binary
+umbrella, following the `ext02_integration_tests` / `adp02_integration_tests`
+precedent (ISS-0637/0638).
 
 ## Acceptance criteria mapping
 
