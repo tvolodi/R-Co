@@ -1,0 +1,23 @@
+{
+  "id": "ISS-0632",
+  "title": "lint_sql_param_types.py does not detect 42P18 (untyped parameter in variadic-any context)",
+  "status": "OPEN",
+  "severity": "MINOR",
+  "category": "lint-gap",
+  "run_id": "WF03-GH383-20260809",
+  "handoff_id": "a3b7c9d2-5e1f-4a8b-9c6d-0e2f3a4b5c7d",
+  "affected_areas": [
+    "tools/lint_sql_param_types.py"
+  ],
+  "created_at": "2026-08-09T05:17:16Z",
+  "resolved_at": null,
+  "notes": "Discovered during diagnosis of ISS-0120 (WF03-GH383-20260809). The linter only covers C42883 patterns (col::text = $N asymmetric cast and integer literal vs TEXT column). It does not detect parameters used inside variadic-any functions (jsonb_build_object, format, row) that cause 42P18 at prepare time. The 42P18 pattern is distinct from C42883 — PostgreSQL cannot infer the type, not that the cast is asymmetric.",
+  "root_cause": "lint_sql_param_types.py regex patterns target col::text = $N (C42883) but not $N used in jsonb_build_object / format / row context (42P18).",
+  "candidate_resolution": "Add a new MAJOR rule to lint_sql_param_types.py that flags bare $N parameters inside jsonb_build_object(...), format(...), row(...) and similar variadic-any functions. The fix is to require an explicit $N::type cast.",
+  "resolution": null,
+  "files_to_change": [
+    "tools/lint_sql_param_types.py"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/610",
+  "prevention": []
+}

@@ -1,0 +1,56 @@
+{
+  "handoff_id": "4963abb8-1f94-43f7-ae84-2ca081a1d1de",
+  "run_id": "WF03-GH383-20260809",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-09T05:27:48Z",
+  "started_at": "2026-08-09T05:27:48Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Step 5 -- run tests",
+    "requirement_ids": [
+      "EXP-402"
+    ],
+    "related_handoff_ids": [
+      "5241e358-5c5d-43cc-85ff-ab4a37b5e515"
+    ],
+    "artifacts_in": [
+      "src/engine/reconstruction.zig",
+      "tests/integration/exp401_exp402_comp_restore_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Run zig build test (unit) and verify TC-EXP-402 no longer fails with 42P18 error. Integration env: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "TC-EXP-402 no longer fails with 42P18"
+    ],
+    "functions_to_call": [
+      "fn:write-test-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Unit tests exit 0. TC-EXP-402-01 and TC-EXP-402-02 pass with no 42P18 errors. Fix (::text cast on \\ in markRestoredOrphanInTx) confirmed effective.",
+    "artifacts_out": [
+      "tests/reports/report-20260809-WF03-GH383-20260809.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "test-env-verify C9 config drift (container healthy, 9/10 checks pass). Non-blocking."
+      },
+      {
+        "severity": "MINOR",
+        "description": "86 pre-existing integration failures in unrelated modules \u2014 none introduced by this fix."
+      }
+    ],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-03 Step 6)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T05:41:34Z"
+}

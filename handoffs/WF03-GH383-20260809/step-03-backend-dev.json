@@ -1,0 +1,45 @@
+{
+  "handoff_id": "5241e358-5c5d-43cc-85ff-ab4a37b5e515",
+  "run_id": "WF03-GH383-20260809",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T05:27:48Z",
+  "started_at": "2026-08-09T05:27:48Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Step 3 \u2014 implement fix",
+    "requirement_ids": [
+      "EXP-402"
+    ],
+    "related_handoff_ids": [
+      "8095a21a-7946-4de5-b3b7-c91d65390f60"
+    ],
+    "artifacts_in": [
+      "src/design/iss0120-gh383-exp402-param-cast.md"
+    ]
+  },
+  "task": {
+    "description": "In src/engine/reconstruction.zig, function markRestoredOrphanInTx: change $2 to $2::text in the jsonb_build_object SQL call. Fixes PostgreSQL error 42P18 (indeterminate datatype). Run zig build, zig build test, lint_sql_param_types.py. Commit and push to feature/WF03-GH383-20260809.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "lint_sql_param_types.py exits 0 with no BLOCKER/MAJOR",
+      "Commit pushed to feature/WF03-GH383-20260809"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Added ::text cast to $2 in markRestoredOrphanInTx UPDATE query. zig build exit=0, zig build test exit=0, lint_sql_param_types.py 0 BLOCKER/0 MAJOR/0 MINOR. Commit eeb3560d pushed to feature/WF03-GH383-20260809.",
+    "artifacts_out": [
+      "src/engine/reconstruction.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T05:27:48Z"
+}
