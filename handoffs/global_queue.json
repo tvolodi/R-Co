@@ -1115,14 +1115,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/638",
       "title": "lint_test_isolation T050 false positive on env_test_root.zig/svc_test_root.zig aggregator files",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-09T16:17:52Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T16:17:52Z",
       "started_at": "2026-08-09T16:17:52Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T16:20:10Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 638,
