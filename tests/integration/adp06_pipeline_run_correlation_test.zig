@@ -90,7 +90,7 @@ test "TC-ADP-06-01: migration adds audit pipeline_run_id and query indexes" {
         alloc,
         \\SELECT is_nullable
         \\FROM information_schema.columns
-        \\WHERE table_schema = 'public'
+        \\WHERE table_schema = 'tenant_default'
         \\  AND table_name = 'audit_entries'
         \\  AND column_name = 'pipeline_run_id'
     ,
@@ -105,7 +105,7 @@ test "TC-ADP-06-01: migration adds audit pipeline_run_id and query indexes" {
         alloc,
         \\SELECT indexname
         \\FROM pg_indexes
-        \\WHERE schemaname = 'public'
+        \\WHERE schemaname = 'tenant_default'
         \\  AND indexname IN (
         \\      'idx_audit_entries_tenant_pipeline_time',
         \\      'idx_events_tenant_pipeline_run_seq',

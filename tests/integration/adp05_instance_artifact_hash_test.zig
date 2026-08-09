@@ -153,7 +153,7 @@ test "TC-ADP-05-01: migration adds nullable definition_artifact_hash on instance
         alloc,
         \\SELECT is_nullable
         \\FROM information_schema.columns
-        \\WHERE table_schema = 'public'
+        \\WHERE table_schema = 'tenant_default'
         \\  AND table_name = 'instance_projections'
         \\  AND column_name = 'definition_artifact_hash'
     ,

@@ -434,7 +434,7 @@ test "TC-ADP-04a-06: multiple internal NULL-linkage rows coexist while duplicate
         alloc,
         \\SELECT indexdef
         \\FROM pg_indexes
-        \\WHERE schemaname = 'public'
+        \\WHERE schemaname = 'tenant_default'
         \\  AND indexname = 'idx_users_external_identity_unique'
     ,
         &.{},
