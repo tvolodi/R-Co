@@ -1,0 +1,300 @@
+handoff_id: pending-step-01-completion
+run_id: WF03-GH592-20260808
+workflow_id: WF-03
+step: "01"
+agent_id: ISSUE-FIXER
+created_at: "2026-08-08T21:24:16Z"
+github_issue:
+  number: 592
+  url: https://github.com/tvolodi/R-Co/issues/592
+  title: "LUA-12 (service call), LUA-15 (structured failure), LUA-16 (runtime error capture) need production code + tests"
+local_iss_id: ISS-0625
+local_iss_url: docs/issues/ISS-0625.json
+severity: MAJOR
+parent: GH #495 / ISS-0169 (the LUA-08..16 verification tranche, scoped into 3 batches)
+sibling: GH #591 / ISS-0624 (batch 2, LUA-11/13)
+source_files_inspected:
+  - src/lua/host_api/call_service.zig
+  - src/lua/host_api/fail.zig
+  - src/lua/executor.zig
+  - src/lua/events.zig
+  - src/lua/service_catalog.zig
+  - src/lua/host_context.zig
+  - src/lua/instruction_limiter.zig
+  - src/lua/memory_limiter.zig
+  - src/design/lua-integration.md (§17.1, §21.1-21.4)
+  - tests/specs/LUA-08.md
+  - tests/specs/LUA-12.md
+  - tests/specs/LUA-15.md
+  - tests/specs/LUA-16.md
+  - docs/status/requirement_status.yaml
+
+diagnosis:
+  category: A — Logic error (production behavior never implemented; stub-era placeholders)
+  scope: src/lua/ subsystem, MUST requirements LUA-12, LUA-15, LUA-16
+
+  findings:
+    - id: F-LUA-12-1
+      finding: LUA-12 service call non-simulation branch is a hardcoded no-op
+      must: true
+      severity: MAJOR
+      location: src/lua/host_api/call_service.zig:110-115
+      evidence: |
+        // For non-simulation mode in this stage, keep a deterministic no-op response.
+        bindings.lua_pushstring(L, "{}");
+        bindings.lua_pushnumber(L, 200);
+        return 2;
+      impact: |
+        Any script calling platform.call_service outside simulation gets
+        '{}', 200 regardless of svc_id, method, path, body. Capability gate
+        runs (LUA-05/06), fingerprint is computed, simulation branch is
+        skipped, hardcoded response is returned. Per design §17.1, the
+        intended behavior is: consult ctx.service_catalog.lookup(svc_id),
+        validate the service id, then either return a structured error
+        table (service not found) or perform a real HTTP call against
+        service.endpoint_url and return a single response table.
+      cross_reference: tests/specs/LUA-12.md TC-LUA-12-04 (service not found), TC-LUA-12-05/06 (HTTP errors), TC-LUA-12-15 (network error)
+
+    - id: F-LUA-12-2
+      finding: ServiceCatalog.lookup() has zero call sites in the entire source tree
+      must: true
+      severity: MAJOR
+      location: src/lua/service_catalog.zig:87 (definition); src/**/*.zig grep verified zero callers
+      evidence: |
+        grep_search "lookup" against src/**/*.zig returned 89 matches across
+        28 files; filtering to ServiceCatalog usage shows only the definition
+        itself. No host_api/, no executor, no test calls ServiceCatalog.lookup.
+        ServiceCatalog.register likewise has no callers.
+      impact: |
+        The full registration / lookup infrastructure (init/deinit/register/
+        lookup) exists and is type-correct but is dead code in production
+        paths. Even the simulation branch in call_service.zig calls
+        simulation_interceptor.executeMockedServiceCall which does NOT
+        consult ServiceCatalog for svc_id validation -- a script calling
+        platform.call_service('not_in_catalog', ...) in simulation mode
+        would still hit the simulation interceptor with no error.
+
+    - id: F-LUA-12-3
+      finding: Return-shape divergence between current implementation and design §17.1
+      must: false
+      severity: MINOR
+      location: src/lua/host_api/call_service.zig:118-120 (returns 2) vs src/design/lua-integration.md:1344 (returns 1)
+      evidence: |
+        Design §17.1: "try pushLuaTable(L, &http_response); return 1;  // Return response table"
+        Current code (both simulation and non-simulation): returns 2 (string + number tuple)
+      impact: |
+        Lua scripts that destructure the return as `local body, status = platform.call_service(...)`
+        currently work; switching to table-return is a breaking change for any
+        such script. The issue's acceptance criteria flag this explicitly:
+        "change return shape to a table per design §17.1 if still the intended
+        contract". Decision must be made by code-designer, not assumed here.
+
+    - id: F-LUA-15-1
+      finding: __failure_reason__ / __failure_details__ / __explicit_failure__ are script-writable _G globals, never read back
+      must: true
+      severity: MAJOR
+      location: src/lua/host_api/fail.zig:44, 49, 55 (writes); src/lua/executor.zig (no read site)
+      evidence: |
+        fail.zig sets three globals (lua_setglobal calls) before raising.
+        Comment block at lines 11-18 explicitly identifies this as a defect
+        deferral: "ordinary GLOBALS, so a script can forge or nil them — the
+        same defect class that made _G unusable as the execution-context
+        channel. They are also never read back by anything. Moving them
+        into LUA_REGISTRYINDEX following the host_context.zig pattern
+        belongs to tranche 4 (LUA-15); ISS-0169 tranche 1 fixes only the
+        read-past-end bug below."
+      impact: |
+        platform.fail() is currently indistinguishable from any other Lua
+        runtime error to the caller of executeScript: both arrive as a
+        failed pcall with an error_message string on the stack. The
+        engine cannot emit a SCRIPT_FAILED event (vs SCRIPT_ERROR) because
+        the discriminator is missing. A malicious or buggy script can
+        also forge the three globals to suppress the explicit-failure
+        classification.
+
+    - id: F-LUA-15-2
+      finding: host_context.zig already established the correct anti-forgery pattern; fail.zig was not migrated to it
+      must: true
+      severity: MAJOR
+      location: src/lua/host_context.zig:13-32 (the canonical pattern) vs src/lua/host_api/fail.zig (defers migration)
+      evidence: |
+        host_context.zig comment block (lines 18-32) explicitly states:
+        "Not _G — a global is script-writable, so a script could forge or
+        nil the very value meant to constrain it. That defect is already
+        present in fail.zig (__failure_reason__) and instruction_limiter.zig
+        (__limiter__); it is not repeated here." The same comment block
+        documents why the registry is the right channel:
+        - Not _G (script-writable)
+        - Not an upvalue (every registration site must remember `1`)
+        - The registry is not script-reachable (no debug/package opened)
+      impact: |
+        Fix is mechanical: define three private REGISTRY_KEY constants
+        (bpm.failure_reason / bpm.failure_details / bpm.explicit_failure)
+        in fail.zig (or in a new helper module), install them via
+        host_context.installContext analogue if needed, write there from
+        platformFail, read back from executeSource's failed-pcall branch.
+
+    - id: F-LUA-16-1
+      finding: captureStackTrace is not implemented; lua_getstack/lua_getinfo walk has no code
+      must: true
+      severity: MAJOR
+      location: design §21.2 (spec only) vs src/lua/executor.zig (no implementation)
+      evidence: |
+        grep_search for `lua_getstack|lua_getinfo|captureStackTrace` against
+        src/**/*.zig returned only design-doc matches. No call site in any
+        source file. design §21.2 is a code-shape sketch but never landed.
+      impact: |
+        Uncaught Lua errors (1/0, nil field access, type mismatch) are
+        recorded only as the bare error_message string returned from
+        pcall. No stack trace, no source location, no function name. A
+        debugging workflow that asks "where in the script did this fail?"
+        has to parse the Lua error string itself.
+
+    - id: F-LUA-16-2
+      finding: ScriptErrorPayload / ScriptFailedPayload / EventRecord are correctly typed but have zero construction sites
+      must: true
+      severity: MAJOR
+      location: src/lua/events.zig:22-67 (definitions); src/**/*.zig (no constructions)
+      evidence: |
+        grep_search for `ScriptErrorPayload|ScriptFailedPayload|EventRecord`
+        returned only the type definitions themselves (4 matches, all in
+        events.zig). Zero construction sites. The SCRIPT_ERROR /
+        SCRIPT_FAILED events the design promises are not emitted anywhere
+        in the production path; the type system describes events that
+        never occur.
+      impact: |
+        Tests/specs/LUA-15.md TC-LUA-15-04 (SCRIPT_FAILED event emitted),
+        TC-LUA-15-13 (instance routing on SCRIPT_FAILED), and
+        tests/specs/LUA-16.md TC-LUA-16-02 (SCRIPT_ERROR event is emitted)
+        all FAIL not because of assertion logic but because the events
+        cannot exist with the current code.
+
+    - id: F-LUA-16-3
+      finding: ScriptErrorPayload.instruction_count has no source (depends on LUA-08)
+      must: true
+      severity: MAJOR
+      location: src/lua/events.zig:26 (field) vs src/lua/instruction_limiter.zig:30-50 (no caller)
+      evidence: |
+        instruction_limiter.zig installHook (line 30) is defined but the
+        file itself notes: "ISS-0169 tranche 1 makes this file COMPILE
+        and nothing more. The limiter is still installed by no code path
+        — executeScript does not call it, so LUA-08 has no enforcement."
+        docs/status/requirement_status.yaml confirms LUA-08 = IN_PROGRESS.
+        LUA-16's ScriptErrorPayload.instruction_count field has no source
+        until LUA-08 lands.
+      impact: |
+        Cannot construct a meaningful ScriptErrorPayload until LUA-08 lands.
+        A zero-valued instruction_count field is worse than missing: it
+        reads as "the script consumed 0 instructions and still errored",
+        which is misleading.
+
+    - id: F-LUA-16-4
+      finding: ScriptErrorPayload.memory_peak_bytes has no source (depends on LUA-09)
+      must: true
+      severity: MAJOR
+      location: src/lua/events.zig:27 (field) vs src/lua/memory_limiter.zig (no caller)
+      evidence: |
+        memory_limiter.zig is in the same state as instruction_limiter.zig:
+        file compiles, allocator function is correct, but no caller
+        anywhere. memory_limiter.zig comment block states "This limiter is
+        installed by no code path. executor.executeScript creates its
+        state with defaultAlloc, a plain malloc/realloc/free wrapper with
+        no ceiling. LUA-09 has no enforcement."
+      impact: |
+        Same as F-LUA-16-3: ScriptErrorPayload construction requires
+        LUA-09 to land in the same run, or the field would always be 0.
+
+must_vs_should_summary:
+  must:
+    - "F-LUA-12-1: non-simulation branch is a hardcoded no-op"
+    - "F-LUA-12-2: ServiceCatalog has zero callers"
+    - "F-LUA-15-1: __failure_* globals script-writable, never read"
+    - "F-LUA-15-2: registry-channel migration not applied"
+    - "F-LUA-16-1: captureStackTrace not implemented"
+    - "F-LUA-16-2: ScriptErrorPayload/FailedPayload zero construction sites"
+    - "F-LUA-16-3: instruction_count source missing (LUA-08 dependency)"
+    - "F-LUA-16-4: memory_peak_bytes source missing (LUA-09 dependency)"
+  should:
+    - "F-LUA-12-3: return-shape divergence (table vs tuple) is a contract decision, not a defect"
+  decision_required_from_code_designer:
+    - "LUA-12 ServiceCatalog scope: ExecutionContext field + real HTTP path, OR explicitly scope-out as simulation-only (design §17.1 OR an annotated IN_PROGRESS/simulation-only status)"
+    - "LUA-12 return shape: single response table per design §17.1 (breaking change for any script using tuple destructuring), OR keep tuple with separate error table on the side"
+
+fix_sequencing:
+  rationale: |
+    The three requirements have a non-trivial dependency graph:
+      - LUA-15 must land first because executeSource's failed-pcall branch
+        is the read site for the explicit-failure discriminator; LUA-16
+        uses that same branch to decide between SCRIPT_ERROR (runtime)
+        vs no-event (explicit failure is LUA-15's job).
+      - LUA-16 depends on LUA-15 (shared branch + shared ScriptResult
+        shape change) AND on LUA-08/09 (instruction_count /
+        memory_peak_bytes sources) per the issue's sequencing note.
+      - LUA-12 is independent of LUA-15/16; it can land in parallel
+        with the LUA-15 work, but its ServiceCatalog-reachability
+        decision affects ExecutionContext field layout (which LUA-15
+        may also want to extend, e.g. for an explicit_failure channel
+        installation helper).
+    Sibling batch 2 (ISS-0624, LUA-11/13) is itself in scope for a
+    different run; that run also adds fields to ExecutionContext
+    (pending_writes, StructuredLogger, trace_id). Co-evolving
+    ExecutionContext in two concurrent runs would create merge
+    conflicts and is the obvious reason the original 9-requirement
+    scope was split into batches. This run should not touch LUA-11
+    /LUA-13 scope.
+  recommended_order:
+    - step: "1. CODE-DESIGNER: produce src/design/lua-tranche-3-fix.md with the two decisions (LUA-12 scope + return shape) and the LUA-15/16/08/09 wiring plan"
+      artifacts_out:
+        - src/design/lua-tranche-3-fix.md
+      decisions_to_make:
+        - "LUA-12 scope"
+        - "LUA-12 return shape"
+        - "ScriptResult.error_kind enum (RuntimeError / ExplicitFailure / CompileError)"
+        - "ScriptErrorPayload construction: surface on ScriptResult OR push via event_store directly (the executor does no I/O per transition.zig precedent — the engine-side worker reads ScriptResult and emits)"
+    - step: "1b. CODE-DESIGN-VALIDATOR: hard gate on the design above"
+      artifacts_out:
+        - handoffs/WF03-GH592-20260808/step-01b-design-validation.json
+    - step: "2. BACKEND-DEV: implement LUA-15 (registry migration + ScriptResult.error_kind)"
+      artifacts_out:
+        - src/lua/host_api/fail.zig
+        - src/lua/executor.zig (executeSource pcall branch)
+        - tests under src/lua/ for fail + executeSource
+      blocked_by: step 1b PASS
+    - step: "3. TEST-DESIGNER: write tests/specs/LUA-15.md-impl against the new branch + tests per TC-LUA-15-01..16"
+      artifacts_out:
+        - tests/specs/LUA-15.md-impl
+        - test file(s) under src/lua/ or tests/integration/
+      blocked_by: step 2 (tests must exercise the real wiring)
+    - step: "3b. TEST-DESIGN-VALIDATOR: hard gate"
+      blocked_by: step 3
+    - step: "4. BACKEND-DEV: implement LUA-12 (ServiceCatalog scope decision applied) + LUA-16 (captureStackTrace + ScriptErrorPayload surface)"
+      artifacts_out:
+        - src/lua/host_api/call_service.zig
+        - src/lua/executor.zig (captureStackTrace call site, only if LUA-08/09 also land in this run)
+        - src/lua/events.zig (ScriptErrorPayload surface method)
+        - tests
+      blocked_by: step 3b PASS
+      conditional: |
+        LUA-16 ScriptErrorPayload construction MUST be skipped if
+        LUA-08/09 do not land in the same run; otherwise the
+        instruction_count field would always be 0 and read as
+        misleadingly broken. If LUA-08/09 are deferred, only the
+        captureStackTrace portion of LUA-16 lands and the
+        ScriptErrorPayload surface is deferred.
+    - step: "5. TEST-RUNNER: run zig build, zig build test, zig build test-integration"
+      blocked_by: step 4
+    - step: "6. DOC-UPDATER: update requirement_status.yaml, CHANGELOG.md, close-out per WF-03"
+      blocked_by: step 5 PASS
+    - step: "Final. BACKEND-DEV: git-merge per GH-merge protocol"
+
+incidental_findings:
+  note: |
+    No NEW issue discovered during diagnosis. The three root causes
+    (F-LUA-12-1/2, F-LUA-15-1/2, F-LUA-16-1/2/3/4) are all part of the
+    GH-592 scope. Nothing to forward to handoffs/global_queue.json per
+    the incidental-discovery protocol (CLAUDE.md "No Issue Left
+    Local-Only").
+  count: 0
+  items: []
+
+next_action: "Route to CODE-DESIGNER (WF-03 Step 2) with the two design decisions flagged (LUA-12 ServiceCatalog scope + LUA-12 return shape) and the LUA-15→LUA-16 sequencing constraint explicit. Issue-fixer's role ends at this handoff; no source modifications in Step 1 per the workflow."

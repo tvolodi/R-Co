@@ -246,3 +246,45 @@ return {
 - LUA-15 (structured failure): Explicit failure vs uncaught error.
 - EE-10 (instance error handling): Error events trigger error policy routing.
 - EE-09 (variable merge logic): Variables not written on error.
+---
+
+## ISS-0625 / GH-592 Integration Test Cases
+
+The TCs below are exercised by the end-to-end integration test
+`tests/integration/iss0625_lua_12_15_16_test.zig` (one file, three
+requirement families, real LuaJIT + real PostgreSQL via BPM_TEST_DB_URL).
+The TC-LUA-16-NN cases above describe the *user-facing contract*; these
+new TCs verify the *production wiring* that delivers it. They are
+sub-numbers because the design also defines a unit-level suite at
+`src/lua/iss0625_lua_12_15_16_test.zig` (TC-ISS-0625-LUA-16-01..03 unit
+form).
+
+### TC-ISS-0625-LUA-16-int-01: integration — runtime error captures error_message (KNOWN LIMITATION: stack_trace empty on LuaJIT 2.1)
+**Given:** A real `ExecutionContext` and a Lua script that raises a runtime error from a nested call chain (`f3 -> f2 -> f1 -> main`, with `f3` calling `error("boom in f3")`).  
+**When:** `lua_executor.executeScript` runs the script.  
+**Then:** `ScriptResult.success == false`, `ScriptResult.error_kind == .RuntimeError`, `ScriptResult.script_error != null`, `ScriptErrorPayload.error_message` contains the substring `"boom in f3"`. **KNOWN LIMITATION:** `ScriptErrorPayload.stack_trace` is empty because LuaJIT 2.1 (Lua 5.1 API) unwinds the call stack before `lua_pcall` returns to C, so `lua_getstack` returns 0 by the time `captureStackTrace` runs. The proper fix is to install `debug.traceback` as the `errfunc` argument to `lua_pcall`. Today the trace is empty; the TC asserts this as the invariant and flips when the limitation is fixed. Tracking: ISS-0626 (to be filed).  
+**Layer:** integration  
+**Acceptance criterion mapped:** LUA-16 end-to-end — the `lua_pcall` error message reaches `ScriptErrorPayload.error_message`; classification as `.RuntimeError` is correct.  
+**Test file:** `tests/integration/iss0625_lua_12_15_16_test.zig`, test block `"TC-ISS-0625-LUA-16-int-01: ..."`.
+
+### TC-ISS-0625-LUA-16-int-02: integration — instruction_count == 0 (LUA-08 instruction limiter not installed)
+**Given:** A real `ExecutionContext` (with `instruction_limiter = null` — the LUA-08 source is not installed in this run, per design D-3) and a Lua script that raises via nil indexing (`local x = nil; return x.field`).  
+**When:** `lua_executor.executeScript` runs the script.  
+**Then:** `ScriptResult.success == false`, `ScriptResult.error_kind == .RuntimeError`, `ScriptResult.script_error != null`, `ScriptErrorPayload.instruction_count == 0` AND `ScriptErrorPayload.memory_peak_bytes == 0` (LUA-09 deferred, always 0 today).  
+**Layer:** integration  
+**Acceptance criterion mapped:** decision D-3 — the payload still constructs when the limiter is null, with `instruction_count = 0` and the skip reason recorded in `capabilities_at_failure`.  
+**Test file:** `tests/integration/iss0625_lua_12_15_16_test.zig`, test block `"TC-ISS-0625-LUA-16-int-02: ..."`.
+
+### TC-ISS-0625-LUA-16-int-03: integration — capabilities_at_failure == skip_reason literal (decision D-3)
+**Given:** A real `ExecutionContext` (limiter not installed) and a Lua script that raises via `error("intentional runtime error")`.  
+**When:** `lua_executor.executeScript` runs the script.  
+**Then:** `ScriptErrorPayload.capabilities_at_failure` equals the literal string `"skip: instruction_count source not installed (LUA-08 deferred)"` (also reachable as `lua_executor.SKIP_REASON_NO_INSTRUCTION_LIMITER`). Any change to this literal in `src/lua/executor.zig` is a test change.  
+**Layer:** integration  
+**Acceptance criterion mapped:** decision D-3 — the literal skip reason is the authoritative signal that the payload constructed in the LUA-08-deferred branch.  
+**Test file:** `tests/integration/iss0625_lua_12_15_16_test.zig`, test block `"TC-ISS-0625-LUA-16-int-03: ..."`.
+
+## ISS-0625 Cross-References
+
+- LUA-12 (service call): TC-ISS-0625-LUA-12-int-01..02 in this run's integration test file.
+- LUA-15 (registry-channel failure anti-forgery): TC-ISS-0625-LUA-15-int-01..04 in this run's integration test file.
+- Backlog issue: ISS-0625 / GH-592. Unit tests live in `src/lua/iss0625_lua_12_15_16_test.zig` (TC-ISS-0625-LUA-{12,15,16}-NN). Limitation follow-up: ISS-0626 (LUA-16 stack-trace empty on LuaJIT 2.1 — install `debug.traceback` as the `errfunc` to `lua_pcall`).

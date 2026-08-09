@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-08T22:28:10Z'
+generated_at: '2026-08-08T23:11:31Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -4898,7 +4898,7 @@ requirements:
     title: Instruction limit
     stage: 8
     priority: MUST
-    status: RELEASED
+    status: IN_PROGRESS
     body: |-
       > Each script execution MUST have a configurable maximum instruction count. Exceeding the limit MUST terminate the script with a structured timeout error.
 
@@ -4911,13 +4911,13 @@ requirements:
     alt_sources: []
     implemented_in:
     - src/lua/instruction_limiter.zig
-    - src/lua/executor.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-08.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    last_updated: '2026-08-08T22:28:07Z'
+    last_updated: '2026-08-06T11:45:42Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
@@ -4929,7 +4929,7 @@ requirements:
     title: Memory limit
     stage: 8
     priority: MUST
-    status: RELEASED
+    status: IN_PROGRESS
     body: |-
       > Each script execution MUST have a configurable memory limit. Allocations exceeding the limit MUST fail gracefully and terminate the script.
 
@@ -4941,13 +4941,13 @@ requirements:
     alt_sources: []
     implemented_in:
     - src/lua/memory_limiter.zig
-    - src/lua/executor.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-09.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    last_updated: '2026-08-08T22:28:08Z'
+    last_updated: '2026-08-06T11:45:43Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
@@ -4959,7 +4959,7 @@ requirements:
     title: Wall clock timeout
     stage: 8
     priority: MUST
-    status: RELEASED
+    status: IN_PROGRESS
     body: |-
       > Each script execution MUST have a configurable wall clock timeout enforced by the host (not relying on Lua to cooperate).
 
@@ -4976,15 +4976,13 @@ requirements:
     alt_sources: []
     implemented_in:
     - src/lua/timeout.zig
-    - src/lua/instruction_limiter.zig
-    - src/lua/host_api/call_service.zig
-    - src/lua/executor.zig
+    - src/lua_test_root.zig
     test_spec: tests/specs/LUA-10.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    last_updated: '2026-08-08T22:28:10Z'
+    last_updated: '2026-08-06T11:45:44Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
@@ -5029,7 +5027,7 @@ requirements:
     title: Service call
     stage: 8
     priority: MUST
-    status: IN_PROGRESS
+    status: RELEASED
     body: |-
       > `platform.call_service(service_id, payload)` MUST invoke a registered service synchronously. The response MUST be returned as a Lua table. Service call failures MUST return a structured error, not raise a Lua error.
 
@@ -5041,15 +5039,16 @@ requirements:
     body_source: functional-doc
     alt_sources: []
     implemented_in:
-    - src/lua/service_catalog.zig
+    - src/lua/executor.zig
+    - src/lua/host_context.zig
     - src/lua/host_api/call_service.zig
-    - src/lua_test_root.zig
+    - src/lua/service_catalog.zig
     test_spec: tests/specs/LUA-12.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    last_updated: '2026-08-06T11:45:46Z'
+    last_updated: '2026-08-08T23:11:28Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
@@ -5128,7 +5127,7 @@ requirements:
     title: Structured failure
     stage: 8
     priority: MUST
-    status: IN_PROGRESS
+    status: RELEASED
     body: |-
       > `platform.fail(reason, details)` MUST terminate the script and propagate a structured failure to the engine. The engine MUST record a `SCRIPT_FAILED` event and transition the instance per the node's error policy.
 
@@ -5139,15 +5138,15 @@ requirements:
     body_source: functional-doc
     alt_sources: []
     implemented_in:
+    - src/lua/host_context.zig
     - src/lua/host_api/fail.zig
-    - src/lua/events.zig
-    - src/lua_test_root.zig
+    - src/lua/executor.zig
     test_spec: tests/specs/LUA-15.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    last_updated: '2026-08-06T11:45:49Z'
+    last_updated: '2026-08-08T23:11:29Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo
@@ -5159,7 +5158,7 @@ requirements:
     title: Runtime error capture
     stage: 8
     priority: MUST
-    status: IN_PROGRESS
+    status: RELEASED
     body: |-
       > Uncaught Lua errors MUST be captured by the host and converted to structured `SCRIPT_ERROR` events with stack trace, instruction count consumed, and capability state at failure.
 
@@ -5181,15 +5180,15 @@ requirements:
     body_source: functional-doc
     alt_sources: []
     implemented_in:
-    - src/lua/errors.zig
+    - src/lua/executor.zig
     - src/lua/events.zig
-    - src/lua_test_root.zig
+    - src/lua/luajit_bindings.zig
     test_spec: tests/specs/LUA-16.md
     test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
     released_at: '2026-05-28T00:00:00Z'
     release_run: WF02-lua06-16-20260528
     release_decision: docs/status/release-LUA-06-16-20260528.json
-    last_updated: '2026-08-06T11:45:49Z'
+    last_updated: '2026-08-08T23:11:31Z'
     type: requirement
     note: 'ISS-0153 / GH #471: downgraded from RELEASED. src/lua/ compiles and is type-checked again (zig
       build test-lua, wired via src/lua_test_root.zig), but no LuaJIT is linked or available in this repo

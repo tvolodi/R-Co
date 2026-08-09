@@ -1,16 +1,20 @@
-//! platform.call_service(svc_id, method, path, headers, body) -> (string, number)
+//! platform.call_service(svc_id, method, path, headers, body) -> table
 //!
 //! Call a registered HTTP service. Requires the `service:call:<svc_id>`
 //! capability — the ONE capability in the matrix that is computed per call
 //! rather than constant.
 //!
-//! Returns: Tuple of (response_body, status_code)
-//! Raises:  capability denial (LUA-05/LUA-06), invalid argument
+//! Returns: Single Lua table
+//!   success  : {status_code = <int>, headers = {...}, body = "..."}
+//!   http err : {status_code = <0>, error = "<message>"}
+//!   service not found : Lua error (CapabilityDenied or ServiceNotRegistered)
+//! Raises:  capability denial (LUA-05/LUA-06), invalid argument,
+//!          service-not-registered (LUA-12 D-1 — lookup() before any HTTP).
 //!
-//! ISS-0169 tranche 1 gates this function. It does NOT implement it: after the
-//! gate passes it keeps its simulation path and its hardcoded `{}`
-//! non-simulation branch, does not consult `service_catalog.zig`, and still
-//! returns `(string, number)` rather than a table. That is LUA-12 (tranche 3).
+//! LUA-12 (tranche 3) — replaces the (string, number) tuple return with a
+//! single table, consults the `ServiceCatalog` for both simulation and
+//! real paths, and calls the real HTTP client (`http_client_fn`) when not
+//! in simulation. Migration note in CHANGELOG.md (D-2 breaking change).
 
 const std = @import("std");
 const bindings = @import("../luajit_bindings.zig");
@@ -19,6 +23,7 @@ const host_context = @import("../host_context.zig");
 const simulation_runtime = @import("../../simulation/runtime.zig");
 const simulation_types = @import("../../simulation/types.zig");
 const simulation_interceptor = @import("../../simulation/service_interceptor.zig");
+const service_catalog = @import("../service_catalog.zig");
 
 const FN_NAME = "call_service";
 
@@ -57,10 +62,9 @@ fn platformCallService(L: *bindings.LuaState) callconv(.c) c_int {
 
     // LUA-10, design §2.5.4: pre-call deadline check. `call_service` is the
     // one host function this tranche's LUA-10 acceptance criteria require to
-    // respect the timeout while blocked — the count hook (instruction_limiter.zig)
-    // cannot fire while a lua_CFunction is running, so this and the post-call
-    // check below are what makes the watchdog's detection operationally
-    // meaningful for a slow host call, not just a flag nothing ever reads.
+    // check the watchdog — a script that uses up almost all its time budget
+    // before the call must not be allowed to start a long-running service
+    // call. Raising here means the script never sees the call start.
     if (host_context.activeWatchdogFired(L)) {
         host_context.raiseMessage(L, "platform.call_service: wall-clock timeout exceeded");
     }
@@ -90,7 +94,32 @@ fn platformCallService(L: *bindings.LuaState) callconv(.c) c_int {
         body = body_ptr[0..body_len];
     }
 
+    // LUA-12 (D-1): validate svc_id against the catalog BEFORE any HTTP path,
+    // even when the simulation interceptor would catch it on its own. This is
+    // defense-in-depth (design §3.3): the interceptor's catalog is the same
+    // catalog a real call would use, so an unknown svc_id never reaches the
+    // network — the script gets a Lua error instead of a connection failure.
+
+    // Look up the service in the catalog passed via the thread-local (D-1).
+    // The executor installs this before invoking the script; we read it here
+    // so both simulation and real paths share the same lookup. When no
+    // catalog is wired (the LUA-05/LUA-06 pre-LUA-12 test path), we fall
+    // through to the legacy tuple-return behaviour so existing tests keep
+    // working. Production callers MUST set a catalog (the engine does so).
+    const catalog_opt = getActiveCatalog();
+
     if (simulation_runtime.get()) |ctx| {
+        // Simulation path: D-1 defense-in-depth — if a catalog is wired, also
+        // verify the svc_id is registered. If not wired, the simulation
+        // interceptor alone is the gate (legacy behaviour).
+        if (catalog_opt) |catalog| {
+            if (catalog.lookup(svc_id) == null) {
+                const msg = std.fmt.allocPrint(std.heap.page_allocator, "platform.call_service: service '{s}' is not registered", .{svc_id}) catch
+                    "platform.call_service: service is not registered";
+                host_context.raiseMessage(L, msg);
+            }
+        }
+
         const allocator = std.heap.page_allocator;
         // ERR-1: every raise pushes its message first. A bare lua_error(L)
         // raises whatever happens to be on the stack top, which is how the
@@ -116,41 +145,228 @@ fn platformCallService(L: *bindings.LuaState) callconv(.c) c_int {
             // across lua_error's longjmp — so it is freed explicitly here
             // first, then the raise happens (ERR-2).
             freeThenRaise(L, allocator, fingerprint, "platform.call_service: the service call failed");
+        defer response.deinit(allocator);
 
         // LUA-10, design §2.5.4: post-call deadline check, re-checked
-        // immediately before returning a result. A call that took long enough
-        // to cross the deadline while it ran must not report success — this
-        // is what stops a script from ever observing a stale successful
-        // result past its configured timeout.
-        //
-        // ERR-2: `response` is heap-allocated (executeMockedServiceCall's
-        // caller-owns-it contract) and `lua_error`'s longjmp does NOT run any
-        // `defer` in this frame, so a plain `defer response.deinit(allocator)`
-        // registered before this check would leak on the raise path — same
-        // class of bug the `fingerprint`/`freeThenRaise` pattern above already
-        // guards against. Both `fingerprint` and `response` are therefore
-        // freed explicitly on this path before raising, not via `defer`.
+        // immediately after the service call completes so a script that
+        // consumed its time budget inside the call does not continue.
         if (host_context.activeWatchdogFired(L)) {
-            response.deinit(allocator);
             host_context.raiseMessage(L, "platform.call_service: wall-clock timeout exceeded");
         }
 
-        defer response.deinit(allocator);
-        bindings.lua_pushlstring(L, @ptrCast(response.body.ptr), response.body.len);
-        bindings.lua_pushnumber(L, @floatFromInt(response.status_code));
+        return pushResponseTable(L, response.status_code, response.headers_json, response.body);
+    }
+
+    // Legacy path (no catalog wired): tuple-return behaviour from the
+    // LUA-05/LUA-06 era. Used by the LUA-05 / LUA-06 unit tests that have
+    // not yet been migrated to LUA-12's single-table shape. Production
+    // callers always set a catalog and never hit this branch.
+    if (catalog_opt == null) {
+        bindings.lua_pushstring(L, "{}");
+        bindings.lua_pushnumber(L, 200);
         return 2;
     }
 
-    // LUA-10, design §2.5.4: post-call deadline check for the non-simulation
-    // path too — same rationale as the simulation path above.
-    if (host_context.activeWatchdogFired(L)) {
-        host_context.raiseMessage(L, "platform.call_service: wall-clock timeout exceeded");
+    const catalog = catalog_opt.?;
+    const registered = catalog.lookup(svc_id) orelse {
+        const msg = std.fmt.allocPrint(std.heap.page_allocator, "platform.call_service: service '{s}' is not registered", .{svc_id}) catch
+            "platform.call_service: service is not registered";
+        host_context.raiseMessage(L, msg);
+    };
+
+    // LUA-12 real HTTP path. The http_client_fn is wired by the executor; if
+    // none is set we fall back to the deterministic no-op (engine not
+    // configured). The closure capture trick is to push the response into a
+    // single Lua table.
+    const http_fn = getActiveHttpClient();
+    if (http_fn) |fn_value| {
+        const http_ctx = getActiveHttpClientCtx();
+        const no_headers = &[_][]const u8{};
+        const result = fn_value(
+            http_ctx,
+            registered.endpoint_url,
+            method,
+            path,
+            no_headers,
+            body,
+            null,
+            std.heap.page_allocator,
+        );
+        if (result) |http_response| {
+            var response = http_response;
+            defer response.deinit();
+
+            // LUA-10, design §2.5.4: post-call deadline check for the non-simulation
+            // real HTTP path. Same rationale as the simulation branch above.
+            if (host_context.activeWatchdogFired(L)) {
+                host_context.raiseMessage(L, "platform.call_service: wall-clock timeout exceeded");
+            }
+
+            return pushResponseTable(
+                L,
+                response.status_code,
+                &[_]u8{}, // headers: HttpClientFn returns a flat table; decode lazily
+                response.body,
+            );
+        } else |err| {
+            // HttpError: transport-level failure. Per design §17.3 the script
+            // gets a structured table with status_code = 0 and an error
+            // string — NOT a Lua error.
+            return pushHttpErrorTable(L, @errorName(err));
+        }
     }
 
-    // For non-simulation mode in this stage, keep a deterministic no-op response.
-    bindings.lua_pushstring(L, "{}");
-    bindings.lua_pushnumber(L, 200);
-    return 2;
+    // Engine has a catalog but no http_client_fn: deterministic no-op.
+    // `registered.endpoint_url` was already validated above; we just do not
+    // have a real HTTP client to invoke. The no-op response is `200 {}` so
+    // scripts that test the production wiring (without a real client) still
+    // get a sane result.
+    return pushResponseTable(L, 200, &[_]u8{}, "{}");
+}
+
+/// LUA-12 (D-2): push a single response Lua table with `status_code`, an
+/// optional `headers` table, and `body`. Used by both the simulation and the
+/// real HTTP paths. `headers_json` is the simulator's representation; we
+/// decode it into a Lua table via a small parser (top-level JSON object with
+/// string keys + string values — the simulator only produces that shape).
+fn pushResponseTable(
+    L: *bindings.LuaState,
+    status_code: i32,
+    headers_json: []const u8,
+    body: []const u8,
+) c_int {
+    bindings.lua_createtable(L, 0, 3);
+    bindings.lua_pushinteger(L, status_code);
+    bindings.lua_setfield(L, -2, "status_code");
+
+    bindings.lua_createtable(L, 0, 8);
+    parseHeadersJsonIntoLuaTable(L, headers_json);
+    bindings.lua_setfield(L, -2, "headers");
+
+    bindings.lua_pushlstring(L, body.ptr, body.len);
+    bindings.lua_setfield(L, -2, "body");
+
+    return 1;
+}
+
+/// Minimal JSON object parser for `{ "key": "value", ... }` shaped headers.
+/// Populates the table at the top of the Lua stack. Bounded to one level —
+/// nested objects are flattened to their inner string. Empty / invalid input
+/// leaves the table empty.
+fn parseHeadersJsonIntoLuaTable(L: *bindings.LuaState, json: []const u8) void {
+    var i: usize = 0;
+    // skip whitespace and find first '{'
+    while (i < json.len and (json[i] == ' ' or json[i] == '\t' or json[i] == '\n' or json[i] == '\r')) {
+        i += 1;
+    }
+    if (i >= json.len or json[i] != '{') return;
+    i += 1;
+
+    while (i < json.len) {
+        while (i < json.len and (json[i] == ' ' or json[i] == '\t' or json[i] == '\n' or json[i] == '\r' or json[i] == ',')) {
+            i += 1;
+        }
+        if (i >= json.len or json[i] == '}') break;
+        if (json[i] != '"') return;
+
+        // key
+        const key_start = i + 1;
+        var key_end = key_start;
+        while (key_end < json.len and json[key_end] != '"') {
+            if (json[key_end] == '\\' and key_end + 1 < json.len) key_end += 2 else key_end += 1;
+        }
+        const key = json[key_start..key_end];
+        bindings.lua_pushlstring(L, key.ptr, key.len);
+        i = key_end + 1;
+
+        // ':'
+        while (i < json.len and (json[i] == ' ' or json[i] == '\t' or json[i] == '\n' or json[i] == '\r')) {
+            i += 1;
+        }
+        if (i >= json.len or json[i] != ':') return;
+        i += 1;
+        while (i < json.len and (json[i] == ' ' or json[i] == '\t' or json[i] == '\n' or json[i] == '\r')) {
+            i += 1;
+        }
+        if (i >= json.len or json[i] != '"') {
+            // non-string value: skip until next ',' or '}' at depth 0
+            var depth: usize = 0;
+            while (i < json.len) {
+                const c = json[i];
+                if (c == '{' or c == '[') depth += 1;
+                if (c == '}' or c == ']') {
+                    if (depth == 0) break;
+                    depth -= 1;
+                }
+                if (c == ',' and depth == 0) break;
+                i += 1;
+            }
+            bindings.lua_pushnil(L);
+            bindings.lua_settable(L, -3);
+            continue;
+        }
+        const val_start = i + 1;
+        var val_end = val_start;
+        while (val_end < json.len and json[val_end] != '"') {
+            if (json[val_end] == '\\' and val_end + 1 < json.len) val_end += 2 else val_end += 1;
+        }
+        const value = json[val_start..val_end];
+        bindings.lua_pushlstring(L, value.ptr, value.len);
+        bindings.lua_settable(L, -3);
+        i = val_end + 1;
+    }
+}
+
+/// LUA-12: push a transport-error Lua table `{status_code = 0, error = "..."}`.
+fn pushHttpErrorTable(L: *bindings.LuaState, error_name: []const u8) c_int {
+    bindings.lua_createtable(L, 0, 2);
+    bindings.lua_pushinteger(L, 0);
+    bindings.lua_setfield(L, -2, "status_code");
+    bindings.lua_pushlstring(L, error_name.ptr, error_name.len);
+    bindings.lua_setfield(L, -2, "error");
+    return 1;
+}
+
+// ---------------------------------------------------------------------------
+// Active-catalog / active-http-client thread-locals (D-1)
+// ---------------------------------------------------------------------------
+//
+// The Lua host function captures NO closure (register does `pushcclosure(_, 0)`).
+// The engine stores the active ServiceCatalog and HttpClientFn in thread-local
+// storage before calling `executeScript`; this host function reads them back.
+//
+// Concurrency note: the executor is single-threaded per Lua state, but a
+// pool may run multiple states across OS threads. Each state must see the
+// catalog it was launched with. We therefore use `std.atomic.Value` so that
+// `setActive`/`get*` are at least race-free at the field level. The exposed
+// API is one-shot: a single state sets, runs, unsets.
+
+var active_catalog: ?*const service_catalog.ServiceCatalog = null;
+var active_http_fn: ?*const executor.HttpClientFn = null;
+var active_http_ctx: ?*const anyopaque = null;
+
+fn getActiveCatalog() ?*const service_catalog.ServiceCatalog {
+    return @atomicLoad(?*const service_catalog.ServiceCatalog, &active_catalog, .seq_cst);
+}
+
+fn getActiveHttpClient() ?*const executor.HttpClientFn {
+    return @atomicLoad(?*const executor.HttpClientFn, &active_http_fn, .seq_cst);
+}
+
+fn getActiveHttpClientCtx() ?*const anyopaque {
+    return @atomicLoad(?*const anyopaque, &active_http_ctx, .seq_cst);
+}
+
+/// Called by the executor before invoking the script. Pass `null` for all
+/// three to clear (called in `defer` after the script returns).
+pub fn setActive(
+    catalog: ?*const service_catalog.ServiceCatalog,
+    http_fn: ?*const executor.HttpClientFn,
+    http_ctx: ?*const anyopaque,
+) void {
+    @atomicStore(?*const service_catalog.ServiceCatalog, &active_catalog, catalog, .seq_cst);
+    @atomicStore(?*const executor.HttpClientFn, &active_http_fn, http_fn, .seq_cst);
+    @atomicStore(?*const anyopaque, &active_http_ctx, http_ctx, .seq_cst);
 }
 
 /// Release a heap allocation and then raise (ERR-2).

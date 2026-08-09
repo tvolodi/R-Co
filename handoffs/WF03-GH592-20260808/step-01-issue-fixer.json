@@ -1,0 +1,98 @@
+{
+  "handoff_id": "92c5d5e1-4f37-4c20-9a83-2b7e7f9c1a8a",
+  "run_id": "WF03-GH592-20260808",
+  "step": "01",
+  "from_agent": "ISSUE-FIXER",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-08T21:24:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 1 (diagnosis)",
+    "requirement_ids": [
+      "LUA-12",
+      "LUA-15",
+      "LUA-16"
+    ],
+    "related_handoff_ids": [
+      "e2ac745e-db7d-41e3-941c-349b4fadb529 (step-00 BACKEND-DEV git-setup, COMPLETED)"
+    ],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/592",
+      "src/lua/host_api/call_service.zig",
+      "src/lua/host_api/fail.zig",
+      "src/lua/executor.zig",
+      "src/lua/events.zig",
+      "src/lua/service_catalog.zig",
+      "src/lua/host_context.zig",
+      "src/lua/instruction_limiter.zig",
+      "src/lua/memory_limiter.zig",
+      "src/design/lua-integration.md §17.1, §21.1-21.4",
+      "tests/specs/LUA-08.md",
+      "tests/specs/LUA-12.md",
+      "tests/specs/LUA-15.md",
+      "tests/specs/LUA-16.md",
+      "docs/status/requirement_status.yaml"
+    ],
+    "github_issue_number": 592,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/592",
+    "iss_id": "ISS-0625",
+    "severity": "MAJOR",
+    "sibling_issue": "GH #591 / ISS-0624 (batch 2, LUA-11/13, separate run, in flight)",
+    "parent": "GH #495 / ISS-0169 (LUA-08..16 verification tranche, scoped into 3 batches)"
+  },
+  "task": {
+    "description": "GH-592 / ISS-0625 Step 0.5 + Step 1 diagnosis. Read the issue, inspect the 5 named source files (call_service.zig, fail.zig, executor.zig, events.zig, service_catalog.zig), verify the host_context anti-forgery pattern and the LUA-08 instruction-limiter state. Register ISS-0625 locally, file the rco-sync-ref comment on GH #592, write the structured diagnosis YAML to docs/issue-reports/. NO source modifications. Output: routing handoff to CODE-DESIGNER (WF-03 Step 2) with the two design decisions explicit (LUA-12 ServiceCatalog scope + LUA-12 return shape) and the LUA-15→LUA-16 sequencing constraint.",
+    "acceptance_criteria": [
+      "ISS-0625 file created at docs/issues/ISS-0625.json with full schema fields (issue_id, title, registered_at, registered_by, related_to, severity, status, diagnosed_at, diagnosed_by, diagnosis_artifact, scope, symptom, root_cause_analysis, impact, acceptance_criteria, evidence_file, notes, github_issue)",
+      "GH #592 comment posted with <!-- rco-sync-ref: ISS-0625 --> and the diagnosis summary",
+      "Diagnosis YAML at docs/issue-reports/ISS-0625-gh592-diagnosis.yaml covering: MUST vs SHOULD findings, LUA-12 design decision (ServiceCatalog reachable from ExecutionContext vs simulation-only), LUA-15 registry-based anti-forgery migration per host_context.zig pattern, LUA-16 lua_getstack/lua_getinfo walk with ScriptErrorPayload construction blocked by LUA-08/09 dependency, fix sequencing (LUA-15 first, then LUA-12 in parallel, then LUA-16 last, LUA-16 payload construction conditional on LUA-08/09)",
+      "No source code modified",
+      "Local ID ISS-0625 collision-checked (no GH #592 number conflict; highest adjacent GH # checked is #592 itself, local sequence confirmed free up to 0624)",
+      "Orchestrator.log appended with the COMPLETE line for this handoff",
+      "Registry.json entry updated to status COMPLETED for this handoff_id",
+      "lint_handoffs.py exits 0 (BLOCKER-free)"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:file-github-comment",
+      "fn:diagnose",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed GH-592 / ISS-0625. Three independent root causes, all part of the issue's stated scope; no incidental new defects found. LUA-12: deferral, ServiceCatalog has zero callers, non-simulation branch hardcoded. LUA-15: anti-forgery pattern from host_context.zig not applied to fail.zig; three _G globals script-writable and unread. LUA-16: captureStackTrace unimplemented, ScriptErrorPayload has zero construction sites, and instruction_count + memory_peak_bytes fields have no source until LUA-08 and LUA-09 land in the same run. Two design decisions flagged for CODE-DESIGNER (LUA-12 ServiceCatalog scope; LUA-12 return shape). Fix sequencing documented: LUA-15 first, then LUA-12 in parallel (independent), then LUA-16 last, with the explicit constraint that LUA-16 ScriptErrorPayload construction MUST be skipped if LUA-08/09 do not land in the same run. Diagnosis YAML and ISS-0625 file written; GitHub comment posted with rco-sync-ref. No source code modified.",
+    "artifacts_out": [
+      "docs/issues/ISS-0625.json",
+      "docs/issue-reports/ISS-0625-gh592-diagnosis.yaml",
+      "https://github.com/tvolodi/R-Co/issues/592#issuecomment-5228243306 (comment with rco-sync-ref)",
+      "handoffs/WF03-GH592-20260808/step-01-issue-fixer.json (this file)"
+    ],
+    "issues": [
+      {
+        "id": "DECISION-LUA-12-SCOPE",
+        "severity": "MAJOR",
+        "description": "CODE-DESIGNER must decide: does ServiceCatalog become a field on ExecutionContext (design §17.1 path, requires real HTTP implementation) OR is LUA-12 explicitly scoped as simulation-only (annotated IN_PROGRESS with simulation-only note)? Either is acceptable; the decision is irreversible for this run."
+      },
+      {
+        "id": "DECISION-LUA-12-RETURN-SHAPE",
+        "severity": "MINOR",
+        "description": "CODE-DESIGNER must decide: return a single response table per design §17.1 (breaking change for any script using `local body, status = platform.call_service(...)`) OR keep the tuple and represent errors as a separate error table on the side."
+      },
+      {
+        "id": "DECISION-LUA-16-CONDITIONAL-PAYLOAD",
+        "severity": "MAJOR",
+        "description": "CODE-DESIGNER must plan: if LUA-08 and LUA-09 do NOT land in the same WF-03 run as LUA-16, the ScriptErrorPayload construction MUST be skipped entirely (instruction_count and memory_peak_bytes would always read 0, which is a misleading test outcome). CaptureStackTrace itself is independent of LUA-08/09 and can still land."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2). Step-01b design-validation handoff will gate BACKEND-DEV from starting."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-08-08T21:25:50Z"
+}

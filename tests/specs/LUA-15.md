@@ -222,3 +222,53 @@ return {
 - LUA-16 (runtime error capture): Explicit failure vs uncaught error distinction.
 - EE-10 (instance error handling): Error policy routing applies.
 - EE-09 (variable merge logic): Variables not written on fail.
+---
+
+## ISS-0625 / GH-592 Integration Test Cases
+
+The TCs below are exercised by the end-to-end integration test
+`tests/integration/iss0625_lua_12_15_16_test.zig` (one file, three
+requirement families, real LuaJIT + real PostgreSQL via BPM_TEST_DB_URL).
+The TC-LUA-15-NN cases above describe the *user-facing contract*; these
+new TCs verify the *production wiring* that delivers it. They are
+sub-numbers because the design also defines a unit-level suite at
+`src/lua/iss0625_lua_12_15_16_test.zig` (TC-ISS-0625-LUA-15-01..04 unit
+form).
+
+### TC-ISS-0625-LUA-15-int-01: integration — platform.fail produces ScriptResult.error_kind == .ExplicitFailure
+**Given:** A real `ExecutionContext` with an empty `CapabilitySet`, a sandboxed `lua_State`, and a Lua script `platform.fail("User cancelled request", {code = 403}); return 42`.  
+**When:** `lua_executor.executeScript` runs the script.  
+**Then:** `ScriptResult.success == false`, `ScriptResult.error_kind == .ExplicitFailure`, `ScriptResult.error_message == "User cancelled request"`, `ScriptResult.script_error == null` (explicit failure carries no stack trace).  
+**Layer:** integration  
+**Acceptance criterion mapped:** the `platform.fail` host-API call writes the LUA-15 registry discriminator AND the reason key on `LUA_REGISTRYINDEX`, and `executor.executeSource` classifies the resulting failed `lua_pcall` as `.ExplicitFailure` rather than `.RuntimeError`.  
+**Test file:** `tests/integration/iss0625_lua_12_15_16_test.zig`, test block `"TC-ISS-0625-LUA-15-int-01: ..."`.
+
+### TC-ISS-0625-LUA-15-int-02: integration — error() raise produces .RuntimeError (NOT mis-classified)
+**Given:** A real `ExecutionContext` and a Lua script that uses the standard `error()` builtin (e.g. `error("intentional runtime error")`). The script author never calls `platform.fail`.  
+**When:** `lua_executor.executeScript` runs the script.  
+**Then:** `ScriptResult.success == false`, `ScriptResult.error_kind == .RuntimeError`, `ScriptResult.script_error != null` (a `ScriptErrorPayload` is built).  
+**Layer:** integration  
+**Acceptance criterion mapped:** a Lua runtime error is classified as `.RuntimeError`, NOT `.ExplicitFailure` — the LUA-15 discriminator reads `bpm.explicit_failure` truthy from the registry and that flag is FALSE when the script never went through `platform.fail`.  
+**Test file:** `tests/integration/iss0625_lua_12_15_16_test.zig`, test block `"TC-ISS-0625-LUA-15-int-02: ..."`.
+
+### TC-ISS-0625-LUA-15-int-03: integration — script forges __failure_reason__ via _G is IGNORED
+**Given:** A real `ExecutionContext` and a Lua script that sets `__failure_reason__ = "FORGED"` and `__explicit_failure__ = true` BEFORE calling `platform.fail("real reason from registry")`.  
+**When:** `lua_executor.executeScript` runs the script.  
+**Then:** `ScriptResult.error_kind == .ExplicitFailure` (because `platform.fail` legitimately wrote the registry discriminator), AND `ScriptResult.error_message == "real reason from registry"` — NOT `"FORGED"`. The pre-ISS-0625 `_G.__failure_reason__` channel is dead weight; the registry channel wins.  
+**Layer:** integration  
+**Acceptance criterion mapped:** LUA-15 anti-forgery guarantee — the migration to a registry-backed discriminator eliminated the `_G` channel as an authoritative source.  
+**Test file:** `tests/integration/iss0625_lua_12_15_16_test.zig`, test block `"TC-ISS-0625-LUA-15-int-03: ..."`.
+
+### TC-ISS-0625-LUA-15-int-04: integration — explicit details table is preserved; no stack trace on explicit failures
+**Given:** A real `ExecutionContext` and a Lua script `platform.fail("Validation failed", {user_id = "u1", amount = -10, reason = "negative"})`.  
+**When:** `lua_executor.executeScript` runs the script.  
+**Then:** `ScriptResult.success == false`, `ScriptResult.error_kind == .ExplicitFailure`, `ScriptResult.error_message == "Validation failed"`, `ScriptResult.script_error == null`. The table details are preserved in the engine-side channel (the executor reads the registry value after the failed pcall), but the executor-level invariant is that an explicit failure produces NO `ScriptErrorPayload`.  
+**Layer:** integration  
+**Acceptance criterion mapped:** explicit failures are a clean API — no stack trace, no script_error side-channel; the table details flow on a separate channel (`host_context.readExplicitFailure` returns the `details` field separately to the engine).  
+**Test file:** `tests/integration/iss0625_lua_12_15_16_test.zig`, test block `"TC-ISS-0625-LUA-15-int-04: ..."`.
+
+## ISS-0625 Cross-References
+
+- LUA-12 (service call): TC-ISS-0625-LUA-12-int-01..02 in this run's integration test file.
+- LUA-16 (stack-trace + instruction-count payload): TC-ISS-0625-LUA-16-int-01..03 in this run's integration test file.
+- Backlog issue: ISS-0625 / GH-592. Unit tests live in `src/lua/iss0625_lua_12_15_16_test.zig` (TC-ISS-0625-LUA-{12,15,16}-NN).

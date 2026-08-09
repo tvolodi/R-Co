@@ -82,6 +82,17 @@ const executor = @import("executor.zig");
 /// script code: a script has no `debug` library and cannot name a pseudo-index.
 pub const REGISTRY_KEY: [*:0]const u8 = "bpm.execution_context";
 
+/// LUA-15: private registry keys for the structured-failure channel. Same
+/// `LUA_REGISTRYINDEX` channel as `REGISTRY_KEY` — not in `_G`, not in
+/// upvalues, not script-reachable. The pre-ISS-0625 implementation used
+/// `__failure_reason__` / `__failure_details__` / `__explicit_failure__` as
+/// ordinary globals, which a script could forge or nil; this is the same
+/// defect class that made `_G` unusable as the execution-context channel and
+/// is fixed by routing through the registry.
+pub const FAILURE_REASON_KEY: [*:0]const u8 = "bpm.failure_reason";
+pub const FAILURE_DETAILS_KEY: [*:0]const u8 = "bpm.failure_details";
+pub const FAILURE_EXPLICIT_KEY: [*:0]const u8 = "bpm.explicit_failure";
+
 /// Maximum length of a formatted diagnostic message. Generous: a denial message
 /// renders the whole granted set so the failure is diagnosable rather than
 /// merely fatal. Overflow truncates the *message* with an ellipsis — never a
@@ -117,7 +128,7 @@ pub fn installContext(
     // this one line because lua_pushlightuserdata takes ?*anyopaque; the
     // pointee is never mutated through it (CTX-3) — contextFromState hands
     // back a *const.
-    bindings.lua_pushlightuserdata(L, @constCast(@ptrCast(context)));
+    bindings.lua_pushlightuserdata(L, @ptrCast(@constCast(context)));
     bindings.lua_setfield(L, bindings.LUA_REGISTRYINDEX, REGISTRY_KEY);
 
     if (contextFromState(L) == null) return errors.LuaError.ContextInstallFailed;
@@ -156,6 +167,201 @@ pub fn activeWatchdogFired(L: *bindings.LuaState) bool {
     const context = contextFromState(L) orelse return false;
     const wd = context.active_watchdog orelse return false;
     return wd.hasFired();
+}
+
+// ---------------------------------------------------------------------------
+// LUA-15: structured-failure channel (failure_reason / failure_details /
+// explicit_failure) on LUA_REGISTRYINDEX. Same anti-forgery pattern as the
+// execution-context channel above: not in `_G`, not in upvalues, not
+// script-reachable.
+// ---------------------------------------------------------------------------
+
+/// Shape of the optional details table passed to `platform.fail`. The current
+/// implementation only distinguishes "no details" from "table details". A
+/// future addition (e.g. string details) extends this enum, not the helper
+/// signatures.
+pub const DetailsKind = enum { None, Table };
+
+/// Owned view of the explicit-failure state. `reason` and `details` are
+/// heap-allocated copies in `allocator` — caller frees after consuming.
+/// `kind == .None` means the script raised without going through
+/// `platform.fail`: a genuine runtime error, not an explicit failure.
+pub const ExplicitFailureView = struct {
+    kind: enum { None, Explicit },
+    reason: ?[]const u8,
+    details: ?executor.ScriptValue,
+};
+
+/// Set the explicit-failure discriminator on the registry channel. Called by
+/// `platform.fail` BEFORE raising so the executor's failed-pcall branch can
+/// read it back.
+///
+/// `reason` is pushed directly to the Lua registry (Lua owns the string
+/// copy, no host-allocator allocation needed). `details_value` = `.Table`
+/// means the value at index 2 of the host function is a real Lua table;
+/// `.None` means no value (or a non-table value) — the discriminator is set
+/// but no details are captured.
+pub fn setExplicitFailure(
+    L: *bindings.LuaState,
+    allocator: std.mem.Allocator,
+    reason: []const u8,
+    details_value: DetailsKind,
+) void {
+    _ = allocator; // reason lives in Lua's heap, not on the host allocator.
+
+    // reason: pushed to the registry as a Lua string. lua_pushlstring copies
+    // the bytes into Lua-managed storage; the script's stack string can pop
+    // free without us losing the reason.
+    bindings.lua_pushlstring(L, reason.ptr, reason.len);
+    bindings.lua_setfield(L, bindings.LUA_REGISTRYINDEX, FAILURE_REASON_KEY);
+
+    // details: copy the table to a ScriptValue so the registry does not hold a
+    // live Lua reference (which the failed-pcall path will unwind). `.None`
+    // means nil/absent.
+    switch (details_value) {
+        .None => {
+            bindings.lua_pushnil(L);
+            bindings.lua_setfield(L, bindings.LUA_REGISTRYINDEX, FAILURE_DETAILS_KEY);
+        },
+        .Table => {
+            // The table is at the host function's arg 2. lua_pushvalue copies
+            // the table reference into the registry; the executor's
+            // readExplicitFailure copies it AGAIN into a ScriptValue so the
+            // Lua-side GC can reclaim it on clearExplicitFailure.
+            bindings.lua_pushvalue(L, 2);
+            bindings.lua_setfield(L, bindings.LUA_REGISTRYINDEX, FAILURE_DETAILS_KEY);
+        },
+    }
+
+    // explicit flag: a Lua boolean (true) on the registry.
+    bindings.lua_pushboolean(L, 1);
+    bindings.lua_setfield(L, bindings.LUA_REGISTRYINDEX, FAILURE_EXPLICIT_KEY);
+}
+
+/// Build a `ScriptValue` (table form) from a Lua table at `idx`. Best-effort:
+/// on any conversion failure the caller nils the channel. Bounded to
+/// string-keyed, string/float/bool-valued entries so the conversion is
+/// deterministic and does not chase Lua objects past the table.
+fn tableToScriptValue(
+    L: *bindings.LuaState,
+    idx: c_int,
+    allocator: std.mem.Allocator,
+) !executor.ScriptValue {
+    var map = std.StringHashMap(executor.ScriptValue).init(allocator);
+    errdefer {
+        var it = map.iterator();
+        while (it.next()) |e| {
+            allocator.free(e.key_ptr.*);
+        }
+        map.deinit();
+    }
+    bindings.lua_pushnil(L);
+    // After lua_pushnil, `idx` (a relative index computed BEFORE the push)
+    // no longer points to the table — it now points to the nil we just
+    // pushed. lua_next(L, idx) on a non-table raises a segfault in LuaJIT
+    // (verified in the LUA-12/15/16 integration tests on 2026-08-08: the
+    // path that triggered a registry-backed details table from
+    // platform.fail() crashed in lj_tab_next because idx resolved to nil
+    // and not to the table).
+    while (bindings.lua_next(L, idx - 1) != 0) {
+        // stack: key, value
+        var key_len: usize = 0;
+        const key_ptr = bindings.lua_tolstring(L, -2, &key_len);
+        const key = key_ptr[0..key_len];
+        const key_copy = try allocator.dupe(u8, key);
+
+        const value: executor.ScriptValue = blk: {
+            const vt = bindings.lua_type(L, -1);
+            switch (vt) {
+                bindings.LUA_TSTRING => {
+                    var vlen: usize = 0;
+                    const vp = bindings.lua_tolstring(L, -1, &vlen);
+                    const v = vp[0..vlen];
+                    break :blk executor.ScriptValue{ .string = try allocator.dupe(u8, v) };
+                },
+                bindings.LUA_TNUMBER => {
+                    break :blk executor.ScriptValue{ .number = bindings.lua_tonumber(L, -1) };
+                },
+                bindings.LUA_TBOOLEAN => {
+                    break :blk executor.ScriptValue{ .boolean = bindings.lua_toboolean(L, -1) != 0 };
+                },
+                bindings.LUA_TNIL => {
+                    break :blk executor.ScriptValue{ .nil_value = {} };
+                },
+                else => {
+                    break :blk executor.ScriptValue{ .nil_value = {} };
+                },
+            }
+        };
+
+        try map.put(key_copy, value);
+
+        // pop value, keep key for next iteration
+        bindings.lua_pop(L, 1);
+    }
+
+    return executor.ScriptValue{ .table = map };
+}
+
+/// Read the explicit-failure discriminator back from the registry. Called
+/// from `executor.executeSource` in the failed-pcall branch.
+///
+/// On `.None`, both `reason` and `details` are null. On `.Explicit`, both are
+/// heap-allocated copies owned by `allocator` — caller frees after consuming.
+///
+/// The function is robust against stale state: a previous script's failure
+/// left a flag set is unreadable here because the script author would have
+/// to have gone through `platform.fail`, which is the exact thing that
+/// caused the failure. `clearExplicitFailure` is called immediately after
+/// reading to keep the invariant clean.
+pub fn readExplicitFailure(
+    L: *bindings.LuaState,
+    allocator: std.mem.Allocator,
+) ExplicitFailureView {
+    // explicit flag first — short-circuit if absent.
+    bindings.lua_getfield(L, bindings.LUA_REGISTRYINDEX, FAILURE_EXPLICIT_KEY);
+    defer bindings.lua_pop(L, 1);
+    if (bindings.lua_type(L, -1) != bindings.LUA_TBOOLEAN) {
+        return .{ .kind = .None, .reason = null, .details = null };
+    }
+    if (bindings.lua_toboolean(L, -1) == 0) {
+        return .{ .kind = .None, .reason = null, .details = null };
+    }
+
+    // reason: a Lua string on the registry. Dupe so the caller owns the slice.
+    bindings.lua_getfield(L, bindings.LUA_REGISTRYINDEX, FAILURE_REASON_KEY);
+    var reason_owned: ?[]const u8 = null;
+    if (bindings.lua_type(L, -1) == bindings.LUA_TSTRING) {
+        var rlen: usize = 0;
+        const rptr = bindings.lua_tolstring(L, -1, &rlen);
+        reason_owned = allocator.dupe(u8, rptr[0..rlen]) catch null;
+    }
+    bindings.lua_pop(L, 1);
+
+    // details: a Lua table copied into a ScriptValue. Dupe via the table
+    // walker so the caller's ScriptValue owns its strings.
+    bindings.lua_getfield(L, bindings.LUA_REGISTRYINDEX, FAILURE_DETAILS_KEY);
+    var details_owned: ?executor.ScriptValue = null;
+    if (bindings.lua_type(L, -1) == bindings.LUA_TTABLE) {
+        details_owned = tableToScriptValue(L, -1, allocator) catch null;
+    }
+    bindings.lua_pop(L, 1);
+
+    return .{ .kind = .Explicit, .reason = reason_owned, .details = details_owned };
+}
+
+/// Clear the explicit-failure discriminator. Called by `executeSource` immediately
+/// after `readExplicitFailure` so a subsequent `platform.fail` from the same
+/// script does not inherit stale state.
+pub fn clearExplicitFailure(L: *bindings.LuaState) void {
+    bindings.lua_pushnil(L);
+    bindings.lua_setfield(L, bindings.LUA_REGISTRYINDEX, FAILURE_EXPLICIT_KEY);
+
+    bindings.lua_pushnil(L);
+    bindings.lua_setfield(L, bindings.LUA_REGISTRYINDEX, FAILURE_REASON_KEY);
+
+    bindings.lua_pushnil(L);
+    bindings.lua_setfield(L, bindings.LUA_REGISTRYINDEX, FAILURE_DETAILS_KEY);
 }
 
 // ---------------------------------------------------------------------------

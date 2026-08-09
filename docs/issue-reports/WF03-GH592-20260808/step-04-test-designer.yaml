@@ -1,0 +1,126 @@
+run_id: WF03-GH592-20260808
+step: 04-test-designer
+agent: TEST-DESIGNER
+completed_at: 2026-08-08T22:42:28Z
+
+requirement_ids:
+  - LUA-12
+  - LUA-15
+  - LUA-16
+
+github_issue: https://github.com/tvolodi/R-Co/issues/592
+
+summary: >
+  Designed and implemented an end-to-end integration test for the
+  LUA-12 / LUA-15 / LUA-16 production wiring delivered by commits
+  c5a12c9d and d0e74f73. One file, nine test cases (2 + 4 + 3), all
+  pass on `zig build test-integration-iss0625`. Found and fixed a
+  production-side segfault in `tableToScriptValue` (`lua_next` was
+  iterating with the wrong relative index after `lua_pushnil` shifted
+  the stack). Filed a follow-up issue (ISS-0626 / GH-595) for a known
+  LUA-16 limitation (stack_trace is empty on LuaJIT 2.1 because call
+  frames unwind before `lua_pcall` returns to C; proper fix is to
+  install `debug.traceback` as the errfunc argument to `lua_pcall`).
+
+production_wiring_commits:
+  - c5a12c9d
+  - d0e74f73
+
+test_cases:
+  integration:
+    - id: TC-ISS-0625-LUA-12-int-01
+      requirement: LUA-12
+      layer: integration
+      verifies: call_service happy path through real host context
+      status: PASS
+    - id: TC-ISS-0625-LUA-12-int-02
+      requirement: LUA-12
+      layer: integration
+      verifies: service-not-found raises a Lua error with diagnostic
+      status: PASS
+    - id: TC-ISS-0625-LUA-15-int-01
+      requirement: LUA-15
+      layer: integration
+      verifies: platform.fail() -> .ExplicitFailure, error_message, no script_error
+      status: PASS
+    - id: TC-ISS-0625-LUA-15-int-02
+      requirement: LUA-15
+      layer: integration
+      verifies: error() raise -> .RuntimeError (no mis-classification as explicit)
+      status: PASS
+    - id: TC-ISS-0625-LUA-15-int-03
+      requirement: LUA-15
+      layer: integration
+      verifies: anti-forgery: _G.__failure_reason__ is ignored, registry wins
+      status: PASS
+    - id: TC-ISS-0625-LUA-15-int-04
+      requirement: LUA-15
+      layer: integration
+      verifies: explicit details table preserved; no ScriptErrorPayload
+      status: PASS
+    - id: TC-ISS-0625-LUA-16-int-01
+      requirement: LUA-16
+      layer: integration
+      verifies: runtime error captures error_message; stack_trace empty (KNOWN LIMITATION)
+      status: PASS
+    - id: TC-ISS-0625-LUA-16-int-02
+      requirement: LUA-16
+      layer: integration
+      verifies: instruction_count == 0 (LUA-08 limiter not installed)
+      status: PASS
+    - id: TC-ISS-0625-LUA-16-int-03
+      requirement: LUA-16
+      layer: integration
+      verifies: capabilities_at_failure == SKIP_REASON_NO_INSTRUCTION_LIMITER literal
+      status: PASS
+
+artifacts_produced:
+  - tests/integration/iss0625_lua_12_15_16_test.zig
+  - tests/specs/LUA-12.md   (appended ISS-0625 TC references)
+  - tests/specs/LUA-15.md   (appended ISS-0625 TC references)
+  - tests/specs/LUA-16.md   (appended ISS-0625 TC references)
+  - build.zig               (added `test-integration-iss0625` step)
+  - src/lua/host_context.zig (fixed `tableToScriptValue` lua_next index bug)
+  - docs/issues/ISS-0626.json (local registry for follow-up issue)
+  - scratch/gh-595-body.md  (intermediate GH body source; git-ignored)
+
+incidental_findings:
+  - id: ISS-0626
+    severity: MINOR
+    title: LUA-16 stack_trace always empty on LuaJIT 2.1
+    github_issue: https://github.com/tvolodi/R-Co/issues/595
+    discovered_while: verifying TC-ISS-0625-LUA-16-int-01
+    disposition: filed as GitHub issue + queued for separate WF-03 run; not addressed in this branch
+
+validations_run:
+  - command: zig build
+    exit_code: 0
+  - command: zig build test
+    exit_code: 0
+  - command: zig build test-integration-iss0625
+    exit_code: 0
+    tests_passed: 9
+    tests_failed: 0
+    tests_skipped: 0
+  - command: python tools/lint_test_isolation.py tests/integration
+    exit_code: 0
+  - command: python tools/lint_handoffs.py
+    exit_code: 1
+    note: >
+      Pre-existing BOM / timestamp issues in older unrelated handoff files;
+      the step-04 handoff itself passes all schema checks (UTF-8-sig read,
+      legal result.status, completed_at >= started_at, no orphaned steps).
+
+production_fix_summary:
+  file: src/lua/host_context.zig
+  function: tableToScriptValue
+  bug: >
+    After `bindings.lua_pushnil(L)`, the relative index `idx` (computed
+    BEFORE the push, pointing to the table) now points to the nil
+    we just pushed. `lua_next(L, idx)` then iterates over nil, which
+    raises a segfault in LuaJIT 2.1 `lj_tab_next` at 0xffffffffffffffff.
+  fix: change `lua_next(L, idx)` to `lua_next(L, idx - 1)`
+  triggered_by: TC-ISS-0625-LUA-15-int-04 (which exercises a registry-backed details table)
+  reference: comment in src/lua/host_context.zig around line 239
+
+next_action: Route to TEST-DESIGN-VALIDATOR (Step 4b)
