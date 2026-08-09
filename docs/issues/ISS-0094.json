@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0094",
   "title": "audit_entries.resource_id UUID/TEXT saga: original dispatch-skip defect RESOLVED; follow-on defect is 6+ test files still casting the (now-TEXT) resource_id bind param to ::uuid",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/348",
   "severity": "MAJOR",
   "category": "migration scoping / per-tenant-schema defect",
@@ -35,9 +35,15 @@
       "context": "While diagnosing ISS-0184/GH-517's 93 test-integration-svc failures, found that audit_entries.resource_id is now correctly TEXT on the live schema (this issue's original defect is resolved), but at least 6 test files still query it as `resource_id = $N::uuid`, producing C42883 'operator does not exist: text = uuid'. Reproduced directly: `SET search_path TO tenant_default,public; PREPARE q(text) AS SELECT status FROM instance_projections WHERE instance_id = $1; EXECUTE q(...)` style reproduction against resource_id confirmed the exact error text via psql. This is the inverse of the original ISS-0094 defect (call sites never updated after the column type changed, rather than the column type never changing) and accounts for the largest single cluster (C1) in the ISS-0184 diagnosis -- roughly 18+ raw occurrences in the postgres server log across ext02_webhook_dispatch_test.zig, obs03_audit_log_test.zig, obs05_dlq_test.zig, adp02_tenant_scope_test.zig, adp06_pipeline_run_correlation_test.zig, and oidc09_jit_provisioning_test.zig, with further cascading transaction-abort failures in xc02/xc06/exp201_202/exp401_402/exp601/repository_test/sim01_04 downstream of the first hit in each test's transaction. Fix is mechanical: remove the `::uuid` cast from the resource_id bind parameter in each affected query (or bind as text explicitly) across the ~6 files. Not fixed in this diagnosis pass (ISSUE-FIXER does diagnosis only); recorded here as this issue's continuation rather than a new issue number since it's the same resource_id/text/uuid story."
     }
   ],
-  "files_changed": [],
+  "files_changed": [
+    "tests/integration/obs03_audit_log_test.zig",
+    "tests/integration/adp06_pipeline_run_correlation_test.zig",
+    "tests/integration/oidc09_jit_provisioning_test.zig"
+  ],
   "created_at": "2026-07-31T03:20:00Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T18:55:00Z",
+  "run_id_final": "WF03-GH348-20260809",
+  "resolution_final": "Follow-on defect (the remaining OPEN part of this issue) resolved: removed the stale `::uuid` cast from `resource_id = $N::uuid` in the 3 files that still had it -- obs03_audit_log_test.zig (7 occurrences), adp06_pipeline_run_correlation_test.zig (3 occurrences, careful to only touch audit_entries.resource_id lines, not the file's other genuinely-UUID instance_id columns), oidc09_jit_provisioning_test.zig (1 occurrence). ext02_webhook_dispatch_test.zig and adp02_tenant_scope_test.zig were already fixed earlier in this same session by ISS-0637/GH-619 and ISS-0638/GH-621; obs05_dlq_test.zig was already fixed by ISS-0116/GH-379's DLQ work. A repo-wide grep for `resource_id = \\$\\d+::uuid` across both tests/ and src/ confirms zero remaining occurrences anywhere. Verified: zig build test-integration-obs03 improved from 1/6 pass (baseline, confirmed via git stash) to 4/6 pass -- the 2 remaining failures are unrelated HTTP-layer 500 errors, confirmed identical on main before and after this fix, part of the broader pre-existing GH-482 test-integration-svc failure cluster. lint_sql_param_types.py 0 findings. zig build test 89/89 steps, 1011/1075 pass (unchanged from baseline).",
   "prevention": [
     "When adding a new GBL-prefixed migration, do not assume the 'GBL-' prefix alone is sufficient signal for 'this is public-schema-only' -- verify against the actual tables/functions the migration touches, and if it operates on any table that exists per-tenant-schema (audit_entries, process_definitions, instance_projections, tasks, dead_letter_items, webhook_subscriptions, webhook_deliveries, events, etc.), it must not be silently skipped for non-public schemas by filename-prefix alone.",
     "A migration dispatch rule that infers scope from a naming convention (filename prefix) rather than from the migration's declared/actual content is inherently fragile -- prefer an explicit, machine-checked scope declaration per migration file over prefix-based inference."

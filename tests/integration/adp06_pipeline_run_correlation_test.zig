@@ -77,7 +77,7 @@ fn cleanupInstance(pool: *Pool, instance_id: []const u8) void {
     conn.exec("DELETE FROM events_archive WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
     conn.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
     conn.exec("DELETE FROM instance_sequence WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
-    conn.exec("DELETE FROM audit_entries WHERE resource_id = $1::uuid", &.{instance_id}) catch {};
+    conn.exec("DELETE FROM audit_entries WHERE resource_id = $1", &.{instance_id}) catch {};
     conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
 }
 
@@ -199,7 +199,7 @@ test "TC-ADP-06-02: trusted pipeline context propagates to event metadata and au
         alloc,
         \\SELECT pipeline_run_id::text
         \\FROM audit_entries
-        \\WHERE resource_id = $1::uuid
+        \\WHERE resource_id = $1
         \\ORDER BY timestamp DESC, audit_id DESC
         \\LIMIT 1
     ,
@@ -297,7 +297,7 @@ test "TC-ADP-06-03: non-pipeline paths preserve null/absent compatibility and qu
         alloc,
         \\SELECT pipeline_run_id::text
         \\FROM audit_entries
-        \\WHERE resource_id = $1::uuid
+        \\WHERE resource_id = $1
         \\ORDER BY timestamp DESC, audit_id DESC
         \\LIMIT 1
     ,

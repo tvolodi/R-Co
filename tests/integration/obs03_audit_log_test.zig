@@ -84,7 +84,7 @@ fn cleanupAuditResource(pool: *Pool, resource_id: []const u8) void {
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
     conn.exec(
-        "DELETE FROM audit_entries WHERE resource_id = $1::uuid",
+        "DELETE FROM audit_entries WHERE resource_id = $1",
         &.{resource_id},
     ) catch {};
 }
@@ -263,7 +263,7 @@ test "TC-OBS-03-INT-01: state-changing writes create audit rows with required fi
         \\  before_state::text,
         \\  after_state::text
         \\FROM audit_entries
-        \\WHERE resource_id = $1::uuid
+        \\WHERE resource_id = $1
         \\ORDER BY "timestamp" ASC, audit_id ASC
     ,
         &.{def_id},
@@ -316,7 +316,7 @@ test "TC-OBS-03-INT-01: state-changing writes create audit rows with required fi
         \\SELECT COUNT(*)::text
         \\FROM audit_entries
         \\WHERE resource_type = 'token'
-        \\  AND resource_id = $1::uuid
+        \\  AND resource_id = $1
         \\  AND action = 'token.delete'
         \\  AND before_state IS NOT NULL
         \\  AND after_state IS NULL
@@ -375,7 +375,7 @@ test "TC-OBS-03-INT-02: read-only GET/list operations do not create audit rows" 
     const before_count = try countRows(
         conn,
         alloc,
-        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_id = $1::uuid",
+        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_id = $1",
         &.{def_id},
     );
 
@@ -400,7 +400,7 @@ test "TC-OBS-03-INT-02: read-only GET/list operations do not create audit rows" 
     const after_count = try countRows(
         conn,
         alloc,
-        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_id = $1::uuid",
+        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_id = $1",
         &.{def_id},
     );
 
@@ -478,7 +478,7 @@ test "TC-OBS-03-INT-03: audit insert failure rolls back business write" {
     const audit_count = try countRows(
         conn,
         alloc,
-        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_id = $1::uuid",
+        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_id = $1",
         &.{def_id},
     );
     try testing.expectEqual(@as(usize, 0), audit_count);
@@ -667,7 +667,7 @@ test "TC-OBS-03-INT-06: canceled-token post-auth action remains audited" {
         \\SELECT COUNT(*)::text
         \\FROM audit_entries
         \\WHERE resource_type = 'token'
-        \\  AND resource_id = $1::uuid
+        \\  AND resource_id = $1
         \\  AND action = 'token.revoke'
         \\  AND actor_id = $2::uuid
     ,
