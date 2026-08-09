@@ -1,0 +1,39 @@
+{
+  "handoff_id": "6f9a5258-099b-4315-b2ff-cd8c668a5e95",
+  "run_id": "WF03-GH357-20260809",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T15:36:54Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 00 \u2014 git-setup",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/357",
+    "issue_title": "ISS-0100 \u2014 Integration test fixtures leak production-typed tenant rows (tenant_type never set to test), clean_test_db.py cleanup misses them"
+  },
+  "task": {
+    "description": "fn:git-setup \u2014 create feature/WF03-GH357-20260809 from main and push",
+    "acceptance_criteria": [
+      "feature/WF03-GH357-20260809 branch exists on origin",
+      "git branch --show-current outputs feature/WF03-GH357-20260809"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created feature/WF03-GH357-20260809 from main (b4b577e5) and pushed to origin.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 0.5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T15:36:54Z",
+  "completed_at": "2026-08-09T15:36:54Z"
+}
