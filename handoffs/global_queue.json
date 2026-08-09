@@ -834,6 +834,24 @@
       "completed_at": "2026-08-09T05:43:39Z",
       "run_id": "WF03-GH383-20260809",
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-610",
+      "issue_number": 610,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/610",
+      "title": "ISS-0632: lint_sql_param_types.py misses 42P18 (untyped param in variadic-any context)",
+      "severity": "MAJOR",
+      "labels": [],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-09T05:50:24Z"
+      },
+      "added_at": "2026-08-09T05:50:24Z",
+      "started_at": "2026-08-09T05:50:24Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
