@@ -684,7 +684,7 @@ test "TC-EXT-02-INT-08: Create/delete operations write OBS-03 audit rows atomica
         \\SELECT COUNT(*)::text
         \\FROM audit_entries
         \\WHERE action = 'webhook_subscription.create'
-        \\  AND resource_id = $1::uuid
+        \\  AND resource_id = $1
         \\  AND before_state IS NULL
         \\  AND after_state IS NOT NULL
     ,
@@ -699,7 +699,7 @@ test "TC-EXT-02-INT-08: Create/delete operations write OBS-03 audit rows atomica
         \\SELECT COUNT(*)::text
         \\FROM audit_entries
         \\WHERE action = 'webhook_subscription.delete'
-        \\  AND resource_id = $1::uuid
+        \\  AND resource_id = $1
         \\  AND before_state IS NOT NULL
         \\  AND after_state IS NULL
     ,
