@@ -1,0 +1,49 @@
+{
+  "handoff_id": "8c942dfd-a06d-4d3e-b4f5-d29044ab1aaf",
+  "run_id": "WF03-GH381-20260809",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-09T06:48:10Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 2 - Code design",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "5430b45e-b9d6-409c-9b98-e762fcbbc27d"
+    ],
+    "artifacts_in": [
+      "tests/integration/ext02_webhook_dispatch_test.zig",
+      "src/webhook/dispatcher.zig",
+      "docs/issues/ISS-0118.json"
+    ]
+  },
+  "task": {
+    "description": "Produce Type E prose design for the 3 test assertion fixes in ext02_webhook_dispatch_test.zig (lines 589, 654, 754): stale lowercase/obsolete status strings must be updated to match the uppercase values dispatcher.zig now writes.",
+    "acceptance_criteria": [
+      "Design artefact at src/design/iss0118-gh381-webhook-status-test-fix.md present",
+      "All 3 changes documented with justification",
+      "lint_design_artefact.py exits 0",
+      "No implementation code in artefact"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E design for ISS-0118/GH-381: documents 3 assertion corrections in ext02_webhook_dispatch_test.zig (failed\u2192FAILED, exhausted\u2192FAILED, success\u2192DELIVERED) with dispatcher evidence. lint_design_artefact.py exits 0.",
+    "artifacts_out": [
+      "src/design/iss0118-gh381-webhook-status-test-fix.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T06:48:10Z",
+  "completed_at": "2026-08-09T06:48:10Z"
+}
