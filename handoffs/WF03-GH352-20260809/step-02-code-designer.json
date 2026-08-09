@@ -1,0 +1,52 @@
+{
+  "handoff_id": "aef46015-f89d-4e71-a0ed-da6dcb90c83a",
+  "run_id": "WF03-GH352-20260809",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ISSUE-FIXER",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH352-20260809/step-02-code-designer.json",
+  "created_at": "2026-08-09T17:22:30Z",
+  "started_at": "2026-08-09T17:29:05Z",
+  "completed_at": "2026-08-09T17:45:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0097.json"
+    ]
+  },
+  "task": {
+    "description": "Write src/design/fix-ISS-0097.md documenting the investigation findings and a reasoned fix direction (not a mechanical pick) among the three options the issue lists.",
+    "acceptance_criteria": [
+      "Design doc documents all investigation findings from Step 1",
+      "Design doc shows reasoning for chosen direction and explicit rejection rationale for the other two",
+      "No implementation code in the design doc"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Wrote src/design/fix-ISS-0097.md. Chose direction (a): pass tenant id into the worker thread's own entry function and call tenant_context.set() as its first statement \u2014 mirroring the already-proven pattern in concurrent_instances_test.zig and iss102_claim_test.zig. Rejected (b) a pool-level explicit-tenant-id acquire() API as unjustified surface area (no call site needs it) and (c) restructuring tenant_context away from threadlocal as invasive and unmotivated (the design is deliberate per pool.zig's ISS-501 comments; no production correctness gap found in the request-handling path).",
+    "artifacts_out": [
+      "src/design/fix-ISS-0097.md"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH352-20260809",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-GH352-20260809",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/646",
+      "pr_create_error": null
+    },
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b, self-validated inline per WF-03 scale)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

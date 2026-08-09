@@ -1,0 +1,65 @@
+{
+  "handoff_id": "a09596b6-ac44-423e-a42d-20f2b94cd36f",
+  "run_id": "WF03-GH352-20260809",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH352-20260809/step-01-issue-fixer.json",
+  "created_at": "2026-08-09T17:22:30Z",
+  "started_at": "2026-08-09T17:27:00Z",
+  "completed_at": "2026-08-09T17:29:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0097.json",
+      "src/api/tenant_context.zig",
+      "src/db/pool.zig",
+      "tests/integration/instance_error_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Investigate GH-352/ISS-0097 before selecting a fix direction: read tenant_context.zig and pool.zig's acquire()/applyRequestStorageRouting() mechanism; grep std.Thread.spawn across src/ (production-impact check explicitly requested by the issue) and determine for each call site whether it touches pool.acquire() on a production request-handling path; read TC-EE-10-05 in tests/integration/instance_error_test.zig to understand its thread-spawn pattern; check docs/issues/ISS-0097.json (existing) for prior context.",
+    "acceptance_criteria": [
+      "Existing ISS-0097.json read and reused (not duplicated)",
+      "Every std.Thread.spawn call site in src/ individually assessed for pool.acquire()/tenant-scoped access",
+      "TC-EE-10-05's exact thread-spawn/pool-acquire mechanism documented",
+      "Any production-severity finding filed separately, not folded into this MINOR/test-only issue"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Confirmed root cause: tenant_context.zig's threadlocal storage does not propagate across std.Thread.spawn; Pool.acquire() reads it unconditionally via applyRequestStorageRouting(). Grepped std.Thread.spawn across src/ (4 call sites): webhook/dispatcher.zig CaptureServer.run and lua/timeout.zig watchdogLoop never touch pool.acquire() (test-only / atomics-only); identity/provider/bootstrap.zig KcHttpCallState.threadFn is production but pure HTTP, no DB; api/routes/onboarding.zig runSagaBackground DOES call pool.acquire() via executeSaga on a production path, but is safe by construction (public-canonical tables or explicit search_path override). Found a currently-live, separate regression of ISS-0070/GH-285 in this same call chain (persistOnboardingResult's UPDATE tenant_default.onboarding_registry, broken by GBL-134's unrelated shadow-table cleanup) \u2014 filed/updated and forwarded to the global queue per the issue-queue protocol, NOT fixed on this branch (out of scope for a MINOR/test-only issue).",
+    "artifacts_out": [
+      "docs/issues/ISS-0070.json (updated, forwarded to global queue)",
+      "GH-285 comment: https://github.com/tvolodi/R-Co/issues/285#issuecomment-5232792177"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0070",
+        "severity": "BLOCKER",
+        "description": "Incidental discovery: persistOnboardingResult's hardcoded UPDATE tenant_default.onboarding_registry fails post-GBL-134 (table dropped; canonical home is public). Filed as update to existing ISS-0070/GH-285 and forwarded to global queue \u2014 not fixed on this branch.",
+        "affected_requirement": null
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH352-20260809",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-GH352-20260809",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/646",
+      "pr_create_error": null
+    },
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,54 @@
+{
+  "handoff_id": "bf347c2d-034f-4a95-9a35-798e5f8e043e",
+  "run_id": "WF03-GH352-20260809",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "CODE-DESIGN-VALIDATOR",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH352-20260809/step-03-backend-dev.json",
+  "created_at": "2026-08-09T17:22:30Z",
+  "started_at": "2026-08-09T17:46:05Z",
+  "completed_at": "2026-08-09T18:20:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/fix-ISS-0097.md"
+    ]
+  },
+  "task": {
+    "description": "Implement the chosen fix direction in tests/integration/instance_error_test.zig's TC-EE-10-05 worker.run.",
+    "acceptance_criteria": [
+      "zig build exits 0, no 'error set' output",
+      "TC-EE-10-05 passes against live BPM_TEST_DB_URL",
+      "No production code changed",
+      "No new public API surface added"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "worker.run in TC-EE-10-05 now calls bpm.api_tenant_context.set(\"00000000-0000-0000-0000-000000000000\") as its first statement, before setInstanceError. zig build exits 0, no 'error set' output. Verified via stash-based control: reverting the fix line reproduces the failure (expect(r1_ok or r2_ok) false, both error.PersistenceFailed); restoring it and running zig build test-integration (properly sequenced, 3 independent runs) shows zero failures referencing instance_error_test.zig. Also fixed a CI-only regression discovered post-PR: the fix shifted a pre-existing, already-baselined T010 hardcoded-UUID lint finding from line 761 to 770; updated tools/lint_test_isolation.baseline.json's line number to match (--no-baseline raw BLOCKER count unchanged at 74, confirming no new violation was introduced).",
+    "artifacts_out": [
+      "tests/integration/instance_error_test.zig",
+      "tools/lint_test_isolation.baseline.json"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH352-20260809",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-GH352-20260809",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/646",
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
