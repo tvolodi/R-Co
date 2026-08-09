@@ -392,7 +392,7 @@ test "TC-OBS-05-INT-02: POST /dlq/:id/retry returns 409+discard for CANCELLED an
     const retry_audit_count = try rowCount(
         conn,
         alloc,
-        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_type = 'dlq' AND resource_id = $1::uuid AND action = 'dlq.retry' AND actor_id = $2::uuid",
+        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_type = 'dlq' AND resource_id = $1 AND action = 'dlq.retry' AND actor_id = $2::uuid",
         &.{ active_dlq_id, actor.user_id },
     );
     try testing.expect(retry_audit_count >= 1);
@@ -459,7 +459,7 @@ test "TC-OBS-05-INT-03: POST /dlq/:id/discard appends audit and rolls back on au
     const audit_count = try rowCount(
         conn,
         alloc,
-        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_type = 'dlq' AND resource_id = $1::uuid AND action = 'dlq.discard'",
+        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_type = 'dlq' AND resource_id = $1 AND action = 'dlq.discard'",
         &.{dlq_id_ok},
     );
     try testing.expect(audit_count >= 1);

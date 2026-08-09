@@ -1,0 +1,47 @@
+{
+  "handoff_id": "8d300b53-6e2f-4739-ab6b-5d6cfc265469",
+  "run_id": "WF03-GH379-20260809",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T10:29:55Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 1 — diagnose root cause",
+    "requirement_ids": [],
+    "related_handoff_ids": ["2c0e27e1-db08-4a0e-bf27-a62c15793812"],
+    "artifacts_in": [
+      "docs/issues/ISS-0116.json",
+      "tests/integration/obs05_dlq_test.zig",
+      "tests/integration/obs06_alerts_test.zig",
+      "tests/integration/sch303_timer_dlq_test.zig",
+      "src/dlq/store.zig",
+      "migrations/GBL-120_iss103_audit_resource_id_text.sql"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/379"
+  },
+  "task": {
+    "description": "WF-03 Step 1 for GH-379 / ISS-0116. Run DLQ integration tests to establish baseline: test-integration-sch303, test-integration-svc (for TC-OBS-05/06 via main_test.zig). Classify failures and identify root cause.",
+    "acceptance_criteria": [
+      "All failing TC-OBS-05 and TC-OBS-06 tests identified",
+      "Root cause classified per Category A-E",
+      "Specific source lines to fix identified"
+    ],
+    "functions_to_call": ["fn:search-issues"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosis complete. Category: D — Test error; source (production DLQ code) is correct; test assertion SQL is wrong.\n\nFindings:\n1. TC-SCH-303: 4/4 PASS (already fixed by prior work — no action needed).\n2. TC-OBS-06-INT-01..05: All PASS (no action needed).\n3. TC-OBS-05-INT-01: PASS.\n4. TC-OBS-05-INT-02: FAIL — `rowCount` query at obs05_dlq_test.zig:395 uses `resource_id = $1::uuid`. `audit_entries.resource_id` was migrated from UUID to TEXT by migration GBL-120 (ISS-103). Comparing TEXT = UUID gives PostgreSQL error C42804.\n5. TC-OBS-05-INT-03: FAIL — same root cause, `rowCount` query at obs05_dlq_test.zig:462.\n\nRoot cause: Identical pattern to ISS-0638 (GH-621, fixed 2026-08-09 in adp02_tenant_scope_test.zig). The test SQL casts $1 to UUID when the column is TEXT.\n\nFix: In tests/integration/obs05_dlq_test.zig, change:\n  Line 395: `resource_id = $1::uuid` → `resource_id = $1`\n  Line 462: `resource_id = $1::uuid` → `resource_id = $1`\n\nNote: `actor_id = $2::uuid` at line 395 is correct — `actor_id` column remains UUID.",
+    "artifacts_out": [
+      "scratch/_obs05_narrow.log",
+      "scratch/_sch303_summary.log"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER Step 2 (apply fix to tests/integration/obs05_dlq_test.zig)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T10:29:55Z",
+  "completed_at": "2026-08-09T10:29:55Z"
+}
