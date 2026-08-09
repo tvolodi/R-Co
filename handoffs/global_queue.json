@@ -1021,14 +1021,11 @@
       "labels": [
         "bug"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-09T11:35:02Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T11:35:02Z",
       "started_at": "2026-08-09T11:35:02Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T15:18:39Z",
       "run_id": null,
       "deferred_reason": null
     },
