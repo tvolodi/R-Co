@@ -1,0 +1,69 @@
+{
+  "handoff_id": "85fb02d1-e11a-4d85-ae2d-5bced6c73371",
+  "run_id": "WF03-GH482-20260809",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH482-20260809/step-03-backend-dev.json",
+  "created_at": "2026-08-09T03:56:52Z",
+  "started_at": "2026-08-09T03:56:52Z",
+  "completed_at": "2026-08-09T04:02:57Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "aebd28ab-5be3-4044-a232-150a105bf876",
+      "190b154e-6cba-4874-9314-57fc6ff02d27",
+      "b95272cd-523a-4386-842e-ed1c0235c909"
+    ],
+    "artifacts_in": [
+      "src/design/iss0630-migration-scope-qualification-fix.md",
+      "migrations/011_webhook_subscriptions.sql",
+      "migrations/022_obs06_alerting_state.sql",
+      "migrations/038_oidc_claim_mapping_config.sql",
+      "migrations/039_jit_provisioning_config.sql",
+      "migrations/041_oidc15_realm_deletion_tracker.sql",
+      "migrations/042_oidc16_26_agent_lifecycle_foundations.sql",
+      "migrations/049_repository_service_catalog.sql",
+      "migrations/056_onboarding_registry.sql",
+      "migrations/094_entity_subsystem.sql",
+      ".github/workflows/ci.yml"
+    ]
+  },
+  "task": {
+    "description": "Implement the APPROVED design at src/design/iss0630-migration-scope-qualification-fix.md (PASSed CODE-DESIGN-VALIDATOR). Fixes ISS-0630/GH-605 (BLOCKER): 9 migration files declare '-- scope: public' but contain unqualified table statements, breaking fresh-database bootstrap.\n\n1. Edit all 9 files in place, qualifying every CREATE TABLE / ALTER TABLE / DROP TABLE / INSERT INTO statement the design identifies with public. -- do NOT add a corrective/backfill migration, these are edit-in-place fixes to already-idempotent statements:\n   - migrations/011_webhook_subscriptions.sql\n   - migrations/022_obs06_alerting_state.sql\n   - migrations/038_oidc_claim_mapping_config.sql\n   - migrations/039_jit_provisioning_config.sql\n   - migrations/041_oidc15_realm_deletion_tracker.sql\n   - migrations/042_oidc16_26_agent_lifecycle_foundations.sql\n   - migrations/049_repository_service_catalog.sql\n   - migrations/056_onboarding_registry.sql\n   - migrations/094_entity_subsystem.sql (ALL 4 statements including the INSERT INTO ~80 lines from the scope comment)\n\n2. Add the new fresh_database_migration CI job to .github/workflows/ci.yml per the design (Postgres 15 service container, zig build migrate against a genuinely empty database, judged by exit code only).\n\nVALIDATION -- this is the load-bearing check: create a genuinely fresh, empty PostgreSQL database (docker exec into the db_test container, CREATE DATABASE) and run zig build migrate against it end-to-end. It must exit 0 and apply ALL migration files including past 011, 022, 038, 039, 041, 042, 049, 056, 094 without any scope-mismatch error. Do this for real -- ORCH already reproduced the failure this way and will independently re-verify your fix the same way.\n\nAlso confirm this workspace's own long-lived db_test database (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test) still migrates cleanly after your edits (these files are already ledger-recorded there, so your edits should be no-ops on that database -- confirm zig build migrate against it still exits 0 with no new migrations applied, proving the edits didn't regress the already-applied-elsewhere case).",
+    "acceptance_criteria": [
+      "All 9 files edited in place with public.-qualification, no backfill migration",
+      "New fresh_database_migration CI job added per design",
+      "zig build migrate against a genuinely fresh, empty database exits 0, applies all files",
+      "zig build migrate against the existing long-lived db_test database still exits 0, no new migrations applied",
+      "zig build, zig build test-lua exit 0"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Qualified unqualified CREATE TABLE / INSERT INTO statements with public. in all 9 migration files (011, 022, 038, 039, 041, 042, 049, 056, 094) per the approved design. Added fresh_database_migration CI job to .github/workflows/ci.yml (Postgres 15 service container, zig build migrate against genuinely empty DB, judged by exit code only). Validated against a real throwaway database (bpm_fresh_check on r-co-2-db_test-1): zig build migrate exited 0 and applied all 115 migrations end-to-end including all 9 previously-failing files, no scope-mismatch error. Re-run against the same DB confirmed idempotency (No new migrations to apply). Existing long-lived bpm_test database also confirmed exit 0 with no new migrations applied (no regression on already-applied path). zig build and zig build test-lua both exit 0 with no error-set output. No corrective/backfill migration created -- edit-in-place only, per design.",
+    "artifacts_out": [
+      "migrations/011_webhook_subscriptions.sql",
+      "migrations/022_obs06_alerting_state.sql",
+      "migrations/038_oidc_claim_mapping_config.sql",
+      "migrations/039_jit_provisioning_config.sql",
+      "migrations/041_oidc15_realm_deletion_tracker.sql",
+      "migrations/042_oidc16_26_agent_lifecycle_foundations.sql",
+      "migrations/049_repository_service_catalog.sql",
+      "migrations/056_onboarding_registry.sql",
+      "migrations/094_entity_subsystem.sql",
+      ".github/workflows/ci.yml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 5) -- no new business logic added, this is a pure SQL/CI content fix; TEST-DESIGNER/TEST-DESIGN-VALIDATOR steps 4/4b not required per WF-03 condition (Business logic added/modified = no)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
