@@ -1,0 +1,47 @@
+{
+  "handoff_id": "1379ca6c-241e-48cd-8514-5920213a3926",
+  "run_id": "WF03-GH610-20260809",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T06:22:32Z",
+  "started_at": "2026-08-09T06:22:32Z",
+  "completed_at": "2026-08-09T06:22:32Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step Final",
+    "requirement_ids": [
+      "ISS-0632"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "handoffs/WF03-GH610-20260809/step-07-doc-updater.json"
+    ]
+  },
+  "task": {
+    "description": "fn:git-merge for WF03-GH610-20260809: PR #612, squash-merge, delete branch, return to main",
+    "acceptance_criteria": [
+      "PR #612 merged to main",
+      "feature/WF03-GH610-20260809 deleted from GitHub",
+      "local repo on main with clean working tree",
+      "GH-610 board status set to done",
+      "GH-610 released from global_queue"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PR #612 squash-merged to main (0a85e17a). Branch feature/WF03-GH610-20260809 deleted. GH-610 board moved to Done. Queue entry RESOLVED.",
+    "artifacts_out": [
+      "PR #612",
+      "merge_sha=0a85e17a"
+    ],
+    "issues": [],
+    "next_action": "Run complete"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

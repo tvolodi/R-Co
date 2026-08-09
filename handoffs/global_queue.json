@@ -842,14 +842,11 @@
       "title": "ISS-0632: lint_sql_param_types.py misses 42P18 (untyped param in variadic-any context)",
       "severity": "MAJOR",
       "labels": [],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI-loop",
-        "locked_at": "2026-08-09T05:50:24Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T05:50:24Z",
       "started_at": "2026-08-09T05:50:24Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T06:22:26Z",
       "run_id": null,
       "deferred_reason": null
     }
