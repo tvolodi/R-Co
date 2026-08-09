@@ -1,0 +1,46 @@
+{
+  "handoff_id": "72f058a4-f91f-43d4-8435-0a03299e546b",
+  "run_id": "WF03-GH381-20260809",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T07:42:39Z",
+  "started_at": "2026-08-09T07:42:39Z",
+  "completed_at": "2026-08-09T07:42:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step Final",
+    "requirement_ids": [
+      "ISS-0118"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "handoffs/WF03-GH381-20260809/step-07-doc-updater.json"
+    ]
+  },
+  "task": {
+    "description": "fn:git-merge \u2014 squash-merge feature/WF03-GH381-20260809 to main, delete branch, update project board.",
+    "acceptance_criteria": [
+      "PR #617 merged to main via squash",
+      "feature/WF03-GH381-20260809 deleted from GitHub",
+      "GH-381 moved to Done on project board",
+      "main is clean with squash-merge commit"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step Final PASS. PR #617 squash-merged to main (72834a86). Branch feature/WF03-GH381-20260809 deleted. GH-381 moved to Done. GH-381 not in global queue (direct user request \u2014 queue_release skipped). ISS-0118 RESOLVED.",
+    "artifacts_out": [
+      "PR #617",
+      "merge commit 72834a86"
+    ],
+    "issues": [],
+    "next_action": "Run complete \u2014 WF03-GH381-20260809 RESOLVED"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
