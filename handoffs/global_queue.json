@@ -881,17 +881,22 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0637",
+      "issue_id": "GH-619",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/619",
-      "title": "TC-EXT-02-INT-08 conn loses search_path after COMMIT \u2014 audit_entries query fails",
+      "title": "ISS-0637: TC-EXT-02-INT-08 conn loses search_path after COMMIT \u2014 audit_entries query fails",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T08:59:25Z"
+      },
       "added_at": "2026-08-09T08:31:08Z",
-      "started_at": null,
+      "started_at": "2026-08-09T08:59:25Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 619,
+      "labels": []
     }
   ]
 }
