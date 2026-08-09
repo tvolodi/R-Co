@@ -1,7 +1,7 @@
 {
   "id": "ISS-0637",
   "title": "TC-EXT-02-INT-08: audit_entries.resource_id is TEXT (since ISS-103/GBL-120) but test still casts $1::uuid — C42883",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "test_code_error",
   "discovered_in": "WF03-GH616-20260809",

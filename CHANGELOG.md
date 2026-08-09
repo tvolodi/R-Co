@@ -6,6 +6,14 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0637 — TC-EXT-02-INT-08 `audit_entries.resource_id` TEXT vs `::uuid` cast mismatch (MAJOR)** ([GitHub #619](https://github.com/tvolodi/R-Co/issues/619))
+
+- **Root cause:** The issue as filed suspected `pool.Conn` losing `search_path` after `COMMIT` (mistakenly pattern-matched from an unrelated `SET LOCAL` usage in `src/db/migrations.zig`/`src/event_store/store.zig`). That theory is REFUTED — `src/db/pool.zig`'s `applyRequestStorageRouting` uses a plain session-scoped `SET search_path` on every `Pool.acquire()`, never `SET LOCAL`, and holds it for the connection's full lifetime. The actual cause: migration `GBL-120` (ISS-103) changed `audit_entries.resource_id` from `UUID` to `TEXT` in every schema, but `TC-EXT-02-INT-08` still compared `resource_id = $1::uuid`, which PostgreSQL rejects unconditionally with `C42883: operator does not exist: text = uuid` — confirmed via a new diagnostic build step (`zig build test-integration-ext02 -Dlog-pg-errors=true`) that surfaces the real Postgres wire-protocol error text otherwise swallowed by the vendored `pg` client.
+- **The fix (WF03-GH619-20260809):** Removed the stale `::uuid` cast on both `resource_id = $1` comparisons in `tests/integration/ext02_webhook_dispatch_test.zig` (lines 687, 702), matching the `TEXT` column type the table has carried since `GBL-120`.
+- **Verified:** `zig build test-integration-ext02` — TC-EXT-02-INT-08 passes. The suite's one remaining failure (TC-EXT-02-INT-05) is the pre-existing, separately-tracked ISS-0636/GH-618 (`createSubscription` ignores `req.secret`) — not a regression of this fix.
+- **Incidental discovery:** The same `resource_id = $1::uuid` pattern independently breaks TC-ADP-02-05 in `tests/integration/adp02_tenant_scope_test.zig` — filed separately as ISS-0638/GH-621 and forwarded to the global queue; not fixed on this branch.
+- **No requirement status change** — test-code type-cast fix; OBS-03/EXT-02 were already implemented. Design: `src/design/fix-ISS-0637.md`.
+
 **ISS-0635 — Migration 1138 corrective fix adds `secret_ref`/`secret_key_id` to all tenant schemas where missing (MAJOR)** ([GitHub #616](https://github.com/tvolodi/R-Co/issues/616))
 
 - **Root cause:** Migration `1134_iss0112_add_secret_ref_to_tenant_schemas.sql` was recorded as applied in `schema_migrations` but the `secret_ref` and `secret_key_id` columns were absent from `tenant_default.webhook_subscriptions`. `GBL-128` also failed to add them because it targets the `public` schema while `webhook_subscriptions` lives in the tenant schema. The gap caused `C42703: column does not exist` errors at runtime for any code path that referenced these columns.
