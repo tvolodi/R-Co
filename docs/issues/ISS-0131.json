@@ -4,9 +4,12 @@
   "github_issue": "https://github.com/tvolodi/R-Co/issues/424",
   "registered_at": "2026-08-05T05:25:27Z",
   "registered_by": "TEST-RUNNER (handoff WF03-gh419-20260805 step-5b)",
-  "related_to": ["ISS-0129", "ISS-0130"],
+  "related_to": [
+    "ISS-0129",
+    "ISS-0130"
+  ],
   "severity": "MAJOR",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "scope": "Out of scope for ISS-0129 (GH #419) fix verification. Filed during 5b re-verification.",
   "symptom": "zig build test-integration exhibits ONE C40P01 deadlock at TC-TNT-01-01 (provisionTenantSchema) under full-suite concurrency. Different lock graph than ISS-0129/GH-419.",
   "reproduction": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test BPM_TEST_URL=http://127.0.0.1:8080 BPM_IDP_BASE_URL=http://localhost:8081 zig build test-integration",
@@ -16,5 +19,18 @@
     "zig build test-integration exits 0 with zero C40P01 occurrences in 3 consecutive runs",
     "TC-TNT-01-01 passes under full-suite concurrency",
     "Fix does not regress ISS-0129 fix (verified by RT-3/4/5 of tests/integration/iss0129_migration_run_advisory_lock_test.zig)"
-  ]
+  ],
+  "diagnosis_wf03_gh424": {
+    "diagnosed_at": "2026-08-09T03:43:28Z",
+    "diagnosed_in": "WF03-GH424-20260809 Step 1",
+    "failure_category": "A \u2014 concurrency/logic error in src/db/provisioning.zig",
+    "confirmed_root_cause": "Pre-ISS-0612 provisionTenantSchema() acquired a SEPARATE pool connection for EACH of Steps 2, 4, 6, and 6a (plus runForSchema's own connection), with NO effective serialization lock (the advisory lock scope closed before Step 2 began \u2014 see ISS-0612). Under full-suite concurrency (20+ binaries), each binary had up to 5 independent pool connections simultaneously active in PostgreSQL for the same logical provisioning call. The C40P01 lock cycle (AccessShareLock on public.tenant_schemas vs ShareLock on transaction XID) formed between: (a) a Step-2 connection's SELECT scan on tenant_schemas and (b) a Step-4 or Step-6 connection from a concurrent binary performing an uncommitted INSERT/UPDATE into tenant_schemas. The unique constraint on tenant_schemas(tenant_id) caused the ShareLock on transactionid when two binaries raced to INSERT for the same tenant_id (DEFAULT_TENANT_ID = '00000000-...'); the SELECT scan then waited for the first inserter's transaction to commit. A third connection's DDL (runForSchema inside a BEGIN holding the global MIGRATIONS_LOCK_KEY_SQL xact-lock) completed the cycle by acquiring an ExclusiveLock on catalog objects that the concurrent Step-2 connection's AccessShareLock on tenant_schemas had to wait for.",
+    "fix_location": "src/db/provisioning.zig",
+    "fix_description": "ISS-0612 (GH-556, commit 2dc07ddf, merged 2026-08-07) restructured provisionTenantSchema() to acquire ONE pool connection (lock_conn) and hold it \u2014 together with the session-scoped advisory lock \u2014 across ALL of Steps 2-6a. Steps 2, 4, 6, 6a now reuse lock_conn sequentially; only Step 5 (runForSchema) uses its own separate connection internally (required by runForSchema's signature; safe because the lock stays held on lock_conn during Step 5's execution \u2014 see ISS-0612 design \u00a73). Pool.release() also gains pg_advisory_unlock_all() as defense-in-depth. This eliminates the 'sibling connections' pattern: with one lock_conn instead of five independent ones, there is no cross-connection lock cycle possible between Steps 2-6a of the same logical call.",
+    "already_fixed_by": "ISS-0612 / GH-556 (commit 2dc07ddf, 2026-08-07)",
+    "verification_required": "TEST-RUNNER must run zig build test-integration 3 consecutive times and confirm zero C40P01 errors. See acceptance_criteria above."
+  },
+  "resolved_at": "2026-08-09T04:04:43Z",
+  "resolved_in": "WF03-GH424-20260809",
+  "resolution": "Fixed by ISS-0612 (GH-556, commit 2dc07ddf, 2026-08-07). provisionTenantSchema() now holds one session-scoped advisory-locked pool connection across Steps 2-6a, eliminating the cross-connection lock cycle. TC-TNT-01-01 passes with zero C40P01 under full-suite concurrency, verified by WF03-GH424-20260809 TEST-RUNNER (2026-08-09)."
 }

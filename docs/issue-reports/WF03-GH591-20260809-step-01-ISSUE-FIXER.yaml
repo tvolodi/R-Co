@@ -1,0 +1,69 @@
+{
+  "run_id": "WF03-GH591-20260809",
+  "agent": "ISSUE-FIXER",
+  "step": "01",
+  "issue_id": "GH-591",
+  "iss_local": "ISS-0624",
+  "github_url": "https://github.com/tvolodi/R-Co/issues/591",
+  "created_at": "2026-08-09T00:24:00Z",
+  "environment_check": "verify_test_env.py HEALTHY 10/10 (C0..C9) -- no infrastructure blocker. zig build exit 0; zig build migrate exit 0 (115/115 applied); test isolation lint 0 BLOCKER; schema baseline matches; config drift 4/4 services; no stale locks attributable to this workspace.",
+  "failure_categories": {
+    "LUA-11": "A -- Logic error: host-API entry points gate + validate but perform no state mutation. Test surface exists; production body returns nil. Fix belongs in production (read_variable, write_variable, executor.executeScript).",
+    "LUA-13": "A -- Logic error: log.zig gates + validates but performs no emission. StructuredLogger is complete and callable; missing wiring to ExecutionContext. Fix belongs in production (ExecutionContext field, log.zig body)."
+  },
+  "evidence": {
+    "LUA-11_read_body": "src/lua/host_api/read_variable.zig: capability gate passes; body returns nil (per file comment: 'gate passes the body still returns nil').",
+    "LUA-11_write_body": "src/lua/host_api/write_variable.zig: capability + arg-arity validation; body returns nil (per file comment: 'PRESENT: a one-argument call is a caller mistake, not a nil write' -- confirms nil-return intentionality was never wired to state).",
+    "LUA-11_state_field": "src/lua/executor.zig:39 -- pub const ExecutionContext fields: allocator, capabilities, instance_id, actor_id, manifest_hash, active_watchdog, service_catalog, http_client_fn, http_client_ctx, instruction_limiter. NO pending_writes, NO instance-state buffer.",
+    "LUA-13_log_body": "src/lua/host_api/log.zig: capability gate + arg validation; body returns nil (per file comment: 'gate passes the body still writes no structured entry').",
+    "LUA-13_logger": "src/lua/structured_logger.zig: StructuredLogEntry + StructuredLogger.log() exist; no caller reachable from ExecutionContext (executor.zig:24 imports the module but never references its fields).",
+    "LUA-13_trace_field": "src/lua/executor.zig ExecutionContext has NO trace_id field.",
+    "design_reference": "src/design/lua-integration.md §23.1 already documents the target fields: trace_id: []const u8; pending_writes: *std.StringHashMap(ScriptValue); structured_logger: *StructuredLogger; §18.2 documents trace_id semantics."
+  },
+  "fix_scope": {
+    "production_files": [
+      "src/lua/executor.zig  (add trace_id, pending_writes, structured_logger fields; implement apply-on-success/discard-on-failure in executeScript)",
+      "src/lua/host_api/read_variable.zig  (replace nil with real pending-writes read + commit-to-instance-state path)",
+      "src/lua/host_api/write_variable.zig (replace nil with pending-writes put against context.pending_writes)",
+      "src/lua/host_api/log.zig (replace nil with StructuredLogger.log() call producing StructuredLogEntry with trace_id)",
+      "src/lua/structured_logger.zig (no production change expected -- surface is already complete; verify only)"
+    ],
+    "test_files": [
+      "src/lua_test_root.zig  (or tests/unit -- verify the design-prescribed test location for LUA-11 §16.4: read, write, write-on-success, write-on-failure/discard, ordering, read-after-write; LUA-13: platform.log -> entry with level/message/trace_id/correlation ids)"
+    ],
+    "spec_files": [
+      "tests/specs/LUA-11.md (create/update)",
+      "tests/specs/LUA-13.md (create/update)"
+    ],
+    "estimated_files_touched": 5
+  },
+  "design_constraints": {
+    "LUA-11": [
+      "Use the staging-map approach documented in design §16.2: pending_writes is *std.StringHashMap(ScriptValue) on ExecutionContext; read_variable reads from pending_writes FIRST then from committed instance state; write_variable writes only to pending_writes.",
+      "executeScript applies pending_writes atomically on success and discards them on failure (errdefer).",
+      "Do not regress capability checks (LUA-06), type validation, or arity enforcement.",
+      "Allocation failures on pending_writes.put must not leak; prefer errdefer cleanup."
+    ],
+    "LUA-13": [
+      "Add ExecutionContext.trace_id: []const u8 (lifetime = call site -- pre-generated per-execution, design §18.2).",
+      "Add ExecutionContext.structured_logger: *StructuredLogger (caller-installed, CTX-1 invariant applies).",
+      "platformLog in build produces a StructuredLogEntry { trace_id, level, message, correlation_ids } from script-supplied args and calls StructuredLogger.log().",
+      "Argument coercion: accept string + numbers (level/message can be numeric; document the coercion rule)."
+    ]
+  },
+  "non_goals": [
+    "Do not redesign the capability system.",
+    "Do not alter the host API surface (function names, signatures, capability names unchanged).",
+    "Do not touch LUA-12/15/16 production code (covered by GH-595/GH-592 -- separate work).",
+    "Do not refactor structured_logger.zig -- its surface is complete; verify only."
+  ],
+  "risks": [
+    "Lifecycle: pending_writes must outlive every host-api call inside the same executeScript -- design §2.3 CTX-1 invariant; allocator ownership stays on ExecutionContext (caller supplies allocator field).",
+    "Atomicity: a mid-script failure must NOT leak partial writes -- errdefer pattern in executeScript, not in host-api fns.",
+    "Cross-script isolation: pending_writes is per-ExecutionContext (per-invocation), never a global -- verify tests cover this."
+  ],
+  "next_step": "Route to CODE-DESIGNER (Step 2) for fix design artefact.",
+  "next_handoff_id": null,
+  "register_issue_status": "already-registered -- docs/issues/ISS-0624.json exists with github_issue field set and severity MAJOR; no new local registration needed.",
+  "github_filing_status": "not-required -- ISS-0624.json github_issue already points at GH-591; matches <!-- rco-sync-ref: ISS-0624 --> tag in the GitHub issue body (verified via gh issue view 591)."
+}

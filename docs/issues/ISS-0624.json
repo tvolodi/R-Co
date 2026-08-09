@@ -24,5 +24,18 @@
     "LUA-13 tests verifying a script's platform.log call produces an entry with the right level/message/correlation IDs -- needs either a swappable writer (test injects a buffer instead of stderr) or assertion against captured stderr, whichever pattern this codebase's test guide prefers",
     "Both requirements restored to RELEASED with evidence, or the residual gap documented"
   ],
-  "notes": "Split out of GH-495/ISS-0169 during WF03-GH495-20260808 per the human-operator-confirmed decision to batch that run's 9-requirement scope into 3 deliverable pieces (limiters LUA-08/09/10 tackled in that run; this issue and a sibling for LUA-12/15/16 cover the remaining 6). See docs/issues/ISS-0169.json for the full original gap assessment this issue's scope was carved from."
+  "notes": "Split out of GH-495/ISS-0169 during WF03-GH495-20260808 per the human-operator-confirmed decision to batch that run's 9-requirement scope into 3 deliverable pieces (limiters LUA-08/09/10 tackled in that run; this issue and a sibling for LUA-12/15/16 cover the remaining 6). See docs/issues/ISS-0169.json for the full original gap assessment this issue's scope was carved from.",
+  "diagnoses": [
+    {
+      "ts": "2026-08-09T00:24:37Z",
+      "run_id": "WF03-GH591-20260809",
+      "agent": "ISSUE-FIXER",
+      "step": "01",
+      "verdict": "FAILURE-CATEGORY-A",
+      "summary": "Logic error in production: host-API entry points gate + validate but perform no state mutation (LUA-11) or log emission (LUA-13). ExecutionContext missing trace_id, pending_writes, structured_logger fields per design §23.1.",
+      "next_step": "Route to CODE-DESIGNER (Step 2) for fix design artefact.",
+      "handoff_id": "68d37b1f-04e9-4344-b56e-ef6539f4d12d",
+      "inner_report": "docs/issue-reports/WF03-GH591-20260809-step-01-ISSUE-FIXER.yaml"
+    }
+  ]
 }

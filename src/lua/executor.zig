@@ -784,19 +784,22 @@ fn executeSource(
     };
 
     if (bindings.lua_gettop(L) > 0) {
-        result.value = extractValue(L, -1, context.allocator) catch |err| switch (err) {
-            // ISS-0161: extractValue's error set is LuaError || error{OutOfMemory}.
-            // errorDescription takes LuaError only, so OutOfMemory must be split
-            // out rather than described. An allocation failure is not a script
-            // error and must propagate, not be recorded as one — the stubs hid
-            // this because executeScript never reached here with a live state.
+        var extracted: ScriptValue = .{ .nil_value = {} };
+        extractValueInto(L, -1, context.allocator, &extracted) catch |err| switch (err) {
+            // extractValueInto's error set mirrors extractValue's:
+            // LuaError || error{OutOfMemory}. The asymmetry between
+            // allocation failure (propagate) and Lua-level type failure
+            // (record as a script error) is preserved.
             error.OutOfMemory => return error.OutOfMemory,
-            else => |lua_err| blk: {
+            else => |lua_err| {
                 result.success = false;
                 result.error_message = try context.allocator.dupe(u8, errors.errorDescription(lua_err));
-                break :blk null;
             },
         };
+        // Only install the extracted value when extraction succeeded; on
+        // a Lua-level type failure the success flag is already cleared
+        // and we leave the value as null.
+        if (result.success) result.value = extracted;
     }
 
     return result;
@@ -989,28 +992,6 @@ pub fn captureStackTrace(L: *bindings.LuaState, allocator: std.mem.Allocator) ![
     return try allocator.dupe(u8, buffer[0..len]);
 }
 
-/// Extract a value from the Lua stack at the given index.
-fn extractValue(L: *bindings.LuaState, idx: c_int, allocator: std.mem.Allocator) !ScriptValue {
-    const lua_type = bindings.lua_type(L, idx);
-
-    return switch (lua_type) {
-        bindings.LUA_TNIL => ScriptValue{ .nil_value = {} },
-        bindings.LUA_TBOOLEAN => ScriptValue{ .boolean = bindings.lua_toboolean(L, idx) != 0 },
-        bindings.LUA_TNUMBER => ScriptValue{ .number = bindings.lua_tonumber(L, idx) },
-        bindings.LUA_TSTRING => {
-            var len: usize = 0;
-            const str_ptr = bindings.lua_tolstring(L, idx, &len);
-            const str = str_ptr[0..len];
-            return ScriptValue{ .string = try allocator.dupe(u8, str) };
-        },
-        bindings.LUA_TTABLE => {
-            const table = std.StringHashMap(ScriptValue).init(allocator);
-            // Simplified table extraction (one level only for MVP)
-            return ScriptValue{ .table = table };
-        },
-        else => errors.LuaError.TypeError,
-    };
-}
 
 /// LUA-11, design §4.1/§4.2 (ISS-0624 / GH #591). Discard every staged
 /// write: free each key and each `ScriptValue`'s owned bytes (recursively —
@@ -1127,3 +1108,4 @@ pub fn extractValueInto(
         else => return errors.LuaError.TypeError,
     }
 }
+

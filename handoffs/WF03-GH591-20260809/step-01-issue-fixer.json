@@ -1,0 +1,64 @@
+{
+  "handoff_id": "68d37b1f-04e9-4344-b56e-ef6539f4d12d",
+  "run_id": "WF03-GH591-20260809",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T00:24:00Z",
+  "started_at": "2026-08-09T00:24:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 1 - diagnosis",
+    "requirement_ids": [
+      "LUA-11",
+      "LUA-13"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0624.json",
+      "https://github.com/tvolodi/R-Co/issues/591",
+      "src/design/lua-integration.md (sections 16, 18, 23)",
+      "src/lua/host_api/read_variable.zig",
+      "src/lua/host_api/write_variable.zig",
+      "src/lua/host_api/log.zig",
+      "src/lua/executor.zig",
+      "src/lua/structured_logger.zig",
+      "src/lua/host_context.zig"
+    ]
+  },
+  "task": {
+    "description": "Diagnose GH-591 / ISS-0624: LUA-11 (variable read/write) and LUA-13 (logging) host-API entry points gate and validate but perform no actual state mutation or log emission. Produce a triage result that routes to CODE-DESIGNER for the state-model and trace-id implementation. DO NOT TOUCH SOURCE CODE.",
+    "acceptance_criteria": [
+      "Local ISS-0624.json exists and references GH-591",
+      "Diagnosis classifies each requirement (LUA-11 vs LUA-13) into failure category A-D",
+      "Diagnosis identifies the minimal production files for the fix",
+      "Diagnosis hands off to CODE-DESIGNER with concrete design constraints",
+      "Inner report written to docs/issue-reports/<run-id>-step-01-ISSUE-FIXER.yaml",
+      "Handoff completed (status COMPLETED, next_action -> CODE-DESIGNER)"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed GH-591 / ISS-0624 (LUA-11 + LUA-13). Both host-API entry points (read_variable, write_variable, log) correctly gate and validate but perform no state mutation / log emission -- ISS-0153 stub-era gap. ExecutionContext (src/lua/executor.zig:39) lacks the design-prescribed fields trace_id, pending_writes, structured_logger (src/design/lua-integration.md \u00a723.1). Fix scope: 4 production files in src/lua/{executor,host_api/{read,write}_variable,log}.zig (structured_logger.zig verify-only -- surface already complete). Routed to CODE-DESIGNER for fix design. No source touched.",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-GH591-20260809-step-01-ISSUE-FIXER.yaml",
+      "handoffs/WF03-GH591-20260809/step-01-issue-fixer.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2) -- design fix artefact for LUA-11 + LUA-13",
+    "next_handoff_id": null
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at_field_provenance": "tools/utcnow.py (exact output)",
+  "completed_at": "2026-08-09T00:24:37Z"
+}

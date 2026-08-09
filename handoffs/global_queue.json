@@ -580,17 +580,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0131",
+      "issue_id": "GH-424",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/424",
-      "title": "Full-suite C40P01 deadlock at TC-TNT-01-01 provisionTenantSchema vs migrations",
+      "title": "Full-suite C40P01 at TC-TNT-01-01 between provisionTenantSchema and concurrent migrations race (different lock graph than #419)",
       "severity": "MAJOR",
-      "status": "RESOLVED",
-      "lock": null,
-      "added_at": "2026-08-06T21:48:41Z",
-      "started_at": "2026-08-07T04:57:18Z",
-      "completed_at": "2026-08-07T05:09:56Z",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-09T03:26:31Z"
+      },
+      "added_at": "2026-08-09T03:26:31Z",
+      "started_at": "2026-08-09T03:26:31Z",
+      "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 424,
+      "labels": [
+        "bug"
+      ]
     },
     {
       "issue_id": "ISS-0132",

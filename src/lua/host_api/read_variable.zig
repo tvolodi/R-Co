@@ -15,7 +15,6 @@ const bindings = @import("../luajit_bindings.zig");
 const executor = @import("../executor.zig");
 const capabilities = @import("../capabilities.zig");
 const host_context = @import("../host_context.zig");
-const errors = @import("../errors.zig");
 
 const FN_NAME = "read_variable";
 
@@ -37,6 +36,7 @@ pub fn register(L: *bindings.LuaState, context: *const executor.ExecutionContext
     bindings.lua_setfield(L, -2, "read_variable");
 }
 
+/// Push a `ScriptValue` onto the Lua stack. Mirrors `extractValueInto`'s
 /// Lua C function: platform.read_variable(key)
 fn platformReadVariable(L: *bindings.LuaState) callconv(.c) c_int {
     // CAP-1: the capability check precedes every argument read and every state

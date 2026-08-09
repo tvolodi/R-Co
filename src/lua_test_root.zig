@@ -149,6 +149,12 @@ fn pinModuleTypes(comptime T: type) void {
         const field = @field(T, decl.name);
         if (@TypeOf(field) == type) {
             switch (@typeInfo(field)) {
+                // WF03-GH591 / ISS-0624 — LUA-13 added a `Writer = fn ...
+                // anyerror!void` field-type on StructuredLogger. Function
+                // pointer types with `anyerror` are comptime-only in
+                // Zig 0.16 — @sizeOf on them is a compile error — so
+                // they are filtered out before the @sizeOf call below.
+                .@"fn" => {},
                 .@"struct", .@"union", .@"enum" => {
                     _ = @sizeOf(field);
                     std.testing.refAllDecls(field);
