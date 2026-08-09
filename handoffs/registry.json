@@ -21381,6 +21381,42 @@
       "created_at": "2026-08-09T00:02:06Z",
       "status": "COMPLETED",
       "stage": null
+    },
+    {
+      "handoff_id": "68d37b1f-04e9-4344-b56e-ef6539f4d12d",
+      "file": "handoffs/WF03-GH591-20260809/step-01-issue-fixer.json",
+      "run_id": "WF03-GH591-20260809",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T00:24:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving",
+      "completed_at": "2026-08-09T00:24:37Z"
+    },
+    {
+      "handoff_id": "7c1c0a52-3f9a-4d6e-b8e1-9d5a8c3f0b21",
+      "file": "handoffs/WF03-GH591-20260809/step-02-code-designer.json",
+      "run_id": "WF03-GH591-20260809",
+      "step": "02",
+      "from_agent": "CODE-DESIGNER",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-09T00:27:20Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving",
+      "started_at": "2026-08-09T00:25:44Z",
+      "completed_at": "2026-08-09T00:27:20Z"
+    },
+    {
+      "handoff_id": "f4d8a3c2-7b1e-4a5d-9f6c-2e8b4d1a7c30",
+      "file": "handoffs/WF03-GH591-20260809/step-02b-code-design-validator.json",
+      "run_id": "WF03-GH591-20260809",
+      "step": "02b",
+      "from_agent": "CODE-DESIGN-VALIDATOR",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-09T00:30:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 2b - design validation"
     }
   ],
   "last_updated": "2026-08-08T23:10:07Z"
