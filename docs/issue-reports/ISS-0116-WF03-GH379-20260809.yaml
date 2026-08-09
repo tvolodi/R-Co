@@ -1,0 +1,82 @@
+run_id: WF03-GH379-20260809
+issue_id: ISS-0116
+github_issue: https://github.com/tvolodi/R-Co/issues/379
+generated_at: 2026-08-09T11:15:05Z
+agent: ISSUE-FIXER
+
+summary: >
+  ISS-0116 resolved. TC-OBS-05-INT-01/02/03 now pass (3/3); TC-OBS-06 already
+  passed; TC-SCH-303 already passed. Three layered defects were diagnosed and fixed.
+
+diagnosis:
+  category: A+D  # A = logic error (missing migration handler), D = test errors
+  test_baseline_before_fix:
+    TC-SCH-303: "4/4 PASS (pre-existing fix)"
+    TC-OBS-05-INT-01: "PASS"
+    TC-OBS-05-INT-02: "FAIL (resource_id::uuid cast)"
+    TC-OBS-05-INT-03: "FAIL (resource_id::uuid cast, then SAVEPOINT)"
+    TC-OBS-06-INT-01..05: "All PASS"
+  test_baseline_after_fix:
+    TC-SCH-303: "4/4 PASS"
+    TC-OBS-05-INT-01: "PASS"
+    TC-OBS-05-INT-02: "PASS"
+    TC-OBS-05-INT-03: "PASS"
+    TC-OBS-06-INT-01..05: "All PASS"
+  total_tests_delta: "+2 (673 → 675 out of 736 in svc binary)"
+
+defects:
+  - id: defect-1
+    category: D
+    description: >
+      obs05_dlq_test.zig lines 395 and 462 used resource_id = $1::uuid in
+      audit_entries queries. audit_entries.resource_id was migrated from UUID to
+      TEXT by GBL-120/ISS-103. Comparing TEXT = UUID produces C42804 PostgreSQL error.
+    fix: "Changed resource_id = $1::uuid → resource_id = $1 (TEXT comparison)"
+    files: ["tests/integration/obs05_dlq_test.zig"]
+
+  - id: defect-2
+    category: A
+    description: >
+      Migration gap: GBL-121_fix_audit_chain_resource_id_text.sql fixed
+      bpm_audit_resource_info in PUBLIC to handle dead_letter_items, but
+      GBL-* migrations are blanket-skipped for tenant schemas by
+      Migrations.runForSchema(). tenant_default.bpm_audit_resource_info retained
+      the migration-020 version which only handled dead_letter_queue. After table
+      rename dead_letter_queue → dead_letter_items (migration 072),
+      bpm_audit_resource_info returned resource_id = NULL for dead_letter_items.
+      bpm_audit_on_mutation skipped the audit INSERT (r_id IS NULL guard).
+      Result: zero audit entries for all DLQ operations in tenant schemas.
+    fix: >
+      Added migration 1139_iss0116_dlq_audit_resource_info.sql (numbered, not GBL-)
+      that recreates bpm_audit_resource_info in the current schema with
+      dead_letter_items case: resource_type='dlq', resource_id=(src->>'id')::uuid.
+      Guard: skips public schema (GBL-121 already correct there; different return
+      type signature prevents CREATE OR REPLACE).
+    files: ["migrations/1139_iss0116_dlq_audit_resource_info.sql"]
+
+  - id: defect-3
+    category: D
+    description: >
+      TC-OBS-05-INT-03 used SAVEPOINT to create a deliberate audit-failure trigger.
+      Two problems: (1) SAVEPOINT requires an active transaction block — the
+      connection was in autocommit mode; (2) even if SAVEPOINT worked, DDL inside
+      an uncommitted transaction is not visible to other sessions, so handleDiscard's
+      separate pool connection would never see the trigger. The test was masked by
+      defect-1 and defect-2 and had never passed.
+    fix: >
+      Replaced SAVEPOINT-based isolation with autocommit trigger creation + defer
+      cleanup. The trigger is created in autocommit (immediately visible to all
+      connections including handleDiscard's pool connection), and unconditional
+      defer drops it after the test (handles both happy path and early return).
+    files: ["tests/integration/obs05_dlq_test.zig"]
+
+evidence:
+  test_log: scratch/_obs05_v3.log
+  sch303_log: scratch/_sch303_summary.log
+  db_state_checked_via: scratch/_check_audit.py
+  migration_applied: "1139_iss0116_dlq_audit_resource_info.sql (applied to public + tenant_default)"
+
+prevention:
+  - "GBL-* migrations are skipped for tenant schemas — table-renaming migrations must update audit function handlers via a numbered migration in the same commit."
+  - "SAVEPOINT requires a transaction block; cross-connection DDL requires autocommit."
+  - "When resource_id column type changes (UUID→TEXT), all test queries using ::uuid cast must be updated."
