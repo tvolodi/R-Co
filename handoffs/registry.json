@@ -22839,6 +22839,28 @@
       "stage": "Step 00 \u2014 git-setup"
     },
     {
+      "handoff_id": "10ecd97f-1749-452d-a58f-5ad72781da0f",
+      "file": "handoffs/WF03-GH359-20260809/step-0.5-issue-fixer.json",
+      "run_id": "WF03-GH359-20260809",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T13:11:15Z",
+      "status": "COMPLETED",
+      "stage": "Step 0.5 -- registry lookup"
+    },
+    {
+      "handoff_id": "3afe7006-8baf-47ec-8341-2fa34691fac7",
+      "file": "handoffs/WF03-GH359-20260809/step-1-issue-fixer.json",
+      "run_id": "WF03-GH359-20260809",
+      "step": "1",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-09T13:11:20Z",
+      "status": "COMPLETED",
+      "stage": "Step 1 -- diagnosis"
+    },
+    {
       "handoff_id": "8e9ad5b6-c93c-46b8-aeb4-9a60e1c53701",
       "file": "handoffs/WF03-GH375-20260809/step-00-backend-dev.json",
       "run_id": "WF03-GH375-20260809",
