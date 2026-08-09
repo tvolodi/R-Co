@@ -655,3 +655,4 @@
 2026-08-09T05:17:16Z | ROUTE | WF03-GH383-20260809 | 7593b805 | ORCH -> ISSUE-FIXER | Step 0.5 COMPLETED — ISS-0120 confirmed, GH#383 linked
 2026-08-09T05:17:16Z | ROUTE | WF03-GH383-20260809 | a3b7c9d2 | ORCH -> ISSUE-FIXER | Step 1 COMPLETED — root cause: reconstruction.zig markRestoredOrphanInTx  untyped in jsonb_build_object → 42P18; fix: ::text
 2026-08-09T05:17:16Z | INCIDENTAL | WF03-GH383-20260809 | --- | ISSUE-FIXER | ISS-0632 filed GH#610 — lint_sql_param_types.py misses 42P18 variadic-any pattern
+2026-08-09T05:22:24Z | COMPLETE | WF03-GH383-20260809 | f7e2a1b | CODE-DESIGNER | PASS — design artefact src/design/iss0120-gh383-exp402-param-cast.md, lint OK
