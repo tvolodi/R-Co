@@ -464,25 +464,19 @@ test "TC-OBS-05-INT-03: POST /dlq/:id/discard appends audit and rolls back on au
     );
     try testing.expect(audit_count >= 1);
 
-    // Wrap the deliberate audit-failure trigger install in a SAVEPOINT so
-    // that the trg_bpm_test_fail_audit_insert / bpm_test_fail_audit_insert
-    // pair cannot leak into the next test process. The previous implementation
-    // used a happy-path defer that only fired if the test ran to completion;
-    // on early return, the trigger persisted in db_test and fired P0001
-    // 'audit_entries is immutable' on legitimate mutations in adp09 /
-    // oidc22. The errdefer below rolls the savepoint back on any early
-    // return, removing the trigger and function before the next test
-    // process acquires a pool connection. The savepoint is NEVER released
-    // on the happy path — it is rolled back unconditionally at the end of
-    // the test block, so the trigger is guaranteed gone before the next
-    // test process runs.
-    conn.exec("SAVEPOINT s_audit_failure", &.{}) catch return error.PersistenceFailed;
-    errdefer {
-        conn.exec("ROLLBACK TO SAVEPOINT s_audit_failure", &.{}) catch {};
-    }
-
+    // Create the deliberate audit-failure trigger in autocommit so it is
+    // immediately visible to handleDiscard's separate pool connection.
+    // Drop unconditionally via defer (covers both happy path and early return).
+    // A SAVEPOINT approach cannot work here: SAVEPOINT requires an active
+    // transaction, and DDL inside an uncommitted transaction is not visible
+    // to other sessions (including handleDiscard's pool connection).
     conn.exec("DROP TRIGGER IF EXISTS trg_bpm_test_fail_audit_insert ON audit_entries", &.{}) catch {};
     conn.exec("DROP FUNCTION IF EXISTS bpm_test_fail_audit_insert()", &.{}) catch {};
+    defer {
+        conn.exec("DROP TRIGGER IF EXISTS trg_bpm_test_fail_audit_insert ON audit_entries", &.{}) catch {};
+        conn.exec("DROP FUNCTION IF EXISTS bpm_test_fail_audit_insert()", &.{}) catch {};
+    }
+
     try conn.exec(
         \\CREATE OR REPLACE FUNCTION bpm_test_fail_audit_insert()
         \\RETURNS trigger
