@@ -1,0 +1,50 @@
+{
+  "handoff_id": "f71c97f1-9e59-4e11-8741-e02383562c95",
+  "run_id": "WF03-GH631-20260809",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-09T12:44:47Z",
+  "started_at": "2026-08-09T12:44:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 7 (DOC-UPDATER)",
+    "requirement_ids": [
+      "SVC-01"
+    ],
+    "related_handoff_ids": [
+      "41e66a69-4603-4f70-970b-ab91461dfe74"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260809-WF03-GH631-20260809.yaml",
+      "docs/issues/ISS-0640.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 7 for ISS-0640/GH-631: update CHANGELOG.md, mark ISS-0640 RESOLVED, close GH-631.",
+    "acceptance_criteria": [
+      "CHANGELOG.md has entry for ISS-0640/GH-631",
+      "docs/issues/ISS-0640.json status == RESOLVED",
+      "GH-631 closed"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with ISS-0640/GH-631 fix entry. docs/issues/ISS-0640.json already RESOLVED. GH-631 closed.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0640.json",
+      "handoffs/WF03-GH631-20260809/step-07-doc-updater.json"
+    ],
+    "issues": [],
+    "next_action": "Step Final: create PR, squash-merge, return to main"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T12:44:47Z"
+}
