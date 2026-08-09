@@ -584,3 +584,4 @@
 2026-08-09T01:06:42Z | COMPLETE | WF03-GH595-20260809 | fc155180 | BACKEND-DEV | PASS - errfunc stack-trace fix implemented, mutation-tested, committed 1f9e42a
 2026-08-09T01:10:46Z | ROUTE | WF03-GH595-20260809 | 0a888546 | ORCH -> TEST-RUNNER | IN_PROGRESS (Step 4, full suite verification of LUA-16 errfunc fix)
 2026-08-09T01:16:16Z | COMPLETE | WF03-GH595-20260809 | 0a888546 | TEST-RUNNER | PASS -- full suite green (known TC-LUA-10-03 flake noted, ISS-0629/GH-600) -> Route to DOC-UPDATER
+2026-08-09T01:17:51Z | ROUTE | WF03-GH595-20260809 | 9b1994c0 | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize GH-595 LUA-16 fix)
