@@ -557,3 +557,6 @@
 2026-08-08T23:51:42Z | ROUTE | WF03-GH596-20260808 | ee840fc9 | ORCH -> BACKEND-DEV | IN_PROGRESS (Step 3, implement + generate baseline for GH-596)
 2026-08-09T00:00:08Z | COMPLETE | WF03-GH596-20260808 | ee840fc9 | BACKEND-DEV | PASS -- lint_handoffs.baseline.json (225 entries) + generate_lint_handoffs_baseline.py implemented, both selftests pass
 2026-08-09T00:02:06Z | ROUTE | WF03-GH596-20260808 | 38c0e5d2 | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize GH-596 acknowledgment mechanism)
+2026-08-09T00:08:26Z | COMPLETE | WF03-GH596-20260808 | 38c0e5d2 | DOC-UPDATER | PASS -- CHANGELOG updated, PR #598 created/merged (deaa2b9), branch deleted, GH-596 left OPEN retitled to remaining scope
+2026-08-09T00:08:26Z | BOARD_UPDATE | WF03-GH596-20260808 | --- | DOC-UPDATER | issue #596 -> implemented (stays open, remaining scope)
+2026-08-09T00:08:26Z | GIT_MERGE | WF03-GH596-20260808 | --- | DOC-UPDATER | PR #598 squash-merged to main, feature/WF03-GH596-20260808 deleted, repo returned to clean main

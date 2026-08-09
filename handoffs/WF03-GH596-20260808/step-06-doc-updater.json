@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH596-20260808/step-06-doc-updater.json",
   "created_at": "2026-08-09T00:02:06Z",
   "started_at": "2026-08-09T00:02:06Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-09T00:08:26Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -43,7 +43,17 @@
       "fn:update-changelog"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Finalized GH-596/ISS-0627 H003/H004/H005/H009 permanent-acknowledgment subset. Updated CHANGELOG.md with before/after counts (250->63 BLOCKER, 110->72 MAJOR with baseline; unchanged 250/110 with --no-baseline) and remaining-scope note. Committed to feature branch. GH-596 left OPEN: added comment summarizing results, retitled to reflect only remaining scope (H013/H001-structural/H006-CONDITIONAL/H007), and narrowed the issue body's Status/Categories/Acceptance-criteria sections to match, same disposition pattern as GH-495. Created PR #598 explaining the new ACKNOWLEDGED mechanism is additive (--no-baseline unchanged at 250/110/1). Polled gh pr checks until all 6 checks reached terminal state (all pass, including Pipeline bookkeeping which runs lint_handoffs.py --changed on this PR's own changes to that file). Squash-merged PR #598 (merge commit deaa2b9f391935175dfdcc2e5639a87d8a206d4b), branch deleted and confirmed gone via GitHub API 404. Updated project board for #596 to 'implemented' only (not 'done') since the issue remains open with residual scope, per PROJECT_BOARD.md and the GH-495 precedent. Returned to clean main via fast-forward pull (no conflicts \u2014 PR was already merged as a fast-forward). Re-verified lint_handoffs.py on main post-merge: default mode 63 BLOCKER + 72 MAJOR + 1 MINOR + 225 ACKNOWLEDGED; --no-baseline restores 250/110/1 exactly.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "https://github.com/tvolodi/R-Co/pull/598",
+      "https://github.com/tvolodi/R-Co/issues/596"
+    ],
+    "issues": [],
+    "next_action": "None -- WF03-GH596-20260808 complete. Remaining ISS-0627 scope (H013/H001-structural/H006-CONDITIONAL/H007) tracked in GH-596 for future runs."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
