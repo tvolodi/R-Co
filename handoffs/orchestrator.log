@@ -693,3 +693,4 @@
 2026-08-09T07:49:19Z | ROUTE | WF03-GH616-20260809 | c3590c30 | ORCH -> ISSUE-FIXER | Step 0.5: ISS-0635 registry confirmed, GH-616 linked
 2026-08-09T07:49:19Z | ROUTE | WF03-GH616-20260809 | 8c774813 | ORCH -> ISSUE-FIXER | Step 1: Root cause diagnosed — timing gap, migration 1134 ran before tenant schemas had webhook_subscriptions
 2026-08-09T07:57:22Z | COMPLETE | WF03-GH616-20260809 | 7a4d9185 | CODE-DESIGNER | Step 2 PASS — design artefact src/design/iss0635-gh616-webhook-secret-ref-migration.md
+2026-08-09T07:59:00Z | COMPLETE | WF03-GH616-20260809 | 7393ba03 | CODE-DESIGN-VALIDATOR | PASS — lint BLOCKER=0 MAJOR=0 MINOR=7; idempotent, all_schemas, table guard, ADD COLUMN IF NOT EXISTS correct
