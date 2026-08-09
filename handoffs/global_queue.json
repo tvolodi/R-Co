@@ -1175,6 +1175,26 @@
       "deferred_reason": null,
       "issue_number": 643,
       "labels": []
+    },
+    {
+      "issue_id": "GH-352",
+      "issue_number": 352,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/352",
+      "title": "ISS-0097 \u2014 threadlocal tenant context not inherited by worker threads spawned mid-test",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T17:22:18Z"
+      },
+      "added_at": "2026-08-09T17:22:18Z",
+      "started_at": "2026-08-09T17:22:18Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
