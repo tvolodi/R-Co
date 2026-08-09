@@ -381,6 +381,50 @@ jobs:
         run: zig build test-lua -j2
 
   # ---------------------------------------------------------------------------
+  # Fresh-database migration bootstrap (ISS-0630 / GH-605).
+  #
+  # The `build` job above is explicitly no-database (integration tests need
+  # PostgreSQL/Keycloak, which belong in a separate workflow rather than
+  # gating every PR). That means no existing CI job ever runs
+  # `zig build migrate` against a database that has never had any migration
+  # ledger row — so a `-- scope: public` migration file with unqualified
+  # CREATE TABLE / INSERT INTO statements can pass every other gate and
+  # still fail bootstrap on a genuinely fresh database (the ledger on the
+  # long-lived shared db_test/bpm_dev databases already marks these files
+  # applied, which skips the guard check entirely). This job exercises that
+  # exact path on every PR, judged by `zig build migrate`'s exit code only —
+  # no string-matching of its output.
+  # ---------------------------------------------------------------------------
+  fresh_database_migration:
+    name: Fresh-database migration bootstrap
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: bpm
+          POSTGRES_PASSWORD: bpm
+          POSTGRES_DB: bpm_fresh_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+
+      - name: zig build migrate against a fresh, empty database
+        env:
+          BPM_DB_URL: postgres://bpm:bpm@localhost:5432/bpm_fresh_ci
+        run: zig build migrate
+
+  # ---------------------------------------------------------------------------
   # Frontend. Skipped entirely when web/ is untouched.
   # ---------------------------------------------------------------------------
   frontend:

@@ -6,7 +6,7 @@
 -- scope: public
 -- ISS-0185: this migration creates a global-registry table.
 
-CREATE TABLE IF NOT EXISTS onboarding_registry (
+CREATE TABLE IF NOT EXISTS public.onboarding_registry (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     onboarding_id       UUID        NOT NULL,
     idempotency_key     TEXT        NOT NULL,
@@ -26,12 +26,12 @@ CREATE TABLE IF NOT EXISTS onboarding_registry (
 );
 
 CREATE INDEX IF NOT EXISTS onboarding_registry_onboarding_id_idx
-    ON onboarding_registry (onboarding_id);
+    ON public.onboarding_registry (onboarding_id);
 
 CREATE INDEX IF NOT EXISTS onboarding_registry_hostname_idx
-    ON onboarding_registry (hostname)
+    ON public.onboarding_registry (hostname)
     WHERE hostname IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS onboarding_registry_expires_idx
-    ON onboarding_registry (idempotency_expires_at)
+    ON public.onboarding_registry (idempotency_expires_at)
     WHERE state IN ('pending', 'completed');

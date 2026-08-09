@@ -9,7 +9,7 @@
 -- scope: public
 -- ISS-0185: this migration creates a global-registry table.
 
-CREATE TABLE IF NOT EXISTS realm_claim_mapping_config (
+CREATE TABLE IF NOT EXISTS public.realm_claim_mapping_config (
     realm                   VARCHAR(64) PRIMARY KEY,
     tenant_id_claim         VARCHAR(128) NOT NULL DEFAULT 'tenant_id',
     roles_claim_paths       TEXT[] NOT NULL DEFAULT ARRAY['realm_access.roles','roles'],

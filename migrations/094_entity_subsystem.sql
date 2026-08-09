@@ -22,7 +22,7 @@ BEGIN
 -- scope: public
 -- ISS-0185: GLOBAL_REGISTRY only (3 table(s)); public canonical.
 
-    CREATE TABLE IF NOT EXISTS entity_definitions (
+    CREATE TABLE IF NOT EXISTS public.entity_definitions (
         id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
         tenant_id               UUID        NOT NULL,
         name                    TEXT        NOT NULL,
@@ -45,20 +45,20 @@ EXCEPTION WHEN duplicate_table THEN NULL;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_entity_defs_tenant_name
-    ON entity_definitions (tenant_id, name);
+    ON public.entity_definitions (tenant_id, name);
 
 CREATE INDEX IF NOT EXISTS idx_entity_defs_status
-    ON entity_definitions (tenant_id, status);
+    ON public.entity_definitions (tenant_id, status);
 
 CREATE INDEX IF NOT EXISTS idx_entity_defs_content_hash
-    ON entity_definitions (content_hash);
+    ON public.entity_definitions (content_hash);
 
 -- ── Entity Type Instances ────────────────────────────────────────────────────
 -- Maps entity type names to synthetic instance IDs for event store integration.
 
 DO $$
 BEGIN
-    CREATE TABLE IF NOT EXISTS entity_type_instances (
+    CREATE TABLE IF NOT EXISTS public.entity_type_instances (
         entity_type     TEXT        PRIMARY KEY,
         tenant_id       UUID        NOT NULL,
         instance_id     UUID        NOT NULL UNIQUE,
@@ -72,7 +72,7 @@ END $$;
 
 DO $$
 BEGIN
-    CREATE TABLE IF NOT EXISTS entity_record_latest (
+    CREATE TABLE IF NOT EXISTS public.entity_record_latest (
         tenant_id           UUID        NOT NULL,
         entity_type         TEXT        NOT NULL,
         record_id           UUID        NOT NULL,
@@ -90,16 +90,16 @@ EXCEPTION WHEN duplicate_table THEN NULL;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_erl_tenant_type
-    ON entity_record_latest (tenant_id, entity_type);
+    ON public.entity_record_latest (tenant_id, entity_type);
 
 CREATE INDEX IF NOT EXISTS idx_erl_tenant_type_updated
-    ON entity_record_latest (tenant_id, entity_type, updated_at DESC);
+    ON public.entity_record_latest (tenant_id, entity_type, updated_at DESC);
 
 -- ── Entity Event Type Seeds ──────────────────────────────────────────────────
 -- Register ENTITY_RECORD_CREATED, ENTITY_RECORD_UPDATED, ENTITY_RECORD_DELETED
 -- in event_type_registry so the event store can validate their payloads.
 
-INSERT INTO event_type_registry (name, schema_version, json_schema, description)
+INSERT INTO public.event_type_registry (name, schema_version, json_schema, description)
 VALUES
     ('ENTITY_RECORD_CREATED', 1,
      '{"type":"object","required":["entity_type","entity_def_version","record_id","field_values"],"properties":{"entity_type":{"type":"string","minLength":1,"maxLength":128},"entity_def_version":{"type":"integer","minimum":1},"record_id":{"type":"string","format":"uuid"},"field_values":{"type":"object"}}}'::jsonb,

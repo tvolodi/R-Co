@@ -3,7 +3,7 @@
 -- scope: public
 -- ISS-0185: this migration creates a global-registry table.
 
-CREATE TABLE IF NOT EXISTS idp_operation_ledger (
+CREATE TABLE IF NOT EXISTS public.idp_operation_ledger (
     operation_id UUID PRIMARY KEY,
     endpoint_fingerprint TEXT NOT NULL,
     idempotency_key TEXT NOT NULL,
@@ -19,12 +19,12 @@ CREATE TABLE IF NOT EXISTS idp_operation_ledger (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_idp_operation_ledger_scope_key
-ON idp_operation_ledger (endpoint_fingerprint, idempotency_key);
+ON public.idp_operation_ledger (endpoint_fingerprint, idempotency_key);
 
 CREATE INDEX IF NOT EXISTS idx_idp_operation_ledger_expiry
-ON idp_operation_ledger (expires_at);
+ON public.idp_operation_ledger (expires_at);
 
-CREATE TABLE IF NOT EXISTS idp_transaction_log (
+CREATE TABLE IF NOT EXISTS public.idp_transaction_log (
     transaction_id UUID NOT NULL,
     step_index INT NOT NULL,
     step_kind TEXT NOT NULL,
@@ -39,9 +39,9 @@ CREATE TABLE IF NOT EXISTS idp_transaction_log (
 );
 
 CREATE INDEX IF NOT EXISTS idx_idp_txn_status
-ON idp_transaction_log (transaction_id, direction, status);
+ON public.idp_transaction_log (transaction_id, direction, status);
 
-CREATE TABLE IF NOT EXISTS idp_adapter_audit (
+CREATE TABLE IF NOT EXISTS public.idp_adapter_audit (
     audit_id UUID PRIMARY KEY,
     actor_id TEXT NOT NULL,
     auth_source TEXT NOT NULL,
@@ -58,13 +58,13 @@ CREATE TABLE IF NOT EXISTS idp_adapter_audit (
 );
 
 CREATE INDEX IF NOT EXISTS idx_idp_adapter_audit_actor_time
-ON idp_adapter_audit (actor_id, created_at DESC);
+ON public.idp_adapter_audit (actor_id, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_idp_adapter_audit_txn
-ON idp_adapter_audit (transaction_id)
+ON public.idp_adapter_audit (transaction_id)
 WHERE transaction_id IS NOT NULL;
 
-CREATE TABLE IF NOT EXISTS agent_identity_binding (
+CREATE TABLE IF NOT EXISTS public.agent_identity_binding (
     binding_id UUID PRIMARY KEY,
     realm_id TEXT NOT NULL,
     agent_kind TEXT NOT NULL,
@@ -77,10 +77,10 @@ CREATE TABLE IF NOT EXISTS agent_identity_binding (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_agent_identity_binding_active
-ON agent_identity_binding (realm_id, agent_kind)
+ON public.agent_identity_binding (realm_id, agent_kind)
 WHERE status = 'ACTIVE';
 
-CREATE TABLE IF NOT EXISTS agent_secret_rotation (
+CREATE TABLE IF NOT EXISTS public.agent_secret_rotation (
     rotation_id UUID PRIMARY KEY,
     realm_id TEXT NOT NULL,
     provider_client_id TEXT NOT NULL,
@@ -94,10 +94,10 @@ CREATE TABLE IF NOT EXISTS agent_secret_rotation (
 );
 
 CREATE INDEX IF NOT EXISTS idx_agent_secret_rotation_finalize
-ON agent_secret_rotation (status, old_secret_valid_until)
+ON public.agent_secret_rotation (status, old_secret_valid_until)
 WHERE status = 'OVERLAP';
 
-CREATE TABLE IF NOT EXISTS agent_bootstrap_state (
+CREATE TABLE IF NOT EXISTS public.agent_bootstrap_state (
     singleton_key TEXT PRIMARY KEY CHECK (singleton_key = 'global'),
     enabled BOOLEAN NOT NULL,
     enabled_by TEXT,
@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS agent_bootstrap_state (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS agent_bootstrap_audit (
+CREATE TABLE IF NOT EXISTS public.agent_bootstrap_audit (
     event_id UUID PRIMARY KEY,
     event_type TEXT NOT NULL CHECK (event_type IN ('BOOTSTRAP_ATTEMPT','BOOTSTRAP_SUCCESS','BOOTSTRAP_DISABLED','BOOTSTRAP_REENABLED')),
     actor_id TEXT,
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS agent_bootstrap_audit (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS idp_federation_binding (
+CREATE TABLE IF NOT EXISTS public.idp_federation_binding (
     federation_binding_id UUID PRIMARY KEY,
     realm_id TEXT NOT NULL,
     provider_alias TEXT NOT NULL,
@@ -130,10 +130,10 @@ CREATE TABLE IF NOT EXISTS idp_federation_binding (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_idp_federation_alias_active
-ON idp_federation_binding (realm_id, provider_alias)
+ON public.idp_federation_binding (realm_id, provider_alias)
 WHERE status = 'ACTIVE';
 
-CREATE TABLE IF NOT EXISTS federation_attribute_mapping (
+CREATE TABLE IF NOT EXISTS public.federation_attribute_mapping (
     mapping_id UUID PRIMARY KEY,
     realm_id TEXT NOT NULL,
     federation_id TEXT NOT NULL,
@@ -144,9 +144,9 @@ CREATE TABLE IF NOT EXISTS federation_attribute_mapping (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_federation_attribute_mapping
-ON federation_attribute_mapping (realm_id, federation_id);
+ON public.federation_attribute_mapping (realm_id, federation_id);
 
-CREATE TABLE IF NOT EXISTS subsystem_health_probe (
+CREATE TABLE IF NOT EXISTS public.subsystem_health_probe (
     probe_id UUID PRIMARY KEY,
     subsystem TEXT NOT NULL,
     status TEXT NOT NULL,
@@ -156,4 +156,4 @@ CREATE TABLE IF NOT EXISTS subsystem_health_probe (
 );
 
 CREATE INDEX IF NOT EXISTS idx_subsystem_health_probe_recent
-ON subsystem_health_probe (subsystem, checked_at DESC);
+ON public.subsystem_health_probe (subsystem, checked_at DESC);
