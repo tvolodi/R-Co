@@ -257,6 +257,30 @@ test "TC-DB-01-07: explicit '-- scope: all_schemas' overrides the public header"
     );
 }
 
+test "TC-DB-01-08: '-- scope: tenant_only' header classifies a numeric migration as tenant_only" {
+    // ISS-0644 / GH-643: the mirror of '-- scope: public' — a migration whose
+    // table is PER_TENANT-canonical and must never create a public shadow.
+    const body =
+        \\-- scope: tenant_only
+        \\-- ISS-0644: PER_TENANT table, no public copy wanted.
+        \\CREATE TABLE IF NOT EXISTS subprocess_links (id uuid primary key);
+    ;
+    try std.testing.expectEqual(
+        bpm.migrations.MigrationScope.tenant_only,
+        migrationScope("026_ext05_subprocess_links.sql", body),
+    );
+}
+
+test "TC-DB-01-08: '-- scope: tenant_only' does not affect GBL- prefix (still public_only)" {
+    // GBL- prefix takes precedence per migrationScope()'s documented order,
+    // even if a tenant_only header were (incorrectly) present in the body —
+    // GBL files are always public_only regardless of header content.
+    try std.testing.expectEqual(
+        bpm.migrations.MigrationScope.public_only,
+        migrationScope("GBL-142_hypothetical.sql", "-- scope: tenant_only\n"),
+    );
+}
+
 test "TC-DB-01-07: misclassification guard fires on unqualified work under '-- scope: public'" {
     // This is the trap: an author marks a migration public-only, but its body
     // creates a search_path-resolved (unqualified) table that every tenant

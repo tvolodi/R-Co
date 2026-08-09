@@ -18,17 +18,17 @@
 -- No triggers, no immutability guard: this is a narrower, purpose-specific
 -- record, not the general-purpose tamper-evident audit trail (§3.2 item 5).
 --
--- ISS-0641 / GH-637: PER_TENANT (canonical home = tenant_default). No
+-- scope: tenant_only
+--
+-- ISS-0644 / GH-643: PER_TENANT (canonical home = tenant_default). No
 -- tenant_id column — tenant isolation is via schema, keyed by instance_id
 -- (tenant-schema process instance data), same shape as
--- instance_definition_snapshots / instance_waits. migrations.zig's
--- migrationScope() has no per-table scope primitive (only whole-file
--- .public_only vs .all_schemas), so this file correctly keeps running in
--- every schema pass to create the tenant_default copy, but that also
--- creates an unwanted public shadow. See
--- docs/issue-reports/ISS-0185-diagnosis.yaml and
--- migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql, which drops the
--- public shadow (idempotent, re-run after any cold-start replay).
+-- instance_definition_snapshots / instance_waits. This file creates exactly
+-- one table with no other statements, so the `tenant_only` scope (ISS-0644's
+-- new MigrationScope primitive) closes the shadow-recreation path
+-- permanently instead of relying on
+-- GBL-141_iss0641_drop_dual_schema_shadows.sql to keep cleaning up after
+-- every fresh tenant-schema provision.
 
 CREATE TABLE IF NOT EXISTS lua_script_execution_audit (
     audit_id        UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
