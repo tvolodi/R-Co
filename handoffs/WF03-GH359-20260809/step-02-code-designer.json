@@ -1,0 +1,55 @@
+{
+  "handoff_id": "7ff9305b-d13a-4d4b-bd2e-04fd376a1b23",
+  "run_id": "WF03-GH359-20260809",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-09T13:18:48Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 2 -- fix design",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/359",
+    "issue_id": "ISS-0101",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "3afe7006-8baf-47ec-8341-2fa34691fac7"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH359-20260809/step-1-issue-fixer.json",
+      "docs/issues/ISS-0101.json",
+      "migrations/031_adp04b_tenant_realm_binding.sql",
+      "migrations/GBL-139_iss0183_reconcile_gbl136_tenant_default_reprovision.sql"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2: produce design artefact for ISS-0101 two-part fix. (1) New migration GBL-140 to drop tenant_default.tenant_hostnames (FK child) then tenant_default.tenant (FK parent) with existence guards and RESTRICT mode. (2) Add -- scope: public header to migrations/031_adp04b_tenant_realm_binding.sql to prevent future shadow table creation on reprovision.",
+    "acceptance_criteria": [
+      "src/design/iss0101-gh359-shadow-tenant-table-fix.md created and passes lint_design_artefact.py (BLOCKER=0 MAJOR=0)",
+      "Migration number GBL-140 confirmed as next after GBL-139",
+      "FK drop ordering documented: hostnames first (FK child), tenant second (FK parent)",
+      "Idempotency guards (existence checks) specified for both DROP operations",
+      "Scope header mechanism explained (migrations.zig migrationScope() behaviour)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact created at src/design/iss0101-gh359-shadow-tenant-table-fix.md. Lint: BLOCKER=0 MAJOR=0 MINOR=6 (E030 schema-qualified names in SQL code blocks — expected for a migration design). Migration GBL-140 confirmed as next; FK ordering: tenant_hostnames DROP first (FK child), tenant DROP second (FK parent); both existence-guarded with RESTRICT; scoped to tenant_default only. 031 scope header addition specified. BACKEND-DEV note: also verify 050_tenant_hostnames.sql lacks -- scope: public and add it in the same commit if so.",
+    "artifacts_out": [
+      "src/design/iss0101-gh359-shadow-tenant-table-fix.md"
+    ],
+    "issues": [
+      {
+        "id": "N1",
+        "severity": "MINOR",
+        "description": "E030 schema-qualified names (information_schema.tables, public.tenant, public.tenant_hostnames) appear in SQL code blocks. These are essential to the migration design and cannot be avoided. MINOR only; not a BLOCKER/MAJOR."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T13:18:48Z",
+  "completed_at": "2026-08-09T13:18:48Z"
+}
