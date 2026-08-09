@@ -2213,6 +2213,23 @@ pub fn build(b: *std.Build) void {
     test_integration_adp02_step.dependOn(&clean_test_db.step);
     test_integration_adp02_step.dependOn(&run_adp02_integration_tests.step);
 
+    // ISS-0117 / GH-380: narrow step for EXP-401 definition-creation graph
+    // validation + EXP-402 restore reconciliation tests. This file was not
+    // previously wired into build.zig at all (no step of any kind ran it).
+    const exp401_exp402_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/exp401_exp402_comp_restore_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_exp401_exp402_integration_tests = addIntegrationRun(b, exp401_exp402_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_exp401_exp402_step = b.step("test-integration-exp401-exp402", "Run EXP-401 graph validation + EXP-402 restore reconciliation tests only (requires BPM_TEST_DB_URL)");
+    test_integration_exp401_exp402_step.dependOn(&clean_test_db.step);
+    test_integration_exp401_exp402_step.dependOn(&run_exp401_exp402_integration_tests.step);
+    test_integration_others_step.dependOn(&run_exp401_exp402_integration_tests.step);
+
     const test_integration_obs04_step = b.step("test-integration-obs04", "Run OBS-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs04_step.dependOn(&clean_test_db.step);
     test_integration_obs04_step.dependOn(&run_obs04_integration_tests.step);
