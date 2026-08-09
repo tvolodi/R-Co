@@ -1,0 +1,53 @@
+{
+  "handoff_id": "c85bd6d2-1fc1-4066-867e-59d8b76c2802",
+  "run_id": "WF03-GH592-20260808",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T00:10:15Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step Final (git-merge)",
+    "requirement_ids": [
+      "LUA-12",
+      "LUA-15",
+      "LUA-16"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "handoffs/WF03-GH592-20260808/step-07-doc-updater.json"
+    ],
+    "github_issue_number": 592,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/592"
+  },
+  "task": {
+    "description": "Step Final: git-merge for WF03-GH592. Create PR, ensure checks pass, squash-merge to main, delete feature branch, return to main with clean state.",
+    "acceptance_criteria": [
+      "PR created via gh pr create",
+      "All CI checks pass",
+      "PR merged via gh pr merge --squash --delete-branch",
+      "Branch deleted from GitHub (verify via gh pr list)",
+      "Local repo on main branch (git branch --show-current outputs main)",
+      "Working tree clean (git status shows clean)",
+      "Handoff result recorded with PR number and merge commit SHA"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step Final PASS. PR #599 created, CI checks passed (all 6 SUCCESS), squash-merged to main via gh pr merge --squash --delete-branch. Branch deleted from GitHub (verified). Local repo on main (66fdae01). Working tree clean except for handoff bookkeeping files.",
+    "artifacts_out": [
+      "PR #599 (https://github.com/tvolodi/R-Co/pull/599)",
+      "Merge commit 66fdae01 on main"
+    ],
+    "issues": [],
+    "next_action": "WF-03 complete. Commit handoff bookkeeping files to main."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T00:10:22Z",
+  "completed_at": "2026-08-09T00:16:06Z"
+}

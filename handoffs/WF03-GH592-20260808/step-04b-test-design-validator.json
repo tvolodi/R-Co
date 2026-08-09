@@ -1,0 +1,108 @@
+{
+  "handoff_id": "7e6b3a8e-2a36-4d1a-9f12-1e9d8a7b5c4d",
+  "run_id": "WF03-GH592-20260808",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-08-08T23:03:13Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 4b (test design validator)",
+    "requirement_ids": [
+      "LUA-12",
+      "LUA-15",
+      "LUA-16"
+    ],
+    "related_handoff_ids": [
+      "51d70234-549b-4a5b-9dcd-43c0a2578d44 (step-04 TEST-DESIGNER, COMPLETED)",
+      "db48a30f-5d63-4a8a-9ea2-5fbf5f4f1f9b (step-03 BACKEND-DEV, COMPLETED)"
+    ],
+    "artifacts_in": [
+      "tests/integration/iss0625_lua_12_15_16_test.zig",
+      "tests/specs/LUA-12.md",
+      "tests/specs/LUA-15.md",
+      "tests/specs/LUA-16.md",
+      "handoffs/WF03-GH592-20260808/step-04-test-designer.json",
+      "docs/issue-reports/WF03-GH592-20260808/step-04-test-designer.yaml"
+    ],
+    "github_issue_number": 592,
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/592",
+    "iss_id": "ISS-0625"
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER output for WF03-GH592 Step 4b. HARD GATE per agent_customization: every MUST requirement must have a runnable integration test, no SkipZigTest on MUST tests, per-test UUID isolation, defer cleanup, BPM_TEST_DB_URL handled.",
+    "acceptance_criteria": [
+      "MUST coverage: LUA-12, LUA-15, LUA-16 each have runnable integration TCs",
+      "No SkipZigTest on MUST tests",
+      "Per-test UUID isolation",
+      "defer cleanup present",
+      "BPM_TEST_DB_URL handled gracefully",
+      "lint_test_isolation.py exit 0",
+      "lint_handoffs.py exit 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 4b PASS. Verified: 9 integration TCs (2 LUA-12 + 4 LUA-15 + 3 LUA-16) in tests/integration/iss0625_lua_12_15_16_test.zig, all with per-test UUIDs (makeUuid) and defer cleanup (allocator.free, lua_close, caps.deinit, pool.release/deinit). No SkipZigTest or test.skip on MUST tests. BPM_TEST_DB_URL handled via env.getAlloc with explicit error message. lint_test_isolation.py: 0 BLOCKER/MAJOR (133 files checked). lint_handoffs.py: 0 findings on this handoff. zig build test: exit 0. Production bug fix in src/lua/host_context.zig::tableToScriptValue (lua_next index drift) verified at commit 52c85455. ISS-0626/GH-595 filed as follow-up (LuaJIT 2.1 stack trace empty limitation, MINOR).",
+    "checks": [
+      {
+        "name": "MUST coverage LUA-12",
+        "verdict": "PASS",
+        "evidence": "TC-ISS-0625-LUA-12-int-01, TC-ISS-0625-LUA-12-int-02"
+      },
+      {
+        "name": "MUST coverage LUA-15",
+        "verdict": "PASS",
+        "evidence": "TC-ISS-0625-LUA-15-int-01..04"
+      },
+      {
+        "name": "MUST coverage LUA-16",
+        "verdict": "PASS",
+        "evidence": "TC-ISS-0625-LUA-16-int-01..03"
+      },
+      {
+        "name": "No SkipZigTest on MUST",
+        "verdict": "PASS",
+        "evidence": "grep SkipZigTest|test.skip returns 0 matches"
+      },
+      {
+        "name": "Per-test UUID isolation",
+        "verdict": "PASS",
+        "evidence": "makeUuid() called per TC; no module-level mutables shared"
+      },
+      {
+        "name": "defer cleanup",
+        "verdict": "PASS",
+        "evidence": "defer allocator.free / pool.deinit / lua_close / caps.deinit on every test path"
+      },
+      {
+        "name": "BPM_TEST_DB_URL handled",
+        "verdict": "PASS",
+        "evidence": "env.getAlloc with explicit error message at line 108-110"
+      },
+      {
+        "name": "lint_test_isolation.py exit 0",
+        "verdict": "PASS",
+        "evidence": "OK \u2014 133 file(s) checked, no isolation issues"
+      },
+      {
+        "name": "lint_handoffs.py exit 0 (this handoff)",
+        "verdict": "PASS",
+        "evidence": "0 BLOCKER on handoffs/WF03-GH592-20260808/step-04b-test-design-validator.json"
+      },
+      {
+        "name": "zig build test exit 0",
+        "verdict": "PASS",
+        "evidence": "exit 0; pre-existing advisories only (ISS-0172)"
+      }
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-08T23:03:13Z",
+  "completed_at": "2026-08-08T23:03:13Z"
+}
