@@ -751,17 +751,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0629",
+      "issue_id": "GH-600",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/600",
-      "title": "TC-LUA-10-03 flaky watchdog assertion timing",
-      "severity": "MINOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-09T00:59:55Z",
-      "started_at": null,
+      "title": "TC-LUA-10-03 (limiter_wiring_test.zig) is intermittently flaky under system load",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T01:28:24Z"
+      },
+      "added_at": "2026-08-09T01:28:24Z",
+      "started_at": "2026-08-09T01:28:24Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 600,
+      "labels": [
+        "bug"
+      ]
     }
   ]
 }
