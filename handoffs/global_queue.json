@@ -898,15 +898,22 @@
     {
       "issue_id": "GH-621",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/621",
-      "title": "TC-ADP-02-05: audit_entries.resource_id = $1::uuid vs TEXT column mismatch (C42883)",
+      "title": "TC-ADP-02-05: audit_entries.resource_id = $1::uuid vs TEXT column mismatch (C42883) \u2014 same root cause as ISS-0637",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-09T09:21:12Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T09:37:35Z"
+      },
+      "added_at": "2026-08-09T09:37:35Z",
+      "started_at": "2026-08-09T09:37:35Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 621,
+      "labels": [
+        "bug"
+      ]
     }
   ]
 }
