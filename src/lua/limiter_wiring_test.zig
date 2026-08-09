@@ -609,6 +609,23 @@ test "TC-LUA-10-03: the host-external watchdog stops a tight loop even with the 
     // watchdog having had time to poll and observe it), and the watchdog
     // thread does nothing but poll wall-clock time, this can only be true if
     // the watchdog mechanism itself is live.
+    //
+    // ISS-0629 / GH #600 side-fix, merged independently on `main` while this
+    // branch was in flight (both fixes address genuinely different failure
+    // modes and are combined here, not one superseding the other): even
+    // after the ISS-0624/GH-591 iteration-count bump above guarantees the
+    // loop's wall-clock time exceeds the 1s deadline, a second, narrower
+    // race remains between this assertion and the watchdog thread's own
+    // ~10ms poll interval (`timeout.zig` POLL_INTERVAL_NS) — the deadline
+    // can be genuinely past while the watchdog simply hasn't run its next
+    // poll iteration yet. A bounded 1000ms yield-spin absorbs that
+    // scheduling jitter without masking a genuine watchdog failure (a
+    // watchdog still not fired a full second after an already-expired
+    // deadline is broken, not merely slow).
+    const retry_deadline = milliTimestamp() + 1_000;
+    while (!watchdog_state.hasFired() and milliTimestamp() < retry_deadline) {
+        std.Thread.yield() catch {};
+    }
     try std.testing.expect(watchdog_state.hasFired());
 }
 
