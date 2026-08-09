@@ -779,3 +779,6 @@
 2026-08-09T12:47:25Z | COMPLETE | WF03-GH361-20260809 | 0df36310 | BACKEND-DEV | Step 00 git-setup PASS — feature/WF03-GH361-20260809 created and pushed
 2026-08-09T12:50:05Z | COMPLETE | WF03-GH361-20260809 | aaee1b61 | ISSUE-FIXER | step-0.5 PASS: ISS-0103 found in registry; already has GitHub issue GH-361; fix confirmed pre-applied
 2026-08-09T12:50:05Z | COMPLETE | WF03-GH361-20260809 | 37b8315b | ISSUE-FIXER | step-01 PASS: oidc35 compile issue already resolved (ISS-0137 applied AuthContext.principal + OnboardingInput fields; ISS-0102 wired file into build); zig build 0; zig build test 0
+2026-08-09T12:50:12Z | ROUTE   | WF03-GH361-20260809 | 902a6d37 | ORCH → DOC-UPDATER | PENDING
+2026-08-09T12:52:22Z | COMPLETE | WF03-GH361-20260809 | 902a6d37 | DOC-UPDATER | PASS — CHANGELOG updated, GH-361 closed
+2026-08-09T12:53:45Z | ROUTE   | WF03-GH361-20260809 | f38c9889 | ORCH → BACKEND-DEV | PENDING (step-final)

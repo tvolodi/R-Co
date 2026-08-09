@@ -6,6 +6,11 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0103 — oidc35_onboarding_test.zig compile drift (AuthContext.principal / OnboardingInput.tenant_type) verified resolved (MINOR)** ([GitHub #361](https://github.com/tvolodi/R-Co/issues/361))
+
+- **Finding:** Already resolved on `main` before this WF-03 run. Both struct-literal drift issues were corrected by prior work (ISS-0137/GH#439): `AuthContext.principal` field added and `OnboardingInput.tenant_type`/`.production_tenant_id` fields added in `tests/integration/oidc35_onboarding_test.zig`. Build-wiring gap (ISS-0102/GH#360) also already resolved — file is present in `tests/integration/main_test.zig`. `zig build` and `zig build test` both exit 0.
+- **No production code changes** — verification-only; no new requirement introduced.
+
 **ISS-0640 — `svc01` on_delete_cascade test now schema-qualifies DELETE and resets session_replication_role (MAJOR)** ([GitHub #631](https://github.com/tvolodi/R-Co/issues/631))
 
 - **Root cause:** `tests/integration/svc01_service_catalog_scope_test.zig`'s on_delete_cascade test used `DELETE FROM tenant` (unqualified). `TestHarness` sets `search_path = 'tenant_default,public'`, so the unqualified reference resolved to `tenant_default.tenant` — not `public.tenant` where the test's setup `INSERT` landed. No row was deleted from `public.tenant`, so the FK cascade trigger (`RI_FKey_cascade_del`) never fired and the scoped `public.service_catalog` row survived. Second root cause: `TestHarness` pre-sets `session_replication_role = replica`, which sets `tgenabled = O` on referential-integrity triggers, disabling them entirely regardless of schema qualification.
