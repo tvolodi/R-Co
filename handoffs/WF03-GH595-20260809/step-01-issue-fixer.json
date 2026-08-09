@@ -1,0 +1,42 @@
+{
+  "handoff_id": "b47646df-dcd4-4a70-a622-70e54cb966af",
+  "run_id": "WF03-GH595-20260809",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH595-20260809/step-01-issue-fixer.json",
+  "created_at": "2026-08-09T00:21:40Z",
+  "started_at": "2026-08-09T00:21:40Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-16"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/lua/executor.zig",
+      "src/lua/luajit_bindings.zig",
+      "src/lua/iss0625_lua_12_15_16_test.zig",
+      "tests/integration/iss0625_lua_12_15_16_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Investigate GH #595 (ISS-0626 cross-ref, MINOR -- does not block release, LUA-16's runtime-error classification and script_error payload still construct correctly): ScriptErrorPayload.stack_trace is always empty on LuaJIT 2.1 when a real runtime error is raised from a Lua script.\n\nRoot cause per the issue: src/lua/executor.zig's lua_pcall call site (line ~543: `bindings.lua_pcall(L, 0, 1, 0)`) passes errfunc=0 -- no message handler installed. By the time lua_pcall returns to C and captureStackTrace runs (line ~585, AFTER the pcall already returned), the Lua call frames have already been unwound, so lua_getstack(L, 0, ...) returns 0. This is a real Lua 5.1/LuaJIT 2.1 API constraint, not a logic bug in captureStackTrace itself -- the walker is correct, it's just invoked too late.\n\nORCH already independently confirmed this diagnosis is accurate against current main (post GH-592/PR#599 merge): grep confirms `lua_pcall(L, 0, 1, 0)` still has errfunc=0, and captureStackTrace is still called after the pcall returns (not installed as the errfunc itself). TC-ISS-0625-LUA-16-02 (src/lua/iss0625_lua_12_15_16_test.zig ~line 318) correctly documents and tests the CURRENT empty-on-idle-stack behavior -- that test should keep passing after this fix, since an idle stack with no active call still legitimately has nothing to trace. TC-ISS-0625-LUA-16-int-01 (tests/integration/iss0625_lua_12_15_16_test.zig) is the end-to-end test that currently asserts stack_trace.len == 0 for a REAL runtime error -- this is the assertion the issue wants flipped to > 0 once the fix lands.\n\nYOUR JOB: confirm this diagnosis by reading the actual source yourself (don't just trust the issue text), read the Lua Reference Manual's lua_pcall 'message handler' section referenced in the issue for exact semantics of how an errfunc is installed (pushed onto the stack BEFORE the function to be called, its stack index passed as lua_pcall's 4th argument), and route to CODE-DESIGNER with a precise diagnosis. This touches executeSource's core call path (used by every script execution, manifested or not) so a design pass is warranted even though the fix itself is small and well-specified -- confirm there's no subtle interaction with the existing instruction-limiter hook, memory limiter, or LUA-10 watchdog wiring installed earlier in this same function this session (src/design/iss0169-lua08-09-10-limiter-wiring.md, already merged via GH-495/PR#593) before concluding this is purely additive.",
+    "acceptance_criteria": [
+      "Diagnosis confirmed against current main source (post GH-592 merge), not just the issue text",
+      "lua_pcall message-handler semantics understood precisely (stack position of errfunc, when it fires)",
+      "Interaction with existing instruction limiter / memory limiter / LUA-10 watchdog hook checked for conflicts",
+      "Routed to CODE-DESIGNER, not implemented directly"
+    ],
+    "functions_to_call": [
+      "fn:search-issues"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

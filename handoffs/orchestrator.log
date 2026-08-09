@@ -574,3 +574,4 @@
 2026-08-09T00:08:26Z | COMPLETE | WF03-GH596-20260808 | 38c0e5d2 | DOC-UPDATER | PASS -- CHANGELOG updated, PR #598 created/merged (deaa2b9), branch deleted, GH-596 left OPEN retitled to remaining scope
 2026-08-09T00:08:26Z | GIT_MERGE | WF03-GH596-20260808 | --- | DOC-UPDATER | PR #598 squash-merged to main, feature/WF03-GH596-20260808 deleted, repo returned to clean main
 2026-08-09T00:16:06Z | COMPLETE | WF03-GH592-20260808 | c85bd6d2 | ORCH -> BACKEND-DEV | Step Final PASS
+2026-08-09T00:21:40Z | ROUTE | WF03-GH595-20260809 | b47646df | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-595 LUA-16 stack trace errfunc fix)
