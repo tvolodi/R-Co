@@ -1,0 +1,48 @@
+{
+  "handoff_id": "5771c088-8070-455c-814f-29a8ed3e3bae",
+  "run_id": "WF03-GH631-20260809",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-09T12:46:22Z",
+  "started_at": "2026-08-09T12:46:22Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step Final (git-merge)",
+    "requirement_ids": [
+      "SVC-01"
+    ],
+    "related_handoff_ids": [
+      "f71c97f1-9e59-4e11-8741-e02383562c95"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH631-20260809/step-07-doc-updater.json"
+    ]
+  },
+  "task": {
+    "description": "Step Final: create PR #633, squash-merge, delete branch, return to clean main.",
+    "acceptance_criteria": [
+      "PR #633 merged to main via squash",
+      "feature/WF03-GH631-20260809 deleted from GitHub",
+      "git branch --show-current == main",
+      "git status clean"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PR #633 squash-merged to main (commit 6cc48e51). feature/WF03-GH631-20260809 deleted. main clean. GH-631 closed and moved to Done. GH-631 released from global queue.",
+    "artifacts_out": [
+      "PR #633",
+      "merge commit 6cc48e51"
+    ],
+    "issues": [],
+    "next_action": "Workflow WF03-GH631-20260809 complete."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T12:46:22Z"
+}
