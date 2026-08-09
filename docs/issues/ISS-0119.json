@@ -1,7 +1,7 @@
 {
   "id": "ISS-0119",
   "title": "Timer retry, pending, locking, and rollback semantics fail",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "timer-behavior",
   "run_id": "WF03-gh364-20260801",
@@ -13,12 +13,17 @@
     "src/engine/"
   ],
   "created_at": "2026-08-01T08:52:13Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T06:27:48Z",
   "notes": "Cluster H from the final integration run: TC-SCH-303-04, TC-SCH-02-02, and TC-SCH-02-03 fail on retry/pending semantics, rollback expectations, and one PostgreSQL 55P03 row-lock conflict on instance_projections. Evidence: _integration_final.log lines 8499-8545 and 16647-16874.",
   "root_cause": "TBD. Initial hypothesis: timer polling and retry transactions lock/update instance projections in an inconsistent order and do not preserve the expected pending state after rollback or retry failure.",
   "candidate_resolution": "Specify the timer state machine and transaction boundaries, use deterministic lock ordering or SKIP LOCKED semantics, and make retry/rollback transitions atomic with projection updates.",
-  "resolution": null,
-  "files_to_change": [],
+  "resolution": "Fixed by commit 6b042542 (WF03-GH567, PR #572, merged 2026-08-08). TC-SCH-02-02: scheduler.zig now counts skipped_locked for ordinary-timer SKIP LOCKED branch. TC-SCH-02-03: fire_blk no longer swallows appendTimerFiredEventInTx errors \u2014 TransactionFailed is surfaced. TC-SCH-303-04: passes (4/4). All 23 SCH-02 and 4 SCH-303 tests green as of 2026-08-09 on main.",
+  "files_to_change": [
+    "src/scheduler/scheduler.zig"
+  ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/382",
-  "prevention": []
+  "prevention": [
+    "Use --summary all in CI to catch silent test swallowing",
+    "Audit fire_blk patterns for catch break that silently demotes errors"
+  ]
 }

@@ -849,6 +849,26 @@
       "completed_at": "2026-08-09T06:22:26Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-382",
+      "issue_number": 382,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/382",
+      "title": "ISS-0119 \u2014 Timer retry, pending, locking, and rollback semantics fail",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-09T06:23:36Z"
+      },
+      "added_at": "2026-08-09T06:23:36Z",
+      "started_at": "2026-08-09T06:23:36Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
