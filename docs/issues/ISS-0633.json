@@ -12,7 +12,11 @@
     "tests/integration/ext02_webhook_dispatch_test.zig"
   ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/614",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "title": "TC-EXT-02-INT-05: HMAC webhook signature header not seen during dispatch",
-  "discovered_at": "2026-08-09T07:27:46Z"
+  "discovered_at": "2026-08-09T07:27:46Z",
+  "run_id": "WF03-GH614-20260809",
+  "workflow_id": "WF-03",
+  "resolution": "DUPLICATE of ISS-0636/GH-618 (PR #624, merged 2026-08-09). Same test (TC-EXT-02-INT-05), same symptom (signed_receiver.signature_seen == false), same discovery run (WF03-GH381-20260809) as ISS-0633/GH-614 and ISS-0634/GH-615/GH-619 -- three issues independently filed from the same TEST-RUNNER step before any of the fixes landed. The actual root cause was in subscription_store.createSubscription (it ignored req.secret entirely, never populating secret_ref), not in dispatcher.zig's signature logic as this issue's 'probable root cause' speculated -- the dispatcher's HMAC signing was already correct once secret_ref was actually populated. No separate fix needed here. Verified on current main: zig build test-integration-ext02 -- 10/10 tests pass, including TC-EXT-02-INT-05.",
+  "no_code_change": true
 }
