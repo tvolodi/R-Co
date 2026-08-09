@@ -392,7 +392,7 @@ test "TC-OBS-05-INT-02: POST /dlq/:id/retry returns 409+discard for CANCELLED an
     const retry_audit_count = try rowCount(
         conn,
         alloc,
-        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_type = 'dlq' AND resource_id = $1::uuid AND action = 'dlq.retry' AND actor_id = $2::uuid",
+        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_type = 'dlq' AND resource_id = $1 AND action = 'dlq.retry' AND actor_id = $2::uuid",
         &.{ active_dlq_id, actor.user_id },
     );
     try testing.expect(retry_audit_count >= 1);
@@ -459,26 +459,45 @@ test "TC-OBS-05-INT-03: POST /dlq/:id/discard appends audit and rolls back on au
     const audit_count = try rowCount(
         conn,
         alloc,
-        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_type = 'dlq' AND resource_id = $1::uuid AND action = 'dlq.discard'",
+        "SELECT COUNT(*)::text FROM audit_entries WHERE resource_type = 'dlq' AND resource_id = $1 AND action = 'dlq.discard'",
         &.{dlq_id_ok},
     );
     try testing.expect(audit_count >= 1);
 
-    // Wrap the deliberate audit-failure trigger install in a SAVEPOINT so
-    // that the trg_bpm_test_fail_audit_insert / bpm_test_fail_audit_insert
-    // pair cannot leak into the next test process. The previous implementation
-    // used a happy-path defer that only fired if the test ran to completion;
-    // on early return, the trigger persisted in db_test and fired P0001
-    // 'audit_entries is immutable' on legitimate mutations in adp09 /
-    // oidc22. The errdefer below rolls the savepoint back on any early
-    // return, removing the trigger and function before the next test
-    // process acquires a pool connection. The savepoint is NEVER released
-    // on the happy path — it is rolled back unconditionally at the end of
-    // the test block, so the trigger is guaranteed gone before the next
-    // test process runs.
-    conn.exec("SAVEPOINT s_audit_failure", &.{}) catch return error.PersistenceFailed;
-    errdefer {
-        conn.exec("ROLLBACK TO SAVEPOINT s_audit_failure", &.{}) catch {};
+    // Install the deliberate audit-failure trigger, and guarantee its
+    // unconditional removal (both success and early-return/error paths)
+    // via `defer`, so trg_bpm_test_fail_audit_insert /
+    // bpm_test_fail_audit_insert can never leak into the next test
+    // process. An earlier implementation used a happy-path-only defer that
+    // did not fire on early return, letting the trigger persist in db_test
+    // and fire P0001 'audit_entries is immutable' on legitimate mutations
+    // in adp09 / oidc22.
+    //
+    // ISS-0116 / GH-379: a later implementation wrapped this section in
+    // `conn.begin()` + `SAVEPOINT` to get the same unconditional-cleanup
+    // guarantee via ROLLBACK. That doesn't work here: `handleDiscard()`
+    // below acquires its OWN pool connection (not `conn`) to run the
+    // INSERT that the trigger intercepts, and DDL from an uncommitted
+    // transaction on `conn` is invisible to that other connection until
+    // `conn` commits — so the trigger would never fire for it at all.
+    // Worse, `CREATE TRIGGER ... ON audit_entries` takes an ACCESS
+    // EXCLUSIVE lock that a same-session-but-different-connection writer
+    // then blocks on for the lifetime of the held transaction, producing a
+    // genuine cross-connection self-deadlock (observed live: `conn` idle
+    // in an open transaction holding the DDL lock while the second pool
+    // connection's `INSERT INTO audit_entries` — fired by
+    // `dlq_store.discard()`'s own `DELETE FROM dead_letter_items` trigger
+    // — waited on it forever). `conn` is a plain `pool.acquire()`
+    // connection with no ambient transaction (matching every other query
+    // in this test file), so the DDL below runs in autocommit and is
+    // immediately visible cross-connection, and `SAVEPOINT` (which
+    // requires an open transaction block) is simply not needed: `DROP
+    // TRIGGER IF EXISTS` / `DROP FUNCTION IF EXISTS` are themselves
+    // idempotent and unconditionally safe to run via a plain `defer`,
+    // without any savepoint/rollback machinery.
+    defer {
+        conn.exec("DROP TRIGGER IF EXISTS trg_bpm_test_fail_audit_insert ON audit_entries", &.{}) catch {};
+        conn.exec("DROP FUNCTION IF EXISTS bpm_test_fail_audit_insert()", &.{}) catch {};
     }
 
     conn.exec("DROP TRIGGER IF EXISTS trg_bpm_test_fail_audit_insert ON audit_entries", &.{}) catch {};
