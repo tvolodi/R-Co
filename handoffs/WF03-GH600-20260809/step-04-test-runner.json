@@ -1,0 +1,38 @@
+{
+  "handoff_id": "2e5c0532-9573-4464-b3a0-f6edce1b8000",
+  "run_id": "WF03-GH600-20260809",
+  "workflow_id": "WF-03",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH600-20260809/step-04-test-runner.json",
+  "created_at": "2026-08-09T01:48:03Z",
+  "started_at": "2026-08-09T01:48:03Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "ecaa3d02-dd98-45ee-b218-58f8ce457cc3"
+    ],
+    "artifacts_in": [
+      "src/lua/limiter_wiring_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Final verification pass for GH-600's TC-LUA-10-03 flake fix (commit c71b5ce on this branch). BACKEND-DEV ran zig build test-lua 8 times, all clean (91/91). ORCH independently ran it 3 more times, also all clean (91/91) -- 11 consecutive clean runs total, strong confidence the race is genuinely resolved (the original bug showed 3 fail / 2 pass across just 5 runs).\n\nThis is a test-only change to src/lua/limiter_wiring_test.zig -- no production code touched, no database/infrastructure dependency for this specific test. Run your standard pre-check sequence, then the full suite (zig build test, zig build test-lua) plus a few additional repeated zig build test-lua runs for extra confidence given this is a flake fix specifically.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-lua exits 0, run at least 3 additional times, all clean",
+      "No regression elsewhere"
+    ],
+    "functions_to_call": [
+      "fn:run-test-suite"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
