@@ -926,6 +926,26 @@
       "completed_at": "2026-08-09T09:56:45Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-615",
+      "issue_number": 615,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/615",
+      "title": "ISS-0634: TC-EXT-02-INT-08 PgError.ServerError querying OBS-03 audit rows for webhook subscription",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T09:57:05Z"
+      },
+      "added_at": "2026-08-09T09:57:05Z",
+      "started_at": "2026-08-09T09:57:05Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
