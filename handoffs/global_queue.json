@@ -800,6 +800,26 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-606",
+      "issue_number": 606,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/606",
+      "title": "db_integration_test.TC-DB-02-04: connection-pool-boundary test flakes under concurrent-binary contention (ISS-0631, split from ISS-0150/GH#482)",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-09T04:07:52Z"
+      },
+      "added_at": "2026-08-09T04:07:52Z",
+      "started_at": "2026-08-09T04:07:52Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
