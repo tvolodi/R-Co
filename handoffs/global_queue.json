@@ -997,6 +997,26 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-379",
+      "issue_number": 379,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/379",
+      "title": "ISS-0116 \u2014 Dead-letter queue persistence, retry, discard, and alert behavior fails",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "TVOLODI-loop",
+        "locked_at": "2026-08-09T10:01:32Z"
+      },
+      "added_at": "2026-08-09T10:01:32Z",
+      "started_at": "2026-08-09T10:01:32Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
