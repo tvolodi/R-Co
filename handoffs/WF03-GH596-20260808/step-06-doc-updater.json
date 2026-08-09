@@ -1,0 +1,49 @@
+{
+  "handoff_id": "38c0e5d2-aa96-4cae-ae55-86926e640c16",
+  "run_id": "WF03-GH596-20260808",
+  "workflow_id": "WF-03",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH596-20260808/step-06-doc-updater.json",
+  "created_at": "2026-08-09T00:02:06Z",
+  "started_at": "2026-08-09T00:02:06Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "91df0d25-0c8d-4c48-9b19-846ffe700017",
+      "06e8f858-2ef9-4fad-8798-5a631d3c8e19",
+      "c0a17dfc-b800-481d-a225-39e2994c8e13",
+      "ee840fc9-75cd-4b3a-8afb-b07442b66388"
+    ],
+    "artifacts_in": [
+      "tools/lint_handoffs.py",
+      "tools/generate_lint_handoffs_baseline.py",
+      "tools/lint_handoffs.baseline.json",
+      "src/design/iss0627-lint-handoffs-acknowledgment.md",
+      "docs/issues/ISS-0627.json"
+    ]
+  },
+  "task": {
+    "description": "Finalize GH-596 / ISS-0627 (scoped down to the H003/H004/H005/H009 permanent-acknowledgment subset -- 225 of 292 findings). Design PASSED validation cleanly (no rework cycle). BACKEND-DEV implemented the mechanism in tools/lint_handoffs.py plus tools/generate_lint_handoffs_baseline.py and generated the real baseline tools/lint_handoffs.baseline.json. ORCH independently re-verified: python tools/lint_handoffs.py (default, with baseline) shows 63 BLOCKER + 72 MAJOR + 1 MINOR + 225 ACKNOWLEDGED (down from 250/110/1 with 0 acknowledged); python tools/lint_handoffs.py --no-baseline restores exactly 250/110/1; python tools/lint_handoffs.py --changed still works correctly and independently (0/0/0 on this run's own files). Independently inspected tools/lint_handoffs.baseline.json directly: 225 entries, exactly 148 H003 + 34 H004 + 5 H005 + 38 H009, all 225 matching_keys unique, and confirmed a real H009 entry genuinely carries the later_completed sorted-fingerprint suffix that closes the message-collision safety gap CODE-DESIGNER found during design.\n\nGH-596's own acceptance criteria (from ISS-0627) for this subset are fully met: 'decide and implement a permanent acknowledgment mechanism ... so these stay visible in the audit trail as known, accepted historical gaps rather than either being silently re-flagged forever or fabricated shut. Do NOT invent timestamp or status values' -- satisfied exactly: every one of the 225 findings is still individually visible and printed, none were fabricated/guessed, and the mechanism is auditable (dated, reasoned, --no-baseline can disable it for review).\n\nREMAINING SCOPE NOTE: ISS-0627 originally covered 292 findings across 6 categories. This run resolved the mechanism for 4 of them (H003/H004/H005/H009 = 225 findings). The other 2 categories -- H013 (53 findings, needs an explicit timezone-correction policy decision), H001-structural (~4 files, per-file bracket judgment), H006-CONDITIONAL (1 finding, needs an enum decision), H007 (69 findings/~10 files, schema-migration decision) -- remain in ISS-0627 for future runs, exactly as ISS-0627's own acceptance criteria anticipated ('this is deliberately NOT a single run -- expect this to be split further per category').\n\nYOUR JOB:\n1. Update CHANGELOG.md describing the acknowledgment mechanism: what it does (225 unrecoverable historical findings acknowledged, not fixed, not hidden), the exact before/after counts, and that the remaining H013/H001-structural/H006-CONDITIONAL/H007 categories stay tracked in ISS-0627/GH-596 for future runs.\n2. No requirement IDs involved -- skip reqctl.py.\n3. Skip retrospective (WF-03 run, no estimation.json).\n4. GH-596 disposition: this issue's title says 'lint_handoffs.py debt needing case-by-case judgment or permanent acknowledgment (H001-structural/H003/H004/H005/H006/H007/H009/H013)' -- since only 4 of 8 named categories are resolved by this run, do NOT close GH-596. Add a comment summarizing what was done (before/after counts) and retitle it to reflect the remaining scope (H013/H001-structural/H006-CONDITIONAL/H007 only), matching the same pattern DOC-UPDATER used for GH-495 earlier in this loop (left open, retitled, since its remaining scope already has a home in this same issue rather than needing a new one).\n5. GitHub Branch Management (MANDATORY Step Final): create the PR (gh pr create --base main) -- explain in the PR body this adds a NEW mechanism to tools/lint_handoffs.py (the ACKNOWLEDGED bucket, --no-baseline flag) plus a new baseline data file with 225 entries, and that it does not weaken detection (full-corpus scan without the baseline is unchanged). Poll for genuine CI completion, squash-merge and delete branch, verify no orphaned branch, update project board for issue #596 (likely 'implemented' only, not 'done', since the issue stays open with remaining scope -- check PROJECT_BOARD.md's guidance for a partially-resolved, still-open issue, same judgment call as GH-495's board update), return repo to clean main.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with before/after counts and remaining-scope note",
+      "GH-596 left OPEN, retitled to reflect remaining H013/H001-structural/H006-CONDITIONAL/H007 scope, commented with this run's results",
+      "PR created explaining the new mechanism clearly",
+      "CI verified genuinely green (polled, not assumed)",
+      "Squash-merged, branch deleted",
+      "Project board updated for issue #596 (implemented, not done, since still open)",
+      "Repo returned to clean main"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
