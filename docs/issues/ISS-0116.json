@@ -1,7 +1,7 @@
 {
   "id": "ISS-0116",
   "title": "Dead-letter queue persistence, retry, discard, and alert behavior fails",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "dlq-behavior",
   "run_id": "WF03-gh364-20260801",
@@ -13,12 +13,19 @@
     "migrations/"
   ],
   "created_at": "2026-08-01T08:52:13Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T11:13:27Z",
   "notes": "Cluster E from the final integration run: TC-OBS-05-INT-01/02/03 and TC-OBS-06-INT-05 fail on dead-letter persistence/query/retry/discard and alert-state checks. Evidence: _integration_final.log lines 23075-23257.",
-  "root_cause": "TBD. Initial hypothesis: DLQ repository operations and alert-state projections are out of sync with the current dead_letter_items schema or status lifecycle.",
+  "root_cause": "Three separate layers: (1) TC-OBS-05-INT-02/03 test SQL cast: audit_entries.resource_id is TEXT (migrated by GBL-120/ISS-103) but test queries used resource_id = $1::uuid causing C42804 TEXT=UUID mismatch; (2) Migration gap: GBL-121 fixed bpm_audit_resource_info to handle dead_letter_items in PUBLIC schema, but GBL-* migrations are skipped for tenant schemas by Migrations.runForSchema(); tenant_default.bpm_audit_resource_info retained the migration-020 version which only handled dead_letter_queue — after rename to dead_letter_items, r_id returned NULL, triggering a skip in bpm_audit_on_mutation, so no audit entries were created; (3) TC-OBS-05-INT-03 SAVEPOINT: the test used SAVEPOINT outside a transaction block and tried to create a trigger inside an uncommitted transaction, which is not visible to handleDiscard's separate pool connection. TC-SCH-303 was already passing. TC-OBS-06 was already passing.",
   "candidate_resolution": "Reconcile repository SQL and alert derivation with the canonical DLQ schema, define explicit retry/discard transitions, and verify persistence plus alert state transactionally against real PostgreSQL.",
-  "resolution": null,
-  "files_to_change": [],
+  "resolution": "Fixed in WF03-GH379-20260809: (1) Changed resource_id = $1::uuid → resource_id = $1 in obs05_dlq_test.zig lines 395 and 462; (2) Added migration 1139_iss0116_dlq_audit_resource_info.sql which recreates bpm_audit_resource_info in tenant schemas (skipped by GBL-* guard) to handle dead_letter_items with resource_type='dlq'; (3) Replaced SAVEPOINT-based trigger isolation with defer-based cleanup and autocommit creation so the trigger is visible to handleDiscard's pool connection.",
+  "files_to_change": [
+    "tests/integration/obs05_dlq_test.zig",
+    "migrations/1139_iss0116_dlq_audit_resource_info.sql"
+  ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/379",
-  "prevention": []
+  "prevention": [
+    "GBL-* migrations are skipped for tenant schemas — any migration that updates shared functions (audit triggers, resource info handlers) must be a numbered migration, not GBL-*, to run per-schema.",
+    "When renaming a table (dead_letter_queue → dead_letter_items), update all audit function handlers to include the new name in the same numbered migration.",
+    "PostgreSQL SAVEPOINT requires an explicit transaction; cross-connection DDL visibility requires autocommit creation."
+  ]
 }
