@@ -1,0 +1,40 @@
+{
+  "handoff_id": "6c5e7466-b18e-4e68-92ce-990188abc9f5",
+  "run_id": "WF03-GH637-20260809",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T16:16:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 1",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/637",
+    "issue_id": "ISS-0641",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Step 1: verify root cause and classify all 14 duplicated table names as GLOBAL_REGISTRY or PER_TENANT using the FK-chain/pg_depend methodology from docs/issue-reports/ISS-0185-diagnosis.yaml. Confirm source migrations lack -- scope: public headers.",
+    "acceptance_criteria": [
+      "all 14 tables classified with evidence (FK query + row counts)",
+      "source migration found and scope-header absence confirmed for each of the 10 files",
+      "classification cross-checked against docs/issue-reports/ISS-0185-diagnosis.yaml and prior GBL migrations"
+    ],
+    "functions_to_call": [
+      "fn:diagnose-root-cause"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Verified against live db_test: information_schema.table_constraints/constraint_column_usage FK query found zero dependents on the public copy of any of the 14 tables. Row-count inspection: 13 tables' public copies are all empty (0 rows) confirming PER_TENANT (canonical=tenant_default); tenant_artifact_activations has 8 live rows in public vs 0 in tenant_default confirming GLOBAL_REGISTRY (canonical=public), consistent with src/config/loader.zig's tenant_id-filtered query shape (same as service_catalog). Grepped all 10 source migrations (004, 007, 008, 010, 012, 019, 026, 058, 093, 095) -- none carry a scope header. 13 of 14 names already appear in docs/issue-reports/ISS-0185-diagnosis.yaml's classification tables (12 already in GBL-135's own drop array); only lua_script_execution_audit (migration 095, post-dates ISS-0185) is genuinely new -- classified PER_TENANT by analogy (keyed by instance_id, no tenant_id column, same shape as instance_definition_snapshots/instance_waits).",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T16:16:00Z",
+  "completed_at": "2026-08-09T16:35:00Z"
+}

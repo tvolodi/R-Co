@@ -15,6 +15,17 @@
 --   The DO $$ block is a no-op if instance_projections does not exist
 --   (e.g. when applied to the public schema). All CREATE TABLE / CREATE INDEX
 --   operations use IF NOT EXISTS guards inside the block.
+--
+-- ISS-0641 / GH-637: PER_TENANT (canonical home = tenant_default). This
+-- file's to_regclass('instance_projections') guard above already prevents
+-- instance_waits from being (re)created in a schema without
+-- instance_projections going forward, but a public.instance_waits shadow
+-- was already created and persisted from before this guard existed (or
+-- from a public-schema pass where a stale search_path made
+-- to_regclass resolve unexpectedly). See
+-- docs/issue-reports/ISS-0185-diagnosis.yaml and
+-- migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql, which drops the
+-- existing public shadow (idempotent).
 
 DO $$
 DECLARE

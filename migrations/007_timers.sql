@@ -59,6 +59,14 @@ CREATE INDEX IF NOT EXISTS idx_timer_token
 -- ── SLA Records ───────────────────────────────────────────────────────────────
 -- SCH-01: created on HUMAN_TASK entry; SCH-02: completed on task completion.
 -- Clock: started_at → deadline_at. Outcome: met / breached.
+-- ISS-0641 / GH-637: PER_TENANT (canonical home = tenant_default).
+-- migrations.zig's migrationScope() has no per-table scope primitive (only
+-- whole-file .public_only vs .all_schemas), so this file correctly keeps
+-- running in every schema pass to create the tenant_default copy, but that
+-- also creates an unwanted public shadow. See
+-- docs/issue-reports/ISS-0185-diagnosis.yaml and
+-- migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql, which drops the
+-- public shadow (idempotent, re-run after any cold-start replay).
 
 CREATE TABLE IF NOT EXISTS sla_records (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
