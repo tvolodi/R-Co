@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH595-20260809/step-06-doc-updater.json",
   "created_at": "2026-08-09T01:17:51Z",
   "started_at": "2026-08-09T01:17:51Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-09T01:26:26Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -45,7 +45,17 @@
       "fn:update-changelog"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with the ISS-0628/GH-595 fix entry (root-cause correction re: debug.traceback being unreachable in the sandbox, the errfunc/message-handler design, and the two additional discoveries: lua_getinfo 'Sln' selector requirement and proper-tail-call frame collapse). LUA-16 was already RELEASED (set during the prior GH-592/ISS-0625 merge) -- this run fixed a defect in that release rather than releasing it for the first time, so implemented_in was extended to include src/lua/host_context.zig via reqctl.py set-status (idempotent re-stamp, last_updated refreshed to 2026-08-09T01:19:57Z). docs/status/requirement_status.yaml regenerated (462 entries). No estimation.json present for this WF-03 run -- retrospective correctly skipped. PR #601 created (Closes #595), explained the fix and both discoveries in the body. First CI run showed 'Build and unit tests' FAIL; python3 tools/check_github_status.py confirmed platform operational (not an outage) so the failure was investigated directly: gh run view --log-failed identified the single failing test as TC-LUA-10-03 (src/lua/limiter_wiring_test.zig), the already-filed, already-queued ISS-0629/GH-600 pre-existing timing flake -- confirmed unrelated via git diff (file untouched by this branch, last modified by the earlier, already-merged GH-495/PR#593). Reran only the failed job (gh run rerun --failed); all 6 checks passed clean on rerun, confirming the flake and not a regression. Squash-merged via gh pr merge --squash --delete-branch (merge commit d0083e131855a5859e22d8f6ae3e94d32d27cb60). Remote branch deletion verified via git ls-remote (empty) and git fetch --prune. GH-595 auto-closed (state=CLOSED, stateReason=COMPLETED) via the PR's Closes reference. Project board for issue #595 checked via tools/gh_project_status.py --target implemented then --target done -- both reported already at 'Done' (no requirement-to-scenario match in tests/simulation/scenarios/, confirming non-UAT-scoped; board had already advanced automatically on issue close). Repo returned to clean main: git checkout main, git pull --ff-only (already up to date, fast-forwarded on merge), git branch --show-current = main, git status clean, HEAD = d0083e1.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml"
+    ],
+    "issues": [],
+    "next_action": "WF-03 run complete. PR #601 merged to main (d0083e1). GH-595 closed. Repo on clean main."
+  },
   "rework_count": 0,
   "max_rework": 3
 }

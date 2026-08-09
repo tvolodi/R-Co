@@ -585,3 +585,8 @@
 2026-08-09T01:10:46Z | ROUTE | WF03-GH595-20260809 | 0a888546 | ORCH -> TEST-RUNNER | IN_PROGRESS (Step 4, full suite verification of LUA-16 errfunc fix)
 2026-08-09T01:16:16Z | COMPLETE | WF03-GH595-20260809 | 0a888546 | TEST-RUNNER | PASS -- full suite green (known TC-LUA-10-03 flake noted, ISS-0629/GH-600) -> Route to DOC-UPDATER
 2026-08-09T01:17:51Z | ROUTE | WF03-GH595-20260809 | 9b1994c0 | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize GH-595 LUA-16 fix)
+2026-08-09T01:26:26Z | COMPLETE | WF03-GH595-20260809 | 9b1994c0 | DOC-UPDATER | PASS - CHANGELOG + LUA-16 implemented_in extended (already RELEASED via GH-592, this run fixed a defect in that release, not a first-time release)
+2026-08-09T01:26:26Z | GIT_MERGE | WF03-GH595-20260809 | 9b1994c0 | DOC-UPDATER | PR #601 squash-merged to main (d0083e131855a5859e22d8f6ae3e94d32d27cb60); branch feature/WF03-GH595-20260809 deleted (verified via git ls-remote + fetch --prune); GH #595 auto-closed
+2026-08-09T01:26:26Z | CI_RETRY | WF03-GH595-20260809 | 9b1994c0 | DOC-UPDATER | First CI run: Build and unit tests FAIL on known pre-existing ISS-0629/GH-600 flake (TC-LUA-10-03, file untouched by this branch); check_github_status.py confirmed platform operational; gh run rerun --failed -> all 6 checks pass clean
+2026-08-09T01:26:26Z | BOARD_UPDATE | WF03-GH595-20260809 | 9b1994c0 | DOC-UPDATER | Issue #595 project board already at Done (non-UAT-scoped, auto-advanced on close); implemented+done targets both no-op confirmed
+2026-08-09T01:26:26Z | WF03_COMPLETE | WF03-GH595-20260809 | -------- | ORCH | ISS-0628/GH-595 RESOLVED. Repo on clean main at d0083e1.
