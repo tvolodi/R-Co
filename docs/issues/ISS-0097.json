@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0097",
   "title": "bpm.api_tenant_context uses threadlocal storage; worker threads spawned mid-test don't inherit the spawning thread's tenant context, causing pool.acquire() to fall back to search_path=public",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/352",
   "severity": "MINOR",
   "category": "test-environment / threadlocal-context-propagation-gap",
@@ -17,7 +17,7 @@
   "files_to_change": [
     "Needs a design decision before implementation: options include (a) passing an explicit tenant-id parameter into worker thread entry functions and having them call api_tenant_context.set() as their first statement, (b) a pool-level API that accepts an explicit tenant id per-acquire rather than relying on ambient threadlocal state, or (c) restructuring tenant_context storage to not be threadlocal (would need concurrency-safety review, since the whole point of threadlocal here appears to be avoiding cross-request tenant leakage in a multi-threaded server). Affected test: tests/integration/instance_error_test.zig (TC-EE-10-05). Possible production-code implication: any production code path that spawns worker threads and expects them to inherit request-scoped tenant context would have the same gap -- worth a broader grep for std.Thread.spawn usage in src/ as part of the eventual fix's investigation, not assumed here."
   ],
-  "resolution": null,
+  "resolution": "Fixed in tests/integration/instance_error_test.zig (TC-EE-10-05 worker.run): the spawned worker thread now calls bpm.api_tenant_context.set(\"00000000-0000-0000-0000-000000000000\") as its first statement, before calling setInstanceError (which internally calls pool.acquire()). This mirrors the identical, already-proven pattern used in tests/integration/concurrent_instances_test.zig (completionThread) and tests/integration/iss102_claim_test.zig (claimWorkerThread) for the same class of bug. No production code changed: a grep of std.Thread.spawn across src/ (4 call sites: webhook/dispatcher.zig CaptureServer.run [test-only HTTP capture loop], identity/provider/bootstrap.zig KcHttpCallState.threadFn [pure Keycloak HTTP client call, no DB], api/routes/onboarding.zig runSagaBackground [DOES call pool.acquire() via executeSaga, but every table it touches either has public as its sole canonical home or explicitly overrides search_path itself rather than relying on ambient threadlocal routing], and lua/timeout.zig watchdogLoop [atomics only, no DB]) found no production-severity gap. Verified with a stash-based control: reverting just the fix line reproduces TC-EE-10-05 failing at std.testing.expect(r1_ok or r2_ok) (both threads see error.PersistenceFailed from search_path=public routing); restoring the fix and re-running zig build test-integration (properly-sequenced, with clean_test_db) shows zero failures referencing instance_error_test.zig across 3 separate runs. Full investigation and fix-direction rationale in src/design/fix-ISS-0097.md.",
   "occurrences": [
     {
       "occurred_at": "2026-07-31T05:16:49Z",
@@ -29,9 +29,15 @@
   ],
   "files_changed": [],
   "created_at": "2026-07-31T05:16:49Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T18:26:25Z",
   "prevention": [
-    "When adding new tests that spawn worker threads and touch tenant-scoped resources, explicitly document and test the thread's own tenant-context setup rather than assuming it inherits from the spawning thread.",
-    "Consider whether any production request-handling code path spawns worker threads for tenant-scoped work -- if so, this could be a production-severity gap, not just a test-environment one; needs investigation as part of the eventual fix, not assumed here since this issue was discovered via a test file, not a production code audit."
+    "When adding new tests that spawn worker threads and touch tenant-scoped resources, explicitly call bpm.api_tenant_context.set(...) as the first statement inside the spawned thread's own entry function \u2014 never assume it inherits the spawning thread's threadlocal state. This is now the third test file in this repo to need this exact fix (concurrent_instances_test.zig, iss102_claim_test.zig, instance_error_test.zig); a shared test-helper wrapper for \"spawn a worker that needs tenant context\" would prevent a fourth recurrence, but was judged out of scope for this MINOR/test-only fix (adds new shared test infrastructure for a pattern that, while recurring, is a 2-line fix each time it is hit).",
+    "Production-impact check for std.Thread.spawn + pool.acquire() interaction performed and documented in src/design/fix-ISS-0097.md \u00a71.4-1.5 \u2014 re-run this grep if new background-thread work is added to any request-handling path, since the current \"safe by construction\" conclusion for onboarding.zig depends on every table its background thread touches having public as its sole/canonical home or explicitly overriding search_path; a future addition to that saga that assumes ambient tenant-scoped routing would reintroduce this exact class of bug in production, as already happened once at ISS-0070/GH-285 (filed separately, see related_issues)."
+  ],
+  "related_issues": [
+    {
+      "issue_id": "ISS-0070",
+      "relation": "ISS-0070/GH-285 is the production occurrence of this exact architectural gap (background saga thread never inheriting threadlocal tenant context), discovered as a currently-live regression during this issue's mandatory production-impact investigation. Filed/updated and forwarded to the global queue separately \u2014 NOT fixed by this issue's test-only change."
+    }
   ]
 }
