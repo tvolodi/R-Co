@@ -1,0 +1,19 @@
+{
+  "discovered_by": "TEST-RUNNER WF03-GH381-20260809 step-05",
+  "id": "ISS-0635",
+  "acceptance_criteria": [
+    "All tenant schemas with webhook_subscriptions have secret_ref and secret_key_id columns",
+    "zig build migrate applies a corrective migration to fix existing gaps"
+  ],
+  "severity": "MAJOR",
+  "description": "Migration 1134_iss0112_add_secret_ref_to_tenant_schemas.sql is recorded as applied in schema_migrations but tenant_default.webhook_subscriptions is missing secret_ref and secret_key_id columns. GBL-128 also failed to add them because it targets the public schema (webhook_subscriptions is in the tenant schema). The columns were added manually as a corrective for the WF03-GH381 test run. A permanent fix is required: create a new corrective migration that adds the missing columns to all tenant schemas where webhook_subscriptions exists without these columns, or force-re-run migration 1134.",
+  "affected_areas": [
+    "migrations/1134_iss0112_add_secret_ref_to_tenant_schemas.sql",
+    "migrations/GBL-128_exp501_secrets.sql",
+    "src/db/migrations.zig"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/616",
+  "status": "OPEN",
+  "title": "Migration 1134 (ISS-0112) did not add secret_ref/secret_key_id to tenant_default.webhook_subscriptions",
+  "discovered_at": "2026-08-09T07:27:46Z"
+}

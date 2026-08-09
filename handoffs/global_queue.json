@@ -866,6 +866,19 @@
       "completed_at": "2026-08-09T06:34:13Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0635",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/616",
+      "title": "Migration 1134 schema gap: secret_ref/secret_key_id missing from tenant_default.webhook_subscriptions",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-09T07:30:56Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

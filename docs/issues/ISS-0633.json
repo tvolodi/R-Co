@@ -1,0 +1,18 @@
+{
+  "discovered_by": "TEST-RUNNER WF03-GH381-20260809 step-05",
+  "id": "ISS-0633",
+  "acceptance_criteria": [
+    "TC-EXT-02-INT-05 passes",
+    "X-BPM-Signature header present in dispatched webhook for secret-configured subscription"
+  ],
+  "severity": "MAJOR",
+  "description": "TC-EXT-02-INT-05 (Signature header is present only for secret-configured subscription and matches body HMAC) fails: signed_receiver.signature_seen is false after calling dispatchDueWebhookAttempts. The HMAC X-BPM-Signature header is not being added to the webhook dispatch HTTP request for secret-configured subscriptions. This is a functional defect in the dispatcher signature logic, not related to the ISS-0118 status value assertion fix.",
+  "affected_areas": [
+    "src/webhook/dispatcher.zig",
+    "tests/integration/ext02_webhook_dispatch_test.zig"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/614",
+  "status": "OPEN",
+  "title": "TC-EXT-02-INT-05: HMAC webhook signature header not seen during dispatch",
+  "discovered_at": "2026-08-09T07:27:46Z"
+}
