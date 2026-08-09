@@ -1139,15 +1139,22 @@
     {
       "issue_id": "GH-639",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/639",
-      "title": "queue_add.py silently drops a same-session, not-yet-pushed prior addition (ISS-0643)",
-      "severity": "MINOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-09T16:00:00Z",
-      "started_at": null,
+      "title": "queue_add.py silently drops a same-session, not-yet-pushed prior addition (sync_queue_from_origin overwrite)",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-09T16:11:40Z"
+      },
+      "added_at": "2026-08-09T16:11:40Z",
+      "started_at": "2026-08-09T16:11:40Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 639,
+      "labels": [
+        "bug"
+      ]
     }
   ]
 }
