@@ -299,7 +299,7 @@ pub const Migrations = struct {
             // C42703, left the default tenant unready, and that in turn tripped
             // GBL-116's TNT-07 pre-flight, deadlocking bootstrap at 86/106.
             const is_public_pass = std.mem.eql(u8, schema_name, "public");
-            if (!is_public_pass) {
+            {
                 const scope_header = blk: {
                     const probe = dir.readFileAlloc(
                         pool.io,
@@ -310,7 +310,13 @@ pub const Migrations = struct {
                     break :blk probe;
                 };
                 defer if (scope_header.len > 0) allocator.free(scope_header);
-                if (migrationScope(filename, scope_header) == .public_only) continue;
+                const scope = migrationScope(filename, scope_header);
+                if (!is_public_pass and scope == .public_only) continue;
+                // ISS-0644 / GH-643: mirror image of the public_only skip above
+                // — a tenant_only migration must never run in the public pass,
+                // or its table becomes a stray shadow copy in public every time
+                // this migration is (re-)applied there.
+                if (is_public_pass and scope == .tenant_only) continue;
             }
 
             // Skip already-applied migrations (idempotent).
@@ -582,6 +588,15 @@ pub const MigrationScope = enum {
     /// Runs in every pass — public and per-tenant. The default for numeric
     /// migrations that create/alter unqualified (search_path-resolved) tables.
     all_schemas,
+    /// Runs in every per-tenant pass ONLY. Never applied to the public schema.
+    /// ISS-0644 / GH-643: the mirror image of `.public_only`, for source
+    /// migrations whose table is PER_TENANT-canonical (belongs in
+    /// tenant_default and every future tenant schema, never in public).
+    /// Without this, such a migration defaults to `.all_schemas` and its
+    /// `public` pass creates a stray shadow copy every time — the exact
+    /// recurrence ISS-0641/GH-637's corrective migration could only clean
+    /// up after the fact, not prevent.
+    tenant_only,
 };
 
 /// The declared scope header a migration may carry, e.g.
@@ -593,15 +608,20 @@ pub const SCOPE_PUBLIC_HEADER = "-- scope: public";
 /// per-tenant (rare — e.g. it reads public config to write tenant tables).
 pub const SCOPE_ALL_HEADER = "-- scope: all_schemas";
 
+/// Declares a migration PER_TENANT-only — skipped entirely in the public
+/// pass. See `MigrationScope.tenant_only`.
+pub const SCOPE_TENANT_ONLY_HEADER = "-- scope: tenant_only";
+
 /// Classify a migration from its filename and header text.
 ///
-/// ISS-0604 / GH-470. Two mechanisms, in precedence order:
+/// ISS-0604 / GH-470, extended by ISS-0644 / GH-643. Mechanisms, in
+/// precedence order:
 ///   1. The `GBL-` filename prefix — the pre-existing, implicit marker. Always
 ///      public-only. Kept for backward compatibility; every existing GBL file
 ///      relies on it and renaming them would rewrite ledger keys.
-///   2. An explicit `-- scope: public` / `-- scope: all_schemas` header in the
-///      first KiB of the file — the preferred, self-evident marker for numeric
-///      migrations.
+///   2. An explicit `-- scope: public` / `-- scope: all_schemas` /
+///      `-- scope: tenant_only` header in the first KiB of the file — the
+///      preferred, self-evident marker for numeric migrations.
 ///
 /// Scope is deliberately declared IN THE MIGRATION FILE rather than in a list
 /// inside the runner. ISS-0603 happened precisely because a file's ordering
@@ -612,6 +632,7 @@ pub fn migrationScope(filename: []const u8, header: []const u8) MigrationScope {
     if (std.mem.startsWith(u8, filename, "GBL-")) return .public_only;
     if (std.mem.indexOf(u8, header, SCOPE_ALL_HEADER) != null) return .all_schemas;
     if (std.mem.indexOf(u8, header, SCOPE_PUBLIC_HEADER) != null) return .public_only;
+    if (std.mem.indexOf(u8, header, SCOPE_TENANT_ONLY_HEADER) != null) return .tenant_only;
     return .all_schemas;
 }
 

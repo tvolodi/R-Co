@@ -16,14 +16,18 @@
 --   (e.g. when applied to the public schema). All CREATE TABLE / CREATE INDEX
 --   operations use IF NOT EXISTS guards inside the block.
 --
--- ISS-0641 / GH-637: PER_TENANT (canonical home = tenant_default). This
--- file's to_regclass('instance_projections') guard above already prevents
+-- scope: tenant_only
+--
+-- ISS-0644 / GH-643: PER_TENANT (canonical home = tenant_default). This
+-- file's to_regclass('instance_projections') guard above already prevented
 -- instance_waits from being (re)created in a schema without
--- instance_projections going forward, but a public.instance_waits shadow
--- was already created and persisted from before this guard existed (or
--- from a public-schema pass where a stale search_path made
--- to_regclass resolve unexpectedly). See
--- docs/issue-reports/ISS-0185-diagnosis.yaml and
+-- instance_projections, but a public.instance_waits shadow was already
+-- created and persisted from before that guard existed (or from a
+-- public-schema pass where a stale search_path made to_regclass resolve
+-- unexpectedly). The `tenant_only` scope header (ISS-0644's new
+-- MigrationScope primitive) closes the public-pass path structurally,
+-- making the to_regclass guard belt-and-suspenders rather than the only
+-- protection. See docs/issue-reports/ISS-0185-diagnosis.yaml and
 -- migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql, which drops the
 -- existing public shadow (idempotent).
 

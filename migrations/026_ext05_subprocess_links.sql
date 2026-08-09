@@ -1,14 +1,14 @@
 -- 026_ext05_subprocess_links.sql
 -- Stage 6: EXT-05 — durable parent/child linkage for SUB_PROCESS runtime
 --
--- ISS-0641 / GH-637: PER_TENANT (canonical home = tenant_default).
--- migrations.zig's migrationScope() has no per-table scope primitive (only
--- whole-file .public_only vs .all_schemas), so this file correctly keeps
--- running in every schema pass to create the tenant_default copy, but that
--- also creates an unwanted public shadow. See
--- docs/issue-reports/ISS-0185-diagnosis.yaml and
--- migrations/GBL-141_iss0641_drop_dual_schema_shadows.sql, which drops the
--- public shadow (idempotent, re-run after any cold-start replay).
+-- scope: tenant_only
+--
+-- ISS-0644 / GH-643: PER_TENANT (canonical home = tenant_default), and this
+-- file creates exactly one table with no other statements, so the
+-- `tenant_only` scope (ISS-0644's new MigrationScope primitive) closes the
+-- shadow-recreation path permanently instead of relying on
+-- GBL-141_iss0641_drop_dual_schema_shadows.sql to keep cleaning up after
+-- every fresh tenant-schema provision.
 
 CREATE TABLE IF NOT EXISTS subprocess_links (
     parent_instance_id    UUID        NOT NULL REFERENCES instance_projections(instance_id) ON DELETE CASCADE,
