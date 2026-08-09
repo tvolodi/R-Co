@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH596-20260808/step-03-backend-dev.json",
   "created_at": "2026-08-08T23:51:42Z",
   "started_at": "2026-08-08T23:51:42Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-09T00:00:08Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -42,7 +42,27 @@
       "fn:check-zig-build"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented the ISS-0627/GH-596 permanent-acknowledgment baseline mechanism for tools/lint_handoffs.py per src/design/iss0627-lint-handoffs-acknowledgment.md, covering H003 (148 BLOCKER), H004 (34 BLOCKER), H005 (5 BLOCKER), H009 (38 MAJOR). New tools/generate_lint_handoffs_baseline.py generation script reuses lint_handoffs.py's own _lint_parsed_handoff and lint_orphans (via a new optional capture kwarg) rather than reimplementing the detection predicates. H009's matching_key folds in a sorted fingerprint of later_completed's file paths (H009 only) to close the message-only-key collision gap identified in design section 0.2 -- verified via TS-BASELINE-03 against a synthetic fixture mirroring that exact scenario. Generated the real baseline: 225 entries (148 H003 + 34 H004 + 5 H005 + 38 H009), matching the design's expected counts exactly. Added --baseline/--no-baseline CLI flags and an ACKNOWLEDGED bucket to lint_handoffs.py's main() (individually printed, excluded only from the BLOCKER/MAJOR exit-code count), plus a new `selftest` subcommand on both scripts covering all 5 mutation-checkable test specs from design section 7. Composes as an independent second gate after --changed mode's existing preexisting_file_finding_codes/preexisting_run_finding_codes logic (GH-594) -- neither mechanism is aware of the other.",
+    "artifacts_out": [
+      "tools/lint_handoffs.py",
+      "tools/generate_lint_handoffs_baseline.py",
+      "tools/lint_handoffs.baseline.json"
+    ],
+    "issues": [],
+    "next_action": "Route to next WF-03 step per pipeline (TEST-DESIGNER if business logic added/modified, else TEST-RUNNER)",
+    "verification": {
+      "selftest_lint_handoffs": "python tools/lint_handoffs.py selftest -> all checks passed (TS-BASELINE-01..04)",
+      "selftest_generation_script": "python tools/generate_lint_handoffs_baseline.py selftest -> all checks passed (includes TS-BASELINE-05 differential check)",
+      "baseline_generation_counts": "148 H003 + 34 H004 + 5 H005 + 38 H009 = 225 total, matching design expectation exactly",
+      "full_corpus_before": "2278 handoffs checked -- 250 BLOCKER, 110 MAJOR, 1 MINOR",
+      "full_corpus_with_baseline": "2278 handoffs checked -- 63 BLOCKER, 72 MAJOR, 1 MINOR, 225 ACKNOWLEDGED",
+      "full_corpus_no_baseline": "2278 handoffs checked -- 250 BLOCKER, 110 MAJOR, 1 MINOR (exact match to pre-baseline run)",
+      "changed_mode": "python tools/lint_handoffs.py --changed -> 4 handoffs checked -- 0 BLOCKER, 0 MAJOR, 0 MINOR (this run's own 4 step files vs origin/main), independent of and unaffected by the new baseline mechanism",
+      "own_handoffs_unaffected": "python tools/lint_handoffs.py handoffs/WF03-GH596-20260808 -> 0 BLOCKER, 0 MAJOR, 0 MINOR; git status clean after commit+push"
+    }
+  },
   "rework_count": 0,
   "max_rework": 3
 }
