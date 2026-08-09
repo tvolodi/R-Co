@@ -1,0 +1,45 @@
+{
+  "handoff_id": "c4a71e2f-b83d-4f5e-9a1c-7e3d8b0f2c91",
+  "run_id": "WF03-GH381-20260809",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-09T06:51:11Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 2b - Code design validation",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "8c942dfd-a06d-4d3e-b4f5-d29044ab1aaf"
+    ],
+    "artifacts_in": [
+      "src/design/iss0118-gh381-webhook-status-test-fix.md"
+    ]
+  },
+  "task": {
+    "description": "Validate the Type E design artefact for ISS-0118/GH-381: verify lint passes, reasoning is correct, all 3 assertion changes are justified against dispatcher.zig evidence.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0",
+      "All 3 line changes correctly specified and justified",
+      "No implementation code in artefact",
+      "Line numbers and current values verified against actual file"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/iss0118-gh381-webhook-status-test-fix.md validated. lint_design_artefact.py exits 0. All 3 assertion changes verified: line 589 ('failed'→'FAILED'), line 654 ('exhausted'→'FAILED'), line 754 ('success'→'DELIVERED'). Dispatcher source confirms DELIVERED at line 371, FAILED at lines 406 and 440; legacy values cannot satisfy the CHECK constraint from migration 085. No implementation code present. Reasoning is sound.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T06:51:11Z",
+  "completed_at": "2026-08-09T06:51:11Z"
+}

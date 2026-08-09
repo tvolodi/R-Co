@@ -1,0 +1,110 @@
+run_id: WF03-GH381-20260809
+step: "05"
+agent: TEST-RUNNER
+report_date: "2026-08-09"
+completed_at: "2026-08-09T07:27:46Z"
+issue_ref: ISS-0118
+github_issue: "https://github.com/tvolodi/R-Co/issues/381"
+
+summary: |
+  ISS-0118 (GH #381) status value assertion fix VERIFIED.
+  TC-EXT-02-INT-06, TC-EXT-02-INT-07, and TC-EXT-02-INT-09 — the three tests
+  that were failing with status value mismatches ("failed"/"exhausted"/"success"
+  vs DB uppercase values "FAILED"/"FAILED"/"DELIVERED") — now PASS after the
+  fix in commit 42db5b33. Two pre-existing failures (INT-05, INT-08) remain and
+  are unrelated to ISS-0118.
+
+verdict: PASS
+
+layers:
+  unit_tests:
+    command: "zig build test --summary all"
+    exit_code: 0
+    result: PASS
+    detail: "All unit tests passed — exit 0."
+
+  integration_tests_tc_ext_02:
+    command: >-
+      BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test
+      BPM_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test
+      BPM_TEST_URL=http://127.0.0.1:8080
+      BPM_IDP_BASE_URL=http://localhost:8081
+      zig build test-integration-others-internal -- --test-filter TC-EXT-02
+    exit_code: 1
+    result: PARTIAL_PASS
+    log_file: scratch/_gh381_ext02_v3.log
+    build_summary: "87/102 steps succeeded (14 failed); 895/979 tests passed (10 skipped, 73 failed, 1 crashed)"
+    main_binary_summary: "669 pass, 9 skip, 57 fail, 1 crash (736 total)"
+
+tc_ext_02_results:
+  - test: TC-EXT-02-INT-01
+    result: PASS
+    note: "Was failing with expected 201 found 500 (missing secret_ref column in tenant_default.webhook_subscriptions). Passed after corrective schema fix."
+  - test: TC-EXT-02-INT-02
+    result: PASS
+  - test: TC-EXT-02-INT-03
+    result: PASS
+  - test: TC-EXT-02-INT-04
+    result: PASS
+  - test: TC-EXT-02-INT-05
+    result: FAIL
+    severity: MAJOR
+    failure_point: "tests/integration/ext02_webhook_dispatch_test.zig:539"
+    failure_reason: "testing.expect(signed_receiver.signature_seen) — HMAC signature not seen. Pre-existing failure unrelated to ISS-0118."
+  - test: TC-EXT-02-INT-06
+    result: PASS
+    note: "WAS failing with status value mismatch: expected 'failed' but DB stores 'FAILED'. Now PASSES with fixed assertion ('FAILED')."
+    fix_verified: true
+  - test: TC-EXT-02-INT-07
+    result: PASS
+    note: "WAS failing with status value mismatch: expected 'exhausted' but DB stores 'FAILED'. Now PASSES with fixed assertion ('FAILED')."
+    fix_verified: true
+  - test: TC-EXT-02-INT-08
+    result: FAIL
+    severity: MAJOR
+    failure_point: "tests/integration/ext02_webhook_dispatch_test.zig:681"
+    failure_reason: "PgError.ServerError on audit row query (queryText). Pre-existing failure unrelated to ISS-0118."
+  - test: TC-EXT-02-INT-09
+    result: PASS
+    note: "WAS failing with status value mismatch: expected 'success' but DB stores 'DELIVERED'. Now PASSES with fixed assertion ('DELIVERED')."
+    fix_verified: true
+  - test: TC-EXT-02-INT-10
+    result: PASS
+
+status_value_mismatch_resolution:
+  iss_0118_resolved: true
+  tests_fixed:
+    - "TC-EXT-02-INT-06: line 589 'failed' → 'FAILED' (PASS)"
+    - "TC-EXT-02-INT-07: line 654 'exhausted' → 'FAILED' (PASS)"
+    - "TC-EXT-02-INT-09: line 754 'success' → 'DELIVERED' (PASS)"
+
+pre_existing_issues_discovered:
+  - id: NEW-ISS-A
+    severity: MAJOR
+    description: >-
+      TC-EXT-02-INT-05 fails: signed_receiver.signature_seen is false — HMAC
+      webhook signature header not emitted during dispatch. Unrelated to ISS-0118.
+    action: file and forward to global queue
+  - id: NEW-ISS-B
+    severity: MAJOR
+    description: >-
+      TC-EXT-02-INT-08 fails: PgError.ServerError querying OBS-03 audit rows
+      (webhook_subscription_audit or similar table missing/wrong schema).
+      Unrelated to ISS-0118.
+    action: file and forward to global queue
+  - id: NEW-ISS-C
+    severity: MAJOR
+    description: >-
+      Migration 1134_iss0112_add_secret_ref_to_tenant_schemas.sql is recorded as
+      applied in schema_migrations but failed to add secret_ref/secret_key_id
+      columns to tenant_default.webhook_subscriptions. The GBL-128 migration
+      also skipped because it targets the public schema (table is in tenant schema).
+      Columns were added manually for this test run as a corrective measure.
+      A permanent fix requires a new corrective migration or re-running 1134.
+    action: file and forward to global queue
+
+infrastructure_notes:
+  - "tenant_default.webhook_subscriptions was missing secret_ref and secret_key_id columns"
+  - "Columns added manually via ALTER TABLE for this test run"
+  - "zig build migrate exits 0 but all migrations already applied — no re-run possible"
+  - "Backend server (port 8080) not running — not needed; tests call handlers directly"
