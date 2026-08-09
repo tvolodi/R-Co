@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0639 — `test-integration-svc` now runs only SVC-01..04 subset (35 tests) instead of full suite (~940 tests) (MINOR)** ([GitHub #629](https://github.com/tvolodi/R-Co/issues/629))
+
+- **Root cause:** `build.zig`'s `test-integration-svc` step used `root_source_file = "tests/integration/main_test.zig"` — the same ~940-test aggregate root as the main `test-integration` step — instead of a dedicated SVC-scoped aggregator. The step name implied a narrowly-scoped SVC-01..04 subset, but it compiled and ran the full suite, providing no isolation at all. Identical defect to ISS-0104 (`test-integration-env`).
+- **The fix (WF03-GH629-20260809):** Added `tests/integration/svc_test_root.zig` — a new aggregator that imports only the 4 SVC test files (`svc01_service_catalog_scope_test.zig`, `svc02_plugin_dispatch_scope_test.zig`, `svc03_definition_activation_scope_test.zig`, `svc04_admin_api_test.zig`). Updated `build.zig`'s `test-integration-svc` step to use this aggregator as `root_source_file` and attached `run_svc_integration_tests` to `test_integration_others_step` per ISS-0150 policy. No test assertions changed; no existing test step removed.
+- **Verified:** `zig build test-integration-svc` — 35 tests (vs ~940 in the full suite). `zig build test` exits 0. 1 pre-existing failure (TC-SVC-01-cascade) filed as ISS-0640/GH-631 and forwarded to global queue — unrelated to this change.
+- **No requirement status change** — build-tooling naming/isolation fix; no new requirement introduced.
+
 **ISS-0104 — `test-integration-env` now runs only ENV-01..05 subset (36 tests) instead of full suite (961 tests) (MINOR)** ([GitHub #362](https://github.com/tvolodi/R-Co/issues/362))
 
 - **Root cause:** `build.zig`'s `test-integration-env` step used `root_source_file = "tests/integration/main_test.zig"` — the identical 961-test aggregate root as the main `test-integration` step — instead of a dedicated ENV-scoped aggregator. The step name implied a narrowly-scoped ENV subset, but it compiled and ran the full suite as a second binary, providing no isolation at all.

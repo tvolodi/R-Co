@@ -1,0 +1,68 @@
+run_id: WF03-GH629-20260809
+step: "5"
+agent: TEST-RUNNER
+started_at: "2026-08-09T12:16:54Z"
+completed_at: "2026-08-09T12:19:05Z"
+branch: feature/WF03-GH629-20260809
+
+summary:
+  verdict: PASS
+  rationale: >
+    Primary acceptance criterion verified: zig build test-integration-svc runs the SVC
+    subset only (35 tests) instead of the full ~940-test umbrella suite. This confirms
+    ISS-0639 fix (svc_test_root.zig shim + build.zig patch) is correct.
+    One test fails but is a pre-existing defect confirmed in scratch/_int_test_full.log
+    line 115862 before this branch was created. It is filed as ISS-0640 / GH-631 and
+    forwarded to the global queue for a separate WF-03 run.
+
+layers:
+  - name: zig build test (unit)
+    command: zig build test --summary all
+    exit_code: 0
+    result: PASS
+    notes: All unit tests pass.
+
+  - name: zig build test-integration-svc (SVC scope)
+    command: >
+      BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test
+      zig build test-integration-svc --summary all
+    exit_code: 1
+    result: FAIL_PRE_EXISTING
+    total_tests: 35
+    passed: 34
+    failed: 1
+    notes: >
+      35 SVC tests ran (not ~940 full-suite). Scope fix confirmed.
+      1 pre-existing failure: svc01_service_catalog_scope_test.zig:319
+      (unqualified DELETE hits wrong schema — pre-existing, confirmed in full suite).
+
+scope_verification:
+  svc_tests_run: 35
+  full_suite_size: 940
+  verdict: CONFIRMED_SCOPED
+  detail: "35 << 940; svc_test_root.zig correctly aggregates svc01..svc04 only"
+
+failures:
+  - test_name: "svc01: on_delete_cascade removes scoped service when owner tenant deleted"
+    file: tests/integration/svc01_service_catalog_scope_test.zig
+    line: 319
+    assertion: "expect(after.rows.len == 0) — got non-zero"
+    classification: PRE_EXISTING
+    evidence: "Present in scratch/_int_test_full.log line 115862 before WF03-GH629 branch"
+    iss: ISS-0640
+    github_issue: "https://github.com/tvolodi/R-Co/issues/631"
+    disposition: filed_and_forwarded_to_global_queue
+
+acceptance_criteria_status:
+  - criterion: "test-integration-svc runs SVC subset only (much fewer than 700 tests)"
+    status: MET
+    evidence: "35 tests ran"
+  - criterion: "zig build test exits 0"
+    status: MET
+  - criterion: "no regressions introduced by ISS-0639 fix"
+    status: MET
+    evidence: "sole failure is pre-existing (confirmed in full-suite log)"
+
+artifacts:
+  - tests/reports/report-20260809-WF03-GH629-20260809.yaml
+  - docs/issues/ISS-0640.json

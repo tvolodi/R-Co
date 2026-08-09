@@ -1,0 +1,57 @@
+{
+  "handoff_id": "6e0dcf07-cb0d-43f7-8eea-c67f8d712e54",
+  "run_id": "WF03-GH629-20260809",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-09T12:16:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 5 -- test-runner (scope verification)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c0ddc0e0-667b-403d-8917-3d68a759782d"
+    ],
+    "artifacts_in": [
+      "tests/integration/svc_test_root.zig",
+      "build.zig"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/629"
+  },
+  "task": {
+    "description": "Run zig build test (unit) and zig build test-integration-svc. Verify SVC step runs only SVC-subset tests (35 << 940). Document any pre-existing failures.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-integration-svc runs SVC subset only (much fewer than 700 tests)",
+      "No regressions from ISS-0639 fix"
+    ],
+    "functions_to_call": [
+      "fn:write-test-report",
+      "fn:validate-completeness",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Unit tests: 0 failures (exit 0). SVC integration: 35 tests ran (not ~940 full suite) \u2014 scope fix confirmed. 1 pre-existing failure filed as ISS-0640/GH-631 and forwarded to global queue. No regressions introduced by WF03-GH629 fix.",
+    "artifacts_out": [
+      "tests/reports/report-20260809-WF03-GH629-20260809.yaml",
+      "docs/issues/ISS-0640.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "svc01: on_delete_cascade removes scoped service when owner tenant deleted \u2014 pre-existing failure (svc01_service_catalog_scope_test.zig:319). Filed as ISS-0640/GH-631, forwarded to global queue.",
+        "pre_existing": true,
+        "iss": "ISS-0640",
+        "github_issue": "https://github.com/tvolodi/R-Co/issues/631"
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 7) \u2014 WF-03 does not need RELEASE-VALIDATOR for non-BLOCKER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T12:16:54Z",
+  "completed_at": "2026-08-09T12:19:05Z"
+}

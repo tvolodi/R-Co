@@ -1,0 +1,17 @@
+{
+  "id": "ISS-0640",
+  "title": "svc01: on_delete_cascade test fails — DELETE FROM tenant unqualified hits wrong schema",
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "affected_areas": ["tests/integration/svc01_service_catalog_scope_test.zig", "public.tenant", "public.service_catalog"],
+  "symptom": "test 'svc01: on_delete_cascade removes scoped service when owner tenant deleted' asserts after.rows.len == 0 but service row survives. Failure at svc01_service_catalog_scope_test.zig:319.",
+  "root_cause_hypothesis": "DELETE FROM tenant (unqualified) resolves to tenant_default.tenant under TestHarness search_path='tenant_default,public', while the INSERT used public.tenant explicitly. No row deleted from public.tenant, so FK cascade to public.service_catalog never fires.",
+  "first_seen_run": "WF03-GH629-20260809",
+  "pre_existing": true,
+  "confirmed_pre_existing_in": "scratch/_int_test_full.log line 115862 (full integration suite run predating WF03-GH629)",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/631",
+  "created_at": "2026-08-09T12:19:05Z",
+  "updated_at": "2026-08-09T12:19:05Z",
+  "related_issues": ["ISS-0639"],
+  "discovery_context": "Surfaced as incidental finding during WF03-GH629-20260809 TEST-RUNNER Step 5 after ISS-0639 svc scope fix exposed SVC tests in isolation for the first time."
+}

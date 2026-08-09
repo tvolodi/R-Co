@@ -1,0 +1,49 @@
+{
+  "handoff_id": "55ba6715-5b18-45e3-b155-d38a1cd640cf",
+  "run_id": "WF03-GH629-20260809",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T12:09:28Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 1 \u2014 root cause diagnosis",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "1a71e2d5-81e5-49af-8bc4-caa74997bd77",
+      "b4ca8005-80ae-483d-b4a9-1be352298931"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0639.json",
+      "build.zig",
+      "tests/integration/env_test_root.zig"
+    ]
+  },
+  "task": {
+    "description": "Diagnose ISS-0639: build.zig test-integration-svc step uses main_test.zig (full ~700-test suite) instead of a scoped SVC shim. Category A (source wrong). Determine exact fix.",
+    "acceptance_criteria": [
+      "Root cause identified with file+line reference",
+      "Correct set of SVC test files enumerated",
+      "Fix design documented (svc_test_root.zig shim + build.zig change + umbrella wiring)",
+      "Category classification stated"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Category A (source wrong, build tooling). Root cause: build.zig defines svc_integration_tests with root_source_file = tests/integration/main_test.zig (line 2481), the same root as the full ~700-test umbrella suite. The step description claims SVC-01..SVC-04 scope but no scoped shim file exists. Twin defect to ISS-0104/GH-362 (env step, resolved via env_test_root.zig). Four SVC test files confirmed in tests/integration/: svc01_service_catalog_scope_test.zig, svc02_plugin_dispatch_scope_test.zig, svc03_definition_activation_scope_test.zig, svc04_admin_api_test.zig. Additionally: run_svc_integration_tests is NOT wired to test_integration_others_step (umbrella), so the svc suite is currently never exercised by the umbrella run. Fix: (1) create tests/integration/svc_test_root.zig importing only those 4 files (mirror env_test_root.zig pattern with ISS-0639/GH-629 annotation), (2) update build.zig line 2481 root_source_file from main_test.zig to svc_test_root.zig, (3) add test_integration_others_step.dependOn(&run_svc_integration_tests.step) after the env umbrella wire line (~2530). No test source files need to be added or removed.",
+    "artifacts_out": [
+      "docs/issues/ISS-0639.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2) -- fix design artefact"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T12:09:28Z",
+  "completed_at": "2026-08-09T12:09:28Z"
+}
