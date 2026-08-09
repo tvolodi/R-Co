@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH595-20260809/step-01-issue-fixer.json",
   "created_at": "2026-08-09T00:21:40Z",
   "started_at": "2026-08-09T00:21:40Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-09T00:23:32Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -36,7 +36,16 @@
       "fn:search-issues"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosis confirmed against current main source (not just the issue text). Root cause: src/lua/executor.zig:543 `bindings.lua_pcall(L, 0, 1, 0)` passes errfunc=0, so no message handler runs while the erroring Lua frames are still live; captureStackTrace (executor.zig:701) is called only AFTER lua_pcall returns (executor.zig:585), by which point lua_getstack(level=0) has nothing to walk. captureStackTrace's own logic is correct and unchanged by this fix -- TC-ISS-0625-LUA-16-02 (idle-stack unit test) keeps passing as-is.\n\nlua_pcall message-handler semantics (Lua Reference Manual, Lua 5.1/LuaJIT 2.1): the handler must be pushed onto the stack BEFORE the function-to-be-called and its arguments; its absolute stack index becomes lua_pcall's 4th arg. If installed, the handler runs at the moment of raise (frames still live) and its return value becomes lua_pcall's final error object.\n\nCRITICAL FINDING (corrects both GH-595's own filed body and a comment already in tests/integration/iss0625_lua_12_15_16_test.zig ~L561-566): the obvious fix -- install `debug.traceback` as errfunc -- is NOT viable. src/lua/stdlib.zig's loadSafeStdlib (invariant SBX-1) never calls luaopen_debug; the debug library is intentionally and permanently never opened in the sandbox (host_context.zig's registry channel relies on `debug` being unreachable to scripts). `debug.traceback` is not a reachable global. The fix needs a custom lua_CFunction closure (via bindings.lua_pushcclosure, already bound at luajit_bindings.zig:134) that reuses captureStackTrace's own lua_getstack/lua_getinfo walk from inside the handler while frames are live. No new bindings are required (lua_pushcclosure, lua_getglobal at line 228, and lua_pcall's errfunc parameter at line 169 all already exist) -- only the executor.zig:543 call site's hardcoded 0 and the push ordering around luaL_loadbuffer need to change.\n\nInstruction-limiter / memory-limiter / watchdog interaction checked directly, not assumed: memory limiter (lua_newstate alloc hook) is orthogonal, no interaction. LUA-10 watchdog runs on a separate std.Thread that never touches L or calls any lua_* function (confirmed via timeout.zig's own docstring) -- zero interaction. The LUA-08/10 combined count hook (instruction_limiter.zig hookCallback) DOES interact: raiseLimit() calls lua_error(L), the same longjmp-based unwind a genuine runtime error uses, so it also unwinds through the nearest lua_pcall -- meaning once an errfunc is installed, limiter-triggered errors will ALSO now get a captured stack trace. Not a conflict, but an observable behavior change beyond GH-595's literal scope that the design must explicitly accept or special-case.\n\nISS-0628 filed (docs/issues/ISS-0628.json) cross-referencing existing GH-595 (no new GitHub issue needed -- GH-595 already tracks this defect; ISS-0628 supplements it with the debug.traceback correction and limiter-interaction finding). Routed to CODE-DESIGNER via handoffs/WF03-GH595-20260809/step-02-code-designer.json.",
+    "artifacts_out": [
+      "docs/issues/ISS-0628.json",
+      "handoffs/WF03-GH595-20260809/step-02-code-designer.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
