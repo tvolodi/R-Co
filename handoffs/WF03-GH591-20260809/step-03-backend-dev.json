@@ -1,0 +1,50 @@
+{
+  "handoff_id": "f0d48007-786c-4308-b257-34d3abb24793",
+  "run_id": "WF03-GH591-20260809",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH591-20260809/step-03-backend-dev.json",
+  "created_at": "2026-08-09T02:03:39Z",
+  "started_at": "2026-08-09T02:03:39Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "LUA-11",
+      "LUA-13"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/iss0624-gh591-lua-11-13-fix.md",
+      "src/lua/executor.zig",
+      "src/lua/host_api/read_variable.zig",
+      "src/lua/host_api/write_variable.zig",
+      "src/lua/host_api/log.zig",
+      "src/lua/structured_logger.zig",
+      "src/design/lua-integration.md"
+    ]
+  },
+  "task": {
+    "description": "PROVENANCE NOTE (read first): this run's branch feature/WF03-GH591-20260809 already existed on the remote with real prior work when ORCH claimed GH-591 via gh_claim.py -- a design artefact (src/design/iss0624-gh591-lua-11-13-fix.md, 524 lines) plus COMPLETED Step 2 (CODE-DESIGNER) and Step 2b (CODE-DESIGN-VALIDATOR PASS) handoffs were already present, imported from a stash by an earlier session (commit 4d5bb81, same git author identity, ~7 minutes before this claim). ORCH independently re-verified the design's soundness before trusting it (re-ran lint_design_artefact.py: exit 0; confirmed ExecutionContext genuinely lacks trace_id/pending_writes/structured_logger/instance_state today; confirmed read_variable.zig/write_variable.zig's own header comments genuinely say 'does NOT implement it'; read the instance_state dummy-singleton design in section 4.4-4.5 and confirmed its safety reasoning is sound, not hand-wavy). Registry shows a COMPLETED Step 01 (ISSUE-FIXER) entry but that handoff's JSON file itself was not included in the stash import -- a minor bookkeeping gap, not a blocker; ISS-0624.json (already filed during GH-495's run) contains the original full diagnosis this design was built from.\n\nImplement the APPROVED design at src/design/iss0624-gh591-lua-11-13-fix.md exactly. Per Step 2b's own recorded next_action: 5 production files (executor.zig -- 4 new ExecutionContext fields: trace_id, pending_writes, structured_logger, instance_state, plus the new InstanceState struct and dummy_instance_state singleton; host_api/read_variable.zig; host_api/write_variable.zig; host_api/log.zig; structured_logger.zig if any caller-side change is needed) plus a new test file src/lua/iss0624_lua_11_13_test.zig (21 cases per the design's section 12 traceability table: 12 LUA-11 cases mapping to lua-integration.md section 16.4's 6 named tests, 9 LUA-13 cases mapping to section 18.3's 4 named tests). Wire the new test file into src/lua_test_root.zig.\n\nRead the FULL design (524 lines) before starting -- section 3 (data flow), section 4 (the atomic apply/discard mechanics, the instance_state dummy-singleton pattern and its exact safety reasoning), section 5 (error taxonomy, especially 5.2's fail-open logging-without-a-logger decision and 5.3's null-pending_writes handling) are all load-bearing. Follow the LUA-10 active_watchdog local-copy-and-pointer-install precedent the design explicitly cites for CTX-1..CTX-4 lifetime compliance.\n\nMANDATORY mutation testing per this session's established discipline: for at least the atomic-apply-on-success and discard-on-failure behaviors (LUA-11's core correctness claim), perform a genuine hands-on mutation test yourself -- e.g. temporarily break the commit-on-success merge logic, confirm the relevant test genuinely fails, restore the exact original code, confirm clean rebuild and passing test again. Do not skip this.",
+    "acceptance_criteria": [
+      "ExecutionContext gains trace_id, pending_writes, structured_logger, instance_state fields per design section 2/4.4, all backward-compatible defaults",
+      "read_variable/write_variable genuinely read/write via pending_writes + instance_state per design section 3.1",
+      "Atomic apply-on-success / discard-on-failure implemented in executeSource per design section 4",
+      "log.zig genuinely calls structured_logger.log() with a real StructuredLogEntry per design section 3.2",
+      "New test file with 21 cases per design section 12 traceability table",
+      "Mutation test performed by hand for the atomic apply/discard behavior",
+      "zig build, zig build test-lua exit 0",
+      "No error set output from zig build"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

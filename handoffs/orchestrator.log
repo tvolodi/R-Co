@@ -577,3 +577,4 @@
 2026-08-09T00:24:37Z | COMPLETE | WF03-GH591-20260809 | 68d37b1f | ISSUE-FIXER | PASS -> Route to CODE-DESIGNER (Step 2, LUA-11/LUA-13 fix design artefact). Diagnosis at docs/issue-reports/WF03-GH591-20260809-step-01-ISSUE-FIXER.yaml. ISS-0624/GH-591 still OPEN (no source touched).
 2026-08-09T00:27:20Z | COMPLETE | WF03-GH591-20260809 | 7c1c0a52 | CODE-DESIGNER | PASS -- design artefact src/design/iss0624-gh591-lua-11-13-fix.md (lint 0); 5 production files + 1 new test file; next: CODE-DESIGN-VALIDATOR (Step 2b)
 2026-08-09T00:30:00Z | ROUTE | WF03-GH591-20260809 | f4d8a3c2 | CODE-DESIGN-VALIDATOR -> BACKEND-DEV | PASS (1 MINOR)
+2026-08-09T02:03:39Z | ROUTE | WF03-GH591-20260809 | f0d48007 | ORCH -> BACKEND-DEV | IN_PROGRESS (Step 3, implement LUA-11/13 per pre-existing APPROVED design recovered from stash)
