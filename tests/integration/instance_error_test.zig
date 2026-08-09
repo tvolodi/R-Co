@@ -750,6 +750,15 @@ test "TC-EE-10-05: concurrent ERROR race — exactly one EXECUTION_ERROR event" 
 
     const worker = struct {
         fn run(ctx: *ThreadCtx) void {
+            // ISS-0097 / GH-352: tenant_context is threadlocal, so the main
+            // thread's makePool() call to bpm.api_tenant_context.set(...) is
+            // invisible on this spawned thread. Without setting it again
+            // here, this thread's own pool.acquire() (inside
+            // setInstanceError) falls back to search_path=public, where the
+            // business tables don't exist post-GBL-073. Same pattern already
+            // proven in concurrent_instances_test.zig's completionThread and
+            // iss102_claim_test.zig's claimWorkerThread.
+            bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
             ctx.result = ctx.store.setInstanceError(ctx.alloc, SetInstanceErrorArgs{
                 .instance_id = ctx.instance_id,
                 .error_type = .NO_MATCHING_EDGE,
