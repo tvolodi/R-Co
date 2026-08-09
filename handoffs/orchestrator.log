@@ -749,3 +749,4 @@
 
 2026-08-09T11:41:27Z | ROUTE | WF03-GH362-20260809 | a3e9c1b2 | ORCH -> ISSUE-FIXER | Step 0.5 COMPLETED — ISS-0104 OPEN, GH-362 confirmed
 2026-08-09T11:41:27Z | ROUTE | WF03-GH362-20260809 | b4f0d2c3 | ORCH -> ISSUE-FIXER | Step 1 COMPLETED — Cat-A, Option B (scope env_test_root.zig), incidental SVC step filed
+2026-08-09T11:46:48Z | ROUTE | WF03-GH362-20260809 | c5e1f3d4 | CODE-DESIGNER | Step 02 COMPLETED — Type E design artefact src/design/iss0104-gh362-env-test-root.md created, lint_design_artefact.py exits 0
