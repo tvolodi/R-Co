@@ -1,0 +1,1815 @@
+{
+  "version": 1,
+  "generated_at": "2026-08-08T23:57:55Z",
+  "source": "tools/generate_lint_handoffs_baseline.py --apply --now 2026-08-08T23:57:55Z --run-id WF03-GH596-20260808",
+  "regenerated_by": "WF03-GH596-20260808 (GitHub #596 / ISS-0627, H003/H004/H005/H009 permanent-acknowledgment subset)",
+  "regeneration_note": "Initial generation: 225 entries (148 H003, 34 H004, 5 H005, 38 H009), one per finding tools/lint_handoffs.py reported against the full corpus at generation time. See docs/issues/ISS-0627.json for the shared root-cause narrative this baseline's reason_ref values point to.",
+  "reasons": {
+    "H003": "ISS-0627 §H003: completed_at precedes started_at with no whole-hour-offset signature (that subset is H013, separately tracked). No field in the handoff file recovers the true value; any correction would be fabricated audit-trail data. Accepted as permanent historical record.",
+    "H004": "ISS-0627 §H004: started_at precedes created_at. Same unrecoverable-history problem as H003, opposite field pair. Accepted as permanent historical record.",
+    "H005": "ISS-0627 §H005: status is COMPLETED but completed_at was never set. No value to recover from any source in the file. Accepted as permanent historical record.",
+    "H009": "ISS-0627 §H009: a PENDING/IN_PROGRESS step has later COMPLETED steps in the same run. Marking the orphaned step COMPLETED or FAILED after the fact would fabricate evidence the record does not show; this is a real historical process irregularity, not a data-entry error. Accepted as permanent historical record."
+  },
+  "issues": [
+    {
+      "file": "handoffs/ADHOC-f3-gitclean-20260529/step-01-backend-dev-git-clean.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/ADHOC-f3-gitclean-20260529/step-01-backend-dev-git-clean.json|completed_at (2026-05-29T15:54:44Z) is earlier than started_at (2026-05-29T19:52:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF01-addon1-20260525/step-01-req-analyst.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF01-addon1-20260525/step-01-req-analyst.json|completed_at (2026-05-25T19:16:58Z) is earlier than started_at (2026-05-26T00:30:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF01-addon1-20260525/step-02-req-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF01-addon1-20260525/step-02-req-validator.json|completed_at (2026-05-25T19:21:09Z) is earlier than started_at (2026-05-26T00:50:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp01-20260526/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp01-20260526/step-01-code-designer.json|completed_at (2026-05-25T20:13:42Z) is earlier than started_at (2026-05-26T00:10:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp01-20260526/step-02-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp01-20260526/step-02-backend-dev.json|completed_at (2026-05-25T20:25:11Z) is earlier than started_at (2026-05-26T00:14:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp01-20260526/step-03-test-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp01-20260526/step-03-test-designer.json|completed_at (2026-05-25T20:34:20Z) is earlier than started_at (2026-05-26T00:26:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp01-20260526/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp01-20260526/step-04-test-runner.json|completed_at (2026-05-25T20:39:21Z) is earlier than started_at (2026-05-26T00:36:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp01-20260526/step-04b-test-runner-rework1.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp01-20260526/step-04b-test-runner-rework1.json|completed_at (2026-05-25T21:09:53Z) is earlier than started_at (2026-05-26T01:08:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp01-20260526/step-05-release-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp01-20260526/step-05-release-validator.json|completed_at (2026-05-25T21:14:14Z) is earlier than started_at (2026-05-26T01:13:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp01-20260526/step-06-doc-updater.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp01-20260526/step-06-doc-updater.json|completed_at (2026-05-25T21:18:01Z) is earlier than started_at (2026-05-26T01:17:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp02-20260526/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp02-20260526/step-01-code-designer.json|completed_at (2026-05-25T21:34:17Z) is earlier than started_at (2026-05-26T01:20:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp02-20260526/step-02-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp02-20260526/step-02-backend-dev.json|completed_at (2026-05-25T21:43:45Z) is earlier than started_at (2026-05-26T01:35:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp02-20260526/step-03-test-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp02-20260526/step-03-test-designer.json|completed_at (2026-05-25T21:47:52Z) is earlier than started_at (2026-05-26T01:45:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp02-20260526/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp02-20260526/step-04-test-runner.json|completed_at (2026-05-25T21:51:50Z) is earlier than started_at (2026-05-26T01:50:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp02-20260526/step-05-release-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp02-20260526/step-05-release-validator.json|completed_at (2026-05-25T21:53:34Z) is earlier than started_at (2026-05-26T01:55:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-adp02-20260526/step-06-doc-updater.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-adp02-20260526/step-06-doc-updater.json|completed_at (2026-05-25T21:56:25Z) is earlier than started_at (2026-05-26T01:58:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api05-20260523/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-api05-20260523/step-01-code-designer.json|completed_at (2026-05-22T21:17:47Z) is earlier than started_at (2026-05-23T08:01:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api05-20260523/step-02-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-api05-20260523/step-02-backend-dev.json|completed_at (2026-05-22T21:26:17Z) is earlier than started_at (2026-05-23T08:16:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api05-20260523/step-06-doc-updater.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-api05-20260523/step-06-doc-updater.json|completed_at (2026-05-22T21:46:17Z) is earlier than started_at (2026-05-23T09:16:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api06-20260523/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-api06-20260523/step-01-code-designer.json|completed_at (2026-05-22T21:54:24Z) is earlier than started_at (2026-05-23T10:01:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api06-20260523/step-02-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-api06-20260523/step-02-backend-dev.json|completed_at (2026-05-22T22:09:10Z) is earlier than started_at (2026-05-23T10:16:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api06-20260523/step-03-test-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-api06-20260523/step-03-test-designer.json|completed_at (2026-05-22T22:15:01Z) is earlier than started_at (2026-05-23T10:31:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api06-20260523/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-api06-20260523/step-04-test-runner.json|completed_at (2026-05-22T22:17:45Z) is earlier than started_at (2026-05-23T10:46:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api06-20260523/step-05-release-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-api06-20260523/step-05-release-validator.json|completed_at (2026-05-22T22:21:30Z) is earlier than started_at (2026-05-23T11:01:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api06-20260523/step-06-doc-updater.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-api06-20260523/step-06-doc-updater.json|completed_at (2026-05-22T22:24:55Z) is earlier than started_at (2026-05-23T11:16:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee01-20260522/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ee01-20260522/step-01-code-designer.json|completed_at (2026-05-21T12:20:35Z) is earlier than started_at (2026-05-22T00:30:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee02-20260522/step-02a-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ee02-20260522/step-02a-backend-dev.json|completed_at (2026-05-21T23:59:00Z) is earlier than started_at (2026-05-22T07:00:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee02-20260522/step-02b-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ee02-20260522/step-02b-backend-dev.json|completed_at (2026-05-21T23:59:00Z) is earlier than started_at (2026-05-22T08:00:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee02-20260522/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ee02-20260522/step-04-test-runner.json|completed_at (2026-05-21T00:00:00Z) is earlier than started_at (2026-05-22T06:30:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee02-20260522/step-04b-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ee02-20260522/step-04b-test-runner.json|completed_at (2026-05-21T23:59:30Z) is earlier than started_at (2026-05-22T07:30:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee02-20260522/step-04c-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ee02-20260522/step-04c-test-runner.json|completed_at (2026-05-21T23:59:59Z) is earlier than started_at (2026-05-22T08:30:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee03-20260522/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ee03-20260522/step-01-code-designer.json|completed_at (2026-05-21T18:51:26Z) is earlier than started_at (2026-05-22T09:35:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ext01-20260525/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ext01-20260525/step-01-code-designer.json|completed_at (2026-05-25T07:39:09Z) is earlier than started_at (2026-05-25T19:00:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ext01-20260525/step-02-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ext01-20260525/step-02-backend-dev.json|completed_at (2026-05-25T07:49:29Z) is earlier than started_at (2026-05-25T19:10:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ext01-20260525/step-02b-backend-dev-rework1.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ext01-20260525/step-02b-backend-dev-rework1.json|completed_at (2026-05-25T08:07:38Z) is earlier than started_at (2026-05-25T19:20:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ext01-20260525/step-03b-test-designer-rework1.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ext01-20260525/step-03b-test-designer-rework1.json|completed_at (2026-05-25T08:26:37Z) is earlier than started_at (2026-05-25T20:10:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ext01-20260525/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ext01-20260525/step-04-test-runner.json|completed_at (2026-05-25T08:15:36Z) is earlier than started_at (2026-05-25T20:00:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ext01-20260525/step-04b-test-runner-rework1.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ext01-20260525/step-04b-test-runner-rework1.json|completed_at (2026-05-25T08:49:47Z) is earlier than started_at (2026-05-25T20:20:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ext01-20260525/step-04c-test-runner-rework2.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ext01-20260525/step-04c-test-runner-rework2.json|completed_at (2026-05-25T09:05:50Z) is earlier than started_at (2026-05-25T20:40:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ext01-20260525/step-04d-test-runner-rework3.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ext01-20260525/step-04d-test-runner-rework3.json|completed_at (2026-05-25T10:16:48Z) is earlier than started_at (2026-05-25T21:20:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ext01-20260525/step-05-release-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ext01-20260525/step-05-release-validator.json|completed_at (2026-05-25T10:19:51Z) is earlier than started_at (2026-05-25T21:30:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ext01-20260525/step-06-doc-updater.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-ext01-20260525/step-06-doc-updater.json|completed_at (2026-05-25T10:22:34Z) is earlier than started_at (2026-05-25T21:40:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f2c-batch2-20260529/step-03b-test-design-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f2c-batch2-20260529/step-03b-test-design-validator.json|completed_at (2026-05-29T10:27:23Z) is earlier than started_at (2026-05-29T10:27:47Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-00-frontend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-00-frontend-dev.json|completed_at (2026-05-29T15:59:32Z) is earlier than started_at (2026-05-29T19:55:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-01-code-designer.json|completed_at (2026-05-29T16:04:35Z) is earlier than started_at (2026-05-29T20:02:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-01b-code-design-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-01b-code-design-validator.json|completed_at (2026-05-29T16:08:48Z) is earlier than started_at (2026-05-29T20:07:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-02-frontend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-02-frontend-dev.json|completed_at (2026-05-29T18:12:18Z) is earlier than started_at (2026-05-29T20:33:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-02a-backend-dev-blocker-fix.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-02a-backend-dev-blocker-fix.json|completed_at (2026-05-29T17:41:41Z) is earlier than started_at (2026-05-29T20:24:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-03-rework1-test-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-03-rework1-test-designer.json|completed_at (2026-05-29T18:28:41Z) is earlier than started_at (2026-05-29T20:55:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-03-test-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-03-test-designer.json|completed_at (2026-05-29T18:16:16Z) is earlier than started_at (2026-05-29T20:40:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-03b-rework1-test-design-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-03b-rework1-test-design-validator.json|completed_at (2026-05-29T18:31:57Z) is earlier than started_at (2026-05-29T21:02:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-03b-test-design-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-03b-test-design-validator.json|completed_at (2026-05-29T18:20:29Z) is earlier than started_at (2026-05-29T20:48:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-04-rework1-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-04-rework1-test-runner.json|completed_at (2026-05-29T20:00:52Z) is earlier than started_at (2026-05-29T22:24:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-04-rework2-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-04-rework2-test-runner.json|completed_at (2026-05-29T20:30:54Z) is earlier than started_at (2026-05-30T00:32:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-04-rework3-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-04-rework3-test-runner.json|completed_at (2026-05-29T20:50:38Z) is earlier than started_at (2026-05-30T00:45:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f3a-batch1-20260529/step-04-test-runner.json|completed_at (2026-05-29T18:42:14Z) is earlier than started_at (2026-05-29T21:10:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f4-task-inbox-20260530/step-final-frontend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-f4-task-inbox-20260530/step-final-frontend-dev.json|completed_at (2026-05-30T12:10:33Z) is earlier than started_at (2026-05-30T12:20:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss202-20260611/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-iss202-20260611/step-04-test-runner.json|completed_at (2026-06-11T19:08:07Z) is earlier than started_at (2026-06-11T23:15:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-lua01-05-20260528/step-02-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-lua01-05-20260528/step-02-backend-dev.json|completed_at (2026-05-28T02:16:49Z) is earlier than started_at (2026-05-28T18:30:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs04-20260525/step-02-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs04-20260525/step-02-backend-dev.json|completed_at (2026-05-25T01:58:01Z) is earlier than started_at (2026-05-25T11:09:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs04-20260525/step-02b-frontend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs04-20260525/step-02b-frontend-dev.json|completed_at (2026-05-25T02:30:05Z) is earlier than started_at (2026-05-25T12:20:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs04-20260525/step-03-test-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs04-20260525/step-03-test-designer.json|completed_at (2026-05-25T02:39:57Z) is earlier than started_at (2026-05-25T12:35:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs04-20260525/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs04-20260525/step-04-test-runner.json|completed_at (2026-05-25T02:44:54Z) is earlier than started_at (2026-05-25T12:50:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs04-20260525/step-04b-test-runner-rework1.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs04-20260525/step-04b-test-runner-rework1.json|completed_at (2026-05-25T03:00:49Z) is earlier than started_at (2026-05-25T13:10:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs04-20260525/step-04c-test-runner-rework2.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs04-20260525/step-04c-test-runner-rework2.json|completed_at (2026-05-25T03:26:50Z) is earlier than started_at (2026-05-25T13:55:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs04-20260525/step-04d-test-runner-rework3.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs04-20260525/step-04d-test-runner-rework3.json|completed_at (2026-05-25T03:47:23Z) is earlier than started_at (2026-05-25T14:50:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs04-20260525/step-06-doc-updater.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs04-20260525/step-06-doc-updater.json|completed_at (2026-05-25T03:53:44Z) is earlier than started_at (2026-05-25T15:20:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs06-20260525/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs06-20260525/step-01-code-designer.json|completed_at (2026-05-25T06:20:50Z) is earlier than started_at (2026-05-25T17:20:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs06-20260525/step-02-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs06-20260525/step-02-backend-dev.json|completed_at (2026-05-25T06:30:40Z) is earlier than started_at (2026-05-25T17:25:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs06-20260525/step-03-test-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs06-20260525/step-03-test-designer.json|completed_at (2026-05-25T06:39:01Z) is earlier than started_at (2026-05-25T17:35:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs06-20260525/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs06-20260525/step-04-test-runner.json|completed_at (2026-05-25T06:42:01Z) is earlier than started_at (2026-05-25T17:45:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs06-20260525/step-04b-test-runner-rework1.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs06-20260525/step-04b-test-runner-rework1.json|completed_at (2026-05-25T07:05:34Z) is earlier than started_at (2026-05-25T18:00:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs06-20260525/step-04c-test-runner-rework2.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs06-20260525/step-04c-test-runner-rework2.json|completed_at (2026-05-25T07:21:29Z) is earlier than started_at (2026-05-25T18:20:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs06-20260525/step-05-release-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs06-20260525/step-05-release-validator.json|completed_at (2026-05-25T07:24:54Z) is earlier than started_at (2026-05-25T18:30:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs06-20260525/step-06-doc-updater.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-obs06-20260525/step-06-doc-updater.json|completed_at (2026-05-25T07:29:10Z) is earlier than started_at (2026-05-25T18:40:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc01-20260527/step-00-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-oidc01-20260527/step-00-backend-dev.json|completed_at (2026-05-26T19:08:16Z) is earlier than started_at (2026-05-27T00:00:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc01-20260527/step-05-release-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-oidc01-20260527/step-05-release-validator.json|completed_at (2026-05-26T19:43:27Z) is earlier than started_at (2026-05-27T00:40:40Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc16-26-20260528/step-00-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-oidc16-26-20260528/step-00-backend-dev.json|completed_at (2026-05-27T22:03:59Z) is earlier than started_at (2026-05-28T00:00:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc16-26-20260528/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-oidc16-26-20260528/step-01-code-designer.json|completed_at (2026-05-27T22:08:49Z) is earlier than started_at (2026-05-28T00:04:40Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc16-26-20260528/step-02-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-oidc16-26-20260528/step-02-backend-dev.json|completed_at (2026-05-27T22:18:17Z) is earlier than started_at (2026-05-28T00:09:50Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc16-26-20260528/step-03-test-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-oidc16-26-20260528/step-03-test-designer.json|completed_at (2026-05-27T22:29:25Z) is earlier than started_at (2026-05-28T00:16:40Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc16-26-20260528/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-oidc16-26-20260528/step-04-test-runner.json|completed_at (2026-05-27T22:33:37Z) is earlier than started_at (2026-05-28T00:30:30Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc16-26-20260528/step-04b-backend-dev-bench-env.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-oidc16-26-20260528/step-04b-backend-dev-bench-env.json|completed_at (2026-05-27T22:35:49Z) is earlier than started_at (2026-05-28T00:34:30Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc16-26-20260528/step-05-release-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-oidc16-26-20260528/step-05-release-validator.json|completed_at (2026-05-27T22:37:42Z) is earlier than started_at (2026-05-28T00:36:50Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc16-26-20260528/step-06-doc-updater.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-oidc16-26-20260528/step-06-doc-updater.json|completed_at (2026-05-27T22:41:25Z) is earlier than started_at (2026-05-28T00:40:30Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc16-26-20260528/step-final-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-oidc16-26-20260528/step-final-backend-dev.json|completed_at (2026-05-27T22:46:05Z) is earlier than started_at (2026-05-28T00:45:30Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1a-20260528/step-03-test-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1a-20260528/step-03-test-designer.json|completed_at (2026-05-28T07:07:30Z) is earlier than started_at (2026-05-28T07:10:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1a-20260528/step-03b-test-design-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1a-20260528/step-03b-test-design-validator.json|completed_at (2026-05-28T07:09:17Z) is earlier than started_at (2026-05-28T07:20:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1a-20260528/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1a-20260528/step-04-test-runner.json|completed_at (2026-05-28T07:16:27Z) is earlier than started_at (2026-05-28T07:22:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1a-20260528/step-05-release-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1a-20260528/step-05-release-validator.json|completed_at (2026-05-28T07:18:50Z) is earlier than started_at (2026-05-28T07:30:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1a-20260528/step-06-doc-updater.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1a-20260528/step-06-doc-updater.json|completed_at (2026-05-28T07:23:33Z) is earlier than started_at (2026-05-28T07:35:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1a-20260528/step-final-git-merge.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1a-20260528/step-final-git-merge.json|completed_at (2026-05-28T07:32:11Z) is earlier than started_at (2026-05-28T07:40:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1b-20260528/step-00-git-setup.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1b-20260528/step-00-git-setup.json|completed_at (2026-05-28T07:33:57Z) is earlier than started_at (2026-05-28T07:45:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1b-20260528/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1b-20260528/step-01-code-designer.json|completed_at (2026-05-28T07:37:21Z) is earlier than started_at (2026-05-28T07:50:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1b-20260528/step-01b-code-design-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1b-20260528/step-01b-code-design-validator.json|completed_at (2026-05-28T07:39:24Z) is earlier than started_at (2026-05-28T07:55:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1b-20260528/step-02-frontend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1b-20260528/step-02-frontend-dev.json|completed_at (2026-05-28T07:44:02Z) is earlier than started_at (2026-05-28T08:00:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1b-20260528/step-03-test-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1b-20260528/step-03-test-designer.json|completed_at (2026-05-28T07:52:18Z) is earlier than started_at (2026-05-28T08:10:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1b-20260528/step-03b-test-design-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1b-20260528/step-03b-test-design-validator.json|completed_at (2026-05-28T07:54:11Z) is earlier than started_at (2026-05-28T08:20:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1b-20260528/step-04-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1b-20260528/step-04-test-runner.json|completed_at (2026-05-28T07:56:40Z) is earlier than started_at (2026-05-28T08:25:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1b-20260528/step-05-release-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1b-20260528/step-05-release-validator.json|completed_at (2026-05-28T08:01:20Z) is earlier than started_at (2026-05-28T08:35:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1b-20260528/step-06-doc-updater.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1b-20260528/step-06-doc-updater.json|completed_at (2026-05-28T08:04:08Z) is earlier than started_at (2026-05-28T08:45:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-shf1b-20260528/step-final-git-merge.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-shf1b-20260528/step-final-git-merge.json|completed_at (2026-05-28T08:06:30Z) is earlier than started_at (2026-05-28T08:55:10Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-wasm01-14-20260528/step-00-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-wasm01-14-20260528/step-00-backend-dev.json|completed_at (2026-05-28T04:15:15Z) is earlier than started_at (2026-05-28T10:00:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-wasm01-14-20260528/step-01-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-wasm01-14-20260528/step-01-code-designer.json|completed_at (2026-05-28T04:17:56Z) is earlier than started_at (2026-05-28T10:00:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-wasm01-14-20260528/step-05-release-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-wasm01-14-20260528/step-05-release-validator.json|completed_at (2026-05-28T04:35:00Z) is earlier than started_at (2026-05-28T10:00:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-adp01-es07fix-20260526/step-01-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-adp01-es07fix-20260526/step-01-issue-fixer.json|completed_at (2026-05-25T20:55:17Z) is earlier than started_at (2026-05-26T00:41:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-adp01-es07fix-20260526/step-02-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-adp01-es07fix-20260526/step-02-test-runner.json|completed_at (2026-05-25T21:05:06Z) is earlier than started_at (2026-05-26T00:58:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-ext01-intfix-20260525/step-01-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-ext01-intfix-20260525/step-01-issue-fixer.json|completed_at (2026-05-25T09:32:46Z) is earlier than started_at (2026-05-25T20:50:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-ext01-intfix-20260525/step-01b-issue-fixer-rework1.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-ext01-intfix-20260525/step-01b-issue-fixer-rework1.json|completed_at (2026-05-25T09:45:38Z) is earlier than started_at (2026-05-25T21:00:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-ext01-testfix-20260525/step-01-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-ext01-testfix-20260525/step-01-issue-fixer.json|completed_at (2026-05-25T08:58:37Z) is earlier than started_at (2026-05-25T20:30:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-integration-regression-fix-20260530/step-00-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-f3a-integration-regression-fix-20260530/step-00-backend-dev.json|completed_at (2026-05-29T20:04:10Z) is earlier than started_at (2026-05-30T00:05:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-integration-regression-fix-20260530/step-01-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-f3a-integration-regression-fix-20260530/step-01-issue-fixer.json|completed_at (2026-05-29T20:12:39Z) is earlier than started_at (2026-05-30T00:12:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-integration-regression-fix-20260530/step-02-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-f3a-integration-regression-fix-20260530/step-02-test-runner.json|completed_at (2026-05-29T20:22:23Z) is earlier than started_at (2026-05-30T00:18:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-integration-regression-fix-20260530/step-final-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-f3a-integration-regression-fix-20260530/step-final-backend-dev.json|completed_at (2026-05-29T20:26:16Z) is earlier than started_at (2026-05-30T00:24:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-inui02-fix-20260529/step-00-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-f3a-inui02-fix-20260529/step-00-backend-dev.json|completed_at (2026-05-29T18:46:34Z) is earlier than started_at (2026-05-29T21:20:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-inui02-fix-20260529/step-02-rework1-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-f3a-inui02-fix-20260529/step-02-rework1-test-runner.json|completed_at (2026-05-29T19:19:55Z) is earlier than started_at (2026-05-29T21:52:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-inui02-fix-20260529/step-02-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-f3a-inui02-fix-20260529/step-02-test-runner.json|completed_at (2026-05-29T18:58:22Z) is earlier than started_at (2026-05-29T21:32:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-inui02-fix-20260529/step-02a-backend-dev-bench-env.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-f3a-inui02-fix-20260529/step-02a-backend-dev-bench-env.json|completed_at (2026-05-29T19:14:21Z) is earlier than started_at (2026-05-29T21:40:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-inui02-fix-20260529/step-final-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-f3a-inui02-fix-20260529/step-final-backend-dev.json|completed_at (2026-05-29T19:23:05Z) is earlier than started_at (2026-05-29T22:00:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-inui02-fix-20260529/step-final-rework1-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-f3a-inui02-fix-20260529/step-final-rework1-backend-dev.json|completed_at (2026-05-29T19:36:02Z) is earlier than started_at (2026-05-29T22:08:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-inui02-fix-20260529/step-final-rework2-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-f3a-inui02-fix-20260529/step-final-rework2-backend-dev.json|completed_at (2026-05-29T19:41:26Z) is earlier than started_at (2026-05-29T22:16:05Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh401-20260803/step-00-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh401-20260803/step-00-backend-dev.json|completed_at (2026-08-03T09:12:28Z) is earlier than started_at (2026-08-03T14:07:16Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh401-20260803/step-005-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh401-20260803/step-005-issue-fixer.json|completed_at (2026-08-03T09:17:13Z) is earlier than started_at (2026-08-03T14:13:29Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh401-20260803/step-01-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh401-20260803/step-01-issue-fixer.json|completed_at (2026-08-03T09:35:31Z) is earlier than started_at (2026-08-03T14:18:40Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh401-20260803/step-02-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh401-20260803/step-02-code-designer.json|completed_at (2026-08-03T09:48:57Z) is earlier than started_at (2026-08-03T14:37:24Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh401-20260803/step-02b-code-design-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh401-20260803/step-02b-code-design-validator.json|completed_at (2026-08-03T09:51:23Z) is earlier than started_at (2026-08-03T14:49:54Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh401-20260803/step-03-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh401-20260803/step-03-backend-dev.json|completed_at (2026-08-03T10:01:42Z) is earlier than started_at (2026-08-03T14:53:31Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh401-20260803/step-07-doc-updater.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh401-20260803/step-07-doc-updater.json|completed_at (2026-08-03T10:13:01Z) is earlier than started_at (2026-08-03T15:12:08Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh401-20260803/step-final-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh401-20260803/step-final-backend-dev.json|completed_at (2026-08-03T10:23:54Z) is earlier than started_at (2026-08-03T15:14:27Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh406-20260803/step-3-backend-dev-implementation.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh406-20260803/step-3-backend-dev-implementation.json|completed_at (2026-08-03T11:23:13Z) is earlier than started_at (2026-08-03T11:47:45Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh414-20260804/step-0.5-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh414-20260804/step-0.5-issue-fixer.json|completed_at (2026-08-04T05:41:04Z) is earlier than started_at (2026-08-04T10:37:47Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh414-20260804/step-00-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh414-20260804/step-00-backend-dev.json|completed_at (2026-08-04T05:37:04Z) is earlier than started_at (2026-08-04T10:36:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh414-20260804/step-1-issue-fixer-diagnosis.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh414-20260804/step-1-issue-fixer-diagnosis.json|completed_at (2026-08-04T05:43:50Z) is earlier than started_at (2026-08-04T10:38:30Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh414-20260804/step-2-code-designer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh414-20260804/step-2-code-designer.json|completed_at (2026-08-04T05:57:47Z) is earlier than started_at (2026-08-04T10:56:44Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh414-20260804/step-2b-code-design-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-gh414-20260804/step-2b-code-design-validator.json|completed_at (2026-08-04T06:14:11Z) is earlier than started_at (2026-08-04T11:11:03Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-obs04-e2eauth-20260525/step-01-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-obs04-e2eauth-20260525/step-01-issue-fixer.json|completed_at (2026-05-25T03:37:05Z) is earlier than started_at (2026-05-25T14:35:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-obs04-e2eexec-20260525/step-01-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-obs04-e2eexec-20260525/step-01-issue-fixer.json|completed_at (2026-05-25T03:31:04Z) is earlier than started_at (2026-05-25T14:15:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-obs04-e2eprereq-20260525/step-01-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-obs04-e2eprereq-20260525/step-01-issue-fixer.json|completed_at (2026-05-25T03:06:42Z) is earlier than started_at (2026-05-25T13:25:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-obs04-fixes-20260525/step-01-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-obs04-fixes-20260525/step-01-issue-fixer.json|completed_at (2026-05-25T02:54:02Z) is earlier than started_at (2026-05-25T12:55:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-obs04-runtime-20260525/step-01-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-obs04-runtime-20260525/step-01-backend-dev.json|completed_at (2026-05-25T03:16:13Z) is earlier than started_at (2026-05-25T13:40:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-obs06-compilefix-20260525/step-01-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-obs06-compilefix-20260525/step-01-issue-fixer.json|completed_at (2026-05-25T06:58:53Z) is earlier than started_at (2026-05-25T17:50:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-obs06-testenv-20260525/step-01-issue-fixer.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-obs06-testenv-20260525/step-01-issue-fixer.json|completed_at (2026-05-25T07:15:47Z) is earlier than started_at (2026-05-25T18:10:20Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-spt01-onboarding-schema-missing-20260607/step-02b-code-design-validator-rework2.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-spt01-onboarding-schema-missing-20260607/step-02b-code-design-validator-rework2.json|completed_at (2026-06-07T01:26:51Z) is earlier than started_at (2026-06-07T01:28:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-spt01-onboarding-schema-missing-20260607/step-02b-code-design-validator-rework3.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-spt01-onboarding-schema-missing-20260607/step-02b-code-design-validator-rework3.json|completed_at (2026-06-07T01:28:53Z) is earlier than started_at (2026-06-07T01:32:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-02-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-02-test-runner.json|completed_at (2026-05-28T19:58:36Z) is earlier than started_at (2026-05-29T00:03:40Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF04-full-20260523/step-01a-frontend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF04-full-20260523/step-01a-frontend-dev.json|completed_at (2026-05-23T06:14:06Z) is earlier than started_at (2026-05-23T06:15:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF04-full-20260523/step-02-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF04-full-20260523/step-02-test-runner.json|completed_at (2026-05-23T06:18:51Z) is earlier than started_at (2026-05-23T06:25:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF04-full-20260523/step-03-test-runner.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF04-full-20260523/step-03-test-runner.json|completed_at (2026-05-23T06:23:29Z) is earlier than started_at (2026-05-23T06:30:00Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-rework-1-backend-dev.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-rework-1-backend-dev.json|started_at (2026-06-11T08:05:11Z) precedes created_at (2026-06-11T08:08:15Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api05-20260523/step-03-test-designer.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-api05-20260523/step-03-test-designer.json|started_at (2026-05-22T21:29:16Z) precedes created_at (2026-05-23T08:30:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api05-20260523/step-04-test-runner.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-api05-20260523/step-04-test-runner.json|started_at (2026-05-22T21:39:46Z) precedes created_at (2026-05-23T08:45:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-api05-20260523/step-05-release-validator.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-api05-20260523/step-05-release-validator.json|started_at (2026-05-22T21:42:36Z) precedes created_at (2026-05-23T09:00:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-dsl12-20260528/step-01-code-designer.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-01-code-designer.json|started_at (2026-05-27T20:15:56Z) precedes created_at (2026-05-28T02:14:20Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-dsl12-20260528/step-02-backend-dev.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-02-backend-dev.json|started_at (2026-05-27T20:19:26Z) precedes created_at (2026-05-28T02:14:20Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-dsl12-20260528/step-03-test-designer.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-03-test-designer.json|started_at (2026-05-27T20:27:03Z) precedes created_at (2026-05-28T02:14:20Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-dsl12-20260528/step-04-test-runner.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-04-test-runner.json|started_at (2026-05-27T20:30:01Z) precedes created_at (2026-05-28T02:14:20Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee03-20260522/step-02-backend-dev.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-02-backend-dev.json|started_at (2026-05-21T18:52:18Z) precedes created_at (2026-05-22T09:35:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee03-20260522/step-03-test-designer.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-03-test-designer.json|started_at (2026-05-21T19:25:49Z) precedes created_at (2026-05-22T09:35:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee03-20260522/step-04-test-runner.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-04-test-runner.json|started_at (2026-05-21T20:01:06Z) precedes created_at (2026-05-22T09:35:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee03-20260522/step-05-release-validator.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-05-release-validator.json|started_at (2026-05-21T20:06:06Z) precedes created_at (2026-05-22T09:35:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee03-20260522/step-06-doc-updater.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-06-doc-updater.json|started_at (2026-05-21T20:08:53Z) precedes created_at (2026-05-22T09:35:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee10-20260522/step-05-release-validator.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee10-20260522/step-05-release-validator.json|started_at (2026-05-22T12:29:31Z) precedes created_at (2026-05-22T12:30:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee10-20260522/step-06-doc-updater.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee10-20260522/step-06-doc-updater.json|started_at (2026-05-22T12:32:26Z) precedes created_at (2026-05-22T12:37:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-idn02-20260524/step-04b-test-runner-rework1.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-idn02-20260524/step-04b-test-runner-rework1.json|started_at (2026-05-24T06:40:45Z) precedes created_at (2026-05-24T06:43:20Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-lua01-05-20260528/step-00-backend-dev.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-lua01-05-20260528/step-00-backend-dev.json|started_at (2026-05-28T02:07:03Z) precedes created_at (2026-05-28T18:30:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-lua01-05-20260528/step-06-doc-updater.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-lua01-05-20260528/step-06-doc-updater.json|started_at (2026-05-28T02:26:34Z) precedes created_at (2026-05-28T18:30:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-lua01-05-20260528/step-final-backend-dev.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-lua01-05-20260528/step-final-backend-dev.json|started_at (2026-05-28T02:26:34Z) precedes created_at (2026-05-28T18:30:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs04-20260525/step-05-release-validator.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-obs04-20260525/step-05-release-validator.json|started_at (2026-05-25T03:50:16Z) precedes created_at (2026-05-25T15:05:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs05-20260525/step-02b-backend-dev-rework1.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-obs05-20260525/step-02b-backend-dev-rework1.json|started_at (2026-05-25T16:37:48Z) precedes created_at (2026-05-25T16:40:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs05-20260525/step-03-test-designer.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-obs05-20260525/step-03-test-designer.json|started_at (2026-05-25T16:49:33Z) precedes created_at (2026-05-25T16:50:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-obs05-20260525/step-06-doc-updater.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-obs05-20260525/step-06-doc-updater.json|started_at (2026-05-25T17:09:33Z) precedes created_at (2026-05-25T17:10:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-wasm01-14-20260528/step-03-test-designer.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-wasm01-14-20260528/step-03-test-designer.json|started_at (2026-05-28T04:29:19Z) precedes created_at (2026-05-28T10:00:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-wasm01-14-20260528/step-final-backend-dev.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-wasm01-14-20260528/step-final-backend-dev.json|started_at (2026-05-28T04:39:00Z) precedes created_at (2026-05-28T10:00:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-ISS-0128-20260807/step-02b-code-design-validator.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-ISS-0128-20260807/step-02b-code-design-validator.json|started_at (2026-08-07T08:06:39Z) precedes created_at (2026-08-07T08:09:27Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-ISS-0128-20260807/step-07-doc-updater.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-ISS-0128-20260807/step-07-doc-updater.json|started_at (2026-08-07T08:31:50Z) precedes created_at (2026-08-07T08:35:19Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-ISS-0128-20260807/step-final-backend-dev.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-ISS-0128-20260807/step-final-backend-dev.json|started_at (2026-08-07T08:35:03Z) precedes created_at (2026-08-07T08:36:29Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-ext01-intfix-20260525/step-01c-issue-fixer-rework2.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-ext01-intfix-20260525/step-01c-issue-fixer-rework2.json|started_at (2026-05-25T10:10:28Z) precedes created_at (2026-05-25T21:10:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f3a-inui02-fix-20260529/step-01-issue-fixer.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-f3a-inui02-fix-20260529/step-01-issue-fixer.json|started_at (2026-05-29T18:48:33Z) precedes created_at (2026-05-29T21:26:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh364-20260801/step-03c-code-designer-blockers.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-gh364-20260801/step-03c-code-designer-blockers.json|started_at (2026-08-01T05:11:53Z) precedes created_at (2026-08-01T05:18:09Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh375-20260801/step-05d-issue-fixer.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-gh375-20260801/step-05d-issue-fixer.json|started_at (2026-08-01T12:09:25Z) precedes created_at (2026-08-01T12:15:49Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-01-issue-fixer.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-01-issue-fixer.json|started_at (2026-05-28T19:02:21Z) precedes created_at (2026-05-29T00:01:20Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF04-full-20260523/step-01b-test-runner.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF04-full-20260523/step-01b-test-runner.json|started_at (2026-05-23T06:15:34Z) precedes created_at (2026-05-23T06:20:00Z) — the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/ADHOC-f7-trace-backend-20260601/step-01-backend-dev.json",
+      "code": "H005",
+      "matching_key": "BLOCKER|H005|handoffs/ADHOC-f7-trace-backend-20260601/step-01-backend-dev.json|status is COMPLETED but completed_at is unset.",
+      "reason_ref": "H005",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee02-20260522/step-05-release-validator.json",
+      "code": "H005",
+      "matching_key": "BLOCKER|H005|handoffs/WF02-ee02-20260522/step-05-release-validator.json|status is COMPLETED but completed_at is unset.",
+      "reason_ref": "H005",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-ee02-20260522/step-06-doc-updater.json",
+      "code": "H005",
+      "matching_key": "BLOCKER|H005|handoffs/WF02-ee02-20260522/step-06-doc-updater.json|status is COMPLETED but completed_at is unset.",
+      "reason_ref": "H005",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc10-20260527/step-06-doc-updater.json",
+      "code": "H005",
+      "matching_key": "BLOCKER|H005|handoffs/WF02-oidc10-20260527/step-06-doc-updater.json|status is COMPLETED but completed_at is unset.",
+      "reason_ref": "H005",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-sch05-escalation-fix-20260523/step-01-issue-fixer.json",
+      "code": "H005",
+      "matching_key": "BLOCKER|H005|handoffs/WF03-sch05-escalation-fix-20260523/step-01-issue-fixer.json|status is COMPLETED but completed_at is unset.",
+      "reason_ref": "H005",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/ADHOC-fix-integration-20260528/step-03-issue-fixer-dsl.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/ADHOC-fix-integration-20260528/step-03-issue-fixer-dsl.json|status is PENDING but 2 later step(s) in run ADHOC-fix-integration-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/ADHOC-fix-integration-20260528/step-04-issue-fixer-store-logic.json,handoffs/ADHOC-fix-integration-20260528/step-05-issue-fixer-audit.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-backend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-backend-dev.json|status is PENDING but 6 later step(s) in run ADHOC-iss103-audit-resource-id-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-rework-1-backend-dev.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-02-test-designer.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-04-test-runner.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-04b-test-runner-rerun.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-05-release-validator.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-06-doc-updater.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-dsl05-20260527/step-06-doc-updater.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-dsl05-20260527/step-06-doc-updater.json|status is IN_PROGRESS but 1 later step(s) in run WF02-dsl05-20260527 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-dsl05-20260527/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-dsl13-20260528/step-02-backend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-dsl13-20260528/step-02-backend-dev.json|status is PENDING but 3 later step(s) in run WF02-dsl13-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-dsl13-20260528/step-03-test-designer.json,handoffs/WF02-dsl13-20260528/step-04-test-runner.json,handoffs/WF02-dsl13-20260528/step-final-doc-updater.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-exp201-202-20260612/step-03-test-designer.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-exp201-202-20260612/step-03-test-designer.json|status is PENDING but 5 later step(s) in run WF02-exp201-202-20260612 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-exp201-202-20260612/step-03b-test-design-validator-rework2.json,handoffs/WF02-exp201-202-20260612/step-04-test-runner-rework.json,handoffs/WF02-exp201-202-20260612/step-05-release-validator-rework.json,handoffs/WF02-exp201-202-20260612/step-06-doc-updater-rework.json,handoffs/WF02-exp201-202-20260612/step-final-backend-dev-rework.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-exp3-async-effects-20260613/step-03b-revalidation4-test-design-validator.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-exp3-async-effects-20260613/step-03b-revalidation4-test-design-validator.json|status is PENDING but 3 later step(s) in run WF02-exp3-async-effects-20260613 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-exp3-async-effects-20260613/step-04-test-runner.json,handoffs/WF02-exp3-async-effects-20260613/step-05-release-validator.json,handoffs/WF02-exp3-async-effects-20260613/step-06-doc-updater.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f2a-canvas-batch1-20260528/step-05-frontend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-f2a-canvas-batch1-20260528/step-05-frontend-dev.json|status is PENDING but 3 later step(s) in run WF02-f2a-canvas-batch1-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-f2a-canvas-batch1-20260528/step-05-release-validator.json,handoffs/WF02-f2a-canvas-batch1-20260528/step-06-doc-updater.json,handoffs/WF02-f2a-canvas-batch1-20260528/step-final-frontend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-f4-task-inbox-20260530/step-03-test-designer.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-f4-task-inbox-20260530/step-03-test-designer.json|status is PENDING but 7 later step(s) in run WF02-f4-task-inbox-20260530 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-f4-task-inbox-20260530/step-03-rework1-test-designer.json,handoffs/WF02-f4-task-inbox-20260530/step-03b-test-design-validator.json,handoffs/WF02-f4-task-inbox-20260530/step-04-test-runner-final.json,handoffs/WF02-f4-task-inbox-20260530/step-04-test-runner.json,handoffs/WF02-f4-task-inbox-20260530/step-05-release-validator.json,handoffs/WF02-f4-task-inbox-20260530/step-06-doc-updater.json,handoffs/WF02-f4-task-inbox-20260530/step-final-frontend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss101-20260611/step-06-doc-updater.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss101-20260611/step-06-doc-updater.json|status is PENDING but 1 later step(s) in run WF02-iss101-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss101-20260611/step-final-backend-dev-merge.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss105-token-model-20260611/step-03-test-designer.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-03-test-designer.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss105-token-model-20260611/step-04-test-runner.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-04-test-runner.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss105-token-model-20260611/step-05-release-validator.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-05-release-validator.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss105-token-model-20260611/step-06-doc-updater.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-06-doc-updater.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss105-token-model-20260611/step-3b-test-design-validator.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-3b-test-design-validator.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss204-206-20260611/step-00-backend-dev-gitsetup.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss204-206-20260611/step-00-backend-dev-gitsetup.json|status is PENDING but 4 later step(s) in run WF02-iss204-206-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss204-206-20260611/step-02a-backend-dev.json,handoffs/WF02-iss204-206-20260611/step-03-test-designer.json,handoffs/WF02-iss204-206-20260611/step-03b-test-design-validator.json,handoffs/WF02-iss204-206-20260611/step-04-test-runner.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss204-206-20260611/step-01-code-designer.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss204-206-20260611/step-01-code-designer.json|status is PENDING but 4 later step(s) in run WF02-iss204-206-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss204-206-20260611/step-02a-backend-dev.json,handoffs/WF02-iss204-206-20260611/step-03-test-designer.json,handoffs/WF02-iss204-206-20260611/step-03b-test-design-validator.json,handoffs/WF02-iss204-206-20260611/step-04-test-runner.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss204-206-20260611/step-01b-code-design-validator.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss204-206-20260611/step-01b-code-design-validator.json|status is PENDING but 4 later step(s) in run WF02-iss204-206-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss204-206-20260611/step-02a-backend-dev.json,handoffs/WF02-iss204-206-20260611/step-03-test-designer.json,handoffs/WF02-iss204-206-20260611/step-03b-test-design-validator.json,handoffs/WF02-iss204-206-20260611/step-04-test-runner.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss501-504-epic5-20260612/step-00-backend-dev-gitsetup.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss501-504-epic5-20260612/step-00-backend-dev-gitsetup.json|status is PENDING but 4 later step(s) in run WF02-iss501-504-epic5-20260612 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss501-504-epic5-20260612/step-00-backend-dev.json,handoffs/WF02-iss501-504-epic5-20260612/step-01-code-designer.json,handoffs/WF02-iss501-504-epic5-20260612/step-01b-code-design-validator.json,handoffs/WF02-iss501-504-epic5-20260612/step-02a-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-iss503-continuation-20260730/step-05-release-validator.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss503-continuation-20260730/step-05-release-validator.json|status is PENDING but 1 later step(s) in run WF02-iss503-continuation-20260730 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss503-continuation-20260730/step-final-doc-updater.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-lua01-05-20260528/step-03-test-designer.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-lua01-05-20260528/step-03-test-designer.json|status is PENDING but 4 later step(s) in run WF02-lua01-05-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-lua01-05-20260528/step-04-test-runner.json,handoffs/WF02-lua01-05-20260528/step-05-release-validator.json,handoffs/WF02-lua01-05-20260528/step-06-doc-updater.json,handoffs/WF02-lua01-05-20260528/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc35-20260528/step-2a-backend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-oidc35-20260528/step-2a-backend-dev.json|status is PENDING but 4 later step(s) in run WF02-oidc35-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-oidc35-20260528/step-03-test-designer.json,handoffs/WF02-oidc35-20260528/step-04-test-runner.json,handoffs/WF02-oidc35-20260528/step-05-release-validator.json,handoffs/WF02-oidc35-20260528/step-06-doc-updater.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-oidc35-20260528/step-3b-test-design-validator.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-oidc35-20260528/step-3b-test-design-validator.json|status is PENDING but 3 later step(s) in run WF02-oidc35-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-oidc35-20260528/step-04-test-runner.json,handoffs/WF02-oidc35-20260528/step-05-release-validator.json,handoffs/WF02-oidc35-20260528/step-06-doc-updater.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-tenant-dashboard-20260616/step-00-backend-dev-gitsetup.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-tenant-dashboard-20260616/step-00-backend-dev-gitsetup.json|status is PENDING but 6 later step(s) in run WF02-tenant-dashboard-20260616 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-tenant-dashboard-20260616/step-01-code-designer.json,handoffs/WF02-tenant-dashboard-20260616/step-01b-code-design-validator.json,handoffs/WF02-tenant-dashboard-20260616/step-03-test-designer.json,handoffs/WF02-tenant-dashboard-20260616/step-03b-test-design-validator.json,handoffs/WF02-tenant-dashboard-20260616/step-04-test-runner.json,handoffs/WF02-tenant-dashboard-20260616/step-final-backend-dev-gitmerge.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-tenant-dashboard-20260616/step-02b-frontend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-tenant-dashboard-20260616/step-02b-frontend-dev.json|status is PENDING but 4 later step(s) in run WF02-tenant-dashboard-20260616 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-tenant-dashboard-20260616/step-03-test-designer.json,handoffs/WF02-tenant-dashboard-20260616/step-03b-test-design-validator.json,handoffs/WF02-tenant-dashboard-20260616/step-04-test-runner.json,handoffs/WF02-tenant-dashboard-20260616/step-final-backend-dev-gitmerge.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-xc01-06-20260528/step-02-rework2-backend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-xc01-06-20260528/step-02-rework2-backend-dev.json|status is PENDING but 8 later step(s) in run WF02-xc01-06-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-xc01-06-20260528/step-02-rework3-final-backend-dev.json,handoffs/WF02-xc01-06-20260528/step-03-rework1-test-designer.json,handoffs/WF02-xc01-06-20260528/step-03-test-designer.json,handoffs/WF02-xc01-06-20260528/step-04-final-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-rework1-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-test-runner.json,handoffs/WF02-xc01-06-20260528/step-3b-rework1-test-design-validator.json,handoffs/WF02-xc01-06-20260528/step-3b-test-design-validator.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF02-xc01-06-20260528/step-2a-backend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-xc01-06-20260528/step-2a-backend-dev.json|status is PENDING but 8 later step(s) in run WF02-xc01-06-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-xc01-06-20260528/step-02-rework3-final-backend-dev.json,handoffs/WF02-xc01-06-20260528/step-03-rework1-test-designer.json,handoffs/WF02-xc01-06-20260528/step-03-test-designer.json,handoffs/WF02-xc01-06-20260528/step-04-final-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-rework1-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-test-runner.json,handoffs/WF02-xc01-06-20260528/step-3b-rework1-test-design-validator.json,handoffs/WF02-xc01-06-20260528/step-3b-test-design-validator.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-GH542-20260807/step-04-test-runner.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-GH542-20260807/step-04-test-runner.json|status is PENDING but 3 later step(s) in run WF03-GH542-20260807 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-GH542-20260807/step-05-issue-fixer.json,handoffs/WF03-GH542-20260807/step-07-doc-updater.json,handoffs/WF03-GH542-20260807/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-ext02-auditfix-20260525/step-01-issue-fixer.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-ext02-auditfix-20260525/step-01-issue-fixer.json|status is IN_PROGRESS but 1 later step(s) in run WF03-ext02-auditfix-20260525 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-ext02-auditfix-20260525/step-02-test-runner.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-f2b-testfixes-20260529/step-00-frontend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-f2b-testfixes-20260529/step-00-frontend-dev.json|status is PENDING but 6 later step(s) in run WF03-f2b-testfixes-20260529 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-f2b-testfixes-20260529/step-01-issue-fixer.json,handoffs/WF03-f2b-testfixes-20260529/step-02-test-runner.json,handoffs/WF03-f2b-testfixes-20260529/step-03-issue-fixer-rework.json,handoffs/WF03-f2b-testfixes-20260529/step-04-test-runner-retest.json,handoffs/WF03-f2b-testfixes-20260529/step-05-issue-fixer-rework2.json,handoffs/WF03-f2b-testfixes-20260529/step-06-test-runner-final.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh391-20260801/step-04b-test-design-validator.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-gh391-20260801/step-04b-test-design-validator.json|status is PENDING but 3 later step(s) in run WF03-gh391-20260801 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-gh391-20260801/step-05a-adhoc-backend-dev-services.json,handoffs/WF03-gh391-20260801/step-07-doc-updater.json,handoffs/WF03-gh391-20260801/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh391-20260801/step-05-test-runner.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-gh391-20260801/step-05-test-runner.json|status is IN_PROGRESS but 3 later step(s) in run WF03-gh391-20260801 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-gh391-20260801/step-05a-adhoc-backend-dev-services.json,handoffs/WF03-gh391-20260801/step-07-doc-updater.json,handoffs/WF03-gh391-20260801/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-gh406-20260803/step-3-backend-dev-implementation.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-gh406-20260803/step-3-backend-dev-implementation.json|status is PENDING but 4 later step(s) in run WF03-gh406-20260803 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-gh406-20260803/step-5-final2-test-runner.json,handoffs/WF03-gh406-20260803/step-5-test-runner.json,handoffs/WF03-gh406-20260803/step-6-doc-updater.json,handoffs/WF03-gh406-20260803/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-iss0100-20260731/step-02-code-designer.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-02-code-designer.json|status is PENDING but 11 later step(s) in run WF03-iss0100-20260731 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-02b-code-design-validator.json,handoffs/WF03-iss0100-20260731/step-02d-code-design-validator-rework.json,handoffs/WF03-iss0100-20260731/step-02e-code-designer-iss0105.json,handoffs/WF03-iss0100-20260731/step-02f-code-design-validator-iss0105.json,handoffs/WF03-iss0100-20260731/step-03a-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03b-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03d-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03e-backend-dev-rework.json,handoffs/WF03-iss0100-20260731/step-03f-backend-dev-iss0105.json,handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-iss0100-20260731/step-02c-code-designer-rework.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-02c-code-designer-rework.json|status is PENDING but 10 later step(s) in run WF03-iss0100-20260731 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-02d-code-design-validator-rework.json,handoffs/WF03-iss0100-20260731/step-02e-code-designer-iss0105.json,handoffs/WF03-iss0100-20260731/step-02f-code-design-validator-iss0105.json,handoffs/WF03-iss0100-20260731/step-03a-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03b-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03d-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03e-backend-dev-rework.json,handoffs/WF03-iss0100-20260731/step-03f-backend-dev-iss0105.json,handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-iss0100-20260731/step-03c-backend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-03c-backend-dev.json|status is PENDING but 5 later step(s) in run WF03-iss0100-20260731 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-03d-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03e-backend-dev-rework.json,handoffs/WF03-iss0100-20260731/step-03f-backend-dev-iss0105.json,handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-iss0100-20260731/step-05-test-runner.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-05-test-runner.json|status is PENDING but 2 later step(s) in run WF03-iss0100-20260731 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-tenant-onboarding-saga-loop3-20260608/step-07-issue-fixer-c2.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-tenant-onboarding-saga-loop3-20260608/step-07-issue-fixer-c2.json|status is PENDING but 1 later step(s) in run WF03-tenant-onboarding-saga-loop3-20260608 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-tenant-onboarding-saga-loop3-20260608/step-06-test-runner-c1.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    },
+    {
+      "file": "handoffs/WF03-uat-onboarding-realm-sync-20260616/step-03b-frontend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-uat-onboarding-realm-sync-20260616/step-03b-frontend-dev.json|status is PENDING but 2 later step(s) in run WF03-uat-onboarding-realm-sync-20260616 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-uat-onboarding-realm-sync-20260616/step-04-test-designer.json,handoffs/WF03-uat-onboarding-realm-sync-20260616/step-04b-test-design-validator.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-08T23:57:55Z",
+      "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
+    }
+  ]
+}

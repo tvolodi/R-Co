@@ -548,3 +548,12 @@
 2026-08-08T23:14:30Z | ROUTE | WF03-GH594-20260808 | c204e04b | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize GH-594 bookkeeping repair)
 2026-08-08T23:29:08Z | COMPLETE | WF03-GH594-20260808 | c204e04b | DOC-UPDATER | PASS -- CHANGELOG updated, PR #597 merged (2799866c0dc3056e183bc6d8bcc131abf1c85942), GH-594 closed, board Done, main clean
 2026-08-08T23:29:08Z | GATE_FIX | WF03-GH594-20260808 | c204e04b | DOC-UPDATER | tools/lint_handoffs.py --changed now compares per-file findings against merge-base (blocked PR #597 by re-flagging pre-existing ISS-0627 debt as new)
+2026-08-08T23:32:15Z | ROUTE | WF03-GH596-20260808 | 91df0d25 | ORCH -> ISSUE-FIXER | IN_PROGRESS (Step 0.5/1, GH-596/ISS-0627 scope decision)
+2026-08-08T23:34:55Z | ROUTE | WF03-GH596-20260808 | 06e8f858 | ISSUE-FIXER -> CODE-DESIGNER | PENDING
+2026-08-08T23:37:15Z | COMPLETE | WF03-GH596-20260808 | 91df0d25 | ISSUE-FIXER | PASS -> routed to CODE-DESIGNER (06e8f858)
+2026-08-08T23:45:36Z | COMPLETE | WF03-GH596-20260808 | 06e8f858 | CODE-DESIGNER | PASS -> Route to CODE-DESIGN-VALIDATOR (Step 2b)
+2026-08-08T23:47:51Z | ROUTE | WF03-GH596-20260808 | c0a17dfc | ORCH -> CODE-DESIGN-VALIDATOR | IN_PROGRESS (Step 2b, GH-596 acknowledgment mechanism design validation)
+2026-08-08T23:50:37Z | VALIDATE | WF03-GH596-20260808 | c0a17dfc | CODE-DESIGN-VALIDATOR | PASS -- iss0627-lint-handoffs-acknowledgment.md validated, H009 fingerprint fix confirmed against real lint_handoffs.py source, next: BACKEND-DEV (Step 3)
+2026-08-08T23:51:42Z | ROUTE | WF03-GH596-20260808 | ee840fc9 | ORCH -> BACKEND-DEV | IN_PROGRESS (Step 3, implement + generate baseline for GH-596)
+2026-08-09T00:00:08Z | COMPLETE | WF03-GH596-20260808 | ee840fc9 | BACKEND-DEV | PASS -- lint_handoffs.baseline.json (225 entries) + generate_lint_handoffs_baseline.py implemented, both selftests pass
+2026-08-09T00:02:06Z | ROUTE | WF03-GH596-20260808 | 38c0e5d2 | ORCH -> DOC-UPDATER | IN_PROGRESS (Step 6 + Step Final, finalize GH-596 acknowledgment mechanism)

@@ -1,0 +1,61 @@
+{
+  "handoff_id": "c0a17dfc-b800-481d-a225-39e2994c8e13",
+  "run_id": "WF03-GH596-20260808",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH596-20260808/step-02b-code-design-validator.json",
+  "created_at": "2026-08-08T23:47:51Z",
+  "started_at": "2026-08-08T23:47:51Z",
+  "completed_at": "2026-08-08T23:50:37Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "91df0d25-0c8d-4c48-9b19-846ffe700017",
+      "06e8f858-2ef9-4fad-8798-5a631d3c8e19"
+    ],
+    "artifacts_in": [
+      "src/design/iss0627-lint-handoffs-acknowledgment.md",
+      "tools/lint_handoffs.py",
+      "tools/lint_test_isolation.py",
+      "tools/lint_test_isolation.baseline.json",
+      "tools/lint_test_wiring.py",
+      "docs/issues/ISS-0627.json"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss0627-lint-handoffs-acknowledgment.md before BACKEND-DEV implements it. This design covers a permanent-acknowledgment baseline mechanism for tools/lint_handoffs.py's H003/H004/H005/H009 categories (225 findings) -- these are unrecoverable historical audit-trail gaps (inverted/missing timestamps, orphaned pipeline steps) that must stay permanently visible while no longer gating exit code.\n\nORCH already independently verified the design's most safety-critical claim: read tools/lint_handoffs.py's actual lint_orphans function directly and confirmed H009's message genuinely only embeds len(later_completed) (a count) and run_id -- NEVER the identity of which steps completed later. This means two DIFFERENT orphan situations on the same file (same count, different actual bypassing steps) could produce a byte-identical message under naive severity|code|path|message key matching -- a genuine safety gap CODE-DESIGNER found, evidenced via git log --diff-filter=D showing handoff step files have in fact been added/removed within run directories historically, and fixed by adding an H009-only key component: a stable sorted fingerprint of later_completed's actual file paths. ORCH confirmed this fix is present in the design (search 'H009-only' and section 0.2's worked example) and that python tools/lint_design_artefact.py exits 0.\n\nYOUR JOB: run your own full independent validation -- do not just trust ORCH's spot-check of the H009 fix was sufficient or that it's the only issue worth finding. In particular:\n1. Read the ENTIRE 935-line design fresh.\n2. Independently verify H003/H004/H005's messages genuinely DO embed differing values that make plain message-text matching safe for them (read the actual H003/H004/H005 detection code in lint_handoffs.py yourself, don't just trust the design's claim).\n3. Verify the H009 fingerprint fix is actually well-specified enough for BACKEND-DEV to implement unambiguously -- is 'stable sorted fingerprint of later_completed's file paths' precise (e.g. exact serialization format, hash vs. raw sorted list) or does it leave a gap an implementation could get wrong?\n4. Verify the design's claim that the one-time generation script reuses (imports, calls) lint_handoffs.py's EXISTING _lint_parsed_handoff/lint_orphans functions rather than reimplementing the H003/H004/H005/H009 predicates a second time -- reimplementation would risk the two copies silently drifting apart over time.\n5. Verify the ACKNOWLEDGED bucket's exit-code interaction is precisely specified (excluded from BLOCKER/MAJOR count, but still individually printed) and that --no-baseline's audit behavior is unambiguous.\n6. Verify the design explicitly and correctly distinguishes this mechanism from --changed mode's GH-594 preexisting_file_finding_codes/preexisting_run_finding_codes logic -- these must compose as two independent gates, not be accidentally merged into one, since they answer different questions (permanent acceptance vs. did-this-branch-introduce-it).\n7. Verify record-location choice (tools/lint_handoffs.baseline.json) is adequately justified against the docs/issues/ alternative.\n8. Confirm the shared-reasons-map decision (one reason per category, not 225 individual reasons) is explicitly justified, not silently assumed.\n9. Confirm all mutation-checkable test specs actually prove: a baseline-matched finding is excluded from gating but still printed; a genuinely NEW finding (including a new H009 with a different later_completed set on an already-baselined file) is NOT excluded; --no-baseline restores full gating.\n10. Confirm scope discipline: does not touch tools/repair_handoff_bookkeeping.py's GH-594 scope, explicitly excludes H013/H001-structural/H006-CONDITIONAL/H007.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR",
+      "H003/H004/H005 message-uniqueness claims independently verified against real source",
+      "H009 fingerprint fix precisely specified, unambiguous for implementation",
+      "Generation script reuse (not reimplementation) of existing predicates confirmed",
+      "ACKNOWLEDGED bucket exit-code/print semantics precisely specified",
+      "Composition with --changed mode confirmed as two independent gates",
+      "Record location and shared-reasons-map decisions explicitly justified",
+      "Test specs cover new-finding-not-suppressed case including H009 fingerprint variation",
+      "Scope discipline confirmed"
+    ],
+    "functions_to_call": [
+      "fn:validate-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Independently validated src/design/iss0627-lint-handoffs-acknowledgment.md (935 lines). lint_design_artefact.py exits 0. Read tools/lint_handoffs.py source directly (not just trusting the design): confirmed _lint_parsed_handoff (lines 147-175) genuinely embeds literal differing timestamp values in H003/H004 messages and H005 is a binary predicate with no same-message-different-finding case -- message-text matching is safe for all three. Confirmed lint_orphans (lines 232-254) genuinely embeds only len(later_completed) (a count), status, and run_id in the H009 message -- never which specific steps completed later -- confirming the H009 collision gap CODE-DESIGNER found is real, and confirmed via git log --diff-filter=D that handoff step-file membership within run directories has genuinely changed historically (1937 deletion-touches), so the scenario is not hypothetical. Confirmed the H009 fix (sorted fingerprint of later_completed file paths, comma-joined) is fully unambiguous: later_completed paths are already POSIX-normalized rel strings at construction time (main(), line 599 os.path.relpath(path).replace(os.sep, \"/\")), so sorted()+join() has exactly one implementation, no hash-vs-list or path-separator ambiguity. Confirmed the generation script design reuses (imports) _lint_parsed_handoff/lint_orphans rather than reimplementing predicates, with the one narrow exception (an 8-line orphan-walk shape to capture later_completed, not the predicate itself) backed by a differential selftest (TS-BASELINE-05) that would catch drift. Confirmed the ACKNOWLEDGED bucket exit-code/print semantics precisely match the real KNOWN_UNATTACHED/[KNOWN] precedent in tools/lint_test_wiring.py (grep-verified). Confirmed composition with --changed mode against the actual main() code (lines 638-665): the design correctly runs baseline-matching as an independent second gate after the existing preexisting_file_finding_codes/preexisting_run_finding_codes block, not merged into it. Confirmed the tools/lint_handoffs.baseline.json location and shared-reasons-map decisions are explicitly justified rather than silently assumed, with real precedent (lint_test_isolation.baseline.json, lint_test_tenant_provisioning.baseline.json both verified to exist as tools/ siblings). Reviewed all 5 mutation-checkable test specs (7.1-7.5): each proves its claim and includes a mutation check that would catch the specific regression it guards against, including 7.3's exact reproduction of the H009 fingerprint scenario. Confirmed scope discipline: no reference to repair_handoff_bookkeeping.py, H013/H001-structural/H006-CONDITIONAL/H007 explicitly and correctly excluded, consistent with ISS-0627.json. One MINOR stylistic note (not a defect): matching_key_for/load_lint_handoffs_baseline/baseline_reason_for/baseline_entry_for are referenced by name/behavior in prose+worked-examples rather than given a formal signature table the way section 2.4 gives the generation script -- behavior is still fully pinned down by the surrounding text and test specs, so this does not create implementation ambiguity.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "matching_key_for, load_lint_handoffs_baseline, baseline_reason_for, and baseline_entry_for are referenced by name and behavior in section 3 prose/worked-examples but not given a formal signature table the way section 2.4 tabulates the generation script's functions. Behavior is fully pinned down elsewhere (the code block at line ~517-530, the worked examples in section 1.4, and the test specs in section 7), so this does not block implementation -- noted for BACKEND-DEV's awareness only."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

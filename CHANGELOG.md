@@ -2,6 +2,28 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — 2026-08-09
+
+### Added
+
+**ISS-0627 — permanent acknowledgment mechanism for the H003/H004/H005/H009 subset of `lint_handoffs.py`'s historical bookkeeping debt (MAJOR)** ([GitHub #596](https://github.com/tvolodi/R-Co/issues/596) — narrowed scope, see note below)
+
+- **The problem this solves:** after ISS-0626's mechanical repair (previous entry below), `tools/lint_handoffs.py` still reported 250 BLOCKER + 110 MAJOR + 1 MINOR findings, none of them fixable by writing a plausible value — H003 (148, `completed_at` precedes `started_at` with no whole-hour-offset signature), H004 (34, `started_at` precedes `created_at`), H005 (5, status `COMPLETED` with `completed_at` never set), and H009 (38, a PENDING/IN_PROGRESS step has later COMPLETED steps in the same run — the pipeline visibly advanced past a step it never closed) all share one property: no field anywhere in the affected file recovers the true value. Guessing one would fabricate audit-trail evidence, which CLAUDE.md's own "a wrong-guess fix is worse than an honestly-flagged gap" principle forbids — but leaving these 225 findings permanently unacknowledged meant every future PR touching `handoffs/` would re-trip the same historical BLOCKER/MAJOR gate forever, with no way to tell a genuinely new defect from an already-reviewed historical one.
+- **What was added — a third outcome, not a suppression.** `tools/lint_handoffs.py` gained an `ACKNOWLEDGED` bucket: a finding matched against `tools/lint_handoffs.baseline.json` (new file, 225 dated, reasoned, attributed entries — 148 H003 + 34 H004 + 5 H005 + 38 H009) is excluded from the BLOCKER/MAJOR exit-code gate but is still individually printed on every run under its own `[ACKNOWLEDGED]` label, with the finding's own message, the shared per-code reason text, and who/when it was accepted. Nothing is hidden or deleted from the report. The baseline was generated once by a new reviewed script, `tools/generate_lint_handoffs_baseline.py`, which reuses `lint_handoffs.py`'s own detection functions rather than reimplementing them, so the baseline's keys are guaranteed to be built the same way the linter itself builds them.
+- **H009's key needed more than message text.** A plain `severity|code|path|message` key (the scheme H003/H004/H005 use safely, since their messages embed the actual timestamp values) is provably insufficient for H009: the message only embeds a *count* of later-completed steps, not *which* steps, and this repo's own history shows run directories have had step files added/removed/reorganized over time — two genuinely different orphan situations (different bypassing steps) can produce byte-identical H009 message text. `tools/lint_handoffs.baseline.json`'s H009 keys therefore append a sorted fingerprint of the actual later-completed file paths, so a new orphan situation with the same count but different membership is correctly treated as unacknowledged. Verified with a dedicated differential test against the real corpus.
+- **A new `--no-baseline` flag** (mirroring `tools/lint_test_tenant_provisioning.py`'s existing flag) disables the acknowledgment filter entirely, for auditing the mechanism itself or reviewing the full historical debt on demand.
+- **This adds a mechanism; it does not weaken detection.** `tools/lint_handoffs.py --no-baseline` is byte-for-byte unchanged from before this run: still 250 BLOCKER + 110 MAJOR + 1 MINOR across the full corpus. `--changed` mode (GH-594's merge-base diff logic) is untouched and composes independently — the two answer different questions ("did this branch introduce this finding" vs. "has this specific historical finding been reviewed and permanently accepted") and are verified to compose correctly rather than being merged into one mechanism.
+- **Verified counts, independently re-measured by ORCH:**
+
+  | Mode | BLOCKER | MAJOR | MINOR | ACKNOWLEDGED |
+  |---|---|---|---|---|
+  | Default (baseline active) | 63 | 72 | 1 | 225 |
+  | `--no-baseline` | 250 | 110 | 1 | — (mechanism disabled) |
+  | `--changed` (this run's own branch) | 0 | 0 | 0 | — |
+
+- **Scope note — GH-596/ISS-0627 originally covered 292 findings across 6 remaining categories (H001-structural, H003, H004, H005, H006-CONDITIONAL, H007, H009, H013). This run resolves the mechanism for 4 of them (H003/H004/H005/H009 = 225 findings) only.** H013 (53 findings — needs an explicit policy decision on whether whole-hour timezone-offset correction counts as recoverable or must join this same acknowledgment mechanism), H001-structural (~4 files — per-file bracket/delimiter judgment, not a class of finding a shared mechanism can safely resolve), H006-CONDITIONAL (1 finding — needs an explicit enum-mapping decision), and H007 (69 findings across ~10 files — a schema-migration/backward-compat decision) remain open, tracked in the same `docs/issues/ISS-0627.json` / GitHub #596, exactly as that issue's own acceptance criteria anticipated ("this is deliberately NOT a single run"). GH-596 stays open, retitled to reflect only this remaining scope.
+- **No requirement IDs involved** — pure tooling/bookkeeping, not a `BPM_Platform_Functional_Requirements.md` item.
+
 ## [Unreleased] — 2026-08-08
 
 ### Fixed
