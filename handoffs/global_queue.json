@@ -1215,14 +1215,11 @@
       "labels": [
         "bug"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-09T18:37:24Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-09T18:37:24Z",
       "started_at": "2026-08-09T18:37:24Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T18:39:06Z",
       "run_id": null,
       "deferred_reason": null
     }
