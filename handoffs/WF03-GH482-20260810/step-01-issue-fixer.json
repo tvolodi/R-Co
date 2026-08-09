@@ -1,0 +1,42 @@
+{
+  "handoff_id": "25ce03b6-ea06-4df2-aca9-b6d09d8c310b",
+  "run_id": "WF03-GH482-20260810",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-09T22:23:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0150.json",
+      "src/design/iss0150-gh482-test-integration-svc-closeout.md"
+    ]
+  },
+  "task": {
+    "description": "Re-scope GH-482/ISS-0150 against current reality. ISS-0630/GH-605 (the migration bootstrap blocker) merged via PR #608 on 2026-08-09, unblocking the close-out design's mandated fresh-database re-measurement (src/design/iss0150-gh482-test-integration-svc-closeout.md) for the first time. Re-run the full zig build test-integration suite fresh against independently created, workspace-owned databases and re-measure the actual current failure count/file-list.",
+    "acceptance_criteria": [
+      "Fresh-database re-measurement performed per close-out design Section 3",
+      "Original 42P01/schema_migrations and C23505/process_definitions_pkey premise re-checked",
+      "Root cause of any remaining failures classified: pre-existing/branch-new/environment/sibling-residual"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created 4 throwaway workspace-owned databases (bpm_gh482_fresh20260810, verify1, verify2, verify3) inside the running db_test container; all fully migrated (121/121, exit 0) and dropped after use. Full zig build test-integration run: 976 pass/68 fail/1 crash/10 skip (1055 total), exit 1. Original 42P01/C23505 signatures: 0 occurrences (reconfirmed disproven). 33 unique failing files: 18 still-open from the original 34-file list, 16 already resolved by prior session fixes. Root-caused a single, well-bounded pattern in adp02/04a/05/06/09/10: hardcoded table_schema='public' catalog queries for tables migrations/GBL-112_tnt01_drop_legacy_public_business_tables.sql moved to tenant_default. Confirmed by direct catalog inspection (information_schema.tables, pg_indexes, pg_policies) on the fresh database.",
+    "artifacts_out": [
+      "src/design/iss0150-gh482-20260810-adp0x-schema-fix.md",
+      "docs/issues/ISS-0150.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2) for the adp0x schema-literal fix design"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T22:23:44Z",
+  "completed_at": "2026-08-09T22:23:44Z"
+}

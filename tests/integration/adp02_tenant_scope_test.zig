@@ -52,7 +52,7 @@ test "TC-ADP-02-01: migration provisions tenant columns, tenant indexes, and ten
         alloc,
         \\SELECT table_name, is_nullable, column_default
         \\FROM information_schema.columns
-        \\WHERE table_schema = 'public'
+        \\WHERE table_schema = 'tenant_default'
         \\  AND column_name = 'tenant_id'
         \\  AND table_name IN (
         \\      'process_definitions',
@@ -86,7 +86,7 @@ test "TC-ADP-02-01: migration provisions tenant columns, tenant indexes, and ten
         alloc,
         \\SELECT indexname
         \\FROM pg_indexes
-        \\WHERE schemaname = 'public'
+        \\WHERE schemaname = 'tenant_default'
         \\  AND indexname IN (
         \\      'uq_definition_tenant_version',
         \\      'uq_active_definition_tenant',
@@ -112,7 +112,7 @@ test "TC-ADP-02-01: migration provisions tenant columns, tenant indexes, and ten
         alloc,
         \\SELECT tablename
         \\FROM pg_policies
-        \\WHERE schemaname = 'public'
+        \\WHERE schemaname = 'tenant_default'
         \\  AND tablename IN (
         \\      'process_definitions',
         \\      'instance_projections',

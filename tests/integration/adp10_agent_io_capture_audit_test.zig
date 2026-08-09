@@ -15,7 +15,7 @@ test "TC-ADP-10-01: migration adds nullable payload_full column and payload inde
         alloc,
         \\SELECT is_nullable
         \\FROM information_schema.columns
-        \\WHERE table_schema = 'public'
+        \\WHERE table_schema = 'tenant_default'
         \\  AND table_name = 'audit_entries'
         \\  AND column_name = 'payload_full'
     ,
@@ -30,7 +30,7 @@ test "TC-ADP-10-01: migration adds nullable payload_full column and payload inde
         alloc,
         \\SELECT indexname
         \\FROM pg_indexes
-        \\WHERE schemaname = 'public'
+        \\WHERE schemaname = 'tenant_default'
         \\  AND indexname = 'idx_audit_entries_payload_full_gin'
     ,
         &.{},

@@ -1,0 +1,73 @@
+{
+  "issue_id": "ISS-0645",
+  "title": "test-integration: 28-file consistent residual failure cluster (post ISS-0630 + adp0x schema-literal fix), spanning unrelated subsystems -- includes adp09 pg_proc cross-tenant overcounting and adp10 audit-context GUC state",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/649",
+  "registered_at": "2026-08-09T22:40:00Z",
+  "registered_by": "ISSUE-FIXER (WF03-GH482-20260810 Step 1, incidental discovery during GH-482/ISS-0150 close-out re-measurement)",
+  "related_to": ["ISS-0150", "ISS-0630", "ISS-0631", "ISS-0182", "ISS-0183", "ISS-0184", "ISS-0185"],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "run_id": "WF03-GH482-20260810",
+  "category": "test-infrastructure/scattered-residual-failures",
+  "affected_areas": [
+    "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
+    "tests/integration/adp10_agent_io_capture_audit_test.zig",
+    "tests/integration/db_integration_test.zig",
+    "tests/integration/env01_test.zig",
+    "tests/integration/env02_test.zig",
+    "tests/integration/env03_test.zig",
+    "tests/integration/event_store_integration_test.zig",
+    "tests/integration/exp201_202_entities_test.zig",
+    "tests/integration/exp601_tier_quota_test.zig",
+    "tests/integration/gh512_t010_regression_test.zig",
+    "tests/integration/idn03_role_access_test.zig",
+    "tests/integration/iss0125_cascade_test.zig",
+    "tests/integration/iss0185_dual_schema_test.zig",
+    "tests/integration/iss0602_cross_process_isolation_test.zig",
+    "tests/integration/iss0605_orphan_self_heal_test.zig",
+    "tests/integration/iss107_tenant_storage_mode_test.zig",
+    "tests/integration/iss202_merge_atomicity_test.zig",
+    "tests/integration/iss206_token_multiset_test.zig",
+    "tests/integration/iss601_state_snapshots_test.zig",
+    "tests/integration/obs03_audit_log_test.zig",
+    "tests/integration/onboarding_realm_guard_test.zig",
+    "tests/integration/sim01_04_simulation_mode_test.zig",
+    "tests/integration/spt01_iss0068_onboarding_schema_test.zig",
+    "tests/integration/svc04_admin_api_test.zig",
+    "tests/integration/xc02_audit_immutability_test.zig",
+    "tests/integration/xc06_backwards_compatibility_test.zig"
+  ],
+  "symptom": "After fixing the 6-file adp02/04a/05/06/09/10 'public' vs 'tenant_default' schema-literal bug (ISS-0150 2026-08-10 pass, see src/design/iss0150-gh482-20260810-adp0x-schema-fix.md), zig build test-integration was run twice against two independently fresh, workspace-owned databases. adp02/04a/05/06 are now fully fixed (0 failures in either run). A 28-file cluster fails DETERMINISTICALLY and IDENTICALLY in both post-fix runs, each with its own distinct assertion failure spanning many unrelated subsystems -- timers, entities, RBAC, webhook outbox, OIDC onboarding, event store, EXP-601 quota, audit chain, cross-process isolation.",
+  "reproduction": "docker exec <db_test_container> psql -U bpm -d postgres -c 'CREATE DATABASE bpm_fresh_probe'; BPM_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_fresh_probe zig build migrate; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_fresh_probe zig build test-integration -- exits 1, ~28 files fail deterministically.",
+  "two_named_examples_diagnosed_in_this_pass": [
+    {
+      "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
+      "test": "TC-ADP-09-01",
+      "root_cause": "The test's pg_proc query (`SELECT proname FROM pg_proc WHERE proname IN ('bpm_audit_compute_chain_hash','bpm_audit_apply_chain_hash','bpm_audit_validate_chain')`) is NOT schema-qualified. pg_proc is a global catalog; these three functions are created once per schema by ordinary (non-GBL-prefixed) migrations, so every provisioned tenant schema carries its own copy. Verified directly: 24 matching (schema, proname) rows across public, tenant_default, and 8 distinct tenant_<uuid> schemas on one verification database, vs. the test's hardcoded expectation of exactly 3. The count is a function of how many tenant schemas other concurrently/previously-run integration tests provisioned in the same suite invocation -- inherently order- and suite-composition-sensitive.",
+      "fix_direction_not_yet_applied": "Qualify with a namespace join (JOIN pg_namespace ON pronamespace = ... WHERE nspname = 'tenant_default') or use to_regprocedure('tenant_default.bpm_audit_compute_chain_hash') style qualified lookups per function, matching the search_path the test actually cares about."
+    },
+    {
+      "file": "tests/integration/adp10_agent_io_capture_audit_test.zig",
+      "test": "TC-ADP-10-02",
+      "root_cause": "Observed failure: expected 'f' found 't' on a boolean-like column, following transaction-local set_config(..., true) GUC calls (bpm.actor_username, bpm.pipeline_run_id, bpm.audit_payload_full) that an insert trigger is expected to read. Consistent with either pool/connection reuse crossing GUC state between test bodies, or a stale row surviving from a different fixture in the same shared schema. Not yet root-caused to the specific mechanism; needs a dedicated diagnosis pass with connection-level tracing.",
+      "fix_direction_not_yet_applied": "Not yet diagnosed to a specific fix; requires isolating whether the GUC is being read on the correct connection/transaction or leaking across pool.acquire() calls."
+    }
+  ],
+  "remaining_26_files": "Not individually root-caused in this pass -- each has its own distinct assertion failure (see full lists in src/design/iss0150-gh482-20260810-adp0x-schema-fix.md Section 5). Diagnosis intentionally deferred to keep this pass's fix (the adp0x schema-literal cluster) small, well-bounded, and single-root-cause, per CLAUDE.md's WF-03 batch-cap discipline.",
+  "flaky_adjacent_files_not_included": [
+    "audit_iss103_test", "iss0129_migration_run_advisory_lock_test", "iss101_timers_failed_status_test",
+    "iss502_spt_cutover_test", "sch02_timer_polling_test", "xc04_kernel_determinism_test",
+    "audit_chain_utf8_test", "exp103_instance_waits_test", "exp401_exp402_comp_restore_test",
+    "iss203_idempotency_keys_test", "iss205_webhook_outbox_test", "sch303_timer_dlq_test", "tnt_schema_isolation_test"
+  ],
+  "flaky_adjacent_files_note": "These 13 files appeared as failures in only one of the two post-fix fresh-database runs (not both), consistent with connection-pool/timer-timing pressure from running ~40 integration binaries concurrently against one PostgreSQL instance -- the same class of noise already documented for TC-DB-02-04 (ISS-0631/GH-606). Not included in this issue's affected_areas; re-measure per-file in isolation before attributing any of them to a real defect.",
+  "pre_existing": true,
+  "pre_existing_evidence": "All 28 files failed identically before this run's adp0x fix was applied (see scratch logs from WF03-GH482-20260810: gh482-fresh-full.log, gh482-shared-full.log, pre-dating any source change in this run other than the 6-file adp0x literal fix, which does not touch any of these 28 files).",
+  "acceptance_criteria": [
+    "adp09 TC-ADP-09-01's pg_proc query qualified by schema (or otherwise made count-stable regardless of how many other tenant schemas exist at test time)",
+    "adp10 TC-ADP-10-02's GUC/session-state root cause identified and fixed or the test isolated from concurrent pool reuse",
+    "Each of the remaining 26 files' failure individually triaged: pre-existing-on-main / branch-new / environment-only / duplicate-of-existing-sibling, per the classification method in src/design/iss0150-gh482-test-integration-svc-closeout.md Section 5",
+    "zig build test-integration exits 0 against a freshly migrated, workspace-owned database, OR any remaining residual is itself re-forwarded with the same rigor (no infinite deferral)"
+  ],
+  "next_action": "File as GitHub issue and add to global queue for its own WF-03 run. Do not fix inline in WF03-GH482-20260810 -- see CLAUDE.md batch-cap and Unblock-Everything scope boundary (blocking vs. adjacent)."
+}

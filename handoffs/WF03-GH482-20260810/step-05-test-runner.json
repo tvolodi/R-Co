@@ -1,0 +1,46 @@
+{
+  "handoff_id": "1a7f7d51-136b-4800-97e7-e10942bed67b",
+  "run_id": "WF03-GH482-20260810",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-09T22:23:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0150.json",
+      "src/design/iss0150-gh482-test-integration-svc-closeout.md"
+    ]
+  },
+  "task": {
+    "description": "Verify the adp0x fix: re-run affected files twice against real PostgreSQL, plus zig build test-integration-svc and a best-effort re-scoped measurement of the broader test-integration suite, to confirm no regression.",
+    "acceptance_criteria": [
+      "Backend services healthy (docker-compose ps, Keycloak, DB)",
+      "Infrastructure Health Checklist passes",
+      "test-env-verify exit 0",
+      "Affected tests re-run twice against real Postgres",
+      "No regression in narrow test-integration-svc target"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Pre-checks: docker-compose ps shows db/db_test/keycloak healthy. zig build test-env-verify: HEALTHY, 10/10 checks (after correcting a stale shell-level BPM_TEST_DB_URL override pointing at a sibling workspace's port 5434 instead of this workspace's 5453 -- .env itself was always correct). zig build migrate: exit 0, 121/121 applied. zig build test-integration-svc: exit 0 (twice, both fresh and shared bpm_test databases). zig build test-integration-adp02 narrow target: exit 0 against shared bpm_test. Full zig build test-integration run twice against two independently fresh, workspace-owned databases: adp02/adp04a/adp05/adp06 confirmed fully fixed (0 failures in either run). adp09/adp10 confirmed still failing in both runs, deterministically, with a different, previously-hidden root cause each -- correctly forwarded rather than claimed fixed. zig build test (unit suite): exit 0, no regression. lint_test_isolation.py: OK. No BLOCKER-severity infrastructure issues.",
+    "artifacts_out": [
+      "scratch/gh482-fresh-full.log",
+      "scratch/gh482-shared-full.log",
+      "scratch/gh482-verify1-full.log",
+      "scratch/gh482-verify3-full.log"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (Step 7) -- no RELEASE-VALIDATOR needed (no BLOCKER-severity issue in this pass's own scope; ISS-0645 forwarded separately)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T22:23:44Z",
+  "completed_at": "2026-08-09T22:23:44Z"
+}

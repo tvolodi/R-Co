@@ -53,7 +53,7 @@ test "TC-ADP-09-01: migration adds nullable chain columns and validation primiti
         alloc,
         \\SELECT column_name, is_nullable
         \\FROM information_schema.columns
-        \\WHERE table_schema = 'public'
+        \\WHERE table_schema = 'tenant_default'
         \\  AND table_name = 'audit_entries'
         \\  AND column_name IN ('chain_hash', 'prev_chain_hash')
         \\ORDER BY column_name ASC
@@ -89,7 +89,7 @@ test "TC-ADP-09-01: migration adds nullable chain columns and validation primiti
         alloc,
         \\SELECT indexname
         \\FROM pg_indexes
-        \\WHERE schemaname = 'public'
+        \\WHERE schemaname = 'tenant_default'
         \\  AND indexname IN (
         \\    'idx_audit_entries_tenant_chain_lookup',
         \\    'uq_audit_entries_tenant_chain_hash'

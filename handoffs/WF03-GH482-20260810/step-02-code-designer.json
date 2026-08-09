@@ -1,0 +1,41 @@
+{
+  "handoff_id": "b9dd1a4d-6332-49da-86a4-e71012b79789",
+  "run_id": "WF03-GH482-20260810",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-09T22:23:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0150.json",
+      "src/design/iss0150-gh482-test-integration-svc-closeout.md"
+    ]
+  },
+  "task": {
+    "description": "Design the fix for the adp02/04a/05/06/09/10 schema-literal bug found during re-scoping. Classify per templates/lego-catalog.md.",
+    "acceptance_criteria": [
+      "Design covers all 6 affected files",
+      "Type classification correct (Type E -- test-fixture query literal correction, not a Type C migration)",
+      "No implementation code in the design doc"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Classified as Type E (test-fixture query-literal correction; not a migration, not a parameter file shape). Wrote src/design/iss0150-gh482-20260810-adp0x-schema-fix.md covering root cause (GBL-112 moved 7 business tables out of public into tenant_default; 6 adp0x test files never updated), the exact fix (11 WHERE-clause literal occurrences across 6 files, public -> tenant_default), and explicitly scoped out adp09/adp10's second, distinct, deeper root causes (unqualified pg_proc cross-tenant overcount; audit-context GUC state) plus the 26-file unrelated residual cluster -- both forwarded as ISS-0645/GH-649 rather than folded into this design.",
+    "artifacts_out": [
+      "src/design/iss0150-gh482-20260810-adp0x-schema-fix.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-09T22:23:44Z",
+  "completed_at": "2026-08-09T22:23:44Z"
+}
