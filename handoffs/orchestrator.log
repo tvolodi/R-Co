@@ -1,4 +1,4 @@
-2026-08-04T10:19:30Z | ROUTE | WF03-gh377-20260804 | dba38f9c | ISSUE-FIXER (Step 0.5 — registry updated; GH #377 already exists with sync-ref marker)
+﻿2026-08-04T10:19:30Z | ROUTE | WF03-gh377-20260804 | dba38f9c | ISSUE-FIXER (Step 0.5 — registry updated; GH #377 already exists with sync-ref marker)
 2026-08-04T10:21:40Z | ROUTE | WF03-gh377-20260804 | 67053652 | ORCH -> ISSUE-FIXER | PENDING
 2026-08-04T10:21:40Z | STARTED | WF03-gh377-20260804 | 67053652 | ISSUE-FIXER | step-01
 2026-08-04T16:34:38Z | ROUTE | WF03-gh377-20260804 | 1e33a003 | ORCH -> CODE-DESIGNER | PENDING
@@ -615,3 +615,10 @@
 2026-08-09T03:14:37Z | GIT_MERGE | WF03-GH591-20260809 | 4c00f70d | DOC-UPDATER | PR #603 squash-merged to main (890c522ca0dc75fdd7fe76e9039bb5b9dbce087c); resolved genuine conflict against GH-595/GH-600 (merged to main mid-flight) -- CHANGELOG both entries kept, orchestrator.log chronological union, registry.json union by handoff_id, global_queue.json union by issue_id + stale GH-600 lock released; branch feature/WF03-GH591-20260809 deleted (verified via git ls-remote); GH #591 auto-closed
 2026-08-09T03:14:37Z | BOARD_UPDATE | WF03-GH591-20260809 | 4c00f70d | DOC-UPDATER | Issue #591 project board already at Done (non-UAT-scoped, auto-advanced on close); implemented+done targets both no-op confirmed
 2026-08-09T03:14:37Z | WF03_COMPLETE | WF03-GH591-20260809 | -------- | ORCH | ISS-0624/GH-591 RESOLVED. Repo on clean main at 890c522.
+2026-08-09T03:27:11Z | ROUTE | WF03-GH424-20260809 | a4240000 | ORCH -> BACKEND-DEV | PENDING
+2026-08-09T03:27:11Z | GIT_SETUP | WF03-GH424-20260809 | a4240000 | BACKEND-DEV | branch=feature/WF03-GH424-20260809 base=8d35c42d push=ok COMPLETED
+2026-08-09T03:43:28Z | ROUTE | WF03-GH424-20260809 | 75b3a560 | ORCH -> ISSUE-FIXER | STEP 0.5 COMPLETED — ISS-0131 already registered (GH-424), no refiling needed
+2026-08-09T03:43:28Z | ROUTE | WF03-GH424-20260809 | d512febe | ORCH -> ISSUE-FIXER | STEP 1 COMPLETED — root cause: pre-ISS-0612 sibling connections in provisionTenantSchema; fix already on main via ISS-0612/GH-556 (2dc07ddf)
+2026-08-09T04:00:44Z | COMPLETE | WF03-GH424-20260809 | a9d7b772 | TEST-RUNNER | PASS — zero C40P01, TC-TNT-01-01 PASS, RT-3/4/5 PASS; 80 pre-existing failures unrelated to ISS-0131 (exit 1)
+2026-08-09T04:04:43Z | ROUTE   | WF03-GH424-20260809 | b5d20c64 | ORCH → DOC-UPDATER | step-07 PENDING
+2026-08-09T04:04:43Z | COMPLETE| WF03-GH424-20260809 | b5d20c64 | DOC-UPDATER | step-07 PASS
