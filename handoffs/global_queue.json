@@ -817,6 +817,23 @@
       "completed_at": "2026-08-09T05:12:22Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-383",
+      "issue_number": 383,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/383",
+      "title": "ISS-0120 \u2014 EXP-402 orphan restore SQL leaves parameter $2 untyped",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "RESOLVED",
+      "lock": null,
+      "added_at": "2026-08-09T05:14:02Z",
+      "started_at": "2026-08-09T05:14:02Z",
+      "completed_at": "2026-08-09T05:43:39Z",
+      "run_id": "WF03-GH383-20260809",
+      "deferred_reason": null
     }
   ]
 }

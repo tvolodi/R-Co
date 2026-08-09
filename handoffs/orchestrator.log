@@ -659,3 +659,4 @@
 2026-08-09T05:24:45Z | VALIDATE | WF03-GH383-20260809 | 8095a21a | CODE-DESIGN-VALIDATOR | PASS - lint OK, ::text cast correct, no other changes
 2026-08-09T05:27:48Z | COMPLETE | WF03-GH383-20260809 | 5241e358 | BACKEND-DEV | PASS — ::text cast added in markRestoredOrphanInTx, zig build/test/sqllint all exit=0, commit eeb3560d pushed
 2026-08-09T05:41:34Z | COMPLETE | WF03-GH383-20260809 | 4963abb8 | TEST-RUNNER | PASS — unit exit=0, TC-EXP-402 no 42P18, pre-existing infra failures noted
+2026-08-09T05:43:39Z | COMPLETE | WF03-GH383-20260809 | 1705e4a9 | DOC-UPDATER | PASS — CHANGELOG + ISS-0120 RESOLVED + GH-383 closed

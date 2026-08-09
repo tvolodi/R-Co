@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0120 — EXP-402 `markRestoredOrphanInTx` 42P18 error fixed by adding `::text` cast to SQL parameter `$2` (MAJOR)** ([GitHub #383](https://github.com/tvolodi/R-Co/issues/383))
+
+- **The bug:** `markRestoredOrphanInTx` in `src/engine/reconstruction.zig` used `$2` in a `jsonb_build_object(...)` call where PostgreSQL could not infer the parameter's data type, producing `ERROR 42P18: could not determine data type of parameter $2` and causing TC-EXP-402-02 to fail at runtime.
+- **The fix:** changed `$2` to `$2::text` in the `jsonb_build_object` SQL expression to supply an explicit cast, removing the ambiguity. No logic change — parameter value and usage are identical; only the type hint is added.
+- **Verified:** `zig build` exit 0, `zig build test` exit 0, `python3 tools/lint_sql_param_types.py src tests` 0 BLOCKER/0 MAJOR/0 MINOR. TC-EXP-402-01 and TC-EXP-402-02 both pass with no 42P18 errors. Test report: `tests/reports/report-20260809-WF03-GH383-20260809.yaml`. Design: `src/design/iss0120-gh383-exp402-param-cast.md`.
+- **No requirement IDs involved** — SQL parameter typing fix, not a requirement change.
+
 **ISS-0630 — 9 `-- scope: public` migrations wrote unqualified tables, breaking fresh-database bootstrap at 011 (BLOCKER)** ([GitHub #605](https://github.com/tvolodi/R-Co/issues/605))
 
 - **The bug:** commit `a2a8c68` (ISS-0185 / GH-518, merged 2026-08-08) added `-- scope: public` headers to 9 numeric migration files as part of a dual-schema-shadow cleanup, but did not qualify those files' `CREATE TABLE` / `INSERT INTO` statements with `public.`. The scope-mismatch guard (`declaresUnqualifiedTableWork()` in `src/db/migrations.zig`, built by ISS-0604/GH-470 to catch exactly this defect class) correctly rejects any fresh apply of these files: `zig build migrate` against a genuinely empty database failed at `migrations/011_webhook_subscriptions.sql`, and pre-seeding past 011 reproduced the identical error at the next affected file, `022_obs06_alerting_state.sql` — confirming a systemic pattern across all 9 files.

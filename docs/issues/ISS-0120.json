@@ -1,7 +1,7 @@
 {
   "id": "ISS-0120",
   "title": "EXP-402 orphan restore SQL leaves parameter $2 untyped",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "sql-parameter-typing",
   "run_id": "WF03-gh364-20260801",
@@ -12,12 +12,12 @@
     "src/export/"
   ],
   "created_at": "2026-08-01T08:52:13Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-09T05:43:39Z",
   "notes": "Cluster I from the final integration run: TC-EXP-402-02 fails in markRestoredOrphanInTx with PostgreSQL 42P18, could not determine data type of parameter $2. Evidence: _integration_final.log lines 42498-42528.",
   "root_cause": "Initial hypothesis: markRestoredOrphanInTx uses parameter $2 only in a context where PostgreSQL cannot infer its type, without an explicit SQL cast or typed comparison target.",
   "candidate_resolution": "Add an explicit PostgreSQL cast for parameter $2 matching the destination/domain type, confirm all placeholders are used consistently, and retain prepared statements without interpolation.",
-  "resolution": null,
-  "files_to_change": [],
+  "resolution": "Added ::text cast to $2 in markRestoredOrphanInTx jsonb_build_object call in src/engine/reconstruction.zig. TC-EXP-402-01 and TC-EXP-402-02 pass with no 42P18 errors.",
+  "files_to_change": ["src/engine/reconstruction.zig"],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/383",
-  "prevention": []
+  "prevention": ["Add SQL param typing test or lint coverage for variadic-any 42P18 pattern (see ISS-0632/GH-610)"]
 }

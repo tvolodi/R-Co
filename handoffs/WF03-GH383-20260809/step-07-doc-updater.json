@@ -1,0 +1,53 @@
+{
+  "handoff_id": "1705e4a9-9879-4eb5-8631-048e5e1d628e",
+  "run_id": "WF03-GH383-20260809",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-09T05:41:40Z",
+  "started_at": "2026-08-09T05:41:40Z",
+  "status": "COMPLETED",
+  "priority": "MAJOR",
+  "context": {
+    "stage": "WF-03 Step 7 — documentation",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "4963abb8-1f94-43f7-ae84-2ca081a1d1de"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0120.json",
+      "tests/reports/report-20260809-WF03-GH383-20260809.yaml"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md with fix entry for ISS-0120/GH-383 (EXP-402 markRestoredOrphanInTx $2::text cast). Update docs/issues/ISS-0120.json to RESOLVED. Close GH-383.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with ISS-0120 fix entry",
+      "ISS-0120.json status set to RESOLVED with resolved_at, resolution, files_to_change, prevention",
+      "GH-383 closed with comment",
+      "registry.json updated with step-07 entry",
+      "orchestrator.log appended with COMPLETE line"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG updated with ISS-0120 fix entry. ISS-0120.json set to RESOLVED. GH-383 closed. Registry and orchestrator.log updated. Commit pushed to feature/WF03-GH383-20260809.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0120.json",
+      "handoffs/WF03-GH383-20260809/step-07-doc-updater.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV for Step Final (git-merge, PR, squash-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-08-09T05:43:39Z"
+}
