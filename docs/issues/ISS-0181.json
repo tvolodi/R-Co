@@ -77,7 +77,8 @@
   "run_id": "WF03-GH512-20260808",
   "resolution": {
     "released_in": "feature/WF03-GH512-20260808",
-    "merged_at": null,
+    "merged_at": "2026-08-08T13:27:07Z",
+    "merged_as": "PR #586 (commit bc26d43), not the originally-recorded branch/commit refs -- the branch name and short-SHA commits recorded here were superseded during the actual merge, which is why merged_at was left null even though the merge itself completed",
     "commits": [
       "06b8b327",
       "22ac3fc0"
@@ -85,7 +86,8 @@
     "migration_target": "tools/lint_test_isolation.baseline.json T010 BLOCKER 184->74",
     "regression_test": "tests/integration/gh512_t010_regression_test.zig (TC-RG-01/02/03 all PASS)",
     "closed_by_workflow": "WF03-GH512-20260808",
-    "note": "Closed by WF03-GH512-20260808 Step 5 PASS; 110 UUID sites converted to TestHarness.newUuid()/newUuidString(allocator); 51 sites marked RETAIN with comment per design §R1/R2/R3; 1 design-mandated RETAIN added in commit 22ac3fc0 (GH-512 platform-admin UUID substring-search target)."
+    "note": "Closed by WF03-GH512-20260808 Step 5 PASS; 110 UUID sites converted to TestHarness.newUuid()/newUuidString(allocator); 51 sites marked RETAIN with comment per design §R1/R2/R3; 1 design-mandated RETAIN added in commit 22ac3fc0 (GH-512 platform-admin UUID substring-search target).",
+    "verified_2026-08-10": "Confirmed on current main: raw (--no-baseline) T010 BLOCKER count is exactly 74, matching the recorded ceiling. TC-RG-01 (the actual ceiling check) passes. TC-RG-02 (an exact total_issues snapshot-equality check, 115 expected) now fails at 117 -- this is expected, harmless drift from unrelated T050 baseline entries added by other WF-03 runs after GH-512 merged (env_test_root.zig/svc_test_root.zig etc.), not a T010 regression. The lock on this issue in handoffs/global_queue.json was never released after the merge -- released now as a bookkeeping-only fix, no code change."
   },
   "updated_at": "2026-08-08T13:22:00Z"
 }
