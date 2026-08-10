@@ -54,6 +54,21 @@ test "TC-XC-02-01: audit entries are append-only (immutability trigger)" {
     try harness.conn.exec("BEGIN", &.{});
     defer harness.conn.exec("ROLLBACK", &.{}) catch {};
 
+    // ISS-0645 / GH-649, ISS-0653 / GH-662: TestHarness.init() sets
+    // session_replication_role = 'replica' session-wide so resetTestData()
+    // can DELETE audit_entries without tripping the immutability guard --
+    // but that same setting suppresses every other trigger too, including
+    // the append-only immutability trigger this test exists to exercise.
+    // Every OTHER test in this file that needs real trigger behavior goes
+    // through insertAuditEntry(), which already scopes 'origin' around its
+    // own INSERT and restores 'replica' immediately after -- but this test
+    // calls harness.conn.exec() directly (both the INSERT and the UPDATE
+    // under test), so it never got that scoping and the UPDATE silently
+    // succeeded instead of being rejected by the trigger. Set 'origin' for
+    // the whole test body; there is nothing to restore since the entire
+    // sequence runs inside one transaction that is always rolled back.
+    try harness.conn.exec("SET session_replication_role = 'origin'", &.{});
+
     const audit_id = try uuid_mod.newUuidV4(alloc);
     const tenant_id = try uuid_mod.newUuidV4(alloc);
     const actor_id = try uuid_mod.newUuidV4(alloc);
@@ -496,6 +511,18 @@ test "TC-XC-02-07: chain hash incorporates all audit fields" {
     // declares p_resource_id TEXT, matching audit_entries.resource_id. See
     // adp09_tamper_evident_audit_chain_test.zig TC-ADP-09-05 for the same fix
     // and its rationale.
+    //
+    // ISS-0653 / GH-662: the canonical 13-parameter signature (GBL-121 /
+    // 1107) is (tenant_id, audit_id, actor_id, action, resource_type,
+    // resource_id, timestamp, before_state JSONB, after_state JSONB,
+    // pipeline_run_id, payload_full JSONB, prev_chain_hash TEXT, trace_id
+    // TEXT) -- this call had 'trace-123'/'trace-999' positioned as the 11th
+    // argument (payload_full, JSONB), not the 13th (trace_id), so Postgres
+    // rejected the bare string as invalid JSON (C22P02 "Token trace is
+    // invalid"). Reordered so trace_id lands in its actual parameter slot,
+    // with payload_full given a real JSONB literal and prev_chain_hash
+    // given the all-zero sentinel hash (matching the sibling adp09 test's
+    // usage of the same function).
     var query1 = try harness.conn.query(
         alloc,
         \\SELECT
@@ -503,13 +530,13 @@ test "TC-XC-02-07: chain hash incorporates all audit fields" {
         \\    $1::uuid, $2::uuid, $3::uuid, 'test.action',
         \\    'test', $4, NOW()::timestamptz,
         \\    '{"key":"value"}'::jsonb, '{"result":"ok"}'::jsonb,
-        \\    $5::uuid, 'trace-123', '0000000000000000000000000000000000000000000000000000000000000000'::text, NULL
+        \\    $5::uuid, '{}'::jsonb, '0000000000000000000000000000000000000000000000000000000000000000'::text, 'trace-123'
         \\  ) AS hash1,
         \\  bpm_audit_compute_chain_hash(
         \\    $1::uuid, $2::uuid, $3::uuid, 'test.action',
         \\    'test', $4, NOW()::timestamptz,
         \\    '{"key":"value"}'::jsonb, '{"result":"ok"}'::jsonb,
-        \\    $5::uuid, 'trace-999', '0000000000000000000000000000000000000000000000000000000000000000'::text, NULL
+        \\    $5::uuid, '{}'::jsonb, '0000000000000000000000000000000000000000000000000000000000000000'::text, 'trace-999'
         \\  ) AS hash2
     ,
         &.{ tenant_id, actor_id, resource_id, resource_id, ref_id },

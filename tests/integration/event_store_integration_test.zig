@@ -17,10 +17,12 @@ const std = @import("std");
 const portable_env = @import("env");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
+const build_options = @import("build_options");
 
 const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
+const provisionTenantSchema = bpm.provisioning.provisionTenantSchema;
 
 const Store = bpm.store.Store;
 const AppendParams = bpm.store.AppendParams;
@@ -37,6 +39,10 @@ const RegisterParams = bpm.registry.RegisterParams;
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
+
+fn migrationsDir() []const u8 {
+    return build_options.migrations_dir;
+}
 
 /// Read BPM_TEST_DB_URL from the environment.
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
@@ -190,7 +196,7 @@ test "TC-ES-01-01: valid append returns AppendResult with is_duplicate=false and
     const inst_uuid = try parseUuid(alloc, inst_str);
     const actor_uuid = h.newUuid();
 
-    const result = try store.append(alloc, AppendParams{
+    var result = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES01_TYPE",
         .payload = "{\"x\":1}",
@@ -198,6 +204,7 @@ test "TC-ES-01-01: valid append returns AppendResult with is_duplicate=false and
         .idempotency_key = "es01-idem-01",
         .metadata = null,
     });
+    defer result.record.deinit(alloc);
 
     try std.testing.expect(!result.is_duplicate);
     // sequence_number must be >= 1.
@@ -258,7 +265,7 @@ test "TC-ES-02-01: two sequential appends receive sequence_numbers 1 and 2" {
     const inst_uuid = try parseUuid(alloc, inst_str);
     const actor_uuid = h.newUuid();
 
-    const r1 = try store.append(alloc, AppendParams{
+    var r1 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES02_TYPE",
         .payload = "{}",
@@ -266,7 +273,8 @@ test "TC-ES-02-01: two sequential appends receive sequence_numbers 1 and 2" {
         .idempotency_key = "es02-idem-01",
         .metadata = null,
     });
-    const r2 = try store.append(alloc, AppendParams{
+    defer r1.record.deinit(alloc);
+    var r2 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES02_TYPE",
         .payload = "{}",
@@ -274,6 +282,7 @@ test "TC-ES-02-01: two sequential appends receive sequence_numbers 1 and 2" {
         .idempotency_key = "es02-idem-02",
         .metadata = null,
     });
+    defer r2.record.deinit(alloc);
 
     try std.testing.expectEqual(@as(i64, 1), r1.record.sequence_number);
     try std.testing.expectEqual(@as(i64, 2), r2.record.sequence_number);
@@ -314,7 +323,7 @@ test "TC-ES-02-02: Store.read returns events sorted by ascending sequence_number
     const inst_uuid = try parseUuid(alloc, inst_str);
     const actor_uuid = h.newUuid();
 
-    _ = try store.append(alloc, AppendParams{
+    var discard_result_1 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES02B_TYPE",
         .payload = "{}",
@@ -322,7 +331,8 @@ test "TC-ES-02-02: Store.read returns events sorted by ascending sequence_number
         .idempotency_key = "es02b-idem-01",
         .metadata = null,
     });
-    _ = try store.append(alloc, AppendParams{
+    defer discard_result_1.record.deinit(alloc);
+    var discard_result_2 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES02B_TYPE",
         .payload = "{}",
@@ -330,7 +340,8 @@ test "TC-ES-02-02: Store.read returns events sorted by ascending sequence_number
         .idempotency_key = "es02b-idem-02",
         .metadata = null,
     });
-    _ = try store.append(alloc, AppendParams{
+    defer discard_result_2.record.deinit(alloc);
+    var discard_result_3 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES02B_TYPE",
         .payload = "{}",
@@ -338,6 +349,7 @@ test "TC-ES-02-02: Store.read returns events sorted by ascending sequence_number
         .idempotency_key = "es02b-idem-03",
         .metadata = null,
     });
+    defer discard_result_3.record.deinit(alloc);
 
     const events = try store.read(alloc, inst_uuid, ReadOpts{
         .up_to_sequence = null,
@@ -482,7 +494,7 @@ test "TC-ES-04-01: readGlobal returns events in ascending global_seq order" {
     const uuid_b = try parseUuid(alloc, inst_b);
     const actor_uuid = h.newUuid();
 
-    const r1 = try store.append(alloc, AppendParams{
+    var r1 = try store.append(alloc, AppendParams{
         .instance_id = uuid_a,
         .event_type = "ES04_TYPE",
         .payload = "{}",
@@ -490,7 +502,8 @@ test "TC-ES-04-01: readGlobal returns events in ascending global_seq order" {
         .idempotency_key = "es04-idem-a1",
         .metadata = null,
     });
-    const r2 = try store.append(alloc, AppendParams{
+    defer r1.record.deinit(alloc);
+    var r2 = try store.append(alloc, AppendParams{
         .instance_id = uuid_b,
         .event_type = "ES04_TYPE",
         .payload = "{}",
@@ -498,7 +511,8 @@ test "TC-ES-04-01: readGlobal returns events in ascending global_seq order" {
         .idempotency_key = "es04-idem-b1",
         .metadata = null,
     });
-    const r3 = try store.append(alloc, AppendParams{
+    defer r2.record.deinit(alloc);
+    var r3 = try store.append(alloc, AppendParams{
         .instance_id = uuid_a,
         .event_type = "ES04_TYPE",
         .payload = "{}",
@@ -506,6 +520,7 @@ test "TC-ES-04-01: readGlobal returns events in ascending global_seq order" {
         .idempotency_key = "es04-idem-a2",
         .metadata = null,
     });
+    defer r3.record.deinit(alloc);
 
     // Read all events with global_seq > the value before r1.
     const after: i64 = r1.record.global_seq - 1;
@@ -531,8 +546,6 @@ test "TC-ES-04-01: readGlobal returns events in ascending global_seq order" {
         try std.testing.expect(ev.global_seq > prev_seq);
         prev_seq = ev.global_seq;
     }
-    _ = r2;
-    _ = r3;
 }
 
 // TC-ES-04-02
@@ -588,6 +601,7 @@ test "TC-ES-04-02: readGlobal with after_global_seq cursor returns only later ev
             .metadata = null,
         });
     }
+    defer for (&results) |*r| r.record.deinit(alloc);
 
     // Use global_seq of 3rd event as cursor → should get events 4 and 5.
     const cursor = results[2].record.global_seq;
@@ -742,7 +756,7 @@ test "TC-ES-05-02: append with payload failing registered schema returns Payload
 
     // ── Direction 1: a CONFORMING payload is accepted and persisted ──────────
     // Without this half, "reject everything" would satisfy the reject case.
-    const ok_result = try store.append(alloc, AppendParams{
+    var ok_result = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = type_name,
         .payload =
@@ -752,6 +766,7 @@ test "TC-ES-05-02: append with payload failing registered schema returns Payload
         .idempotency_key = idem_ok,
         .metadata = null,
     });
+    defer ok_result.record.deinit(alloc);
     try std.testing.expect(!ok_result.is_duplicate);
 
     // ── Direction 2: a NON-CONFORMING payload is rejected ────────────────────
@@ -836,7 +851,7 @@ test "TC-ES-06-01: pointInTime filters out events created after the timestamp" {
     const inst_uuid = try parseUuid(alloc, inst_str);
     const actor_uuid = h.newUuid();
 
-    _ = try store.append(alloc, AppendParams{
+    var discard_result_4 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES06_TYPE",
         .payload = "{}",
@@ -844,7 +859,8 @@ test "TC-ES-06-01: pointInTime filters out events created after the timestamp" {
         .idempotency_key = "es06-idem-01",
         .metadata = null,
     });
-    _ = try store.append(alloc, AppendParams{
+    defer discard_result_4.record.deinit(alloc);
+    var discard_result_5 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES06_TYPE",
         .payload = "{}",
@@ -852,6 +868,7 @@ test "TC-ES-06-01: pointInTime filters out events created after the timestamp" {
         .idempotency_key = "es06-idem-02",
         .metadata = null,
     });
+    defer discard_result_5.record.deinit(alloc);
 
     // Capture the cutoff from the DB clock (not the client clock) to avoid
     // host/container clock skew.  pg_sleep(0.01) then advances the server
@@ -876,7 +893,7 @@ test "TC-ES-06-01: pointInTime filters out events created after the timestamp" {
         try tc_conn.exec("SELECT pg_sleep(0.01)", &.{});
     }
 
-    _ = try store.append(alloc, AppendParams{
+    var discard_result_6 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES06_TYPE",
         .payload = "{}",
@@ -884,6 +901,7 @@ test "TC-ES-06-01: pointInTime filters out events created after the timestamp" {
         .idempotency_key = "es06-idem-03",
         .metadata = null,
     });
+    defer discard_result_6.record.deinit(alloc);
 
     const events = try store.pointInTime(alloc, inst_uuid, cutoff);
     defer {
@@ -945,7 +963,7 @@ test "TC-ES-06-02: read with up_to_sequence returns exactly events 1..K" {
         "es06b-idem-04", "es06b-idem-05",
     };
     for (idem_keys) |key| {
-        _ = try store.append(alloc, AppendParams{
+        var discard_result_7 = try store.append(alloc, AppendParams{
             .instance_id = inst_uuid,
             .event_type = "ES06B_TYPE",
             .payload = "{}",
@@ -953,6 +971,7 @@ test "TC-ES-06-02: read with up_to_sequence returns exactly events 1..K" {
             .idempotency_key = key,
             .metadata = null,
         });
+        defer discard_result_7.record.deinit(alloc);
     }
 
     const events = try store.read(alloc, inst_uuid, ReadOpts{
@@ -1021,7 +1040,7 @@ test "TC-ES-07-01: archive moves expired events to events_archive" {
     const inst_uuid = try parseUuid(alloc, inst_str);
     const actor_uuid = h.newUuid();
 
-    _ = try store.append(alloc, AppendParams{
+    var discard_result_8 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES07_ARCHIVE",
         .payload = "{}",
@@ -1029,6 +1048,7 @@ test "TC-ES-07-01: archive moves expired events to events_archive" {
         .idempotency_key = "es07-idem-01",
         .metadata = null,
     });
+    defer discard_result_8.record.deinit(alloc);
 
     // Insert a retention policy that expires everything immediately (keep_days = 0).
     const policy_conn = try pool.acquire();
@@ -1142,7 +1162,7 @@ test "TC-ADP-11-02: non-protected families retain hard-delete configurability" {
     const inst_uuid = try parseUuid(alloc, inst_str);
     const actor_uuid = h.newUuid();
 
-    _ = try store.append(alloc, AppendParams{
+    var discard_result_9 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ADP11_AUDIT_EVENT",
         .payload = "{}",
@@ -1150,6 +1170,7 @@ test "TC-ADP-11-02: non-protected families retain hard-delete configurability" {
         .idempotency_key = "adp11-idem-01",
         .metadata = null,
     });
+    defer discard_result_9.record.deinit(alloc);
 
     try store.upsertRetentionPolicy(alloc, RetentionPolicyUpsertParams{
         .event_type = "ADP11_AUDIT_EVENT",
@@ -1233,7 +1254,7 @@ test "TC-ADP-11-03: protected keep_days policy archives and preserves queryabili
     );
     defer alloc.free(started_payload);
 
-    _ = try store.append(alloc, AppendParams{
+    var discard_result_10 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "INSTANCE_STARTED",
         .payload = started_payload,
@@ -1241,6 +1262,7 @@ test "TC-ADP-11-03: protected keep_days policy archives and preserves queryabili
         .idempotency_key = "adp11-idem-02",
         .metadata = null,
     });
+    defer discard_result_10.record.deinit(alloc);
 
     try store.upsertRetentionPolicy(alloc, RetentionPolicyUpsertParams{
         .event_type = "INSTANCE_STARTED",
@@ -1309,7 +1331,7 @@ test "TC-ES-08-04: absent metadata field defaults to empty object in returned re
     const inst_uuid = try parseUuid(alloc, inst_str);
     const actor_uuid = h.newUuid();
 
-    const result = try store.append(alloc, AppendParams{
+    var result = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ES08_TYPE",
         .payload = "{}",
@@ -1317,6 +1339,7 @@ test "TC-ES-08-04: absent metadata field defaults to empty object in returned re
         .idempotency_key = "es08-idem-01",
         .metadata = null,
     });
+    defer result.record.deinit(alloc);
 
     // metadata must be "{}" (the empty JSON object), never null.
     try std.testing.expectEqualStrings("{}", result.record.metadata);
@@ -1359,7 +1382,7 @@ test "TC-ADP-01-01: default-tenant behavior remains backward compatible" {
     const inst_uuid = try parseUuid(alloc, inst_str);
     const actor_uuid = h.newUuid();
 
-    _ = try store.append(alloc, AppendParams{
+    var discard_result_11 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ADP01_TYPE",
         .payload = "{}",
@@ -1367,6 +1390,7 @@ test "TC-ADP-01-01: default-tenant behavior remains backward compatible" {
         .idempotency_key = "adp01-default-idem-01",
         .metadata = null,
     });
+    defer discard_result_11.record.deinit(alloc);
 
     const legacy_read = try store.read(alloc, inst_uuid, ReadOpts{
         .up_to_sequence = null,
@@ -1427,14 +1451,52 @@ test "TC-ADP-01-02: tenant-scoped reads isolate events by tenant_id" {
     const def_str = try h.newUuidString(alloc);
     defer alloc.free(def_str);
     try insertInstance(&pool, inst_str, def_str);
-    defer cleanupInstance(&pool, inst_str, &.{ "adp01-iso-idem-default", "adp01-iso-idem-alt" });
 
     const inst_uuid = try parseUuid(alloc, inst_str);
     const actor_uuid = h.newUuid();
     const alt_tenant = try h.newUuidString(alloc);
     defer alloc.free(alt_tenant);
 
-    _ = try store.append(alloc, AppendParams{
+    // ISS-0653 / GH-662: alt_tenant is a genuine, freshly-generated tenant
+    // identity that routes through the same schema-per-tenant machinery as
+    // any real tenant -- store.append() issues `SET LOCAL search_path TO
+    // tenant_<id>,public` for whichever tenant_id it is given. Without
+    // provisioning the physical schema first, `instance_projections` (and
+    // every other per-tenant table) simply does not exist there (C42P01).
+    // Same root cause and same fix pattern as ISS-0654/GH-663's sim01 fix.
+    // provisionTenantSchema is idempotent, safe to call unconditionally.
+    try provisionTenantSchema(alloc, &pool, alt_tenant, migrationsDir());
+
+    // event_type_registry and instance_projections are both per-tenant-schema
+    // tables; registerType() and insertInstance()'s INSERT are both
+    // unqualified, so they land wherever the threadlocal tenant context
+    // currently routes pool.acquire(). Switch the context to alt_tenant's
+    // own schema before registering the type and inserting this instance's
+    // row there, matching the schema store.append() will use for alt_tenant.
+    bpm.api_tenant_context.set(alt_tenant);
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = "ADP01_ISO_TYPE",
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+    try insertInstance(&pool, inst_str, def_str);
+    // Restore the default-tenant context immediately so every subsequent
+    // pool.acquire() in this test (including the cleanup below, until it
+    // explicitly re-switches) routes to tenant_default as expected.
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
+
+    // Both tenant's rows (inserted above under each schema's own context)
+    // must be cleaned up under that same context -- cleanupInstance()'s
+    // DELETEs are unqualified, same as insertInstance()'s INSERT.
+    defer {
+        cleanupInstance(&pool, inst_str, &.{"adp01-iso-idem-default"});
+        bpm.api_tenant_context.set(alt_tenant);
+        cleanupInstance(&pool, inst_str, &.{"adp01-iso-idem-alt"});
+        bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
+    }
+
+    var discard_result_12 = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "ADP01_ISO_TYPE",
         .payload = "{}",
@@ -1442,8 +1504,9 @@ test "TC-ADP-01-02: tenant-scoped reads isolate events by tenant_id" {
         .idempotency_key = "adp01-iso-idem-default",
         .metadata = null,
     });
+    defer discard_result_12.record.deinit(alloc);
 
-    _ = try store.append(alloc, AppendParams{
+    var discard_result_13 = try store.append(alloc, AppendParams{
         .tenant_id = alt_tenant,
         .instance_id = inst_uuid,
         .event_type = "ADP01_ISO_TYPE",
@@ -1452,6 +1515,7 @@ test "TC-ADP-01-02: tenant-scoped reads isolate events by tenant_id" {
         .idempotency_key = "adp01-iso-idem-alt",
         .metadata = null,
     });
+    defer discard_result_13.record.deinit(alloc);
 
     const default_events = try store.read(alloc, inst_uuid, ReadOpts{
         .tenant_id = bpm.store.DEFAULT_TENANT_ID,
@@ -1467,11 +1531,22 @@ test "TC-ADP-01-02: tenant-scoped reads isolate events by tenant_id" {
         alloc.free(default_events);
     }
 
+    // Unlike store.append() (which issues its own `SET LOCAL search_path`
+    // scoped to params.tenant_id), store.read() uses opts.tenant_id only as
+    // a row-level filter (`AND tenant_id = $N`) -- it trusts the pool
+    // connection's *already-active* search_path for which schema's `events`
+    // table it queries. The alt-tenant row was written into
+    // tenant_<alt_tenant_hex>.events by store.append() above (which does
+    // its own routing internally), so reading it back requires switching
+    // the threadlocal tenant context to alt_tenant first, matching the
+    // schema store.append() used to write it.
+    bpm.api_tenant_context.set(alt_tenant);
     const alt_events = try store.read(alloc, inst_uuid, ReadOpts{
         .tenant_id = alt_tenant,
         .up_to_sequence = null,
         .up_to_timestamp = null,
     });
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     defer {
         for (alt_events) |rec| {
             alloc.free(rec.event_type);
@@ -1499,11 +1574,20 @@ test "TC-ADP-01-03: migration provisions tenant columns/defaults and tenant inde
     const conn = try pool.acquire();
     defer pool.release(conn);
 
+    // ISS-0653 / GH-662: `events`/`events_archive` were created in `public`
+    // by migration 001, then migration 027 (ADP-01, a plain numbered
+    // migration, applied to every schema via runForSchema()) added the
+    // tenant_id column and these indexes there and in every tenant schema.
+    // GBL-112 (TNT-01) later DROPped both tables from `public` entirely,
+    // leaving `tenant_default` (this test's makePool()-provisioned schema)
+    // as the only schema where they still exist. Same anti-pattern as
+    // anti-patterns.md's "legacy table name in source/test after migration
+    // rename" entry -- the schema literal was never updated after TNT-01.
     const cols = try conn.query(
         alloc,
         \\SELECT table_name, is_nullable, column_default
         \\FROM information_schema.columns
-        \\WHERE table_schema = 'public'
+        \\WHERE table_schema = 'tenant_default'
         \\  AND column_name = 'tenant_id'
         \\  AND table_name IN ('events', 'events_archive')
         \\ORDER BY table_name ASC
@@ -1528,7 +1612,7 @@ test "TC-ADP-01-03: migration provisions tenant columns/defaults and tenant inde
         alloc,
         \\SELECT indexname
         \\FROM pg_indexes
-        \\WHERE schemaname = 'public'
+        \\WHERE schemaname = 'tenant_default'
         \\  AND indexname IN (
         \\      'idx_events_tenant_instance_seq',
         \\      'idx_events_tenant_global_seq',
@@ -1975,7 +2059,7 @@ test "TC-ES-01-04: append to CANCELLED instance returns InstanceTerminated" {
     defer cleanupInstance(&pool, active_str, &.{active_key});
     try insertInstanceWithStatus(&pool, active_str, active_def, "ACTIVE");
     const active_uuid = try parseUuid(alloc, active_str);
-    _ = try store.append(alloc, AppendParams{
+    var discard_result_14 = try store.append(alloc, AppendParams{
         .instance_id = active_uuid,
         .event_type = type_name,
         .payload = "{}",
@@ -1983,6 +2067,7 @@ test "TC-ES-01-04: append to CANCELLED instance returns InstanceTerminated" {
         .idempotency_key = active_key,
         .metadata = null,
     });
+    defer discard_result_14.record.deinit(alloc);
     try std.testing.expectEqual(@as(i64, 1), try countEvents(&pool, alloc, active_key));
 }
 
@@ -2136,7 +2221,7 @@ test "TC-ES-07-02: archive returns count of moved rows and leaves non-expired ev
     const actor_uuid = try parseUuid(alloc, actor_str);
 
     for (keys) |k| {
-        _ = try store.append(alloc, AppendParams{
+        var discard_result_15 = try store.append(alloc, AppendParams{
             .instance_id = inst_uuid,
             .event_type = type_name,
             .payload = "{}",
@@ -2144,6 +2229,7 @@ test "TC-ES-07-02: archive returns count of moved rows and leaves non-expired ev
             .idempotency_key = k,
             .metadata = null,
         });
+        defer discard_result_15.record.deinit(alloc);
     }
 
     {
