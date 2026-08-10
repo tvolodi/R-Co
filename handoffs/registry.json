@@ -23400,6 +23400,17 @@
       "created_at": "2026-08-10T04:17:35Z",
       "status": "COMPLETED",
       "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "b3f1a2c4-8d5e-4a6f-9c3b-1e7d5a4f2b90",
+      "file": "handoffs/WF03-batch-GH280-301-triage-20260810/step-01-orch-batch-triage.json",
+      "run_id": "WF03-batch-GH280-301-triage-20260810",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ORCH",
+      "created_at": "2026-08-10T16:14:30Z",
+      "status": "COMPLETED",
+      "stage": "Batch verification/triage"
     }
   ],
   "last_updated": "2026-08-09T18:40:00Z"

@@ -1,7 +1,7 @@
 {
   "id": "ISS-0073",
   "title": "OIDC callback uses bpm-default realm authority instead of tenant realm — signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "BLOCKER",
   "category": "logic error — singleton cache bypasses realm resolution at callback time",
   "run_id": "WF03-oidc-callback-realm-20260616",
@@ -12,7 +12,9 @@
     "web/src/auth/tenantConfig.ts"
   ],
   "created_at": "2026-06-16T05:47:49Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-10T16:14:30Z",
+  "resolution": "redirect_uri now embeds ?realm=<slug> via buildRedirectArgs() (web/src/auth/oidcRedirectArgs.ts), called from AuthProvider.tsx:44 and ProtectedRoute.tsx:17. OidcCallbackPage.tsx:45 resolves realm via resolveRealmFromUrl() with sessionStorage fallback before exchanging the code, matching fix_approach exactly.",
+  "verification": "Batch re-triage 2026-08-10 (WF03-batch-GH280-301-triage-20260810): source-verified. Unit tests pass (TC-OIDC-F02-01, TC-OIDC-F06-01, etc. — same 5/5 run as ISS-0072). Minor note: a near-duplicate buildRedirectArgs also lives inline in AuthProvider.tsx:13-17 — harmless duplication, not a functional bug, not blocking closure.",
   "diagnosis": {
     "symptom": "After Alice logs in via the SwiftRoute Keycloak realm, Keycloak redirects to /auth/callback. A redirect loop starts. The app keeps cycling back to / and re-initiating Keycloak login.",
     "root_cause_file": "web/src/pages/OidcCallbackPage.tsx",
