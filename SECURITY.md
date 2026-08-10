@@ -41,7 +41,9 @@ Before any real deployment, replace **every** value in `.env` — particularly `
 
 ## Security posture of the codebase
 
-Enforced by directives in `CLAUDE.md` and checked by linters under `tools/`:
+Enforced by directives in `docs/agents/instructions/security-invariants.md` and
+`docs/agents/instructions/core-directives.md` (canonical location as of GH-291/ISS-0076/PI-01;
+previously stated directly in `CLAUDE.md`) and checked by linters under `tools/`:
 
 - **No SQL string interpolation.** All queries use `$1`/`$2` placeholders via prepared statements; `tools/lint_sql_param_types.py` checks parameter typing.
 - **No secrets in source.** Credentials are read from the environment; `BPM_IDP_ADMIN_CREDENTIALS_REF` uses an indirection (`env:VAR_NAME`) rather than an inline value.

@@ -322,3 +322,42 @@ HANDOFF_ID: <uuid of the handoff being processed>
 ```
 
 The agent reads the handoff file at `handoffs/<file>` as its primary task definition. It MUST NOT act on verbal instructions that contradict the handoff file content.
+
+---
+
+## 9. Canonical Instruction Surfaces (GH-291 / ISS-0076 / PI-01)
+
+Before 2026-08-11, the full text of every per-role instruction set lived in **four** places
+at once: `CLAUDE.md` (1850 lines and growing), `.claude/agents/*.md`, `.github/agents/*.agent.md`,
+and `.github/instructions/*.md` — with no stated canonical copy. Each surface drifted
+independently; `CLAUDE.md` in particular had been edited directly by six back-to-back WF-03
+runs (make.ps1/PI-04, `zig build check`/PI-03, security invariants/PI-02) without the
+per-agent files being updated to match, so an agent reading only `.claude/agents/backend-dev.md`
+would have missed the codegen workflow, the `zig build check` gate, and the numbered
+security invariants pointer.
+
+**This is now fixed by declaring one canonical location per kind of rule:**
+
+| Content | Canonical location | Everything else is |
+|---|---|---|
+| Per-`AGENT_ID` role instructions (the full "how do I do my job" text for BACKEND-DEV, ORCH, TEST-RUNNER, etc.) | **`.claude/agents/*.md`** | An adapter. `CLAUDE.md` holds only a one-line pointer per role. `.github/agents/*.agent.md` and `.github/instructions/*.md` are the parallel entry point for the GitHub Copilot harness — they are not deleted, but they must not be independently maintained; if a Copilot-harness file and its `.claude/agents/` counterpart disagree, that is a defect to fix, not two valid variants. |
+| Cross-cutting rules that bind every role (Zero Manual Work, Unblock-Everything, No Speculation, file placement, bookkeeping, gate integrity, output formats) | **`docs/agents/instructions/core-directives.md`** (`applyTo: **`) | `CLAUDE.md` points here instead of restating the rules. |
+| Security invariants (tenant isolation, sandbox capability gating, secrets handling, etc.) | **`docs/agents/instructions/security-invariants.md`** (PI-02, unchanged by PI-01) | Per-agent files (`backend-dev.md`, `frontend-dev.md`, `issue-fixer.md`, `security-reviewer.md`) point here rather than restating the invariants. |
+| Handoff lifecycle mechanics (claiming, encoding, timestamps, legal `result.status`, the `lint_handoffs.py` gate) | **`docs/agents/shared/HANDOFF_PROTOCOL.md`** (pre-existing) | Every per-agent file opens with a pointer to this file. |
+| Agent roster, capability matrix, handoff schema, artifact locations (this document) | **`docs/agents/AGENT_SYSTEM.md`** | — |
+
+**Rule for every future change:** find the ONE canonical file for the kind of rule being
+added or changed, edit it there, and — if the change is per-role — do not also edit
+`CLAUDE.md`'s pointer table unless the role's existence or one-line description changed. A
+change that touches only `CLAUDE.md`, or only a `.github/` adapter, without touching the
+matching canonical file, is very likely wrong.
+
+**`.github/agents/*.agent.md` and `.github/instructions/*.md` status as of PI-01:** left
+untouched. They already independently reference `docs/agents/shared/HANDOFF_PROTOCOL.md`
+(verified via `python tools/lint_agent_docs.py`, which checks all three surfaces) and are not
+uniformly stale — some individual files there are in some respects richer than the
+`.claude/agents/` files were before this reconciliation (e.g. `bo-swiftroute.agent.md` had
+scenario-authoring detail `CLAUDE.md` lacked). But they are a **separately drifted set**, not
+verified section-by-section against `.claude/agents/` in this pass — that full Copilot-harness
+reconciliation is out of scope for PI-01 (Effort: M) and is a candidate for its own follow-up
+issue if genuine content gaps are found there.

@@ -23,12 +23,13 @@ pipeline checked any of them. They shipped reviewed by nobody.
 **How the numbering maps to the four rules that used to live in CLAUDE.md's BACKEND-DEV
 section:** those four rules are not dropped — they are folded into the numbered scheme below
 so there is exactly one place "the security rules" live, not two diverging copies.
-`CLAUDE.md`'s BACKEND-DEV section now points here instead of restating them. See INV-4
+BACKEND-DEV's canonical instructions (`.claude/agents/backend-dev.md`, moved out of
+`CLAUDE.md` itself by GH-291/ISS-0076/PI-01) point here instead of restating them. See INV-4
 (secrets from environment), INV-7 (no SQL string interpolation — new, was rule 1), INV-8 (no
 `catch unreachable` on realistic failure paths — new, was rule 3), and the transition.zig I/O
-rule (kept as project-wide guidance in `CLAUDE.md` directly, since it is a purity constraint
-on one specific file rather than a tenant-security invariant — it is cross-referenced from
-INV-8's Reference for completeness).
+rule (kept as project-wide guidance directly in `.claude/agents/backend-dev.md`, since it is a
+purity constraint on one specific file rather than a tenant-security invariant — it is
+cross-referenced from INV-8's Reference for completeness).
 
 ---
 

@@ -101,8 +101,9 @@ Record the computed score and tier in the test spec header (`tests/specs/<REQ-ID
 see §3) so `TEST-DESIGN-VALIDATOR` can confirm the chosen layers match the
 score without re-deriving it.
 
-**Fail-first rule:** see the TEST-DESIGN-VALIDATOR checklist in `CLAUDE.md`
-— every new or modified test must be confirmed to fail against the
+**Fail-first rule:** see the TEST-DESIGN-VALIDATOR checklist in
+`.claude/agents/test-design-validator.md` (canonical per GH-291/ISS-0076/PI-01 —
+previously in `CLAUDE.md`) — every new or modified test must be confirmed to fail against the
 pre-change code. A test that passes both before and after the change proves
 nothing.
 
