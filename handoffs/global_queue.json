@@ -1284,16 +1284,13 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/651",
       "title": "adp10_agent_io_capture_audit_test TC-ADP-10-02: tenant_default's bpm_audit_apply_chain_hash() reverts under full concurrent test-integration suite",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T08:51:22Z"
-      },
+      "status": "DEFERRED",
+      "lock": null,
       "added_at": "2026-08-10T08:51:22Z",
       "started_at": "2026-08-10T08:51:22Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T13:51:06Z",
       "run_id": null,
-      "deferred_reason": null,
+      "deferred_reason": "Two real bugs fixed (schema drop in TC-SPT-01-05, GBL-133 ledger poisoning) via PR #674, but the core symptom (tenant_default trigger function reverting under concurrency) still reproduces per independent pre-merge review. Issue reopened on GitHub with corrected findings. Needs a follow-up investigation tracing runForSchema's applied-snapshot vs re-execution mechanism via the DDL-event-trigger technique developed in this review.",
       "issue_number": 651,
       "labels": [
         "bug"
