@@ -1395,14 +1395,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/660",
       "title": "exp201_202_entities_test TC-EXP-202-01/02/03: createRecord's tenant-schema qualification mismatches test fixtures that never provision a physical tenant schema",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T08:41:33Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T08:41:33Z",
       "started_at": "2026-08-10T08:41:33Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T08:50:58Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 660,
