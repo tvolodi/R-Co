@@ -1,8 +1,27 @@
 #!/usr/bin/env python3
 """Clean all data from the test database before running integration tests.
 
-Uses docker-compose exec to run DELETE statements via psql inside the
-db_test container.  Tables are deleted in FK-safe order.
+Runs DELETE/TRUNCATE statements via psql against the test database. Tables
+are deleted in FK-safe order.
+
+Connection mode (GH-292 / ISS-0077 / PI-02): if BPM_TEST_DB_URL is set, psql
+connects to it directly. Otherwise this falls back to the historical
+`docker-compose exec -T db_test psql ...` path, which requires a local
+docker-compose stack with a `db_test` service and is what every developer
+workflow and every zig build test-integration-* step used exclusively before
+this change.
+
+The direct-URL mode exists because build.zig wires this script as an
+unconditional ordering predecessor of every `test-integration-*` step (see
+addIntegrationRun / src/design/iss0148_clean_test_db_ordering_and_lock.md),
+so any CI job that runs one of those steps against a plain `services:
+postgres:` container (no docker-compose stack, e.g. the tenant_isolation_tests
+job added by GH-292) needs a way to reach that database that does not assume
+docker-compose exists on the runner. BPM_TEST_DB_URL is already the
+established interface `zig build test-integration-*` itself requires — this
+just extends this one script to honour the same variable instead of assuming
+a docker-compose-based local dev environment. Nothing about the
+docker-compose path changes for a local run that does not set the variable.
 """
 import argparse
 import subprocess
@@ -11,6 +30,20 @@ import os
 
 DB = "bpm_test"
 USER = "bpm"
+
+# Set (once) by main() from the BPM_TEST_DB_URL environment variable, if
+# present. When None, every psql-invoking helper below falls back to the
+# historical `docker-compose exec -T db_test psql ...` invocation.
+_DIRECT_DB_URL: str | None = None
+
+
+def _psql_base_cmd() -> list[str]:
+    """Return the psql invocation prefix (connection portion only) for the
+    active connection mode — direct BPM_TEST_DB_URL if set, else
+    docker-compose exec into the db_test container."""
+    if _DIRECT_DB_URL:
+        return ["psql", _DIRECT_DB_URL]
+    return ["docker-compose", "exec", "-T", "db_test", "psql", "-U", USER, "-d", DB]
 
 # Tables in FK-safe deletion order (children before parents).
 # NOTE: schema_migrations is deliberately excluded — we clean test DATA only,
@@ -43,12 +76,9 @@ SYSTEM_ROLES = [
 
 
 def run_psql(sql: str) -> bool:
-    """Execute SQL via docker-compose exec db_test psql.  Returns True on success."""
-    cmd = [
-        "docker-compose", "exec", "-T", "db_test",
-        "psql", "-U", USER, "-d", DB,
-        "-c", sql,
-    ]
+    """Execute SQL via psql (direct BPM_TEST_DB_URL, or docker-compose exec
+    db_test as a fallback — see _psql_base_cmd). Returns True on success."""
+    cmd = _psql_base_cmd() + ["-c", sql]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         # Ignore "relation does not exist" errors (table may not have been created yet).
@@ -63,11 +93,7 @@ def run_psql(sql: str) -> bool:
 def run_psql_query(sql: str) -> list[str]:
     """Execute a SELECT via psql in tuples-only/unaligned mode and return the
     rows as a list of raw strings. Returns [] on any failure (best-effort)."""
-    cmd = [
-        "docker-compose", "exec", "-T", "db_test",
-        "psql", "-U", USER, "-d", DB,
-        "-t", "-A", "-c", sql,
-    ]
+    cmd = _psql_base_cmd() + ["-t", "-A", "-c", sql]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         return []
@@ -92,9 +118,7 @@ def run_psql_script(script: str) -> subprocess.CompletedProcess:
 
     Returns the CompletedProcess so the caller can inspect returncode/stdout/stderr.
     """
-    cmd = [
-        "docker-compose", "exec", "-T", "db_test",
-        "psql", "-U", USER, "-d", DB,
+    cmd = _psql_base_cmd() + [
         # -v ON_ERROR_STOP=1 so a failure inside the script aborts the
         # transaction rather than silently continuing past it with the lock held.
         "-v", "ON_ERROR_STOP=1",
@@ -291,7 +315,13 @@ def main() -> None:
         ),
     )
     args = parser.parse_args()
-    print("Cleaning test database...", flush=True)
+
+    global _DIRECT_DB_URL
+    _DIRECT_DB_URL = os.environ.get("BPM_TEST_DB_URL") or None
+    if _DIRECT_DB_URL:
+        print("Cleaning test database (direct BPM_TEST_DB_URL connection)...", flush=True)
+    else:
+        print("Cleaning test database...", flush=True)
     # Use TRUNCATE with CASCADE to properly handle foreign key dependencies.
     # This is much faster than DELETE and guarantees all dependent rows are removed.
     # Order doesn't matter with CASCADE, but we keep the original order for clarity.
