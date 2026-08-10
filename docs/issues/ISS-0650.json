@@ -1,23 +1,24 @@
 {
   "issue_id": "ISS-0650",
   "title": "TC-EXP-301-08 leaks 3 allocations on the duplicate-idempotency-key path in event_store store.append/rowToEventRecord",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MINOR",
   "category": "memory-leak/test-quality",
-  "run_id": "WF03-GH654-20260810",
+  "run_id": "WF03-GH657-20260810",
   "handoff_id": null,
   "affected_areas": [
     "src/event_store/store.zig",
     "tests/integration/effects_subsystem_test.zig"
   ],
   "created_at": "2026-08-10T06:10:00Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-10T06:03:09Z",
   "notes": "Discovered incidentally while fixing GH-654/ISS-0649's TC-EXP-301-09 pool-exhaustion bug in src/effects/worker.zig -- unrelated to that fix, this test (TC-EXP-301-08, a sibling test in the same file) passes (32/32 tests pass) but the DebugAllocator reports 3 leaked allocations. Stack trace: tests/integration/effects_subsystem_test.zig:898 (`const second = try store.append(allocator, params)`) -> src/event_store/store.zig:472 (`break :orig_blk rowToEventRecord(allocator, live_rows.rows[0], \"\") catch ...`) -> src/event_store/store.zig:1180 (`const payload = try allocator.dupe(u8, if (row.len > 3) row[3] orelse \"{}\" else \"{}\")`). This is the same code path GH-521/ISS-0187 fixed the PoolError.ExhaustedPool symptom for (store.append's duplicate-idempotency-key lookup path, which acquires a second connection to fetch the original event's row) -- but that fix apparently did not free the EventRecord returned by rowToEventRecord() on the duplicate-replay branch, or a caller along that path drops it without calling its .deinit()/free helper.",
-  "root_cause": "Not yet investigated in depth -- candidate hypothesis: the duplicate-idempotency-key branch in store.append() constructs an EventRecord via rowToEventRecord() to return as the 'this was a duplicate, here is the original' result, but either (a) the AppendResult wrapping it does not get its owned fields freed by the test's own cleanup, or (b) store.append() itself leaks the record on an internal early-return path before handing it back to the caller. Needs a proper diagnosis pass with the actual allocation call stack (already have it, see notes) checked against every code path between rowToEventRecord's return and the test's use of the result.",
+  "root_cause": "Confirmed hypothesis (a): TC-EXP-301-08 calls store.append(allocator, params) twice with the same idempotency key to exercise the duplicate-detection path. Both calls return an AppendResult whose .record field owns 3 allocations (event_type, payload, metadata -- see EventRecord.deinit() in src/event_store/store.zig:96-100). The test read .is_duplicate off both results but never called .record.deinit(allocator) on either one, so both AppendResults' owned EventRecords leaked. This is a test-fixture omission, not a bug in store.append() or rowToEventRecord() itself -- the established caller contract (already followed correctly by tests/integration/event_store_integration_test.zig:409,420) is that every store.append() result's .record must be freed by the caller via defer.",
   "acceptance_criteria": [
     "TC-EXP-301-08 passes with 0 leaked allocations (DebugAllocator reports clean)",
     "No change to the test's or store.append()'s observable behavior (duplicate detection, is_duplicate flag, event count) -- this is a pure memory-lifetime fix"
   ],
   "next_action": "File as GitHub issue and add to global queue. MINOR severity -- does not fail any test (leak detection is a separate DebugAllocator diagnostic, not part of the test assertion), and is unrelated to GH-654/ISS-0649's own scope.",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/657"
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/657",
+  "resolution": "Added the missing `defer first.record.deinit(allocator);` and `defer second.record.deinit(allocator);` calls to TC-EXP-301-08 in tests/integration/effects_subsystem_test.zig, matching the established ownership pattern in tests/integration/event_store_integration_test.zig:409,420. Changed `const first`/`const second` to `var` since .deinit() requires a mutable receiver. No behavioral change -- .is_duplicate and event-count assertions are unchanged.\n\nVerified: zig build test-integration-effects-subsystem -- 32/32 pass, 0 leaks (was 32/32 pass with 3 leaked allocations before this fix), re-run twice to confirm consistency. zig build exits 0 with no error-set output. tools/lint_sql_param_types.py src tests -- 0 BLOCKER/MAJOR/MINOR. Full zig build test regression: 89/89 steps succeeded, 1011/1075 tests passed (64 skipped) -- identical to the pre-fix session baseline, confirming no unrelated breakage."
 }

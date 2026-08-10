@@ -894,8 +894,10 @@ test "TC-EXP-301-08: duplicate EFFECT_EMITTED events with same idempotency key a
         .pipeline_run_id = null,
     };
 
-    const first = try store.append(allocator, params);
-    const second = try store.append(allocator, params);
+    var first = try store.append(allocator, params);
+    defer first.record.deinit(allocator);
+    var second = try store.append(allocator, params);
+    defer second.record.deinit(allocator);
     try testing.expect(!first.is_duplicate);
     try testing.expect(second.is_duplicate);
 

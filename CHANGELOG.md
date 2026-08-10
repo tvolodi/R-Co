@@ -14,6 +14,14 @@ All notable changes to the BPM Platform are documented here.
 - **Incidental finding filed separately:** [ISS-0650/GH-657](https://github.com/tvolodi/R-Co/issues/657) (MINOR) — `TC-EXP-301-08` (unrelated sibling test) leaks 3 allocations on the duplicate-idempotency-key path in `event_store.store.append`/`rowToEventRecord`; does not fail the test, DebugAllocator diagnostic only.
 - **No requirement status change.**
 
+**ISS-0650 — `effects_subsystem_test` TC-EXP-301-08 leaks 3 allocations on the duplicate-idempotency-key path fixed (MINOR)** ([GitHub #657](https://github.com/tvolodi/R-Co/issues/657))
+
+- **Context:** incidental finding from ISS-0649/GH-654's work, filed and forwarded to the global queue rather than fixed inline.
+- **Root cause:** `TC-EXP-301-08` calls `store.append(allocator, params)` twice with the same idempotency key to exercise duplicate detection. Both calls return an `AppendResult` whose `.record` field owns 3 allocations (`event_type`, `payload`, `metadata` — see `EventRecord.deinit()` in `src/event_store/store.zig:96-100`). The test read `.is_duplicate` off both results but never called `.record.deinit(allocator)` on either — a test-fixture omission, not a bug in `store.append()`/`rowToEventRecord()` itself. The established caller contract (already followed correctly in `tests/integration/event_store_integration_test.zig:409,420`) requires every `store.append()` result's `.record` to be freed via `defer`.
+- **The fix:** added the missing `defer first.record.deinit(allocator);` / `defer second.record.deinit(allocator);` calls, matching the existing convention; changed `const first`/`const second` to `var` since `.deinit()` needs a mutable receiver. No behavioral change.
+- **Verified:** `zig build test-integration-effects-subsystem` — 32/32 pass, 0 leaks (was 32/32 pass with 3 leaked allocations), re-run twice. `zig build` exits 0, no `error set` output. `lint_sql_param_types.py` 0 findings. `zig build test` — 89/89 steps, 1011/1075 tests passed (64 skipped), unchanged from baseline.
+- **No requirement status change** — test-fixture memory-lifetime fix.
+
 **ISS-0648 — `gh512_t010_regression_test` TC-RG-02 snapshot drift fixed (MINOR)** ([GitHub #653](https://github.com/tvolodi/R-Co/issues/653))
 
 - **Root cause:** `tests/specs/fixtures/gh512-baseline-snapshot.json` pinned `tools/lint_test_isolation.baseline.json`'s expected entry count at 115, set on 2026-08-08. Commit `28bf140` (PR #636, the ISS-0089/GH-338 sibling fix for `env_test_root.zig`/`svc_test_root.zig`'s T050 false positives) legitimately added 2 new baseline entries — both correctly-suppressed findings for pure re-export aggregator files with no `BPM_TEST_DB_URL` reference of their own — but the snapshot was never updated to match, so TC-RG-02 failed against current `main`.
