@@ -3,7 +3,7 @@
   "generated_at": "2026-08-08T23:57:55Z",
   "source": "tools/generate_lint_handoffs_baseline.py --apply --now 2026-08-08T23:57:55Z --run-id WF03-GH596-20260808",
   "regenerated_by": "WF03-GH596-20260808 (GitHub #596 / ISS-0627, H003/H004/H005/H009 permanent-acknowledgment subset)",
-  "regeneration_note": "Initial generation: 225 entries (148 H003, 34 H004, 5 H005, 38 H009), one per finding tools/lint_handoffs.py reported against the full corpus at generation time. See docs/issues/ISS-0627.json for the shared root-cause narrative this baseline's reason_ref values point to.",
+  "regeneration_note": "Initial generation: 225 entries (148 H003, 34 H004, 5 H005, 38 H009), one per finding tools/lint_handoffs.py reported against the full corpus at generation time. See docs/issues/ISS-0627.json for the shared root-cause narrative this baseline's reason_ref values point to. Appended 2026-08-10 by WF03-GH666-20260810 (GH #666 / ISS-0656): +1 H004 (handoffs/WF03-GH631-20260809/step-00-backend-dev.json) and +1 H009 (handoffs/WF03-GH360-20260809/step-00-backend-dev.json), both discovered incidentally during GH-652's Step Final review, both dated 2026-08-09 (predating this session's earliest touch of the baseline). Appended by hand to the existing 289-entry file rather than via generate_lint_handoffs_baseline.py --apply, because that script only ever emits the H003/H004/H005/H009 subset and would silently drop the 53 H013 + 9 H007 entries added to this file by other processes after the script's original 2026-08-08 run -- confirmed by a dry run that produced only 229 entries against this file's actual 289.",
   "reasons": {
     "H003": "ISS-0627 \u00a7H003: completed_at precedes started_at with no whole-hour-offset signature (that subset is H013, separately tracked). No field in the handoff file recovers the true value; any correction would be fabricated audit-trail data. Accepted as permanent historical record.",
     "H004": "ISS-0627 \u00a7H004: started_at precedes created_at. Same unrecoverable-history problem as H003, opposite field pair. Accepted as permanent historical record.",
@@ -2313,10 +2313,10 @@
     {
       "file": "handoffs/WF02-dsl12-20260528/step-final-backend-dev.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-final-backend-dev.json|started_at (2026-05-27T20:32:17Z) precedes created_at (2026-05-28T02:14:20Z) — the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-final-backend-dev.json|started_at (2026-05-27T20:32:17Z) precedes created_at (2026-05-28T02:14:20Z) \u2014 the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-09T21:14:51Z",
-      "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627, revealed by this run's own H001 JSON-syntax fix on the same file — same unrecoverable-history category as the rest of H004)"
+      "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627, revealed by this run's own H001 JSON-syntax fix on the same file \u2014 same unrecoverable-history category as the rest of H004)"
     },
     {
       "file": "handoffs/WF02-ee02-20260522/step-03-test-designer.json",
@@ -2324,7 +2324,23 @@
       "matching_key": "BLOCKER|H005|handoffs/WF02-ee02-20260522/step-03-test-designer.json|status is COMPLETED but completed_at is unset.",
       "reason_ref": "H005",
       "acknowledged_at": "2026-08-09T21:14:51Z",
-      "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627, revealed by this run's own H001 JSON-syntax fix on the same file — same unrecoverable-history category as the rest of H005)"
+      "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627, revealed by this run's own H001 JSON-syntax fix on the same file \u2014 same unrecoverable-history category as the rest of H005)"
+    },
+    {
+      "file": "handoffs/WF03-GH631-20260809/step-00-backend-dev.json",
+      "code": "H004",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-GH631-20260809/step-00-backend-dev.json|started_at (2026-08-09T12:26:24Z) precedes created_at (2026-08-09T12:26:49Z) \u2014 the step began before it was routed.",
+      "reason_ref": "H004",
+      "acknowledged_at": "2026-08-10T07:26:14Z",
+      "acknowledged_by": "WF03-GH666-20260810 (GitHub #666 / ISS-0656)"
+    },
+    {
+      "file": "handoffs/WF03-GH360-20260809/step-00-backend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF03-GH360-20260809/step-00-backend-dev.json|status is IN_PROGRESS but 3 later step(s) in run WF03-GH360-20260809 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-GH360-20260809/step-0.5-issue-fixer.json,handoffs/WF03-GH360-20260809/step-07-doc-updater.json,handoffs/WF03-GH360-20260809/step-1-issue-fixer.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-10T07:26:14Z",
+      "acknowledged_by": "WF03-GH666-20260810 (GitHub #666 / ISS-0656)"
     }
   ]
 }
