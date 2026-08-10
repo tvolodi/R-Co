@@ -4,6 +4,7 @@
 const std = @import("std");
 const portable_env = @import("env");
 const testing = std.testing;
+const build_options = @import("build_options");
 
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
@@ -11,6 +12,7 @@ const TestHarness = helpers.TestHarness;
 const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
+const provisionTenantSchema = bpm.provisioning.provisionTenantSchema;
 
 // Root-level export required so pool connections apply tenant-schema search_path
 // instead of falling back to search_path=public (see audit_iss103_test.zig).
@@ -19,6 +21,10 @@ const entities = bpm.entities;
 const event_store = bpm.store;
 const event_registry = bpm.registry;
 const uuid_mod = bpm.uuid;
+
+fn migrationsDir() []const u8 {
+    return build_options.migrations_dir;
+}
 
 const TestFixture = struct {
     tenant_id: []const u8,
@@ -231,6 +237,19 @@ test "TC-EXP-202-01: create record writes latest projection row" {
     var fixture = try newFixture(allocator, "exp202_create");
     defer fixture.deinit(allocator);
 
+    // ISS-0651 / GH-660: src/entities/commands.zig's getOrCreateEntityTypeInstance()
+    // explicitly schema-qualifies its writes to tenant_<id> (a deliberate,
+    // correct invariant from ISS-0156/GH-475 -- see that issue for why),
+    // but this fixture's freshly-generated tenant_id had no physical schema
+    // provisioned, so those writes failed with C42P01. Provision it, then
+    // switch the ambient tenant context so pool.acquire() (both `conn` below
+    // and every unqualified call inside entities.definition.*) also resolves
+    // to the same schema -- giving this test full per-run schema isolation
+    // instead of sharing tenant_default.
+    try provisionTenantSchema(allocator, &pool, fixture.tenant_id, migrationsDir());
+    bpm.api_tenant_context.set(fixture.tenant_id);
+    defer bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
+
     const conn = try pool.acquire();
     defer pool.release(conn);
 
@@ -301,6 +320,11 @@ test "TC-EXP-202-02: update record increments version sequence and updates state
 
     var fixture = try newFixture(allocator, "exp202_update");
     defer fixture.deinit(allocator);
+
+    // ISS-0651 / GH-660: see TC-EXP-202-01's comment for the full rationale.
+    try provisionTenantSchema(allocator, &pool, fixture.tenant_id, migrationsDir());
+    bpm.api_tenant_context.set(fixture.tenant_id);
+    defer bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -396,6 +420,11 @@ test "TC-EXP-202-03: delete record marks projection row as deleted" {
 
     var fixture = try newFixture(allocator, "exp202_delete");
     defer fixture.deinit(allocator);
+
+    // ISS-0651 / GH-660: see TC-EXP-202-01's comment for the full rationale.
+    try provisionTenantSchema(allocator, &pool, fixture.tenant_id, migrationsDir());
+    bpm.api_tenant_context.set(fixture.tenant_id);
+    defer bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
 
     const conn = try pool.acquire();
     defer pool.release(conn);
