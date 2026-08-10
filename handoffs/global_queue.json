@@ -1392,6 +1392,71 @@
       "labels": [
         "bug"
       ]
+    },
+    {
+      "issue_id": "ISS-0651",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/660",
+      "title": "exp201_202_entities_test TC-EXP-202-01/02/03: createRecord tenant-schema qualification mismatch",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T06:50:51Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0652",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/661",
+      "title": "db_integration_test TC-DB-03-02: segfault in pg.Conn.close/deinit",
+      "severity": "BLOCKER",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T06:50:58Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0653",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/662",
+      "title": "event_store/xc02/xc06 audit-chain cluster residuals",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T06:51:03Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0654",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/663",
+      "title": "sim01/obs03 PgError.ServerError cluster",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T06:51:07Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0655",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/664",
+      "title": "xc04_kernel_determinism_test TC-XC-04-04 function signature mismatch",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T06:51:12Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

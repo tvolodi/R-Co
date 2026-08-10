@@ -2267,6 +2267,131 @@ pub fn build(b: *std.Build) void {
     test_integration_ext02_step.dependOn(&clean_test_db.step);
     test_integration_ext02_step.dependOn(&run_ext02_integration_tests.step);
 
+    // ISS-0647 / GH-652: narrow steps for the 9 tests/integration/*.zig files
+    // in this triage batch that were only ever reachable bundled inside
+    // main_test.zig (imported there, never given their own addTest root), so
+    // they could not be re-measured in true single-binary isolation. Mirrors
+    // the ee09/effects-subsystem pattern added for ISS-0649/GH-654. These are
+    // deliberately NOT wired into test_integration_others_step: they already
+    // run there via main_test.zig, and adding them again would run them
+    // twice under `zig build test-integration` instead of providing isolation.
+    const db_integration_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/db_integration_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_db_integration_solo_tests = addIntegrationRun(b, db_integration_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_db_integration_step = b.step("test-integration-db-integration", "Run db_integration_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_db_integration_step.dependOn(&clean_test_db.step);
+    test_integration_db_integration_step.dependOn(&run_db_integration_solo_tests.step);
+
+    const env02_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/env02_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_env02_solo_tests = addIntegrationRun(b, env02_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_env02_step = b.step("test-integration-env02", "Run env02_test.zig (ENV-02 tenant isolation) in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_env02_step.dependOn(&clean_test_db.step);
+    test_integration_env02_step.dependOn(&run_env02_solo_tests.step);
+
+    const env03_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/env03_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_env03_solo_tests = addIntegrationRun(b, env03_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_env03_step = b.step("test-integration-env03", "Run env03_test.zig (ENV-03 definition promotion) in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_env03_step.dependOn(&clean_test_db.step);
+    test_integration_env03_step.dependOn(&run_env03_solo_tests.step);
+
+    const event_store_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/event_store_integration_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_event_store_solo_tests = addIntegrationRun(b, event_store_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_event_store_step = b.step("test-integration-event-store", "Run event_store_integration_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_event_store_step.dependOn(&clean_test_db.step);
+    test_integration_event_store_step.dependOn(&run_event_store_solo_tests.step);
+
+    const exp201_202_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/exp201_202_entities_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_exp201_202_solo_tests = addIntegrationRun(b, exp201_202_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_exp201_202_step = b.step("test-integration-exp201-202", "Run exp201_202_entities_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_exp201_202_step.dependOn(&clean_test_db.step);
+    test_integration_exp201_202_step.dependOn(&run_exp201_202_solo_tests.step);
+
+    const idn03_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/idn03_role_access_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_idn03_solo_tests = addIntegrationRun(b, idn03_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_idn03_step = b.step("test-integration-idn03", "Run idn03_role_access_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_idn03_step.dependOn(&clean_test_db.step);
+    test_integration_idn03_step.dependOn(&run_idn03_solo_tests.step);
+
+    const iss206_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss206_token_multiset_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss206_solo_tests = addIntegrationRun(b, iss206_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_iss206_step = b.step("test-integration-iss206", "Run iss206_token_multiset_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_iss206_step.dependOn(&clean_test_db.step);
+    test_integration_iss206_step.dependOn(&run_iss206_solo_tests.step);
+
+    const xc02_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/xc02_audit_immutability_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_xc02_solo_tests = addIntegrationRun(b, xc02_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_xc02_step = b.step("test-integration-xc02", "Run xc02_audit_immutability_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_xc02_step.dependOn(&clean_test_db.step);
+    test_integration_xc02_step.dependOn(&run_xc02_solo_tests.step);
+
+    const xc06_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/xc06_backwards_compatibility_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_xc06_solo_tests = addIntegrationRun(b, xc06_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_xc06_step = b.step("test-integration-xc06", "Run xc06_backwards_compatibility_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_xc06_step.dependOn(&clean_test_db.step);
+    test_integration_xc06_step.dependOn(&run_xc06_solo_tests.step);
+
     // ISS-0638 / GH-621: narrow step for ADP-02 tenant scope tests only,
     // mirrors the ext02 target added for ISS-0637 / GH-619.
     const adp02_integration_tests = b.addTest(.{

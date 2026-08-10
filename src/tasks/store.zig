@@ -625,21 +625,34 @@ pub const TaskStore = struct {
             const aid_idx = sql_params.items.len;
 
             if (params.include_group_membership_for_user) {
-                // ISS-0619 fix: tasks.assignee_ref is TEXT (see migrations/005_instances.sql);
-                // group_members.group_id is UUID. Cast tasks.assignee_ref to UUID inside the
-                // EXISTS subquery so the type comparison succeeds. A non-UUID assignee_ref
-                // (malformed row) causes the EXISTS to return false for that row, silently
-                // filtered out — no error propagates.
+                // ISS-0619 fix, corrected by ISS-0647 / GH-652 (TC-IDN-03-03b):
+                // tasks.assignee_ref is TEXT (see migrations/005_instances.sql);
+                // group_members.group_id is UUID. Cast tasks.assignee_ref to UUID
+                // inside the EXISTS subquery (GROUP branch) so THAT comparison
+                // succeeds — that half was always correct. The USER branch's
+                // `assignee_ref = $N` compares two TEXT values (the caller's
+                // user_id, forwarded here as a plain []const u8 string, was never
+                // UUID-typed at the SQL boundary) and must NOT be cast to
+                // ::uuid — the original ISS-0619 fix over-applied the cast to
+                // both branches, which made the USER branch fail with C42883
+                // ("operator does not exist: text = uuid") on every call,
+                // reproduced directly via `zig build test-integration-idn03
+                // -Dlog-pg-errors=true`. A non-UUID assignee_ref (malformed row)
+                // still causes the GROUP branch's EXISTS to return false for
+                // that row, silently filtered out — no error propagates.
                 const cond = std.fmt.allocPrint(
                     a,
-                    "((assignee_type = 'USER' AND assignee_ref = ${d}::uuid) OR (assignee_type = 'GROUP' AND EXISTS (SELECT 1 FROM group_members gm WHERE gm.user_id = ${d}::uuid AND gm.group_id = tasks.assignee_ref::uuid)))",
+                    "((assignee_type = 'USER' AND assignee_ref = ${d}) OR (assignee_type = 'GROUP' AND EXISTS (SELECT 1 FROM group_members gm WHERE gm.user_id = ${d}::uuid AND gm.group_id = tasks.assignee_ref::uuid)))",
                     .{ aid_idx, aid_idx },
                 ) catch return TaskError.InvalidInput;
                 conditions.append(a, cond) catch return TaskError.InvalidInput;
             } else {
+                // ISS-0647 / GH-652: same over-cast as above — assignee_ref is
+                // TEXT, so comparing it to a ::uuid-cast parameter always fails
+                // with C42883 whenever this non-group-membership branch runs.
                 const cond = std.fmt.allocPrint(
                     a,
-                    "assignee_ref = ${d}::uuid",
+                    "assignee_ref = ${d}",
                     .{aid_idx},
                 ) catch return TaskError.InvalidInput;
                 conditions.append(a, cond) catch return TaskError.InvalidInput;

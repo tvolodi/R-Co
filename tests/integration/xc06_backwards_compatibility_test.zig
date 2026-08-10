@@ -132,13 +132,29 @@ test "TC-XC-06-03: instance continues normally after schema upgrade" {
     // V2 appends event (with new fields like trace_id)
     const event_id = try uuid_mod.newUuidV4(alloc);
     const idem_key = "v2-event-idem-key";
-    defer alloc.free(event_id);
+    // ISS-0647 / GH-652 (TC-XC-06-03): events.actor_id and sequence_number
+    // are both NOT NULL with no default (confirmed via
+    // `-Dlog-pg-errors=true`: C23502 on each in turn as the other was
+    // fixed). No FK constraint exists on actor_id, so any UUID is a valid
+    // fixture value — mirrors the pattern already used for
+    // audit_entries.actor_id elsewhere in this file (TC-XC-06-08).
+    // sequence_number only needs to be unique per instance_id (see the
+    // uq_event_sequence constraint) — production code reserves it via
+    // instance_sequence (src/effects/worker.zig, ISS-0158/GH-479) for
+    // concurrency safety, but this test creates one event on a single fresh
+    // instance_id, so a literal "1" is sufficient and avoids pulling that
+    // machinery into a fixture that doesn't need it.
+    const actor_id = try uuid_mod.newUuidV4(alloc);
+    defer {
+        alloc.free(event_id);
+        alloc.free(actor_id);
+    }
 
     _ = try harness.conn.exec(
         \\INSERT INTO events (
         \\  event_id, instance_id, tenant_id, event_type,
-        \\  payload, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\  payload, actor_id, sequence_number, idempotency_key, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, 1, $7, NOW())
     ,
         &.{
             event_id,
@@ -146,6 +162,7 @@ test "TC-XC-06-03: instance continues normally after schema upgrade" {
             tenant_id,
             "v2.event",
             "{\"v2_field\":true}",
+            actor_id,
             idem_key,
         },
     );
@@ -248,13 +265,20 @@ test "TC-XC-06-05: event type evolution is backwards compatible" {
 
     // Insert V1-format event (missing V2 fields)
     const event_id_v1 = try uuid_mod.newUuidV4(alloc);
-    defer alloc.free(event_id_v1);
+    // ISS-0647 / GH-652 (TC-XC-06-05): events.actor_id and sequence_number
+    // are both NOT NULL with no default — see the identical note on
+    // TC-XC-06-03 above.
+    const actor_id = try uuid_mod.newUuidV4(alloc);
+    defer {
+        alloc.free(event_id_v1);
+        alloc.free(actor_id);
+    }
 
     _ = try harness.conn.exec(
         \\INSERT INTO events (
         \\  event_id, instance_id, tenant_id, event_type,
-        \\  payload, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\  payload, actor_id, sequence_number, idempotency_key, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, 1, $7, NOW())
     ,
         &.{
             event_id_v1,
@@ -262,6 +286,7 @@ test "TC-XC-06-05: event type evolution is backwards compatible" {
             tenant_id,
             "order.created",
             "{\"order_id\":\"order-123\",\"amount\":100}",
+            actor_id,
             "v1-event-1",
         },
     );
@@ -312,17 +337,27 @@ test "TC-XC-06-06: archived events remain queryable after upgrade" {
         const event_id = try uuid_mod.newUuidV4(alloc);
         const idem_key = try std.fmt.allocPrint(alloc, "archived-{d}", .{i});
         const payload = try std.fmt.allocPrint(alloc, "{{\"index\":{d}}}", .{i});
+        // ISS-0647 / GH-652 (TC-XC-06-06): events.actor_id and
+        // sequence_number are both NOT NULL with no default — see the
+        // identical note on TC-XC-06-03 above. sequence_number must also be
+        // unique per instance_id (uq_event_sequence), so each loop iteration
+        // uses i+1 (1-based, matching production's convention of starting
+        // instance_sequence.next_seq at 2 for the first assigned value 1).
+        const actor_id = try uuid_mod.newUuidV4(alloc);
+        const seq_str = try std.fmt.allocPrint(alloc, "{d}", .{i + 1});
         defer {
             alloc.free(event_id);
             alloc.free(idem_key);
             alloc.free(payload);
+            alloc.free(actor_id);
+            alloc.free(seq_str);
         }
 
         _ = try harness.conn.exec(
             \\INSERT INTO events (
             \\  event_id, instance_id, tenant_id, event_type,
-            \\  payload, idempotency_key, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            \\  payload, actor_id, sequence_number, idempotency_key, created_at
+            \\) VALUES ($1, $2, $3, $4, $5, $6, $7::bigint, $8, NOW())
         ,
             &.{
                 event_id,
@@ -330,6 +365,8 @@ test "TC-XC-06-06: archived events remain queryable after upgrade" {
                 tenant_id,
                 "test.event",
                 payload,
+                actor_id,
+                seq_str,
                 idem_key,
             },
         );
@@ -421,13 +458,21 @@ test "TC-XC-06-07: multi-step schema evolution is supported" {
 
     // V2: Add event with v2-specific payload
     const event_v2_id = try uuid_mod.newUuidV4(alloc);
-    defer alloc.free(event_v2_id);
+    // ISS-0647 / GH-652 (TC-XC-06-07): events.actor_id and sequence_number
+    // are both NOT NULL with no default — see the identical note on
+    // TC-XC-06-03 above. sequence_number must be unique per instance_id, so
+    // the v2 and v3 events (same instance_id) use 1 and 2 respectively.
+    const actor_v2_id = try uuid_mod.newUuidV4(alloc);
+    defer {
+        alloc.free(event_v2_id);
+        alloc.free(actor_v2_id);
+    }
 
     _ = try harness.conn.exec(
         \\INSERT INTO events (
         \\  event_id, instance_id, tenant_id, event_type,
-        \\  payload, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\  payload, actor_id, sequence_number, idempotency_key, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, 1, $7, NOW())
     ,
         &.{
             event_v2_id,
@@ -435,19 +480,24 @@ test "TC-XC-06-07: multi-step schema evolution is supported" {
             tenant_id,
             "migration.v2_event",
             "{\"v2_field\":\"extended\"}",
+            actor_v2_id,
             "v2-event-1",
         },
     );
 
     // V3: Add event with v3-specific payload
     const event_v3_id = try uuid_mod.newUuidV4(alloc);
-    defer alloc.free(event_v3_id);
+    const actor_v3_id = try uuid_mod.newUuidV4(alloc);
+    defer {
+        alloc.free(event_v3_id);
+        alloc.free(actor_v3_id);
+    }
 
     _ = try harness.conn.exec(
         \\INSERT INTO events (
         \\  event_id, instance_id, tenant_id, event_type,
-        \\  payload, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\  payload, actor_id, sequence_number, idempotency_key, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, 2, $7, NOW())
     ,
         &.{
             event_v3_id,
@@ -455,6 +505,7 @@ test "TC-XC-06-07: multi-step schema evolution is supported" {
             tenant_id,
             "migration.v3_event",
             "{\"v3_field\":\"evolved\"}",
+            actor_v3_id,
             "v3-event-1",
         },
     );
@@ -508,6 +559,14 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
         alloc.free(legacy_resource);
     }
 
+    // ISS-0647 / GH-652: wrap this INSERT too (see the identical note on the
+    // v2 INSERT below) — trg_bpm_audit_apply_chain_hash is ENABLE ORIGIN
+    // (confirmed via `SELECT tgname, tgenabled FROM pg_trigger`), so it is
+    // suppressed by TestHarness.init()'s session-wide
+    // session_replication_role='replica' for every INSERT on this
+    // connection, not just the one that happens to omit chain_hash
+    // explicitly.
+    try harness.conn.exec("SET session_replication_role = 'origin'", &.{});
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
@@ -523,6 +582,7 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
             legacy_resource,
         },
     );
+    try harness.conn.exec("SET session_replication_role = 'replica'", &.{});
 
     // Insert V2 chained audit entry
     const v2_id = try uuid_mod.newUuidV4(alloc);
@@ -534,6 +594,16 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
         alloc.free(v2_resource);
     }
 
+    // ISS-0647 / GH-652 (same root cause as ISS-0645 / GH-649's fix to
+    // adp09_tamper_evident_audit_chain_test.zig / xc02_audit_immutability_test.zig
+    // in this same session): TestHarness.init() sets session_replication_role
+    // = 'replica' session-wide so resetTestData() can DELETE audit_entries
+    // without tripping the immutability guard. That setting also suppresses
+    // trg_bpm_audit_apply_chain_hash, the trigger this INSERT relies on to
+    // populate chain_hash — without it chain_hash stayed NULL, failing the
+    // `query.rows[0][1] != null` assertion below. Scope the override to this
+    // one INSERT and restore 'replica' immediately after.
+    try harness.conn.exec("SET session_replication_role = 'origin'", &.{});
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
@@ -542,6 +612,7 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
     ,
         &.{ v2_id, tenant_id, v2_actor, "v2.action", "test", v2_resource },
     );
+    try harness.conn.exec("SET session_replication_role = 'replica'", &.{});
 
     // Query both entries
     var query = try harness.conn.query(

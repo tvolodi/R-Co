@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0654",
+  "title": "sim01_04_simulation_mode_test TC-SIM-01-01 (missing instance_projections relation) and obs03_audit_log_test TC-OBS-03-INT-02/05 (500 errors on GET /audit): PgError.ServerError cluster needing per-file root-causing",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/663",
+  "registered_at": "2026-08-10T06:46:36Z",
+  "registered_by": "BACKEND-DEV (WF03-GH652-20260810 Step 3, GH-652/ISS-0647 triage)",
+  "related_to": [
+    "ISS-0647"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "category": "test-integration/pgerror-cluster",
+  "affected_areas": [
+    "tests/integration/sim01_04_simulation_mode_test.zig",
+    "src/simulation/tenant_store.zig",
+    "tests/integration/obs03_audit_log_test.zig"
+  ],
+  "symptom": "GH-652's own recommended split grouped sim01 and obs03 together as part of a 'PgError.ServerError cluster needing verbose logging' (alongside svc04 and xc06, both now resolved in this pass -- svc04 confirmed already-passing-in-isolation, false positive; xc06 fixed 8/9, residual tracked separately in ISS-0653). Re-measured in true isolation with `-Dlog-pg-errors=true`: (1) sim01_04_simulation_mode_test.zig TC-SIM-01-01 ('simulation events are isolated from real tenant queries') fails with PostgreSQL C42P01 'relation \"instance_projections\" does not exist', raised from src/event_store/store.zig's append() via src/simulation/tenant_store.zig's appendSimulationEvent()/mapStoreError() -- the simulation-mode event store path is querying an unqualified/wrongly-scoped `instance_projections` table that isn't resolvable from whatever schema context the simulation harness sets up; not yet root-caused further. Note: the SAME narrow build step (test-integration-stage11-sim-xc04) also surfaced an unrelated failure in xc04_kernel_determinism_test.zig TC-XC-04-04 (function signature mismatch on bpm_audit_compute_chain_hash) -- that is NOT part of GH-652's original 20-file list and has been filed separately as ISS-0655 per the incidental-discovery protocol. (2) obs03_audit_log_test.zig TC-OBS-03-INT-02 ('read-only GET/list operations do not create audit rows') and TC-OBS-03-INT-05 ('GET /audit supports filters with deterministic pagination and ordering') both fail with expected 200, found 500 -- a genuine server-side error on the GET /audit endpoint path, not yet root-caused (the real exception/error body was not captured in this pass).",
+  "acceptance_criteria": [
+    "sim01: root-cause why instance_projections is unresolvable in the simulation-mode event-append path -- check whether src/simulation/tenant_store.zig sets tenant_context/search_path correctly before calling event_store.store.append(), and whether this is a schema-qualification gap similar to the ones fixed elsewhere in this same GH-652 pass (onboarding.zig, tasks/store.zig)",
+    "obs03: capture the actual 500 response body / server-side exception for TC-OBS-03-INT-02 and TC-OBS-03-INT-05 (add temporary error logging if the handler swallows the real cause) and root-cause from there",
+    "Both files pass in isolation (zig build test-integration-stage11-sim-xc04 for sim01's TC-SIM-01-01 specifically; a narrow test-integration-obs03 step already exists), twice consecutively",
+    "zig build test exits 0 with unit-test pass count >= established baseline (1011/1075, 64 skipped)"
+  ],
+  "next_action": "File as GitHub issue and add to global queue. Both files need their real underlying error captured before a fix can be attempted -- sim01's error is already captured (missing relation) and ready for root-causing; obs03's 500 needs one more diagnostic pass (server-side error logging) before its fix is even scoped."
+}
