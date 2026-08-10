@@ -127,6 +127,40 @@ failure as a run failure — it never is one.
 
 ---
 
+## 8e. Platform-Workflow UAT Gate (BEFORE Dispatching WF-05)
+
+Before ORCH dispatches WF-05 (UAT Run) against a platform workflow (`PW-nn` in
+`docs/workflows.yaml`), it MUST verify the workflow is UAT-ready:
+
+```bash
+python3 tools/wfctl.py uat-ready <PW-nn>
+```
+
+**Exit 0 → CLEARED.** Log a `BENCH_ENV_CHECK`-style line:
+`<ISO8601> | UAT_READY | <RUN-ID> | --- | ORCH | CLEARED: <PW-nn> — dispatching WF-05`
+Then proceed to WF-05 dispatch. The tool prints a JSON dispatch block (workflow id,
+scenarios expected, uat_surface, owning BO list — usually empty for platform); copy
+that block into the WF-05 Step 1 handoff's `context.artifacts_in` so UAT-RUNNER does
+not need to re-resolve it.
+
+**Non-zero exit → BLOCKED.** The tool prints the missing scenarios or preconditions.
+Log: `<ISO8601> | UAT_READY | <RUN-ID> | --- | ORCH | BLOCKED: <PW-nn> — <reason>`.
+Do NOT dispatch WF-05. File each missing precondition as its own issue (ISS file +
+GitHub issue, per CLAUDE.md "No Issue Left Local-Only") and forward to the global
+queue per §8c. Then stop this WF-05 dispatch attempt; the operator decides whether to
+launch a WF-06 (scenario authoring) run to add the missing scenarios, or to defer the
+UAT.
+
+**Judge this gate by the exit code only.** Never phrase a handoff task as "make X stop
+appearing in the output of `wfctl.py uat-ready`" — the same trap that produced the
+2026-05-30 label-renaming incident (see `docs/anti-patterns.md`). If the gate's
+definition is wrong, change the definition in `tools/wfctl.py`; do not arrange for it
+to pass. The §8e gate mirrors §8a in shape (hard pre-flight gate, exit-code-only
+verdict, log-line on both branches, ADHOC handoff if blocked) so operators who learned
+§8a already know §8e.
+
+---
+
 ## 2. Standard Workflows
 
 | ID | Name | Entry trigger | Document |

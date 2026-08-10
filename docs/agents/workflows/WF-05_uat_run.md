@@ -51,7 +51,8 @@ verified by UAT-RUNNER itself in its pre-flight check (Step 1).
 | **2a-sr** | `BO-SWIFTROUTE` | — | Domain sign-off: SwiftRoute scenarios + authored fixes if needed |
 | **2a-vx** | `BO-VORTEX` | — | Domain sign-off: Vortex scenarios + authored fixes if needed |
 | **2a-mc** | `BO-MERIDIAN` | — | Domain sign-off: Meridian scenarios + quorum vote |
-| **2b** | `PRODUCT-OWNER` | **Hard gate** | Cross-tenant coherence + MUST coverage + final release recommendation |
+| **2a-platform** | *(skip)* | Routing gate | When the run carries `platform_workflow` and the scenario set includes any `company_id: platform` scenario, skip Steps 2a-sr / 2a-vx / 2a-mc and proceed straight to 2b. Log: `<ts> \| SKIP-BO \| <run_id> \| --- \| ORCH \| platform_workflow <PW-nn> — BO-* sign-off not required` |
+| **2b**    | `PRODUCT-OWNER` | **Hard gate** | Cross-tenant coherence + MUST coverage + final release recommendation. **For platform workflows, PRODUCT-OWNER evaluates the platform scenarios directly with no preceding BO sign-off.** |
 | **2c** | `ORCH` | Routing gate | APPROVED → Step 3; BLOCKED → file each issue + forward to the global queue, record in the report, then Step 3 (which gates the release on them) |
 | **3** | `RELEASE-VALIDATOR` | — | NFR + UAT combined sign-off check |
 | **4** | `DOC-UPDATER` | — | Update requirement status + changelog; mark UAT-verified requirements |
@@ -90,8 +91,13 @@ Handoff task:
 ```json
 {
   "description": "Execute all UAT scenarios under tests/simulation/scenarios/. Evaluate each outcome against business expectations. Produce a UAT report in tests/uat-reports/.",
+  "context": {
+    "platform_workflow": "<PW-nn if this WF-05 run targets a platform workflow; omit otherwise>",
+    "uat_surface": "<gui | mixed | system — from docs/workflows.yaml>"
+  },
   "acceptance_criteria": [
     "Pre-flight check passes (backend + Keycloak + seed data present)",
+    "For company_id: platform scenarios: BPM_UAT_TOKEN is the sole credential (no tenant lookup)",
     "Every scenario file in tests/simulation/scenarios/ is executed or skipped with justification",
     "UAT report written to tests/uat-reports/uat-<date>-<run_id>.yaml",
     "Report uses business language throughout — no stack traces, no line numbers",
@@ -111,6 +117,16 @@ UAT-RUNNER result determines Step 2 routing:
 - `FAIL` (any BLOCKER or MAJOR) → ORCH files each failing scenario's issue and forwards
   it to the global queue, then proceeds to Step 3 with the failures recorded (see Step 2)
 - `PARTIAL` → same handling per severity; MINORs are logged only
+
+**Platform-workflow branch.** Before dispatching BO-SWIFTROUTE / BO-VORTEX /
+BO-MERIDIAN, ORCH inspects `tests/uat-reports/uat-<date>-<run_id>.yaml`:
+
+  if any scenario in the UAT report has `company_id: platform`:
+      log: <ts> | SKIP-BO | <run_id> | --- | ORCH | platform_workflow <PW-nn> — BO-* sign-off not required
+      skip Steps 2a-sr / 2a-vx / 2a-mc
+      proceed straight to Step 2b (PRODUCT-OWNER)
+  else:
+      dispatch BO-SWIFTROUTE / BO-VORTEX / BO-MERIDIAN in parallel as today
 
 ---
 
