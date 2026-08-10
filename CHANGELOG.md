@@ -6,6 +6,14 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0150 — closed: `test-integration-svc` acceptance criterion met, `svc04` fixture hardened against repeated-run collisions (MAJOR, closure)** ([GitHub #482](https://github.com/tvolodi/R-Co/issues/482))
+
+- **This closes the original root ancestor issue of today's entire test-integration triage chain** (GH-482 → GH-649 → its 9 forwarded children, all resolved — see the closure entries above and throughout today's log). GH-482's own explicit "stay open until" instruction from a prior pass is now satisfied: every issue in the forwarding chain it spawned is resolved.
+- **`zig build test-integration-svc`** (GH-482's own specifically-named acceptance target) — 35/35 pass against a fresh, workspace-owned database.
+- **Incidental hardening found and fixed while re-verifying:** re-running the same narrow target repeatedly against the same (reused) database surfaced a real test-isolation bug in `svc04_admin_api_test.zig`'s `insertFixtureTenantViaPool()` — `ON CONFLICT (id) DO NOTHING` only covered the `tenant` table's `id` column, but `slug`/`idp_realm_id` use static per-call-site literals each backed by their own unique index, so a second run against a reused database collided on `idx_tenant_slug_unique`. Fixed by upserting on `slug` instead. Has no bearing on GH-482's own criterion (already met on the standard single fresh-database run every CI invocation performs) but hardens the suite against repeated local re-verification.
+- **Verified:** `zig build test-integration-svc` — 35/35 pass, re-run 5 consecutive times against the same reused database (previously failed from run 2 onward; now passes every time). `zig build` exits 0, no `error set` output. `lint_sql_param_types.py` 0 findings. `zig build test` — 89/89 steps, 1011/1075 pass (64 skipped), unchanged from baseline.
+- **No requirement status change** — test-fixture hardening fix; triage closure.
+
 **ISS-0645 — closed: every forwarded child issue from this triage is now resolved (MAJOR, closure)** ([GitHub #649](https://github.com/tvolodi/R-Co/issues/649))
 
 - **This is the closing entry for the ancestor issue of today's entire test-integration triage chain.** All 5 issues this run's original triage forwarded are resolved: [GH-651/ISS-0646](https://github.com/tvolodi/R-Co/issues/651) (true root cause found and fixed), [GH-652/ISS-0647](https://github.com/tvolodi/R-Co/issues/652) (12 of 20 files fixed directly, 5 clusters forwarded and independently resolved as GH-660/661/662/663/664), [GH-653/ISS-0648](https://github.com/tvolodi/R-Co/issues/653), [GH-654/ISS-0649](https://github.com/tvolodi/R-Co/issues/654), and [GH-673/ISS-0657](https://github.com/tvolodi/R-Co/issues/673) (confirmed duplicate of GH-651).

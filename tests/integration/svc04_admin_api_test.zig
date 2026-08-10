@@ -163,10 +163,25 @@ fn insertFixtureTenantViaPool(
 ) !void {
     const conn = try pool.acquire();
     defer pool.release(conn);
+    // GH-482 / ISS-0150: slug and idp_realm_id are static per-call-site
+    // literals (see anti-patterns.md's "static literal on a UNIQUE-indexed
+    // column" entry), each backed by their own unique index
+    // (idx_tenant_slug_unique, idx_tenant_idp_realm_unique) that
+    // `ON CONFLICT (id) DO NOTHING` does not cover — `id`/`tenant_hex` is a
+    // genuinely fresh random UUID every call, so that conflict target never
+    // actually fires; slug is what collides on a second run against a
+    // reused database. Upsert on slug instead so repeated runs (a fresh
+    // CI database is unaffected either way) update the row to this run's
+    // own id/values rather than erroring.
     try conn.exec(
         \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
         \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
-        \\ON CONFLICT (id) DO NOTHING
+        \\ON CONFLICT (slug) DO UPDATE SET
+        \\  id = EXCLUDED.id,
+        \\  display_name = EXCLUDED.display_name,
+        \\  idp_realm_id = EXCLUDED.idp_realm_id,
+        \\  tenant_type = EXCLUDED.tenant_type,
+        \\  production_tenant_id = EXCLUDED.production_tenant_id
     , &.{ tenant_hex, slug, display_name, realm_id, "00000000-0000-0000-0000-000000000000" });
     // Provision the tenant schema so bpm_active_defs_for_service can find it.
     try conn.exec("SELECT public.bpm_provision_tenant_schema($1::uuid)", &.{tenant_hex});
