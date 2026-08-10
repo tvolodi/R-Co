@@ -1496,17 +1496,22 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0658",
+      "issue_id": "GH-679",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/679",
-      "title": "Aggregate zig build test-integration unstable in workspace r-co-2",
+      "title": "ISS-0658 \u2014 Aggregate zig build test-integration unstable in workspace r-co-2: unrelated failures and multi-minute hangs block clean verification",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-10T16:19:33Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T16:50:57Z"
+      },
+      "added_at": "2026-08-10T16:50:57Z",
+      "started_at": "2026-08-10T16:50:57Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 679,
+      "labels": []
     }
   ]
 }
