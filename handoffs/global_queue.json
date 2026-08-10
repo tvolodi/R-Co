@@ -1695,14 +1695,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/694",
       "title": "ISS-0662 \u2014 stray issue_id \"--help\" junk entry in handoffs/global_queue.json",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T22:21:40Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T22:21:40Z",
       "started_at": "2026-08-10T22:21:40Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T22:26:22Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 694,
