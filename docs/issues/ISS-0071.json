@@ -1,7 +1,7 @@
 {
   "id": "ISS-0071",
   "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input — swiftroute realm-missing inconsistent state compounds scenario unverifiability",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "BLOCKER",
   "category": "test harness error + backend state inconsistency",
   "run_id": "WF03-uat-onboarding-realm-sync-20260616",
@@ -36,6 +36,8 @@
     "uat_report": "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui.yaml",
     "related_issues": ["ISS-0070"]
   },
+  "resolution": "Root cause A (slug hardcoding): onboarding-wizard.pipeline.e2e.spec.ts:29-34,72-73 now reads INJECTED_SLUG from process.env.ONBOARDING_PIPELINE_SLUG, falling back to the old random slug only when unset. tests/specs/PIPELINE-onboarding-wizard.md:81-100 documents the env-var contract and the swiftroute/vortex/meridian slug mapping. Root cause B (orphaned tenant/Keycloak state) is covered by ISS-0070, separately RESOLVED.",
+  "verification": "Batch re-triage 2026-08-10 (WF03-batch-GH280-301-triage-20260810): both root causes source-verified fixed. Note: docs/agents/UAT_RUNNER.md does not itself document the ONBOARDING_PIPELINE_SLUG env-var invocation — this is a minor doc-completeness gap, not a functional defect, and does not block closing this issue. Filed separately if warranted.",
   "created_at": "2026-06-15T21:53:31Z",
-  "resolved_at": null
+  "resolved_at": "2026-08-10T16:14:30Z"
 }

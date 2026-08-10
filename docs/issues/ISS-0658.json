@@ -1,0 +1,40 @@
+{
+  "issue_id": "ISS-0658",
+  "title": "Aggregate zig build test-integration is unstable in workspace r-co-2: unrelated failures and multi-minute hangs block clean verification signal",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "test infrastructure",
+  "run_id": "WF03-batch-GH280-301-triage-20260810",
+  "workflow_id": "WF-03",
+  "handoff_id": null,
+  "requirement_ids": [],
+  "summary": "While attempting to re-verify ISS-0054/GH-283 (ADP-09/ADP-10 assertion behavior) via a real test run, two independent `zig build test-integration` runs against workspace r-co-2's test DB (port 5453) each surfaced different unrelated pre-existing failures (sch303_timer_dlq_test, env01_test, env02_test, iss0185_dual_schema_test, iss0605_orphan_self_heal_test) without ever completing cleanly. Neither run reached a usable ADP-09/ADP-10 result. The second run stalled with zero log growth for 10+ minutes on the same binary (env01/env02) and had to be killed. There is no scoped `zig build test-integration-adp09` / `-adp10` step to isolate a specific requirement's tests from the unstable aggregate suite, which is what made isolating a clean signal for GH-283 impossible in this pass.",
+  "root_cause": {
+    "type": "test_infrastructure_instability",
+    "details": "Not yet root-caused. Candidate contributors: concurrent/leftover state between runs in this long-lived workspace (db_test container up 23+ hours across many prior WF-03 runs), possible schema/fixture drift accumulated across the many integration test files added since this workspace was last reset, or a genuine flaky/hanging test among {sch303_timer_dlq_test, env01_test, env02_test, iss0185_dual_schema_test, iss0605_orphan_self_heal_test}. Needs an ISSUE-FIXER diagnosis pass with a clean DB reset as a starting control."
+  },
+  "evidence": {
+    "discovered_during": "Batch re-triage of GH-280..301 (WF03-batch-GH280-301-triage-20260810), attempting to verify GH-283/ISS-0054",
+    "workspace": "r-co-2 (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test)",
+    "symptom_1": "Run 1: zig build test-integration surfaced failures in sch303_timer_dlq_test, env01_test, env02_test, iss0185_dual_schema_test, iss0605_orphan_self_heal_test — none of these are related to ADP-09/ADP-10 or to any change made in this triage pass (read-only pass, no source edits)",
+    "symptom_2": "Run 2: same command stalled with zero log growth for 10+ minutes on env01_test/env02_test, had to be killed; did not reach ADP-09/ADP-10"
+  },
+  "affected_areas": [
+    "tests/integration/",
+    "build.zig (test-integration step and lack of scoped per-requirement steps)"
+  ],
+  "recommended_fix_strategy": {
+    "primary_action": "ISSUE-FIXER to reproduce with a clean db_test reset (docker-compose down -v db_test && up -d db_test, fresh zig build migrate) as a control, to separate genuine flakiness from accumulated long-lived-workspace state.",
+    "secondary_action": "Add scoped zig build test-integration-<slug> steps for high-value targets (at minimum adp09/adp10, since GH-283 needs isolation from the aggregate suite to get a clean signal) — generally useful beyond this issue.",
+    "what_NOT_to_do": "Do not treat this as proof that env01/env02/sch303/iss0185/iss0605 are broken — they were incidental noise during an unrelated verification attempt, not diagnosed themselves. Do not fold their diagnosis into this issue without separately confirming each is a real regression rather than environment noise."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-10T16:14:30Z",
+  "resolved_at": null,
+  "prevention": [
+    "Long-lived integration test workspaces should be periodically reset (fresh db_test volume) to rule out accumulated state as a source of flakiness before diagnosing individual test failures.",
+    "Scoped test-integration-<slug> build steps for specific requirement clusters make it possible to get a clean signal on one requirement without depending on the full aggregate suite's stability — relevant to GH-297 (PI-07 gate tiering) as well."
+  ]
+}

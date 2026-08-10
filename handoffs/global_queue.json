@@ -1254,16 +1254,13 @@
       "labels": [
         "issue"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T15:13:24Z"
-      },
+      "status": "DEFERRED",
+      "lock": null,
       "added_at": "2026-08-10T15:13:24Z",
       "started_at": "2026-08-10T15:13:24Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T16:20:06Z",
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": "Scoping decision recorded on GH-301 2026-08-10 (WF03-batch-GH280-301-triage-20260810): add depends_on as an optional/additive requirement field (small, bounded change to tools/reqctl.py + tools/depsort.py + docs/requirements.yaml header), populated opportunistically like Extends prose -- not a mandatory backfill of the 49 pre-existing requirements. Ready for a WF-02-style implementation run whenever picked up."
     },
     {
       "issue_id": "GH-649",
@@ -1513,6 +1510,19 @@
       "added_at": "2026-08-10T13:51:32Z",
       "started_at": "2026-08-10T13:51:32Z",
       "completed_at": "2026-08-10T14:08:59Z",
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0658",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/679",
+      "title": "Aggregate zig build test-integration unstable in workspace r-co-2",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T16:19:33Z",
+      "started_at": null,
+      "completed_at": null,
       "run_id": null,
       "deferred_reason": null
     }

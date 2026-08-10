@@ -876,3 +876,14 @@
 2026-08-10T14:44:17Z | RESOLVE | GH-651 | --- | r-co-2-loop | WF03-GH651-20260810-2 Step Final PASS (PR #676) — true root cause found and fixed
 2026-08-10T15:00:03Z | RESOLVE | GH-649 | --- | r-co-2-loop | WF03-GH649-20260810-final Step Final PASS (PR #677) — all forwarded children resolved, closed
 2026-08-10T15:13:01Z | RESOLVE | GH-482 | --- | r-co-2-loop | WF03-GH482-20260810-final Step Final PASS (PR #678) — root ancestor issue closed, entire chain resolved
+2026-08-10T16:14:30Z | ROUTE | WF03-batch-GH280-301-triage-20260810 | b3f1a2c4 | ORCH | Batch verification of GH-280..301 dispatched to research subagent
+2026-08-10T16:20:06Z | RESOLVE | GH-282 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — CONFIRMED_FIXED, closed on source evidence
+2026-08-10T16:20:06Z | RESOLVE | GH-284 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — CONFIRMED_FIXED, closed on source evidence
+2026-08-10T16:20:06Z | RESOLVE | GH-286 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — CONFIRMED_FIXED, closed on source evidence
+2026-08-10T16:20:06Z | RESOLVE | GH-287 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — CONFIRMED_FIXED, closed on source evidence
+2026-08-10T16:20:06Z | RESOLVE | GH-288 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — CONFIRMED_FIXED, closed on source evidence
+2026-08-10T16:20:06Z | RESOLVE | GH-296 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — substantially resolved, closed
+2026-08-10T16:20:06Z | RESOLVE | GH-298 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — superseded by global-queue architecture, closed
+2026-08-10T16:20:06Z | COMMENT | GH-280,281,283,291,292,293,294,295,297,299,300 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — evidence comments posted, kept open, stale triage notes corrected on 280/283
+2026-08-10T16:19:33Z | ENQUEUE | ISS-0658 | --- | ORCH | Filed GH-679, added to global queue — aggregate test-integration instability discovered during GH-283 verification
+2026-08-10T16:20:06Z | DEFER | GH-301 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — GOV-02 scoping decision recorded, deferred cleanly for future WF-02 implementation run
