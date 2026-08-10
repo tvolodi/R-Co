@@ -6,7 +6,8 @@
   "registered_by": "background agent (GH-651/ISS-0646 investigation, discovered while verifying GH-651's fix)",
   "related_to": ["ISS-0645", "ISS-0646", "ISS-0630", "ISS-0150"],
   "severity": "MAJOR",
-  "status": "OPEN",
+  "status": "DUPLICATE",
+  "resolved_at": "2026-08-10T14:02:56Z",
   "category": "test-infrastructure/audit-trigger-guc-session-state",
   "affected_areas": [
     "tests/integration/adp10_agent_io_capture_audit_test.zig"
@@ -26,5 +27,13 @@
     "Fix applied and TC-ADP-10-02 passes deterministically across 5+ consecutive full zig build test-integration runs against a freshly migrated, workspace-owned database",
     "Distinguish this failure from ordinary resource-contention ServerError noise (a separate, already-understood class documented across many other issues in this repo) so future triage does not conflate the two"
   ],
-  "next_action": "File as GitHub issue and add to global queue for its own WF-03 run. Not fixed inline during the GH-651/ISS-0646 investigation -- see CLAUDE.md's Unblock-Everything scope boundary (this is a distinct, previously-acknowledged-as-unsolved defect per ISS-0645's own triage record, not something GH-651's own run caused or is required to fix)."
+  "next_action": "File as GitHub issue and add to global queue for its own WF-03 run. Not fixed inline during the GH-651/ISS-0646 investigation -- see CLAUDE.md's Unblock-Everything scope boundary (this is a distinct, previously-acknowledged-as-unsolved defect per ISS-0645's own triage record, not something GH-651's own run caused or is required to fix).",
+  "duplicate_determination_20260810": {
+    "determined_at": "2026-08-10T14:02:56Z",
+    "determined_by": "parent orchestrator session, WF03-GH673-20260810",
+    "verdict": "DUPLICATE of GH-651/ISS-0646. This is NOT a distinct GUC/session-state issue -- it is the SAME tenant_default trigger-function-reversion mechanism GH-651 already tracks, simply observed through a different symptom (the trigger not populating payload_full at all, rather than populating it with the pre-payload_full-era shape as adp09/xc02's assertions happened to surface it).",
+    "evidence": "Reproduced directly: created a fresh probe database, ran the exact 2-binary concurrent reproduction already known to trigger GH-651's revert (test-integration-event-store + test-integration-xc02), confirmed via pg_proc that tenant_default's bpm_audit_apply_chain_hash() had reverted (no payload_full block) immediately afterward -- then, WITHOUT touching the database further, ran the test-integration-others-internal aggregate (which contains TC-ADP-10-02) against that SAME already-reverted database. TC-ADP-10-02 failed with the EXACT symptom this issue describes: `expectEqualStrings(\"f\", agent_row[5])` found \"t\" instead -- i.e. payload_full IS NULL is true (the column is null) when the test expects it to be populated. This is precisely what a reverted (pre-1142) trigger function body produces: it never reaches the payload_full auto-population branch at all, so the column stays NULL for every row, agent and non-agent alike -- matching this issue's own observation that BOTH rows show NULL, not just the agent row.",
+    "why_the_original_investigation_missed_this": "The original GH-651 investigation's verification of 'function body correct throughout' used a 300ms-interval pg_trigger.tgenabled poller and pre/post pg_proc checks against the SAME database instance the failing test itself ran against -- but did not sample pg_proc.prosrc at a fine enough interval, or from a vantage point synchronized with the exact moment TC-ADP-10-02's own connection ran its INSERT, to catch a revert that (per this session's own GH-651 finding) can occur within a ~20 second window from just 2 concurrently-running binaries. The tgenabled poller correctly proved the TRIGGER was enabled throughout, but 'enabled' and 'correct function body' are different properties -- an enabled trigger with a reverted (pre-1142) body still fires, it just does not populate payload_full, producing exactly this issue's 'appears not to fire' symptom without the trigger actually being disabled at any point.",
+    "recommendation": "Close as duplicate. All future work on this symptom should happen on GH-651, which already has the precise DDL-event-trigger-trace evidence needed to find where runForSchema() re-executes already-ledgered 1107/1109 against tenant_default. No separate fix needed here -- resolving GH-651 resolves this issue's symptom too."
+  }
 }
