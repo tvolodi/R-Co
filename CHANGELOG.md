@@ -2,6 +2,19 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — 2026-08-11
+
+**ISS-0661 — closed: A007 drift-detection check + security-reviewer Copilot adapter (MINOR, developer experience)** ([GitHub #693](https://github.com/tvolodi/R-Co/issues/693))
+
+- **What:** GH-291/PI-01 (CLAUDE.md split, `.claude/agents/*.md` made canonical) found that `.github/agents/*.agent.md` (18 files) and `.github/instructions/*.md` (3 files) — the parallel GitHub Copilot harness entry point — are a **separately drifted set** from `.claude/agents/`, not simply stale copies, and explicitly scoped a full 18-role, section-by-section reconciliation out of its own effort. It also found `SECURITY-REVIEWER` (added by GH-292/PI-02) had no Copilot-harness adapter at all.
+- **Fix (prioritized per the issue's own lighter-weight suggested option):** `tools/lint_agent_docs.py` gains an **A007** check — for every role with both a `.claude/agents/<role>.md` (canonical) and a Copilot-harness counterpart, it computes Jaccard similarity over each file's normalized significant-word set (frontmatter stripped, connective stopwords removed) and flags MINOR when similarity falls below 0.55, a threshold validated against the actual corpus (cleanly separates 6 genuinely-diverged files from 15 well-synced ones). Findings are suppressed by a new `tools/lint_agent_docs.baseline.json` (same acknowledgment pattern as `tools/lint_handoffs.baseline.json`), so today's known pre-existing drift does not retroactively fail CI while any *future* new drift is still caught (`--no-baseline` shows the full set).
+- **Genuine gap closed:** `.github/agents/security-reviewer.agent.md` created — content-mirrors `.claude/agents/security-reviewer.md` in the established `.agent.md` format.
+- **Spot-check outcome:** both examples the issue named by hand (`backend-dev.agent.md`'s Type A/C codegen content, `bo-swiftroute.agent.md`'s Mode B scenario-authoring workflow) are **already resolved** in `.claude/agents/` as a side effect of GH-291/PI-01's own reconciliation — no further changes needed to those two `.claude/agents/` files.
+- **Acknowledged, tracked debt (not fixed in this MINOR-severity run, per GH-291's scoping precedent):** A007's first run flags 6 files below threshold — `orchestrator.agent.md` (0.40), `orchestrator.instructions.md` (0.42), `backend-dev.instructions.md` (0.45), `backend-dev.agent.md` (0.46), `test-runner.agent.md` (0.52), `req-validator.agent.md` (0.55) — recorded in the new baseline file with a per-role `reason_ref`.
+- **Docs:** `docs/agents/AGENT_SYSTEM.md §9` updated with the drift-detection mechanism, threshold rationale, spot-check outcome, and current baseline count.
+- **Verified:** `python3 tools/lint_agent_docs.py` exits 0 (6 A007 findings suppressed by baseline). `python3 tools/lint_agent_docs.py --no-baseline` reports exactly those 6, all MINOR, exit 0. `python3 tools/lint_handoffs.py` exits 0.
+- **No requirement status change** — developer-experience / pipeline-infrastructure fix.
+
 ## [Unreleased] — 2026-08-10
 
 ### Fixed — ISS-0084 (PI-09 / GH-299): Operations runbook + fail-fast startup assertion
