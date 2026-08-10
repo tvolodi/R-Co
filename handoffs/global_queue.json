@@ -1306,14 +1306,17 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0648",
+      "issue_id": "GH-653",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/653",
       "title": "gh512 baseline count drift 117 vs 115",
       "severity": "MINOR",
-      "status": "QUEUED",
-      "lock": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T05:10:00Z"
+      },
       "added_at": "2026-08-10T04:14:57Z",
-      "started_at": null,
+      "started_at": "2026-08-10T05:10:00Z",
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
