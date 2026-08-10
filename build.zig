@@ -2106,6 +2106,17 @@ pub fn build(b: *std.Build) void {
     });
     const run_iss0076_integration_tests = addIntegrationRun(b, iss0076_integration_tests, migrations_dir, clean_test_db);
 
+    // PI-09 / ISS-0084 / GH-299: startup database configuration assertions.
+    const startup_assertions_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/startup_assertions_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_startup_assertions_integration_tests = addIntegrationRun(b, startup_assertions_integration_tests, migrations_dir, clean_test_db);
+
     const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL)");
     test_integration_step.dependOn(&clean_test_db.step);
 
@@ -2152,6 +2163,7 @@ pub fn build(b: *std.Build) void {
     // ISS-0625 / GH-592: LUA-12 / LUA-15 / LUA-16 production wiring tests.
     test_integration_others_step.dependOn(&run_iss0625_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0076_integration_tests.step);
+    test_integration_others_step.dependOn(&run_startup_assertions_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_same_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_cross_integration_tests.step);
     // ISS-0150 / GH #466: entity_subsystem_test.zig's Run artifact was created
