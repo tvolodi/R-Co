@@ -1549,14 +1549,11 @@
       "labels": [
         "issue"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "tvolodi-51316",
-        "locked_at": "2026-08-10T19:56:41Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T19:56:41Z",
       "started_at": "2026-08-10T19:56:41Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T21:58:59Z",
       "run_id": null,
       "deferred_reason": null
     },
