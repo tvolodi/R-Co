@@ -904,3 +904,4 @@
 2026-08-10T17:21:39Z | QUEUE_RELEASE | WF03-GH300-20260810 | --- | DOC-UPDATER | GH-300 RESOLVED; queue lock released
 2026-08-10T17:21:39Z | ISSUE_CLOSE | WF03-GH300-20260810 | --- | DOC-UPDATER | GH-300 closed via PR #683 squash-merge (commit 0a3f30cf); comment posted
 2026-08-10T17:22:12Z | COMPLETE | WF03-GH300-20260810 | a3000000-0700 | DOC-UPDATER | PASS — PR #683 merged (commit 0a3f30cf), branch deleted, GH-300 closed
+2026-08-10T18:30:27Z | DEFER | WF03-GH681-20260810 | --- | BACKEND-DEV | GH-681 deferred (workspace r-co-2-loop) — cross-workspace collision with r-co-orchestrator-loop on same branch; verification data (2 clean-reset runs, per-process and per-test lock designs both regress test-integration from 9 to 43+ failing files) posted to GH-681 comment; source changes reverted, only docs kept on unmerged feature/WF03-GH681-20260810
