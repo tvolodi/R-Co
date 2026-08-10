@@ -1374,14 +1374,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/657",
       "title": "TC-EXP-301-08 leaks 3 allocations on the duplicate-idempotency-key path (event_store store.append/rowToEventRecord)",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T05:57:49Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T05:57:49Z",
       "started_at": "2026-08-10T05:57:49Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T06:07:28Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 657,
