@@ -1,0 +1,55 @@
+{
+  "handoff_id": "81b01143-e88d-4f5a-91c0-bf84fe594b3a",
+  "run_id": "WF03-GH691-20260811",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-10T22:00:26Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 00 git-setup",
+    "requirement_ids": [],
+    "iss_ref": "ISS-0660",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/691",
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "branch_to_create": "feature/WF03-GH691-20260811",
+    "base_branch": "main"
+  },
+  "task": {
+    "description": "Step 00 git-setup for WF03-GH691-20260811 (GH-691 / ISS-0660). Run `fn:git-setup` per CLAUDE.md protocol: create feature branch `feature/WF03-GH691-20260811` from `origin/main`, push to origin so downstream BACKEND-DEV work has a safe target. This is a mandatory hard gate before any code change in the WF-03 pipeline.",
+    "acceptance_criteria": [
+      "git branch --show-current returns feature/WF03-GH691-20260811",
+      "git push origin feature/WF03-GH691-20260811 succeeds",
+      "git status clean on the new branch",
+      "tooling: lint_handoffs.py exits 0 (no BLOCKER/MAJOR)"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created feature/WF03-GH691-20260811 from origin/main (21b79805939b), pushed to origin (new branch confirmed via git ls-remote), tracking ref origin/feature/WF03-GH691-20260811 set, current branch matches. Pre-existing audit-trail modifications in handoffs/global_queue.json, handoffs/orchestrator.log, handoffs/registry.json and the new untracked handoffs/WF03-GH691-20260811/ directory are unrelated expected context per workspace hygiene rule 8 — out of scope for this step.",
+    "artifacts_out": [
+      "feature/WF03-GH691-20260811"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH691-20260811",
+      "commit_sha_list": [
+        "21b79805939b186e60f9facda246a94c98975983"
+      ],
+      "remote_branch": "origin/feature/WF03-GH691-20260811",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to ISSUE-FIXER (Step 0.5: register ISS-0660 + verify GitHub issue GH-691)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T22:00:31Z",
+  "completed_at": "2026-08-10T22:02:13Z"
+}
