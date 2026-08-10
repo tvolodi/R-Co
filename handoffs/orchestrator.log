@@ -866,3 +866,4 @@
 2026-08-10T07:22:22Z | DEFER | GH-652 | --- | r-co-2-loop | WF03-GH652-20260810 Step Final PASS (PR #665) — 12/20 fixed, 5 forwarded to GH-660/661/662/663/664, GH-285 also closed
 2026-08-10T07:23:40Z | ISSUE_FILED | GH-652 | --- | r-co-2-loop | ISS-0656/GH-666 filed (incidental lint_handoffs finding, forwarded to queue)
 2026-08-10T07:32:04Z | RESOLVE | GH-666 | --- | r-co-2-loop | WF03-GH666-20260810 Step Final PASS (PR #667)
+2026-08-10T07:39:09Z | RESOLVE | GH-664 | --- | r-co-2-loop | WF03-GH664-20260810 Step Final PASS (PR #668)
