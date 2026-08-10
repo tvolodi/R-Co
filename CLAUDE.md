@@ -1195,14 +1195,14 @@ Find your handoff:
 grep -rl '"to_agent": "TEST-DESIGN-VALIDATOR"' handoffs/ | xargs grep -l '"status": "PENDING"' 2>/dev/null
 ```
 
-Read the test spec files and test source files listed in `context.artifacts_in`. **⛔ HARD GATE — any failure = FAIL result.** Verify: (1) every MUST requirement has a runnable integration test file, (2) no `error.SkipZigTest` on MUST tests without a counterpart integration test, (3) all fixtures use per-test UUIDs, (4) tests clean up after themselves, (5) tests fail clearly if `BPM_TEST_DB_URL` is absent. Complete handoff with PASS or FAIL. On PASS, set `next_action: "Route to TEST-RUNNER (Step 4)"`.
+Read the test spec files and test source files listed in `context.artifacts_in`. **⛔ HARD GATE — any failure = FAIL result.** Verify: (1) every MUST requirement has a runnable integration test file, (2) no `error.SkipZigTest` on MUST tests without a counterpart integration test, (3) all fixtures use per-test UUIDs, (4) tests clean up after themselves, (5) tests fail clearly if `BPM_TEST_DB_URL` is absent, (6) every new or modified test was confirmed to fail against the pre-change code (fail-first) — TEST-DESIGNER's handoff must note this, or TEST-DESIGN-VALIDATOR treats it as a gap. Complete handoff with PASS or FAIL. On PASS, set `next_action: "Route to TEST-RUNNER (Step 4)"`.
 
 **Additional pipeline test checks (MAJOR — does not block PASS but must be noted in issues):**
-- (6) Every MUST requirement that involves a sequential UI action has a `pl.step()` in the relevant pipeline file under `web/tests/e2e/pipelines/`. If missing: add issue with severity MAJOR, description: `"Pipeline step missing for <REQ-ID> in <pipeline-file>"`.
-- (7) A `tests/specs/PIPELINE-<slug>.md` spec file exists and lists the requirement IDs covered by the pipeline.
-- (8) Pipeline file imports from `web/tests/e2e/pipeline.ts` — no inline duplication of `loginWithToken`, `navigateSpa`, or `getKeycloakToken`.
-- (9) `pl.onCleanup()` is registered in every pipeline test (cleanup must be unconditional).
-- (10) No `test.beforeEach` / `test.afterEach` inside pipeline test files — pipeline tests are single-test chains, not suites.
+- (7) Every MUST requirement that involves a sequential UI action has a `pl.step()` in the relevant pipeline file under `web/tests/e2e/pipelines/`. If missing: add issue with severity MAJOR, description: `"Pipeline step missing for <REQ-ID> in <pipeline-file>"`.
+- (8) A `tests/specs/PIPELINE-<slug>.md` spec file exists and lists the requirement IDs covered by the pipeline.
+- (9) Pipeline file imports from `web/tests/e2e/pipeline.ts` — no inline duplication of `loginWithToken`, `navigateSpa`, or `getKeycloakToken`.
+- (10) `pl.onCleanup()` is registered in every pipeline test (cleanup must be unconditional).
+- (11) No `test.beforeEach` / `test.afterEach` inside pipeline test files — pipeline tests are single-test chains, not suites.
 
 ---
 

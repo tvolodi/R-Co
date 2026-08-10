@@ -55,6 +55,57 @@ Backend Unit Tests (Zig built-in test framework)
       Coverage target: ≥ 90% line coverage; 100% branch coverage on gateway logic
 ```
 
+### 2.1 Scored test-tier rubric (GH-295 / ISS-0080 / PI-05)
+
+`TEST-DESIGNER` re-derives which layers above a given change needs on every
+run. Instead of judging that from scratch each time, score the change
+against the dimensions below and read off the tier. This replaces intuition
+with a checklist `TEST-DESIGN-VALIDATOR` can also apply mechanically when
+checking the resulting test spec is proportionate.
+
+**Score every dimension the change touches, then sum:**
+
+| Dimension | Points | Touches... |
+|---|---|---|
+| DB schema | 2 | A migration file, a new/changed table, column, constraint, or index |
+| Tenant isolation | 2 | Any tenant-scoped table, tenant-id filtering logic, or cross-tenant boundary (e.g. `FIL-06`, `QRY-04`, `DDL-05`) |
+| Wasm | 2 | `src/wasm/**`, the sandbox capability model, or anything executing untrusted process code (e.g. `SBX-05`) |
+| Cross-module | 1 | Call sites or contracts spanning ≥ 2 top-level modules (e.g. `src/engine/` calling into `src/repository/`) |
+| Transactional boundary | 1 | Code inside or wrapping a DB transaction — commit/rollback ordering, multi-statement atomicity |
+
+**Read off the tier from the total:**
+
+| Total score | Required test tier |
+|---|---|
+| 0 | Unit only |
+| 1–2 | Unit + integration |
+| 3+ | Unit + integration + sandbox |
+
+**Worked examples:**
+
+1. A migration adding a column to a tenant-scoped table (e.g. one of the
+   `GBL-1xx` schema-reconciliation migrations under `migrations/`) — DB
+   schema (2) + tenant isolation (2) = **4 points → sandbox tier.**
+2. A change to `src/wasm/capabilities.zig` gating which host functions a
+   process definition can call — Wasm (2) + tenant isolation (2, capability
+   grants are tenant-scoped) = **4 points → sandbox tier.**
+3. A pure-function fix inside `src/engine/transition.zig` that does not
+   change its signature or call any other module — 0 dimensions touched =
+   **0 points → unit only.**
+4. A new field added to a single existing API response, resolved entirely
+   within one module and one transaction — cross-module (0, single module)
+   + transactional boundary (1, the existing transaction wrapping the
+   handler) = **1 point → unit + integration.**
+
+Record the computed score and tier in the test spec header (`tests/specs/<REQ-ID>.md`,
+see §3) so `TEST-DESIGN-VALIDATOR` can confirm the chosen layers match the
+score without re-deriving it.
+
+**Fail-first rule:** see the TEST-DESIGN-VALIDATOR checklist in `CLAUDE.md`
+— every new or modified test must be confirmed to fail against the
+pre-change code. A test that passes both before and after the change proves
+nothing.
+
 ---
 
 ## 3. Test Specification Format
