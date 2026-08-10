@@ -546,15 +546,20 @@ Backend services (PostgreSQL, Keycloak) are a **standard runtime requirement** �
 
 1. Create an ADHOC BACKEND-DEV handoff immediately with task:
    ```
-   Start all required backend services:
+   Start all required backend services and apply pending migrations using the
+   single command surface (GH-294 / ISS-0079 / PI-04), which blocks on real
+   service readiness instead of a manual health check:
+     ./make.ps1 up        (docker compose up -d + readiness poll, up to 10x)
+     ./make.ps1 migrate   (zig build migrate, BPM_DB_URL from .env)
+   Return PASS only when ./make.ps1 up exits 0 (all services healthy) and
+   ./make.ps1 migrate exits 0.
+
+   What this expands to, if make.ps1 itself is unavailable or unusable:
      docker-compose up -d db db_test keycloak
-   Then wait for health checks:
      docker-compose ps  (all services must show "healthy")
-   Then verify:
      GET http://localhost:8081/health/ready  (Keycloak)
      psql $BPM_TEST_DB_URL -c "SELECT 1"   (test DB)
-   Run zig build migrate to apply any pending migrations.
-   Return PASS only when all services are healthy and zig build migrate exits 0.
+     zig build migrate
    ```
 2. Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for service startup`
 3. After ADHOC returns PASS: immediately redispatch TEST-RUNNER. Do NOT pause or report to user.
@@ -810,8 +815,16 @@ Read the handoff file. Read every artefact it references under `context.artifact
   Review the `// TODO(codegen):` lines — codegen guesses HTTP status from variant names and may be wrong.
 
 **3. Validate:**
-```bash
+
+Primary form — the single command surface (`make.ps1`, see GH-294 / ISS-0079 / PI-04),
+which sources `BPM_DB_URL` from `.env` for you:
+```powershell
 zig build
+./make.ps1 test
+./make.ps1 migrate
+```
+What `./make.ps1 test` / `./make.ps1 migrate` expand to, if working outside the wrapper:
+```bash
 zig build test
 zig build migrate
 ```
@@ -916,6 +929,15 @@ Also update the `status` field in `handoffs/registry.json` for this handoff.
 
 ### Allowed commands
 
+Single command surface (`./make.ps1 help` for the full list — see GH-294 / ISS-0079 / PI-04):
+```powershell
+./make.ps1 up          # docker compose up -d + readiness wait
+./make.ps1 migrate     # zig build migrate, BPM_DB_URL from .env
+./make.ps1 test        # zig build test (unit only)
+./make.ps1 test-live   # wait for Postgres+Keycloak, then zig build test-integration
+./make.ps1 check       # interim pre-PI-03 stand-in (zig build + error-set grep) — see GH-293
+```
+Raw forms these expand to (still allowed directly):
 ```bash
 zig build
 zig build test
@@ -1027,6 +1049,8 @@ npm run test         # pure unit tests (utils/schemas only) — must exit 0
 npm run build        # must exit 0
 npx playwright test  # E2E against real backend — must exit 0
 ```
+The last line is also available as `./make.ps1 e2e` from the repo root (single command
+surface, GH-294 / ISS-0079 / PI-04) — equivalent to `cd web && npm run test:e2e`.
 All must pass before completing.
 
 **4. Self-review:**
@@ -1223,12 +1247,22 @@ Find your handoff, then run the test commands specified in `task.functions_to_ca
 **Pre-checks (run before any test command):**
 
 **1. Backend services check** (required for E2E and integration tests):
+
+Prefer running actual test commands through the single command surface (GH-294 /
+ISS-0079 / PI-04), since `./make.ps1 test-live` blocks on real service readiness
+(polls up to 10x) rather than a one-shot check that can be stale by the time the test
+binary starts:
+```powershell
+./make.ps1 test-live   # waits for Postgres+Keycloak, then zig build test-integration
+```
+If you need a standalone readiness check without running tests yet, or `make.ps1` is
+unavailable:
 ```bash
 docker-compose ps 2>/dev/null | grep -E "keycloak|db"
 curl -sf http://localhost:8081/health/ready > /dev/null && echo "KC_OK" || echo "KC_DOWN"
 psql "$BPM_TEST_DB_URL" -c "SELECT 1" > /dev/null 2>&1 && echo "DB_OK" || echo "DB_DOWN"
 ```
-If any service is down: STOP. Return FAIL with severity BLOCKER, message: `"Backend services unavailable: <which services>. ORCH must run docker-compose up -d db db_test keycloak via ADHOC BACKEND-DEV, then redispatch TEST-RUNNER."` Do NOT attempt to start services yourself.
+If any service is down (via either form): STOP. Return FAIL with severity BLOCKER, message: `"Backend services unavailable: <which services>. ORCH must run ./make.ps1 up via ADHOC BACKEND-DEV, then redispatch TEST-RUNNER."` Do NOT attempt to start services yourself.
 
 **2. Infrastructure Health Checklist** (INV-TI-1 — required for integration tests):
 ```bash

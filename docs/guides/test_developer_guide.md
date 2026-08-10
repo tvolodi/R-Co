@@ -405,17 +405,20 @@ nfr_results:
 
 ## 10. CI Integration Notes
 
-In CI (GitHub Actions or equivalent), tests run in this order:
+In CI (GitHub Actions or equivalent), tests run in this order. Steps 3–5 and 7–8 are
+available via the single command surface (`./make.ps1 test-live` / `./make.ps1 e2e` —
+GH-294 / ISS-0079 / PI-04), which sources env vars from `.env` and blocks on real
+service readiness instead of a one-shot check:
 
 ```
 1. zig build                         # compile check
-2. zig build test                    # unit tests (no DB)
-3. Start test PostgreSQL container
-4. zig build migrate (test DB)
-5. zig build test-integration        # integration tests
+2. zig build test                    # unit tests (no DB)          [./make.ps1 test]
+3. Start test PostgreSQL container   \
+4. zig build migrate (test DB)        > ./make.ps1 test-live  (waits for services,
+5. zig build test-integration        /   then runs test-integration)
 6. cd web && npm run test            # frontend unit tests
-7. Start full stack (backend + frontend)
-8. npx playwright test               # E2E tests
+7. Start full stack (backend + frontend) \
+8. npx playwright test               # E2E tests                    [./make.ps1 e2e]
 9. zig build bench                   # NFR benchmarks (on schedule or pre-release only)
 ```
 
@@ -597,11 +600,11 @@ This section is a required-reading summary. Agents MUST read `docs/guides/test_i
 
 ### 12.2 TEST-RUNNER pre-flight checklist
 
-TEST-RUNNER MUST complete this checklist before dispatching any test binary. Each failure = STOP + return FAIL BLOCKER:
+TEST-RUNNER MUST complete this checklist before dispatching any test binary. Each failure = STOP + return FAIL BLOCKER. `./make.ps1 test-live` (single command surface, GH-294 / ISS-0079 / PI-04) covers the readiness/migrate portion of this list by blocking until services are healthy before invoking `zig build test-integration`:
 
 ```
-[ ] db_test container healthy
-[ ] zig build migrate exits 0, no error output
+[ ] db_test container healthy                                        [./make.ps1 up / test-live]
+[ ] zig build migrate exits 0, no error output                       [./make.ps1 migrate]
 [ ] public.schema_migrations row count == migrations/*.sql file count
 [ ] all tenant schemas in public.tenants exist as PostgreSQL schemas
 [ ] zig build exits 0
