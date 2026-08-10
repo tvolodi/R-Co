@@ -875,3 +875,4 @@
 2026-08-10T14:09:09Z | RESOLVE | GH-673 | --- | r-co-2-loop | WF03-GH673-20260810 Step Final PASS (PR #675) — determined duplicate of GH-651
 2026-08-10T14:44:17Z | RESOLVE | GH-651 | --- | r-co-2-loop | WF03-GH651-20260810-2 Step Final PASS (PR #676) — true root cause found and fixed
 2026-08-10T15:00:03Z | RESOLVE | GH-649 | --- | r-co-2-loop | WF03-GH649-20260810-final Step Final PASS (PR #677) — all forwarded children resolved, closed
+2026-08-10T15:13:01Z | RESOLVE | GH-482 | --- | r-co-2-loop | WF03-GH482-20260810-final Step Final PASS (PR #678) — root ancestor issue closed, entire chain resolved
