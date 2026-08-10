@@ -1,0 +1,50 @@
+{
+  "handoff_id": "a3000000-0000-0200-0000-000000000000",
+  "run_id": "WF03-GH300-20260810",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-10T16:59:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a3000000-0000-0000-0000-000000000000",
+      "a3000000-0000-0050-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/agents/uat-scenario-schema-v1.1-addendum.md",
+      "docs/issues/ISS-0085.json"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/300",
+    "iss_ref": "ISS-0085 / GOV-01"
+  },
+  "task": {
+    "description": "CODE-DESIGNER Step 2 (REWORK 1) \u2014 revise the design artefact for ISS-0085 / GOV-01.\n\nThe previous design at src/design/uat-scenario-schema-v1.1-apply.md failed lint with 3 MAJOR findings:\n\n1. [E010] Missing required section header for `errors` (expected one of: 'error taxonomy', 'errors', 'error cases'). Add a top-level section titled 'Errors' (or 'Error taxonomy') that enumerates how each consumer reacts when a malformed platform scenario is loaded (e.g. malformed platform_workflow, missing evidence on system_state, via: system in gui uat_surface, actor-system-* on a gui step).\n\n2. [E050] Fenced code block at line 324 exceeds 40 lines. Replace the long fenced code with prose, OR split it into multiple shorter blocks (each <= 40 lines). Same for the block at line 597.\n\n3. [E050] Fenced code block at line 597 exceeds 40 lines. Same fix.\n\nRe-run python tools/lint_design_artefact.py src/design/uat-scenario-schema-v1.1-apply.md after edits \u2014 must exit 0 with no BLOCKER/MAJOR.\n\nThe existing 13 edits across 6 consumer docs (UAT_RUNNER.md x5, PRODUCT_OWNER.md x3, ORCHESTRATOR.md x1, WF-05_uat_run.md x3, WF-06_scenario_authoring.md x2, CLAUDE.md x1) remain valid and should NOT be removed. Only the structural defects above need to be fixed.",
+    "acceptance_criteria": [
+      "src/design/uat-scenario-schema-v1.1-apply.md exists and covers all 5 consumers from \u00a77",
+      "Design has a top-level 'Errors' (or 'Error taxonomy') section",
+      "All fenced code blocks are <= 40 lines",
+      "python tools/lint_design_artefact.py exits 0 with no BLOCKER/MAJOR",
+      "Each edit has anchor + before/after + rationale",
+      "Hard constraints from addendum \u00a73 and \u00a74 are preserved",
+      "Three BO-* docs are NOT touched"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Reworked design to address lint_design_artefact.py MAJOR findings: added a top-level Errors section enumerating UAT-RUNNER / PRODUCT-OWNER / ORCH / WF-05 reactions to malformed platform scenarios (E010); split the Step-3 system-step text from a fenced block to prose; split the Edit 1.4 schema validation snippet into two passes each under 40 lines; rewrote the \u00a78e UAT-Ready gate prose without a fenced block. All 13 consumer edits across UAT_RUNNER.md / PRODUCT_OWNER.md / ORCHESTRATOR.md / WF-05_uat_run.md / WF-06_scenario_authoring.md / CLAUDE.md remain intact. Linter exits 0 with no BLOCKER/MAJOR.",
+    "artifacts_out": [
+      "src/design/uat-scenario-schema-v1.1-apply.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-08-10T17:10:55Z",
+  "completed_at": "2026-08-10T17:10:55Z"
+}
