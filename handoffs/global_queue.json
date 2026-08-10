@@ -1267,13 +1267,16 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/649",
       "title": "test-integration: 28-file consistent residual failure cluster (post ISS-0630 + adp0x schema-literal fix), spanning unrelated subsystems",
       "severity": "MAJOR",
-      "status": "DEFERRED",
-      "lock": null,
-      "added_at": "2026-08-10T02:19:30Z",
-      "started_at": "2026-08-10T02:19:30Z",
-      "completed_at": "2026-08-10T04:25:09Z",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T14:45:05Z"
+      },
+      "added_at": "2026-08-10T14:45:05Z",
+      "started_at": "2026-08-10T14:45:05Z",
+      "completed_at": null,
       "run_id": null,
-      "deferred_reason": "PARTIALLY_RESOLVED via PR #655: adp09 fully fixed (5/5 tests), adp10 root-caused and fixed in isolation (reverts under full concurrent suite, forwarded separately), xc02 partially fixed as a side effect. All 28 files got explicit disposition. Remaining work split into GH-651 (adp10 concurrency race), GH-652 (20 individually-distinct failures), GH-653 (baseline drift), GH-654 (2 new discoveries).",
+      "deferred_reason": null,
       "issue_number": 649,
       "labels": [
         "bug"
