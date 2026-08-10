@@ -912,3 +912,6 @@
 2026-08-10T20:20:40Z | COMPLETE | WF03-GH297-20260811 | --- | BACKEND-DEV | PASS (PR #685 merged 5ee3412, GH-297 closed)
 2026-08-10T20:20:40Z | RESOLVE  | WF03-GH297-20260811 | --- | ORCH | GH-297 closed via PR #685; ci.yml paths-ignore added, gate tiering evaluated and deferred (no slow job to tier), flaky-test policy documented in test_developer_guide.md sec 10.1
 2026-08-10T20:20:40Z | QUEUE_REL | WF03-GH297-20260811 | --- | ORCH | GH-297 marked RESOLVED on global_queue (PR #685 merged at 5ee3412)
+2026-08-10T20:28:22Z | COMPLETE | WF03-GH295-20260811 | --- | BACKEND-DEV | PASS (PR #686 merged a8b51df, GH-295 closed)
+2026-08-10T20:28:22Z | RESOLVE  | WF03-GH295-20260811 | --- | ORCH | GH-295 closed via PR #686; scored test-tier rubric added to test_developer_guide.md sec 2.1, fail-first rule added to TEST-DESIGN-VALIDATOR checklist in CLAUDE.md
+2026-08-10T20:28:22Z | QUEUE_REL | WF03-GH295-20260811 | --- | ORCH | GH-295 marked RESOLVED on global_queue (PR #686 merged at a8b51df)
