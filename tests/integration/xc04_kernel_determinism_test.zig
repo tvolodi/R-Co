@@ -190,12 +190,17 @@ test "TC-XC-04-04: audit chain hash computation is deterministic" {
     }
 
     for (0..3) |_| {
+        // ISS-0655 / GH-664: bpm_audit_compute_chain_hash's 6th parameter
+        // (p_resource_id, migrations/GBL-121 and 1107) is TEXT, not UUID --
+        // the ::uuid cast on $4 below made every call fail with C42883
+        // (same over-cast class as GH-649/ISS-0645's adp09 fix and
+        // GH-652/ISS-0647's tasks/store.zig fix).
         var query = try harness.conn.query(
             alloc,
             \\SELECT
             \\  bpm_audit_compute_chain_hash(
             \\    $1::uuid, $2::uuid, $3::uuid, 'test.action',
-            \\    'test', $4::uuid, '2026-05-28 10:00:00+00'::timestamptz,
+            \\    'test', $4, '2026-05-28 10:00:00+00'::timestamptz,
             \\    '{"key":"value"}'::jsonb, '{"result":"ok"}'::jsonb,
             \\    $5::uuid, '{"payload":"full"}'::jsonb,
             \\    '0000000000000000000000000000000000000000000000000000000000000000'::text,

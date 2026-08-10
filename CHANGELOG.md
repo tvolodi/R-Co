@@ -6,6 +6,14 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0655 — `xc04_kernel_determinism_test` TC-XC-04-04 function-signature mismatch fixed (MAJOR)** ([GitHub #664](https://github.com/tvolodi/R-Co/issues/664))
+
+- **Context:** incidental discovery during GH-652's triage (via the shared `test-integration-stage11-sim-xc04` build step, which bundles this file with `sim01_04_simulation_mode_test.zig`); not one of GH-652's 20 in-scope files, filed and forwarded separately.
+- **Root cause:** same over-cast class already fixed twice this session (GH-649's `adp09` fix, GH-652's `tasks/store.zig` fix) — `bpm_audit_compute_chain_hash`'s 6th parameter (`p_resource_id`, `migrations/1107_fix_audit_chain_text_resource_id.sql` / `migrations/GBL-121_fix_audit_chain_resource_id_text.sql`) is `TEXT`, but the test's direct SQL call cast the corresponding argument to `::uuid`, causing `C42883` on every call.
+- **The fix:** removed the incorrect `::uuid` cast from `tests/integration/xc04_kernel_determinism_test.zig`'s `TC-XC-04-04`.
+- **Verified:** `zig build test-integration-stage11-sim-xc04` — 13/14 pass (was 12/14), `TC-XC-04-04` passes consistently across 2 re-runs. The 1 remaining failure (`TC-SIM-01-01`) is GH-663's separately-forwarded, unrelated scope — confirmed not regressed. `zig build` exits 0, no `error set` output. `lint_sql_param_types.py` 0 findings. `zig build test` — 89/89 steps, 1011/1075 pass (64 skipped), unchanged from baseline.
+- **No requirement status change** — test-fixture type-cast fix.
+
 **ISS-0656 — `lint_handoffs.py` H004/H009 findings from 2026-08-09 runs acknowledged (MINOR)** ([GitHub #666](https://github.com/tvolodi/R-Co/issues/666))
 
 - **Context:** incidental finding from GH-652's Step Final review (`tools/lint_handoffs.py` showed 1 unacknowledged BLOCKER + 1 MAJOR, both predating GH-652's own branch), filed and forwarded rather than fixed inline on that branch.
