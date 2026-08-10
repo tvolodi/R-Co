@@ -1651,14 +1651,11 @@
       "labels": [
         "issue"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T21:36:02Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T21:36:02Z",
       "started_at": "2026-08-10T21:36:02Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T22:19:39Z",
       "run_id": null,
       "deferred_reason": null
     },

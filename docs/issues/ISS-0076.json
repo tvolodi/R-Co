@@ -56,6 +56,6 @@
     "docs/issues/ISS-0076.json"
   ],
   "created_at": "2026-08-10T21:56:26Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-10T22:19:22Z",
   "prevention": "When a shared instructions file is edited directly by multiple parallel runs (as CLAUDE.md was by six WF-03 runs in two hours) without a stated canonical surface, per-role adapter files silently fall behind and nobody notices until an agent invoked through the adapter path (here: Claude Code's own Agent tool, which reads .claude/agents/*.md, not CLAUDE.md's AGENT sections) acts on stale instructions. Declaring one canonical file per content type (this issue's core deliverable, recorded in AGENT_SYSTEM.md §9) converts 'four places might disagree' into 'one place is correct, the rest point at it' -- but that guarantee only holds if every future change is made in the canonical file, not the pointer. Before editing CLAUDE.md again to add a rule, check AGENT_SYSTEM.md §9 first: role-specific content belongs in .claude/agents/<role>.md, cross-cutting content belongs in docs/agents/instructions/core-directives.md, and CLAUDE.md itself should almost never need a new paragraph beyond the pointer table gaining or losing a row."
 }
