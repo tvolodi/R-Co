@@ -1627,6 +1627,26 @@
       "completed_at": "2026-08-10T21:09:03Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-292",
+      "issue_number": 292,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/292",
+      "title": "ISS-0077 (PI-02) \u2014 Numbered security invariants, and a security-reviewer agent",
+      "severity": "MAJOR",
+      "labels": [
+        "issue"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T21:10:49Z"
+      },
+      "added_at": "2026-08-10T21:10:49Z",
+      "started_at": "2026-08-10T21:10:49Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
