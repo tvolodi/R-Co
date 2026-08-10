@@ -608,13 +608,16 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/482",
       "title": "test-integration-svc: 63 failing blocks across 34 files, dominated by missing tenant_<uuid>.schema_migrations ledger (pre-existing, not caused by #477)",
       "severity": "MAJOR",
-      "status": "DEFERRED",
-      "lock": null,
-      "added_at": "2026-08-09T03:17:57Z",
-      "started_at": "2026-08-09T03:17:57Z",
-      "completed_at": "2026-08-09T22:31:19Z",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T15:00:37Z"
+      },
+      "added_at": "2026-08-10T15:00:37Z",
+      "started_at": "2026-08-10T15:00:37Z",
+      "completed_at": null,
       "run_id": null,
-      "deferred_reason": "PARTIALLY_RESOLVED via PR #650: fixed 6 files (adp02/04a/05/06/09/10 schema-literal bugs), 4 fully clean, 2 (adp09/adp10) revealed distinct new root causes. Remaining 28-file failure cluster forwarded to ISS-0645/GH-649 for its own WF-03 run rather than folded in. GH-482 stays open pending GH-649.",
+      "deferred_reason": null,
       "issue_number": 482,
       "labels": [
         "bug"
