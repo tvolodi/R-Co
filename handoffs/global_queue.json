@@ -1254,13 +1254,16 @@
       "labels": [
         "issue"
       ],
-      "status": "DEFERRED",
-      "lock": null,
-      "added_at": "2026-08-09T18:51:15Z",
-      "started_at": "2026-08-09T18:51:15Z",
-      "completed_at": "2026-08-09T21:01:54Z",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T15:13:24Z"
+      },
+      "added_at": "2026-08-10T15:13:24Z",
+      "started_at": "2026-08-10T15:13:24Z",
+      "completed_at": null,
       "run_id": null,
-      "deferred_reason": "Governance/design decision (requirement dependency ordering), not a code bug -- touches a separate tooling system (docs/issues.yaml, tools/issuectl.py, tools/depsort.py) undocumented in CLAUDE.md's WF-03 pipeline. Out of scope for the autonomous issue-fix loop; needs a dedicated design/planning session."
+      "deferred_reason": null
     },
     {
       "issue_id": "GH-649",
