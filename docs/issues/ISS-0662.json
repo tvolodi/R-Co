@@ -1,25 +1,28 @@
 {
   "issue_id": "ISS-0662",
   "title": "Stray issue_id \"--help\" junk entry in handoffs/global_queue.json",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MINOR",
   "category": "pipeline infrastructure / bookkeeping",
-  "run_id": null,
-  "workflow_id": null,
+  "run_id": "WF03-GH694-20260811",
+  "workflow_id": "WF-03",
   "handoff_id": null,
-  "requirement_ids": [],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/694",
-  "summary": "Discovered incidentally during GH-291/ISS-0076 (PI-01, CLAUDE.md split). handoffs/global_queue.json on main contains a malformed entry with issue_id '--help', added_at 2026-08-10T21:55:14Z. Caused by running `python3 tools/queue_add.py --help` intending to print usage -- the script has no -h/--help flag handling before treating sys.argv[1] as the issue_id, so the literal string '--help' became a queue entry (empty title, empty github_issue, default MAJOR severity). Harmless in practice (nothing will ever match GitHub issue '--help', so gh_claim.py can never process it and it blocks nothing real) but is permanent junk in an append-only audit file that should not be silently hand-edited away.",
-  "design_decision": {
-    "why_not_fixed_here": "handoffs/global_queue.json is explicitly a file this run was warned NOT to hand-resolve conflicts on or otherwise silently rewrite -- the task's own instructions say any push conflict must go through fetch+reset+re-run-tool-fresh, never manual JSON surgery. The stray entry reached origin/main's committed history via a legitimate git push (this session's own accidental --help invocation, later corrected locally but the correction was superseded when tools/_queue_sync.py's sync-from-origin logic re-merged origin's authoritative copy, which still had the bad entry, on the next queue_add.py call). Removing it now would mean a manual edit to the shared audit-trail file outside the queue_add.py/queue_release.py tooling, which is exactly the kind of ad hoc bookkeeping edit the Bookkeeping Is Not Optional directive warns against. Filing it as its own small, auditable, single-purpose fix (remove one entry, add -h/--help guard to queue_add.py) is the correct scope."
+  "requirement_ids": [],
+  "summary": "handoffs/global_queue.json contained a malformed entry with issue_id '--help', empty title/github_issue, and default MAJOR severity. Discovered during GH-291/ISS-0076 (PI-01, CLAUDE.md split) conflict resolution.",
+  "root_cause": {
+    "type": "missing_argument_validation",
+    "details": "tools/queue_add.py was invoked as 'queue_add.py --help' intending to print usage, but the script treated sys.argv[1] as issue_id unconditionally with no -h/--help handling and no check that the value doesn't look like a flag. Since no --severity/--title/--github-issue followed, the entry was written with empty title/github_issue and the default MAJOR severity."
   },
-  "evidence": {
-    "entry_location": "handoffs/global_queue.json, issue_id '--help', added_at '2026-08-10T21:55:14Z' -- timestamp matches exactly when `python3 tools/queue_add.py --help` was run in this session.",
-    "root_cause_confirmed": "Read tools/queue_add.py's argument parsing (lines 65-90): sys.argv[1] is unconditionally treated as issue_id with no prior check for -h/--help."
-  },
-  "resolution": null,
-  "files_changed": [],
-  "created_at": "2026-08-10T22:10:00Z",
-  "resolved_at": null,
-  "prevention": "Add explicit -h/--help handling to tools/queue_add.py before its positional-argument parsing, so this class of mistake cannot recur. This affects any other tools/*.py script using the same bare-positional-argv pattern -- worth a grep sweep as part of the fix."
+  "resolution": "Added explicit -h/--help handling to tools/queue_add.py's main() (prints usage, exits 0, before touching sys.argv[1] as issue_id). Added a defense-in-depth check that rejects any issue_id starting with '-' with a clear error (exit 1) rather than silently accepting it. Removed the stray '--help' entry from handoffs/global_queue.json via this tracked commit (not a silent local edit), as the issue's own suggested fix specified.",
+  "verification": "python tools/queue_add.py --help -> usage printed, exit 0, queue file untouched (confirmed via git diff before/after). python tools/queue_add.py -h -> same. python tools/queue_add.py --bogus -> rejected with clear error, exit 1, queue file untouched. git diff handoffs/global_queue.json shows exactly one entry removed (13 lines), no other changes.",
+  "files_changed": [
+    "tools/queue_add.py",
+    "handoffs/global_queue.json"
+  ],
+  "created_at": "2026-08-10T21:55:14Z",
+  "resolved_at": "2026-08-10T22:22:42Z",
+  "prevention": [
+    "Any CLI tool under tools/ that treats sys.argv[1] as a required positional argument should check for -h/--help (and ideally reject flag-shaped values) before assigning it, to fail loudly rather than silently accepting garbage input."
+  ]
 }
