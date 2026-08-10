@@ -5,7 +5,7 @@
   "from_agent": "ORCH",
   "to_agent": "DOC-UPDATER",
   "created_at": "2026-08-10T21:32:58Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "WF-03 Issue Resolving",
@@ -34,7 +34,7 @@
     ]
   },
   "task": {
-    "description": "WF-03 Step 7 (DOC-UPDATER) housekeeping for PI-09 / ISS-0084 / GH-299. All tests green (5/5), 0 BLOCKER. Branch `feature/WF03-GH299-20260811` is ready to merge.\n\nTasks:\n1. Create PR for branch `feature/WF03-GH299-20260811` into `main`.\n2. Wait for CI checks to be green (poll up to 5 minutes).\n3. `gh pr merge --squash --delete-branch`.\n4. Verify branch is deleted from origin.\n5. `git checkout main && git pull --ff-only origin main` — clean main state.\n6. Update `CHANGELOG.md` with PI-09 / ISS-0084 closure entry.\n7. Update `docs/issues/ISS-0084.json` — mark status=RESOLVED, github_issue, resolution_text, prevention_text. Use `python tools/utcnow.py` for resolved_at.\n8. Update requirement status via `python tools/reqctl.py set-status PI-09 RELEASED --implemented-in <files>` then `python tools/reqctl.py render-status`.\n9. Update project board: `python tools/gh_project_status.py 299 --target implemented` then `--target done` (PI-09 is not UAT-scoped; no scenario match).\n10. Release queue lock: `python tools/queue_release.py GH-299 tvolodi-51316 --status RESOLVED`.\n11. File the MINOR-PI09-1 issue on GitHub (no matching issue found scenario) — test polymorphism around public schema pollution should be made explicit (allowlist) in a follow-up run.\n12. Update `handoffs/WF03-GH299-20260811/step-final-backend-dev.json` if it exists, or note that DOC-UPDATER performed the final git-merge.",
+    "description": "WF-03 Step 7 (DOC-UPDATER) housekeeping for PI-09 / ISS-0084 / GH-299. All tests green (5/5), 0 BLOCKER. Branch `feature/WF03-GH299-20260811` is ready to merge.\n\nTasks:\n1. Create PR for branch `feature/WF03-GH299-20260811` into `main`.\n2. Wait for CI checks to be green (poll up to 5 minutes).\n3. `gh pr merge --squash --delete-branch`.\n4. Verify branch is deleted from origin.\n5. `git checkout main && git pull --ff-only origin main` \u2014 clean main state.\n6. Update `CHANGELOG.md` with PI-09 / ISS-0084 closure entry.\n7. Update `docs/issues/ISS-0084.json` \u2014 mark status=RESOLVED, github_issue, resolution_text, prevention_text. Use `python tools/utcnow.py` for resolved_at.\n8. Update requirement status via `python tools/reqctl.py set-status PI-09 RELEASED --implemented-in <files>` then `python tools/reqctl.py render-status`.\n9. Update project board: `python tools/gh_project_status.py 299 --target implemented` then `--target done` (PI-09 is not UAT-scoped; no scenario match).\n10. Release queue lock: `python tools/queue_release.py GH-299 tvolodi-51316 --status RESOLVED`.\n11. File the MINOR-PI09-1 issue on GitHub (no matching issue found scenario) \u2014 test polymorphism around public schema pollution should be made explicit (allowlist) in a follow-up run.\n12. Update `handoffs/WF03-GH299-20260811/step-final-backend-dev.json` if it exists, or note that DOC-UPDATER performed the final git-merge.",
     "acceptance_criteria": [
       "PR created and merged via squash",
       "Feature branch deleted from origin",
@@ -42,8 +42,8 @@
       "CHANGELOG.md has PI-09 / ISS-0084 entry",
       "ISS-0084.json marked RESOLVED",
       "reqctl.py set-status PI-09 RELEASED succeeds",
-      "gh_project_status.py set 299 → done",
-      "queue_release.py reports GH-299 → RESOLVED",
+      "gh_project_status.py set 299 \u2192 done",
+      "queue_release.py reports GH-299 \u2192 RESOLVED",
       "MINOR issue filed on GitHub with rco-sync-ref comment"
     ],
     "functions_to_call": [
@@ -51,9 +51,25 @@
       "fn:git-merge"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Created PR #690, all 8 CI checks PASS (Build/LuaJIT/migrations/frontend/linters/bookkeeping/tenant/platform), squash-merged as 474c26e6 to main, branch feature/WF03-GH299-20260811 deleted from origin, repo on main with clean working tree. ISS-0084 marked RESOLVED. PI-09 added to registry and set to RELEASED with implemented-in metadata. GH#699 \u2192 implemented \u2192 done. Queue lock released for GH-299. MINOR follow-up issue filed as GH#691 / local ISS-0660.",
+    "artifacts_out": [
+      "PR #690",
+      "merge commit 474c26e6",
+      "docs/issues/ISS-0084.json",
+      "docs/issues/ISS-0660.json (MINOR-PI09-1)",
+      "docs/requirements.yaml (PI-09 added)",
+      "docs/status/requirement_status.yaml (regenerated)",
+      "CHANGELOG.md (PI-09 / ISS-0084 entry prepended)",
+      "tests/reports/report-2026-08-10-WF03-GH299-20260811.yaml",
+      "GitHub issue GH#691 (MINOR-PI09-1)"
+    ],
+    "issues": [],
+    "next_action": "Step Final git-cleanup pass; then ORCH can claim next GH issue"
+  },
   "rework_count": 0,
   "max_rework": 2,
   "started_at": "2026-08-10T21:33:10Z",
-  "completed_at": null
+  "completed_at": "2026-08-10T21:55:55Z"
 }

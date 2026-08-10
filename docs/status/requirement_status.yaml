@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-09T15:05:53Z'
+last_updated: '2026-08-10T21:53:48Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4828,3 +4828,14 @@ requirements:
     stage: BRW — Borrowing from ASCOA-GO
     priority: COULD
     title: Ephemeral throwaway-sandbox tier (conditional)
+  PI-09:
+    status: RELEASED
+    stage: '17'
+    priority: SHOULD
+    title: Operations runbook and fail-fast startup assertion
+    implemented_in:
+    - src/operations/startup_assertions.zig
+    - src/main.zig
+    - docs/runbook/OPERATIONS.md
+    - tests/integration/startup_assertions_test.zig
+    released_at: '2026-08-10T21:53:45Z'

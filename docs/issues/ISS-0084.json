@@ -1,14 +1,16 @@
 {
   "issue_id": "ISS-0084",
   "title": "PI-09: Operations runbook and a fail-fast startup assertion",
-  "status": "IN_PROGRESS",
+  "status": "RESOLVED",
   "severity": "MINOR",
   "category": "operations / runbook",
   "run_id": "WF03-GH299-20260811",
   "workflow_id": "WF-03",
   "handoff_id": "29900000-0000-0050-0000-000000000000",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/299",
-  "requirement_ids": [],
+  "requirement_ids": [
+    "PI-09"
+  ],
   "summary": "No runbook and no startup assertions. Document the config the app assumes but does not control, and assert it right after the DB connects with a deterministic FATAL line whose text is pinned by a test so alerts can match it.",
   "root_cause": {
     "type": "missing-documentation",
@@ -19,5 +21,18 @@
     "docs/"
   ],
   "created_at": "2026-08-10T20:10:20Z",
-  "last_updated": "2026-08-10T20:10:20Z"
+  "last_updated": "2026-08-10T21:52:10Z",
+  "resolved_at": "2026-08-10T21:52:10Z",
+  "resolution_text": "Implemented `assertDatabaseConfiguration` in `src/operations/startup_assertions.zig`, wired into `src/main.zig`. Operations runbook at `docs/runbook/OPERATIONS.md`. 5/5 integration tests pass.",
+  "prevention_text": "Operations runbook documents required env vars. Fail-fast assertion prevents service from starting in misconfigured environments.",
+  "fix_commits": [
+    "eef0150d",
+    "ba4e395b",
+    "87c2722b",
+    "34cbdf01",
+    "5f6ab9f2",
+    "5f7e682b"
+  ],
+  "merge_commit": "474c26e6",
+  "pr_number": 690
 }

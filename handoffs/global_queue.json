@@ -1664,6 +1664,32 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "--help",
+      "github_issue": "",
+      "title": "",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T21:55:14Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0660",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/691",
+      "title": "MINOR-PI09-1: Make public schema pollution check explicit (allowlist or tenant-scoped)",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T21:55:48Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
