@@ -909,3 +909,5 @@
 2026-08-10T19:53:17Z | RESOLVE  | WF03-GH681-20260810 | --- | ORCH | GH-681 closed via PR #684; ISS-0659 advisory-lock pattern extended to 31 self-managed-pool binaries
 2026-08-10T19:53:17Z | ORCH_LOOP| WF03-GH681-20260810 | --- | ORCH | r-co-orchestrator-loop handing control back to gh_claim for next issue
 2026-08-10T19:56:01Z | QUEUE_REL | WF03-GH681-20260810 | --- | ORCH | GH-681 marked RESOLVED on global_queue (PR #684 merged at 7b1421f9)
+2026-08-10T20:06:09Z | ROUTE   | WF03-GH299-20260811 | 29900000-0000-0000-0000-000000000000 | ORCH → BACKEND-DEV | PENDING (step 00: git-setup)
+2026-08-10T20:07:53Z | COMPLETE | WF03-GH299-20260811 | 29900000 | BACKEND-DEV | PASS (git-setup)
