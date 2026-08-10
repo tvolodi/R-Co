@@ -370,6 +370,45 @@ In CI (GitHub Actions or equivalent), tests run in this order:
 
 Any failure in steps 1–6 blocks steps 7–9 (fail fast).
 
+### 10.1 Flaky-test policy (GH-297 / ISS-0082)
+
+A test is **flaky** when it fails intermittently for reasons unrelated to
+the correctness of the code under test — timing, concurrency ordering,
+shared fixture state — rather than because a change broke a genuine
+assertion. See `docs/issues/ISS-0658.json` / `ISS-0659.json` for a worked
+example of exactly this distinction being diagnosed rather than assumed.
+
+When a test is suspected flaky:
+
+1. Do not silently retry, sleep-loop, or delete the assertion to make it
+   pass — that hides the underlying defect (same principle as CLAUDE.md's
+   "Never Satisfy a Gate by Editing What It Measures").
+2. File it the same way any other discovered defect is filed: an ISS
+   registry entry and a GitHub issue (CLAUDE.md "No Issue Left
+   Local-Only"), with root-cause evidence if already known, or a note that
+   root-cause is still open if not.
+3. Mark the test in source with a comment directly above the `test` block:
+   ```zig
+   // FLAKY(GH-<issue-number>): <one-line symptom>. Filed <date>.
+   test "TC-XXX-NN description" { ... }
+   ```
+   This is a marker for humans and agents reading the file — there is
+   currently no automated skip-on-PR mechanism, because none of the tests
+   that run in `.github/workflows/ci.yml` today are the ones affected by
+   this class of flakiness (the known case, `zig build test-integration`,
+   is not part of that workflow at all — see
+   `src/design/ci-gate-tiering.md` §2). If a flaky test is later added to a
+   gate that runs on every PR, build the skip mechanism at that point,
+   against the real case, rather than in advance of one.
+4. **Fix within 48 hours of the marker being added, or disable the test.**
+   ISSUE-FIXER and TEST-RUNNER should treat a `FLAKY` marker older than 48
+   hours (compare the filed date in the comment against the current date)
+   as a BLOCKER-worthy finding when encountered — an unresolved flaky
+   marker is itself a defect at that point, not a documented one.
+5. Once fixed, remove the `FLAKY(...)` comment in the same change that
+   resolves the underlying issue, and mark the ISS/GitHub issue RESOLVED
+   per the usual procedure.
+
 ---
 
 ## 11. Pipeline Tests

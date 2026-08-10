@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-10T17:17:42Z",
+  "last_updated": "2026-08-10T20:12:48Z",
   "next_issue_id": 210,
   "issues": [
     {
@@ -2084,6 +2084,23 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/576",
       "discovered_in": "WF03-GH566-20260808 (ISS-0617/GH-566), incidental discovery during BACKEND-DEV implementation",
       "created_at": "2026-08-08T08:36:42Z",
+      "resolved_at": null
+    },
+    {
+      "issue_id": "ISS-0082",
+      "title": "Gate tiering, flakiness policy, CI path filters (PI-07)",
+      "status": "RESOLVED",
+      "severity": "MINOR",
+      "category": "ci infrastructure / process",
+      "run_id": "WF03-GH297-20260811",
+      "affected_areas": [
+        ".github/workflows/ci.yml",
+        "docs/guides/test_developer_guide.md",
+        "src/design/ci-gate-tiering.md"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/297",
+      "discovered_in": "Pre-existing GitHub issue (originally tracked via docs/issues.yaml sync tooling, since removed); no local ISS file existed until this run",
+      "created_at": "2026-08-10T20:12:48Z",
       "resolved_at": null
     }
   ]
