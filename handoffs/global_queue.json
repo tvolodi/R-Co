@@ -1293,17 +1293,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0647",
+      "issue_id": "GH-652",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/652",
-      "title": "20 files with distinct residual test-integration failures",
+      "title": "test-integration: 20 files with distinct, individually-unresolved failures after GH-649's adp09/adp10 fix pass",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-10T04:14:56Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T06:07:56Z"
+      },
+      "added_at": "2026-08-10T06:07:56Z",
+      "started_at": "2026-08-10T06:07:56Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 652,
+      "labels": [
+        "bug"
+      ]
     },
     {
       "issue_id": "GH-653",
