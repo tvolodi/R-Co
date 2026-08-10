@@ -2912,4 +2912,49 @@ pub fn build(b: *std.Build) void {
     const run_openapi = b.addRunArtifact(openapi_exe);
     const openapi_step = b.step("openapi", "Generate docs/openapi.json");
     openapi_step.dependOn(&run_openapi.step);
+
+    // ---------------------------------------------------------------------------
+    // `zig build check` — the real PI-03 gate (GH-293 / ISS-0078)
+    //
+    // CLAUDE.md's BACKEND-DEV section used to mandate this as prose the agent
+    // had to run and read by hand:
+    //     zig build 2>&1 | grep -i "error set"
+    // That never needed to exist as a grep: an error-set mismatch (a function
+    // returning a wider error set than its declared return type covers) is a
+    // genuine Zig compile error, not advisory stderr text — `zig build` (and
+    // `zig build-exe`) already exit non-zero for it and refuse to emit a
+    // binary. Verified directly while building this gate: a minimal
+    // `NarrowError!void` function returning a `WideError!void` value fails
+    // `zig build-exe` with "error: expected type 'error{Foo}!void', found
+    // 'error{Bar,Foo}!void'" and exit code 1. The grep was defensive prose
+    // from a time before this repo had a build step to depend on — it added
+    // no coverage beyond the exit code. `zig build check` therefore does NOT
+    // reintroduce that grep; it depends on the normal build, whose own exit
+    // code is the correct and sufficient signal. Trust the exit code.
+    //
+    // The other half of PI-03 is `zig fmt --check`. Run whole-tree, this
+    // reports 440 pre-existing unformatted files (225 under src/, 200 under
+    // tests/, plus build.zig/build.zig.zon/vendor/scratch/docs), none related
+    // to any particular change — gating on that would fail every future PR on
+    // debt it did not create. tools/check_fmt_scope.py scopes `zig fmt
+    // --check` to only the .zig files the current branch actually changed
+    // relative to `main`, so the gate fails loudly for THIS change without
+    // punishing every branch for pre-existing debt. See ISS-0078 for the
+    // follow-up note recommending a tracked, separately-scheduled whole-tree
+    // reformat.
+    // ---------------------------------------------------------------------------
+    const run_fmt_check_scoped = b.addSystemCommand(&.{
+        "python",
+        "tools/check_fmt_scope.py",
+    });
+    run_fmt_check_scoped.setCwd(b.path("."));
+    const check_step = b.step(
+        "check",
+        "PI-03 gate: zig build (error sets fail via normal exit code) + zig fmt --check scoped to this branch's changed files",
+    );
+    check_step.dependOn(&run_fmt_check_scoped.step);
+    // The build itself is the error-set assertion — depending on the default
+    // install step means `zig build check` fails non-zero on a compile error
+    // (including an error-set mismatch) exactly like a plain `zig build` does.
+    check_step.dependOn(b.getInstallStep());
 }

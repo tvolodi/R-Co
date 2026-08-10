@@ -14,7 +14,23 @@ A business process management platform built with Zig (backend) and React/TypeSc
 
 ## Quick start
 
+**Primary path (Windows/PowerShell):** this repo has a single command surface,
+`make.ps1`, that wraps infrastructure startup, migrations, and test/e2e runs with a
+real service-readiness wait instead of a "check that it's healthy" instruction. Run
+`./make.ps1 help` for the full subcommand list. The steps below show both the
+`make.ps1` form and the raw command it expands to, since a fresh checkout may not yet
+have PowerShell execution policy configured.
+
 ### 1. Start infrastructure
+
+```powershell
+./make.ps1 up
+```
+
+`make.ps1 up` runs `docker compose up -d`, then polls each service's Docker health
+status (reusing the healthchecks already defined in `docker-compose.yml`) up to 10
+times before failing clearly — you do not need to separately check `docker compose ps`
+by hand. Raw form, if you are not on PowerShell:
 
 ```bash
 docker compose up -d
@@ -28,7 +44,8 @@ This starts:
 | PostgreSQL (dev) | localhost:5432 | bpm / bpm, db: bpm_dev |
 | PostgreSQL (test) | localhost:5433 | bpm / bpm, db: bpm_test |
 
-Wait for Keycloak to be healthy (first startup imports the `bpm-default` realm automatically):
+If you started the stack with the raw `docker compose` form, wait for it to be healthy
+yourself (first startup imports the `bpm-default` realm automatically):
 
 ```bash
 docker compose ps   # all services should show "healthy"
@@ -36,11 +53,18 @@ docker compose ps   # all services should show "healthy"
 
 ### 2. Run database migrations
 
+```powershell
+./make.ps1 migrate
+```
+
+`make.ps1 migrate` sources `BPM_DB_URL` from `.env` itself, so nothing needs to be
+exported by hand. Raw form:
+
 ```bash
 BPM_DB_URL=postgres://bpm:bpm@localhost:5432/bpm_dev zig build migrate
 ```
 
-On Windows PowerShell:
+On Windows PowerShell without the wrapper:
 
 ```powershell
 $env:BPM_DB_URL = "postgres://bpm:bpm@localhost:5432/bpm_dev"
@@ -113,6 +137,22 @@ for every variable). Summary of the required ones:
 ---
 
 ## Development commands
+
+**Single command surface:** `./make.ps1 <command>` (PowerShell) wraps the commands
+below with env vars sourced from `.env` and a real service-readiness wait where
+relevant — run `./make.ps1 help` for the list. See
+`src/design/unified-command-surface.md` for what each subcommand does and why.
+
+| `make.ps1` command | Wraps | What it does |
+|---|---|---|
+| `./make.ps1 up` | `docker compose up -d` | Starts infrastructure, polls all services until healthy (up to 10x) |
+| `./make.ps1 migrate` | `zig build migrate` | Applies pending migrations, `BPM_DB_URL` sourced from `.env` |
+| `./make.ps1 test` | `zig build test` | Run all unit tests |
+| `./make.ps1 test-live` | `zig build test-integration` | Waits for Postgres + Keycloak, then runs integration tests, `BPM_TEST_DB_URL` sourced from `.env` |
+| `./make.ps1 e2e` | `cd web && npm run test:e2e` | Run E2E tests against a running stack |
+| `./make.ps1 check` | `zig build check` | PI-03 gate (GH-293/ISS-0078): build (error sets fail via exit code) + `zig fmt --check` scoped to this branch's changed files |
+
+Raw commands, if not on PowerShell or working outside `make.ps1`:
 
 | Command | What it does |
 |---|---|

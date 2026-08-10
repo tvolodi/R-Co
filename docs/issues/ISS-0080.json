@@ -1,0 +1,35 @@
+{
+  "issue_id": "ISS-0080",
+  "title": "Scored test-tier rubric and the fail-first rule (PI-05)",
+  "status": "RESOLVED",
+  "severity": "MINOR",
+  "category": "test process / documentation",
+  "run_id": "WF03-GH295-20260811",
+  "workflow_id": "WF-03",
+  "handoff_id": null,
+  "requirement_ids": [],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/295",
+  "summary": "Also known as PI-05. Issue asked for two additions: (1) a scored rubric so TEST-DESIGNER does not re-derive the required test tier from scratch on every run — score a change across DB schema (2), tenant isolation (2), Wasm (2), cross-module (1), transactional boundary (1); 0 points = unit only, 1-2 = unit + integration, 3+ = add sandbox — and (2) the fail-first rule (a test that passes both before and after the change proves nothing; every test must fail on the original code), which was absent entirely from the pipeline's checklists.",
+  "design_decision": {
+    "gap": "TEST-DESIGNER had no documented, mechanically-applicable method for choosing which test layers (unit / integration / sandbox) a given change requires — the decision was made freshly, by judgement, on every run, with no record TEST-DESIGN-VALIDATOR could check against. Separately, no checklist anywhere in the pipeline required confirming that a new or modified test actually fails against the pre-change code, so a test that happened to pass unconditionally (asserting nothing meaningful) could still satisfy the gate.",
+    "rubric_placement": "Added as new subsection 2.1 directly after 'Test Layer Hierarchy' (docs/guides/test_developer_guide.md), since that is the section already describing the four test layers (E2E, integration, frontend unit, backend unit) that the rubric's tiers map onto. Written as two short tables (dimension scoring, then score-to-tier lookup) plus four worked examples grounded in real repo artefacts (GBL-1xx tenant-scoped migrations, src/wasm/capabilities.zig, src/engine/transition.zig) rather than abstract prose, per the issue's explicit request for something TEST-DESIGNER can apply mechanically.",
+    "fail_first_placement": "Added as check (6) to the existing hard-gate verification list in CLAUDE.md's '## AGENT: TEST-DESIGN-VALIDATOR' section, in the same imperative single-sentence style as the five checks already there (MUST-requirement coverage, no unjustified error.SkipZigTest, per-test UUID fixtures, cleanup, clear failure when BPM_TEST_DB_URL is absent). Because the existing 'Additional pipeline test checks' MAJOR-severity list directly below also started its own numbering at (6), that list was renumbered (7)-(11) to avoid two different checks sharing the same reference number in the same agent section.",
+    "scope_decision": "No new tooling, lint script, or build step was added. Both the rubric and the fail-first rule are documentation that TEST-DESIGNER and TEST-DESIGN-VALIDATOR apply by hand, exactly as the GitHub issue and the PIPELINE_BACKLOG.md PI-05 entry describe (Effort: S). Automated enforcement was explicitly out of scope for a MINOR/S-effort process addition."
+  },
+  "evidence": {
+    "source_backlog_entry": "docs/agents/PIPELINE_BACKLOG.md lines 157-165, PI-05 — confirms exact scoring dimensions/points, exact thresholds, and the fail-first wording quoted in the issue body.",
+    "existing_structure_read": "Read docs/guides/test_developer_guide.md section headers (grep -n '^## ') before inserting — confirmed §2 'Test Layer Hierarchy' was the natural anchor and no existing 'sandbox tier' rubric already existed elsewhere in the guide or in test_infrastructure_guide.md (grep -rn 'sandbox' across both — only a forward-looking mention in PIPELINE_BACKLOG.md's SBX-05 backlog item, no rubric).",
+    "checklist_numbering_conflict_caught": "Before editing, read the full TEST-DESIGN-VALIDATOR section (CLAUDE.md lines 1187-1206) and noticed the second 'Additional pipeline test checks' list independently started at (6) — renumbered it to (7)-(11) to prevent ambiguity between the two numbered lists in the same section.",
+    "worked_examples_grounded": "Confirmed real artefacts used in the worked examples exist: `ls migrations/` shows GBL-1xx tenant-scoped reconciliation migrations; `grep -rln wasm src/ --include=*.zig` confirms src/wasm/capabilities.zig and src/wasm/engine.zig exist; src/engine/transition.zig is the pure-function file CLAUDE.md's BACKEND-DEV section already names as the zero-I/O absolute rule.",
+    "lint_result": ".venv/Scripts/python.exe tools/lint_agent_docs.py — '34 agent files checked — 0 BLOCKER, 0 MAJOR, 0 MINOR', exit 0. Markdown code-fence balance manually verified even (28 fences in test_developer_guide.md, 180 in CLAUDE.md) before and after edit."
+  },
+  "resolution": "1) docs/guides/test_developer_guide.md: added §2.1 'Scored test-tier rubric (GH-295 / ISS-0080 / PI-05)' — a two-table rubric (dimension→points, score→tier) plus 4 worked examples grounded in real repo paths, and a short cross-reference to the fail-first rule. 2) CLAUDE.md: added check (6) to the TEST-DESIGN-VALIDATOR hard-gate list — 'every new or modified test was confirmed to fail against the pre-change code (fail-first) — TEST-DESIGNER's handoff must note this, or TEST-DESIGN-VALIDATOR treats it as a gap' — and renumbered the subsequent MAJOR-severity pipeline-check list from (6)-(10) to (7)-(11) to resolve the resulting numbering collision. No source code, lint script, or build step changed — pure documentation/process addition proportional to a MINOR/Effort:S issue.",
+  "files_changed": [
+    "docs/guides/test_developer_guide.md",
+    "CLAUDE.md",
+    "docs/issues/ISS-0080.json"
+  ],
+  "created_at": "2026-08-10T20:24:29Z",
+  "resolved_at": null,
+  "prevention": "When a scoring/tiering rule is described in a backlog entry (PIPELINE_BACKLOG.md), copy the exact dimension names, point values, and thresholds verbatim into the destination doc rather than re-deriving or approximating them — this issue's rubric table matches PI-05's wording exactly, so future readers can trace it back. When adding a new numbered item to an existing checklist, always read the full section first (not just the target list) — this repo already had one prior instance of two independently-numbered lists in the same agent section, and a hasty single-list edit would have created a duplicate (6) here as well."
+}

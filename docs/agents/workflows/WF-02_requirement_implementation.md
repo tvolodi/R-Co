@@ -64,6 +64,15 @@ Step workflow chain template:
                         │
                         ▼
            ┌──────────────────────┐
+           │  STEP 2c: SECURITY   │ ← SECURITY-REVIEWER ⛔ HARD GATE (in-scope changes only)
+           │  GATE                │   FAIL → rework BACKEND-DEV/FRONTEND-DEV (max 3)
+           │  Touches tenant data,│   Out-of-scope diff → automatic PASS
+           │  secrets, or a       │   See docs/agents/instructions/security-invariants.md
+           │  sandbox host fn?    │
+           └──────────┬───────────┘
+                      │ PASS
+                      ▼
+           ┌──────────────────────┐
            │  STEP 3: TEST DESIGN │ ← TEST-DESIGNER
            │  Write test specs    │
            │  + test code         │
@@ -232,9 +241,11 @@ after Step 6.
    If FAIL: fix compilation errors; retry (counts as rework)
 7. → fn:apply-migrations (test DB)
    If FAIL: fix migration SQL; retry
-8. Error-set validation (mandatory — run before self-review):
-   zig build 2>&1 | grep -i "error set"
-   If any output: fix all error-set declarations before proceeding.
+8. Build and formatting gate (mandatory — run before self-review):
+   zig build check
+   PI-03 gate (GH-293/ISS-0078): build (error sets fail via the normal compile exit
+   code — no separate grep needed) + zig fmt --check scoped to this branch's changed
+   .zig files. If non-zero: fix before proceeding.
 9. Self-review checklist:
    [ ] No string interpolation of user input into SQL (prepared statements only)
    [ ] All allocations accept an allocator parameter
@@ -245,7 +256,7 @@ after Step 6.
 10. → fn:register-inner-report
 11. → fn:complete-handoff (status: PASS/FAIL,
                             artifacts_out: ["src/...", "migrations/NNN_*.sql"],
-                            next_action: "Route to TEST-DESIGNER once Step 2b also complete")
+                            next_action: "Route to SECURITY-REVIEWER (Step 2c) once Step 2b also complete")
 ```
 
 ### Acceptance criteria for this step
@@ -288,7 +299,7 @@ after Step 6.
 9. → fn:register-inner-report
 10. → fn:complete-handoff (status: PASS/FAIL,
                             artifacts_out: ["web/src/..."],
-                            next_action: "Route to TEST-DESIGNER once Step 2a also complete")
+                            next_action: "Route to SECURITY-REVIEWER (Step 2c) once Step 2a also complete")
 ```
 
 ### Acceptance criteria for this step
@@ -297,6 +308,52 @@ after Step 6.
 - [ ] `npm run lint` exits 0 (no errors)
 - [ ] `npm run build` exits 0
 - [ ] Token not stored in localStorage/sessionStorage
+
+---
+
+## Step 2c — Security Gate ⛔ HARD GATE (in-scope changes only)
+
+**Agent:** `SECURITY-REVIEWER`  
+**Functions:** none beyond direct reads — see `.claude/agents/security-reviewer.md`
+
+Runs after both Step 2a and Step 2b return PASS (or after whichever of the two applies), and
+before Step 3. See `docs/agents/instructions/security-invariants.md` for the full eight
+numbered invariants (GH-292 / ISS-0077 / PI-02) and `.claude/agents/security-reviewer.md` for
+the agent's complete checklist and handoff-completion mechanics.
+
+### Procedure
+
+```
+1. Read context.artifacts_in and the branch diff (git diff main...HEAD)
+2. Scope test: does this diff touch a tenant-data path (API route reading/writing
+   tenant-scoped data, migration, Lua/Wasm host-API function, src/secrets/, response-shaping
+   or client cache-key code for tenant-scoped entities, or a lookup-by-ID handler)?
+   NO  → complete-handoff (status: PASS, summary: "out of scope — no tenant-data path
+         touched", next_action: "Route to TEST-DESIGNER (Step 3)")
+   YES → continue
+3. For each of INV-1..INV-8 in security-invariants.md, determine APPLIES or NOT-APPLICABLE
+4. For each APPLIES invariant, run its "How to verify" command or manual review procedure
+5. FAIL immediately if any applicable invariant fails — no partial credit (all BLOCKER)
+6. → fn:complete-handoff (status: PASS | FAIL,
+                           issues: [list of failed invariants by number, severity BLOCKER],
+                           next_action: "Route to TEST-DESIGNER (Step 3)" | "Rework BACKEND-DEV/FRONTEND-DEV")
+```
+
+### Acceptance criteria for this step
+
+- [ ] Scope determination recorded (in-scope with invariants applied, or explicitly out of
+      scope)
+- [ ] Every applicable invariant's verification command was actually run (not asserted)
+- [ ] `python3 tools/lint_migration_schema.py` and `python3 tools/lint_sql_table_refs.py`
+      exit 0 for any migration/query change (INV-1)
+- [ ] `python3 tools/lint_sql_param_types.py src tests` exits 0 for any SQL change (INV-7)
+- [ ] No unresolved `catch unreachable` on a realistic (I/O, tenant-input, network) failure
+      path in the diff (INV-8)
+
+- **PASS** → ORCH dispatches TEST-DESIGNER (Step 3)
+- **FAIL** → ORCH increments `rework_count` on the implementing agent's handoff (BACKEND-DEV
+  or FRONTEND-DEV, whichever owns the failing code) and re-routes; TEST-DESIGNER does NOT
+  start until this gate is PASS
 
 ---
 

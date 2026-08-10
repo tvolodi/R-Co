@@ -55,6 +55,57 @@ Backend Unit Tests (Zig built-in test framework)
       Coverage target: ≥ 90% line coverage; 100% branch coverage on gateway logic
 ```
 
+### 2.1 Scored test-tier rubric (GH-295 / ISS-0080 / PI-05)
+
+`TEST-DESIGNER` re-derives which layers above a given change needs on every
+run. Instead of judging that from scratch each time, score the change
+against the dimensions below and read off the tier. This replaces intuition
+with a checklist `TEST-DESIGN-VALIDATOR` can also apply mechanically when
+checking the resulting test spec is proportionate.
+
+**Score every dimension the change touches, then sum:**
+
+| Dimension | Points | Touches... |
+|---|---|---|
+| DB schema | 2 | A migration file, a new/changed table, column, constraint, or index |
+| Tenant isolation | 2 | Any tenant-scoped table, tenant-id filtering logic, or cross-tenant boundary (e.g. `FIL-06`, `QRY-04`, `DDL-05`) |
+| Wasm | 2 | `src/wasm/**`, the sandbox capability model, or anything executing untrusted process code (e.g. `SBX-05`) |
+| Cross-module | 1 | Call sites or contracts spanning ≥ 2 top-level modules (e.g. `src/engine/` calling into `src/repository/`) |
+| Transactional boundary | 1 | Code inside or wrapping a DB transaction — commit/rollback ordering, multi-statement atomicity |
+
+**Read off the tier from the total:**
+
+| Total score | Required test tier |
+|---|---|
+| 0 | Unit only |
+| 1–2 | Unit + integration |
+| 3+ | Unit + integration + sandbox |
+
+**Worked examples:**
+
+1. A migration adding a column to a tenant-scoped table (e.g. one of the
+   `GBL-1xx` schema-reconciliation migrations under `migrations/`) — DB
+   schema (2) + tenant isolation (2) = **4 points → sandbox tier.**
+2. A change to `src/wasm/capabilities.zig` gating which host functions a
+   process definition can call — Wasm (2) + tenant isolation (2, capability
+   grants are tenant-scoped) = **4 points → sandbox tier.**
+3. A pure-function fix inside `src/engine/transition.zig` that does not
+   change its signature or call any other module — 0 dimensions touched =
+   **0 points → unit only.**
+4. A new field added to a single existing API response, resolved entirely
+   within one module and one transaction — cross-module (0, single module)
+   + transactional boundary (1, the existing transaction wrapping the
+   handler) = **1 point → unit + integration.**
+
+Record the computed score and tier in the test spec header (`tests/specs/<REQ-ID>.md`,
+see §3) so `TEST-DESIGN-VALIDATOR` can confirm the chosen layers match the
+score without re-deriving it.
+
+**Fail-first rule:** see the TEST-DESIGN-VALIDATOR checklist in `CLAUDE.md`
+— every new or modified test must be confirmed to fail against the
+pre-change code. A test that passes both before and after the change proves
+nothing.
+
 ---
 
 ## 3. Test Specification Format
@@ -354,21 +405,63 @@ nfr_results:
 
 ## 10. CI Integration Notes
 
-In CI (GitHub Actions or equivalent), tests run in this order:
+In CI (GitHub Actions or equivalent), tests run in this order. Steps 3–5 and 7–8 are
+available via the single command surface (`./make.ps1 test-live` / `./make.ps1 e2e` —
+GH-294 / ISS-0079 / PI-04), which sources env vars from `.env` and blocks on real
+service readiness instead of a one-shot check:
 
 ```
 1. zig build                         # compile check
-2. zig build test                    # unit tests (no DB)
-3. Start test PostgreSQL container
-4. zig build migrate (test DB)
-5. zig build test-integration        # integration tests
+2. zig build test                    # unit tests (no DB)          [./make.ps1 test]
+3. Start test PostgreSQL container   \
+4. zig build migrate (test DB)        > ./make.ps1 test-live  (waits for services,
+5. zig build test-integration        /   then runs test-integration)
 6. cd web && npm run test            # frontend unit tests
-7. Start full stack (backend + frontend)
-8. npx playwright test               # E2E tests
+7. Start full stack (backend + frontend) \
+8. npx playwright test               # E2E tests                    [./make.ps1 e2e]
 9. zig build bench                   # NFR benchmarks (on schedule or pre-release only)
 ```
 
 Any failure in steps 1–6 blocks steps 7–9 (fail fast).
+
+### 10.1 Flaky-test policy (GH-297 / ISS-0082)
+
+A test is **flaky** when it fails intermittently for reasons unrelated to
+the correctness of the code under test — timing, concurrency ordering,
+shared fixture state — rather than because a change broke a genuine
+assertion. See `docs/issues/ISS-0658.json` / `ISS-0659.json` for a worked
+example of exactly this distinction being diagnosed rather than assumed.
+
+When a test is suspected flaky:
+
+1. Do not silently retry, sleep-loop, or delete the assertion to make it
+   pass — that hides the underlying defect (same principle as CLAUDE.md's
+   "Never Satisfy a Gate by Editing What It Measures").
+2. File it the same way any other discovered defect is filed: an ISS
+   registry entry and a GitHub issue (CLAUDE.md "No Issue Left
+   Local-Only"), with root-cause evidence if already known, or a note that
+   root-cause is still open if not.
+3. Mark the test in source with a comment directly above the `test` block:
+   ```zig
+   // FLAKY(GH-<issue-number>): <one-line symptom>. Filed <date>.
+   test "TC-XXX-NN description" { ... }
+   ```
+   This is a marker for humans and agents reading the file — there is
+   currently no automated skip-on-PR mechanism, because none of the tests
+   that run in `.github/workflows/ci.yml` today are the ones affected by
+   this class of flakiness (the known case, `zig build test-integration`,
+   is not part of that workflow at all — see
+   `src/design/ci-gate-tiering.md` §2). If a flaky test is later added to a
+   gate that runs on every PR, build the skip mechanism at that point,
+   against the real case, rather than in advance of one.
+4. **Fix within 48 hours of the marker being added, or disable the test.**
+   ISSUE-FIXER and TEST-RUNNER should treat a `FLAKY` marker older than 48
+   hours (compare the filed date in the comment against the current date)
+   as a BLOCKER-worthy finding when encountered — an unresolved flaky
+   marker is itself a defect at that point, not a documented one.
+5. Once fixed, remove the `FLAKY(...)` comment in the same change that
+   resolves the underlying issue, and mark the ISS/GitHub issue RESOLVED
+   per the usual procedure.
 
 ---
 
@@ -507,11 +600,11 @@ This section is a required-reading summary. Agents MUST read `docs/guides/test_i
 
 ### 12.2 TEST-RUNNER pre-flight checklist
 
-TEST-RUNNER MUST complete this checklist before dispatching any test binary. Each failure = STOP + return FAIL BLOCKER:
+TEST-RUNNER MUST complete this checklist before dispatching any test binary. Each failure = STOP + return FAIL BLOCKER. `./make.ps1 test-live` (single command surface, GH-294 / ISS-0079 / PI-04) covers the readiness/migrate portion of this list by blocking until services are healthy before invoking `zig build test-integration`:
 
 ```
-[ ] db_test container healthy
-[ ] zig build migrate exits 0, no error output
+[ ] db_test container healthy                                        [./make.ps1 up / test-live]
+[ ] zig build migrate exits 0, no error output                       [./make.ps1 migrate]
 [ ] public.schema_migrations row count == migrations/*.sql file count
 [ ] all tenant schemas in public.tenants exist as PostgreSQL schemas
 [ ] zig build exits 0

@@ -746,7 +746,6 @@
 2026-08-09T11:36:40Z | MERGE | WF03-GH379-20260809 | ce7f5abe | BACKEND-DEV | PR #628 squash-merged 781bad66; branch deleted; GH-379 closed; ISS-0116 RESOLVED
 2026-08-09T11:36:40Z | COMPLETE | WF03-GH379-20260809 | ce7f5abe | ORCH | WF-03 run COMPLETE — GH-379 resolved
 2026-08-09T11:37:54Z | ROUTE | WF03-GH362-20260809 | 36097324 | ORCH -> BACKEND-DEV | Step 00 git-setup COMPLETED — branch feature/WF03-GH362-20260809 pushed to origin
-
 2026-08-09T11:41:27Z | ROUTE | WF03-GH362-20260809 | a3e9c1b2 | ORCH -> ISSUE-FIXER | Step 0.5 COMPLETED — ISS-0104 OPEN, GH-362 confirmed
 2026-08-09T11:41:27Z | ROUTE | WF03-GH362-20260809 | b4f0d2c3 | ORCH -> ISSUE-FIXER | Step 1 COMPLETED — Cat-A, Option B (scope env_test_root.zig), incidental SVC step filed
 2026-08-09T11:46:48Z | ROUTE | WF03-GH362-20260809 | c5e1f3d4 | CODE-DESIGNER | Step 02 COMPLETED — Type E design artefact src/design/iss0104-gh362-env-test-root.md created, lint_design_artefact.py exits 0
@@ -933,3 +932,16 @@
 2026-08-10T21:08:52Z | ROUTE | WF03-GH299-20260811 | 29900000 | ORCH → TEST-RUNNER | PENDING (step 5 redispatch after Step 03 rework 1 PASS)
 2026-08-10T21:31:21Z | COMPLETE | WF03-GH299-20260811 | 29900005 | TEST-RUNNER | PASS - 5/5 startup_assertions tests pass; report at tests/reports/report-2026-08-10-WF03-GH299-20260811.yaml
 2026-08-10T21:32:58Z | ROUTE | WF03-GH299-20260811 | 8da9095b | ORCH → DOC-UPDATER | PENDING (step 7 — housekeeping + merge)
+2026-08-10T20:20:40Z | COMPLETE | WF03-GH297-20260811 | --- | BACKEND-DEV | PASS (PR #685 merged 5ee3412, GH-297 closed)
+2026-08-10T20:20:40Z | RESOLVE  | WF03-GH297-20260811 | --- | ORCH | GH-297 closed via PR #685; ci.yml paths-ignore added, gate tiering evaluated and deferred (no slow job to tier), flaky-test policy documented in test_developer_guide.md sec 10.1
+2026-08-10T20:20:40Z | QUEUE_REL | WF03-GH297-20260811 | --- | ORCH | GH-297 marked RESOLVED on global_queue (PR #685 merged at 5ee3412)
+2026-08-10T20:28:22Z | COMPLETE | WF03-GH295-20260811 | --- | BACKEND-DEV | PASS (PR #686 merged a8b51df, GH-295 closed)
+2026-08-10T20:28:22Z | RESOLVE  | WF03-GH295-20260811 | --- | ORCH | GH-295 closed via PR #686; scored test-tier rubric added to test_developer_guide.md sec 2.1, fail-first rule added to TEST-DESIGN-VALIDATOR checklist in CLAUDE.md
+2026-08-10T20:28:22Z | QUEUE_REL | WF03-GH295-20260811 | --- | ORCH | GH-295 marked RESOLVED on global_queue (PR #686 merged at a8b51df)
+2026-08-10T20:52:19Z | RESOLVE | WF03-GH294-20260811 | --- | BACKEND-DEV | GH-294 (ISS-0079/PI-04) resolved via PR #687, squash-merged 86173d3, single command surface make.ps1 added, check scoped as interim pre-PI-03 stand-in pending GH-293
+2026-08-10T20:52:19Z | QUEUE_RELEASE | WF03-GH294-20260811 | --- | BACKEND-DEV | GH-294 -> RESOLVED (workspace r-co-2-loop)
+2026-08-10T21:09:28Z | RESOLVE | WF03-GH293-20260811 | --- | BACKEND-DEV | GH-293 (ISS-0078/PI-03) resolved via PR #688, squash-merged 71ac764, zig build check gate added (build + scoped zig fmt --check via tools/check_fmt_scope.py), error-set grep retired (exit code already sufficient), make.ps1 check now calls the real gate
+2026-08-10T21:09:28Z | QUEUE_RELEASE | WF03-GH293-20260811 | --- | BACKEND-DEV | GH-293 -> RESOLVED (workspace r-co-2-loop)
+2026-08-10T21:34:58Z | GIT_MERGE | WF03-GH292-20260811 | --- | BACKEND-DEV | PR #689 squash-merged to main (4b07018), branch feature/WF03-GH292-20260811 deleted
+2026-08-10T21:34:58Z | ISSUE_CLOSE | WF03-GH292-20260811 | --- | DOC-UPDATER | GH-292 closed with evidence comment; ISS-0077 status RESOLVED
+2026-08-10T21:34:58Z | QUEUE_RELEASE | WF03-GH292-20260811 | --- | ORCH | GH-292 released from global_queue.json, status RESOLVED

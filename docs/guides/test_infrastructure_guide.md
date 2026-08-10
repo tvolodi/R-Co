@@ -37,7 +37,12 @@ Concretely:
 - All tenant schemas provisioned by prior test runs must either be cleaned up or recreated from the current migration baseline.
 - No migration may be "recorded as applied" without having actually run its DDL — this includes idempotency guards that silently no-op (see anti-pattern: guard reads wrong schema).
 
-Verification command (TEST-RUNNER must run this before any test binary):
+Verification command (TEST-RUNNER must run this before any test binary). The single
+command surface's `./make.ps1 migrate` (GH-294 / ISS-0079 / PI-04) wraps `zig build
+migrate` with `BPM_DB_URL` sourced from `.env` — but note §3 below requires the DB URL
+to be `BPM_TEST_DB_URL`, not `.env`'s default `BPM_DB_URL`, so use `./make.ps1
+test-live` (which targets the test database) or the raw override form when verifying
+this invariant specifically:
 ```bash
 zig build migrate 2>&1
 # Must exit 0. Any output containing "already exists", "ERROR", or "FAILED" = baseline drift.
@@ -122,6 +127,13 @@ test database, you must do the same:
 BPM_DB_URL="$BPM_TEST_DB_URL" zig build migrate
 ```
 
+`./make.ps1 test-live` (single command surface, GH-294 / ISS-0079 / PI-04) waits for
+Postgres + Keycloak and then runs `zig build test-integration` against
+`BPM_TEST_DB_URL` sourced from `.env` — it does not itself run `migrate` against the
+test database (that is `zig build test-integration`'s own responsibility per the
+existing contract above), so this manual override remains the correct form when
+preparing the test database's schema ahead of time by hand.
+
 If any item fails, TEST-RUNNER reports FAIL and instructs ORCH to create an ADHOC BACKEND-DEV handoff before retrying.
 
 ---
@@ -134,11 +146,14 @@ This is enforced as **Step 00a** in WF-02 (see §7).
 
 The rationale: implementing new features on top of a broken test suite produces false confidence. A test that was already red before the feature was added and turns green after is not evidence the feature works — it is coincidence. A test that was green and turns red after is masked by the pre-existing failures.
 
-Step 00a procedure:
+Step 00a procedure (steps 3–4 are `./make.ps1 test` and `./make.ps1 test-live` on the
+single command surface — GH-294 / ISS-0079 / PI-04 — which sources env vars from
+`.env` and, for step 4, blocks on real service readiness before invoking
+`test-integration`):
 1. Pull the current `main` branch.
 2. Run the Infrastructure Health Checklist (§3).
-3. Run `zig build test` (unit tests) → must exit 0.
-4. Run `zig build test-integration` → must exit 0.
+3. Run `zig build test` (unit tests) → must exit 0.                    [`./make.ps1 test`]
+4. Run `zig build test-integration` → must exit 0.                     [`./make.ps1 test-live`]
 5. If any step fails: classify failures into ISS entries (each with its mandatory GitHub issue), forward each cluster to the global queue via `python3 tools/queue_add.py`, and hold WF-02 until those issues have been fixed by their own WF-03 runs and `main` is green again. Each cluster is its own run with its own branch and PR — see `docs/agents/protocols/ISSUE_QUEUE.md` and `docs/agents/protocols/LOOP_PROTOCOL.md`.
 6. Only after a clean run of steps 2–4 may ORCH stamp Step 00a PASS and proceed to Step 00 (git-setup).
 

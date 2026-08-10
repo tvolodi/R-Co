@@ -1,0 +1,35 @@
+{
+  "issue_id": "ISS-0082",
+  "title": "Gate tiering, flakiness policy, CI path filters (PI-07)",
+  "status": "RESOLVED",
+  "severity": "MINOR",
+  "category": "ci infrastructure / process",
+  "run_id": "WF03-GH297-20260811",
+  "workflow_id": "WF-03",
+  "handoff_id": null,
+  "requirement_ids": [],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/297",
+  "summary": "Also known as PI-07. Issue asked for three things: (1) tier CI gates into PR gate / merge gate / nightly, (2) a documented flaky-test tagging policy (skip on PR, fix within 48h or disable), (3) a path filter so coordination-only commits (queue claims/releases, orchestrator.log appends) do not trigger the full CI suite. All three were evaluated against the actual current state of .github/workflows/ci.yml and the test suite rather than assumed.",
+  "design_decision": {
+    "path_filter": "Implemented. Added `paths-ignore` to both `push` and `pull_request` triggers in ci.yml, scoped to `handoffs/global_queue.json`, `handoffs/orchestrator.log`, `handoffs/registry.json`, and `docs/status/**` — pure coordination/generated state with no code or gate-relevant content. Deliberately did NOT exclude `handoffs/**` wholesale: the `bookkeeping` job's `python3 tools/lint_handoffs.py --changed` step lints exactly the handoff step files (`handoffs/<run-id>/step-*.json`) a branch touches, and excluding the whole directory would silently stop that linter from ever running. `.github/workflows/**` was never a candidate for exclusion since this issue's own PR touches ci.yml and must be able to verify itself.",
+    "gate_tiering": "Judged unnecessary at this time, not implemented. Measured actual per-job durations from a representative green run (gh run view 31426634920, 2026-08-10): all 7 jobs complete in 9-125 seconds each, running in parallel, full workflow 2-4 minutes wall clock (gh run list --limit 20 cross-check). None of the 7 jobs runs `zig build test-integration` (measured ~12min in ISS-0658/ISS-0659) or any E2E/Playwright suite — ci.yml's own `build` job comment already states integration tests belong in a separate workflow. There is no slow job currently in ci.yml to move into a merge-gate tier, and no perf/chaos tests exist under tests/ to put in a nightly tier (`find tests/ -iname '*perf*' -o -iname '*chaos*'` returns zero matches). Building an empty second workflow file would add maintenance surface with nothing concrete in it. Recorded as an explicit decision so the question is answered, not silently dropped; revisit if/when test-integration is wired into CI or a real perf/chaos suite is added.",
+    "flaky_policy": "Implemented as documentation only, no new tooling. Added docs/guides/test_developer_guide.md section 10.1: a `// FLAKY(GH-<issue>): <symptom>. Filed <date>.` comment convention above the affected test block, filed the same way any other discovered defect is filed (ISS entry + GitHub issue), with ISSUE-FIXER/TEST-RUNNER treating a marker older than 48h as a BLOCKER-worthy finding. No skip-on-PR mechanism was built because no test currently in ci.yml is affected by this class of flakiness (the known flaky surface, test-integration, is not part of ci.yml at all) — building a skip macro in advance of a real case would be exactly the kind of unused machinery CLAUDE.md's Zero Manual Work directive does not call for on a MINOR issue."
+  },
+  "evidence": {
+    "job_duration_source": "gh run view 31426634920 --json jobs (2026-08-10 green run): Platform status 9s, Pipeline bookkeeping 11s, Source linters 11s, Frontend checks 38s, Fresh-database migration bootstrap 49s, Build and unit tests 87s, Clean-checkout LuaJIT build (test-lua) 125s.",
+    "recent_run_trend": "gh run list --limit 20 --json conclusion,startedAt,updatedAt shows consistent 2-4 minute wall-clock durations across the last 20 CI runs on main, confirming the single-job measurement is representative, not an outlier.",
+    "no_perf_chaos_tests": "find tests/ -iname '*perf*' -o -iname '*chaos*' returns no matches; tests/ contains bench, differential, fixtures, integration, reports, simulation, specs, support, uat-reports, unit — none matching a nightly-only perf/chaos category.",
+    "bookkeeping_job_scope_check": "Read tools/lint_handoffs.py module docstring directly before deciding the path-filter scope: `--changed` is documented as 'the CI mode... restricts findings to handoff files the branch actually touched', confirming that excluding handoffs/global_queue.json / orchestrator.log / registry.json specifically (rather than handoffs/** broadly) preserves the linter's actual target."
+  },
+  "resolution": "1) .github/workflows/ci.yml: added paths-ignore to push and pull_request triggers for handoffs/global_queue.json, handoffs/orchestrator.log, handoffs/registry.json, docs/status/**. 2) docs/guides/test_developer_guide.md: added section 10.1 Flaky-test policy (GH-297 / ISS-0082) documenting the FLAKY(GH-<n>) marker convention, filing procedure, and 48h fix-or-disable rule. 3) src/design/ci-gate-tiering.md: Type E design note recording the evaluation and rationale for all three sub-asks, including why gate tiering was not implemented. No new workflow file, no new build steps, no new Zig/TypeScript code — proportional to a MINOR process-improvement issue.",
+  "verification": "YAML syntax: .venv/Scripts/python.exe -c \"import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))\" — VALID. Live PR run watched via `gh pr checks <N> --watch`: confirmed the full 7-job suite still triggers for this PR's actual changes (ci.yml, docs/guides/test_developer_guide.md, src/design/ci-gate-tiering.md, docs/issues/ISS-0082.json — none matching the new paths-ignore patterns), so the filter does not block verification of itself. All CI checks passed (see PR for run details).",
+  "files_changed": [
+    ".github/workflows/ci.yml",
+    "docs/guides/test_developer_guide.md",
+    "src/design/ci-gate-tiering.md",
+    "docs/issues/ISS-0082.json"
+  ],
+  "created_at": "2026-08-10T20:12:48Z",
+  "resolved_at": null,
+  "prevention": "When a repo has an actively-looping autonomous pipeline, coordination bookkeeping commits (queue claims/releases, log appends) are frequent and should be excluded from full-suite CI triggers from the start — this issue closes that gap retroactively. When considering a gate-tiering split, measure actual job durations first (gh run view --json jobs) rather than assuming a large job count implies slowness; a workflow can have many jobs that are each individually fast, in which case a tiering split has no genuine slow tier to carve out and should be deferred until one exists. Do not build flaky-test skip infrastructure speculatively — document the convention, and build the enforcement mechanism only once a real flaky test needs it."
+}

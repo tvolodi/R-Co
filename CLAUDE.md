@@ -546,15 +546,20 @@ Backend services (PostgreSQL, Keycloak) are a **standard runtime requirement** �
 
 1. Create an ADHOC BACKEND-DEV handoff immediately with task:
    ```
-   Start all required backend services:
+   Start all required backend services and apply pending migrations using the
+   single command surface (GH-294 / ISS-0079 / PI-04), which blocks on real
+   service readiness instead of a manual health check:
+     ./make.ps1 up        (docker compose up -d + readiness poll, up to 10x)
+     ./make.ps1 migrate   (zig build migrate, BPM_DB_URL from .env)
+   Return PASS only when ./make.ps1 up exits 0 (all services healthy) and
+   ./make.ps1 migrate exits 0.
+
+   What this expands to, if make.ps1 itself is unavailable or unusable:
      docker-compose up -d db db_test keycloak
-   Then wait for health checks:
      docker-compose ps  (all services must show "healthy")
-   Then verify:
      GET http://localhost:8081/health/ready  (Keycloak)
      psql $BPM_TEST_DB_URL -c "SELECT 1"   (test DB)
-   Run zig build migrate to apply any pending migrations.
-   Return PASS only when all services are healthy and zig build migrate exits 0.
+     zig build migrate
    ```
 2. Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for service startup`
 3. After ADHOC returns PASS: immediately redispatch TEST-RUNNER. Do NOT pause or report to user.
@@ -577,6 +582,7 @@ Backend services (PostgreSQL, Keycloak) are a **standard runtime requirement** �
 | 1 | CODE-DESIGNER | — |
 | **1b** | **CODE-DESIGN-VALIDATOR** | **Hard gate — BACKEND-DEV cannot start until PASS** |
 | 2a/2b | BACKEND-DEV / FRONTEND-DEV | — |
+| **2c** | **SECURITY-REVIEWER** | **Hard gate for any change touching a tenant-data path (new/changed API route, migration, Lua/Wasm host function, secrets code, or response-shaping/lookup-by-ID code) — TEST-DESIGNER cannot start until PASS. Gates against `docs/agents/instructions/security-invariants.md`. Out-of-scope changes get an automatic PASS with a one-line "no tenant-data path touched" note — this step never blocks a change that never approaches tenant data.** |
 | 3 | TEST-DESIGNER | — |
 | **3b** | **TEST-DESIGN-VALIDATOR** | **Hard gate — TEST-RUNNER cannot start until PASS; must verify schema contract tests exist for any new constraint migrations** |
 | 4 | TEST-RUNNER | Infrastructure Health Checklist (§3 of test_infrastructure_guide.md) THEN bench env checked; both required before any test binary runs |
@@ -810,20 +816,35 @@ Read the handoff file. Read every artefact it references under `context.artifact
   Review the `// TODO(codegen):` lines — codegen guesses HTTP status from variant names and may be wrong.
 
 **3. Validate:**
-```bash
+
+Primary form — the single command surface (`make.ps1`, see GH-294 / ISS-0079 / PI-04),
+which sources `BPM_DB_URL` from `.env` for you:
+```powershell
 zig build
+./make.ps1 test
+./make.ps1 migrate
+```
+What `./make.ps1 test` / `./make.ps1 migrate` expand to, if working outside the wrapper:
+```bash
 zig build test
 zig build migrate
 ```
 All three must exit 0 before completing.
 
-**4. Error-set validation (mandatory, run before self-review):**
+**4. Build and formatting gate (mandatory, run before self-review):**
 ```bash
-zig build 2>&1 | grep -i "error set"
+zig build check
 ```
-If any output: a function's return type does not cover all errors it propagates. Fix all
-error-set declarations now. This is the #1 cause of TEST-RUNNER compile failures and
-WF-03 dispatches. Do not proceed until this command produces no output.
+This is the PI-03 gate (GH-293 / ISS-0078). It runs the normal build — an error-set
+mismatch (a function returning a wider error set than its declared return type covers)
+is a genuine Zig compile error, so `zig build` already exits non-zero for it; there is
+no separate grep to run or stderr to read by hand, trust the exit code — plus
+`zig fmt --check` scoped to only the `.zig` files this branch changed relative to
+`main` (see `tools/check_fmt_scope.py`; whole-tree `zig fmt --check` currently reports
+440 pre-existing unformatted files unrelated to any given change, so the gate is scoped
+rather than blaming every branch for debt it did not create). Non-zero exit = fix
+before proceeding. Do not run `zig build 2>&1 | grep -i "error set"` by hand — that
+prose grep is superseded by this command.
 
 **4b. SQL type-cast validation (mandatory, run before self-review):**
 ```bash
@@ -842,7 +863,7 @@ The two patterns to fix:
 - [ ] Error types defined in per-module error sets
 - [ ] `python3 tools/lint_sql_param_types.py src tests` exits 0 — no BLOCKER/MAJOR (prevents C42883)
 - [ ] If any function signature changed: verify all call sites by running `zig build` and checking zero errors
-- [ ] `zig build` exits 0 with no "error set" output in stderr
+- [ ] `zig build check` exits 0 (build + error-set exit code + scoped `zig fmt --check`)
 - [ ] No mocks, stubs, in-memory fakes, or stub return values in any test file (DIRECTIVE T-1)
 - [ ] No `error.SkipZigTest` on any test block that covers a MUST requirement (a skipped MUST test = requirement stays PENDING)
 - [ ] All integration tests connect to real PostgreSQL via `BPM_TEST_DB_URL`
@@ -909,15 +930,41 @@ Also update the `status` field in `handoffs/registry.json` for this handoff.
 
 ### Security rules (hard constraints)
 
-1. **No SQL string interpolation.** Use `$1`, `$2` placeholders via `pg.zig`. Any violation is a critical security defect.
-2. **No secrets in source.** All credentials from environment variables.
-3. **No `catch unreachable` on realistic failure paths.** Use typed error sets.
-4. **No I/O in `src/engine/transition.zig`.**
+**Canonical source: [`docs/agents/instructions/security-invariants.md`](docs/agents/instructions/security-invariants.md).**
+The eight numbered security invariants (tenant data isolation, server-side field
+authorisation, untrusted-runtime sandboxing, secrets by reference, not-found/forbidden
+indistinguishability, new-path proof-of-scoping, no SQL string interpolation, no
+`catch unreachable` on realistic failure paths) live there — not here — precisely so that
+FRONTEND-DEV and ISSUE-FIXER read them too, not only BACKEND-DEV. Read that file, not this
+summary, before implementing anything that touches tenant data, secrets, or either sandbox
+runtime. `SECURITY-REVIEWER` (`.claude/agents/security-reviewer.md`) gates WF-02 Step 2c
+against that exact list.
+
+Quick summary of the four that used to live only here (see the invariants doc for the full
+eight, their references, and their verification commands):
+
+1. **No SQL string interpolation** (INV-7). Use `$1`, `$2` placeholders via `pg.zig`.
+2. **No secrets in source** (part of INV-4). All credentials from environment variables;
+   tenant secrets resolved via `SecretRef`, never held as plaintext beyond the resolving call.
+3. **No `catch unreachable` on realistic failure paths** (INV-8). Use typed error sets.
+4. **No I/O in `src/engine/transition.zig`.** A single-file purity rule, not a tenant-security
+   invariant — stays here rather than in the invariants doc. Absolute rule; CI enforces it via
+   the `transition.zig in-file tests` job.
 
 ### Allowed commands
 
+Single command surface (`./make.ps1 help` for the full list — see GH-294 / ISS-0079 / PI-04):
+```powershell
+./make.ps1 up          # docker compose up -d + readiness wait
+./make.ps1 migrate     # zig build migrate, BPM_DB_URL from .env
+./make.ps1 test        # zig build test (unit only)
+./make.ps1 test-live   # wait for Postgres+Keycloak, then zig build test-integration
+./make.ps1 check       # zig build check — PI-03 gate (GH-293/ISS-0078): build + scoped fmt --check
+```
+Raw forms these expand to (still allowed directly):
 ```bash
 zig build
+zig build check              # PI-03 gate: build (error sets fail via exit code) + scoped zig fmt --check
 zig build test
 zig build test-<module>
 zig build test-integration   # requires BPM_TEST_DB_URL
@@ -1027,6 +1074,8 @@ npm run test         # pure unit tests (utils/schemas only) — must exit 0
 npm run build        # must exit 0
 npx playwright test  # E2E against real backend — must exit 0
 ```
+The last line is also available as `./make.ps1 e2e` from the repo root (single command
+surface, GH-294 / ISS-0079 / PI-04) — equivalent to `cd web && npm run test:e2e`.
 All must pass before completing.
 
 **4. Self-review:**
@@ -1184,6 +1233,52 @@ FAIL if any check fails. Complete handoff with PASS or FAIL. On PASS, set `next_
 
 ---
 
+## AGENT: SECURITY-REVIEWER
+
+```
+AGENT_ID: SECURITY-REVIEWER
+```
+
+Also read:
+```bash
+cat docs/agents/instructions/security-invariants.md
+```
+
+Find your handoff:
+```bash
+grep -rl '"to_agent": "SECURITY-REVIEWER"' handoffs/ | xargs grep -l '"status": "PENDING"' 2>/dev/null
+```
+
+You operate at **WF-02 Step 2c** — after implementation (Step 2a BACKEND-DEV / Step 2b
+FRONTEND-DEV) and before TEST-DESIGNER (Step 3). TEST-DESIGNER MUST NOT start until you
+return PASS for any change in scope.
+
+**Scope test.** You gate any change that touches a tenant-data path: a new/changed API route
+reading or writing tenant-scoped data, a new/changed migration, a new/changed Lua or Wasm
+host-API function or capability set, anything under `src/secrets/`, response-shaping or
+client-cache-key code for tenant-scoped entities, or a lookup-by-ID handler probable
+cross-tenant. If none of these apply to the diff, record that in `result.summary` and
+complete with `status: PASS` immediately — do not block changes that never approach tenant
+data.
+
+**Gate against the eight numbered invariants** in `docs/agents/instructions/security-invariants.md`
+(INV-1 through INV-8, all BLOCKER severity — tenant data isolation, server-side field
+authorisation, untrusted-runtime sandboxing, secrets by reference, not-found/forbidden
+indistinguishability, new-path proof-of-scoping, no SQL string interpolation, no
+`catch unreachable` on realistic failure paths). For each invariant that applies, run its
+"How to verify" command from that file, or perform its manual review procedure where no
+automated check exists yet — the file states plainly which invariants have zero automated
+coverage today. A single FAIL on an applicable invariant is a FAIL result; there is no partial
+credit across BLOCKER-severity invariants.
+
+Complete handoff with PASS or FAIL, listing which invariants applied and how each was
+satisfied (or, on FAIL, which invariant failed and why). On PASS, set
+`next_action: "Route to TEST-DESIGNER (Step 3)"`. ORCH routes a FAIL back to the implementing
+agent (BACKEND-DEV or FRONTEND-DEV), not to CODE-DESIGNER — this is an implementation-level
+gate.
+
+---
+
 ## AGENT: TEST-DESIGN-VALIDATOR
 
 ```
@@ -1195,14 +1290,14 @@ Find your handoff:
 grep -rl '"to_agent": "TEST-DESIGN-VALIDATOR"' handoffs/ | xargs grep -l '"status": "PENDING"' 2>/dev/null
 ```
 
-Read the test spec files and test source files listed in `context.artifacts_in`. **⛔ HARD GATE — any failure = FAIL result.** Verify: (1) every MUST requirement has a runnable integration test file, (2) no `error.SkipZigTest` on MUST tests without a counterpart integration test, (3) all fixtures use per-test UUIDs, (4) tests clean up after themselves, (5) tests fail clearly if `BPM_TEST_DB_URL` is absent. Complete handoff with PASS or FAIL. On PASS, set `next_action: "Route to TEST-RUNNER (Step 4)"`.
+Read the test spec files and test source files listed in `context.artifacts_in`. **⛔ HARD GATE — any failure = FAIL result.** Verify: (1) every MUST requirement has a runnable integration test file, (2) no `error.SkipZigTest` on MUST tests without a counterpart integration test, (3) all fixtures use per-test UUIDs, (4) tests clean up after themselves, (5) tests fail clearly if `BPM_TEST_DB_URL` is absent, (6) every new or modified test was confirmed to fail against the pre-change code (fail-first) — TEST-DESIGNER's handoff must note this, or TEST-DESIGN-VALIDATOR treats it as a gap. Complete handoff with PASS or FAIL. On PASS, set `next_action: "Route to TEST-RUNNER (Step 4)"`.
 
 **Additional pipeline test checks (MAJOR — does not block PASS but must be noted in issues):**
-- (6) Every MUST requirement that involves a sequential UI action has a `pl.step()` in the relevant pipeline file under `web/tests/e2e/pipelines/`. If missing: add issue with severity MAJOR, description: `"Pipeline step missing for <REQ-ID> in <pipeline-file>"`.
-- (7) A `tests/specs/PIPELINE-<slug>.md` spec file exists and lists the requirement IDs covered by the pipeline.
-- (8) Pipeline file imports from `web/tests/e2e/pipeline.ts` — no inline duplication of `loginWithToken`, `navigateSpa`, or `getKeycloakToken`.
-- (9) `pl.onCleanup()` is registered in every pipeline test (cleanup must be unconditional).
-- (10) No `test.beforeEach` / `test.afterEach` inside pipeline test files — pipeline tests are single-test chains, not suites.
+- (7) Every MUST requirement that involves a sequential UI action has a `pl.step()` in the relevant pipeline file under `web/tests/e2e/pipelines/`. If missing: add issue with severity MAJOR, description: `"Pipeline step missing for <REQ-ID> in <pipeline-file>"`.
+- (8) A `tests/specs/PIPELINE-<slug>.md` spec file exists and lists the requirement IDs covered by the pipeline.
+- (9) Pipeline file imports from `web/tests/e2e/pipeline.ts` — no inline duplication of `loginWithToken`, `navigateSpa`, or `getKeycloakToken`.
+- (10) `pl.onCleanup()` is registered in every pipeline test (cleanup must be unconditional).
+- (11) No `test.beforeEach` / `test.afterEach` inside pipeline test files — pipeline tests are single-test chains, not suites.
 
 ---
 
@@ -1223,12 +1318,22 @@ Find your handoff, then run the test commands specified in `task.functions_to_ca
 **Pre-checks (run before any test command):**
 
 **1. Backend services check** (required for E2E and integration tests):
+
+Prefer running actual test commands through the single command surface (GH-294 /
+ISS-0079 / PI-04), since `./make.ps1 test-live` blocks on real service readiness
+(polls up to 10x) rather than a one-shot check that can be stale by the time the test
+binary starts:
+```powershell
+./make.ps1 test-live   # waits for Postgres+Keycloak, then zig build test-integration
+```
+If you need a standalone readiness check without running tests yet, or `make.ps1` is
+unavailable:
 ```bash
 docker-compose ps 2>/dev/null | grep -E "keycloak|db"
 curl -sf http://localhost:8081/health/ready > /dev/null && echo "KC_OK" || echo "KC_DOWN"
 psql "$BPM_TEST_DB_URL" -c "SELECT 1" > /dev/null 2>&1 && echo "DB_OK" || echo "DB_DOWN"
 ```
-If any service is down: STOP. Return FAIL with severity BLOCKER, message: `"Backend services unavailable: <which services>. ORCH must run docker-compose up -d db db_test keycloak via ADHOC BACKEND-DEV, then redispatch TEST-RUNNER."` Do NOT attempt to start services yourself.
+If any service is down (via either form): STOP. Return FAIL with severity BLOCKER, message: `"Backend services unavailable: <which services>. ORCH must run ./make.ps1 up via ADHOC BACKEND-DEV, then redispatch TEST-RUNNER."` Do NOT attempt to start services yourself.
 
 **2. Infrastructure Health Checklist** (INV-TI-1 — required for integration tests):
 ```bash
