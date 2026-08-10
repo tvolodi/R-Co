@@ -1263,17 +1263,24 @@
       "deferred_reason": "Governance/design decision (requirement dependency ordering), not a code bug -- touches a separate tooling system (docs/issues.yaml, tools/issuectl.py, tools/depsort.py) undocumented in CLAUDE.md's WF-03 pipeline. Out of scope for the autonomous issue-fix loop; needs a dedicated design/planning session."
     },
     {
-      "issue_id": "ISS-0645",
+      "issue_id": "GH-649",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/649",
-      "title": "test-integration: 28-file consistent residual failure cluster (post ISS-0630 + adp0x fix)",
+      "title": "test-integration: 28-file consistent residual failure cluster (post ISS-0630 + adp0x schema-literal fix), spanning unrelated subsystems",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-09T22:23:41Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T02:19:30Z"
+      },
+      "added_at": "2026-08-10T02:19:30Z",
+      "started_at": "2026-08-10T02:19:30Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 649,
+      "labels": [
+        "bug"
+      ]
     }
   ]
 }
