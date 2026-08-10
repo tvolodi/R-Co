@@ -533,14 +533,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/417",
       "title": "pool.zig resolver falls through to LEGACY_RLS on tenant_schemas fallback",
       "severity": "BLOCKER",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "TVOLODI-loop",
-        "locked_at": "2026-08-07T08:43:28Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-06T21:48:42Z",
       "started_at": "2026-08-07T08:43:28Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T16:40:44Z",
       "run_id": null,
       "deferred_reason": null
     },
