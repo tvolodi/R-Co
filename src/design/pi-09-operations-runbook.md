@@ -138,7 +138,7 @@ db_pool.Pool.init()
 [NEW] startup_assertions.assertDatabaseConfiguration() ← FATAL GATE
   ↓ (on error)
   ├─→ obs_logger.log(.FATAL, "startup.database", ...)
-  └─→ return error → main() catches → os.exit(1)
+  └─→ return error → main() catches → os.exit(78)  // EX_CONFIG
   ↓ (on success)
 db_provisioning.provisionTenantSchema()
   ↓
@@ -171,9 +171,10 @@ db_provisioning.provisionTenantSchema(allocator, &pool, default_tenant_id, build
 };
 
 // NEW: Insert here (before bootstrap_audit)
+const EX_CONFIG: u8 = 78;  // sysexits.h: configuration error
 startup_assertions.assertDatabaseConfiguration(allocator, &pool) catch |err| {
     // FATAL line already emitted by assertDatabaseConfiguration; just exit
-    std.process.exit(1);
+    std.process.exit(EX_CONFIG);
 };
 
 // Existing:
