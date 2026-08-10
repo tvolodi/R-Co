@@ -1408,14 +1408,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/661",
       "title": "db_integration_test TC-DB-03-02: segfault in pg.Conn.close()/deinit, not the previously-suspected Windows handle noise",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T08:31:55Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T08:31:55Z",
       "started_at": "2026-08-10T08:31:55Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T08:41:14Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 661,
