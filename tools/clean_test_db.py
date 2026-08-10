@@ -24,6 +24,7 @@ a docker-compose-based local dev environment. Nothing about the
 docker-compose path changes for a local run that does not set the variable.
 """
 import argparse
+import shutil
 import subprocess
 import sys
 import os
@@ -36,13 +37,36 @@ USER = "bpm"
 # historical `docker-compose exec -T db_test psql ...` invocation.
 _DIRECT_DB_URL: str | None = None
 
+# GH-280 / ISS-0040 rework: resolved once via shutil.which() and reused by
+# every psql-invoking helper below (direct-URL mode only; the docker-compose
+# fallback path never execs "psql" directly, so it is unaffected).
+#
+# Root cause this works around: on Windows, the only "psql" on PATH is a
+# WinGet-installed .cmd shim (no real psql.exe exists on a dev box unless
+# PostgreSQL client tools are separately installed). subprocess.run(["psql",
+# ...]) with the default shell=False calls CreateProcess directly, which
+# cannot resolve a bare "psql" to a .cmd file — Windows only does PATHEXT
+# extension resolution (.cmd/.bat/.exe/...) through the shell or through
+# shutil.which(), never through a raw CreateProcess lookup. The direct-URL
+# mode added by GH-292/ISS-0077 is exactly the path every Windows workspace's
+# `zig build test-integration-*` step exercises (BPM_TEST_DB_URL is always
+# set for those), so this bug silently blocked test-database cleanup on every
+# Windows machine as soon as that mode shipped: FileNotFoundError ([WinError
+# 2] The system cannot find the file specified), not a psql/SQL error.
+# shutil.which("psql") performs the same PATHEXT-aware search a shell would
+# and returns the resolved absolute path (e.g. "...\\psql.CMD"), which
+# CreateProcess CAN launch directly — no shell=True needed, and no change to
+# behaviour on Linux/macOS where "psql" is already a real ELF/Mach-O binary
+# (shutil.which returns it unchanged).
+_PSQL_EXECUTABLE: str = shutil.which("psql") or "psql"
+
 
 def _psql_base_cmd() -> list[str]:
     """Return the psql invocation prefix (connection portion only) for the
     active connection mode — direct BPM_TEST_DB_URL if set, else
     docker-compose exec into the db_test container."""
     if _DIRECT_DB_URL:
-        return ["psql", _DIRECT_DB_URL]
+        return [_PSQL_EXECUTABLE, _DIRECT_DB_URL]
     return ["docker-compose", "exec", "-T", "db_test", "psql", "-U", USER, "-d", DB]
 
 # Tables in FK-safe deletion order (children before parents).

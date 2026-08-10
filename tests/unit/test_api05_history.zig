@@ -6,6 +6,15 @@
 //! connection.  Store-touching paths are covered by integration tests in
 //! tests/integration/.
 //!
+//! GH-280 / ISS-0040: the 7 valid-boundary cases below (TC-API-05-12c/12d,
+//! TC-API-05-14a..e) are stubbed with `return error.SkipZigTest;` because
+//! validation passes and the handler proceeds to call the real store — not
+//! reachable with this file's `undefined` Store pointer. Their real-store
+//! counterparts now exist and pass in
+//! tests/integration/api05_history_boundary_test.zig, grounded in the actual
+//! accepted page_size range (src/api/pagination.zig MAX_PAGE_SIZE=200) and
+//! ISO 8601 grammar (parseIso8601ToMicros in src/api/routes/instances.zig).
+//!
 //! Strategy: pass an `undefined` Store pointer to handlers whose failing
 //! branch is reached before the first store field access.  This is safe only
 //! when the handler is guaranteed to return on a validation error before
@@ -171,11 +180,15 @@ test "TC-API-05-12c: handleHistory with page_size=1 (valid boundary) passes page
     // page_size=1 is valid. The handler will proceed to try to access the
     // store (readHistory). Since we pass undefined, this will crash at runtime.
     // Use SkipZigTest as this requires a real store.
+    // GH-280 / ISS-0040: real-store counterpart is
+    // tests/integration/api05_history_boundary_test.zig TC-API-05-12c.
     return error.SkipZigTest;
 }
 
 test "TC-API-05-12d: handleHistory with page_size=200 (valid boundary) passes page_size check" {
     // page_size=200 is valid. Requires real store.
+    // GH-280 / ISS-0040: real-store counterpart is
+    // tests/integration/api05_history_boundary_test.zig TC-API-05-12d.
     return error.SkipZigTest;
 }
 
@@ -264,22 +277,32 @@ test "TC-API-05-19: handleHistory with unparseable to returns HTTP 422 INVALID_T
 test "TC-API-05-14a: valid UTC timestamp '2026-01-15T10:30:00Z' parses successfully" {
     // Valid timestamp. Validation passes, then handler tries to access store.
     // Requires real store → SkipZigTest.
+    // GH-280 / ISS-0040: real-store counterpart is
+    // tests/integration/api05_history_boundary_test.zig TC-API-05-14a.
     return error.SkipZigTest;
 }
 
 test "TC-API-05-14b: valid timestamp with milliseconds '2026-01-15T10:30:00.123Z' parses" {
+    // GH-280 / ISS-0040: real-store counterpart is
+    // tests/integration/api05_history_boundary_test.zig TC-API-05-14b.
     return error.SkipZigTest;
 }
 
 test "TC-API-05-14c: valid timestamp with microseconds '2026-01-15T10:30:00.123456Z' parses" {
+    // GH-280 / ISS-0040: real-store counterpart is
+    // tests/integration/api05_history_boundary_test.zig TC-API-05-14c.
     return error.SkipZigTest;
 }
 
 test "TC-API-05-14d: valid timestamp with timezone offset '+05:00' parses" {
+    // GH-280 / ISS-0040: real-store counterpart is
+    // tests/integration/api05_history_boundary_test.zig TC-API-05-14d.
     return error.SkipZigTest;
 }
 
 test "TC-API-05-14e: valid timestamp with negative timezone offset '-03:00' parses" {
+    // GH-280 / ISS-0040: real-store counterpart is
+    // tests/integration/api05_history_boundary_test.zig TC-API-05-14e.
     return error.SkipZigTest;
 }
 
