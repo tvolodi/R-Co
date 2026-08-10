@@ -117,6 +117,15 @@ record that decision so it is not silently dropped when GH-293 is eventually pic
 up — GH-293 should decide fmt scope on purpose, not inherit whatever `make.ps1` did by
 default.
 
+**Superseded (GH-293 / ISS-0078, resolved 2026-08-11):** the interim stand-in described
+above has been replaced. `zig build check` is now a real build-graph step in `build.zig`
+(error sets fail via the normal compile exit code — the grep added no coverage beyond
+that and was dropped, not ported forward) plus `zig fmt --check` scoped to the current
+branch's changed `.zig` files via `tools/check_fmt_scope.py` (not the whole 225/200-file
+`src`/`tests` backlog, which remains untouched and is tracked as a separate future
+cleanup). `make.ps1 check` now calls `zig build check` directly. See
+`src/design/zig-build-check-gate.md` for the full design note.
+
 ## Validation of `test-live` against the real aggregate suite
 
 `./make.ps1 test-live` was run against this workspace's real, already-healthy

@@ -830,13 +830,20 @@ zig build migrate
 ```
 All three must exit 0 before completing.
 
-**4. Error-set validation (mandatory, run before self-review):**
+**4. Build and formatting gate (mandatory, run before self-review):**
 ```bash
-zig build 2>&1 | grep -i "error set"
+zig build check
 ```
-If any output: a function's return type does not cover all errors it propagates. Fix all
-error-set declarations now. This is the #1 cause of TEST-RUNNER compile failures and
-WF-03 dispatches. Do not proceed until this command produces no output.
+This is the PI-03 gate (GH-293 / ISS-0078). It runs the normal build — an error-set
+mismatch (a function returning a wider error set than its declared return type covers)
+is a genuine Zig compile error, so `zig build` already exits non-zero for it; there is
+no separate grep to run or stderr to read by hand, trust the exit code — plus
+`zig fmt --check` scoped to only the `.zig` files this branch changed relative to
+`main` (see `tools/check_fmt_scope.py`; whole-tree `zig fmt --check` currently reports
+440 pre-existing unformatted files unrelated to any given change, so the gate is scoped
+rather than blaming every branch for debt it did not create). Non-zero exit = fix
+before proceeding. Do not run `zig build 2>&1 | grep -i "error set"` by hand — that
+prose grep is superseded by this command.
 
 **4b. SQL type-cast validation (mandatory, run before self-review):**
 ```bash
@@ -855,7 +862,7 @@ The two patterns to fix:
 - [ ] Error types defined in per-module error sets
 - [ ] `python3 tools/lint_sql_param_types.py src tests` exits 0 — no BLOCKER/MAJOR (prevents C42883)
 - [ ] If any function signature changed: verify all call sites by running `zig build` and checking zero errors
-- [ ] `zig build` exits 0 with no "error set" output in stderr
+- [ ] `zig build check` exits 0 (build + error-set exit code + scoped `zig fmt --check`)
 - [ ] No mocks, stubs, in-memory fakes, or stub return values in any test file (DIRECTIVE T-1)
 - [ ] No `error.SkipZigTest` on any test block that covers a MUST requirement (a skipped MUST test = requirement stays PENDING)
 - [ ] All integration tests connect to real PostgreSQL via `BPM_TEST_DB_URL`
@@ -935,11 +942,12 @@ Single command surface (`./make.ps1 help` for the full list — see GH-294 / ISS
 ./make.ps1 migrate     # zig build migrate, BPM_DB_URL from .env
 ./make.ps1 test        # zig build test (unit only)
 ./make.ps1 test-live   # wait for Postgres+Keycloak, then zig build test-integration
-./make.ps1 check       # interim pre-PI-03 stand-in (zig build + error-set grep) — see GH-293
+./make.ps1 check       # zig build check — PI-03 gate (GH-293/ISS-0078): build + scoped fmt --check
 ```
 Raw forms these expand to (still allowed directly):
 ```bash
 zig build
+zig build check              # PI-03 gate: build (error sets fail via exit code) + scoped zig fmt --check
 zig build test
 zig build test-<module>
 zig build test-integration   # requires BPM_TEST_DB_URL

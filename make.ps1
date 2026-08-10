@@ -28,11 +28,10 @@
                 BPM_TEST_DB_URL sourced from .env.
     e2e         Playwright E2E tests against a running stack
                 (cd web && npm run test:e2e).
-    check       interim pre-PI-03 stand-in only — see GH-293. Runs the
-                closest currently-real equivalent of the future
-                `zig build check` gate: `zig build` + an error-set grep,
-                exactly what CLAUDE.md's BACKEND-DEV self-review already
-                mandates. NOT the real PI-03 gate.
+    check       zig build check — the PI-03 gate (GH-293/ISS-0078): build
+                (error-set mismatches fail via the normal compile exit code)
+                + `zig fmt --check` scoped to this branch's changed .zig
+                files (tools/check_fmt_scope.py).
     help        print this list (also runs with no args).
 
 .NOTES
@@ -229,55 +228,24 @@ function Invoke-E2E {
 }
 
 function Invoke-Check {
-    # --- INTERIM STAND-IN, NOT PI-03 (GH-293) ---
-    # PI-03 defines a real `zig build check` step (fmt --check + build +
-    # error-set-grep, as a single build-graph step). GH-293 is a separate,
-    # still-open issue (verified: `gh issue view 293 --json state` -> OPEN;
-    # `grep -n 'b.step("check"' build.zig` -> no such step exists in build.zig
-    # as of this script). Implementing that gate for real belongs to GH-293,
-    # not here — this issue (GH-294/PI-04) is scoped to the command surface,
-    # not to building PI-03's gate logic.
-    #
-    # This subcommand runs the closest currently-real equivalent, composed
-    # from exactly the two commands CLAUDE.md's BACKEND-DEV section already
-    # mandates before self-review: `zig build` and the "error set" grep on
-    # its output. It is a convenience wrapper around existing steps, not a
-    # new gate — do not treat a PASS here as equivalent to a future
-    # `zig build check` PASS.
-    #
-    # `zig fmt --check src/` was deliberately tried and dropped from this
-    # stand-in: as of this script, it reports 225 pre-existing files as
-    # unformatted repo-wide (verified by running it directly against main).
-    # `zig fmt` was never part of CLAUDE.md's mandated self-review checklist
-    # in the first place, so folding it in here would make `check` fail for
-    # reasons unrelated to whatever change is actually being validated —
-    # exactly the kind of unrelated-failure noise PI-03 (GH-293) is meant to
-    # design deliberately, not something this interim stand-in should
-    # pre-empt by accident.
-    Write-Host "[make.ps1] check: PRE-PI-03 INTERIM STAND-IN (see GH-293 for the real gate)" -ForegroundColor Yellow
-
-    Write-Host "[make.ps1] check: zig build" -ForegroundColor Cyan
-    $buildOutput = zig build 2>&1
-    $buildExit = $LASTEXITCODE
-    $buildOutput | ForEach-Object { Write-Host $_ }
-    if ($buildExit -ne 0) {
-        Write-Host "[make.ps1] check: zig build FAILED (exit $buildExit)" -ForegroundColor Red
-    }
-
-    $errorSetHits = $buildOutput | Select-String -Pattern "error set" -SimpleMatch:$false -CaseSensitive:$false
-    $errorSetExit = 0
-    if ($errorSetHits) {
-        Write-Host "[make.ps1] check: 'error set' text found in zig build output — a function's return type does not cover all errors it propagates:" -ForegroundColor Red
-        $errorSetHits | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
-        $errorSetExit = 1
-    }
-
-    if ($buildExit -ne 0 -or $errorSetExit -ne 0) {
-        Write-Host "[make.ps1] check: FAILED (interim stand-in)" -ForegroundColor Red
-        exit 1
+    # PI-03 (GH-293 / ISS-0078): `zig build check` is now a real build-graph
+    # step (see build.zig) — build + error-set exit code + `zig fmt --check`
+    # scoped to this branch's changed .zig files (tools/check_fmt_scope.py).
+    # This subcommand is a thin wrapper; it no longer implements its own
+    # interim logic (the former PRE-PI-03 stand-in composed of a raw
+    # `zig build` plus an "error set" text grep has been retired now that the
+    # real gate exists — see build.zig and CLAUDE.md for the reasoning on why
+    # the grep was redundant with the exit code, and why fmt is scoped rather
+    # than whole-tree).
+    Write-Host "[make.ps1] check: zig build check" -ForegroundColor Cyan
+    zig build check
+    $checkExit = $LASTEXITCODE
+    if ($checkExit -ne 0) {
+        Write-Host "[make.ps1] check: FAILED (exit $checkExit)" -ForegroundColor Red
+        exit $checkExit
     }
     else {
-        Write-Host "[make.ps1] check: PASSED (interim stand-in — not the real PI-03 gate; see GH-293)" -ForegroundColor Green
+        Write-Host "[make.ps1] check: PASSED" -ForegroundColor Green
         exit 0
     }
 }
@@ -294,8 +262,7 @@ function Show-Help {
     Write-Host "  test        zig build test (unit only)"
     Write-Host "  test-live   wait for Postgres + Keycloak, then zig build test-integration"
     Write-Host "  e2e         Playwright E2E tests against a running stack (web/)"
-    Write-Host "  check       INTERIM pre-PI-03 stand-in (zig build + error-set grep)"
-    Write-Host "              — not the real 'zig build check' gate; see GH-293"
+    Write-Host "  check       zig build check (build + scoped zig fmt --check) — see GH-293/ISS-0078"
     Write-Host "  help        show this message"
     Write-Host ""
     exit 0

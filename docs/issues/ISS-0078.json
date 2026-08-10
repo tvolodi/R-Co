@@ -1,0 +1,45 @@
+{
+  "issue_id": "ISS-0078",
+  "title": "A Zig build and lint gate (PI-03)",
+  "status": "RESOLVED",
+  "severity": "MAJOR",
+  "category": "developer experience / pipeline infrastructure",
+  "run_id": "WF03-GH293-20260811",
+  "workflow_id": "WF-03",
+  "handoff_id": null,
+  "requirement_ids": [],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/293",
+  "summary": "Also known as PI-03. The three custom linters (lint_design_artefact, lint_frontend_conventions, lint_test_isolation) police process artefacts, not backend Zig code. The only Zig-level check was prose an agent had to run and read by hand (`zig build 2>&1 | grep -i \"error set\"`), and there was no `zig fmt --check` or vet gate anywhere in the pipeline. The immediately-prior run (GH-294/ISS-0079/PI-04) built an explicitly-labelled interim stand-in for this exact gate in make.ps1's `check` subcommand, deferring the real implementation here.",
+  "design_decision": {
+    "error_set_check": "Verified directly that the grep added no coverage beyond what `zig build`'s own exit code already provides: a minimal function declared `NarrowError!void` that returns a `WideError!void` value (WideError a superset of NarrowError) fails `zig build-exe` with 'error: expected type error{Foo}!void, found error{Bar,Foo}!void' and exit code 1 — a genuine compile error, not advisory stderr text next to a 0 exit. `zig build check` therefore does NOT reimplement the grep; it depends on the normal build step (b.getInstallStep()) and inherits its exit code. The fix here is 'trust the exit code, stop grepping' — no new error-set detection logic was needed.",
+    "fmt_scoping": "Re-verified independently (not trusting the prior run's number blindly): `zig fmt --check .` reports 440 files repo-wide as of this run (225 under src/, 200 under tests/, plus build.zig, build.zig.zon, vendor/ (10 files, third-party — must never be reformatted here), scratch/ (git-ignored, never part of a PR), and one docs/ file). `zig fmt --check --exclude vendor --exclude scratch .` still leaves 428 files under src/+tests/, confirming --exclude alone does not solve the pre-existing-debt problem. Gating on the whole tree would fail every future PR on formatting debt unrelated to whatever it changes. Chose option 1 from the task brief: tools/check_fmt_scope.py scopes `zig fmt --check` to only the .zig files the current branch changed relative to main (git diff --name-only main...HEAD, plus uncommitted/untracked .zig files), so the gate fails loudly for THIS change without attributing pre-existing debt to whichever branch happens to run it. A whole-tree reformat (option 2) was considered and rejected as disproportionate to Effort:S and risky in an actively multi-workspace repo — left as a tracked future cleanup, not done here.",
+    "build_zig_integration": "Added a `check` step to build.zig following the existing b.addSystemCommand + b.step(...) pattern already used for `test-env-verify` (tools/verify_test_env.py) and `test-wiring-check` (tools/lint_test_wiring.py). check_step depends on b.getInstallStep() (the build itself — the error-set assertion) and on a b.addSystemCommand invoking tools/check_fmt_scope.py (the scoped fmt check).",
+    "make_ps1_update": "make.ps1's Invoke-Check function, built as an interim stand-in by the immediately-prior GH-294/ISS-0079 run, now calls `zig build check` directly instead of reimplementing the zig build + error-set-grep logic. Help text and doc-comment header updated to match. src/design/unified-command-surface.md's 'Scoping check' section (written by that prior run) was left intact as historical record, with a 'Superseded' note appended pointing to this issue's resolution rather than being rewritten."
+  },
+  "evidence": {
+    "fmt_debt_reverification": "zig fmt --check . -> 440 files; zig fmt --check src -> 225 files (matches prior run's independently-cited number); zig fmt --check tests -> 200 files; zig fmt --check build.zig build.zig.zon -> both non-conforming before this change's own zig fmt pass.",
+    "error_set_probe": "Standalone probe (zig build-exe on a minimal NarrowError!void function returning a WideError!void value) failed with exit code 1 and a genuine Zig compiler error naming the missing error-set member — confirms error-set mismatches are real compile errors, not stderr-only advisory text. Probe file was written and compiled outside the repo tree (scratchpad) and deleted after use; no repo file was left in a broken state by this verification.",
+    "check_fmt_scope_pass": "python tools/check_fmt_scope.py with no .zig changes on the branch: 'no .zig files changed relative to main -- nothing to check.', exit 0.",
+    "check_fmt_scope_fail_path": "Deliberately introduced a formatting violation in build.zig (irregular spacing around `const check_step = b.step(`), ran `zig build check`, confirmed FAILED with build.zig correctly named as the offending file and exit code 1; reverted from a pre-edit backup and reconfirmed PASSED, exit 0.",
+    "zig_build_check_pass": "zig build check on the clean tree (after formatting build.zig's own newly-added block): 'check_fmt_scope: PASSED -- all changed .zig files are formatted.', raw $LASTEXITCODE captured to a log file (not piped through a text filter) = 0.",
+    "zig_build_full": "zig build (full, unrelated to check) exits 0 (raw exit code captured directly, confirmed 0).",
+    "zig_build_test_full": "zig build test exits 0 (raw exit code captured directly to a log file rather than through a pipe, since Zig's --listen=- test-runner protocol chatter can otherwise display as 'failed command' text in a terminal even on a genuine pass -- this exact artifact is documented in ISS-0079's evidence). RAW_EXIT:0 confirmed.",
+    "make_ps1_check": "./make.ps1 check: '[make.ps1] check: zig build check' -> check_fmt_scope PASSED -> '[make.ps1] check: PASSED', exit 0.",
+    "make_ps1_help": "./make.ps1 help renders the updated check description ('zig build check (build + scoped zig fmt --check) -- see GH-293/ISS-0078') correctly."
+  },
+  "resolution": "1) tools/check_fmt_scope.py (new): scoped `zig fmt --check` against the current branch's changed .zig files relative to main. 2) build.zig: new `check` step (b.step(\"check\", ...)) depending on the install step (build/error-set exit code) and check_fmt_scope.py (scoped fmt). 3) CLAUDE.md: BACKEND-DEV's Error-set validation step replaced with a Build and formatting gate step referencing `zig build check`; self-review checklist item updated; Allowed-commands list updated with the raw `zig build check` form. 4) docs/agents/workflows/WF-02_requirement_implementation.md: Step 8 updated to match. 5) README.md: make.ps1 check table row updated from 'interim pre-PI-03 stand-in' to the real gate description. 6) make.ps1: Invoke-Check now calls `zig build check` directly; help text and doc-comment header updated. 7) src/design/unified-command-surface.md: 'Superseded' note appended (history left intact). 8) src/design/zig-build-check-gate.md (new): Type E design note covering the error-set investigation, the fmt-scoping decision, and validation evidence. 9) docs/issues/ISS-0078.json (this file).",
+  "files_changed": [
+    "build.zig",
+    "tools/check_fmt_scope.py",
+    "CLAUDE.md",
+    "docs/agents/workflows/WF-02_requirement_implementation.md",
+    "README.md",
+    "make.ps1",
+    "src/design/unified-command-surface.md",
+    "src/design/zig-build-check-gate.md",
+    "docs/issues/ISS-0078.json"
+  ],
+  "created_at": "2026-08-10T21:03:24Z",
+  "resolved_at": null,
+  "prevention": "When a prose instruction tells an agent to run a command and manually inspect its output for a substring, check first whether the underlying tool already signals that condition via its exit code — a substring grep on stderr very often exists only because nobody had built the exit-code-integrated version yet, not because the exit code is actually insufficient. When introducing a formatting or lint gate into a codebase with pre-existing debt, scope the gate to the current change's diff rather than the whole tree; do not let a fair, incremental gate get blocked on an unrelated full-tree cleanup, and do not fold that cleanup into an unrelated Effort:S issue — track it separately instead."
+}
