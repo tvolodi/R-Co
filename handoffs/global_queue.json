@@ -1391,17 +1391,24 @@
       ]
     },
     {
-      "issue_id": "ISS-0651",
+      "issue_id": "GH-660",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/660",
-      "title": "exp201_202_entities_test TC-EXP-202-01/02/03: createRecord tenant-schema qualification mismatch",
+      "title": "exp201_202_entities_test TC-EXP-202-01/02/03: createRecord's tenant-schema qualification mismatches test fixtures that never provision a physical tenant schema",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-10T06:50:51Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T08:41:33Z"
+      },
+      "added_at": "2026-08-10T08:41:33Z",
+      "started_at": "2026-08-10T08:41:33Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 660,
+      "labels": [
+        "bug"
+      ]
     },
     {
       "issue_id": "GH-661",
