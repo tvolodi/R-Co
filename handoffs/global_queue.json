@@ -1430,17 +1430,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0654",
+      "issue_id": "GH-663",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/663",
-      "title": "sim01/obs03 PgError.ServerError cluster",
+      "title": "sim01_04_simulation_mode_test TC-SIM-01-01 (missing instance_projections relation) and obs03_audit_log_test TC-OBS-03-INT-02/05 (500 on GET /audit)",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-10T06:51:07Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T07:39:24Z"
+      },
+      "added_at": "2026-08-10T07:39:24Z",
+      "started_at": "2026-08-10T07:39:24Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 663,
+      "labels": [
+        "bug"
+      ]
     },
     {
       "issue_id": "GH-664",
