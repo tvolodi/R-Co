@@ -1,0 +1,46 @@
+{
+  "issue_id": "ISS-0659",
+  "title": "31 integration test files bypass TestHarness's advisory lock (PR #494 fix scope) and remain racy against concurrent resetTestData()/schema DDL under the full test-integration suite",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "test infrastructure",
+  "run_id": "WF03-GH679-20260810",
+  "workflow_id": "WF-03",
+  "handoff_id": null,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/681",
+  "requirement_ids": [],
+  "summary": "PR #494 (closing GH-486/ISS-0162) fixed cross-binary data races under `zig build test-integration` by holding TestHarness's advisory lock for the full harness lifetime (init()..deinit()), serializing TestHarness instances against each other so resetTestData()'s unconditional DELETEs (timers, events, dead_letter_items, instance_projections, tasks, process_definitions, ...) cannot wipe rows a concurrently-running TestHarness-based test is using. That fix's scope is explicitly TestHarness-to-TestHarness only. A grep of tests/integration/*.zig found 31 files that manage their own db.Pool directly (helpers.zig's makePool()/Pool.init() pattern) and never call TestHarness.init()/deinit() at all -- these binaries take no lock, so they remain exposed to being wiped by any concurrently-running TestHarness-based sibling, and (going the other direction) their own schema-provisioning/migration calls (e.g. provisionTenantSchema) are not excluded from concurrent TestHarness resets either. This was discovered while diagnosing ISS-0658/GH-679 (aggregate test-integration instability): a clean-db-reset control run (fresh db_test container + fresh zig build migrate, no accumulated state) still produced 9 distinct test-file failures, 5 of which are directly explained by this exact gap.",
+  "root_cause": {
+    "type": "incomplete_mutual_exclusion_scope",
+    "details": "grep -rln 'TestHarness' tests/integration/*.zig (inverted) against files that reference Pool.init/PoolConfig identifies 31 self-managed-pool integration test files, including tests/integration/sch303_timer_dlq_test.zig, env01_test.zig, env02_test.zig, env03_test.zig, env05_test.zig, iss0605_orphan_self_heal_test.zig, tenant_config_realm_test.zig (spt01_iss0068_onboarding_schema_test.zig is TestHarness-based but reads the same public.tenant/tenant_schemas rows that these self-managed binaries and TestHarness resets both mutate concurrently), and 24 others (idn01..idn04, oidc08..oidc34, ext02/ext04, adm_ui_09, adp04/04a/04b/07, exp401_exp402, obs03/obs04, onboarding_realm_guard, tm01). Several of these (sch303, env05) touch the exact same shared tables resetTestData() unconditionally DELETEs (timers, events, dead_letter_items, instance_projections, process_definitions), and others (env01, spt01) read shared rows in public.tenant/public.tenant_schemas that other binaries concurrently insert/delete via their own fixture lifecycles. Because none of these 31 binaries acquire TestHarness's advisory lock, PR #494's serialization has no effect on them -- they can be wiped by a TestHarness sibling's resetTestData() call at any point, and can themselves be caught by another binary's concurrent DDL/schema-provisioning (observed: env05_test.zig's provisionTenantSchema failing with error.MigrationFailed / PoolError.QueryFailed under load, consistent with a PostgreSQL server-side error during heavy concurrent migration replay across ~16 parallel test binaries on a 16-core host).",
+    "evidence_run": "Clean-reset control run performed 2026-08-10 in workspace r-co-2: docker-compose down -v db_test && up -d db_test (fresh volume), BPM_DB_URL=$BPM_TEST_DB_URL zig build migrate (124 migrations applied cleanly, exit 0), then a single `zig build test-integration` invocation against that pristine database. Result: 94/111 build steps succeeded, 14 failed; 1010/1027 tests passed, 7 failed (plus assorted allocator leaks in unrelated files). 9 distinct test files failed: sch303_timer_dlq_test (TC-SCH-303-03/04, timer row disappeared mid-poll -- expected 1 row found 0, consistent with resetTestData() DELETE FROM timers racing the test), spt01_iss0068_onboarding_schema_test (TC-SPT-01-ISS68-02, expected 4 tenant_schemas rows found 3), iss105_token_model_test (TC-ISS-105-03, pg_indexes unscoped-by-schema query returned 3 rows instead of 1 -- fixed directly in this pass, see ISS-0658 resolution), iss0185_dual_schema_test (TC-ISS-0185-03, tenant_default HYBRID-table duplicate count transiently wrong), env01_test (TC-ENV-01-03, existing-tenant-rows invariant count transiently wrong -- expected 0 found nonzero), env05_test (TC-ENV-05-02, provisionTenantSchema itself failed with MigrationFailed/QueryFailed under load), plus 3 files with allocator leaks (api03_instance_read_test, adp06_pipeline_run_correlation_test, sim01_04_simulation_mode_test) that are a separate, unconfirmed defect class (may or may not be concurrency-related; not investigated in this pass -- see 'what this issue does NOT cover' below)."
+  },
+  "evidence": {
+    "discovered_during": "WF03-GH679-20260810 (ISS-0658 diagnosis) -- clean-db-reset control run recommended by ISS-0658's own filed remediation strategy",
+    "workspace": "r-co-2 (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test), fresh db_test volume, fresh zig build migrate, single test-integration invocation",
+    "reproduction": "zig build test-integration against a freshly reset db_test (docker-compose down -v db_test && up -d db_test; BPM_DB_URL=$BPM_TEST_DB_URL zig build migrate). ~12 minutes wall clock on a 16-core host with default -j (16-way parallel). 9/111+ test files fail nondeterministically; failures cluster in files that either (a) manage their own Pool without TestHarness, or (b) read shared public.tenant/public.tenant_schemas/tenant_default rows that such files mutate."
+  },
+  "affected_areas": [
+    "tests/integration/helpers.zig (TestHarness lock scope, resetTestData())",
+    "tests/integration/sch303_timer_dlq_test.zig",
+    "tests/integration/env01_test.zig",
+    "tests/integration/env05_test.zig",
+    "tests/integration/spt01_iss0068_onboarding_schema_test.zig",
+    "tests/integration/iss0185_dual_schema_test.zig",
+    "26 further self-managed-pool integration test files (see root_cause.details for full list)"
+  ],
+  "recommended_fix_strategy": {
+    "primary_action": "Either (a) extend PR #494's advisory-lock pattern to every self-managed-pool binary (acquire the same bpm_test_migrations_public / per-tenant-schema lock the TestHarness pattern uses, for the binary's full lifetime), or (b) scope resetTestData()'s DELETEs and any ad-hoc schema-provisioning call so they cannot observe/mutate fixture rows owned by a concurrently-running sibling regardless of which pool-management pattern that sibling uses. Option (a) is likely lower-risk since it reuses an already-verified mechanism; option (b) is more invasive (touches resetTestData() itself) but closes the gap for future new test files too, which per-file lock retrofits do not.",
+    "secondary_action": "Re-run the same clean-reset control (fresh db_test, fresh migrate, one zig build test-integration invocation) after the fix and confirm the 5 non-leak failures (sch303, spt01, iss0185, env01, env05) do not reproduce across 3+ consecutive clean runs, per the acceptance-criteria pattern GH-486/GH-651/GH-673 already established for this failure class.",
+    "what_NOT_to_do": "Do not fold the 3 allocator-leak failures (api03_instance_read_test, adp06_pipeline_run_correlation_test, sim01_04_simulation_mode_test) into this issue's fix -- they were observed in the same run but are a structurally different symptom (memory leak, not a data race / assertion-count mismatch) and were not diagnosed in this pass; file them separately if/when someone investigates. Do not treat iss105_token_model_test as still-open -- ISS-0658 already fixed its specific pg_indexes schema-scoping bug directly; it is TestHarness-based and was miscategorized as a Race-B victim only because of the unscoped query, not because of the lock-scope gap this issue describes."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-10T17:10:58Z",
+  "resolved_at": null,
+  "prevention": [
+    "A build-time or lint-time check that flags any new tests/integration/*.zig file which opens its own db.Pool without going through TestHarness would prevent this gap from growing further as new integration tests are added.",
+    "docs/guides/test_developer_guide.md should state explicitly that any integration test touching shared tables (timers, events, dead_letter_items, instance_projections, tasks, process_definitions, public.tenant, public.tenant_schemas, tenant_default's DDL objects) MUST use TestHarness, not a raw Pool, specifically because of the PR #494 lock-scope guarantee -- this is not currently documented as a hard requirement anywhere the grep in this issue could find."
+  ]
+}

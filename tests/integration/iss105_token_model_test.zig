@@ -83,11 +83,24 @@ test "iss105_token_model: active_tokens has GIN index" {
         &.{},
     );
 
+    // ISS-0658 (GH #679): pg_indexes is not search_path-scoped — it returns one
+    // row per schema in which a same-named index exists. instance_projections
+    // is provisioned into multiple schemas (public, tenant_default, and any
+    // tenant schema a concurrently-running integration binary provisions
+    // during a parallel `zig build test-integration` run), so an unqualified
+    // WHERE tablename=... AND indexname=... match can legitimately return 2
+    // or more rows even though this test's own CREATE INDEX only ran once.
+    // Scope the query to the first schema on this connection's search_path
+    // (the schema this test actually created the index in) using
+    // pg_table_is_visible, mirroring how `attrelid = 'instance_projections'::
+    // regclass` above already resolves through search_path rather than
+    // scanning every schema.
     var idx_rows = try h.conn.query(
         std.testing.allocator,
         \\SELECT 1 FROM pg_indexes
         \\WHERE tablename = 'instance_projections'
         \\  AND indexname = 'idx_instance_active_tokens'
+        \\  AND pg_table_is_visible((schemaname || '.' || indexname)::regclass)
     ,
         &.{},
     );
