@@ -360,7 +360,7 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
     var actor_uuid: [16]u8 = undefined;
     _ = try std.fmt.hexToBytes(&actor_uuid, "acac0000000000000000000000000001");
 
-    const result = try store.append(alloc, AppendParams{
+    var result = try store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
         .event_type = "DB03_TEST",
         .payload = "{}",
@@ -368,6 +368,9 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
         .idempotency_key = "db03-01-idem-key",
         .metadata = null,
     });
+    // ISS-0653 / GH-662: since that fix, store.append()'s returned .record
+    // owns a real metadata allocation and must be freed by the caller.
+    defer result.record.deinit(alloc);
     try std.testing.expect(!result.is_duplicate);
 
     // Both the events row and the updated instance_projections must be visible.
@@ -414,8 +417,19 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
 test "TC-DB-03-02: failed transaction rolls back both writes atomically" {
     const alloc = std.testing.allocator;
 
+    // ISS-0652 / GH-661: no `defer h_phase1.deinit()` here — this harness
+    // is torn down explicitly and early (end of the Phase 1 block below) so
+    // Phase 2 can open a second harness. TestHarness.deinit() has no
+    // re-entrancy guard: it unconditionally calls conn.close(), which frees
+    // the vendored pg client's read buffer (vendor/pg/pg.zig's Conn.close()).
+    // A second deinit() call (via a `defer` that had ALSO been registered
+    // here) freed that already-freed buffer a second time, corrupting the
+    // allocator and segfaulting inside close()'s free() -- not a Windows
+    // handle issue or a vendor pg.zig bug, a plain double-free in this test.
+    // The established convention for this exact "close early, open a
+    // second harness" shape already exists in this same file without a
+    // `defer` -- see TC-DB-01-02's h1/h2 above.
     var h_phase1 = try TestHarness.init(alloc);
-    defer h_phase1.deinit();
 
     const inst_id_str = try h_phase1.newUuidString(alloc);
     defer alloc.free(inst_id_str);
