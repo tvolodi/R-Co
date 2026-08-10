@@ -1319,17 +1319,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0649",
+      "issue_id": "GH-654",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/654",
-      "title": "ee09/effects_subsystem two new test-integration failures",
+      "title": "ee09_merge_variables_test TC-ISS-202-01 and effects_subsystem_test TC-EXP-301-09: two new test-integration failures not in GH-649's original 28-file cluster",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-10T04:14:58Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T05:37:18Z"
+      },
+      "added_at": "2026-08-10T05:37:18Z",
+      "started_at": "2026-08-10T05:37:18Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 654,
+      "labels": [
+        "bug"
+      ]
     },
     {
       "issue_id": "GH-654",
