@@ -917,3 +917,5 @@
 2026-08-10T20:28:22Z | QUEUE_REL | WF03-GH295-20260811 | --- | ORCH | GH-295 marked RESOLVED on global_queue (PR #686 merged at a8b51df)
 2026-08-10T20:52:19Z | RESOLVE | WF03-GH294-20260811 | --- | BACKEND-DEV | GH-294 (ISS-0079/PI-04) resolved via PR #687, squash-merged 86173d3, single command surface make.ps1 added, check scoped as interim pre-PI-03 stand-in pending GH-293
 2026-08-10T20:52:19Z | QUEUE_RELEASE | WF03-GH294-20260811 | --- | BACKEND-DEV | GH-294 -> RESOLVED (workspace r-co-2-loop)
+2026-08-10T21:09:28Z | RESOLVE | WF03-GH293-20260811 | --- | BACKEND-DEV | GH-293 (ISS-0078/PI-03) resolved via PR #688, squash-merged 71ac764, zig build check gate added (build + scoped zig fmt --check via tools/check_fmt_scope.py), error-set grep retired (exit code already sufficient), make.ps1 check now calls the real gate
+2026-08-10T21:09:28Z | QUEUE_RELEASE | WF03-GH293-20260811 | --- | BACKEND-DEV | GH-293 -> RESOLVED (workspace r-co-2-loop)
