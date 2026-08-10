@@ -10,7 +10,7 @@
     "ISS-0645"
   ],
   "severity": "MINOR",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "category": "test-infrastructure/baseline-drift",
   "affected_areas": [
     "tools/lint_test_isolation.baseline.json",
@@ -25,5 +25,8 @@
     "Determine whether those 2 entries are legitimate new T010/other findings that should be fixed (reducing the baseline back to 115) or are correctly-suppressed findings that make the snapshot's expectation stale (in which case update tests/specs/fixtures/gh512-baseline-snapshot.json's total_issues to 117 and document why in its own regeneration_note, per the existing convention in tools/lint_test_isolation.baseline.json's regeneration_note field)",
     "zig build test-integration-gh512 (or the file's build step) exits 0"
   ],
-  "next_action": "File as GitHub issue and add to global queue. Low severity (MINOR) -- this is a self-consistency check on the test-quality tooling itself, not a business-logic or infrastructure defect, and does not block any other test."
+  "next_action": "File as GitHub issue and add to global queue. Low severity (MINOR) -- this is a self-consistency check on the test-quality tooling itself, not a business-logic or infrastructure defect, and does not block any other test.",
+  "resolved_at": "2026-08-10T05:15:00Z",
+  "run_id_final": "WF03-GH653-20260810",
+  "resolution": "Bisected via `git log -p --follow tools/lint_test_isolation.baseline.json`: commit 28bf140 (WF03-GH375-20260809, PR #636, the ISS-0089/GH-338 sibling fix for env_test_root.zig/svc_test_root.zig's T050 false positives) added exactly 2 new baseline entries (T050, one each for tests/integration/env_test_root.zig:1 and tests/integration/svc_test_root.zig:1) -- both pure re-export aggregator files with no BPM_TEST_DB_URL reference of their own, correctly suppressed since their imported test files reference it individually. No other commit in the range altered the entry count. These are legitimate, correctly-suppressed findings, not new defects -- the snapshot was simply never updated after that PR landed. Updated tests/specs/fixtures/gh512-baseline-snapshot.json (bumped to snapshot_version 3): total_issues 115->117, by_severity.MAJOR 41->43, by_code.T050 22->24, with a snapshot_v3_addendum documenting the rationale and source commit. Verified: zig build test-integration-gh512 -- TC-RG-01/02/03 all PASS (TC-RG-02 explicitly confirms total=117, by_code={T010=74,T020=11,T030=6,T050=24,T060=2}, platform_admin=14). zig build exits 0."
 }

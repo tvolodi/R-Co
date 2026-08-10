@@ -1,15 +1,19 @@
 {
-  "snapshot_version": 2,
-  "captured_at": "2026-08-08T12:42:20Z",
-  "captured_by": "WF03-GH512-20260808 (TEST-DESIGNER Step 4)",
+  "snapshot_version": 3,
+  "captured_at": "2026-08-10T05:10:00Z",
+  "captured_by": "WF03-GH653-20260810 (ISS-0648, correcting drift from WF03-GH375-20260809 / PR #636)",
   "source_run": "WF03-GH512-20260808",
   "issue": "https://github.com/tvolodi/R-Co/issues/512",
   "source_file": "tools/lint_test_isolation.baseline.json",
   "expected": {
-    "total_issues": 115,
-    "by_severity": { "BLOCKER": 74, "MAJOR": 41, "MINOR": 0 },
-    "by_code":     { "T010": 74, "T020": 11, "T030": 6, "T050": 22, "T060": 2 },
+    "total_issues": 117,
+    "by_severity": { "BLOCKER": 74, "MAJOR": 43, "MINOR": 0 },
+    "by_code":     { "T010": 74, "T020": 11, "T030": 6, "T050": 24, "T060": 2 },
     "platform_admin_uuid_count": 14
+  },
+  "snapshot_v3_addendum": {
+    "rationale": "115 -> 117 (T050 22 -> 24, MAJOR 41 -> 43): PR #636 (WF03-GH375-20260809, ISS-0089/GH-338's sibling fix — env_test_root.zig/svc_test_root.zig false-positive suppression) added 2 legitimate T050 baseline entries for tests/integration/env_test_root.zig:1 and tests/integration/svc_test_root.zig:1 — both pure re-export aggregator files with no BPM_TEST_DB_URL reference of their own (their imported test files reference it individually), correctly suppressed rather than fixed since there is nothing to fix. GH-512's snapshot was never updated after that PR landed, causing TC-RG-02 to fail against current main. Bisected via `git log -p --follow tools/lint_test_isolation.baseline.json` — commit 28bf140 is the sole source of both added entries; no other commit in the range altered this file's entry count.",
+    "verified_by": "GH-653/ISS-0648"
   },
   "step_04_retain_addendum": {
     "rationale": "The TC-RG-02 regression test legitimately needs to count platform-admin UUIDs in the baseline by substring-matching the linter's message text. The substring is a canonical literal (00000000-0000-0000-0000-000000000001) used as a SEARCH TARGET, not as a fixture identity. Per design section R1 this is documented RETAIN. The entry was added to the baseline in step 4 alongside the snapshot, so both move together.",
