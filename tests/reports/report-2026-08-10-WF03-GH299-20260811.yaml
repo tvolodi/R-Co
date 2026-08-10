@@ -1,102 +1,106 @@
+---
 run_id: WF03-GH299-20260811
-date: 2026-08-10T20:39:55Z
-test_runner_agent: TEST-RUNNER
-workflow_stage: WF-03 Issue Resolving Step 5
+date: "2026-08-10T20:51:12Z"
+agent: TEST-RUNNER
+handoff_id: "29900000-0000-0500-0000-000000000000"
+test_phase: integration
+verdict: FAIL
 
 pre_check_results:
   services:
     status: PASS
-    docker_compose:
-      - name: r-co-db-1
-        status: healthy
-        port: "5442:5432"
-      - name: r-co-db_test-1
-        status: healthy
-        port: "5434:5432"
-      - name: r-co-keycloak-1
-        status: healthy
-      - name: r-co-keycloak_gateway-1
-        status: healthy
-        port: "8081:8080"
-    keycloak_health: "OK (200)"
-    database_connectivity: "OK (port 5434)"
-
-  migrations:
+    detail: "db (r-co-db-1), db_test (r-co-db_test-1), keycloak (r-co-keycloak-1) all healthy"
+  env_verify:
     status: PASS
-    exit_code: 0
-    migrations_applied: 124
-    note: "All migrations skipped (already applied)"
-
+    detail: "PASS (10/10 checks) — BPM_DB_URL points to dev DB on :5442, BPM_TEST_DB_URL to test DB on :5434"
   isolation:
     status: PASS
-    exit_code: 0
-    files_checked: 136
-    issues_found: 0
-    suppressed_baseline_issues: 116
-
-  env_verify:
-    status: FAIL
-    exit_code: 1
-    failed_checks:
-      - check_id: C0
-        check_name: "DB URL targets"
-        severity: BLOCKER
-        description: "BPM_DB_URL and BPM_TEST_DB_URL both resolve to postgres://bpm:***@localhost:5434/bpm_test — integration tests would run against the development database"
-        remedy: "point BPM_TEST_DB_URL at the db_test container, not db (see .env.example)"
-    passed_checks:
-      - C1: "db_test container healthy"
-      - C2: "zig build exit 0"
-      - C3: "zig build migrate exit 0, 124/124 applied"
-      - C4: "schema baseline - ledger matches migrations/"
-      - C5: "test isolation lint - no BLOCKER findings"
-      - C6: "no stale locks - 0 ungranted"
-      - C7: "bench DB URL resolvable"
-      - C8: "tenant provisioning lint - no BLOCKER findings"
-      - C9: "config drift - 4 services checked, all match current config"
-    overall: "UNHEALTHY — 1 of 10 checks failed (C0)"
-
-test_execution:
-  status: NOT_RUN
-  reason: "Pre-check failure (env_verify C0 BLOCKER) — cannot proceed to test execution per CLAUDE.md TEST-RUNNER mandatory directives"
-  target_test_suite: "zig build test-integration-startup_assertions"
-  expected_test_cases: 5
+    detail: "PASS (0 BLOCKER) — 136 file(s) checked, 116 suppressed from baseline"
+  migrations_applied:
+    status: PASS
+    detail: "124/124 migration files on disk; zig build migrate exit 0 (no new migrations to apply)"
 
 build_results:
-  zig_build:
-    status: NOT_RUN
-    reason: "Blocked by pre-check failure"
-  zig_build_test:
-    status: NOT_RUN
-    reason: "Blocked by pre-check failure"
+  zig_build_test_unit:
+    exit_code: 0
+    status: PASS
+    summary: "274 test-bearing files, all reachable; lint_test_wiring PASS"
+  zig_build_test_integration:
+    exit_code: 1
+    status: FAIL
+    summary: "Compilation failed for startup_assertions_test.zig — 6 compilation errors"
+
+per_test_results:
+  - test_name: "startup_assertions_test.zig (all cases)"
+    status: COMPILATION_FAILED
+    duration_sec: null
+    failure_detail: |
+      The test file tests/integration/startup_assertions_test.zig has 6 compilation errors:
+      1. Line 4: @import("operations/startup_assertions.zig") — FileNotFound
+         The import path is wrong. From tests/integration/, it cannot import from a relative "operations/" subdirectory.
+         Should be: @import("operations").startup_assertions or similar root-based import.
+      2. Line 37: `var pool` should be `const pool` (local variable never mutated)
+      3. Line 54: `var pool` should be `const pool` (local variable never mutated)
+      4. Line 93: `var pool` should be `const pool` (local variable never mutated)
+      5. Line 158: `var pool` should be `const pool` (local variable never mutated)
+      6. (accumulated) 6 compilation errors total — no tests executed
 
 lint_results:
-  test_isolation:
-    status: PASS
+  test_isolation_py:
     exit_code: 0
-    summary: "136 files checked, 0 issues, 116 baseline suppressions"
-  sql_param_types:
+    status: PASS
+    detail: "136 file(s) checked, no isolation issues; 116 suppressed from baseline"
+  sql_param_types_py:
+    exit_code: null
     status: NOT_RUN
-    reason: "Blocked by pre-check failure"
-  handoffs:
-    status: NOT_RUN
-    reason: "Blocked by pre-check failure"
+    detail: "Not run due to compilation failure"
+  handoffs_py:
+    exit_code: null
+    status: DEFERRED
+    detail: "Will be run after handoff completion (final gate)"
 
-verdict: FAIL
 issues:
   - severity: BLOCKER
-    category: "Infrastructure / Test Environment"
-    description: "Test environment unhealthy: C0 check failed — BPM_DB_URL and BPM_TEST_DB_URL both resolve to the same database (postgres://bpm:bpm@localhost:5434/bpm_test). Integration tests would run against the development database instead of the isolated test database."
-    affected_areas:
-      - "Environment configuration"
-      - "Database connection URLs"
-    root_cause: "BPM_DB_URL is currently set to the test database port (5434) instead of the development database port (5442). Per docker-compose ps: db is on port 5442, db_test is on port 5434."
-    remedy: "Set BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev (or the configured BPM_DB_NAME) in the current shell environment or .env file. Verify with: python tools/verify_test_env.py"
-    next_action: "ORCH must create ADHOC BACKEND-DEV handoff to fix environment configuration, then redispatch TEST-RUNNER"
+    category: COMPILATION_ERROR
+    description: |
+      tests/integration/startup_assertions_test.zig:4 — wrong import path.
+      `@import("operations/startup_assertions.zig")` fails with FileNotFound because the test
+      file is in tests/integration/, and the source file is in src/operations/.
+      Fix: change import to use the correct root-based path (e.g. @import("operations").startup_assertions).
+    affected_file: "tests/integration/startup_assertions_test.zig"
+    line_number: 4
+    test_name: "startup_assertions_test (all)"
+  - severity: MAJOR
+    category: CODE_QUALITY
+    description: |
+      tests/integration/startup_assertions_test.zig — 4 instances of `var pool` that should be `const pool`
+      (lines 37, 54, 93, 158). The variable is never mutated, so Zig requires `const`.
+    affected_file: "tests/integration/startup_assertions_test.zig"
+    line_numbers: [37, 54, 93, 158]
+    test_name: "startup_assertions_test (all)"
 
-summary: "Pre-check BLOCKER: env_verify C0 failed. Both BPM_DB_URL and BPM_TEST_DB_URL point to the same database (port 5434). Integration tests cannot proceed safely. Services (docker-compose, Keycloak, PostgreSQL) are all healthy. Migrations are up to date (124/124). Test isolation passed (136 files, 0 issues). The environment configuration must be corrected before test execution can begin."
+summary: |
+  TEST-RUNNER Step 5 FAILED due to BLOCKER compilation errors in startup_assertions_test.zig.
+  The test file has an incorrect import path and 4 const/var issues. No tests executed.
+  All pre-checks PASSED (services healthy, env correct, migrations applied, test isolation clean).
+  Unit tests (zig build test) PASSED (exit 0). Integration test compilation FAILED (exit 1).
+  
+  Root cause: BACKEND-DEV Step 3 created the test file with the wrong import statement.
+  
+  Next action: ORCH must route back to BACKEND-DEV to fix the compilation errors, then redispatch TEST-RUNNER.
 
-artifacts_out:
-  - tests/reports/report-2026-08-10-WF03-GH299-20260811.yaml
+artifacts:
+  - path: "tests/integration/startup_assertions_test.zig"
+    status: COMPILATION_FAILED
+  - path: "scratch/test-integration-full.log"
+    status: PARTIAL_RUN
+    detail: "Contains compilation error output; integration tests aborted before execution"
 
-next_agent: ORCH
-recommendation: "Create ADHOC BACKEND-DEV handoff to set BPM_DB_URL to the correct development database URL (postgres://bpm:bpm@localhost:5442/bpm_dev), verify with tools/verify_test_env.py, then redispatch TEST-RUNNER for WF03-GH299-20260811 Step 5."
+metadata:
+  test_runner_version: "WF03-GH299-20260811"
+  environment_verified: true
+  services_healthy: true
+  migrations_current: true
+  rework_needed: true
+  rework_target_agent: BACKEND-DEV
+  rework_target_step: "03"
