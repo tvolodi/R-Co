@@ -1,0 +1,23 @@
+{
+  "issue_id": "ISS-0650",
+  "title": "TC-EXP-301-08 leaks 3 allocations on the duplicate-idempotency-key path in event_store store.append/rowToEventRecord",
+  "status": "OPEN",
+  "severity": "MINOR",
+  "category": "memory-leak/test-quality",
+  "run_id": "WF03-GH654-20260810",
+  "handoff_id": null,
+  "affected_areas": [
+    "src/event_store/store.zig",
+    "tests/integration/effects_subsystem_test.zig"
+  ],
+  "created_at": "2026-08-10T06:10:00Z",
+  "resolved_at": null,
+  "notes": "Discovered incidentally while fixing GH-654/ISS-0649's TC-EXP-301-09 pool-exhaustion bug in src/effects/worker.zig -- unrelated to that fix, this test (TC-EXP-301-08, a sibling test in the same file) passes (32/32 tests pass) but the DebugAllocator reports 3 leaked allocations. Stack trace: tests/integration/effects_subsystem_test.zig:898 (`const second = try store.append(allocator, params)`) -> src/event_store/store.zig:472 (`break :orig_blk rowToEventRecord(allocator, live_rows.rows[0], \"\") catch ...`) -> src/event_store/store.zig:1180 (`const payload = try allocator.dupe(u8, if (row.len > 3) row[3] orelse \"{}\" else \"{}\")`). This is the same code path GH-521/ISS-0187 fixed the PoolError.ExhaustedPool symptom for (store.append's duplicate-idempotency-key lookup path, which acquires a second connection to fetch the original event's row) -- but that fix apparently did not free the EventRecord returned by rowToEventRecord() on the duplicate-replay branch, or a caller along that path drops it without calling its .deinit()/free helper.",
+  "root_cause": "Not yet investigated in depth -- candidate hypothesis: the duplicate-idempotency-key branch in store.append() constructs an EventRecord via rowToEventRecord() to return as the 'this was a duplicate, here is the original' result, but either (a) the AppendResult wrapping it does not get its owned fields freed by the test's own cleanup, or (b) store.append() itself leaks the record on an internal early-return path before handing it back to the caller. Needs a proper diagnosis pass with the actual allocation call stack (already have it, see notes) checked against every code path between rowToEventRecord's return and the test's use of the result.",
+  "acceptance_criteria": [
+    "TC-EXP-301-08 passes with 0 leaked allocations (DebugAllocator reports clean)",
+    "No change to the test's or store.append()'s observable behavior (duplicate detection, is_duplicate flag, event count) -- this is a pure memory-lifetime fix"
+  ],
+  "next_action": "File as GitHub issue and add to global queue. MINOR severity -- does not fail any test (leak detection is a separate DebugAllocator diagnostic, not part of the test assertion), and is unrelated to GH-654/ISS-0649's own scope.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/657"
+}

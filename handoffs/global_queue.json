@@ -1371,6 +1371,19 @@
       "labels": [
         "bug"
       ]
+    },
+    {
+      "issue_id": "ISS-0650",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/657",
+      "title": "TC-EXP-301-08 leaks 3 allocations on duplicate-idempotency-key path",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T05:51:10Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
