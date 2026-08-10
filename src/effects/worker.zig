@@ -188,12 +188,23 @@ pub fn sweepOnce(
     executor_kind: ExecutorKind,
     config: WorkerConfig,
 ) void {
-    const conn = pool.acquire() catch return;
-    defer pool.release(conn);
-
-    const rows = queue.fetchDueRows(allocator, conn, config.max_rows_per_cycle) catch |err| {
-        logWorkerError(allocator, "effects_worker.sweep_fetch_failed", @errorName(err));
-        return;
+    // GH-654 / ISS-0649: the fetch connection is released BEFORE processing
+    // rows, not held for the whole sweep. processRow() acquires its own
+    // connection(s) per row (delivery result update, retry/DLQ marking,
+    // re-entry) — nesting those inside this function's own held lease
+    // silently starved the pool under a small pool_size (e.g. the
+    // EffectsPoolFixture test harness's pool_size=2, where the caller
+    // already holds one connection), causing every per-row pool.acquire()
+    // to fail and get swallowed by `catch return`, leaving delivered rows
+    // stuck at status='pending' forever with no error surfaced anywhere.
+    // Same nested-acquire-under-held-lease class as GH-521/ISS-0130.
+    const rows = blk: {
+        const conn = pool.acquire() catch return;
+        defer pool.release(conn);
+        break :blk queue.fetchDueRows(allocator, conn, config.max_rows_per_cycle) catch |err| {
+            logWorkerError(allocator, "effects_worker.sweep_fetch_failed", @errorName(err));
+            return;
+        };
     };
     defer {
         for (rows) |row| row.deinit(allocator);

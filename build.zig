@@ -2221,6 +2221,36 @@ pub fn build(b: *std.Build) void {
     test_integration_obs03_step.dependOn(&clean_test_db.step);
     test_integration_obs03_step.dependOn(&run_obs03_integration_tests.step);
 
+    // ISS-0649 / GH-654: narrow steps for ee09_merge_variables_test.zig and
+    // effects_subsystem_test.zig, so TC-ISS-202-01 / TC-EXP-301-09 can be
+    // iterated on without paying for the full ~40-binary test-integration
+    // umbrella. Same pattern as the ext02 target below.
+    const ee09_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/ee09_merge_variables_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_ee09_integration_tests = addIntegrationRun(b, ee09_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_ee09_step = b.step("test-integration-ee09", "Run EE-09 merge-variables integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_ee09_step.dependOn(&clean_test_db.step);
+    test_integration_ee09_step.dependOn(&run_ee09_integration_tests.step);
+
+    const effects_subsystem_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/effects_subsystem_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_effects_subsystem_integration_tests = addIntegrationRun(b, effects_subsystem_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_effects_subsystem_step = b.step("test-integration-effects-subsystem", "Run EXP-301 effects-outbox subsystem integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_effects_subsystem_step.dependOn(&clean_test_db.step);
+    test_integration_effects_subsystem_step.dependOn(&run_effects_subsystem_integration_tests.step);
+
     // ISS-0637 / GH-619: narrow step for EXT-02 webhook dispatch + audit
     // tests only, so TC-EXT-02-INT-08 (and siblings) can be iterated on
     // without paying for the full ~40-binary test-integration umbrella.

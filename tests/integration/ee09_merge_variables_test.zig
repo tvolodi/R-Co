@@ -679,6 +679,15 @@ test "TC-ISS-202-01: mixed valid/invalid keys — all-or-nothing merge failure, 
         allocator.free(def.version);
         bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
+    // GH-654 / ISS-0649: registered immediately after creation (not at the end
+    // of the test) so an early `try` failure anywhere below still runs this
+    // cleanup instead of leaving an orphaned process_definitions row that
+    // collides with the next run via DuplicateNameVersion.
+    defer cleanup: {
+        const conn = pool.acquire() catch break :cleanup;
+        defer pool.release(conn);
+        conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{"ISS202-TC01"}) catch {};
+    }
 
     // Insert a variable schema: "amount" must be <= 100
     {
@@ -702,60 +711,32 @@ test "TC-ISS-202-01: mixed valid/invalid keys — all-or-nothing merge failure, 
         );
     }
 
-    // Create instance with initial variables: {"status": "pending"}
-    const instance_id = def.id; // Reuse definition id as instance_id for simplicity
-    const inst_id_hex = try uuidToHexStr(allocator, instance_id);
+    // Activate the definition, then start an instance through the real engine
+    // (GH-654 / ISS-0649: the previous hand-rolled raw-SQL setup for
+    // instance_projections/instance_definition_snapshots/tasks bypassed the
+    // engine and was missing required NOT NULL / FK columns — tasks.token_id
+    // in particular is a real FK into the tokens table that only the engine's
+    // own instance-start path populates correctly. Every sibling test in this
+    // file already uses this same activate+create+list pattern).
+    const activated = try def_store.activate(allocator, def.id);
+    defer freeDefinition(allocator, activated);
+
+    const inst = try inst_store.create(allocator, def.id, null, "{\"status\":\"pending\"}");
+    defer {
+        allocator.free(inst.initial_variables);
+        allocator.free(inst.definition_snapshot);
+        if (inst.correlation_key) |ck| allocator.free(ck);
+    }
+    const inst_id_hex = try uuidToHexStr(allocator, inst.instance_id);
     defer allocator.free(inst_id_hex);
 
-    {
-        const conn = try pool.acquire();
-        defer pool.release(conn);
-        try conn.exec(
-            \\INSERT INTO instance_projections
-            \\(instance_id, definition_id, status, variables)
-            \\VALUES ($1::uuid, $2::uuid, $3, $4)
-        ,
-            &.{ inst_id_hex, inst_id_hex, "ACTIVE", "{\"status\":\"pending\"}" },
-        );
+    const tasks_list = try task_store.list(allocator, inst.instance_id, null, null, 50, 0);
+    defer {
+        for (tasks_list) |t| bpm.tasks.freeTask(allocator, t);
+        allocator.free(tasks_list);
     }
-
-    // Create instance_definition_snapshots row
-    {
-        const conn = try pool.acquire();
-        defer pool.release(conn);
-        try conn.exec(
-            \\INSERT INTO instance_definition_snapshots (instance_id, definition_id, graph)
-            \\VALUES ($1::uuid, $2::uuid, $3)
-        ,
-            &.{ inst_id_hex, inst_id_hex, "{\"nodes\":[],\"edges\":[]}" },
-        );
-    }
-
-    // Create a PENDING task on the HUMAN_TASK node
-    var task_id: [16]u8 = undefined;
-    {
-        const conn = try pool.acquire();
-        defer pool.release(conn);
-
-        // Use a deterministic UUID for the task (based on line number as seed)
-        task_id = std.mem.zeroes([16]u8);
-        var hasher = std.hash.Fnv1a_64.init();
-        const line_u64: u64 = @src().line;
-        hasher.update(std.mem.asBytes(&line_u64));
-        const hash = hasher.final();
-        @memcpy(task_id[0..8], std.mem.asBytes(&hash)[0..8]);
-
-        const task_id_hex = try uuidToHexStr(allocator, task_id);
-        defer allocator.free(task_id_hex);
-
-        try conn.exec(
-            \\INSERT INTO tasks
-            \\(id, instance_id, node_id, status, created_at, updated_at)
-            \\VALUES ($1::uuid, $2::uuid, $3, $4, NOW(), NOW())
-        ,
-            &.{ task_id_hex, inst_id_hex, "T", "PENDING" },
-        );
-    }
+    try std.testing.expect(tasks_list.len > 0);
+    const task_id = tasks_list[0].task_id;
 
     // Complete task with output variables: one valid (status), one invalid (amount=999999)
     const output_variables = "{\"status\":\"approved\",\"amount\":999999}";
@@ -833,12 +814,5 @@ test "TC-ISS-202-01: mixed valid/invalid keys — all-or-nothing merge failure, 
         try std.testing.expect(rows.rows.len >= 1);
         const payload_json = rows.rows[0][0] orelse "";
         try std.testing.expect(std.mem.indexOf(u8, payload_json, "amount") != null);
-    }
-
-    // Cleanup
-    defer cleanup: {
-        const conn = pool.acquire() catch break :cleanup;
-        defer pool.release(conn);
-        conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{"ISS202-TC01"}) catch {};
     }
 }

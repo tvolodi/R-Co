@@ -6,6 +6,14 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0649 — `ee09_merge_variables_test` TC-ISS-202-01 and `effects_subsystem_test` TC-EXP-301-09 fixed (MAJOR)** ([GitHub #654](https://github.com/tvolodi/R-Co/issues/654))
+
+- **`ee09_merge_variables_test.zig` TC-ISS-202-01:** two compounding bugs in the test's hand-rolled raw-SQL fixture setup — a missing `NOT NULL definition_name`/`definition_ver` on `instance_definition_snapshots`, then a missing `NOT NULL` FK `tasks.token_id` never populated at all. Replaced the entire hand-rolled setup with the `activate()`+`create()`+`list()` pattern every sibling test in the file already uses (routes through the real engine, which populates every required column/FK correctly). Also fixed a genuine isolation bug: the test's cleanup `defer` was registered 170+ lines after definition creation, so any earlier failure orphaned a colliding row for every subsequent run — moved the `defer` to immediately after creation, matching the sibling pattern, and manually cleared the one pre-existing orphan.
+- **`effects_subsystem_test.zig` TC-EXP-301-09:** root cause was a genuine pool-exhaustion bug in `src/effects/worker.zig`'s `sweepOnce()` — the same nested-`pool.acquire()`-under-a-held-lease class as GH-521/ISS-0187. `sweepOnce()` held its own connection for its entire body, including the row-processing loop that itself acquires connections per row; under a small test pool, this left zero free connections for the nested acquire, which failed silently (`catch return`), so delivery succeeded internally but the status update never landed. Fixed by releasing the fetch connection before entering the processing loop.
+- **Verified:** `zig build test-integration-ee09` — 5/5 pass (re-run twice). `zig build test-integration-effects-subsystem` — 32/32 pass (was 31/32). `zig build test` — 89/89 steps, unchanged from baseline.
+- **Incidental finding filed separately:** [ISS-0650/GH-657](https://github.com/tvolodi/R-Co/issues/657) (MINOR) — `TC-EXP-301-08` (unrelated sibling test) leaks 3 allocations on the duplicate-idempotency-key path in `event_store.store.append`/`rowToEventRecord`; does not fail the test, DebugAllocator diagnostic only.
+- **No requirement status change.**
+
 **ISS-0648 — `gh512_t010_regression_test` TC-RG-02 snapshot drift fixed (MINOR)** ([GitHub #653](https://github.com/tvolodi/R-Co/issues/653))
 
 - **Root cause:** `tests/specs/fixtures/gh512-baseline-snapshot.json` pinned `tools/lint_test_isolation.baseline.json`'s expected entry count at 115, set on 2026-08-08. Commit `28bf140` (PR #636, the ISS-0089/GH-338 sibling fix for `env_test_root.zig`/`svc_test_root.zig`'s T050 false positives) legitimately added 2 new baseline entries — both correctly-suppressed findings for pure re-export aggregator files with no `BPM_TEST_DB_URL` reference of their own — but the snapshot was never updated to match, so TC-RG-02 failed against current `main`.
