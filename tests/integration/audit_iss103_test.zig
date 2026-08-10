@@ -111,10 +111,29 @@ fn cleanupAuditForResource(pool: *Pool, resource_id: []const u8) void {
     defer pool.release(conn);
     // audit_entries is immutable by design (trg_audit_entries_no_delete /
     // bpm_audit_immutable_guard, migration 020; reinforced by migration 051/059).
-    // Deleting test fixture rows requires temporarily disabling user triggers,
-    // matching the established pattern in xc02_audit_immutability_test.zig.
-    conn.exec("ALTER TABLE audit_entries DISABLE TRIGGER USER", &.{}) catch return;
-    defer conn.exec("ALTER TABLE audit_entries ENABLE TRIGGER USER", &.{}) catch {};
+    // Deleting test fixture rows requires temporarily suppressing user triggers.
+    //
+    // GH-651 / ISS-0646: this used to run `ALTER TABLE audit_entries DISABLE
+    // TRIGGER USER` / `ENABLE TRIGGER USER`, matching a pre-existing pattern
+    // in xc02_audit_immutability_test.zig. That statement is TABLE-LEVEL DDL,
+    // visible to every concurrently connected session immediately on commit
+    // -- unlike `session_replication_role`, which TestHarness.init() and
+    // resetTestData() already use for the identical purpose and which is
+    // scoped to this connection's own session only. Because this file runs
+    // as its own independent test-integration binary/OS process (unlike
+    // xc02_audit_immutability_test.zig, which is compiled into the single
+    // main_test.zig aggregate and therefore never runs concurrently with
+    // itself), the table-wide DISABLE/ENABLE window could transiently
+    // suppress trg_bpm_audit_apply_chain_hash for ANY other concurrently
+    // running binary's audit_entries INSERT during a full `zig build
+    // test-integration` run -- confirmed as the live mechanism behind
+    // adp10_agent_io_capture_audit_test.zig's TC-ADP-10-02 intermittently
+    // observing payload_full as NULL despite the trigger FUNCTION body being
+    // verified correct throughout (GH-651 / ISS-0646). Using
+    // session_replication_role here instead removes the cross-binary race
+    // entirely: it affects only writes issued on this connection.
+    conn.exec("SET session_replication_role = 'replica'", &.{}) catch return;
+    defer conn.exec("SET session_replication_role = 'origin'", &.{}) catch {};
     // resource_id is now TEXT, not UUID, so we query it directly as TEXT
     conn.exec(
         "DELETE FROM audit_entries WHERE resource_id = $1",

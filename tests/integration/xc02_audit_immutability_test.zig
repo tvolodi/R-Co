@@ -383,9 +383,27 @@ test "TC-XC-02-05: tampering detection via chain validation" {
         alloc.free(audit_id);
     }
 
-    // Disable user triggers temporarily to inject tampering.
-    try harness.conn.exec("ALTER TABLE audit_entries DISABLE TRIGGER USER", &.{});
-    defer harness.conn.exec("ALTER TABLE audit_entries ENABLE TRIGGER USER", &.{}) catch {};
+    // GH-651 / ISS-0646: tampering requires user triggers suppressed so the
+    // UPDATE below does not recompute a fresh, self-consistent chain_hash.
+    // This used to run table-level `ALTER TABLE audit_entries DISABLE
+    // TRIGGER USER` / `ENABLE TRIGGER USER` here -- DDL visible to every
+    // concurrently connected session immediately on commit, not scoped to
+    // this connection. TestHarness.init() already sets
+    // `session_replication_role = 'replica'` unconditionally for this
+    // connection's entire session (see helpers.zig, ISS-0601) specifically
+    // so resetTestData() can bypass the same immutability trigger without
+    // touching global trigger state -- user triggers (including
+    // trg_bpm_audit_apply_chain_hash and the no-delete guard) are therefore
+    // ALREADY suppressed on harness.conn by the time this test body runs, so
+    // the explicit table-wide DISABLE/ENABLE pair was redundant for this
+    // connection's own effect and only added a cross-binary blast radius:
+    // any OTHER concurrently running test-integration binary's audit_entries
+    // INSERT landing inside this window would silently lose its trigger-
+    // populated payload_full/chain_hash too. Confirmed as the live mechanism
+    // behind adp10_agent_io_capture_audit_test.zig's TC-ADP-10-02
+    // intermittently observing payload_full as NULL under full-suite
+    // concurrency despite the trigger FUNCTION body being verified correct
+    // throughout.
 
     // Tamper with entry 2's action
     _ = try harness.conn.exec(
