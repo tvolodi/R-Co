@@ -2678,6 +2678,43 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_env_integration_tests.step); // ISS-0104 / GH-362: ENV-01..05 scoped step must also run under umbrella
     test_integration_others_step.dependOn(&run_svc_integration_tests.step); // ISS-0639 / GH-629: SVC-01..04 scoped step must also run under umbrella
 
+    // ISS-0658 (GH #679): adp09_tamper_evident_audit_chain_test.zig and
+    // adp10_agent_io_capture_audit_test.zig existed on disk but were never
+    // registered in build.zig at all — not in the aggregate, not scoped.
+    // GH-283 (ISS-0054) needed a clean ADP-09/ADP-10 signal isolated from the
+    // ~30-binary `test-integration-others-internal` barrier (whose sibling
+    // steps run concurrently with no mutual exclusion over shared tables/
+    // schemas — see ISS-0658 root_cause), which was impossible while these
+    // tests could not be run at all. Wiring them in both as scoped steps and
+    // into the umbrella closes that gap.
+    const adp09_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/adp09_tamper_evident_audit_chain_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_adp09_solo_tests = addIntegrationRun(b, adp09_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_adp09_step = b.step("test-integration-adp09", "Run ADP-09 tamper-evident audit chain integration tests in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_adp09_step.dependOn(&clean_test_db.step);
+    test_integration_adp09_step.dependOn(&run_adp09_solo_tests.step);
+    test_integration_others_step.dependOn(&run_adp09_solo_tests.step);
+
+    const adp10_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/adp10_agent_io_capture_audit_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_adp10_solo_tests = addIntegrationRun(b, adp10_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_adp10_step = b.step("test-integration-adp10", "Run ADP-10 agent I/O capture audit integration tests in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_adp10_step.dependOn(&clean_test_db.step);
+    test_integration_adp10_step.dependOn(&run_adp10_solo_tests.step);
+    test_integration_others_step.dependOn(&run_adp10_solo_tests.step);
+
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner
     // ---------------------------------------------------------------------------
