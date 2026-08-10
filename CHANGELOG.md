@@ -4,7 +4,14 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-10
 
-### Fixed
+### Fixed — ISS-0084 (PI-09 / GH-299): Operations runbook + fail-fast startup assertion
+
+- Added `src/operations/startup_assertions.zig` with `assertDatabaseConfiguration` and `assertDatabaseConfigurationWithOverrides` for testability.
+- Verifies PostgreSQL ≥ 14, `pg_trgm` extension, and clean `public` schema BEFORE serving traffic.
+- Wired into `src/main.zig` immediately after `db_pool.Pool.init`; on failure emits structured FATAL log and exits with EX_CONFIG (78).
+- Added `docs/runbook/OPERATIONS.md` documenting all required environment variables and recovery procedures.
+- 5/5 integration tests passing (`zig build test-integration-startup_assertions`).
+- Closes GH-299.
 
 **ISS-0659 — closed: PR #494 advisory-lock pattern extended to all 31 self-managed-pool integration binaries (MAJOR, test-infrastructure)** ([GitHub #681](https://github.com/tvolodi/R-Co/issues/681))
 

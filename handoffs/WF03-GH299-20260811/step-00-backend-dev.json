@@ -1,0 +1,41 @@
+{
+  "handoff_id": "29900000-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH299-20260811",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-10T20:05:50Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/299",
+    "iss_ref": "ISS-0084",
+    "wf_alias": "PI-09"
+  },
+  "task": {
+    "description": "BACKEND-DEV Step 00 — git-setup for WF03-GH299. Create feature branch, push to origin, return clean state of main.\n\nSteps (per docs/agents/protocols/GIT_SETUP.md):\n1. git checkout main && git pull --ff-only origin main\n2. git checkout -b feature/WF03-GH299-20260811\n3. git branch --show-current  (must output: feature/WF03-GH299-20260811; STOP and report FAIL otherwise)\n4. git status  (must show clean working tree)\n5. git log --oneline -1  (must show the latest squash-merge commit on main)\n6. No source edits yet — this step is branch-creation only.\n\nReturn PASS once the branch exists on origin/main and is ready for subsequent steps.",
+    "acceptance_criteria": [
+      "git branch --show-current  ->  feature/WF03-GH299-20260811",
+      "git status  ->  clean working tree",
+      "git log --oneline -1  ->  latest squash-merge commit on main (currently 74522948 'queue: claim GH-299')"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created feature branch feature/WF03-GH299-20260811 from main (74522948), pushed to origin",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 0.5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T20:07:00Z",
+  "completed_at": "2026-08-10T20:07:11Z"
+}

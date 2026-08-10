@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-09T15:05:48Z'
+generated_at: '2026-08-10T21:53:45Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -13240,3 +13240,33 @@ requirements:
     last_updated: '2026-08-07T16:38:09Z'
     github_issue: https://github.com/tvolodi/R-Co/issues/329
     workflow: BRW-TRACK-A
+  PI-09:
+    id: PI-09
+    title: Operations runbook and fail-fast startup assertion
+    stage: '17'
+    priority: SHOULD
+    status: RELEASED
+    body: |-
+      **PI-09 — Operations Runbook + Fail-Fast Startup Assertion**
+
+      **GIVEN** a BPM service instance is starting up after `db_pool.Pool.init`,
+      **WHEN** `assertDatabaseConfiguration` runs against the connected database,
+      **THEN** the service:
+      1. Reads the PostgreSQL server version and rejects it if < 14.
+      2. Verifies the `pg_trgm` extension is installed.
+      3. Verifies the `public` schema contains zero application tables.
+      4. On any failure, emits a single FATAL log line via `obs_logger` with a deterministic, alert-pinable text, and exits the process with `EX_CONFIG` (78) before opening any HTTP listener.
+      5. On success, returns to the caller so the rest of `main.zig` proceeds to `provisionTenantSchema` and the API server.
+      6. Is exercised by `tests/integration/startup_assertions_test.zig` (5/5 PASS), which captures the FATAL log line via `obs_logger` test sink.
+
+      **AND** an operations runbook at `docs/runbook/OPERATIONS.md` documents every required environment variable, the database version/extension expectations, and the recovery procedure for each failure path documented above.
+    body_source: reqctl-add
+    alt_sources: []
+    type: requirement
+    last_updated: '2026-08-10T21:53:45Z'
+    implemented_in:
+    - src/operations/startup_assertions.zig
+    - src/main.zig
+    - docs/runbook/OPERATIONS.md
+    - tests/integration/startup_assertions_test.zig
+    released_at: '2026-08-10T21:53:45Z'

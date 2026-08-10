@@ -60,6 +60,7 @@ pub const obs_logger = @import("obs/logger.zig"); // OBS-01 structured logger
 pub const obs_metrics = @import("obs_metrics"); // OBS-02 Prometheus metrics
 pub const obs_audit = @import("obs/audit.zig"); // OBS-03 audit query service
 pub const obs_alerts = @import("obs/alerts.zig"); // OBS-06 alerting hooks
+pub const startup_assertions = @import("operations/startup_assertions.zig"); // PI-09 fail-fast startup assertion
 pub const webhook_subscription_store = @import("webhook/subscription_store.zig"); // EXT-02 subscription storage
 pub const webhook_dispatcher = @import("webhook/dispatcher.zig"); // EXT-02 webhook delivery dispatcher
 pub const identity_registry = @import("identity/registry.zig"); // IDN-01 user registry persistence
@@ -140,6 +141,18 @@ fn runApiServer(io: std.Io, allocator: std.mem.Allocator, config: config_mod.Con
     // Initialise pool and all stores once, before accepting any connections.
     var pool = try db_pool.Pool.init(io, allocator, .{ .url = config.db_url, .pool_size = 10 });
     defer pool.deinit();
+
+    // PI-09: Fail-fast database configuration assertion (FATAL GATE)
+    // This MUST run immediately after Pool.init and before any schema provisioning.
+    // On failure: emits FATAL log line and exits with EX_CONFIG (78).
+    startup_assertions.assertDatabaseConfiguration(allocator, &pool) catch |err| {
+        const startup_fields = [_]obs_logger.LogField{
+            .{ .key = "error", .value = .{ .string = @errorName(err) } },
+        };
+        obs_logger.log(allocator, .ERROR, "main", "database configuration assertion failed", &startup_fields) catch {};
+        const EX_CONFIG = 78;
+        std.process.exit(EX_CONFIG);
+    };
 
     const default_tenant_id = "00000000-0000-0000-0000-000000000000";
     db_provisioning.provisionTenantSchema(allocator, &pool, default_tenant_id, build_options.migrations_dir) catch |err| {

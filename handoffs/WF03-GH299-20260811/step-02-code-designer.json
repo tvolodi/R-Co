@@ -1,0 +1,54 @@
+{
+  "handoff_id": "29900000-0000-0200-0000-000000000000",
+  "run_id": "WF03-GH299-20260811",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-10T20:05:50Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "29900000-0000-0000-0000-000000000000",
+      "29900000-0000-0050-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0084.json",
+      "https://github.com/tvolodi/R-Co/issues/299",
+      "src/main.zig (current line 141: db_pool.Pool.init; line 155: audit + non-fatal path)"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/299",
+    "iss_ref": "ISS-0084",
+    "wf_alias": "PI-09"
+  },
+  "task": {
+    "description": "CODE-DESIGNER Step 2 \u2014 produce the design artefact for ISS-0084 / PI-09 per CLAUDE.md CODE-DESIGNER section.\n\n## Issue recap\n- GH-299 / ISS-0084 / PI-09: provide an operations runbook AND a fail-fast startup assertion that emits a deterministic FATAL line pinned by a test so alerts can match.\n- Severity: MINOR (operations/runbook). NOT a code-correctness bug \u2014 a documentation+assertion gap.\n- Affected areas: src/main.zig + docs/\n- Current src/main.zig state: `runApiServer` calls `db_pool.Pool.init` at line 141. There is no \"read from postgres_information_schema after connect\" check. The current `bootstrap_audit.auditPublicSchema` is intentionally non-fatal.\n\n## Classification\nPer templates/lego-catalog.md:\n- Documentation \u2192 Type E (prose design at src/design/pi-09-operations-runbook.md) \u2014 the artefact itself\n- Code change \u2192 Type E (new assertion + fatal helper) \u2014 small, novel, single-call, integrates into an existing module\n- Test \u2192 Type E prose spec at tests/specs/ISS-0084.md\n\nNo Type A/B/C/D parameter files apply. Produce a single src/design/pi-09-operations-runbook.md prose design that covers BOTH the runbook content and the assertion + helper, with the test spec embedded or separated as you see fit.\n\n## Design requirements\n\n### A. Operations runbook\n- Path: docs/runbook/OPERATIONS.md (new dir)\n- Required sections (per the GH-299 body: 'Document the config the app assumes but does not control'):\n  1. Required environment variables (with defaults where applicable and the source-of-truth for each)\n     - BPM_DB_URL (or equivalent)\n     - BPM_DB_POOL_SIZE (with default)\n     - BPM_IDP_BASE_URL, BPM_IDP_ADMIN_CREDENTIALS_REF\n     - BPM_BOOTSTRAP_TOKEN\n     - BPM_ENV (production|development)\n     - BPM_LOG_LEVEL\n     - Any BPM_UAT_TOKEN, BPM_TEST_* that the server reads at boot\n  2. Recommended defaults + what each variable controls\n  3. Startup sequence ordering (env-parsing -> IDP bootstrap -> Pool.init -> public-schema audit -> fail-fast DB assertion -> provisionTenantSchema -> API server start)\n  4. The exact FATAL line emitted on fail-fast (so alerts can match it):\n     - Format must be a single line of structured JSON or a stable plaintext matching `FATAL startup.database <message>` so log regexes work\n     - Include the variable name and current value (not secret) when applicable\n  5. Recovery steps per failure mode\n  6. Process management (signal handling, graceful shutdown)\n  7. Health-check endpoints + what they assert\n  8. References to other docs (link to architecture doc, threat model, agents/ for incident response playbook)\n\n### B. Fail-fast startup assertion in src/main.zig\n- Add a function `assertDatabaseConfiguration(allocator, pool) !void` in src/main.zig (or a new file src/operations/startup_assertions.zig if better separation)\n- Call it from `runApiServer` IMMEDIATELY after `db_pool.Pool.init` returns successfully and BEFORE `provisionTenantSchema` or any other migration-dependent code runs.\n- On failure: log a single FATAL line via `obs_logger.log(allocator, .ERROR, ...)` with the literal prefix `startup.database` and a stable, machine-parseable message field; then `std.process.exit(78)` (sysexits.h EX_CONFIG) so process supervisors and containers see a deterministic exit code.\n- Assertion must verify at minimum:\n  - `SELECT current_setting('server_version')` returns a string starting with the minimum PostgreSQL major version (currently 14; document this in the runbook too)\n  - The current user (`current_user`) has CREATE privilege on the database (so migrations can run); check via `SELECT has_database_privilege(current_user, current_database(), 'CREATE')`\n  - `public.schema_migrations` table exists (or assert that the migrations directory has applied all files; the `runMigrations` step will create the table if missing, so this check may need to go AFTER migrations \u2014 design should clarify ordering)\n  - `search_path` does not contain `pg_catalog` LAST (a common misconfiguration that masks schema names; use `SHOW search_path`)\n\n### C. Test pinning the FATAL line (per-issue requirement)\n- New test file: tests/unit/ISS-0084-startup-assertion-test.zig (or under tests/integration if it requires DB \u2014 design should choose; integration is more realistic, unit is faster)\n- Test name: `assertDatabaseConfiguration_emits_deterministic_fatal_on_misconfig`\n- Mock the DB error by stubbing the bad privilege check (or use a separate `_for_testing` entry point that the test can drive)\n- Assert the captured log line text == the exact string the ops runbook and the alert will match on. This is the \"test pinning\" the GH-299 body specifies.\n\n### D. Acceptance criteria mapping (the design MUST cover each)\n- AC1: docs/runbook/OPERATIONS.md exists and lists every env var the runtime reads\n- AC2: The fail-fast call site is documented (file + line) and the call comes after Pool.init and before any data plane operation\n- AC3: A test pins the exact FATAL log line text\n- AC4: Alert team can match the FATAL line via a stable regex `^\\[ERROR\\] startup\\.database .*` (define the line precisely in the design)\n- AC5: Process exit code is 78 (EX_CONFIG) on config-failure fatal\n- AC6: zig build exits 0; zig build test exits 0; new test passes\n\n### E. Constraints (hard)\n- No secrets in source. Env vars come from os.environ (std.posix.getenv / std.process.getEnvVar).\n- The fail-fast path must NOT depend on a logger that itself can fail silently \u2014 the log call's failure must be swallowed and the FATAL printed to stderr directly as the LAST resort.\n- Type-E design only (no implementation code beyond signatures).\n\n## Output\nProduce ONE file: src/design/pi-09-operations-runbook.md following backend_developer_guide.md \u00a76.\n\nAlso list a preliminary tests/specs/ISS-0084.md spec skeleton (or attach it as a section of the design doc) describing the test's exact FATAL line capture.\n\nThe design must be complete enough that CODE-DESIGN-VALIDATOR passes and BACKEND-DEV can implement without ambiguity.\n\nNo implementation code in the design (per the validator's hard gate). Public function signatures only. Error taxonomy documented. Dependencies listed.\n\nReturn:\n- artifacts_out: [src/design/pi-09-operations-runbook.md, tests/specs/ISS-0084.md (if separate)]\n- summary: a 2-3 sentence description of the chosen approach\n- issues: any MAJOR ambiguities you flagged",
+    "acceptance_criteria": [
+      "src/design/pi-09-operations-runbook.md exists and covers all 6 acceptance criteria",
+      "tests/specs/ISS-0084.md exists with the FATAL-line capture test specification",
+      "No implementation code bodies in the design (signatures + error taxonomy only)",
+      "Depends only on existing modules (db_pool, obs_logger) or clearly names new ones",
+      "Design flow: env-parse -> IDP -> Pool.init -> assertDatabaseConfiguration -> provisionTenantSchema -> API server",
+      "lint_design_artefact.py exits 0 on the new artefact"
+    ],
+    "functions_to_call": [
+      "fn:design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 1: applied 4 fixes per validator feedback (exit code 78, module purpose, error taxonomy, schema-qualified names)",
+    "artifacts_out": [
+      "src/design/pi-09-operations-runbook.md",
+      "tests/specs/ISS-0084.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-08-10T20:13:42Z",
+  "completed_at": "2026-08-10T20:23:36Z"
+}
