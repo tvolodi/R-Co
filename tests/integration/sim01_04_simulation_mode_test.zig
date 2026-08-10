@@ -4,6 +4,7 @@ const std = @import("std");
 const portable_env = @import("env");
 const testing = std.testing;
 const bpm = @import("bpm");
+const build_options = @import("build_options");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
@@ -16,6 +17,11 @@ const Registry = bpm.registry.Registry;
 const RegisterParams = bpm.registry.RegisterParams;
 const simulation = bpm.simulation;
 const uuid_mod = bpm.uuid;
+const provisionTenantSchema = bpm.provisioning.provisionTenantSchema;
+
+fn migrationsDir() []const u8 {
+    return build_options.migrations_dir;
+}
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env = portable_env.globalEnviron();
@@ -75,6 +81,10 @@ fn insertProjection(
     );
 }
 
+// ISS-0654 / GH-663: fixture rows for sim_tenant_id and real_tenant_id each
+// live in their own provisioned per-tenant schema (see the provisionTenantSchema
+// call in TC-SIM-01-01), not a single shared schema -- clean each schema
+// under its own tenant context, restoring the caller's context afterward.
 fn cleanupSim01IsolationFixtures(
     pool: *Pool,
     sim_instance_id: []const u8,
@@ -84,13 +94,21 @@ fn cleanupSim01IsolationFixtures(
     sim_idempotency_key: []const u8,
     real_idempotency_key: []const u8,
 ) void {
-    const conn = pool.acquire() catch return;
-    defer pool.release(conn);
-
-    conn.exec("DELETE FROM events WHERE idempotency_key IN ($1, $2)", &.{ sim_idempotency_key, real_idempotency_key }) catch {};
-    conn.exec("DELETE FROM instance_sequence WHERE instance_id IN ($1::uuid, $2::uuid)", &.{ sim_instance_id, real_instance_id }) catch {};
-    conn.exec("DELETE FROM instance_projections WHERE instance_id IN ($1::uuid, $2::uuid)", &.{ sim_instance_id, real_instance_id }) catch {};
-    conn.exec("DELETE FROM instance_projections WHERE tenant_id IN ($1::uuid, $2::uuid)", &.{ sim_tenant_id, real_tenant_id }) catch {};
+    const Fixture = struct { tenant_id: []const u8, instance_id: []const u8, idempotency_key: []const u8 };
+    const fixtures = [_]Fixture{
+        .{ .tenant_id = sim_tenant_id, .instance_id = sim_instance_id, .idempotency_key = sim_idempotency_key },
+        .{ .tenant_id = real_tenant_id, .instance_id = real_instance_id, .idempotency_key = real_idempotency_key },
+    };
+    for (fixtures) |f| {
+        bpm.api_tenant_context.set(f.tenant_id);
+        if (pool.acquire()) |conn| {
+            conn.exec("DELETE FROM events WHERE idempotency_key = $1", &.{f.idempotency_key}) catch {};
+            conn.exec("DELETE FROM instance_sequence WHERE instance_id = $1::uuid", &.{f.instance_id}) catch {};
+            conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{f.instance_id}) catch {};
+            pool.release(conn);
+        } else |_| {}
+    }
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
 }
 
 fn cleanupEventTypeFixture(pool: *Pool, event_type: []const u8) void {
@@ -98,6 +116,21 @@ fn cleanupEventTypeFixture(pool: *Pool, event_type: []const u8) void {
     defer pool.release(conn);
 
     conn.exec("DELETE FROM event_type_registry WHERE name = $1", &.{event_type}) catch {};
+}
+
+// ISS-0654 / GH-663: event_type_registry is per-tenant-schema, so a type
+// registered for both the sim and real tenant (see TC-SIM-01-01) leaves a
+// row in each schema -- clean both, under each tenant's own context.
+fn cleanupEventTypeFixtureForTenants(
+    pool: *Pool,
+    event_type: []const u8,
+    sim_tenant_id: []const u8,
+    real_tenant_id: []const u8,
+) void {
+    for ([_][]const u8{ sim_tenant_id, real_tenant_id }) |tenant_id| {
+        bpm.api_tenant_context.set(tenant_id);
+        cleanupEventTypeFixture(pool, event_type);
+    }
 }
 
 fn cleanupTenantFixtures(pool: *Pool, tenant_id: []const u8) void {
@@ -134,18 +167,8 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
     const event_type = try std.fmt.allocPrint(alloc, "SIM_EVENT_{s}", .{event_type_suffix});
     defer alloc.free(event_type);
 
-    // Remove stale registry rows from interrupted runs before registration.
-    cleanupEventTypeFixture(&pool, event_type);
-    defer cleanupEventTypeFixture(&pool, event_type);
-
     var registry = Registry.init(alloc, &pool);
     defer registry.deinit();
-    _ = try registry.registerType(alloc, RegisterParams{
-        .name = event_type,
-        .schema_version = 1,
-        .json_schema = "{}",
-        .description = "simulation event fixture",
-    });
 
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
@@ -155,6 +178,12 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
 
     const real_tenant_str = try uuid_mod.newUuidV4(alloc);
     const sim_tenant_str = simulation.tenant_store.tenantIdToString(ctx.simulation_tenant_id);
+
+    // Remove stale registry rows from interrupted runs before registration.
+    // event_type_registry is per-tenant-schema, so both the sim and real
+    // tenant's schema need checking/cleaning (ISS-0654 / GH-663).
+    cleanupEventTypeFixtureForTenants(&pool, event_type, sim_tenant_str[0..], real_tenant_str);
+    defer cleanupEventTypeFixtureForTenants(&pool, event_type, sim_tenant_str[0..], real_tenant_str);
 
     const sim_instance_id = try uuid_mod.newUuidV4(alloc);
     const real_instance_id = try uuid_mod.newUuidV4(alloc);
@@ -180,7 +209,41 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
     cleanupSim01IsolationFixtures(&pool, sim_instance_id, real_instance_id, sim_tenant_str[0..], real_tenant_str, sim_idempotency_key, real_idempotency_key);
     defer cleanupSim01IsolationFixtures(&pool, sim_instance_id, real_instance_id, sim_tenant_str[0..], real_tenant_str, sim_idempotency_key, real_idempotency_key);
 
+    // ISS-0654 / GH-663: both the simulation tenant ID and real_tenant_str
+    // are genuine, distinct per-run tenant identities that route through
+    // the same schema-per-tenant machinery as any real tenant --
+    // store.append() below issues `SET LOCAL search_path TO
+    // tenant_<id>,public` for whichever tenant_id it is given. Without
+    // provisioning each physical schema first, `instance_projections` (and
+    // every other per-tenant table) simply does not exist there (C42P01).
+    // provisionTenantSchema is idempotent (fast-path skip once already
+    // provisioned), so calling it unconditionally on every run is safe.
+    try provisionTenantSchema(alloc, &pool, sim_tenant_str[0..], migrationsDir());
+    try provisionTenantSchema(alloc, &pool, real_tenant_str, migrationsDir());
+
+    // insertProjection's INSERT and registry.registerType() are both
+    // unqualified, so they land wherever the threadlocal tenant context
+    // currently routes pool.acquire() -- switch it to each tenant's own
+    // schema before writing that tenant's rows, matching the schema
+    // store.append() will use for the same tenant_id. event_type_registry
+    // is per-tenant-schema (same as instance_projections), so the event
+    // type must be registered in both schemas, not just once.
+    bpm.api_tenant_context.set(sim_tenant_str[0..]);
+    _ = try registry.registerType(alloc, RegisterParams{
+        .name = event_type,
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = "simulation event fixture",
+    });
     try insertProjection(&pool, sim_instance_id, definition_id, sim_tenant_str[0..]);
+
+    bpm.api_tenant_context.set(real_tenant_str);
+    _ = try registry.registerType(alloc, RegisterParams{
+        .name = event_type,
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = "simulation event fixture",
+    });
     try insertProjection(&pool, real_instance_id, definition_id, real_tenant_str);
 
     const actor_id = try parseUuidString(actor_id_str);

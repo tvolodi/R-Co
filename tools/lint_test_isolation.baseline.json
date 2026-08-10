@@ -4,7 +4,7 @@
   "source": "tools/lint_test_isolation.py --no-baseline --json tests/integration",
   "regenerated_by": "WF03-GH512-20260808 (GitHub #512 / ISS-0181, T010 hardcoded UUID migration); +1 RETAIN (GH-512 platform-admin UUID substring-search target in gh512_t010_regression_test.zig:336 — design §R1)",
   "regeneration_note": "T010 baseline 184→73 after migration. +1 RETAIN (GH-512 TC-RG-02 substring-search target on the canonical platform-admin UUID; design §R1 — not a fixture identity, it is the literal being counted). New T010 count = 74 entries in the baseline.",
-  "last_line_sync": "2026-08-10T04:07:49Z",
+  "last_line_sync": "2026-08-10T07:51:56Z",
   "issues": [
     {
       "severity": "MAJOR",
@@ -178,28 +178,28 @@
       "severity": "MAJOR",
       "code": "T030",
       "file": "tests/integration/sim01_04_simulation_mode_test.zig",
-      "line": 301,
+      "line": 364,
       "message": "test \"TC-SIM-03-01: scenario-controlled clock advances deterministically\" allocates but has no `defer` cleanup"
     },
     {
       "severity": "MAJOR",
       "code": "T030",
       "file": "tests/integration/sim01_04_simulation_mode_test.zig",
-      "line": 309,
+      "line": 372,
       "message": "test \"TC-SIM-03-02: programmatic time set and advance are respected\" allocates but has no `defer` cleanup"
     },
     {
       "severity": "MAJOR",
       "code": "T030",
       "file": "tests/integration/sim01_04_simulation_mode_test.zig",
-      "line": 321,
+      "line": 384,
       "message": "test \"TC-SIM-04-01: same seed yields identical UUID sequence\" allocates but has no `defer` cleanup"
     },
     {
       "severity": "MAJOR",
       "code": "T030",
       "file": "tests/integration/sim01_04_simulation_mode_test.zig",
-      "line": 334,
+      "line": 397,
       "message": "test \"TC-SIM-04-02: different seeds yield different UUID sequence\" allocates but has no `defer` cleanup"
     },
     {

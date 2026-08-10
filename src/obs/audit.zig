@@ -121,7 +121,11 @@ pub fn list(
         pidx += 1;
     }
     if (filters.resource_id) |rid| {
-        sql.appendSlice(a, std.fmt.allocPrint(a, "\nAND resource_id = ${d}::uuid", .{pidx}) catch return error.OutOfMemory) catch return error.OutOfMemory;
+        // ISS-0654 / GH-663: audit_entries.resource_id is TEXT (migrations/1107,
+        // GBL-120), not UUID -- the ::uuid cast made every filtered GET /audit
+        // call fail with C42883. Same over-cast class as several other fixes
+        // this session (adp09, tasks/store.zig, xc04's chain-hash test).
+        sql.appendSlice(a, std.fmt.allocPrint(a, "\nAND resource_id = ${d}", .{pidx}) catch return error.OutOfMemory) catch return error.OutOfMemory;
         params.append(a, rid) catch return error.OutOfMemory;
         pidx += 1;
     }

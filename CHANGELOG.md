@@ -6,6 +6,14 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0654 — `sim01_04_simulation_mode_test` TC-SIM-01-01 and `obs03_audit_log_test` TC-OBS-03-INT-02/05 fixed (MAJOR)** ([GitHub #663](https://github.com/tvolodi/R-Co/issues/663))
+
+- **`sim01_04_simulation_mode_test.zig` TC-SIM-01-01:** both the simulation tenant ID and the test's real tenant ID are genuine, distinct per-run tenant identities routed through the schema-per-tenant machinery — but the test never provisioned either physical schema, so `instance_projections` genuinely didn't exist there (`C42P01`). Fixed by calling the existing, idempotent `provisionTenantSchema()` for both tenants, then following through two more instances of the same gap: `insertProjection()` and `registry.registerType()` are unqualified and need the threadlocal tenant context switched per-tenant (`event_type_registry` turned out to be per-tenant-schema too, requiring registration in both schemas), and `queryTenantEvents()` needs the same context set at call time. Also fixed the cleanup helpers to clean both tenants' schemas — the sim tenant ID is deterministic, so orphaned rows would otherwise accumulate in its schema forever.
+- **`obs03_audit_log_test.zig` TC-OBS-03-INT-02/05:** re-ran with `-Dlog-pg-errors=true` and captured the real error for the first time — `C42883` from `src/obs/audit.zig`'s `handleList()`. `audit_entries.resource_id` was converted from UUID to TEXT by `migrations/1107`/`GBL-120` (same class already fixed in several places this session), but this `GET /audit` filter's `::uuid` cast was never updated — **a genuine production bug breaking the `resource_id` filter on the real API endpoint**, not just this test. Fixed by removing the incorrect cast.
+- **Incidental fix:** `tools/lint_test_isolation.baseline.json`'s 4 `sim01` T030 entries had stale line numbers after the TC-SIM-01-01 fix shifted later lines by +63 — corrected, same pattern as GH-652's `iss107`-triggered baseline drift.
+- **Verified:** `zig build test-integration-stage11-sim-xc04` — 14/14 pass (was 12/14). `zig build test-integration-obs03` — 6/6 pass (was 4/6). Both re-run twice. `zig build` exits 0, no `error set` output. `lint_sql_param_types.py` 0 findings. `lint_test_isolation.py` OK, 135 files. `zig build test` — 89/89 steps, 1011/1075 pass (64 skipped), unchanged from baseline.
+- **No requirement status change** — test-fixture fixes plus one production query-filter fix.
+
 **ISS-0655 — `xc04_kernel_determinism_test` TC-XC-04-04 function-signature mismatch fixed (MAJOR)** ([GitHub #664](https://github.com/tvolodi/R-Co/issues/664))
 
 - **Context:** incidental discovery during GH-652's triage (via the shared `test-integration-stage11-sim-xc04` build step, which bundles this file with `sim01_04_simulation_mode_test.zig`); not one of GH-652's 20 in-scope files, filed and forwarded separately.
