@@ -1744,6 +1744,26 @@
       "completed_at": "2026-08-10T23:05:19Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-280",
+      "issue_number": 280,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/280",
+      "title": "ISS-0040 \u2014 API-05 valid-boundary test cases (page_size bounds, ISO timestamp variants) have no integration test coverage",
+      "severity": "MAJOR",
+      "labels": [
+        "issue"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T23:05:51Z"
+      },
+      "added_at": "2026-08-10T23:05:51Z",
+      "started_at": "2026-08-10T23:05:51Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
