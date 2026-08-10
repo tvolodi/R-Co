@@ -1522,6 +1522,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-300",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/300",
+      "title": "ISS-0085 (GOV-01) - Apply the UAT scenario schema v1.1 addendum to the agent docs",
+      "severity": "MAJOR",
+      "status": "RESOLVED",
+      "lock": null,
+      "added_at": "2026-08-10T17:21:16Z",
+      "started_at": "2026-08-10T16:55:30Z",
+      "completed_at": "2026-08-10T17:21:30Z",
+      "run_id": "WF03-GH300-20260810",
+      "deferred_reason": null
     }
   ]
 }
