@@ -1267,14 +1267,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/649",
       "title": "test-integration: 28-file consistent residual failure cluster (post ISS-0630 + adp0x schema-literal fix), spanning unrelated subsystems",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T14:45:05Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T14:45:05Z",
       "started_at": "2026-08-10T14:45:05Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T14:59:56Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 649,
