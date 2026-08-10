@@ -1370,17 +1370,24 @@
       ]
     },
     {
-      "issue_id": "ISS-0650",
+      "issue_id": "GH-657",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/657",
-      "title": "TC-EXP-301-08 leaks 3 allocations on duplicate-idempotency-key path",
-      "severity": "MINOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-10T05:51:10Z",
-      "started_at": null,
+      "title": "TC-EXP-301-08 leaks 3 allocations on the duplicate-idempotency-key path (event_store store.append/rowToEventRecord)",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T05:57:49Z"
+      },
+      "added_at": "2026-08-10T05:57:49Z",
+      "started_at": "2026-08-10T05:57:49Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 657,
+      "labels": [
+        "bug"
+      ]
     }
   ]
 }
