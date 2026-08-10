@@ -23411,6 +23411,64 @@
       "created_at": "2026-08-10T16:14:30Z",
       "status": "COMPLETED",
       "stage": "Batch verification/triage"
+    },
+    {
+      "handoff_id": "a3000000-0000-0050-0000-000000000000",
+      "file": "handoffs/WF03-GH300-20260810/step-005-issue-fixer.json",
+      "run_id": "WF03-GH300-20260810",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-10T16:55:30Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving",
+      "completed_at": "2026-08-10T16:59:14Z"
+    },
+    {
+      "handoff_id": "a3000000-0000-0200-0000-000000000000",
+      "file": "handoffs/WF03-GH300-20260810/step-02-code-designer.json",
+      "run_id": "WF03-GH300-20260810",
+      "step": "2",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-10T16:59:30Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving",
+      "completed_at": "2026-08-10T17:04:44Z",
+      "rework_count": 1
+    },
+    {
+      "handoff_id": "a3000000-0000-02b1-0000-000000000000",
+      "file": "handoffs/WF03-GH300-20260810/step-02b-code-design-validator.json",
+      "run_id": "WF03-GH300-20260810",
+      "step": "2b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-10T17:11:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "a3000000-0000-0300-0000-000000000000",
+      "file": "handoffs/WF03-GH300-20260810/step-03-backend-dev.json",
+      "run_id": "WF03-GH300-20260810",
+      "step": "3",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-10T17:12:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "a3000000-0000-0700-0000-000000000000",
+      "file": "handoffs/WF03-GH300-20260810/step-07-doc-updater.json",
+      "run_id": "WF03-GH300-20260810",
+      "step": "7",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-10T17:15:30Z",
+      "status": "PENDING",
+      "stage": "WF-03 Issue Resolving"
     }
   ],
   "last_updated": "2026-08-09T18:40:00Z"

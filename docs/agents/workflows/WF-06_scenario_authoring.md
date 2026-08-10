@@ -35,7 +35,7 @@ Before ORCH dispatches WF-06:
 
 | Step | Agent | Gate | Description |
 |---|---|---|---|
-| **1** | `BO-<COMPANY>` | — | Author scenario YAML from brief |
+| **1** | `BO-<COMPANY>` *(or `REQ-ANALYST` for `company_id: platform`)* | — | Author scenario YAML from brief. **For platform workflows, no BO-* persona owns the workflow; ORCH dispatches `REQ-ANALYST` instead — the same agent that authors requirements — because the platform scenarios are specifications rather than business-stakeholder narratives.** |
 | **1b** | `UAT-RUNNER` | Hard gate | Validate scenario schema; dry-run only (no execution) |
 | **2** | `BO-<COMPANY>` | — | Revise if schema validation fails |
 | **3** | `ORCH` | — | Commit scenario file; register in simulation README |
@@ -147,6 +147,16 @@ ORCH launches WF-06 when:
      uncovered: [PROC-05, PROC-07]
    ```
    ORCH spawns WF-06 for each uncovered requirement.
+
+4. When a new platform workflow (`PW-nn` in `docs/workflows.yaml`) is
+   added, and that workflow has at least one scenario slot in its
+   `uat_scenarios` list but no scenario file under
+   `tests/simulation/scenarios/`:
+   ORCH dispatches `REQ-ANALYST` (not a `BO-*` agent) to author the
+   scenarios. The handoff sets `context.target_company_id: platform` and
+   links to the v1.1 addendum as the authoritative schema. REQ-ANALYST
+   writes the YAML using the same shape as BO-* agents — only the author
+   differs.
 
 ---
 

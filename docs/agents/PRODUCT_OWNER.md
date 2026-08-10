@@ -31,6 +31,11 @@ UAT-RUNNER          →  "Did the system behave correctly?" (scenario execution)
 TEST-RUNNER         →  "Does the code work?" (technical correctness)
 ```
 
+For `company_id: platform` scenarios, the three BO-* agents are not in the
+chain — no business persona owns platform workflows. PRODUCT-OWNER
+evaluates platform scenarios directly. See the v1.1 addendum
+(§"Why this addendum exists", §"Changes required in consuming agents").
+
 ### Stage 12 projection
 
 In the future self-developing system (Stage 12), `PRODUCT-OWNER` becomes a
@@ -102,10 +107,25 @@ for path in Path("tests/uat-reports").glob(f"bo-signoff-*-{run_id}.yaml"):
     with open(path) as f:
         signoffs[path.stem.split("-")[2]] = yaml.safe_load(f)
 
-# Expect: swiftroute, vortex, meridian
-missing = {"swiftroute", "vortex", "meridian"} - set(signoffs.keys())
-if missing:
-    raise RuntimeError(f"Missing BO sign-off(s): {missing}")
+# Determine whether ANY scenario in this run is a platform scenario.
+# Platform scenarios are evaluated by PRODUCT-OWNER directly; they do
+# NOT require BO-* sign-off files (BO-* never receive them).
+with open(f"tests/uat-reports/uat-{date}-{run_id}.yaml") as f:
+    uat = yaml.safe_load(f)
+has_platform = any(s.get("company_id") == "platform" for s in uat["scenarios"])
+
+if has_platform:
+    # Platform scenarios are present; BO-* sign-offs are still required
+    # for any non-platform scenarios in the run.
+    non_platform = {s["company_id"] for s in uat["scenarios"] if s["company_id"] != "platform"}
+    missing = non_platform - set(signoffs.keys())
+    if missing:
+        raise RuntimeError(f"Missing BO sign-off(s) for non-platform scenarios: {missing}")
+else:
+    # Tenant-only run; all three BO sign-offs are mandatory.
+    missing = {"swiftroute", "vortex", "meridian"} - set(signoffs.keys())
+    if missing:
+        raise RuntimeError(f"Missing BO sign-off(s): {missing}")
 ```
 
 ### Step 2 — Check platform requirement coverage
@@ -113,6 +133,17 @@ if missing:
 For each MUST requirement in the current stage: verify at least one scenario
 across the three companies exercises it. A requirement with no UAT scenario
 coverage is a MAJOR issue even if TEST-RUNNER passed.
+
+Additionally, for every `system_state` outcome across all scenarios in the
+UAT report: confirm `verification.evidence` is non-empty. The evidence
+field is required by the v1.1 addendum (§4); without it, the runner's
+evidence trail is whatever it captured ad hoc, which a non-technical
+reviewer cannot read or verify. An empty `evidence` field on any
+`system_state` outcome is a MAJOR issue — even if the scenario's overall
+verdict is PASS — and blocks the release. The issue's
+`suggested_action` is `route_to_uat_runner` with instruction to obtain
+the missing evidence (screenshot, status endpoint payload, log line, or
+row count) and re-run.
 
 ```python
 with open("docs/status/requirement_status.yaml") as f:

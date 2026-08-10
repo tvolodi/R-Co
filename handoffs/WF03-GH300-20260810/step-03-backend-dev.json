@@ -1,0 +1,61 @@
+{
+  "handoff_id": "a3000000-0000-0300-0000-000000000000",
+  "run_id": "WF03-GH300-20260810",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-10T17:12:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a3000000-0000-0000-0000-000000000000",
+      "a3000000-0000-0050-0000-000000000000",
+      "a3000000-0000-0200-0000-000000000000",
+      "a3000000-0000-02b1-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/uat-scenario-schema-v1.1-apply.md",
+      "docs/agents/uat-scenario-schema-v1.1-addendum.md",
+      "docs/issues/ISS-0085.json"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/300",
+    "iss_ref": "ISS-0085 / GOV-01"
+  },
+  "task": {
+    "description": "BACKEND-DEV Step 3 \u2014 implement the docs-only fix for ISS-0085 / GOV-01 by applying the design at src/design/uat-scenario-schema-v1.1-apply.md to the consumer docs.\n\nThis is a docs-only change. NO Zig code, NO SQL migrations. Touch ONLY:\n- docs/agents/UAT_RUNNER.md\n- docs/agents/PRODUCT_OWNER.md\n- docs/agents/ORCHESTRATOR.md (add new \u00a78e Platform-Workflow UAT Gate per design)\n- docs/agents/workflows/WF-05_uat_run.md\n- docs/agents/workflows/WF-06_scenario_authoring.md\n- CLAUDE.md (optional one-line addendum pointer)\n\nDO NOT touch:\n- docs/agents/BO-SWIFTROUTE.md\n- docs/agents/BO-VORTEX.md\n- docs/agents/BO-MERIDIAN.md\n- src/ (Zig source)\n- migrations/ (SQL)\n\nFor each of the 13 edits in the design (1.1-1.5, 2.1-2.3, 3.1, 4.1-4.3, 5.1-5.2, 6.1), apply the before->after text replacement at the documented anchor location.\n\nAfter applying all edits:\n1. Run: python tools/lint_handoffs.py (must exit 0)\n2. Run: python tools/lint_design_artefact.py src/design/uat-scenario-schema-v1.1-apply.md (still must exit 0 \u2014 design unchanged, but verify no breakage)\n3. Verify by grep: docs/agents/UAT_RUNNER.md, docs/agents/PRODUCT_OWNER.md, docs/agents/ORCHESTRATOR.md, docs/agents/workflows/WF-05_uat_run.md, docs/agents/workflows/WF-06_scenario_authoring.md each now mention platform_workflow or company_id: platform or via: system (depending on what the design prescribes).\n4. git add -A && git commit -m \"docs(WF03-GH300): apply UAT scenario schema v1.1 addendum to agent docs (ISS-0085 / GOV-01)\"\n5. git push origin feature/WF03-GH300-20260810\n\nReturn PASS once all 5 edits have been applied, lint passes, and the commit is on the remote branch.",
+    "acceptance_criteria": [
+      "All 13 edits in src/design/uat-scenario-schema-v1.1-apply.md have been applied to the consumer docs",
+      "docs/agents/UAT_RUNNER.md accepts company_id: platform",
+      "docs/agents/PRODUCT_OWNER.md evaluates company_id: platform directly",
+      "docs/agents/ORCHESTRATOR.md has new \u00a78e Platform-Workflow UAT Gate referencing tools/wfctl.py uat-ready",
+      "docs/agents/workflows/WF-05_uat_run.md skips 2a-* for company_id: platform",
+      "docs/agents/workflows/WF-06_scenario_authoring.md allows REQ-ANALYST as author for platform scenarios",
+      "Three BO-* docs are NOT touched",
+      "python tools/lint_handoffs.py exits 0",
+      "Commit pushed to origin/feature/WF03-GH300-20260810"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Applied all 13 edits per src/design/uat-scenario-schema-v1.1-apply.md to consumer docs. Edits 1.1-1.5 to docs/agents/UAT_RUNNER.md (platform-aware pre-flight, BPM_UAT_TOKEN credential branch in Step 2.5, via: system execution path, 9-rule schema validation, v1.1 cross-reference in \u00a79). Edits 2.1-2.3 to docs/agents/PRODUCT_OWNER.md (conditional BO sign-off, hard-reject for empty system_state evidence, platform-path note in quality hierarchy). Edit 3.1 to docs/agents/ORCHESTRATOR.md (new \u00a78e Platform-Workflow UAT Gate with wfctl.py uat-ready). Edits 4.1-4.3 to docs/agents/workflows/WF-05_uat_run.md (2a-platform skip row, platform_workflow context field, platform-routing branch in Step 2). Edits 5.1-5.2 to docs/agents/workflows/WF-06_scenario_authoring.md (REQ-ANALYST for platform authoring, 4th trigger condition). Edit 6.1 to CLAUDE.md (one-line addendum pointer in mandatory reading list). No BO-* docs touched. Lint verified: lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR), lint_design_artefact.py exits 0. Commit ada745f0 pushed to origin/feature/WF03-GH300-20260810.",
+    "artifacts_out": [
+      "docs/agents/UAT_RUNNER.md",
+      "docs/agents/PRODUCT_OWNER.md",
+      "docs/agents/ORCHESTRATOR.md",
+      "docs/agents/workflows/WF-05_uat_run.md",
+      "docs/agents/workflows/WF-06_scenario_authoring.md",
+      "CLAUDE.md",
+      "commit ada745f0"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (Step 7)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T17:13:26Z",
+  "completed_at": "2026-08-10T17:15:05Z"
+}

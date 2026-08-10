@@ -1,0 +1,47 @@
+{
+  "handoff_id": "a3000000-0000-0050-0000-000000000000",
+  "run_id": "WF03-GH300-20260810",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-10T16:55:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a3000000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/agents/uat-scenario-schema-v1.1-addendum.md"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/300",
+    "iss_ref": "ISS-0085 / GOV-01"
+  },
+  "task": {
+    "description": "ISSUE-FIXER Step 0.5 — registry lookup and ISS file creation for GH-300 (ISS-0085 / GOV-01).\n\nApply the UAT scenario schema v1.1 addendum to the agent docs. The addendum at docs/agents/uat-scenario-schema-v1.1-addendum.md §7 lists the changes UAT-RUNNER, PRODUCT-OWNER, WF-05, WF-06 need: accept company_id: platform, accept via: system, accept system_state with required evidence, and skip the BO steps for platform workflows.\n\n1. Search docs/issues/ for an existing ISS-0085.json — if missing, create it with status IN_PROGRESS, severity MAJOR, github_issue https://github.com/tvolodi/R-Co/issues/300, title from GitHub.\n2. Verify the GitHub issue URL is not already a duplicate (search docs/issues/*.json for github_issue == our URL).\n3. Cross-reference docs/anti-patterns.md and existing prior resolutions.\n4. Prepare a Step 1 diagnosis that explains the root cause: the addendum document exists but its consumers (UAT-RUNNER, PRODUCT-OWNER, WF-05, WF-06 docs) were never updated to honour its v1.1 semantics.\n\nReturn PASS once ISS-0085.json exists in docs/issues/, is registered in docs/issues/issue_index.json (if that file exists), and the diagnosis is ready for Step 2 (CODE-DESIGNER).",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0085.json exists with status=IN_PROGRESS, github_issue=https://github.com/tvolodi/R-Co/issues/300",
+      "Step 1 root cause diagnosis is recorded in handoff.result.summary",
+      "No duplicate github_issue field across docs/issues/*.json"
+    ],
+    "functions_to_call": [
+      "fn:register-issue",
+      "fn:search-issues"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 0.5 complete. No existing docs/issues/*.json referenced https://github.com/tvolodi/R-Co/issues/300 (checked every issue file by parsing github_issue, not by filename), and ISS-0085.json did not exist, so ISS-0085 was free to allocate. Created docs/issues/ISS-0085.json (status=IN_PROGRESS, severity=MAJOR, github_issue=GH-300, title taken verbatim from the GitHub issue) and registered it in docs/issues/issue_index.json. next_issue_id was left at 210 untouched: 0085 is a backfill of an already-allocated ID, not a new allocation.\n\nSTEP 1 DIAGNOSIS FOR CODE-DESIGNER — docs/agents/uat-scenario-schema-v1.1-addendum.md is authoritative and complete; the defect is entirely that its consumers were never updated to honour it. Its own §7 'Changes required in consuming agents' table is a specification of pending work that was never performed. Confirmed by grep across docs/agents/: 'platform_workflow', 'company_id: platform', 'via: system' and 'system_state' appear ONLY in the addendum itself and in INSTALL_platform_workflows.md / RUNBOOK_platform_workflows.md — never in UAT_RUNNER.md, PRODUCT_OWNER.md, WF-05_uat_run.md or WF-06_scenario_authoring.md.\n\nFour consumers named in §7 need their text updated to honour v1.1 semantics: (1) UAT_RUNNER.md — accept company_id: platform with credentials from BPM_UAT_TOKEN instead of the tenant lookup; accept via: system and system_state; enforce the §3 uat_surface permission table; require non-empty evidence on every system_state outcome; state the nine §8 rejection rules. (2) PRODUCT_OWNER.md — evaluate platform scenarios directly without waiting for BO-* sign-off; reject empty-evidence system_state outcomes. (3) WF-05_uat_run.md — carry platform_workflow in run context; skip 2a-sr / 2a-vx / 2a-mc straight to 2b. (4) WF-06_scenario_authoring.md — allow REQ-ANALYST as author for platform scenarios.\n\nTWO ADDITIONS BEYOND THE ORIGINAL SCOPE NOTE, both verified: §7 also names a FIFTH consumer, ORCHESTRATOR.md, which must gate WF-05 dispatch on 'python3 tools/wfctl.py uat-ready <PW-nn>' exiting 0 — 'uat-ready' currently appears nowhere in ORCHESTRATOR.md (tools/wfctl.py itself does exist). CLAUDE.md and the agent orchestration table additionally need a one-line pointer to the addendum. CODE-DESIGNER should treat ORCHESTRATOR.md as in scope; omitting it leaves the ineligibility gate unenforced even after the other four are fixed.\n\nTwo constraints CODE-DESIGNER must preserve verbatim, as they are load-bearing and easy to erode while adding the new permissive values: 'via: api' remains FORBIDDEN (v1.0 removed it because a missing UI is a BLOCKER, not a reason to bypass the browser; 'system' is not its rehabilitation and is valid only where no user performs the step), and the report-language rule is unchanged (no stack traces, selector strings, file:line paths, SQL, or Zig/TypeScript function names in any description, detail, evidence or business_impact). BO-SWIFTROUTE / BO-VORTEX / BO-MERIDIAN need NO change — they never receive a platform scenario.\n\nSCOPE: docs-only. No Zig, no SQL, no migrations, no build changes. docs/anti-patterns.md was searched for a prior resolution of this pattern (specification written but never applied to its consumers) and none exists; the closest relatives are its structural-signal-over-prose entries about gates. A prevention note proposing a lint over '## Changes required in consuming agents' tables is recorded in ISS-0085.json for DOC-UPDATER to consider.",
+    "artifacts_out": [
+      "docs/issues/ISS-0085.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T16:57:37Z",
+  "completed_at": "2026-08-10T16:59:14Z"
+}

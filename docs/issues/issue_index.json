@@ -1,8 +1,29 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-08T08:39:43Z",
+  "last_updated": "2026-08-10T17:17:42Z",
   "next_issue_id": 210,
   "issues": [
+    {
+      "id": "ISS-0085",
+      "title": "ISS-0085 (GOV-01) \u2014 Apply the UAT scenario schema v1.1 addendum to the agent docs",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "run_id": "WF03-GH300-20260810",
+      "handoff_id": "a3000000-0000-0050-0000-000000000000",
+      "affected_areas": [
+        "docs/agents/UAT_RUNNER.md",
+        "docs/agents/PRODUCT_OWNER.md",
+        "docs/agents/workflows/WF-05_uat_run.md",
+        "docs/agents/workflows/WF-06_scenario_authoring.md",
+        "docs/agents/ORCHESTRATOR.md",
+        "CLAUDE.md"
+      ],
+      "created_at": "2026-08-10T16:57:37Z",
+      "resolved_at": "2026-08-10T17:17:42Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/300",
+      "commit": "ada745f0",
+      "resolved_by_run": "WF03-GH300-20260810"
+    },
     {
       "id": "ISS-0209",
       "title": "test_api08_auth.zig's tenant_default DROP SCHEMA recovery races concurrent zig build test binaries",

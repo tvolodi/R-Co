@@ -1,0 +1,75 @@
+{
+  "issue_id": "ISS-0085",
+  "title": "ISS-0085 (GOV-01) \u2014 Apply the UAT scenario schema v1.1 addendum to the agent docs",
+  "status": "RESOLVED",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/300",
+  "severity": "MAJOR",
+  "category": "governance / agent-documentation drift",
+  "alias": "GOV-01",
+  "run_id": "WF03-GH300-20260810",
+  "workflow_id": "WF-03",
+  "handoff_id": "a3000000-0000-0050-0000-000000000000",
+  "requirement_ids": [],
+  "symptom": "docs/agents/uat-scenario-schema-v1.1-addendum.md defines the v1.1 platform-workflow schema (company_id: platform, platform_workflow, via: system, verification.method: system_state with required evidence, actor-system-* actors), but no consuming agent doc honours it. UAT-RUNNER.md contains zero occurrences of 'company_id: platform', 'via: system' or 'system_state'; PRODUCT_OWNER.md, WF-05_uat_run.md and WF-06_scenario_authoring.md likewise carry no v1.1 text; ORCHESTRATOR.md has no 'uat-ready' gate. Consequently a platform-workflow (PW-nn) scenario written to the addendum is rejected by UAT-RUNNER as malformed on company_id alone, and WF-05 still waits on BO-SWIFTROUTE / BO-VORTEX / BO-MERIDIAN sign-off files that will never be produced for a scenario no business persona owns. Any platform-workflow UAT run therefore fails or stalls, so a PW-nn workflow cannot be signed off \u2014 which is the exact hole the addendum was written to close.",
+  "root_cause": {
+    "type": "specification-written-but-never-applied-to-consumers",
+    "details": "The addendum was authored on 2026-07-29 as an additive amendment to docs/agents/uat-scenario-schema.md (v1.0) and is authoritative \u2014 its own \u00a77 'Changes required in consuming agents' enumerates, agent by agent, the edits each consumer needs. That table was written as a specification of pending work, but the work was never performed: the addendum landed as a standalone document and none of the six consumer docs it names were edited in the same change. docs/agents/INSTALL_platform_workflows.md and RUNBOOK_platform_workflows.md do reference the addendum, which masked the gap \u2014 the file is discoverable and cross-linked, so it reads as integrated. Nothing in the pipeline verifies that a \u00a77-style 'changes required' table has actually been applied, so the drift between the normative schema and the agents that must enforce it is invisible to every existing gate."
+  },
+  "files_to_change": [
+    "docs/agents/UAT_RUNNER.md",
+    "docs/agents/PRODUCT_OWNER.md",
+    "docs/agents/workflows/WF-05_uat_run.md",
+    "docs/agents/workflows/WF-06_scenario_authoring.md",
+    "docs/agents/ORCHESTRATOR.md",
+    "CLAUDE.md"
+  ],
+  "acceptance_criteria": [
+    "UAT_RUNNER.md accepts company_id: platform and resolves credentials from BPM_UAT_TOKEN instead of the GET /api/v1/tenants/{company_id} company lookup",
+    "UAT_RUNNER.md accepts via: system and verification.method: system_state, enforces the addendum \u00a73 uat_surface permission table (gui => via: system forbidden), and requires a non-empty evidence field on every system_state outcome",
+    "UAT_RUNNER.md states the nine malformed-scenario rejection rules from addendum \u00a78, including that via: api remains forbidden and that actor-system-* actors may appear only on via: system steps",
+    "PRODUCT_OWNER.md evaluates company_id: platform scenarios directly, does not wait for BO-* sign-off files for those, and rejects any system_state outcome whose evidence field is empty",
+    "WF-05_uat_run.md carries platform_workflow in the run context and skips steps 2a-sr / 2a-vx / 2a-mc straight to 2b (PRODUCT-OWNER) when company_id is platform",
+    "WF-06_scenario_authoring.md permits REQ-ANALYST as author for company_id: platform scenarios",
+    "ORCHESTRATOR.md requires python3 tools/wfctl.py uat-ready <PW-nn> to exit 0 before dispatching WF-05",
+    "CLAUDE.md and the agent orchestration table carry a one-line pointer to the v1.1 addendum",
+    "The report-language rule is restated unchanged: no stack traces, selectors, file:line paths, SQL, or Zig/TypeScript function names in any description, detail, evidence or business_impact"
+  ],
+  "occurrences": [
+    {
+      "occurred_at": "2026-08-10T16:57:37Z",
+      "run_id": "WF03-GH300-20260810",
+      "handoff_id": "a3000000-0000-0050-0000-000000000000",
+      "trigger": "scheduled-issue-resolution",
+      "context": "Claimed from the global queue as GH-300. Gap confirmed by grep across docs/agents/: the strings 'platform_workflow', 'company_id: platform', 'via: system' and 'system_state' appear only in the addendum itself and in INSTALL_platform_workflows.md / RUNBOOK_platform_workflows.md \u2014 never in UAT_RUNNER.md, PRODUCT_OWNER.md, WF-05_uat_run.md or WF-06_scenario_authoring.md. 'uat-ready' appears nowhere in ORCHESTRATOR.md."
+    }
+  ],
+  "files_changed": [
+    "docs/agents/UAT_RUNNER.md",
+    "docs/agents/PRODUCT_OWNER.md",
+    "docs/agents/workflows/WF-05_uat_run.md",
+    "docs/agents/workflows/WF-06_scenario_authoring.md",
+    "docs/agents/ORCHESTRATOR.md",
+    "CLAUDE.md",
+    "src/design/uat-scenario-schema-v1.1-apply.md"
+  ],
+  "created_at": "2026-08-10T16:57:37Z",
+  "last_updated": "2026-08-10T17:17:42Z",
+  "resolved_at": "2026-08-10T17:17:42Z",
+  "prevention": [
+    "When a design or schema document contains a 'changes required in consuming agents' table, the change that lands the document must also land those consumer edits, or the document must be marked DRAFT / NOT-YET-IN-FORCE until they do. A normative document that its enforcers do not implement is worse than an absent one: readers author artefacts against it in good faith and the artefacts are then rejected. This addendum sat authoritative-but-unapplied from 2026-07-29 to 2026-08-10.",
+    "Cross-referencing a document from an index or runbook (INSTALL_platform_workflows.md, RUNBOOK_platform_workflows.md both link the addendum) is not evidence it has been applied. Discoverability masked this gap for six weeks.",
+    "Consider a lint that, for each row of a '## Changes required in consuming agents' table, greps the named target file for a distinctive token from the change description and fails when none is present \u2014 the same structural-signal-over-prose principle the anti-patterns file already applies to build gates."
+  ],
+  "resolution": "v1.1 addendum applied to UAT_RUNNER.md, PRODUCT_OWNER.md, ORCHESTRATOR.md, WF-05_uat_run.md, WF-06_scenario_authoring.md, CLAUDE.md.",
+  "implemented_in": [
+    "docs/agents/UAT_RUNNER.md",
+    "docs/agents/PRODUCT_OWNER.md",
+    "docs/agents/workflows/WF-05_uat_run.md",
+    "docs/agents/workflows/WF-06_scenario_authoring.md",
+    "docs/agents/ORCHESTRATOR.md",
+    "CLAUDE.md",
+    "src/design/uat-scenario-schema-v1.1-apply.md"
+  ],
+  "commit": "ada745f0",
+  "resolved_by_run": "WF03-GH300-20260810"
+}

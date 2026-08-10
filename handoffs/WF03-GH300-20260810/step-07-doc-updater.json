@@ -1,0 +1,57 @@
+{
+  "handoff_id": "a3000000-0000-0700-0000-000000000000",
+  "run_id": "WF03-GH300-20260810",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-10T17:15:30Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a3000000-0000-0000-0000-000000000000",
+      "a3000000-0000-0050-0000-000000000000",
+      "a3000000-0000-0200-0000-000000000000",
+      "a3000000-0000-02b1-0000-000000000000",
+      "a3000000-0000-0300-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/uat-scenario-schema-v1.1-apply.md",
+      "docs/issues/ISS-0085.json",
+      "docs/agents/UAT_RUNNER.md",
+      "docs/agents/PRODUCT_OWNER.md",
+      "docs/agents/ORCHESTRATOR.md",
+      "docs/agents/workflows/WF-05_uat_run.md",
+      "docs/agents/workflows/WF-06_scenario_authoring.md",
+      "CLAUDE.md"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/300",
+    "iss_ref": "ISS-0085 / GOV-01",
+    "commit_sha": "ada745f0",
+    "branch": "feature/WF03-GH300-20260810"
+  },
+  "task": {
+    "description": "DOC-UPDATER Step 7 \u2014 finalize the ISS-0085 / GOV-01 fix.\n\n1. Update CHANGELOG.md with a new entry under the unreleased section (or create one if missing) describing: 'ISS-0085 / GOV-01 \u2014 apply UAT scenario schema v1.1 addendum to consumer agent docs (UAT_RUNNER.md, PRODUCT_OWNER.md, ORCHESTRATOR.md \u00a78e, WF-05_uat_run.md, WF-06_scenario_authoring.md, CLAUDE.md) so platform_workflow / company_id: platform / via: system / system_state scenarios are accepted by the runtime.'\n\n2. Update docs/issues/ISS-0085.json:\n   - status: RESOLVED\n   - last_updated: current UTC\n   - resolution: 'v1.1 addendum applied to UAT_RUNNER.md, PRODUCT_OWNER.md, ORCHESTRATOR.md, WF-05_uat_run.md, WF-06_scenario_authoring.md, CLAUDE.md.'\n   - implemented_in: list of touched files\n   - commit: ada745f0\n   - resolved_by_run: WF03-GH300-20260810\n\n3. Commit and push the bookkeeping:\n   git add CHANGELOG.md docs/issues/ISS-0085.json docs/issues/issue_index.json (if updated)\n   git commit -m 'docs(WF03-GH300): mark ISS-0085 / GOV-01 RESOLVED'\n   git push origin feature/WF03-GH300-20260810\n\n4. Create a GitHub pull request (gh pr create) for the branch:\n   gh pr create --base main --title 'ISS-0085 / GOV-01 \u2014 Apply UAT scenario schema v1.1 addendum' --body 'See docs/issues/ISS-0085.json and src/design/uat-scenario-schema-v1.1-apply.md. Closes #300.'\n\n5. Merge the PR via squash and delete the branch:\n   gh pr merge --squash --delete-branch\n\n6. Verify:\n   git fetch origin\n   git branch -r | grep feature/WF03-GH300-20260810 || echo 'Branch deleted'\n   gh issue close 300 --comment 'Resolved by PR #<N> (commit <sha>)'\n\n7. Release the queue lock:\n   python3 tools/queue_release.py GH-300 r-co-orchestrator-loop --status RESOLVED\n\n8. Update handoffs/global_queue.json's GH-300 entry: status=RESOLVED, completed_at=current UTC, run_id=WF03-GH300-20260810.\n\n9. After merge, return to main:\n   git checkout main\n   git pull --ff-only origin main\n   git branch --show-current  # must output: main\n   git status  # must show clean working tree\n\n10. Run: python3 tools/lint_handoffs.py (must exit 0)\n\nReturn PASS once PR is merged, branch deleted, GH-300 closed, queue lock released, and main is clean.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with ISS-0085 / GOV-01 entry",
+      "docs/issues/ISS-0085.json status=RESOLVED",
+      "PR created on GitHub and merged via squash",
+      "Branch feature/WF03-GH300-20260810 deleted from origin",
+      "GitHub issue #300 closed",
+      "handoffs/global_queue.json GH-300 status=RESOLVED",
+      "tools/queue_release.py GH-300 r-co-orchestrator-loop exits 0",
+      "Local repo on main with clean working tree",
+      "python tools/lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T17:17:14Z",
+  "completed_at": null
+}

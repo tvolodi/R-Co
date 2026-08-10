@@ -294,6 +294,8 @@ cat docs/anti-patterns.md
 `AGENT_SYSTEM.md` gives you the agent roster, handoff schema, capability matrix, rework policy, and artifact locations.  
 `anti-patterns.md` lists known mistakes and their correct alternatives — check it before implementing anything.
 
+- UAT scenario authoring agents must read `docs/agents/uat-scenario-schema-v1.1-addendum.md` alongside `docs/agents/uat-scenario-schema.md` — the addendum is additive and applies to every `company_id: platform` scenario, every `via: system` step, and every `system_state` verification.
+
 ---
 
 ## AGENT: ORCH (Orchestrator)

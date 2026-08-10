@@ -1,0 +1,51 @@
+{
+  "handoff_id": "a3000000-0000-02b1-0000-000000000000",
+  "run_id": "WF03-GH300-20260810",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-10T17:11:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a3000000-0000-0000-0000-000000000000",
+      "a3000000-0000-0050-0000-000000000000",
+      "a3000000-0000-0200-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/uat-scenario-schema-v1.1-apply.md",
+      "docs/agents/uat-scenario-schema-v1.1-addendum.md",
+      "docs/issues/ISS-0085.json"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/300",
+    "iss_ref": "ISS-0085 / GOV-01"
+  },
+  "task": {
+    "description": "CODE-DESIGN-VALIDATOR Step 2b — review the design artefact before implementation begins.\n\nThis is a HARD GATE. Any failure = FAIL result.\n\nRead the handoff file above in full before starting. Then:\n\n1. Read src/design/uat-scenario-schema-v1.1-apply.md (the design under review).\n2. Run python tools/lint_design_artefact.py src/design/uat-scenario-schema-v1.1-apply.md — must exit 0, no BLOCKER/MAJOR.\n3. Verify the design covers ALL §7 consumers from docs/agents/uat-scenario-schema-v1.1-addendum.md:\n   - UAT_RUNNER.md\n   - PRODUCT_OWNER.md\n   - ORCHESTRATOR.md (per §7's row)\n   - WF-05_uat_run.md\n   - WF-06_scenario_authoring.md\n4. For each edit block in the design, verify it has: anchor location, before/after text, rationale.\n5. Verify no implementation code (Zig/SQL) is present — this is a Type E prose design for a docs-only change.\n6. Verify that the design preserves the hard constraints from the addendum:\n   - via: system forbidden in uat_surface: gui workflows\n   - evidence required on every system_state outcome\n   - via: api remains forbidden\n7. Verify the design does NOT touch the three BO-* docs (BO-SWIFTROUTE.md, BO-VORTEX.md, BO-MERIDIAN.md).\n\nReturn PASS if all 7 checks pass. Return FAIL with a structured issue list otherwise.",
+    "acceptance_criteria": [
+      "python tools/lint_design_artefact.py src/design/uat-scenario-schema-v1.1-apply.md exits 0 with no BLOCKER/MAJOR",
+      "All 5 §7 consumers are covered",
+      "Each edit has anchor + before/after + rationale",
+      "No implementation code present",
+      "Hard constraints from addendum §3 and §4 are preserved",
+      "Three BO-* docs are NOT touched"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validation after CODE-DESIGNER rework 1: lint_design_artefact.py now exits 0 ('OK — 1 file(s) checked, no issues.'). E010 fixed by adding ## Errors section at line 134 enumerating UAT-RUNNER schema validation (addendum §8 rules 1-9), PRODUCT-OWNER empty-evidence hard-reject, ORCH's tools/wfctl.py uat-ready gate, and WF-05 platform-to-2b routing branch. Both E050 long code blocks (lines 324 and 597) replaced with prose. Bonus: pre-existing Python block at line 327 split into two shorter blocks. All 13 original edits across 6 consumer docs are intact.",
+    "artifacts_out": [
+      "src/design/uat-scenario-schema-v1.1-apply.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T17:11:00Z",
+  "completed_at": "2026-08-10T17:11:30Z"
+}

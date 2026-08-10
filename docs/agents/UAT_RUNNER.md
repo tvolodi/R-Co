@@ -98,11 +98,24 @@ Message: `"System not ready for UAT: <which service>. ORCH must resolve infrastr
 If `DEFS_EMPTY`: STOP. Return FAIL with severity BLOCKER.
 Message: `"No process definitions found. Run seed.py before UAT."`
 
-Additionally, verify the tenant lookup endpoint:
+Additionally, classify scenarios by `company_id` and verify only the tenant
+slugs that are actually present in the scenario set:
 
 ```bash
-# Tenant API (must return 200 for each seed company)
-for slug in swiftroute vortex meridian; do
+# Collect the unique tenant slugs actually used by the scenarios in this run
+tenant_slugs=$(python3 -c "
+import yaml, glob
+slugs = set()
+for path in glob.glob('tests/simulation/scenarios/*.yaml'):
+    with open(path) as f:
+        s = yaml.safe_load(f)
+    cid = s.get('company_id')
+    if cid in ('swiftroute','vortex','meridian'):
+        slugs.add(cid)
+print(' '.join(sorted(slugs)))
+")
+
+for slug in $tenant_slugs; do
   curl -sf -H "Authorization: Bearer $BPM_UAT_TOKEN" \
     http://localhost:3000/api/v1/tenants/$slug > /dev/null || echo "TENANT_${slug}_MISSING"
 done
@@ -110,6 +123,11 @@ done
 
 If any `TENANT_*_MISSING`: STOP. Return FAIL with severity BLOCKER.
 Message: `"Tenant API returned 404 for <slug>. Ensure seed data includes all companies."`
+
+Scenarios with `company_id: platform` MUST NOT be added to `$tenant_slugs`
+above — the tenant endpoint returns 404 for `platform` by design. For
+`platform` scenarios, credential resolution is handled later in Step 2.5
+from `BPM_UAT_TOKEN` directly, without a tenant lookup.
 
 ### Step 2 — Load and validate scenarios
 
@@ -120,15 +138,68 @@ files under `tests/simulation/scenarios/` if not explicitly listed):
 import yaml
 from pathlib import Path
 
+# Load docs/workflows.yaml so platform_scenarios[u] → uat_surface resolution works.
+with open("docs/workflows.yaml") as f:
+    workflows = yaml.safe_load(f)
+PLATFORM_WORKFLOWS = {
+    w["id"]: w
+    for w in (workflows.get("workflows") or [])
+    if w.get("id", "").startswith("PW-")
+}
+
 scenarios = []
 for path in sorted(Path("tests/simulation/scenarios").glob("*.yaml")):
     with open(path) as f:
         s = yaml.safe_load(f)
-    # Validate required fields
+    # Pass 1 — v1.0 required fields and v1.1 structural rules (addendum §8).
     for field in ("id", "company_id", "title", "actors", "steps", "expected_outcomes"):
         assert field in s, f"{path}: missing '{field}'"
+
+    if s["company_id"] not in ("platform", "swiftroute", "vortex", "meridian"):
+        raise ValueError(f"{path}: company_id must be one of platform|swiftroute|vortex|meridian")
+    if s["company_id"] == "platform" and "platform_workflow" not in s:
+        raise ValueError(f"{path}: platform scenarios require platform_workflow")
+    if "platform_workflow" in s and s["platform_workflow"] not in PLATFORM_WORKFLOWS:
+        raise ValueError(f"{path}: platform_workflow {s['platform_workflow']} not in docs/workflows.yaml")
+    uat_surface = (
+        PLATFORM_WORKFLOWS[s["platform_workflow"]]["uat_surface"]
+        if "platform_workflow" in s
+        else "mixed"
+    )
+    via_values = [step["via"] for step in s["steps"]]
+    if uat_surface == "gui" and "system" in via_values:
+        raise ValueError(f"{path}: via: system forbidden when uat_surface is gui")
+    if uat_surface in ("gui", "mixed") and "gui" not in via_values:
+        raise ValueError(f"{path}: workflow with uat_surface={uat_surface} must contain at least one via: gui step")
+    for eo in s["expected_outcomes"]:
+        v = eo["verification"]
+        if v["method"] == "system_state" and not v.get("evidence", "").strip():
+            raise ValueError(f"{path}: system_state outcome requires non-empty evidence")
+    for step in s["steps"]:
+        if step["actor"].startswith("actor-system-") and step["via"] != "system":
+            raise ValueError(f"{path}: actor-system-* actors may only appear on via: system steps")
+
+    # Pass 2 — report-language rule (addendum §4). Reject stack traces,
+    # selectors, file paths with line numbers, SQL, Zig/TypeScript names.
+    if contains_technical_leak(s.get("description", "")):
+        raise ValueError(f"{path}: technical language in description violates report-language rule")
+    for eo in s["expected_outcomes"]:
+        for fld in ("description", "business_impact"):
+            if contains_technical_leak(eo.get(fld, "")):
+                raise ValueError(f"{path}: technical language in expected_outcomes.{fld}")
+        v = eo["verification"]
+        if contains_technical_leak(v.get("detail", "")):
+            raise ValueError(f"{path}: technical language in verification.detail")
+        if v["method"] == "system_state" and contains_technical_leak(v.get("evidence", "")):
+            raise ValueError(f"{path}: technical language in verification.evidence")
     scenarios.append(s)
 ```
+
+`contains_technical_leak(text)` rejects: stack traces (`Traceback`, `Error: ... at line N`),
+Playwright selectors (`page.locator(`, `cy.get(`), file paths with line numbers (`foo.zig:42`),
+SQL (`SELECT ... FROM`), and Zig/TypeScript function names (`fn:foo`, `def bar(`, `=> {`).
+Extend the regex set per `docs/agents/uat-scenario-schema-v1.1-addendum.md §4` if a new
+technical marker slips through.
 
 If any scenario fails schema validation: add a MAJOR issue per failing file
 and skip that scenario. Do not abort the run.
@@ -149,6 +220,14 @@ const uniqueSlugs = [...new Set(scenarios.map(s => s.company_id))]
 const tenantContexts = new Map<string, TenantContext>()
 
 for (const slug of uniqueSlugs) {
+  if (slug === 'platform') {
+    // Platform scenarios do NOT call the tenant endpoint — it returns 404
+    // for "platform" by design. The platform operator identity is global;
+    // BPM_UAT_TOKEN is the sole credential (already validated in Step 1).
+    // realm is null because there is no per-tenant realm for platform actions.
+    tenantContexts.set(slug, { realm: null, tenantId: 'platform', tokenUrl: process.env.BPM_UAT_TOKEN })
+    continue
+  }
   const ctx = await resolveTenantContext(request, slug, adminToken)
   tenantContexts.set(slug, ctx)
 }
@@ -156,15 +235,18 @@ for (const slug of uniqueSlugs) {
 
 This produces:
 - `tenantId` — UUID for API calls
-- `realm` — Keycloak realm name (may differ from slug for legacy tenants)
-- `tokenUrl` — realm-specific token endpoint
+- `realm` — Keycloak realm name (may differ from slug for legacy tenants; `null` for `platform`)
+- `tokenUrl` — realm-specific token endpoint (or `BPM_UAT_TOKEN` directly for `platform`)
 
 When authenticating actors for a scenario, pass `ctx.realm` to
 `getKeycloakToken(request, username, password, ctx.realm)` so the token
-is issued from the correct tenant realm.
+is issued from the correct tenant realm. For `company_id: platform`
+scenarios, skip the per-actor credential lookup and use `BPM_UAT_TOKEN`
+for every step's API evidence capture.
 
-If `resolveTenantContext()` throws (404 or network error): add a BLOCKER
-issue for that scenario and skip it. Do not abort the entire run.
+If `resolveTenantContext()` throws for a non-platform slug (404 or network
+error): add a BLOCKER issue for that scenario and skip it. Do not abort
+the entire run.
 
 ### Step 3 — Execute each scenario
 
@@ -177,7 +259,16 @@ For each scenario, UAT-RUNNER:
    If no matching Playwright pipeline test exists: STOP. Record BLOCKER issue:
    _"No UI pipeline test found for scenario <id>. The GUI for this process has not been
    implemented. ORCH must route to FRONTEND-DEV."
-
+1b. **Executes platform-side steps via the operator API** — for a step whose actor is
+   `actor-system-*` or whose `via` is `system`, UAT-RUNNER invokes the platform operator
+   endpoint named by the step's `produces` field (or advances the virtual clock via
+   `POST /api/v1/instances/:id/advance-timer` for timer-driven steps). It reuses
+   `BPM_UAT_TOKEN` as the credential — it does NOT obtain a per-actor token for
+   `actor-system-*` actors — and records the invoked endpoint and payload as
+   business-readable evidence under the matching
+   `expected_outcomes[*].verification.evidence` field. `via: api` is forbidden; only
+   `via: system` reaches this path. Cross-product check: an `actor-system-*` actor on a
+   `via: gui` step (or vice versa) is a malformed scenario (see Step 2 schema rules).
 2. **Captures evidence via screenshots** — after every significant UI action (form submit,
    button click, page navigation), a screenshot is taken. Evidence is primarily visual:
    what the screen shows is the verdict. API calls to read final state (`GET /api/v1/instances/:id`,
@@ -364,8 +455,18 @@ pipeline.
 
 ## 9. Scenario YAML schema
 
-See `docs/agents/uat-scenario-schema.md` for the complete schema and
-annotated examples. Key fields:
+See `docs/agents/uat-scenario-schema.md` (v1.0) for the complete base
+schema and annotated examples, and
+`docs/agents/uat-scenario-schema-v1.1-addendum.md` for the additive
+platform-workflow fields (`company_id: platform`, `platform_workflow`,
+`via: system`, `verification.method: system_state` with mandatory
+`evidence`, `actor-system-*` actors). The v1.1 addendum restates the
+report-language rule unchanged: every `description`, `detail`, `evidence`
+and `business_impact` field must be readable by a non-technical
+stakeholder. Stack traces, Playwright selectors, file paths with line
+numbers, SQL queries, and Zig or TypeScript function names are forbidden.
+
+Key v1.0 fields:
 
 ```yaml
 id:           <kebab-case unique ID>
