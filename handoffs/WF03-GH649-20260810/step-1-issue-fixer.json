@@ -1,0 +1,40 @@
+{
+  "handoff_id": "110b43ab-2b5e-49b3-8411-6d3d00ae9a41",
+  "run_id": "WF03-GH649-20260810",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-10T04:17:34Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0645.json"
+    ]
+  },
+  "task": {
+    "description": "Root-cause diagnosis: adp09 TC-ADP-09-01 pg_proc overcounting (stale UUID-typed function overloads from an incomplete DROP FUNCTION arg list in migration 1107) and adp10 TC-ADP-10-02 payload_full (migration 1107 silently dropped the ADP-10 payload_full auto-population block, plus a second, independent stale-UUID-signature bug in bpm_audit_build_agent_payload_full). Also root-caused TC-ADP-09-02/03/04 and 5 of xc02's tests via the pre-existing, precedented session_replication_role-never-restored pattern (ISS-0149/GH-465). Fresh-database re-measurement of the remaining 26 files completed twice, each classified explicitly.",
+    "acceptance_criteria": [],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed and fixed adp09 fully (schema-qualified pg_proc query + new migration 1141 dropping stale UUID function overloads + session_replication_role scoping on 3 tests + ::uuid cast fix on 1 test). Diagnosed adp10's root cause fully (2 independent defects, both fixed via new migration 1142) but found the fix does not survive full-suite concurrency -- forwarded as GH-651/ISS-0646. Applied the same session_replication_role/::uuid fixes to 5 of xc02's 7 tests. Individually triaged all 26 remaining files against a freshly migrated, workspace-owned database twice: 2 already-passing, 1 flaky/noise, 19 forwarded as GH-652/ISS-0647, 1 (gh512) forwarded as GH-653/ISS-0648 (pre-existing, unrelated). 2 incidental new discoveries forwarded as GH-654/ISS-0649.",
+    "artifacts_out": [
+      "docs/issues/ISS-0645.json (updated with resolution_20260810_wf03_gh649)",
+      "docs/issues/ISS-0646.json",
+      "docs/issues/ISS-0647.json",
+      "docs/issues/ISS-0648.json",
+      "docs/issues/ISS-0649.json"
+    ],
+    "issues": [],
+    "next_action": "proceed to next step"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T04:17:34Z",
+  "completed_at": "2026-08-10T04:17:34Z"
+}

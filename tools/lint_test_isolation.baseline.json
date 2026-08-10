@@ -4,7 +4,7 @@
   "source": "tools/lint_test_isolation.py --no-baseline --json tests/integration",
   "regenerated_by": "WF03-GH512-20260808 (GitHub #512 / ISS-0181, T010 hardcoded UUID migration); +1 RETAIN (GH-512 platform-admin UUID substring-search target in gh512_t010_regression_test.zig:336 — design §R1)",
   "regeneration_note": "T010 baseline 184→73 after migration. +1 RETAIN (GH-512 TC-RG-02 substring-search target on the canonical platform-admin UUID; design §R1 — not a fixture identity, it is the literal being counted). New T010 count = 74 entries in the baseline.",
-  "last_line_sync": "2026-08-08T12:42:18Z",
+  "last_line_sync": "2026-08-10T04:07:49Z",
   "issues": [
     {
       "severity": "MAJOR",
@@ -388,14 +388,14 @@
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-      "line": 309,
+      "line": 329,
       "message": "hardcoded UUID `c9000000-0000-0000-0000-000000000102` — generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-      "line": 312,
+      "line": 332,
       "message": "hardcoded UUID `c9000000-0000-0000-0000-000000000103` — generate per-test UUIDs instead"
     },
     {
@@ -409,14 +409,14 @@
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp10_agent_io_capture_audit_test.zig",
-      "line": 172,
+      "line": 188,
       "message": "hardcoded UUID `a1000000-0000-0000-0000-000000000101` — generate per-test UUIDs instead"
     },
     {
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/adp10_agent_io_capture_audit_test.zig",
-      "line": 184,
+      "line": 200,
       "message": "hardcoded UUID `a1000000-0000-0000-0000-000000000102` — generate per-test UUIDs instead"
     },
     {

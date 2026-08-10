@@ -1,0 +1,37 @@
+{
+  "issue_id": "ISS-0646",
+  "title": "adp10_agent_io_capture_audit_test TC-ADP-10-02: tenant_default's bpm_audit_apply_chain_hash() function body reverts under full concurrent test-integration suite despite correct migration content",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/651",
+  "registered_at": "2026-08-10T04:20:00Z",
+  "registered_by": "ISSUE-FIXER (WF03-GH649-20260810 Step 1, GH-649/ISS-0645 triage)",
+  "related_to": [
+    "ISS-0645",
+    "ISS-0630",
+    "ISS-0122",
+    "ISS-0090",
+    "ISS-0091",
+    "ISS-0116"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "category": "test-infrastructure/concurrent-migration-reconciliation-race",
+  "affected_areas": [
+    "tests/integration/adp10_agent_io_capture_audit_test.zig",
+    "tests/integration/helpers.zig",
+    "src/db/migrations.zig",
+    "migrations/1142_iss0645_restore_adp10_payload_full_trigger.sql"
+  ],
+  "symptom": "TC-ADP-10-02 (agent rows persist payload_full while non-agent rows stay NULL) fails with payload_full staying NULL, EVEN AFTER migration 1142_iss0645_restore_adp10_payload_full_trigger.sql (which restores the ADP-10 payload_full auto-population block dropped by 1107_fix_audit_chain_text_resource_id.sql -- see ISS-0645) is applied and independently verified correct.",
+  "reproduction_showing_the_migration_is_correct": "1. docker exec <db_test> psql -c 'CREATE DATABASE bpm_probe'. 2. BPM_DB_URL=.../bpm_probe zig build migrate (creates public AND auto-provisions tenant_default with all 123 migrations, including 1142). 3. Directly query: SELECT prosrc FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE p.proname='bpm_audit_apply_chain_hash' AND n.nspname='tenant_default' -- confirms the payload_full/bpm_audit_is_agent_actor block IS present. 4. Directly INSERT an audit_entries row as an agent actor with session_replication_role='origin' -- payload_full populates correctly (verified via psql, multiple times, on multiple freshly-created probe databases).",
+  "reproduction_showing_the_reversion": "Run `zig build test-integration` (the full ~40-binary concurrent suite) against that SAME already-verified-correct database. After the run completes (exit 1, many failures including TC-ADP-10-02), re-query tenant_default's bpm_audit_apply_chain_hash() prosrc: the payload_full/bpm_audit_is_agent_actor block is GONE -- the function body has reverted to the 1107/1109 shape that never had it. No new schema_migrations ledger row is written for tenant_default (still shows exactly one row for 1142_iss0645_restore_adp10_payload_full_trigger.sql, from the original single-pass migrate). The public schema's copy of the same function is unaffected and retains the fix throughout.",
+  "root_cause_hypothesis_not_yet_confirmed": "tests/integration/helpers.zig TestHarness.init() calls runMigrationsForSchema(..., 'tenant_default', ...) -> Migrations.runForSchema(..., force_reconcile=true) on EVERY test's harness setup, across all ~40 concurrently-running integration binaries (each an independent OS process). Each such call re-walks the full migrations/ directory in migrationOrder() and, for files already in the applied set, skips re-application (Migrations.runForSchema's `if (applied.contains(filename)) continue;` at src/db/migrations.zig ~L329). This SHOULD make concurrent calls idempotent no-ops once the ledger row exists. However, the observed behaviour is that after full-suite concurrent execution, tenant_default's function body matches an EARLIER migration (1109_iss0122_apply_chain_hash_lock_cast.sql, which does NOT include the payload_full block) rather than the later, already-ledgered 1142. This is consistent with either: (a) a genuine last-writer-wins race across two or more concurrent processes independently reconciling tenant_default from a partially-stale in-memory view of 'applied', with one process's CREATE OR REPLACE FUNCTION from an earlier-numbered file executing AFTER another process's from 1142 despite the numeric ordering guard in the single-process case, or (b) a distinct, not-yet-located code path that recreates bpm_audit_apply_chain_hash() using stale/cached SQL text independent of the migrations/ directory contents. Not yet distinguished between (a) and (b) -- needs dedicated tracing (e.g. temporarily logging PID + filename + timestamp on every CREATE OR REPLACE FUNCTION bpm_audit_apply_chain_hash executed against tenant_default during a full suite run) to pin down the exact interleaving.",
+  "evidence_this_is_pre_existing_and_general_not_specific_to_1142": "The same class of reversion likely explains part of xc02_audit_immutability_test's residual flakiness (5 of 7 tests fail only under full-suite concurrency, pass in isolated single-binary runs) and is architecturally identical to the documented ISS-0116/GH-379 finding already in tests/integration/helpers.zig's own comments: 'migration 1139_iss0116_audit_dlq_rename_tenant_functions.sql applied to public immediately but never reached tenant_default, and neither did any migration between 1107 and 1139 unless something else happened to force a fresh reconcile first' -- i.e. this exact function-name and schema pairing (audit-chain trigger functions in tenant_default under concurrent harness init) has a known history of drift/reconciliation problems. This issue is the same failure class recurring against a different specific function (bpm_audit_apply_chain_hash's payload_full block, vs. ISS-0116's DLQ rename).",
+  "impact": "Any migration that rewrites an existing per-tenant-schema function via a later, numerically-ordered file cannot be relied upon to survive a full concurrent test-integration run against a long-lived or freshly-provisioned tenant_default -- the reconciliation mechanism intended to prevent exactly this (ISS-0116/GH-379's fast-path count comparison) is not sufficient under true concurrency. This affects the whole audit-chain trigger family and potentially any other per-tenant SQL function.",
+  "acceptance_criteria": [
+    "Root cause distinguished between hypothesis (a) last-writer-wins race and (b) a separate stale-recreation code path, via direct tracing on a controlled 2-3-binary concurrent run",
+    "Fix applied (likely: strengthen the per-schema advisory lock scope in runMigrationsForSchema so the whole reconcile pass, not just the count-check, is serialized against other concurrent callers targeting the same schema; or eliminate the redundant per-tenant DO block pattern migrations like 1107/1109 use, in favor of relying solely on the unqualified/all_schemas per-file application already handled by the standard runner)",
+    "TC-ADP-10-02 passes deterministically across at least 5 consecutive full `zig build test-integration` runs against a freshly migrated, workspace-owned database",
+    "xc02_audit_immutability_test's 5 currently-flaky-under-concurrency tests (TC-XC-02-01/02/04/05/06/07) re-measured after the fix to confirm they were the same root cause (or filed separately if not)"
+  ],
+  "next_action": "File as GitHub issue and add to global queue for its own WF-03 run. Not fixed inline in WF03-GH649-20260810 -- the migration content fix (1141/1142) is already complete and independently verified correct in isolation; only the concurrent-reconciliation race remains, and it is a deep, cross-cutting test-infrastructure investigation distinct from ISS-0645's original file-triage scope."
+}
