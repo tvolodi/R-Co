@@ -886,7 +886,14 @@ pub fn handleHistory(
 
     // ── Step 6: Validate event_type against registry ───────────────────────
     if (params.event_type) |et| {
-        _ = event_store_mod.registry.getType(allocator, et) catch |err| switch (err) {
+        // GH-280 / ISS-0040 rework: getType() returns an EventTypeRecord that
+        // owns three allocations (name, json_schema, description) — this call
+        // site only needs the UnknownEventType/success signal, but previously
+        // discarded the record with a bare `_ =`, leaking all three on every
+        // successful lookup (every GET .../history?event_type=<known type>
+        // request). event_store.Registry.freeTypeRecord() is the same helper
+        // Registry.validatePayload() already uses to release this exact type.
+        const type_record = event_store_mod.registry.getType(allocator, et) catch |err| switch (err) {
             event_registry.RegistryError.UnknownEventType => return errorResult(
                 allocator,
                 422,
@@ -895,6 +902,7 @@ pub fn handleHistory(
             ),
             else => return errorResult(allocator, 503, "SERVICE_UNAVAILABLE", "Service temporarily unavailable"),
         };
+        event_registry.Registry.freeTypeRecord(allocator, type_record);
     }
 
     // ── Step 7: Call Store.readHistory() ────────────────────────────────────

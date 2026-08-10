@@ -2752,6 +2752,27 @@ pub fn build(b: *std.Build) void {
     test_integration_adp10_step.dependOn(&run_adp10_solo_tests.step);
     test_integration_others_step.dependOn(&run_adp10_solo_tests.step);
 
+    // GH-280 / ISS-0040: api05_history_boundary_test.zig covers the 7
+    // valid-boundary TC-API-05-12c/12d/14a..e cases that
+    // tests/unit/test_api05_history.zig stubs with error.SkipZigTest because
+    // they need a real Store round-trip. Wired both into main_test.zig (runs
+    // under the umbrella `test-integration`) and as its own scoped step here,
+    // same dual-wiring pattern GH-679 established for adp09/adp10 above, so
+    // this file's signal can be read in isolation without paying for the
+    // ~40-binary umbrella.
+    const api05_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/api05_history_boundary_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_api05_solo_tests = addIntegrationRun(b, api05_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_api05_step = b.step("test-integration-api05", "Run API-05 history pagination boundary integration tests in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_api05_step.dependOn(&clean_test_db.step);
+    test_integration_api05_step.dependOn(&run_api05_solo_tests.step);
+
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner
     // ---------------------------------------------------------------------------
