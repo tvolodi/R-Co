@@ -1,7 +1,7 @@
 {
   "iss_id": "ISS-0127",
   "title": "pool.zig resolver falls through to LEGACY_RLS on tenant_schemas fallback for TC-TNT-03-01/03",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "BLOCKER",
   "category": "tenant-routing / resolver-fallthrough-under-concurrent-pool-reuse",
   "reporter": "TEST-RUNNER (WF-03 gh377)",
@@ -12,7 +12,7 @@
     "tests/integration/db/tenant/concurrent_search_path*.zig"
   ],
   "created_at": "2026-08-04T18:15:39Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-10T04:35:00Z",
   "notes": "Follow-up D1 from the WF03-gh377-20260804 rework-1 retry: ISS-0114 was resolved for TC-TNT-01-03, TC-TNT-02-02, and TC-TNT-03-05, but TC-TNT-03-01 and TC-TNT-03-03 still FAIL with search_path stuck on 'public'. The public.tenant_schemas fallback in resolveAndCacheStorageMode does not fire, so SET LOCAL search_path falls back to LEGACY_RLS via the previously-correct but now-misguided default branch.",
   "root_cause": "Likely cache invalidation timing: tenant_context_mod._storage_mode threadlocal is set during provision, but under concurrent connection reuse the per-conn SET LOCAL does not get re-asserted because the cache says SCHEMA. Need forced reapplication of SET LOCAL on each pool.acquire, or removal of the early-return short-circuit in applyRequestStorageRouting when the SET LOCAL was issued on a prior (now-closed) connection.",
   "repro_steps": [
@@ -21,7 +21,7 @@
     "3. Conn A acquires -> expect search_path = tenant_<uuid>,public; actual: 'public'"
   ],
   "candidate_resolution": "Force SET LOCAL search_path reapplication on every pool.acquire (do not rely on the threadlocal cache) OR clear the threadlocal storage_mode cache when a connection returns to the pool. Verify under concurrent reuse with a multi-threaded regression test.",
-  "resolution": null,
+  "resolution": "Already resolved. Confirmed on current main (WF03-GH417-20260810): src/db/pool.zig's applyRequestStorageRouting() -- called unconditionally on every Pool.acquire() (line 837) -- reapplies SET search_path (or SET search_path TO public + set_config for LEGACY_RLS) on every single acquisition, regardless of whether tenant_context_mod.hasStorageMode() was already cached. The cache (line 270) only short-circuits the DB round-trip to re-resolve storage_mode; it does NOT skip re-issuing the search_path SQL statement itself -- this is exactly the candidate_resolution this issue specified ('Force SET LOCAL search_path reapplication on every pool.acquire, do not rely on the threadlocal cache'). Verified live: zig build test-integration-tnt -- 34/34 tests pass (2 binaries, 19+15), including TC-TNT-03-01 ('pool checkout for resolved tenant includes tenant schema in search_path') and TC-TNT-03-03 ('two concurrent connections for different tenants have independent search_paths') by name in tests/integration/tnt_schema_isolation_test.zig. Re-ran twice to rule out the concurrency-sensitive flakiness the issue describes -- both runs identical, 0 failures. A prior attempt (branch origin/feature/WF03-ISS-0127-20260807, 2026-08-07) only completed Step 00 git-setup and was abandoned without an actual fix commit; the real closure came from this session's broader tenant-routing/search_path work (ISS-0114's original pool resolver fix, PR #420, plus subsequent hardening across the session) rather than a fix targeted at this issue specifically. No code change made in this pass -- verification only.",
   "files_to_change": [
     "src/db/pool.zig",
     "src/api/tenant_context.zig",

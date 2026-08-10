@@ -6,6 +6,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0127 — pool.zig resolver LEGACY_RLS fallthrough on TC-TNT-03-01/03 (BLOCKER, already resolved)** ([GitHub #417](https://github.com/tvolodi/R-Co/issues/417))
+
+- **Verified already resolved.** `src/db/pool.zig`'s `applyRequestStorageRouting()` reapplies `SET search_path` unconditionally on every `Pool.acquire()`, regardless of whether `tenant_context_mod.hasStorageMode()`'s cache already holds a value — the cache only short-circuits the DB round-trip to re-resolve `storage_mode`, never the `search_path` SQL statement itself. This is exactly the fix this issue's own candidate resolution specified. A prior attempt (branch `feature/WF03-ISS-0127-20260807`) only completed git-setup and was abandoned without a fix commit; the real closure came from this session's broader tenant-routing hardening rather than a fix targeted at this issue specifically.
+- **Verified:** `zig build test-integration-tnt` — 34/34 pass (2 binaries), including `TC-TNT-03-01` and `TC-TNT-03-03` by name. Re-ran twice to rule out the concurrency-sensitive flakiness the issue described — both runs identical, 0 failures.
+- **No code change** — verification only.
+
 **ISS-0645 — adp09 fully fixed, adp10 root-caused (partial), 26-file cluster individually triaged (MAJOR, partial)** ([GitHub #649](https://github.com/tvolodi/R-Co/issues/649))
 
 - **Context:** follow-up to GH-482/ISS-0150's adp0x schema-literal fix, which forwarded a 28-file residual cluster (`adp09`/`adp10` plus 26 unrelated files) rather than attempting to root-cause all of it in one run.
