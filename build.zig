@@ -1440,6 +1440,23 @@ pub fn build(b: *std.Build) void {
     const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
     clean_test_db_step.dependOn(&clean_test_db.step);
 
+    // PI-09 / ISS-0084 / GH-299: src/operations.zig aggregates
+    // src/operations/startup_assertions.zig and is exposed as the
+    // `operations` named module so tests/integration/*.zig files can
+    // `@import("operations")` without violating Zig 0.16's single-owner
+    // module rule (a relative `@import("operations/startup_assertions.zig")`
+    // from a tests/integration root would resolve to a non-existent path).
+    // `startup_assertions.zig` reaches the database connection pool by name,
+    // so the aggregator must also import `pool` for it.
+    const operations_mod = b.createModule(.{
+        .root_source_file = b.path("src/operations.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+
     const integration_imports: []const std.Build.Module.Import = &.{
         .{ .name = "pg", .module = pg_mod },
         .{ .name = "http", .module = http_mod },
@@ -1448,6 +1465,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "pool", .module = pool_root_mod },
         .{ .name = "bpm", .module = bpm_src_mod },
         .{ .name = "build_options", .module = build_options_mod },
+        .{ .name = "operations", .module = operations_mod },
         // ISS-0147 / GitHub #374: deterministic Python interpreter resolution
         // for tests that spawn Python tooling as a subprocess.
         .{ .name = "python_interp", .module = python_interp_mod },
@@ -2106,6 +2124,17 @@ pub fn build(b: *std.Build) void {
     });
     const run_iss0076_integration_tests = addIntegrationRun(b, iss0076_integration_tests, migrations_dir, clean_test_db);
 
+    // PI-09 / ISS-0084 / GH-299: startup database configuration assertions.
+    const startup_assertions_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/startup_assertions_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_startup_assertions_integration_tests = addIntegrationRun(b, startup_assertions_integration_tests, migrations_dir, clean_test_db);
+
     const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL)");
     test_integration_step.dependOn(&clean_test_db.step);
 
@@ -2152,6 +2181,7 @@ pub fn build(b: *std.Build) void {
     // ISS-0625 / GH-592: LUA-12 / LUA-15 / LUA-16 production wiring tests.
     test_integration_others_step.dependOn(&run_iss0625_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0076_integration_tests.step);
+    test_integration_others_step.dependOn(&run_startup_assertions_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_same_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_cross_integration_tests.step);
     // ISS-0150 / GH #466: entity_subsystem_test.zig's Run artifact was created
@@ -2430,6 +2460,13 @@ pub fn build(b: *std.Build) void {
 
     const test_integration_iss0076_step = b.step("test-integration-iss0076", "Run ISS-0076 secrets table regression tests only (requires BPM_TEST_DB_URL)");
     test_integration_iss0076_step.dependOn(&run_iss0076_integration_tests.step);
+
+    // PI-09 / ISS-0084 / GH-299: dedicated entry point so ORCH and developers
+    // can iterate on startup_assertions_test.zig without running the full
+    // test-integration group. Mirrors the iss0076 exposure pattern.
+    const test_integration_startup_assertions_step = b.step("test-integration-startup_assertions", "Run PI-09 startup database configuration assertion integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_startup_assertions_step.dependOn(&clean_test_db.step);
+    test_integration_startup_assertions_step.dependOn(&run_startup_assertions_integration_tests.step);
 
     const test_integration_exp601_step = b.step("test-integration-exp601", "Run EXP-601 tier-to-quota enforcement tests only (requires BPM_TEST_DB_URL)");
     test_integration_exp601_step.dependOn(&clean_test_db.step);

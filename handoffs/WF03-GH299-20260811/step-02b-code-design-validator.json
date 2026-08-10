@@ -1,0 +1,53 @@
+{
+  "handoff_id": "29900000-0000-02b1-0000-000000000000",
+  "run_id": "WF03-GH299-20260811",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-10T20:16:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "29900000-0000-0000-0000-000000000000",
+      "29900000-0000-0050-0000-000000000000",
+      "29900000-0000-0200-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/pi-09-operations-runbook.md",
+      "tests/specs/ISS-0084.md"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/299",
+    "iss_ref": "ISS-0084",
+    "wf_alias": "PI-09"
+  },
+  "task": {
+    "description": "CODE-DESIGN-VALIDATOR Step 2b — hard gate. Validate the design artefact from step 02 before BACKEND-DEV touches any source. This is a HALL-GATED step per CLAUDE.md CODE-DESIGN-VALIDATOR section.\n\n## Per-artefact checks (mandatory)\n1. `python tools/lint_design_artefact.py src/design/pi-09-operations-runbook.md` must exit 0, no BLOCKER/MAJOR.\n2. `python tools/lint_design_artefact.py tests/specs/ISS-0084.md` (if the linter accepts specs) — exit 0.\n3. Re-read the design from the perspective: does it cover all 6 AC in the original handoff (AC1 runbook structure, AC2 call site documented, AC3 FATAL line pinned, AC4 regex pin, AC5 exit code 78, AC6 build/test)?\n4. Is there any implementation code in src/design/pi-09-operations-runbook.md? It should be signatures + prose only.\n5. Are all public function signatures listed? Specifically `assertDatabaseConfiguration(allocator: std.mem.Allocator, pool: *db_pool.Pool) StartupAssertionError!void` and any helper error-set.\n6. Is the FATAL log line format a single EXACT string the test will pin to? Reject if there are multiple candidate formats.\n7. Is the exit code 78 documented in the design and the test spec?\n8. Are dependencies (db_pool, obs_logger, std.posix.getenv, std.process.exit) listed?\n9. Does the design correctly classify per `templates/lego-catalog.md`?\n\n## FAIL conditions\n- Any BLOCKER/MAJOR lint finding\n- Missing function signature\n- FATAL line not pinned to one exact string\n- Implementation code in the design\n- Inconsistency between design and test spec (different FATAL line, different exit code)\n- Missing AC6 mapping\n\n## PASS conditions\n- All six AC explicitly addressed\n- Lint exits 0\n- No implementation code\n- Single, exact, pinned FATAL line string in BOTH the design AND the test spec\n\n## Procedural\n1. Read both files in full.\n2. Run the linters.\n3. Write your PASS/FAIL verdict into the handoff file.\n4. Update registry and log.\n5. Commit the verdict.\n6. On PASS, set next_action to `\"Route to BACKEND-DEV (Step 3)\"`.\n\nNO source code edits. Read with `encoding='utf-8-sig'`, write with `encoding='utf-8'`. Timestamps from the shell clock.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0 on both files",
+      "FATAL line format is a single exact string and matches between design and test spec",
+      "No implementation code bodies in the design",
+      "All 6 AC from prior handoff are explicitly mapped",
+      "Function signature `assertDatabaseConfiguration(allocator, pool) StartupAssertionError!void` is documented",
+      "Exit code 78 is documented",
+      "handoffs/WF03-GH299-20260811/step-02b-code-design-validator.json is COMPLETED",
+      "python tools/lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:validate-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefacts validated (rework 1) — all 4 prior fixes applied: exit code 78 documented, Module Purpose section added to test spec, Error Taxonomy section added to test spec, schema-qualified names removed. Both linters passed. All 6 AC covered.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-08-10T20:19:06Z",
+  "completed_at": "2026-08-10T20:26:39Z"
+}

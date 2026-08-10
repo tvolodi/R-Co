@@ -1,0 +1,51 @@
+{
+  "handoff_id": "29900000-0000-0050-0000-000000000000",
+  "run_id": "WF03-GH299-20260811",
+  "step": "005",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-10T20:05:50Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "29900000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/299"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/299",
+    "iss_ref": "ISS-0084",
+    "wf_alias": "PI-09"
+  },
+  "task": {
+    "description": "ISSUE-FIXER Step 0.5 — knowledge-base lookup + register/update the ISS-0084 local file + file the GitHub issue.\n\nISS-0084 / GH-299 / PI-09 is already OPEN on GitHub (`gh issue view 299 --json state` confirms `state: OPEN`). The local docs/issues/ISS-0084.json may already exist or may need to be created.\n\nEXECUTE:\n\n1. **Knowledge-base lookup** — search docs/issues/issue_index.json (and any docs/issues/ISS-0084* files) for prior solutions to PI-09 / Operations runbook / fail-fast startup assertion. Match by title/affected_areas overlap. Note any prior resolution strategies.\n\n2. **Local ISS file** — read or create docs/issues/ISS-0084.json with the following minimum schema:\n   ```json\n   {\n     \"issue_id\": \"ISS-0084\",\n     \"title\": \"PI-09: Operations runbook and a fail-fast startup assertion\",\n     \"status\": \"IN_PROGRESS\",\n     \"severity\": \"MINOR\",\n     \"category\": \"operations / runbook\",\n     \"run_id\": \"WF03-GH299-20260811\",\n     \"workflow_id\": \"WF-03\",\n     \"handoff_id\": \"29900000-0000-0050-0000-000000000000\",\n     \"github_issue\": \"https://github.com/tvolodi/R-Co/issues/299\",\n     \"requirement_ids\": [],\n     \"summary\": \"...\",\n     \"root_cause\": { \"type\": \"...\", \"details\": \"...\" },\n     \"affected_areas\": [\"src/main.zig\", \"docs/\"],\n     \"created_at\": \"<real UTC clock>\",\n     \"last_updated\": \"<real UTC clock>\"\n   }\n   ```\n   Read existing file if present, otherwise create. Set status to IN_PROGRESS, set run_id, set handoff_id. Use the real UTC clock for timestamps.\n\n3. **GitHub issue collision check** — run `gh issue list --search \"ISS-0084 PI-09 runbook startup\" --state all` and confirm only GH-299 matches. Local ISS-0084 number vs GitHub issue number 299 — they are different sequences (most local IDs are higher-numbered than GitHub). Confirm no collision by absence of body matches.\n\n4. **File on GitHub** — the issue is already filed (GH-299 OPEN). Do NOT create a duplicate. Verify status is OPEN and add a comment via `gh issue comment 299 --body \"Picked up by run WF03-GH299-20260811. Workflow: WF-03 Step 0.5 (knowledge-base lookup + ISS file).\"` if desired.\n\n5. **Return** the canonical issue_id (`ISS-0084`), the GH URL, the affected_areas, and any knowledge-base findings for the design step to consume.\n\nConstraints per CLAUDE.md:\n- File paths under `docs/issues/` only — git-ignored scratch goes to `scratch/`.\n- No source code edits in this step.\n- Read everything with `encoding='utf-8-sig'`, write with `encoding='utf-8'`.\n- Timestamps from the shell clock command, NEVER from session context.\n- Completion timestamp must come from `(Get-Date).ToUniversalTime().ToString(\"yyyy-MM-ddTHH:mm:ssZ\")`.\n\nReturn PASS once the local ISS file is updated and the GH-299 OPEN state is confirmed.\n\nKey information for downstream steps:\n- Affected areas: `src/main.zig`, `docs/`\n- Severity: MINOR\n- Workflow alias: PI-09 (see docs/workflows.yaml)\n- Sync reference: `<!-- rco-sync-ref: ISS-0084 -->` is already in the GH-299 body\n- The fix should add: (a) operations runbook (docs/runbook/OPERATIONS.md or similar), (b) a fail-fast startup assertion in src/main.zig right after DB connects, with a deterministic FATAL line pinned by a test so alerts can match.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0084.json exists with status=IN_PROGRESS",
+      "h issue list confirms GH-299 is OPEN (no duplicate file)",
+      "handoff file at handoffs/WF03-GH299-20260811/step-005-issue-fixer.json is COMPLETED",
+      "registry.json updated for step 0.5 handoff_id",
+      "orchestrator.log has ROUTE+COMPLETE entries for step 0.5",
+      "python tools/lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0084 (PI-09) registered locally; no prior knowledge-base matches found; GH-299 confirmed OPEN (no collision)",
+    "artifacts_out": [
+      "docs/issues/ISS-0084.json"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER Step 1 (diagnosis)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T20:09:39Z",
+  "completed_at": "2026-08-10T20:10:44Z"
+}
