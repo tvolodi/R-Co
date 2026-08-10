@@ -1297,16 +1297,13 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/652",
       "title": "test-integration: 20 files with distinct, individually-unresolved failures after GH-649's adp09/adp10 fix pass",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T06:07:56Z"
-      },
+      "status": "DEFERRED",
+      "lock": null,
       "added_at": "2026-08-10T06:07:56Z",
       "started_at": "2026-08-10T06:07:56Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T07:21:57Z",
       "run_id": null,
-      "deferred_reason": null,
+      "deferred_reason": "Partial: 12/20 files fixed + 1 confirmed already-passing; 5 clusters forwarded to GH-660/661/662/663/664. ISS-0647 marked PARTIALLY_RESOLVED, GH-652 stays open with full disposition record per GH-649 precedent.",
       "issue_number": 652,
       "labels": [
         "bug"
