@@ -1284,14 +1284,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/651",
       "title": "adp10_agent_io_capture_audit_test TC-ADP-10-02: tenant_default's bpm_audit_apply_chain_hash() reverts under full concurrent test-integration suite",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T14:09:32Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T14:09:32Z",
       "started_at": "2026-08-10T14:09:32Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T14:44:10Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 651,
