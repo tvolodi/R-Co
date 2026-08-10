@@ -1549,14 +1549,11 @@
       "labels": [
         "issue"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "tvolodi-51316",
-        "locked_at": "2026-08-10T19:56:41Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T19:56:41Z",
       "started_at": "2026-08-10T19:56:41Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T21:58:59Z",
       "run_id": null,
       "deferred_reason": null
     },
@@ -1661,6 +1658,63 @@
       },
       "added_at": "2026-08-10T21:36:02Z",
       "started_at": "2026-08-10T21:36:02Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "--help",
+      "github_issue": "",
+      "title": "",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T21:55:14Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-691",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/691",
+      "title": "MINOR-PI09-1: Make public schema pollution check explicit (allowlist or tenant-scoped)",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "tvolodi-51316",
+        "locked_at": "2026-08-10T22:00:05Z"
+      },
+      "added_at": "2026-08-10T22:00:05Z",
+      "started_at": "2026-08-10T22:00:05Z",
+      "completed_at": null,
+      "run_id": "WF03-GH691-20260811",
+      "deferred_reason": null,
+      "issue_number": 691,
+      "labels": []
+    },
+    {
+      "issue_id": "ISS-0661",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/693",
+      "title": "Copilot harness (.github/agents, .github/instructions) independently drifted from .claude/agents",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T22:09:15Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0662",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/694",
+      "title": "Stray --help junk entry in global_queue.json + missing -h flag guard in queue_add.py",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T22:10:11Z",
+      "started_at": null,
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
