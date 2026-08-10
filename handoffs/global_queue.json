@@ -1417,17 +1417,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0653",
+      "issue_id": "GH-662",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/662",
-      "title": "event_store/xc02/xc06 audit-chain cluster residuals",
+      "title": "event_store_integration_test (3 failures), xc02 residual race, xc06 TC-XC-06-08 chain-hash flake: audit-chain / event-store cluster",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-10T06:51:03Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T07:57:16Z"
+      },
+      "added_at": "2026-08-10T07:57:16Z",
+      "started_at": "2026-08-10T07:57:16Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 662,
+      "labels": [
+        "bug"
+      ]
     },
     {
       "issue_id": "GH-663",
