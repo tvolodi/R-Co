@@ -1,0 +1,24 @@
+{
+  "issue_id": "ISS-0656",
+  "title": "lint_handoffs.py: 2 unacknowledged bookkeeping findings (H004 inverted timestamp, H009 orphaned PENDING step) from 2026-08-09 runs WF03-GH631 and WF03-GH360",
+  "status": "OPEN",
+  "severity": "MINOR",
+  "category": "bookkeeping/audit-trail",
+  "run_id": "WF03-GH652-20260810",
+  "handoff_id": null,
+  "affected_areas": [
+    "handoffs/WF03-GH631-20260809/step-00-backend-dev.json",
+    "handoffs/WF03-GH360-20260809/step-00-backend-dev.json"
+  ],
+  "created_at": "2026-08-10T07:22:50Z",
+  "resolved_at": null,
+  "notes": "Discovered incidentally while running the mandatory `tools/lint_handoffs.py` check as part of WF03-GH652-20260810's Step Final review. Both findings predate this session's GH-652 branch (both handoffs are dated 2026-08-09, a day before GH-652's branch was created) and are unrelated to any file this run touched -- confirmed via `git log`/`git diff` that neither handoff file was modified by this run. Per CLAUDE.md's Unblock-Everything scope boundary (blocking vs. adjacent) and No-Issue-Left-Local-Only, filed as its own issue rather than fixed inline on GH-652's branch.\n\nFinding 1 (BLOCKER per lint_handoffs.py's own severity, though the underlying defect is a data-entry/audit-trail issue, not a functional break -- MINOR here reflects no user-facing or build-breaking impact): handoffs/WF03-GH631-20260809/step-00-backend-dev.json -- started_at (2026-08-09T12:26:24Z) precedes created_at (2026-08-09T12:26:49Z) by 25 seconds. Code H004.\n\nFinding 2 (MAJOR per lint_handoffs.py): handoffs/WF03-GH360-20260809/step-00-backend-dev.json -- status is IN_PROGRESS but 3 later steps in the same run (step-0.5-issue-fixer.json, step-1-issue-fixer.json, step-07-doc-updater.json) are COMPLETED, meaning the pipeline advanced past this step without ever closing it. Code H009.",
+  "root_cause": "Not yet investigated in depth. H004 (started_at < created_at) is the same class of clock-skew/ordering defect ISS-0627/GH-596 catalogued and partially resolved for other runs (see that issue's H013 finding) -- likely the same root cause: a timestamp was read from session/LLM context rather than the real system clock at the moment each field was written, causing two nearly-simultaneous stamps to land in the wrong order. H009 (orphaned PENDING/IN_PROGRESS step with later COMPLETED siblings) is the same class ISS-0627 accepted as permanent historical record for 6 other runs rather than fabricating a synthetic COMPLETED status -- the same treatment likely applies here, but needs confirmation that WF03-GH360-20260809's step-00 genuinely never had its own completion recorded (as opposed to a fixable script bug that produced the gap).",
+  "acceptance_criteria": [
+    "H004 finding for WF03-GH631-20260809/step-00-backend-dev.json resolved: either the timestamps are corrected against real evidence of when the step actually started/was routed (not fabricated), or -- if no reliable correction is possible, matching ISS-0627's precedent for its H013 findings -- explicitly acknowledged in tools/lint_handoffs.baseline.json with a documented rationale",
+    "H009 finding for WF03-GH360-20260809/step-00-backend-dev.json resolved the same way: either a genuine missing completed_at/status is backfilled from real evidence, or acknowledged in the baseline as a permanent historical record per ISS-0627's established precedent (marking it COMPLETED/FAILED after the fact without evidence would fabricate the record, which ISS-0627 explicitly rejected for 6 similar cases)",
+    "tools/lint_handoffs.py exits with 0 unacknowledged BLOCKER/MAJOR findings"
+  ],
+  "next_action": "File as GitHub issue and add to global queue. MINOR severity -- does not block any build, test, or user-facing functionality; pure audit-trail data-quality issue, same class already partially triaged by ISS-0627/GH-596.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/666"
+}
