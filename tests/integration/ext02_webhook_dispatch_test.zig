@@ -3,6 +3,8 @@ const portable_env = @import("env");
 const testing = std.testing;
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 
@@ -30,6 +32,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     // applies SET search_path TO tenant_default,public (schema isolation).
     bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn seedAdminUser(conn: *bpm.pool.Conn, user_id: []const u8, email: []const u8) !void {
@@ -306,6 +319,9 @@ const LocalWebhookServer = struct {
 };
 
 test "TC-EXT-02-INT-01: Admin create subscription returns 201 and persists normalized row" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = testing.allocator;
     const url = try testDbUrl(allocator);
     defer allocator.free(url);
@@ -343,6 +359,9 @@ test "TC-EXT-02-INT-01: Admin create subscription returns 201 and persists norma
 }
 
 test "TC-EXT-02-INT-02: GET subscriptions is admin-only and redacts secret value" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = testing.allocator;
     const url = try testDbUrl(allocator);
     defer allocator.free(url);
@@ -382,6 +401,9 @@ test "TC-EXT-02-INT-02: GET subscriptions is admin-only and redacts secret value
 }
 
 test "TC-EXT-02-INT-03: DELETE subscription is admin-only and removes row" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = testing.allocator;
     const url = try testDbUrl(allocator);
     defer allocator.free(url);
@@ -428,6 +450,9 @@ test "TC-EXT-02-INT-03: DELETE subscription is admin-only and removes row" {
 }
 
 test "TC-EXT-02-INT-04: Matching lifecycle event fans out and emits contract-compliant request body/headers" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = testing.allocator;
     const url = try testDbUrl(allocator);
     defer allocator.free(url);
@@ -477,6 +502,9 @@ test "TC-EXT-02-INT-04: Matching lifecycle event fans out and emits contract-com
 }
 
 test "TC-EXT-02-INT-05: Signature header is present only for secret-configured subscription and matches body HMAC" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = testing.allocator;
     const url = try testDbUrl(allocator);
     defer allocator.free(url);
@@ -541,6 +569,9 @@ test "TC-EXT-02-INT-05: Signature header is present only for secret-configured s
 }
 
 test "TC-EXT-02-INT-06: Non-2xx and timeout failures retry with at-least-once semantics through attempt 5 budget" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = testing.allocator;
     const url = try testDbUrl(allocator);
     defer allocator.free(url);
@@ -598,6 +629,9 @@ test "TC-EXT-02-INT-06: Non-2xx and timeout failures retry with at-least-once se
 }
 
 test "TC-EXT-02-INT-07: Fifth consecutive failure pauses subscription and emits OBS-06 alert event" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = testing.allocator;
     const url = try testDbUrl(allocator);
     defer allocator.free(url);
@@ -655,6 +689,9 @@ test "TC-EXT-02-INT-07: Fifth consecutive failure pauses subscription and emits 
 }
 
 test "TC-EXT-02-INT-08: Create/delete operations write OBS-03 audit rows atomically" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = testing.allocator;
     const url = try testDbUrl(allocator);
     defer allocator.free(url);
@@ -710,6 +747,9 @@ test "TC-EXT-02-INT-08: Create/delete operations write OBS-03 audit rows atomica
 }
 
 test "TC-EXT-02-INT-09: 2xx with invalid/non-JSON response body is success without retry" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = testing.allocator;
     const url = try testDbUrl(allocator);
     defer allocator.free(url);
@@ -759,6 +799,9 @@ test "TC-EXT-02-INT-09: 2xx with invalid/non-JSON response body is success witho
 }
 
 test "TC-EXT-02-INT-10: Same source event with multiple subscriptions keeps retry counters independent" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = testing.allocator;
     const url = try testDbUrl(allocator);
     defer allocator.free(url);

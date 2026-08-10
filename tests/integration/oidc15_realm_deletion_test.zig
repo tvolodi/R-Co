@@ -16,6 +16,7 @@ const testing = std.testing;
 const bpm = @import("bpm");
 const realm_deletion = @import("realm_deletion");
 const pg = @import("pg");
+const helpers = @import("helpers.zig");
 
 const pool_mod = bpm.db_pool;
 
@@ -40,6 +41,17 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 /// GH-512: generate a per-test actor_id UUID. Caller owns the returned slice.
@@ -104,6 +116,9 @@ fn cleanupUserByUsername(pool: *pool_mod.Pool, username: []const u8) void {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-15-01: RealmDeletionStatus roundtrip" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     try testing.expectEqual(realm_deletion.RealmDeletionStatus.ACTIVE, realm_deletion.RealmDeletionStatus.fromString("ACTIVE").?);
     try testing.expectEqual(realm_deletion.RealmDeletionStatus.MARKED_FOR_DELETION, realm_deletion.RealmDeletionStatus.fromString("MARKED_FOR_DELETION").?);
     try testing.expectEqual(realm_deletion.RealmDeletionStatus.DELETING, realm_deletion.RealmDeletionStatus.fromString("DELETING").?);
@@ -116,6 +131,9 @@ test "TC-OIDC-15-01: RealmDeletionStatus roundtrip" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-15-02: GRACE_PERIOD_DEFAULT_SECONDS is 7 days" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     try testing.expectEqual(@as(u64, 604800), realm_deletion.GRACE_PERIOD_DEFAULT_SECONDS);
     try testing.expectEqual(@as(u64, 7 * 24 * 60 * 60), realm_deletion.GRACE_PERIOD_DEFAULT_SECONDS);
 }
@@ -125,6 +143,9 @@ test "TC-OIDC-15-02: GRACE_PERIOD_DEFAULT_SECONDS is 7 days" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-15-03: insertDeletionTracker creates tracker row" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -168,6 +189,9 @@ test "TC-OIDC-15-03: insertDeletionTracker creates tracker row" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-15-04: insertDeletionTracker idempotent on conflict" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -220,6 +244,9 @@ test "TC-OIDC-15-04: insertDeletionTracker idempotent on conflict" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-15-05: releaseTenantBinding clears idp_realm_id" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -269,6 +296,9 @@ test "TC-OIDC-15-05: releaseTenantBinding clears idp_realm_id" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-15-06: markTrackerDeleted updates status to DELETED" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -316,6 +346,9 @@ test "TC-OIDC-15-06: markTrackerDeleted updates status to DELETED" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-15-07: markUsersInactiveByRealm updates affected OIDC users" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -372,6 +405,9 @@ test "TC-OIDC-15-07: markUsersInactiveByRealm updates affected OIDC users" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-15-08: queryPendingHardDeletions returns eligible entries" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -432,6 +468,9 @@ test "TC-OIDC-15-08: queryPendingHardDeletions returns eligible entries" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-15-09: incrementRetryCount increments retry counter" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

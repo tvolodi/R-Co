@@ -22,6 +22,8 @@ const testing = std.testing;
 const build_options = @import("build_options");
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 const tenant_context = bpm.api_tenant_context;
@@ -54,6 +56,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
         .url = url,
         .pool_size = 5,
     });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
@@ -173,6 +186,9 @@ fn migrationsDir() []const u8 {
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-02-01: T-test connection search_path contains T-test schema and not T schema" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -234,6 +250,9 @@ test "TC-ENV-02-01: T-test connection search_path contains T-test schema and not
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-02-02: Unqualified query in T-test resolves to T-test table (not T table)" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -308,6 +327,9 @@ test "TC-ENV-02-02: Unqualified query in T-test resolves to T-test table (not T 
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-02-03: Qualified cross-schema query from T-test fails or returns no production data" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

@@ -15,6 +15,7 @@ const testing = std.testing;
 const bpm = @import("bpm");
 const realm_tenant_binding = @import("realm_tenant_binding");
 const pg = @import("pg");
+const helpers = @import("helpers.zig");
 
 const pool_mod = bpm.db_pool;
 
@@ -45,6 +46,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
 }
 
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
+}
+
 fn freeRow(allocator: std.mem.Allocator, row: []?[]u8) void {
     for (row) |col| {
         if (col) |v| allocator.free(v);
@@ -69,6 +81,9 @@ fn cleanupTenantBySlug(pool: *pool_mod.Pool, slug: []const u8) void {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-12-01: resolveTenantByRealm returns correct tenant" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -112,6 +127,9 @@ test "TC-OIDC-12-01: resolveTenantByRealm returns correct tenant" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-12-02: default tenant has bpm-default realm binding" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -133,6 +151,9 @@ test "TC-OIDC-12-02: default tenant has bpm-default realm binding" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-12-03: resolveTenantByRealm returns NotFound for unknown realm" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -152,6 +173,9 @@ test "TC-OIDC-12-03: resolveTenantByRealm returns NotFound for unknown realm" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-12-04: resolveRealmByTenant returns correct realm ID" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -206,6 +230,9 @@ test "TC-OIDC-12-04: resolveRealmByTenant returns correct realm ID" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-12-05: resolveRealmByTenant returns NotFound for unknown tenant" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

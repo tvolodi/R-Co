@@ -15,6 +15,7 @@ const testing = std.testing;
 const bpm = @import("bpm");
 const jit_provisioning = @import("jit_provisioning");
 const pg = @import("pg");
+const helpers = @import("helpers.zig");
 
 const pool_mod = bpm.db_pool;
 const identity_registry = bpm.identity_registry;
@@ -46,6 +47,17 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 /// GH-512: generate a per-test actor/tenant UUID. Caller owns the returned slice.
@@ -158,6 +170,9 @@ fn ensureTenantBinding(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []cons
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-09-01: first auth creates new user record with auth_source=oidc" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -237,6 +252,9 @@ test "TC-OIDC-09-01: first auth creates new user record with auth_source=oidc" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-09-02: subsequent auth returns existing user no duplicate" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -313,6 +331,9 @@ test "TC-OIDC-09-02: subsequent auth returns existing user no duplicate" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-09-03: JIT disabled for realm returns config with enabled=false" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -348,6 +369,9 @@ test "TC-OIDC-09-03: JIT disabled for realm returns config with enabled=false" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-09-04: default config returned when no explicit row exists" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -374,6 +398,9 @@ test "TC-OIDC-09-04: default config returned when no explicit row exists" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-09-05: duplicate preferred_username with existing internal user" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -446,6 +473,9 @@ test "TC-OIDC-09-05: duplicate preferred_username with existing internal user" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-09-06: JIT provisioning emits audit event on creation" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -521,6 +551,9 @@ test "TC-OIDC-09-06: JIT provisioning emits audit event on creation" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-09-07: attributes map correctly from input to user record" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -567,6 +600,9 @@ test "TC-OIDC-09-07: attributes map correctly from input to user record" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-09-08: jit_provisioning_config table exists with bpm-default seed" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -618,6 +654,9 @@ test "TC-OIDC-09-08: jit_provisioning_config table exists with bpm-default seed"
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-09-09: config overrides take effect with INACTIVE default status" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -653,6 +692,9 @@ test "TC-OIDC-09-09: config overrides take effect with INACTIVE default status" 
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-09-10: config overrides take effect with custom default roles" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

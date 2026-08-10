@@ -5,6 +5,8 @@ const portable_env = @import("env");
 const testing = std.testing;
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const pool_mod = bpm.db_pool;
 const auth_mod = bpm.api_auth;
 const identity_registry = bpm.identity_registry;
@@ -30,6 +32,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     // applies SET search_path TO tenant_default,public (schema isolation).
     bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn adminActor() auth_mod.AuthContext {
@@ -99,6 +112,9 @@ fn freeRow(allocator: std.mem.Allocator, row: []?[]u8) void {
 }
 
 test "TC-ADP-07-01: AGENT_RUNNER role is seeded and token issuance accepts it" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -153,6 +169,9 @@ test "TC-ADP-07-01: AGENT_RUNNER role is seeded and token issuance accepts it" {
 }
 
 test "TC-ADP-07-02: non-admin actor cannot create agent-prefixed usernames" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -177,6 +196,9 @@ test "TC-ADP-07-02: non-admin actor cannot create agent-prefixed usernames" {
 }
 
 test "TC-ADP-07-03: PLATFORM_ADMIN actor can create agent-prefixed usernames" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -206,6 +228,9 @@ test "TC-ADP-07-03: PLATFORM_ADMIN actor can create agent-prefixed usernames" {
 }
 
 test "TC-ADP-07-04: JIT OIDC path rejects reserved agent username prefix" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -233,6 +258,9 @@ test "TC-ADP-07-04: JIT OIDC path rejects reserved agent username prefix" {
 }
 
 test "TC-ADP-07-05: non-agent usernames remain compatible on create path" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

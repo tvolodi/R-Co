@@ -16,6 +16,7 @@ const bpm = @import("bpm");
 const jit_provisioning = @import("jit_provisioning");
 const claim_mapping = @import("claim_mapping");
 const pg = @import("pg");
+const helpers = @import("helpers.zig");
 
 const pool_mod = bpm.db_pool;
 const identity_registry = bpm.identity_registry;
@@ -47,6 +48,17 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn freeRow(allocator: std.mem.Allocator, row: []?[]u8) void {
@@ -254,6 +266,9 @@ fn provisionTestUser(
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-10-01: full flow — resolve user, update profile, reconcile roles" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -323,6 +338,9 @@ test "TC-OIDC-10-01: full flow — resolve user, update profile, reconcile roles
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-10-02: profile sync — display_name, email updated when claims differ" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -378,6 +396,9 @@ test "TC-OIDC-10-02: profile sync — display_name, email updated when claims di
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-10-03: profile no-op — no update when claims match stored values" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -424,6 +445,9 @@ test "TC-OIDC-10-03: profile no-op — no update when claims match stored values
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-10-04: role reconciliation — add new, remove stale" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -500,6 +524,9 @@ test "TC-OIDC-10-04: role reconciliation — add new, remove stale" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-10-05: role preservation — locally-assigned roles survive reconciliation" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -576,6 +603,9 @@ test "TC-OIDC-10-05: role preservation — locally-assigned roles survive reconc
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-10-06: role overlap — both OIDC-sourced and locally-assigned" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -649,6 +679,9 @@ test "TC-OIDC-10-06: role overlap — both OIDC-sourced and locally-assigned" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-10-07: empty token roles — OIDC roles removed, local preserved" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -720,6 +753,9 @@ test "TC-OIDC-10-07: empty token roles — OIDC roles removed, local preserved" 
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-10-08: user not found returns error.UserNotFound" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -758,6 +794,9 @@ test "TC-OIDC-10-08: user not found returns error.UserNotFound" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-10-10: no change — identical profile and roles produce empty result" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

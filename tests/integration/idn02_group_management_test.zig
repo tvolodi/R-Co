@@ -8,6 +8,8 @@ const portable_env = @import("env");
 const testing = std.testing;
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const pool_mod = bpm.db_pool;
 const auth_mod = bpm.api_auth;
 const identity_registry = bpm.identity_registry;
@@ -43,6 +45,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     // applies SET search_path TO tenant_default,public (schema isolation).
     bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn adminActor() auth_mod.AuthContext {
@@ -265,6 +278,9 @@ fn makeGroupTaskFixture(
 }
 
 test "TC-IDN-02-01: create-group success returns 201 with platform-assigned group_id" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -303,6 +319,9 @@ test "TC-IDN-02-01: create-group success returns 201 with platform-assigned grou
 }
 
 test "TC-IDN-02-02: duplicate group name returns HTTP 409" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -333,6 +352,9 @@ test "TC-IDN-02-02: duplicate group name returns HTTP 409" {
 }
 
 test "TC-IDN-02-03: add-member is idempotent for duplicate membership insertion" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -370,6 +392,9 @@ test "TC-IDN-02-03: add-member is idempotent for duplicate membership insertion"
 }
 
 test "TC-IDN-02-04: missing user or missing group returns HTTP 404" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -418,6 +443,9 @@ test "TC-IDN-02-04: missing user or missing group returns HTTP 404" {
 }
 
 test "TC-IDN-02-05: group members are returned in paginated order" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -483,6 +511,9 @@ test "TC-IDN-02-05: group members are returned in paginated order" {
 }
 
 test "TC-IDN-02-06: ACTIVE group member can claim and complete a GROUP-assigned task" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -560,6 +591,9 @@ test "TC-IDN-02-06: ACTIVE group member can claim and complete a GROUP-assigned 
 }
 
 test "TC-IDN-02-07: removing a member does not mutate an already-assigned GROUP task" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

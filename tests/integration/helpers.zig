@@ -834,6 +834,73 @@ pub fn cleanupDefinitionSnapshots(conn: *pg.Conn, definition_id: []const u8) !vo
 /// readiness; it is safe and cheap to call once per test (runMigrations()/
 /// runMigrationsForSchema() are idempotent — a fully-migrated schema costs
 /// one indexed SELECT per call).
+/// ISS-0659 / GH-681: acquire the same `bpm_test_migrations_public` session
+/// advisory lock that TestHarness.init() holds for its full lifetime. Pair
+/// with `releaseIntegrationLock(conn)` (deferred, unconditionally).
+///
+/// Why a separate acquire from `ensureSchemaReady`: `ensureSchemaReady` takes
+/// the lock for the duration of migration + schema-provisioning only (see
+/// runMigrations / runMigrationsForSchema). PR #494 / ISS-0162 extended it
+/// inside TestHarness.init() to cover the full harness lifetime. This entry
+/// point lets a self-managed-pool binary acquire the lock across its OWN
+/// lifetime, while internally routing through the same locked migration
+/// path so it serializes correctly against TestHarness peers.
+///
+/// One process, one acquired session — a second acquire from the same
+/// connection increments the session's hold count (PostgreSQL semantics)
+/// but should still be paired with a matching release call.
+///
+/// Caller responsibility: keep the returned `pg.Conn` alive for the full
+/// binary lifetime (typically via `defer releaseIntegrationLock(&lock_conn)`
+/// in each test block) and defer-release it on every exit path. A session-
+/// level advisory lock is automatically released when the connection drops,
+/// so a hard process abort cannot strand it, but explicit release is the
+/// documented and tested contract.
+pub fn acquireIntegrationLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    const env = portable_env.globalEnviron();
+    const url = env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => {
+            std.debug.print("acquireIntegrationLock: BPM_TEST_DB_URL is required for integration tests\n", .{});
+            return error.MissingTestDatabaseUrl;
+        },
+        error.OutOfMemory => return error.OutOfMemory,
+        else => return err,
+    };
+    defer allocator.free(url);
+
+    var conn = pg.Conn.connectUrl(std.testing.io, allocator, url) catch |err| {
+        std.debug.print("acquireIntegrationLock: pg.Conn.connectUrl failed: {}\n", .{err});
+        return err;
+    };
+    errdefer conn.close();
+
+    configureSessionTimeouts(&conn) catch |err| {
+        std.debug.print("acquireIntegrationLock: configureSessionTimeouts failed: {}\n", .{err});
+        return err;
+    };
+
+    // ISS-0151 / GH #483 / ISS-0659: lock_timeout bracket — 90s window, same as
+    // runMigrations / runMigrationsForSchema and the TestHarness.init() critical
+    // section, to keep queueing bounded across the wider set of binaries
+    // (~50 worst case after this fix vs ~19 today).
+    try conn.exec("SET lock_timeout = '90s'", &.{});
+    try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
+    try conn.exec("SET lock_timeout = '5s'", &.{});
+    return conn;
+}
+
+/// ISS-0659 / GH-681: release the lock acquired by `acquireIntegrationLock`
+/// and close the dedicated connection. Safe to call on the error path: any
+/// exception is swallowed, mirroring `TestHarness.deinit()`'s pattern.
+///
+/// The unlock is `catch {}`-guarded — the session-level lock is also released
+/// automatically when the connection closes (PostgreSQL semantics), so even a
+/// failed unlock cannot strand the lock forever.
+pub fn releaseIntegrationLock(conn: *pg.Conn) void {
+    conn.exec("SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public'))", &.{}) catch {};
+    conn.close();
+}
+
 pub fn ensureSchemaReady(allocator: std.mem.Allocator) !void {
     const env = portable_env.globalEnviron();
     const url = env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {

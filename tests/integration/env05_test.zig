@@ -18,6 +18,8 @@ const testing = std.testing;
 const build_options = @import("build_options");
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 const tenant_context = bpm.api_tenant_context;
@@ -55,6 +57,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
         .url = url,
         .pool_size = 5,
     });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
@@ -170,6 +183,9 @@ fn freeHandlerBody(alloc: std.mem.Allocator, body: []const u8) void {
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-05-01: handleReset returns HTTP 200 with reset_at and tables_truncated" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -228,6 +244,9 @@ test "TC-ENV-05-01: handleReset returns HTTP 200 with reset_at and tables_trunca
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-05-02: handleReset truncates process_definitions but preserves roles" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -339,6 +358,9 @@ test "TC-ENV-05-02: handleReset truncates process_definitions but preserves role
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-05-03: handleReset on production tenant returns HTTP 422 not_a_test_tenant" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -366,6 +388,9 @@ test "TC-ENV-05-03: handleReset on production tenant returns HTTP 422 not_a_test
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-05-04: handleReset returns HTTP 409 when test tenant has active process instances" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -427,6 +452,9 @@ test "TC-ENV-05-04: handleReset returns HTTP 409 when test tenant has active pro
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-05-05: handleDelete removes test tenant public rows and returns HTTP 204" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -488,6 +516,9 @@ test "TC-ENV-05-05: handleDelete removes test tenant public rows and returns HTT
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-05-06: handleDelete on production tenant returns HTTP 422 production_tenant_delete_forbidden" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

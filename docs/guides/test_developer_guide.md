@@ -531,3 +531,57 @@ TEST-DESIGN-VALIDATOR must fail the handoff if a new constraint migration lacks 
 ### 12.4 Green-Main gate (Step 00a in WF-02 and WF-03)
 
 ORCH must not start implementation work when existing integration tests are already failing. Step 00a (run by TEST-RUNNER against `main` before git-setup) is a hard gate. See `test_infrastructure_guide.md §4` for the full procedure.
+
+### 12.5 Shared-table advisory-lock requirement (ISS-0659 / GH-681)
+
+Integration tests that touch any of the **shared tables** below MUST serialize via
+`helpers.acquireIntegrationLock()` for the binary's full lifetime, OR use
+`helpers.TestHarness`. Direct `db.Pool` use against these tables without one of
+those two patterns is a **BLOCKER at lint time** (enforced mechanically by
+`tools/lint_test_isolation.py`).
+
+**Shared tables** (any test writing to these races against concurrent binaries
+under `zig build test-integration`):
+
+| Schema | Tables |
+|---|---|
+| `tenant_default` | timers, events, dead_letter_items, instance_projections, tasks, process_definitions |
+| `public` | `tenant`, `tenant_schemas`, and any DDL object in the `tenant_default` schema |
+
+**Two valid patterns:**
+
+1. **Use `helpers.TestHarness`** — acquires the `bpm_test_migrations_public`
+   advisory lock for the binary's full lifetime (added in PR #494 / ISS-0162).
+   Preferred when the test needs `resetTestData()` between cases.
+2. **Use `helpers.acquireIntegrationLock(allocator)`** at the top of every
+   `test "..."` block, with `defer helpers.releaseIntegrationLock(&lock_conn)`
+   immediately after. Used by the 31 self-managed-pool binaries that open their
+   own `db.Pool` (see `src/design/integration-test-advisory-lock.md` for the
+   full list and the rationale). Per-test acquire is intentional: it gives
+   finer-grained lock release on test failure.
+
+**Forbidden:**
+
+```zig
+// ❌ FORBIDDEN — shared table + raw Pool without lock
+var pool = try makePool(allocator, url);
+try pool.acquire().?.exec("DELETE FROM tenant_default.timers", .{});
+```
+
+```zig
+// ✅ CORRECT — shared table + raw Pool + acquireIntegrationLock
+var lock_conn = try helpers.acquireIntegrationLock(std.heap.page_allocator);
+defer helpers.releaseIntegrationLock(&lock_conn);
+var pool = try makePool(allocator, url);
+try pool.acquire().?.exec("DELETE FROM tenant_default.timers", .{});
+```
+
+The mechanical enforcement lives in
+`tools/lint_test_isolation.py` (added in WF03-GH681-20260810): any
+`tests/integration/*.zig` file that imports `bpm.pool.Pool` and references
+neither `helpers.acquireIntegrationLock` nor `TestHarness` is flagged as
+BLOCKER. Existing baseline entries for the 31 already-migrated files are
+recorded in `tools/lint_test_isolation.baseline.json`.
+
+Reference: [GH-681](https://github.com/tvolodi/R-Co/issues/681),
+`src/design/integration-test-advisory-lock.md`.

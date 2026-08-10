@@ -15,6 +15,7 @@ const testing = std.testing;
 const bpm = @import("bpm");
 const identity_stability = @import("identity_stability");
 const pg = @import("pg");
+const helpers = @import("helpers.zig");
 
 const pool_mod = bpm.db_pool;
 const identity_registry = bpm.identity_registry;
@@ -47,6 +48,17 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn freeRow(allocator: std.mem.Allocator, row: []?[]u8) void {
@@ -160,6 +172,9 @@ fn ensureTenantBinding(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []cons
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-11-01: resolveByExternalIdentity returns correct user" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -213,6 +228,9 @@ test "TC-OIDC-11-01: resolveByExternalIdentity returns correct user" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-11-02: resolveByExternalIdentity returns UserNotFound" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -234,6 +252,9 @@ test "TC-OIDC-11-02: resolveByExternalIdentity returns UserNotFound" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-11-03: renamed user retains same user_id via sub lookup" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -290,6 +311,9 @@ test "TC-OIDC-11-03: renamed user retains same user_id via sub lookup" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-11-04: no fallback to email-based lookup" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -343,6 +367,9 @@ test "TC-OIDC-11-04: no fallback to email-based lookup" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-11-06: assertStableIdentity matching ids returns ok" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     try identity_stability.assertStableIdentity("user-123", "user-123");
 }
 
@@ -351,6 +378,9 @@ test "TC-OIDC-11-06: assertStableIdentity matching ids returns ok" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-11-07: assertStableIdentity mismatched ids returns error" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const result = identity_stability.assertStableIdentity("user-123", "user-456");
     try testing.expectError(error.IdentityDriftDetected, result);
 }
@@ -360,6 +390,9 @@ test "TC-OIDC-11-07: assertStableIdentity mismatched ids returns error" {
 // ---------------------------------------------------------------------------
 
 test "TC-OIDC-11-08: resolveByExternalIdentity detects profile drift" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

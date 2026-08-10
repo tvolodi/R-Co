@@ -1,0 +1,45 @@
+{
+  "handoff_id": "a6810000-0000-0050-0000-000000000000",
+  "run_id": "WF03-GH681-20260810",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-10T17:24:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a6810000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/681",
+    "iss_ref": "ISS-0659"
+  },
+  "task": {
+    "description": "ISSUE-FIXER Step 0.5 — registry lookup and ISS file creation for GH-681 (ISS-0659).\n\nThe issue is well-documented in the GitHub body. 31 integration test files bypass TestHarness's advisory lock (PR #494's fix scope) and remain racy under the full test-integration suite. Evidence: sch303_timer_dlq_test.zig, spt01_iss0068_onboarding_schema_test.zig, iss0185_dual_schema_test.zig, env01_test.zig, env05_test.zig all share the same root cause — they manage their own db.Pool directly and never call TestHarness.init()/deinit(), so PR #494's serialization has no effect on them.\n\n1. Search docs/issues/ for an existing entry that already references github_issue=https://github.com/tvolodi/R-Co/issues/681. If found, link to it.\n2. If no entry exists: create docs/issues/ISS-0659.json with status=IN_PROGRESS, severity=MAJOR, github_issue=https://github.com/tvolodi/R-Co/issues/681. Include the 5 root-cause failure files, the 31 affected files list, and the two fix options (a) extend advisory lock to all 31 files, or (b) scope resetTestData() to per-tenant/per-fixture.\n3. Verify the local ID ISS-0659 is not already in use.\n4. Record a Step 1 diagnosis summary in the handoff result pointing to PR #494 as the prior fix, with explicit 'this issue documents the boundary of PR #494's fix scope' framing.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0659.json exists with status=IN_PROGRESS, github_issue=https://github.com/tvolodi/R-Co/issues/681",
+      "Step 1 root cause diagnosis is recorded in handoff.result.summary",
+      "No duplicate github_issue field across docs/issues/*.json"
+    ],
+    "functions_to_call": [
+      "fn:register-issue",
+      "fn:search-issues"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 0.5 registry lookup complete. ISS-0659 already exists at docs/issues/ISS-0659.json (created 2026-08-10T17:10:58Z by the WF03-GH679-20260810 run that root-caused this issue); the entry already references github_issue=https://github.com/tvolodi/R-Co/issues/681 and contains all required fields (5 root-cause failure files sch303/spt01/iss0185/env01/env05, 31-file TestHarness-bypass list, evidence_run clean-reset control, two fix options (a/b), prevention). No duplicate github_issue found across docs/issues/*.json (grep returned exactly 1 hit, the existing ISS-0659 entry). Linked the existing entry to this run by flipping status OPEN -> IN_PROGRESS, setting handoff_id=a6810000-...-0050, stamping last_updated=2026-08-10T17:25:13Z, and updating run_id to WF03-GH681-20260810 (was WF03-GH679-20260810 from when the entry was originally filed). Step 1 diagnosis (handover to CODE-DESIGNER Step 2): root cause is precisely documented in the GitHub issue body and in the ISS-0659 root_cause field -- PR #494 (merged prior to this run, closing GH-486/ISS-0162) fixed cross-binary races by having TestHarness hold an advisory lock for its full lifetime; that fix is TestHarness-to-TestHarness ONLY. 31 integration test files (identified by grep tests/integration/*.zig for direct db.Pool.init usage without TestHarness) bypass that lock and remain racy. This issue documents the BOUNDARY of PR #494's fix scope, not a new defect. The design question for CODE-DESIGNER is which of the two fix options to take: (a) extend the advisory-lock pattern to every self-managed-pool binary (lower-risk, reuses verified mechanism, but is a per-file retrofit), or (b) scope resetTestData()'s DELETEs and any ad-hoc schema-provisioning calls to per-tenant/per-fixture (more invasive, touches resetTestData() itself, closes the gap for future new test files too). The 3 allocator-leak failures observed in the same control run (api03_instance_read_test, adp06_pipeline_run_correlation_test, sim01_04_simulation_mode_test) are explicitly OUT OF SCOPE here (different symptom class, not diagnosed) -- file separately if pursued. The iss105_token_model_test failure is also out of scope (already fixed in WF03-GH679-20260810). Acceptance: rerun the clean-reset control (fresh db_test volume + fresh zig build migrate + single zig build test-integration invocation) and confirm the 5 non-leak failures do not reproduce across 3+ consecutive clean runs.",
+    "artifacts_out": [
+      "docs/issues/ISS-0659.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T17:25:13Z",
+  "completed_at": "2026-08-10T17:25:13Z"
+}

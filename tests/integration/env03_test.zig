@@ -18,6 +18,8 @@ const testing = std.testing;
 const build_options = @import("build_options");
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 const tenant_context = bpm.api_tenant_context;
@@ -55,6 +57,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
         .url = url,
         .pool_size = 5,
     });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
@@ -240,6 +253,9 @@ fn seedUserWithDesignerRole(
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-03-01: promoteDefinition returns DRAFT PromotionResult with valid definition_id" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -320,6 +336,9 @@ test "TC-ENV-03-01: promoteDefinition returns DRAFT PromotionResult with valid d
 }
 
 test "TC-ENV-03-02: promoteDefinition writes DEFINITION_PROMOTED audit entries on both tenants" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -421,6 +440,9 @@ test "TC-ENV-03-02: promoteDefinition writes DEFINITION_PROMOTED audit entries o
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-03-03: promoteDefinition returns ActiveDefinitionNotFound when name does not exist" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -472,6 +494,9 @@ test "TC-ENV-03-03: promoteDefinition returns ActiveDefinitionNotFound when name
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-03-04: promoteDefinition returns MissingDesignerRoleOnProd when actor lacks role on prod" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -525,6 +550,9 @@ test "TC-ENV-03-04: promoteDefinition returns MissingDesignerRoleOnProd when act
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-03-05: promoteDefinition increments version when name already exists on production" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -603,6 +631,9 @@ test "TC-ENV-03-05: promoteDefinition increments version when name already exist
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-03-06: promoteDefinition returns ProductionTenantInactive when prod tenant is INACTIVE" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

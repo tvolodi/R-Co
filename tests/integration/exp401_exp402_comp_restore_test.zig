@@ -15,6 +15,8 @@ const portable_env = @import("env");
 const builtin = @import("builtin");
 const testing = std.testing;
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
@@ -67,6 +69,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
         .url = url,
         .pool_size = 8,
     });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn parseUuid(s: []const u8) ![16]u8 {
@@ -145,6 +158,9 @@ fn mustGraphValidationError(result: anyerror!bpm.definition.Definition, store: *
 // ---------------------------------------------------------------------------
 
 test "TC-EXP-401-01: valid compensation handler and error boundary metadata is accepted" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
@@ -188,6 +204,9 @@ test "TC-EXP-401-01: valid compensation handler and error boundary metadata is a
 }
 
 test "TC-EXP-401-02: unknown compensation scope is rejected" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
@@ -228,6 +247,9 @@ test "TC-EXP-401-02: unknown compensation scope is rejected" {
 }
 
 test "TC-EXP-401-03: reverse_order=false is rejected" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
@@ -268,6 +290,9 @@ test "TC-EXP-401-03: reverse_order=false is rejected" {
 }
 
 test "TC-EXP-401-04: irreversible node with compensation metadata is rejected" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
@@ -308,6 +333,9 @@ test "TC-EXP-401-04: irreversible node with compensation metadata is rejected" {
 }
 
 test "TC-EXP-401-05: error boundary requires both on_error_event and on_cancel_event" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
@@ -352,6 +380,9 @@ test "TC-EXP-401-05: error boundary requires both on_error_event and on_cancel_e
 // ---------------------------------------------------------------------------
 
 test "TC-EXP-402-01: restore reconciliation re-arms live timer and task waits" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
@@ -449,6 +480,9 @@ test "TC-EXP-402-01: restore reconciliation re-arms live timer and task waits" {
 }
 
 test "TC-EXP-402-02: unrearmable unresolved wait marks RESTORED_ORPHAN and reason" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
