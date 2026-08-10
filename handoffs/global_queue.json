@@ -1576,6 +1576,26 @@
       "completed_at": "2026-08-10T20:19:52Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-295",
+      "issue_number": 295,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/295",
+      "title": "ISS-0080 (PI-05) \u2014 Scored test-tier rubric and the fail-first rule",
+      "severity": "MAJOR",
+      "labels": [
+        "issue"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T20:21:54Z"
+      },
+      "added_at": "2026-08-10T20:21:54Z",
+      "started_at": "2026-08-10T20:21:54Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
