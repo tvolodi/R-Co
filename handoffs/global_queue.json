@@ -1323,14 +1323,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/654",
       "title": "ee09_merge_variables_test TC-ISS-202-01 and effects_subsystem_test TC-EXP-301-09: two new test-integration failures not in GH-649's original 28-file cluster",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T05:37:18Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T05:37:18Z",
       "started_at": "2026-08-10T05:37:18Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T05:57:26Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 654,
