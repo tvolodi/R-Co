@@ -1,12 +1,12 @@
 {
   "issue_id": "ISS-0661",
   "title": ".github/agents/ and .github/instructions/ (Copilot harness) independently drifted from .claude/agents/, not yet reconciled",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MINOR",
   "category": "developer experience / pipeline infrastructure / documentation",
-  "run_id": null,
-  "workflow_id": null,
-  "handoff_id": null,
+  "run_id": "WF03-GH693-20260811",
+  "workflow_id": "WF03-GH693-20260811",
+  "handoff_id": "c3018b7e-5f6d-4a8c-b134-9d0f4c7a8e32",
   "requirement_ids": [],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/693",
   "summary": "Discovered incidentally during GH-291/ISS-0076 (PI-01, CLAUDE.md split). While reconciling .claude/agents/*.md against CLAUDE.md, a spot check of .github/agents/*.agent.md (18 files) and .github/instructions/*.md (3 files) -- the parallel entry point for the GitHub Copilot harness -- found they are a separately drifted set from .claude/agents/, not simply stale copies of it. Both surfaces already reference docs/agents/shared/HANDOFF_PROTOCOL.md (confirmed via lint_agent_docs.py) so they are not in the pre-2026-08-05-audit fully-duplicated state, but no one has verified section-by-section whether the two harness surfaces now agree on content post-GH-291. Note: originally drafted as ISS-0660, renumbered to ISS-0661 after discovering ISS-0660 was already claimed on origin/main's global_queue.json by an unrelated concurrent workspace (GH #691, 'public schema pollution check') -- confirms the local-vs-global numbering-collision risk this project's own directives warn about.",
@@ -16,9 +16,15 @@
   "evidence": {
     "spot_check_examples": "backend-dev.agent.md already referenced templates/lego-catalog.md codegen before .claude/agents/backend-dev.md did. bo-swiftroute.agent.md had a fuller Mode B scenario-authoring workflow than CLAUDE.md's own BO-SWIFTROUTE section. Both surfaces (all 21 files) already reference docs/agents/shared/HANDOFF_PROTOCOL.md per python tools/lint_agent_docs.py."
   },
-  "resolution": null,
-  "files_changed": [],
+  "resolution": "Prioritized the issue's own lighter-weight suggested option: added an A007 check to tools/lint_agent_docs.py that flags meaningful content divergence (Jaccard similarity < 0.55 over normalized significant-word sets) between a .github/ role file and its canonical .claude/agents/ counterpart. Findings are suppressed via a new tools/lint_agent_docs.baseline.json (same acknowledgment pattern as tools/lint_handoffs.baseline.json) so pre-existing drift does not block CI while future NEW drift is caught immediately. Closed the one genuine structural gap: created .github/agents/security-reviewer.agent.md (previously did not exist at all). Spot-checked the two examples the issue named by hand: both backend-dev.agent.md's codegen content and bo-swiftroute.agent.md's Mode B workflow are confirmed already resolved in .claude/agents/ as a side effect of GH-291/PI-01 -- no further edits needed there. Did NOT attempt full 18-file section-by-section reconciliation, per GH-291's own explicit scoping precedent (that would roughly double this issue's MINOR-severity effort). A007's first run flags 6 files below threshold, recorded as acknowledged baseline debt with per-role reason_ref entries rather than fixed in this run.",
+  "files_changed": [
+    "tools/lint_agent_docs.py",
+    "tools/lint_agent_docs.baseline.json",
+    ".github/agents/security-reviewer.agent.md",
+    "docs/agents/AGENT_SYSTEM.md",
+    "CHANGELOG.md"
+  ],
   "created_at": "2026-08-10T22:01:37Z",
-  "resolved_at": null,
-  "prevention": "Consider extending tools/lint_agent_docs.py with a new check (e.g. A007) that flags meaningful content divergence between a .github/agents/*.agent.md file and its .claude/agents/*.md counterpart, so this class of drift is caught automatically rather than only by manual spot-check during an unrelated issue."
+  "resolved_at": "2026-08-10T22:34:03Z",
+  "prevention": "A007 (tools/lint_agent_docs.py) now runs on every CI invocation and catches any NEW .github/-vs-.claude/agents/ divergence automatically -- the class of drift this issue reported can no longer accumulate silently. Remaining known debt (6 files below threshold) is tracked in tools/lint_agent_docs.baseline.json, not silently dropped; clearing baseline entries by actually reconciling those files remains open work for a future pass."
 }

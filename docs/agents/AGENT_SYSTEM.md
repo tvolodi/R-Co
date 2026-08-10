@@ -361,3 +361,32 @@ scenario-authoring detail `CLAUDE.md` lacked). But they are a **separately drift
 verified section-by-section against `.claude/agents/` in this pass — that full Copilot-harness
 reconciliation is out of scope for PI-01 (Effort: M) and is a candidate for its own follow-up
 issue if genuine content gaps are found there.
+
+**Drift detection as of GH-693 / ISS-0661:** the follow-up issue this section forecast was
+filed and resolved with the lighter-weight of its own two suggested options. `tools/lint_agent_docs.py`
+now runs an **A007** check: for every role that has both a `.claude/agents/<role>.md` (canonical)
+and a `.github/agents/<role>.agent.md` and/or `.github/instructions/<role>.instructions.md`
+counterpart, it computes a Jaccard similarity over each file's normalized significant-word set
+(frontmatter stripped, common connective words removed) and flags the pair MINOR when similarity
+falls below 0.55 — a threshold picked to separate genuine section-level gaps (a whole missing
+codegen workflow) from mere reformatting/reordering. This does **not** re-run the full
+section-by-section reconciliation PI-01 declined; a full 18-file reconciliation remains out of
+scope for the reasons stated above. Two of the two examples this section originally named
+(`backend-dev.agent.md`'s codegen content, `bo-swiftroute.agent.md`'s Mode B workflow) were
+verified during GH-693 to already be resolved as a side effect of PI-01's own reconciliation —
+`.claude/agents/backend-dev.md` and `.claude/agents/bo-swiftroute.md` now contain that content
+in full, and both score well above the A007 threshold. The genuine structural gap this section
+also named — `SECURITY-REVIEWER` having no Copilot-harness adapter at all — is closed:
+`.github/agents/security-reviewer.agent.md` now exists, mirroring `.claude/agents/security-reviewer.md`.
+
+A007's first run against the current corpus found 6 files below threshold (`orchestrator.agent.md`
+0.40, `orchestrator.instructions.md` 0.42, `backend-dev.instructions.md` 0.45, `backend-dev.agent.md`
+0.46, `test-runner.agent.md` 0.52, `req-validator.agent.md` 0.55) — genuine, still-open gaps,
+mostly Copilot-harness files that predate PI-03/PI-04 (`zig build check`, `make.ps1`) and the
+security-invariants split. Per the same GH-291 scoping precedent, GH-693 did not fix all 6 in
+this run; they are recorded as an acknowledged baseline in `tools/lint_agent_docs.baseline.json`
+(reasons keyed by role, same acknowledgment pattern as `tools/lint_handoffs.baseline.json`) so
+A007 does not fail CI on debt this run did not introduce, while any *future* file that drifts
+below threshold is caught immediately (`--no-baseline` shows the full unsuppressed set at any
+time). Clearing entries from that baseline — by actually reconciling those 6 files — remains
+open, tracked debt, not silently dropped.

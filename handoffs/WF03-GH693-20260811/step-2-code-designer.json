@@ -1,0 +1,41 @@
+{
+  "handoff_id": "b2f0a6d3-4e5c-4f7b-a02d-8c9e3b6f7d21",
+  "run_id": "WF03-GH693-20260811",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-10T22:34:03Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0661.json",
+      "docs/agents/AGENT_SYSTEM.md"
+    ]
+  },
+  "task": {
+    "description": "Design the fix for GH-693 / ISS-0661 (Copilot harness drift, MINOR). The issue itself already frames two acceptance-criteria options and explicitly recommends the lighter-weight one given GH-291's precedent of declining full 18-file reconciliation. Design decision: prioritize option 2 (extend tools/lint_agent_docs.py with a new A007 check that detects meaningful content divergence between a .github/agents/*.agent.md / .github/instructions/*.instructions.md file and its canonical .claude/agents/*.md counterpart, via a content-similarity heuristic over normalized significant words) over option 1 (full manual reconciliation of all 18 files, which GH-291 already scoped out as doubling its own effort). Scope for option 1: only (a) create the genuinely-missing .github/agents/security-reviewer.agent.md adapter (SECURITY-REVIEWER has zero Copilot-harness counterpart today), and (b) spot-check the two examples the issue names by hand (backend-dev.agent.md, bo-swiftroute.agent.md) to confirm whether GH-291's own reconciliation already resolved them as a side effect. A007's initial findings against the current corpus are to be captured in a new baseline-acknowledgment file (tools/lint_agent_docs.baseline.json), same pattern as tools/lint_handoffs.baseline.json / tools/lint_test_isolation.baseline.json, so pre-existing drift does not retroactively block CI while future NEW drift is still caught. This is a Type E (novel, cross-cutting) design — no parameter file applies; the design is captured directly in this handoff's result plus inline code comments in the modified tool, per the proportionality called for by MINOR severity (no separate src/design/*.md prose file for a change this size).",
+    "acceptance_criteria": [
+      "tools/lint_agent_docs.py gains an A007 check comparing each .github/ role file's content similarity against its .claude/agents/ canonical counterpart",
+      "A007 severity is MINOR and does not fail CI on its own for pre-existing baseline-acknowledged findings",
+      ".github/agents/security-reviewer.agent.md is created, matching the established .agent.md format and mirroring .claude/agents/security-reviewer.md's content",
+      "backend-dev.agent.md and bo-swiftroute.agent.md are spot-checked against their .claude/agents/ counterparts and the outcome is recorded",
+      "docs/agents/AGENT_SYSTEM.md §9 is updated to describe the new drift-detection mechanism and its current findings"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design: A007 check added to tools/lint_agent_docs.py using Jaccard similarity over normalized significant-word sets (frontmatter stripped, stopwords removed), threshold 0.55 chosen empirically against the actual corpus distribution (validated: cleanly separates 6 genuinely-diverged files from 15 well-synced ones, including confirming bo-swiftroute.agent.md and test-design-validator.agent.md score 0.77-0.82, consistent with them already being well-reconciled). Baseline-acknowledgment mechanism replicated from tools/lint_test_isolation.py's simpler load_baseline() pattern (a flat matching_key set) rather than lint_handoffs.py's more complex reason-code system, since A007 has only one finding shape. Spot-check outcome: both backend-dev.agent.md and bo-swiftroute.agent.md's originally-cited gaps are CONFIRMED ALREADY RESOLVED in .claude/agents/ as a side effect of GH-291/PI-01 (backend-dev.md now has the full Type A/C codegen workflow plus zig build check/make.ps1/security-invariants content that supersedes what .github/ had; bo-swiftroute.md has the full Mode B authoring workflow and severity guide). The genuine remaining gap is security-reviewer.agent.md's total absence, now closed. security-reviewer.agent.md written as a content mirror of .claude/agents/security-reviewer.md in the established .agent.md frontmatter/section format (matched against issue-fixer.agent.md and code-design-validator.agent.md as reference examples).",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T22:34:03Z",
+  "completed_at": "2026-08-10T22:34:03Z"
+}
