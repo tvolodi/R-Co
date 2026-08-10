@@ -960,3 +960,4 @@
 2026-08-10T22:34:03Z | COMPLETE | WF03-GH693-20260811 | c3018b7e | BACKEND-DEV | PASS lint_agent_docs.py A007 added, 6 baseline-acknowledged findings, security-reviewer.agent.md created, lint_handoffs.py exit 0
 2026-08-10T22:40:18Z | RESOLVE | GH-693 | --- | ORCH | WF03-GH693-20260811 Step Final PASS (PR #696) — A007 lint check + security-reviewer.agent.md + baseline-acknowledged drift
 2026-08-10T22:56:45Z | RESOLVE | GH-283 | --- | ORCH | WF03-GH283-20260811 Step Final PASS (PR #697) -- ADP-09/ADP-10 verified clean (5/5 + 2/2 tests, 3x each, 0 flakiness), no code fix needed, closed as side-effect of GH-679/GH-681 advisory-lock fix
+2026-08-10T23:02:30Z | RESOLVE | GH-281 | --- | ORCH | WF03-GH281-20260811 Step Final PASS (PR #698) — closed as accepted-by-design, getEnvOrSkip is adopted resolution
