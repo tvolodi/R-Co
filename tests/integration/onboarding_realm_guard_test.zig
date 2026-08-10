@@ -25,6 +25,7 @@ const provider_errors = bpm.identity_provider.errors;
 const provider_manager = bpm.identity_provider.manager;
 const tenant_ctx = bpm.api_tenant_context;
 const helpers = @import("helpers.zig");
+const pg = @import("pg");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     // on helpers.ensureSchemaReady() for the full root-cause rationale.
     try helpers.ensureSchemaReady(allocator);
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 3 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 /// Generate a random UUID v4 hex string (36 chars with dashes).
@@ -319,6 +331,9 @@ fn readOnboardingState(
 // ─────────────────────────────────────────────────────────────────────────────
 
 test "TC-ISS0071-01: realm missing guard transitions state to failed and response has error=realm_missing" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
 
     // Route pool connections to tenant_default schema (where onboarding_registry lives).
@@ -374,6 +389,9 @@ test "TC-ISS0071-01: realm missing guard transitions state to failed and respons
 // ─────────────────────────────────────────────────────────────────────────────
 
 test "TC-ISS0071-02: realm present leaves state=completed and returns stored body unchanged" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
 
     // Route pool connections to tenant_default schema.
@@ -430,6 +448,9 @@ test "TC-ISS0071-02: realm present leaves state=completed and returns stored bod
 // ─────────────────────────────────────────────────────────────────────────────
 
 test "TC-ISS0071-03: realm missing guard is idempotent — already-failed row is not modified" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
 
     // Route pool connections to tenant_default schema.

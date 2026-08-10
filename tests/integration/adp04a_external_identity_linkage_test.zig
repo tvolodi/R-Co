@@ -5,6 +5,8 @@ const portable_env = @import("env");
 const testing = std.testing;
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const pool_mod = bpm.db_pool;
 const identity_registry = bpm.identity_registry;
 const identity_service = bpm.identity_service;
@@ -30,6 +32,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     // applies SET search_path TO tenant_default,public (schema isolation).
     bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn freeRow(allocator: std.mem.Allocator, row: []?[]u8) void {
@@ -117,6 +130,9 @@ fn ensureTenantBinding(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []cons
 }
 
 test "TC-ADP-04a-01: legacy/internal users keep auth_source=internal and NULL external linkage" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -158,6 +174,9 @@ test "TC-ADP-04a-01: legacy/internal users keep auth_source=internal and NULL ex
 }
 
 test "TC-ADP-04a-02: createOrGetJitOidcUser stores oidc linkage and resolves by tenant+realm+sub" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -225,6 +244,9 @@ test "TC-ADP-04a-02: createOrGetJitOidcUser stores oidc linkage and resolves by 
 }
 
 test "TC-ADP-04a-03: createOrGetJitOidcUser is idempotent for same tenant+realm+sub" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -293,6 +315,9 @@ test "TC-ADP-04a-03: createOrGetJitOidcUser is idempotent for same tenant+realm+
 }
 
 test "TC-ADP-04a-04: tenant-scoped resolution prevents cross-tenant identity binding" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -348,6 +373,9 @@ test "TC-ADP-04a-04: tenant-scoped resolution prevents cross-tenant identity bin
 }
 
 test "TC-ADP-04a-06: multiple internal NULL-linkage rows coexist while duplicate external pairs are rejected" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

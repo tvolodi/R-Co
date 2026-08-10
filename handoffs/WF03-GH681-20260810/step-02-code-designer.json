@@ -1,0 +1,49 @@
+{
+  "handoff_id": "a6810000-0000-0200-0000-000000000000",
+  "run_id": "WF03-GH681-20260810",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-10T17:25:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a6810000-0000-0000-0000-000000000000",
+      "a6810000-0000-0050-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0659.json",
+      "tests/integration/TestHarness.zig (or wherever the advisory-lock lives)"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/681",
+    "iss_ref": "ISS-0659"
+  },
+  "task": {
+    "description": "CODE-DESIGNER Step 2 (REWORK 1) - fix the lint failures in the design at src/design/integration-test-advisory-lock.md.\n\nThe previous design failed lint with 1 MAJOR and 6 MINOR findings:\n\n1. [MAJOR] E050 at line 68 - fenced code block exceeds 40 lines. Either replace with prose, or split into multiple shorter blocks (each <= 40 lines).\n\n2. [MINOR] E030 - schema-qualified names at lines 23, 360, 362, 401. Use unqualified names instead (e.g. tenant instead of public.tenant, tenant_schemas instead of public.tenant_schemas). The linter enforces this anti-pattern rule.\n\nThe design content (recommendation of option (a), 32-file inventory, patterns, errors, verification plan) is otherwise correct. Only these structural defects need to be fixed.\n\nAfter edits:\n- Run: python tools/lint_design_artefact.py src/design/integration-test-advisory-lock.md - must exit 0 with no BLOCKER/MAJOR.\n- DO NOT remove the existing 32-file inventory, recommendation, or verification plan.",
+    "acceptance_criteria": [
+      "python tools/lint_design_artefact.py src/design/integration-test-advisory-lock.md exits 0 with no BLOCKER/MAJOR",
+      "Design recommends one of the two options with justification",
+      "All affected files listed with the exact change required per file",
+      "Errors section enumerates failure modes if not followed",
+      "Verification plan is concrete (3+ clean runs after fix)",
+      "No schema-qualified table names in prose (only inside quoted SQL where required)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 1: fixed E050 (split oversized fenced code block at original line 68 into 2 blocks each <=40 lines via prose lead-in for the first function) and E030 (replaced 6 schema-qualified names with unqualified names in prose: line 23 tenant_schemas; lines 360/362 tenant; lines 401 tenant and tenant_schemas). Lint_design_artefact.py now exits 0 with no BLOCKER/MAJOR/MINOR. Design content (option (a) recommendation, 32-file inventory, patterns A/B/global-helper, error taxonomy, verification plan) preserved unchanged.",
+    "artifacts_out": [
+      "src/design/integration-test-advisory-lock.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-08-10T17:37:00Z",
+  "completed_at": "2026-08-10T17:37:31Z"
+}

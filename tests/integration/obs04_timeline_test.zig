@@ -8,6 +8,8 @@ const portable_env = @import("env");
 const testing = std.testing;
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const instance_routes = bpm.instance_routes;
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
@@ -30,6 +32,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     // applies SET search_path TO tenant_default,public (schema isolation).
     bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn freeRouteBody(allocator: std.mem.Allocator, body: []const u8) void {
@@ -234,6 +247,9 @@ fn randomUuidString() [36]u8 {
 }
 
 test "TC-OBS-04-INT-01: unknown instance returns HTTP 404" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -261,6 +277,9 @@ test "TC-OBS-04-INT-01: unknown instance returns HTTP 404" {
 }
 
 test "TC-OBS-04-INT-02: cancelled instance includes archived+live full history in ascending order" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -368,6 +387,9 @@ test "TC-OBS-04-INT-02: cancelled instance includes archived+live full history i
 }
 
 test "TC-OBS-04-INT-03: cursor pagination returns deterministic continuation without duplicates" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -428,6 +450,9 @@ test "TC-OBS-04-INT-03: cursor pagination returns deterministic continuation wit
 }
 
 test "TC-OBS-04-INT-04: actor display-name fallback order user -> token_description -> system" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -478,6 +503,9 @@ test "TC-OBS-04-INT-04: actor display-name fallback order user -> token_descript
 }
 
 test "TC-OBS-04-INT-05: timeline resolves tenant from instance projection when query tenant is default" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

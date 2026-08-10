@@ -3,6 +3,8 @@ const portable_env = @import("env");
 const testing = std.testing;
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 
@@ -31,6 +33,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     // applies SET search_path TO tenant_default,public (schema isolation).
     bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn parseUuid(s: []const u8) ![16]u8 {
@@ -186,6 +199,9 @@ fn cleanupUserByEmail(conn: *bpm.pool.Conn, email: []const u8) void {
 }
 
 test "TC-OBS-03-INT-01: state-changing writes create audit rows with required fields" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -327,6 +343,9 @@ test "TC-OBS-03-INT-01: state-changing writes create audit rows with required fi
 }
 
 test "TC-OBS-03-INT-02: read-only GET/list operations do not create audit rows" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -408,6 +427,9 @@ test "TC-OBS-03-INT-02: read-only GET/list operations do not create audit rows" 
 }
 
 test "TC-OBS-03-INT-03: audit insert failure rolls back business write" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -485,6 +507,9 @@ test "TC-OBS-03-INT-03: audit insert failure rolls back business write" {
 }
 
 test "TC-OBS-03-INT-04: audit rows are immutable against update and delete" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -539,6 +564,9 @@ test "TC-OBS-03-INT-04: audit rows are immutable against update and delete" {
 }
 
 test "TC-OBS-03-INT-05: GET /audit supports filters with deterministic pagination and ordering" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -626,6 +654,9 @@ test "TC-OBS-03-INT-05: GET /audit supports filters with deterministic paginatio
 }
 
 test "TC-OBS-03-INT-06: canceled-token post-auth action remains audited" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

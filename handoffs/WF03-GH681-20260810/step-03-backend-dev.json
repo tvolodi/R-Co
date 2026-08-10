@@ -1,0 +1,44 @@
+{
+  "handoff_id": "a6810000-0000-0300-0000-000000000000",
+  "run_id": "WF03-GH681-20260810",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-10T17:39:00Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a6810000-0000-0000-0000-000000000000",
+      "a6810000-0000-0050-0000-000000000000",
+      "a6810000-0000-0200-0000-000000000000",
+      "a6810000-0000-02b1-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/integration-test-advisory-lock.md",
+      "docs/issues/ISS-0659.json"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/681",
+    "iss_ref": "ISS-0659"
+  },
+  "task": {
+    "description": "BACKEND-DEV Step 3 \u2014 implement the integration-test advisory-lock fix per src/design/integration-test-advisory-lock.md.\n\nThis is a test-infrastructure change (Zig files in tests/integration/). The design recommends Option (a): extend PR #494's bpm_test_migrations_public advisory-lock pattern to all 32 self-managed-pool binaries via a new helpers.acquireIntegrationLock/releaseIntegrationLock pair.\n\nApply the design's changes to:\n- tests/integration/helpers.zig (or wherever the new helpers integrate) \u2014 add acquireIntegrationLock and releaseIntegrationLock functions\n- The 32 self-managed-pool binary files (use grep -L 'TestHarness' tests/integration/*.zig to find them; the design lists them in \u00a75): sch303_timer_dlq_test.zig, env01_test.zig, env02_test.zig, env03_test.zig, env05_test.zig, iss0605_orphan_self_heal_test.zig, tenant_config_realm_test.zig, idn01..idn04 (4), oidc08..oidc34 (8), ext02/ext04, adm_ui_09, adp04/04a/04b/07, exp401_exp402, obs03/obs04, onboarding_realm_guard, tm01.\n- Pattern A (29 files, plain makePool()): call acquireIntegrationLock before makePool, releaseIntegrationLock at end.\n- Pattern B (1 file: env05_test.zig, makePool() + provisionTenantSchema): same, plus ensure provisionTenantSchema does not race against concurrent harnesses.\n- docs/guides/test_developer_guide.md \u2014 add the rule that integration tests touching shared tables MUST use TestHarness, not a raw Pool.\n\nValidation steps:\n1. zig build (must exit 0)\n2. zig build test (must exit 0)\n3. python tools/lint_test_isolation.py tests/integration (must exit 0, no BLOCKER)\n4. python tools/lint_sql_param_types.py src tests (must exit 0, no BLOCKER/MAJOR)\n5. git add -A && git commit -m 'test(WF03-GH681): extend PR #494 advisory lock to all 32 self-managed-pool binaries (ISS-0659)'\n6. git push origin feature/WF03-GH681-20260810\n\nReturn PASS once all 32 files are updated, docs updated, and the build passes.\n\nNote: The destructive 3+ clean-run verification (docker-compose down -v db_test + zig build migrate + zig build test-integration) is part of GH-681's acceptance criteria but is too heavy to run in this handoff. It will be validated by the next TEST-RUNNER step.",
+    "acceptance_criteria": [
+      "src/design/integration-test-advisory-lock.md recommendations applied to helpers.zig and 32 affected files",
+      "docs/guides/test_developer_guide.md updated with the rule",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "python tools/lint_test_isolation.py tests/integration exits 0 with no BLOCKER",
+      "python tools/lint_sql_param_types.py src tests exits 0 with no BLOCKER/MAJOR",
+      "Commit pushed to origin/feature/WF03-GH681-20260810"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T17:40:43Z",
+  "completed_at": null
+}

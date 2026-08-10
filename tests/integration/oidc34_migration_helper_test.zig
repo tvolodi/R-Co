@@ -10,6 +10,8 @@ const testing = std.testing;
 
 const bpm = @import("bpm");
 const migration_helper = @import("oidc_migration_helper");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 
 const pool_mod = bpm.db_pool;
 
@@ -28,6 +30,17 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn freeRow(allocator: std.mem.Allocator, row: []?[]u8) void {
@@ -70,6 +83,9 @@ fn freeCandidates(allocator: std.mem.Allocator, candidates: []migration_helper.U
 }
 
 test "TC-OIDC-34-01: listUnlinkedInternalUsers returns internal users without external linkage" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -90,6 +106,9 @@ test "TC-OIDC-34-01: listUnlinkedInternalUsers returns internal users without ex
 }
 
 test "TC-OIDC-34-02: listUnlinkedInternalUsers excludes agent-prefixed usernames" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -110,6 +129,9 @@ test "TC-OIDC-34-02: listUnlinkedInternalUsers excludes agent-prefixed usernames
 }
 
 test "TC-OIDC-34-03: tenant filter scopes candidate list" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

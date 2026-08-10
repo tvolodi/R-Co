@@ -16,6 +16,8 @@ const testing = std.testing;
 const build_options = @import("build_options");
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 const pool_mod = bpm.db_pool;
@@ -51,6 +53,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
         .url = url,
         .pool_size = 5,
     });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
@@ -151,6 +164,9 @@ fn freeRouteBody(alloc: std.mem.Allocator, body: []const u8) void {
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-01: tenant_type column exists in public.tenant with NOT NULL constraint" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -194,6 +210,9 @@ test "TC-ENV-01-01: tenant_type column exists in public.tenant with NOT NULL con
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-02: production_tenant_id column exists as nullable FK in public.tenant" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -239,6 +258,9 @@ test "TC-ENV-01-02: production_tenant_id column exists as nullable FK in public.
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-03: existing tenant rows have tenant_type='production' and production_tenant_id IS NULL" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -278,6 +300,9 @@ test "TC-ENV-01-03: existing tenant rows have tenant_type='production' and produ
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-04: DB INSERT of test tenant with valid production_tenant_id succeeds" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -329,6 +354,9 @@ test "TC-ENV-01-04: DB INSERT of test tenant with valid production_tenant_id suc
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-05: DB INSERT of test tenant with NULL production_tenant_id fails with constraint violation" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -363,6 +391,9 @@ test "TC-ENV-01-05: DB INSERT of test tenant with NULL production_tenant_id fail
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-06: DB INSERT of production tenant with non-null production_tenant_id fails" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -404,6 +435,9 @@ test "TC-ENV-01-06: DB INSERT of production tenant with non-null production_tena
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-07: executeSaga with test tenant and null production_tenant_id returns TestTenantMissingProductionRef" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -444,6 +478,9 @@ test "TC-ENV-01-07: executeSaga with test tenant and null production_tenant_id r
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-08: executeSaga with production tenant and non-null production_tenant_id returns ProductionTenantMustNotHaveRef" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -483,6 +520,9 @@ test "TC-ENV-01-08: executeSaga with production tenant and non-null production_t
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-09: handleListTenants response includes tenant_type and production_tenant_id fields" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -563,6 +603,9 @@ test "TC-ENV-01-09: handleListTenants response includes tenant_type and producti
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-10: handlePatchTenant with tenant_type key returns HTTP 422 immutable_field" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -592,6 +635,9 @@ test "TC-ENV-01-10: handlePatchTenant with tenant_type key returns HTTP 422 immu
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-11: handlePatchTenant with production_tenant_id key returns HTTP 422 immutable_field" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -620,6 +666,9 @@ test "TC-ENV-01-11: handlePatchTenant with production_tenant_id key returns HTTP
 // ---------------------------------------------------------------------------
 
 test "TC-ENV-01-12: DELETE production tenant while test tenant references it fails with FK violation" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);

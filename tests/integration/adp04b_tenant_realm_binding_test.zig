@@ -5,6 +5,8 @@ const portable_env = @import("env");
 const testing = std.testing;
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const pool_mod = bpm.db_pool;
 const auth_mod = bpm.api_auth;
 const identity_registry = bpm.identity_registry;
@@ -28,6 +30,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     // applies SET search_path TO tenant_default,public (schema isolation).
     bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn uuid36ToArray(uuid: []const u8) [36]u8 {
@@ -100,6 +113,9 @@ fn cleanupUserByUsername(pool: *pool_mod.Pool, username: []const u8) void {
 }
 
 test "TC-ADP-04b-01: migration backfills default tenant realm binding to bpm-default" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -125,6 +141,9 @@ test "TC-ADP-04b-01: migration backfills default tenant realm binding to bpm-def
 }
 
 test "TC-ADP-04b-02: OIDC-enabled non-default tenant creation requires idp_realm_id" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -151,6 +170,9 @@ test "TC-ADP-04b-02: OIDC-enabled non-default tenant creation requires idp_realm
 }
 
 test "TC-ADP-04b-03: OIDC-disabled tenant creation remains backward compatible without realm binding" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -190,6 +212,9 @@ test "TC-ADP-04b-03: OIDC-disabled tenant creation remains backward compatible w
 }
 
 test "TC-ADP-04b-04: ADP-04a OIDC user provisioning enforces tenant realm ownership and realm uniqueness" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -253,6 +278,9 @@ test "TC-ADP-04b-04: ADP-04a OIDC user provisioning enforces tenant realm owners
 }
 
 test "TC-ADP-04b-05: OIDC-enabled default-tenant rejects non-bpm-default realm binding" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -275,6 +303,9 @@ test "TC-ADP-04b-05: OIDC-enabled default-tenant rejects non-bpm-default realm b
 }
 
 test "TC-ADP-04b-06: OIDC-enabled default-tenant omitted realm normalizes to bpm-default" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const realm = try identity_service.Service.resolveTenantRealmBinding(.{
         .tenant_id = default_tenant,
         .slug = "tc-adp-04b-06-default-normalized",

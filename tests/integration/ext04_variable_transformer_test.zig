@@ -10,6 +10,8 @@ const std = @import("std");
 
 const portable_env = @import("env");
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 
@@ -43,6 +45,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
         .url = url,
         .pool_size = 5,
     });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn parseUuid(s: []const u8) ![16]u8 {
@@ -89,6 +102,9 @@ fn hasCode(violations: []const bpm.definition.Violation, code: []const u8) bool 
 }
 
 test "TC-EXT-04-INT-01: activation-time revalidation rejects invalid transform syntax" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.testing.allocator;
     const url = try testDbUrl(allocator);
     defer allocator.free(url);

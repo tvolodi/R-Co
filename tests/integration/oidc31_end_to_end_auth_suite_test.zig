@@ -13,6 +13,8 @@ const std = @import("std");
 const portable_env = @import("env");
 const testing = std.testing;
 const pool_mod = @import("pool");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 
 fn freeRow(allocator: std.mem.Allocator, row: []?[]u8) void {
     for (row) |col| {
@@ -56,7 +58,22 @@ fn bearerHeader(allocator: std.mem.Allocator, token: []const u8) ![]u8 {
     return std.fmt.allocPrint(allocator, "Bearer {s}", .{token});
 }
 
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
+}
+
+
 test "TC-OIDC-31-01: preflight validates DB, IDP discovery, and backend health" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
 
     const db_url = try getEnvOrSkip(alloc, "BPM_TEST_DB_URL");
@@ -102,6 +119,9 @@ test "TC-OIDC-31-01: preflight validates DB, IDP discovery, and backend health" 
 }
 
 test "TC-OIDC-31-02: optional role tokens can authenticate backend health route" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
 
     const api_base = try getEnvOrSkip(alloc, "BPM_TEST_URL");

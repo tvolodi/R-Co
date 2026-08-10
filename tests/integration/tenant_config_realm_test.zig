@@ -17,6 +17,7 @@ const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 const tenant_config = bpm.tenant_config_routes;
 const helpers = @import("helpers.zig");
+const pg = @import("pg");
 
 // ---------------------------------------------------------------------------
 // OS-level random bytes (Zig 0.16: std.crypto.random removed)
@@ -61,6 +62,17 @@ fn makePool(alloc: std.mem.Allocator, url: []const u8) !Pool {
     // on helpers.ensureSchemaReady() for the full root-cause rationale.
     try helpers.ensureSchemaReady(alloc);
     return Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 /// Generate a UUID v4 string (36 chars, dash-separated).
@@ -130,6 +142,9 @@ fn deleteTestTenant(pool: *Pool, id: []const u8) void {
 // Inserts a tenant with a unique per-test slug, calls handleTenantConfig with
 // ?realm=<slug>, asserts the response body contains the slug (= idp_realm_id).
 test "TC-OIDC-F05-01: realm=slug returns oidc_authority containing idp_realm_id for existing tenant" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     // Pool uses testing.allocator directly (long-lived across handler calls).
     const alloc = testing.allocator;
 
@@ -169,6 +184,9 @@ test "TC-OIDC-F05-01: realm=slug returns oidc_authority containing idp_realm_id 
 // Calls handleTenantConfig with a slug that has no tenant row.
 // Expects HTTP 200 with oidc_authority containing "bpm-default".
 test "TC-OIDC-F05-02: realm=no-such-slug falls back to bpm-default authority" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
 
     const url = try testDbUrl(alloc);
@@ -195,6 +213,9 @@ test "TC-OIDC-F05-02: realm=no-such-slug falls back to bpm-default authority" {
 // No tenant_hostnames row exists for 127.0.0.1 in the test DB, so the handler
 // falls through to the default realm. Verifies the ?host= path was not broken.
 test "TC-OIDC-F05-03: host=127.0.0.1 returns 200 with bpm-default (non-regression)" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
 
     const url = try testDbUrl(alloc);

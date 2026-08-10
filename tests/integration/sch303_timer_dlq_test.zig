@@ -57,6 +57,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 8 });
 }
 
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
+}
+
 /// Generate a random UUID string for test fixtures.
 fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
     var raw: [16]u8 = undefined;
@@ -100,6 +111,9 @@ fn setTestTenantContext() void {
 // status='failed' and inserts a dead_letter_items row.
 
 test "TC-SCH-303-03: timer fire exhaustion moves timer to FAILED and inserts DLQ entry" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
@@ -220,6 +234,9 @@ test "TC-SCH-303-03: timer fire exhaustion moves timer to FAILED and inserts DLQ
 // ---------------------------------------------------------------------------
 
 test "TC-SCH-303-04: timer stays pending when fire_error_count < max_timer_fire_retries" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
@@ -328,6 +345,9 @@ test "TC-SCH-303-04: timer stays pending when fire_error_count < max_timer_fire_
 // the timer is 'fired' and the second scheduler's SKIP LOCKED query returns 0 rows.)
 
 test "TC-SCH-301-03: two sequential scheduler polls on one timer fire it exactly once" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
@@ -425,6 +445,9 @@ test "TC-SCH-301-03: two sequential scheduler polls on one timer fire it exactly
 // = false, and falls through to normal polling without error.
 
 test "TC-SCH-302-03: startup sweep skipped gracefully when advisory lock is held" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
@@ -434,14 +457,16 @@ test "TC-SCH-302-03: startup sweep skipped gracefully when advisory lock is held
 
     // Direct pg.Conn that holds the advisory lock during the test.
     // (Session-level advisory lock: held for the connection lifetime, released on close.)
-    var lock_conn = pg.Conn.connectUrl(std.testing.io, allocator, url) catch |err| {
+    // Renamed from `lock_conn` to avoid clash with the helpers-integration-lock
+    // `lock_conn` declared at the top of this test block.
+    var startup_lock_conn = pg.Conn.connectUrl(std.testing.io, allocator, url) catch |err| {
         std.debug.print("pg.Conn.connectUrl failed: {} — skipping TC-SCH-302-03\n", .{err});
         return error.SkipZigTest;
     };
-    defer lock_conn.close();
+    defer startup_lock_conn.close();
 
-    // Acquire the startup sweep advisory lock on lock_conn.
-    const lock_result = lock_conn.query(
+    // Acquire the startup sweep advisory lock on startup_lock_conn.
+    const lock_result = startup_lock_conn.query(
         allocator,
         "SELECT pg_try_advisory_lock($1::bigint)",
         &.{STARTUP_LOCK_ID_STR},
@@ -467,7 +492,7 @@ test "TC-SCH-302-03: startup sweep skipped gracefully when advisory lock is held
     try testing.expect(scheduler.is_startup_sweep); // precondition
 
     // pollDueTimers must:
-    //   1. Attempt to acquire the startup advisory lock → fail (lock_conn holds it).
+    //   1. Attempt to acquire the startup advisory lock → fail (startup_lock_conn holds it).
     //   2. Set is_startup_sweep = false.
     //   3. Fall through to normal polling (no error).
     _ = scheduler.pollDueTimers(allocator) catch |err| {
@@ -481,7 +506,7 @@ test "TC-SCH-302-03: startup sweep skipped gracefully when advisory lock is held
     try testing.expect(!scheduler.is_startup_sweep);
 
     // Release the advisory lock so it doesn't linger for subsequent tests.
-    _ = lock_conn.exec(
+    _ = startup_lock_conn.exec(
         "SELECT pg_advisory_unlock($1::bigint)",
         &.{STARTUP_LOCK_ID_STR},
     ) catch {};

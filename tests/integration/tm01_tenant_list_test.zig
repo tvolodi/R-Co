@@ -9,6 +9,8 @@ const portable_env = @import("env");
 const testing = std.testing;
 
 const bpm = @import("bpm");
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
 const pool_mod = bpm.db_pool;
 const auth_mod = bpm.api_auth;
 const identity_registry = bpm.identity_registry;
@@ -33,6 +35,17 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
     // applies SET search_path TO tenant_default,public (schema isolation).
     bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
+}
+
+/// ISS-0659 / GH-681: self-managed-pool binary must serialize against
+/// TestHarness peers via the bpm_test_migrations_public advisory lock for the
+/// binary's full lifetime. PR #494 / ISS-0162 extended this lock inside
+/// TestHarness.init(); this entry point lets a makePool-based binary acquire
+/// the same lock around its own test block. Pair with
+/// `helpers.releaseIntegrationLock(&lock_conn)` via defer at the top of every
+/// `test` block.
+fn acquireLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
+    return helpers.acquireIntegrationLock(allocator);
 }
 
 fn uuid36ToArray(uuid: []const u8) [36]u8 {
@@ -129,6 +142,9 @@ fn runtimeFixtureSlug(alloc: std.mem.Allocator, prefix: []const u8, test_case_id
 // ── TC-TM-01-01 ───────────────────────────────────────────────────────────────
 
 test "TC-TM-01-01: PLATFORM_ADMIN can list tenants — returns 200 with items and total" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -174,6 +190,9 @@ test "TC-TM-01-01: PLATFORM_ADMIN can list tenants — returns 200 with items an
 // ── TC-TM-01-02 ───────────────────────────────────────────────────────────────
 
 test "TC-TM-01-02: non-PLATFORM_ADMIN (VIEWER) gets HTTP 403 from handleListTenants" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -199,6 +218,9 @@ test "TC-TM-01-02: non-PLATFORM_ADMIN (VIEWER) gets HTTP 403 from handleListTena
 // ── TC-TM-01-03 ───────────────────────────────────────────────────────────────
 
 test "TC-TM-01-03: pagination — limit and offset return correct slice and total" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -261,6 +283,9 @@ test "TC-TM-01-03: pagination — limit and offset return correct slice and tota
 // ── TC-TM-03-01 ───────────────────────────────────────────────────────────────
 
 test "TC-TM-03-01: PLATFORM_ADMIN PATCH display_name returns 200 with updated tenant" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -307,6 +332,9 @@ test "TC-TM-03-01: PLATFORM_ADMIN PATCH display_name returns 200 with updated te
 // ── TC-TM-03-02 ───────────────────────────────────────────────────────────────
 
 test "TC-TM-03-02: PATCH body containing 'slug' key returns HTTP 422 immutable_field_update" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -342,6 +370,9 @@ test "TC-TM-03-02: PATCH body containing 'slug' key returns HTTP 422 immutable_f
 // ── TC-TM-03-03 ───────────────────────────────────────────────────────────────
 
 test "TC-TM-03-03: PATCH body containing 'idp_realm_id' key returns HTTP 422 immutable_field_update" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -377,6 +408,9 @@ test "TC-TM-03-03: PATCH body containing 'idp_realm_id' key returns HTTP 422 imm
 // ── TC-TM-03-04 ───────────────────────────────────────────────────────────────
 
 test "TC-TM-03-04: PATCH on non-existent slug returns HTTP 404 tenant_not_found" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -421,6 +455,9 @@ fn assertTenantStatusBySlug(
 }
 
 test "TC-TM-04-01: deactivate endpoint sets tenant status INACTIVE and returns 200" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -448,6 +485,9 @@ test "TC-TM-04-01: deactivate endpoint sets tenant status INACTIVE and returns 2
 }
 
 test "TC-TM-04-02: deactivate endpoint is idempotent when already INACTIVE" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -479,6 +519,9 @@ test "TC-TM-04-02: deactivate endpoint is idempotent when already INACTIVE" {
 }
 
 test "TC-TM-04-03: deactivate endpoint rejects invalid slug and invalid payload" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -501,6 +544,9 @@ test "TC-TM-04-03: deactivate endpoint rejects invalid slug and invalid payload"
 }
 
 test "TC-TM-04-04: non-PLATFORM_ADMIN cannot deactivate tenant" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -527,6 +573,9 @@ test "TC-TM-04-04: non-PLATFORM_ADMIN cannot deactivate tenant" {
 }
 
 test "TC-TM-05-01: reactivate endpoint sets tenant status ACTIVE and returns 200" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -558,6 +607,9 @@ test "TC-TM-05-01: reactivate endpoint sets tenant status ACTIVE and returns 200
 }
 
 test "TC-TM-05-02: reactivate endpoint is idempotent when already ACTIVE" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -589,6 +641,9 @@ test "TC-TM-05-02: reactivate endpoint is idempotent when already ACTIVE" {
 }
 
 test "TC-TM-05-03: non-PLATFORM_ADMIN cannot reactivate tenant" {
+    var lock_conn = try acquireLock(std.heap.page_allocator);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
