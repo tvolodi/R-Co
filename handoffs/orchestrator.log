@@ -905,3 +905,6 @@
 2026-08-10T17:21:39Z | ISSUE_CLOSE | WF03-GH300-20260810 | --- | DOC-UPDATER | GH-300 closed via PR #683 squash-merge (commit 0a3f30cf); comment posted
 2026-08-10T17:22:12Z | COMPLETE | WF03-GH300-20260810 | a3000000-0700 | DOC-UPDATER | PASS — PR #683 merged (commit 0a3f30cf), branch deleted, GH-300 closed
 2026-08-10T18:30:27Z | DEFER | WF03-GH681-20260810 | --- | BACKEND-DEV | GH-681 deferred (workspace r-co-2-loop) — cross-workspace collision with r-co-orchestrator-loop on same branch; verification data (2 clean-reset runs, per-process and per-test lock designs both regress test-integration from 9 to 43+ failing files) posted to GH-681 comment; source changes reverted, only docs kept on unmerged feature/WF03-GH681-20260810
+2026-08-10T19:53:17Z | COMPLETE | WF03-GH681-20260810 | a6810000-0700 | DOC-UPDATER | PASS (PR #684 merged 7b1421f9, GH-681 closed 2026-08-10T19:51:26Z)
+2026-08-10T19:53:17Z | RESOLVE  | WF03-GH681-20260810 | --- | ORCH | GH-681 closed via PR #684; ISS-0659 advisory-lock pattern extended to 31 self-managed-pool binaries
+2026-08-10T19:53:17Z | ORCH_LOOP| WF03-GH681-20260810 | --- | ORCH | r-co-orchestrator-loop handing control back to gh_claim for next issue

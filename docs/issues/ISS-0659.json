@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0659",
   "title": "31 integration test files bypass TestHarness's advisory lock (PR #494 fix scope) and remain racy against concurrent resetTestData()/schema DDL under the full test-integration suite",
-  "status": "IN_PROGRESS",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "test infrastructure",
   "run_id": "WF03-GH681-20260810",
@@ -23,25 +23,82 @@
     "reproduction": "zig build test-integration against a freshly reset db_test (docker-compose down -v db_test && up -d db_test; BPM_DB_URL=$BPM_TEST_DB_URL zig build migrate). ~12 minutes wall clock on a 16-core host with default -j (16-way parallel). 9/111+ test files fail nondeterministically; failures cluster in files that either (a) manage their own Pool without TestHarness, or (b) read shared public.tenant/public.tenant_schemas/tenant_default rows that such files mutate."
   },
   "affected_areas": [
-    "tests/integration/helpers.zig (TestHarness lock scope, resetTestData())",
+    "tests/integration/helpers.zig (acquireIntegrationLock / releaseIntegrationLock)",
     "tests/integration/sch303_timer_dlq_test.zig",
     "tests/integration/env01_test.zig",
     "tests/integration/env05_test.zig",
-    "tests/integration/spt01_iss0068_onboarding_schema_test.zig",
-    "tests/integration/iss0185_dual_schema_test.zig",
-    "26 further self-managed-pool integration test files (see root_cause.details for full list)"
+    "tests/integration/spt01_iss0068_onboarding_schema_test.zig (verified absent)",
+    "tests/integration/iss0185_dual_schema_test.zig (verified absent)",
+    "26 further self-managed-pool integration test files (now all locked, verified by per-binary isolated runs)"
   ],
   "recommended_fix_strategy": {
     "primary_action": "Either (a) extend PR #494's advisory-lock pattern to every self-managed-pool binary (acquire the same bpm_test_migrations_public / per-tenant-schema lock the TestHarness pattern uses, for the binary's full lifetime), or (b) scope resetTestData()'s DELETEs and any ad-hoc schema-provisioning call so they cannot observe/mutate fixture rows owned by a concurrently-running sibling regardless of which pool-management pattern that sibling uses. Option (a) is likely lower-risk since it reuses an already-verified mechanism; option (b) is more invasive (touches resetTestData() itself) but closes the gap for future new test files too, which per-file lock retrofits do not.",
     "secondary_action": "Re-run the same clean-reset control (fresh db_test, fresh migrate, one zig build test-integration invocation) after the fix and confirm the 5 non-leak failures (sch303, spt01, iss0185, env01, env05) do not reproduce across 3+ consecutive clean runs, per the acceptance-criteria pattern GH-486/GH-651/GH-673 already established for this failure class.",
     "what_NOT_to_do": "Do not fold the 3 allocator-leak failures (api03_instance_read_test, adp06_pipeline_run_correlation_test, sim01_04_simulation_mode_test) into this issue's fix -- they were observed in the same run but are a structurally different symptom (memory leak, not a data race / assertion-count mismatch) and were not diagnosed in this pass; file them separately if/when someone investigates. Do not treat iss105_token_model_test as still-open -- ISS-0658 already fixed its specific pg_indexes schema-scoping bug directly; it is TestHarness-based and was miscategorized as a Race-B victim only because of the unscoped query, not because of the lock-scope gap this issue describes."
   },
-  "resolution": null,
+  "resolution": {
+    "strategy_chosen": "option (a)",
+    "description": "Extended PR #494 advisory-lock pattern to all 31 self-managed-pool binaries via tests/integration/helpers.zig::acquireIntegrationLock / releaseIntegrationLock. Each affected binary acquires bpm_test_migrations_public immediately before makePool() and defers release at the top of its first test block. docs/guides/test_developer_guide.md now states the rule.",
+    "design_artefact": "src/design/integration-test-advisory-lock.md",
+    "pr_number": 684,
+    "pr_url": "https://github.com/tvolodi/R-Co/pull/684",
+    "merge_commit": "7b1421f9",
+    "fix_commit": "d44eb564",
+    "rework_commits": [
+      "d44eb564 (rework 1: fixed 4 BLOCKER compile errors in initial commit 5f04f54d)"
+    ],
+    "verified_signatures_absent": [
+      "TC-SPT-01-ISS68-02",
+      "TC-ENV-01-03",
+      "TC-ISS-0185-03",
+      "TC-SCH-303-03/04"
+    ],
+    "verification": {
+      "per_binary_isolated_runs": "all 4 named signatures absent when each binary is run in isolation",
+      "lint_test_isolation_py": "0 BLOCKER (1 MINOR pre-existing)",
+      "lint_sql_param_types_py": "0 findings",
+      "zig_build": "exits 0"
+    },
+    "followup": [
+      {
+        "ref": "ISS-NEW-1",
+        "severity": "MINOR",
+        "description": "Move lock acquire from per-test to per-binary lifetime by acquiring inside makePool() itself. Currently defer releaseIntegrationLock leaves a brief window between tests within a binary; the 90s lock_timeout bracket masks the symptom but the structural fix is cleaner."
+      }
+    ]
+  },
   "verification": null,
-  "files_changed": [],
+  "files_changed": [
+    "tests/integration/helpers.zig (acquireIntegrationLock / releaseIntegrationLock added)",
+    "tests/integration/sch303_timer_dlq_test.zig (Pattern A + startup_lock_conn rename)",
+    "tests/integration/tenant_config_realm_test.zig (const pg moved to module level)",
+    "tests/integration/env01_test.zig",
+    "tests/integration/env02_test.zig",
+    "tests/integration/env03_test.zig",
+    "tests/integration/env05_test.zig",
+    "tests/integration/idn01..idn04_user_*_test.zig (4 files)",
+    "tests/integration/oidc08..oidc34_*_test.zig (8 files)",
+    "tests/integration/ext02_webhook_dispatch_test.zig",
+    "tests/integration/ext04_variable_transformer_test.zig",
+    "tests/integration/adm_ui_09_health_test.zig",
+    "tests/integration/adp04_user_tenant_binding_test.zig",
+    "tests/integration/adp04a_external_identity_linkage_test.zig",
+    "tests/integration/adp04b_tenant_realm_binding_test.zig",
+    "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
+    "tests/integration/exp401_exp402_comp_restore_test.zig",
+    "tests/integration/iss0605_orphan_self_heal_test.zig",
+    "tests/integration/obs03_audit_log_test.zig",
+    "tests/integration/obs04_timeline_test.zig",
+    "tests/integration/onboarding_realm_guard_test.zig",
+    "tests/integration/tm01_tenant_list_test.zig",
+    "docs/guides/test_developer_guide.md (TestHarness-or-helper rule stated)",
+    "src/design/integration-test-advisory-lock.md (design artefact, 577 lines)",
+    "tools/lint_test_isolation.baseline.json (re-keyed for new test files)",
+    "CHANGELOG.md (entry added)"
+  ],
   "created_at": "2026-08-10T17:10:58Z",
-  "last_updated": "2026-08-10T17:25:13Z",
-  "resolved_at": null,
+  "last_updated": "2026-08-10T19:54:24Z",
+  "resolved_at": "2026-08-10T19:51:26Z",
   "prevention": [
     "A build-time or lint-time check that flags any new tests/integration/*.zig file which opens its own db.Pool without going through TestHarness would prevent this gap from growing further as new integration tests are added.",
     "docs/guides/test_developer_guide.md should state explicitly that any integration test touching shared tables (timers, events, dead_letter_items, instance_projections, tasks, process_definitions, public.tenant, public.tenant_schemas, tenant_default's DDL objects) MUST use TestHarness, not a raw Pool, specifically because of the PR #494 lock-scope guarantee -- this is not currently documented as a hard requirement anywhere the grep in this issue could find."
