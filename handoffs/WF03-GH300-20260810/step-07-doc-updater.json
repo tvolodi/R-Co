@@ -5,7 +5,7 @@
   "from_agent": "ORCH",
   "to_agent": "DOC-UPDATER",
   "created_at": "2026-08-10T17:15:30Z",
-  "status": "IN_PROGRESS",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "WF-03 Issue Resolving",
@@ -49,9 +49,23 @@
       "fn:git-merge"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0085 / GOV-01 finalized. GH-300 closed by PR #683 (squash-merge commit 0a3f30cf into main). Branch feature/WF03-GH300-20260810 deleted from origin (verified via git fetch --prune). GH-300 commented (issuecomment-5243584468). Queue lock GH-300 RESOLVED via tools/queue_release.py. Repository returned to main with clean working tree (verified via git status). lint_handoffs.py exit 0 (0 BLOCKER, 0 MAJOR, 1 MINOR baseline, 291 ACKNOWLEDGED).",
+    "artifacts_out": [
+      "PR #683",
+      "commit 0a3f30cf (squash-merge)",
+      "branch feature/WF03-GH300-20260810 (deleted from origin)",
+      "docs/issues/ISS-0085.json (status=RESOLVED, commit=ada745f0)",
+      "CHANGELOG.md (entry under [Unreleased] - 2026-08-10)",
+      "src/design/uat-scenario-schema-v1.1-apply.md (design artifact)",
+      "handoffs/global_queue.json (GH-300 RESOLVED)"
+    ],
+    "issues": [],
+    "next_action": "ORCH: loop continues to next issue"
+  },
   "rework_count": 0,
   "max_rework": 3,
   "started_at": "2026-08-10T17:17:14Z",
-  "completed_at": null
+  "completed_at": "2026-08-10T17:22:12Z"
 }
