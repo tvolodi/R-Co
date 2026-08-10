@@ -25,6 +25,16 @@
 | `BPM_BOOTSTRAP_TOKEN` | Dev only | any string |
 
 ### Bootstrap test database
+
+Preferred: use the repo's `docker-compose.yml` stack (already defines `db_test` with
+the right credentials/port) via the single command surface (`make.ps1`, GH-294 /
+ISS-0079 / PI-04), which also blocks until the container reports healthy:
+```powershell
+./make.ps1 up        # docker compose up -d + readiness poll (db, db_test, keycloak*)
+./make.ps1 migrate   # zig build migrate, BPM_DB_URL sourced from .env
+```
+
+Standalone one-off container, if you need a database outside the compose stack:
 ```bash
 docker run -d --name bpm-test-db \
   -e POSTGRES_USER=bpm -e POSTGRES_PASSWORD=bpm -e POSTGRES_DB=bpm_test \
@@ -315,6 +325,14 @@ Route handler functions must NOT contain:
 ---
 
 ## 6. Build Commands Reference
+
+Single command surface: `./make.ps1 <command>` wraps the most common of these with
+env vars sourced from `.env` and (for `up`/`test-live`) a real readiness wait — see
+`src/design/unified-command-surface.md` and `./make.ps1 help`. `make.ps1 test` wraps
+`zig build test`; `make.ps1 test-live` wraps `zig build test-integration` (after
+waiting for Postgres+Keycloak); `make.ps1 migrate` wraps `zig build migrate`. The
+per-module and coverage/bench/openapi/run targets below are not individually wrapped —
+invoke them directly.
 
 | Command | Purpose |
 |---|---|
