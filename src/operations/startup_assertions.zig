@@ -139,7 +139,14 @@ pub fn assertDatabaseConfigurationWithOverrides(
     extensions_override: ?[]const []const u8,
 ) StartupAssertionError!void {
     // 1. Check PostgreSQL version
-    const version_num = if (version_override) |v| v else try queryVersionNum(allocator, pool);
+    const version_num = if (version_override) |v| v else queryVersionNum(allocator, pool) catch |err| {
+        const fields = [_]obs_logger.LogField{
+            .{ .key = "query", .value = .{ .string = "server_version_num" } },
+            .{ .key = "error", .value = .{ .string = @errorName(err) } },
+        };
+        obs_logger.log(allocator, .ERROR, "startup.database", "QUERY_FAILED query=server_version_num", &fields) catch {};
+        return StartupAssertionError.QueryFailed;
+    };
 
     const required_min: u32 = 140000;
     if (version_num < required_min) {
@@ -147,10 +154,10 @@ pub fn assertDatabaseConfigurationWithOverrides(
             .{ .key = "current", .value = .{ .integer = @as(i64, @intCast(version_num)) } },
             .{ .key = "required_min", .value = .{ .integer = @as(i64, @intCast(required_min)) } },
         };
-        
+
         var buf: [256]u8 = undefined;
         const msg = std.fmt.bufPrint(&buf, "FATAL startup.database PG_VERSION_MISMATCH current={d} required_min={d}", .{ version_num, required_min }) catch "FATAL startup.database PG_VERSION_MISMATCH";
-        obs_logger.log(allocator, .FATAL, "startup.database", msg, &fields) catch {};
+        obs_logger.log(allocator, .ERROR, "startup.database", msg, &fields) catch {};
         return StartupAssertionError.PgVersionMismatch;
     }
 
@@ -160,18 +167,32 @@ pub fn assertDatabaseConfigurationWithOverrides(
             if (std.mem.eql(u8, ext, "pg_trgm")) break :blk true;
         }
         break :blk false;
-    } else try queryExtensionExists(allocator, pool, "pg_trgm");
+    } else queryExtensionExists(allocator, pool, "pg_trgm") catch |err| {
+        const fields = [_]obs_logger.LogField{
+            .{ .key = "query", .value = .{ .string = "pg_extension" } },
+            .{ .key = "error", .value = .{ .string = @errorName(err) } },
+        };
+        obs_logger.log(allocator, .ERROR, "startup.database", "QUERY_FAILED query=pg_extension", &fields) catch {};
+        return StartupAssertionError.QueryFailed;
+    };
 
     if (!has_trgm) {
         const fields = [_]obs_logger.LogField{
             .{ .key = "extension", .value = .{ .string = "pg_trgm" } },
         };
-        obs_logger.log(allocator, .FATAL, "startup.database", "FATAL startup.database PG_EXTENSION_MISSING extension=pg_trgm", &fields) catch {};
+        obs_logger.log(allocator, .ERROR, "startup.database", "FATAL startup.database PG_EXTENSION_MISSING extension=pg_trgm", &fields) catch {};
         return StartupAssertionError.PgExtensionMissing;
     }
 
     // 3. Check public schema pollution (cannot override, must use real query)
-    const table_count = try queryPublicTableCount(allocator, pool);
+    const table_count = queryPublicTableCount(allocator, pool) catch |err| {
+        const fields = [_]obs_logger.LogField{
+            .{ .key = "query", .value = .{ .string = "pg_tables" } },
+            .{ .key = "error", .value = .{ .string = @errorName(err) } },
+        };
+        obs_logger.log(allocator, .ERROR, "startup.database", "QUERY_FAILED query=pg_tables", &fields) catch {};
+        return StartupAssertionError.QueryFailed;
+    };
 
     if (table_count > 0) {
         const fields = [_]obs_logger.LogField{
@@ -181,7 +202,7 @@ pub fn assertDatabaseConfigurationWithOverrides(
         
         var buf: [256]u8 = undefined;
         const msg = std.fmt.bufPrint(&buf, "FATAL startup.database PUBLIC_SCHEMA_POLLUTION table_count={d} expected=0", .{table_count}) catch "FATAL startup.database PUBLIC_SCHEMA_POLLUTION";
-        obs_logger.log(allocator, .FATAL, "startup.database", msg, &fields) catch {};
+        obs_logger.log(allocator, .ERROR, "startup.database", msg, &fields) catch {};
         return StartupAssertionError.PublicSchemaPollution;
     }
 }
