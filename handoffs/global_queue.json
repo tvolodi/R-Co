@@ -1500,18 +1500,28 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/679",
       "title": "ISS-0658 \u2014 Aggregate zig build test-integration unstable in workspace r-co-2: unrelated failures and multi-minute hangs block clean verification",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T16:50:57Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T16:50:57Z",
       "started_at": "2026-08-10T16:50:57Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T17:19:08Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 679,
       "labels": []
+    },
+    {
+      "issue_id": "GH-681",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/681",
+      "title": "31 integration test files bypass TestHarness's advisory lock and remain racy under full test-integration suite",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T17:12:56Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
