@@ -1443,17 +1443,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0655",
+      "issue_id": "GH-664",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/664",
-      "title": "xc04_kernel_determinism_test TC-XC-04-04 function signature mismatch",
+      "title": "xc04_kernel_determinism_test TC-XC-04-04: bpm_audit_compute_chain_hash() call has a function-signature/argument-type mismatch",
       "severity": "MAJOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-10T06:51:12Z",
-      "started_at": null,
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T07:32:21Z"
+      },
+      "added_at": "2026-08-10T07:32:21Z",
+      "started_at": "2026-08-10T07:32:21Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 664,
+      "labels": [
+        "bug"
+      ]
     },
     {
       "issue_id": "GH-666",
