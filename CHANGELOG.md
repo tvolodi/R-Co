@@ -6,6 +6,14 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0656 — `lint_handoffs.py` H004/H009 findings from 2026-08-09 runs acknowledged (MINOR)** ([GitHub #666](https://github.com/tvolodi/R-Co/issues/666))
+
+- **Context:** incidental finding from GH-652's Step Final review (`tools/lint_handoffs.py` showed 1 unacknowledged BLOCKER + 1 MAJOR, both predating GH-652's own branch), filed and forwarded rather than fixed inline on that branch.
+- **Investigated for recoverable evidence first, per this repo's own no-fabrication rule:** `handoffs/orchestrator.log` was cross-referenced for both timestamps. Neither yielded a recoverable true value — `WF03-GH631-20260809`'s ROUTE line matches the handoff's `created_at` exactly with no independent "started" log entry to derive a different `started_at` from (H004); `WF03-GH360-20260809`'s log never shows a COMPLETE line for step-00 at all, confirming its `IN_PROGRESS` status is an accurate reflection of a genuinely unlogged completion, not a data-entry slip (H009). Both match ISS-0627's existing H004/H009 acceptance rationale exactly.
+- **The fix:** appended both findings to `tools/lint_handoffs.baseline.json` using the existing H004/H009 `reason_ref` entries. Caught and avoided a near-miss: `tools/generate_lint_handoffs_baseline.py --apply` (the obvious tool for this) turned out to only ever regenerate the H003/H004/H005/H009 subset — running it would have silently dropped the 53 H013 + 9 H007 entries a later pass (WF03-GH596-20260808) had added to the same file, destroying real acknowledgment history. Caught via a dry-run entry-count diff before applying anything; reverted and appended the 2 new entries by hand instead, preserving all 289 pre-existing entries verbatim.
+- **Verified:** `tools/lint_handoffs.py` — 0 BLOCKER, 0 MAJOR (was 1 BLOCKER + 1 MAJOR), 291 ACKNOWLEDGED. 1 pre-existing unrelated MINOR (H010 registry coverage) untouched.
+- **No requirement status change** — audit-trail bookkeeping fix.
+
 **ISS-0647 — 12 of 20 residual test-integration files fixed, 1 confirmed false-positive, 6 forwarded (MAJOR, partial)** ([GitHub #652](https://github.com/tvolodi/R-Co/issues/652))
 
 - **Context:** follow-up to GH-649/ISS-0645's triage of a 26-file residual cluster left after GH-482/ISS-0150's adp0x schema-literal fix. This run re-measured all 20 remaining files individually in true single-binary isolation (adding 9 new narrow `build.zig` steps — `test-integration-{db-integration,env02,env03,event-store,exp201-202,idn03,iss206,xc02,xc06}` — for files previously reachable only bundled inside `main_test.zig`, mirroring the `ee09`/`effects-subsystem` precedent from ISS-0649/GH-654), rather than trusting the original filing's concurrent-suite snapshot.
