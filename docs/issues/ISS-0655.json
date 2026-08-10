@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0655",
+  "title": "xc04_kernel_determinism_test TC-XC-04-04: bpm_audit_compute_chain_hash() call has a function-signature/argument-type mismatch (C42883, incidental discovery during GH-652 triage)",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/664",
+  "registered_at": "2026-08-10T06:46:36Z",
+  "registered_by": "BACKEND-DEV (WF03-GH652-20260810 Step 3, GH-652/ISS-0647 triage -- incidental discovery, not one of the 20 files in scope)",
+  "related_to": [
+    "ISS-0647"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "category": "audit-chain/function-signature-mismatch",
+  "affected_areas": [
+    "tests/integration/xc04_kernel_determinism_test.zig",
+    "migrations/1107_fix_audit_chain_text_resource_id.sql"
+  ],
+  "symptom": "Discovered incidentally while triaging GH-652's sim01_04_simulation_mode_test.zig via the shared `test-integration-stage11-sim-xc04` narrow build step (which bundles xc04_kernel_determinism_test.zig alongside sim01-04). xc04_kernel_determinism_test.zig is NOT one of the 20 files listed in GH-652/ISS-0647's scope, so per CLAUDE.md's Unblock-Everything / No-Issue-Left-Local-Only directives this is filed as its own issue rather than fixed inline. TC-XC-04-04 ('audit chain hash computation is deterministic') fails with PostgreSQL C42883: 'function bpm_audit_compute_chain_hash(uuid, uuid, uuid, unknown, unknown, uuid, timestamp with time zone, jsonb, jsonb, uuid, jsonb, text, unknown) does not exist -- No function matches the given name and argument types. You might need to add explicit type casts.' The test's direct SQL call to this function does not match the function's actual current signature (defined in migrations/1107_fix_audit_chain_text_resource_id.sql and possibly superseded by a later migration) -- either the test's call needs updated casts, or the function was changed in a later migration without updating this test.",
+  "acceptance_criteria": [
+    "Compare the test's call signature (tests/integration/xc04_kernel_determinism_test.zig line ~193) against the function's actual current definition (search migrations/ for the latest CREATE OR REPLACE FUNCTION bpm_audit_compute_chain_hash)",
+    "Fix the mismatch on whichever side is stale -- likely adding/adjusting explicit ::type casts in the test's direct SQL call to match the function's real parameter types",
+    "TC-XC-04-04 passes in isolation, twice consecutively",
+    "The other tests in the same narrow build step (test-integration-stage11-sim-xc04) must not regress",
+    "zig build test exits 0 with unit-test pass count >= established baseline (1011/1075, 64 skipped)"
+  ],
+  "next_action": "File as GitHub issue and add to global queue. Small, well-defined fix (signature/cast mismatch) -- should be quick for a future ISSUE-FIXER/BACKEND-DEV pass, but out of scope for GH-652's WF-03 run since it is not one of the 20 files that run was chartered to fix."
+}

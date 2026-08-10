@@ -334,8 +334,45 @@ test "TC-EXP-601-04: quota middleware rejects sandbox allocation and agent retri
     // ISS-0622 (filed, not fixed here): instance_waits and dead_letter_items
     // are genuine PER_TENANT tables with no public copy, same reasoning as
     // instance_projections above — kept on harness.conn pending ISS-0622.
-    try harness.conn.exec("INSERT INTO instance_waits (instance_id, kind, ref_id, node_id, fire_at) VALUES ($1::uuid, 'sandbox', $2::uuid, 'EXP601_NODE', NOW()) ON CONFLICT (instance_id, ref_id) DO NOTHING", &.{ wait_instance_id, wait_ref_id });
-    try harness.conn.exec("INSERT INTO dead_letter_items (id, tenant_id, retry_count, created_at, updated_at) VALUES ($1::uuid, $2::uuid, 1, NOW(), NOW())", &.{ dlq_id, tenant_id });
+    //
+    // ISS-0647 / GH-652 (TC-EXP-601-04): `kind` used to be the plausible-
+    // sounding but invalid literal 'sandbox'. instance_waits.kind has a CHECK
+    // constraint (migrations/093_exp103_instance_waits.sql) allowing only
+    // 'timer' | 'catch_event' | 'human_task', so every INSERT here violated
+    // instance_waits_kind_check and aborted the transaction (confirmed via
+    // `zig build test-integration-exp601 -Dlog-pg-errors=true`, which surfaced
+    // the real C23514 constraint-violation SQLSTATE — the value never
+    // mattered to the code under test: quota_enforcement.zig's
+    // concurrent_sandboxes usage read is a plain
+    // `COUNT(*) WHERE resolved_at IS NULL`, with no filter on `kind` at all.
+    // 'timer' is used here as the semantically-closest valid value for a
+    // generic concurrency-consuming wait row.
+    try harness.conn.exec("INSERT INTO instance_waits (instance_id, kind, ref_id, node_id, fire_at) VALUES ($1::uuid, 'timer', $2::uuid, 'EXP601_NODE', NOW()) ON CONFLICT (instance_id, ref_id) DO NOTHING", &.{ wait_instance_id, wait_ref_id });
+    // ISS-0647 / GH-652 (TC-EXP-601-04): dead_letter_items is a genuine
+    // PER_TENANT-only table with no `tenant_id` column at all — tenant
+    // scoping comes from the row living in the tenant's own schema, not from
+    // a column (confirmed via `\d tenant_default.dead_letter_items` and
+    // matching the INSERT shape already used by
+    // tests/integration/obs05_dlq_test.zig). The old 5-column INSERT here
+    // referenced a nonexistent `tenant_id` column and several other NOT NULL
+    // columns (entry_type, reason, item_type, source_ref) with no default,
+    // so it always violated C42703 (confirmed via
+    // `-Dlog-pg-errors=true`) and aborted the transaction before
+    // quota_middleware.check() ever ran. This only needs enough of a row to
+    // make agent_retry_per_job's `MAX(retry_count)` read return 1.
+    try harness.conn.exec(
+        \\INSERT INTO dead_letter_items (
+        \\  id, entry_type, reason, retry_count, status,
+        \\  item_type, retry_limit, source_ref,
+        \\  original_payload, error_chain, processor_metadata,
+        \\  first_failed_at, last_failed_at, created_at, updated_at
+        \\) VALUES (
+        \\  $1::uuid, 'agent_job_failed', 'EXP-601 quota test fixture', 1, 'pending',
+        \\  'agent_job', 3, $1::text,
+        \\  '{}'::jsonb, '[]'::jsonb, '{}'::jsonb,
+        \\  NOW(), NOW(), NOW(), NOW()
+        \\)
+    , &.{dlq_id});
 
     try quota_middleware.init(alloc);
     defer quota_middleware.deinit();

@@ -108,14 +108,14 @@
       "severity": "MAJOR",
       "code": "T060",
       "file": "tests/integration/iss107_tenant_storage_mode_test.zig",
-      "line": 197,
+      "line": 205,
       "message": "production-defaulting tenant creation with slug \"iss107-t4\" does not start with an allowlisted test-fixture prefix ('tc-',) — will not be excluded by the GBL-103 ISS-503 guard scope"
     },
     {
       "severity": "MAJOR",
       "code": "T060",
       "file": "tests/integration/iss107_tenant_storage_mode_test.zig",
-      "line": 274,
+      "line": 282,
       "message": "production-defaulting tenant creation with slug \"iss107-t5\" does not start with an allowlisted test-fixture prefix ('tc-',) — will not be excluded by the GBL-103 ISS-503 guard scope"
     },
     {

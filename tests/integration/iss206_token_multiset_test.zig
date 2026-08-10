@@ -41,8 +41,12 @@ test "ISS-206: join_counters with data round-trips correctly" {
     try inner.put(allocator, "received_count", std.json.Value{ .integer = 2 });
     try inner.put(allocator, "expected_from_branches", std.json.Value{ .integer = 3 });
 
-    const key = try allocator.dupe(u8, "join_gw_1");
-    try map.put(allocator, key, std.json.Value{ .object = inner });
+    // ISS-0647 / GH-652: this used to `allocator.dupe` the key before
+    // `put`-ing it into `map`. std.json.ObjectMap.deinit only frees the
+    // map's internal storage, not caller-owned key strings, so the dupe was
+    // never freed by anything (a 1-allocation leak on every run). A string
+    // literal is a valid ObjectMap key on its own — no dupe/free needed.
+    try map.put(allocator, "join_gw_1", std.json.Value{ .object = inner });
 
     // Serialize to JSON
     const json_str = std.json.Stringify.valueAlloc(

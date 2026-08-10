@@ -75,6 +75,17 @@ fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
 
 /// Insert a bare production tenant row directly into public.tenant.
 /// Security: all values bound as parameters — no SQL string interpolation.
+/// ISS-0647 / GH-652 (TC-ENV-02-01): both helpers below used to omit
+/// storage_mode, which defaults to 'LEGACY_RLS' at the column level
+/// (migrations/086_iss107_tenant_storage_mode.sql) — the 'SCHEMA' default
+/// documented for "newly provisioned tenants" only applies via the
+/// provisionTenantSchema() code path (src/db/provisioning.zig), which these
+/// bare-INSERT test helpers bypass entirely. With storage_mode left at
+/// LEGACY_RLS, src/db/pool.zig's applyRequestStorageRouting() correctly
+/// routes the connection to `SET search_path TO public` (the LEGACY_RLS
+/// branch) rather than the tenant-specific schema — this is ENV-02's whole
+/// point to test, so the fixture must opt in to storage_mode='SCHEMA'
+/// explicitly to exercise that branch.
 fn insertProductionTenant(
     allocator: std.mem.Allocator,
     pool: *Pool,
@@ -85,8 +96,8 @@ fn insertProductionTenant(
     defer pool.release(conn);
     try conn.exec(
         \\INSERT INTO public.tenant
-        \\    (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
-        \\VALUES ($1::uuid, $2, $3, 'ACTIVE', NULL, 'production', NULL)
+        \\    (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id, storage_mode)
+        \\VALUES ($1::uuid, $2, $3, 'ACTIVE', NULL, 'production', NULL, 'SCHEMA')
         \\ON CONFLICT (id) DO NOTHING
     ,
         &[_][]const u8{ tenant_id, slug, slug },
@@ -107,8 +118,8 @@ fn insertTestTenant(
     defer pool.release(conn);
     try conn.exec(
         \\INSERT INTO public.tenant
-        \\    (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
-        \\VALUES ($1::uuid, $2, $3, 'ACTIVE', NULL, 'test', $4::uuid)
+        \\    (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id, storage_mode)
+        \\VALUES ($1::uuid, $2, $3, 'ACTIVE', NULL, 'test', $4::uuid, 'SCHEMA')
         \\ON CONFLICT (id) DO NOTHING
     ,
         &[_][]const u8{ tenant_id, slug, slug, production_tenant_id },

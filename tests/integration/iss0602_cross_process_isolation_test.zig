@@ -162,7 +162,18 @@ test "TC-ISS-0602-cross-02: kill predicate does not affect a differently-tagged 
     // The sibling must be unaffected — still alive and idle-in-tx with its
     // own tag, proving the kill predicate genuinely excluded it rather than
     // erroring for an unrelated reason.
-    var sibling_alive = try conn_b.query(alloc,
+    //
+    // ISS-0647 / GH-652: this used to run the check ON conn_b itself. A
+    // connection can never observe its own row as 'idle in transaction' via
+    // a self-issued query — the act of running the SELECT makes
+    // pg_stat_activity report that connection's own state as 'active' for
+    // the query's duration (confirmed by reproducing directly in psql: a
+    // connection mid-transaction that queries its own state via
+    // application_name always sees state='active', never 'idle in
+    // transaction', so the count was always 0 regardless of
+    // killIdleConnections' correctness). Querying from h.conn (a different
+    // connection) instead lets conn_b's actual idle-in-tx state be observed.
+    var sibling_alive = try h.conn.query(alloc,
         \\SELECT count(*) FROM pg_stat_activity
         \\WHERE application_name = $1 AND state = 'idle in transaction'
     , &.{sibling_tag});

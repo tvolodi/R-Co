@@ -65,6 +65,16 @@ fn cleanupTenantSchema(pool: *Pool, tenant_id: []const u8) void {
 
     conn.exec("SELECT public.bpm_drop_tenant_schema($1::uuid)", &.{tenant_id}) catch {};
     conn.exec("DELETE FROM public.tenant_schemas WHERE tenant_id = $1::uuid", &.{tenant_id}) catch {};
+    // ISS-0647 / GH-652 (TC-SPT-01-ISS68-02): provisionTenantSchema() also
+    // INSERTs a row into public.tenant (src/db/provisioning.zig ~line 215),
+    // but this cleanup used to only remove the tenant_schemas row and the
+    // physical schema, leaving the public.tenant row itself orphaned with no
+    // matching tenant_schemas row. TC-SPT-01-ISS68-02 runs later in the same
+    // binary and asserts every public.tenant row has a matching
+    // tenant_schemas row, so it failed on the leftover fixture from THIS
+    // test rather than any defect in the code under test. Deleting the
+    // tenant row too makes this test's fixture fully self-cleaning.
+    conn.exec("DELETE FROM public.tenant WHERE id = $1::uuid", &.{tenant_id}) catch {};
 }
 
 test "TC-SPT-01-ISS68-01: provisioning creates tenant_schemas row and physical schema" {

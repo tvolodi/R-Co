@@ -1,0 +1,27 @@
+{
+  "issue_id": "ISS-0652",
+  "title": "db_integration_test TC-DB-03-02: segmentation fault in pg.Conn.close()/deinit after transaction rollback, not the previously-suspected Windows INVALID_HANDLE noise",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/661",
+  "registered_at": "2026-08-10T06:46:36Z",
+  "registered_by": "BACKEND-DEV (WF03-GH652-20260810 Step 3, GH-652/ISS-0647 triage)",
+  "related_to": [
+    "ISS-0647"
+  ],
+  "severity": "BLOCKER",
+  "status": "OPEN",
+  "category": "vendor-pg-client/memory-safety",
+  "affected_areas": [
+    "vendor/pg/pg.zig",
+    "tests/integration/db_integration_test.zig"
+  ],
+  "symptom": "GH-652/ISS-0647's own filing described this file's failure as 'INVALID_HANDLE (Windows conn-handle), reproduces consistently' -- a connection-lifecycle signature. Re-measured in true isolation via the new `zig build test-integration-db-integration` narrow step: the actual failure is a hard SEGMENTATION FAULT (not a returned error), captured with a full stack trace: `Segmentation fault at address 0x281fafe1000`, unwinding through `free__anon_34564 -> close -> deinit -> test.TC-DB-03-02: failed transaction rolls back both writes atomically -> mainServer -> main`. This is memory corruption / a double-free or use-after-free inside the vendored pg client's connection-close path (vendor/pg/pg.zig), triggered specifically by TC-DB-03-02's failed-transaction-rollback scenario. 6 of the file's 7 tests pass; only TC-DB-03-02 crashes, and it crashes the whole test binary (SIGSEGV) rather than failing an assertion, so Zig's test runner cannot even report it as a normal test failure -- it shows as '6 pass, 1 crash (7 total)' in the build summary.",
+  "acceptance_criteria": [
+    "Root-cause the segfault: use a memory debugger (e.g. Dr. Memory, or a Linux run under valgrind/ASan if cross-platform reproduction is easier) to find the exact double-free/use-after-free in pg.Conn.close()/deinit reached via TC-DB-03-02's failed-transaction-rollback path",
+    "Determine whether this is Windows-specific (the original filing's INVALID_HANDLE guess may still be a contributing factor -- Windows socket/handle double-close behaves differently than POSIX) or a genuine cross-platform memory-safety bug in the vendored pg client",
+    "Fix without weakening any existing connection-pool safety invariant (see ISS-0162 / GH-486, ISS-0602 / GH-414 -- this vendor path has a history of subtle cross-connection lifecycle bugs)",
+    "TC-DB-03-02 passes in isolation without crashing, twice consecutively",
+    "The other 6 tests in db_integration_test.zig must not regress",
+    "zig build test exits 0 with unit-test pass count >= established baseline (1011/1075, 64 skipped)"
+  ],
+  "next_action": "File as GitHub issue and add to global queue with BLOCKER severity (segfaults in the connection layer are a platform-stability risk, not just a test-flakiness annoyance). This needs a dedicated ISSUE-FIXER diagnosis pass with a memory debugger, not a superficial patch -- the original GH-652 filing's classification of this as Windows connection-handle noise was itself incorrect (re-measurement in true isolation shows a hard crash, not a returned error), so the next investigator should not assume it is environmental."
+}

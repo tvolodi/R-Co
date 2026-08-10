@@ -1,0 +1,30 @@
+{
+  "issue_id": "ISS-0653",
+  "title": "event_store_integration_test (3 distinct failures), xc02 residual concurrency-race subset, and xc06 TC-XC-06-08 chain-hash flake: audit-chain / event-store cluster needing dedicated investigation",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/662",
+  "registered_at": "2026-08-10T06:46:36Z",
+  "registered_by": "BACKEND-DEV (WF03-GH652-20260810 Step 3, GH-652/ISS-0647 triage)",
+  "related_to": [
+    "ISS-0647",
+    "ISS-0646",
+    "ISS-0645"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "category": "event-store-audit-chain/scattered-failures",
+  "affected_areas": [
+    "tests/integration/event_store_integration_test.zig",
+    "tests/integration/xc02_audit_immutability_test.zig",
+    "tests/integration/xc06_backwards_compatibility_test.zig",
+    "migrations/1107_fix_audit_chain_text_resource_id.sql"
+  ],
+  "symptom": "Three separate residual findings in the audit-chain / event-store area, grouped here because they likely share root causes in the same trigger/store code and are best investigated together: (1) event_store_integration_test.zig: re-measured in isolation via the new `zig build test-integration-event-store` narrow step, 25/28 tests pass, 3 fail -- TC-ES-08-04 (metadata-defaulting) and TC-ADP-01-02/03 (tenant-scoped read isolation, migration provisions tenant columns/defaults) -- each needs individual root-causing, not yet done in this pass. (2) xc02_audit_immutability_test.zig: down to 2 residual failures (from the original 7 -- 5 were fixed in the prior GH-649 pass) -- TC-XC-02-01 (CONNECTION_REFUSED, confirmed pure noise per GH-652's own filing) and the concurrency-race-affected subset, which GH-652 explicitly suspected shares ISS-0646's tenant_default concurrent-reconciliation race; re-measure specifically once ISS-0646 is resolved. (3) xc06_backwards_compatibility_test.zig TC-XC-06-08 (audit log evolution maintains chain integrity): FIXED the original session_replication_role-suppressed-trigger defect (both INSERTs now correctly wrapped with SET session_replication_role='origin' around the audit_entries INSERTs, matching the ISS-0645/GH-649 adp09/xc02 precedent), verified passing on the FIRST isolated run after the fix -- but re-running the same isolated binary two more times showed the SAME test then failing non-deterministically on `query.rows[0][2] == null` (the legacy/first audit row unexpectedly has a non-null prev_chain_hash), despite trg_bpm_audit_apply_chain_hash's prev-hash lookup (migrations/1107_fix_audit_chain_text_resource_id.sql line 196) being correctly scoped `WHERE tenant_id = NEW.tenant_id` with a per-tenant pg_advisory_xact_lock, and despite each test using a freshly-generated random tenant_id. This flakiness was NOT present before the session_replication_role fix (the test failed deterministically on the missing chain_hash instead), so it is a newly-surfaced, genuine concurrency question, not a regression introduced by the fix.",
+  "acceptance_criteria": [
+    "event_store_integration_test.zig: root-cause and fix (or further split) TC-ES-08-04 and TC-ADP-01-02/03 individually",
+    "xc02_audit_immutability_test.zig: re-measure the concurrency-race-affected subset once ISS-0646 is resolved; if still failing after that fix, escalate as a new, more specific issue",
+    "xc06 TC-XC-06-08: explain why a per-tenant-scoped, advisory-locked chain-hash lookup produces a non-null prev_chain_hash for what should be the first audit_entries row for a fresh random tenant_id -- check whether Zig's test runner executes test blocks within one binary concurrently (which would explain cross-test interference despite per-test tenant_id isolation, if e.g. a shared sequence/connection resource is involved) or whether there is a genuine bug in the trigger's SELECT ... ORDER BY \"timestamp\" DESC, audit_id DESC LIMIT 1 lookup under rapid same-tenant repeated invocation",
+    "All three files pass in isolation, each re-run at least 3 times consecutively with zero failures, to confirm genuine fixes rather than reduced flake probability",
+    "zig build test exits 0 with unit-test pass count >= established baseline (1011/1075, 64 skipped)"
+  ],
+  "next_action": "File as GitHub issue and add to global queue. The xc06 TC-XC-06-08 flakiness in particular is a new, precise finding (test.exe's test-block execution model / concurrency assumption) that the next investigator should chase directly -- it is a narrower, more actionable lead than GH-652's original broad 'PgError.ServerError cluster' framing for at least this one test."
+}

@@ -10,15 +10,15 @@
     "migrations/GBL-134_iss0185_drop_global_registry_shadows.sql (dropped the tenant_default shadow copy persistOnboardingResult's fix had come to depend on)"
   ],
   "error_detail": "All 20 rows in tenant_default.onboarding_registry stuck at state='pending', response_status=201, completed_at=NULL. The detached background thread never updates the row, indicating a silent panic, deadlock, or early return inside runSagaBackground / executeSaga before persistOnboardingResult is reached.",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "BLOCKER",
   "category": "backend logic error",
   "created_at": "2026-06-15T15:05:40Z",
   "run_id": "WF03-onboarding-saga-fix-20260615",
   "handoff_id": "e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7081",
-  "resolution": null,
-  "prevention": null,
-  "resolved_at": null,
+  "resolution": "Fixed during WF03-GH652-20260810 (ISS-0647 triage) while root-causing a different but adjacent test failure (onboarding_realm_guard_test.zig TC-ISS0071-01, in markOnboardingRealmMissing() in the same file). That investigation independently rediscovered this exact regression -- persistOnboardingResult() (src/api/routes/onboarding.zig, ~line 537 at time of fix) still hardcoded 'UPDATE tenant_default.onboarding_registry ...', which throws C42P01 'relation does not exist' since onboarding_registry has only ever lived in public (confirmed via migrations/056_onboarding_registry.sql and every later migration touching it) and GBL-134 dropped the tenant_default shadow copy this call site had come to depend on, exactly as this issue's root_cause field already documented. Fixed by correcting the qualifier to 'public.onboarding_registry' in both persistOnboardingResult() and the sibling function markOnboardingRealmMissing() (which had the identical bug, also fixed in the same pass).",
+  "prevention": "Both call sites now carry inline comments citing this issue and explaining why 'public' (not 'tenant_default') is correct, with a pointer to the migration history. No new lint rule added -- this specific class (schema-qualified literal referencing a table that has since moved) is the same one lint_test_isolation.py / lint_sql_param_types.py do not currently check for hardcoded production-code schema qualifiers (only test fixtures and $N parameter casts respectively); a future enhancement could add a check that greps for `<schema>.<table>` literals in src/ and cross-references them against the schema each table's CREATE TABLE migration actually used.",
+  "resolved_at": "2026-08-10T06:46:36Z",
   "related_issues": [
     {
       "issue_id": "ISS-0065",

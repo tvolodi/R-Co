@@ -113,7 +113,20 @@ test "TC-ISS-0125-02: deleting process definition cascades to definition snapsho
     defer allocator.free(name);
 
     try insertDefinitionAndSnapshot(&h.conn, definition_id, instance_id, name);
+
+    // ISS-0647 / GH-652 (same root cause as ISS-0645 / GH-649's fix to
+    // adp09_tamper_evident_audit_chain_test.zig / xc02_audit_immutability_test.zig
+    // in this same session): TestHarness.init() sets session_replication_role
+    // = 'replica' session-wide so resetTestData() can DELETE audit_entries
+    // without tripping the immutability guard. That setting also suppresses
+    // ON DELETE CASCADE — Postgres implements FK cascade actions as internal
+    // triggers, and 'replica' mode disables ALL triggers except
+    // ENABLE REPLICA ones. This DELETE needs the real CASCADE behaviour that
+    // TC-ISS-0125-01 confirms is configured (confdeltype='c'), so scope the
+    // override to this one statement and restore 'replica' immediately after.
+    try h.conn.exec("SET session_replication_role = 'origin'", &.{});
     try h.conn.exec("DELETE FROM process_definitions WHERE id = $1::uuid", &.{definition_id});
+    try h.conn.exec("SET session_replication_role = 'replica'", &.{});
 
     var rows = try h.conn.query(
         allocator,
@@ -187,6 +200,21 @@ test "TC-ISS-0125-04: cleanup helper propagates child DELETE errors" {
         "SAVEPOINT iss0125_cleanup_failure",
         &.{},
     );
+    // ISS-0647 / GH-652 (same root cause as TC-ISS-0125-02 above):
+    // TestHarness.init() sets session_replication_role = 'replica'
+    // session-wide, which suppresses ALL origin-mode triggers — including
+    // the CREATE TRIGGER above (ENABLE ORIGIN by default), so the forced
+    // failure it exists to simulate never fired and cleanupDefinitionSnapshots
+    // returned void instead of error.ServerError. Scope the override to the
+    // one call that needs the trigger active, then restore 'replica'.
+    //
+    // The RAISE EXCEPTION inside the trigger aborts the whole transaction,
+    // not just the statement — every subsequent command errors with
+    // "current transaction is aborted" until a ROLLBACK/ROLLBACK TO
+    // SAVEPOINT runs. session_replication_role is session-level (unaffected
+    // by the abort itself), but it must still be restored to 'replica'
+    // AFTER the SAVEPOINT rollback clears the aborted state, not before.
+    try h.conn.exec("SET session_replication_role = 'origin'", &.{});
     try std.testing.expectError(
         error.ServerError,
         helpers.cleanupDefinitionSnapshots(&h.conn, definition_id),
@@ -195,6 +223,7 @@ test "TC-ISS-0125-04: cleanup helper propagates child DELETE errors" {
         "ROLLBACK TO SAVEPOINT iss0125_cleanup_failure",
         &.{},
     );
+    try h.conn.exec("SET session_replication_role = 'replica'", &.{});
 
     var rows = try h.conn.query(
         allocator,

@@ -127,7 +127,15 @@ test "iss107_tenant_storage_mode: column_exists_with_correct_type_and_default" {
 // ---------------------------------------------------------------------------
 
 test "iss107_tenant_storage_mode: insert_without_storage_mode_defaults_to_legacy_rls" {
-    // The default tenant (id='0000...0000') has storage_mode = 'LEGACY_RLS'.
+    // The default tenant (id='0000...0000') originally shipped with
+    // storage_mode = 'LEGACY_RLS' (this test's original expectation), but
+    // migration 087_default_tenant_storage_mode_cutover.sql permanently cuts
+    // the default tenant over to 'SCHEMA' on every properly-migrated
+    // database — a deliberate, documented, idempotent change made so
+    // GBL-084_rls_removal.sql's ISS-503 pre-flight gate (which refuses to
+    // proceed while any tenant is still LEGACY_RLS) can pass on a fresh
+    // bootstrap. ISS-0647 / GH-652: this assertion still expected the
+    // pre-087 value and had been failing since that migration landed.
     // covers: ISS-107 AC-2
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
@@ -140,10 +148,10 @@ test "iss107_tenant_storage_mode: insert_without_storage_mode_defaults_to_legacy
     defer rows.deinit();
 
     // CUSTOM: assertions for this test case — handwritten by the implementer.
-    // CUSTOM: assert row[0] equals "LEGACY_RLS"
+    // CUSTOM: assert row[0] equals "SCHEMA" (post-087 cutover value)
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     const mode = rows.rows[0][0] orelse "";
-    try std.testing.expectEqualStrings("LEGACY_RLS", mode);
+    try std.testing.expectEqualStrings("SCHEMA", mode);
 }
 
 // ---------------------------------------------------------------------------

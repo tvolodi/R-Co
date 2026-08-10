@@ -342,6 +342,18 @@ pub fn handleGetOnboarding(
 /// Transition a completed onboarding record to failed with error=realm_missing.
 /// Uses a parameterised UPDATE — no string interpolation. Discards errors silently
 /// (consistent with persistOnboardingResult). A no-op if the row was already updated.
+///
+/// ISS-0647 / GH-652 (TC-ISS0071-01): this used to schema-qualify as
+/// `tenant_default.onboarding_registry`, based on the (incorrect) belief that
+/// the table lives in the tenant_default schema. It is actually a
+/// platform-admin-scope table in the `public` schema (confirmed via
+/// information_schema.tables) — the qualified name referenced a relation
+/// that does not exist, so every UPDATE errored and was silently discarded by
+/// the trailing `catch {}`, leaving the row stuck at state='completed' while
+/// the HTTP response already claimed state=failed. Qualifying with the
+/// correct schema (`public`) fixes the mismatch and — unlike leaving the
+/// statement unqualified — still works from contexts (e.g. background
+/// threads) whose search_path may not resolve to `public` first.
 fn markOnboardingRealmMissing(
     allocator: std.mem.Allocator,
     pool: *pool_mod.Pool,
@@ -352,7 +364,7 @@ fn markOnboardingRealmMissing(
     defer pool.release(conn);
 
     conn.exec(
-        \\UPDATE tenant_default.onboarding_registry
+        \\UPDATE public.onboarding_registry
         \\SET state         = 'failed',
         \\    response_body = (COALESCE(response_body, '{}'::jsonb)
         \\                     || '{"state":"failed","error":"realm_missing"}'::jsonb),
@@ -526,15 +538,26 @@ fn persistOnboardingResult(
     const status_str = try std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{status});
     defer std.heap.page_allocator.free(status_str);
 
-    // ISS-0070 fix: The background saga thread does not inherit the request
-    // thread's threadlocal tenant context, so pool.acquire() would give a
-    // connection whose search_path resolves to public rather than
-    // tenant_default.  The onboarding_registry is always in the
-    // tenant_default schema (platform admin scope), so we schema-qualify the
-    // table name explicitly to ensure the UPDATE reaches the correct row.
+    // ISS-0070 fix, corrected by ISS-0647 / GH-652: the background saga
+    // thread does not inherit the request thread's threadlocal tenant
+    // context, so pool.acquire() could give a connection whose search_path
+    // does not resolve the bare table name — the original fix schema-
+    // qualified the UPDATE to guard against that, but qualified it with the
+    // wrong schema. onboarding_registry has always been created in `public`
+    // (migrations/056_onboarding_registry.sql: `CREATE TABLE IF NOT EXISTS
+    // public.onboarding_registry`; every later migration that touches it —
+    // 071, GBL-112, GBL-114, GBL-133, GBL-134 — references the same
+    // public-scope table), never in tenant_default. The
+    // `tenant_default.onboarding_registry` qualifier referenced a relation
+    // that does not exist, so this UPDATE has been erroring and having that
+    // error silently discarded by the trailing `catch {}` on every call —
+    // onboarding completion status was never actually being persisted via
+    // this path. Qualifying with the correct schema (`public`) fixes it
+    // while keeping the explicit-qualification safety net the original
+    // ISS-0070 comment intended.
     _ = conn.queryRow(
         std.heap.page_allocator,
-        \\UPDATE tenant_default.onboarding_registry
+        \\UPDATE public.onboarding_registry
         \\SET response_status = $2::smallint, response_body = $3::jsonb, state = $4, completed_at = NOW()
         \\WHERE onboarding_id = $1::uuid
         \\RETURNING id::text

@@ -1,0 +1,28 @@
+{
+  "issue_id": "ISS-0651",
+  "title": "exp201_202_entities_test TC-EXP-202-01/02/03: createRecord's getOrCreateEntityTypeInstance schema-qualifies by tenant_id, but LEGACY_RLS-style tests never provision that physical schema",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/660",
+  "registered_at": "2026-08-10T06:46:36Z",
+  "registered_by": "BACKEND-DEV (WF03-GH652-20260810 Step 3, GH-652/ISS-0647 triage)",
+  "related_to": [
+    "ISS-0647",
+    "ISS-0156",
+    "ISS-0112"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "category": "entities-subsystem/tenant-schema-mismatch",
+  "affected_areas": [
+    "src/entities/commands.zig",
+    "tests/integration/exp201_202_entities_test.zig"
+  ],
+  "symptom": "Re-measured in true isolation via `zig build test-integration-exp201-202` (new narrow step added this pass): TC-EXP-202-01/02/03 (create/update/delete record) all fail identically with PostgreSQL C42P01 'relation \"tenant_<hex>.entity_type_instances\" does not exist', captured via `-Dlog-pg-errors=true`. Root cause: src/entities/commands.zig's getOrCreateEntityTypeInstance() (line ~424) explicitly schema-qualifies its INSERT as `{s}.entity_type_instances` using schemaNameForTenant(tenant_id) -- correct when the caller's tenant actually has a provisioned physical schema (storage_mode='SCHEMA'). But tests/integration/exp201_202_entities_test.zig's newFixture() helper (line 41) generates a brand-new random UUID as `fixture.tenant_id` for every test, and NEVER calls provisionTenantSchema() or inserts a public.tenant row for it -- it is purely a logical/data-column tenant tag layered on top of the tenant_default physical schema that TestHarness.init()/makePool() routes all connections to (matching the convention used by every other passing test in this same file, e.g. TC-EXP-201-01/02, which read/write entity_definitions unqualified via search_path and pass fine). The mismatch is specific to getOrCreateEntityTypeInstance's explicit schema-qualification of entity_type_instances/instance_projections: it assumes tenant_id always maps to a real per-tenant schema, which is true in production (where pool connections' search_path is set from the resolved request tenant per src/db/pool.zig's applyRequestStorageRouting) but false for this test fixture's usage pattern.",
+  "acceptance_criteria": [
+    "Decide the correct fix: either (a) getOrCreateEntityTypeInstance should route through the connection's own search_path (unqualified table names) rather than deriving+qualifying a schema name from the tenant_id parameter, falling back to explicit qualification only when the connection's tenant context indicates SCHEMA storage mode, or (b) the test fixture should be changed to use a real DEFAULT_TENANT_ID-based tenant consistently and/or provision a real per-tenant schema via provisionTenantSchema() before calling createRecord",
+    "Any fix must not regress ISS-0156/GH-475's original fix (both entity_type_instances AND instance_projections rows must still be created together) or ISS-0112's tenant-scope corrective work",
+    "TC-EXP-202-01/02/03 pass in isolation (zig build test-integration-exp201-202), twice consecutively",
+    "TC-EXP-201-01/02 (currently passing) must not regress",
+    "zig build test exits 0 with unit-test pass count >= established baseline (1011/1075, 64 skipped)"
+  ],
+  "next_action": "File as GitHub issue and add to global queue. This needs a CODE-DESIGNER pass to decide the correct multi-tenancy contract for entity_type_instances/instance_projections schema resolution -- not a quick fixture patch, since src/entities/commands.zig is production code on the record create/update/delete path used by all entity tests, and the two plausible fixes (route via search_path vs. fix the test fixture) have different blast radii that should be weighed deliberately rather than under time pressure."
+}

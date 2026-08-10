@@ -321,13 +321,24 @@ pub fn promoteDefinition(
         export_import.ExportImportError.PoolExhausted => return PromotionError.PoolExhausted,
         else => return PromotionError.ImportFailed,
     };
-    // Definition struct has no deinit; individual string fields will be freed by the request arena.
-
+    // ISS-0647 / GH-652 (env03/iss206 leak cluster): the comment that used to
+    // sit here ("Definition struct has no deinit; individual string fields
+    // will be freed by the request arena") was incorrect on both counts —
+    // graph.zig's Definition DOES define `deinit` (frees .name, .version,
+    // .description, .stage, and the nested DefinitionGraph's node/edge
+    // dupes), and this function is also called directly from integration
+    // tests with a DebugAllocator, not just from behind an HTTP request
+    // arena. Only new_def.id and new_def.version are copied out below before
+    // new_def itself is released, so it must be deinit'd once those copies
+    // exist — otherwise every field importDefinition allocated (in
+    // particular the parseGraphJson node/edge dupes) leaks on every call.
     const new_def_id = uuidToHexStr(allocator, new_def.id) catch return PromotionError.OutOfMemory;
     errdefer allocator.free(new_def_id);
 
     const new_def_version = allocator.dupe(u8, new_def.version) catch return PromotionError.OutOfMemory;
     errdefer allocator.free(new_def_version);
+
+    new_def.deinit(allocator);
 
     // ── Step 6: Collect unresolved service references ─────────────────────────
     tenant_context_mod.set(prod_tenant_id);
