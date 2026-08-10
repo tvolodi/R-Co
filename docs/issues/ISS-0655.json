@@ -8,7 +8,8 @@
     "ISS-0647"
   ],
   "severity": "MAJOR",
-  "status": "OPEN",
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-10T07:35:21Z",
   "category": "audit-chain/function-signature-mismatch",
   "affected_areas": [
     "tests/integration/xc04_kernel_determinism_test.zig",
@@ -22,5 +23,6 @@
     "The other tests in the same narrow build step (test-integration-stage11-sim-xc04) must not regress",
     "zig build test exits 0 with unit-test pass count >= established baseline (1011/1075, 64 skipped)"
   ],
-  "next_action": "File as GitHub issue and add to global queue. Small, well-defined fix (signature/cast mismatch) -- should be quick for a future ISSUE-FIXER/BACKEND-DEV pass, but out of scope for GH-652's WF-03 run since it is not one of the 20 files that run was chartered to fix."
+  "next_action": "File as GitHub issue and add to global queue. Small, well-defined fix (signature/cast mismatch) -- should be quick for a future ISSUE-FIXER/BACKEND-DEV pass, but out of scope for GH-652's WF-03 run since it is not one of the 20 files that run was chartered to fix.",
+  "resolution": "Confirmed root cause: bpm_audit_compute_chain_hash's actual current signature (migrations/1107_fix_audit_chain_text_resource_id.sql and migrations/GBL-121_fix_audit_chain_resource_id_text.sql, both agree) types its 6th parameter p_resource_id as TEXT. The test's direct SQL call cast the corresponding positional argument ($4, mapped to the resource_id UUID variable) to ::uuid, which PostgreSQL cannot implicitly coerce back to TEXT for overload resolution -- C42883. This is the exact same over-cast defect class already fixed twice this session: GH-649/ISS-0645's adp09_tamper_evident_audit_chain_test.zig fix, and GH-652/ISS-0647's src/tasks/store.zig fix. Fixed by removing the incorrect ::uuid cast from the $4 position in tests/integration/xc04_kernel_determinism_test.zig's TC-XC-04-04, letting it bind as TEXT (its declared Zig type, []const u8, already matches -- no other change needed).\n\nVerified: zig build test-integration-stage11-sim-xc04 -- 13/14 pass (was 12/14; TC-XC-04-04 now passes consistently across 2 re-runs). The 1 remaining failure (TC-SIM-01-01) is GH-663/ISS-0654's separately-forwarded, unrelated PgError.ServerError scope -- confirmed not touched or regressed by this fix. zig build exits 0, no error-set output. lint_sql_param_types.py 0 findings. zig build test (full unit suite) 89/89 steps, 1011/1075 pass (64 skipped), unchanged from session baseline."
 }
