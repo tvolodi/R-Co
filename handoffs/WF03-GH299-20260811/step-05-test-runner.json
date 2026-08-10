@@ -1,0 +1,68 @@
+{
+  "handoff_id": "29900000-0000-0500-0000-000000000000",
+  "run_id": "WF03-GH299-20260811",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-10T20:26:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "29900000-0000-0000-0000-000000000000",
+      "29900000-0000-0050-0000-000000000000",
+      "29900000-0000-0200-0000-000000000000",
+      "29900000-0000-02b1-0000-000000000000",
+      "29900000-0000-0300-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/operations/startup_assertions.zig",
+      "src/main.zig (integrated call site)",
+      "docs/runbook/OPERATIONS.md",
+      "tests/integration/startup_assertions_test.zig",
+      "tests/specs/ISS-0084.md",
+      "src/design/pi-09-operations-runbook.md"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/299",
+    "iss_ref": "ISS-0084",
+    "wf_alias": "PI-09"
+  },
+  "task": {
+    "description": "TEST-RUNNER Step 5 \u2014 verify the implementation from Step 3.\n\n## Pre-checks (mandatory per CLAUDE.md TEST-RUNNER section)\n\n1. **Backend services check**:\n   ```bash\n   docker-compose ps 2>&1 | grep -E 'keycloak|db'\n   curl -sf http://localhost:8081/health/ready > /dev/null && echo KC_OK || echo KC_DOWN\n   psql \"$BPM_TEST_DB_URL\" -c 'SELECT 1' > /dev/null 2>&1 && echo DB_OK || echo DB_DOWN\n   ```\n   If any service is DOWN: STOP. Return FAIL severity BLOCKER with message: `\"Backend services unavailable: <which services>. ORCH must run docker-compose up -d db db_test keycloak via ADHOC BACKEND-DEV, then redispatch TEST-RUNNER.\"`\n\n2. **Infrastructure Health Checklist** (INV-TI-1):\n   ```bash\n   zig build migrate 2>&1   # exit 0, no ERROR output\n   psql \"$BPM_TEST_DB_URL\" -c 'SELECT count(*) FROM public.schema_migrations'\n   # compare to: number of files in migrations/ \u2014 must match\n   python3 tools/lint_test_isolation.py tests/integration   # exit 0, no BLOCKER\n   ```\n   If any check fails: STOP and return FAIL severity BLOCKER.\n\n3. **Test environment check**:\n   ```bash\n   zig build test-env-verify     # exit 0 = healthy, exit 1 = unhealthy\n   ```\n   If non-zero: STOP and return FAIL severity BLOCKER.\n\n## Test execution\n\nOnce all pre-checks pass, run:\n- The new startup_assertions test (per-binary if it uses BPM_TEST_DB_URL):\n  ```bash\n  $env:BPM_TEST_DB_URL = \"postgres://bpm:bpm@localhost:5434/bpm_test\"\n  $env:BPM_TEST_URL    = \"http://127.0.0.1:8080\"\n  $env:BPM_IDP_BASE_URL = \"http://localhost:8081\"\n  zig build test-integration-startup_assertions\n  ```\n- Verify all 5 test cases pass (4 + the override variant).\n\n## Coverage verification\n- confirm: zig build test exits 0 (no regressions in unit tests)\n- confirm: lint_sql_param_types.py 0 findings\n- confirm: lint_handoffs.py exits 0\n- confirm: existing test isolation still works (no new BLOCKER findings)\n\n## Write report\nWrite results to `tests/reports/report-2026-08-10-WF03-GH299-20260811.yaml` per docs/guides/test_developer_guide.md \u00a79. Include:\n- Pre-check outcomes\n- Per-test outcomes (5 cases)\n- Build & lint exit codes\n- Any BLOCKER/MAJOR/MINOR findings\n\n## Return\n- status -> COMPLETED\n- result.status -> PASS (or FAIL with issues)\n- result.summary -> concise verdict\n- result.artifacts_out -> [tests/reports/report-2026-08-10-WF03-GH299-20260811.yaml]\n- result.issues -> list with severity\n- next_action -> \"Route to DOC-UPDATER (Step 7)\"\n- started_at / completed_at from shell clock\n\n## Hard constraints\n- No git push / git commit (Step 7 will do that).\n- No source code edits.\n- No mocking/stubbing of services.\n- Read with `encoding='utf-8-sig'`, write with `encoding='utf-8'`. The report must be YAML.\n- Timestamps from the shell clock only.",
+    "acceptance_criteria": [
+      "All pre-checks pass (services + infrastructure + env)",
+      "zig build test-integration-startup_assertions exits 0 with all 5 cases PASS",
+      "tests/reports/report-YYYY-MM-DD-WF03-GH299-20260811.yaml exists with PASS verdict",
+      "handoff file marked COMPLETED",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": ["fn:run-tests", "fn:write-test-report"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Pre-check BLOCKER: env_verify C0 failed — both BPM_DB_URL and BPM_TEST_DB_URL point to same database (port 5434). Integration tests cannot proceed safely.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-10-WF03-GH299-20260811.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "category": "Infrastructure / Test Environment",
+        "description": "Test environment unhealthy: C0 check failed — BPM_DB_URL and BPM_TEST_DB_URL both resolve to the same database (postgres://bpm:bpm@localhost:5434/bpm_test). Integration tests would run against the development database instead of the isolated test database.",
+        "affected_areas": [
+          "Environment configuration",
+          "Database connection URLs"
+        ],
+        "root_cause": "BPM_DB_URL is currently set to the test database port (5434) instead of the development database port (5442). Per docker-compose ps: db is on port 5442, db_test is on port 5434.",
+        "remedy": "Set BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev (or the configured BPM_DB_NAME) in the current shell environment or .env file. Verify with: python tools/verify_test_env.py"
+      }
+    ],
+    "next_action": "ORCH must create ADHOC BACKEND-DEV handoff to fix environment configuration (set correct BPM_DB_URL), then redispatch TEST-RUNNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-10T20:26:39Z",
+  "completed_at": "2026-08-10T20:39:55Z"
+}

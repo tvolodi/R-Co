@@ -1,0 +1,102 @@
+run_id: WF03-GH299-20260811
+date: 2026-08-10T20:39:55Z
+test_runner_agent: TEST-RUNNER
+workflow_stage: WF-03 Issue Resolving Step 5
+
+pre_check_results:
+  services:
+    status: PASS
+    docker_compose:
+      - name: r-co-db-1
+        status: healthy
+        port: "5442:5432"
+      - name: r-co-db_test-1
+        status: healthy
+        port: "5434:5432"
+      - name: r-co-keycloak-1
+        status: healthy
+      - name: r-co-keycloak_gateway-1
+        status: healthy
+        port: "8081:8080"
+    keycloak_health: "OK (200)"
+    database_connectivity: "OK (port 5434)"
+
+  migrations:
+    status: PASS
+    exit_code: 0
+    migrations_applied: 124
+    note: "All migrations skipped (already applied)"
+
+  isolation:
+    status: PASS
+    exit_code: 0
+    files_checked: 136
+    issues_found: 0
+    suppressed_baseline_issues: 116
+
+  env_verify:
+    status: FAIL
+    exit_code: 1
+    failed_checks:
+      - check_id: C0
+        check_name: "DB URL targets"
+        severity: BLOCKER
+        description: "BPM_DB_URL and BPM_TEST_DB_URL both resolve to postgres://bpm:***@localhost:5434/bpm_test — integration tests would run against the development database"
+        remedy: "point BPM_TEST_DB_URL at the db_test container, not db (see .env.example)"
+    passed_checks:
+      - C1: "db_test container healthy"
+      - C2: "zig build exit 0"
+      - C3: "zig build migrate exit 0, 124/124 applied"
+      - C4: "schema baseline - ledger matches migrations/"
+      - C5: "test isolation lint - no BLOCKER findings"
+      - C6: "no stale locks - 0 ungranted"
+      - C7: "bench DB URL resolvable"
+      - C8: "tenant provisioning lint - no BLOCKER findings"
+      - C9: "config drift - 4 services checked, all match current config"
+    overall: "UNHEALTHY — 1 of 10 checks failed (C0)"
+
+test_execution:
+  status: NOT_RUN
+  reason: "Pre-check failure (env_verify C0 BLOCKER) — cannot proceed to test execution per CLAUDE.md TEST-RUNNER mandatory directives"
+  target_test_suite: "zig build test-integration-startup_assertions"
+  expected_test_cases: 5
+
+build_results:
+  zig_build:
+    status: NOT_RUN
+    reason: "Blocked by pre-check failure"
+  zig_build_test:
+    status: NOT_RUN
+    reason: "Blocked by pre-check failure"
+
+lint_results:
+  test_isolation:
+    status: PASS
+    exit_code: 0
+    summary: "136 files checked, 0 issues, 116 baseline suppressions"
+  sql_param_types:
+    status: NOT_RUN
+    reason: "Blocked by pre-check failure"
+  handoffs:
+    status: NOT_RUN
+    reason: "Blocked by pre-check failure"
+
+verdict: FAIL
+issues:
+  - severity: BLOCKER
+    category: "Infrastructure / Test Environment"
+    description: "Test environment unhealthy: C0 check failed — BPM_DB_URL and BPM_TEST_DB_URL both resolve to the same database (postgres://bpm:bpm@localhost:5434/bpm_test). Integration tests would run against the development database instead of the isolated test database."
+    affected_areas:
+      - "Environment configuration"
+      - "Database connection URLs"
+    root_cause: "BPM_DB_URL is currently set to the test database port (5434) instead of the development database port (5442). Per docker-compose ps: db is on port 5442, db_test is on port 5434."
+    remedy: "Set BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev (or the configured BPM_DB_NAME) in the current shell environment or .env file. Verify with: python tools/verify_test_env.py"
+    next_action: "ORCH must create ADHOC BACKEND-DEV handoff to fix environment configuration, then redispatch TEST-RUNNER"
+
+summary: "Pre-check BLOCKER: env_verify C0 failed. Both BPM_DB_URL and BPM_TEST_DB_URL point to the same database (port 5434). Integration tests cannot proceed safely. Services (docker-compose, Keycloak, PostgreSQL) are all healthy. Migrations are up to date (124/124). Test isolation passed (136 files, 0 issues). The environment configuration must be corrected before test execution can begin."
+
+artifacts_out:
+  - tests/reports/report-2026-08-10-WF03-GH299-20260811.yaml
+
+next_agent: ORCH
+recommendation: "Create ADHOC BACKEND-DEV handoff to set BPM_DB_URL to the correct development database URL (postgres://bpm:bpm@localhost:5442/bpm_dev), verify with tools/verify_test_env.py, then redispatch TEST-RUNNER for WF03-GH299-20260811 Step 5."
