@@ -36,14 +36,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/501",
       "title": "src/oidc/jwks.zig does not compile under Zig 0.16 yet `zig build` is green \u2014 ISS-0172 blind spot in the OIDC token-cache path",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-1-loop",
-        "locked_at": "2026-08-08T18:13:36Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-08T18:13:36Z",
       "started_at": "2026-08-08T18:13:36Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T16:41:22Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 501,
