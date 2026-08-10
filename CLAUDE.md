@@ -582,6 +582,7 @@ Backend services (PostgreSQL, Keycloak) are a **standard runtime requirement** �
 | 1 | CODE-DESIGNER | — |
 | **1b** | **CODE-DESIGN-VALIDATOR** | **Hard gate — BACKEND-DEV cannot start until PASS** |
 | 2a/2b | BACKEND-DEV / FRONTEND-DEV | — |
+| **2c** | **SECURITY-REVIEWER** | **Hard gate for any change touching a tenant-data path (new/changed API route, migration, Lua/Wasm host function, secrets code, or response-shaping/lookup-by-ID code) — TEST-DESIGNER cannot start until PASS. Gates against `docs/agents/instructions/security-invariants.md`. Out-of-scope changes get an automatic PASS with a one-line "no tenant-data path touched" note — this step never blocks a change that never approaches tenant data.** |
 | 3 | TEST-DESIGNER | — |
 | **3b** | **TEST-DESIGN-VALIDATOR** | **Hard gate — TEST-RUNNER cannot start until PASS; must verify schema contract tests exist for any new constraint migrations** |
 | 4 | TEST-RUNNER | Infrastructure Health Checklist (§3 of test_infrastructure_guide.md) THEN bench env checked; both required before any test binary runs |
@@ -929,10 +930,26 @@ Also update the `status` field in `handoffs/registry.json` for this handoff.
 
 ### Security rules (hard constraints)
 
-1. **No SQL string interpolation.** Use `$1`, `$2` placeholders via `pg.zig`. Any violation is a critical security defect.
-2. **No secrets in source.** All credentials from environment variables.
-3. **No `catch unreachable` on realistic failure paths.** Use typed error sets.
-4. **No I/O in `src/engine/transition.zig`.**
+**Canonical source: [`docs/agents/instructions/security-invariants.md`](docs/agents/instructions/security-invariants.md).**
+The eight numbered security invariants (tenant data isolation, server-side field
+authorisation, untrusted-runtime sandboxing, secrets by reference, not-found/forbidden
+indistinguishability, new-path proof-of-scoping, no SQL string interpolation, no
+`catch unreachable` on realistic failure paths) live there — not here — precisely so that
+FRONTEND-DEV and ISSUE-FIXER read them too, not only BACKEND-DEV. Read that file, not this
+summary, before implementing anything that touches tenant data, secrets, or either sandbox
+runtime. `SECURITY-REVIEWER` (`.claude/agents/security-reviewer.md`) gates WF-02 Step 2c
+against that exact list.
+
+Quick summary of the four that used to live only here (see the invariants doc for the full
+eight, their references, and their verification commands):
+
+1. **No SQL string interpolation** (INV-7). Use `$1`, `$2` placeholders via `pg.zig`.
+2. **No secrets in source** (part of INV-4). All credentials from environment variables;
+   tenant secrets resolved via `SecretRef`, never held as plaintext beyond the resolving call.
+3. **No `catch unreachable` on realistic failure paths** (INV-8). Use typed error sets.
+4. **No I/O in `src/engine/transition.zig`.** A single-file purity rule, not a tenant-security
+   invariant — stays here rather than in the invariants doc. Absolute rule; CI enforces it via
+   the `transition.zig in-file tests` job.
 
 ### Allowed commands
 
@@ -1213,6 +1230,52 @@ python tools/lint_design_artefact.py src/design/<module>.md
 Then verify: (1) every acceptance criterion in every MUST requirement has a design element, (2) for Type E: no implementation code is present, (3) all public function signatures are listed (Type E) or implied by the parameter file (Type A/D), (4) error taxonomy exists (Type E) or `error_map` is specified (Type A), (5) dependencies documented, (6) classification per `templates/lego-catalog.md` is correct (a CRUD endpoint that needs custom mid-flight business logic is Type E, not Type A).
 
 FAIL if any check fails. Complete handoff with PASS or FAIL. On PASS, set `next_action: "Route to BACKEND-DEV (Step 2a)"`.
+
+---
+
+## AGENT: SECURITY-REVIEWER
+
+```
+AGENT_ID: SECURITY-REVIEWER
+```
+
+Also read:
+```bash
+cat docs/agents/instructions/security-invariants.md
+```
+
+Find your handoff:
+```bash
+grep -rl '"to_agent": "SECURITY-REVIEWER"' handoffs/ | xargs grep -l '"status": "PENDING"' 2>/dev/null
+```
+
+You operate at **WF-02 Step 2c** — after implementation (Step 2a BACKEND-DEV / Step 2b
+FRONTEND-DEV) and before TEST-DESIGNER (Step 3). TEST-DESIGNER MUST NOT start until you
+return PASS for any change in scope.
+
+**Scope test.** You gate any change that touches a tenant-data path: a new/changed API route
+reading or writing tenant-scoped data, a new/changed migration, a new/changed Lua or Wasm
+host-API function or capability set, anything under `src/secrets/`, response-shaping or
+client-cache-key code for tenant-scoped entities, or a lookup-by-ID handler probable
+cross-tenant. If none of these apply to the diff, record that in `result.summary` and
+complete with `status: PASS` immediately — do not block changes that never approach tenant
+data.
+
+**Gate against the eight numbered invariants** in `docs/agents/instructions/security-invariants.md`
+(INV-1 through INV-8, all BLOCKER severity — tenant data isolation, server-side field
+authorisation, untrusted-runtime sandboxing, secrets by reference, not-found/forbidden
+indistinguishability, new-path proof-of-scoping, no SQL string interpolation, no
+`catch unreachable` on realistic failure paths). For each invariant that applies, run its
+"How to verify" command from that file, or perform its manual review procedure where no
+automated check exists yet — the file states plainly which invariants have zero automated
+coverage today. A single FAIL on an applicable invariant is a FAIL result; there is no partial
+credit across BLOCKER-severity invariants.
+
+Complete handoff with PASS or FAIL, listing which invariants applied and how each was
+satisfied (or, on FAIL, which invariant failed and why). On PASS, set
+`next_action: "Route to TEST-DESIGNER (Step 3)"`. ORCH routes a FAIL back to the implementing
+agent (BACKEND-DEV or FRONTEND-DEV), not to CODE-DESIGNER — this is an implementation-level
+gate.
 
 ---
 

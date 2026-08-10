@@ -28,6 +28,7 @@ This document is the root reference for the multi-agent system that develops and
 | `CODE-DESIGN-VALIDATOR` | **Code Design Validator** | Reviews design artefact produced by CODE-DESIGNER; ensures all requirement acceptance criteria are covered, design is implementation-code-free, and is complete enough for BACKEND-DEV/FRONTEND-DEV to proceed without ambiguity. **Hard gate — implementation must not start until this returns PASS.** | `handoffs/` |
 | `BACKEND-DEV` | **Backend Developer** | Implements Zig source code per design artefacts | `src/`, `migrations/`, `handoffs/` |
 | `FRONTEND-DEV` | **Frontend Developer** | Implements React/TypeScript source code per design artefacts | `web/`, `handoffs/` |
+| `SECURITY-REVIEWER` | **Security Reviewer** | Reviews implementation produced by BACKEND-DEV/FRONTEND-DEV against the numbered invariants in `docs/agents/instructions/security-invariants.md` (tenant data isolation, field authorisation, sandbox capability gating, secrets by reference, probe indistinguishability, new-path scoping proof, SQL parameterisation, no `catch unreachable` on realistic failures). Gates any change touching a tenant-data path. **Hard gate — TEST-DESIGNER must not start until this returns PASS for in-scope changes.** | `handoffs/` |
 | `TEST-DESIGNER` | **Test Designer** | Produces test plans, test case specifications, and test data factories | `tests/specs/`, `handoffs/` |
 | `TEST-DESIGN-VALIDATOR` | **Test Design Validator** | Reviews test design produced by TEST-DESIGNER; verifies every MUST requirement has a runnable integration test, no SkipZigTest on MUST tests without a counterpart, fixtures are isolated, and tests are self-sufficient. **Hard gate — TEST-RUNNER must not start until this returns PASS.** | `handoffs/` |
 | `TEST-RUNNER` | **Test Runner** | Executes test suites, collects results, produces a structured test report | `tests/reports/`, `handoffs/` |
@@ -51,6 +52,7 @@ This document is the root reference for the multi-agent system that develops and
 | `CODE-DESIGN-VALIDATOR` | ✓ | ✓ (handoffs) | ✗ | ✗ | ✗ |
 | `BACKEND-DEV` | ✓ | ✓ | ✓ (build, migrate, git, gh) | ✗ | ✗ |
 | `FRONTEND-DEV` | ✓ | ✓ | ✓ (build, lint, git, gh) | ✗ | ✗ |
+| `SECURITY-REVIEWER` | ✓ | ✓ (handoffs) | ✓ (lints, `zig build test-*`, `git diff`) | ✗ | ✗ |
 | `TEST-DESIGNER` | ✓ | ✓ | ✗ | ✗ | ✗ |
 | `TEST-DESIGN-VALIDATOR` | ✓ | ✓ (handoffs) | ✗ | ✗ | ✗ |
 | `TEST-RUNNER` | ✓ | ✓ (reports) | ✓ (tests only) | ✗ | ✗ |
