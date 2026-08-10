@@ -443,6 +443,61 @@ jobs:
         run: zig build migrate
 
   # ---------------------------------------------------------------------------
+  # Tenant isolation tests (GH-292 / ISS-0077 / PI-02).
+  #
+  # INV-1 in docs/agents/instructions/security-invariants.md ("every access to
+  # tenant business data is scoped to exactly one tenant") is enforced
+  # statically by the `linters` job (lint_migration_schema.py,
+  # lint_sql_table_refs.py) but had no RUNTIME check anywhere in CI before this
+  # job: tnt_schema_isolation_test.zig (TNT-01..04 — business tables live in
+  # per-tenant schemas, the migration runner enforces schema-path isolation,
+  # the connection pool applies search_path per tenant on checkout, and the
+  # public-schema startup audit) only ever ran on a developer's own database,
+  # never gated a PR. It needs only PostgreSQL (no Keycloak), so it is cheap
+  # to run on every change under src/ or migrations/ rather than folding it
+  # into a heavier, less frequent workflow.
+  #
+  # Judged by `zig build test-integration-tnt`'s own exit code (`--summary
+  # all`'s "Build Summary: N/N steps succeeded; M/M tests passed" line is the
+  # human-readable confirmation, per the "failed command:" caveat documented
+  # on the `build` job's `zig build test` step above — that cosmetic Zig 0.16
+  # progress-renderer artifact applies here too and is not a failure signal).
+  # ---------------------------------------------------------------------------
+  tenant_isolation_tests:
+    name: Tenant isolation tests (TNT-01..04)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: bpm
+          POSTGRES_PASSWORD: bpm
+          POSTGRES_DB: bpm_tenant_isolation_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+
+      - name: zig build migrate
+        env:
+          BPM_DB_URL: postgres://bpm:bpm@localhost:5432/bpm_tenant_isolation_ci
+        run: zig build migrate
+
+      - name: zig build test-integration-tnt
+        env:
+          BPM_TEST_DB_URL: postgres://bpm:bpm@localhost:5432/bpm_tenant_isolation_ci
+        run: zig build test-integration-tnt --summary all
+
+  # ---------------------------------------------------------------------------
   # Frontend. Skipped entirely when web/ is untouched.
   # ---------------------------------------------------------------------------
   frontend:
