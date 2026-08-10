@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0648 — `gh512_t010_regression_test` TC-RG-02 snapshot drift fixed (MINOR)** ([GitHub #653](https://github.com/tvolodi/R-Co/issues/653))
+
+- **Root cause:** `tests/specs/fixtures/gh512-baseline-snapshot.json` pinned `tools/lint_test_isolation.baseline.json`'s expected entry count at 115, set on 2026-08-08. Commit `28bf140` (PR #636, the ISS-0089/GH-338 sibling fix for `env_test_root.zig`/`svc_test_root.zig`'s T050 false positives) legitimately added 2 new baseline entries — both correctly-suppressed findings for pure re-export aggregator files with no `BPM_TEST_DB_URL` reference of their own — but the snapshot was never updated to match, so TC-RG-02 failed against current `main`.
+- **The fix:** Bisected via `git log -p --follow` to confirm `28bf140` is the sole source of the drift (no other commit in the range altered the entry count). Updated the snapshot (bumped to `snapshot_version` 3): `total_issues` 115→117, `by_severity.MAJOR` 41→43, `by_code.T050` 22→24, with a documented rationale.
+- **Verified:** `zig build test-integration-gh512` — TC-RG-01/02/03 all PASS.
+- **No requirement status change** — test-tooling self-consistency fix.
+
 **ISS-0127 — pool.zig resolver LEGACY_RLS fallthrough on TC-TNT-03-01/03 (BLOCKER, already resolved)** ([GitHub #417](https://github.com/tvolodi/R-Co/issues/417))
 
 - **Verified already resolved.** `src/db/pool.zig`'s `applyRequestStorageRouting()` reapplies `SET search_path` unconditionally on every `Pool.acquire()`, regardless of whether `tenant_context_mod.hasStorageMode()`'s cache already holds a value — the cache only short-circuits the DB round-trip to re-resolve `storage_mode`, never the `search_path` SQL statement itself. This is exactly the fix this issue's own candidate resolution specified. A prior attempt (branch `feature/WF03-ISS-0127-20260807`) only completed git-setup and was abandoned without a fix commit; the real closure came from this session's broader tenant-routing hardening rather than a fix targeted at this issue specifically.
