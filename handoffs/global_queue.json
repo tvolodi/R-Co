@@ -1727,6 +1727,26 @@
       "completed_at": "2026-08-10T22:56:28Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-281",
+      "issue_number": 281,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/281",
+      "title": "ISS-0048 \u2014 WF03 Stage11 rework1: aggregate integration blocked by missing OIDC31 env prerequisites (BPM_IDP_BASE_URL/BPM_TEST_URL)",
+      "severity": "MAJOR",
+      "labels": [
+        "issue"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T22:58:07Z"
+      },
+      "added_at": "2026-08-10T22:58:07Z",
+      "started_at": "2026-08-10T22:58:07Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
