@@ -150,7 +150,7 @@ relevant — run `./make.ps1 help` for the list. See
 | `./make.ps1 test` | `zig build test` | Run all unit tests |
 | `./make.ps1 test-live` | `zig build test-integration` | Waits for Postgres + Keycloak, then runs integration tests, `BPM_TEST_DB_URL` sourced from `.env` |
 | `./make.ps1 e2e` | `cd web && npm run test:e2e` | Run E2E tests against a running stack |
-| `./make.ps1 check` | `zig build` + error-set grep | Interim pre-PI-03 stand-in (see GH-293) — not a real `zig build check` gate yet |
+| `./make.ps1 check` | `zig build check` | PI-03 gate (GH-293/ISS-0078): build (error sets fail via exit code) + `zig fmt --check` scoped to this branch's changed files |
 
 Raw commands, if not on PowerShell or working outside `make.ps1`:
 

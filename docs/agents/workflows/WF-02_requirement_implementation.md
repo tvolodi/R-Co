@@ -232,9 +232,11 @@ after Step 6.
    If FAIL: fix compilation errors; retry (counts as rework)
 7. → fn:apply-migrations (test DB)
    If FAIL: fix migration SQL; retry
-8. Error-set validation (mandatory — run before self-review):
-   zig build 2>&1 | grep -i "error set"
-   If any output: fix all error-set declarations before proceeding.
+8. Build and formatting gate (mandatory — run before self-review):
+   zig build check
+   PI-03 gate (GH-293/ISS-0078): build (error sets fail via the normal compile exit
+   code — no separate grep needed) + zig fmt --check scoped to this branch's changed
+   .zig files. If non-zero: fix before proceeding.
 9. Self-review checklist:
    [ ] No string interpolation of user input into SQL (prepared statements only)
    [ ] All allocations accept an allocator parameter
