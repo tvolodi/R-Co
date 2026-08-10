@@ -1682,14 +1682,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/693",
       "title": "ISS-0661 \u2014 .github/agents/ and .github/instructions/ (Copilot harness) independently drifted from .claude/agents/, not yet reconciled",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T22:26:56Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T22:26:56Z",
       "started_at": "2026-08-10T22:26:56Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T22:41:34Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 693,
