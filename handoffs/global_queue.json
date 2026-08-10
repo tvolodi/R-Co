@@ -1495,6 +1495,26 @@
       "labels": [
         "bug"
       ]
+    },
+    {
+      "issue_id": "GH-673",
+      "issue_number": 673,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/673",
+      "title": "adp10_agent_io_capture_audit_test TC-ADP-10-02: audit-chain trigger appears not to fire under full concurrent test-integration suite (payload_full stays NULL on both rows), distinct from GH-651",
+      "severity": "MAJOR",
+      "labels": [
+        "bug"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T13:51:32Z"
+      },
+      "added_at": "2026-08-10T13:51:32Z",
+      "started_at": "2026-08-10T13:51:32Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
