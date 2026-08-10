@@ -1678,17 +1678,24 @@
       "labels": []
     },
     {
-      "issue_id": "ISS-0661",
+      "issue_id": "GH-693",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/693",
-      "title": "Copilot harness (.github/agents, .github/instructions) independently drifted from .claude/agents",
-      "severity": "MINOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-10T22:14:14Z",
-      "started_at": null,
+      "title": "ISS-0661 \u2014 .github/agents/ and .github/instructions/ (Copilot harness) independently drifted from .claude/agents/, not yet reconciled",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T22:26:56Z"
+      },
+      "added_at": "2026-08-10T22:26:56Z",
+      "started_at": "2026-08-10T22:26:56Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 693,
+      "labels": [
+        "bug"
+      ]
     },
     {
       "issue_id": "GH-694",
