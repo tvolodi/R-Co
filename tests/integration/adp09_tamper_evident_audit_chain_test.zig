@@ -70,14 +70,16 @@ test "TC-ADP-09-01: migration adds nullable chain columns and validation primiti
 
     var funcs = try harness.conn.query(
         alloc,
-        \\SELECT proname
-        \\FROM pg_proc
-        \\WHERE proname IN (
+        \\SELECT p.proname
+        \\FROM pg_proc p
+        \\JOIN pg_namespace n ON n.oid = p.pronamespace
+        \\WHERE n.nspname = 'tenant_default'
+        \\  AND p.proname IN (
         \\  'bpm_audit_compute_chain_hash',
         \\  'bpm_audit_apply_chain_hash',
         \\  'bpm_audit_validate_chain'
         \\)
-        \\ORDER BY proname ASC
+        \\ORDER BY p.proname ASC
     ,
         &.{},
     );
@@ -117,7 +119,7 @@ test "TC-ADP-09-05: canonical hash computation is stable for semantically equal 
         \\    'e9000000-0000-0000-0000-000000000201'::uuid,
         \\    'definition.update',
         \\    'definition',
-        \\    'e9000000-0000-0000-0000-000000000301'::uuid,
+        \\    'e9000000-0000-0000-0000-000000000301',
         \\    '2026-05-26T10:30:02Z'::timestamptz,
         \\    '{"alpha":1,"beta":2}'::jsonb,
         \\    '{"flags":{"a":true,"b":false},"status":"ACTIVE"}'::jsonb,
@@ -132,7 +134,7 @@ test "TC-ADP-09-05: canonical hash computation is stable for semantically equal 
         \\    'e9000000-0000-0000-0000-000000000201'::uuid,
         \\    'definition.update',
         \\    'definition',
-        \\    'e9000000-0000-0000-0000-000000000301'::uuid,
+        \\    'e9000000-0000-0000-0000-000000000301',
         \\    '2026-05-26T10:30:02Z'::timestamptz,
         \\    '{"beta":2,"alpha":1}'::jsonb,
         \\    '{"status":"ACTIVE","flags":{"b":false,"a":true}}'::jsonb,
@@ -161,6 +163,17 @@ test "TC-ADP-09-02: new rows chain deterministically with tenant-scoped predeces
     const tenant_b = try harness.newUuidString(alloc);
     defer alloc.free(tenant_b);
 
+    // ISS-0645 / GH-649 (same root cause as ISS-0149 / GH-465, fixed in
+    // audit_chain_utf8_test.zig): TestHarness.init() sets
+    // session_replication_role = 'replica' session-wide so resetTestData()
+    // can DELETE audit_entries without tripping the immutability guard. That
+    // setting also suppresses trg_bpm_audit_apply_chain_hash, the exact
+    // trigger this test exercises -- every insert below would otherwise land
+    // with chain_hash/payload_full untouched. Scope the override to this one
+    // INSERT and restore 'replica' immediately after so a later
+    // resetTestData() (there is none in this test, but in the harness
+    // lifecycle generally) is not exposed to the immutability guard.
+    try harness.conn.exec("SET session_replication_role = 'origin'", &.{});
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state, pipeline_run_id
@@ -173,6 +186,7 @@ test "TC-ADP-09-02: new rows chain deterministically with tenant-scoped predeces
     ,
         &.{ tenant_a, tenant_b },
     );
+    try harness.conn.exec("SET session_replication_role = 'replica'", &.{});
 
     var first_a_q = try harness.conn.query(
         alloc,
@@ -260,6 +274,11 @@ test "TC-ADP-09-03: chain validation reports tampered row first and descendants 
     const tenant = try harness.newUuidString(alloc);
     defer alloc.free(tenant);
 
+    // ISS-0645 / GH-649: see TC-ADP-09-02 above for why this override is
+    // needed -- TestHarness.init() leaves session_replication_role = 'replica'
+    // in effect for the whole session, which suppresses
+    // trg_bpm_audit_apply_chain_hash on this INSERT.
+    try harness.conn.exec("SET session_replication_role = 'origin'", &.{});
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state
@@ -271,6 +290,7 @@ test "TC-ADP-09-03: chain validation reports tampered row first and descendants 
     ,
         &.{tenant},
     );
+    try harness.conn.exec("SET session_replication_role = 'replica'", &.{});
 
     try harness.conn.exec(
         \\DROP TRIGGER IF EXISTS trg_audit_entries_no_update ON audit_entries
@@ -351,6 +371,12 @@ test "TC-ADP-09-04: legacy pre-chain rows remain valid and boundary row starts c
 
     try restoreAuditChainTrigger(&harness.conn);
 
+    // ISS-0645 / GH-649: see TC-ADP-09-02 above -- session_replication_role
+    // is still 'replica' from TestHarness.init() at this point (dropping and
+    // recreating the trigger definition does not change that session-level
+    // GUC), so this boundary-row INSERT needs the same override to let
+    // trg_bpm_audit_apply_chain_hash actually run.
+    try harness.conn.exec("SET session_replication_role = 'origin'", &.{});
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state
@@ -369,6 +395,7 @@ test "TC-ADP-09-04: legacy pre-chain rows remain valid and boundary row starts c
     ,
         &.{tenant},
     );
+    try harness.conn.exec("SET session_replication_role = 'replica'", &.{});
 
     var boundary_q = try harness.conn.query(
         alloc,

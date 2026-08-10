@@ -23312,6 +23312,94 @@
       "created_at": "2026-08-09T22:23:44Z",
       "status": "COMPLETED",
       "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "ca4e79ae-5dba-40b5-8aef-c55f837aee6e",
+      "file": "handoffs/WF03-GH649-20260810/step-00-backend-dev.json",
+      "run_id": "WF03-GH649-20260810",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-10T04:17:34Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "7d0268bf-40e2-4ab4-96ab-87949dadc04b",
+      "file": "handoffs/WF03-GH649-20260810/step-0.5-issue-fixer.json",
+      "run_id": "WF03-GH649-20260810",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-10T04:17:34Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "110b43ab-2b5e-49b3-8411-6d3d00ae9a41",
+      "file": "handoffs/WF03-GH649-20260810/step-1-issue-fixer.json",
+      "run_id": "WF03-GH649-20260810",
+      "step": "1",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-10T04:17:34Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "5d469dfc-1b90-4158-ab4e-581b623ed051",
+      "file": "handoffs/WF03-GH649-20260810/step-2-code-designer.json",
+      "run_id": "WF03-GH649-20260810",
+      "step": "2",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-10T04:17:34Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "16530b30-604a-49a3-ac3c-aaedff76a5f9",
+      "file": "handoffs/WF03-GH649-20260810/step-2b-code-design-validator.json",
+      "run_id": "WF03-GH649-20260810",
+      "step": "2b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-10T04:17:35Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "9cf402ee-e9e8-4af4-afc3-4cfcac55324c",
+      "file": "handoffs/WF03-GH649-20260810/step-3-backend-dev.json",
+      "run_id": "WF03-GH649-20260810",
+      "step": "3",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-10T04:17:35Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "6952ea3a-f38f-4ea5-b1ff-35aedf5c721f",
+      "file": "handoffs/WF03-GH649-20260810/step-5-test-runner.json",
+      "run_id": "WF03-GH649-20260810",
+      "step": "5",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-10T04:17:35Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 issue resolving"
+    },
+    {
+      "handoff_id": "4b68d405-32d3-4571-a04d-b0244713553d",
+      "file": "handoffs/WF03-GH649-20260810/step-7-doc-updater.json",
+      "run_id": "WF03-GH649-20260810",
+      "step": "7",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-10T04:17:35Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 issue resolving"
     }
   ],
   "last_updated": "2026-08-09T18:40:00Z"

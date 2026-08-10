@@ -1,0 +1,29 @@
+{
+  "issue_id": "ISS-0648",
+  "title": "gh512_t010_regression_test TC-RG-02: lint_test_isolation.baseline.json has drifted to 117 issues, snapshot fixture still expects 115 (pre-existing on main, not caused by GH-649)",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/653",
+  "registered_at": "2026-08-10T04:28:00Z",
+  "registered_by": "ISSUE-FIXER (WF03-GH649-20260810 Step 1, GH-649/ISS-0645 triage, incidental discovery)",
+  "related_to": [
+    "GH-512",
+    "ISS-0181",
+    "ISS-0645"
+  ],
+  "severity": "MINOR",
+  "status": "OPEN",
+  "category": "test-infrastructure/baseline-drift",
+  "affected_areas": [
+    "tools/lint_test_isolation.baseline.json",
+    "tests/specs/fixtures/gh512-baseline-snapshot.json",
+    "tests/integration/gh512_t010_regression_test.zig"
+  ],
+  "symptom": "tests/integration/gh512_t010_regression_test.zig TC-RG-02 compares tools/lint_test_isolation.baseline.json's `issues` array length against a fixed expectation of 115 recorded in tests/specs/fixtures/gh512-baseline-snapshot.json. The baseline currently has 117 entries -- a 2-entry drift.",
+  "confirmed_pre_existing": "Verified via `git show HEAD:tools/lint_test_isolation.baseline.json` (HEAD at the start of WF03-GH649-20260810, commit a37cb79, before any change in this run) -- the baseline already had 117 issues at that point, so this drift predates GH-649/ISS-0645 entirely and is not something this run's migrations or test-file edits caused. GH-649 only edited the LINE NUMBERS of 4 pre-existing baseline entries (adp09/adp10 T010 findings whose lines shifted because of inserted session_replication_role-scoping code); it did not change the entry COUNT.",
+  "root_cause_not_yet_investigated": "Some migration or lint run between GH-512's original close-out (which set the snapshot to 115) and the current HEAD added 2 net new suppressed findings to the baseline without updating tests/specs/fixtures/gh512-baseline-snapshot.json's total_issues expectation to match. Not yet identified which commit/PR introduced the drift -- needs `git log -p --follow tools/lint_test_isolation.baseline.json` bisection to find where the count crossed from 115 to 117.",
+  "acceptance_criteria": [
+    "Identify which commit(s) added the 2 extra baseline entries",
+    "Determine whether those 2 entries are legitimate new T010/other findings that should be fixed (reducing the baseline back to 115) or are correctly-suppressed findings that make the snapshot's expectation stale (in which case update tests/specs/fixtures/gh512-baseline-snapshot.json's total_issues to 117 and document why in its own regeneration_note, per the existing convention in tools/lint_test_isolation.baseline.json's regeneration_note field)",
+    "zig build test-integration-gh512 (or the file's build step) exits 0"
+  ],
+  "next_action": "File as GitHub issue and add to global queue. Low severity (MINOR) -- this is a self-consistency check on the test-quality tooling itself, not a business-logic or infrastructure defect, and does not block any other test."
+}

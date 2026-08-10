@@ -82,6 +82,20 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
         &.{},
     );
 
+    // ISS-0645 / GH-649 (same root cause as ISS-0149 / GH-465, fixed in
+    // audit_chain_utf8_test.zig): TestHarness.init() sets
+    // session_replication_role = 'replica' session-wide so resetTestData()
+    // can DELETE audit_entries without tripping the immutability guard. That
+    // setting also suppresses trg_bpm_audit_apply_chain_hash -- the exact
+    // trigger this test exercises to populate payload_full. Without this
+    // override both inserts below land with payload_full untouched (NULL),
+    // which happens to match the non-agent row's expectation but not the
+    // agent row's, and was previously misread as "GUC/session-state leak
+    // across pool reuse" rather than "the trigger never ran at all". Scope
+    // the override to these two inserts and restore 'replica' immediately
+    // after.
+    try harness.conn.exec("SET session_replication_role = 'origin'", &.{});
+
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state
@@ -124,6 +138,8 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
     ,
         &.{tenant_id},
     );
+
+    try harness.conn.exec("SET session_replication_role = 'replica'", &.{});
 
     var rows = try harness.conn.query(
         alloc,

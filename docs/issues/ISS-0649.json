@@ -1,0 +1,30 @@
+{
+  "issue_id": "ISS-0649",
+  "title": "ee09_merge_variables_test TC-ISS-202-01 and effects_subsystem_test TC-EXP-301-09: two new test-integration failures not in GH-649's original 28-file cluster",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/654",
+  "registered_at": "2026-08-10T04:30:00Z",
+  "registered_by": "ISSUE-FIXER (WF03-GH649-20260810 Step 1, GH-649/ISS-0645 triage, incidental discovery)",
+  "related_to": [
+    "ISS-0645",
+    "GH-649"
+  ],
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "category": "test-integration/new-failures",
+  "affected_areas": [
+    "tests/integration/ee09_merge_variables_test.zig",
+    "tests/integration/effects_subsystem_test.zig"
+  ],
+  "symptom": "Running the full zig build test-integration suite against a freshly migrated, workspace-owned database during GH-649/ISS-0645's triage pass (2026-08-10) surfaced two failures that do NOT appear anywhere in ISS-0645's original 28-file cluster (verified by diffing against the exact file list in the issue body and in src/design/iss0150-gh482-20260810-adp0x-schema-fix.md Section 5), and are NOT in the 13-file flaky-adjacent list either. Both reproduced consistently across 2 independent full-suite runs in this pass.",
+  "per_file_evidence": {
+    "ee09_merge_variables_test.zig TC-ISS-202-01": "'mixed valid/invalid keys \u2014 all-or-nothing merge failure, variables unchanged' fails with a raw PgError.ServerError from conn.exec at tests/integration/ee09_merge_variables_test.zig:726 (an INSERT-like statement setting up the two-phase-merge test fixture). NOTE: this file is DIFFERENT from tests/integration/iss202_merge_atomicity_test.zig, despite both containing a test literally named 'TC-ISS-202-01' -- ee09_merge_variables_test.zig has its own, older, separate copy of this test ID (2 occurrences of 'TC-ISS-202' in the file vs iss202_merge_atomicity_test.zig's 40), confirmed via grep during this pass. This is NOT the same test as the one covered by GH-649's acceptance criteria for the iss202_merge_atomicity_test.zig file (which is fully passing).",
+    "effects_subsystem_test.zig TC-EXP-301-09": "'email adapter returns 200 (stub, no SMTP)' fails: expected delivery status 'delivered', found 'pending'. A genuine business-logic assertion mismatch (not a connection/environment error) in the EXP-301 effects-outbox email-adapter stub."
+  },
+  "why_filed_separately_from_gh_649": "GH-649/ISS-0645's acceptance criteria scope covers exactly the 28 named files from its own original diagnosis (adp09, adp10, and the 26-file cluster documented in src/design/iss0150-gh482-20260810-adp0x-schema-fix.md Section 5). These two files were never part of that diagnosis or cluster. Per CLAUDE.md's Unblock-Everything scope boundary (blocking vs. adjacent) and the WF-03 Step-1-vs-incidental-discovery rule, a NEW defect discovered while re-measuring an existing issue's scope is filed as its own issue, not folded into the active run.",
+  "acceptance_criteria": [
+    "ee09_merge_variables_test.zig TC-ISS-202-01's PgError.ServerError root-caused (re-run with -Dlog-pg-errors=true to capture the actual SQLSTATE/message) and fixed",
+    "effects_subsystem_test.zig TC-EXP-301-09's email-adapter stub investigated: either the stub's expected delivery status logic has drifted, or the test's expectation is stale relative to a real behavior change",
+    "Both re-verified passing twice against a freshly migrated, workspace-owned database"
+  ],
+  "next_action": "File as GitHub issue and add to global queue for its own WF-03 run."
+}

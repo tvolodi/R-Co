@@ -20,6 +20,18 @@ fn insertAuditEntry(
     resource_id: []const u8,
     timestamp: []const u8,
 ) !void {
+    // ISS-0645 / GH-649 (same root cause as ISS-0149 / GH-465, fixed in
+    // audit_chain_utf8_test.zig, and reapplied to
+    // adp09_tamper_evident_audit_chain_test.zig / adp10_agent_io_capture_audit_test.zig
+    // in this same pass): TestHarness.init() sets session_replication_role =
+    // 'replica' session-wide so resetTestData() can DELETE audit_entries
+    // without tripping the immutability guard. That setting also suppresses
+    // trg_bpm_audit_apply_chain_hash -- the exact trigger this file exercises
+    // to populate chain_hash/prev_chain_hash. Scope the override to this one
+    // INSERT and restore 'replica' immediately after.
+    try conn.exec("SET session_replication_role = 'origin'", &.{});
+    defer conn.exec("SET session_replication_role = 'replica'", &.{}) catch {};
+
     _ = try conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
@@ -115,12 +127,18 @@ test "TC-XC-02-02: chain hash is deterministically computed" {
     }
 
     // Compute hash for a stable payload.
+    //
+    // ISS-0645 / GH-649: $4 (resource_id) is passed WITHOUT a ::uuid cast --
+    // bpm_audit_compute_chain_hash's canonical signature (since GBL-081/1107)
+    // declares p_resource_id TEXT, matching audit_entries.resource_id. See
+    // adp09_tamper_evident_audit_chain_test.zig TC-ADP-09-05 for the same fix
+    // and its rationale.
     var query1 = try harness.conn.query(
         alloc,
         \\SELECT
         \\  bpm_audit_compute_chain_hash(
         \\    $1::uuid, $2::uuid, $3::uuid, 'test.action',
-        \\    'test', $4::uuid, NOW()::timestamptz,
+        \\    'test', $4, NOW()::timestamptz,
         \\    '{"key":"value"}'::jsonb, '{"result":"ok"}'::jsonb,
         \\    $5::uuid, NULL, '0000000000000000000000000000000000000000000000000000000000000000'::text, NULL
         \\  ) AS hash1
@@ -472,18 +490,24 @@ test "TC-XC-02-07: chain hash incorporates all audit fields" {
     }
 
     // Compute hash with trace_id = "trace-123"
+    //
+    // ISS-0645 / GH-649: $4 (resource_id) is passed WITHOUT a ::uuid cast --
+    // bpm_audit_compute_chain_hash's canonical signature (since GBL-081/1107)
+    // declares p_resource_id TEXT, matching audit_entries.resource_id. See
+    // adp09_tamper_evident_audit_chain_test.zig TC-ADP-09-05 for the same fix
+    // and its rationale.
     var query1 = try harness.conn.query(
         alloc,
         \\SELECT
         \\  bpm_audit_compute_chain_hash(
         \\    $1::uuid, $2::uuid, $3::uuid, 'test.action',
-        \\    'test', $4::uuid, NOW()::timestamptz,
+        \\    'test', $4, NOW()::timestamptz,
         \\    '{"key":"value"}'::jsonb, '{"result":"ok"}'::jsonb,
         \\    $5::uuid, 'trace-123', '0000000000000000000000000000000000000000000000000000000000000000'::text, NULL
         \\  ) AS hash1,
         \\  bpm_audit_compute_chain_hash(
         \\    $1::uuid, $2::uuid, $3::uuid, 'test.action',
-        \\    'test', $4::uuid, NOW()::timestamptz,
+        \\    'test', $4, NOW()::timestamptz,
         \\    '{"key":"value"}'::jsonb, '{"result":"ok"}'::jsonb,
         \\    $5::uuid, 'trace-999', '0000000000000000000000000000000000000000000000000000000000000000'::text, NULL
         \\  ) AS hash2

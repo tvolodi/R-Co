@@ -1281,6 +1281,58 @@
       "labels": [
         "bug"
       ]
+    },
+    {
+      "issue_id": "ISS-0646",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/651",
+      "title": "adp10 tenant_default trigger function reverts under concurrent suite",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T04:14:55Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0647",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/652",
+      "title": "20 files with distinct residual test-integration failures",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T04:14:56Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0648",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/653",
+      "title": "gh512 baseline count drift 117 vs 115",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T04:14:57Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0649",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/654",
+      "title": "ee09/effects_subsystem two new test-integration failures",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-10T04:14:58Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
