@@ -872,3 +872,4 @@
 2026-08-10T08:41:19Z | RESOLVE | GH-661 | --- | r-co-2-loop | WF03-GH661-20260810 Step Final PASS (PR #671)
 2026-08-10T08:51:04Z | RESOLVE | GH-660 | --- | r-co-2-loop | WF03-GH660-20260810 Step Final PASS (PR #672)
 2026-08-10T13:51:12Z | DEFER | GH-651 | --- | r-co-2-loop | WF03-GH651-20260810 Step Final PARTIAL — PR #674 merged (2 real bugs fixed), core symptom NOT resolved, issue reopened with corrected findings
+2026-08-10T14:09:09Z | RESOLVE | GH-673 | --- | r-co-2-loop | WF03-GH673-20260810 Step Final PASS (PR #675) — determined duplicate of GH-651
