@@ -1704,17 +1704,24 @@
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0662",
+      "issue_id": "GH-694",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/694",
-      "title": "Stray --help junk entry in global_queue.json + missing -h flag guard in queue_add.py",
-      "severity": "MINOR",
-      "status": "QUEUED",
-      "lock": null,
-      "added_at": "2026-08-10T22:14:19Z",
-      "started_at": null,
+      "title": "ISS-0662 \u2014 stray issue_id \"--help\" junk entry in handoffs/global_queue.json",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T22:21:40Z"
+      },
+      "added_at": "2026-08-10T22:21:40Z",
+      "started_at": "2026-08-10T22:21:40Z",
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": null,
+      "issue_number": 694,
+      "labels": [
+        "bug"
+      ]
     }
   ]
 }
