@@ -5,9 +5,13 @@
 //! and public.schema_migrations per-schema tracking.
 //!
 //! Requires a real PostgreSQL database reachable at BPM_TEST_DB_URL.
-//! Each test generates a fresh UUID for complete tenant isolation and
-//! cleans up all provisioned artefacts (DROP SCHEMA … CASCADE + DELETE
-//! FROM public.tenant_schemas + DELETE FROM public.schema_migrations) via defer.
+//! Each test that provisions a throwaway tenant generates a fresh UUID for
+//! complete tenant isolation and cleans up all provisioned artefacts
+//! (DROP SCHEMA … CASCADE + DELETE FROM public.tenant_schemas + DELETE FROM
+//! public.schema_migrations) via defer. TC-SPT-01-05 is the one exception —
+//! see GH-651 / ISS-0646 in its own body for why it must NEVER drop
+//! tenant_default, the shared harness fixture every concurrent
+//! test-integration binary depends on.
 //!
 //! Requirement traceability:
 //!   SPT-01 → TC-SPT-01-01 .. TC-SPT-01-08
@@ -340,9 +344,43 @@ test "TC-SPT-01-05: default UUID maps to schema name tenant_default" {
 
     const default_uuid = "00000000-0000-0000-0000-000000000000";
 
-    // Ensure cleanup of tenant_default schema and tracking rows even if the test fails.
-    defer cleanupTenant(alloc, &pool, default_uuid, "tenant_default");
-
+    // GH-651 / ISS-0646: do NOT defer cleanupTenant() here. tenant_default is
+    // the shared, persistent harness fixture that every concurrent
+    // test-integration binary provisions and depends on (see
+    // tools/clean_test_db.py's explicit "tenant_default is never dropped"
+    // exclusion, and helpers.zig's own comments to the same effect). Every
+    // OTHER test in this file provisions a throwaway tenant under a freshly
+    // generated random UUID, so cleanupTenant()'s unconditional
+    // `DROP SCHEMA ... CASCADE` + `DELETE FROM public.schema_migrations` is
+    // correct and safe there — this test is the one exception, because its
+    // whole purpose is to exercise schemaNameForTenant()'s default-UUID branch,
+    // which resolves to the SAME shared schema every other concurrently running
+    // binary is using.
+    //
+    // Root cause of GH-651/ISS-0646: this test used to run
+    // `defer cleanupTenant(alloc, &pool, default_uuid, "tenant_default")`,
+    // copy-pasted from the disposable-fixture pattern above. That
+    // unconditionally dropped the shared tenant_default schema and deleted
+    // its ENTIRE public.schema_migrations ledger (all ~80 rows, not just this
+    // test's own concern) at the end of every single `zig build
+    // test-integration` run that included this file — confirmed via a
+    // server-side trigger trace that caught be_pid/query_text = "DROP SCHEMA
+    // IF EXISTS tenant_default CASCADE" issued from exactly this test, with
+    // tenant_id_str="00000000-0000-0000-0000-000000000000" (36 chars, not a
+    // corrupted/empty value — a deliberate, correct call to a helper that is
+    // wrong for this one caller). Any other test-integration binary racing to
+    // reprovision tenant_default from scratch afterward could then observe
+    // migrations/GBL-133_iss0112_schema_ledger_reconcile.sql's own
+    // ledger-poisoning defect (it blindly INSERTs ledger rows for
+    // 1107/1108/1109/1110/1111 against every SCHEMA-mode tenant without ever
+    // executing those files' DDL there — see that migration's Step 2), which
+    // made a fresh reprovisioning race capable of leaving tenant_default's
+    // bpm_audit_apply_chain_hash() body reverted to the pre-1142 shape. Fixed
+    // by verifying the mapping without ever dropping the shared schema; no
+    // provisioned state from this test needs cleanup, because provisioning
+    // tenant_default is what every other concurrent binary needs to have
+    // happen anyway.
+    //
     // Attempt provisioning; may already be provisioned from a prior test run.
     // provisionTenantSchema is idempotent so this is always safe.
     provisionTenantSchema(alloc, &pool, default_uuid, migrationsDir()) catch |err| {
