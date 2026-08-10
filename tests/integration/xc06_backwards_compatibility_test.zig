@@ -614,11 +614,28 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
     );
     try harness.conn.exec("SET session_replication_role = 'replica'", &.{});
 
-    // Query both entries
+    // ISS-0653 / GH-662: the previous version of this query used
+    // `ORDER BY timestamp, audit_id` and then indexed rows[0]/rows[1],
+    // assuming rows[0] would always be the legacy row and rows[1] the V2
+    // row. That assumption is false: both INSERTs run inside the SAME
+    // transaction (harness.conn.begin(), in TestHarness.init()), and
+    // PostgreSQL's NOW() returns transaction_timestamp() -- a value fixed
+    // for the entire transaction, not the statement -- so `timestamp` is
+    // byte-identical for both rows. `ORDER BY timestamp, audit_id` then
+    // tiebreaks on audit_id, which is a fresh random UUID per row with no
+    // relationship to insertion order: roughly half the time the V2 row's
+    // audit_id sorts lower and lands in rows[0] instead of the legacy row.
+    // That is the entire "flake" this issue describes -- not a trigger,
+    // advisory-lock, or Zig test-runner concurrency bug (ruled out: Zig
+    // 0.16's default test runner executes test blocks strictly
+    // sequentially within one binary, confirmed via
+    // lib/compiler/test_runner.zig's single-threaded mainServer loop).
+    // Fixed by matching each row to its known audit_id explicitly instead
+    // of relying on array position from an ambiguous sort.
     var query = try harness.conn.query(
         alloc,
-        \\SELECT action, chain_hash, prev_chain_hash FROM audit_entries
-        \\WHERE tenant_id = $1 ORDER BY timestamp, audit_id
+        \\SELECT audit_id, action, chain_hash, prev_chain_hash FROM audit_entries
+        \\WHERE tenant_id = $1
     ,
         &.{tenant_id},
     );
@@ -626,13 +643,27 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
 
     try testing.expectEqual(@as(usize, 2), query.rows.len);
 
-    // Chain columns are populated by current audit trigger implementation.
-    try testing.expect(query.rows[0][1] != null);
-    try testing.expect(query.rows[0][2] == null);
+    var legacy_row: ?[]const ?[]const u8 = null;
+    var v2_row: ?[]const ?[]const u8 = null;
+    for (query.rows) |row| {
+        const row_audit_id = row[0] orelse "";
+        if (std.mem.eql(u8, row_audit_id, legacy_id)) {
+            legacy_row = row;
+        } else if (std.mem.eql(u8, row_audit_id, v2_id)) {
+            v2_row = row;
+        }
+    }
+    const legacy = legacy_row orelse return error.LegacyRowNotFound;
+    const v2 = v2_row orelse return error.V2RowNotFound;
 
-    // V2 entry should continue the chain.
-    try testing.expect(query.rows[1][1] != null);
-    if (query.rows[1][2]) |prev_hash| {
+    // Legacy (tenant's first) row: chain_hash is populated by the trigger,
+    // but prev_chain_hash must be null -- there is no prior row to link to.
+    try testing.expect(legacy[2] != null);
+    try testing.expect(legacy[3] == null);
+
+    // V2 entry should continue the chain from the legacy row.
+    try testing.expect(v2[2] != null);
+    if (v2[3]) |prev_hash| {
         try testing.expect(prev_hash.len > 0);
     }
 }

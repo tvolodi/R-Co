@@ -463,14 +463,14 @@ pub const Store = struct {
                     \\FROM events WHERE idempotency_key = $1
                 ,
                     &.{params.idempotency_key},
-                ) catch break :orig_blk duplicateFromParams(params, sequence_number, metadata);
+                ) catch break :orig_blk duplicateFromParams(allocator, params, sequence_number, metadata);
                 defer {
                     var mr = live_rows;
                     mr.deinit();
                 }
                 if (live_rows.rows.len > 0) {
                     break :orig_blk rowToEventRecord(allocator, live_rows.rows[0], "") catch
-                        duplicateFromParams(params, sequence_number, metadata);
+                        duplicateFromParams(allocator, params, sequence_number, metadata);
                 }
                 // Check events_archive (post-archival duplicate).
                 const arch_rows = conn.query(
@@ -481,16 +481,16 @@ pub const Store = struct {
                     \\FROM events_archive WHERE idempotency_key = $1
                 ,
                     &.{params.idempotency_key},
-                ) catch break :orig_blk duplicateFromParams(params, sequence_number, metadata);
+                ) catch break :orig_blk duplicateFromParams(allocator, params, sequence_number, metadata);
                 defer {
                     var mr = arch_rows;
                     mr.deinit();
                 }
                 if (arch_rows.rows.len > 0) {
                     break :orig_blk rowToEventRecord(allocator, arch_rows.rows[0], "") catch
-                        duplicateFromParams(params, sequence_number, metadata);
+                        duplicateFromParams(allocator, params, sequence_number, metadata);
                 }
-                break :orig_blk duplicateFromParams(params, sequence_number, metadata);
+                break :orig_blk duplicateFromParams(allocator, params, sequence_number, metadata);
             };
             return AppendResult{
                 .record = orig,
@@ -534,7 +534,7 @@ pub const Store = struct {
 
         // Build EventRecord from params (stable memory; avoids borrowing from
         // insert_rows which is freed by defer before the caller can read strings).
-        const record = duplicateFromParams(params, sequence_number, metadata);
+        const record = duplicateFromParams(allocator, params, sequence_number, metadata);
 
         return AppendResult{ .record = record, .is_duplicate = false };
     }
@@ -1207,8 +1207,18 @@ fn rowToEventRecord(
     };
 }
 
-fn duplicateFromParams(params: AppendParams, sequence_number: i64, metadata: []const u8) EventRecord {
-    _ = metadata;
+fn duplicateFromParams(allocator: std.mem.Allocator, params: AppendParams, sequence_number: i64, metadata: []const u8) EventRecord {
+    // ES-08: the caller-visible record must carry the effective metadata
+    // (params.metadata orelse "{}"), not a hardcoded placeholder — a prior
+    // version discarded the `metadata` argument entirely (`_ = metadata;`),
+    // so every successful append() returned `.metadata = ""` regardless of
+    // what was actually inserted. `metadata` here may be arena-scoped
+    // (validateAppendParams' return value), so it must be duplicated with
+    // the long-lived `allocator` before being stored on the returned
+    // EventRecord. Degrade to "" on allocation failure, matching this
+    // function's existing infallible-fallback contract (it is used as a
+    // `catch` expression and cannot itself return an error).
+    const owned_metadata = allocator.dupe(u8, metadata) catch "";
     return EventRecord{
         .event_id = std.mem.zeroes(Uuid),
         .instance_id = params.instance_id,
@@ -1218,7 +1228,7 @@ fn duplicateFromParams(params: AppendParams, sequence_number: i64, metadata: []c
         .created_at = 0,
         .sequence_number = sequence_number,
         .idempotency_key = params.idempotency_key,
-        .metadata = "",
+        .metadata = owned_metadata,
         .global_seq = 0,
     };
 }
