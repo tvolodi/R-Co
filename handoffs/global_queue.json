@@ -53,14 +53,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/502",
       "title": "CapabilitySet.summary() does not compile under Zig 0.16 (stale std.ArrayList init) \u2014 a public, uncalled function body that `zig build test-lua` reports as green (ISS-0174)",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-1-loop",
-        "locked_at": "2026-08-08T13:27:38Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-08T13:27:38Z",
       "started_at": "2026-08-08T13:27:38Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T16:41:32Z",
       "run_id": null,
       "deferred_reason": null,
       "issue_number": 502,
