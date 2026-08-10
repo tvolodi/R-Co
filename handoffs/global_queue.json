@@ -1603,14 +1603,11 @@
       "labels": [
         "issue"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T20:30:53Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T20:30:53Z",
       "started_at": "2026-08-10T20:30:53Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T20:51:55Z",
       "run_id": null,
       "deferred_reason": null
     }
