@@ -1644,6 +1644,26 @@
       "completed_at": "2026-08-10T21:34:44Z",
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-291",
+      "issue_number": 291,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/291",
+      "title": "ISS-0076 (PI-01) \u2014 Split CLAUDE.md into glob-scoped instruction files",
+      "severity": "MAJOR",
+      "labels": [
+        "issue"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-2-loop",
+        "locked_at": "2026-08-10T21:36:02Z"
+      },
+      "added_at": "2026-08-10T21:36:02Z",
+      "started_at": "2026-08-10T21:36:02Z",
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
