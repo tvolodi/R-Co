@@ -1515,16 +1515,13 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/681",
       "title": "31 integration test files bypass TestHarness's advisory lock (PR #494 fix scope) and remain racy under the full test-integration suite",
       "severity": "MAJOR",
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-orchestrator-loop",
-        "locked_at": "2026-08-10T17:23:15Z"
-      },
-      "added_at": "2026-08-10T17:23:15Z",
-      "started_at": "2026-08-10T17:23:15Z",
-      "completed_at": null,
+      "status": "DEFERRED",
+      "lock": null,
+      "added_at": "2026-08-10T17:24:29Z",
+      "started_at": "2026-08-10T17:24:29Z",
+      "completed_at": "2026-08-10T18:29:16Z",
       "run_id": null,
-      "deferred_reason": null,
+      "deferred_reason": "Cross-workspace collision: r-co-orchestrator-loop claimed and pushed to the same branch/issue concurrently (claim race in gh_claim.py). Verified via 2 clean-reset control runs that the straightforward lock-widening fix (same design both workspaces converged on) regresses zig build test-integration from 9 to 43+ failing files at full-suite scale; findings posted to GH-681 comment. Deferring to the other workspace's claim rather than overwrite its branch.",
       "issue_number": 681,
       "labels": [
         "bug"
