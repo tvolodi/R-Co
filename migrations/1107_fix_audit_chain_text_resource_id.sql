@@ -277,6 +277,35 @@ BEGIN
            AND nspname NOT LIKE 'pg_%'
            AND nspname NOT LIKE 'pgtoast%'
            AND nspname NOT LIKE 'pg_temp%'
+           -- ISS-0646 / GH-651: this loop runs every time THIS FILE executes
+           -- for ANY schema (i.e. every time a brand-new tenant is
+           -- provisioned, since runForSchema() applies pending migrations in
+           -- order for that one new schema) -- but it reaches back and
+           -- unconditionally recreates bpm_audit_apply_chain_hash() with
+           -- THIS FILE's shape on EVERY existing tenant schema, including
+           -- ones where a later migration (1142) already installed a newer,
+           -- correct body. The migration ledger tracks (schema_name,
+           -- version) for THIS file's own nominal pass only -- it has no
+           -- awareness that this loop's side effect touches other schemas,
+           -- so it can never prevent this. Confirmed live: reproduced
+           -- deterministically, single-threaded, by provisioning any one
+           -- new tenant schema while tenant_default already had 1142
+           -- applied -- tenant_default's function body silently reverted
+           -- to this file's pre-1142 shape with zero ledger interaction.
+           -- Skip any schema that already has 1142 applied -- 1142
+           -- unconditionally re-creates bpm_audit_apply_chain_hash() with a
+           -- newer, correct body (the payload_full auto-population block);
+           -- letting this file's loop run there would revert it. A text
+           -- comparison against '1142...' is deliberately NOT used here
+           -- (unlike the numeric migrationOrder() the Zig runner uses,
+           -- GBL-prefixed filenames do not sort correctly as plain text) --
+           -- checking for this one specific, known-later file by exact name
+           -- is simpler and sufficient for what this guard needs to prevent.
+           AND NOT EXISTS (
+               SELECT 1 FROM public.schema_migrations sm
+                WHERE sm.schema_name = nspname
+                  AND sm.version = '1142_iss0645_restore_adp10_payload_full_trigger.sql'
+           )
          ORDER BY nspname
     LOOP
         RAISE NOTICE '1107: applying chain-hash DDL to tenant schema %', rec.nspname;

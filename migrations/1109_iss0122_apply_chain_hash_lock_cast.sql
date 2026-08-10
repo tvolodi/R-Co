@@ -115,6 +115,19 @@ BEGIN
            AND nspname NOT LIKE 'pg_%'
            AND nspname NOT LIKE 'pgtoast%'
            AND nspname NOT LIKE 'pg_temp%'
+           -- ISS-0646 / GH-651: see the identical guard in
+           -- 1107_fix_audit_chain_text_resource_id.sql for the full
+           -- rationale -- this loop has the same self-reapplication defect
+           -- (runs every time this file executes for ANY newly-provisioned
+           -- tenant, reaching back and reverting every OTHER existing
+           -- tenant's bpm_audit_apply_chain_hash() to this file's shape,
+           -- with zero ledger interaction). Skip schemas where 1142 already
+           -- installed a newer, correct body.
+           AND NOT EXISTS (
+               SELECT 1 FROM public.schema_migrations sm
+                WHERE sm.schema_name = nspname
+                  AND sm.version = '1142_iss0645_restore_adp10_payload_full_trigger.sql'
+           )
          ORDER BY nspname
     LOOP
         RAISE NOTICE '1109: re-applying apply_chain_hash to tenant schema %', rec.nspname;
