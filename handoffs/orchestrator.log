@@ -919,3 +919,6 @@
 2026-08-10T20:52:19Z | QUEUE_RELEASE | WF03-GH294-20260811 | --- | BACKEND-DEV | GH-294 -> RESOLVED (workspace r-co-2-loop)
 2026-08-10T21:09:28Z | RESOLVE | WF03-GH293-20260811 | --- | BACKEND-DEV | GH-293 (ISS-0078/PI-03) resolved via PR #688, squash-merged 71ac764, zig build check gate added (build + scoped zig fmt --check via tools/check_fmt_scope.py), error-set grep retired (exit code already sufficient), make.ps1 check now calls the real gate
 2026-08-10T21:09:28Z | QUEUE_RELEASE | WF03-GH293-20260811 | --- | BACKEND-DEV | GH-293 -> RESOLVED (workspace r-co-2-loop)
+2026-08-10T21:34:58Z | GIT_MERGE | WF03-GH292-20260811 | --- | BACKEND-DEV | PR #689 squash-merged to main (4b07018), branch feature/WF03-GH292-20260811 deleted
+2026-08-10T21:34:58Z | ISSUE_CLOSE | WF03-GH292-20260811 | --- | DOC-UPDATER | GH-292 closed with evidence comment; ISS-0077 status RESOLVED
+2026-08-10T21:34:58Z | QUEUE_RELEASE | WF03-GH292-20260811 | --- | ORCH | GH-292 released from global_queue.json, status RESOLVED
