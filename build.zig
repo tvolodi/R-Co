@@ -1708,6 +1708,32 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_integration_tests = addIntegrationRun(b, integration_tests, migrations_dir, clean_test_db);
+    // WF02-batch-4-20260811 REWORK 1: dedicated step so main_test.zig's ~40
+    // aggregated files (including pin01_service_catalog_tenant_scope_test.zig)
+    // can be run in isolation from the ~30-binary test-integration-others-internal
+    // umbrella, avoiding cross-binary Postgres advisory-lock contention when
+    // debugging this binary specifically — same rationale as
+    // test-integration-repository above.
+    const test_integration_main_step = b.step("test-integration-main", "Run main_test.zig's aggregated integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_main_step.dependOn(&clean_test_db.step);
+    test_integration_main_step.dependOn(&run_integration_tests.step);
+
+    // ORCH follow-up to REWORK 1: test-integration-main above still runs the
+    // full ~40-file main_test.zig umbrella (slow). Add a properly scoped
+    // shim, mirroring the ISS-0639/GH-629 svc_test_root.zig pattern, so the
+    // PIN-01 REWORK 1 regression test can be verified in isolation quickly.
+    const pin01_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/pin01_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_pin01_integration_tests = addIntegrationRun(b, pin01_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_pin01_step = b.step("test-integration-pin01", "Run PIN-01 REWORK 1 tenant-scope regression test only (requires BPM_TEST_DB_URL)");
+    test_integration_pin01_step.dependOn(&clean_test_db.step);
+    test_integration_pin01_step.dependOn(&run_pin01_integration_tests.step);
 
     const xc04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{

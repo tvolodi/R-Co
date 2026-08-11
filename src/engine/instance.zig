@@ -20,6 +20,7 @@ const plugin_registry_mod = @import("plugin_registry.zig");
 const scheduler_store_mod = @import("../scheduler/store.zig");
 const dlq_store_mod = @import("../dlq/store.zig");
 const pin_resolver_mod = @import("pin_resolver.zig");
+const tenant_context = @import("tenant_context");
 const metrics = @import("obs_metrics");
 // Named module, not a relative import — see the note in src/main.zig (ISS-0155).
 const json_schema = @import("json_schema");
@@ -624,6 +625,20 @@ pub const InstanceStore = struct {
         // runs) avoids a leak that would otherwise require this function to
         // hand-track and free every PinnedVersion's three string fields
         // individually.
+        //
+        // REWORK 1 (SECURITY-REVIEWER INV-1 fix): the request's tenant_id is
+        // read from the same threadlocal request-tenant context that auth
+        // middleware populates for every authenticated request (see
+        // src/api/tenant_context.zig, src/api/middleware/auth.zig) and
+        // threaded into PinResolver so resolveServiceCatalogRef() can bind
+        // it as a parameterized ::uuid, instead of relying on the dropped
+        // bpm_effective_tenant_id() SQL function. An empty/malformed tenant
+        // context cannot happen on the live authenticated HTTP path (auth
+        // middleware always sets it before a handler runs) but is handled as
+        // InvalidInput rather than `catch unreachable`, per INV-8.
+        const request_tenant_id = parseUuid(tenant_context.get()) catch
+            return InstanceError.InvalidInput;
+
         var pin_resolver = pin_resolver_mod.PinResolver.init(self.pool);
         const pinned_versions: []pin_resolver_mod.PinnedVersion = blk: {
             const conn_pins = self.pool.acquire() catch |err| switch (err) {
@@ -634,6 +649,7 @@ pub const InstanceStore = struct {
 
             break :blk pin_resolver.resolve(a, conn_pins, pin_resolver_mod.ResolutionInput{
                 .definition_id = definition_id,
+                .tenant_id = request_tenant_id,
                 .graph = snapshot.graph,
                 .initial_variables = initial_variables,
                 .pin_overrides = null,

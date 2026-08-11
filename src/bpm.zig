@@ -11,6 +11,7 @@ pub const definition = @import("definition/store.zig");
 pub const snapshot = @import("definition/snapshot.zig"); // PD-08
 pub const export_import = @import("definition/export_import.zig"); // PD-09
 pub const engine = @import("engine/instance.zig"); // EE-01
+pub const pin_resolver = @import("engine/pin_resolver.zig"); // PIN-01
 pub const tasks = @import("tasks/store.zig"); // EE-03
 pub const task_routes = @import("api/routes/tasks.zig"); // API-04 / EE-04
 pub const instance_routes = @import("api/routes/instances.zig"); // API-03 / OBS-04

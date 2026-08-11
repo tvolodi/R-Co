@@ -57,6 +57,13 @@ pub const ResolutionError = error{
 
 pub const ResolutionInput = struct {
     definition_id: Uuid,
+    /// REWORK 1 (SECURITY-REVIEWER INV-1 fix): the requesting caller's tenant,
+    /// threaded through from the live request's tenant context. Used to bind
+    /// a parameterized tenant scope onto service_catalog lookups — see
+    /// resolveServiceCatalogRef() below. Never sourced from a SQL-side
+    /// session function (bpm_effective_tenant_id() no longer exists after
+    /// the LEGACY_RLS-to-SCHEMA cutover; see GBL-116/123/130/131).
+    tenant_id: Uuid,
     graph: graph_mod.DefinitionGraph, // the just-captured PD-08 snapshot's graph
     initial_variables: []const u8, // raw JSON object bytes, already object-validated
     pin_overrides: ?[]const u8, // raw JSON, optional caller-supplied {kind,ref,version}[]
@@ -105,7 +112,7 @@ pub const PinResolver = struct {
             const attrs = node.attributes orelse continue;
             const service_id = extractStringField(a, attrs, "service_id") orelse continue;
 
-            const resolved = try self.resolveServiceCatalogRef(allocator, conn, service_id);
+            const resolved = try self.resolveServiceCatalogRef(allocator, conn, service_id, input.tenant_id);
             pins.append(a, PinnedVersion{
                 .kind = .catalog_entry,
                 .ref = service_id,
@@ -144,7 +151,7 @@ pub const PinResolver = struct {
 
         // ── Step 5: apply pin_overrides, if supplied. ───────────────────────
         if (input.pin_overrides) |overrides_json| {
-            try self.applyPinOverrides(allocator, conn, pins.items, overrides_json);
+            try self.applyPinOverrides(allocator, conn, pins.items, overrides_json, input.tenant_id);
         }
 
         // ── Step 6: deterministic ordering — sort by (kind, ref) (PIN-01
@@ -169,6 +176,23 @@ pub const PinResolver = struct {
                 .version = allocator.dupe(u8, src.version) catch return ResolutionError.TransactionFailed,
                 .source = src.source,
             };
+            // Pre-existing leak fix (surfaced by the REWORK 1 regression test,
+            // the first test to exercise resolve()'s success-return path
+            // against real Postgres with leak detection): src.resolved_id and
+            // src.version are always `allocator`-owned (returned by
+            // resolveServiceCatalogRef()/resolveVariableSchemaVersion(), both
+            // called with `allocator` above, never the arena `a`), so they
+            // must be freed now that owned[i] holds its own dupe. src.ref is
+            // NOT freed here: for .catalog_entry it aliases `service_id`,
+            // which is arena-allocated (extractStringField() used `a`) and
+            // freed by `arena.deinit()`; for .variable_schema it IS
+            // `allocator`-owned (resolveVariableSchemaVersion() also builds
+            // .ref with `allocator`) — freeing it unconditionally here would
+            // double-free the catalog_entry case, so only free it for the
+            // kind that actually owns it via `allocator`.
+            if (src.kind == .variable_schema) allocator.free(src.ref);
+            allocator.free(src.resolved_id);
+            allocator.free(src.version);
         }
 
         std.mem.sort(PinnedVersion, owned, {}, pinLessThan);
@@ -181,22 +205,36 @@ pub const PinResolver = struct {
     // service_catalog, so a resolving row is treated as its own single
     // implicit "active version" (interpretation (b) in the design's Open
     // questions §1).
+    //
+    // REWORK 1 (SECURITY-REVIEWER INV-1 fix): tenant scope is bound as a
+    // parameterized $2::uuid against service_catalog.owner_tenant_id, NOT
+    // via the dropped bpm_effective_tenant_id() SQL function (removed by the
+    // LEGACY_RLS-to-SCHEMA cutover migrations GBL-116/123/130/131) and NOT
+    // via a session GUC (SCHEMA mode never sets bpm.tenant_id — see
+    // src/db/pool.zig applyRequestStorageRouting()). service_catalog lives
+    // in the shared `public` schema in both storage modes, so this bound
+    // predicate is the only correct tenant scope here. Mirrors
+    // src/repository/service_catalog.zig getServiceForTenant() exactly.
     // -----------------------------------------------------------------------
     fn resolveServiceCatalogRef(
         self: *PinResolver,
         allocator: std.mem.Allocator,
         conn: *db.Conn,
         service_id: []const u8,
+        tenant_id: Uuid,
     ) ResolutionError!struct { resolved_id: []const u8, version: []const u8 } {
         _ = self;
+        const tenant_id_hex = uuidToHex(allocator, tenant_id) catch return ResolutionError.TransactionFailed;
+        defer allocator.free(tenant_id_hex);
+
         const row = conn.queryRow(
             allocator,
             \\SELECT service_id, (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
             \\FROM service_catalog
             \\WHERE service_id = $1
-            \\  AND (scope = 'global' OR owner_tenant_id = bpm_effective_tenant_id())
+            \\  AND (scope = 'global' OR owner_tenant_id = $2::uuid)
         ,
-            &.{service_id},
+            &.{ service_id, tenant_id_hex },
         ) catch |err| switch (err) {
             db.PoolError.ExhaustedPool => return ResolutionError.PoolExhausted,
             else => return ResolutionError.TransactionFailed,
@@ -365,6 +403,7 @@ pub const PinResolver = struct {
         conn: *db.Conn,
         pins: []PinnedVersion,
         overrides_json: []const u8,
+        tenant_id: Uuid,
     ) ResolutionError!void {
         const parsed = std.json.parseFromSlice(
             std.json.Value,
@@ -404,7 +443,7 @@ pub const PinResolver = struct {
                 .catalog_entry => {
                     // Degenerate form (Scoping note §1): only the row's own
                     // implicit "version" (updated_at-derived) can ever match.
-                    const resolved = self.resolveServiceCatalogRef(allocator, conn, ref) catch
+                    const resolved = self.resolveServiceCatalogRef(allocator, conn, ref, tenant_id) catch
                         return ResolutionError.UnresolvedPinOverride;
                     if (!std.mem.eql(u8, resolved.version, version)) {
                         return ResolutionError.UnresolvedPinOverride;
