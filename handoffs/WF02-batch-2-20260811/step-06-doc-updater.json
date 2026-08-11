@@ -1,0 +1,40 @@
+{
+  "handoff_id": "cc0d090d-34f5-4812-8bb2-9153de3a99aa",
+  "run_id": "WF02-batch-2-20260811",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-batch-2-20260811/step-06-doc-updater.json",
+  "created_at": "2026-08-11T11:46:10Z",
+  "started_at": "2026-08-11T13:58:52Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-02",
+      "ORD-01",
+      "ORD-02",
+      "ORD-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/status/release-stage16-WF02-batch-2-20260811.yaml"
+    ]
+  },
+  "task": {
+    "description": "RELEASE-VALIDATOR approved DDL-02, ORD-01, ORD-02, ORD-04 (Stage 16, batch 2). Update CHANGELOG.md. Update requirement status via tools/reqctl.py set-status (canonical write path). Regenerate docs/status/requirement_status.yaml via tools/reqctl.py render-status. Run the retrospective. Prominently note ISS-0669/GH-709 (Pool.acquire() thread-contention bug) in both the changelog and retrospective as a HARD PRE-REQUISITE for whichever future batch wires multi-consumer threading into production for ORD-01/02/04 -- this was RELEASE-VALIDATOR's explicit forward-carried recommendation, make sure it is not lost. Step Final (PR/merge) is a separate dispatch after you.",
+    "acceptance_criteria": [
+      "CHANGELOG.md has a new entry for DDL-02/ORD-01/ORD-02/ORD-04",
+      "docs/requirements.yaml status updated to RELEASED via reqctl.py for all 4 IDs",
+      "ISS-0669/GH-709 prominently flagged as a pre-requisite for future consumer-threading wiring",
+      "Retrospective written"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
