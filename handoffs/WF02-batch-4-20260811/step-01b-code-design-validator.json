@@ -1,0 +1,46 @@
+{
+  "handoff_id": "ddb8b2df-318f-4af7-9a0c-78838a28deb8",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-4-20260811/step-01b-code-design-validator.json",
+  "created_at": "2026-08-11T19:36:59Z",
+  "started_at": "2026-08-11T19:36:59Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-05",
+      "PAR-06",
+      "PIN-01",
+      "PIN-02"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/par-05-online-partition-conversion.md",
+      "src/design/par-06-time-bounded-reconstruction.md",
+      "templates/specs/par06-instance-projections-event-window.migration.yaml",
+      "src/design/pin-01-dependency-version-resolution.md",
+      "src/design/pin-02-pin-set-in-instance-started.md"
+    ]
+  },
+  "task": {
+    "description": "Validate CODE-DESIGNER Step 01 artefacts for PAR-05, PAR-06, PIN-01, PIN-02. IMPORTANT decision point: CODE-DESIGNER flagged PIN-01 as having TWO of its four resolution branches genuinely un-implementable in this batch -- AC1 (catalog-version resolution) blocked because service_catalog has no version/status column at all (a product/schema decision outside this design's authority), and AC2 (module-ref resolution) blocked because PLC-01 (the module catalog) does not exist yet. Filed as ISS-0672 (MAJOR) and commented on existing GH-306. Only AC3 (variable_schema validation) and AC4 (pin_overrides) are implementable now. Decide: (a) does this design correctly and honestly scope PIN-01 to what CAN be built now, with AC1/AC2 clearly marked as blocked-not-deferred rather than silently dropped, (b) is it acceptable for BACKEND-DEV to implement PIN-01 AC3/AC4 only in this batch with AC1/AC2 explicitly left for a future run once their blockers clear, or (c) should PIN-01 be pulled from this batch entirely since half its AC surface cannot be implemented. Also validate PAR-05, PAR-06, PIN-02 normally (full design coverage expected, no known gaps).",
+    "acceptance_criteria": [
+      "Every acceptance criterion in PAR-05, PAR-06, PIN-02 is traced to a specific design section",
+      "PIN-01 AC3/AC4 are fully covered; AC1/AC2's blocked status is honestly and clearly documented, not silently dropped or glossed as future work without explanation",
+      "Independent judgment on whether PIN-01's partial scope is acceptable for this batch or whether it should be deferred/pulled entirely",
+      "No implementation code (Zig function bodies, SQL DDL outside Type C YAML)",
+      "Lego catalog classification correctly applied per templates/lego-catalog.md",
+      "tools/lint_design_artefact.py run against each artefact with 0 BLOCKER"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
