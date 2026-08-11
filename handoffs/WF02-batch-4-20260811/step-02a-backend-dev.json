@@ -1,0 +1,82 @@
+{
+  "handoff_id": "dffa6e06-c532-4022-a9ab-2797e5bab4c7",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-4-20260811/step-02a-backend-dev.json",
+  "created_at": "2026-08-11T19:47:29Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-05",
+      "PAR-06",
+      "PIN-01",
+      "PIN-02"
+    ],
+    "related_handoff_ids": [
+      "ddb8b2df-318f-4af7-9a0c-78838a28deb8"
+    ],
+    "artifacts_in": [
+      "src/design/par-05-online-partition-conversion.md",
+      "src/design/par-06-time-bounded-reconstruction.md",
+      "templates/specs/par06-instance-projections-event-window.migration.yaml",
+      "src/design/pin-01-dependency-version-resolution.md",
+      "src/design/pin-02-pin-set-in-instance-started.md"
+    ]
+  },
+  "task": {
+    "description": "Implement PAR-05, PAR-06, PIN-02 in FULL per their validated Step 01 design artefacts. Implement PIN-01 SCOPED ONLY to AC3 (variable_schema validation, resolves against the real existing variable_schemas table), AC4 (pin_overrides application), and AC5 (deterministic ordering of whatever pins are actually produced). PIN-01 AC1 (catalog-version resolution) and AC2 (module-ref resolution) are explicitly OUT OF SCOPE for this batch -- tracked separately as ISS-0672 / GH-306 (AC1: service_catalog has no version/status column; AC2: PLC-01 module catalog does not exist yet). Do NOT attempt AC1/AC2. Per Step 01b validator routing: implement the catalog_entry/module resolution branches only as far as the design doc's explicitly-marked-provisional stopgap queries (see each design's Public Interface section), and for any reference that does not resolve under that degenerate/stopgap reading, return the design's documented error taxonomy values UnresolvedCatalogRef / UnresolvedModuleRef -- never a silent no-op, never a TODO, never a stub that fabricates success. PAR-06 also requires running its Type C migration YAML (templates/specs/par06-instance-projections-event-window.migration.yaml) via the codegen migration tooling to produce the actual .sql migration file, then applying it. PIN-02 touches src/engine/instance.zig at the event-append call site for INSTANCE_STARTED -- implement exactly per the pin-02-pin-set-in-instance-started.md design (pin set recorded durably in the INSTANCE_STARTED event payload). Read .env directly for BPM_DB_URL / BPM_TEST_DB_URL -- do not hardcode ports anywhere; this host remaps db/db_test to non-default ports via a local docker-compose.override.yml.",
+    "acceptance_criteria": [
+      "PAR-05: online partition conversion implemented per design, zig build exits 0",
+      "PAR-06: time-bounded reconstruction implemented per design; migration YAML materialized to SQL via codegen tooling and applied to BPM_DB_URL and BPM_TEST_DB_URL",
+      "PIN-01: AC3 (variable_schema validation), AC4 (pin_overrides), AC5 (deterministic ordering) implemented; AC1/AC2 explicitly NOT attempted; unresolved catalog/module refs return UnresolvedCatalogRef/UnresolvedModuleRef per design error taxonomy, not a silent no-op or TODO",
+      "PIN-02: pin set durably recorded in INSTANCE_STARTED event payload at the src/engine/instance.zig call site, per design",
+      "zig build exits 0 with no new warnings",
+      "zig build test exits 0 for any unit-level tests colocated with the implementation (integration tests are TEST-DESIGNER/TEST-RUNNER scope, Steps 3-4)",
+      "No implementation deviates from the validated Step 01 design artefacts without a documented, justified reason",
+      "Any NEW incidental defect found while implementing (not PIN-01 AC1/AC2, already tracked) is filed as its own ISS + GitHub issue and forwarded to the global queue per core-directives.md -- not fixed inline unless it genuinely blocks this step"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented PAR-05 (online partition conversion, src/db/partition_conversion.zig, full per design), PAR-06 (time-bounded reconstruction: migration 1150 materialized via codegen_migration.py and applied to both BPM_DB_URL and BPM_TEST_DB_URL, Store.append()/Store.reconstructBounded()/reconstruction.zig's reconstructInstance() extended per design), PIN-01 (src/engine/pin_resolver.zig, scoped to AC3/AC4/AC5 only -- AC1/AC2 return UnresolvedCatalogRef/UnresolvedModuleRef per the design's provisional stopgap, never a silent no-op), and PIN-02 (migration 1151 applied to both DBs; InstanceStore.create() in src/engine/instance.zig wired to call PinResolver.resolve() at Step d.5 and serialise pinned_versions[] into the INSTANCE_STARTED payload at Step e). zig build exits 0, zig build check (PI-03: build + scoped zig fmt --check) exits 0, zig build test exits 0 (103/103 steps succeeded, 1071/1135 tests passed, 64 pre-existing skips unrelated to this batch). Targeted integration verification: zig build test-integration-par06 (3/3 pass against real Postgres) and zig build test-integration-event-store (29/29 pass) both green. One design deviation, documented: PIN-01's pin_overrides could not be wired into InstanceStore.create()'s public signature (adding a 5th positional parameter would break ~20+ existing positional call sites across src/ and tests/, out of this handoff's scope) -- passed as null at this call site; PinResolver.resolve()'s AC4 override-application code path is fully implemented and unit-tested independent of this call site's current inability to supply overrides.",
+    "artifacts_out": [
+      "src/db/partition_conversion.zig",
+      "src/engine/pin_resolver.zig",
+      "src/engine/instance.zig",
+      "src/engine/reconstruction.zig",
+      "src/event_store/store.zig",
+      "src/api/errors.zig",
+      "src/api/routes/instances.zig",
+      "src/scheduler/partition_maintenance.zig",
+      "src/bpm.zig",
+      "build.zig",
+      "migrations/1150_par06_instance_projections_event_window.sql",
+      "migrations/1151_pin02_instance_started_pinned_versions.sql",
+      "tests/integration/par06_instance_projections_event_window_test.zig"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0673",
+        "github_issue": "https://github.com/tvolodi/R-Co/issues/714",
+        "severity": "MAJOR",
+        "summary": "lint_dual_schema_table_names.py BLOCKER: 10 tables duplicated between public/tenant_default on this workspace's live bpm_dev/bpm_test (events_ephemeral*, plat_partition_catalog, plat_event_idempotency, plat_correlation_cursor, plat_effect_completion, plat_partition_maintenance_run_log, event_payload_store). Confirmed via git stash NOT caused by this batch's own migrations -- pre-existing on a clean checkout of this branch. Filed and queued, not fixed inline (does not block this step's acceptance criteria)."
+      },
+      {
+        "id": "MINOR-1",
+        "severity": "MINOR",
+        "summary": "PIN-01's pin_overrides parameter is not reachable from InstanceStore.create()'s public 4-positional-parameter signature (see summary). Documented design deviation, not filed as a separate GitHub issue since it is an explicit, in-scope BACKEND-DEV wiring decision described in the handoff result rather than a defect discovered incidentally."
+      }
+    ],
+    "next_action": "Route to SECURITY-REVIEWER (WF-02 Step 2c) -- this batch touches tenant-data paths (instance start resolution pipeline, event append window-column maintenance, a new migration)."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-11T19:47:29Z",
+  "completed_at": "2026-08-11T20:26:43Z"
+}

@@ -19,6 +19,7 @@ const plugin_interface_mod = @import("plugin_interface.zig");
 const plugin_registry_mod = @import("plugin_registry.zig");
 const scheduler_store_mod = @import("../scheduler/store.zig");
 const dlq_store_mod = @import("../dlq/store.zig");
+const pin_resolver_mod = @import("pin_resolver.zig");
 const metrics = @import("obs_metrics");
 // Named module, not a relative import — see the note in src/main.zig (ISS-0155).
 const json_schema = @import("json_schema");
@@ -165,6 +166,18 @@ pub const InstanceError = error{
     PoolExhausted,
     /// DB transaction failed to commit (transient). HTTP 500.
     TransactionFailed,
+    /// PIN-01 AC1: a SERVICE_TASK's service_id names no catalog entry with an
+    /// active version. HTTP 422.
+    UnresolvedCatalogRef,
+    /// PIN-01 AC2: a module_ref semver range matches no published module
+    /// version (always raised under this batch's scope — PLC-01 does not
+    /// exist yet). HTTP 422.
+    UnresolvedModuleRef,
+    /// PIN-01 AC3: initial variables violate the resolved variable_schema
+    /// version. HTTP 422.
+    VariableSchemaViolation,
+    /// PIN-01 AC4: pin_overrides names a version that does not exist. HTTP 422.
+    UnresolvedPinOverride,
 };
 
 // ---------------------------------------------------------------------------
@@ -584,6 +597,56 @@ pub const InstanceStore = struct {
         }
         if (start_node_id == null) return InstanceError.InvalidInput;
 
+        // ── Step d.5 (PIN-01, NEW): resolve versioned references ───────────
+        // Runs in the SAME pre-instance-row phase PD-08's snapshot capture
+        // already ran in (no instance row exists yet; nothing to roll back
+        // if resolution fails) — per the design's data flow diagram. Scoped
+        // to AC3 (variable_schema validation), AC4 (pin_overrides), AC5
+        // (deterministic ordering) per Step 01b's validator routing; AC1/AC2
+        // (real catalog-version / module-ref resolution) are out of scope
+        // for this batch (ISS-0672 / GH-306) and are implemented only as far
+        // as the design's documented provisional stopgap queries — an
+        // unresolved catalog/module reference returns UnresolvedCatalogRef/
+        // UnresolvedModuleRef rather than a silent no-op.
+        //
+        // pin_overrides is not yet reachable from create()'s own public
+        // signature (adding a 5th positional parameter would break every
+        // existing positional call site across src/ and tests/, out of this
+        // handoff's scope) — passed as null here; PinResolver.resolve()'s
+        // AC4 override-application code path is fully implemented and
+        // unit-testable independent of this call site's current inability
+        // to supply overrides.
+        // Allocated from `a` (this function's param_arena), NOT the long-
+        // lived `allocator` — PinnedVersion.ref/.resolved_id/.version are
+        // used only transiently below (Step e's serialisePinnedVersions()
+        // call) and never returned to create()'s own caller, so arena-
+        // scoping them here (freed automatically when param_arena.deinit()
+        // runs) avoids a leak that would otherwise require this function to
+        // hand-track and free every PinnedVersion's three string fields
+        // individually.
+        var pin_resolver = pin_resolver_mod.PinResolver.init(self.pool);
+        const pinned_versions: []pin_resolver_mod.PinnedVersion = blk: {
+            const conn_pins = self.pool.acquire() catch |err| switch (err) {
+                PoolError.ExhaustedPool => return InstanceError.PoolExhausted,
+                else => return InstanceError.TransactionFailed,
+            };
+            defer self.pool.release(conn_pins);
+
+            break :blk pin_resolver.resolve(a, conn_pins, pin_resolver_mod.ResolutionInput{
+                .definition_id = definition_id,
+                .graph = snapshot.graph,
+                .initial_variables = initial_variables,
+                .pin_overrides = null,
+            }) catch |err| switch (err) {
+                pin_resolver_mod.ResolutionError.UnresolvedCatalogRef => return InstanceError.UnresolvedCatalogRef,
+                pin_resolver_mod.ResolutionError.UnresolvedModuleRef => return InstanceError.UnresolvedModuleRef,
+                pin_resolver_mod.ResolutionError.VariableSchemaViolation => return InstanceError.VariableSchemaViolation,
+                pin_resolver_mod.ResolutionError.UnresolvedPinOverride => return InstanceError.UnresolvedPinOverride,
+                pin_resolver_mod.ResolutionError.PoolExhausted => return InstanceError.PoolExhausted,
+                pin_resolver_mod.ResolutionError.TransactionFailed => return InstanceError.TransactionFailed,
+            };
+        };
+
         // ── Step e: Insert instance + trigger initial transition ───────────
         // All writes happen in a single DB transaction so that the instance row,
         // the first event, and any initial HUMAN_TASK rows are atomically visible.
@@ -751,10 +814,20 @@ pub const InstanceStore = struct {
         // ISS-0601-LEAK-001: Build instance_started event payload with initial_variables
         // and start_node_id fields (required by mapToTransitionEvent in reconstruction).
         // Manually construct the JSON string to avoid ObjectMap initialization complexity.
+        //
+        // PIN-02: also serialises pinned_versions[] — the array PIN-01's
+        // PinResolver.resolve() produced above (Step d.5) — into the SAME
+        // payload, in the SAME transaction as the instance row insert, so a
+        // committed instance never has an unrecorded pin set (PIN-02 AC2).
+        // Kept as a separate allocPrint step (not inlined) because
+        // []PinnedVersion has a variable element count, matching this file's
+        // existing tokens_buf incremental-build pattern.
+        const pinned_versions_json = serialisePinnedVersions(a, pinned_versions) catch
+            return InstanceError.TransactionFailed;
         const start_payload_json = std.fmt.allocPrint(
             a,
-            "{{\"initial_variables\":{s},\"start_node_id\":\"{s}\"}}",
-            .{ initial_variables, start_node_id.? },
+            "{{\"initial_variables\":{s},\"start_node_id\":\"{s}\",\"pinned_versions\":{s}}}",
+            .{ initial_variables, start_node_id.?, pinned_versions_json },
         ) catch return InstanceError.TransactionFailed;
 
         // INSERT event row (instance_started).
@@ -4393,6 +4466,55 @@ fn parseInstanceStatus(s: []const u8) error{InvalidStatus}!InstanceStatus {
     if (std.mem.eql(u8, s, "ERROR")) return .ERROR;
     if (std.mem.eql(u8, s, "RESTORED_ORPHAN")) return .RESTORED_ORPHAN;
     return error.InvalidStatus;
+}
+
+/// PIN-02: serialise a []PinnedVersion slice into the JSON array embedded in
+/// the INSTANCE_STARTED payload's "pinned_versions" field. `pins` must
+/// already be in the sorted-by-(kind, ref) order PIN-01's resolve()
+/// guarantees (PIN-01 AC5 / PIN-02 AC1) — this function preserves that order
+/// verbatim through serialisation rather than re-sorting.
+///
+/// Mirrors this file's existing tokens_buf pattern (manual `{`/`,`/`}`
+/// punctuation rather than std.json.Stringify, matching this file's
+/// established style rather than introducing a second serialisation
+/// approach for one field). p.ref/p.resolved_id/p.version are caller-
+/// controlled-adjacent strings (service IDs, module IDs, schema hashes) that
+/// never contain unescaped `"` under this codebase's existing identifier
+/// conventions (UUIDs, service_id VARCHAR(255), semver/hex strings) — the
+/// SAME no-escaping convention this file's existing start_payload_json
+/// construction already uses for node_id/branch_id/start_node_id (PIN-02
+/// design doc, Open questions §1: a pre-existing convention this design
+/// inherits, not one it introduces).
+fn serialisePinnedVersions(allocator: std.mem.Allocator, pins: []const pin_resolver_mod.PinnedVersion) error{OutOfMemory}![]const u8 {
+    var buf = std.ArrayList(u8).empty;
+    try buf.append(allocator, '[');
+    for (pins, 0..) |p, i| {
+        if (i > 0) try buf.append(allocator, ',');
+        const entry = try std.fmt.allocPrint(
+            allocator,
+            "{{\"kind\":\"{s}\",\"ref\":\"{s}\",\"resolved_id\":\"{s}\",\"version\":\"{s}\",\"source\":\"{s}\"}}",
+            .{ pinKindToString(p.kind), p.ref, p.resolved_id, p.version, pinSourceToString(p.source) },
+        );
+        try buf.appendSlice(allocator, entry);
+    }
+    try buf.append(allocator, ']');
+    return buf.items;
+}
+
+fn pinKindToString(kind: pin_resolver_mod.PinKind) []const u8 {
+    return switch (kind) {
+        .catalog_entry => "catalog_entry",
+        .variable_schema => "variable_schema",
+        .module => "module",
+    };
+}
+
+fn pinSourceToString(source: pin_resolver_mod.PinSource) []const u8 {
+    return switch (source) {
+        .resolved => "resolved",
+        .override => "override",
+        .inherited => "inherited",
+    };
 }
 
 /// Render a UUID as lowercase hex with hyphens: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.

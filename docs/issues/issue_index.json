@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-11T19:33:24Z",
-  "next_issue_id": 210,
+  "last_updated": "2026-08-11T20:14:37Z",
+  "next_issue_id": 211,
   "issues": [
     {
       "id": "ISS-0085",
@@ -2132,6 +2132,21 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/306#issuecomment-5257910135",
       "discovered_in": "WF02-batch-4-20260811 CODE-DESIGNER Step 01 (PIN-01 design)",
       "created_at": "2026-08-11T19:33:24Z",
+      "resolved_at": null
+    },
+    {
+      "issue_id": "ISS-0673",
+      "title": "lint_dual_schema_table_names BLOCKER: 10 tables duplicated public/tenant_default (events_ephemeral*, plat_partition_catalog, plat_event_idempotency, plat_correlation_cursor, plat_effect_completion, plat_partition_maintenance_run_log, event_payload_store) -- ISS-0185-family recurrence, pre-existing to WF02-batch-4-20260811",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "database schema drift",
+      "run_id": "WF02-batch-4-20260811",
+      "affected_areas": [
+        "migrations/"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/714",
+      "discovered_in": "WF02-batch-4-20260811 BACKEND-DEV Step 02a self-review (lint_dual_schema_table_names.py)",
+      "created_at": "2026-08-11T20:14:37Z",
       "resolved_at": null
     }
   ]

@@ -182,3 +182,46 @@ pub fn problemPartitionMissingForWrite(detail: []const u8) ProblemDetails {
         .detail = detail,
     };
 }
+
+/// HTTP 422 — a SERVICE_TASK's service_id names no catalog entry with an
+/// active version (PIN-01 AC1).
+pub fn problemUnresolvedCatalogRef(detail: []const u8) ProblemDetails {
+    return .{
+        .type = BASE ++ "unresolved-catalog-ref",
+        .title = "Unresolved Catalog Ref",
+        .status = 422,
+        .detail = detail,
+    };
+}
+
+/// HTTP 422 — a module_ref semver range matches no published module version
+/// (PIN-01 AC2).
+pub fn problemUnresolvedModuleRef(detail: []const u8) ProblemDetails {
+    return .{
+        .type = BASE ++ "unresolved-module-ref",
+        .title = "Unresolved Module Ref",
+        .status = 422,
+        .detail = detail,
+    };
+}
+
+/// HTTP 422 — initial variables violate the resolved variable_schema version
+/// (PIN-01 AC3).
+pub fn problemVariableSchemaViolation(detail: []const u8) ProblemDetails {
+    return .{
+        .type = BASE ++ "variable-schema-violation",
+        .title = "Variable Schema Violation",
+        .status = 422,
+        .detail = detail,
+    };
+}
+
+/// HTTP 422 — pin_overrides names a version that does not exist (PIN-01 AC4).
+pub fn problemUnresolvedPinOverride(detail: []const u8) ProblemDetails {
+    return .{
+        .type = BASE ++ "unresolved-pin-override",
+        .title = "Unresolved Pin Override",
+        .status = 422,
+        .detail = detail,
+    };
+}

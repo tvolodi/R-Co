@@ -147,6 +147,39 @@ pub fn build(b: *std.Build) void {
             .{ .name = "pool", .module = pool_root_mod },
         },
     });
+    // PAR-05 (WF02-batch-4-20260811): src/scheduler/partition_maintenance.zig,
+    // given as a named module for the SAME reason partition_attach_mod is —
+    // src/db/partition_conversion.zig sits in a DIFFERENT directory than
+    // partition_maintenance.zig and, when partition_conversion.zig is reached
+    // as part of a module tree not rooted at src/scheduler/, a relative
+    // @import("../scheduler/partition_maintenance.zig") would escape that
+    // tree's module root. partition_conversion.zig imports this as
+    // `@import("partition_maintenance")` to reuse its month-arithmetic
+    // helpers (monthRange/addMonthsUs/usToYearMonth/yearMonthToUs/
+    // formatTimestamptzLiteral, all made `pub` for this reuse) rather than
+    // forking a second definition, per that design's Public interface note.
+    const partition_maintenance_mod = b.createModule(.{
+        .root_source_file = b.path("src/scheduler/partition_maintenance.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "partition_attach", .module = partition_attach_mod },
+        },
+    });
+    // PAR-05: src/db/partition_conversion.zig — the online partition
+    // conversion module itself, given as a named module for the same
+    // cross-directory reason as partition_attach_mod/partition_maintenance_mod.
+    const partition_conversion_mod = b.createModule(.{
+        .root_source_file = b.path("src/db/partition_conversion.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "partition_attach", .module = partition_attach_mod },
+            .{ .name = "partition_maintenance", .module = partition_maintenance_mod },
+        },
+    });
     // env_mod: src/env.zig, the portable environment-variable helper (ISS-0134).
     // Given as a named module — not a relative @import — anywhere it is needed
     // outside the main src/ module tree: Zig 0.16 forbids an @import that
@@ -545,6 +578,15 @@ pub fn build(b: *std.Build) void {
             // rather than letting bpm_src_mod's relative-import tree own
             // src/db/partition_attach.zig a second time.
             .{ .name = "partition_attach", .module = partition_attach_mod },
+            // PAR-05: src/bpm.zig now imports scheduler/partition_maintenance.zig
+            // by this SAME named module too (see src/bpm.zig's comment) — both
+            // this module and partition_conversion_mod depend on it, so it must
+            // be supplied consistently everywhere to satisfy Zig 0.16's
+            // single-owner module rule.
+            .{ .name = "partition_maintenance", .module = partition_maintenance_mod },
+            // PAR-05: same reasoning as partition_attach above, for
+            // src/db/partition_conversion.zig.
+            .{ .name = "partition_conversion", .module = partition_conversion_mod },
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
@@ -928,6 +970,29 @@ pub fn build(b: *std.Build) void {
     const run_partition_maintenance_tests = b.addRunArtifact(partition_maintenance_tests);
     const test_partition_maintenance_step = b.step("test-partition-maintenance", "Run PAR-02 partition maintenance job unit tests");
     test_partition_maintenance_step.dependOn(&run_partition_maintenance_tests.step);
+
+    // ---------------------------------------------------------------------------
+    // PAR-05: online partition conversion unit tests (pure — no DB;
+    // PartitionConverter's DB-bound methods are covered by integration tests
+    // instead, per the design's own Scoping note on why PAR-05 needs a
+    // bespoke non-TestHarness fixture rather than a standard bpm_test
+    // provisioning run).
+    // ---------------------------------------------------------------------------
+    const partition_conversion_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/db/partition_conversion.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "partition_attach", .module = partition_attach_mod },
+                .{ .name = "partition_maintenance", .module = partition_maintenance_mod },
+            },
+        }),
+    });
+    const run_partition_conversion_tests = b.addRunArtifact(partition_conversion_tests);
+    const test_partition_conversion_step = b.step("test-partition-conversion", "Run PAR-05 online partition conversion unit tests");
+    test_partition_conversion_step.dependOn(&run_partition_conversion_tests.step);
 
     // ---------------------------------------------------------------------------
     // PAR-03: partition retention (DETACH/ATTACH/DROP) unit tests (pure — no
@@ -1490,6 +1555,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_partition_attach_tests.step);
     test_step.dependOn(&run_partition_maintenance_tests.step);
     test_step.dependOn(&run_partition_retention_tests.step);
+    // PAR-05 (WF02-batch-4-20260811): online partition conversion unit tests.
+    test_step.dependOn(&run_partition_conversion_tests.step);
 
     // ISS-0137 / GH #439 — the nine backlog-clearing targets declared above.
     test_step.dependOn(&run_core_modules_tests.step);
@@ -2637,6 +2704,22 @@ pub fn build(b: *std.Build) void {
     const test_integration_par03_step = b.step("test-integration-par03", "Run par03_retention_class_test.zig in isolation (requires BPM_TEST_DB_URL)");
     test_integration_par03_step.dependOn(&clean_test_db.step);
     test_integration_par03_step.dependOn(&run_par03_solo_tests.step);
+
+    // PAR-06 (WF02-batch-4-20260811): instance_projections.first_event_at/
+    // .last_event_at schema slice (migration
+    // 1150_par06_instance_projections_event_window.sql).
+    const par06_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/par06_instance_projections_event_window_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_par06_solo_tests = addIntegrationRun(b, par06_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_par06_step = b.step("test-integration-par06", "Run par06_instance_projections_event_window_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_par06_step.dependOn(&clean_test_db.step);
+    test_integration_par06_step.dependOn(&run_par06_solo_tests.step);
 
     const exp201_202_solo_tests = b.addTest(.{
         .root_module = b.createModule(.{
