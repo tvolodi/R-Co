@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-1-20260811/step-01-code-designer.json",
   "created_at": "2026-08-11T09:45:16Z",
   "started_at": "2026-08-11T09:47:18Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T09:55:02Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -33,7 +33,43 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Design artefacts for DDL-01, MIG-04, MIG-05, MIG-06 (stage 16) produced as two Type E prose design docs, both passing tools/lint_design_artefact.py clean. DDL-01 (src/design/ddl-01-validate-platform-ddl.md) defines ValidatePlatformDDL as a pure aggregation pipeline that composes ddl_namespace.checkNamespace (DDL-05) alongside two new checks (lock-class, non-concurrent-index build), returning the first failure in statement order (AC5) with no database handle/clock/env var (AC4). MIG-04/05/06 (src/design/mig-04-mig-05-mig-06-resume-idempotency-admin-surface.md) extend migration_fanout.zig in place: MIG-04 adds resumeFanout() reading platform_migrations_resume_idx and reusing applyToTenant() for the MIG-02 transaction protocol; MIG-05 changes seedPendingRow to ON CONFLICT ... DO UPDATE ... WHERE status != 'done' (no new migration needed -- MIG-01 table already has the right UNIQUE anchor) plus a per-tenant isAlreadyDone() skip guard in the fanout loop; MIG-06 adds three role-gated HTTP routes (run/status/resume) in a new src/api/routes/platform_migrations.zig following the actor.role != .PLATFORM_ADMIN inline-check convention cited from src/api/routes/onboarding.zig (lines 54, 290, 385), plus a boot-time assertNoOutstandingMigrations() gate following src/operations/startup_assertions.zig's established FATAL-log-line + std.process.exit(EX_CONFIG=78) shape, called from main.zig::runApiServer as a second gate after the existing assertDatabaseConfiguration() call. Every AC in all 4 requirement bodies is covered by the two designs; marked PARTIAL because three genuinely open questions are flagged (not blocking any AC coverage) -- see issues.",
+    "artifacts_out": [
+      "src/design/ddl-01-validate-platform-ddl.md",
+      "src/design/mig-04-mig-05-mig-06-resume-idempotency-admin-surface.md"
+    ],
+    "issues": [
+      {
+        "id": "ISS-OPEN-1",
+        "severity": "MINOR",
+        "description": "MIG-05 AC5 (migration-file content immutability once a done row exists) has no existing mechanism in platform.platform_migrations to tie a migration_id to a content hash -- two candidate designs (runtime content-hash column vs. pure process/CI-tooling enforcement) are presented in the design doc Open Questions #1 without a chosen answer; needs REQ-ANALYST/ORCH clarification before BACKEND-DEV implements this one AC. MIG-05 AC1-AC4 are fully specified and unaffected.",
+        "affected_requirement": "MIG-05"
+      },
+      {
+        "id": "ISS-OPEN-2",
+        "severity": "MINOR",
+        "description": "MIG-06 AC2 (404 UnknownMigration) needs a concrete source of truth for the migration set to check migration_id against; no such registry exists yet in this codebase (DDL-01's statement parser and migration-plan CLI, which would naturally enumerate it, are themselves not yet built -- see DDL-01 design Open Question 1). Design doc Open Questions #2 recommends a caller-supplied known_migration_ids parameter as an interim placeholder so BACKEND-DEV is not blocked. Does not affect the other four MIG-06 ACs.",
+        "affected_requirement": "MIG-06"
+      },
+      {
+        "id": "ISS-OPEN-3",
+        "severity": "MINOR",
+        "description": "MIG-06's platform-operator role is mapped to the existing Role.PLATFORM_ADMIN enum value (no PLATFORM_OPERATOR role exists in src/api/middleware/auth.zig) since no requirement text in this batch or batch-0 asks for a second admin tier; flagged for REQ-ANALYST to confirm this reading is correct rather than a narrower role being intended.",
+        "affected_requirement": "MIG-06"
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF02-batch-1-20260811",
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": "skipped",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
