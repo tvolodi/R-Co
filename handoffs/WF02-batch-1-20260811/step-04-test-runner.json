@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-1-20260811/step-04-test-runner.json",
   "created_at": "2026-08-11T11:01:04Z",
   "started_at": "2026-08-11T11:01:15Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T11:04:17Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -30,7 +30,15 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "All 4 required commands exit 0: test-ddl-validate 21/21, test-integration-mig04-mig05 9/9, test-integration-mig06 6/6, unit test suite 1042/1106 passed (64 skipped, 0 failed, 93/93 steps succeeded). Full test-integration umbrella excluded per handoff instructions (ISS-0665/GH-702).",
+    "artifacts_out": [
+      "tests/reports/report-20260811-WF02-batch-1.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (Step 5)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
