@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-3-20260811/step-05-release-validator.json",
   "created_at": "2026-08-11T18:28:21Z",
   "started_at": "2026-08-11T18:28:21Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-11T18:32:22Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -34,7 +34,20 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Independently re-verified PAR-01/02/03/04 by reading exact AC text from docs/requirements.yaml, reading tests/specs/PAR-01..04.md in full, and re-running all 6 batch-specific build targets myself against the live db_test container (test-partition-attach 2/2, test-partition-maintenance 5/5, test-partition-retention 4/4, test-integration-par02 3/3, test-integration-par03 4/4, test-integration-event-store 29/29, test-env-verify HEALTHY 10/10) -- all match the report exactly. PAR-01 and PAR-04: PASS, all MUST ACs implemented and proven (independently confirmed REWORK 1 PAR-01 AC4 fix, commit fa63e32d, is real by reading store.zig/errors.zig directly). PAR-02 and PAR-03: PARTIAL. Independently grepped src/ and confirmed EXECUTION_PARTITION_CREATED (PAR-02 AC5) and EXECUTION_PARTITION_DETACHED/DROPPED (PAR-03 AC6) have zero call sites anywhere in source -- this is missing implementation, not missing test coverage, and both are plain MUST-priority AC bullets with no qualifying language distinguishing them from the other ACs in the same requirement. Per the governing anti-pattern rule (RELEASE-VALIDATOR MUST FAIL a MUST AC with no passing test evidence -- stronger here since there is no implementation to test), these two specific ACs cannot be counted as met even though ISS-0670/GH-711 is correctly filed, OPEN, and correctly scoped as needing a CODE-DESIGNER design note (no platform/system instance_id convention exists for the event-store append path). Checked NFR applicability: no PAR-0x benchmark exists in tests/bench/bench.zig, no new HTTP endpoint is introduced by this batch, so NFR-01/02/04 are correctly not applicable; PAR-04 AC1/AC3's embedded 50ms/1s timing thresholds are self-measured at runtime and were exercised transitively across 36 re-run test cases with zero AttachScanRequired triggers, confirming the fast path held.",
+    "artifacts_out": [
+      "docs/status/release-stage16-WF02-batch-3-20260811.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "PAR-02 AC5 and PAR-03 AC6 (EXECUTION_PARTITION_CREATED / EXECUTION_PARTITION_DETACHED / EXECUTION_PARTITION_DROPPED event emission) are unimplemented in src/, confirmed by direct grep. Tracked as ISS-0670/GH-711 (OPEN). Recommend DOC-UPDATER mark PAR-02/PAR-03 as tested-with-known-gap rather than unqualified RELEASED, referencing ISS-0670/GH-711, while PAR-01 and PAR-04 proceed to full RELEASED."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 6): RELEASE PAR-01 and PAR-04 in full. Mark PAR-02 and PAR-03 tested-with-known-gap (not unqualified RELEASED) pending ISS-0670/GH-711, recording the specific unmet AC (PAR-02 AC5, PAR-03 AC6) against the tracking issue."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
