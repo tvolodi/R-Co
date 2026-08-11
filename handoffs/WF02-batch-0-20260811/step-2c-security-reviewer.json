@@ -1,0 +1,44 @@
+{
+  "handoff_id": "c36e52c2-ae3c-4323-a0c7-0b239fbc9c47",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "step": "2c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-batch-0-20260811/step-2c-security-reviewer.json",
+  "created_at": "2026-08-11T05:23:33Z",
+  "started_at": "2026-08-11T06:14:29Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-05",
+      "MIG-01",
+      "MIG-02",
+      "MIG-03"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/platform/ddl_namespace.zig",
+      "src/platform/migration_fanout.zig",
+      "migrations/1144_platform_migrations_control_table.sql",
+      "tests/integration/platform_migrations_control_table_test.zig",
+      "tests/integration/migration_fanout_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: review the DDL-05/MIG-01/MIG-02/MIG-03 implementation against docs/agents/instructions/security-invariants.md. This is a tenant-data-path change: new migration creating a cross-tenant platform.platform_migrations table, a cross-tenant fanout loop opening connections to every tenant schema (src/platform/migration_fanout.zig), and a namespace-reservation check governing what tenants can create inside their own schema (src/platform/ddl_namespace.zig). Check tenant data isolation (does the fanout correctly scope each tenant DDL step to that tenant only, no cross-tenant leakage), SQL parameterization (no string interpolation), and any new-path scoping proof required for a cross-tenant admin operation.",
+    "acceptance_criteria": [
+      "Every numbered security invariant in security-invariants.md checked against the diff",
+      "Tenant data isolation verified for the fanout loop (per-tenant connection/search_path scoping)",
+      "SQL parameterization verified (prepared statements only)",
+      "No catch unreachable on realistic DB failure paths"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
