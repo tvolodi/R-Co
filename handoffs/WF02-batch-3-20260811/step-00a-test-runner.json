@@ -1,0 +1,38 @@
+{
+  "handoff_id": "78688ccb-6222-4a45-89b6-aad1f7b299a1",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "00a",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-batch-3-20260811/step-00a-test-runner.json",
+  "created_at": "2026-08-11T14:19:28Z",
+  "started_at": "2026-08-11T14:19:52Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Green-Main Gate: run the test suite against current main (HEAD) BEFORE any WF-02 implementation starts for batch 3 (PAR-01, PAR-02, PAR-03, PAR-04 -- events table partitioning). This is a HIGH-RISK batch touching the core events table used throughout the platform. ORCH confirmed zig build test-env-verify HEALTHY (10/10). Run zig build test (full unit suite) plus targeted steps from all 3 prior released batches (test-ddl-namespace, test-ddl-validate, test-integration-mig01, test-integration-mig02-mig03, test-integration-mig04-mig05, test-integration-mig06, test-ordering, test-integration-ord01, test-integration-ord04, test-integration-ordering) to confirm nothing regressed. Also specifically run any existing event-store related integration tests (search build.zig for test-integration-event-store or similar) since PAR-01-04 will restructure the events table.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "all prior-batch targeted steps exit 0",
+      "existing event-store tests exit 0",
+      "Exact pass/fail counts reported"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
