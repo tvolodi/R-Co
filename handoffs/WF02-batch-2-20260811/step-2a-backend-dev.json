@@ -1,0 +1,46 @@
+{
+  "handoff_id": "39aa31c1-8de3-499f-96fa-b96933528251",
+  "run_id": "WF02-batch-2-20260811",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-2-20260811/step-2a-backend-dev.json",
+  "created_at": "2026-08-11T11:46:10Z",
+  "started_at": "2026-08-11T12:15:41Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-02",
+      "ORD-01",
+      "ORD-02",
+      "ORD-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/ddl-02-constrain-before-expand-check.md",
+      "src/design/ord-01-02-04-correlated-effect-reentry.md",
+      "templates/specs/ord-01-plat-effect-completion.migration.yaml",
+      "templates/specs/ord-04-plat-correlation-cursor.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Implement DDL-02, ORD-01, ORD-02, ORD-04 per the validated (PASS, one resolved rework cycle) design artefacts. DDL-02: extend src/platform/ddl_validate.zig's existing ValidatePlatformDDL with the new checkConstrainBeforeExpand check (per-column state machine UNSEEN/EXPANDED/BACKFILLED across statements in file order), add file/byte_offset fields to StatementDescriptor (purely additive, confirmed safe for DDL-05's ddl_namespace.zig by CODE-DESIGN-VALIDATOR -- update DDL-01's existing unit test call sites that construct StatementDescriptor literals to supply these two new fields). ORD-01/02/04: run tools/codegen_migration.py on both Type C YAMLs (plat_effect_completion, plat_correlation_cursor tables), then write the consumer claim (SELECT...FOR UPDATE SKIP LOCKED)/execute-guard (pg_try_advisory_xact_lock per correlation)/observability (lag, oldest-pending-age, guard-false-rate) logic in new src/ordering/ modules, following the src/effects/worker.zig connection-acquisition discipline (GH-654/ISS-0649 -- never hold a connection across a poll sleep). Read both design docs in full before writing any code.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build check exits 0",
+      "python tools/lint_sql_param_types.py src tests exits 0",
+      "Every acceptance criterion in DDL-02, ORD-01, ORD-02, ORD-04 is implemented",
+      "No mocks/stubs/fakes; all DB access via real PostgreSQL through the Pool",
+      "Real unit + integration tests written and passing, with own addTest/build.zig wiring (verified real by deliberate-break test)",
+      "Implementation committed to feature/WF02-batch-2-20260811"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
