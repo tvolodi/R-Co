@@ -1,0 +1,48 @@
+{
+  "handoff_id": "432bdd22-7d20-453a-a4ec-84753248725f",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "2c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-batch-3-20260811/step-2c-security-reviewer.json",
+  "created_at": "2026-08-11T14:26:03Z",
+  "started_at": "2026-08-11T16:40:14Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "migrations/1147_par01_events_partitioning.sql",
+      "migrations/1148_par02_partition_catalog.sql",
+      "migrations/1149_par03_retention_class.sql",
+      "src/db/partition_attach.zig",
+      "src/scheduler/partition_maintenance.zig",
+      "src/scheduler/partition_retention.zig",
+      "src/event_store/store.zig",
+      "src/event_store/registry.zig"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: review PAR-01/02/03/04 against docs/agents/instructions/security-invariants.md. HIGH RISK: this batch restructures the core events table, adds a DROP-TABLE-capable retention/deletion mechanism (events_ephemeral), and retires an existing function (Store.archive()) that was ADP-11's (protected-event-type deletion prohibition) implementation. Check: (1) RetentionClassForbidden guard is genuinely enforced -- can a protected-family event type (INSTANCE_*/TASK_*/GATEWAY_*/EXECUTION_*) actually be routed to events_ephemeral (i.e. hard-deleted) through any path, bypassing the guard? Check both the app-level Registry.registerType() check AND whether Store.append()'s routing logic re-derives retention_class in a way that could diverge from what was validated at registration time. (2) The DROP TABLE mechanism in partition_retention.zig -- confirm it is CONFINED to events_ephemeral partitions only and cannot be tricked/misconfigured into dropping an events or events_archive partition (which would be irreversible data loss of non-ephemeral data). (3) SQL parameterization on all new queries, especially any dynamic partition-name construction (ALTER TABLE ... ATTACH/DETACH PARTITION, CREATE TABLE events_YYYY_MM) -- partition names are typically NOT bindable as SQL parameters (DDL doesn't support $1 placeholders for identifiers), so check how this project safely constructs these identifier strings (allowlist/format validation vs any risk of injection via a crafted event_type or tenant-controlled value influencing a partition name). (4) No catch unreachable on realistic DB failure paths, especially around the two bugs BACKEND-DEV found and fixed (schema-qualification issue, duplicate UUID generation) -- confirm the fixes are sound. (5) Cross-tenant isolation: does the partitioning scheme correctly apply per-tenant-schema (via search_path) the same way other per-tenant tables do, or could partition maintenance/retention operating cross-schema accidentally touch the wrong tenant's data?",
+    "acceptance_criteria": [
+      "RetentionClassForbidden guard verified unbypassable for protected-family types",
+      "DROP TABLE mechanism verified confined to events_ephemeral only",
+      "SQL parameterization verified including dynamic partition-name construction",
+      "No catch unreachable",
+      "Cross-tenant isolation of partition maintenance/retention verified"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
