@@ -1,0 +1,45 @@
+{
+  "handoff_id": "a1f30aea-ae05-428d-8e8f-abe24d9f3de2",
+  "run_id": "WF02-batch-2-20260811",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-2-20260811/step-01b-code-design-validator.json",
+  "created_at": "2026-08-11T11:46:10Z",
+  "started_at": "2026-08-11T12:02:14Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-02",
+      "ORD-01",
+      "ORD-02",
+      "ORD-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/ddl-02-constrain-before-expand-check.md",
+      "src/design/ord-01-02-04-correlated-effect-reentry.md",
+      "templates/specs/ord-01-plat-effect-completion.migration.yaml",
+      "templates/specs/ord-04-plat-correlation-cursor.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER Step 01 design for DDL-02, ORD-01, ORD-02, ORD-04. Standard checks apply. Additionally: verify the design's claim that src/effects/worker.zig/queue.zig is a genuine, correctly-cited existing FOR UPDATE SKIP LOCKED pattern to follow (read those files yourself). Verify the design's argument that ORD-02's per-correlation advisory lock is NOT redundant with SKIP LOCKED (unlike a previously-removed per-timer lock referenced as ISS-301 precedent) -- read that precedent/history if cited and confirm the distinction is sound, since getting this backwards would mean reintroducing a documented anti-pattern. Verify DDL-02 correctly extends ddl_validate.zig's existing ValidatePlatformDDL pipeline rather than creating a parallel validator. Check if docs/processes/system/effect-reentry-ordering.md (cited by the designer as an authoritative process spec for PW-07) genuinely exists and the design is consistent with it.",
+    "acceptance_criteria": [
+      "Every AC in DDL-02, ORD-01, ORD-02, ORD-04 traced to a design section",
+      "No implementation code in the design",
+      "DDL-02 extends the existing validator pipeline correctly",
+      "src/effects/worker.zig pattern citation verified accurate",
+      "ORD-02 lock-non-redundancy argument verified sound against the cited ISS-301/removed-lock precedent",
+      "Consistency with docs/processes/system/effect-reentry-ordering.md if it exists"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

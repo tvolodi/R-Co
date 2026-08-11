@@ -1045,3 +1045,4 @@
 2026-08-11T11:46:10Z | COMPLETE | WF02-batch-2-20260811 | a4aad9b4 | BACKEND-DEV | PASS -- git-setup complete: HEAD confirmed ancestor-superset of origin/main (merge-base --is-ancestor exit 0), no stale local branch, feature/WF02-batch-2-20260811 created and pushed with -u to origin (exit 0) -> next: ORCH routes to CODE-DESIGNER (Step 1)
 2026-08-11T11:48:25Z | ROUTE | WF02-batch-2-20260811 | 7cd43d97 | ORCH -> CODE-DESIGNER | PENDING (step 01 design)
 2026-08-11T11:59:36Z | COMPLETE | WF02-batch-2-20260811 | 7cd43d97 | CODE-DESIGNER | PASS -- design artefacts for DDL-02 (Type E extension to ddl_validate.zig), ORD-01/02/04 (2x Type C migration YAML: plat_effect_completion, plat_correlation_cursor + 1x Type E consumer design following EXP-301 effects worker precedent) -> next: ORCH routes to CODE-DESIGN-VALIDATOR (Step 1b)
+2026-08-11T12:02:14Z | ROUTE | WF02-batch-2-20260811 | a1f30aea | ORCH -> CODE-DESIGN-VALIDATOR | PENDING (step 01b design validation)
