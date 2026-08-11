@@ -1,0 +1,47 @@
+{
+  "handoff_id": "691002b1-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH691-20260811",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-11T20:54:35Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 2b CODE-DESIGN-VALIDATOR (hard gate)",
+    "requirement_ids": ["PI-09"],
+    "iss_ref": "ISS-0660",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/691",
+    "related_handoff_ids": [
+      "81b01143-e88d-4f5a-91c0-bf84fe594b3a",
+      "69100050-0000-0000-0000-000000000000",
+      "69100200-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH691-20260811/step-02-code-designer.json",
+      "docs/issues/ISS-0660.json"
+    ],
+    "branch": "feature/WF03-GH691-20260811"
+  },
+  "task": {
+    "description": "Step 2b: Hard gate — validate the CODE-DESIGNER artefact for WF03-GH691-20260811 before BACKEND-DEV implements. Read step-02-code-designer.json result.summary (the inline Type E design). Verify: (1) Design covers both acceptance criteria from GH-691: AC-1 (no PublicSchemaPollution tolerance) and AC-2 (pre-check causes FAIL on unexpected public tables). (2) Design contains no implementation code — it specifies what to change, not actual executable Zig code committed to files. NOTE: the result.summary includes Zig code snippets as design specification (not committed code) — that is acceptable for Type E proportional design. (3) Design is sufficient for BACKEND-DEV to implement without ambiguity: affected files identified, replacement logic specified, SQL query specified. (4) No production source changes in scope (test code only). If all pass: PASS. If any fail: FAIL with specific BLOCKER items for CODE-DESIGNER rework.",
+    "acceptance_criteria": [
+      "AC-1 and AC-2 from GH-691 are covered by the design",
+      "Design specifies both affected locations in startup_assertions_test.zig",
+      "Design specifies the tests/specs/ISS-0084.md update",
+      "BACKEND-DEV can implement without ambiguity",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for ISS-0660 (Type E inline) validated — all acceptance criteria covered. (1) AC-1 covered: both success test functions have their polymorphic PASS block replaced with a strict `try` call — `error.PublicSchemaPollution` is no longer accepted as PASS. (2) AC-2 covered: a hard pre-check query (`SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename NOT IN ('schema_migrations','migrations_lock')`) is specified to run BEFORE the production assertion; a `public.tenant_seed` table would cause `error.PublicSchemaPollutionPreCheck` (FAIL), not silent tolerance. (3) Both affected locations identified: `assertDatabaseConfiguration_success` (~lines 56–69) and `assertDatabaseConfiguration_with_overrides_success` (~lines 193–211) — cross-checked against source, confirmed match. (4) `tests/specs/ISS-0084.md` update fully specified: section 3.1 Expected Result replacement and section 6 two new AC items. (5) Design is unambiguous: SQL query, Zig replacement pattern, idiom notes, and allowlist rationale all provided. (6) No production source changes in scope — only `tests/integration/startup_assertions_test.zig` and `tests/specs/ISS-0084.md`. lint_handoffs.py exits 0.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) — implement the ISS-0660 fix in tests/integration/startup_assertions_test.zig and tests/specs/ISS-0084.md per the inline design in step-02-code-designer.json result.summary"
+  },
+  "started_at": "2026-08-11T20:54:35Z",
+  "completed_at": "2026-08-11T20:56:48Z",
+  "status": "COMPLETED"
+}

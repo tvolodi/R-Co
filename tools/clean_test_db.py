@@ -37,11 +37,24 @@ USER = "bpm"
 _DIRECT_DB_URL: str | None = None
 
 
+def _psql_native_available() -> bool:
+    """True when a real psql executable (not just a .cmd/.bat wrapper) exists.
+
+    On Windows, shutil.which("psql") finds psql.cmd wrappers but
+    subprocess.run(["psql", ...]) without shell=True cannot execute .cmd files.
+    Checking for "psql.exe" explicitly avoids a FileNotFoundError at runtime.
+    """
+    import shutil
+    if sys.platform == "win32":
+        return shutil.which("psql.exe") is not None
+    return shutil.which("psql") is not None
+
+
 def _psql_base_cmd() -> list[str]:
     """Return the psql invocation prefix (connection portion only) for the
-    active connection mode — direct BPM_TEST_DB_URL if set, else
-    docker-compose exec into the db_test container."""
-    if _DIRECT_DB_URL:
+    active connection mode — direct BPM_TEST_DB_URL if set AND a native psql
+    binary is present, else docker-compose exec into the db_test container."""
+    if _DIRECT_DB_URL and _psql_native_available():
         return ["psql", _DIRECT_DB_URL]
     return ["docker-compose", "exec", "-T", "db_test", "psql", "-U", USER, "-d", DB]
 
