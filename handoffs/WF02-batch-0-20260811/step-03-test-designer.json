@@ -1,0 +1,55 @@
+{
+  "handoff_id": "c872af4b-2cad-441c-999f-0f269238fd3c",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-batch-0-20260811/step-03-test-designer.json",
+  "created_at": "2026-08-11T05:23:33Z",
+  "started_at": "2026-08-11T06:50:32Z",
+  "completed_at": "2026-08-11T06:56:40Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-05",
+      "MIG-01",
+      "MIG-02",
+      "MIG-03"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/platform/ddl_namespace.zig",
+      "src/platform/migration_fanout.zig",
+      "migrations/1144_platform_migrations_control_table.sql",
+      "tests/integration/platform_migrations_control_table_test.zig",
+      "tests/integration/migration_fanout_test.zig"
+    ]
+  },
+  "task": {
+    "description": "BACKEND-DEV already wrote real integration/unit tests as part of Step 2a implementation (test-ddl-namespace: 10/10 unit tests; test-integration-mig01: 5/5; test-integration-mig02-mig03: 7/7). Your job: (1) write the formal test spec files tests/specs/DDL-05.md, tests/specs/MIG-01.md, tests/specs/MIG-02.md, tests/specs/MIG-03.md per test_developer_guide.md format, tracing each requirement acceptance criterion (read full bodies from docs/requirements.yaml) to the specific existing test case(s) that cover it. (2) Verify every AC actually has a covering test -- if you find a genuine gap, write the missing test case yourself in the existing test files (do not duplicate coverage that already exists). (3) Confirm no error.SkipZigTest exists on any MUST-requirement test.\n\nREWORK 1 (routed by ORCH after RELEASE-VALIDATOR Step 5 FAIL):\n- [MAJOR] MIG-02 AC4 (\"GIVEN the failure-recording transaction itself fails, WHEN the fanout continues, THEN the row remains pending and the MIG-04 resume query covers it\") has NO test evidence. tests/specs/MIG-02.md documented this as a deliberate deferral, claiming bpm.pool.Pool has no fault-injection hook without violating DIRECTIVE T-1. This claim is INCORRECT: Pool.init() takes a real, non-mock pool_size config parameter (minimum 2, src/db/pool.zig line ~432/448). A genuine, non-mock fault-injection test IS possible: create a Pool with pool_size=2 in the test, acquire and hold both connections open (without releasing) so the pool is genuinely exhausted, then trigger runFanout such that applyToTenant's DDL transaction fails for a tenant -- this routes into recordFailureSeparately, whose own pool.acquire() call will then genuinely fail with PoolExhausted (a real error from a real resource-exhaustion condition, not a mock), exercising logSwallowedFailure's \"migration_fanout.failure_record_acquire_failed\" path and proving the control row stays at its already-seeded pending status with no crash/panic and no escalation -- exactly what AC4 requires. Add this test case to tests/integration/migration_fanout_test.zig, update tests/specs/MIG-02.md's AC4 row and Coverage note to point to it instead of documenting a deferral, and re-verify zig build test-integration-mig02-mig03 passes with the new test included.",
+    "acceptance_criteria": [
+      "tests/specs/DDL-05.md, MIG-01.md, MIG-02.md, MIG-03.md exist and trace every AC to a specific test case",
+      "Any genuine coverage gap found is closed with a new test case",
+      "No error.SkipZigTest on any MUST-requirement test",
+      "zig build test-ddl-namespace, test-integration-mig01, test-integration-mig02-mig03 all still exit 0 after any additions"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1: closed MIG-02 AC4 test-evidence gap. Added TC-MIG-02-04 to tests/integration/migration_fanout_test.zig using a genuine, non-mock fault-injection technique: a dedicated pool_size=2 bpm.pool.Pool whose own real, in-flight connection accounting (runFanout advisory-lock conn + applyToTenant DDL conn) exhausts the pool exactly when recordFailureSeparately tries to acquire its own connection, causing a real PoolError.ExhaustedPool and exercising logSwallowedFailure(\"migration_fanout.failure_record_acquire_failed\"). Asserts runFanout returns normally (no panic/escalation) and the control row stays at its seeded pending status (not failed, not done). Fail-first verified live: temporarily widening the dedicated pool to pool_size=5 removes the exhaustion and the row correctly becomes failed instead of pending, causing the new assertion to fail as expected; reverted after confirming. Updated tests/specs/MIG-02.md (AC4 row now points to TC-MIG-02-04, Coverage note rewritten to describe the real technique instead of documenting a deferral, Coverage summary/counts updated to 3 implemented test blocks covering AC1-AC4 directly). Also corrected now-stale 8/8 pass-count references in tests/specs/MIG-01.md and tests/specs/MIG-03.md to 9/9 for consistency. zig build test-integration-mig02-mig03 passes 9/9 (the original 8 plus the new AC4 test), confirmed on two consecutive runs. lint_test_isolation.py: 0 new issues (139 files checked, 116 pre-existing baseline suppressions unchanged).",
+    "artifacts_out": [
+      "tests/integration/migration_fanout_test.zig",
+      "tests/specs/MIG-02.md",
+      "tests/specs/MIG-01.md",
+      "tests/specs/MIG-03.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b) for rework re-validation"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

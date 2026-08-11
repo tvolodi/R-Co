@@ -131,6 +131,22 @@ pub fn build(b: *std.Build) void {
             .{ .name = "json_schema", .module = json_schema_mod },
         },
     });
+    // PAR-04 (WF02-batch-3-20260811): src/db/partition_attach.zig, given as a
+    // named module (not a relative @import) for the same reason env_mod is
+    // below — src/scheduler/partition_maintenance.zig and
+    // partition_retention.zig sit in a DIFFERENT directory and, when built as
+    // their own standalone addTest roots, a relative
+    // @import("../db/partition_attach.zig") escapes their module root, which
+    // Zig 0.16 rejects ("import of file outside module path"). Both files
+    // import this as `@import("partition_attach")` instead.
+    const partition_attach_mod = b.createModule(.{
+        .root_source_file = b.path("src/db/partition_attach.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
     // env_mod: src/env.zig, the portable environment-variable helper (ISS-0134).
     // Given as a named module — not a relative @import — anywhere it is needed
     // outside the main src/ module tree: Zig 0.16 forbids an @import that
@@ -524,6 +540,11 @@ pub fn build(b: *std.Build) void {
             .{ .name = "cel", .module = cel_mod },
             .{ .name = "expr", .module = expr_mod },
             .{ .name = "pool", .module = pool_root_mod },
+            // PAR-04: see partition_attach_mod's own comment above and
+            // src/bpm.zig's re-export comment for why this is a named import
+            // rather than letting bpm_src_mod's relative-import tree own
+            // src/db/partition_attach.zig a second time.
+            .{ .name = "partition_attach", .module = partition_attach_mod },
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
@@ -818,6 +839,116 @@ pub fn build(b: *std.Build) void {
     test_expr_step.dependOn(&run_dsl01_parser_tests.step);
     test_expr_step.dependOn(&run_expr_error_recovery_tests.step);
     test_expr_step.dependOn(&run_dsl04_eval_tests.step);
+
+    // ---------------------------------------------------------------------------
+    // DDL-05: reserved `plat_` namespace check unit tests (pure — no DB, no
+    // network). src/platform/ddl_namespace.zig has zero imports (a leaf
+    // pure-predicate module per its own design doc's Dependencies section),
+    // so — like src/expr/mod.zig above — it can be its own addTest root
+    // directly; no aggregator/refAllDecls shim is needed. Per
+    // docs/anti-patterns.md's "Adding test blocks to a source file that is
+    // only ever referenced as an imported module" warning: this file is ALSO
+    // re-exported from src/bpm.zig as `bpm.ddl_namespace` for production call
+    // sites, but that re-export alone would never run its in-file tests
+    // (bpm.zig has no refAllDecls) — this standalone addTest root is what
+    // actually executes them.
+    // ---------------------------------------------------------------------------
+    const ddl_namespace_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/platform/ddl_namespace.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_ddl_namespace_tests = b.addRunArtifact(ddl_namespace_tests);
+    const test_ddl_namespace_step = b.step("test-ddl-namespace", "Run DDL-05 reserved plat_ namespace check unit tests");
+    test_ddl_namespace_step.dependOn(&run_ddl_namespace_tests.step);
+
+    // ---------------------------------------------------------------------------
+    // DDL-01: platform DDL validator unit tests (pure -- no DB, no network).
+    // src/platform/ddl_validate.zig imports ddl_namespace.zig by RELATIVE
+    // path (both live in src/platform/), so this addTest root's module tree
+    // already reaches ddl_namespace.zig transitively -- no separate import
+    // wiring needed, matching the "own its own root" pattern ddl_namespace_tests
+    // above already establishes for the sibling module it composes.
+    // ---------------------------------------------------------------------------
+    const ddl_validate_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/platform/ddl_validate.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_ddl_validate_tests = b.addRunArtifact(ddl_validate_tests);
+    const test_ddl_validate_step = b.step("test-ddl-validate", "Run DDL-01 platform DDL validator unit tests");
+    test_ddl_validate_step.dependOn(&run_ddl_validate_tests.step);
+
+    // ---------------------------------------------------------------------------
+    // PAR-04: AttachScanRequired CHECK-before-ATTACH helper unit tests (pure —
+    // no DB; verifyAttachConstraints()/attachPartitionTimed() themselves are
+    // DB-bound and covered by the PAR-02/PAR-03 integration test targets
+    // below through their real callers instead). @import("pool") is needed
+    // only for the `db.Conn`/`db.Pool` type references in this file's public
+    // signatures — the tests here exercise the pure timestamp-formatting
+    // helpers only, matching ddl_validate_tests' "own its own root" pattern.
+    // ---------------------------------------------------------------------------
+    const partition_attach_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/db/partition_attach.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_partition_attach_tests = b.addRunArtifact(partition_attach_tests);
+    const test_partition_attach_step = b.step("test-partition-attach", "Run PAR-04 AttachScanRequired helper unit tests");
+    test_partition_attach_step.dependOn(&run_partition_attach_tests.step);
+
+    // ---------------------------------------------------------------------------
+    // PAR-02: partition maintenance job unit tests (pure — no DB;
+    // runMaintenanceCycle() itself is DB-bound and covered by
+    // test-integration-par02 below). Imports pool (Pool/Conn types) and
+    // partition_attach (see partition_attach_mod's comment — a relative
+    // @import("../db/partition_attach.zig") would escape this file's own
+    // module root when built as its own standalone addTest root).
+    // ---------------------------------------------------------------------------
+    const partition_maintenance_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/scheduler/partition_maintenance.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "partition_attach", .module = partition_attach_mod },
+            },
+        }),
+    });
+    const run_partition_maintenance_tests = b.addRunArtifact(partition_maintenance_tests);
+    const test_partition_maintenance_step = b.step("test-partition-maintenance", "Run PAR-02 partition maintenance job unit tests");
+    test_partition_maintenance_step.dependOn(&run_partition_maintenance_tests.step);
+
+    // ---------------------------------------------------------------------------
+    // PAR-03: partition retention (DETACH/ATTACH/DROP) unit tests (pure — no
+    // DB; runArchivalAging()/runEphemeralDrop() themselves are DB-bound and
+    // covered by test-integration-event-store's rewritten TC-ADP-11-02/03
+    // plus test-integration-par03 below).
+    // ---------------------------------------------------------------------------
+    const partition_retention_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/scheduler/partition_retention.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "partition_attach", .module = partition_attach_mod },
+            },
+        }),
+    });
+    const run_partition_retention_tests = b.addRunArtifact(partition_retention_tests);
+    const test_partition_retention_step = b.step("test-partition-retention", "Run PAR-03 partition retention unit tests");
+    test_partition_retention_step.dependOn(&run_partition_retention_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-engine` — engine unit tests only
@@ -1351,6 +1482,14 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_dsl01_parser_tests.step);
     test_step.dependOn(&run_expr_error_recovery_tests.step);
     test_step.dependOn(&run_dsl04_eval_tests.step);
+    // DDL-05: reserved plat_ namespace check (WF02-batch-0-20260811).
+    test_step.dependOn(&run_ddl_namespace_tests.step);
+    // DDL-01: platform DDL validator (WF02-batch-1-20260811).
+    test_step.dependOn(&run_ddl_validate_tests.step);
+    // PAR-01..04 (WF02-batch-3-20260811): partition lifecycle unit tests.
+    test_step.dependOn(&run_partition_attach_tests.step);
+    test_step.dependOn(&run_partition_maintenance_tests.step);
+    test_step.dependOn(&run_partition_retention_tests.step);
 
     // ISS-0137 / GH #439 — the nine backlog-clearing targets declared above.
     test_step.dependOn(&run_core_modules_tests.step);
@@ -2281,6 +2420,118 @@ pub fn build(b: *std.Build) void {
     test_integration_effects_subsystem_step.dependOn(&clean_test_db.step);
     test_integration_effects_subsystem_step.dependOn(&run_effects_subsystem_integration_tests.step);
 
+    // WF02-batch-2-20260811 / ORD-01/02/04: narrow steps for the two new
+    // plat_effect_completion / plat_correlation_cursor migration integration
+    // tests, matching the effects_subsystem narrow-step precedent immediately
+    // above (own addTest root, own Run via addIntegrationRun, own `test-*`
+    // step — NOT added to the test_integration_others_step umbrella per
+    // ISS-0665/GH-702, still open).
+    const ord01_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/ord01_plat_effect_completion_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_ord01_integration_tests = addIntegrationRun(b, ord01_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_ord01_step = b.step("test-integration-ord01", "Run ORD-01 plat_effect_completion claim-guard integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_ord01_step.dependOn(&clean_test_db.step);
+    test_integration_ord01_step.dependOn(&run_ord01_integration_tests.step);
+
+    const ord04_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/ord04_plat_correlation_cursor_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_ord04_integration_tests = addIntegrationRun(b, ord04_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_ord04_step = b.step("test-integration-ord04", "Run ORD-04 plat_correlation_cursor integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_ord04_step.dependOn(&clean_test_db.step);
+    test_integration_ord04_step.dependOn(&run_ord04_integration_tests.step);
+
+    // src/ordering/ (ORD-01/02/04 consumer logic) unit tests — pure/no-DB
+    // logic (mod.zig's enums, ObservabilityCounters' windowing math) live
+    // here; the DB-touching functions (cursor.zig, consumer.zig) are
+    // exercised by test-integration-ordering below.
+    const ordering_mod = b.createModule(.{
+        .root_source_file = b.path("src/ordering/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const ordering_observability_mod = b.createModule(.{
+        .root_source_file = b.path("src/ordering/observability.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "ordering_mod", .module = ordering_mod },
+        },
+    });
+    const ordering_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/ordering/observability.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "ordering_mod", .module = ordering_mod },
+            },
+        }),
+    });
+    const run_ordering_unit_tests = b.addRunArtifact(ordering_unit_tests);
+    const test_ordering_step = b.step("test-ordering", "Run ORD-01/02/04 src/ordering/ pure unit tests (no DB)");
+    test_ordering_step.dependOn(&run_ordering_unit_tests.step);
+    // Pure/no-DB unit tests belong on the `test` aggregate step too, per
+    // lint_test_wiring.py's ISS-0150/GH-466 requirement that every Run
+    // artifact be reachable from an aggregate step, not only a narrow
+    // opt-in one.
+    test_step.dependOn(&run_ordering_unit_tests.step);
+
+    // src/ordering/cursor.zig + consumer.zig integration tests (claim guard,
+    // execute guard, connection-acquisition discipline) — real PostgreSQL.
+    const ordering_cursor_mod = b.createModule(.{
+        .root_source_file = b.path("src/ordering/cursor.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "ordering_mod", .module = ordering_mod },
+        },
+    });
+    const ordering_consumer_mod = b.createModule(.{
+        .root_source_file = b.path("src/ordering/consumer.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "ordering_mod", .module = ordering_mod },
+            .{ .name = "ordering_cursor", .module = ordering_cursor_mod },
+            .{ .name = "ordering_observability", .module = ordering_observability_mod },
+            .{ .name = "obs_metrics", .module = obs_metrics_mod },
+        },
+    });
+    var ordering_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 4) catch @panic("OOM");
+    ordering_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    ordering_integration_imports.appendSliceAssumeCapacity(&.{
+        .{ .name = "ordering_mod", .module = ordering_mod },
+        .{ .name = "ordering_cursor", .module = ordering_cursor_mod },
+        .{ .name = "ordering_observability", .module = ordering_observability_mod },
+        .{ .name = "ordering_consumer", .module = ordering_consumer_mod },
+    });
+    const ordering_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/ordering_consumer_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = ordering_integration_imports.items,
+        }),
+    });
+    const run_ordering_integration_tests = addIntegrationRun(b, ordering_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_ordering_step = b.step("test-integration-ordering", "Run ORD-01/02/04 src/ordering/ claim-guard + execute-guard integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_ordering_step.dependOn(&clean_test_db.step);
+    test_integration_ordering_step.dependOn(&run_ordering_integration_tests.step);
+
     // ISS-0637 / GH-619: narrow step for EXT-02 webhook dispatch + audit
     // tests only, so TC-EXT-02-INT-08 (and siblings) can be iterated on
     // without paying for the full ~40-binary test-integration umbrella.
@@ -2356,6 +2607,36 @@ pub fn build(b: *std.Build) void {
     const test_integration_event_store_step = b.step("test-integration-event-store", "Run event_store_integration_test.zig in isolation (requires BPM_TEST_DB_URL)");
     test_integration_event_store_step.dependOn(&clean_test_db.step);
     test_integration_event_store_step.dependOn(&run_event_store_solo_tests.step);
+
+    // PAR-02 (WF02-batch-3-20260811): plat_partition_catalog /
+    // plat_partition_maintenance_run_log schema contract tests.
+    const par02_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/par02_partition_catalog_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_par02_solo_tests = addIntegrationRun(b, par02_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_par02_step = b.step("test-integration-par02", "Run par02_partition_catalog_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_par02_step.dependOn(&clean_test_db.step);
+    test_integration_par02_step.dependOn(&run_par02_solo_tests.step);
+
+    // PAR-03 (WF02-batch-3-20260811): retention_class column / CHECK
+    // constraints / events_ephemeral schema contract tests.
+    const par03_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/par03_retention_class_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_par03_solo_tests = addIntegrationRun(b, par03_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_par03_step = b.step("test-integration-par03", "Run par03_retention_class_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_par03_step.dependOn(&clean_test_db.step);
+    test_integration_par03_step.dependOn(&run_par03_solo_tests.step);
 
     const exp201_202_solo_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -2751,6 +3032,95 @@ pub fn build(b: *std.Build) void {
     test_integration_adp10_step.dependOn(&clean_test_db.step);
     test_integration_adp10_step.dependOn(&run_adp10_solo_tests.step);
     test_integration_others_step.dependOn(&run_adp10_solo_tests.step);
+
+    // GH-280 / ISS-0040: api05_history_boundary_test.zig covers the 7
+    // valid-boundary TC-API-05-12c/12d/14a..e cases that
+    // tests/unit/test_api05_history.zig stubs with error.SkipZigTest because
+    // they need a real Store round-trip. Wired both into main_test.zig (runs
+    // under the umbrella `test-integration`) and as its own scoped step here,
+    // same dual-wiring pattern GH-679 established for adp09/adp10 above, so
+    // this file's signal can be read in isolation without paying for the
+    // ~40-binary umbrella.
+    const api05_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/api05_history_boundary_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_api05_solo_tests = addIntegrationRun(b, api05_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_api05_step = b.step("test-integration-api05", "Run API-05 history pagination boundary integration tests in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_api05_step.dependOn(&clean_test_db.step);
+    test_integration_api05_step.dependOn(&run_api05_solo_tests.step);
+
+    // Stage 16 / WF02-batch-0-20260811 — MIG-01 platform.platform_migrations
+    // control table shape (UNIQUE anchor, CHECK constraint, resume index).
+    // Dual-wired: imported into main_test.zig (umbrella test-integration)
+    // AND given its own scoped step here, same pattern as adp09/adp10/api05
+    // above.
+    const mig01_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/platform_migrations_control_table_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_mig01_solo_tests = addIntegrationRun(b, mig01_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_mig01_step = b.step("test-integration-mig01", "Run MIG-01 platform_migrations control table integration tests in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_mig01_step.dependOn(&clean_test_db.step);
+    test_integration_mig01_step.dependOn(&run_mig01_solo_tests.step);
+
+    // Stage 16 / WF02-batch-0-20260811 — MIG-02 (commit-with-DDL transaction
+    // boundary) / MIG-03 (tenant fanout, advisory-lock contention,
+    // continue-on-failure) integration tests against src/platform/migration_fanout.zig.
+    const mig02_mig03_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/migration_fanout_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_mig02_mig03_solo_tests = addIntegrationRun(b, mig02_mig03_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_mig02_mig03_step = b.step("test-integration-mig02-mig03", "Run MIG-02/MIG-03 platform migration fanout integration tests in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_mig02_mig03_step.dependOn(&clean_test_db.step);
+    test_integration_mig02_mig03_step.dependOn(&run_mig02_mig03_solo_tests.step);
+
+    // Stage 16 / WF02-batch-1-20260811 — MIG-04 (resume for pending/failed
+    // tenants) / MIG-05 (idempotent re-run) integration tests against
+    // src/platform/migration_fanout.zig's resumeFanout()/seedPendingRow()/
+    // isAlreadyDone() extensions.
+    const mig04_mig05_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/migration_resume_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_mig04_mig05_solo_tests = addIntegrationRun(b, mig04_mig05_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_mig04_mig05_step = b.step("test-integration-mig04-mig05", "Run MIG-04/MIG-05 platform migration resume/idempotency integration tests in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_mig04_mig05_step.dependOn(&clean_test_db.step);
+    test_integration_mig04_mig05_step.dependOn(&run_mig04_mig05_solo_tests.step);
+
+    // Stage 16 / WF02-batch-1-20260811 — MIG-06 (migration admin surface:
+    // run/status/resume HTTP routes + boot-time outstanding-pending gate)
+    // integration tests against src/api/routes/platform_migrations.zig and
+    // src/operations/pending_migration_gate.zig.
+    const mig06_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/platform_migrations_admin_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_mig06_solo_tests = addIntegrationRun(b, mig06_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_mig06_step = b.step("test-integration-mig06", "Run MIG-06 platform migration admin surface integration tests in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_mig06_step.dependOn(&clean_test_db.step);
+    test_integration_mig06_step.dependOn(&run_mig06_solo_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

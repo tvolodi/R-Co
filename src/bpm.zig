@@ -24,6 +24,19 @@ pub const dlq_routes = @import("api/routes/dlq.zig"); // OBS-05
 pub const api_authorization = @import("api/authorization.zig"); // IDN-03
 pub const scheduler = @import("scheduler/store.zig"); // SCH-01
 pub const scheduler_poller = @import("scheduler/scheduler.zig"); // SCH-02
+pub const partition_maintenance = @import("scheduler/partition_maintenance.zig"); // PAR-02
+pub const partition_retention = @import("scheduler/partition_retention.zig"); // PAR-03
+// PAR-04: named module, not a relative @import. partition_maintenance.zig and
+// partition_retention.zig (both relatively owned by THIS file, re-exported
+// above) each import partition_attach.zig as the named module
+// `@import("partition_attach")` (see build.zig's partition_attach_mod
+// comment — their own standalone addTest roots cannot reach src/db/ via a
+// relative path that escapes their module root). A second, relative
+// ownership of the same file from here would violate Zig 0.16's single-owner
+// module rule the same way src/lua/ vs src/simulation/ already documents
+// above — so this re-export uses the identical named module instead of
+// `@import("db/partition_attach.zig")`.
+pub const partition_attach = @import("partition_attach");
 pub const reconstruction = @import("engine/reconstruction.zig"); // EE-11
 pub const transition = @import("engine/transition.zig"); // EE-12
 pub const snapshot_writer = @import("engine/snapshot_writer.zig"); // ISS-601
@@ -53,6 +66,11 @@ pub const simulation_runner = @import("simulation/scenario_runner.zig"); // SIM-
 pub const simulation_test_routes = @import("api/routes/simulation_test.zig"); // SIM-07..SIM-08
 pub const provisioning = @import("db/provisioning.zig"); // SPT-01
 pub const migrations = @import("db/migrations.zig"); // SPT-01
+pub const ddl_namespace = @import("platform/ddl_namespace.zig"); // DDL-05
+pub const ddl_validate = @import("platform/ddl_validate.zig"); // DDL-01
+pub const migration_fanout = @import("platform/migration_fanout.zig"); // MIG-02, MIG-03, MIG-04, MIG-05
+pub const platform_migrations_routes = @import("api/routes/platform_migrations.zig"); // MIG-06
+pub const pending_migration_gate = @import("operations/pending_migration_gate.zig"); // MIG-06 AC5
 pub const bootstrap_audit = @import("bootstrap/audit.zig"); // TNT-04
 pub const tenant_migration = @import("admin/tenant_migration.zig"); // TNT-06
 pub const tenant_status = @import("api/middleware/tenant_status.zig"); // TNT-06

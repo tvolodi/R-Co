@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0040",
   "title": "API-05 valid-boundary test cases (page_size bounds, ISO timestamp variants) have no integration test coverage",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "C_TEST_COVERAGE",
   "run_id": "AUDIT-test-20260527",
@@ -15,14 +15,37 @@
     "type": "integration_test_file_never_created",
     "details": "The valid-boundary test cases were deferred from the unit layer (correctly, since they need DB) but no TEST-DESIGNER handoff created the integration counterparts. The test spec identified the need for integration coverage but the integration file was never implemented."
   },
-  "resolution": null,
-  "verification": null,
+  "resolution": {
+    "summary": "Created tests/integration/api05_history_boundary_test.zig implementing all 7 previously-stubbed valid-boundary cases (TC-API-05-12c page_size=1, TC-API-05-12d page_size=200, TC-API-05-14a..e ISO 8601 format variants) as real integration tests against a live PostgreSQL database via TestHarness, following the same structural pattern already established by TC-API-05-01..04 in tests/integration/api03_instance_read_test.zig. Grounded in actual source behavior, not assumption: page_size bounds read from src/api/pagination.zig MAX_PAGE_SIZE=200/validatePageSize (1..200 inclusive); ISO 8601 formats read from parseIso8601ToMicros in src/api/routes/instances.zig (Z suffix, .sss/.ssssss fractional seconds, +HH:MM/-HH:MM offsets). Wired into tests/integration/main_test.zig (runs under the `test-integration` umbrella) and given a dedicated `zig build test-integration-api05` scoped step in build.zig, matching the dual-wiring pattern GH-679 established for adp09/adp10. Updated the 7 SkipZigTest stub comments in tests/unit/test_api05_history.zig to reference their new real-store counterparts by name, following the existing 'see integration test X' convention in this codebase (e.g. tests/unit/event_store_test.zig).",
+    "incidental_fixes": [
+      "tools/clean_test_db.py: fixed a Windows-only bug where subprocess.run([\"psql\", ...]) in direct-URL mode (BPM_TEST_DB_URL set) raised FileNotFoundError ([WinError 2]) because the only \"psql\" on PATH is a WinGet .cmd shim, and Windows CreateProcess cannot resolve a bare \"psql\" to a .cmd file without shell=True. This blocked `zig build test-integration-api05` (and every other test-integration-* step) from running at all on this workspace before any test code could even execute. Fixed by resolving the executable once via shutil.which(\"psql\") at import time and using the resolved absolute path everywhere _psql_base_cmd() is called; no behavior change on Linux/macOS where \"psql\" is already a real binary. This was a blocking prerequisite for validating this issue's fix, not a separate deferred issue — fixed inline per Unblock-Everything.",
+      "src/api/routes/instances.zig handleHistory(): fixed a pre-existing memory leak where the Step 6 event_type-registry lookup (`event_store_mod.registry.getType(allocator, et)`) discarded its successful EventTypeRecord result with a bare `_ =` instead of freeing its three owned allocations (name, json_schema, description) via the existing Registry.freeTypeRecord() helper (already used identically by Registry.validatePayload()). This leaked on every real GET .../history?event_type=<registered type> request in production, and surfaced immediately as a DebugAllocator leak failure while writing this issue's TC-API-05-12c/12d/14a..e tests (the first tests to exercise handleHistory's event_type filter against a real, registered type). Fixed inline per Unblock-Everything since it blocked this issue's own tests from passing cleanly."
+    ]
+  },
+  "verification": {
+    "commands_run": [
+      "zig build (exit 0, no 'error set' output)",
+      "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-api05 --summary all (run 1/3: 6/6 steps succeeded, 7/7 tests passed, 0 leaks)",
+      "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-api05 --summary all (run 2/3: 6/6 steps succeeded, 7/7 tests passed, 0 leaks)",
+      "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-api05 --summary all (run 3/3: 6/6 steps succeeded, 7/7 tests passed, 0 leaks)",
+      "zig build test --summary all (full unit suite: 89/89 steps succeeded, 1011/1075 tests passed, 64 skipped, 0 failed)",
+      ".venv/Scripts/python.exe tools/lint_test_isolation.py tests/integration (OK, 137 files checked, 0 BLOCKER/MAJOR/MINOR after fixing the one T010 hardcoded-UUID finding on this file's own creator_uuid_str)",
+      ".venv/Scripts/python.exe tools/lint_sql_param_types.py src tests (0 BLOCKER, 0 MAJOR, 0 MINOR)",
+      ".venv/Scripts/python.exe tools/lint_handoffs.py (0 BLOCKER, 0 MAJOR, 1 MINOR, 291 pre-existing ACKNOWLEDGED baseline entries unrelated to this change)"
+    ],
+    "determinism": "3/3 clean runs of the new scoped integration suite, no flakiness observed",
+    "result": "PASS"
+  },
   "files_changed": [
     "tests/integration/api05_history_boundary_test.zig",
-    "tests/integration/main_test.zig"
+    "tests/integration/main_test.zig",
+    "build.zig",
+    "tests/unit/test_api05_history.zig",
+    "tools/clean_test_db.py",
+    "src/api/routes/instances.zig"
   ],
   "created_at": "2026-05-27T12:00:00Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-10T23:19:50Z",
   "prevention": [
     "When a unit test is stubbed with a comment saying 'requires DB', a corresponding integration test must be created in the same TEST-DESIGNER handoff (or a follow-up handoff must be queued before the WF-02 stage is closed).",
     "Stage completion criteria should include: every SkipZigTest that references a future integration test must have that test file exist and pass."

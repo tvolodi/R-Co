@@ -1,12 +1,13 @@
 {
   "issue_id": "ISS-0033",
   "title": "ExportDocument.exported_at is a hardcoded constant string instead of the actual export timestamp",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "A_LOGIC_ERROR",
   "run_id": "AUDIT-test-20260527",
   "workflow_id": null,
   "handoff_id": null,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/274",
   "requirement_ids": [
     "PD-09"
   ],
@@ -15,13 +16,13 @@
     "type": "hardcoded_placeholder_value",
     "details": "exported_at was written as a placeholder constant during initial implementation. std.time.timestamp() is available in the Zig standard library and can be used to obtain the real UTC timestamp at the time of the export call. The value was never updated."
   },
-  "resolution": null,
-  "verification": null,
+  "resolution": "Fixed in commit 93bded3c (WF03-prod-audit-20260527, PR #13, merged 2026-05-27): exported_at is now generated via std.fmt.allocPrint from the real clock instead of a hardcoded string. Verified against current main on 2026-08-11: src/definition/export_import.zig builds exported_at dynamically at line ~156.",
+  "verification": "Source-read confirmation on 2026-08-11 that the fix from commit 93bded3c is present and unreverted on main. GitHub issue #274 was left open after the merge (PR referenced a stale repo name, My-Fab, from before the rename to R-Co) — closed retroactively on 2026-08-11 once the discrepancy was found.",
   "files_changed": [
     "src/definition/export_import.zig"
   ],
   "created_at": "2026-05-27T12:00:00Z",
-  "resolved_at": null,
+  "resolved_at": "2026-05-27T13:59:49Z",
   "prevention": [
     "Hardcoded date strings in non-test production code should be caught during code review as a policy violation.",
     "PD-09 export integration test should assert exported_at is within a reasonable window (e.g. within 60 seconds of the test start time) rather than accepting any string."

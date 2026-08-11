@@ -1,0 +1,127 @@
+# Migration + integration-test parameter file (Lego Type C)
+#
+# CODE-DESIGNER output for PAR-02 (Proactive future partition creation).
+# Stage 16 / WF02-batch-3-20260811.
+# See src/design/par-02-partition-maintenance-job.md for the full design this
+# migration supports (the job logic itself is Type E, produced separately).
+#
+# plat_partition_catalog tracks one row per known partition (table, range
+# bounds, attached parent, state) — shared by PAR-02's creation loop and
+# PAR-03's DETACH/ATTACH/DROP retention logic (src/design/par-03-partition-scoped-retention.md).
+# plat_partition_maintenance_run_log is the idempotency gate for "did today's
+# maintenance run already happen" (PAR-02 AC2).
+#
+# Both tables are plat_-prefixed per the DDL-05 reserved-namespace convention
+# (src/platform/ddl_namespace.zig) and run unmarked (every schema pass) —
+# per-tenant bookkeeping, not the cross-tenant platform.* case migration 1144
+# handled.
+
+schema_version: 1
+migration_number: 1148   # next free after PAR-01's 1147 (see par-01 design's Public interface)
+name: par02_partition_catalog
+requirement_ids: [PAR-02]
+purpose: |
+  Tracks the maintenance job's last-run date (idempotency AC) and one row per
+  known partition (table name, range bounds, attached parent, state) so the
+  daily job and PAR-03's archival cycle share a single source of truth for
+  partition state, per docs/processes/system/event-log-partitioning.md's
+  plat_partition_catalog output.
+
+tables:
+  - mode: create
+    name: plat_partition_catalog
+    columns:
+      - { name: id,              type: uuid,           pk: true,         default: gen_random_uuid() }
+      - { name: table_name,      type: text,           not_null: true }
+      - { name: parent_table,    type: text,           not_null: true }
+      - { name: range_start,     type: "timestamptz",  not_null: true }
+      - { name: range_end,       type: "timestamptz",  not_null: true }
+      - { name: state,           type: text,           not_null: true,   default: "'ATTACHED'" }
+      - { name: created_at,      type: "timestamptz",  not_null: true,   default: now() }
+      - { name: updated_at,      type: "timestamptz",  not_null: true,   default: now() }
+    constraints:
+      - { kind: unique, name: plat_partition_catalog_table_uq, columns: [table_name] }
+      - { kind: check,  expression: "state IN ('ATTACHED', 'DETACHED', 'ORPHAN_PARTITION', 'DROPPED')" }
+    indexes:
+      - { name: idx_plat_partition_catalog_parent_state, columns: [parent_table, state] }
+
+  - mode: create
+    name: plat_partition_maintenance_run_log
+    columns:
+      - { name: id,                       type: uuid,          pk: true, default: gen_random_uuid() }
+      - { name: run_date,                 type: date,          not_null: true }
+      - { name: ran_at,                   type: "timestamptz", not_null: true, default: now() }
+      - { name: future_partition_count,   type: integer,       not_null: true, default: 0 }
+    constraints:
+      - { kind: unique, name: plat_partition_maintenance_run_log_date_uq, columns: [run_date] }
+
+# ------------------------------------------------------------
+# Integration test scaffold
+# ------------------------------------------------------------
+fixtures:
+  - name: sample_table_name
+    kind: random_string
+  - name: sample_range_start
+    kind: timestamp_now
+
+test_cases:
+  - name: unique_constraint_on_table_name
+    description: A second row for the same table_name violates plat_partition_catalog_table_uq.
+    requirement_ref: PAR-02
+    arrange: |
+      try h.conn.exec(
+          "INSERT INTO plat_partition_catalog (table_name, parent_table, range_start, range_end) " ++
+          "VALUES ($1, 'events', $2::timestamptz, $2::timestamptz + interval '1 month')",
+          &.{ fx.sample_table_name, fx.sample_range_start },
+      );
+    act: |
+      const result = h.conn.exec(
+          "INSERT INTO plat_partition_catalog (table_name, parent_table, range_start, range_end) " ++
+          "VALUES ($1, 'events', $2::timestamptz, $2::timestamptz + interval '1 month')",
+          &.{ fx.sample_table_name, fx.sample_range_start },
+      );
+    assertions: |
+      // CUSTOM: assert the second INSERT returns unique_violation (23505) on
+      // plat_partition_catalog_table_uq, and exactly one row exists for
+      // sample_table_name.
+
+  - name: state_check_constraint_rejects_unknown_value
+    description: A state outside ATTACHED/DETACHED/ORPHAN_PARTITION/DROPPED is rejected.
+    requirement_ref: PAR-02
+    arrange: ""
+    act: |
+      const result = h.conn.exec(
+          "INSERT INTO plat_partition_catalog (table_name, parent_table, range_start, range_end, state) " ++
+          "VALUES ($1, 'events', $2::timestamptz, $2::timestamptz + interval '1 month', 'BOGUS')",
+          &.{ fx.sample_table_name, fx.sample_range_start },
+      );
+    assertions: |
+      // CUSTOM: assert error.CheckConstraintViolation (SQLSTATE 23514); no row inserted.
+
+  - name: run_log_unique_per_date_enforces_idempotency
+    description: A second INSERT for the same run_date is rejected, the mechanism PAR-02 AC2 relies on.
+    requirement_ref: PAR-02
+    arrange: |
+      try h.conn.exec(
+          "INSERT INTO plat_partition_maintenance_run_log (run_date, future_partition_count) " ++
+          "VALUES (CURRENT_DATE, 3)",
+          &.{},
+      );
+    act: |
+      const rows = try h.conn.query(std.testing.allocator,
+          "INSERT INTO plat_partition_maintenance_run_log (run_date, future_partition_count) " ++
+          "VALUES (CURRENT_DATE, 3) ON CONFLICT (run_date) DO NOTHING RETURNING id",
+          &.{},
+      );
+      defer rows.deinit();
+    assertions: |
+      // CUSTOM: assert rows.rows.len == 0 (ON CONFLICT DO NOTHING absorbed the
+      // second insert silently — no error, matching PAR-02 AC2's "raises no error").
+
+# ------------------------------------------------------------
+# Rollback notes
+# ------------------------------------------------------------
+rollback_strategy: |
+  Forward-only, per project policy (docs/anti-patterns.md — no DROP in
+  migrations). If plat_partition_catalog or plat_partition_maintenance_run_log
+  must ever be retired, a later migration archives their rows first.

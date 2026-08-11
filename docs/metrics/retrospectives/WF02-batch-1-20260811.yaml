@@ -1,0 +1,424 @@
+run_id: WF02-batch-1-20260811
+run_date: '2026-08-11'
+completed_date: '2026-08-11'
+requirement_ids:
+  - DDL-01
+  - MIG-04
+  - MIG-05
+  - MIG-06
+workflow_type: WF-02 (Stage 16 batch 1 -- platform migration validation, resume, idempotency, admin surface)
+
+summary: >-
+  WF-02 feature-development run implementing Stage 16's second batch, extending
+  batch 0's platform migration control plane (DDL-05, MIG-01, MIG-02, MIG-03,
+  already RELEASED and merged). DDL-01 (pure ValidatePlatformDDL composing
+  DDL-05's namespace check plus new lock-class and statement-ordering checks),
+  MIG-04 (resume endpoint touching only pending/failed control rows), MIG-05
+  (idempotent re-run via ON CONFLICT ... DO UPDATE ... WHERE status != 'done'),
+  and MIG-06 (admin HTTP surface: run/status/resume, platform-operator role
+  gate mapped to Role.PLATFORM_ADMIN, boot-time pending-migration refusal
+  check). BACKEND-DEV extended src/platform/migration_fanout.zig in place and
+  added src/platform/ddl_validate.zig, src/api/routes/platform_migrations.zig,
+  and src/operations/pending_migration_gate.zig, writing real unit/integration
+  tests inline (test-ddl-validate 20/20, test-integration-mig04-mig05 8/9,
+  test-integration-mig06 6/6 at that point -- pre-rework count).
+  SECURITY-REVIEWER passed the tenant-data-path gate covering the three new
+  admin routes and the boot-time gate. TEST-DESIGNER wrote the four formal
+  test specs; TEST-DESIGN-VALIDATOR's first pass FAILed on a genuine
+  test-fixture defect in TC-MIG-04-03 (see rework_steps below), TEST-DESIGNER
+  fixed it in REWORK 1, and TEST-DESIGN-VALIDATOR re-validated PASS.
+  RELEASE-VALIDATOR independently re-read every AC against the actual Zig
+  test source (not just the report), re-ran every layer itself, and returned
+  APPROVED. DOC-UPDATER (this step) is setting all four requirements to
+  RELEASED, updating the changelog, and writing this retrospective.
+
+  All 4 MUST requirements approved for release. One genuine rework cycle
+  occurred (test-designer, rework_count=1) triggered by a TEST-DESIGN-VALIDATOR
+  FAIL at Step 3b -- unlike batch 0's rework (a RELEASE-VALIDATOR-caught
+  missing-coverage gap), this run's rework was caught one gate earlier, at
+  Step 3b, by TEST-DESIGN-VALIDATOR itself, on a test-fixture correctness
+  defect rather than a coverage gap: TC-MIG-04-03's EXPLAIN assertion ran
+  against zero seeded fixture rows, so the query planner picked a sequential
+  scan on cost grounds alone (a near-empty table has no reason to prefer an
+  index) rather than genuinely exercising the index-usage claim the test was
+  supposed to prove. No infrastructure issues were discovered or forwarded
+  during this run's Green-Main Gate (Step 00a) -- a contrast with batch 0,
+  which surfaced and had to work around 2-3 infra defects before its own
+  implementation work could start cleanly.
+
+estimation:
+  source: null
+  rules_version: null
+  difficulty: null
+  difficulty_rationale: >-
+    No estimation.yaml or estimation.json exists at
+    handoffs/WF02-batch-1-20260811/ (verified: directory listing shows only
+    step-*.json files, no estimation file). Per this role's file
+    ("Retrospective (WF-02 and WF-04 runs only)" section) and
+    docs/agents/metrics.md §6, the full estimated-vs-actual variance_pct
+    computation is conditional on that file existing and is skipped here.
+    This retrospective documents actuals per step (from real
+    started_at/completed_at clock stamps) and the rework cycle qualitatively
+    instead, following the same precedent as
+    docs/metrics/retrospectives/WF02-batch-0-20260811.yaml and
+    docs/metrics/retrospectives/WF03-GH521-20260808.yaml.
+  integration_surface: null
+  integration_surface_rationale: null
+  surcharge_pct: null
+  estimated_minutes: {}
+  notes: >-
+    Same structural gap noted in WF02-batch-0-20260811's retrospective (and
+    WF03-GH521-20260808's before it): ORCH's dispatch behaviour for whether
+    an estimation file is generated is inconsistent across runs. Not
+    re-litigated here; see WF02-batch-0-20260811's rule_adjustments for the
+    standing recommendation.
+
+actual_step_durations:
+  - step: step-00a (TEST-RUNNER -- Green-Main Gate)
+    agent: TEST-RUNNER
+    started_at: '2026-08-11T09:39:17Z'
+    completed_at: '2026-08-11T09:42:14Z'
+    actual_minutes: 2.9
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Confirmed main clean before batch-1 implementation started: zig build
+      test 91/91 steps (1021/1085 tests, 64 skipped), test-ddl-namespace
+      10/10, test-integration-mig01 5/5, test-integration-mig02-mig03 9/9.
+      No infrastructure defects discovered this run -- a sharp contrast with
+      batch 0's 56.3-minute step-00a, which was dominated by diagnosing two
+      genuine test-infrastructure defects (ISS-0663, ISS-0664). This run's
+      Green-Main Gate found nothing to fix and was correspondingly fast.
+
+  - step: step-00 (BACKEND-DEV -- git-setup)
+    agent: BACKEND-DEV
+    started_at: '2026-08-11T09:44:23Z'
+    completed_at: '2026-08-11T09:45:16Z'
+    actual_minutes: 0.9
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      fn:git-setup PASS -- feature/WF02-batch-1-20260811 created from a
+      worktree whose HEAD already contained origin/main's tip (verified via
+      git merge-base --is-ancestor rather than a literal git checkout main,
+      since this worktree could not check out main directly), pushed to
+      origin.
+
+  - step: step-01 (CODE-DESIGNER -- design artefact)
+    agent: CODE-DESIGNER
+    started_at: '2026-08-11T09:47:18Z'
+    completed_at: '2026-08-11T09:55:02Z'
+    actual_minutes: 7.7
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Two Type E prose design docs (src/design/ddl-01-validate-platform-ddl.md,
+      src/design/mig-04-mig-05-mig-06-resume-idempotency-admin-surface.md)
+      covering all 20 ACs across the 4 requirements. Returned PARTIAL with 3
+      flagged-but-non-blocking open questions (MIG-05 AC5 immutability
+      enforcement mechanism, MIG-06 AC2 migration-registry data source,
+      MIG-06 role-name mapping) -- all 3 resolved by CODE-DESIGN-VALIDATOR at
+      Step 1b rather than escalated back to REQ-ANALYST.
+
+  - step: step-01b (CODE-DESIGN-VALIDATOR -- hard gate)
+    agent: CODE-DESIGN-VALIDATOR
+    started_at: '2026-08-11T09:58:23Z'
+    completed_at: '2026-08-11T10:00:30Z'
+    actual_minutes: 2.1
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      PASS. Independently judged and accepted all 3 of CODE-DESIGNER's
+      flagged open questions against source evidence (migration control
+      table schema, function signatures, src/api/middleware/auth.zig's Role
+      enum) rather than accepting the designer's framing at face value --
+      each judgment traces to a specific file/line citation.
+
+  - step: step-2a (BACKEND-DEV -- implementation)
+    agent: BACKEND-DEV
+    started_at: '2026-08-11T10:03:08Z'
+    completed_at: '2026-08-11T10:23:15Z'
+    actual_minutes: 20.1
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Implemented src/platform/ddl_validate.zig, extended
+      src/platform/migration_fanout.zig (resumeFanout, ON CONFLICT ... DO
+      UPDATE seeding, isAlreadyDone pre-check), added
+      src/api/routes/platform_migrations.zig and
+      src/operations/pending_migration_gate.zig, wired into src/main.zig.
+      Wrote real unit/integration tests inline (test-ddl-validate 20/20,
+      test-integration-mig04-mig05 8/9 at this point -- pre-rework, the 1
+      failure is the TC-MIG-04-03 fixture defect fixed in REWORK 1 --
+      test-integration-mig06 6/6). Found and fixed 2 genuine memory leaks
+      during self-review before reporting PASS.
+
+  - step: step-2c (SECURITY-REVIEWER -- tenant-data-path gate)
+    agent: SECURITY-REVIEWER
+    started_at: '2026-08-11T10:26:10Z'
+    completed_at: '2026-08-11T10:29:47Z'
+    actual_minutes: 3.6
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      PASS against the numbered security invariants. Covered 3 new
+      cross-tenant-blast-radius admin routes plus a new boot-time DB-touching
+      gate; explicitly verified all 3 route handlers check
+      actor.role != .PLATFORM_ADMIN as the literal first statement before any
+      DB read/write, and assessed the status endpoint's per-tenant field
+      exposure as intentional (MIG-06 AC3), not an accidental broadening.
+
+  - step: step-03 (TEST-DESIGNER -- specs + gap closure, REWORK 1)
+    agent: TEST-DESIGNER
+    started_at: '2026-08-11T10:50:30Z'
+    completed_at: '2026-08-11T10:54:06Z'
+    actual_minutes: 3.6
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 1
+    notes: >-
+      This handoff file's started_at/completed_at span covers ONLY the
+      REWORK 1 pass (rework_count=1 on the persisted file); the original
+      pass-1 work (writing tests/specs/DDL-01.md, MIG-04.md, MIG-05.md,
+      MIG-06.md, tracing every AC to a specific existing BACKEND-DEV test
+      case, and documenting MIG-05 AC5 as a structural non-testable note)
+      ran earlier and is not separately time-stamped in this run's handoff
+      set -- the gap between step-2c completing (10:29:47Z) and this step's
+      started_at (10:50:30Z) covers both that original pass-1 work and
+      TEST-DESIGN-VALIDATOR's first (FAIL) pass, neither of which produced
+      its own persisted handoff file distinct from the final PASS one. See
+      rework_steps below for what REWORK 1 fixed.
+
+  - step: step-03b (TEST-DESIGN-VALIDATOR -- re-validation)
+    agent: TEST-DESIGN-VALIDATOR
+    started_at: '2026-08-11T10:56:04Z'
+    completed_at: '2026-08-11T10:58:58Z'
+    actual_minutes: 2.9
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Re-validated PASS after REWORK 1 -- independently confirmed the fix is
+      a genuine regression check (SET LOCAL enable_seqscan = off does not
+      force a specific index, so the assertion only passes if the planner
+      actually chose platform_migrations_resume_idx), re-ran
+      test-integration-mig04-mig05 twice itself (9/9 both times), and
+      confirmed via git diff that REWORK 1 touched only the two files it
+      claimed to.
+
+  - step: step-04 (TEST-RUNNER -- full report run)
+    agent: TEST-RUNNER
+    started_at: '2026-08-11T11:01:15Z'
+    completed_at: '2026-08-11T11:04:17Z'
+    actual_minutes: 3.0
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      test-ddl-validate 21/21 (20 + 1 new AC5 timing test),
+      test-integration-mig04-mig05 9/9 (was 8/9 pre-rework),
+      test-integration-mig06 6/6, full unit suite 1042/1106 passed (64
+      skipped, 0 failed). Report written to
+      tests/reports/report-20260811-WF02-batch-1.yaml.
+
+  - step: step-05 (RELEASE-VALIDATOR -- validation, APPROVED)
+    agent: RELEASE-VALIDATOR
+    started_at: '2026-08-11T11:07:02Z'
+    completed_at: '2026-08-11T11:13:20Z'
+    actual_minutes: 6.3
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Single pass, no rework needed at this gate (unlike batch 0, whose
+      first RELEASE-VALIDATOR pass FAILed). Independently re-read every AC
+      in all 4 requirement bodies against actual Zig test source, re-ran
+      test-ddl-validate/test-integration-mig04-mig05/test-integration-mig06
+      itself (matching the report exactly), re-ran zig build migrate twice
+      (clean idempotent no-op both times), and explicitly assessed the
+      MIG-06 known_migration_ids/DdlStep placeholder as a legitimate,
+      already-scoped integration-point deferral rather than a
+      release-blocking gap. Also ran zig build bench for completeness and
+      recorded that HTTP-route-level NFR benchmarking remains a pre-existing,
+      codebase-wide infrastructure gap (no route-level harness exists at
+      all), consistent with batch-0's own precedent, and out of scope for a
+      single WF-02 batch.
+
+  - step: step-06 (DOC-UPDATER -- this step)
+    agent: DOC-UPDATER
+    started_at: '2026-08-11T11:16:26Z'
+    completed_at: '2026-08-11T11:21:27Z'
+    actual_minutes: 5.0
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      CHANGELOG.md updated under [Unreleased] -- 2026-08-11 with a detailed
+      Stage 16 batch 1 entry (DDL-01/MIG-04/MIG-05/MIG-06, the Step 3b
+      rework cycle, and the MIG-06 known_migration_ids/DdlStep placeholder
+      follow-up). docs/requirements.yaml: all 4 requirements set to RELEASED
+      via tools/reqctl.py set-status (canonical write path, not hand-edited)
+      plus targeted Edit calls for test_spec/test_run (fields set-status
+      does not itself populate, matching batch-0's exact precedent).
+      docs/status/requirement_status.yaml regenerated via reqctl.py
+      render-status. This retrospective file.
+
+wall_clock_span:
+  from: '2026-08-11T09:39:17Z'   # step-00a started_at
+  to:   '2026-08-11T11:21:27Z'   # step-06 (this step) completed_at
+  total_minutes: 102.2
+  note: >-
+    Wall-clock span from step-00a (Green-Main Gate) through step-06
+    (DOC-UPDATER) completion. Substantially faster end-to-end than batch 0
+    (175.1 minutes through step-06), primarily because this run's
+    Green-Main Gate found no infrastructure defects to diagnose (2.9 min vs.
+    batch 0's 56.3 min) and because this run's single rework cycle was
+    caught one gate earlier (Step 3b, a narrow fixture-correctness fix)
+    rather than requiring a full RELEASE-VALIDATOR FAIL-and-retry loop
+    through Step 05 as batch 0's did. The two untimed gaps in this run
+    (step-2c to step-03, and step-04's dispatch delay after step-03b)
+    reflect ORCH's own dispatch/triage time between agent handoffs, not
+    additional agent work.
+
+rework_steps:
+  - step: step-03b (TEST-DESIGN-VALIDATOR, first pass -- not separately persisted)
+    trigger: >-
+      TEST-DESIGN-VALIDATOR's first validation pass FAILed on
+      TC-MIG-04-03 ("resume's tenant snapshot query plan uses
+      platform_migrations_resume_idx") in
+      tests/integration/migration_resume_test.zig. The test ran EXPLAIN
+      against its migration_id with ZERO fixture rows seeded beforehand, so
+      Postgres's query planner picked a sequential scan over an
+      effectively-empty table on cost grounds alone -- not because the
+      index was broken or absent (migrations/1144_platform_migrations_control_table.sql:38
+      defines it correctly), but because an empty/near-empty relation gives
+      the planner no genuine reason to prefer an index scan. This meant
+      zig build test-integration-mig04-mig05 was a real, reproducible 8/9,
+      not the 9/9 the original pass-1 work had claimed.
+    resolution: >-
+      TEST-DESIGNER (step-03, rework_count=1) modified TC-MIG-04-03 to seed
+      40 fixture rows (alternating pending/failed status, distinct random
+      tenant_id values) under the test's own migration_id BEFORE running
+      EXPLAIN, and wrapped the EXPLAIN in its own transaction with
+      SET LOCAL enable_seqscan = off, mirroring the already-proven pattern
+      in platform_migrations_control_table_test.zig::resume_index_used_by_pending_or_failed_query.
+      This gives the planner both a genuine cost-grounded reason (40 rows
+      is enough for the partial index to be the cheaper plan) and a
+      deterministic guarantee (disabling seqscan removes the fallback that
+      could otherwise mask a real regression) to select
+      platform_migrations_resume_idx specifically. Seeded rows are cleaned
+      up via the existing deferred cleanupControlRows; the EXPLAIN
+      transaction itself is rolled back via defer conn.rollback() catch {}.
+      tests/specs/MIG-04.md's TC-MIG-04-03 Given clause was rewritten to
+      describe the new fixture-seeding + forced-index-scan method instead
+      of the old (incorrect) zero-fixture-rows description.
+    reverification: >-
+      TEST-DESIGN-VALIDATOR re-validated PASS (step-03b, this persisted
+      handoff) -- independently confirmed the fix is a genuine regression
+      check, not a tautology: SET LOCAL enable_seqscan = off does not force
+      a specific index (Postgres always retains a seqscan fallback when no
+      index is usable), so the assertion (EXPLAIN output must literally
+      contain the string platform_migrations_resume_idx) only passes if the
+      planner actually selected that specific partial index. Re-ran
+      zig build test-integration-mig04-mig05 --summary all TWICE itself
+      with explicit env vars set (not relying on ambient shell state): both
+      runs 9/9, exit 0. Confirmed via git diff fda513bf~1..fda513bf that
+      REWORK 1 touched only migration_resume_test.zig, tests/specs/MIG-04.md,
+      and handoff bookkeeping -- DDL-01 (21/21), MIG-06 (6/6), and the
+      MIG-05 AC5 structural non-testable justification were untouched and
+      remained valid from the original pass. TEST-RUNNER (step-04)
+      confirmed 9/9 again in the full report run. RELEASE-VALIDATOR
+      (step-05) independently re-ran the same target itself as part of its
+      own cross-check before returning APPROVED.
+    why_this_matters_for_the_pipeline: >-
+      This is a different failure mode from batch 0's rework, and it shows
+      the pipeline's gates catching different classes of defect at
+      different stages: batch 0's rework was a RELEASE-VALIDATOR-caught
+      MISSING coverage (an AC with zero passing test evidence, deferred
+      behind a written justification that turned out to be factually
+      wrong). This run's rework was a TEST-DESIGN-VALIDATOR-caught FALSE
+      POSITIVE -- a test that existed, ran, and had in fact been failing
+      (8/9, not the claimed 9/9), where the defect was in the test's own
+      fixture setup rather than in the requirement's coverage story. Caught
+      one gate earlier than batch 0's equivalent finding, before
+      TEST-RUNNER or RELEASE-VALIDATOR ever saw it, which is a cheaper place
+      in the pipeline for this class of defect to be caught.
+
+rule_adjustments: []
+
+prevention_notes:
+  - >-
+    When a query-plan-shape assertion (EXPLAIN output containing a specific
+    index name) is written against a table with few or no seeded rows for
+    the fixture's own key, the planner has no genuine cost-based reason to
+    prefer the index under test, and the assertion can pass or fail for
+    reasons unrelated to whether the index actually exists or is usable.
+    The fix pattern used here (seed a realistic row count for the specific
+    query key, AND force enable_seqscan off inside a scoped, rolled-back
+    transaction) is now precedented twice in this codebase
+    (platform_migrations_control_table_test.zig's original instance, and
+    this run's migration_resume_test.zig fix) -- future EXPLAIN-based index
+    assertions should follow it rather than relying on either seeding alone
+    or enable_seqscan alone.
+  - >-
+    This run had zero infrastructure defects surface during its Green-Main
+    Gate, in contrast to batch 0's two. That is worth noting as a positive
+    data point on ISS-0663/ISS-0664/ISS-0665's current impact rather than
+    re-litigating them here -- ISS-0663 (tools/clean_test_db.py's
+    over-broad "relation" substring match) and ISS-0665 (full
+    test-integration concurrency reliability) both remain open per batch
+    0's retrospective and were not re-triggered by this run's narrower,
+    targeted test commands.
+  - >-
+    MIG-06's known_migration_ids/DdlStep placeholder (empty slice, no-op
+    DdlStep at the src/main.zig route-registration call site) is now
+    RELEASED as a disclosed, accepted interim state -- confirmed sound at
+    Step 1b, Step 2c, Step 3b, and Step 5 independently, each re-reading the
+    actual source rather than trusting the prior gate's claim. The
+    integration point for closing it is DDL-01's future migration-plan
+    CLI/file registry, which does not yet exist. A future batch that builds
+    that registry should update src/main.zig's route-registration call site
+    (lines ~1147-1189 as of this run) to supply real known_migration_ids
+    and a real DdlStep, and should re-run TC-MIG-06-02 against the real
+    registry rather than its current test-supplied double.
+
+artifacts:
+  - handoffs/WF02-batch-1-20260811/step-00a-test-runner.json
+  - handoffs/WF02-batch-1-20260811/step-00-backend-dev-git-setup.json
+  - handoffs/WF02-batch-1-20260811/step-01-code-designer.json
+  - handoffs/WF02-batch-1-20260811/step-01b-code-design-validator.json
+  - handoffs/WF02-batch-1-20260811/step-2a-backend-dev.json
+  - handoffs/WF02-batch-1-20260811/step-2c-security-reviewer.json
+  - handoffs/WF02-batch-1-20260811/step-03-test-designer.json
+  - handoffs/WF02-batch-1-20260811/step-03b-test-design-validator.json
+  - handoffs/WF02-batch-1-20260811/step-04-test-runner.json
+  - handoffs/WF02-batch-1-20260811/step-05-release-validator.json
+  - handoffs/WF02-batch-1-20260811/step-06-doc-updater.json
+  - src/platform/ddl_validate.zig
+  - src/platform/migration_fanout.zig
+  - src/operations/pending_migration_gate.zig
+  - src/api/routes/platform_migrations.zig
+  - src/main.zig
+  - tests/integration/migration_resume_test.zig
+  - tests/integration/platform_migrations_admin_test.zig
+  - tests/specs/DDL-01.md
+  - tests/specs/MIG-04.md
+  - tests/specs/MIG-05.md
+  - tests/specs/MIG-06.md
+  - tests/reports/report-20260811-WF02-batch-1.yaml
+  - docs/status/release-stage16-WF02-batch-1-20260811.yaml
+  - docs/status/requirement_status.yaml
+  - CHANGELOG.md
+  - docs/requirements.yaml
+
+next_action: >-
+  Route to BACKEND-DEV Step Final (git-merge) -- PR creation, checks,
+  squash-merge, branch deletion, and return to clean main are a separate
+  dispatch after this handoff completes; not performed here per explicit
+  instruction (this worktree stays on feature/WF02-batch-1-20260811).

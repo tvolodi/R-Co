@@ -1,0 +1,82 @@
+{
+  "handoff_id": "c51a3d8d-cd48-4eb3-9573-e18067ddd94a",
+  "run_id": "WF02-batch-2-20260811",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-2-20260811/step-final-backend-dev-git-merge.json",
+  "created_at": "2026-08-11T11:46:10Z",
+  "started_at": "2026-08-11T14:08:26Z",
+  "completed_at": "2026-08-11T14:15:12Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-02",
+      "ORD-01",
+      "ORD-02",
+      "ORD-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Step Final git-merge per docs/agents/protocols/GIT_MERGE.md. All WF-02 pipeline steps PASSED. Branch: feature/WF02-batch-2-20260811. Rebase onto origin/main, push, create PR, ACTIVELY POLL gh pr checks with a bounded loop (Start-Sleep + repeated gh pr checks calls, ~10 min deadline) until terminal state -- do NOT passively wait. Squash-merge, delete branch (local AND remote), return to clean state.",
+    "acceptance_criteria": [
+      "git rebase origin/main succeeds",
+      "zig build and zig build test pass after rebase",
+      "PR created, all CI checks reach genuine terminal pass state (actively polled, verified via gh pr checks)",
+      "PR squash-merged",
+      "feature/WF02-batch-2-20260811 branch deleted (local and remote)",
+      "Repo returned to clean state tracking origin/main"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rebased feature/WF02-batch-2-20260811 onto origin/main (fast-forward, no conflicts -- branch was already current). zig build and zig build test (unit only) both passed with the DB env vars set explicitly. Pushed branch, opened PR #710, actively polled gh pr checks in a bounded loop (8 checks, all reached SUCCESS within ~2.5 minutes, well inside the 10-minute deadline): Pipeline bookkeeping, Clean-checkout LuaJIT build (test-lua), Source linters, Build and unit tests, Tenant isolation tests (TNT-01..04), Frontend checks, Platform status, Fresh-database migration bootstrap. Squash-merged PR #710 (gh pr merge --squash --delete-branch); the merge itself succeeded on GitHub, but the local --delete-branch step errored because this worktree cannot check out main (a sibling worktree holds it) -- handled per the Step Final instructions: deleted the remote branch explicitly (git push origin --delete), detached local HEAD (git checkout --detach), then deleted the local feature branch (git branch -d). Verified no stale feature/WF02-batch-2-20260811 branch remains locally or on origin, and PR #710 shows state MERGED.",
+    "git_evidence": {
+      "branch_name": "feature/WF02-batch-2-20260811",
+      "commit_sha_list": [
+        "40d08564",
+        "ee135544",
+        "84704b64",
+        "21a0f625",
+        "0fec732e",
+        "934cedb1",
+        "47109193",
+        "0d4d0be1",
+        "786cca3f",
+        "959d20cb",
+        "4283b9a5",
+        "81bcf68f",
+        "0760f2c5",
+        "cee3da72",
+        "75d51091",
+        "f0e1c34f",
+        "061ffb9c",
+        "f12f94c4",
+        "1ccc6b56",
+        "a90a7109",
+        "ad524c44",
+        "e3447f85",
+        "5540e73d",
+        "c419dad3",
+        "446d1328"
+      ],
+      "remote_branch": "deleted (local and remote, post-merge)",
+      "push_status": "PASS (git push origin feature/WF02-batch-2-20260811 -> 446d1328..40d08564)",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/710",
+      "pr_create_error": null,
+      "merge_commit_sha": "0d9041b58ab688fda0b0aeb94cea9c1061236a22",
+      "ci_checks": "8/8 SUCCESS (Pipeline bookkeeping, Clean-checkout LuaJIT build (test-lua), Source linters, Build and unit tests, Tenant isolation tests (TNT-01..04), Frontend checks, Platform status, Fresh-database migration bootstrap)"
+    }
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "next_action": "ORCH marks run WF02-batch-2-20260811 COMPLETED and releases owned_modules lock"
+}

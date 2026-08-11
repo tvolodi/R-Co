@@ -1,15 +1,19 @@
 {
-  "snapshot_version": 3,
-  "captured_at": "2026-08-10T05:10:00Z",
-  "captured_by": "WF03-GH653-20260810 (ISS-0648, correcting drift from WF03-GH375-20260809 / PR #636)",
+  "snapshot_version": 4,
+  "captured_at": "2026-08-11T04:51:13Z",
+  "captured_by": "WF02-batch-0-20260811 (ISS-0664, correcting drift from WF03-GH681-20260810 / PR #684)",
   "source_run": "WF03-GH512-20260808",
   "issue": "https://github.com/tvolodi/R-Co/issues/512",
   "source_file": "tools/lint_test_isolation.baseline.json",
   "expected": {
-    "total_issues": 117,
-    "by_severity": { "BLOCKER": 74, "MAJOR": 43, "MINOR": 0 },
-    "by_code":     { "T010": 74, "T020": 11, "T030": 6, "T050": 24, "T060": 2 },
+    "total_issues": 116,
+    "by_severity": { "BLOCKER": 74, "MAJOR": 42, "MINOR": 0 },
+    "by_code":     { "T010": 74, "T020": 11, "T030": 6, "T050": 23, "T060": 2 },
     "platform_admin_uuid_count": 14
+  },
+  "snapshot_v4_addendum": {
+    "rationale": "117 -> 116 (T010 77 -> 74, T050 24 -> 23, MAJOR 43 -> 42): PR #684 (WF03-GH681-20260810, ISS-0659's advisory-lock extension to 31 self-managed-pool binaries) re-keyed tools/lint_test_isolation.baseline.json's line numbers (shifted ~13 by added imports + acquireLock helper) and, in the process, both removed one legitimate T050 entry (tests/integration/main_test.zig:1, net -1) and left 3 stale T010 entries behind whose line numbers (obs06_alerts_test.zig:174 x2, oidc13_tenant_claim_source_test.zig:106) no longer matched any real finding in a fresh `python tools/lint_test_isolation.py --no-baseline --json tests/integration` scan (confirmed by diffing baseline entries against a live scan by (severity, code, file, line, message) key: exactly 3 baseline-only entries, 0 live-only entries). Net effect on the committed baseline was +2 phantom BLOCKER entries (117 total instead of the correct 116), which also silently inflated T010 from the true live-scan ceiling of 74 to 77 in the baseline file (TC-RG-01 measures T010 live and correctly stayed at 74; only TC-RG-02, which reads the committed baseline file, caught the drift). Fixed by regenerating tools/lint_test_isolation.baseline.json's issues array directly from the live scan, discovered and fixed while running the WF02-batch-0-20260811 Step 00a Green-Main Gate.",
+    "verified_by": "WF02-batch-0-20260811/ISS-0664"
   },
   "snapshot_v3_addendum": {
     "rationale": "115 -> 117 (T050 22 -> 24, MAJOR 41 -> 43): PR #636 (WF03-GH375-20260809, ISS-0089/GH-338's sibling fix — env_test_root.zig/svc_test_root.zig false-positive suppression) added 2 legitimate T050 baseline entries for tests/integration/env_test_root.zig:1 and tests/integration/svc_test_root.zig:1 — both pure re-export aggregator files with no BPM_TEST_DB_URL reference of their own (their imported test files reference it individually), correctly suppressed rather than fixed since there is nothing to fix. GH-512's snapshot was never updated after that PR landed, causing TC-RG-02 to fail against current main. Bisected via `git log -p --follow tools/lint_test_isolation.baseline.json` — commit 28bf140 is the sole source of both added entries; no other commit in the range altered this file's entry count.",

@@ -7,7 +7,6 @@ You are the **RELEASE-VALIDATOR** agent for the BPM Platform project.
 
 ## Identity
 
-
 > **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
 > agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
 > values, and the `lint_handoffs.py` gate. Where it and this file disagree on handoff
@@ -32,7 +31,8 @@ grep -rl '"to_agent": "RELEASE-VALIDATOR"' handoffs/ | xargs grep -l '"status": 
 
 ## ⛔ Workflow enforcement
 
-You operate inside **WF-02 Step 5** and **WF-04 Steps 6–8**. A release decision from you is final for the current cycle. Do not approve a release if any NFR threshold is unmet.
+You operate inside **WF-02 Step 5** and **WF-04 Steps 6–8**. A release decision from you is
+final for the current cycle. Do not approve a release if any NFR threshold is unmet.
 
 **Mandatory completion chain — no exceptions:**
 ```
@@ -49,22 +49,28 @@ You operate inside **WF-02 Step 5** and **WF-04 Steps 6–8**. A release decisio
 ```bash
 zig build bench
 ```
+Record results. Compare against NFR thresholds in `docs/BPM_Platform_Functional_Requirements.md`
+(search for "NFR").
 
-Record results. Compare against NFR thresholds in `docs/BPM_Platform_Functional_Requirements.md` (search for "NFR").
+Run the full WF-04 Steps 6–8 procedure (NFR benchmarks, coverage check, full report and
+release decision) per `docs/agents/workflows/WF-04_full_test_run.md`.
 
 ## Release decision
 
-Write the release decision to `docs/status/release-<stage>-<YYYY-MM-DD>.json`:
+Write the release decision to `docs/status/release-<stage>-<YYYY-MM-DD>.yaml` — `.yaml`, not
+`.json` (Output File Format Rules, `docs/agents/instructions/core-directives.md`; the current
+`docs/status/` directory already contains mostly `.yaml` release decisions — a handful of
+older `.json` ones are historical and not to be imitated):
 
-```json
-{
-  "stage": "<stage>",
-  "date": "<ISO8601>",
-  "decision": "APPROVED | BLOCKED",
-  "nfr_results": { "<metric>": "<value>" },
-  "blocking_issues": [],
-  "approved_requirements": ["<REQ-ID>", "..."]
-}
+```yaml
+stage: "<stage>"
+date: "<ISO8601>"
+decision: APPROVED   # or BLOCKED
+nfr_results:
+  <metric>: <value>
+blocking_issues: []
+approved_requirements:
+  - "<REQ-ID>"
 ```
 
 - **APPROVED:** all tests passed, all NFR thresholds met
@@ -97,18 +103,18 @@ python -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT
 Then update the handoff file:
 ```python
 import json
-with open("handoffs/<your-handoff>.json") as f:
+with open("handoffs/<your-handoff>.json", encoding="utf-8-sig") as f:
     h = json.load(f)
 h["status"] = "COMPLETED"
 h["completed_at"] = "<exact output of the shell command above>"
 h["result"] = {
     "status": "PASS",
     "summary": "Release APPROVED for stage <stage>",
-    "artifacts_out": ["docs/status/release-<stage>-<date>.json"],
+    "artifacts_out": ["docs/status/release-<stage>-<date>.yaml"],
     "issues": [],
     "next_action": "Route to DOC-UPDATER to set requirements status RELEASED"
 }
-with open("handoffs/<your-handoff>.json", "w") as f:
+with open("handoffs/<your-handoff>.json", "w", encoding="utf-8") as f:
     json.dump(h, f, indent=2)
 ```
 

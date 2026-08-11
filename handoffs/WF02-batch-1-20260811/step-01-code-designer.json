@@ -1,0 +1,75 @@
+{
+  "handoff_id": "5b113a88-1fe2-4829-9018-bf07ef61018a",
+  "run_id": "WF02-batch-1-20260811",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-batch-1-20260811/step-01-code-designer.json",
+  "created_at": "2026-08-11T09:45:16Z",
+  "started_at": "2026-08-11T09:47:18Z",
+  "completed_at": "2026-08-11T09:55:02Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-01",
+      "MIG-04",
+      "MIG-05",
+      "MIG-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Produce design artefact(s) for 4 MUST requirements from docs/requirements.yaml (stage 16): DDL-01 (Pure platform DDL validator ValidatePlatformDDL), MIG-04 (Resume endpoint for pending/failed tenants), MIG-05 (Idempotent migration re-run via ON CONFLICT DO UPDATE), MIG-06 (Admin HTTP surface: POST run, GET status, POST resume, platform-operator role gate, boot-time pending-migration refusal check). Read the full requirement bodies directly from docs/requirements.yaml (yaml.safe_load, utf-8-sig). CRITICAL CONTEXT: batch 0 (already RELEASED, merged) implemented src/platform/ddl_namespace.zig (DDL-05, the plat_ namespace check -- a leaf function DDL-01 must call, not re-derive) and src/platform/migration_fanout.zig (MIG-01/02/03 -- runFanout, FanoutRequest/FanoutResult/FanoutError, the platform.platform_migrations control table). Read both of those files IN FULL, plus src/design/mig-02-mig-03-platform-migration-fanout.md and src/design/ddl-05-reserved-plat-namespace-check.md (the batch-0 design docs), before designing this batch -- DDL-01 composes ddl_namespace.zig's checkNamespace() into a larger ValidatePlatformDDL pipeline alongside new lock-class and statement-ordering checks; MIG-04/05/06 extend migration_fanout.zig's existing runFanout with a resume path, idempotent re-run semantics, and an HTTP admin surface -- do not redesign what already exists, extend it. MIG-06 needs an HTTP route layer (Type A-ish, but check lego-catalog.md since admin-surface auth-gating may not fit the plain CRUD template) -- check how other admin/platform-operator-gated routes in src/api/routes/ are structured for the role-check convention to reuse.",
+    "acceptance_criteria": [
+      "Every acceptance criterion in DDL-01, MIG-04, MIG-05, MIG-06 is covered by the design",
+      "Design is implementation-code-free",
+      "DDL-01 design explicitly composes ddl_namespace.checkNamespace() rather than re-deriving the namespace check",
+      "MIG-04/05/06 design explicitly builds on migration_fanout.zig's existing runFanout/FanoutRequest/FanoutResult rather than redesigning the fanout loop",
+      "MIG-06's platform-operator role gate follows this codebase's existing RBAC/route-auth convention (cite the specific existing route this pattern is drawn from)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Design artefacts for DDL-01, MIG-04, MIG-05, MIG-06 (stage 16) produced as two Type E prose design docs, both passing tools/lint_design_artefact.py clean. DDL-01 (src/design/ddl-01-validate-platform-ddl.md) defines ValidatePlatformDDL as a pure aggregation pipeline that composes ddl_namespace.checkNamespace (DDL-05) alongside two new checks (lock-class, non-concurrent-index build), returning the first failure in statement order (AC5) with no database handle/clock/env var (AC4). MIG-04/05/06 (src/design/mig-04-mig-05-mig-06-resume-idempotency-admin-surface.md) extend migration_fanout.zig in place: MIG-04 adds resumeFanout() reading platform_migrations_resume_idx and reusing applyToTenant() for the MIG-02 transaction protocol; MIG-05 changes seedPendingRow to ON CONFLICT ... DO UPDATE ... WHERE status != 'done' (no new migration needed -- MIG-01 table already has the right UNIQUE anchor) plus a per-tenant isAlreadyDone() skip guard in the fanout loop; MIG-06 adds three role-gated HTTP routes (run/status/resume) in a new src/api/routes/platform_migrations.zig following the actor.role != .PLATFORM_ADMIN inline-check convention cited from src/api/routes/onboarding.zig (lines 54, 290, 385), plus a boot-time assertNoOutstandingMigrations() gate following src/operations/startup_assertions.zig's established FATAL-log-line + std.process.exit(EX_CONFIG=78) shape, called from main.zig::runApiServer as a second gate after the existing assertDatabaseConfiguration() call. Every AC in all 4 requirement bodies is covered by the two designs; marked PARTIAL because three genuinely open questions are flagged (not blocking any AC coverage) -- see issues.",
+    "artifacts_out": [
+      "src/design/ddl-01-validate-platform-ddl.md",
+      "src/design/mig-04-mig-05-mig-06-resume-idempotency-admin-surface.md"
+    ],
+    "issues": [
+      {
+        "id": "ISS-OPEN-1",
+        "severity": "MINOR",
+        "description": "MIG-05 AC5 (migration-file content immutability once a done row exists) has no existing mechanism in platform.platform_migrations to tie a migration_id to a content hash -- two candidate designs (runtime content-hash column vs. pure process/CI-tooling enforcement) are presented in the design doc Open Questions #1 without a chosen answer; needs REQ-ANALYST/ORCH clarification before BACKEND-DEV implements this one AC. MIG-05 AC1-AC4 are fully specified and unaffected.",
+        "affected_requirement": "MIG-05"
+      },
+      {
+        "id": "ISS-OPEN-2",
+        "severity": "MINOR",
+        "description": "MIG-06 AC2 (404 UnknownMigration) needs a concrete source of truth for the migration set to check migration_id against; no such registry exists yet in this codebase (DDL-01's statement parser and migration-plan CLI, which would naturally enumerate it, are themselves not yet built -- see DDL-01 design Open Question 1). Design doc Open Questions #2 recommends a caller-supplied known_migration_ids parameter as an interim placeholder so BACKEND-DEV is not blocked. Does not affect the other four MIG-06 ACs.",
+        "affected_requirement": "MIG-06"
+      },
+      {
+        "id": "ISS-OPEN-3",
+        "severity": "MINOR",
+        "description": "MIG-06's platform-operator role is mapped to the existing Role.PLATFORM_ADMIN enum value (no PLATFORM_OPERATOR role exists in src/api/middleware/auth.zig) since no requirement text in this batch or batch-0 asks for a second admin tier; flagged for REQ-ANALYST to confirm this reading is correct rather than a narrower role being intended.",
+        "affected_requirement": "MIG-06"
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF02-batch-1-20260811",
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": "skipped",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

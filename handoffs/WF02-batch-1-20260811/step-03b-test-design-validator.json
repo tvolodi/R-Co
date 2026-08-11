@@ -1,0 +1,53 @@
+{
+  "handoff_id": "686bce70-b200-47ee-aa3f-28541558ca7d",
+  "run_id": "WF02-batch-1-20260811",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-1-20260811/step-03b-test-design-validator.json",
+  "created_at": "2026-08-11T09:45:16Z",
+  "started_at": "2026-08-11T10:56:04Z",
+  "completed_at": "2026-08-11T10:58:58Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-01",
+      "MIG-04",
+      "MIG-05",
+      "MIG-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/DDL-01.md",
+      "tests/specs/MIG-04.md",
+      "tests/specs/MIG-05.md",
+      "tests/specs/MIG-06.md",
+      "src/platform/ddl_validate.zig",
+      "tests/integration/migration_resume_test.zig",
+      "tests/integration/platform_migrations_admin_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: validate TEST-DESIGNER Step 3 output for DDL-01, MIG-04, MIG-05, MIG-06 (all MUST). Verify every MUST AC has a runnable test OR a documented structural/non-testable justification (MIG-05 AC5 specifically -- confirm the justification is sound, i.e. that the design genuinely has no runtime code for this AC per the already-accepted CODE-DESIGN-VALIDATOR Step 1b decision, and that this is not being used to paper over a real gap). No error.SkipZigTest. Fixtures isolated. Confirm the DDL-01 AC5 rename/fix TEST-DESIGNER made (renamed pre-existing tests to avoid a name collision, added a new timing-based AC5 test) is real and doesn't break anything.\n\nRE-VALIDATION (after REWORK 1): TEST-DESIGNER fixed TC-MIG-04-03 by seeding 40 fixture rows and forcing SET LOCAL enable_seqscan = off (mirroring the proven pattern in platform_migrations_control_table_test.zig). Claims zig build test-integration-mig04-mig05 is now a reproducible 9/9 (ran 3 times). Re-verify independently.",
+    "acceptance_criteria": [
+      "Every MUST AC traced to a real test or a sound non-testable justification",
+      "MIG-05 AC5 justification verified sound, not a cover for a real gap",
+      "No error.SkipZigTest",
+      "Test isolation clean",
+      "Build steps genuinely pass with stated counts"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "RE-VALIDATION after REWORK 1: TC-MIG-04-03 fix independently re-verified. The fix seeds 40 fixture rows (alternating pending/failed, random UUIDs) under a fresh migration_id before EXPLAIN, then forces SET LOCAL enable_seqscan = off inside a rolled-back transaction, mirroring the already-accepted pattern in platform_migrations_control_table_test.zig::resume_index_used_by_pending_or_failed_query. Confirmed non-vacuous: enable_seqscan=off does not error or force a specific index when none is usable -- Postgres always retains a seqscan fallback -- so the assertion (EXPLAIN output must literally contain the string platform_migrations_resume_idx) only passes if the planner actually selected that specific partial index (verified defined in migrations/1144_platform_migrations_control_table.sql line 38: CREATE INDEX ... resume_idx ON platform.platform_migrations (migration_id, status) WHERE status IN (pending, failed)). This is a genuine regression check, not a tautology. Ran zig build test-integration-mig04-mig05 --summary all twice with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test and BPM_DB_URL=postgres://bpm:bpm@localhost:5432/bpm_dev explicitly set: both runs reported 9/9 tests passed, exit code 0. cleanupControlRows (deferred immediately after migration_id creation, deletes by migration_id) tears down all 40 seeded rows even on failure. tests/specs/MIG-04.md TC-MIG-04-03 description matches the fixed test exactly (40 seeded rows, SET LOCAL enable_seqscan off, cost-grounded + forced determinism rationale). Re-confirmed via git diff fda513bf~1..fda513bf that REWORK 1 touched only migration_resume_test.zig, tests/specs/MIG-04.md, and handoff bookkeeping -- DDL-01 (21/21), MIG-06 (6/6), and the MIG-05 AC5 structural non-testable justification are untouched and remain valid from the original pass. Zero error.SkipZigTest matches in migration_resume_test.zig and platform_migrations_admin_test.zig.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

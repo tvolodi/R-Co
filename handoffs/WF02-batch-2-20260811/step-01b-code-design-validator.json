@@ -1,0 +1,51 @@
+{
+  "handoff_id": "a1f30aea-ae05-428d-8e8f-abe24d9f3de2",
+  "run_id": "WF02-batch-2-20260811",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-2-20260811/step-01b-code-design-validator.json",
+  "created_at": "2026-08-11T11:46:10Z",
+  "started_at": "2026-08-11T12:11:31Z",
+  "completed_at": "2026-08-11T12:12:01Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-02",
+      "ORD-01",
+      "ORD-02",
+      "ORD-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/ddl-02-constrain-before-expand-check.md",
+      "src/design/ord-01-02-04-correlated-effect-reentry.md",
+      "templates/specs/ord-01-plat-effect-completion.migration.yaml",
+      "templates/specs/ord-04-plat-correlation-cursor.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER Step 01 design for DDL-02, ORD-01, ORD-02, ORD-04. Standard checks apply. Additionally: verify the design's claim that src/effects/worker.zig/queue.zig is a genuine, correctly-cited existing FOR UPDATE SKIP LOCKED pattern to follow (read those files yourself). Verify the design's argument that ORD-02's per-correlation advisory lock is NOT redundant with SKIP LOCKED (unlike a previously-removed per-timer lock referenced as ISS-301 precedent) -- read that precedent/history if cited and confirm the distinction is sound, since getting this backwards would mean reintroducing a documented anti-pattern. Verify DDL-02 correctly extends ddl_validate.zig's existing ValidatePlatformDDL pipeline rather than creating a parallel validator. Check if docs/processes/system/effect-reentry-ordering.md (cited by the designer as an authoritative process spec for PW-07) genuinely exists and the design is consistent with it.\n\nRE-VALIDATION (after REWORK 1): CODE-DESIGNER added file/byte_offset fields to StatementDescriptor (ddl_validate.zig) and ConstrainBeforeExpandDetail, and confirmed ddl_namespace.zig (DDL-05) is unaffected since checkNamespace is called with an anonymous struct literal, not the shared StatementDescriptor directly. Re-verify this claim and that AC5 is now genuinely covered.",
+    "acceptance_criteria": [
+      "Every AC in DDL-02, ORD-01, ORD-02, ORD-04 traced to a design section",
+      "No implementation code in the design",
+      "DDL-02 extends the existing validator pipeline correctly",
+      "src/effects/worker.zig pattern citation verified accurate",
+      "ORD-02 lock-non-redundancy argument verified sound against the cited ISS-301/removed-lock precedent",
+      "Consistency with docs/processes/system/effect-reentry-ordering.md if it exists"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "RE-VALIDATION after REWORK 1: DDL-02 AC5 is now genuinely covered. Independently confirmed in src/platform/ddl_validate.zig that the sole call site of ddl_namespace.checkNamespace (line 179) passes an anonymous 3-field struct literal (.kind/.object_name/.previous_object_name copied from stmt), never the StatementDescriptor value itself, so the added file/byte_offset fields on ddl_validate.StatementDescriptor cannot reach ddl_namespace.checkNamespace or its own differently-shaped, same-named StatementDescriptor type. Grepped the whole src/ tree: no other call site of checkNamespace or reference to ddl_namespace.StatementDescriptor exists outside ddl_namespace.zig itself, whose own test blocks construct that type directly and are unaffected. Design doc now specifies constraining_statement_file/byte_offset and depended_on_statement_file/byte_offset on ConstrainBeforeExpandDetail, matching AC5 verbatim (docs/requirements.yaml DDL-02 body). Rework diff (5540e73d..1ccc6b56) touches only the DDL-02 design doc plus handoff/registry/log bookkeeping -- ORD-01/02/04 design doc and both migration YAMLs are byte-identical, confirming no scope creep. tools/lint_design_artefact.py on the updated doc: OK, 0 issues. All other findings from the original Step 1b review (DDL-02 extends validatePlatformDDL correctly, worker.zig/queue.zig SKIP LOCKED citation, ORD-02 advisory-lock non-redundancy vs. ISS-301, effect-reentry-ordering.md consistency) are unchanged by this rework and remain valid.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a implementation)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

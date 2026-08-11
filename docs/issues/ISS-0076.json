@@ -1,43 +1,61 @@
 {
   "issue_id": "ISS-0076",
-  "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table in this environment",
+  "title": "Split CLAUDE.md into glob-scoped instruction files (PI-01)",
   "status": "RESOLVED",
   "severity": "MAJOR",
-  "category": "migration scoping / search_path defect",
-  "run_id": "WF03-iss0076-20260730",
+  "category": "developer experience / pipeline infrastructure / documentation",
+  "run_id": "WF03-GH291-20260811",
   "workflow_id": "WF-03",
-  "handoff_id": "gh-289-WF03-iss0074-20260730-followup",
-  "github_issue": "https://github.com/tvolodi/R-Co/issues/335",
-  "requirement_ids": ["EXP-501"],
-  "summary": "Discovered during RELEASE-VALIDATOR Step 6 of the ISS-0074 fix run. migrations/GBL-100_exp501_secrets.sql wraps its CREATE TABLE secrets in a DO block guarded by `IF to_regclass('instance_projections') IS NULL THEN RETURN`. Direct psql inspection of both r-co-db-1 (bpm_dev) and r-co-db_test-1 (bpm_test) shows no `secrets` table exists in any schema (public or tenant_default), even though `instance_projections` and `webhook_subscriptions` both exist under the `tenant_default` schema. zig build migrate reports the migration file as already applied (skip). The guard's to_regclass() call appears to resolve against a search_path that does not include tenant_default at migration-apply time, so the guard condition is met (returns NULL, treated as instance_projections missing) and the migration body silently no-ops without ever creating the table it is meant to create.",
-  "root_cause": {
-    "type": "migration-scoping-guard-defect",
-    "details": "Confirmed via src/db/migrations.zig (lines ~197-207): GBL-prefixed migrations run ONLY against the public schema — they are explicitly skipped for every tenant schema. migrations/GBL-073_tnt01_drop_legacy_public_business_tables.sql permanently dropped instance_projections (and webhook_subscriptions, event_type_registry, etc.) from public as part of the TNT-01 schema-per-tenant migration; those tables now exist only under per-tenant schemas (tenant_default, tenant_<uuid>, ...). Because GBL-100 only ever executes against public, to_regclass('instance_projections') always returns NULL there — not due to an ambient search_path edge case, but because the guard checks a table that is structurally guaranteed to be absent from the only schema this migration runs against. The guard therefore always short-circuited and CREATE TABLE secrets never executed, in any environment."
+  "handoff_id": null,
+  "requirement_ids": [],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/291",
+  "summary": "Also known as PI-01. CLAUDE.md had grown to 1850 lines (from 1438 at filing time) with no canonical instruction surface stated: the same per-role text existed in four places (CLAUDE.md, .claude/agents/*.md, .github/agents/*.agent.md, .github/instructions/*.md) with no rule saying which was authoritative. Six WF-03 runs in the two hours before this run edited CLAUDE.md directly (make.ps1/PI-04 GH-294, zig build check/PI-03 GH-293, security invariants/PI-02 GH-292, and three prior unrelated fixes) without updating .claude/agents/*.md to match, so agents invoked via Claude Code's own Agent tool (which reads .claude/agents/*.md, not CLAUDE.md's AGENT sections) were working from stale instructions missing the codegen workflow, the zig build check gate, the make.ps1 command surface, and the numbered security invariants pointer.",
+  "design_decision": {
+    "reconciliation_before_deletion": "Per the task brief's explicit warning, diffed every one of CLAUDE.md's 19 '## AGENT: X' sections against the corresponding .claude/agents/<slug>.md file before deleting or trimming any CLAUDE.md content. Found real, substantial divergence in all 13 pre-existing .claude/agents/ files (not cosmetic — missing entire workflows: codegen/Type A-E classification absent from code-designer.md and code-design-validator.md; zig build check gate and make.ps1 surface absent from backend-dev.md; GitHub Branch Management section entirely absent from doc-updater.md, which also hand-edited the now-generated requirement_status file directly; req-analyst.md instructed writing to the frozen historical markdown requirement files instead of docs/requirements.yaml via reqctl.py, which would have caused a live policy violation if followed; orchestrator.md missing WF-05/WF-06 pipelines, loop mode, Step 2c security gate, and utf-8-sig encoding throughout). None of the 13 files were already a safe pointer-equivalent of CLAUDE.md's content -- all 13 needed a genuine content merge, not a trim. Chose CLAUDE.md's content as the base for the merge in each case (verified more current via git log: six recent WF-03 runs edited CLAUDE.md directly), folding in any .claude/agents/-only content found during the diff (there was very little; the drift was almost entirely one-directional -- CLAUDE.md had gained content the per-agent files never received).",
+    "five_new_agent_files": "SECURITY-REVIEWER, UAT-RUNNER, BO-SWIFTROUTE, BO-VORTEX, BO-MERIDIAN, and PRODUCT-OWNER existed as CLAUDE.md AGENT sections but had no .claude/agents/*.md counterpart (only .github/agents/*.agent.md). security-reviewer.md already existed from PI-02 (~30 min prior) and was fully current -- used as the reference pattern (HANDOFF_PROTOCOL.md pointer style, utf-8-sig/utf-8 encoding throughout) for the other five. For the remaining five, .github/agents/*.agent.md turned out to be a richer source than CLAUDE.md's own section in several cases (bo-swiftroute.agent.md had a full Mode B scenario-authoring workflow and per-company severity guide that CLAUDE.md's BO-SWIFTROUTE section only summarised; uat-runner.agent.md had the full GUI-only-rule detail and WF-06 schema-validation mode). Built the five new .claude/agents/*.md files by merging the richer .github/agents/ content with CLAUDE.md-only items each was missing (uat-runner.agent.md lacked CLAUDE.md's Step 7 project-board-update procedure and Allowed/Forbidden command lists).",
+    "canonical_directory_choice": "The issue's own PIPELINE_BACKLOG.md entry suggested docs/agents/ as canonical since it already holds AGENT_SYSTEM.md/FUNCTIONS.md/workflows, listing example cross-cutting glob files (zig-conventions.md, react-conventions.md, etc.) as the pattern. Diverged from that literal suggestion for per-role AGENT_ID sections specifically: .claude/agents/*.md is what this session's own Agent-invocation tooling actually resolves (confirmed via the 'Available agent types' list surfaced in-session, which already lists CODE-DESIGN-VALIDATOR, SECURITY-REVIEWER, TEST-DESIGN-VALIDATOR by name, backed by their .claude/agents/*.md files), so making a *different* directory canonical for role text would mean the practical dispatch mechanism and the documented canonical source permanently disagree. Split the two axes as PI-02 already implicitly established: docs/agents/instructions/ for cross-cutting GLOB-scoped rules that apply across all roles (security-invariants.md precedent; now also core-directives.md), .claude/agents/*.md for single-role definitions. Recorded this split explicitly in docs/agents/AGENT_SYSTEM.md §9 (new section) as the 'Done when' criterion's required written statement.",
+    "github_copilot_harness_scope_decision": ".github/agents/*.agent.md (18 files) and .github/instructions/*.md (3 files) are a second harness's entry point (GitHub Copilot), not simply a redundant copy -- confirmed via CLAUDE.md's own original header referencing '.github/instructions/ for Copilot' and PI-02's own explicit 'not_done' note that it deliberately left .github/ untouched, scoping its issue to .claude/agents/ specifically. Followed the same precedent here: verified .github/agents/*.agent.md and .github/instructions/*.md already independently reference docs/agents/shared/HANDOFF_PROTOCOL.md (all 21 files, confirmed by grep) so they are not the pre-2026-08-05-audit fully-duplicated state, but spot-checked several and found they are a *separately* drifted set from .claude/agents/ -- e.g. backend-dev.agent.md already mentioned templates/lego-catalog.md codegen (which .claude/agents/backend-dev.md was missing before this run), while bo-swiftroute.agent.md had richer authoring-mode content than CLAUDE.md's own BO-SWIFTROUTE section. Did not attempt a full section-by-section .github/ reconciliation in this run -- that would roughly double the Effort:M scope of this issue into a second, independent harness-parity project. Documented this explicitly in AGENT_SYSTEM.md §9 as a candidate follow-up issue rather than silently leaving it unstated.",
+    "claude_md_final_shape": "1850 -> 113 lines (well under the 200-line 'Done when' target, but treated that target as aspirational per the task's explicit instruction to favor completeness over hitting the number). Kept inline rather than further extracting: the 'How to use this file' / Default-AGENT_ID dispatch logic (short, and it is the literal first thing every session reads to determine its own role -- extracting it one level further would add an indirection hop to the single most load-bearing paragraph in the pipeline) and the 19-row AGENT_ID-to-canonical-file roster table (this IS the pointer; there is nothing further to extract). Added a new 'Canonical instruction surfaces' section stating the rule from AGENT_SYSTEM.md §9 in miniature, since a reader who never gets past CLAUDE.md's first screen should still learn the rule before they might otherwise start re-adding role text to this file.",
+    "cross_reference_sweep": "Ran `grep -rn CLAUDE.md` across docs/, tools/, .claude/, src/design/, CHANGELOG.md (44 files total) before finalizing, and separately confirmed zero literal `CLAUDE.md#anchor`-style links exist anywhere in the repo (grep for the pattern returned nothing) -- meaning every existing cross-reference names a directive by its unchanged heading text ('Unblock-Everything directive', 'No Issue Left Local-Only', 'Never Satisfy a Gate by Editing What It Measures', 'GitHub Branch Management') rather than a structural link, so relocating the heading's containing file does not break the reference as long as the heading text is preserved verbatim somewhere findable -- confirmed for all 10 Core Directive headings and all 19 AGENT-section markers via grep against the new file set. Found and fixed the two references that WOULD have gone stale: docs/guides/test_developer_guide.md's fail-first-rule pointer ('the TEST-DESIGN-VALIDATOR checklist in CLAUDE.md') and SECURITY.md's 'Enforced by directives in CLAUDE.md' -- both now point at the actual relocated file. Also corrected security-invariants.md's own historical note about where BACKEND-DEV's pointer to it lives, since that note now describes the pre-PI-01 state inaccurately."
   },
-  "files_to_change": [
-    "migrations/GBL-100_exp501_secrets.sql or a new corrective migration"
-  ],
-  "resolution": "Removed the incorrect to_regclass('instance_projections') guard from migrations/GBL-100_exp501_secrets.sql (secrets is a global public-schema table with no such prerequisite). Re-scoped the webhook_subscriptions backfill in the same file to guard on webhook_subscriptions itself rather than the unrelated instance_projections. Added migrations/GBL-101_exp501_secrets_corrective.sql as a corrective migration (unconditional, idempotent CREATE TABLE IF NOT EXISTS) since schema_migrations already records GBL-100 as applied and editing it in place would not cause a re-run. Added tests/integration/iss0076_secrets_table_test.zig (2 tests, wired into zig build test-integration and a standalone zig build test-integration-iss0076 step) verifying the table exists and Store.putSecret/resolveSecret round-trip against the real table. Verified secrets table now exists in both bpm_dev and bpm_test (63-tenant-schema representative database) via direct psql/pg_tables query; verified absence pre-fix via git stash baseline comparison.",
-  "occurrences": [
-    {
-      "occurred_at": "2026-07-30T11:28:33Z",
-      "run_id": "WF03-iss0074-20260730",
-      "handoff_id": "gh-289-WF03-iss0074-20260730-followup",
-      "trigger": "regression",
-      "context": "Discovered incidentally while verifying ISS-0074's acceptance criterion about pre-existing plaintext secrets rows during RELEASE-VALIDATOR Step 6 -- found the secrets table does not exist at all in dev or test DBs."
-    }
-  ],
+  "evidence": {
+    "lint_agent_docs_before": "python tools/lint_agent_docs.py -> 'lint_agent_docs: 35 agent files checked -- 0 BLOCKER, 0 MAJOR, 0 MINOR' (baseline before any .claude/agents/ changes).",
+    "lint_agent_docs_after": "python tools/lint_agent_docs.py -> 'lint_agent_docs: 40 agent files checked -- 0 BLOCKER, 0 MAJOR, 0 MINOR' (40 = 35 + 5 new BO/UAT-RUNNER/PRODUCT-OWNER files; the 6th new-role file, security-reviewer.md, already existed from PI-02 and is counted in the original 35).",
+    "lint_handoffs": "python tools/lint_handoffs.py -> exit 0, 'lint_handoffs: 2490 handoffs checked -- 0 BLOCKER, 0 MAJOR, 1 MINOR, 291 ACKNOWLEDGED' -- unchanged from pre-existing baseline; this run touched no handoff files.",
+    "content_completeness_check": "For each of the original file's 19 '## AGENT: X' sections and 10 Core Directive '### <name>' headings, grepped a distinctive phrase from that section against the new file set and confirmed >=1 match in every case (19/19 agent sections, 10/10 directive headings) -- see the run's own investigation notes for the full per-section match table.",
+    "link_resolution_check": "Extracted all 19 '.claude/agents/*.md' markdown links from the new CLAUDE.md via a Python regex pass and confirmed every target file exists on disk (19/19 OK).",
+    "cross_reference_grep": "`grep -rn CLAUDE.md docs/ tools/ .claude/ src/design/ CHANGELOG.md SECURITY.md` (44 files) reviewed individually; `grep -rn \"CLAUDE\\.md#\"` (anchor-link pattern) returned zero hits repo-wide, confirming no structural link references existed to break.",
+    "line_count": "CLAUDE.md: 1850 -> 113 lines (94% reduction, under the 200-line target)."
+  },
+  "resolution": "1) .claude/agents/*.md (19 files, 13 updated + 5 new: uat-runner.md, bo-swiftroute.md, bo-vortex.md, bo-meridian.md, product-owner.md) is now the fully authoritative per-role instruction source, incorporating every rule found only in CLAUDE.md's AGENT sections plus every rule found only in the pre-existing .claude/agents/ or richer .github/agents/ files. 2) docs/agents/instructions/core-directives.md (new): the ~254-line 'Core Directives (apply to ALL agents)' section moved verbatim, applyTo: ** per the PI-02 precedent (security-invariants.md). 3) CLAUDE.md: trimmed from 1850 to 113 lines -- intro, canonical-surface statement, pointer to core-directives.md, the AGENT_ID dispatch logic (kept inline), and a 19-row roster table linking each AGENT_ID to its canonical .claude/agents/*.md file. 4) docs/agents/AGENT_SYSTEM.md: new §9 'Canonical Instruction Surfaces' -- the written statement the issue's 'Done when' criterion requires, naming the canonical directory per content type and declaring .github/ a Copilot-harness adapter that must not be independently maintained as a second canonical copy. 5) Two stale cross-references fixed (docs/guides/test_developer_guide.md, SECURITY.md) plus one historical-accuracy correction (docs/agents/instructions/security-invariants.md). 6) docs/issues/ISS-0076.json (this file).",
   "files_changed": [
-    "migrations/GBL-100_exp501_secrets.sql",
-    "migrations/GBL-101_exp501_secrets_corrective.sql",
-    "tests/integration/iss0076_secrets_table_test.zig",
-    "build.zig",
-    "src/design/iss-0076-secrets-table-migration-fix.md"
+    ".claude/agents/backend-dev.md",
+    ".claude/agents/frontend-dev.md",
+    ".claude/agents/test-designer.md",
+    ".claude/agents/code-designer.md",
+    ".claude/agents/code-design-validator.md",
+    ".claude/agents/test-design-validator.md",
+    ".claude/agents/test-runner.md",
+    ".claude/agents/issue-fixer.md",
+    ".claude/agents/req-analyst.md",
+    ".claude/agents/req-validator.md",
+    ".claude/agents/release-validator.md",
+    ".claude/agents/doc-updater.md",
+    ".claude/agents/orchestrator.md",
+    ".claude/agents/uat-runner.md",
+    ".claude/agents/bo-swiftroute.md",
+    ".claude/agents/bo-vortex.md",
+    ".claude/agents/bo-meridian.md",
+    ".claude/agents/product-owner.md",
+    "docs/agents/instructions/core-directives.md",
+    "docs/agents/AGENT_SYSTEM.md",
+    "docs/agents/instructions/security-invariants.md",
+    "docs/guides/test_developer_guide.md",
+    "SECURITY.md",
+    "CLAUDE.md",
+    "docs/issues/ISS-0076.json"
   ],
-  "created_at": "2026-07-30T11:28:33Z",
-  "resolved_at": "2026-07-30T12:30:41Z",
-  "prevention": [
-    "docs/anti-patterns.md already documents this pattern (guarding a migration DO block with to_regclass() against a table that only exists in a different schema than the migration actually runs in) — see the entry cross-referenced from GBL-100's file header comment.",
-    "Any future GBL-prefixed migration that needs a prerequisite guard must check a table that can actually exist in the public schema, not a per-tenant business table — GBL migrations never run against tenant schemas."
-  ]
+  "created_at": "2026-08-10T21:56:26Z",
+  "resolved_at": "2026-08-10T22:19:22Z",
+  "prevention": "When a shared instructions file is edited directly by multiple parallel runs (as CLAUDE.md was by six WF-03 runs in two hours) without a stated canonical surface, per-role adapter files silently fall behind and nobody notices until an agent invoked through the adapter path (here: Claude Code's own Agent tool, which reads .claude/agents/*.md, not CLAUDE.md's AGENT sections) acts on stale instructions. Declaring one canonical file per content type (this issue's core deliverable, recorded in AGENT_SYSTEM.md §9) converts 'four places might disagree' into 'one place is correct, the rest point at it' -- but that guarantee only holds if every future change is made in the canonical file, not the pointer. Before editing CLAUDE.md again to add a rule, check AGENT_SYSTEM.md §9 first: role-specific content belongs in .claude/agents/<role>.md, cross-cutting content belongs in docs/agents/instructions/core-directives.md, and CLAUDE.md itself should almost never need a new paragraph beyond the pointer table gaining or losing a row."
 }

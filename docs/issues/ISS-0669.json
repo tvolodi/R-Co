@@ -1,0 +1,28 @@
+{
+  "issue_id": "ISS-0669",
+  "title": "Pool.acquire() under genuine multi-OS-thread contention loses row-lock isolation (FOR UPDATE SKIP LOCKED claims collide across threads)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "db pool / concurrency correctness",
+  "run_id": "WF02-batch-2-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "e17c346d-177b-4efc-9246-b08fb47fc405",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/709",
+  "requirement_ids": ["ORD-01", "ORD-04"],
+  "summary": "While writing genuine multi-connection concurrency tests for ORD-01 AC1 and ORD-04 AC1 (WF02-batch-2-20260811, TEST-DESIGNER step), found that when multiple std.Thread.spawn-created OS threads each call bpm.pool.Pool.acquire() (and subsequently conn.begin()) concurrently on a shared *Pool, and then race a FOR UPDATE SKIP LOCKED claim query, the row-lock isolation SKIP LOCKED is supposed to guarantee across connections breaks down: all 8 racing threads observed claiming the exact same row, which should be impossible under PostgreSQL's row-locking semantics. Confirmed NOT a client-side aliasing bug (distinct *Conn pointers, distinct pg_backend_pid() values, distinct per-thread memory addresses for the returned correlation_id). An equivalent test in plain Python (real threading.Thread + psycopg2, identical BEGIN + FOR UPDATE SKIP LOCKED query, identical barrier synchronization) correctly produced exactly one winner every time, ruling out a PostgreSQL server-side or environment-level cause. Isolating the variable -- pre-acquiring and begin()-ing all 8 connections sequentially from the main test thread BEFORE spawning any racing thread, so only the claim query itself races across threads -- reliably reproduced the correct one-winner result (confirmed clean across 6+ consecutive runs).",
+  "root_cause": {
+    "type": "suspected_io_threaded_reentrancy_from_raw_os_threads",
+    "details": "src/db/pool.zig's Pool.acquire() (and/or a callee such as applyRequestStorageRouting) is suspected unsafe when called concurrently from raw std.Thread.spawn-created OS threads. The shared std.testing.io / Io.Threaded instance (Zig 0.16's async-IO runtime) is designed as a cooperative task scheduler over its own bounded worker-thread pool; it is plausible that driving it reentrantly from external raw OS threads (rather than through its own task-spawning API) produces incorrect behavior under contention -- e.g. misdelivering a completed I/O response to the wrong logical caller. Pool.acquire()'s own mutex (std.Io.Mutex, backed by real atomic CAS via cmpxchgStrong) was checked and ruled out as the cause -- it correctly serializes the idle-connection-list bookkeeping regardless of caller thread origin. The bug's precise location within Pool.acquire()'s call chain has not yet been pinpointed; this issue records the empirical isolation (acquire-time contention vs. query-time contention) for whoever picks this up next, not a full root-cause diagnosis."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-11T13:30:57Z",
+  "resolved_at": null,
+  "prevention": [
+    "Write a minimal standalone repro isolating Pool.acquire() alone (no ordering query) called concurrently from N raw threads, to confirm/refute whether the bug is in acquire() itself vs. something interacting with the subsequent query.",
+    "Audit Io.Threaded's documented contract for whether it supports being invoked from external OS threads at all, vs. only from tasks it spawns itself.",
+    "If Io.Threaded is not safe under raw-thread reentrancy, Pool.acquire() (or its callers) may need an explicit mutex/serialization point around the whole acquire+first-query sequence when called from raw threads, or Pool needs to document/enforce that callers must not invoke it from threads Io.Threaded does not manage.",
+    "Any future test needing genuine multi-thread concurrency against a shared *Pool should pre-acquire (and begin(), where a transaction is needed) all connections sequentially from the spawning thread BEFORE spawning the racing threads, matching the workaround in tests/integration/ordering_consumer_test.zig's TC-ORD-01-AC1-concurrent and TC-ORD-04-AC1-concurrent, until this is fixed."
+  ]
+}

@@ -87,6 +87,15 @@ pub const Conn = struct {
     pid: i32 = 0,
     secret: i32 = 0,
     server_version: u32 = 0,
+    /// SQLSTATE (5-char code, e.g. "23514") from the most recent ErrorResponse
+    /// ('E' field code 'C'), captured so callers can distinguish specific
+    /// server-side error conditions (e.g. PAR-01 AC4's "no partition of
+    /// relation" check violation) from the generic PgError.ServerError the
+    /// wire-protocol layer otherwise collapses everything to. Reset to all
+    /// zero bytes at the start of every exec()/query() call so a stale
+    /// SQLSTATE from a prior statement can never leak into the next one's
+    /// result. Zero bytes ("\x00" * 5) means "no error on the last call".
+    last_sqlstate: [5]u8 = std.mem.zeroes([5]u8),
 
     // -----------------------------------------------------------------------
     // Connect
@@ -147,6 +156,7 @@ pub const Conn = struct {
     /// Execute a parameterised statement with no result rows (INSERT, UPDATE,
     /// DELETE, DDL, etc.).  Parameters are sent as text-format bind values.
     pub fn exec(self: *Conn, sql: []const u8, params: []const []const u8) PgError!void {
+        self.last_sqlstate = std.mem.zeroes([5]u8);
         try self.extendedQuery(sql, params);
         try self.readUntilReady(null, null);
     }
@@ -158,6 +168,7 @@ pub const Conn = struct {
         sql: []const u8,
         params: []const []const u8,
     ) PgError!Result {
+        self.last_sqlstate = std.mem.zeroes([5]u8);
         try self.extendedQuery(sql, params);
         var rows: std.ArrayList([]?[]u8) = .empty;
         errdefer {
@@ -171,6 +182,15 @@ pub const Conn = struct {
             .rows = try rows.toOwnedSlice(allocator),
             .allocator = allocator,
         };
+    }
+
+    /// SQLSTATE of the most recent ErrorResponse from the server (e.g.
+    /// "23514" for check_violation), or null if the last exec()/query() did
+    /// not error or the server omitted the field (protocol violation; never
+    /// observed against real PostgreSQL, which always sends 'C').
+    pub fn lastSqlState(self: *const Conn) ?[]const u8 {
+        if (std.mem.allEqual(u8, &self.last_sqlstate, 0)) return null;
+        return &self.last_sqlstate;
     }
 
     // -----------------------------------------------------------------------
@@ -325,12 +345,36 @@ pub const Conn = struct {
                     // PgError.ServerError return value is preserved
                     // unchanged — only this side effect is gated.
                     if (log_pg_errors) std.debug.print("\nPOSTGRES ERROR: {s}\n", .{err_raw});
+                    self.captureSqlState(err_raw);
                     got_error = true;
                 },
                 // All other messages are safely skipped.
                 else => {
                     try self.skipBytes(payload_len);
                 },
+            }
+        }
+    }
+
+    /// Parse the SQLSTATE ('C') field out of a raw ErrorResponse body and
+    /// store it on the connection. ErrorResponse fields are
+    /// `byte1(field_code) ++ c_string ++ ...`, terminated by a single zero
+    /// byte. SQLSTATE is always exactly 5 ASCII bytes per the PostgreSQL
+    /// protocol spec; a malformed/short field is ignored (last_sqlstate
+    /// stays zeroed, i.e. lastSqlState() returns null) rather than read out
+    /// of bounds.
+    fn captureSqlState(self: *Conn, err_raw: []const u8) void {
+        var i: usize = 0;
+        while (i < err_raw.len and err_raw[i] != 0) {
+            const field_code = err_raw[i];
+            i += 1;
+            const start = i;
+            while (i < err_raw.len and err_raw[i] != 0) : (i += 1) {}
+            const field_value = err_raw[start..i];
+            if (i < err_raw.len) i += 1; // skip the field's terminating NUL
+            if (field_code == 'C' and field_value.len == 5) {
+                @memcpy(&self.last_sqlstate, field_value[0..5]);
+                return;
             }
         }
     }

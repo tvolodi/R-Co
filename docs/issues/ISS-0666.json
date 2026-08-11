@@ -1,0 +1,28 @@
+{
+  "issue_id": "ISS-0666",
+  "title": "tools/_queue_sync.py's _merge_items_by_issue_id hardcodes the 'issue_id' key, silently breaking cross-workspace staleness protection for handoffs/batch_queue.json",
+  "status": "RESOLVED",
+  "severity": "MAJOR",
+  "category": "pipeline infrastructure / multi-workspace locking",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": null,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/704",
+  "requirement_ids": [],
+  "summary": "Discovered while releasing batch 0 of the stage-16 requirement-batch loop: 'python tools/reqctl_batch_release.py 0 r-co-1-loop --run-id WF02-batch-0-20260811 --stage \"16\"' printed '[_queue_sync] could not read handoffs/batch_queue.json from origin/main ('issue_id'); using local copy (may be genuinely new/uncommitted) -- staleness guarantee weakened to same-machine only'. The release itself succeeded (batch marked DONE correctly), but the cross-workspace staleness protection tools/_queue_sync.py exists to provide was silently disabled for this call, and will be disabled for every future reqctl_batch_claim.py / reqctl_batch_release.py call against handoffs/batch_queue.json, on every workspace, for as long as this bug exists.",
+  "root_cause": {
+    "type": "hardcoded_key_in_generic_helper",
+    "details": "tools/_queue_sync.py's _merge_items_by_issue_id() is explicitly documented (see its own docstring and sync_queue_from_origin()'s docstring) as generic to 'any repo-relative JSON queue file using the same read-mutate-write-whole-file pattern' and specifically names 'handoffs/batch_queue.json for WF-02 requirement-batch locking (tools/reqctl_batch_claim.py)' as an intended caller. However, the function body hardcodes item['issue_id'] as the merge key (origin_ids = {item['issue_id'] for item in origin_items}, and the local_only filter uses the same key) -- this key exists on handoffs/global_queue.json's items (GitHub-issue-keyed) but NOT on handoffs/batch_queue.json's items, which are keyed by the composite (stage_key, batch_index) pair per docs/agents/protocols/LOOP_PROTOCOL.md's own documented schema. Every call to sync_queue_from_origin() with queue_path='handoffs/batch_queue.json' raises a bare KeyError inside the try block, which the broad except Exception clause silently catches and reports as 'could not read ... from origin/main', falling back to the local-only copy every single time -- masquerading a design/schema mismatch as a transient read failure."
+  },
+  "resolution": "Fixed as part of WF03-GH705-20260811 (same run that fixed ISS-0667/GH-705, which touches the same file for a related root cause). tools/_queue_sync.py's merge key is no longer hardcoded to 'issue_id': a new _item_identity(item) helper returns ('issue_id', item['issue_id']) when that key exists (handoffs/global_queue.json's shape) or ('stage_key/batch_key', item.get('stage_key'), item.get('batch_key')) otherwise (handoffs/batch_queue.json's shape). _merge_items_by_issue_id was renamed _merge_items_by_identity and now calls _item_identity() instead of indexing item['issue_id'] directly, so a batch_queue.json-shaped item no longer raises KeyError inside the try block that sync_queue_from_origin()'s broad except silently swallowed.",
+  "verification": "python -c snippet exercising _merge_items_by_identity() directly against both a global_queue.json-shaped fixture (origin wins for a shared issue_id, a local-only issue_id is preserved) and a batch_queue.json-shaped fixture (origin wins for a shared stage_key/batch_key pair, a local-only one is preserved) -- both pass, no KeyError. Also re-ran sync_queue_from_origin() against the real, current handoffs/global_queue.json to confirm the GitHub-issue-queue path (gh_claim.py, queue_release.py, queue_add.py) has no regression: merge succeeds, item count unchanged (116). Covered by tools/test_reqctl_batch_claim.py's test_queue_sync_merge_handles_batch_queue_shape case.",
+  "files_changed": ["tools/_queue_sync.py", "tools/test_reqctl_batch_claim.py"],
+  "created_at": "2026-08-11T07:33:38Z",
+  "resolved_at": "2026-08-11T09:31:31Z",
+  "prevention": [
+    "Make the merge key configurable (a key_fn or key_field parameter passed by the caller) instead of hardcoding 'issue_id', since the docstring already commits to supporting multiple queue schemas.",
+    "tools/reqctl_batch_claim.py and tools/reqctl_batch_release.py should pass a key function that builds the composite (stage_key, batch_index) tuple for handoffs/batch_queue.json items.",
+    "Distinguish a genuine fetch/read failure (network, missing file) from a schema-mismatch KeyError in the except handler -- the current broad 'except Exception' swallows both identically, which is exactly the class of gate-integrity problem docs/agents/instructions/core-directives.md warns about (a detector that goes quiet instead of reporting the real condition).",
+    "Add a regression test exercising sync_queue_from_origin() against a batch_queue.json-shaped fixture, not just the global_queue.json shape, so this class of schema-mismatch bug is caught before merge next time a queue_path other than the default is wired in."
+  ]
+}

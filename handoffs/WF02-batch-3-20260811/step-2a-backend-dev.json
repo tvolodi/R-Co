@@ -1,0 +1,71 @@
+{
+  "handoff_id": "a5613a5b-624c-449f-8415-542c097d478e",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-3-20260811/step-2a-backend-dev.json",
+  "created_at": "2026-08-11T14:26:03Z",
+  "started_at": "2026-08-11T17:08:51Z",
+  "completed_at": "2026-08-11T17:32:54Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/par-01-monthly-range-partitioning.md",
+      "src/design/par-02-partition-maintenance-job.md",
+      "src/design/par-03-partition-scoped-retention.md",
+      "src/design/par-04-attach-scan-required-check.md",
+      "templates/specs/par-02-partition-catalog.migration.yaml",
+      "templates/specs/par-03-retention-class.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Implement PAR-01, PAR-02, PAR-03, PAR-04 per the validated (PASS after 2 rework cycles) design artefacts. This is a large, high-risk implementation -- read ALL FOUR design docs in full before writing any code, they specify exact function signatures, error taxonomies, and several scope items added during rework that are NOT optional: (1) PAR-01: events/events_archive as PARTITION BY RANGE (created_at) from creation, PK widened to (event_id, created_at), new plat_event_idempotency table, widened composite FKs on event_payload_store/webhook_deliveries. (2) PAR-02: daily plat_partition_maintenance scheduled job (following src/scheduler/ conventions) provisioning lead_months=2 future partitions for BOTH events AND events_ephemeral (not just events -- this was a rework-2 addition), plat_partition_catalog + plat_partition_maintenance_run_log tables. (3) PAR-03: DETACH/ATTACH retention logic, events_ephemeral table (hand-written, same PARTITION BY/composite-PK pattern as events), retention_class column on event_type_registry, RetentionClassForbidden guard in Registry.registerType() (app-level check + DB CHECK constraint chk_retention_class_protected_family) added during rework 1, AND the append-time retention-class routing in Store.append() (via a new registry.getType() call, NOT widening validatePayload()'s signature) added during rework 2 that routes retention_class='delete' events to events_ephemeral instead of events. (4) PAR-04: AttachScanRequired CHECK-before-ATTACH validation helper. ALSO REQUIRED (rework 1 scope): retire/remove src/event_store/store.zig::Store.archive() entirely (confirmed zero production call sites) and REWRITE its 4 dependent test cases (TC-ES-07-01, TC-ES-07-02, TC-ADP-11-02, TC-ADP-11-03 in tests/integration/event_store_integration_test.zig) to assert retirement and exercise the new PartitionRetention mechanism instead -- TC-ADP-11-02 specifically must exercise the new append-time routing + real ephemeral-drop behavior end to end (a non-protected delete-class type appended, landing in events_ephemeral, then dropped). Do not leave any of these 4 tests referencing the removed archive() function.\n\nREWORK 1 (routed by ORCH after TEST-DESIGNER Step 3 found a genuine implementation gap, result.status PARTIAL):\n- [BLOCKER] PAR-01 AC4 (StoreError.PartitionMissingForWrite: an append into a calendar month with no attached partition SHALL fail with this structured error, HTTP 503, rather than being routed to another partition or silently succeeding/failing generically) is UNIMPLEMENTED. src/design/par-01-monthly-range-partitioning.md's own Error taxonomy table (line ~533) specifies this StoreError variant and its HTTP mapping; StoreError (src/event_store/store.zig:39-72) declares no such variant, src/api/errors.zig has no mapping for it, and the append INSERT failure path (store.zig:600-618) catches the underlying Postgres 'no partition of relation' error generically as StoreError.TransactionFailed with no SQLSTATE-specific branch. Fix: add the PartitionMissingForWrite variant to StoreError, catch the specific Postgres error (likely SQLSTATE 23514/check violation or a partition-routing error -- verify the exact SQLSTATE Postgres actually returns for an INSERT targeting a RANGE-partitioned parent with no matching partition, by testing it directly) in the append path and map it to this variant instead of the generic TransactionFailed catch-all, and add the src/api/errors.zig HTTP 503 mapping. Write a real integration test proving this (append into a month with no partition attached, assert the specific error and HTTP 503, per PAR-01 AC4's exact wording).\n- [MINOR, address if straightforward, do not let it block PASS if genuinely low-value] PAR-02 AC3/AC5, PAR-03 AC4/AC5/AC6, PAR-04 AC3/AC4 have correct implementations but thin/missing direct test coverage per TEST-DESIGNER's detailed Gap notes in tests/specs/PAR-02.md, PAR-03.md, PAR-04.md -- close what is genuinely quick/valuable (e.g. PAR-02 AC5's missing EXECUTION_PARTITION_CREATED emission call site sounds like it may be a real gap, not just a missing test -- check it), leave documented rather than blocking if it requires artificial-latency injection or similarly disproportionate test infrastructure (e.g. PAR-04 AC3).",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build check exits 0",
+      "python tools/lint_sql_param_types.py src tests exits 0",
+      "Every acceptance criterion in PAR-01, PAR-02, PAR-03, PAR-04 is implemented",
+      "Store.archive() fully removed, zero remaining references to it anywhere in src/ or tests/",
+      "TC-ES-07-01/02 and TC-ADP-11-02/03 rewritten and passing, exercising the new PartitionRetention mechanism (not the removed archive())",
+      "ES-07 and ADP-11 (both RELEASED) remain genuinely satisfied by the rewritten tests -- not just renamed, actually re-verified against the new mechanism",
+      "No mocks/stubs/fakes; all DB access via real PostgreSQL through the Pool",
+      "Real unit + integration tests written and passing for all new code, with own addTest/build.zig wiring (verified real by deliberate-break test)",
+      "Implementation committed to feature/WF02-batch-3-20260811"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1: implemented PAR-01 AC4 StoreError.PartitionMissingForWrite end to end. Verified against the real test DB that an INSERT into events with created_at in an unpartitioned month raises Postgres SQLSTATE 23514 (check_violation), message \"no partition of relation ... found for row\" (partition routing is implemented via implicit CHECK constraints, confirmed live, not guessed). Added SQLSTATE capture to vendor/pg/pg.zig (Conn.last_sqlstate, parsed from the ErrorResponse C field; previously discarded) and a Conn.lastSqlState() accessor threaded through src/db/pool.zig, since neither layer preserved SQLSTATE before this change. store.zig's append() INSERT catch branch now distinguishes SQLSTATE 23514 from every other INSERT failure and returns the new StoreError.PartitionMissingForWrite variant instead of the generic TransactionFailed catch-all. Added src/api/errors.zig::problemPartitionMissingForWrite() (HTTP 503, matching the design doc's Error taxonomy). Wrote a new real integration test (TC-PAR01-04-01, tests/integration/event_store_integration_test.zig) that DETACHes the real current-month events partition, asserts the append fails with PartitionMissingForWrite and leaves zero rows, then unconditionally reattaches it (defer, byte-exact bound read back from pg_get_expr) since AppendParams has no created_at override and the test DB is shared/persistent. Verified idempotent across two consecutive full suite runs; DB confirmed intact after each. Found and fixed a real aliasing bug during this work: lastSqlState() returns a slice into the connection's mutable last_sqlstate field, and the original code read it, then called conn.exec(\"ROLLBACK\") before comparing -- ROLLBACK's own exec() call resets that same backing array before the comparison ran. Fixed by copying the SQLSTATE bytes to a local buffer before issuing ROLLBACK. MINOR (PAR-02 AC5, EXECUTION_PARTITION_CREATED emission): investigated directly -- confirmed a genuine, but NOT small/self-contained, gap. Store.append() requires instance_id to exist as an ACTIVE instance_projections row; partition_maintenance.zig is a platform-level job with no owning instance, and no system/platform instance_id convention exists anywhere in this codebase (checked all 6 other unimplemented EXECUTION_* platform events named in requirements.yaml -- none have an implementation to copy either). Filed as GH #711 / ISS-0670 (MINOR), queued, and left tests/specs/PAR-02.md's Gap note corrected to reflect this rather than implemented under time pressure in this REWORK cycle -- recommends routing to CODE-DESIGNER for a platform-event append convention design note.",
+    "artifacts_out": [
+      "src/event_store/store.zig",
+      "src/api/errors.zig",
+      "src/db/pool.zig",
+      "vendor/pg/pg.zig",
+      "tests/integration/event_store_integration_test.zig",
+      "tests/specs/PAR-02.md",
+      "docs/issues/ISS-0670.json",
+      "handoffs/global_queue.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "PAR-02 AC5 (EXECUTION_PARTITION_CREATED emission) remains unimplemented -- genuinely requires a platform-event append design decision, not a quick fix. Filed as GH #711 / ISS-0670, queued for a future run (recommend routing through CODE-DESIGNER first)."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER (Step 3) for rework re-validation"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

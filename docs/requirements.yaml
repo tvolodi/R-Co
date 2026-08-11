@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-10T21:53:45Z'
+generated_at: '2026-08-11T18:38:47Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -11082,7 +11082,7 @@ requirements:
     title: Pure platform DDL validator
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** MIG-01, adding a pre-flight gate ahead of the tenant fanout.
 
@@ -11100,14 +11100,19 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:09:56Z'
+    last_updated: '2026-08-11T11:18:11Z'
     workflow: PW-05
+    implemented_in:
+    - src/platform/ddl_validate.zig
+    test_spec: tests/specs/DDL-01.md
+    test_run: tests/reports/report-20260811-WF02-batch-1.yaml
+    released_at: '2026-08-11T11:18:11Z'
   DDL-02:
     id: DDL-02
     title: Expand-then-constrain ordering check
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** DDL-01, adding a cross-statement ordering check to the same validation pass.
 
@@ -11124,8 +11129,13 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:09:57Z'
+    last_updated: '2026-08-11T14:00:40Z'
     workflow: PW-05
+    implemented_in:
+    - src/platform/ddl_validate.zig
+    test_spec: tests/specs/DDL-02.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:40Z'
   DDL-03:
     id: DDL-03
     title: Phased DDL generation
@@ -11181,7 +11191,7 @@ requirements:
     title: Reserved plat_ object namespace
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** SPT-01, reserving an object namespace inside every tenant schema.
 
@@ -11198,8 +11208,13 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:00Z'
+    last_updated: '2026-08-11T07:15:35Z'
     workflow: PW-05
+    implemented_in:
+    - src/platform/ddl_namespace.zig
+    test_spec: tests/specs/DDL-05.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:35Z'
   FIL-01:
     id: FIL-01
     title: Human task attachment upload
@@ -11560,7 +11575,7 @@ requirements:
     title: Platform migration control table
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL record platform migration state in a single cross-tenant control table `platform.platform_migrations`, holding one row per `(migration_id, tenant_id)` with `status` in `pending`, `done`, `failed`, plus `error_msg`, `completed_at` and `run_id`. The table carries `UNIQUE (migration_id, tenant_id)` as the upsert anchor and the partial index `platform_migrations_resume_idx ON (migration_id, status) WHERE status IN ('pending','failed')` covering the resume query. This replaces reliance on the per-schema `schema_migrations` table as the only record of migration state.
 
@@ -11575,14 +11590,19 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:17Z'
+    last_updated: '2026-08-11T07:15:36Z'
     workflow: PW-04
+    implemented_in:
+    - migrations/1144_platform_migrations_control_table.sql
+    test_spec: tests/specs/MIG-01.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:36Z'
   MIG-02:
     id: MIG-02
     title: Control row commits with the DDL
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL upsert a tenant's `platform.platform_migrations` row to `done` inside the same transaction that applies that tenant's DDL steps, so a `done` row proves the DDL committed. A per-tenant failure is recorded as `status = 'failed'` with `error_msg` in a separate transaction opened after the tenant transaction has rolled back.
 
@@ -11597,14 +11617,20 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:18Z'
+    last_updated: '2026-08-11T07:15:38Z'
     workflow: PW-04
+    implemented_in:
+    - migrations/1144_platform_migrations_control_table.sql
+    - src/platform/migration_fanout.zig
+    test_spec: tests/specs/MIG-02.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:38Z'
   MIG-03:
     id: MIG-03
     title: Tenant migration fanout with continue on failure
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL apply a migration across a snapshot of enabled tenants ordered by `tenant_id`, holding `pg_try_advisory_lock(hashtext(migration_id))` on the platform database for the duration of the run. A failure in tenant N SHALL NOT prevent tenants N+1 through M from being attempted; per-tenant errors are collected and the run continues to the end of the snapshot.
 
@@ -11619,14 +11645,20 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:19Z'
+    last_updated: '2026-08-11T07:15:39Z'
     workflow: PW-04
+    implemented_in:
+    - migrations/1144_platform_migrations_control_table.sql
+    - src/platform/migration_fanout.zig
+    test_spec: tests/specs/MIG-03.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:39Z'
   MIG-04:
     id: MIG-04
     title: Migration resume for pending and failed tenants
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL provide `POST /api/v1/admin/migrations/{migration_id}/resume`, which applies the migration only to tenants whose control row is `pending` or `failed`, reading that set through `platform_migrations_resume_idx`. Tenants whose row is `done` are never re-applied.
 
@@ -11641,14 +11673,19 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:20Z'
+    last_updated: '2026-08-11T11:18:12Z'
     workflow: PW-04
+    implemented_in:
+    - src/platform/migration_fanout.zig
+    test_spec: tests/specs/MIG-04.md
+    test_run: tests/reports/report-20260811-WF02-batch-1.yaml
+    released_at: '2026-08-11T11:18:12Z'
   MIG-05:
     id: MIG-05
     title: Idempotent migration re-run
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL make a migration run idempotent through `ON CONFLICT (migration_id, tenant_id) DO UPDATE ... WHERE status != 'done'`. Re-running a completed migration is a no-op for tenants already `done`, and opens no transaction against their schemas. A migration file is frozen once any tenant holds a `done` row for its `migration_id`.
 
@@ -11663,14 +11700,19 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:21Z'
+    last_updated: '2026-08-11T11:18:13Z'
     workflow: PW-04
+    implemented_in:
+    - src/platform/migration_fanout.zig
+    test_spec: tests/specs/MIG-05.md
+    test_run: tests/reports/report-20260811-WF02-batch-1.yaml
+    released_at: '2026-08-11T11:18:13Z'
   MIG-06:
     id: MIG-06
     title: Migration admin surface and fix-forward policy
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL expose a migration admin surface requiring the platform-operator role: `POST /api/v1/admin/migrations/run` to start a fanout, `GET /api/v1/admin/migrations/{migration_id}/status` returning aggregate `pending`, `done` and `failed` counts with a per-tenant list carrying `error_msg` and `completed_at`, and `POST /api/v1/admin/migrations/{migration_id}/resume`. A defective migration is corrected by authoring a new `migration_id` that fixes forward; issuing compensating DDL across tenant schemas is prohibited, because a partial compensation leaves schemas divergent.
 
@@ -11685,8 +11727,14 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:23Z'
+    last_updated: '2026-08-11T11:18:15Z'
     workflow: PW-04
+    implemented_in:
+    - src/api/routes/platform_migrations.zig
+    - src/operations/pending_migration_gate.zig
+    test_spec: tests/specs/MIG-06.md
+    test_run: tests/reports/report-20260811-WF02-batch-1.yaml
+    released_at: '2026-08-11T11:18:15Z'
   OBP-01:
     id: OBP-01
     title: Outbox depth cap and cached depth counter
@@ -11785,7 +11833,7 @@ requirements:
     title: Effect completion claim guard
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > A BPM Consumer SHALL claim a pending effect completion with `SELECT completion_id, correlation_id, sequence_no FROM plat_effect_completion WHERE status = 'PENDING' ORDER BY correlation_id, sequence_no FOR UPDATE SKIP LOCKED LIMIT 1`, executed inside the transaction that will apply it. `SKIP LOCKED` guarantees no two consumers hold the same completion row. The claim guard SHALL NOT be relied on to serialise two different rows of the same correlation; that is the execute guard of ORD-02.
 
@@ -11800,14 +11848,23 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:28Z'
+    last_updated: '2026-08-11T14:00:44Z'
     workflow: PW-07
+    implemented_in:
+    - src/ordering/mod.zig
+    - src/ordering/cursor.zig
+    - src/ordering/consumer.zig
+    - src/ordering/observability.zig
+    - migrations/1145_ord01_plat_effect_completion.sql
+    test_spec: tests/specs/ORD-01.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:44Z'
   ORD-02:
     id: ORD-02
     title: Per-correlation execute guard
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > Inside the claim transaction a BPM Consumer SHALL evaluate `SELECT pg_try_advisory_xact_lock(hashtext(correlation_id)::bigint)` before applying a completion. A `false` result SHALL cause an immediate `ROLLBACK`, returning the row to `PENDING` without incrementing any retry counter, and the consumer SHALL move to another correlation. The lock is transaction-scoped and SHALL NOT be released by an explicit unlock call.
 
@@ -11822,8 +11879,16 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:29Z'
+    last_updated: '2026-08-11T14:00:48Z'
     workflow: PW-07
+    implemented_in:
+    - src/ordering/mod.zig
+    - src/ordering/cursor.zig
+    - src/ordering/consumer.zig
+    - src/ordering/observability.zig
+    test_spec: tests/specs/ORD-02.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:48Z'
   ORD-03:
     id: ORD-03
     title: Sequence order guard and gap sweeping
@@ -11852,7 +11917,7 @@ requirements:
     title: Cross-correlation parallelism and lag metrics
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > Completions belonging to different `correlation_id` values SHALL continue to be applied in parallel: distinct correlations take distinct advisory lock keys and distinct `plat_correlation_cursor` rows, so `consumer_count` correlations (default 8) are applied concurrently. The platform SHALL expose per-correlation lag `max(sequence_no) - applied_seq`, the age of the oldest `PENDING` row, and the rate at which the execute guard of ORD-02 returns `false`.
 
@@ -11867,14 +11932,23 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:31Z'
+    last_updated: '2026-08-11T14:00:51Z'
     workflow: PW-07
+    implemented_in:
+    - src/ordering/mod.zig
+    - src/ordering/cursor.zig
+    - src/ordering/consumer.zig
+    - src/ordering/observability.zig
+    - migrations/1146_ord04_plat_correlation_cursor.sql
+    test_spec: tests/specs/ORD-04.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:51Z'
   PAR-01:
     id: PAR-01
     title: Monthly range partitioning of the event log
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** ES-07, replacing the row-by-row archival move with a partition lifecycle.
 
@@ -11891,14 +11965,24 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:32Z'
+    last_updated: '2026-08-11T18:38:39Z'
     workflow: PW-06
+    implemented_in:
+    - migrations/1147_par01_events_partitioning.sql
+    - src/event_store/store.zig
+    - src/api/errors.zig
+    test_spec: tests/specs/PAR-01.md
+    test_run: tests/reports/report-20260811-WF02-batch-3.yaml
+    tested_at: '2026-08-11T18:24:52Z'
+    release_run: WF02-batch-3-20260811
+    release_decision: docs/status/release-stage16-WF02-batch-3-20260811.yaml
+    released_at: '2026-08-11T18:38:39Z'
   PAR-02:
     id: PAR-02
     title: Proactive future partition creation
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > The scheduler SHALL run `plat_partition_maintenance` daily at 00:15 UTC in every tenant schema and SHALL keep `lead_months` future monthly partitions attached at all times, default 2. Partition creation SHALL be idempotent: creating a partition that already exists and is attached is a no-op. No append SHALL ever be the operation that creates a partition.
 
@@ -11913,14 +11997,24 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:33Z'
+    last_updated: '2026-08-11T18:38:46Z'
     workflow: PW-06
+    note: AC1/AC2/AC3/AC4 met; AC5 (EXECUTION_PARTITION_CREATED event emission) NOT MET -- zero call sites
+      in src/, confirmed by grep. Tracked as ISS-0670 / GH-711 (OPEN, MAJOR). Held at TESTED, not RELEASED,
+      until AC5 is implemented -- see docs/status/release-stage16-WF02-batch-3-20260811.yaml for RELEASE-VALIDATOR's
+      full reasoning.
+    implemented_in:
+    - src/scheduler/partition_maintenance.zig
+    - migrations/1148_par02_partition_catalog.sql
+    test_spec: tests/specs/PAR-02.md
+    test_run: tests/reports/report-20260811-WF02-batch-3.yaml
+    tested_at: '2026-08-11T18:24:52Z'
   PAR-03:
     id: PAR-03
     title: Partition-scoped retention and archival
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** ADP-11, giving the deletion prohibition a physical retention mechanism.
 
@@ -11938,14 +12032,24 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:34Z'
+    last_updated: '2026-08-11T18:38:47Z'
     workflow: PW-06
+    note: AC1-AC5 met; AC6 (EXECUTION_PARTITION_DETACHED / EXECUTION_PARTITION_DROPPED event emission)
+      NOT MET -- zero call sites in src/, confirmed by grep. Tracked as ISS-0670 / GH-711 (OPEN, MAJOR),
+      same umbrella issue as PAR-02 AC5. Held at TESTED, not RELEASED, until AC6 is implemented -- see
+      docs/status/release-stage16-WF02-batch-3-20260811.yaml for RELEASE-VALIDATOR's full reasoning.
+    implemented_in:
+    - src/scheduler/partition_retention.zig
+    - migrations/1149_par03_retention_class.sql
+    test_spec: tests/specs/PAR-03.md
+    test_run: tests/reports/report-20260811-WF02-batch-3.yaml
+    tested_at: '2026-08-11T18:24:52Z'
   PAR-04:
     id: PAR-04
     title: Partition constraints declared before attach
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > Every partition SHALL carry `CHECK (tenant_id IS NOT NULL)` and a CHECK matching its own range bounds, both declared on the standalone table before `ATTACH PARTITION` is issued. With both constraints present PostgreSQL validates the attach from the catalog and takes `SHARE UPDATE EXCLUSIVE`; without them it scans the partition under a stronger lock. An attach against a partition missing either constraint SHALL be refused with `AttachScanRequired`.
 
@@ -11960,8 +12064,16 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:35Z'
+    last_updated: '2026-08-11T18:38:41Z'
     workflow: PW-06
+    implemented_in:
+    - src/db/partition_attach.zig
+    test_spec: tests/specs/PAR-04.md
+    test_run: tests/reports/report-20260811-WF02-batch-3.yaml
+    tested_at: '2026-08-11T18:24:52Z'
+    release_run: WF02-batch-3-20260811
+    release_decision: docs/status/release-stage16-WF02-batch-3-20260811.yaml
+    released_at: '2026-08-11T18:38:41Z'
   PAR-05:
     id: PAR-05
     title: Online conversion to a partitioned event log

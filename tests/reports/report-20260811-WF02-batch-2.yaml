@@ -1,0 +1,159 @@
+run_id: WF02-batch-2-20260811
+report_date: "2026-08-11T13:47:01Z"
+agent: TEST-RUNNER
+workflow_id: WF-02
+workflow_step: "04"
+
+requirement_ids:
+  - DDL-02
+  - ORD-01
+  - ORD-02
+  - ORD-04
+
+pre_checks:
+  test_env_verify:
+    command: "zig build test-env-verify"
+    result: PASS
+    note: >
+      Confirmed HEALTHY (10/10 checks) by ORCH immediately before dispatching
+      this handoff. Not re-run independently by TEST-RUNNER this batch since
+      ORCH's confirmation is stated directly in the handoff context and no
+      env-related anomalies were observed across any of the six commands
+      below.
+  env_vars_set_explicitly:
+    BPM_TEST_DB_URL: "postgres://bpm:bpm@localhost:5433/bpm_test"
+    BPM_DB_URL: "postgres://bpm:bpm@localhost:5432/bpm_dev"
+    note: >
+      Set explicitly in the PowerShell session before every DB-touching
+      command per handoff instructions, since the ambient shell environment
+      carries a stale BPM_TEST_DB_URL.
+
+layers:
+  - name: ddl-validate
+    command: "zig build test-ddl-validate --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 3/3 steps succeeded; 28/28 tests passed"
+    tests_total: 28
+    tests_passed: 28
+    tests_failed: 0
+
+  - name: ordering
+    command: "zig build test-ordering --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 3/3 steps succeeded; 4/4 tests passed"
+    tests_total: 4
+    tests_passed: 4
+    tests_failed: 0
+
+  - name: integration-ord01
+    command: "zig build test-integration-ord01 --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 6/6 steps succeeded; 3/3 tests passed"
+    tests_total: 3
+    tests_passed: 3
+    tests_failed: 0
+
+  - name: integration-ord04
+    command: "zig build test-integration-ord04 --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 6/6 steps succeeded; 4/4 tests passed"
+    tests_total: 4
+    tests_passed: 4
+    tests_failed: 0
+
+  - name: integration-ordering-run1
+    command: "zig build test-integration-ordering --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 6/6 steps succeeded; 10/10 tests passed"
+    tests_total: 10
+    tests_passed: 10
+    tests_failed: 0
+    note: >
+      First of two required runs (contains genuine multi-thread concurrency
+      tests per handoff instructions -- run twice to confirm reproducibility,
+      not flaky).
+
+  - name: integration-ordering-run2
+    command: "zig build test-integration-ordering --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 6/6 steps succeeded; 10/10 tests passed"
+    tests_total: 10
+    tests_passed: 10
+    tests_failed: 0
+    note: >
+      Second of two required runs. Identical outcome to run 1 (10/10 pass,
+      exit 0, same 6/6 build steps succeeded) -- confirmed reproducible,
+      no flakiness observed across the two runs.
+
+  - name: unit-full
+    command: "zig build test --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 95/95 steps succeeded; 1053/1117 tests passed (64 skipped)"
+    tests_total: 1117
+    tests_passed: 1053
+    tests_failed: 0
+    tests_skipped: 64
+    note: >
+      Raw output contained a cosmetic "failed command: ... test.exe
+      --listen=-" line (appearing twice, once per affected binary: the
+      ISS-602 differential-corpus test and the iss0173-orphan test) despite
+      exit code 0 and 95/95 steps succeeded with no failed-step count
+      anywhere in the progress tree. This is the documented Zig 0.16
+      live-progress-renderer artifact (stale "w" waiting-state frame in
+      non-TTY output), root-caused in ISS-0143/GH-448 and reconfirmed in
+      ISS-0028/ISS-0077/ISS-0078/WF02-batch-0/WF02-batch-1: it is not a
+      build-graph failure. Verified per the documented method (also
+      docs/anti-patterns.md row on this exact artifact) -- trust the
+      "Build Summary: N/N steps succeeded" line and the raw process exit
+      code over the "failed command" substring; grepped full captured
+      output for "FAIL"/"error:" outside of ADVISORY/"failed command" lines
+      and found none. $LASTEXITCODE captured directly (not through a text
+      filter) = 0. The "iss0173-orphan TC-01..04 uuid=..." lines are
+      unconditional std.debug.print trace lines from
+      tests/unit/iss0173_oidc_jwks_orphan_test.zig (ISS-0173, RESOLVED)
+      emitted by every passing invocation of those tests, not a failure
+      indicator. The ISS-602 differential corpus line ("15 total, 15
+      matched, 0 diverged, 0 cel-err, 0 expr-err, 0 both-err") is that
+      test's own internal report confirming full pass with zero
+      divergences. lint_test_wiring reported PASS (285/285 test-bearing
+      files reachable, 4 pre-existing type-only-pin ADVISORY findings per
+      ISS-0172/GH-500, non-blocking).
+
+excluded_by_instruction:
+  - command: "zig build test-integration"
+    reason: >
+      Full ~40-binary integration umbrella deliberately not run per handoff
+      instructions -- documented host capacity/reliability issue under full
+      concurrency (docs/issues/ISS-0665.json / GH-702, still open) produces
+      non-deterministic unrelated failures. Only this batch's targeted
+      integration steps (ord01, ord04, ordering x2) plus the full unit suite
+      were required for WF-02 Step 4.
+
+summary:
+  total_layers: 7
+  layers_passed: 7
+  layers_failed: 0
+  breakdown:
+    ddl_validate: "28/28 passed, 0 failed"
+    ordering: "4/4 passed, 0 failed"
+    integration_ord01: "3/3 passed, 0 failed"
+    integration_ord04: "4/4 passed, 0 failed"
+    integration_ordering_run1: "10/10 passed, 0 failed"
+    integration_ordering_run2: "10/10 passed, 0 failed"
+    unit_full: "1053/1117 passed, 0 failed, 64 skipped"
+  overall_status: PASS
+  concurrency_reproducibility: >
+    test-integration-ordering run 1 and run 2 produced identical results
+    (10/10 pass, exit 0, 6/6 build steps succeeded) -- confirmed
+    reproducible, not flaky.
+
+issues: []
+
+next_action: "Route to RELEASE-VALIDATOR (Step 5)"

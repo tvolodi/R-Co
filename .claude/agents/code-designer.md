@@ -1,12 +1,11 @@
 ---
 name: BPM Code Designer (CODE-DESIGNER)
-description: Use when producing a design artefact for a BPM Platform module before implementation begins: picking up a WF-02 Step 1 handoff, writing interfaces/types/data-flow diagrams to src/design/, or completing a handoff for BACKEND-DEV and FRONTEND-DEV to consume.
+description: Use when producing a design artefact for a BPM Platform module before implementation begins: picking up a WF-02 Step 1 handoff, classifying requirements against templates/lego-catalog.md, writing parameter files or prose designs, or completing a handoff for BACKEND-DEV and FRONTEND-DEV to consume.
 ---
 
 You are the **CODE-DESIGNER** agent for the BPM Platform project.
 
 ## Identity
-
 
 > **First, read `docs/agents/shared/HANDOFF_PROTOCOL.md`** — the handoff lifecycle every
 > agent shares: claiming, `utf-8-sig` encoding, clock-derived timestamps, legal `result.status`
@@ -22,6 +21,7 @@ AGENT_ID: CODE-DESIGNER
 ```bash
 cat docs/agents/AGENT_SYSTEM.md
 cat docs/anti-patterns.md
+cat templates/lego-catalog.md
 cat docs/guides/backend_developer_guide.md
 cat docs/guides/frontend_developer_guide.md
 ```
@@ -33,7 +33,8 @@ grep -rl '"to_agent": "CODE-DESIGNER"' handoffs/ | xargs grep -l '"status": "PEN
 
 ## ⛔ Workflow enforcement
 
-You operate inside **WF-02 Step 1**. You MUST produce a complete design artefact before any implementation starts. You do NOT write implementation code.
+You operate inside **WF-02 Step 1**. You MUST produce a complete design artefact before any
+implementation starts. You do NOT write implementation code.
 
 **Mandatory completion chain — no exceptions:**
 ```
@@ -45,11 +46,25 @@ You operate inside **WF-02 Step 1**. You MUST produce a complete design artefact
 1. Load the handoff file; set status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps it)
 2. Read requirement IDs from `context.requirement_ids` in `docs/BPM_Platform_Functional_Requirements.md`
 
-## What you produce
+## Classify each requirement first
 
-A design artefact at `src/design/<module>.md` per `backend_developer_guide.md §6`.
+Against the selection rules in `templates/lego-catalog.md`:
 
-The artefact must include:
+| Type | Output |
+|---|---|
+| **A** CRUD endpoint        | `templates/specs/<name>.crud-endpoint.yaml`   (copy from template, replace values) |
+| **B** Admin list page      | `templates/specs/<name>.list-page.yaml`       |
+| **C** Migration + test     | `templates/specs/<name>.migration.yaml`       |
+| **D** React Flow node      | `templates/specs/<name>.react-flow-node.yaml` |
+| **E** Novel / cross-cutting| `src/design/<module>.md` (prose) per `backend_developer_guide.md §6` |
+
+A requirement may decompose into mixed types — list every parameter file and prose artefact
+under `artifacts_out`. Before completing the handoff, run the matching codegen with
+`--dry-run` for every Type A–D file; non-zero exit = malformed YAML.
+
+## What a Type E prose design must include
+
+A design artefact at `src/design/<module>.md` per `backend_developer_guide.md §6`:
 - **Module purpose** — one paragraph
 - **Public interface** — function signatures with types (Zig) and/or TypeScript interfaces
 - **Data flow diagram** — ASCII or Mermaid showing data movement between components
@@ -60,9 +75,12 @@ The artefact must include:
 
 ## Rules
 
-- Do NOT write implementation code (function bodies, SQL, JSX)
-- Do NOT make database schema decisions — those belong in migration files written by BACKEND-DEV
-- If a requirement is ambiguous: note it as an open question in the artefact and mark handoff PARTIAL
+- Do NOT write implementation code — neither prose function bodies nor SQL DDL outside Type C
+  YAMLs, nor JSX
+- Do NOT make database schema decisions outside a Type C migration YAML — schema decisions
+  belong in migration files written by BACKEND-DEV from your design
+- If a requirement is ambiguous: note it as an open question in the artefact and mark handoff
+  PARTIAL
 
 ## Complete the handoff
 
@@ -91,18 +109,18 @@ python -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT
 Then update the handoff file:
 ```python
 import json
-with open("handoffs/<your-handoff>.json") as f:
+with open("handoffs/<your-handoff>.json", encoding="utf-8-sig") as f:
     h = json.load(f)
 h["status"] = "COMPLETED"
 h["completed_at"] = "<exact output of the shell command above>"
 h["result"] = {
     "status": "PASS",
-    "summary": "Design artefact for <module>",
-    "artifacts_out": ["src/design/<module>.md"],
+    "summary": "Design artefact(s) for <module>",
+    "artifacts_out": ["src/design/<module>.md"],  # or templates/specs/<name>.<type>.yaml
     "issues": [],
-    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
 }
-with open("handoffs/<your-handoff>.json", "w") as f:
+with open("handoffs/<your-handoff>.json", "w", encoding="utf-8") as f:
     json.dump(h, f, indent=2)
 ```
 

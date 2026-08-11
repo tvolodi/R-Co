@@ -1,0 +1,81 @@
+{
+  "handoff_id": "279e2315-4c36-4f4b-9054-4d5da83c9cb9",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-3-20260811/step-final-backend-dev-git-merge.json",
+  "created_at": "2026-08-11T18:44:58Z",
+  "started_at": "2026-08-11T18:44:58Z",
+  "completed_at": "2026-08-11T19:04:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Step Final git-merge for feature/WF02-batch-3-20260811 (33 commits ahead of main, working tree clean). Push the branch, open a PR summarizing the split release (PAR-01/PAR-04 fully RELEASED, PAR-02/PAR-03 TESTED but withheld pending ISS-0670/GH-711), verify CI green, squash-merge, delete the branch, return to a clean main. Per CLAUDE.md GitHub Branch Management (MANDATORY) -- this is pre-authorized, do not ask for confirmation.",
+    "acceptance_criteria": [
+      "Branch pushed to origin",
+      "PR opened with an accurate description of the split release",
+      "All CI checks pass (verify via gh pr checks, and run python tools/check_github_status.py before attributing any red check)",
+      "Squash-merged to main",
+      "Feature branch deleted (remote + local)",
+      "Working tree returns to a clean main"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Pushed feature/WF02-batch-3-20260811 (33 commits) to origin, opened PR #713 with an honest split-release description (PAR-01/PAR-04 RELEASED, PAR-02/PAR-03 TESTED pending ISS-0670/GH-711, plus the PAR-01 AC4 rework cycle). First CI run (31524488824) surfaced a genuine, non-flaky BLOCKER: python tools/check_github_status.py confirmed GitHub Actions was operational, so the red 'Tenant isolation tests (TNT-01..04)' check (29/34, 5 failures: TC-TNT-01-02/01-04/02-01/07-02/07-04, 'business table events found in public') was attributable to this branch's own change, not infra flake -- the most recent main-branch CI run (fd069f14, run 31501446173) had passed this exact check. Root-caused to migrations/1147_par01_events_partitioning.sql (this run's own PAR-01 migration): its Migration 1 DROP/CREATE for events/events_archive ran unconditionally on every schema pass including public, recreating tables GBL-112 had already permanently dropped from public as PER_TENANT business tables. Per core-directives.md Unblock-Everything ('a broken migration that blocks yours' is explicitly in-scope, not filed-and-forwarded), fixed in place: wrapped Migrations 1-3's DDL in a current_schema()-guarded DO block using EXECUTE'd dynamic SQL (migration files run via conn.simpleQuery(), not psql, so top-level DDL cannot itself be conditional -- confirmed by reading src/db/migrations.zig), plus an explicit same guard on Migration 4 for defense-in-depth. Verified locally against db_test (port 5433) before repushing: test-integration-tnt 34/34 (was 29/34), all 6 batch-specific PAR targets unchanged (2/2, 5/5, 4/4, 3/3, 4/4, 29/29), full unit suite 1067/1131 clean (0 failures, matches RELEASE-VALIDATOR's Step 5 baseline exactly), a genuinely fresh-database zig build migrate exits 0 with events/events_archive confirmed absent from public afterward, and both lint_migration_schema.py and lint_test_table_refs.py clean. Pushed fix commit fa447f83; second CI run (31525729039) went 8/8 green including Tenant isolation tests. Squash-merged via gh pr merge --squash --delete-branch; local git errored on gh's own post-merge 'git checkout main' step only (main is checked out in the sibling worktree C:/Users/tvolo/dev/ai-dala/R-Co, this worktree cannot check it out directly -- same constraint as prior batches in this run) -- verified via gh pr view --json state,mergeCommit that the merge itself landed (state MERGED, mergeCommit 38cb7967) independent of that local error. gh's --delete-branch had not yet run when the local error interrupted it, so the remote branch was deleted explicitly via gh api -X DELETE; confirmed gone via a 404 branch lookup and git fetch --prune showing '[deleted] ... origin/feature/WF02-batch-3-20260811'. Local cleanup: git checkout --detach origin/main (working-tree-content equivalent, per this run's established precedent, since main cannot be checked out directly in this worktree), then git branch -D feature/WF02-batch-3-20260811 -- confirmed the local branch no longer appears in git branch -a and the working tree is clean.",
+    "artifacts_out": [
+      "PR #713: https://github.com/tvolodi/R-Co/pull/713",
+      "merge commit: 38cb79675d82da10d6eac1a500f87fef678d29b3",
+      "fix commit: fa447f832475916acb27bdf611c576f85bd39836 (migrations/1147_par01_events_partitioning.sql public-schema-pass guard)",
+      "branch: feature/WF02-batch-3-20260811 (squash-merged into main, branch deleted both remote and local)"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "PR #713's first CI run (31524488824) failed Tenant isolation tests (TNT-01..04) 29/34 because migrations/1147_par01_events_partitioning.sql (this run's own PAR-01 migration, not a pre-existing/unrelated defect) recreated events/events_archive in the public schema, regressing GBL-112. Fixed in place per Unblock-Everything (blocking this run's own merge acceptance criteria); not filed as a separate GitHub issue since it was fully root-caused, fixed, verified, and merged within this same Step Final -- no residual defect remains to track."
+      }
+    ],
+    "next_action": "ORCH marks WF02-batch-3-20260811 COMPLETED and releases owned_modules lock. PAR-02/PAR-03's ISS-0670/GH-711 (event-emission gap) remains open and queued as its own future run per RELEASE-VALIDATOR's Step 5 finding -- unaffected by this Step Final."
+  },
+  "git_evidence": {
+    "branch_name": "feature/WF02-batch-3-20260811",
+    "commit_sha_list": [
+      "fa447f832475916acb27bdf611c576f85bd39836"
+    ],
+    "squash_merge_sha": "38cb79675d82da10d6eac1a500f87fef678d29b3",
+    "remote_branch": "deleted (origin/feature/WF02-batch-3-20260811, confirmed via gh api -X DELETE + 404 lookup + git fetch --prune showing [deleted])",
+    "local_branch": "deleted (git branch -D, confirmed absent from git branch -a)",
+    "push_status": "success (two pushes: 0b238f96..71d9cbd7 initial, 71d9cbd7..fa447f83 fix commit)",
+    "pr_url": "https://github.com/tvolodi/R-Co/pull/713",
+    "pr_number": 713,
+    "pr_create_error": null,
+    "ci_runs": [
+      {
+        "run_id": 31524488824,
+        "result": "1 failed of 8 (Tenant isolation tests (TNT-01..04) 29/34, all others pass)",
+        "check_github_status_output": "GitHub Actions status: operational -- platform healthy. A red run is therefore attributable to the change under test."
+      },
+      {
+        "run_id": 31525729039,
+        "result": "8/8 pass (after fix commit fa447f83)"
+      }
+    ],
+    "worktree_note": "gh pr merge --squash --delete-branch's merge succeeded server-side (confirmed via gh pr view 713 --json state,mergeCommit -> MERGED / 38cb7967) but its local git checkout main step errored because main is checked out in the sibling worktree C:/Users/tvolo/dev/ai-dala/R-Co; this worktree's HEAD was left instead as a detached checkout of origin/main (git checkout --detach origin/main) after explicit remote+local branch deletion, per this run's established precedent for this exact worktree constraint."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

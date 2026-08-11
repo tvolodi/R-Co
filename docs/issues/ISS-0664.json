@@ -1,0 +1,29 @@
+{
+  "issue_id": "ISS-0664",
+  "title": "tools/lint_test_isolation.baseline.json had 3 stale T010 entries left by GH-681's line-renumbering, failing TC-RG-02",
+  "status": "RESOLVED",
+  "severity": "MAJOR",
+  "category": "test infrastructure / gate integrity",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": null,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/701",
+  "requirement_ids": [],
+  "summary": "Discovered and fixed while running the Step 00a Green-Main Gate for WF02-batch-0-20260811 (DDL-05, MIG-01, MIG-02, MIG-03). tests/integration/gh512_t010_regression_test.zig's TC-RG-02 (GH-512 regression snapshot test) failed on main: 'total_issues is 119, expected 117 per snapshot'. TC-RG-01 (which runs a LIVE python tools/lint_test_isolation.py --no-baseline scan) correctly reported T010=74, matching the ceiling -- but TC-RG-02 reads the COMMITTED baseline file tools/lint_test_isolation.baseline.json, which contained T010=77 (3 phantom entries).",
+  "root_cause": {
+    "type": "stale_committed_baseline_after_line_renumbering",
+    "details": "Commit 7b1421f9 (WF03-GH681-20260810, ISS-0659 advisory-lock extension to 31 self-managed-pool binaries) re-keyed tools/lint_test_isolation.baseline.json's line numbers (shifted ~13 by added imports + acquireLock helper) and, in the process, removed one legitimate T050 entry (main_test.zig:1, correct) but left 3 stale T010 entries whose line numbers (obs06_alerts_test.zig:174 x2, oidc13_tenant_claim_source_test.zig:106) no longer corresponded to any real finding. Confirmed by diffing the committed baseline's issue set against a fresh 'python tools/lint_test_isolation.py --no-baseline --json tests/integration' scan, keyed by (severity, code, file, line, message): exactly 3 baseline-only entries, 0 live-only entries, net effect +2 phantom BLOCKER-class entries pushing total_issues from the correct 116 to 119 (117 was the pre-GH-681 snapshot value, so the true delta introduced by GH-681 was 117->119, +2, not the -1 the removed main_test.zig entry alone would suggest)."
+  },
+  "resolution": "Regenerated tools/lint_test_isolation.baseline.json's issues array directly from a live 'python tools/lint_test_isolation.py --no-baseline --json tests/integration' scan (119 -> 116 entries; T010 74, matching TC-RG-01's live ceiling exactly). Updated tests/specs/fixtures/gh512-baseline-snapshot.json to snapshot_version 4 with the corrected expected counts and a snapshot_v4_addendum documenting the bisection. Verified via 'zig build test-integration-gh512': TC-RG-01/02/03 all PASS, 6/6 build steps succeeded.",
+  "verification": "zig build test-integration-gh512 --summary all -> Build Summary: 6/6 steps succeeded; 3/3 tests passed. TC-RG-01 PASS: T010 BLOCKER count = 74 (<= ceiling 74). TC-RG-02 PASS: baseline matches snapshot (total=116, by_code={T010=74,T020=11,T030=6,T050=23,T060=2}, platform_admin=14). TC-RG-03 PASS.",
+  "files_changed": [
+    "tools/lint_test_isolation.baseline.json",
+    "tests/specs/fixtures/gh512-baseline-snapshot.json"
+  ],
+  "created_at": "2026-08-11T05:17:45Z",
+  "resolved_at": "2026-08-11T05:17:45Z",
+  "prevention": [
+    "Any PR that re-keys tools/lint_test_isolation.baseline.json after a line-renumbering change should verify the resulting entry count against a live '--no-baseline' scan (diff by (severity, code, file, line, message) key) before committing, not just diff-review the JSON by eye.",
+    "Consider adding a CI-level check that fails fast if the committed baseline's total_issues disagrees with a live scan, rather than relying solely on TC-RG-02's snapshot comparison (which itself can drift from the baseline, as happened here — two files, one source of truth, no automatic sync)."
+  ]
+}

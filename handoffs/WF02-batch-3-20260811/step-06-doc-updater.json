@@ -1,0 +1,53 @@
+{
+  "handoff_id": "70c40f2b-d6c0-4c16-828b-00b7e4ce2447",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-batch-3-20260811/step-06-doc-updater.json",
+  "created_at": "2026-08-11T18:35:46Z",
+  "started_at": "2026-08-11T18:35:46Z",
+  "completed_at": "2026-08-11T18:43:14Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/status/release-stage16-WF02-batch-3-20260811.yaml"
+    ]
+  },
+  "task": {
+    "description": "RELEASE-VALIDATOR (Step 5) returned PARTIAL, not a clean batch release: PAR-01 and PAR-04 are RELEASE-worthy in full. PAR-02 and PAR-03 are specifically withheld from unqualified RELEASED status because their AC5/AC6 (event emission: EXECUTION_PARTITION_CREATED, EXECUTION_PARTITION_DETACHED/DROPPED) are genuinely unimplemented (confirmed via grep -- zero call sites in src/), not just under-tested. This gap is tracked as ISS-0670/GH-711 (open). Update docs/status/requirement_status.yaml: set PAR-01 and PAR-04 to RELEASED (released_in: WF02-batch-3-20260811). For PAR-02 and PAR-03, set status to TESTED (not RELEASED) and record the specific unmet AC (AC5 for PAR-02, AC6 for PAR-03) plus a pointer to ISS-0670/GH-711 in whatever status field this repo's schema uses for such notes -- check docs/status/requirement_status.yaml's existing schema/other entries for the correct field. Update CHANGELOG.md documenting the split release and the known gap. Run the retrospective for this run (docs/metrics/retrospectives/, .yaml) per the usual retrospective process, noting the one rework cycle (PAR-01 AC4) and RELEASE-VALIDATOR's split-release finding as notable events.",
+    "acceptance_criteria": [
+      "docs/status/requirement_status.yaml correctly reflects PAR-01/PAR-04 as RELEASED and PAR-02/PAR-03 as TESTED (not RELEASED), each with accurate last_updated and released_in/test_ids fields",
+      "PAR-02 and PAR-03's status entries reference ISS-0670/GH-711 and the specific unmet AC, so a future reader understands why they are not RELEASED despite passing tests",
+      "CHANGELOG.md updated with an accurate, honest description of the split release",
+      "Retrospective written to docs/metrics/retrospectives/ as .yaml"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "docs/requirements.yaml updated via tools/reqctl.py set-status (canonical write path) plus targeted field edits for test_spec/test_run/tested_at/release_run/release_decision: PAR-01 and PAR-04 set to RELEASED (released_in WF02-batch-3-20260811, released_at 2026-08-11T18:38:39Z / 18:38:41Z respectively); PAR-02 and PAR-03 set to TESTED (NOT RELEASED), each carrying a note field naming the specific unmet AC (PAR-02 AC5, PAR-03 AC6 -- EXECUTION_PARTITION_CREATED / EXECUTION_PARTITION_DETACHED / EXECUTION_PARTITION_DROPPED event emission, confirmed unimplemented by grep) and the ISS-0670/GH-711 (OPEN, MAJOR) tracking pointer. docs/status/requirement_status.yaml regenerated via reqctl.py render-status; tools/reqctl.py validate confirms 0 BLOCKER (4 MAJOR / 8 MINOR, all pre-existing, none touching PAR-01..04). CHANGELOG.md updated with an honest split-release entry: PAR-01/PAR-04 described as fully RELEASED, PAR-02/PAR-03 explicitly marked TESTED-not-RELEASED under a leading blockquote naming ISS-0670/GH-711 and both unmet ACs so the gap is not glossed over, plus the PAR-01 AC4 rework cycle and the ISS-0671/GH-712 infra incident. Retrospective written to docs/metrics/retrospectives/WF02-batch-3-20260811.yaml, noting both rework cycles (CODE-DESIGNER rework_count=2 at Step 1/1b, BACKEND-DEV rework_count=1 at Step 2a/03 for PAR-01 AC4) and RELEASE-VALIDATOR's split-release finding as the notable events of this run; no estimation.yaml exists for this run so the quantitative variance_pct computation was skipped per precedent (batch-0/1/2), documented explicitly. Step Final (PR/merge) intentionally NOT performed in this dispatch per explicit operator instruction -- worktree remains on feature/WF02-batch-3-20260811 pending a separate dispatch.",
+    "artifacts_out": [
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml",
+      "CHANGELOG.md",
+      "docs/metrics/retrospectives/WF02-batch-3-20260811.yaml",
+      "handoffs/registry.json",
+      "handoffs/WF02-batch-3-20260811/registry.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV Step Final (git-merge) -- separate dispatch, not performed in this step"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

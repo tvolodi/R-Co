@@ -1,0 +1,49 @@
+{
+  "handoff_id": "1505fd21-8327-45f3-86c3-78fd9b284940",
+  "run_id": "WF02-batch-1-20260811",
+  "workflow_id": "WF-02",
+  "step": "00a",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-batch-1-20260811/step-00a-test-runner.json",
+  "created_at": "2026-08-11T09:38:56Z",
+  "started_at": "2026-08-11T09:39:17Z",
+  "completed_at": "2026-08-11T09:42:14Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-01",
+      "MIG-04",
+      "MIG-05",
+      "MIG-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Green-Main Gate: run the test suite against current main (HEAD) BEFORE any WF-02 implementation starts for batch 1 (DDL-01, MIG-04, MIG-05, MIG-06). ORCH has already confirmed zig build test-env-verify is HEALTHY (10/10) immediately before this dispatch. Run zig build test (full unit suite). For integration coverage, run targeted steps relevant to this batch area (test-integration-mig01, test-integration-mig02-mig03, test-ddl-namespace -- the batch-0 steps, to confirm nothing regressed) rather than the full test-integration umbrella, which has a documented capacity/reliability issue on this host under full concurrency (docs/issues/ISS-0665.json / GH-702, still open) producing non-deterministic unrelated failures.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-ddl-namespace exits 0",
+      "zig build test-integration-mig01 exits 0",
+      "zig build test-integration-mig02-mig03 exits 0",
+      "Exact pass/fail counts reported with evidence"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Green-Main Gate CLEAR on current main (HEAD) before WF-02 batch 1 (DDL-01, MIG-04, MIG-05, MIG-06) implementation starts. Explicit env vars set per instructions (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test, BPM_DB_URL=postgres://bpm:bpm@localhost:5432/bpm_dev) to override a stale ambient value. All 4 required commands exited 0 with clean Build Summary lines: (1) `zig build test` -> 91/91 steps succeeded; 1021/1085 tests passed (64 skipped); (2) `zig build test-ddl-namespace` -> 3/3 steps succeeded; 10/10 tests passed; (3) `zig build test-integration-mig01` -> 6/6 steps succeeded; 5/5 tests passed; (4) `zig build test-integration-mig02-mig03` -> 6/6 steps succeeded; 9/9 tests passed. No genuine regressions observed. Per task instructions, the full `zig build test-integration` umbrella was NOT run (documented capacity/reliability issue ISS-0665 / GH-702, still open, producing non-deterministic unrelated failures under full concurrency on this host).",
+    "evidence": {
+      "test": "Build Summary: 91/91 steps succeeded; 1021/1085 tests passed (64 skipped)",
+      "test-ddl-namespace": "Build Summary: 3/3 steps succeeded; 10/10 tests passed",
+      "test-integration-mig01": "Build Summary: 6/6 steps succeeded; 5/5 tests passed",
+      "test-integration-mig02-mig03": "Build Summary: 6/6 steps succeeded; 9/9 tests passed"
+    },
+    "next_action": "ORCH may proceed with WF-02 batch 1 implementation (DDL-01, MIG-04, MIG-05, MIG-06) -- main is green."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

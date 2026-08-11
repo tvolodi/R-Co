@@ -1,0 +1,64 @@
+{
+  "handoff_id": "39aa31c1-8de3-499f-96fa-b96933528251",
+  "run_id": "WF02-batch-2-20260811",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-2-20260811/step-2a-backend-dev.json",
+  "created_at": "2026-08-11T11:46:10Z",
+  "started_at": "2026-08-11T12:15:41Z",
+  "completed_at": "2026-08-11T12:45:28Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-02",
+      "ORD-01",
+      "ORD-02",
+      "ORD-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/ddl-02-constrain-before-expand-check.md",
+      "src/design/ord-01-02-04-correlated-effect-reentry.md",
+      "templates/specs/ord-01-plat-effect-completion.migration.yaml",
+      "templates/specs/ord-04-plat-correlation-cursor.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Implement DDL-02, ORD-01, ORD-02, ORD-04 per the validated (PASS, one resolved rework cycle) design artefacts. DDL-02: extend src/platform/ddl_validate.zig's existing ValidatePlatformDDL with the new checkConstrainBeforeExpand check (per-column state machine UNSEEN/EXPANDED/BACKFILLED across statements in file order), add file/byte_offset fields to StatementDescriptor (purely additive, confirmed safe for DDL-05's ddl_namespace.zig by CODE-DESIGN-VALIDATOR -- update DDL-01's existing unit test call sites that construct StatementDescriptor literals to supply these two new fields). ORD-01/02/04: run tools/codegen_migration.py on both Type C YAMLs (plat_effect_completion, plat_correlation_cursor tables), then write the consumer claim (SELECT...FOR UPDATE SKIP LOCKED)/execute-guard (pg_try_advisory_xact_lock per correlation)/observability (lag, oldest-pending-age, guard-false-rate) logic in new src/ordering/ modules, following the src/effects/worker.zig connection-acquisition discipline (GH-654/ISS-0649 -- never hold a connection across a poll sleep). Read both design docs in full before writing any code.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build check exits 0",
+      "python tools/lint_sql_param_types.py src tests exits 0",
+      "Every acceptance criterion in DDL-02, ORD-01, ORD-02, ORD-04 is implemented",
+      "No mocks/stubs/fakes; all DB access via real PostgreSQL through the Pool",
+      "Real unit + integration tests written and passing, with own addTest/build.zig wiring (verified real by deliberate-break test)",
+      "Implementation committed to feature/WF02-batch-2-20260811"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented DDL-02 (checkConstrainBeforeExpand extension to ValidatePlatformDDL, per-column UNSEEN/EXPANDED/BACKFILLED state machine, new file/byte_offset StatementDescriptor fields, all existing DDL-01 test call sites updated) and ORD-01/02/04 (codegen'd plat_effect_completion + plat_correlation_cursor Type C migrations, new src/ordering/{mod,cursor,consumer,observability}.zig implementing the claim guard / execute guard / parallelism-lag observability, following effects/worker.zig's connection-acquisition discipline with an explicit ORD-03 stub extension point). All acceptance criteria for DDL-02, ORD-01, ORD-02, ORD-04 implemented and covered by real tests against PostgreSQL (no mocks). All gates PASS: zig build, zig build migrate, zig build check (scoped fmt), lint_sql_param_types.py (0 BLOCKER/MAJOR/MINOR), zig build test (95/95 steps, 1053/1117 tests, 64 pre-existing skips, 0 failures), and the new targeted steps test-ddl-validate (28/28), test-ordering (4/4), test-integration-ord01 (3/3), test-integration-ord04 (4/4), test-integration-ordering (8/8). Build-wiring verified real via deliberate-break-then-revert on both a pure unit test (observability.zig) and a DB integration test (ordering_consumer_test.zig).",
+    "artifacts_out": [
+      "src/platform/ddl_validate.zig",
+      "src/ordering/mod.zig",
+      "src/ordering/cursor.zig",
+      "src/ordering/consumer.zig",
+      "src/ordering/observability.zig",
+      "migrations/1145_ord01_plat_effect_completion.sql",
+      "migrations/1146_ord04_plat_correlation_cursor.sql",
+      "tests/integration/ord01_plat_effect_completion_test.zig",
+      "tests/integration/ord04_plat_correlation_cursor_test.zig",
+      "tests/integration/ordering_consumer_test.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

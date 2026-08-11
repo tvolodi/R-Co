@@ -75,6 +75,10 @@ const idn04_api_token_management_integration = @import("idn04_api_token_manageme
 const api02_crud_integration = @import("api02_crud_test.zig");
 // Stage 4 — Instance read endpoints (API-03)
 const api03_instance_read_integration = @import("api03_instance_read_test.zig");
+// GH-280 / ISS-0040 — API-05 valid-boundary cases (page_size 1/200, ISO 8601
+// timestamp format variants) not covered by api03_instance_read_test.zig's
+// existing TC-API-05-01..04.
+const api05_history_boundary_integration = @import("api05_history_boundary_test.zig");
 // Stage 4 — Request tracing (API-09)
 const api09_trace_integration = @import("trace_test.zig");
 // Stage 6 — Prometheus metrics endpoint (OBS-02)
@@ -207,6 +211,13 @@ const repository_integration = @import("repository_test.zig");
 // GH-512 / ISS-0181 — regression lock for the T010 hardcoded-UUID migration.
 // Subprocess-driven filesystem + Zig-build checks; does not require BPM_TEST_DB_URL.
 const gh512_t010_regression_integration = @import("gh512_t010_regression_test.zig");
+// Stage 16 / WF02-batch-0-20260811 — MIG-01 platform.platform_migrations
+// control table shape (constraints, resume index).
+const mig01_platform_migrations_control_table_integration = @import("platform_migrations_control_table_test.zig");
+// Stage 16 / WF02-batch-0-20260811 — MIG-02/MIG-03 tenant migration fanout
+// (commit-with-DDL transaction boundary, advisory-lock contention, continue
+// on failure).
+const mig02_mig03_migration_fanout_integration = @import("migration_fanout_test.zig");
 
 comptime {
     _ = std;
@@ -240,6 +251,7 @@ comptime {
     _ = idn04_api_token_management_integration;
     _ = api02_crud_integration;
     _ = api03_instance_read_integration;
+    _ = api05_history_boundary_integration;
     _ = api09_trace_integration;
     _ = obs02_metrics_integration;
     _ = obs03_audit_integration;
@@ -307,6 +319,8 @@ comptime {
     _ = iss206_token_multiset_integration;
     _ = repository_integration;
     _ = gh512_t010_regression_integration;
+    _ = mig01_platform_migrations_control_table_integration;
+    _ = mig02_mig03_migration_fanout_integration;
 }
 
 test "integration placeholder" {

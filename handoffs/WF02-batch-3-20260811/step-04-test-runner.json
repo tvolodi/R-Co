@@ -1,0 +1,60 @@
+{
+  "handoff_id": "6bf73e6b-6e1d-42f3-ba5e-83291f0528ec",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-batch-3-20260811/step-04-test-runner.json",
+  "created_at": "2026-08-11T18:13:17Z",
+  "started_at": "2026-08-11T18:13:17Z",
+  "completed_at": "2026-08-11T18:25:48Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/PAR-01.md",
+      "tests/specs/PAR-02.md",
+      "tests/specs/PAR-03.md",
+      "tests/specs/PAR-04.md"
+    ]
+  },
+  "task": {
+    "description": "Execute the full test suite for PAR-01/02/03/04 (stage 16, monthly-range event-store partitioning). Infrastructure Health Checklist already re-verified HEALTHY (10/10) by ORCH immediately before this dispatch, after cleaning up 50 leaked test-fixture rows (22 orphaned SCHEMA-mode tenants + 28 dependent LEGACY_RLS rows) left over from earlier sub-agent runs today -- same root cause as ISS-0663/GH-700 (already filed, open). Run: zig build test-partition-attach, zig build test-partition-maintenance, zig build test-partition-retention, zig build test-integration-par02, zig build test-integration-par03, zig build test-integration-event-store, plus zig build test (full unit suite) to confirm no unrelated regression. Report exact pass/fail counts for every target, not just overall status.",
+    "acceptance_criteria": [
+      "All 6 batch-specific build targets exit 0 with the exact expected pass counts (test-partition-attach 2/2, test-partition-maintenance 5/5, test-partition-retention 4/4, test-integration-par02 3/3, test-integration-par03 4/4, test-integration-event-store 29/29)",
+      "Full unit suite (zig build test) exits 0 with no new failures vs the last known-clean baseline",
+      "Write a structured test report to tests/reports/ per the Output File Format Rules (.yaml)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 6 batch-specific build targets pass with exact expected counts (test-partition-attach 2/2, test-partition-maintenance 5/5, test-partition-retention 4/4, test-integration-par02 3/3, test-integration-par03 4/4, test-integration-event-store 29/29), plus full unit suite zig build test 1067/1131 (64 skipped, 0 new failures vs batch-2 baseline 1053/1117). test-integration-event-store initially returned 7/29 due to a blocking infrastructure defect unrelated to PAR-01..04 code: tools/clean_test_db.py --include-fixtures LEGACY_RLS sweep lacked the slug != default guard every other DELETE in that file has, so it deleted the harness persistent default tenant fixture during ORCH pre-dispatch cleanup, causing search_path to resolve to public instead of tenant_default for the default tenant. Root-caused via docker logs (real Postgres relation-does-not-exist errors), fixed inline per Unblock-Everything (guard added to clean_test_db.py + one-time storage_mode data repair), and every affected target re-verified green including a final zig build test-env-verify HEALTHY 10/10. Filed as ISS-0671/GH-712 (RESOLVED, not left queued).",
+    "artifacts_out": [
+      "tests/reports/report-20260811-WF02-batch-3.yaml",
+      "tools/clean_test_db.py",
+      "docs/issues/ISS-0671.json"
+    ],
+    "issues": [
+      {
+        "iss_id": "ISS-0671",
+        "github_issue": "https://github.com/tvolodi/R-Co/issues/712",
+        "severity": "MAJOR",
+        "status": "RESOLVED",
+        "summary": "clean_test_db.py --include-fixtures LEGACY_RLS sweep lacked a slug != 'default' guard and deleted the harness's persistent default tenant fixture; fixed inline this run, re-verified green."
+      }
+    ],
+    "next_action": "Route to RELEASE-VALIDATOR (Step 5) for re-validation"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -23748,6 +23748,126 @@
       "created_at": "2026-08-11T21:39:07Z",
       "status": "PENDING"
     }
+    },
+    {
+      "handoff_id": "81b01143-e88d-4f5a-91c0-bf84fe594b3a",
+      "file": "handoffs/WF03-GH691-20260811/step-00-backend-dev.json",
+      "run_id": "WF03-GH691-20260811",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-10T22:00:26Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving",
+      "started_at": "2026-08-10T22:00:31Z",
+      "completed_at": "2026-08-10T22:02:13Z"
+    },
+    {
+      "handoff_id": "a1e9f5c2-3d4b-4e6a-9f1c-7b8d2a5e6c10",
+      "file": "handoffs/WF03-GH693-20260811/step-00-backend-dev.json",
+      "run_id": "WF03-GH693-20260811",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-10T22:34:03Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "b2f0a6d3-4e5c-4f7b-a02d-8c9e3b6f7d21",
+      "file": "handoffs/WF03-GH693-20260811/step-2-code-designer.json",
+      "run_id": "WF03-GH693-20260811",
+      "step": "2",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-10T22:34:03Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "c3018b7e-5f6d-4a8c-b134-9d0f4c7a8e32",
+      "file": "handoffs/WF03-GH693-20260811/step-3-backend-dev.json",
+      "run_id": "WF03-GH693-20260811",
+      "step": "3",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-10T22:34:03Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "510c10ee-9a0f-4f58-b740-dbc0719cedae",
+      "file": "handoffs/WF02-batch-0-20260811/step-final-backend-dev-git-merge.json",
+      "run_id": "WF02-batch-0-20260811",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-11T05:23:33Z",
+      "status": "COMPLETED",
+      "stage": "Stage 16"
+    },
+    {
+      "handoff_id": "d9d2b3a7-2c4e-4f8a-9b1e-7a3f5c6d8e91",
+      "file": "handoffs/WF03-GH705-20260811/step-00-direct-fix.json",
+      "run_id": "WF03-GH705-20260811",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "ORCH",
+      "created_at": "2026-08-11T09:00:00Z",
+      "started_at": "2026-08-11T09:00:00Z",
+      "completed_at": "2026-08-11T09:31:31Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "73c90ccf-3d14-4169-a3d0-4fad565e3a02",
+      "file": "handoffs/WF02-batch-1-20260811/step-final-backend-dev-git-merge.json",
+      "run_id": "WF02-batch-1-20260811",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-11T09:45:16Z",
+      "started_at": "2026-08-11T11:23:56Z",
+      "completed_at": "2026-08-11T11:31:05Z",
+      "status": "COMPLETED",
+      "stage": "Stage 16"
+    },
+    {
+      "handoff_id": "c51a3d8d-cd48-4eb3-9573-e18067ddd94a",
+      "file": "handoffs/WF02-batch-2-20260811/step-final-backend-dev-git-merge.json",
+      "run_id": "WF02-batch-2-20260811",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-11T11:46:10Z",
+      "started_at": "2026-08-11T14:08:26Z",
+      "completed_at": "2026-08-11T14:15:12Z",
+      "status": "COMPLETED",
+      "stage": "Stage 16"
+    },
+    {
+      "handoff_id": "279e2315-4c36-4f4b-9054-4d5da83c9cb9",
+      "file": "handoffs/WF02-batch-3-20260811/step-final-backend-dev-git-merge.json",
+      "run_id": "WF02-batch-3-20260811",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-11T18:44:58Z",
+      "started_at": "2026-08-11T18:44:58Z",
+      "completed_at": "2026-08-11T19:04:16Z",
+      "status": "COMPLETED",
+      "stage": "Stage 16"
+    },
+    {
+      "handoff_id": "01071772-de31-499e-aeee-16ec4dadf230",
+      "file": "handoffs/WF02-batch-4-20260811/step-00a-test-runner.json",
+      "run_id": "WF02-batch-4-20260811",
+      "step": "00a",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-11T19:12:36Z",
+      "started_at": "2026-08-11T19:12:36Z",
+      "completed_at": "2026-08-11T19:12:36Z",
+      "status": "COMPLETED",
+      "stage": "Stage 16"
+    }
   ],
-  "last_updated": "2026-08-10T17:25:13Z"
+  "last_updated": "2026-08-11T18:32:22Z"
 }

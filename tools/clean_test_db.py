@@ -24,6 +24,7 @@ a docker-compose-based local dev environment. Nothing about the
 docker-compose path changes for a local run that does not set the variable.
 """
 import argparse
+import shutil
 import subprocess
 import sys
 import os
@@ -36,26 +37,36 @@ USER = "bpm"
 # historical `docker-compose exec -T db_test psql ...` invocation.
 _DIRECT_DB_URL: str | None = None
 
-
-def _psql_native_available() -> bool:
-    """True when a real psql executable (not just a .cmd/.bat wrapper) exists.
-
-    On Windows, shutil.which("psql") finds psql.cmd wrappers but
-    subprocess.run(["psql", ...]) without shell=True cannot execute .cmd files.
-    Checking for "psql.exe" explicitly avoids a FileNotFoundError at runtime.
-    """
-    import shutil
-    if sys.platform == "win32":
-        return shutil.which("psql.exe") is not None
-    return shutil.which("psql") is not None
+# GH-280 / ISS-0040 rework: resolved once via shutil.which() and reused by
+# every psql-invoking helper below (direct-URL mode only; the docker-compose
+# fallback path never execs "psql" directly, so it is unaffected).
+#
+# Root cause this works around: on Windows, the only "psql" on PATH is a
+# WinGet-installed .cmd shim (no real psql.exe exists on a dev box unless
+# PostgreSQL client tools are separately installed). subprocess.run(["psql",
+# ...]) with the default shell=False calls CreateProcess directly, which
+# cannot resolve a bare "psql" to a .cmd file — Windows only does PATHEXT
+# extension resolution (.cmd/.bat/.exe/...) through the shell or through
+# shutil.which(), never through a raw CreateProcess lookup. The direct-URL
+# mode added by GH-292/ISS-0077 is exactly the path every Windows workspace's
+# `zig build test-integration-*` step exercises (BPM_TEST_DB_URL is always
+# set for those), so this bug silently blocked test-database cleanup on every
+# Windows machine as soon as that mode shipped: FileNotFoundError ([WinError
+# 2] The system cannot find the file specified), not a psql/SQL error.
+# shutil.which("psql") performs the same PATHEXT-aware search a shell would
+# and returns the resolved absolute path (e.g. "...\\psql.CMD"), which
+# CreateProcess CAN launch directly — no shell=True needed, and no change to
+# behaviour on Linux/macOS where "psql" is already a real ELF/Mach-O binary
+# (shutil.which returns it unchanged).
+_PSQL_EXECUTABLE: str = shutil.which("psql") or "psql"
 
 
 def _psql_base_cmd() -> list[str]:
     """Return the psql invocation prefix (connection portion only) for the
-    active connection mode — direct BPM_TEST_DB_URL if set AND a native psql
-    binary is present, else docker-compose exec into the db_test container."""
-    if _DIRECT_DB_URL and _psql_native_available():
-        return ["psql", _DIRECT_DB_URL]
+    active connection mode — direct BPM_TEST_DB_URL if set, else
+    docker-compose exec into the db_test container."""
+    if _DIRECT_DB_URL:
+        return [_PSQL_EXECUTABLE, _DIRECT_DB_URL]
     return ["docker-compose", "exec", "-T", "db_test", "psql", "-U", USER, "-d", DB]
 
 # Tables in FK-safe deletion order (children before parents).
@@ -419,9 +430,27 @@ def main() -> None:
             "slug LIKE 'exp%' OR slug LIKE 'adp%' OR slug LIKE 'webhook%' OR "
             "slug = 'legacy-fixture'"
         )
+        # GH-712/ISS-0672: this DELETE lacked the "slug != 'default'" guard that
+        # every other DELETE in this function has. The harness's persistent
+        # 'default' tenant (id=00000000...0000) is seeded with tenant_type='test'
+        # (see helpers.zig ensureDefaultOidcSeeds()'s comment on why), and if its
+        # storage_mode was LEGACY_RLS at the moment this ran (e.g. before migration
+        # 087_default_tenant_storage_mode_cutover.sql's one-time flip, or after any
+        # process that recreated the row via a plain INSERT and took the column's
+        # LEGACY_RLS default), this statement matched and deleted the "never
+        # dropped" fixture the comment above and drop_orphaned_tenant_schemas()
+        # both promise to preserve. The next test run's ensureDefaultOidcSeeds()
+        # then silently re-INSERTs it from scratch at storage_mode=LEGACY_RLS
+        # (fresh INSERT, not the ON CONFLICT UPDATE branch, since the row was
+        # gone) -- search_path then resolves to "public", but every event-store
+        # table lives only in the tenant_default schema, so every test that
+        # exercises the default tenant fails with "relation ... does not exist".
+        # Reproduced live: WF02-batch-3-20260811's test-integration-event-store
+        # run failed 22/29 this way immediately after an --include-fixtures
+        # cleanup swept 28 LEGACY_RLS rows with no slug exclusion.
         run_psql(
             "DELETE FROM public.tenant WHERE "
-            "storage_mode='LEGACY_RLS' AND tenant_type='test'"
+            "storage_mode='LEGACY_RLS' AND tenant_type='test' AND slug != 'default'"
         )
         # Re-sweep schemas the fixture rows left behind.
         drop_orphaned_tenant_schemas()

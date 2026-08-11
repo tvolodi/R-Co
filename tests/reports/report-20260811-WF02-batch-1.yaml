@@ -1,0 +1,110 @@
+run_id: WF02-batch-1-20260811
+report_date: "2026-08-11T11:04:17Z"
+agent: TEST-RUNNER
+workflow_id: WF-02
+workflow_step: "04"
+
+requirement_ids:
+  - DDL-01
+  - MIG-04
+  - MIG-05
+  - MIG-06
+
+pre_checks:
+  test_env_verify:
+    command: "zig build test-env-verify"
+    result: PASS
+    note: >
+      Confirmed HEALTHY (10/10 checks) by ORCH immediately before dispatching
+      this handoff. Re-run by TEST-RUNNER at session start as an independent
+      confirmation before executing any test command; result unchanged
+      (HEALTHY, 10/10 checks passed, exit 0).
+  env_vars_set_explicitly:
+    BPM_TEST_DB_URL: "postgres://bpm:bpm@localhost:5433/bpm_test"
+    BPM_DB_URL: "postgres://bpm:bpm@localhost:5432/bpm_dev"
+    note: >
+      Set explicitly on every DB-touching command per handoff instructions,
+      since the ambient shell environment carried a stale BPM_TEST_DB_URL.
+
+layers:
+  - name: ddl-validate
+    command: "zig build test-ddl-validate --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 3/3 steps succeeded; 21/21 tests passed"
+    tests_total: 21
+    tests_passed: 21
+    tests_failed: 0
+
+  - name: integration-mig04-mig05
+    command: "zig build test-integration-mig04-mig05 --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 6/6 steps succeeded; 9/9 tests passed"
+    tests_total: 9
+    tests_passed: 9
+    tests_failed: 0
+
+  - name: integration-mig06
+    command: "zig build test-integration-mig06 --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 6/6 steps succeeded; 6/6 tests passed"
+    tests_total: 6
+    tests_passed: 6
+    tests_failed: 0
+
+  - name: unit-full
+    command: "zig build test --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 93/93 steps succeeded; 1042/1106 tests passed (64 skipped)"
+    tests_total: 1106
+    tests_passed: 1042
+    tests_failed: 0
+    tests_skipped: 64
+    note: >
+      Raw output contained a cosmetic "failed command: ... test.exe
+      --listen=-" line (appearing twice, once per affected binary) despite
+      exit code 0 and 93/93 steps succeeded with no failed-step count
+      anywhere in the progress tree. This is the documented Zig 0.16
+      live-progress-renderer artifact (stale "w" waiting-state frame in
+      non-TTY output), root-caused in ISS-0143/GH-448 and reconfirmed in
+      ISS-0028/ISS-0077/ISS-0078/WF02-batch-0: it is not a build-graph
+      failure. Verified per those issues' prescribed method -- trust the
+      "Build Summary: N/N steps succeeded" line and the raw process exit
+      code over the "failed command" substring; grepped full captured
+      output for "FAIL"/"error:" outside of ADVISORY/"failed command" lines
+      and found none. $LASTEXITCODE captured directly (not through a text
+      filter) = 0. The "iss0173-orphan TC-01..04 uuid=..." lines are
+      unconditional std.debug.print trace lines from
+      tests/unit/iss0173_oidc_jwks_orphan_test.zig (ISS-0173, RESOLVED)
+      emitted by every passing invocation of those tests, not a failure
+      indicator. lint_test_wiring reported PASS (281/281 test-bearing files
+      reachable, 4 pre-existing type-only-pin ADVISORY findings per
+      ISS-0172/GH-500, non-blocking).
+
+excluded_by_instruction:
+  - command: "zig build test-integration"
+    reason: >
+      Full ~40-binary integration umbrella deliberately not run per handoff
+      instructions -- documented host capacity/reliability issue under full
+      concurrency (docs/issues/ISS-0665.json / GH-702, still open) produces
+      non-deterministic unrelated failures. Only this batch's targeted
+      integration steps (mig04-mig05, mig06) plus the full unit suite were
+      required for WF-02 Step 4.
+
+summary:
+  total_layers: 4
+  layers_passed: 4
+  layers_failed: 0
+  breakdown:
+    ddl_validate: "21/21 passed, 0 failed"
+    integration_mig04_mig05: "9/9 passed, 0 failed"
+    integration_mig06: "6/6 passed, 0 failed"
+    unit_full: "1042/1106 passed, 0 failed, 64 skipped"
+  overall_status: PASS
+
+issues: []
+
+next_action: "Route to RELEASE-VALIDATOR (Step 5)"

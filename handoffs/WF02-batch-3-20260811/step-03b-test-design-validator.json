@@ -1,0 +1,58 @@
+{
+  "handoff_id": "a224783e-a28d-4342-a302-7edebbfba686",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-3-20260811/step-03b-test-design-validator.json",
+  "created_at": "2026-08-11T18:03:46Z",
+  "started_at": "2026-08-11T18:03:46Z",
+  "completed_at": "2026-08-11T18:08:58Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/PAR-01.md",
+      "tests/specs/PAR-02.md",
+      "tests/specs/PAR-03.md",
+      "tests/specs/PAR-04.md"
+    ]
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER Step 03 test design for PAR-01/02/03/04 (stage 16), including its REWORK 1 pass. Hard gate: TEST-RUNNER cannot start until this returns PASS. Verify every MUST-requirement AC has a runnable integration test tracing to it, no error.SkipZigTest on a MUST test without a legitimate counterpart, fixtures are isolated, and pipeline test chains are wired correctly. Pay particular attention to PAR-01 AC4 (PartitionMissingForWrite): this was a genuine implementation gap found and fixed via one rework cycle (BACKEND-DEV commit fa63e32d, TEST-DESIGNER re-validation commit c992bfe3) -- confirm independently that TC-PAR01-04-01 genuinely proves AC4 rather than just trusting TEST-DESIGNER's own re-validation claim. Also confirm the MINOR gaps documented in PAR-02.md/PAR-03.md/PAR-04.md (AC3/AC5, AC4/AC5/AC6, AC3/AC4 respectively) are legitimately non-blocking (correct, reviewable implementations with thin/no direct test coverage) rather than disguised MUST-coverage gaps, and that ISS-0670/GH-711 (PAR-02 AC5 emission, filed separately) does not need to block this gate.",
+    "acceptance_criteria": [
+      "Every MUST-requirement AC in PAR-01, PAR-02, PAR-03, PAR-04 traces to a specific test case",
+      "TC-PAR01-04-01 independently confirmed to genuinely prove PAR-01 AC4 (not vacuous, not weaker than the requirement)",
+      "No error.SkipZigTest on a MUST test without a legitimate counterpart",
+      "Fixtures are isolated (no hardcoded UUIDs, proper defer cleanup)",
+      "The documented MINOR gaps are correctly classified as non-blocking, not disguised MUST gaps",
+      "python tools/lint_test_isolation.py run against touched test files with 0 new issues"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Independently validated TEST-DESIGNER's PAR-01/02/03/04 test design (stage 16), including REWORK 1. Read every AC verbatim from docs/requirements.yaml (not just spec paraphrase). PAR-01 AC4: read TC-PAR01-04-01's full body directly (tests/integration/event_store_integration_test.zig:2420-2546) -- genuinely detaches the real current-month events partition (bound read back live via pg_get_expr/pg_inherits, not assumed by name), performs a real store.append() against the gap, asserts the specific StoreError.PartitionMissingForWrite (not a generic catch-all), asserts zero rows written via countEvents, and unconditionally reattaches via defer. Traced the implementation itself (not just the test): store.zig:623-649 distinguishes Postgres SQLSTATE 23514 from every other INSERT failure; vendor/pg/pg.zig's captureSqlState() (lines 359-380) is genuine wire-protocol parsing of the real ErrorResponse 'C' field, not a stub; src/api/errors.zig:177 maps to HTTP 503 correctly per the design doc's error taxonomy. AC4 is soundly proven -- confirmed independently, not on trust. Verified all other PAR-01/02/03/04 MUST ACs trace to real, implemented test blocks (grepped every test name cited in all four spec files against src/ and tests/ -- all present, none missing, no 'deferred'/'future'/'phase 2' labels found anywhere). python tools/lint_test_isolation.py: 0 new issues (146 files repo-wide, 3 touched files individually clean; fixtures use h.newUuidString()/uniqueName() per-test UUIDs with defer cleanup throughout). The single error.SkipZigTest in event_store_integration_test.zig is testDbUrl()'s BPM_TEST_DB_URL-absent path, which prints a clear diagnostic before skipping (not a silent MUST-coverage skip) -- the established, repo-wide pattern. All referenced build steps (test-partition-attach, test-partition-maintenance, test-partition-retention, test-integration-par02, test-integration-par03, test-integration-event-store) are genuinely wired into build.zig, not orphaned. No pipeline/UI test chain applies (PAR-01-04 are pure backend/DB requirements, no web/tests/e2e/pipelines/ reference exists or is needed). MINOR-gap classification: independently verified PAR-02 AC3 (severity thresholds), PAR-03 AC4/AC5 (guard-trip/orphan-recovery paths), and PAR-04 AC3/AC4 (timing threshold, NULL-tenant CHECK) are genuinely correct, reviewable, already-partially-exercised implementations lacking only a dedicated boundary-condition assertion -- legitimately MINOR, not disguised MUST gaps. However, PAR-02 AC5 and PAR-03 AC6 (EXECUTION_PARTITION_CREATED / EXECUTION_PARTITION_DETACHED / EXECUTION_PARTITION_DROPPED event emission) are a qualitatively different, more severe class within 'MINOR': grep confirms zero call sites anywhere in src/ -- the AC's literal required behavior does not exist at all, not merely untested. This is not the same shape as the SCH-02 production-wiring precedent Observation A cites (job logic complete, only the startup call site missing) -- here the job logic itself never performs the required side effect. TEST-DESIGNER disclosed this honestly and precisely ('confirmed genuinely missing, not just untested'), the requirement status is DRAFT (not falsely RELEASED), and it is filed as ISS-0670/GH-711 (verified open on GitHub) with a design-decision blocker correctly identified (no platform-level instance_id convention exists for Store.append(), shared by 5 other unimplemented EXECUTION_* platform events repo-wide -- confirmed by grep, not asserted). Per explicit task instruction and my own independent agreement, ISS-0670/GH-711 does not block this gate, but is recorded here as MAJOR (not MINOR) so it is not silently treated as equivalent to the other five gaps when this run reaches RELEASE-VALIDATOR. python tools/lint_handoffs.py: 0 BLOCKER, 0 new MAJOR (2547 handoffs checked, 291 pre-existing baseline-acknowledged, 1 pre-existing MINOR).",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "ISS-0670",
+        "severity": "MAJOR",
+        "description": "PAR-02 AC5 (EXECUTION_PARTITION_CREATED) and PAR-03 AC6's EXECUTION_PARTITION_DETACHED/EXECUTION_PARTITION_DROPPED share the identical root cause and are the same class of gap: the event-append side effect these MUST ACs require is entirely unimplemented (zero call sites in src/scheduler/partition_maintenance.zig or partition_retention.zig), not merely untested. This differs in kind from PAR-02 AC3, PAR-03 AC4/AC5, and PAR-04 AC3/AC4, which are correct, already-implemented logic lacking only a dedicated boundary-condition test. Reclassified from MINOR to MAJOR in this validation pass so it is tracked distinctly, not folded into the same bucket as the five genuinely-MINOR thin-coverage gaps. Already filed and open: ISS-0670 / GH-711 (https://github.com/tvolodi/R-Co/issues/711). Not a blocker for this gate per explicit ORCH task instruction and independent confirmation the requirement is still DRAFT, not RELEASED; must be closed before PAR-02/PAR-03 reach RELEASE-VALIDATOR.",
+        "affected_requirement": "PAR-02"
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

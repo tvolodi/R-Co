@@ -1,0 +1,88 @@
+{
+  "version": "1",
+  "items": [
+    {
+      "stage_key": "16",
+      "batch_key": "848b69e7a499",
+      "batch_index": 0,
+      "requirement_ids": [
+        "DDL-05",
+        "MIG-01",
+        "MIG-02",
+        "MIG-03"
+      ],
+      "status": "DONE",
+      "lock": null,
+      "claimed_at": "2026-08-11T04:21:13Z",
+      "completed_at": "2026-08-11T07:33:08Z",
+      "run_id": "WF02-batch-0-20260811"
+    },
+    {
+      "stage_key": "16",
+      "batch_key": "d5019e857a4f",
+      "batch_index": 1,
+      "requirement_ids": [
+        "DDL-01",
+        "MIG-04",
+        "MIG-05",
+        "MIG-06"
+      ],
+      "status": "DONE",
+      "lock": null,
+      "claimed_at": "2026-08-11T07:36:30Z",
+      "completed_at": "2026-08-11T11:34:36Z",
+      "run_id": "WF02-batch-1-20260811"
+    },
+    {
+      "stage_key": "16",
+      "batch_key": "b04c0f6c5910",
+      "batch_index": 0,
+      "requirement_ids": [
+        "DDL-02",
+        "ORD-01",
+        "ORD-02",
+        "ORD-04"
+      ],
+      "status": "DONE",
+      "lock": null,
+      "claimed_at": "2026-08-11T11:35:15Z",
+      "completed_at": "2026-08-11T14:17:51Z",
+      "run_id": "WF02-batch-2-20260811"
+    },
+    {
+      "stage_key": "16",
+      "batch_key": "fd9462d5e03a",
+      "batch_index": 0,
+      "requirement_ids": [
+        "PAR-01",
+        "PAR-02",
+        "PAR-03",
+        "PAR-04"
+      ],
+      "status": "DONE",
+      "lock": null,
+      "claimed_at": "2026-08-11T14:18:34Z",
+      "completed_at": "2026-08-11T19:07:30Z",
+      "run_id": "WF02-batch-3-20260811"
+    },
+    {
+      "stage_key": "16",
+      "batch_key": "ddd41e7d3dd4",
+      "batch_index": 0,
+      "requirement_ids": [
+        "PAR-05",
+        "PAR-06",
+        "PIN-01",
+        "PIN-02"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-1-loop",
+        "locked_at": "2026-08-11T19:07:55Z"
+      },
+      "claimed_at": "2026-08-11T19:07:55Z",
+      "completed_at": null,
+      "run_id": null
+    }
+  ]
+}

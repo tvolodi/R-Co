@@ -1651,42 +1651,220 @@
       "labels": [
         "issue"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-2-loop",
-        "locked_at": "2026-08-10T21:36:02Z"
-      },
+      "status": "RESOLVED",
+      "lock": null,
       "added_at": "2026-08-10T21:36:02Z",
       "started_at": "2026-08-10T21:36:02Z",
-      "completed_at": null,
+      "completed_at": "2026-08-10T22:19:39Z",
       "run_id": null,
       "deferred_reason": null
     },
     {
-      "issue_id": "--help",
-      "github_issue": "",
-      "title": "",
+      "issue_id": "GH-691",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/691",
+      "title": "MINOR-PI09-1: Make public schema pollution check explicit (allowlist or tenant-scoped)",
+      "severity": "MAJOR",
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "tvolodi-51316",
+        "locked_at": "2026-08-10T22:00:05Z"
+      },
+      "added_at": "2026-08-10T22:00:05Z",
+      "started_at": "2026-08-10T22:00:05Z",
+      "completed_at": null,
+      "run_id": "WF03-GH691-20260811",
+      "deferred_reason": null,
+      "issue_number": 691,
+      "labels": []
+    },
+    {
+      "issue_id": "GH-693",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/693",
+      "title": "ISS-0661 \u2014 .github/agents/ and .github/instructions/ (Copilot harness) independently drifted from .claude/agents/, not yet reconciled",
+      "severity": "MAJOR",
+      "status": "RESOLVED",
+      "lock": null,
+      "added_at": "2026-08-10T22:26:56Z",
+      "started_at": "2026-08-10T22:26:56Z",
+      "completed_at": "2026-08-10T22:41:34Z",
+      "run_id": null,
+      "deferred_reason": null,
+      "issue_number": 693,
+      "labels": [
+        "bug"
+      ]
+    },
+    {
+      "issue_id": "GH-694",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/694",
+      "title": "ISS-0662 \u2014 stray issue_id \"--help\" junk entry in handoffs/global_queue.json",
+      "severity": "MAJOR",
+      "status": "RESOLVED",
+      "lock": null,
+      "added_at": "2026-08-10T22:21:40Z",
+      "started_at": "2026-08-10T22:21:40Z",
+      "completed_at": "2026-08-10T22:26:22Z",
+      "run_id": null,
+      "deferred_reason": null,
+      "issue_number": 694,
+      "labels": [
+        "bug"
+      ]
+    },
+    {
+      "issue_id": "GH-283",
+      "issue_number": 283,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/283",
+      "title": "ISS-0054 \u2014 WF03 Stage11 releasefix rework1: deterministic integration run exposes ADP-09/ADP-10 assertion failures (no stall)",
+      "severity": "MAJOR",
+      "labels": [
+        "issue"
+      ],
+      "status": "RESOLVED",
+      "lock": null,
+      "added_at": "2026-08-10T22:42:45Z",
+      "started_at": "2026-08-10T22:42:45Z",
+      "completed_at": "2026-08-10T22:56:28Z",
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-281",
+      "issue_number": 281,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/281",
+      "title": "ISS-0048 \u2014 WF03 Stage11 rework1: aggregate integration blocked by missing OIDC31 env prerequisites (BPM_IDP_BASE_URL/BPM_TEST_URL)",
+      "severity": "MAJOR",
+      "labels": [
+        "issue"
+      ],
+      "status": "RESOLVED",
+      "lock": null,
+      "added_at": "2026-08-10T22:58:07Z",
+      "started_at": "2026-08-10T22:58:07Z",
+      "completed_at": "2026-08-10T23:05:19Z",
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-280",
+      "issue_number": 280,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/280",
+      "title": "ISS-0040 \u2014 API-05 valid-boundary test cases (page_size bounds, ISO timestamp variants) have no integration test coverage",
+      "severity": "MAJOR",
+      "labels": [
+        "issue"
+      ],
+      "status": "RESOLVED",
+      "lock": null,
+      "added_at": "2026-08-10T23:05:51Z",
+      "started_at": "2026-08-10T23:05:51Z",
+      "completed_at": "2026-08-10T23:24:15Z",
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-700",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/700",
+      "title": "clean_test_db.py run_psql() silently swallows real DELETE failures matching substring relation",
       "severity": "MAJOR",
       "status": "QUEUED",
       "lock": null,
-      "added_at": "2026-08-10T21:55:14Z",
+      "added_at": "2026-08-11T04:51:58Z",
       "started_at": null,
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
     },
     {
-      "issue_id": "ISS-0660",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/691",
-      "title": "MINOR-PI09-1: Make public schema pollution check explicit (allowlist or tenant-scoped)",
-      "severity": "MINOR",
+      "issue_id": "GH-702",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/702",
+      "title": "test-integration unreliable under full concurrency: statement_timeout cancellations",
+      "severity": "MAJOR",
       "status": "QUEUED",
       "lock": null,
-      "added_at": "2026-08-10T21:55:48Z",
+      "added_at": "2026-08-11T05:44:02Z",
       "started_at": null,
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-704",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/704",
+      "title": "_queue_sync.py hardcoded issue_id key breaks batch_queue.json staleness protection",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-11T07:34:21Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "GH-705",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/705",
+      "title": "reqctl_batch_claim.py unstable positional batch_index silently skips batches",
+      "severity": "BLOCKER",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-11T07:37:40Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0668",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/706",
+      "title": "Lego catalog shallow for Types A/B/D: no schema doc, CUSTOM: convention under-documented",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-11T08:19:56Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0669",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/709",
+      "title": "Pool.acquire() under genuine multi-OS-thread contention loses row-lock isolation",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-11T13:31:30Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0670",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/711",
+      "title": "PAR-02 AC5: EXECUTION_PARTITION_CREATED event not emitted \u2014 needs a platform-event append design",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-11T17:30:37Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0671",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/712",
+      "title": "clean_test_db.py --include-fixtures LEGACY_RLS sweep lacks slug!='default' guard, can delete the default tenant fixture",
+      "severity": "MAJOR",
+      "status": "RESOLVED",
+      "lock": null,
+      "added_at": "2026-08-11T18:24:25Z",
+      "started_at": "2026-08-11T18:22:57Z",
+      "completed_at": "2026-08-11T18:22:57Z",
+      "run_id": "WF02-batch-3-20260811",
+      "deferred_reason": "Fixed inline by TEST-RUNNER within WF02-batch-3-20260811 per Unblock-Everything (blocked this run own event-store test results); not left for a separate WF-03 pickup."
     }
   ]
 }

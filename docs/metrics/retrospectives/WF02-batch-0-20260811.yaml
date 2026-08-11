@@ -1,0 +1,371 @@
+run_id: WF02-batch-0-20260811
+run_date: '2026-08-11'
+completed_date: '2026-08-11'
+requirement_ids:
+  - DDL-05
+  - MIG-01
+  - MIG-02
+  - MIG-03
+workflow_type: WF-02 (Stage 16 batch 0 -- platform migration control plane)
+
+summary: >-
+  WF-02 feature-development run implementing Stage 16's first batch: DDL-05
+  (reserved plat_ object namespace), MIG-01 (platform migration control
+  table), MIG-02 (control-row-commits-with-DDL transaction semantics), MIG-03
+  (tenant migration fanout with continue-on-failure and advisory locking).
+  BACKEND-DEV implemented src/platform/ddl_namespace.zig,
+  src/platform/migration_fanout.zig, and migration
+  migrations/1144_platform_migrations_control_table.sql, writing real
+  integration/unit tests inline (test-ddl-namespace 10/10, test-integration-mig01
+  5/5, test-integration-mig02-mig03 7/7 at that point). SECURITY-REVIEWER
+  passed the tenant-data-path gate. TEST-DESIGNER wrote the four formal test
+  specs and traced every acceptance criterion to a specific test case.
+  RELEASE-VALIDATOR's first pass (not captured as a separate handoff file --
+  see rework_steps below) returned FAIL on MIG-02 AC4, which TEST-DESIGNER
+  closed genuinely in REWORK 1, and RELEASE-VALIDATOR re-validated
+  independently and returned APPROVED. DOC-UPDATER (this step) is setting all
+  four requirements to RELEASED, updating the changelog, and writing this
+  retrospective.
+
+  All 4 MUST requirements approved for release. One genuine rework cycle
+  occurred (test-designer, rework_count=1) triggered by a RELEASE-VALIDATOR
+  FAIL that caught a real, non-cosmetic coverage gap -- see "rework_steps"
+  below for the full mechanism. Two infrastructure defects were discovered
+  and forwarded during this run's Step 00a Green-Main Gate (unrelated to the
+  DDL-05/MIG-01/02/03 code itself): one fixed in-run (ISS-0664/GH-701), one
+  left open and forwarded (ISS-0663/GH-700). A third infrastructure issue
+  (ISS-0665/GH-702, full-suite test-integration concurrency reliability) was
+  also discovered and forwarded, left open -- it did not block this batch's
+  release decision because RELEASE-VALIDATOR independently re-verified via
+  targeted test-integration-mig02-mig03 / test-integration-gh512 runs instead
+  of relying on the full ~40-binary umbrella.
+
+estimation:
+  source: null
+  rules_version: null
+  difficulty: null
+  difficulty_rationale: >-
+    No estimation.yaml or estimation.json exists at
+    handoffs/WF02-batch-0-20260811/ (verified: directory listing shows only
+    step-*.json files, no estimation file). Per this role's file ("Retrospective
+    (WF-02 and WF-04 runs only)" section) and docs/agents/metrics.md §6, the
+    full estimated-vs-actual variance_pct computation is conditional on that
+    file existing and is skipped here. This retrospective documents actuals
+    per step (from real started_at/completed_at clock stamps) and the rework
+    cycle qualitatively instead, following the same precedent as
+    docs/metrics/retrospectives/WF03-GH521-20260808.yaml.
+  integration_surface: null
+  integration_surface_rationale: null
+  surcharge_pct: null
+  estimated_minutes: {}
+  notes: >-
+    Same structural gap noted in WF03-GH521-20260808's retrospective:
+    ORCH's dispatch behaviour for whether an estimation file is generated is
+    inconsistent across runs. Not re-litigated here; see that file's
+    rule_adjustments for the standing recommendation.
+
+actual_step_durations:
+  - step: step-00a (TEST-RUNNER -- Green-Main Gate)
+    agent: TEST-RUNNER
+    started_at: '2026-08-11T04:24:12Z'
+    completed_at: '2026-08-11T05:20:31Z'
+    actual_minutes: 56.3
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      By far the longest step in this run. Discovered and diagnosed two
+      genuine test-infrastructure defects during the gate: ISS-0663
+      (tools/clean_test_db.py silently swallowing FK-violation-shaped
+      failures via an over-broad "relation" substring match) and ISS-0664
+      (tools/lint_test_isolation.baseline.json carrying 3 stale T010 entries
+      from GH-681's line-renumbering, failing TC-RG-02) -- the latter fixed
+      in-run. Both required real diagnosis (direct psycopg2 probing to
+      isolate ISS-0663's root cause; a keyed diff against a live scan to
+      isolate ISS-0664's). This step's wall-clock time is dominated by that
+      diagnosis work, not by the DDL-05/MIG-01/02/03 code itself, which had
+      not yet been implemented at this point in the run.
+
+  - step: step-00 (BACKEND-DEV -- git-setup)
+    agent: BACKEND-DEV
+    started_at: '2026-08-11T05:22:28Z'
+    completed_at: '2026-08-11T05:23:33Z'
+    actual_minutes: 1.1
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: fn:git-setup PASS -- feature/WF02-batch-0-20260811 created from main, pushed to origin.
+
+  - step: step-01 (CODE-DESIGNER -- design artefact)
+    agent: CODE-DESIGNER
+    started_at: '2026-08-11T05:25:59Z'
+    completed_at: '2026-08-11T05:33:55Z'
+    actual_minutes: 8.0
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: Design covering DDL-05, MIG-01, MIG-02, MIG-03 -- ValidatePlatformDDL namespace check, control table schema, fanout/lock/continue-on-failure semantics.
+
+  - step: step-01b (CODE-DESIGN-VALIDATOR -- hard gate)
+    agent: CODE-DESIGN-VALIDATOR
+    started_at: '2026-08-11T05:36:47Z'
+    completed_at: '2026-08-11T05:40:33Z'
+    actual_minutes: 3.8
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      PASS. Also made the scoping call (later cited by RELEASE-VALIDATOR)
+      that DDL-05 AC5 and MIG-03 AC4 legitimately belong to separate,
+      not-yet-existing requirements/modules (DDL-01's ValidatePlatformDDL
+      aggregation, tenant onboarding catch-up) and are out of scope for this
+      batch.
+
+  - step: step-2a (BACKEND-DEV -- implementation)
+    agent: BACKEND-DEV
+    started_at: '2026-08-11T05:44:30Z'
+    completed_at: '2026-08-11T06:12:03Z'
+    actual_minutes: 27.6
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Implemented src/platform/ddl_namespace.zig, src/platform/migration_fanout.zig,
+      migrations/1144_platform_migrations_control_table.sql, plus inline
+      unit/integration tests (test-ddl-namespace 10/10, test-integration-mig01
+      5/5, test-integration-mig02-mig03 7/7 at this point -- pre-rework count).
+
+  - step: step-2c (SECURITY-REVIEWER -- tenant-data-path gate)
+    agent: SECURITY-REVIEWER
+    started_at: '2026-08-11T06:14:29Z'
+    completed_at: '2026-08-11T06:16:40Z'
+    actual_minutes: 2.2
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: PASS against the numbered security invariants -- new migration and platform DDL-validation code path.
+
+  - step: step-03 (TEST-DESIGNER -- specs + gap closure, REWORK 1)
+    agent: TEST-DESIGNER
+    started_at: '2026-08-11T06:50:32Z'
+    completed_at: '2026-08-11T06:56:40Z'
+    actual_minutes: 6.1
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 1
+    notes: >-
+      This handoff file's started_at/completed_at span covers ONLY the
+      REWORK 1 pass (rework_count=1 on the file as persisted); the original
+      pass-1 work (writing tests/specs/DDL-05.md, MIG-01.md, MIG-02.md,
+      MIG-03.md and finding/closing the MIG-01 AC1 fanout gap) ran earlier
+      and is not separately time-stamped in this run's handoff set -- the gap
+      between step-2c completing (06:16:40Z) and this step's started_at
+      (06:50:32Z) covers both that original pass-1 work and RELEASE-VALIDATOR's
+      first (FAIL) pass, neither of which produced its own persisted handoff
+      file distinct from the final PASS one. See rework_steps below for the
+      full mechanism of what REWORK 1 fixed.
+
+  - step: step-03b (TEST-DESIGN-VALIDATOR -- re-validation)
+    agent: TEST-DESIGN-VALIDATOR
+    started_at: '2026-08-11T06:58:47Z'
+    completed_at: '2026-08-11T07:01:02Z'
+    actual_minutes: 2.3
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: Re-validated PASS after REWORK 1 -- confirmed TC-MIG-02-04 closes the AC4 gap genuinely, not cosmetically.
+
+  - step: step-04 (TEST-RUNNER -- re-run)
+    agent: TEST-RUNNER
+    started_at: '2026-08-11T07:02:34Z'
+    completed_at: '2026-08-11T07:05:18Z'
+    actual_minutes: 2.7
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: Confirmed test-integration-mig02-mig03 9/9 (was 8/8 pre-rework). Report at tests/reports/report-20260811-WF02-batch-0.yaml.
+
+  - step: step-05 (RELEASE-VALIDATOR -- re-validation, APPROVED)
+    agent: RELEASE-VALIDATOR
+    started_at: '2026-08-11T07:08:09Z'
+    completed_at: '2026-08-11T07:09:56Z'
+    actual_minutes: 1.8
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      This is the RE-VALIDATION pass (APPROVED, persisted). Independently
+      re-read TC-MIG-02-04 and the production code it exercises line-by-line
+      rather than trusting the rework's own claims, re-ran
+      test-integration-mig02-mig03 and zig build migrate (twice) itself. The
+      original FAIL pass that triggered REWORK 1 is not separately
+      time-stamped in this run's persisted handoff set -- its finding is
+      preserved verbatim in docs/status/release-stage16-WF02-batch-0-20260811.yaml
+      under blocking_issues_resolved (id ISS-NOTE-MIG02-AC4).
+
+  - step: step-06 (DOC-UPDATER -- this step)
+    agent: DOC-UPDATER
+    started_at: '2026-08-11T07:13:07Z'
+    completed_at: '2026-08-11T07:19:19Z'
+    actual_minutes: 6.2
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      CHANGELOG.md updated under [Unreleased] -- 2026-08-11 with a detailed
+      Stage 16 entry (DDL-05/MIG-01/MIG-02/MIG-03, the rework cycle, and the
+      3 forwarded/fixed infra issues). docs/requirements.yaml: all 4
+      requirements set to RELEASED via tools/reqctl.py set-status (canonical
+      write path, not hand-edited) plus targeted Edit calls for
+      test_spec/test_run (fields set-status does not itself populate).
+      docs/status/requirement_status.yaml regenerated via reqctl.py
+      render-status -- confirmed to be a GENERATED export, not a second
+      independent live tracker (reqctl.py's own module docstring states this
+      explicitly). This retrospective file.
+
+wall_clock_span:
+  from: '2026-08-11T04:24:12Z'   # step-00a started_at
+  to:   '2026-08-11T07:19:19Z'   # step-06 (this step) completed_at
+  total_minutes: 175.1
+  note: >-
+    Wall-clock span from step-00a (Green-Main Gate) through step-06
+    (DOC-UPDATER) completion. Dominated by step-00a (56.3 min,
+    infrastructure-defect diagnosis unrelated to the batch's own
+    requirements) and the untimed gap between step-2c and step-03 (~34 min,
+    covering TEST-DESIGNER's original pass-1 work and RELEASE-VALIDATOR's
+    first FAIL pass, neither separately persisted). The requirement-
+    implementation steps themselves (step-01 through step-05) were
+    comparatively fast once the Green-Main Gate's infrastructure issues were
+    out of the way.
+
+rework_steps:
+  - step: step-05 (RELEASE-VALIDATOR, first pass -- not separately persisted)
+    trigger: >-
+      RELEASE-VALIDATOR's first validation pass returned FAIL on MIG-02 AC4
+      ("GIVEN the failure-recording transaction itself fails, WHEN the
+      fanout continues, THEN the row remains pending and the MIG-04 resume
+      query covers it"). tests/specs/MIG-02.md at that point documented AC4
+      as a deliberate, narrow, non-blocking test-coverage deferral ("revisit
+      when MIG-04 lands"), reasoning that bpm.pool.Pool had no fault-injection
+      hook without violating DIRECTIVE T-1 (no mocking of pool/DB
+      components). RELEASE-VALIDATOR correctly rejected this: per this
+      project's directives, a MUST requirement's acceptance criterion may
+      not ship with zero passing integration-test evidence, however narrow
+      or well-documented the deferral -- and, critically, RELEASE-VALIDATOR's
+      own finding showed the "no fault-injection hook without mocking" premise
+      was simply wrong: Pool.init() takes a real, non-mock pool_size
+      parameter, so a genuine resource-exhaustion condition is constructible
+      without mocking anything.
+    resolution: >-
+      TEST-DESIGNER (step-03, rework_count=1) added TC-MIG-02-04 to
+      tests/integration/migration_fanout_test.zig: a dedicated pool_size=2
+      bpm.pool.Pool (separate from the shared pool_size=5 pool every other
+      test in the file uses) drives runFanout with a single fixture tenant
+      and a failingStep, so that by the time recordFailureSeparately tries
+      to acquire its own connection, the advisory-lock connection plus the
+      tenant's own DDL connection have already exhausted the 2-connection
+      pool -- producing a REAL PoolError.ExhaustedPool from src/db/pool.zig
+      (not a mock, not a simulated error). The test asserts runFanout
+      returns normally (no panic/escalation) and the control row is left
+      exactly at its seeded pending status, error_msg IS NULL, completed_at
+      IS NULL -- matching AC4's exact wording. TEST-DESIGNER fail-first
+      verified this live: temporarily widening the dedicated pool to
+      pool_size=5 removed the exhaustion and the row correctly became
+      failed instead of pending, causing the new assertion to fail as
+      expected, then reverted. tests/specs/MIG-02.md's AC4 row and Coverage
+      note were rewritten to describe the real mechanism instead of
+      documenting a deferral.
+    reverification: >-
+      TEST-DESIGN-VALIDATOR re-validated PASS (step-03b). TEST-RUNNER
+      re-ran and confirmed test-integration-mig02-mig03 9/9 (was 8/8,
+      step-04). RELEASE-VALIDATOR (step-05, this persisted handoff)
+      independently re-read TC-MIG-02-04 and the production code it
+      exercises (applyToTenant/recordFailureSeparately in
+      src/platform/migration_fanout.zig) line-by-line -- not just trusting
+      the spec/report claims -- confirmed the deferred pool.release() in
+      applyToTenant genuinely does not fire until recordFailureSeparately's
+      own pool.acquire() call has already executed and failed, then
+      independently re-ran zig build test-integration-mig02-mig03 itself
+      (9/9, exit 0) and re-ran zig build migrate twice to reconfirm
+      idempotency was unaffected by the change. Returned APPROVED.
+    why_this_matters_for_the_pipeline: >-
+      This is a concrete instance of the pipeline's rework gate doing
+      exactly what it exists to do: RELEASE-VALIDATOR did not accept a
+      well-written, well-reasoned deferral note at face value, checked
+      whether the stated reason (no fault-injection hook without mocking)
+      was actually true, found it was not, and forced a genuine fix instead
+      of a documentation-only patch. The resulting test is real fault
+      injection against production code, not a relaxed assertion or a
+      mocked component -- exactly the DIRECTIVE T-1 / anti-pattern
+      guidance this pipeline is designed to enforce.
+
+rule_adjustments: []
+
+prevention_notes:
+  - >-
+    When a test spec documents an acceptance criterion as "deferred because
+    no fault-injection hook exists without mocking," treat that premise
+    itself as something to verify, not just the deferral's narrowness or
+    documentation quality. In this run the premise was simply false: a
+    resource-exhaustion condition was directly constructible from a real,
+    already-parameterized pool_size config value. RELEASE-VALIDATOR checking
+    the premise (not just the deferral's optics) is what surfaced this.
+  - >-
+    tools/clean_test_db.py's run_psql() over-broad "relation" substring
+    match (ISS-0663/GH-700) remains open and unresolved -- it is a gate-
+    integrity defect (a cleanup script can report success while leaving
+    leaked rows in place) that could mask a real database-state problem on
+    a future run's Green-Main Gate. Recommend prioritizing this fix before
+    it causes a false-clean gate to mask an unrelated genuine regression.
+  - >-
+    ISS-0665/GH-702 (full zig build test-integration unreliable under this
+    host's default ~40-binary concurrency) means a future ORCH Green-Main
+    Gate check should not treat a single full-concurrency failing run as
+    proof of a real regression on main -- cross-check failing files via a
+    targeted/standalone re-run first, per that issue's own prevention notes.
+    This run's RELEASE-VALIDATOR already applied that discipline by
+    re-verifying via test-integration-mig02-mig03 / test-integration-gh512
+    directly rather than relying on the full umbrella.
+  - >-
+    docs/requirements.yaml is confirmed as the sole live requirement-status
+    tracker; docs/status/requirement_status.yaml is a generated export
+    (tools/reqctl.py's own module docstring states this explicitly, and
+    reqctl.py render-status is the only supported way to update it). Future
+    DOC-UPDATER runs should not need to re-derive this -- it is settled, not
+    an open question.
+
+artifacts:
+  - handoffs/WF02-batch-0-20260811/step-00a-test-runner.json
+  - handoffs/WF02-batch-0-20260811/step-00-backend-dev-git-setup.json
+  - handoffs/WF02-batch-0-20260811/step-01-code-designer.json
+  - handoffs/WF02-batch-0-20260811/step-01b-code-design-validator.json
+  - handoffs/WF02-batch-0-20260811/step-2a-backend-dev.json
+  - handoffs/WF02-batch-0-20260811/step-2c-security-reviewer.json
+  - handoffs/WF02-batch-0-20260811/step-03-test-designer.json
+  - handoffs/WF02-batch-0-20260811/step-03b-test-design-validator.json
+  - handoffs/WF02-batch-0-20260811/step-04-test-runner.json
+  - handoffs/WF02-batch-0-20260811/step-05-release-validator.json
+  - handoffs/WF02-batch-0-20260811/step-06-doc-updater.json
+  - src/platform/ddl_namespace.zig
+  - src/platform/migration_fanout.zig
+  - migrations/1144_platform_migrations_control_table.sql
+  - tests/integration/platform_migrations_control_table_test.zig
+  - tests/integration/migration_fanout_test.zig
+  - tests/specs/DDL-05.md
+  - tests/specs/MIG-01.md
+  - tests/specs/MIG-02.md
+  - tests/specs/MIG-03.md
+  - tests/reports/report-20260811-WF02-batch-0.yaml
+  - docs/status/release-stage16-WF02-batch-0-20260811.yaml
+  - docs/status/requirement_status.yaml
+  - docs/issues/ISS-0663.json
+  - docs/issues/ISS-0664.json
+  - docs/issues/ISS-0665.json
+  - CHANGELOG.md
+  - docs/requirements.yaml
+
+next_action: >-
+  Route to BACKEND-DEV Step Final (git-merge) -- PR creation, checks,
+  squash-merge, branch deletion, and return to clean main are a separate
+  dispatch after this handoff completes; not performed here per explicit
+  instruction.

@@ -63,15 +63,23 @@ def _release_mutex():
 
 
 def main() -> int:
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
         print(
             "Usage: queue_add.py <issue_id> --severity BLOCKER|MAJOR|MINOR "
             "[--title '...'] [--github-issue '...']",
             file=sys.stderr,
         )
+        return 0 if len(sys.argv) >= 2 else 1
+
+    issue_id = sys.argv[1]
+    if issue_id.startswith("-"):
+        print(
+            f"ERROR: '{issue_id}' looks like a flag, not an issue_id. "
+            "issue_id must be the first positional argument, e.g. GH-123 or ISS-0001.",
+            file=sys.stderr,
+        )
         return 1
 
-    issue_id     = sys.argv[1]
     severity     = "MAJOR"
     title        = ""
     github_issue = ""
