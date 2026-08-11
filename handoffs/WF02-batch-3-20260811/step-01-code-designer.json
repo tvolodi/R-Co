@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-3-20260811/step-01-code-designer.json",
   "created_at": "2026-08-11T14:26:03Z",
   "started_at": "2026-08-11T15:15:14Z",
-  "completed_at": "2026-08-11T15:05:50Z",
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T15:21:25Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -33,7 +33,16 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 2: added the append-time retention-class routing docs/processes/system/event-log-partitioning.md Step 7 requires and PAR-03's design (through rework 1) never implemented. Store.append() (src/event_store/store.zig:236) gains one new pre-transaction call to Registry.getType() (retention_class is added as a new field on EventTypeRecord, fetched by getType()'s SELECT, freed by freeTypeRecord()) whose result selects target_table = 'events_ephemeral' when retention_class = 'delete', else 'events' -- Step 3's single hard-coded INSERT becomes a two-branch INSERT selected by target_table, identical column/placeholder shape in both branches. validatePayload()'s own signature is deliberately left unchanged (it is a released ES-05 interface with one external call site) -- the routing lookup is a second, explicitly-justified getType() call rather than plumbing the discarded record out through validatePayload(). events_ephemeral needed no NEW schema change beyond what rework 1's Public Interface section already specified (PARTITION BY RANGE (created_at), PK (event_id, created_at), identical column set to events) -- it does need the SAME lead_months proactive-partition-creation discipline events gets, which PAR-02's design (par-02-partition-maintenance-job.md) did not previously provide; PAR-02's creation loop is widened in this same rework (companion edit, same commit) from iterating 'events' alone to iterating ['events','events_ephemeral'], with its lead-time BLOCKER/WARN severity count left scoped to parent_table='events' only (an ephemeral-partition shortfall surfaces as PartitionMissingForWrite on the next delete-class append, not as a paging alarm -- explicitly reasoned, not overlooked). plat_event_idempotency needs no special-casing: it is written in the same transaction regardless of which of events/events_ephemeral receives the row, since PAR-01 AC2's global-uniqueness guarantee is destination-table-agnostic. TC-ADP-11-02's rewrite plan (Store.archive() retirement section) is now concretely groundable: register a non-protected delete-class type, append via Store.append(), assert the row lands in events_ephemeral (not events), optionally drive a full runEphemeralDrop() cycle -- real routing plus real ephemeral-drop mechanism end to end, not a placeholder test against an always-empty table. Two genuinely open questions remain, both explicitly flagged as non-blocking implementation-shape judgment calls, not AC gaps: (1) whether the duplicate-fetch fallback path re-derives target_table via a second getType() call or plat_event_idempotency grows a source_table column (Open questions §6); (2) PAR-02's existing partial-cycle-completion/run-log-granularity gap (Open questions §3, pre-existing, unaffected by this rework). Neither introduces a new BLOCKER/MAJOR-equivalent gap. All 4 design docs (par-01, par-02, par-03, par-04) re-verified via tools/lint_design_artefact.py: OK, no issues.",
+    "blockers_closed": ["append-time retention-class routing (events vs events_ephemeral) now specified in Store.append(), closing the BLOCKER that runEphemeralDrop() had nothing to drop"],
+    "majors_closed": ["TC-ADP-11-02 now has a real routing + ephemeral-drop mechanism to test against instead of an unpopulated events_ephemeral table"],
+    "files_changed": [
+      "src/design/par-03-partition-scoped-retention.md",
+      "src/design/par-02-partition-maintenance-job.md"
+    ]
+  },
   "rework_count": 2,
   "max_rework": 3
 }

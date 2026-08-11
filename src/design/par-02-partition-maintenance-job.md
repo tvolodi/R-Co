@@ -93,21 +93,24 @@ runMaintenanceCycle(allocator)                                           |
 runMaintenanceCycle(allocator), continued:
         |
         |-- for month in [current_month .. current_month + lead_months]:
+        |     for parent in ["events", "events_ephemeral"]:      [REWORK 2 — see below]
         |       partition already exists AND attached? --yes--> skip
         |         | no
         |         v
-        |     CREATE TABLE events_YYYY_MM (LIKE events INCLUDING
+        |     CREATE TABLE <parent>_YYYY_MM (LIKE <parent> INCLUDING
         |       DEFAULTS, CHECK (tenant_id IS NOT NULL),
         |       CHECK (created_at range))
         |         |
         |         v
-        |     PAR-04's attachPartitionTimed(conn, "events", "events_YYYY_MM", range)
+        |     PAR-04's attachPartitionTimed(conn, <parent>, "<parent>_YYYY_MM", range)
         |         |
         |         +-- .ok --> ATTACH PARTITION issued; append
         |         |            EXECUTION_PARTITION_CREATED
         |         +-- .attach_scan_required --> escalate, do NOT attach
         |
-        |-- count attached future partitions
+        |-- count attached future "events" partitions (events_ephemeral counted
+        |     separately, see body-sketch step 3 below — lead-time severity is
+        |     about writer availability for the MAIN log, not the ephemeral one)
         |     == 0 --> raise BLOCKER (before any append can fail)
         |     == 1 --> raise WARN
         |     >= 2 --> healthy, no alert
@@ -117,6 +120,21 @@ runMaintenanceCycle(allocator), continued:
         v
    sleep until next 00:15 UTC boundary; loop back to runDailyLoop's top
 ```
+
+**REWORK 2 addition — `events_ephemeral` joins the creation loop.** Per
+`src/design/par-03-partition-scoped-retention.md`'s "Interaction with the partition structure"
+section (added when PAR-03's design was extended to implement the append-time retention-class
+routing `docs/processes/system/event-log-partitioning.md` Step 7 requires): a `delete`-class
+event type now routes its appends to `events_ephemeral` instead of `events` at write time, so
+`events_ephemeral` needs `lead_months` future partitions attached ahead of need for the exact same
+reason `events` does — an append landing in a month with no attached `events_ephemeral_YYYY_MM`
+partition fails `PartitionMissingForWrite` exactly as an under-provisioned `events` would. This
+loop now iterates BOTH `events` and `events_ephemeral` as `parent` (shown above), not `events`
+alone — `events_archive` remains excluded from this proactive-creation loop as before (see Open
+questions §1: its ongoing partition supply comes from PAR-03's DETACH/ATTACH cycle, not from this
+job creating new empty `events_archive` partitions past PAR-01's initial seed; that reasoning is
+unaffected by this addition since `events_ephemeral` is a *write target*, like `events`, not an
+*archival destination*, like `events_archive`).
 
 ## Public interface
 
@@ -253,21 +271,34 @@ it directly without waiting for a real daily boundary, following the same separa
    (CURRENT_DATE, 0) ON CONFLICT (run_date) DO NOTHING RETURNING id` — if no row returned,
    return `.{ .ran = false, ... }` immediately (PAR-02 AC2).
 2. For each month `m` in `[current_month, current_month + lead_months]` (inclusive, so
-   `lead_months = 2` covers 3 months exactly as PAR-01's initial seed did): check
-   `plat_partition_catalog` for an existing `ATTACHED` row with `table_name = 'events_' ||
-   to_char(m, 'YYYY_MM')`. If absent, `CREATE TABLE` the candidate partition (same CHECK shape
-   as PAR-01's seed loop), call PAR-04's `attachPartitionTimed()`, and on `.ok` insert the
-   `plat_partition_catalog` row and append `EXECUTION_PARTITION_CREATED` (PAR-02's final AC)
-   carrying the partition name and range bounds. On `.attach_scan_required`, return
-   `PartitionMaintenanceError.UnexpectedAttachScanRequired` — this job always creates the
-   required CHECKs itself immediately before attaching, so this branch indicates a genuine
-   internal defect, not a normal operational path, and is surfaced loudly rather than retried
-   silently.
-3. Count `ATTACHED` rows in `plat_partition_catalog` with `range_start > now()` (future
-   partitions). `0` → severity `.blocker` (PAR-02 AC3: raised "before any append can fail with
-   `PartitionMissingForWrite`" — i.e. this check runs even in the same cycle that just created
-   partitions, so a `lead_months = 0` misconfiguration is caught immediately, not just on the
-   next day's run). `1` → `.warn`. `>= 2` → `.healthy`.
+   `lead_months = 2` covers 3 months exactly as PAR-01's initial seed did) AND for each `parent`
+   in `["events", "events_ephemeral"]` **(REWORK 2: widened from `events` alone — see
+   `src/design/par-03-partition-scoped-retention.md`'s "Interaction with the partition structure"
+   section; `events_ephemeral` is a write target for `delete`-class routed appends and needs the
+   identical lead-time provisioning `events` gets, or a `delete`-class append can hit
+   `PartitionMissingForWrite` exactly as an `events`-bound one would)**: check
+   `plat_partition_catalog` for an existing `ATTACHED` row with `table_name = <parent> || '_' ||
+   to_char(m, 'YYYY_MM')` and `parent_table = <parent>`. If absent, `CREATE TABLE` the candidate
+   partition (same CHECK shape as PAR-01's seed loop, `LIKE <parent> INCLUDING DEFAULTS` against
+   whichever of `events`/`events_ephemeral` is the current `parent`), call PAR-04's
+   `attachPartitionTimed()`, and on `.ok` insert the `plat_partition_catalog` row and append
+   `EXECUTION_PARTITION_CREATED` (PAR-02's final AC) carrying the partition name and range bounds.
+   On `.attach_scan_required`, return `PartitionMaintenanceError.UnexpectedAttachScanRequired` —
+   this job always creates the required CHECKs itself immediately before attaching, so this branch
+   indicates a genuine internal defect, not a normal operational path, and is surfaced loudly
+   rather than retried silently. This applies identically regardless of which `parent` is being
+   provisioned — the CHECK-before-attach discipline is not `events`-specific.
+3. Count `ATTACHED` rows in `plat_partition_catalog` with `parent_table = 'events' AND range_start
+   > now()` (future partitions — **REWORK 2: this count is explicitly scoped to `parent_table =
+   'events'`, not `events_ephemeral`**, since PAR-02 AC3's lead-time severity alarm exists to
+   protect ordinary append availability; a `delete`-class type is a small, deliberately-configured
+   minority of event types, and a shortfall in `events_ephemeral`'s own future-partition count
+   would still surface — just as a `PartitionMissingForWrite` on the next `delete`-class append,
+   the same failure mode `events`'s own shortfall produces, not silently). `0` → severity
+   `.blocker` (PAR-02 AC3: raised "before any append can fail with `PartitionMissingForWrite`" —
+   i.e. this check runs even in the same cycle that just created partitions, so a `lead_months = 0`
+   misconfiguration is caught immediately, not just on the next day's run). `1` → `.warn`. `>= 2`
+   → `.healthy`.
 4. `UPDATE plat_partition_maintenance_run_log SET future_partition_count = $1 WHERE run_date =
    CURRENT_DATE`.
 5. Return `.{ .ran = true, .partitions_created = <count from step 2>, .future_partition_count =
@@ -343,3 +374,14 @@ it directly without waiting for a real daily boundary, following the same separa
    exists elsewhere in the backlog (the process document's SLA table says "BLOCKER... escalates
    to Platform Admin" and "Platform Admin is paged" for `Adp11GuardTripped`, implying SOME paging
    mechanism is assumed platform-wide) before BACKEND-DEV picks one ad hoc for this job alone.
+4. **RESOLVED during PAR-03's REWORK 2: creation loop widened to cover `events_ephemeral`.** This
+   job's creation loop (body sketch step 2, Data flow diagram) now provisions future partitions
+   for `events_ephemeral` alongside `events`, not `events` alone — driven by PAR-03's addition of
+   append-time retention-class routing (`Store.append()` now routes `delete`-class event types to
+   `events_ephemeral`), which is a write target needing the same lead-time discipline as `events`.
+   See `src/design/par-03-partition-scoped-retention.md`'s "Interaction with the partition
+   structure" section for the full rationale. `events_archive` remains excluded from this loop —
+   Open questions §1 (above) still applies to it unchanged, since `events_archive` is an archival
+   destination populated by PAR-03's DETACH/ATTACH cycle, not a direct append target the way
+   `events`/`events_ephemeral` both are. No longer open as a gap; recorded here for traceability
+   since this design's original body only ever looped over `events`.

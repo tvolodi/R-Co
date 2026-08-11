@@ -222,7 +222,231 @@ permissively by omission:
   integration tests) — no gap is introduced by this design, since no new externally-reachable
   surface is added.
 
+## Append-time retention-class routing (PAR-03, REWORK 2 — was missing)
+
+`docs/processes/system/event-log-partitioning.md` Step 7, verbatim: "Event Store routes each
+append by the event type's retention class: `retain_forever` and `archive_queryable` ->
+`events`; `delete` -> `events_ephemeral`." CODE-DESIGN-VALIDATOR's rework-2 BLOCKER is correct
+that nothing in this design (through REWORK 1) implements this — the `RetentionClassForbidden`
+guard added in REWORK 1 stops a protected-family type from ever being *configured* with
+`retention_class = 'delete'`, but says nothing about where a NON-protected `delete`-class type's
+events actually get written. Without this routing, `PartitionRetention.runEphemeralDrop()`
+(above) always finds zero attached `events_ephemeral` partitions with any rows in them — the
+mechanism exists but nothing ever feeds it. This section closes that gap.
+
+### Where the retention_class lookup happens in `Store.append()`
+
+Read in full: `src/event_store/store.zig`'s `append()` (lines 236-540) and
+`src/event_store/registry.zig`'s `validatePayload()`/`getType()` (lines 178-284).
+
+`append()` already calls `self.registry.validatePayload(allocator, params.event_type,
+params.payload)` at line 262, BEFORE the transaction opens (ES-05 pre-write validation).
+Internally, `validatePayload()` calls `self.getType(allocator, event_type)` (line 188) to fetch
+the `EventTypeRecord` it validates the payload against — but only to read `.json_schema`; the
+rest of the record, including everywhere `retention_class` would live, is discarded via `defer
+freeTypeRecord(allocator, record)` immediately after schema validation completes.
+`validatePayload()`'s own signature returns `RegistryError!void` — no record data survives the
+call.
+
+**Design decision: do NOT widen `validatePayload()`'s signature.** `validatePayload()` is a
+released ES-05 interface, documented in `src/design/event_store.md` (line 174) with a `void`
+return type, and has exactly one call site outside `registry.zig` itself
+(`store.zig:262`, confirmed by `grep -rn "validatePayload(" src/ tests/`). Changing its return
+type would mean editing an already-released design artefact outside this batch's scope
+(PAR-01/02/03/04 only) for a saving of one query. Instead:
+
+- `EventTypeRecord` (registry.zig, line 50) gains one new field:
+  ```zig
+  pub const EventTypeRecord = struct {
+      id: Uuid,
+      name: []const u8,
+      schema_version: u32,
+      json_schema: []const u8,
+      description: ?[]const u8,
+      created_at: i64,
+      updated_at: i64,
+      /// PAR-03: 'retain_forever' | 'archive_queryable' | 'delete'.
+      /// DEFAULT 'archive_queryable' at the DB level (Migration 1) — a row
+      /// written before this migration ran (impossible in this batch's
+      /// target fresh-migrated environment, see PAR-01's Scoping note, but
+      /// defensive regardless) reads back as 'archive_queryable', the
+      /// non-destructive default, never as 'delete'.
+      retention_class: []const u8 = "archive_queryable",
+  };
+  ```
+  Confirmed additive/non-breaking: `EventTypeRecord{}` is constructed in exactly two places
+  (both inside `registry.zig` — `registerType()`'s placeholder-record return and `getType()`'s
+  real-row parse), and `getType()`'s one external caller
+  (`src/api/routes/instances.zig:896`) only reads fields off the returned record for a
+  success/error signal, never constructs one itself (confirmed by reading that call site in
+  full) — adding a field with a Zig-level default breaks neither.
+- `getType()`'s SELECT (registry.zig, line 231) adds the new column:
+  ```sql
+  SELECT id, name, schema_version, json_schema, description,
+         EXTRACT(EPOCH FROM created_at)::bigint * 1000000,
+         EXTRACT(EPOCH FROM updated_at)::bigint * 1000000,
+         retention_class
+  FROM event_type_registry
+  WHERE name = $1
+  ORDER BY schema_version DESC
+  LIMIT 1
+  ```
+  and the row-parse block gains `rec.retention_class = allocator.dupe(u8, colText(row, 7) orelse
+  "archive_queryable") catch return RegistryError.TransactionFailed;` (same allocation/error
+  pattern as the existing `rec.name`/`rec.json_schema` dupes immediately above it in the current
+  function body) — freed by the existing `freeTypeRecord()` helper, which gains one more
+  `allocator.free(record.retention_class)` line alongside its existing three frees.
+- `Store.append()` adds ONE new call, immediately after the existing `validatePayload()` call
+  (store.zig, after line 267) and still BEFORE the transaction's `BEGIN` (line 306) — i.e. still
+  inside the pre-write validation phase, no DB writes committed yet either way:
+  ```zig
+  // PAR-03: retention-class routing. A second getType() call — validatePayload()
+  // (above) already fetched this row internally but discards everything except
+  // json_schema. Not folded into one call: validatePayload()'s signature is a
+  // released ES-05 interface (src/design/event_store.md) not touched by this
+  // batch. Two SELECT-by-indexed-name queries against event_type_registry per
+  // append (already a per-append cost today, since validatePayload() does one)
+  // is an accepted, explicitly-flagged cost — see Open questions below.
+  const type_record = self.registry.getType(allocator, params.event_type) catch |err| switch (err) {
+      registry_mod.RegistryError.UnknownEventType => return StoreError.UnknownEventType,
+      registry_mod.RegistryError.PoolExhausted => return StoreError.PoolExhausted,
+      else => return StoreError.TransactionFailed,
+  };
+  defer registry_mod.Registry.freeTypeRecord(allocator, type_record);
+  const target_table: []const u8 = if (std.mem.eql(u8, type_record.retention_class, "delete"))
+      "events_ephemeral"
+  else
+      "events";
+  ```
+  `UnknownEventType` cannot actually trigger here in practice (the identical lookup already
+  succeeded inside `validatePayload()` moments earlier, same transaction-less pre-write phase,
+  same `event_type` string, no DB write has happened between the two calls that could delete the
+  type) — the branch exists for defensive completeness (a concurrent `DROP`/de-registration
+  between the two calls, however unlikely) rather than an expected runtime path, consistent with
+  how this design already treats `AttachScanRequired` inside `runArchivalAging()` as
+  "should not occur in practice."
+
+### What determines the SQL target table
+
+`target_table` (above) is a compile-time-known one-of-two string, never user input, never
+interpolated from `params`— it selects between two fixed, hand-written SQL statement bodies at
+the Zig level (Zig has no parameterised-identifier placeholder; `$N` placeholders only bind
+values, never table names, so `target_table` cannot be passed as a bind parameter regardless of
+trust level). `append()`'s Step 3 INSERT (store.zig lines 402-437) becomes an `if
+(std.mem.eql(u8, target_table, "events_ephemeral"))` branch selecting between two literal SQL
+strings — identical column list and `$N` positions in both branches (`events_ephemeral`'s column
+set, Public interface section above, is deliberately identical to `events`'s own column set
+minus nothing — same 11 columns), differing only in the `INSERT INTO <table>` clause and,
+correspondingly, which table the `ON CONFLICT (idempotency_key) DO NOTHING` targets. **This
+routing does not change the duplicate-detection fallback logic** (store.zig lines 444-499, "check
+`events` then `events_archive`"): a `delete`-class event type's idempotency key is still checked
+against wherever PAR-01's `plat_event_idempotency` sidecar (or, pre-PAR-01-in-the-same-commit,
+the legacy `events`/`events_archive` two-table check) resolves it — `events_ephemeral` does not
+get its own separate idempotency scope; PAR-01 AC2's "global idempotency-key uniqueness" already
+covers every append regardless of destination table, since `plat_event_idempotency` is written in
+the same transaction as every append (PAR-01's design, Migration 2 + Open questions §3),
+independent of which of the three tables (`events` / `events_archive` / `events_ephemeral`) the
+event row itself lands in. This design adds `events_ephemeral` as a third possible resolution
+target for the duplicate-fetch fallback path: if `plat_event_idempotency` resolves a duplicate
+key to an `(event_id, created_at)` pair, the caller must check all three tables for the actual
+row (or, more precisely, know from `event_type_registry.retention_class` which one to check
+first) — see Open questions below for why this is flagged rather than fully pinned down here.
+
+### Interaction with `plat_event_idempotency` (PAR-01, same batch)
+
+No special-casing needed: `plat_event_idempotency (idempotency_key PK, event_id, created_at)` is
+written in the same transaction as the event row regardless of which of `events` /
+`events_ephemeral` receives the INSERT — PAR-01 AC2's global-uniqueness guarantee does not
+distinguish by destination table, and nothing about `plat_event_idempotency`'s own shape
+(Migration 2, PAR-01's design) references `events` by name or FK. The two-statement ordering
+PAR-01's Open questions §3 already recommends (insert `plat_event_idempotency` first, branch on
+whether it returned a row, THEN insert the event row into whichever of `events`/`events_ephemeral`
+`target_table` selects) composes cleanly with this routing: the retention-class lookup
+(`target_table` selection, above) can happen any time before that second INSERT is issued — this
+design places it in the pre-transaction validation phase (before `BEGIN`) purely because that is
+where `validatePayload()` already runs, not because the transaction requires it there.
+
+### Interaction with the partition structure — does `events_ephemeral` need monthly partitioning?
+
+**Yes, same monthly-partition shape as `events`/`events_archive`, not structured differently.**
+This is already implied by two things this design produced BEFORE rework 2 but did not connect
+explicitly until now:
+
+1. The Public interface section (Migration 1) already declares `events_ephemeral` as `PARTITION
+   BY RANGE (created_at)` with `PRIMARY KEY (event_id, created_at)` — the identical shape as
+   `events`.
+2. `runEphemeralDrop()`'s data-flow diagram (above) already queries `plat_partition_catalog WHERE
+   parent_table = 'events_ephemeral' AND state = 'ATTACHED' AND range_end < now() -
+   ephemeral_drop_after_months` — i.e. it already assumed per-month `events_ephemeral_YYYY_MM`
+   partitions exist, tracked the same way as `events_YYYY_MM`/`events_archive_YYYY_MM` rows in
+   `plat_partition_catalog` (PAR-02's table, generic across all three `parent_table` values by
+   design — its `parent_table`/`table_name`/`state` columns carry no `events`-specific
+   assumption).
+
+What was missing is that nothing populated `events_ephemeral` with actual data, and nothing in
+PAR-02's `runMaintenanceCycle()` creation loop (Step 8-9 of the process doc) explicitly names
+`events_ephemeral` as a THIRD parent to proactively create future partitions for, alongside
+`events`/`events_archive` — it currently only mentions creating `events_YYYY_MM`
+(`src/design/par-02-partition-maintenance-job.md`'s "`runMaintenanceCycle()` body sketch" step 2
+loops over months and creates ONE partition per month, worded around `events` only). **This is a
+real, distinct gap from the append-time routing gap**, and this design extends PAR-02's creation
+loop to cover `events_ephemeral` as well:
+
+- PAR-02's `runMaintenanceCycle()` step 2 (its design doc) is extended: for each month `m` in
+  `[current_month, current_month + lead_months]`, the loop now creates/attaches a partition for
+  ALL THREE of `events`, `events_archive`, `events_ephemeral` (not just `events`) — mirroring
+  exactly how PAR-01's own Migration 4 initial-seed loop already double-seeds
+  `events_YYYY_MM`/`events_archive_YYYY_MM` together in one `FOR v_offset IN 0..2` loop body (see
+  `src/design/par-01-monthly-range-partitioning.md`, Migration 4). `events_ephemeral` needs
+  future partitions attached ahead of need for the identical reason `events` does: a `delete`-
+  class append landing in a month with no attached `events_ephemeral_YYYY_MM` partition fails
+  with `PartitionMissingForWrite` exactly as an `events`-bound append would (this design's
+  `target_table` branch, above, does not special-case which table's missing-partition error is
+  "less severe" — PAR-01 AC4's error applies identically to whichever of the two tables the
+  routing decision selected).
+- This is a small, additive extension to PAR-02's already-produced design (widening one loop from
+  two tables to three), not a rewrite — flagged here rather than left unstated, and mirrored in
+  `par-02-partition-maintenance-job.md` directly (see the cross-reference added to that file's own
+  Open questions, if BACKEND-DEV finds it needs updating there too — see Open questions below for
+  why this design does not itself edit `par-02`'s file body beyond this note).
+- Ephemeral partitions ARE still "periodically fully dropped" (per this design's own
+  `runEphemeralDrop()`, unchanged by this section) — proactive creation ahead of need and
+  eventual `DROP TABLE` once aged past `ephemeral_drop_after_months` are not in tension: every
+  `events`-family table (including `events_archive`, which is itself just a long-term parking
+  parent for detached `events` partitions) is created ahead of need and only later transitions to
+  its terminal state (archived-forever for `events_archive`, dropped for `events_ephemeral`).
+  `events_ephemeral` partitions are NOT created with a shorter lookback/lookahead window than
+  `events`/`events_archive` — same `lead_months` horizon, same monthly grain — because the
+  routing decision (which table an event lands in) is made per-EVENT at append time, not
+  per-PARTITION at creation time; the maintenance job cannot know in advance whether a given
+  future month will receive any `delete`-class events, so it provisions the partition
+  unconditionally, identically to how it provisions an `events_YYYY_MM` partition without knowing
+  in advance whether any event will actually be appended to it that month.
+
 ## Data flow diagram
+
+```
+Store.append(allocator, params)                              [REWORK 2 addition]
+        |
+        |-- self.registry.validatePayload(...)  (existing, ES-05, unchanged)
+        |-- self.registry.getType(allocator, params.event_type)
+        |         |
+        |         v
+        |   type_record.retention_class == 'delete'?
+        |         | no (retain_forever / archive_queryable)  | yes
+        |         v                                          v
+        |   target_table = "events"                    target_table = "events_ephemeral"
+        |         |                                          |
+        |         +------------------------+-------------------+
+        |                                  v
+        |                     BEGIN; ...; INSERT INTO <target_table> (...)
+        |                     ON CONFLICT (idempotency_key) DO NOTHING
+        |                     RETURNING ...; ...; COMMIT
+        v
+   (unaffected: instance/sequence checks, plat_event_idempotency write,
+    event_payload_store side-table insert, instance_projections update —
+    all identical regardless of target_table)
+```
 
 ```
 PAR-02's runMaintenanceCycle(), after its own creation loop completes
@@ -339,6 +563,36 @@ Both statements are guarded by the same `v_is_partitioned` idempotency check PAR
 uses (re-running this migration against a schema where it already succeeded is a no-op), applied
 here to `events_ephemeral` specifically rather than duplicated as a third independent guard.
 
+### `src/event_store/registry.zig` changes (REWORK 2, append-time routing support)
+
+```zig
+pub const EventTypeRecord = struct {
+    id: Uuid,
+    name: []const u8,
+    schema_version: u32,
+    json_schema: []const u8,
+    description: ?[]const u8,
+    created_at: i64,
+    updated_at: i64,
+    /// PAR-03 (rework 2): 'retain_forever' | 'archive_queryable' | 'delete'.
+    retention_class: []const u8 = "archive_queryable",
+};
+```
+
+`getType()`'s SELECT gains `retention_class` as an 8th column; `freeTypeRecord()` gains
+`allocator.free(record.retention_class)`. See "Append-time retention-class routing" above for the
+full rationale and exact diff shape.
+
+### `src/event_store/store.zig` changes (REWORK 2, append-time routing)
+
+`Store.append()` gains one new pre-transaction call (`self.registry.getType()`) and one new
+`target_table` selection, both detailed in full in "Append-time retention-class routing" above.
+Step 3's INSERT (currently a single hard-coded `INSERT INTO events (...)`) becomes two SQL string
+literals selected by `target_table`, identical in every column/placeholder position, differing
+only in the table name in the `INSERT INTO` / implicit `ON CONFLICT` target. No new `StoreError`
+variant is required — `UnknownEventType`/`PoolExhausted`/`TransactionFailed` (all pre-existing)
+cover every failure mode of the new `getType()` call.
+
 ### Retention logic (Type E, `src/scheduler/partition_retention.zig`)
 
 ```zig
@@ -414,6 +668,8 @@ pub const PartitionRetention = struct {
 | `ORPHAN_PARTITION` (not a Zig error — a `plat_partition_catalog.state` value) | `DETACH PARTITION` commits but the subsequent `ATTACH PARTITION` to `events_archive` fails (PAR-03 AC5) | Not surfaced as a thrown error to the caller — `runArchivalAging()` catches the attach failure internally, records the state transition, and continues to the next aged partition (unlike the ephemeral-drop guard trip, an orphaned partition is an expected, self-healing transient state, not evidence of a routing bug) |
 | `RetentionError.PoolExhausted` / `TransactionFailed` | DB connectivity issue during either operation | Propagated to caller; PAR-02's cycle treats identically to its own DB errors — the whole maintenance cycle for that day is considered incomplete and retried next boundary, without marking `plat_partition_maintenance_run_log` as fully successful for partitions not yet processed (see Open questions §3 for exactly what "partially completed cycle" means for the run-log idempotency gate) |
 | `AttachScanRequired` (from PAR-04, surfaced as the "any DB error" branch in Data flow diagram) | The re-attach step's candidate partition (the just-detached, pre-existing relation) is missing a required CHECK | Should not occur in practice — the partition was originally created with both CHECKs by PAR-01's seed or PAR-02's creation loop, and DETACH/ATTACH does not alter a table's own constraints. If it does occur, treated as an `ORPHAN_PARTITION` transition exactly like any other re-attach failure, not a distinct error path — a genuinely missing CHECK on an already-attached partition would be a pre-existing data-integrity problem this module cannot repair mid-cycle |
+| `StoreError.UnknownEventType` (REWORK 2, `Store.append()`'s new `getType()` call) | The routing lookup's `event_type` is not found in `event_type_registry` | Defensive-only branch — the identical lookup already succeeded moments earlier inside `validatePayload()` in the same pre-transaction phase, so this should be unreachable in normal operation (see "Append-time retention-class routing" above); mapped to the same HTTP 422 `validatePayload()`'s own `UnknownEventType` already produces, so no new client-visible error code is introduced |
+| `StoreError.PartitionMissingForWrite` (PAR-01, applies identically to `events_ephemeral`, REWORK 2) | A `delete`-class append's `created_at` falls in a month with no attached `events_ephemeral_YYYY_MM` partition | Same error, same HTTP 503 mapping as an `events`-bound append hitting a missing partition (PAR-01's error taxonomy) — this design's routing does not introduce a second error for the ephemeral case; PAR-02's creation loop, extended by this design (see "Interaction with the partition structure" above) to also provision `events_ephemeral` partitions ahead of need, is what prevents this in steady-state operation |
 
 ## `Store.archive()` retirement (PAR-03 DELETE-prohibition, REWORK 1) — scope for BACKEND-DEV
 
@@ -506,6 +762,36 @@ changes above — not a separate follow-up):**
      replacement tests exist. This is a same-workflow handoff to TEST-DESIGNER, not a deferred
      follow-up requirement — `src/scheduler/partition_retention.zig` (this design, above) is being
      built in this same WF-02 run.
+
+     **REWORK 2 — `TC-ADP-11-02`'s rewrite is now concretely groundable, not merely a placeholder
+     redirect.** Before this rework, "repoint at `PartitionRetention`" had no real mechanism behind
+     it: nothing populated `events_ephemeral` with any rows, so a rewritten test could only call
+     `runEphemeralDrop()` against an empty partition and trivially assert "0 dropped, 0 guard
+     trips" — not actually exercising "non-protected families retain hard-delete
+     configurability." With the append-time routing above (`Store.append()` -> `getType()` ->
+     `target_table` selection), the rewritten test now has a real, traceable end-to-end path:
+     register a non-protected event type (e.g. `WIDGET_CREATED`) via `Registry.registerType()`
+     with `retention_class = 'delete'` (permitted — `WIDGET_*` does not match
+     `{INSTANCE_,TASK_,GATEWAY_,EXECUTION_}*`, so REWORK 1's `RetentionClassForbidden` guard does
+     not reject it), append one or more events of that type via `Store.append()` and assert the
+     row lands in `events_ephemeral` (not `events`) — e.g. `SELECT count(*) FROM events_ephemeral
+     WHERE event_type = 'WIDGET_CREATED'` returns the expected count and the equivalent query
+     against `events` returns 0 — then either (a) directly assert on `events_ephemeral`'s content
+     as the full test, since "hard-delete configurability preserved" is now demonstrated by the
+     routing itself (the type WAS configured for hard deletion, and its events WERE routed to the
+     table `DROP TABLE` operates on), or (b) additionally drive a full cycle: advance/backdate the
+     partition's `range_end` past `ephemeral_drop_after_months` (or construct the test partition
+     with an already-aged range directly, matching how `runArchivalAging()`'s own tests are
+     expected to backdate `plat_partition_catalog` rows — implementation-test-design judgment for
+     TEST-DESIGNER, not dictated here) and call `PartitionRetention.runEphemeralDrop()`, asserting
+     the partition is dropped and the guard was never tripped (count of protected-family rows in
+     that partition is legitimately 0, since `WIDGET_CREATED` was never protected-family to begin
+     with). Either form is now backed by real, designed behavior — routing decides WHERE the row
+     goes, `runEphemeralDrop()` decides WHEN the table holding it goes away — closing the gap
+     CODE-DESIGN-VALIDATOR's rework-2 BLOCKER identified. `TC-ADP-11-03` (protected-family
+     archive/queryability) is unaffected by this addition — protected families never route to
+     `events_ephemeral` at all (REWORK 1's guard), so that test's path continues to run entirely
+     through `runArchivalAging()`/`events_archive`, exactly as REWORK 1 already specified.
 4. Confirm via `git grep -n "DELETE FROM events\b\|DELETE FROM events_archive\b" src/` returns
    zero results after step 1 — the mechanical proof that no `src/` code path violates PAR-03's
    DELETE-prohibition under either reading, closing BLOCKER 2 unambiguously.
@@ -524,6 +810,20 @@ language this design previously carried is removed (see Open questions §1, belo
   function, since the guard runs as a single `SELECT count(*)` against the partition, not a
   per-row Zig-side check — see Open questions §4 for why this duplication is accepted rather than
   factored out).
+- **REWORK 2 addition:** `Store.append()` (`src/event_store/store.zig`) now depends on
+  `Registry.getType()`/`EventTypeRecord.retention_class` (`src/event_store/registry.zig`) for the
+  append-time routing decision — see "Append-time retention-class routing" above. This is a new
+  cross-module dependency this design introduces (PAR-03's migration adds the column;
+  `store.zig`'s append path reads it), the inverse direction of PAR-03's existing dependency on
+  ADP-11's `isProtectedEventFamily()` (that one is store.zig -> registry.zig's *sibling*, i.e.
+  store.zig already imports `registry.zig` today per its own top-of-file `const registry_mod =
+  @import("registry.zig")`, confirmed by reading store.zig's imports — no NEW module edge is
+  created, only a new call through an already-existing import).
+- **REWORK 2 addition:** PAR-02's `runMaintenanceCycle()` creation loop now also depends on
+  `events_ephemeral` existing as a third partition family to provision ahead of need (see
+  "Interaction with the partition structure" above) — a small, additive extension to PAR-02's
+  already-produced design that this document specifies but does not itself rewrite line-by-line in
+  `par-02-partition-maintenance-job.md`'s body (see Open questions §5 for why).
 - Must NOT depend on: `Store.archive()` (`src/event_store/store.zig`) — this function is REMOVED
   by this same batch (see "`Store.archive()` retirement" section above), not merely avoided; this
   module does not call it, and after BACKEND-DEV's removal it no longer exists to call.
@@ -578,3 +878,39 @@ language this design previously carried is removed (see Open questions §1, belo
    change to the protected-family prefix list (currently hardcoded in BOTH places) is not missed
    in one of the two call sites — a candidate for a follow-up "keep both lists in sync" lint,
    out of scope for this design.
+5. **NEW (REWORK 2): `par-02-partition-maintenance-job.md`'s creation-loop body is not directly
+   edited by this document.** "Interaction with the partition structure" (above) specifies that
+   PAR-02's `runMaintenanceCycle()` step 2 must provision `events_ephemeral` partitions ahead of
+   need, alongside `events`/`events_archive` — but the authoritative step-2 algorithm sketch lives
+   in `par-02-partition-maintenance-job.md`, a separate, already-produced design artefact for a
+   different requirement (PAR-02). This document specifies the REQUIREMENT (three parents, not
+   two, in the same loop) and the REASON (`delete`-class events need a target partition exactly as
+   much as any other class does), which is sufficient for BACKEND-DEV to implement correctly, but
+   does not itself rewrite `par-02`'s Public Interface section to show the three-table loop body
+   verbatim — that edit is applied directly to `par-02-partition-maintenance-job.md` as a
+   companion change in this same rework pass (see that file's own changelog/diff for the loop-body
+   update), keeping each requirement's authoritative algorithm description in its own file rather
+   than duplicating PAR-02's pseudocode inside PAR-03's document. Not left silently inconsistent
+   between the two files — cross-referenced explicitly in both directions.
+6. **NEW (REWORK 2, genuinely open, not a compliance gap): duplicate-fetch fallback across three
+   tables.** `Store.append()`'s post-`ON CONFLICT DO NOTHING` fallback path (store.zig lines
+   444-499) currently checks `events` then `events_archive` for a pre-existing duplicate row, and
+   PAR-01's design already updates this to resolve via `plat_event_idempotency` first (Open
+   questions §3 there) before reading the correct table. This design's routing adds a THIRD
+   candidate table (`events_ephemeral`) that a `delete`-class type's duplicate could live in. The
+   `plat_event_idempotency` row itself does not record WHICH of the three tables the original
+   event landed in (its schema, PAR-01 Migration 2, is `idempotency_key, event_id, created_at` —
+   no table-name column) — so resolving a duplicate for a `delete`-class event type requires either
+   (a) re-deriving `target_table` the same way the original append did (a second
+   `registry.getType()` call keyed by the SAME `event_type`, which the caller already has from
+   `params.event_type` even in the duplicate branch), or (b) adding a `source_table` column to
+   `plat_event_idempotency` so the duplicate-fetch path never needs a second registry lookup. This
+   design recommends (a) — it requires no schema change to PAR-01's already-produced
+   `plat_event_idempotency` table and reuses the exact `target_table` derivation this document
+   already specifies for the primary insert path — but does not mandate it, since the two-line
+   difference between (a) and (b) is BACKEND-DEV implementation-shape judgment, not a schema
+   decision this design artefact is required to pin down. **This is NOT a gap that blocks PAR-03's
+   own acceptance criteria** (no PAR-03 AC concerns the duplicate-fetch fallback path's exact
+   table-resolution order; ES-03's "return the original event" behavior is satisfiable by either
+   (a) or (b)) — flagged here as an implementation-shape open question for BACKEND-DEV, not left
+   silently unresolved as if it were undiscovered.
