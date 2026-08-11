@@ -1,9 +1,9 @@
 stage: "Stage 16"
-date: "2026-08-11T06:47:07Z"
+date: "2026-08-11T07:09:56Z"
 run_id: WF02-batch-0-20260811
 workflow_id: WF-02
 workflow_step: "05"
-decision: BLOCKED
+decision: APPROVED
 
 requirement_ids:
   - DDL-05
@@ -27,7 +27,27 @@ acceptance_criteria_audit:
     (src/platform/ddl_namespace.zig, tests/integration/platform_migrations_control_table_test.zig,
     tests/integration/migration_fanout_test.zig) rather than trusting spec-file
     claims alone. Test counts in the Zig source match the test report exactly
-    (10 ddl-namespace, 5 mig01, 8 mig02-mig03).
+    (10 ddl-namespace, 5 mig01, 9 mig02-mig03 after REWORK 1).
+  rework_1_reverification: >
+    RE-VALIDATION after REWORK 1 (this pass). Independently re-verified,
+    not re-derived from TEST-DESIGNER/TEST-DESIGN-VALIDATOR/TEST-RUNNER claims:
+    (1) read TC-MIG-02-04 in tests/integration/migration_fanout_test.zig in
+    full and confirmed it is genuine fault injection (dedicated pool_size=2
+    Pool, no mock/stub of bpm.pool.Pool or any other component); (2) read
+    src/platform/migration_fanout.zig's applyToTenant/recordFailureSeparately
+    line-by-line and confirmed the code genuinely produces the connection-
+    exhaustion sequence the test and tests/specs/MIG-02.md's "Coverage note"
+    describe; (3) read the updated tests/specs/MIG-02.md and confirmed AC4 no
+    longer says "not directly tested" / documents no deferral -- it now
+    documents TC-MIG-02-04's mechanism and a fail-first verification note;
+    (4) ran `zig build test-integration-mig02-mig03 --summary all` myself with
+    BPM_TEST_DB_URL/BPM_DB_URL set explicitly and confirmed
+    "Build Summary: 6/6 steps succeeded; 9/9 tests passed", exit code 0; (5)
+    ran `zig build migrate` twice in immediate succession and confirmed both
+    runs report "No new migrations to apply" with exit code 0 (idempotency
+    unaffected by this rework, re-confirmed rather than assumed). DDL-05,
+    MIG-01, MIG-03 coverage and the HTTP-NFR-not-applicable finding are
+    unaffected by this rework and stand as originally recorded below.
   ddl_05:
     ac1: covered (TC-DDL-05-AC1, plus TC-DDL-05-extra for .alter)
     ac2: covered (TC-DDL-05-AC2, AC2b, AC2c)
@@ -50,18 +70,29 @@ acceptance_criteria_audit:
     ac2: covered (TC-MIG-02-02/03)
     ac3: covered (TC-MIG-02-02/03)
     ac4: >
-      NOT COVERED. tests/specs/MIG-02.md's own "Coverage note" states this
-      explicitly: "recorded as a known, narrow, non-blocking gap rather than
-      closed with a synthetic test in this batch... revisit when MIG-04's
-      implementation lands." This describes a double-failure branch
-      (recordFailureSeparately's own transaction failing) inside
-      applyToTenant/runFanout -- code that IS delivered in this batch, in
-      src/platform/migration_fanout.zig (lines ~343-383, ~391-405). Unlike
-      DDL-05 AC5 and MIG-03 AC4 (which describe behavior belonging to a
-      DIFFERENT, not-yet-built requirement/module), MIG-02 AC4 describes this
-      batch's OWN delivered code, deferred purely because fault injection is
-      hard under DIRECTIVE T-1. This is deferred coverage of a MUST
-      requirement's own acceptance criterion, not a scope boundary.
+      RESOLVED (REWORK 1). Previously NOT COVERED (see blocking_issues_resolved
+      below for the original finding, kept for the record). TEST-DESIGNER added
+      TC-MIG-02-04 to tests/integration/migration_fanout_test.zig, using a
+      genuine non-mock fault-injection technique: a dedicated pool_size = 2
+      bpm.pool.Pool (separate from the shared pool_size = 5 pool every other
+      test in the file uses), driven through runFanout with a single fixture
+      tenant and failingStep. Independently re-verified by RELEASE-VALIDATOR
+      by reading both the test and the underlying src/platform/migration_fanout.zig
+      implementation line-by-line (not just trusting the spec/report claims):
+      applyToTenant's `defer pool.release(conn)` (line 219) genuinely does not
+      fire until applyToTenant itself returns, and recordFailureSeparately is
+      called (line 256) from inside the DDL-step catch block, strictly BEFORE
+      that deferred release runs -- so with lock_conn (1) + the tenant's own
+      DDL conn (2) already held against a pool_size=2 pool,
+      recordFailureSeparately's own pool.acquire() at line 356 genuinely
+      returns PoolError.ExhaustedPool (a real error from src/db/pool.zig's
+      `if (self.idle_count == 0) return PoolError.ExhaustedPool;`, not a
+      simulated/mocked one). TC-MIG-02-04 asserts runFanout returns normally
+      (no panic/escalation) and the control row is left exactly at its seeded
+      'pending' status with error_msg IS NULL and completed_at IS NULL --
+      matching AC4's exact wording ("the row remains pending"). This is a
+      genuine double-failure fault injection, not a mock of bpm.pool.Pool
+      (DIRECTIVE T-1 compliant).
     ac5: >
       Structural/inspection-only verification (no runtime-observable test is
       possible for "no code path writes on a foreign connection" -- both
@@ -102,11 +133,13 @@ nfr_benchmarks:
     throughput) have no route to measure against in this batch and are
     explicitly not applicable -- noted here rather than silently skipped.
 
-blocking_issues:
+blocking_issues: []
+
+blocking_issues_resolved:
   - id: ISS-NOTE-MIG02-AC4
     severity: MAJOR
     requirement: MIG-02
-    description: >
+    original_description: >
       MIG-02 AC4 ("GIVEN the failure-recording transaction itself fails, WHEN
       the fanout continues, THEN the row remains pending and the MIG-04
       resume query covers it") has no test evidence anywhere in
@@ -118,30 +151,27 @@ blocking_issues:
       return FAIL when any MUST requirement has an acceptance criterion with
       no passing integration test evidence, regardless of how narrow or
       well-documented the deferral is.
-    recommended_fix: >
-      Either (a) add a fault-injection seam to migration_fanout.zig narrow
-      enough to trigger recordFailureSeparately's own transaction failing
-      without violating DIRECTIVE T-1's no-mock-pool rule (e.g. an
-      injectable, test-only failure hook scoped exactly to that one internal
-      call, analogous to patterns used elsewhere in this codebase for
-      hard-to-reach error paths), and add TC-MIG-02-AC4 exercising it; or
-      (b) if the team judges this AC genuinely untestable without MIG-04
-      existing, escalate to REQ-ANALYST/ORCH to explicitly amend MIG-02's
-      acceptance criteria or split AC4 into its own tracked, out-of-scope
-      requirement the way DDL-05 AC5 and MIG-03 AC4 were -- do not let
-      RELEASE-VALIDATOR silently accept a same-batch deferral as done.
-    assigned_to: BACKEND-DEV (fix) or REQ-ANALYST (requirement amendment), routed via ORCH
+    resolution: >
+      REWORK 1: TEST-DESIGNER added TC-MIG-02-04 to
+      tests/integration/migration_fanout_test.zig using a genuine, non-mock
+      fault-injection technique (dedicated pool_size=2 Pool causing real
+      PoolError.ExhaustedPool inside recordFailureSeparately's own
+      pool.acquire() call). tests/specs/MIG-02.md's AC4 row and Coverage note
+      were rewritten to document TC-MIG-02-04 instead of the deferral.
+      TEST-DESIGN-VALIDATOR re-validated PASS. TEST-RUNNER re-ran and
+      confirmed test-integration-mig02-mig03 is 9/9 (was 8/8). RELEASE-VALIDATOR
+      independently re-verified all of the above by reading the test code, the
+      production code it exercises, the updated spec, and by re-running the
+      test suite and migration idempotency check itself (see
+      rework_1_reverification above). No longer a blocking issue.
+    status: RESOLVED
 
-approved_requirements: []
+approved_requirements:
+  - "DDL-05"
+  - "MIG-01"
+  - "MIG-02"
+  - "MIG-03"
 
-not_approved_requirements:
-  - "DDL-05 (blocked only by pipeline policy -- its own ACs are fully covered; MIG-02 in the same batch is what fails the gate)"
-  - "MIG-01 (blocked only by pipeline policy -- its own ACs are fully covered; MIG-02 in the same batch is what fails the gate)"
-  - "MIG-02 (AC4 has no passing test evidence)"
-  - "MIG-03 (blocked only by pipeline policy -- its own ACs are fully covered; MIG-02 in the same batch is what fails the gate)"
+not_approved_requirements: []
 
-next_action: >
-  Do not route to DOC-UPDATER. Route back to ORCH to dispatch either
-  BACKEND-DEV (add the missing MIG-02 AC4 test) or REQ-ANALYST (formally
-  re-scope AC4), then TEST-DESIGN-VALIDATOR and TEST-RUNNER must re-run
-  before RELEASE-VALIDATOR reconsiders this stage.
+next_action: "Route to DOC-UPDATER (Step 6)"
