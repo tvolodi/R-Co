@@ -54,19 +54,23 @@ test "assertDatabaseConfiguration_success" {
     const pool = try setupTestPool(io, testing.allocator);
     defer cleanupTestPool(pool, testing.allocator);
 
-    // Act
-    const result = startup_assertions.assertDatabaseConfiguration(testing.allocator, pool);
-
-    // Assert - either path is a passing outcome for this test.
-    if (result) {
-        // success path: function returned void
-    } else |err| switch (err) {
-        error.PublicSchemaPollution => {
-            // baseline pollution path: BPM platform tables are present.
-            // Function correctly detected them.
-        },
-        else => return err,
+    // Pre-check: public schema must be empty before the production assertion is invoked.
+    {
+        var conn = try pool.acquire();
+        defer pool.release(conn);
+        var precheck = try conn.query(
+            testing.allocator,
+            "SELECT tablename FROM pg_tables" ++
+                " WHERE schemaname = 'public'" ++
+                " AND tablename NOT IN ('schema_migrations', 'migrations_lock')",
+            &.{},
+        );
+        defer precheck.deinit();
+        if (precheck.rows.len > 0) return error.PublicSchemaPollutionPreCheck;
     }
+
+    // Act — strict: only void is a passing outcome.
+    try startup_assertions.assertDatabaseConfiguration(testing.allocator, pool);
 }
 
 test "assertDatabaseConfiguration_version_too_old" {
@@ -191,22 +195,26 @@ test "assertDatabaseConfiguration_with_overrides_success" {
     const version: u32 = 140000; // PostgreSQL 14.0
     const extensions = [_][]const u8{"pg_trgm"};
 
-    // Act
-    const result = startup_assertions.assertDatabaseConfigurationWithOverrides(
+    // Pre-check: public schema must be empty before the production assertion is invoked.
+    {
+        var conn = try pool.acquire();
+        defer pool.release(conn);
+        var precheck = try conn.query(
+            testing.allocator,
+            "SELECT tablename FROM pg_tables" ++
+                " WHERE schemaname = 'public'" ++
+                " AND tablename NOT IN ('schema_migrations', 'migrations_lock')",
+            &.{},
+        );
+        defer precheck.deinit();
+        if (precheck.rows.len > 0) return error.PublicSchemaPollutionPreCheck;
+    }
+
+    // Act — strict: only void is a passing outcome.
+    try startup_assertions.assertDatabaseConfigurationWithOverrides(
         testing.allocator,
         pool,
         version,
         &extensions,
     );
-
-    // Assert - either success or pollution-detected is a passing outcome
-    // (BPM platform tables legitimately occupy `public` in bpm_test).
-    if (result) {
-        // success path
-    } else |err| switch (err) {
-        error.PublicSchemaPollution => {
-            // baseline pollution path
-        },
-        else => return err,
-    }
 }
