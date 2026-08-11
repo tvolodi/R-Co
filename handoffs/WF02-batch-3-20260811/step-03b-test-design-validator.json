@@ -1,0 +1,45 @@
+{
+  "handoff_id": "a224783e-a28d-4342-a302-7edebbfba686",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-3-20260811/step-03b-test-design-validator.json",
+  "created_at": "2026-08-11T18:03:46Z",
+  "started_at": "2026-08-11T18:03:46Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/PAR-01.md",
+      "tests/specs/PAR-02.md",
+      "tests/specs/PAR-03.md",
+      "tests/specs/PAR-04.md"
+    ]
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER Step 03 test design for PAR-01/02/03/04 (stage 16), including its REWORK 1 pass. Hard gate: TEST-RUNNER cannot start until this returns PASS. Verify every MUST-requirement AC has a runnable integration test tracing to it, no error.SkipZigTest on a MUST test without a legitimate counterpart, fixtures are isolated, and pipeline test chains are wired correctly. Pay particular attention to PAR-01 AC4 (PartitionMissingForWrite): this was a genuine implementation gap found and fixed via one rework cycle (BACKEND-DEV commit fa63e32d, TEST-DESIGNER re-validation commit c992bfe3) -- confirm independently that TC-PAR01-04-01 genuinely proves AC4 rather than just trusting TEST-DESIGNER's own re-validation claim. Also confirm the MINOR gaps documented in PAR-02.md/PAR-03.md/PAR-04.md (AC3/AC5, AC4/AC5/AC6, AC3/AC4 respectively) are legitimately non-blocking (correct, reviewable implementations with thin/no direct test coverage) rather than disguised MUST-coverage gaps, and that ISS-0670/GH-711 (PAR-02 AC5 emission, filed separately) does not need to block this gate.",
+    "acceptance_criteria": [
+      "Every MUST-requirement AC in PAR-01, PAR-02, PAR-03, PAR-04 traces to a specific test case",
+      "TC-PAR01-04-01 independently confirmed to genuinely prove PAR-01 AC4 (not vacuous, not weaker than the requirement)",
+      "No error.SkipZigTest on a MUST test without a legitimate counterpart",
+      "Fixtures are isolated (no hardcoded UUIDs, proper defer cleanup)",
+      "The documented MINOR gaps are correctly classified as non-blocking, not disguised MUST gaps",
+      "python tools/lint_test_isolation.py run against touched test files with 0 new issues"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
