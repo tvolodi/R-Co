@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-11T20:14:37Z",
+  "last_updated": "2026-08-11T20:35:22Z",
   "next_issue_id": 211,
   "issues": [
     {
@@ -2147,6 +2147,37 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/714",
       "discovered_in": "WF02-batch-4-20260811 BACKEND-DEV Step 02a self-review (lint_dual_schema_table_names.py)",
       "created_at": "2026-08-11T20:14:37Z",
+      "resolved_at": null
+    },
+    {
+      "issue_id": "ISS-0674",
+      "title": "PIN-01: resolveServiceCatalogRef() calls dropped bpm_effective_tenant_id() -- breaks SERVICE_TASK instance-start, not tenant-scoped in SCHEMA mode",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "tenant isolation / correctness",
+      "run_id": "WF02-batch-4-20260811",
+      "affected_areas": [
+        "src/engine/pin_resolver.zig",
+        "src/engine/instance.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/715",
+      "discovered_in": "WF02-batch-4-20260811 SECURITY-REVIEWER Step 2c (docs/agents/instructions/security-invariants.md INV-1 review)",
+      "created_at": "2026-08-11T20:35:22Z",
+      "resolved_at": null
+    },
+    {
+      "issue_id": "ISS-0675",
+      "title": "PAR-06: Store.reconstructBounded() is dead code -- unused duplicate of reconstruction.zig's live bounded-reconstruction path",
+      "status": "OPEN",
+      "severity": "MINOR",
+      "category": "code quality / maintenance hazard",
+      "run_id": "WF02-batch-4-20260811",
+      "affected_areas": [
+        "src/event_store/store.zig"
+      ],
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/716",
+      "discovered_in": "WF02-batch-4-20260811 SECURITY-REVIEWER Step 2c (docs/agents/instructions/security-invariants.md INV-1 review)",
+      "created_at": "2026-08-11T20:35:22Z",
       "resolved_at": null
     }
   ]
