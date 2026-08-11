@@ -2,7 +2,16 @@
 """reqctl_batch_release.py — mark a claimed WF-02 requirement batch DONE.
 
 Usage:
-  python3 tools/reqctl_batch_release.py <batch_index> <workspace_id> [--run-id RUN_ID]
+  python3 tools/reqctl_batch_release.py <batch_key> <workspace_id> [--run-id RUN_ID] [--stage "<stage value>"]
+
+<batch_key> is the stable content-hash identity printed by
+reqctl_batch_claim.py's stdout (its "batch_key" field) — prefer this over a
+bare integer batch_index, which is only a display ordinal for a single
+build_plan() call and is NOT stable across separate calls (see
+ISS-0667 / GH-705). A bare integer is still accepted for backward
+compatibility but only matches an item whose CURRENT batch_index still
+equals it, which can silently miss the intended batch after any earlier
+batch in the same stage has been released.
 
 Exit codes:
   0 — success
@@ -64,13 +73,25 @@ def _release_mutex():
 def main() -> int:
     if len(sys.argv) < 3:
         print(
-            "Usage: reqctl_batch_release.py <batch_index> <workspace_id> "
+            "Usage: reqctl_batch_release.py <batch_index_or_batch_key> <workspace_id> "
             "[--run-id RUN_ID] [--stage \"<stage value>\"]",
             file=sys.stderr,
         )
         return 1
 
-    batch_index = int(sys.argv[1])
+    # Accepts either the stable batch_key (preferred — what gh_claim.py's
+    # stdout prints as "batch_key") or, for backward compatibility, a bare
+    # integer batch_index. batch_index is matched only if a batch_key was
+    # not given, since index is NOT a stable identity across separate
+    # build_plan() calls — see ISS-0667 / GH-705 and reqctl_batch_claim.py's
+    # batch_key() docstring.
+    selector = sys.argv[1]
+    try:
+        batch_index = int(selector)
+        selector_key = None
+    except ValueError:
+        batch_index = None
+        selector_key = selector
     workspace_id = sys.argv[2]
     run_id = None
     stage = None
@@ -101,12 +122,18 @@ def main() -> int:
 
         found = False
         for item in q.get("items", []):
-            if item.get("batch_index") != batch_index or item.get("stage_key") != stage_key:
+            if item.get("stage_key") != stage_key:
                 continue
+            if selector_key is not None:
+                if item.get("batch_key") != selector_key:
+                    continue
+            else:
+                if item.get("batch_index") != batch_index:
+                    continue
             lock = item.get("lock") or {}
             if lock.get("workspace_id") != workspace_id:
                 print(
-                    f"ERROR: batch {batch_index} (stage={stage_key!r}) is locked by "
+                    f"ERROR: batch {selector!r} (stage={stage_key!r}) is locked by "
                     f"'{lock.get('workspace_id')}', not '{workspace_id}'",
                     file=sys.stderr,
                 )
@@ -121,7 +148,7 @@ def main() -> int:
             break
 
         if not found:
-            print(f"ERROR: batch_index {batch_index} not found in queue", file=sys.stderr)
+            print(f"ERROR: batch {selector!r} (stage={stage_key!r}) not found in queue", file=sys.stderr)
             _release_mutex()
             return 1
 
@@ -131,7 +158,7 @@ def main() -> int:
             f.write("\n")
 
         _release_mutex()
-        print(f"batch {batch_index} -> DONE")
+        print(f"batch {selector} -> DONE")
         return 0
 
     except Exception as exc:
