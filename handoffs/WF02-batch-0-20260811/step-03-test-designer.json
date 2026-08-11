@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-0-20260811/step-03-test-designer.json",
   "created_at": "2026-08-11T05:23:33Z",
   "started_at": "2026-08-11T06:50:32Z",
-  "completed_at": "2026-08-11T06:30:03Z",
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T06:56:40Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -38,7 +38,18 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1: closed MIG-02 AC4 test-evidence gap. Added TC-MIG-02-04 to tests/integration/migration_fanout_test.zig using a genuine, non-mock fault-injection technique: a dedicated pool_size=2 bpm.pool.Pool whose own real, in-flight connection accounting (runFanout advisory-lock conn + applyToTenant DDL conn) exhausts the pool exactly when recordFailureSeparately tries to acquire its own connection, causing a real PoolError.ExhaustedPool and exercising logSwallowedFailure(\"migration_fanout.failure_record_acquire_failed\"). Asserts runFanout returns normally (no panic/escalation) and the control row stays at its seeded pending status (not failed, not done). Fail-first verified live: temporarily widening the dedicated pool to pool_size=5 removes the exhaustion and the row correctly becomes failed instead of pending, causing the new assertion to fail as expected; reverted after confirming. Updated tests/specs/MIG-02.md (AC4 row now points to TC-MIG-02-04, Coverage note rewritten to describe the real technique instead of documenting a deferral, Coverage summary/counts updated to 3 implemented test blocks covering AC1-AC4 directly). Also corrected now-stale 8/8 pass-count references in tests/specs/MIG-01.md and tests/specs/MIG-03.md to 9/9 for consistency. zig build test-integration-mig02-mig03 passes 9/9 (the original 8 plus the new AC4 test), confirmed on two consecutive runs. lint_test_isolation.py: 0 new issues (139 files checked, 116 pre-existing baseline suppressions unchanged).",
+    "artifacts_out": [
+      "tests/integration/migration_fanout_test.zig",
+      "tests/specs/MIG-02.md",
+      "tests/specs/MIG-01.md",
+      "tests/specs/MIG-03.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b) for rework re-validation"
+  },
   "rework_count": 1,
   "max_rework": 3
 }

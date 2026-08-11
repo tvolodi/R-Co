@@ -165,8 +165,8 @@ the UNIQUE anchor. No fixture state is shared across test blocks.
 coverage. No `error.SkipZigTest` in either file (verified by grep — zero matches).
 
 Run: `zig build test-integration-mig01` — 5/5 passing (unchanged by this batch — no test
-added to this file). `zig build test-integration-mig02-mig03` — 8/8 passing (7 pre-existing
-+ 1 new).
+added to this file). `zig build test-integration-mig02-mig03` — 9/9 passing (7 pre-existing
++ the MIG-01 AC1 fanout-seeding test + REWORK 1's MIG-02 AC4 pool-exhaustion test).
 
 ---
 

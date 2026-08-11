@@ -134,8 +134,8 @@ covering AC1, AC2, AC3, AC5 directly. AC4 is a documented, deliberate scope boun
 Coverage note above) matching the same pattern as DDL-05's AC5. No `error.SkipZigTest` in
 this file (verified by grep — zero matches).
 
-Run: `zig build test-integration-mig02-mig03` — 8/8 passing (includes MIG-02's 2 tests and
-the new MIG-01 AC1 test in the same file; see `tests/specs/MIG-01.md` and
+Run: `zig build test-integration-mig02-mig03` — 9/9 passing (includes MIG-02's 3 tests and
+the MIG-01 AC1 test in the same file; see `tests/specs/MIG-01.md` and
 `tests/specs/MIG-02.md`).
 
 ---

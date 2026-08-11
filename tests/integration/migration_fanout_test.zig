@@ -35,6 +35,8 @@
 //!   MIG-02 → TC-MIG-02-01 (commit-with-DDL, done row survives)
 //!            TC-MIG-02-02 (DDL failure rolls back, no done row)
 //!            TC-MIG-02-03 (failure recorded in a separate transaction, error_msg set)
+//!            TC-MIG-02-04 (failure-recording transaction itself fails under genuine
+//!                          pool exhaustion -- row stays pending, no crash/escalation)
 //!            TC-MIG-02-05 (no code path writes a control row on a foreign connection —
 //!                          verified structurally: every write in applyToTenant happens
 //!                          on the SAME conn the DDL step received)
@@ -376,6 +378,121 @@ test "TC-MIG-02-02/03: failing DDL step rolls back and records a separate failed
     // MIG-02 AC2: NO done row survives — completed_at was never set for a
     // failed row (the row was written by the separate failure-recording
     // transaction, not the rolled-back DDL transaction).
+    try testing.expect(!row.has_completed_at);
+}
+
+// ---------------------------------------------------------------------------
+// MIG-02 AC4 / TC-MIG-02-04: the failure-recording transaction itself fails
+// (genuine pool exhaustion, not a mock) -> the control row is left exactly at
+// its already-seeded 'pending' status, and runFanout does not panic or
+// escalate.
+//
+// Fault-injection technique (real resource exhaustion, no mock/stub of
+// bpm.pool.Pool -- DIRECTIVE T-1 compliant): this test builds its OWN
+// dedicated Pool with pool_size = 2 (the minimum PoolConfig.pool_size allows
+// -- src/db/pool.zig PoolConfig.pool_size / Pool.init's `config.pool_size < 2
+// ... return PoolError.InvalidPoolSize`), entirely separate from the
+// pool_size = 5 pool `makePool` gives every other test in this file, so this
+// test can never starve or be starved by the other 8 tests' connections.
+//
+// With pool_size = 2, runFanout's own internal connection accounting is
+// enough to genuinely exhaust the pool at exactly the failure-recording
+// step, with no need to hold connections externally before calling
+// runFanout (holding both externally would instead make runFanout's own
+// FIRST acquire -- the advisory-lock connection at the top of runFanout --
+// fail immediately, short-circuiting before applyToTenant/
+// recordFailureSeparately are ever reached; that would exercise a different
+// error path than AC4 describes). Instead, runFanout's real, in-flight
+// connection usage does it naturally:
+//   1. runFanout acquires `lock_conn` for the whole run (1 of 2 held).
+//   2. applyToTenant acquires a second connection for this tenant's DDL
+//      transaction (2 of 2 held -- pool now has 0 idle).
+//   3. failingStep raises SimulatedDdlFailure; applyToTenant rolls back the
+//      DDL transaction on its own connection, then calls
+//      recordFailureSeparately -- but applyToTenant's `defer
+//      pool.release(conn)` has NOT fired yet (it only fires when
+//      applyToTenant itself returns, which is AFTER recordFailureSeparately
+//      returns). So when recordFailureSeparately calls pool.acquire() for
+//      its own fresh connection, the pool genuinely has 0 idle connections
+//      and returns PoolError.ExhaustedPool -- a real error from real
+//      resource exhaustion, exercising logSwallowedFailure's
+//      "migration_fanout.failure_record_acquire_failed" component exactly
+//      (see src/platform/migration_fanout.zig recordFailureSeparately's
+//      first catch block).
+//
+// logSwallowedFailure's own log line is not observable from a test: logger.
+// zig's logWithTrace short-circuits with `if (builtin.is_test) return;`
+// before ever writing a line (src/obs/logger.zig), so no log-capture
+// mechanism exists to assert against here without adding a test-only hook to
+// the logger itself (out of scope, and arguably its own violation of not
+// modifying production code to make a gap observable). Per AC4's own
+// wording -- "the row remains pending and the MIG-04 resume query covers
+// it" -- the row's final state is what AC4 actually requires, and that IS
+// directly observable and asserted below: the control row is fetched by its
+// exact (migration_id, tenant_id) key straight after runFanout returns and
+// found to be untouched at 'pending', proving recordFailureSeparately's own
+// pool.acquire() failure left it exactly where the seed step put it, with no
+// crash and no escalation out of runFanout.
+// ---------------------------------------------------------------------------
+
+test "TC-MIG-02-04: failure-recording transaction itself fails under genuine pool exhaustion -- row stays pending" {
+    const alloc = testing.allocator;
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    // Dedicated pool_size = 2 pool -- NOT the shared pool_size = 5 `makePool`
+    // gives every other test in this file. This keeps this test's deliberate
+    // exhaustion fully isolated: it can never starve, and is never starved
+    // by, any of the other 8 tests' connection usage.
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
+    var pool = try Pool.init(std.testing.io, alloc, PoolConfig{
+        .url = url,
+        .pool_size = 2,
+    });
+    defer pool.deinit();
+
+    const tenant_id = try randomUuidStr(alloc);
+    defer alloc.free(tenant_id);
+    try insertActiveTenant(&pool, tenant_id);
+    defer cleanupTenant(&pool, tenant_id);
+
+    const migration_id = try randomToken(alloc, "mig02ac4");
+    defer alloc.free(migration_id);
+    defer cleanupControlRows(&pool, migration_id);
+    const run_id = try randomToken(alloc, "run02ac4");
+    defer alloc.free(run_id);
+
+    // runFanout must not panic/crash despite the pool being genuinely
+    // exhausted during failure-recording (AC4 assertion 1). A single
+    // fixture tenant with failingStep is enough: runFanout's own lock_conn
+    // (held for the whole run) plus applyToTenant's own DDL connection
+    // (held until recordFailureSeparately returns) already consume both of
+    // this pool's 2 connections by the time recordFailureSeparately tries
+    // to acquire a third -- see the technique note above.
+    const result = try runFanout(alloc, &pool, .{ .migration_id = migration_id, .run_id = run_id }, failingStep);
+
+    // The tenant outcome is still counted as `failed` at the runFanout level
+    // (applyToTenant's DDL step genuinely failed -- that part of the
+    // contract is unaffected by whether the bookkeeping write succeeded),
+    // and no row is left in FanoutResult.pending (MIG-03's per-run counters
+    // reflect the DDL outcome, not the bookkeeping outcome -- see
+    // FanoutResult's own doc comment: "a clean run never leaves any [in
+    // result.pending]", which is about the loop's own accounting, not the
+    // database row this test asserts on next).
+    try testing.expectEqual(@as(u32, 0), result.pending);
+    try testing.expect(result.failed >= 1);
+
+    // AC4's actual, direct assertion: the control row was left EXACTLY where
+    // the seed step (runFanout's first loop) put it -- 'pending', with no
+    // completed_at and no error_msg -- proving recordFailureSeparately's own
+    // pool.acquire() failure never touched the row at all (neither a
+    // 'failed' row from a successful bookkeeping write nor a 'done' row from
+    // anywhere). This is the row-state evidence AC4's own wording asks for:
+    // "the row remains pending and the MIG-04 resume query covers it".
+    const row = (try readControlRow(alloc, &pool, migration_id, tenant_id)) orelse return error.TestExpectedControlRow;
+    defer freeControlRow(alloc, row);
+    try testing.expectEqualStrings("pending", row.status);
+    try testing.expect(row.error_msg == null);
     try testing.expect(!row.has_completed_at);
 }
 

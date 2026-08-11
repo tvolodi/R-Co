@@ -26,7 +26,7 @@ content to test" reasoning.
 | AC1 | GIVEN a tenant's DDL commits, WHEN the transaction ends, THEN the `done` row committed in that same transaction. | `TC-MIG-02-01` |
 | AC2 | GIVEN a DDL statement raises, WHEN the transaction ends, THEN it rolls back and neither partial DDL nor a `done` row survives in that schema. | `TC-MIG-02-02/03` |
 | AC3 | GIVEN the tenant transaction rolled back, WHEN the failure is recorded, THEN `status = 'failed'` and `error_msg` are written in their own transaction. | `TC-MIG-02-02/03` |
-| AC4 | GIVEN the failure-recording transaction itself fails, WHEN the fanout continues, THEN the row remains `pending` and the MIG-04 resume query covers it. | Not directly tested (see Coverage note below) |
+| AC4 | GIVEN the failure-recording transaction itself fails, WHEN the fanout continues, THEN the row remains `pending` and the MIG-04 resume query covers it. | `TC-MIG-02-04` |
 | AC5 | No code path writes a tenant's control row on a connection other than the one applying that tenant's DDL. | Verified structurally (see Structural verification note below) — not a runtime-observable behavior a test can assert on directly |
 
 ---
@@ -35,29 +35,61 @@ content to test" reasoning.
 
 AC4 describes a **double-failure** scenario: the tenant's DDL transaction has already rolled
 back (a normal MIG-02 AC2/AC3 failure), and THEN the *separate* failure-recording transaction
-(`recordFailureSeparately` in `src/platform/migration_fanout.zig`) also fails — e.g. because
-the platform database becomes briefly unreachable in the narrow window between the rollback
-and the failure-recording UPDATE. Triggering this deterministically in an integration test
-would require injecting a connection failure at that exact, narrow point in
-`recordFailureSeparately`'s own connection acquisition or transaction — `bpm.pool.Pool` has
-no test-only fault-injection hook for this (and DIRECTIVE T-1 forbids adding one that would
-constitute a mock/stub of the pool itself).
+(`recordFailureSeparately` in `src/platform/migration_fanout.zig`) also fails. This is closed
+by `TC-MIG-02-04`, using a genuine, non-mock fault-injection technique that requires no
+change to `src/db/pool.zig` or `src/platform/migration_fanout.zig`: `Pool.init()` already
+takes a real `PoolConfig.pool_size` parameter (minimum 2 — `pool.zig`'s
+`config.pool_size < 2 ... return PoolError.InvalidPoolSize`), and building a **dedicated**
+`Pool` with `pool_size = 2` for this one test creates genuine resource exhaustion at exactly
+the failure-recording step, with no mock, stub, or fault-injection hook added anywhere
+(DIRECTIVE T-1 compliant).
 
-This is a genuine, narrower gap than the AC1-3/AC5 cases, but not a *silent* one: the
-design artefact's own "Error taxonomy" table (`src/design/mig-02-mig-03-platform-migration-
-fanout.md`, the `*(swallowed, logged only)*` row) documents the exact behavior AC4 requires
-— the row is left at its already-seeded `pending` value, the failure is logged via
-`logSwallowedFailure` (not retried, not escalated), and the code comment on
-`logSwallowedFailure` itself states this is deliberate: escalating would abort the whole
-fanout over one tenant's bookkeeping hiccup, defeating MIG-03's continue-on-failure
-guarantee. The code path is inspectable and matches AC4's wording exactly (row stays
-`pending`, MIG-04's future resume query — out of scope, not yet implemented — covers it).
-Given the fault-injection difficulty and that MIG-04 (the resume path that actually consumes
-a `pending` row left this way) is itself a separate, not-yet-implemented requirement, this is
-recorded as a known, narrow, non-blocking gap rather than closed with a synthetic test in
-this batch. It should be revisited when MIG-04's implementation lands and a resume-path test
-can exercise the full "seed pending → double failure → resume picks it up" cycle end to end,
-which is a stronger and more meaningful test than an isolated fault-injection unit would be.
+**Mechanism.** With `pool_size = 2` and a single fixture tenant driven through `failingStep`:
+1. `runFanout` acquires `lock_conn` for the advisory lock and holds it for the entire run
+   (1 of 2 connections in use).
+2. `applyToTenant` acquires a second connection for this tenant's DDL transaction (2 of 2 —
+   the pool now has 0 idle connections).
+3. `failingStep` raises `SimulatedDdlFailure`; `applyToTenant` rolls back the DDL transaction
+   on its own connection and calls `recordFailureSeparately` — but `applyToTenant`'s
+   `defer pool.release(conn)` has not fired yet (it only fires when `applyToTenant` itself
+   returns, which is *after* `recordFailureSeparately` returns). So when
+   `recordFailureSeparately` calls `pool.acquire()` for its own fresh connection, the pool
+   genuinely has 0 idle connections and returns `PoolError.ExhaustedPool` — a real error from
+   real resource exhaustion — exercising `logSwallowedFailure`'s
+   `"migration_fanout.failure_record_acquire_failed"` component exactly.
+
+Note this means holding both connections *externally, before* calling `runFanout` is the
+wrong construction: it would instead starve `runFanout`'s own *first* acquire (the
+advisory-lock connection at the top of `runFanout`), short-circuiting with
+`FanoutError.PoolExhausted` before `applyToTenant`/`recordFailureSeparately` are ever reached
+— a different error path than AC4 describes. The test instead uses `runFanout`'s own natural,
+real, in-flight connection accounting to exhaust a 2-connection pool at exactly the right
+moment.
+
+**Isolation.** `TC-MIG-02-04` builds its own dedicated `pool_size = 2` `Pool`, entirely
+separate from the shared `pool_size = 5` pool `makePool` gives every other test in this file
+— it can never starve, and is never starved by, the other 8 tests' connection usage.
+
+**What is asserted.** `logSwallowedFailure`'s own log line is not observable from within a
+test: `src/obs/logger.zig`'s `logWithTrace` short-circuits with `if (builtin.is_test) return;`
+before ever writing a line, so there is no way to capture its output without adding a
+test-only hook to the logger itself (out of scope, and its own violation of not modifying
+production code just to make a gap observable). Per AC4's own wording — "the row remains
+pending and the MIG-04 resume query covers it" — the row's final state is what AC4 actually
+requires, and that IS directly observable: `TC-MIG-02-04` fetches the control row by its
+exact `(migration_id, tenant_id)` key immediately after `runFanout` returns and asserts
+`status = 'pending'`, `error_msg IS NULL`, `completed_at IS NULL` — proving
+`recordFailureSeparately`'s own `pool.acquire()` failure left the row exactly where the seed
+step put it, with `runFanout` returning normally (no panic, no crash, no escalation into a
+`FanoutError`). This row-state assertion is sufficient runtime evidence for AC4 as written;
+the log line itself is not part of AC4's observable contract.
+
+Fail-first verified: temporarily changing this test's dedicated pool from `pool_size = 2` to
+`pool_size = 5` (removing the exhaustion) makes `recordFailureSeparately` succeed normally,
+and the row correctly becomes `status = 'failed'` instead of `'pending'` — the test's
+`expectEqualStrings("pending", ...)` then fails as expected, confirming the assertion
+genuinely discriminates the AC4 double-failure path from ordinary single-failure recording
+rather than passing vacuously.
 
 ## Structural verification note: AC5 (no cross-connection control-row writes)
 
@@ -107,6 +139,14 @@ DDL-05 case and this repo's design docs use for structural claims).
 **Acceptance criterion mapped:** AC2 (no done row survives a rollback) and AC3 (failure recorded separately with error_msg) in one test, since both are proven by the same single assertion sequence — the row's final state is the only externally observable evidence for either claim, and they are two properties of that one row.
 **Zig test:** `"TC-MIG-02-02/03: failing DDL step rolls back and records a separate failed row with error_msg"`
 
+### TC-MIG-02-04: failure-recording transaction itself fails under genuine pool exhaustion -- row stays pending
+**Given:** A dedicated `pool_size = 2` `Pool` (separate from the shared `pool_size = 5` pool the other tests in this file use); one fixture ACTIVE tenant; `failingStep`.
+**When:** `runFanout` is called. `runFanout`'s own `lock_conn` (held for the whole run) plus `applyToTenant`'s own DDL connection (held until `recordFailureSeparately` returns) already consume both of the pool's 2 connections by the time `recordFailureSeparately` tries to acquire a third connection for the failure-recording transaction — genuinely exhausting the pool (`PoolError.ExhaustedPool`) at exactly that step, with no mock or fault-injection hook.
+**Then:** `runFanout` returns normally (no panic/crash/escalation) with `result.pending == 0`, `result.failed >= 1`; the tenant's control row is unchanged from its seeded state — `status = 'pending'`, `error_msg IS NULL`, `completed_at IS NULL` — proving `recordFailureSeparately`'s own `pool.acquire()` failure left the row exactly where the seed step put it.
+**Layer:** integration
+**Acceptance criterion mapped:** AC4
+**Zig test:** `"TC-MIG-02-04: failure-recording transaction itself fails under genuine pool exhaustion -- row stays pending"`
+
 ---
 
 ## Fixtures and isolation
@@ -129,24 +169,22 @@ sibling binaries under `zig build test-integration`.
 |---|---|---|
 | TC-MIG-02-01 | `TC-MIG-02-01: successful DDL step commits and the control row is done with completed_at set` | AC1 |
 | TC-MIG-02-02/03 | `TC-MIG-02-02/03: failing DDL step rolls back and records a separate failed row with error_msg` | AC2, AC3 |
+| TC-MIG-02-04 | `TC-MIG-02-04: failure-recording transaction itself fails under genuine pool exhaustion -- row stays pending` | AC4 |
 | *(structural, not a test block)* | — | AC5, verified by code inspection above |
-| *(documented gap)* | — | AC4, not closed this batch — see Coverage note above |
 
-**Implemented case count: 2 test blocks** in `tests/integration/migration_fanout_test.zig`,
-covering AC1-AC3 directly. AC5 is a structural invariant verified by inspection (no runtime
-test can distinguish it). AC4 is a documented, narrow gap pending MIG-04 (see Coverage note)
-— not silently dropped; recorded here for TEST-DESIGN-VALIDATOR and any future implementer
-to pick up. No `error.SkipZigTest` in this file (verified by grep — zero matches).
+**Implemented case count: 3 test blocks** in `tests/integration/migration_fanout_test.zig`,
+covering AC1-AC4 directly. AC5 is a structural invariant verified by inspection (no runtime
+test can distinguish it). No `error.SkipZigTest` in this file (verified by grep — zero
+matches).
 
-Run: `zig build test-integration-mig02-mig03` — 8/8 passing (includes MIG-03's tests and the
-new MIG-01 AC1 test in the same file; see `tests/specs/MIG-01.md` and `tests/specs/MIG-03.md`).
+Run: `zig build test-integration-mig02-mig03` — 9/9 passing (includes MIG-03's tests and the
+MIG-01 AC1 test in the same file; see `tests/specs/MIG-01.md` and `tests/specs/MIG-03.md`).
 
 ---
 
 ## Traceability
 
-- MIG-02 acceptance: AC1-AC3 directly tested; AC5 structurally verified; AC4 documented gap
-  pending MIG-04.
+- MIG-02 acceptance: AC1-AC4 directly tested; AC5 structurally verified.
 - See MIG-01 (`tests/specs/MIG-01.md`) for the control table's own shape/constraint tests.
 - See MIG-03 (`tests/specs/MIG-03.md`) for the fanout-loop requirement sharing this same test
   file and the same `runFanout` entry point.
