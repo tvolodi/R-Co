@@ -1,0 +1,51 @@
+{
+  "handoff_id": "a5613a5b-624c-449f-8415-542c097d478e",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-3-20260811/step-2a-backend-dev.json",
+  "created_at": "2026-08-11T14:26:03Z",
+  "started_at": "2026-08-11T15:29:36Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/par-01-monthly-range-partitioning.md",
+      "src/design/par-02-partition-maintenance-job.md",
+      "src/design/par-03-partition-scoped-retention.md",
+      "src/design/par-04-attach-scan-required-check.md",
+      "templates/specs/par-02-partition-catalog.migration.yaml",
+      "templates/specs/par-03-retention-class.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Implement PAR-01, PAR-02, PAR-03, PAR-04 per the validated (PASS after 2 rework cycles) design artefacts. This is a large, high-risk implementation -- read ALL FOUR design docs in full before writing any code, they specify exact function signatures, error taxonomies, and several scope items added during rework that are NOT optional: (1) PAR-01: events/events_archive as PARTITION BY RANGE (created_at) from creation, PK widened to (event_id, created_at), new plat_event_idempotency table, widened composite FKs on event_payload_store/webhook_deliveries. (2) PAR-02: daily plat_partition_maintenance scheduled job (following src/scheduler/ conventions) provisioning lead_months=2 future partitions for BOTH events AND events_ephemeral (not just events -- this was a rework-2 addition), plat_partition_catalog + plat_partition_maintenance_run_log tables. (3) PAR-03: DETACH/ATTACH retention logic, events_ephemeral table (hand-written, same PARTITION BY/composite-PK pattern as events), retention_class column on event_type_registry, RetentionClassForbidden guard in Registry.registerType() (app-level check + DB CHECK constraint chk_retention_class_protected_family) added during rework 1, AND the append-time retention-class routing in Store.append() (via a new registry.getType() call, NOT widening validatePayload()'s signature) added during rework 2 that routes retention_class='delete' events to events_ephemeral instead of events. (4) PAR-04: AttachScanRequired CHECK-before-ATTACH validation helper. ALSO REQUIRED (rework 1 scope): retire/remove src/event_store/store.zig::Store.archive() entirely (confirmed zero production call sites) and REWRITE its 4 dependent test cases (TC-ES-07-01, TC-ES-07-02, TC-ADP-11-02, TC-ADP-11-03 in tests/integration/event_store_integration_test.zig) to assert retirement and exercise the new PartitionRetention mechanism instead -- TC-ADP-11-02 specifically must exercise the new append-time routing + real ephemeral-drop behavior end to end (a non-protected delete-class type appended, landing in events_ephemeral, then dropped). Do not leave any of these 4 tests referencing the removed archive() function.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build check exits 0",
+      "python tools/lint_sql_param_types.py src tests exits 0",
+      "Every acceptance criterion in PAR-01, PAR-02, PAR-03, PAR-04 is implemented",
+      "Store.archive() fully removed, zero remaining references to it anywhere in src/ or tests/",
+      "TC-ES-07-01/02 and TC-ADP-11-02/03 rewritten and passing, exercising the new PartitionRetention mechanism (not the removed archive())",
+      "ES-07 and ADP-11 (both RELEASED) remain genuinely satisfied by the rewritten tests -- not just renamed, actually re-verified against the new mechanism",
+      "No mocks/stubs/fakes; all DB access via real PostgreSQL through the Pool",
+      "Real unit + integration tests written and passing for all new code, with own addTest/build.zig wiring (verified real by deliberate-break test)",
+      "Implementation committed to feature/WF02-batch-3-20260811"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
