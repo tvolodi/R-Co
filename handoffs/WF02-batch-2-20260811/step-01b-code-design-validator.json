@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGN-VALIDATOR",
   "file": "handoffs/WF02-batch-2-20260811/step-01b-code-design-validator.json",
   "created_at": "2026-08-11T11:46:10Z",
-  "started_at": "2026-08-11T12:02:14Z",
+  "started_at": "2026-08-11T12:11:31Z",
   "completed_at": "2026-08-11T12:05:15Z",
-  "status": "COMPLETED",
+  "status": "PENDING",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -28,7 +28,7 @@
     ]
   },
   "task": {
-    "description": "Validate the CODE-DESIGNER Step 01 design for DDL-02, ORD-01, ORD-02, ORD-04. Standard checks apply. Additionally: verify the design's claim that src/effects/worker.zig/queue.zig is a genuine, correctly-cited existing FOR UPDATE SKIP LOCKED pattern to follow (read those files yourself). Verify the design's argument that ORD-02's per-correlation advisory lock is NOT redundant with SKIP LOCKED (unlike a previously-removed per-timer lock referenced as ISS-301 precedent) -- read that precedent/history if cited and confirm the distinction is sound, since getting this backwards would mean reintroducing a documented anti-pattern. Verify DDL-02 correctly extends ddl_validate.zig's existing ValidatePlatformDDL pipeline rather than creating a parallel validator. Check if docs/processes/system/effect-reentry-ordering.md (cited by the designer as an authoritative process spec for PW-07) genuinely exists and the design is consistent with it.",
+    "description": "Validate the CODE-DESIGNER Step 01 design for DDL-02, ORD-01, ORD-02, ORD-04. Standard checks apply. Additionally: verify the design's claim that src/effects/worker.zig/queue.zig is a genuine, correctly-cited existing FOR UPDATE SKIP LOCKED pattern to follow (read those files yourself). Verify the design's argument that ORD-02's per-correlation advisory lock is NOT redundant with SKIP LOCKED (unlike a previously-removed per-timer lock referenced as ISS-301 precedent) -- read that precedent/history if cited and confirm the distinction is sound, since getting this backwards would mean reintroducing a documented anti-pattern. Verify DDL-02 correctly extends ddl_validate.zig's existing ValidatePlatformDDL pipeline rather than creating a parallel validator. Check if docs/processes/system/effect-reentry-ordering.md (cited by the designer as an authoritative process spec for PW-07) genuinely exists and the design is consistent with it.\n\nRE-VALIDATION (after REWORK 1): CODE-DESIGNER added file/byte_offset fields to StatementDescriptor (ddl_validate.zig) and ConstrainBeforeExpandDetail, and confirmed ddl_namespace.zig (DDL-05) is unaffected since checkNamespace is called with an anonymous struct literal, not the shared StatementDescriptor directly. Re-verify this claim and that AC5 is now genuinely covered.",
     "acceptance_criteria": [
       "Every AC in DDL-02, ORD-01, ORD-02, ORD-04 traced to a design section",
       "No implementation code in the design",
@@ -39,26 +39,7 @@
     ],
     "functions_to_call": []
   },
-  "result": {
-    "status": "FAIL",
-    "summary": "3 of 4 artefacts (ORD-01/02/04 design + both Type C migration YAMLs) pass every checklist item and all 4 independent verification points hold up. But DDL-02's design has a genuine AC coverage gap: AC5 (MUST requirement) reads 'The rejection message names the file and the byte offset of both the constraining statement and the statement it depends on,' and ConstrainBeforeExpandDetail carries only statement_order (an ordinal position) and statement_text -- no file field, no byte_offset field anywhere in the design. Grepped the design doc for 'byte'/'offset' with zero hits; DDL-01's own precedent (also cited as the shape to follow) never claimed byte-offset naming in its own ACs, so this is a genuinely new AC requirement DDL-02 introduces and its own design does not meet. This routes back to CODE-DESIGNER to add file/byte_offset fields (or file name + statement text span) to ConstrainBeforeExpandDetail and thread them through from the (out-of-scope) parser's StatementDescriptor, consistent with how 'order'/'text' are already threaded.",
-    "artifacts_out": [],
-    "issues": [
-      {
-        "id": "ISS-CDV-WF02B2-001",
-        "severity": "BLOCKER",
-        "description": "DDL-02 AC5 (MUST requirement) requires the rejection message to name 'the file and the byte offset' of both the constraining statement and the statement it depends on. ConstrainBeforeExpandDetail (src/design/ddl-02-constrain-before-expand-check.md) only defines constraining_statement_order/text and depended_on_statement_order/text -- statement_order is a 1-based position in the statement list, not a byte offset into the source file, and no field names the source file at all. Verified by grepping the design doc for 'byte'/'offset'/'file' as an output concept -- zero matches; every 'file' mention is about the input 'file set' concept, never an output field. No open-questions entry flags this either -- it is silently unaddressed, not explicitly deferred.",
-        "affected_requirement": "DDL-02"
-      }
-    ],
-    "verification_points": {
-      "ddl_02_pipeline_extension": "CONFIRMED SOUND (independent of the AC5 gap above). Read src/platform/ddl_validate.zig in full: validatePlatformDDL is a single per-statement loop over one ValidationVerdict union (accept | unbounded_exclusive_lock | non_concurrent_index_build | reserved_namespace | unreserved_platform_object), returning the first failing verdict in statement order. The DDL-02 design adds a checkConstrainBeforeExpand function and a constrain_before_expand verdict arm to this SAME union, plus an explicit interleave rule for tie-breaking against the existing three checks. This is a genuine in-place extension of the same aggregate function DDL-05's checkNamespace was already composed into (verified: ddl_namespace.checkNamespace is called directly inside validatePlatformDDL's loop, same pattern DDL-02 proposes) -- not a parallel, uncalled validator.",
-      "worker_queue_pattern_citation": "CONFIRMED ACCURATE. Read src/effects/queue.zig and src/effects/worker.zig in full. queue.zig's fetchDueRows uses the literal 'FOR UPDATE SKIP LOCKED' clause the design cites. worker.zig's sweepOnce has an explicit comment block citing GH-654/ISS-0649 confirming the fetch connection is released BEFORE per-row processing acquires its own connections -- exactly the 'never hold a pooled connection idle across a sleep/across phases' discipline the ORD design's 'Connection acquisition' section attributes to this precedent, correctly distinguished from the ORD case (which spans a whole transaction, not a fetch-vs-process split, and the design states this distinction explicitly).",
-      "ord_02_lock_non_redundancy": "CONFIRMED SOUND. Found the ISS-301 precedent: CHANGELOG.md 'Removed redundant pg_try_advisory_xact_lock from scheduler timer-claim path. FOR UPDATE SKIP LOCKED alone guarantees exactly-once claiming' (2026-06-12), design doc src/design/scheduler-concurrency-epic3.md's own ISS-301 rationale ('the row is already exclusively locked... by the time the advisory lock is attempted'), and a live regression test (TC-SCH-301-01 in src/scheduler/scheduler.zig) enforcing the lock's continued absence -- confirms the removed lock and SKIP LOCKED covered the SAME row/critical section, making the advisory lock strictly redundant there. ORD-02's lock protects a structurally different hazard: two different plat_effect_completion ROWS (different sequence_no) of the SAME correlation_id, which SKIP LOCKED cannot serialize since it only ever excludes rows already locked by another transaction, not sibling rows. The distinction the design draws (different rows vs same row) is the actual mechanism, not just an assertion, and ORD-01 AC4 explicitly requires both sibling-row claims to succeed concurrently, which only the execute guard (not SKIP LOCKED) then serializes. Getting this backwards would indeed reintroduce ISS-301's anti-pattern; the design does not.",
-      "effect_reentry_ordering_process_doc": "CONFIRMED EXISTS and CONSISTENT. docs/processes/system/effect-reentry-ordering.md is present, fully specifies PW-07 (sys-effect-reentry-ordering) with all 11 process steps, three guards, both new tables' column shapes, every named error (ClaimContention, CorrelationBusy, OutOfOrderCompletion, CursorRaceLost, ApplyFailed, CorrelationStalled, DuplicateCompletion, MissingCursorRow, ConsumerCrash, SequenceGapAtEmit), and every SLA value the design cites (200ms poll, 300s gap timeout, 100 lag threshold, 50% contention threshold, consumer_count floor 2/step-down 2, 60s sweeper cadence). Cross-checked the design's claim query, advisory lock expression, and step-range scoping (this batch = steps 1-3, 8, 10, 11; ORD-03 = steps 4-7, 9) against the process doc verbatim -- no contradiction found in any field."
-    },
-    "next_action": "Route back to CODE-DESIGNER (rework) for DDL-02 AC5 file/byte_offset gap. ORD-01/02/04 design and both migration YAMLs are otherwise clear to proceed once DDL-02 is fixed and re-validated -- ORCH should decide whether to split the batch (advance ORD-01/02/04 to BACKEND-DEV now) or hold the whole batch for one combined re-validation pass, per max_rework policy."
-  },
+  "result": null,
   "rework_count": 0,
   "max_rework": 3
 }

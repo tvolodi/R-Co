@@ -1049,3 +1049,4 @@
 2026-08-11T12:05:15Z | COMPLETED | WF02-batch-2-20260811 | a1f30aea | CODE-DESIGN-VALIDATOR | result=FAIL DDL-02 AC5 file/byte_offset gap; ORD-01/02/04 + migrations PASS; routed to CODE-DESIGNER rework
 2026-08-11T12:08:02Z | REWORK | WF02-batch-2-20260811 | 7cd43d97 | CODE-DESIGNER | REWORK(1/3) DDL-02 AC5 missing byte-offset field, ORD-01/02/04 unaffected
 2026-08-11T12:09:49Z | COMPLETE | WF02-batch-2-20260811 | 7cd43d97 | CODE-DESIGNER | REWORK 1 PASS: DDL-02 AC5 gap closed (file+byte_offset added to ddl_validate.StatementDescriptor and ConstrainBeforeExpandDetail); ddl_namespace.zig (DDL-05, released) untouched -- checkNamespace consumes a 3-field anon struct literal, not StatementDescriptor itself. Routed to CODE-DESIGN-VALIDATOR (Step 1b).
+2026-08-11T12:11:31Z | ROUTE | WF02-batch-2-20260811 | a1f30aea | ORCH -> CODE-DESIGN-VALIDATOR | PENDING (step 01b re-validation after rework 1)
