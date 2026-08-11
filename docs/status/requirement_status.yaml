@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-11T07:16:19Z'
+last_updated: '2026-08-11T11:18:59Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4354,10 +4354,15 @@ requirements:
     priority: MUST
     title: Generic interpreter architecture rule
   DDL-01:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Pure platform DDL validator
+    implemented_in:
+    - src/platform/ddl_validate.zig
+    test_spec: tests/specs/DDL-01.md
+    test_run: tests/reports/report-20260811-WF02-batch-1.yaml
+    released_at: '2026-08-11T11:18:11Z'
   DDL-02:
     status: DRAFT
     stage: '16'
@@ -4491,20 +4496,36 @@ requirements:
     test_run: tests/reports/report-20260811-WF02-batch-0.yaml
     released_at: '2026-08-11T07:15:39Z'
   MIG-04:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Migration resume for pending and failed tenants
+    implemented_in:
+    - src/platform/migration_fanout.zig
+    test_spec: tests/specs/MIG-04.md
+    test_run: tests/reports/report-20260811-WF02-batch-1.yaml
+    released_at: '2026-08-11T11:18:12Z'
   MIG-05:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Idempotent migration re-run
+    implemented_in:
+    - src/platform/migration_fanout.zig
+    test_spec: tests/specs/MIG-05.md
+    test_run: tests/reports/report-20260811-WF02-batch-1.yaml
+    released_at: '2026-08-11T11:18:13Z'
   MIG-06:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Migration admin surface and fix-forward policy
+    implemented_in:
+    - src/api/routes/platform_migrations.zig
+    - src/operations/pending_migration_gate.zig
+    test_spec: tests/specs/MIG-06.md
+    test_run: tests/reports/report-20260811-WF02-batch-1.yaml
+    released_at: '2026-08-11T11:18:15Z'
   OBP-01:
     status: DRAFT
     stage: '16'
