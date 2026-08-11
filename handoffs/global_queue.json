@@ -1839,6 +1839,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0670",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/711",
+      "title": "PAR-02 AC5: EXECUTION_PARTITION_CREATED event not emitted \u2014 needs a platform-event append design",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-11T17:30:37Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

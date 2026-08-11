@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-3-20260811/step-2a-backend-dev.json",
   "created_at": "2026-08-11T14:26:03Z",
   "started_at": "2026-08-11T17:08:51Z",
-  "completed_at": "2026-08-11T16:36:47Z",
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T17:32:54Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -45,7 +45,27 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1: implemented PAR-01 AC4 StoreError.PartitionMissingForWrite end to end. Verified against the real test DB that an INSERT into events with created_at in an unpartitioned month raises Postgres SQLSTATE 23514 (check_violation), message \"no partition of relation ... found for row\" (partition routing is implemented via implicit CHECK constraints, confirmed live, not guessed). Added SQLSTATE capture to vendor/pg/pg.zig (Conn.last_sqlstate, parsed from the ErrorResponse C field; previously discarded) and a Conn.lastSqlState() accessor threaded through src/db/pool.zig, since neither layer preserved SQLSTATE before this change. store.zig's append() INSERT catch branch now distinguishes SQLSTATE 23514 from every other INSERT failure and returns the new StoreError.PartitionMissingForWrite variant instead of the generic TransactionFailed catch-all. Added src/api/errors.zig::problemPartitionMissingForWrite() (HTTP 503, matching the design doc's Error taxonomy). Wrote a new real integration test (TC-PAR01-04-01, tests/integration/event_store_integration_test.zig) that DETACHes the real current-month events partition, asserts the append fails with PartitionMissingForWrite and leaves zero rows, then unconditionally reattaches it (defer, byte-exact bound read back from pg_get_expr) since AppendParams has no created_at override and the test DB is shared/persistent. Verified idempotent across two consecutive full suite runs; DB confirmed intact after each. Found and fixed a real aliasing bug during this work: lastSqlState() returns a slice into the connection's mutable last_sqlstate field, and the original code read it, then called conn.exec(\"ROLLBACK\") before comparing -- ROLLBACK's own exec() call resets that same backing array before the comparison ran. Fixed by copying the SQLSTATE bytes to a local buffer before issuing ROLLBACK. MINOR (PAR-02 AC5, EXECUTION_PARTITION_CREATED emission): investigated directly -- confirmed a genuine, but NOT small/self-contained, gap. Store.append() requires instance_id to exist as an ACTIVE instance_projections row; partition_maintenance.zig is a platform-level job with no owning instance, and no system/platform instance_id convention exists anywhere in this codebase (checked all 6 other unimplemented EXECUTION_* platform events named in requirements.yaml -- none have an implementation to copy either). Filed as GH #711 / ISS-0670 (MINOR), queued, and left tests/specs/PAR-02.md's Gap note corrected to reflect this rather than implemented under time pressure in this REWORK cycle -- recommends routing to CODE-DESIGNER for a platform-event append convention design note.",
+    "artifacts_out": [
+      "src/event_store/store.zig",
+      "src/api/errors.zig",
+      "src/db/pool.zig",
+      "vendor/pg/pg.zig",
+      "tests/integration/event_store_integration_test.zig",
+      "tests/specs/PAR-02.md",
+      "docs/issues/ISS-0670.json",
+      "handoffs/global_queue.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "PAR-02 AC5 (EXECUTION_PARTITION_CREATED emission) remains unimplemented -- genuinely requires a platform-event append design decision, not a quick fix. Filed as GH #711 / ISS-0670, queued for a future run (recommend routing through CODE-DESIGNER first)."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER (Step 3) for rework re-validation"
+  },
   "rework_count": 1,
   "max_rework": 3
 }
