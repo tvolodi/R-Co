@@ -1,0 +1,39 @@
+{
+  "handoff_id": "1505fd21-8327-45f3-86c3-78fd9b284940",
+  "run_id": "WF02-batch-1-20260811",
+  "workflow_id": "WF-02",
+  "step": "00a",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-batch-1-20260811/step-00a-test-runner.json",
+  "created_at": "2026-08-11T09:38:56Z",
+  "started_at": "2026-08-11T09:39:17Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-01",
+      "MIG-04",
+      "MIG-05",
+      "MIG-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Green-Main Gate: run the test suite against current main (HEAD) BEFORE any WF-02 implementation starts for batch 1 (DDL-01, MIG-04, MIG-05, MIG-06). ORCH has already confirmed zig build test-env-verify is HEALTHY (10/10) immediately before this dispatch. Run zig build test (full unit suite). For integration coverage, run targeted steps relevant to this batch area (test-integration-mig01, test-integration-mig02-mig03, test-ddl-namespace -- the batch-0 steps, to confirm nothing regressed) rather than the full test-integration umbrella, which has a documented capacity/reliability issue on this host under full concurrency (docs/issues/ISS-0665.json / GH-702, still open) producing non-deterministic unrelated failures.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-ddl-namespace exits 0",
+      "zig build test-integration-mig01 exits 0",
+      "zig build test-integration-mig02-mig03 exits 0",
+      "Exact pass/fail counts reported with evidence"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
