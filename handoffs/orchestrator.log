@@ -988,3 +988,4 @@
 2026-08-11T06:36:26Z | STEP_COMPLETED | WF02-batch-0-20260811 | c2db85fb | TEST-DESIGN-VALIDATOR | Step 03b PASS -- DDL-05/MIG-01/MIG-02/MIG-03 test design validated (10+5+8 tests, 0 SkipZigTest, isolation clean, schema contract confirmed, builds green); routed to TEST-RUNNER (Step 4)
 2026-08-11T06:38:56Z | BENCH_ENV_CHECK | WF02-batch-0-20260811 | --- | ORCH | CLEARED (test-env-verify 10/10 after cleaning 70+28 leaked fixture rows via direct psycopg2 workaround for ISS-0663)
 2026-08-11T06:39:17Z | ROUTE | WF02-batch-0-20260811 | cb2825d4 | ORCH -> TEST-RUNNER | PENDING (step 04 test execution)
+2026-08-11T06:42:11Z | COMPLETED | WF02-batch-0-20260811 | cb2825d4 | TEST-RUNNER | Step 04 PASS -- test-ddl-namespace 10/10, test-integration-mig01 5/5, test-integration-mig02-mig03 8/8, unit test 1021/1085 (64 skipped, 0 failed); report tests/reports/report-20260811-WF02-batch-0.yaml -> next: RELEASE-VALIDATOR (Step 5)
