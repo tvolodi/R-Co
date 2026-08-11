@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-2-20260811/step-04-test-runner.json",
   "created_at": "2026-08-11T13:44:14Z",
   "started_at": "2026-08-11T13:44:23Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T13:47:01Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -31,7 +31,22 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "report_file": "tests/reports/report-20260811-WF02-batch-2.yaml",
+    "commands": [
+      {"name": "test-ddl-validate", "exit_code": 0, "summary": "Build Summary: 3/3 steps succeeded; 28/28 tests passed"},
+      {"name": "test-ordering", "exit_code": 0, "summary": "Build Summary: 3/3 steps succeeded; 4/4 tests passed"},
+      {"name": "test-integration-ord01", "exit_code": 0, "summary": "Build Summary: 6/6 steps succeeded; 3/3 tests passed"},
+      {"name": "test-integration-ord04", "exit_code": 0, "summary": "Build Summary: 6/6 steps succeeded; 4/4 tests passed"},
+      {"name": "test-integration-ordering-run1", "exit_code": 0, "summary": "Build Summary: 6/6 steps succeeded; 10/10 tests passed"},
+      {"name": "test-integration-ordering-run2", "exit_code": 0, "summary": "Build Summary: 6/6 steps succeeded; 10/10 tests passed"},
+      {"name": "test", "exit_code": 0, "summary": "Build Summary: 95/95 steps succeeded; 1053/1117 tests passed (64 skipped)"}
+    ],
+    "concurrency_reproducibility": "test-integration-ordering run 1 and run 2 both 10/10 pass, exit 0 -- confirmed reproducible, not flaky",
+    "excluded": "zig build test-integration umbrella not run per ISS-0665/GH-702 (still open)"
+  },
   "rework_count": 0,
-  "max_rework": 3
+  "max_rework": 3,
+  "next_action": "Route to RELEASE-VALIDATOR (Step 5)"
 }
