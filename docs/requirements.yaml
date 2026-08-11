@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-10T21:53:45Z'
+generated_at: '2026-08-11T07:15:39Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -11181,7 +11181,7 @@ requirements:
     title: Reserved plat_ object namespace
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** SPT-01, reserving an object namespace inside every tenant schema.
 
@@ -11198,8 +11198,13 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:00Z'
+    last_updated: '2026-08-11T07:15:35Z'
     workflow: PW-05
+    implemented_in:
+    - src/platform/ddl_namespace.zig
+    test_spec: tests/specs/DDL-05.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:35Z'
   FIL-01:
     id: FIL-01
     title: Human task attachment upload
@@ -11560,7 +11565,7 @@ requirements:
     title: Platform migration control table
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL record platform migration state in a single cross-tenant control table `platform.platform_migrations`, holding one row per `(migration_id, tenant_id)` with `status` in `pending`, `done`, `failed`, plus `error_msg`, `completed_at` and `run_id`. The table carries `UNIQUE (migration_id, tenant_id)` as the upsert anchor and the partial index `platform_migrations_resume_idx ON (migration_id, status) WHERE status IN ('pending','failed')` covering the resume query. This replaces reliance on the per-schema `schema_migrations` table as the only record of migration state.
 
@@ -11575,14 +11580,19 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:17Z'
+    last_updated: '2026-08-11T07:15:36Z'
     workflow: PW-04
+    implemented_in:
+    - migrations/1144_platform_migrations_control_table.sql
+    test_spec: tests/specs/MIG-01.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:36Z'
   MIG-02:
     id: MIG-02
     title: Control row commits with the DDL
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL upsert a tenant's `platform.platform_migrations` row to `done` inside the same transaction that applies that tenant's DDL steps, so a `done` row proves the DDL committed. A per-tenant failure is recorded as `status = 'failed'` with `error_msg` in a separate transaction opened after the tenant transaction has rolled back.
 
@@ -11597,14 +11607,20 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:18Z'
+    last_updated: '2026-08-11T07:15:38Z'
     workflow: PW-04
+    implemented_in:
+    - migrations/1144_platform_migrations_control_table.sql
+    - src/platform/migration_fanout.zig
+    test_spec: tests/specs/MIG-02.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:38Z'
   MIG-03:
     id: MIG-03
     title: Tenant migration fanout with continue on failure
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL apply a migration across a snapshot of enabled tenants ordered by `tenant_id`, holding `pg_try_advisory_lock(hashtext(migration_id))` on the platform database for the duration of the run. A failure in tenant N SHALL NOT prevent tenants N+1 through M from being attempted; per-tenant errors are collected and the run continues to the end of the snapshot.
 
@@ -11619,8 +11635,14 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:19Z'
+    last_updated: '2026-08-11T07:15:39Z'
     workflow: PW-04
+    implemented_in:
+    - migrations/1144_platform_migrations_control_table.sql
+    - src/platform/migration_fanout.zig
+    test_spec: tests/specs/MIG-03.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:39Z'
   MIG-04:
     id: MIG-04
     title: Migration resume for pending and failed tenants

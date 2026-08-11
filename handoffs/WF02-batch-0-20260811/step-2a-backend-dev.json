@@ -1,0 +1,71 @@
+{
+  "handoff_id": "fb3f1b5e-13e7-4970-9af2-a80a99d0f107",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-0-20260811/step-2a-backend-dev.json",
+  "created_at": "2026-08-11T05:23:33Z",
+  "started_at": "2026-08-11T05:44:30Z",
+  "completed_at": "2026-08-11T06:12:03Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-05",
+      "MIG-01",
+      "MIG-02",
+      "MIG-03"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/ddl-05-reserved-plat-namespace-check.md",
+      "src/design/mig-02-mig-03-platform-migration-fanout.md",
+      "templates/specs/mig-01-platform-migrations-control-table.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Implement DDL-05, MIG-01, MIG-02, MIG-03 per the validated (PASS) design artefacts in artifacts_in. MIG-01: run tools/codegen_migration.py on the Type C YAML to generate the migration file + integration test scaffold, then hand-edit the CUSTOM blocks per the design doc's explicit note (CREATE SCHEMA IF NOT EXISTS platform; schema-qualification -- the codegen has no schema-preamble field). DDL-05: write src/platform/ddl_namespace.zig implementing checkNamespace per the design's public interface, verdict table, and the AC2 rename-direction worked example exactly as specified. MIG-02/MIG-03: write src/platform/migration_fanout.zig implementing runFanout/applyToTenant per the design's public interface, transaction-boundary protocol, and advisory-lock semantics -- read the full design doc for the exact FanoutRequest/FanoutResult/FanoutError/DdlStep shapes and the state-transition lifecycle before writing code. Follow backend_developer_guide.md conventions throughout (typed error sets, prepared statements only, no SQL string interpolation, pure transition-function rule not applicable here but the general purity/testability conventions apply).",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build check exits 0 (build + scoped zig fmt --check)",
+      "python tools/lint_sql_param_types.py src tests exits 0 (no BLOCKER/MAJOR)",
+      "MIG-01 migration applies cleanly via zig build migrate against BPM_TEST_DB_URL",
+      "Every acceptance criterion in DDL-05, MIG-01, MIG-02, MIG-03 is implemented (not just compiled)",
+      "No mocks/stubs/fakes; all DB access via real PostgreSQL through the Pool",
+      "Implementation committed to feature/WF02-batch-0-20260811"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented DDL-05 (src/platform/ddl_namespace.zig, pure checkNamespace() predicate with 10 unit tests covering all 5 ACs incl. AC2 rename-direction and AC4 non-matching-prefix), MIG-01 (migrations/1144_platform_migrations_control_table.sql via codegen + hand-edited CUSTOM schema-qualification per the spec IMPLEMENTER NOTE, plus a fix to src/db/migrations.zig declaresUnqualifiedTableWork() which would have wrongly rejected the platform.-qualified DDL under its misclassification guard; 5 integration tests), and MIG-02/MIG-03 (src/platform/migration_fanout.zig runFanout()/applyToTenant() implementing the commit-with-DDL transaction boundary and continue-on-failure tenant fanout with pg_try_advisory_lock; 7 integration tests against real PostgreSQL covering commit/rollback, continue-on-failure, and advisory-lock contention). MIG-03 AC4 tenant-onboarding backfill is explicitly out of scope per the design doc Open Questions. All new files registered in build.zig (own addTest root for DDL-05 unit tests, dual-wired integration steps for MIG-01 and MIG-02/MIG-03) and wiring verified via deliberate-break-then-revert on all three targets. All mandatory gates pass: zig build, zig build check, zig build migrate (both BPM_TEST_DB_URL and BPM_DB_URL), lint_sql_param_types.py (0 BLOCKER/MAJOR), zig build test (unit), zig build test-ddl-namespace, zig build test-integration-mig01, zig build test-integration-mig02-mig03.",
+    "artifacts_out": [
+      "src/platform/ddl_namespace.zig",
+      "src/platform/migration_fanout.zig",
+      "migrations/1144_platform_migrations_control_table.sql",
+      "tests/integration/platform_migrations_control_table_test.zig",
+      "tests/integration/migration_fanout_test.zig",
+      "tests/integration/main_test.zig",
+      "src/bpm.zig",
+      "src/db/migrations.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-batch-0-20260811",
+      "commit_sha_list": [
+        "d1a42070"
+      ],
+      "remote_branch": null,
+      "push_status": "skipped",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "ORCH routes to SECURITY-REVIEWER (WF-02 Step 2c) given this batch touches tenant-schema DDL execution and a cross-tenant control table, then to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

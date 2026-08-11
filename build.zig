@@ -820,6 +820,30 @@ pub fn build(b: *std.Build) void {
     test_expr_step.dependOn(&run_dsl04_eval_tests.step);
 
     // ---------------------------------------------------------------------------
+    // DDL-05: reserved `plat_` namespace check unit tests (pure — no DB, no
+    // network). src/platform/ddl_namespace.zig has zero imports (a leaf
+    // pure-predicate module per its own design doc's Dependencies section),
+    // so — like src/expr/mod.zig above — it can be its own addTest root
+    // directly; no aggregator/refAllDecls shim is needed. Per
+    // docs/anti-patterns.md's "Adding test blocks to a source file that is
+    // only ever referenced as an imported module" warning: this file is ALSO
+    // re-exported from src/bpm.zig as `bpm.ddl_namespace` for production call
+    // sites, but that re-export alone would never run its in-file tests
+    // (bpm.zig has no refAllDecls) — this standalone addTest root is what
+    // actually executes them.
+    // ---------------------------------------------------------------------------
+    const ddl_namespace_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/platform/ddl_namespace.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_ddl_namespace_tests = b.addRunArtifact(ddl_namespace_tests);
+    const test_ddl_namespace_step = b.step("test-ddl-namespace", "Run DDL-05 reserved plat_ namespace check unit tests");
+    test_ddl_namespace_step.dependOn(&run_ddl_namespace_tests.step);
+
+    // ---------------------------------------------------------------------------
     // `zig build test-engine` — engine unit tests only
     // ---------------------------------------------------------------------------
     const engine_tests = b.addTest(.{
@@ -1351,6 +1375,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_dsl01_parser_tests.step);
     test_step.dependOn(&run_expr_error_recovery_tests.step);
     test_step.dependOn(&run_dsl04_eval_tests.step);
+    // DDL-05: reserved plat_ namespace check (WF02-batch-0-20260811).
+    test_step.dependOn(&run_ddl_namespace_tests.step);
 
     // ISS-0137 / GH #439 — the nine backlog-clearing targets declared above.
     test_step.dependOn(&run_core_modules_tests.step);
@@ -2772,6 +2798,40 @@ pub fn build(b: *std.Build) void {
     const test_integration_api05_step = b.step("test-integration-api05", "Run API-05 history pagination boundary integration tests in isolation (requires BPM_TEST_DB_URL)");
     test_integration_api05_step.dependOn(&clean_test_db.step);
     test_integration_api05_step.dependOn(&run_api05_solo_tests.step);
+
+    // Stage 16 / WF02-batch-0-20260811 — MIG-01 platform.platform_migrations
+    // control table shape (UNIQUE anchor, CHECK constraint, resume index).
+    // Dual-wired: imported into main_test.zig (umbrella test-integration)
+    // AND given its own scoped step here, same pattern as adp09/adp10/api05
+    // above.
+    const mig01_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/platform_migrations_control_table_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_mig01_solo_tests = addIntegrationRun(b, mig01_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_mig01_step = b.step("test-integration-mig01", "Run MIG-01 platform_migrations control table integration tests in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_mig01_step.dependOn(&clean_test_db.step);
+    test_integration_mig01_step.dependOn(&run_mig01_solo_tests.step);
+
+    // Stage 16 / WF02-batch-0-20260811 — MIG-02 (commit-with-DDL transaction
+    // boundary) / MIG-03 (tenant fanout, advisory-lock contention,
+    // continue-on-failure) integration tests against src/platform/migration_fanout.zig.
+    const mig02_mig03_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/migration_fanout_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_mig02_mig03_solo_tests = addIntegrationRun(b, mig02_mig03_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_mig02_mig03_step = b.step("test-integration-mig02-mig03", "Run MIG-02/MIG-03 platform migration fanout integration tests in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_mig02_mig03_step.dependOn(&clean_test_db.step);
+    test_integration_mig02_mig03_step.dependOn(&run_mig02_mig03_solo_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

@@ -1,0 +1,64 @@
+{
+  "handoff_id": "d03df140-4fd8-4a1c-85e8-ae24e2c27514",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-0-20260811/step-01b-code-design-validator.json",
+  "created_at": "2026-08-11T05:23:33Z",
+  "started_at": "2026-08-11T05:36:47Z",
+  "completed_at": "2026-08-11T05:40:33Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-05",
+      "MIG-01",
+      "MIG-02",
+      "MIG-03"
+    ],
+    "related_handoff_ids": [
+      "66e782b2-dfee-43a2-b3dc-a93d8954a930"
+    ],
+    "artifacts_in": [
+      "src/design/ddl-05-reserved-plat-namespace-check.md",
+      "src/design/mig-02-mig-03-platform-migration-fanout.md",
+      "templates/specs/mig-01-platform-migrations-control-table.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER Step 01 design artefacts for DDL-05, MIG-01, MIG-02, MIG-03 (stage 16). Hard gate: BACKEND-DEV cannot start until this returns PASS. Check every acceptance criterion in each requirement (read full bodies from docs/requirements.yaml) is covered, the design is implementation-code-free, and it is complete enough for BACKEND-DEV to implement without ambiguity.",
+    "acceptance_criteria": [
+      "Every AC in DDL-05, MIG-01, MIG-02, MIG-03 is traced to a specific design section",
+      "No implementation code (Zig function bodies, SQL DDL outside the Type C YAML)",
+      "Design correctly scopes DDL-05 as standalone (not the full DDL-01 ValidatePlatformDDL pipeline)",
+      "Design correctly builds on existing SPT-01 infrastructure rather than reinventing it",
+      "tools/lint_design_artefact.py run against each artefact with 0 BLOCKER"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated CODE-DESIGNER Step 01 artefacts for DDL-05, MIG-01, MIG-02, MIG-03 (stage 16). All 20 acceptance criteria across the four requirements traced to specific design sections. No implementation code leaked (Type E docs contain only Zig signatures/types, no bodies; no SQL DDL outside the Type C YAML). DDL-05 correctly scoped as a standalone namespace predicate independent of DDL-01/ValidatePlatformDDL machinery (explicit \"Must NOT depend on any DDL-01 type that does not yet exist\"), verified it defines its own minimal StatementDescriptor/Actor types so it compiles and is testable standalone. MIG-02/MIG-03 fanout design verified against actual current contents of src/db/pool.zig, src/db/provisioning.zig, src/db/migrations.zig: schemaNameForTenant is public (pool.zig:137), Pool.acquire/release exist (pool.zig:802/857), the SELECT storage_mode FROM public.tenant citation at \"pool.zig:190\" is exact, the SET LOCAL search_path TO {schema},public pattern matches the existing convention at migrations.zig:443, and the documented non-reuse of runForSchema/public.schema_migrations (wrong grain -- would reintroduce a two-trackers-disagreeing bug) is a correct, justified design choice, not an oversight. Migration number 1144 confirmed as next-free (1143 is current max). tools/lint_design_artefact.py: 0 BLOCKER / 0 MAJOR on all three artefacts (ddl-05 doc: clean; mig-02-mig-03 doc: 5 MINOR -- E030 flags on public.tenant/public.schema_migrations qualification that is deliberate and documented, same exception MIG-01 YAML already carries for platform.platform_migrations, plus one E060 regex false-positive on the word \"explicitly\"; mig-01 YAML: clean). tools/codegen_migration.py --dry-run on the MIG-01 YAML exits 0 and its preview (CREATE TABLE + 5 test cases) covers all 5 MIG-01 ACs. Two MINOR traceability gaps noted for CODE-DESIGNER awareness (non-blocking): MIG-02 AC5 (\"no code path writes a tenant control row on a connection other than the one applying that tenant DDL\") and MIG-03 AC3 (different migration_id values may run concurrently) are both correctly implemented in the design (visible in the applyToTenant diagram and the module-purpose prose respectively) but, unlike every other AC in the same document, are not explicitly tagged by AC number -- a one-line annotation gap, not a substance gap; BACKEND-DEV has no ambiguity to resolve from it.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "mig-02-mig-03-platform-migration-fanout.md: MIG-02 AC5 (\"No code path writes a tenant's control row on a connection other than the one applying that tenant's DDL\") is correctly implemented (visible in the applyToTenant flow diagram, lines ~186-216, and reinforced by the DdlStep transaction-ownership constraint in Dependencies) but is never explicitly cited by AC number the way MIG-02 AC1-AC4 are in the Error taxonomy table. Recommend adding an explicit \"MIG-02 AC5\" citation near the applyToTenant diagram or in the Error taxonomy table for consistency with the rest of the document. Non-blocking."
+      },
+      {
+        "severity": "MINOR",
+        "description": "mig-02-mig-03-platform-migration-fanout.md: MIG-03 AC3 (\"two different migration_id values may execute concurrently\") is correctly implemented (module purpose bullet: \"different migration IDs may run concurrently, since the lock key is derived from migration_id\") but, unlike MIG-03 AC1/AC2/AC4/AC5, is never explicitly tagged \"MIG-03 AC3\" anywhere in the document. Recommend adding the explicit tag for consistency. Non-blocking."
+      },
+      {
+        "severity": "MINOR",
+        "description": "lint_design_artefact.py reports 5 MINOR findings on mig-02-mig-03-platform-migration-fanout.md: 4x E030 (schema-qualified public.tenant / public.schema_migrations) and 1x E060 (regex false-positive matching the English word \"explicitly\" as a malformed requirement ID). Verified both are false positives / deliberate documented exceptions, not defects: the design explicitly justifies qualifying public.tenant and public.schema_migrations because platform is never in any tenant search_path (same exception MIG-01's YAML documents for platform.platform_migrations). No action needed; recorded for the record per lint tool output."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 2a implementation)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

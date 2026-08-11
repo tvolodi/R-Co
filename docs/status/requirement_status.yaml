@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-10T21:53:48Z'
+last_updated: '2026-08-11T07:16:19Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4374,10 +4374,15 @@ requirements:
     priority: MUST
     title: Idempotent batched backfill
   DDL-05:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Reserved plat_ object namespace
+    implemented_in:
+    - src/platform/ddl_namespace.zig
+    test_spec: tests/specs/DDL-05.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:35Z'
   FIL-01:
     status: DRAFT
     stage: '17'
@@ -4454,20 +4459,37 @@ requirements:
     priority: MUST
     title: Generated per-field ARIA wiring
   MIG-01:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Platform migration control table
+    implemented_in:
+    - migrations/1144_platform_migrations_control_table.sql
+    test_spec: tests/specs/MIG-01.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:36Z'
   MIG-02:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Control row commits with the DDL
+    implemented_in:
+    - migrations/1144_platform_migrations_control_table.sql
+    - src/platform/migration_fanout.zig
+    test_spec: tests/specs/MIG-02.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:38Z'
   MIG-03:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Tenant migration fanout with continue on failure
+    implemented_in:
+    - migrations/1144_platform_migrations_control_table.sql
+    - src/platform/migration_fanout.zig
+    test_spec: tests/specs/MIG-03.md
+    test_run: tests/reports/report-20260811-WF02-batch-0.yaml
+    released_at: '2026-08-11T07:15:39Z'
   MIG-04:
     status: DRAFT
     stage: '16'

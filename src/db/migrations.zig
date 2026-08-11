@@ -669,6 +669,24 @@ pub fn declaresPublicScopeHeader(filename: []const u8, header: []const u8) bool 
 /// long-standing convention for GBL files, so applying this heuristic to them
 /// would hard-fail every migration run. Verified by auditing all 106 files in
 /// migrations/ before enabling the guard.
+///
+/// MIG-01 / WF02-batch-0-20260811: originally this recognised exactly three
+/// hardcoded qualifiers (`public.`, `pg_`, `information_schema.`) as "not
+/// search_path work" and treated every other prefix as unqualified. That was
+/// too narrow for a legitimate fourth case: platform.platform_migrations is a
+/// dedicated cross-tenant control table whose canonical home is a `platform`
+/// schema — never `public`, never a tenant schema — and it is deliberately
+/// schema-qualified in its own `-- scope: public` migration (the documented
+/// exception to the unqualified-table-names convention; see
+/// templates/specs/mig-01-platform-migrations-control-table.migration.yaml's
+/// IMPLEMENTER NOTE). Under the old hardcoded check, `CREATE TABLE IF NOT
+/// EXISTS platform.platform_migrations` would have been misread as unqualified
+/// search_path work and rejected by the guard even though it is explicitly,
+/// correctly schema-qualified. Generalised below to recognise ANY leading
+/// `<identifier>.` schema qualifier, not just the three hardcoded names — this
+/// still correctly flags genuinely bare table names (no dot at all) and does
+/// not change behaviour for any of the existing public./pg_/information_schema.
+/// cases, which are simply specific instances of "has a schema qualifier".
 pub fn declaresUnqualifiedTableWork(body: []const u8) bool {
     // Statement heads that introduce a table reference we care about.
     const heads = [_][]const u8{
@@ -692,14 +710,35 @@ pub fn declaresUnqualifiedTableWork(body: []const u8) bool {
             const idx = std.mem.indexOf(u8, line, head) orelse continue;
             const rest = std.mem.trimStart(u8, line[idx + head.len ..], " \t");
             if (rest.len == 0) continue;
-            // Qualified with an explicit schema? Then it is not search_path work.
-            if (std.mem.startsWith(u8, rest, "public.")) break;
-            if (std.mem.startsWith(u8, rest, "pg_")) break;
-            if (std.mem.startsWith(u8, rest, "information_schema.")) break;
+            // Qualified with any explicit schema (identifier immediately
+            // followed by a dot)? Then it is not search_path work. Covers
+            // public./pg_.../information_schema. (the original hardcoded
+            // cases) plus any other real schema name, e.g. platform.
+            if (hasLeadingSchemaQualifier(rest)) break;
             // A quoted or bare identifier with no schema qualifier: this
             // resolves through search_path, so it is per-tenant work.
             return true;
         }
+    }
+    return false;
+}
+
+/// True when `rest` begins with a bare SQL identifier immediately followed by
+/// `.` — i.e. a schema-qualified reference (`platform.foo`, `public.foo`,
+/// `pg_catalog.foo`). `pg_` alone (no dot) is also treated as qualified for
+/// backward compatibility with the original hardcoded check, since PostgreSQL
+/// system catalog references in this codebase have historically been written
+/// either as `pg_catalog.<name>` or bare `pg_<name>` system views.
+fn hasLeadingSchemaQualifier(rest: []const u8) bool {
+    if (std.mem.startsWith(u8, rest, "pg_")) return true;
+    var i: usize = 0;
+    while (i < rest.len) : (i += 1) {
+        const c = rest[i];
+        const is_ident_char = (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or
+            (c >= '0' and c <= '9') or c == '_';
+        if (is_ident_char) continue;
+        if (c == '.' and i > 0) return true;
+        break;
     }
     return false;
 }

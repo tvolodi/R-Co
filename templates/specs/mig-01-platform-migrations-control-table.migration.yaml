@@ -1,0 +1,197 @@
+# Migration + integration-test parameter file (Lego Type C)
+#
+# CODE-DESIGNER output for MIG-01 (Platform migration control table).
+# Stage 16 / WF02-batch-0-20260811.
+#
+# IMPLEMENTER NOTE (BACKEND-DEV, read before running codegen):
+# This table's canonical home is a NEW schema, `platform`, not `public`. The
+# Type C codegen tool (tools/codegen_migration.py) emits unqualified
+# `CREATE TABLE IF NOT EXISTS <name>` statements and the lint (Y122) forbids a
+# schema-qualified `tables[].name` (dotted names) in this YAML — so the
+# generated SQL from this spec alone would create the table in whatever
+# schema `search_path` resolves to at apply time, which is wrong for a
+# cross-tenant control table that must live in exactly one place regardless
+# of which schema pass is running.
+#
+# Required post-codegen CUSTOM edit to the generated file
+# (migrations/1144_platform_migrations_control_table.sql):
+#   1. Add `-- scope: public` as the FIRST line of the file (this migration
+#      must run exactly once, in the public pass only — see
+#      src/db/migrations.zig migrationScope()/declaresPublicScopeHeader()).
+#      It is intentionally listed here, not left to codegen, because the
+#      codegen tool has no field for a scope header.
+#   2. Immediately after the generated header comment block and before the
+#      generated `CREATE TABLE IF NOT EXISTS platform_migrations (...)`
+#      statement, insert:
+#        CREATE SCHEMA IF NOT EXISTS platform;
+#   3. Qualify the generated `CREATE TABLE IF NOT EXISTS platform_migrations`
+#      and the generated `CREATE INDEX ... ON platform_migrations (...)` to
+#      `platform.platform_migrations` (two edits: the CREATE TABLE line and
+#      the CREATE INDEX ... ON line). This is the one deliberate,
+#      documented exception to the "unqualified table names" convention
+#      (docs/anti-patterns.md "Schema-qualified names in migrations") — that
+#      anti-pattern is about `public.<table>` qualification interacting badly
+#      with per-tenant `search_path`, which does not apply here because
+#      `platform` is never a member of any tenant's search_path and this
+#      migration deliberately runs only once, in the public pass, where an
+#      explicit qualifier is unambiguous and matches the CREATE SCHEMA line
+#      immediately above it.
+#   4. All src/db/*.zig and src/platform/*.zig references to this table MUST
+#      use the fully qualified name `platform.platform_migrations` — never
+#      rely on search_path to resolve it, since `platform` is not appended to
+#      any tenant's search_path (see src/design/mig-02-mig-03-platform-migration-fanout.md
+#      dependencies section).
+#
+# See templates/migration.schema.md for the full field reference.
+
+schema_version: 1
+migration_number: 1144         # next free number; 1143 is the current max under migrations/
+name: platform_migrations_control_table
+requirement_ids: [MIG-01]
+purpose: |
+  Introduce platform.platform_migrations, the single cross-tenant control
+  table recording per-(migration_id, tenant_id) migration status
+  (pending/done/failed). This is the control-row half of the transactional
+  commit-with-DDL semantics MIG-02 defines and the fanout loop MIG-03 drives;
+  it replaces reliance on the per-schema public.schema_migrations table as
+  the only record of platform migration state. See
+  src/design/mig-02-mig-03-platform-migration-fanout.md for the fanout logic
+  that writes and reads this table. This migration only creates the schema
+  and table/index shape; it contains no fanout logic (that is Type E, not
+  Type C, per templates/lego-catalog.md's selection rules).
+
+# ------------------------------------------------------------
+# Tables
+# ------------------------------------------------------------
+# NOTE: `name` is deliberately left unqualified here to satisfy lint rule
+# Y122 (schema-qualified names forbidden in this field). See the
+# IMPLEMENTER NOTE at the top of this file for the required CUSTOM edit that
+# qualifies it to `platform.platform_migrations` in the generated SQL file,
+# and the accompanying `CREATE SCHEMA IF NOT EXISTS platform;` statement that
+# must precede it.
+tables:
+  - mode: create
+    name: platform_migrations
+    columns:
+      - { name: id,            type: uuid,           pk: true, default: "gen_random_uuid()" }
+      - { name: migration_id,  type: text,           not_null: true }
+      - { name: tenant_id,     type: uuid,           not_null: true }
+      - { name: status,        type: text,           not_null: true, default: "'pending'", check: "status IN ('pending', 'done', 'failed')" }
+      - { name: error_msg,     type: text,           not_null: false }
+      - { name: completed_at,  type: "timestamptz",  not_null: false }
+      - { name: run_id,        type: text,           not_null: false }
+      - { name: created_at,    type: "timestamptz",  not_null: true, default: "now()" }
+    constraints:
+      # MIG-01: "UNIQUE (migration_id, tenant_id) as the upsert anchor" —
+      # a surrogate `id` PK is used (lint Y124/Y125 requires exactly one
+      # pk:true column) so this UNIQUE constraint, not the PK, is the
+      # ON CONFLICT target for the MIG-02/MIG-03 upsert logic and the
+      # explicit anchor the requirement names.
+      - { kind: unique, name: platform_migrations_migration_tenant_uq, columns: [migration_id, tenant_id] }
+    indexes:
+      # MIG-01 acceptance criterion: "the resume query uses
+      # platform_migrations_resume_idx". Partial index over the two
+      # not-yet-terminal statuses only, keyed (migration_id, status) so a
+      # resume/status query for one migration_id scans only its own pending
+      # and failed rows rather than the whole table (MIG-01, consumed by
+      # MIG-03's continue-on-failure accounting and by MIG-04's resume query
+      # — MIG-04 is a later, separate requirement, not in this batch).
+      - name: platform_migrations_resume_idx
+        columns: [migration_id, status]
+        where: "status IN ('pending', 'failed')"
+
+# ------------------------------------------------------------
+# Integration test scaffold
+# ------------------------------------------------------------
+fixtures:
+  - name: tenant_id
+    kind: uuid
+  - name: migration_id_value
+    kind: random_string
+  - name: run_id_value
+    kind: random_string
+
+test_cases:
+  - name: unique_constraint_on_migration_tenant_pair
+    description: A second INSERT for the same (migration_id, tenant_id) violates the UNIQUE anchor used by the upsert.
+    requirement_ref: MIG-01
+    arrange: |
+      try h.conn.exec(
+          "INSERT INTO platform.platform_migrations (migration_id, tenant_id, status) VALUES ($1, $2, 'pending')",
+          &.{ fx.migration_id_value, fx.tenant_id },
+      );
+    act: |
+      const result = h.conn.exec(
+          "INSERT INTO platform.platform_migrations (migration_id, tenant_id, status) VALUES ($1, $2, 'pending')",
+          &.{ fx.migration_id_value, fx.tenant_id },
+      );
+    assertions: |
+      // CUSTOM: assert the second INSERT returns a unique_violation (23505) on
+      // platform_migrations_migration_tenant_uq, and that exactly one row
+      // exists for (migration_id_value, tenant_id).
+
+  - name: status_check_constraint_rejects_unknown_value
+    description: A status outside pending/done/failed is rejected by the CHECK constraint.
+    requirement_ref: MIG-01
+    arrange: ""
+    act: |
+      const result = h.conn.exec(
+          "INSERT INTO platform.platform_migrations (migration_id, tenant_id, status) VALUES ($1, $2, 'bogus')",
+          &.{ fx.migration_id_value, fx.tenant_id },
+      );
+    assertions: |
+      // CUSTOM: assert error.CheckConstraintViolation (SQLSTATE 23514) and
+      // that no row was inserted.
+
+  - name: failed_row_carries_error_msg_and_null_completed_at
+    description: A failed tenant row records error_msg and leaves completed_at null (MIG-01 AC4).
+    requirement_ref: MIG-01
+    arrange: ""
+    act: |
+      try h.conn.exec(
+          "INSERT INTO platform.platform_migrations (migration_id, tenant_id, status, error_msg, run_id) VALUES ($1, $2, 'failed', $3, $4)",
+          &.{ fx.migration_id_value, fx.tenant_id, "23505: duplicate key value", fx.run_id_value },
+      );
+    assertions: |
+      // CUSTOM: assert SELECT returns status='failed', error_msg matches the
+      // inserted SQLSTATE+message text, and completed_at IS NULL.
+
+  - name: done_row_carries_completed_at_and_null_error_msg
+    description: A succeeded tenant row sets completed_at and leaves error_msg null (MIG-01 AC5).
+    requirement_ref: MIG-01
+    arrange: ""
+    act: |
+      try h.conn.exec(
+          "INSERT INTO platform.platform_migrations (migration_id, tenant_id, status, completed_at, run_id) VALUES ($1, $2, 'done', now(), $3)",
+          &.{ fx.migration_id_value, fx.tenant_id, fx.run_id_value },
+      );
+    assertions: |
+      // CUSTOM: assert SELECT returns status='done', completed_at IS NOT
+      // NULL, and error_msg IS NULL.
+
+  - name: resume_index_used_by_pending_or_failed_query
+    description: The resume-shaped query (migration_id + status IN pending/failed) is served by platform_migrations_resume_idx (MIG-01 AC3).
+    requirement_ref: MIG-01
+    arrange: |
+      try h.conn.exec(
+          "INSERT INTO platform.platform_migrations (migration_id, tenant_id, status) VALUES ($1, $2, 'pending')",
+          &.{ fx.migration_id_value, fx.tenant_id },
+      );
+    act: |
+      var plan = try h.conn.query(std.testing.allocator,
+          "EXPLAIN SELECT * FROM platform.platform_migrations WHERE migration_id = $1 AND status IN ('pending', 'failed')",
+          &.{fx.migration_id_value},
+      );
+      defer plan.deinit();
+    assertions: |
+      // CUSTOM: assert the EXPLAIN output text contains
+      // "platform_migrations_resume_idx".
+
+# ------------------------------------------------------------
+# Rollback notes
+# ------------------------------------------------------------
+rollback_strategy: |
+  Forward-only, per project policy (docs/anti-patterns.md — no DROP in
+  migrations). If platform.platform_migrations must ever be retired, a
+  later migration archives its rows and a subsequent migration removes the
+  table only after MIG-06's fix-forward policy is fully superseded.

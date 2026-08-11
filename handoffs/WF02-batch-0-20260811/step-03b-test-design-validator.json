@@ -1,0 +1,55 @@
+{
+  "handoff_id": "c2db85fb-b958-4aff-a0f3-5ad4d1adb33e",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-0-20260811/step-03b-test-design-validator.json",
+  "created_at": "2026-08-11T05:23:33Z",
+  "started_at": "2026-08-11T06:58:47Z",
+  "completed_at": "2026-08-11T07:01:02Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-05",
+      "MIG-01",
+      "MIG-02",
+      "MIG-03"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/DDL-05.md",
+      "tests/specs/MIG-01.md",
+      "tests/specs/MIG-02.md",
+      "tests/specs/MIG-03.md",
+      "src/platform/ddl_namespace.zig",
+      "tests/integration/platform_migrations_control_table_test.zig",
+      "tests/integration/migration_fanout_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: validate TEST-DESIGNER Step 3 output. Verify every MUST requirement (all 4 are MUST) has a runnable integration/unit test, no error.SkipZigTest on any MUST test, fixtures are isolated (per-test UUIDs, proper cleanup), tests are self-sufficient (connect to real PostgreSQL, no mocks/stubs). Also check: for the MIG-01 migration which adds a new table with CHECK constraints (status enum), a schema contract test exists per the anti-patterns doc TEST-DESIGN-VALIDATOR checklist (CHECK constraint -> schema contract test requirement).\n\nRE-VALIDATION (after REWORK 1): TEST-DESIGNER added TC-MIG-02-04 in tests/integration/migration_fanout_test.zig closing the MIG-02 AC4 coverage gap via genuine pool_size=2 exhaustion (not a mock). Re-verify: the new test exists and genuinely exercises PoolExhausted in recordFailureSeparately (read the test body), tests/specs/MIG-02.md AC4 row/Coverage note were updated to reflect real coverage instead of a documented deferral, and zig build test-integration-mig02-mig03 passes 9/9 (was 8/8).",
+    "acceptance_criteria": [
+      "Every MUST requirement AC traced to a real, runnable test",
+      "No error.SkipZigTest on any MUST test",
+      "Test isolation verified (tools/lint_test_isolation.py clean)",
+      "Schema contract test check for MIG-01 CHECK constraints"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validation after REWORK 1: TC-MIG-02-04 in tests/integration/migration_fanout_test.zig genuinely exercises PoolExhausted in recordFailureSeparately via a dedicated pool_size=2 Pool (real in-flight connection exhaustion, no mock), asserting the control row stays pending. Isolated from the shared pool_size=5 pool used by the other 8 tests. tests/specs/MIG-02.md AC4 row and Coverage note rewritten to describe real coverage (including fail-first verification note) instead of a documented deferral. zig build test-integration-mig02-mig03 run with explicit BPM_TEST_DB_URL/BPM_DB_URL: 9/9 tests passed (was 8/8). No error.SkipZigTest in the file, tools/lint_test_isolation.py clean (139 files, 0 new issues), no hardcoded credentials, all fixtures use per-test random UUIDs/tokens with unconditional defer cleanup. This closes rework 1.",
+    "artifacts_out": [
+      "tests/integration/migration_fanout_test.zig",
+      "tests/specs/MIG-02.md"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (Step 5) for re-validation"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

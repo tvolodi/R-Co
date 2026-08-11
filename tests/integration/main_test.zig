@@ -211,6 +211,13 @@ const repository_integration = @import("repository_test.zig");
 // GH-512 / ISS-0181 — regression lock for the T010 hardcoded-UUID migration.
 // Subprocess-driven filesystem + Zig-build checks; does not require BPM_TEST_DB_URL.
 const gh512_t010_regression_integration = @import("gh512_t010_regression_test.zig");
+// Stage 16 / WF02-batch-0-20260811 — MIG-01 platform.platform_migrations
+// control table shape (constraints, resume index).
+const mig01_platform_migrations_control_table_integration = @import("platform_migrations_control_table_test.zig");
+// Stage 16 / WF02-batch-0-20260811 — MIG-02/MIG-03 tenant migration fanout
+// (commit-with-DDL transaction boundary, advisory-lock contention, continue
+// on failure).
+const mig02_mig03_migration_fanout_integration = @import("migration_fanout_test.zig");
 
 comptime {
     _ = std;
@@ -312,6 +319,8 @@ comptime {
     _ = iss206_token_multiset_integration;
     _ = repository_integration;
     _ = gh512_t010_regression_integration;
+    _ = mig01_platform_migrations_control_table_integration;
+    _ = mig02_mig03_migration_fanout_integration;
 }
 
 test "integration placeholder" {
