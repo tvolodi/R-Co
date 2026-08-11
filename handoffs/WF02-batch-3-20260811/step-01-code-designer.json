@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-3-20260811/step-01-code-designer.json",
   "created_at": "2026-08-11T14:26:03Z",
   "started_at": "2026-08-11T14:56:27Z",
-  "completed_at": "2026-08-11T14:45:19Z",
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T15:05:50Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -33,7 +33,17 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 resolved both PAR-03-scoped BLOCKER issues from CODE-DESIGN-VALIDATOR Step 1b. ISSUE 1 (AC1 RetentionClassForbidden gap): added a full design element to par-03-partition-scoped-retention.md - call site is Registry.registerType() in src/event_store/registry.zig (the only write path to event_type_registry in src/; no admin HTTP route exists yet), via a new retention_class field on RegisterParams and a new check appended to the existing no-DB-access validateRegisterParams() pre-write validator, matching ISS-0148's established pattern. Added RegistryError.RetentionClassForbidden to the error taxonomy, plus a second, DB-level backstop CHECK constraint (chk_retention_class_protected_family, split_part(name, '_', 1) NOT IN (...)) added in the same migration/commit as the Zig-side guard (atomic-unit rule from docs/anti-patterns.md), since event_type_registry has no other write-path protection against direct SQL. Documented access control: retention_class is platform-admin configuration (no tenant_id column, shared across all tenants), so any future HTTP route exposing it MUST gate on actor.is_platform_admin (matching the existing pattern at src/api/routes/dlq.zig:238 and tasks.zig:854) - satisfies security-invariants.md INV-2 applied to the write boundary. Updated templates/specs/par-03-retention-class.migration.yaml with the second CHECK and a new test case; both tools/lint_design_artefact.py and tools/codegen_migration.py --dry-run pass clean. ISSUE 2 (Store.archive() vs PAR-03 DELETE-prohibition): read archive() (src/event_store/store.zig:947-1164) and all 5 of its calling integration tests in full. Confirmed independently (not just trusting the validator) zero src/ call sites - the similarly-named store.archive(allocator, id) sites in definitions.zig resolve to an unrelated definition.Store.archive() workflow-status function. Removal is NOT a clean, consequence-free deletion: archive() is the sole executable implementation of ES-07's (SHOULD, RELEASED) archival-move mechanics and drives 4 of tests/specs/ADP-11.md's traced test cases for ADP-11 (MUST, RELEASED) - TC-ES-07-01, TC-ES-07-02, TC-ADP-11-02, TC-ADP-11-03. TC-ADP-11-01 (ADP-11's own config-time-rejection AC) is unaffected, since it only calls upsertRetentionPolicy(), which this design does NOT remove. Resolution: full removal of archive() (not a rewrite-to-redirect - PAR-03's DETACH/ATTACH is whole-partition granularity, archive() is arbitrary-row granularity selected by per-event-type policy, so no mechanical redirect exists without silently changing ES-07's policy semantics), specified as same-batch, same-commit BACKEND-DEV scope: delete the function in full, keep upsertRetentionPolicy() and its ADP-11 guard, rewrite the 4 dependent tests to (a) assert the row-level mechanism is retired rather than SkipZigTest (forbidden by anti-patterns.md), and (b) repoint ES-07/ADP-11's archival-mechanics AC coverage at PAR-03's own PartitionRetention.runArchivalAging()/runEphemeralDrop() module (already designed, this same batch, being implemented later in this same workflow - not a deferred follow-up requirement). Added a mechanical closure proof: git grep for 'DELETE FROM events'/'DELETE FROM events_archive' in src/ must return zero results after removal, closing the AC-compliance question under EITHER reading of PAR-03's ambiguous DELETE-prohibition text simultaneously, with no REQ-ANALYST business-interpretation detour needed. Removed all 'defer to follow-up' language from both par-03-partition-scoped-retention.md (Open questions #1, now RESOLVED) and par-01-monthly-range-partitioning.md (Open questions #7 and the Existing-code-paths bullet, both now RESOLVED, pointing to PAR-03's design as the authoritative removal scope). All 3 modified artefacts pass tools/lint_design_artefact.py with 0 issues.",
+    "artifacts_out": [
+      "src/design/par-03-partition-scoped-retention.md",
+      "src/design/par-01-monthly-range-partitioning.md",
+      "templates/specs/par-03-retention-class.migration.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b) for rework re-validation"
+  },
   "rework_count": 1,
   "max_rework": 3
 }

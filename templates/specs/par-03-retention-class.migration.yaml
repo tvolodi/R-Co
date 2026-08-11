@@ -39,6 +39,17 @@ purpose: |
   hand-written in the same migration file per the IMPLEMENTER NOTE above —
   this YAML's `tables:` block covers only the codegen-clean ALTER.
 
+  REWORK 1 (CODE-DESIGN-VALIDATOR BLOCKER 1): PAR-03 AC1 requires configuring
+  retention_class = 'delete' for a protected-family event type ({INSTANCE_*,
+  TASK_*, GATEWAY_*, EXECUTION_*}) to be rejected with RetentionClassForbidden.
+  This migration now adds a SECOND check constraint (chk_retention_class_protected_family,
+  below) as the DB-level backstop for that rule, alongside the app-level guard
+  added to Registry.registerType()/validateRegisterParams in the same commit
+  (src/event_store/registry.zig) — see
+  src/design/par-03-partition-scoped-retention.md's "RetentionClassForbidden
+  guard" section for the full call-site, error-taxonomy, and access-control
+  spec (this is user-input-configured, platform-admin-gated data).
+
 tables:
   - mode: alter
     name: event_type_registry
@@ -50,6 +61,16 @@ tables:
     # tool output):
     #   ALTER TABLE event_type_registry ADD CONSTRAINT chk_retention_class
     #     CHECK (retention_class IN ('retain_forever', 'archive_queryable', 'delete'));
+    #
+    #   ALTER TABLE event_type_registry ADD CONSTRAINT chk_retention_class_protected_family
+    #     CHECK (
+    #       retention_class <> 'delete'
+    #       OR split_part(name, '_', 1) NOT IN ('INSTANCE', 'TASK', 'GATEWAY', 'EXECUTION')
+    #     );
+    #   -- PAR-03 AC1 / REWORK 1: DB-level backstop for the same rule
+    #   -- Registry.registerType() enforces app-side. Both must land in this
+    #   -- same commit (docs/anti-patterns.md CHECK-constraint/application-
+    #   -- constant atomic-unit rule).
     #
     # CUSTOM: append events_ephemeral's full hand-written CREATE TABLE
     # (composite PK, PARTITION BY RANGE, per-partition CHECKs, initial
@@ -84,6 +105,36 @@ test_cases:
     assertions: |
       // CUSTOM: assert error.CheckConstraintViolation (SQLSTATE 23514) from
       // chk_retention_class; the row's retention_class is unchanged.
+
+  - name: retention_class_protected_family_delete_rejected_by_db_check
+    description: |
+      REWORK 1 / PAR-03 AC1: a direct SQL UPDATE setting retention_class =
+      'delete' for a protected-family name (INSTANCE_*/TASK_*/GATEWAY_*/
+      EXECUTION_*) is rejected by chk_retention_class_protected_family, even
+      when it bypasses Registry.registerType()'s app-level guard. This
+      exercises the DB-level backstop specifically; the app-level
+      RetentionClassForbidden guard is exercised by a Registry-level unit
+      test in tests/unit/, not here (this fixture is raw SQL, no Registry
+      call).
+    requirement_ref: PAR-03
+    arrange: |
+      // Use a real protected-family prefix rather than fx.event_type_name
+      // (random, not guaranteed to start with a protected prefix).
+      const protected_name = "INSTANCE_REWORK1_TEST";
+      try h.conn.exec(
+          "INSERT INTO event_type_registry (name, schema_version, json_schema) VALUES ($1, 1, '{}')",
+          &.{protected_name},
+      );
+    act: |
+      const result = h.conn.exec(
+          "UPDATE event_type_registry SET retention_class = 'delete' WHERE name = $1",
+          &.{protected_name},
+      );
+    assertions: |
+      // CUSTOM: assert error.CheckConstraintViolation (SQLSTATE 23514) from
+      // chk_retention_class_protected_family; the row's retention_class is
+      // unchanged (still the 'archive_queryable' default). CUSTOM cleanup:
+      // DELETE FROM event_type_registry WHERE name = protected_name.
 
   - name: retention_class_defaults_to_archive_queryable
     description: A newly registered event type defaults to archive_queryable, not delete.

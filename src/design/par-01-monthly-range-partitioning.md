@@ -502,12 +502,18 @@ Read `src/event_store/store.zig` in full (Store.append/read/readGlobal/readHisto
 - **`Store.archive()`**: this function's entire `INSERT INTO events_archive ... SELECT ... FROM
   events WHERE ...` / `DELETE FROM events ...` row-by-row move pattern is **incompatible** with
   PAR-03's "No `DELETE` statement SHALL run against `events` or `events_archive` at any point"
-  rule. This is a real conflict this design surfaces rather than silently resolves — see Open
-  questions §7. PAR-01 itself does not require `archive()` to change (ES-07's per-event-type
-  policy engine is a separate concern from partition lifecycle), but the moment PAR-03 ships,
-  `archive()`'s `DELETE FROM events` statements become forbidden by that requirement's own AC.
-  This design flags it now because PAR-01's schema change is the point at which `archive()`'s
-  assumptions about `events`'s shape (unpartitioned, deletable) stop holding.
+  rule. **RESOLVED during REWORK 1** (routed by CODE-DESIGN-VALIDATOR's BLOCKER 2, PAR-03-scoped):
+  `Store.archive()` is removed in this same batch, same commit as PAR-03's migration/registry
+  changes — see `src/design/par-03-partition-scoped-retention.md`'s "`Store.archive()`
+  retirement" section for the exact removal scope, the verified zero-call-site finding, and the
+  disposition of its dependent tests. PAR-01 itself still does not require `archive()` to change
+  on its OWN acceptance criteria (ES-07's per-event-type policy engine is a separate concern from
+  partition lifecycle) — the removal is scoped and specified by PAR-03's design because PAR-03 is
+  the requirement whose AC `archive()` actually violates. This design's own change (partitioning
+  `events`) is still the point at which `archive()`'s assumptions about `events`'s shape
+  (unpartitioned, row-deletable) stop holding; it is recorded here for traceability of why the
+  removal is scheduled at all, with the authoritative removal scope living in PAR-03's design
+  rather than duplicated here.
 - **`Store.read()` / `Store.readGlobal()` / `Store.readHistory()`**: none of these are BROKEN by
   the PK widening itself (they filter by `instance_id`/`global_seq`/etc., not by `event_id`
   alone, and none does `... WHERE event_id = $1` against `events`). They remain correct as
@@ -617,12 +623,17 @@ Read `src/event_store/store.zig` in full (Store.append/read/readGlobal/readHisto
    months, different names) but it does mean `events_archive`'s attached-partition names are not
    uniformly prefixed — flagged for PAR-03's design to explicitly acknowledge rather than assume
    away, not a defect in this design.
-7. **`Store.archive()` vs. PAR-03's "no `DELETE` against `events`/`events_archive`" rule.** As
-   detailed in "Existing code paths assessed," `Store.archive()`'s current implementation issues
-   `DELETE FROM events` and (for hard-delete policies) `DELETE FROM events_archive`-adjacent
-   patterns. PAR-01 does not require changing `archive()` (ES-07's retention-policy engine is
-   nominally a separate concern), but this design flags that `archive()` becomes actively
-   incompatible with PAR-03 the moment PAR-03 ships, and recommends ORCH schedule `archive()`'s
-   retirement/rewrite as part of PAR-03's own design rather than leaving it as a silent landmine
-   discovered later. Not a blocker for PAR-01 itself, since PAR-01's own acceptance criteria say
-   nothing about `archive()`.
+7. **RESOLVED during REWORK 1: `Store.archive()` vs. PAR-03's "no `DELETE` against
+   `events`/`events_archive`" rule.** As detailed in "Existing code paths assessed,"
+   `Store.archive()`'s implementation issued `DELETE FROM events` and (for hard-delete policies)
+   `DELETE FROM events_archive`-adjacent patterns, incompatible with PAR-03's DELETE-prohibition
+   under its literal reading. This is no longer an open question: `Store.archive()`'s removal is
+   now in-scope, same-batch work, specified in full in
+   `src/design/par-03-partition-scoped-retention.md`'s "`Store.archive()` retirement" section
+   (exact scope: which lines are removed, which of its 5 dependent tests are unaffected vs.
+   rewritten/repointed at PAR-03's own `PartitionRetention` module, and the mechanical
+   `git grep` proof step that closes the AC-compliance question under either reading of PAR-03's
+   ambiguous text). PAR-01's own acceptance criteria still say nothing about `archive()` directly
+   — the removal is scheduled by PAR-03's design, not PAR-01's, since PAR-03 is the requirement
+   whose AC `archive()` actually violates — but it is no longer left as a silent landmine or a
+   "recommend a follow-up" deferral. No longer open.
