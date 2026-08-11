@@ -1,0 +1,46 @@
+{
+  "handoff_id": "2f831a82-b7bc-4246-a2c9-2d7247bfe5cd",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-3-20260811/step-01b-code-design-validator.json",
+  "created_at": "2026-08-11T14:26:03Z",
+  "started_at": "2026-08-11T14:48:54Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/par-01-monthly-range-partitioning.md",
+      "src/design/par-02-partition-maintenance-job.md",
+      "src/design/par-03-partition-scoped-retention.md",
+      "src/design/par-04-attach-scan-required-check.md",
+      "templates/specs/par-02-partition-catalog.migration.yaml",
+      "templates/specs/par-03-retention-class.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER Step 01 design for PAR-01, PAR-02, PAR-03, PAR-04 (events table monthly range partitioning -- high risk, core table). Standard checks apply (every AC traced, no implementation code, tools/lint_design_artefact.py clean). CRITICAL ADDITIONAL CHECK: both PAR-01 and PAR-03 design docs flag that src/event_store/store.zig::Store.archive() currently issues DELETE FROM events / DELETE FROM events_archive-adjacent statements that become actively incompatible with PAR-03's own AC (\"No DELETE statement SHALL run against events or events_archive at any point\") the moment PAR-03 ships. Both docs recommend deferring archive()'s retirement/rewrite as a follow-up rather than fixing it in this batch, reasoning that PAR-01's ACs don't mention archive() and PAR-03's ACs govern the NEW retention mechanism, not the old one. Assess this reasoning carefully: does PAR-03's AC (\"No DELETE... at any point\") actually mean literally zero DELETE statements can exist in the codebase touching these tables once PAR-03 ships (in which case archive() being left as-is would make this batch's own release FALSELY claim AC compliance, since archive() would still be callable and would still violate it), or does it mean PAR-03's OWN mechanism specifically never deletes (a narrower, correct-as-designed reading)? This determines whether deferring archive() is safe or is a hidden AC violation. If genuinely ambiguous, this may need to route to REQ-ANALYST rather than being decided unilaterally by either CODE-DESIGNER or you.",
+    "acceptance_criteria": [
+      "Every AC in PAR-01, PAR-02, PAR-03, PAR-04 traced to a design section",
+      "No implementation code in the design",
+      "Migration approach correctly scoped as fresh-schema-only (not attempting PAR-05's online conversion)",
+      "Current events/events_archive shape preservation verified against actual migration history",
+      "Store.archive() vs PAR-03 DELETE-prohibition conflict explicitly resolved: either confirmed genuinely non-blocking with sound reasoning, or flagged as requiring REQ-ANALYST clarification before BACKEND-DEV proceeds"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
