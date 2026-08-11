@@ -7,9 +7,9 @@
   "to_agent": "CODE-DESIGNER",
   "file": "handoffs/WF02-batch-2-20260811/step-01-code-designer.json",
   "created_at": "2026-08-11T11:46:10Z",
-  "started_at": "2026-08-11T11:48:25Z",
+  "started_at": "2026-08-11T12:08:08Z",
   "completed_at": "2026-08-11T11:59:36Z",
-  "status": "COMPLETED",
+  "status": "IN_PROGRESS",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -23,7 +23,7 @@
     "artifacts_in": []
   },
   "task": {
-    "description": "Produce design artefact(s) for 4 MUST requirements from docs/requirements.yaml (stage 16): DDL-02 (cross-statement ordering check, extends DDL-01's ValidatePlatformDDL -- rejects a migration file set that constrains a column before it exists/is backfilled, e.g. SET NOT NULL / ADD CONSTRAINT without NOT VALID / ADD COLUMN NOT NULL without a default appearing before the expand+backfill statements it depends on), ORD-01 (effect-completion claim via SELECT...FOR UPDATE SKIP LOCKED against a new plat_effect_completion table), ORD-02 (per-correlation advisory-lock execute guard: pg_try_advisory_xact_lock(hashtext(correlation_id)::bigint), false result rolls back without incrementing retry), ORD-04 (per-correlation parallelism + lag observability via a new plat_correlation_cursor table, exposing max(sequence_no)-applied_seq lag, oldest-pending-row age, and execute-guard false-rate). Read the full requirement bodies directly from docs/requirements.yaml (yaml.safe_load, utf-8-sig) -- read ALL acceptance criteria carefully, this preview only showed the first sentence of each. CRITICAL: this is SUBSTANTIALLY NEW subsystem work -- grep confirms no plat_effect_completion or plat_correlation_cursor tables/code exist anywhere yet (only mentioned as naming-convention examples in DDL-05's design doc). You must design the full new schema (Type C) for both tables from scratch, following DDL-05's plat_ namespace convention (both table names already start with plat_, correctly). Read src/platform/ddl_validate.zig (DDL-01, to extend for DDL-02) and src/platform/ddl_namespace.zig in full before designing DDL-02. For ORD-01/02/04, check if any existing consumer/worker-polling pattern exists elsewhere in this codebase (e.g. timer/DLQ processing, webhook delivery) to follow established conventions for FOR UPDATE SKIP LOCKED polling loops and advisory-lock usage -- do not invent a new pattern if one already exists.",
+    "description": "Produce design artefact(s) for 4 MUST requirements from docs/requirements.yaml (stage 16): DDL-02 (cross-statement ordering check, extends DDL-01's ValidatePlatformDDL -- rejects a migration file set that constrains a column before it exists/is backfilled, e.g. SET NOT NULL / ADD CONSTRAINT without NOT VALID / ADD COLUMN NOT NULL without a default appearing before the expand+backfill statements it depends on), ORD-01 (effect-completion claim via SELECT...FOR UPDATE SKIP LOCKED against a new plat_effect_completion table), ORD-02 (per-correlation advisory-lock execute guard: pg_try_advisory_xact_lock(hashtext(correlation_id)::bigint), false result rolls back without incrementing retry), ORD-04 (per-correlation parallelism + lag observability via a new plat_correlation_cursor table, exposing max(sequence_no)-applied_seq lag, oldest-pending-row age, and execute-guard false-rate). Read the full requirement bodies directly from docs/requirements.yaml (yaml.safe_load, utf-8-sig) -- read ALL acceptance criteria carefully, this preview only showed the first sentence of each. CRITICAL: this is SUBSTANTIALLY NEW subsystem work -- grep confirms no plat_effect_completion or plat_correlation_cursor tables/code exist anywhere yet (only mentioned as naming-convention examples in DDL-05's design doc). You must design the full new schema (Type C) for both tables from scratch, following DDL-05's plat_ namespace convention (both table names already start with plat_, correctly). Read src/platform/ddl_validate.zig (DDL-01, to extend for DDL-02) and src/platform/ddl_namespace.zig in full before designing DDL-02. For ORD-01/02/04, check if any existing consumer/worker-polling pattern exists elsewhere in this codebase (e.g. timer/DLQ processing, webhook delivery) to follow established conventions for FOR UPDATE SKIP LOCKED polling loops and advisory-lock usage -- do not invent a new pattern if one already exists.\n\nREWORK 1 (routed by ORCH after CODE-DESIGN-VALIDATOR Step 1b FAIL):\n- [BLOCKER] DDL-02 AC5 (\"The rejection message names the file and the byte offset of both the constraining statement and the statement it depends on.\") is not covered. ConstrainBeforeExpandDetail in src/design/ddl-02-constrain-before-expand-check.md only defines statement_order/statement_text fields (an ordinal position, not a byte offset, and no file field at all). Fix ONLY this gap in DDL-02's design: add file and byte-offset fields to ConstrainBeforeExpandDetail (and to the StatementDescriptor input type if the byte offset must be captured at parse time before validation runs), update the design's verdict/detail section and any worked examples to reflect the new fields, and confirm this does not require changing DDL-01's existing StatementDescriptor type in a way that breaks DDL-05's already-released ddl_namespace.zig usage of it (check compatibility). ORD-01/02/04's design and the two Type C migration YAMLs are NOT in scope for this rework -- they already passed with no issues.",
     "acceptance_criteria": [
       "Every acceptance criterion in DDL-02, ORD-01, ORD-02, ORD-04 is covered by the design",
       "Design is implementation-code-free",
@@ -33,26 +33,7 @@
     ],
     "functions_to_call": []
   },
-  "result": {
-    "status": "PASS",
-    "summary": "Design artefacts for 4 Stage-16 MUST requirements (DDL-02, ORD-01, ORD-02, ORD-04). DDL-02 is a Type E extension to src/platform/ddl_validate.zig's ValidatePlatformDDL pipeline (new checkConstrainBeforeExpand whole-file-scan check, a fourth check composed alongside the existing lock-class/index-concurrency/namespace checks, not a parallel validator). ORD-01/02/04 decompose into 2 Type C migration YAMLs (plat_effect_completion, plat_correlation_cursor -- confirmed via grep that neither table exists anywhere in src/ or migrations/ before this batch) plus 1 Type E design for the novel BPM Consumer polling+advisory-lock orchestration logic. The existing src/effects/worker.zig + src/effects/queue.zig (EXP-301 effects outbox) polling pattern was found and followed for connection acquisition, FOR UPDATE SKIP LOCKED claim shape, and typed-error philosophy. ORD-02's per-correlation advisory lock is explicitly distinguished from the scheduler's ISS-301 removed per-timer advisory lock (that lock was redundant with SKIP LOCKED on the same row; ORD-02's lock guards a different row of the same correlation, which SKIP LOCKED cannot do). The design is written to be compatible with ORD-03 (order guard + cursor advance + gap sweeper), which is out of this batch's scope but shares both new tables -- an explicit applyFn extension point and a stub (stubAlwaysDeferred) are specified so this batch's consumer loop can be wired safely before ORD-03 lands without misapplying anything. All 4 artefacts pass tools/lint_design_artefact.py with 0 issues; both migration YAMLs pass codegen_migration.py --dry-run with exit 0.",
-    "artifacts_out": [
-      "src/design/ddl-02-constrain-before-expand-check.md",
-      "src/design/ord-01-02-04-correlated-effect-reentry.md",
-      "templates/specs/ord-01-plat-effect-completion.migration.yaml",
-      "templates/specs/ord-04-plat-correlation-cursor.migration.yaml"
-    ],
-    "issues": [],
-    "git_evidence": {
-      "branch_name": "feature/WF02-batch-2-20260811",
-      "commit_sha_list": [],
-      "remote_branch": null,
-      "push_status": "skipped",
-      "pr_url": null,
-      "pr_create_error": null
-    },
-    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
-  },
-  "rework_count": 0,
+  "result": null,
+  "rework_count": 1,
   "max_rework": 3
 }
