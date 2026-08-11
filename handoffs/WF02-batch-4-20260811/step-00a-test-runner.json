@@ -1,0 +1,41 @@
+{
+  "handoff_id": "01071772-de31-499e-aeee-16ec4dadf230",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "00a",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-batch-4-20260811/step-00a-test-runner.json",
+  "created_at": "2026-08-11T19:12:36Z",
+  "started_at": "2026-08-11T19:12:36Z",
+  "completed_at": "2026-08-11T19:12:36Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-05",
+      "PAR-06",
+      "PIN-01",
+      "PIN-02"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Green-Main Gate: verify all existing tests pass on main before implementation starts (WF-02 Step 00a hard gate).",
+    "acceptance_criteria": [
+      "zig build test-env-verify exits 0 (HEALTHY)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ORCH ran zig build test-env-verify directly (not delegated \u2014 infra-only check). Initial run failed C9 (config drift: containers predated a docker-compose.yml change) \u2014 fixed via docker-compose up -d --force-recreate db db_test keycloak keycloak_gateway. Second run failed C1/C3/C4/C6 because ORCH had hardcoded BPM_TEST_DB_URL/BPM_DB_URL using the wrong ports (5433/5432) instead of reading this machine's actual configured ports from .env \u2014 this machine remaps db/db_test to 5442/5434 via docker-compose.override.yml (git-ignored, host ports 5432/5433 occupied by unrelated projects on this host). Corrected to the real .env-sourced URLs (postgres://bpm:bpm@localhost:5442/bpm_dev, postgres://bpm:bpm@localhost:5434/bpm_test): verify_test_env: HEALTHY \u2014 10 checks passed.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Proceed to Step 00 (BACKEND-DEV git-setup)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
