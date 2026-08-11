@@ -1,12 +1,13 @@
 {
   "issue_id": "ISS-0032",
   "title": "DefinitionStore.rowToDefinition() never deserializes the graph JSONB column; handleActivate always returns HTTP 422",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "CRITICAL",
   "category": "B_INCOMPLETE_IMPLEMENTATION",
   "run_id": "AUDIT-test-20260527",
   "workflow_id": null,
   "handoff_id": null,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/273",
   "requirement_ids": [
     "PD-04", "PD-07", "API-02"
   ],
@@ -15,14 +16,14 @@
     "type": "deferred_jsonb_deserialization_never_completed",
     "details": "The TODO comment at line 1381-1382 of definition/store.zig reads: 'Stub: graph column not parsed until pg.zig delivers real rows. TODO: parse JSONB text into DefinitionGraph when pg.zig is complete.' pg.zig is now fully implemented and the integration tests prove real DB round-trips work. The graph deserialization was never implemented. src/definition/snapshot.zig rowToSnapshot() contains a working reference implementation of parseGraphJson() that parses the same JSONB structure."
   },
-  "resolution": null,
-  "verification": null,
+  "resolution": "Fixed in commit 93bded3c (WF03-prod-audit-20260527, PR #13, merged 2026-05-27): rowToDefinition() now parses the graph JSONB column via parseGraphJson instead of returning the fallback empty graph. Verified against current main on 2026-08-11: src/definition/store.zig rowToDefinition() reads column 5 and calls parseGraphJson; the stub comment is gone.",
+  "verification": "Source-read confirmation on 2026-08-11 that the fix from commit 93bded3c is present and unreverted on main. GitHub issue #273 was left open after the merge (PR referenced a stale repo name, My-Fab, from before the rename to R-Co) — closed retroactively on 2026-08-11 once the discrepancy was found.",
   "files_changed": [
     "src/definition/store.zig",
     "src/api/routes/definitions.zig"
   ],
   "created_at": "2026-05-27T12:00:00Z",
-  "resolved_at": null,
+  "resolved_at": "2026-05-27T13:59:49Z",
   "prevention": [
     "Any 'stub until library X is complete' comment must be tracked as an open issue at the time it is written.",
     "Integration test TC-API-02-09 should assert fetched.graph.nodes.len > 0 and fetched.graph.edges.len > 0 after creating a definition with a non-empty graph — this would have caught the regression immediately."

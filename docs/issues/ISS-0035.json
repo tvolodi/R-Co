@@ -1,12 +1,13 @@
 {
   "issue_id": "ISS-0035",
   "title": "adp02_tenant_scope_test.zig is orphaned — never imported in tests/integration/main_test.zig",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "CRITICAL",
   "category": "C_TEST_COVERAGE",
   "run_id": "AUDIT-test-20260527",
   "workflow_id": null,
   "handoff_id": null,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/276",
   "requirement_ids": [
     "ADP-02"
   ],
@@ -15,13 +16,13 @@
     "type": "missing_test_file_wiring",
     "details": "The file was likely created by TEST-DESIGNER or BACKEND-DEV but the corresponding @import statement was omitted from main_test.zig when the file was added. The omission went undetected because zig build test-integration exits 0 regardless — there is no mechanism to warn about test files in the integration directory that are not imported."
   },
-  "resolution": null,
-  "verification": null,
+  "resolution": "Fixed in commit 93bded3c (WF03-prod-audit-20260527, PR #13, merged 2026-05-27): adp02_tenant_scope_test.zig is now imported and referenced in tests/integration/main_test.zig. Verified against current main on 2026-08-11: import present at line 111, referenced at line 259.",
+  "verification": "Source-read confirmation on 2026-08-11 that the fix from commit 93bded3c is present and unreverted on main. GitHub issue #276 was left open after the merge (PR referenced a stale repo name, My-Fab, from before the rename to R-Co) — closed retroactively on 2026-08-11 once the discrepancy was found.",
   "files_changed": [
     "tests/integration/main_test.zig"
   ],
   "created_at": "2026-05-27T12:00:00Z",
-  "resolved_at": null,
+  "resolved_at": "2026-05-27T13:59:49Z",
   "prevention": [
     "After writing any new integration test file, the accepting agent must verify the file appears in 'zig build test-integration' output before marking the handoff COMPLETED.",
     "A CI check that verifies every .zig file under tests/integration/ (excluding main_test.zig itself) is @imported by main_test.zig would prevent this class of error."

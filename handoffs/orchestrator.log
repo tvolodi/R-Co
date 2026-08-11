@@ -962,3 +962,10 @@
 2026-08-10T22:56:45Z | RESOLVE | GH-283 | --- | ORCH | WF03-GH283-20260811 Step Final PASS (PR #697) -- ADP-09/ADP-10 verified clean (5/5 + 2/2 tests, 3x each, 0 flakiness), no code fix needed, closed as side-effect of GH-679/GH-681 advisory-lock fix
 2026-08-10T23:02:30Z | RESOLVE | GH-281 | --- | ORCH | WF03-GH281-20260811 Step Final PASS (PR #698) — closed as accepted-by-design, getEnvOrSkip is adopted resolution
 2026-08-10T23:24:38Z | RESOLVE | WF03-GH280-20260811 | --- | BACKEND-DEV | GH-280 resolved via PR #699 (merge 3a1781d5) — added tests/integration/api05_history_boundary_test.zig (7 TC-API-05-12c/12d/14a..e cases); incidental fixes: tools/clean_test_db.py Windows psql shim, handleHistory() EventTypeRecord leak
+2026-08-11T03:43:06Z | RESOLVE | ADHOC-issue-audit-20260811 | --- | ORCH | ISS-0032 confirmed already fixed by 93bded3c, GitHub issue closed, registry updated to RESOLVED
+2026-08-11T03:43:06Z | RESOLVE | ADHOC-issue-audit-20260811 | --- | ORCH | ISS-0033 confirmed already fixed by 93bded3c, GitHub issue closed, registry updated to RESOLVED
+2026-08-11T03:43:06Z | RESOLVE | ADHOC-issue-audit-20260811 | --- | ORCH | ISS-0034 confirmed already fixed by 93bded3c, GitHub issue closed, registry updated to RESOLVED
+2026-08-11T03:43:06Z | RESOLVE | ADHOC-issue-audit-20260811 | --- | ORCH | ISS-0035 confirmed already fixed by 93bded3c, GitHub issue closed, registry updated to RESOLVED
+2026-08-11T03:43:06Z | RESOLVE | ADHOC-issue-audit-20260811 | --- | ORCH | ISS-0036 confirmed already fixed by 93bded3c, GitHub issue closed, registry updated to RESOLVED
+2026-08-11T03:43:06Z | RESOLVE | ADHOC-issue-audit-20260811 | --- | ORCH | ISS-0037 confirmed already fixed by 93bded3c, GitHub issue closed, registry updated to RESOLVED
+2026-08-11T03:43:06Z | RESOLVE | ADHOC-issue-audit-20260811 | --- | ORCH | ISS-0038 confirmed already fixed by 93bded3c, GitHub issue closed, registry updated to RESOLVED

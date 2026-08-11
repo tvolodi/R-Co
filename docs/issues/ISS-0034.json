@@ -1,12 +1,13 @@
 {
   "issue_id": "ISS-0034",
   "title": "src/db/pool.zig module doc-comment falsely states pg.zig is a stub",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "LOW",
   "category": "D_DOCUMENTATION",
   "run_id": "AUDIT-test-20260527",
   "workflow_id": null,
   "handoff_id": null,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/275",
   "requirement_ids": [
     "DB-01", "DB-02", "DB-03", "DB-04"
   ],
@@ -15,13 +16,13 @@
     "type": "outdated_comment",
     "details": "The comment was accurate during the early scaffolding phase when pg.zig was not yet integrated. It was never removed after the real implementation was wired in."
   },
-  "resolution": null,
-  "verification": null,
+  "resolution": "Fixed in commit 93bded3c (WF03-prod-audit-20260527, PR #13, merged 2026-05-27): module doc-comment rewritten to accurately describe pool.zig as wrapping a fully working pg.zig. Verified against current main on 2026-08-11: lines 1-6 of src/db/pool.zig no longer claim pg.zig is a stub.",
+  "verification": "Source-read confirmation on 2026-08-11 that the fix from commit 93bded3c is present and unreverted on main. GitHub issue #275 was left open after the merge (PR referenced a stale repo name, My-Fab, from before the rename to R-Co) — closed retroactively on 2026-08-11 once the discrepancy was found.",
   "files_changed": [
     "src/db/pool.zig"
   ],
   "created_at": "2026-05-27T12:00:00Z",
-  "resolved_at": null,
+  "resolved_at": "2026-05-27T13:59:49Z",
   "prevention": [
     "Module-level doc-comments describing the state of dependencies should be removed or updated when the dependency is wired in, as part of the same commit."
   ]
