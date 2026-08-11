@@ -146,6 +146,13 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-10
 
+### Fixed
+- ISS-0660 (GH-691): Remove `PublicSchemaPollution` tolerance from startup assertions integration tests.
+  Both `_success` tests now use `assertDatabaseConfigurationWithOverrides` with `public_table_count_override=0`
+  to test the happy path without depending on bpm_test's schema state. `assertDatabaseConfiguration_public_schema_polluted`
+  now uses extension override to bypass missing `pg_trgm` in bpm_test while querying the real table count.
+  Extended `assertDatabaseConfigurationWithOverrides` signature with optional `public_table_count_override: ?u32` parameter.
+
 ### Fixed — ISS-0084 (PI-09 / GH-299): Operations runbook + fail-fast startup assertion
 
 - Added `src/operations/startup_assertions.zig` with `assertDatabaseConfiguration` and `assertDatabaseConfigurationWithOverrides` for testability.

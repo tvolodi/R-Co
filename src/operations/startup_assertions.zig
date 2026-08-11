@@ -130,13 +130,14 @@ fn queryPublicTableCount(allocator: std.mem.Allocator, pool: *db_pool.Pool) !u32
     return try std.fmt.parseInt(u32, count_str, 10);
 }
 
-// Test-only variant that accepts overrides for version and extensions
-// This allows testing failure scenarios without spinning up old PostgreSQL versions
+// Test-only variant that accepts overrides for version, extensions, and public table count.
+// Pass non-null values to bypass the corresponding real DB query.
 pub fn assertDatabaseConfigurationWithOverrides(
     allocator: std.mem.Allocator,
     pool: *db_pool.Pool,
     version_override: ?u32,
     extensions_override: ?[]const []const u8,
+    public_table_count_override: ?u32,
 ) StartupAssertionError!void {
     // 1. Check PostgreSQL version
     const version_num = if (version_override) |v| v else queryVersionNum(allocator, pool) catch |err| {
@@ -184,8 +185,9 @@ pub fn assertDatabaseConfigurationWithOverrides(
         return StartupAssertionError.PgExtensionMissing;
     }
 
-    // 3. Check public schema pollution (cannot override, must use real query)
-    const table_count = queryPublicTableCount(allocator, pool) catch |err| {
+    // 3. Check public schema pollution
+    const table_count = if (public_table_count_override) |count| count
+    else queryPublicTableCount(allocator, pool) catch |err| {
         const fields = [_]obs_logger.LogField{
             .{ .key = "query", .value = .{ .string = "pg_tables" } },
             .{ .key = "error", .value = .{ .string = @errorName(err) } },
