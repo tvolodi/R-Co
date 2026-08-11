@@ -23786,6 +23786,17 @@
       "started_at": "2026-08-11T10:03:08Z",
       "completed_at": "2026-08-11T10:23:15Z",
       "workflow_id": "WF-02"
+    },
+    {
+      "handoff_id": "a5b1104c-6660-4464-9e6b-cf76a1645385",
+      "file": "handoffs/WF02-batch-1-20260811/step-2c-security-reviewer.json",
+      "run_id": "WF02-batch-1-20260811",
+      "step": "2c",
+      "from_agent": "ORCH",
+      "to_agent": "SECURITY-REVIEWER",
+      "created_at": "2026-08-11T09:45:16Z",
+      "status": "PENDING",
+      "stage": "Stage 16"
     }
   ],
   "last_updated": "2026-08-11T10:23:15Z"
