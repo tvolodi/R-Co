@@ -1,0 +1,45 @@
+{
+  "handoff_id": "e17c346d-177b-4efc-9246-b08fb47fc405",
+  "run_id": "WF02-batch-2-20260811",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-batch-2-20260811/step-03-test-designer.json",
+  "created_at": "2026-08-11T11:46:10Z",
+  "started_at": "2026-08-11T12:54:24Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-02",
+      "ORD-01",
+      "ORD-02",
+      "ORD-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/platform/ddl_validate.zig",
+      "src/ordering/mod.zig",
+      "src/ordering/cursor.zig",
+      "src/ordering/consumer.zig",
+      "src/ordering/observability.zig",
+      "tests/integration/ordering_consumer_test.zig"
+    ]
+  },
+  "task": {
+    "description": "BACKEND-DEV already wrote real tests (test-ddl-validate: 28/28 total including 7 new DDL-02 tests; test-ordering: 4/4 unit; test-integration-ord01: 3/3; test-integration-ord04: 4/4; test-integration-ordering: 8/8). Write tests/specs/DDL-02.md, tests/specs/ORD-01.md, tests/specs/ORD-02.md, tests/specs/ORD-04.md per test_developer_guide.md format, tracing every AC (read full bodies from docs/requirements.yaml) to specific existing test cases. Pay special attention to ORD-01's AC about 8 concurrent consumers claiming without collision (SKIP LOCKED concurrency guarantee) and ORD-04's AC about 8 correlations processing in parallel -- these are genuinely concurrency-sensitive claims; confirm the existing tests actually exercise real concurrent access (multiple real connections/goroutine-equivalents), not just sequential simulation, or document clearly if a genuine multi-connection concurrency test was infeasible and why. Close any real coverage gap found.",
+    "acceptance_criteria": [
+      "tests/specs/DDL-02.md, ORD-01.md, ORD-02.md, ORD-04.md exist and trace every AC to a specific test case or documented justification",
+      "Concurrency claims (8 consumers, SKIP LOCKED) assessed for genuine multi-connection test coverage",
+      "Any genuine coverage gap closed with a new test case",
+      "No error.SkipZigTest on any MUST-requirement test"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
