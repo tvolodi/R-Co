@@ -1,0 +1,589 @@
+run_id: WF02-batch-3-20260811
+run_date: '2026-08-11'
+completed_date: '2026-08-11'
+requirement_ids:
+  - PAR-01
+  - PAR-02
+  - PAR-03
+  - PAR-04
+workflow_type: WF-02 (Stage 16 batch 3 -- monthly-range event-store partitioning: PAR-01 partition strategy, PAR-02 proactive future-partition creation, PAR-03 partition-scoped retention/archival, PAR-04 constraint-before-attach)
+
+summary: >-
+  WF-02 feature-development run implementing Stage 16's fourth batch, opening
+  the event-store partitioning subsystem (PW-06): PAR-01 converts events/
+  events_archive to PARTITION BY RANGE (created_at) with a widened
+  (event_id, created_at) primary key and a separate plat_event_idempotency
+  table for global idempotency-key uniqueness; PAR-02 runs a daily scheduler
+  job keeping lead_months future partitions attached proactively so no append
+  is ever the operation that creates one; PAR-03 ages partitions out via
+  DETACH/ATTACH into events_archive (no row copy) and confines hard DROP to
+  events_ephemeral partitions holding only delete-class event types, guarded
+  by a live ADP-11-protected-type count check; PAR-04 declares both CHECK
+  constraints on every standalone partition before ATTACH so PostgreSQL
+  validates from the catalog rather than scanning. CODE-DESIGNER's design
+  pass needed two rework cycles (rework_count=2) before CODE-DESIGN-VALIDATOR
+  passed it -- see rework_steps below. BACKEND-DEV's implementation needed one
+  further rework cycle (rework_count=1) at Step 2a/Step 3 to close PAR-01 AC4
+  (StoreError.PartitionMissingForWrite) end to end. SECURITY-REVIEWER passed
+  the tenant-data-path gate on the first pass. TEST-DESIGNER/TEST-DESIGN-VALIDATOR
+  both re-validated cleanly after the AC4 rework. TEST-RUNNER's Step 4 run hit
+  a real, unrelated infrastructure regression (ISS-0671/GH-712, default-tenant
+  storage_mode routing) that it root-caused and fixed inline, re-verifying
+  every affected target green. RELEASE-VALIDATOR (Step 5) independently
+  re-verified everything from source rather than trusting the handoff chain,
+  and returned PARTIAL rather than a clean batch approval: PAR-01 and PAR-04
+  are RELEASE-worthy in full, but PAR-02 AC5 and PAR-03 AC6 (the
+  EXECUTION_PARTITION_CREATED / EXECUTION_PARTITION_DETACHED /
+  EXECUTION_PARTITION_DROPPED event-emission clauses) are confirmed
+  UNIMPLEMENTED by direct grep of src/ -- a genuine missing-implementation
+  gap, not a missing-test gap, root-caused to a real missing design
+  convention (no platform/system instance_id exists for Store.append()'s
+  InstanceNotFound-gated API to accept a non-instance-scoped event). Per this
+  project's own governing rule that a MUST AC with no passing implementation
+  cannot be marked RELEASED regardless of how well-documented the deferral
+  is, RELEASE-VALIDATOR split the release: PAR-01/PAR-04 -> RELEASED;
+  PAR-02/PAR-03 -> TESTED, tracked via ISS-0670/GH-711 (OPEN). DOC-UPDATER
+  (this step) is recording that split accurately in both
+  docs/requirements.yaml and CHANGELOG.md, and writing this retrospective.
+
+  Two notable events this run: (1) a two-cycle CODE-DESIGNER rework at Step 1
+  (PAR-03's design initially specified no append-time retention-class routing
+  at all -- rework 1 added it in the wrong layer, rework 2 moved it into
+  Store.append() itself and widened PAR-02's partition-creation loop to cover
+  events_ephemeral too), the deepest rework chain of any Stage 16 batch run
+  today, caught entirely before implementation code existed; (2)
+  RELEASE-VALIDATOR's split-release finding, the first PARTIAL verdict (as
+  opposed to a rework cycle) issued by any Stage 16 batch run today -- a
+  structurally different outcome from a caught-and-fixed rework, since AC5/AC6
+  remain genuinely unimplemented at the point of this retrospective and the
+  correct response was to record that honestly rather than force a same-batch
+  fix into a step that had no rework budget for a CODE-DESIGNER-scoped
+  change.
+
+estimation:
+  source: null
+  rules_version: null
+  difficulty: null
+  difficulty_rationale: >-
+    No estimation.yaml or estimation.json exists at
+    handoffs/WF02-batch-3-20260811/ (verified: directory listing shows only
+    step-*.json files, no estimation file). Per this role's file
+    ("Retrospective (WF-02 and WF-04 runs only)" section) and
+    docs/agents/metrics.md §6, the full estimated-vs-actual variance_pct
+    computation is conditional on that file existing and is skipped here.
+    This retrospective documents actuals per step (from real
+    started_at/completed_at clock stamps) and both rework cycles
+    qualitatively instead, following the same precedent as
+    docs/metrics/retrospectives/WF02-batch-0-20260811.yaml,
+    WF02-batch-1-20260811.yaml, and WF02-batch-2-20260811.yaml.
+  integration_surface: null
+  integration_surface_rationale: null
+  surcharge_pct: null
+  estimated_minutes: {}
+  notes: >-
+    Same structural gap noted in the three prior Stage 16 batch
+    retrospectives run today (and WF03-GH521-20260808's before them): ORCH's
+    dispatch behaviour for whether an estimation file is generated is
+    inconsistent across runs. Not re-litigated here; see
+    WF02-batch-0-20260811's rule_adjustments for the standing recommendation.
+
+actual_step_durations:
+  - step: step-00a (TEST-RUNNER -- Green-Main Gate)
+    agent: TEST-RUNNER
+    started_at: '2026-08-11T14:19:52Z'
+    completed_at: '2026-08-11T14:23:14Z'
+    actual_minutes: 3.4
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Confirmed main clean before batch-3 implementation started. No
+      infrastructure defects discovered at this gate -- the ISS-0671
+      infra_incident surfaced later, at Step 4, not here.
+
+  - step: step-00 (BACKEND-DEV -- git-setup)
+    agent: BACKEND-DEV
+    started_at: '2026-08-11T14:25:13Z'
+    completed_at: '2026-08-11T14:26:03Z'
+    actual_minutes: 0.8
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      fn:git-setup PASS -- feature/WF02-batch-3-20260811 created. Fastest
+      Step 00 of any Stage 16 batch run today.
+
+  - step: step-01 (CODE-DESIGNER -- design artefact, REWORK 2)
+    agent: CODE-DESIGNER
+    started_at: '2026-08-11T15:15:14Z'
+    completed_at: '2026-08-11T15:21:25Z'
+    actual_minutes: 6.2
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 2
+    notes: >-
+      This handoff file's started_at/completed_at span covers ONLY the
+      REWORK 2 pass (rework_count=2 on the persisted file, matching prior
+      batches' precedent that only the final passing pass is separately
+      timestamped). REWORK 2 added append-time retention-class routing to
+      Store.append() itself (a second Registry.getType() call selecting
+      target_table = events_ephemeral for retention_class = delete, else
+      events) and widened PAR-02's partition-creation loop from ['events']
+      to ['events', 'events_ephemeral'] in the same commit, closing the
+      BLOCKER that runEphemeralDrop() had nothing to drop and the MAJOR that
+      TC-ADP-11-02 had no real mechanism to test against. See rework_steps
+      below for both cycles' full detail.
+
+  - step: step-01b (CODE-DESIGN-VALIDATOR -- hard gate, re-validation)
+    agent: CODE-DESIGN-VALIDATOR
+    started_at: '2026-08-11T15:24:02Z'
+    completed_at: '2026-08-11T15:26:20Z'
+    actual_minutes: 2.3
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 1
+    notes: >-
+      RE-VALIDATION PASS after REWORK 2. Independently re-verified all 5
+      focus points against actual source rather than the design doc's
+      claims: validatePayload()'s interface genuinely untouched (grep
+      confirms exactly one external call site), events_ephemeral partition
+      provisioning genuinely wired into PAR-02's maintenance loop (not a
+      claim without substance -- traced the loop body, CREATE TABLE
+      templating, and attachPartitionTimed() call), and TC-ADP-11-02's
+      rewrite plan concretely groundable end to end (WIDGET_CREATED ->
+      RetentionClassForbidden guard -> Store.append() -> getType() ->
+      events_ephemeral -> runEphemeralDrop(), no remaining gap in the
+      chain).
+
+  - step: step-2c (SECURITY-REVIEWER -- tenant-data-path gate)
+    agent: SECURITY-REVIEWER
+    started_at: '2026-08-11T16:40:14Z'
+    completed_at: '2026-08-11T16:45:32Z'
+    actual_minutes: 5.3
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      PASS against the numbered security invariants on the first pass. Ran
+      before step-2a in this run's persisted-handoff timestamp order because
+      it re-validated the initial (pre-rework) implementation slice; the
+      AC4 rework at step-2a came after.
+
+  - step: step-2a (BACKEND-DEV -- implementation, REWORK 1)
+    agent: BACKEND-DEV
+    started_at: '2026-08-11T17:08:51Z'
+    completed_at: '2026-08-11T17:32:54Z'
+    actual_minutes: 24.1
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 1
+    notes: >-
+      REWORK 1: implemented PAR-01 AC4 (StoreError.PartitionMissingForWrite)
+      end to end -- verified live against the real test DB that an INSERT
+      into events with created_at in an unpartitioned month raises Postgres
+      SQLSTATE 23514 (check_violation), added SQLSTATE capture/preservation
+      to vendor/pg/pg.zig and src/db/pool.zig (neither layer preserved it
+      before this change), distinguished that SQLSTATE in store.zig's INSERT
+      catch branch to return the new StoreError variant instead of the
+      generic TransactionFailed catch-all, and mapped it to HTTP 503 via
+      src/api/errors.zig::problemPartitionMissingForWrite(). Wrote
+      TC-PAR01-04-01 (real DETACH/assert/reattach cycle against the shared
+      persistent test DB). Found and fixed a genuine aliasing bug during
+      this work: lastSqlState() returned a slice into the connection's
+      mutable last_sqlstate field, read before a ROLLBACK exec() call that
+      silently reset the same backing array, corrupting the comparison --
+      fixed by copying the SQLSTATE bytes to a local buffer first. Also
+      investigated PAR-02 AC5 directly during this step and confirmed it is
+      a genuine, non-trivial gap (no platform/system instance_id convention
+      exists for Store.append()'s InstanceNotFound-gated API), filed as
+      ISS-0670/GH-711 and correctly left unimplemented rather than forced
+      under time pressure -- the same gap RELEASE-VALIDATOR later confirmed
+      independently at Step 5.
+
+  - step: step-03 (TEST-DESIGNER -- specs + rework re-validation)
+    agent: TEST-DESIGNER
+    started_at: '2026-08-11T17:57:39Z'
+    completed_at: '2026-08-11T18:01:39Z'
+    actual_minutes: 4.0
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 1
+    notes: >-
+      REWORK 1 re-validation: confirmed TC-PAR01-04-01 genuinely proves
+      PAR-01 AC4 per its exact requirements.yaml wording -- reads back the
+      real current-month partition via pg_get_expr, detaches it, asserts the
+      new StoreError variant and zero rows written, unconditionally
+      reattaches via defer. Ran test-integration-event-store twice in a row
+      (29/29 both times) to confirm the detach/reattach cycle is idempotent.
+      Re-ran the full previously-passing batch-3 suite to confirm the shared
+      vendor/pg/pg.zig and src/db/pool.zig SQLSTATE-preservation plumbing
+      introduced no regression: all 6 targets exit 0, zero regressions.
+
+  - step: step-03b (TEST-DESIGN-VALIDATOR -- hard gate)
+    agent: TEST-DESIGN-VALIDATOR
+    started_at: '2026-08-11T18:03:46Z'
+    completed_at: '2026-08-11T18:08:58Z'
+    actual_minutes: 5.2
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      PASS on the first pass at this gate -- no further rework needed beyond
+      the Step 03 re-validation it was checking.
+
+  - step: step-04 (TEST-RUNNER -- full report run, real infra incident found and fixed inline)
+    agent: TEST-RUNNER
+    started_at: '2026-08-11T18:13:17Z'
+    completed_at: '2026-08-11T18:25:48Z'
+    actual_minutes: 12.5
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Longest step of this run. test-integration-event-store initially
+      returned 7/29 (22 failures), all "relation ... does not exist" against
+      the default tenant's connections -- root-caused via docker logs (the
+      local psql on PATH is a non-functional WinGet shim, per ISS-0663/
+      GH-700) to clean_test_db.py's --include-fixtures LEGACY_RLS DELETE
+      lacking the slug != 'default' guard every other DELETE in the file
+      already has, which deleted the harness's persistent default-tenant
+      fixture and left its storage_mode routing broken on reseed. Fixed the
+      guard, repaired the live data, filed ISS-0671/GH-712 (RESOLVED, not
+      left QUEUED, since already fixed and re-verified this same run), and
+      re-ran every affected target clean: test-integration-event-store
+      29/29 (was 7/29), test-integration-par02/par03 re-confirmed
+      unaffected, test-env-verify re-confirmed HEALTHY 10/10. Report written
+      to tests/reports/report-20260811-WF02-batch-3.yaml. Not this batch's
+      own PAR-01..04 code -- a real, unrelated infrastructure regression,
+      fixed per Unblock-Everything.
+
+  - step: step-05 (RELEASE-VALIDATOR -- validation, PARTIAL / split release)
+    agent: RELEASE-VALIDATOR
+    started_at: '2026-08-11T18:28:21Z'
+    completed_at: '2026-08-11T18:32:22Z'
+    actual_minutes: 4.0
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Single pass, no rework needed -- but the first PARTIAL (not
+      PASS/APPROVED) verdict of any Stage 16 batch run today. Did not trust
+      the handoff chain's claims at face value: independently re-read every
+      AC directly from docs/requirements.yaml, re-ran all 6 batch-specific
+      build targets plus the environment health check against the live
+      db_test container (not reused from the report, confirming the
+      infra_incident fix is genuinely resolved), read TC-PAR01-04-01's full
+      test body and cross-checked it against the actual store.zig/errors.zig
+      source, and independently grepped the whole of src/ for
+      EXECUTION_PARTITION_CREATED / EXECUTION_PARTITION_DETACHED /
+      EXECUTION_PARTITION_DROPPED (zero matches), confirming PAR-02 AC5 and
+      PAR-03 AC6 are a genuine implementation absence, not merely absent
+      test coverage. Split the release: PAR-01/PAR-04 approved in full;
+      PAR-02/PAR-03 held at partially-approved (met/unmet ACs enumerated
+      explicitly), with ISS-0670/GH-711 as the tracking issue, and an
+      explicit recommendation routed to DOC-UPDATER for how to record the
+      split without silently claiming full AC coverage.
+
+  - step: step-06 (DOC-UPDATER -- this step)
+    agent: DOC-UPDATER
+    started_at: '2026-08-11T18:35:46Z'
+    completed_at: PENDING_AT_WRITE_TIME
+    actual_minutes: null
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      docs/requirements.yaml: PAR-01/PAR-04 set to RELEASED, PAR-02/PAR-03
+      set to TESTED (not RELEASED), all four via tools/reqctl.py set-status
+      (canonical write path). PAR-02/PAR-03 additionally carry a --note
+      recording the specific unmet AC (AC5, AC6 respectively) and the
+      ISS-0670/GH-711 tracking pointer. Targeted Edit calls added
+      test_spec/test_run/tested_at (all four) and release_run/
+      release_decision (PAR-01/PAR-04 only, matching the schema convention
+      that only RELEASED entries carry a release_run/release_decision pair)
+      -- fields set-status does not itself populate, matching batch-0/1/2's
+      exact precedent. docs/status/requirement_status.yaml regenerated via
+      reqctl.py render-status; python tools/reqctl.py validate confirms 0
+      BLOCKER (4 MAJOR / 8 MINOR, all pre-existing and unrelated to
+      PAR-01..04). CHANGELOG.md updated with a split-release entry: PAR-01/
+      PAR-04 described as fully RELEASED, PAR-02/PAR-03 explicitly marked
+      TESTED-not-RELEASED with a leading blockquote naming ISS-0670/GH-711
+      and both unmet ACs so the gap is not glossed over. This retrospective
+      file. Exact completed_at for this step is stamped on the handoff file
+      itself at completion time (python tools/utcnow.py), not invented here.
+
+wall_clock_span:
+  from: '2026-08-11T14:19:52Z'   # step-00a started_at
+  to:   '2026-08-11T18:32:22Z'   # step-05 (RELEASE-VALIDATOR) completed_at -- last fully-timestamped step at retrospective write time
+  total_minutes: 252.5
+  note: >-
+    Wall-clock span from step-00a (Green-Main Gate) through step-05
+    (RELEASE-VALIDATOR) completion; step-06 (this step)'s own completed_at
+    is not yet known at the time this file is written and will be stamped
+    separately on the handoff itself. Substantially slower end-to-end than
+    batch-2 (148.9 min through step-06) and the slowest of the four Stage 16
+    batches run today, driven by three compounding factors: (1) the deepest
+    rework chain of any batch today (CODE-DESIGNER rework_count=2, plus a
+    further BACKEND-DEV rework_count=1 for PAR-01 AC4 -- two distinct rework
+    cycles in one run, versus at most one in any prior Stage 16 batch), (2)
+    step-04's real infrastructure incident (ISS-0671/GH-712) requiring live
+    root-cause diagnosis and data repair, not just a code fix, and (3) large
+    untimed gaps between some persisted handoffs (e.g. step-01b to step-2c,
+    step-2c to step-2a) that reflect ORCH's own dispatch/triage time and
+    the CODE-DESIGNER rework-1-to-rework-2 cycle's own untimed span, not
+    additional timed agent work captured in any single handoff file.
+
+rework_steps:
+  - step: step-01 / step-01b (CODE-DESIGNER / CODE-DESIGN-VALIDATOR -- two-cycle design rework)
+    trigger: >-
+      CODE-DESIGN-VALIDATOR's first validation pass found PAR-03's original
+      design specified no append-time retention-class routing at all --
+      runEphemeralDrop() (the ephemeral-partition drop mechanism) had no
+      corresponding write path that would ever populate events_ephemeral,
+      making the drop mechanism untestable against real data (a BLOCKER: the
+      design's own drop mechanism had nothing to drop) and TC-ADP-11-02
+      (a MAJOR test-coverage requirement) had no real routing to exercise.
+      REWORK 1 addressed this but, per the REWORK 2 summary, placed the
+      routing logic in the wrong layer (not detailed further here since only
+      the final REWORK 2 handoff was separately persisted with its own
+      started_at/completed_at, matching this run's own precedent from prior
+      batches of not separately time-stamping intermediate FAIL passes).
+    resolution: >-
+      REWORK 2 moved append-time retention-class routing into Store.append()
+      itself: retention_class is added as a new field on EventTypeRecord,
+      fetched by a second (pre-BEGIN) Registry.getType() call, selecting
+      target_table = events_ephemeral when retention_class = delete, else
+      events -- the previously-hardcoded single INSERT becomes a two-branch
+      INSERT with an identical column/placeholder shape in both branches.
+      validatePayload()'s own signature was deliberately left unchanged (it
+      is a released ES-05 interface with one external call site) -- the
+      routing lookup is a second, explicitly-justified getType() call rather
+      than plumbing the discarded record out through validatePayload().
+      PAR-02's partition-creation loop was widened in the same rework
+      (companion edit, same commit) from iterating events alone to iterating
+      [events, events_ephemeral], with its lead-time BLOCKER/WARN severity
+      count deliberately left scoped to parent_table=events only (an
+      ephemeral-partition shortfall surfaces as PartitionMissingForWrite on
+      the next delete-class append rather than as a paging alarm --
+      explicitly reasoned, not overlooked). Two genuinely open questions
+      were flagged as non-blocking implementation-shape judgment calls, not
+      AC gaps.
+    reverification: >-
+      CODE-DESIGN-VALIDATOR (step-01b, this persisted handoff) independently
+      re-verified all 5 focus points against actual source rather than the
+      design doc's claims: confirmed validatePayload() has exactly one
+      external call site (grep), confirmed EventTypeRecord{} is constructed
+      in exactly 2 places in registry.zig and freeTypeRecord() currently
+      frees exactly 3 fields matching the design's claimed baseline before
+      adding a 4th, confirmed PAR-02's design doc genuinely shows the
+      widened [events, events_ephemeral] iteration in both its body sketch
+      and data-flow diagram (not a claim without substance), and traced
+      TC-ADP-11-02's full intended chain end to end confirming no remaining
+      gap. All 4 design docs re-verified via tools/lint_design_artefact.py:
+      OK, no issues.
+    why_this_matters_for_the_pipeline: >-
+      The deepest rework chain (2 cycles) of any Stage 16 batch run today,
+      but caught entirely at Step 1/1b -- before any implementation code,
+      tests, or security review existed -- the cheapest point in the
+      pipeline for a design-completeness gap of this depth to surface. The
+      gap itself (an entire missing write path, not a missing field) was
+      structurally larger than any single-cycle rework seen in batch-0
+      (missing coverage), batch-1 (false-positive fixture), or batch-2
+      (missing byte-offset fields), which is consistent with two cycles
+      being needed rather than one.
+
+  - step: step-2a / step-03 (BACKEND-DEV / TEST-DESIGNER -- PAR-01 AC4 implementation rework)
+    trigger: >-
+      PAR-01 AC4 ("GIVEN an append whose created_at falls in a month with no
+      attached partition, WHEN it executes, THEN it fails with
+      PartitionMissingForWrite and a structured error rather than being
+      routed to another partition") required a dedicated StoreError variant
+      and HTTP mapping that did not exist in the initial implementation slice
+      -- Postgres's real check_violation (SQLSTATE 23514) on a missing
+      partition was being caught only by the generic TransactionFailed
+      catch-all, with no HTTP 503 mapping in src/api/errors.zig.
+    resolution: >-
+      BACKEND-DEV (step-2a, rework_count=1) added SQLSTATE capture to
+      vendor/pg/pg.zig (Conn.last_sqlstate, parsed from the ErrorResponse C
+      field, previously discarded entirely) and a Conn.lastSqlState()
+      accessor threaded through src/db/pool.zig, since neither shared-
+      infrastructure layer preserved SQLSTATE before this change. store.zig's
+      append() INSERT catch branch now distinguishes SQLSTATE 23514 from
+      every other INSERT failure and returns the new
+      StoreError.PartitionMissingForWrite variant. Added
+      src/api/errors.zig::problemPartitionMissingForWrite() (HTTP 503).
+      Wrote TC-PAR01-04-01, a real integration test that DETACHes the actual
+      current-month events partition, asserts the failure and zero rows
+      written, then unconditionally reattaches via defer. A genuine
+      aliasing bug was found and fixed during this work: lastSqlState()
+      returned a slice into the connection's mutable last_sqlstate field,
+      read before a ROLLBACK exec() call that silently reset the same
+      backing array, corrupting the comparison -- fixed by copying the
+      SQLSTATE bytes to a local buffer first.
+    reverification: >-
+      TEST-DESIGNER (step-03, rework_count=1) independently re-verified
+      TC-PAR01-04-01 genuinely proves AC4 per its exact requirements.yaml
+      wording (not a paraphrase), ran test-integration-event-store twice in
+      a row (29/29 both times) to confirm the detach/reattach cycle is
+      idempotent, and re-ran the full previously-passing batch-3 suite to
+      confirm the shared vendor/pg/pg.zig and src/db/pool.zig
+      SQLSTATE-preservation plumbing introduced no regression across any of
+      the 6 batch-specific targets. TEST-DESIGN-VALIDATOR (step-03b) then
+      passed the re-validation on its first attempt. RELEASE-VALIDATOR
+      (step-05) independently re-read TC-PAR01-04-01's full test body
+      against the real store.zig/errors.zig source (not the test report
+      alone) and confirmed the fix (commit fa63e32d) is real, not merely
+      described.
+    why_this_matters_for_the_pipeline: >-
+      A fourth distinct rework pattern across the four Stage 16 batches run
+      today: batch 0's rework was RELEASE-VALIDATOR-caught missing coverage;
+      batch 1's was TEST-DESIGN-VALIDATOR-caught false-positive fixture;
+      batch 2's was CODE-DESIGN-VALIDATOR-caught design-completeness (fields
+      missing from a struct); this run's implementation-layer rework was
+      caught by BACKEND-DEV's own AC-by-AC implementation discipline before
+      any downstream gate rejected anything, and in the course of fixing it
+      surfaced and fixed a real, separate aliasing bug in shared
+      SQLSTATE-handling infrastructure that no prior batch's testing had
+      exercised (no earlier Stage 16 batch depended on SQLSTATE
+      preservation across a ROLLBACK).
+
+release_validator_finding:
+  type: SPLIT_RELEASE (PARTIAL verdict, not a rework cycle)
+  scope: "PAR-02 AC5, PAR-03 AC6"
+  description: >-
+    RELEASE-VALIDATOR (step-05) independently grepped the whole of src/ for
+    EXECUTION_PARTITION_CREATED, EXECUTION_PARTITION_DETACHED, and
+    EXECUTION_PARTITION_DROPPED and found zero call sites for any of the
+    three -- confirming these are a genuine implementation absence (no code
+    exists to test), not a test-coverage gap (no test written for existing
+    code). Both are plain, unconditional MUST-priority acceptance-criteria
+    bullets, phrased identically to every other AC in their respective
+    requirements' lists ("Each creation appends...", "Detach and drop each
+    append..."). Per docs/anti-patterns.md's governing rule that
+    RELEASE-VALIDATOR must return FAIL if any MUST requirement has no
+    passing integration-test evidence and that "will be addressed later" is
+    not itself an acceptance criterion -- reinforced here by the stronger
+    fact that this is missing implementation rather than merely missing
+    coverage -- these two specific ACs could not be treated as met. The root
+    cause (no platform/system instance_id convention exists for
+    Store.append()'s InstanceNotFound-gated API to accept a
+    non-instance-scoped event) was correctly scoped by BACKEND-DEV (who
+    discovered and filed it during the AC4 rework, step-2a) as needing
+    CODE-DESIGNER design input before it can be closed, not a quick
+    BACKEND-DEV fix that belonged in this run's rework budget.
+  disposition: >-
+    PAR-01 and PAR-04 have no comparable gap and were approved RELEASED in
+    full. PAR-02 and PAR-03 were held at TESTED (not RELEASED) --
+    implemented and tested except for AC5/AC6 respectively -- with
+    ISS-0670/GH-711 (OPEN, MAJOR) as the tracking issue, recorded against
+    each requirement's note field in docs/requirements.yaml so a future
+    release of the EXECUTION_* platform-event design convention closes both
+    AC5 and PAR-03's AC6 in one pass rather than each being independently
+    rediscovered. Full reasoning:
+    docs/status/release-stage16-WF02-batch-3-20260811.yaml.
+  why_this_matters_for_the_pipeline: >-
+    The first PARTIAL (split) release verdict issued by any Stage 16 batch
+    run today, structurally different from a rework cycle: a rework cycle
+    means a gate caught something and a later agent fixed it within the same
+    run; a split release means the gap survives to the release decision
+    itself because the fix genuinely belongs to a different agent role
+    (CODE-DESIGNER) and a future run, not because anyone in this run's chain
+    failed to do their job. Recording this accurately -- RELEASED for the
+    two clean requirements, TESTED with an explicit unmet-AC note and
+    tracking issue for the other two, never an unqualified RELEASED that
+    would silently claim full AC coverage -- is the entire point of this
+    step.
+
+rule_adjustments: []
+
+prevention_notes:
+  - >-
+    This is the second batch in a row (after batch-2's ISS-0669 discovery)
+    where a genuine infrastructure defect outside this batch's own
+    requirement scope was found and had to be diagnosed under time pressure
+    mid-run: ISS-0671/GH-712 (clean_test_db.py's --include-fixtures sweep
+    missing a slug != 'default' guard that every other DELETE in the file
+    already has). The fix pattern (grep for the guard already used
+    elsewhere in the same file, apply it consistently) suggests a
+    lint/consistency check over clean_test_db.py's own DELETE statements
+    could catch a missing guard automatically rather than relying on a test
+    run surfacing it as 22 failing tests first.
+  - >-
+    ISS-0670/GH-711 (no platform/system instance_id convention for
+    Store.append()'s non-instance-scoped EXECUTION_* platform events) now
+    blocks not just PAR-02 AC5 and PAR-03 AC6 but, per BACKEND-DEV's own
+    step-2a investigation, all 6 other unimplemented EXECUTION_* platform
+    events named across docs/requirements.yaml (none of which have an
+    implementation to copy either). This is a cross-cutting design gap, not
+    specific to this batch's two requirements -- recommend the future
+    CODE-DESIGNER pass that resolves it be scoped explicitly as a shared
+    platform-event append convention (as BACKEND-DEV's own filing already
+    recommended) rather than a narrow PAR-02/PAR-03 patch, so the same gap
+    is not independently rediscovered by whichever future batch happens to
+    touch the next EXECUTION_* event first.
+  - >-
+    Two rework cycles occurred in the same run for the first time across
+    Stage 16 batches today (CODE-DESIGNER at Step 1/1b, then BACKEND-DEV at
+    Step 2a/03) -- both were caught at the correct gate for their kind (a
+    design-completeness gap caught before code existed; an
+    implementation-completeness gap caught by BACKEND-DEV's own AC
+    discipline before any downstream gate needed to reject it), which is
+    the pipeline working as intended rather than a sign of process failure.
+    Worth tracking whether PAR-03's two-cycle design rework specifically
+    (the deepest of any batch today) reflects PAR-03's genuinely higher
+    design complexity (a table with three distinct fates -- archive,
+    ephemeral-drop, or reject-at-config -- versus PAR-01/PAR-02/PAR-04's
+    single-fate designs) or a design-review process gap worth addressing
+    generally.
+
+artifacts:
+  - handoffs/WF02-batch-3-20260811/step-00a-test-runner.json
+  - handoffs/WF02-batch-3-20260811/step-00-backend-dev-git-setup.json
+  - handoffs/WF02-batch-3-20260811/step-01-code-designer.json
+  - handoffs/WF02-batch-3-20260811/step-01b-code-design-validator.json
+  - handoffs/WF02-batch-3-20260811/step-2a-backend-dev.json
+  - handoffs/WF02-batch-3-20260811/step-2c-security-reviewer.json
+  - handoffs/WF02-batch-3-20260811/step-03-test-designer.json
+  - handoffs/WF02-batch-3-20260811/step-03b-test-design-validator.json
+  - handoffs/WF02-batch-3-20260811/step-04-test-runner.json
+  - handoffs/WF02-batch-3-20260811/step-05-release-validator.json
+  - handoffs/WF02-batch-3-20260811/step-06-doc-updater.json
+  - src/design/par-01-events-partitioning.md
+  - src/design/par-02-partition-maintenance-job.md
+  - src/design/par-03-partition-scoped-retention.md
+  - src/design/par-04-partition-attach-constraints.md
+  - src/event_store/store.zig
+  - src/api/errors.zig
+  - src/db/pool.zig
+  - vendor/pg/pg.zig
+  - src/db/partition_attach.zig
+  - src/scheduler/partition_maintenance.zig
+  - src/scheduler/partition_retention.zig
+  - migrations/1147_par01_events_partitioning.sql
+  - migrations/1148_par02_partition_catalog.sql
+  - migrations/1149_par03_retention_class.sql
+  - tests/integration/event_store_integration_test.zig
+  - tests/integration/par02_partition_catalog_test.zig
+  - tests/integration/par03_retention_class_test.zig
+  - tests/specs/PAR-01.md
+  - tests/specs/PAR-02.md
+  - tests/specs/PAR-03.md
+  - tests/specs/PAR-04.md
+  - tests/reports/report-20260811-WF02-batch-3.yaml
+  - docs/status/release-stage16-WF02-batch-3-20260811.yaml
+  - docs/status/requirement_status.yaml
+  - docs/issues/ISS-0670.json
+  - docs/issues/ISS-0671.json
+  - CHANGELOG.md
+  - docs/requirements.yaml
+
+next_action: >-
+  Route to BACKEND-DEV Step Final (git-merge) -- PR creation, checks,
+  squash-merge, branch deletion, and return to clean main are a separate
+  dispatch after this handoff completes; not performed here per explicit
+  instruction (this worktree stays on feature/WF02-batch-3-20260811). The
+  future batch that resolves ISS-0670/GH-711 MUST route through
+  CODE-DESIGNER first (a platform/system instance_id append convention, not
+  a quick BACKEND-DEV fix) and should scope it as a shared platform-event
+  convention covering all 6+ affected EXECUTION_* events, not a narrow
+  PAR-02/PAR-03 patch -- see prevention_notes above.
