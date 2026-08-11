@@ -1,0 +1,283 @@
+run_id: WF02-batch-3-20260811
+report_date: "2026-08-11T18:24:52Z"
+agent: TEST-RUNNER
+workflow_id: WF-02
+workflow_step: "04"
+
+requirement_ids:
+  - PAR-01
+  - PAR-02
+  - PAR-03
+  - PAR-04
+
+pre_checks:
+  test_env_verify_initial:
+    command: "zig build test-env-verify"
+    result: PASS
+    note: >
+      Confirmed HEALTHY (10/10 checks) by ORCH immediately before dispatching
+      this handoff (INFRA_UNBLOCK log entry, 50 leaked test-fixture rows
+      cleaned via clean_test_db.py --include-fixtures); not re-run at session
+      start per handoff instructions. Independently re-confirmed later in
+      this run (see infra_incident below) after a real regression was found
+      and fixed.
+  schema_baseline_verify:
+    command: "python tools/verify_schema_baseline.py"
+    result: PASS
+    note: >
+      130/130 migration ledger rows match migrations/*.sql file count; all
+      130 migrations have a ledger row; both expected CHECK constraints
+      present. Run manually to approximate INV-TI-1 since the local `psql`
+      on PATH is a non-functional WinGet .cmd shim that always executes a
+      hardcoded `SELECT 1` against db_test regardless of arguments (see
+      infra_incident note) -- not usable for ad hoc verification.
+  lint_test_isolation:
+    command: "python tools/lint_test_isolation.py tests/integration"
+    result: PASS
+    summary: "146 file(s) checked, no isolation issues (116 baseline-suppressed)."
+  env_vars_set_explicitly:
+    BPM_TEST_DB_URL: "postgres://bpm:bpm@localhost:5433/bpm_test"
+    BPM_DB_URL: "postgres://bpm:bpm@localhost:5432/bpm_dev"
+    note: "Set explicitly on every DB-touching command per handoff instructions."
+
+infra_incident:
+  summary: >
+    zig build test-integration-event-store initially returned 7/29 (22
+    failures), all "relation ... does not exist" (instance_projections,
+    event_type_registry, events) against the default tenant's connections.
+    Root-caused via docker logs r-co-db_test-1 (real Postgres errors,
+    bypassing the broken local psql shim) to public.tenant's default-tenant
+    row (id 00000000-0000-0000-0000-000000000000) carrying
+    storage_mode='LEGACY_RLS' instead of 'SCHEMA', so
+    applyRequestStorageRouting() set search_path TO public instead of
+    tenant_default,public -- but every event-store/instance table lives only
+    in the tenant_default schema. public.tenant_schemas already had the
+    tenant_default row, confirming the schema itself was genuinely
+    provisioned; only the routing flag was wrong.
+  root_cause: >
+    tools/clean_test_db.py's --include-fixtures sweep runs
+    "DELETE FROM public.tenant WHERE storage_mode='LEGACY_RLS' AND
+    tenant_type='test'" with no slug != 'default' guard, unlike every other
+    DELETE in the file. The default tenant's tenant_type is 'test' by design
+    (tests/integration/helpers.zig ensureDefaultOidcSeeds()), so when its
+    storage_mode was LEGACY_RLS at the moment ORCH's pre-dispatch
+    INFRA_UNBLOCK cleanup ran (python tools/clean_test_db.py
+    --include-fixtures, clearing 50 leaked rows including "28 LEGACY_RLS
+    children"), this statement deleted the harness's persistent default
+    tenant fixture along with them. The next test run's
+    ensureDefaultOidcSeeds() INSERT ... ON CONFLICT DO UPDATE took the
+    plain-INSERT branch (no row to conflict against) and left storage_mode
+    at its column default (LEGACY_RLS, migration
+    086_iss107_tenant_storage_mode.sql) rather than the SCHEMA mode
+    migration 087_default_tenant_storage_mode_cutover.sql had previously
+    established. Confirmed by created_at/updated_at on the row both falling
+    within minutes of the cleanup + this run.
+  classification: >
+    Blocking, not incidental -- this directly caused 22/29 failures in one
+    of this batch's own required targets, so fixed inline per
+    Unblock-Everything rather than filed-and-forwarded only.
+  fix_applied:
+    - "tools/clean_test_db.py: added 'AND slug != ''default''' to the LEGACY_RLS DELETE in the --include-fixtures branch, matching the guard already used by every other DELETE in the file."
+    - "Data repair: UPDATE public.tenant SET storage_mode='SCHEMA', updated_at=NOW() WHERE id='00000000-0000-0000-0000-000000000000' AND storage_mode='LEGACY_RLS' (safe -- tenant_schemas already had the row, confirming the schema was genuinely provisioned)."
+  reverification:
+    - "zig build test-env-verify: HEALTHY 10/10 (re-run after fix)"
+    - "zig build test-integration-event-store: 29/29 (re-run after fix, was 7/29)"
+    - "zig build test-integration-par02: 3/3 (re-confirmed unaffected)"
+    - "zig build test-integration-par03: 4/4 (re-confirmed unaffected)"
+  filed:
+    iss_id: ISS-0671
+    github_issue: "https://github.com/tvolodi/R-Co/issues/712"
+    status: RESOLVED
+    note: >
+      Filed per No Issue Left Local-Only despite being fixed inline in this
+      run (a real defect independent of PAR-01..04's own code). Registered
+      in docs/issues/ISS-0671.json and docs/issues/issue_index.json, added
+      to handoffs/global_queue.json then marked RESOLVED (not left QUEUED)
+      since it was already fixed and re-verified in this same run -- avoids
+      a redundant future WF-03 pickup of an already-closed defect. GitHub
+      issue closed with resolution comment. Related to, but distinct from,
+      the already-open ISS-0663/GH-700 (same file, different bug --
+      run_psql()'s substring-based error swallowing).
+  tooling_note: >
+    The local "psql" resolved on PATH (C:\Users\<user>\AppData\Local\Microsoft\WinGet\Links\psql.cmd)
+    is a non-functional shim: it ignores all arguments and always executes
+    "docker-compose exec -T db_test psql -U bpm -d bpm_test -c 'SELECT 1'",
+    so any ad hoc psql query run directly from this shell prints "1" no
+    matter what was asked. Diagnosis instead used
+    "docker-compose exec -T db_test psql ..." directly (bypassing the shim)
+    and "docker logs r-co-db_test-1" for the real Postgres error text. This
+    matches the shim-resolution root cause already documented in
+    ISS-0663/GH-700's prevention notes and clean_test_db.py's own
+    _PSQL_EXECUTABLE comment (GH-280/ISS-0040); not re-filed as a new issue.
+
+layers:
+  - name: partition-attach
+    command: "zig build test-partition-attach --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 4/4 steps succeeded; 2/2 tests passed"
+    tests_total: 2
+    tests_passed: 2
+    tests_failed: 0
+    expected: "2/2"
+    matches_expected: true
+
+  - name: partition-maintenance
+    command: "zig build test-partition-maintenance --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 4/4 steps succeeded; 5/5 tests passed"
+    tests_total: 5
+    tests_passed: 5
+    tests_failed: 0
+    expected: "5/5"
+    matches_expected: true
+
+  - name: partition-retention
+    command: "zig build test-partition-retention --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 4/4 steps succeeded; 4/4 tests passed"
+    tests_total: 4
+    tests_passed: 4
+    tests_failed: 0
+    expected: "4/4"
+    matches_expected: true
+
+  - name: integration-par02
+    command: "zig build test-integration-par02 --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 6/6 steps succeeded; 3/3 tests passed"
+    tests_total: 3
+    tests_passed: 3
+    tests_failed: 0
+    expected: "3/3"
+    matches_expected: true
+
+  - name: integration-par03
+    command: "zig build test-integration-par03 --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 6/6 steps succeeded; 4/4 tests passed"
+    tests_total: 4
+    tests_passed: 4
+    tests_failed: 0
+    expected: "4/4"
+    matches_expected: true
+
+  - name: integration-event-store
+    command: "zig build test-integration-event-store --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 6/6 steps succeeded; 29/29 tests passed"
+    tests_total: 29
+    tests_passed: 29
+    tests_failed: 0
+    expected: "29/29"
+    matches_expected: true
+    note: >
+      Initial run 7/29 (22 fail) due to the infra_incident above (default
+      tenant storage_mode routing, not this batch's own code). Re-run clean
+      after the fix: 29/29, matching TEST-DESIGNER/TEST-DESIGN-VALIDATOR's
+      confirmed expected count.
+
+  - name: unit-full
+    command: "zig build test --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 101/101 steps succeeded; 1067/1131 tests passed (64 skipped)"
+    tests_total: 1131
+    tests_passed: 1067
+    tests_failed: 0
+    tests_skipped: 64
+    baseline_comparison: >
+      Prior known-clean baseline (WF02-batch-2-20260811, report-20260811-WF02-batch-2.yaml):
+      1053/1117 passed, 64 skipped. This run: 1067/1131 passed, 64 skipped --
+      +14 passed / +14 total, 0 new failures, 0 new skips. The delta matches
+      new tests added in this batch (e.g. TC-PAR01-04-01, TC-PAR-03-01/02/03,
+      TC-ADP-11-02/03 rewrites). No unrelated regression.
+    note: >
+      Raw output contains "failed command: ... test.exe ... --listen=-" lines
+      despite exit code 0, 101/101 steps succeeded, and no failed-step count
+      anywhere in the progress tree. This is the documented Zig 0.16
+      live-progress-renderer artifact (stale "w" waiting-state frame in
+      non-TTY output), root-caused in ISS-0143/GH-448 and reconfirmed in
+      ISS-0028/ISS-0077/ISS-0078 and every prior batch report in this run --
+      not a build-graph failure. Trusted the "Build Summary: N/N steps
+      succeeded" line and the raw process exit code over the "failed
+      command" substring, per those issues' prescribed method. The
+      "iss0173-orphan TC-01..04" lines are unconditional std.debug.print
+      trace lines from tests/unit/iss0173_oidc_jwks_orphan_test.zig
+      (ISS-0173, RESOLVED), emitted on every passing invocation, not a
+      failure indicator. lint_test_wiring's 4 ADVISORY findings (src/lua_test_root.zig
+      type-only pins, ISS-0172/GH-500) do not affect exit code and are
+      pre-existing / out of this batch's scope.
+
+post_checks:
+  test_env_verify_final:
+    command: "zig build test-env-verify"
+    result: PASS
+    summary: "verify_test_env: HEALTHY — 10 checks passed"
+    note: >
+      Re-run after all test layers completed, per test_infrastructure_guide.md
+      §8 ("After all tests pass, run the checklist again to confirm no test
+      left the infrastructure in a degraded state."). All 10 checks (C0-C9)
+      PASS.
+
+excluded_by_instruction:
+  - command: "zig build test-integration"
+    reason: >
+      Full ~40-binary integration umbrella deliberately not run -- this
+      batch's handoff scoped exactly the 6 named build targets plus the full
+      unit suite (documented host capacity/reliability issue under full
+      concurrency, ISS-0665/GH-702, produces non-deterministic unrelated
+      failures under the full umbrella). Consistent with batch-0/batch-1/batch-2
+      precedent in this run.
+
+summary:
+  total_layers: 6
+  layers_passed: 6
+  layers_failed: 0
+  all_expected_counts_matched: true
+  breakdown:
+    partition_attach: "2/2 passed, 0 failed"
+    partition_maintenance: "5/5 passed, 0 failed"
+    partition_retention: "4/4 passed, 0 failed"
+    integration_par02: "3/3 passed, 0 failed"
+    integration_par03: "4/4 passed, 0 failed"
+    integration_event_store: "29/29 passed, 0 failed"
+    unit_full: "1067/1131 passed, 0 failed, 64 skipped"
+  overall_status: PASS
+
+issues:
+  - iss_id: ISS-0671
+    github_issue: "https://github.com/tvolodi/R-Co/issues/712"
+    severity: MAJOR
+    status: RESOLVED
+    title: >
+      clean_test_db.py --include-fixtures LEGACY_RLS sweep lacks
+      slug != 'default' guard, can delete the harness's persistent default
+      tenant fixture
+    classification: >
+      Blocking infrastructure defect, fixed inline this run per
+      Unblock-Everything. Not a regression in PAR-01/02/03/04's own code.
+      Does not change this batch's PASS verdict -- root cause identified,
+      fixed, and every affected build target re-verified green.
+
+rerun_history:
+  - rerun: 1
+    reason: >
+      test-integration-event-store initially failed 22/29 due to the
+      infra_incident above (default tenant storage_mode routing regression
+      from an unrelated pre-existing cleanup-script defect, ISS-0671/GH-712,
+      not this batch's PAR-01..04 code). Diagnosed root cause via
+      docker logs r-co-db_test-1, fixed tools/clean_test_db.py and repaired
+      the live bpm_test data, then re-ran the affected target plus its
+      neighbors (par02, par03) and the full infra health checklist.
+    result: >
+      test-integration-event-store now 29/29 (was 7/29); test-integration-par02
+      and test-integration-par03 re-confirmed unaffected at 3/3 and 4/4;
+      zig build test-env-verify re-confirmed HEALTHY 10/10 after the fix.
+
+next_action: "Route to RELEASE-VALIDATOR (Step 5) for re-validation"
