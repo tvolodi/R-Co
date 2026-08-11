@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-2-20260811/step-01-code-designer.json",
   "created_at": "2026-08-11T11:46:10Z",
   "started_at": "2026-08-11T11:48:25Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T11:59:36Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -33,7 +33,26 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefacts for 4 Stage-16 MUST requirements (DDL-02, ORD-01, ORD-02, ORD-04). DDL-02 is a Type E extension to src/platform/ddl_validate.zig's ValidatePlatformDDL pipeline (new checkConstrainBeforeExpand whole-file-scan check, a fourth check composed alongside the existing lock-class/index-concurrency/namespace checks, not a parallel validator). ORD-01/02/04 decompose into 2 Type C migration YAMLs (plat_effect_completion, plat_correlation_cursor -- confirmed via grep that neither table exists anywhere in src/ or migrations/ before this batch) plus 1 Type E design for the novel BPM Consumer polling+advisory-lock orchestration logic. The existing src/effects/worker.zig + src/effects/queue.zig (EXP-301 effects outbox) polling pattern was found and followed for connection acquisition, FOR UPDATE SKIP LOCKED claim shape, and typed-error philosophy. ORD-02's per-correlation advisory lock is explicitly distinguished from the scheduler's ISS-301 removed per-timer advisory lock (that lock was redundant with SKIP LOCKED on the same row; ORD-02's lock guards a different row of the same correlation, which SKIP LOCKED cannot do). The design is written to be compatible with ORD-03 (order guard + cursor advance + gap sweeper), which is out of this batch's scope but shares both new tables -- an explicit applyFn extension point and a stub (stubAlwaysDeferred) are specified so this batch's consumer loop can be wired safely before ORD-03 lands without misapplying anything. All 4 artefacts pass tools/lint_design_artefact.py with 0 issues; both migration YAMLs pass codegen_migration.py --dry-run with exit 0.",
+    "artifacts_out": [
+      "src/design/ddl-02-constrain-before-expand-check.md",
+      "src/design/ord-01-02-04-correlated-effect-reentry.md",
+      "templates/specs/ord-01-plat-effect-completion.migration.yaml",
+      "templates/specs/ord-04-plat-correlation-cursor.migration.yaml"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-batch-2-20260811",
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": "skipped",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }

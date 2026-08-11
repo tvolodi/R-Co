@@ -1,0 +1,134 @@
+# Migration + integration-test parameter file (Lego Type C)
+# Requirement: ORD-01 (claim guard), read by ORD-02/ORD-03/ORD-04 as the shared table.
+# See src/design/ord-01-02-04-correlated-effect-reentry.md for the full module design
+# this migration supports, and docs/processes/system/effect-reentry-ordering.md for the
+# authoritative process this table implements (process doc's Outputs table, row 1).
+#
+# Naming: plat_ prefix per DDL-05's reserved platform namespace
+# (src/platform/ddl_namespace.zig) — this is a platform-owned table living in every
+# tenant schema (unqualified name, default migration scope: runs in every pass,
+# public AND per-tenant, matching effects_outbox's own precedent in
+# migrations/GBL-125_exp301_effects_outbox.sql, since effect completions are
+# per-instance/per-tenant data, not a cross-tenant control table).
+
+schema_version: 1
+migration_number: 1145   # next free number under migrations/ as of 2026-08-11 (highest existing: 1144)
+name: ord01_plat_effect_completion
+requirement_ids: [ORD-01, ORD-02, ORD-04]
+purpose: |
+  Creates plat_effect_completion, the table BPM Consumers poll to claim and apply
+  correlated effect completions in order. One row per completion; status starts
+  PENDING, becomes APPLIED (ORD-03, a later batch) or DEAD (ORD-03's gap sweeper,
+  a later batch). This batch (ORD-01/02/04) only claims and observes rows via
+  FOR UPDATE SKIP LOCKED plus a per-correlation advisory lock; it never transitions
+  status away from PENDING — see the Type E design's "State transitions" section.
+
+  Columns follow docs/processes/system/effect-reentry-ordering.md's Inputs table
+  exactly: completion_id (PK), correlation_id, sequence_no, status, payload,
+  received_at. (correlation_id, sequence_no) is UNIQUE so a retried Effects Worker
+  insert is absorbed by ON CONFLICT DO NOTHING (process doc step 1 / Business Rules
+  "Duplicate completions"), and the claim index matches the ORD-01 claim query's
+  exact WHERE/ORDER BY shape (status='PENDING' ORDER BY correlation_id, sequence_no).
+
+tables:
+  - mode: create
+    name: plat_effect_completion
+    columns:
+      - { name: completion_id,  type: uuid,          pk: true,        default: gen_random_uuid() }
+      - { name: correlation_id, type: text,           not_null: true }
+      - { name: sequence_no,    type: bigint,         not_null: true }
+      - { name: status,         type: text,           not_null: true, default: "'PENDING'", check: "status IN ('PENDING','APPLIED','DEAD')" }
+      - { name: payload,        type: jsonb,          not_null: true, default: "'{}'::jsonb" }
+      - { name: received_at,    type: "timestamptz",  not_null: true, default: now() }
+      - { name: applied_at,     type: "timestamptz",  not_null: false }
+      - { name: created_at,     type: "timestamptz",  not_null: true, default: now() }
+    constraints:
+      - { kind: unique, name: plat_effect_completion_correlation_seq_uq, columns: [correlation_id, sequence_no] }
+    indexes:
+      # Matches ORD-01's exact claim query: WHERE status = 'PENDING' ORDER BY
+      # correlation_id, sequence_no FOR UPDATE SKIP LOCKED LIMIT 1 — a partial
+      # index on the PENDING subset keeps the claim query O(pending rows) even
+      # as APPLIED/DEAD rows accumulate, mirroring effects_outbox's own
+      # idx_effects_outbox_due partial-index precedent (GBL-125).
+      - { name: idx_plat_effect_completion_claim, columns: [correlation_id, sequence_no], where: "status = 'PENDING'" }
+      # ORD-04's lag computation (max(sequence_no) - applied_seq per
+      # correlation_id) and the oldest-pending-row-age query both filter by
+      # correlation_id across all statuses; this index supports both without
+      # re-scanning the claim partial index.
+      - { name: idx_plat_effect_completion_correlation, columns: [correlation_id, sequence_no] }
+
+fixtures:
+  - name: correlation_a
+    kind: random_string
+  - name: correlation_b
+    kind: random_string
+  - name: seed_pending_row_a1
+    kind: sql_setup
+    sql: |
+      INSERT INTO plat_effect_completion (correlation_id, sequence_no, status, payload)
+      VALUES ($1, 1, 'PENDING', '{"outcome":"ok"}'::jsonb);
+    params: [correlation_a]
+  - name: seed_pending_row_a2
+    kind: sql_setup
+    sql: |
+      INSERT INTO plat_effect_completion (correlation_id, sequence_no, status, payload)
+      VALUES ($1, 2, 'PENDING', '{"outcome":"ok"}'::jsonb);
+    params: [correlation_a]
+
+test_cases:
+  - name: claim_query_skip_locked_excludes_locked_row
+    description: >
+      ORD-01 AC1 — with one PENDING row locked by a concurrent transaction, a second
+      transaction's claim query (FOR UPDATE SKIP LOCKED) returns no row rather than
+      blocking or erroring.
+    requirement_ref: ORD-01
+    arrange: |
+      // Open a second connection and BEGIN + claim the seeded row there first,
+      // leaving it locked (uncommitted) for the duration of this test.
+      var locker = try helpers.TestHarness.init(std.testing.allocator);
+      defer locker.deinit();
+      try locker.conn.exec("BEGIN", .{});
+      _ = try locker.conn.query(std.testing.allocator,
+          "SELECT completion_id FROM plat_effect_completion WHERE status = 'PENDING' ORDER BY correlation_id, sequence_no FOR UPDATE SKIP LOCKED LIMIT 1",
+          &.{});
+    act: |
+      const result = try h.conn.query(std.testing.allocator,
+          "SELECT completion_id FROM plat_effect_completion WHERE status = 'PENDING' ORDER BY correlation_id, sequence_no FOR UPDATE SKIP LOCKED LIMIT 1",
+          &.{});
+    assertions: |
+      // CUSTOM: assert result.rows.len == 1 (row a2, since a1 is locked by `locker`)
+      // and that its correlation_id/sequence_no match seed_pending_row_a2 — never
+      // seed_pending_row_a1. Also assert no error/timeout was raised (SKIP LOCKED
+      // never blocks).
+
+  - name: duplicate_correlation_sequence_absorbed_by_on_conflict
+    description: >
+      Business rule "Duplicate completions" — a retried insert of the same
+      (correlation_id, sequence_no) is a no-op under ON CONFLICT DO NOTHING, not a
+      unique-violation error, once the caller uses that clause.
+    requirement_ref: ORD-01
+    arrange: ""
+    act: |
+      try h.conn.exec(
+          "INSERT INTO plat_effect_completion (correlation_id, sequence_no, status, payload) VALUES ($1, 1, 'PENDING', '{}'::jsonb) ON CONFLICT (correlation_id, sequence_no) DO NOTHING",
+          &.{fx.correlation_a});
+    assertions: |
+      // CUSTOM: assert exactly 1 row exists for (correlation_a, sequence_no=1) —
+      // the duplicate insert did not create a second row and did not error.
+
+  - name: status_check_constraint_rejects_unknown_value
+    description: A status outside PENDING/APPLIED/DEAD is rejected by the CHECK constraint.
+    requirement_ref: ORD-01
+    arrange: ""
+    act: |
+      const result = h.conn.exec(
+          "INSERT INTO plat_effect_completion (correlation_id, sequence_no, status) VALUES ($1, 99, 'BOGUS')",
+          &.{fx.correlation_b});
+    assertions: |
+      // CUSTOM: assert error.CheckConstraintViolation (Postgres 23514).
+
+rollback_strategy: |
+  Forward-only. plat_effect_completion is append/status-transition only; no DROP
+  migration. If retired, a future migration archives rows to a companion table before
+  any structural change, per docs/anti-patterns.md's "DROP TABLE ... without a
+  matching data-preservation migration" entry.
