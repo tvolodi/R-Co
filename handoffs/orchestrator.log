@@ -987,3 +987,4 @@
 2026-08-11T06:33:09Z | ROUTE | WF02-batch-0-20260811 | c2db85fb | ORCH -> TEST-DESIGN-VALIDATOR | PENDING (step 03b test design validation)
 2026-08-11T06:36:26Z | STEP_COMPLETED | WF02-batch-0-20260811 | c2db85fb | TEST-DESIGN-VALIDATOR | Step 03b PASS -- DDL-05/MIG-01/MIG-02/MIG-03 test design validated (10+5+8 tests, 0 SkipZigTest, isolation clean, schema contract confirmed, builds green); routed to TEST-RUNNER (Step 4)
 2026-08-11T06:38:56Z | BENCH_ENV_CHECK | WF02-batch-0-20260811 | --- | ORCH | CLEARED (test-env-verify 10/10 after cleaning 70+28 leaked fixture rows via direct psycopg2 workaround for ISS-0663)
+2026-08-11T06:39:17Z | ROUTE | WF02-batch-0-20260811 | cb2825d4 | ORCH -> TEST-RUNNER | PENDING (step 04 test execution)
