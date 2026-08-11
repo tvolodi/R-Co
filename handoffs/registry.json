@@ -23830,8 +23830,9 @@
       "from_agent": "ORCH",
       "to_agent": "RELEASE-VALIDATOR",
       "created_at": "2026-08-11T05:23:33Z",
-      "status": "PENDING",
-      "stage": "Stage 16"
+      "status": "COMPLETED",
+      "stage": "Stage 16",
+      "result_status": "FAIL"
     }
   ],
   "last_updated": "2026-08-11T06:42:11Z"
