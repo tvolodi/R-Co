@@ -266,6 +266,29 @@ pub const Store = struct {
             else => return StoreError.TransactionFailed,
         };
 
+        // PAR-03: retention-class routing. A second getType() call —
+        // validatePayload() (above) already fetched this row internally but
+        // discards everything except json_schema. Not folded into one call:
+        // validatePayload()'s signature is a released ES-05 interface
+        // (src/design/event_store.md) not touched by this batch. Still
+        // inside the pre-write validation phase — no DB writes committed
+        // yet either way.
+        const type_record = self.registry.getType(allocator, params.event_type) catch |err| switch (err) {
+            registry_mod.RegistryError.UnknownEventType => return StoreError.UnknownEventType,
+            registry_mod.RegistryError.PoolExhausted => return StoreError.PoolExhausted,
+            else => return StoreError.TransactionFailed,
+        };
+        defer registry_mod.Registry.freeTypeRecord(allocator, type_record);
+        // target_table is a compile-time-known one-of-two literal string,
+        // never user input, never interpolated from params — Zig has no
+        // parameterised-identifier placeholder, so it selects between two
+        // fixed, hand-written SQL statement bodies below rather than being
+        // bound as a $N value.
+        const target_table: []const u8 = if (std.mem.eql(u8, type_record.retention_class, "delete"))
+            "events_ephemeral"
+        else
+            "events";
+
         // --- Transaction ---
         const append_started_ms: i64 = std.Io.Clock.real.now(self.pool.io).toMilliseconds();
         defer {
@@ -390,8 +413,17 @@ pub const Store = struct {
             break :blk 1;
         };
 
-        // Step 3: INSERT event with ON CONFLICT DO NOTHING (ES-03, ES-04).
-        // All columns use $N placeholders — no string interpolation. (security)
+        // Step 3 (PAR-01/PAR-03): idempotency-key uniqueness now lives in the
+        // non-partitioned plat_event_idempotency sidecar table (global scope,
+        // independent of which calendar-month partition the event row itself
+        // lands in), NOT in a UNIQUE index on events — partitioning would
+        // otherwise silently narrow idempotency_key uniqueness to per-
+        // partition scope (PAR-01 AC2). Insert into plat_event_idempotency
+        // FIRST, in the SAME transaction; if that returns no row, the key
+        // already exists — fetch the pre-existing (event_id, created_at) and
+        // read the original row from the correct table WITHOUT ever touching
+        // events/events_ephemeral. If it returns a row, proceed to INSERT
+        // INTO target_table (PAR-01's design doc, Open questions §3).
         const large_payload = params.payload.len > 4096;
         const stored_payload = if (large_payload)
             // Placeholder ref; real side-table logic pending pg.zig.
@@ -399,14 +431,135 @@ pub const Store = struct {
         else
             params.payload;
 
-        const insert_rows = conn.query(
+        const idem_rows = conn.query(
             allocator,
+            \\INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at)
+            \\VALUES ($1, gen_random_uuid(), NOW())
+            \\ON CONFLICT (idempotency_key) DO NOTHING
+            \\RETURNING event_id, (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us
+        ,
+            &.{params.idempotency_key},
+        ) catch {
+            conn.exec("ROLLBACK", &.{}) catch {};
+            return StoreError.TransactionFailed;
+        };
+        defer {
+            var mr = idem_rows;
+            mr.deinit();
+        }
+
+        // Capture the event_id plat_event_idempotency's INSERT just generated
+        // (gen_random_uuid() evaluated ONCE, by that statement) so the
+        // events/events_ephemeral INSERT below can bind the SAME value
+        // explicitly, rather than letting it call gen_random_uuid() again via
+        // its own column DEFAULT — two independent calls would produce two
+        // DIFFERENT UUIDs, silently orphaning the plat_event_idempotency row
+        // from the event row it is supposed to resolve to (confirmed live:
+        // this exact bug made every duplicate-detection lookup fail to find
+        // the original row, since the row plat_event_idempotency pointed at
+        // never existed under that event_id).
+        const generated_event_id: []const u8 = if (idem_rows.rows.len > 0 and idem_rows.rows[0].len > 0)
+            (idem_rows.rows[0][0] orelse "")
+        else
+            "";
+
+        if (idem_rows.rows.len == 0) {
+            conn.exec("ROLLBACK", &.{}) catch {};
+            // PAR-01 Invariant #5 successor: resolve the pre-existing
+            // (event_id, created_at) from plat_event_idempotency, then read
+            // the original row from whichever of events / events_archive /
+            // events_ephemeral it actually lives in (partition pruning
+            // applies automatically once created_at is known). Re-derive
+            // target_table the same way the original append did (a second
+            // registry.getType() lookup keyed by the SAME event_type, which
+            // this call already has from params.event_type) — PAR-03's
+            // design doc, Open questions §6, option (a): no schema change to
+            // plat_event_idempotency needed.
+            //
+            // ISS-0187 / GH #521: reuse the already-held `conn` (rolled back
+            // above, so it is outside any transaction and safe to read on)
+            // instead of acquiring a second pool connection.
+            const orig = orig_blk: {
+                const resolve_rows = conn.query(
+                    allocator,
+                    "SELECT event_id::text, (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint::text FROM plat_event_idempotency WHERE idempotency_key = $1",
+                    &.{params.idempotency_key},
+                ) catch break :orig_blk duplicateFromParams(allocator, params, sequence_number, metadata);
+                defer {
+                    var mr = resolve_rows;
+                    mr.deinit();
+                }
+                if (resolve_rows.rows.len == 0 or resolve_rows.rows[0].len < 2) {
+                    break :orig_blk duplicateFromParams(allocator, params, sequence_number, metadata);
+                }
+                const resolved_event_id = resolve_rows.rows[0][0] orelse
+                    break :orig_blk duplicateFromParams(allocator, params, sequence_number, metadata);
+
+                // Check events, then events_ephemeral, then events_archive —
+                // the duplicate could live in any of the three depending on
+                // the event type's retention_class at the time it was
+                // originally appended (which may differ from its CURRENT
+                // retention_class if reconfigured since).
+                const search_tables = [_][]const u8{ "events", "events_ephemeral", "events_archive" };
+                for (search_tables) |table_name| {
+                    const sql = std.fmt.allocPrint(
+                        allocator,
+                        "SELECT event_id, instance_id, event_type, payload, actor_id, " ++
+                            "(EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us, " ++
+                            "sequence_number, idempotency_key, metadata, global_seq " ++
+                            "FROM {s} WHERE event_id::text = $1",
+                        .{table_name},
+                    ) catch break :orig_blk duplicateFromParams(allocator, params, sequence_number, metadata);
+                    defer allocator.free(sql);
+
+                    const rows = conn.query(allocator, sql, &.{resolved_event_id}) catch continue;
+                    defer {
+                        var mr = rows;
+                        mr.deinit();
+                    }
+                    if (rows.rows.len > 0) {
+                        break :orig_blk rowToEventRecord(allocator, rows.rows[0], "") catch
+                            duplicateFromParams(allocator, params, sequence_number, metadata);
+                    }
+                }
+                break :orig_blk duplicateFromParams(allocator, params, sequence_number, metadata);
+            };
+            return AppendResult{
+                .record = orig,
+                .is_duplicate = true,
+            };
+        }
+
+        // Step 3b: INSERT the event row into target_table (events or
+        // events_ephemeral — PAR-03's append-time retention-class routing).
+        // Identical column list and $N positions in both branches; differing
+        // only in the INSERT INTO / implicit ON CONFLICT target — the same
+        // idempotency_key uniqueness is enforced globally by
+        // plat_event_idempotency above, not by a per-table UNIQUE index, so
+        // ON CONFLICT DO NOTHING here is defense-in-depth against the
+        // (should-be-impossible, since plat_event_idempotency's own PK
+        // already claimed the key) case of two callers racing between the
+        // plat_event_idempotency insert and this one.
+        // No ON CONFLICT clause: PAR-01 removes events' own uq_event_idempotency
+        // unique index (partitioning would otherwise silently narrow
+        // idempotency_key uniqueness to per-partition scope, PAR-01 AC2) —
+        // with no unique/exclusion constraint left on events.idempotency_key,
+        // PostgreSQL's ON CONFLICT has nothing to infer an arbiter index from
+        // and raises 42P10 ("no unique or exclusion constraint matching the
+        // ON CONFLICT specification") at parse time. Idempotency is now fully
+        // guaranteed by the plat_event_idempotency INSERT immediately above
+        // (Step 3) already having claimed this idempotency_key in the SAME
+        // transaction before this INSERT is ever reached — a second INSERT
+        // for the same key cannot get here at all (Step 3 returns the
+        // duplicate-detection branch before this code runs), so no
+        // conflict-handling clause is needed on this statement.
+        const events_insert_sql =
             \\INSERT INTO events
-            \\  (instance_id, event_type, payload, actor_id,
+            \\  (event_id, instance_id, event_type, payload, actor_id,
             \\sequence_number, idempotency_key, metadata, tenant_id,
             \\   global_seq)
             \\VALUES
-            \\  ($1, $2, $3::jsonb, $4,
+            \\  ($10::uuid, $1, $2, $3::jsonb, $4,
             \\   $5, $6,
             \\   CASE
             \\     WHEN $9::text = '' THEN $7::jsonb
@@ -414,12 +567,39 @@ pub const Store = struct {
             \\   END,
             \\   $8::uuid,
             \\   nextval('events_global_seq'))
-            \\ON CONFLICT (idempotency_key) DO NOTHING
             \\RETURNING
             \\  event_id, instance_id, event_type, payload, actor_id,
             \\  (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
             \\  sequence_number, idempotency_key, metadata, global_seq
-        ,
+        ;
+        const events_ephemeral_insert_sql =
+            \\INSERT INTO events_ephemeral
+            \\  (event_id, instance_id, event_type, payload, actor_id,
+            \\sequence_number, idempotency_key, metadata, tenant_id,
+            \\   global_seq)
+            \\VALUES
+            \\  ($10::uuid, $1, $2, $3::jsonb, $4,
+            \\   $5, $6,
+            \\   CASE
+            \\     WHEN $9::text = '' THEN $7::jsonb
+            \\     ELSE jsonb_set($7::jsonb, '{pipeline_run_id}', to_jsonb($9::text), true)
+            \\   END,
+            \\   $8::uuid,
+            \\   nextval('events_global_seq'))
+            \\RETURNING
+            \\  event_id, instance_id, event_type, payload, actor_id,
+            \\  (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
+            \\  sequence_number, idempotency_key, metadata, global_seq
+        ;
+
+        const insert_sql = if (std.mem.eql(u8, target_table, "events_ephemeral"))
+            events_ephemeral_insert_sql
+        else
+            events_insert_sql;
+
+        const insert_rows = conn.query(
+            allocator,
+            insert_sql,
             &.{
                 uuidToHex(param_alloc, params.instance_id) catch return StoreError.TransactionFailed,
                 params.event_type,
@@ -430,6 +610,7 @@ pub const Store = struct {
                 metadata,
                 params.tenant_id,
                 effective_pipeline_run_id,
+                generated_event_id,
             },
         ) catch {
             conn.exec("ROLLBACK", &.{}) catch {};
@@ -440,70 +621,33 @@ pub const Store = struct {
             mr.deinit();
         }
 
-        // If RETURNING yielded no rows, this is a duplicate.
         if (insert_rows.rows.len == 0) {
+            // Should not occur in practice: plat_event_idempotency's own PK
+            // already claimed this idempotency_key moments earlier in the
+            // same transaction. Treated as a transaction failure rather than
+            // silently returning a duplicate result with no real row.
             conn.exec("ROLLBACK", &.{}) catch {};
-            // Invariant #5: check events_archive for post-archival duplicate.
-            // Query only the scalar sequence_number to avoid dangling string
-            // pointers from rowToEventRecord. (ES-03, security: parameterised)
-            // ISS-0187 / GH #521: reuse the already-held `conn` (rolled-back
-            // above, so it is outside any transaction and safe to read on)
-            // instead of acquiring a second pool connection. Acquiring a
-            // second connection while the first is held by defer release at
-            // line 281 was a self-deadlock-shaped pool-exhaustion bug under
-            // parallel execution (TC-EXP-301-08).
-
-            const orig = orig_blk: {
-                // Check live events table first — select all columns needed by rowToEventRecord
-                const live_rows = conn.query(
-                    allocator,
-                    \\SELECT event_id, instance_id, event_type, payload, actor_id,
-                    \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
-                    \\       sequence_number, idempotency_key, metadata, global_seq
-                    \\FROM events WHERE idempotency_key = $1
-                ,
-                    &.{params.idempotency_key},
-                ) catch break :orig_blk duplicateFromParams(allocator, params, sequence_number, metadata);
-                defer {
-                    var mr = live_rows;
-                    mr.deinit();
-                }
-                if (live_rows.rows.len > 0) {
-                    break :orig_blk rowToEventRecord(allocator, live_rows.rows[0], "") catch
-                        duplicateFromParams(allocator, params, sequence_number, metadata);
-                }
-                // Check events_archive (post-archival duplicate).
-                const arch_rows = conn.query(
-                    allocator,
-                    \\SELECT event_id, instance_id, event_type, payload, actor_id,
-                    \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
-                    \\       sequence_number, idempotency_key, metadata, global_seq
-                    \\FROM events_archive WHERE idempotency_key = $1
-                ,
-                    &.{params.idempotency_key},
-                ) catch break :orig_blk duplicateFromParams(allocator, params, sequence_number, metadata);
-                defer {
-                    var mr = arch_rows;
-                    mr.deinit();
-                }
-                if (arch_rows.rows.len > 0) {
-                    break :orig_blk rowToEventRecord(allocator, arch_rows.rows[0], "") catch
-                        duplicateFromParams(allocator, params, sequence_number, metadata);
-                }
-                break :orig_blk duplicateFromParams(allocator, params, sequence_number, metadata);
-            };
-            return AppendResult{
-                .record = orig,
-                .is_duplicate = true,
-            };
+            return StoreError.TransactionFailed;
         }
 
-        // Step 4: Large payload side-table insert (NFR-05, ES-01).
+        const inserted_event_id: []const u8 = insert_rows.rows[0][0] orelse "";
+        const inserted_created_at_us_text: []const u8 = if (insert_rows.rows[0].len > 5)
+            (insert_rows.rows[0][5] orelse "0")
+        else
+            "0";
+
+        // Step 4: Large payload side-table insert (NFR-05, ES-01). Now
+        // supplies the REAL event_id from the RETURNING row above (fixing
+        // the pre-existing "pending-event-id" placeholder bug) and the new
+        // created_at column PAR-01's widened composite FK requires (a
+        // composite FK to a partitioned parent must reference the FULL
+        // partition key, not event_id alone).
         if (large_payload) {
             conn.exec(
-                "INSERT INTO event_payload_store (event_id, payload, byte_size) VALUES ($1, $2, $3)",
+                "INSERT INTO event_payload_store (event_id, created_at, payload, byte_size) VALUES ($1::uuid, to_timestamp($2::bigint / 1000000.0), $3, $4)",
                 &.{
-                    "pending-event-id", // real event_id from RETURNING row
+                    inserted_event_id,
+                    inserted_created_at_us_text,
                     params.payload,
                     intToStr(param_alloc, @as(i64, @intCast(params.payload.len))) catch return StoreError.TransactionFailed,
                 },
@@ -931,237 +1075,28 @@ pub const Store = struct {
     }
 
     // -----------------------------------------------------------------------
-    // archive (ES-07)
+    // archive() retired — PAR-03 (this batch, WF02-batch-3-20260811)
     // -----------------------------------------------------------------------
-
-    /// Move expired events to events_archive per event_retention_policies.
-    ///
-    /// retention_days is the global fallback applied to event types with no
-    /// registered policy when retention_days > 0.  0 = only registered policies.
-    /// Returns the total number of event rows moved.
-    ///
-    /// Archival invariants (Invariant #11, #12):
-    ///  - INSERT events_archive … ON CONFLICT DO NOTHING ensures idempotency.
-    ///  - Rows are deleted from events ONLY after confirming presence in archive.
-    ///  - No lock on instance_projections or instance_sequence.
-    pub fn archive(
-        self: *Store,
-        allocator: std.mem.Allocator,
-        retention_days: u32,
-    ) StoreError!u64 {
-        var param_arena = std.heap.ArenaAllocator.init(allocator);
-        defer param_arena.deinit();
-        const param_alloc = param_arena.allocator();
-        const conn = self.pool.acquire() catch |err| switch (err) {
-            PoolError.ExhaustedPool => return StoreError.PoolExhausted,
-            else => return StoreError.TransactionFailed,
-        };
-        defer self.pool.release(conn);
-
-        var total_moved: u64 = 0;
-
-        // Fetch all retention policies.
-        // Parameterised — no string interpolation. (security)
-        const policies = conn.query(
-            allocator,
-            "SELECT event_type, policy, keep_days, keep_count FROM event_retention_policies",
-            &.{},
-        ) catch return StoreError.TransactionFailed;
-        defer {
-            var mr = policies;
-            mr.deinit();
-        }
-
-        for (policies.rows) |policy_row| {
-            if (policy_row.len < 4) continue;
-            const event_type = policy_row[0] orelse continue;
-            const policy = policy_row[1] orelse continue;
-
-            if (std.mem.eql(u8, policy, "keep_forever")) continue;
-
-            if (std.mem.eql(u8, policy, "hard_delete_days") or std.mem.eql(u8, policy, "hard_delete_count")) {
-                if (isProtectedEventFamily(event_type)) {
-                    return StoreError.ProtectedFamilyHardDeleteForbidden;
-                }
-            }
-
-            if (std.mem.eql(u8, policy, "keep_days")) {
-                const keep_days_str = policy_row[2] orelse continue;
-                const keep_days = std.fmt.parseInt(i64, keep_days_str, 10) catch continue;
-                // Move rows older than keep_days.
-                // Parameterised. (ES-07, security)
-                conn.exec(
-                    \\INSERT INTO events_archive
-                    \\  (event_id, instance_id, event_type, payload, actor_id,
-                    \\   created_at, sequence_number, idempotency_key, metadata, global_seq,
-                    \\   archived_at, tenant_id)
-                    \\  SELECT event_id, instance_id, event_type, payload, actor_id,
-                    \\         created_at, sequence_number, idempotency_key, metadata, global_seq,
-                    \\         NOW() AS archived_at, tenant_id
-                    \\  FROM events
-                    \\  WHERE event_type = $1
-                    \\    AND created_at <= NOW() - ($2 || ' days')::interval
-                    \\ON CONFLICT (idempotency_key) DO NOTHING
-                ,
-                    &.{
-                        event_type,
-                        intToStr(param_alloc, keep_days) catch continue,
-                    },
-                ) catch continue;
-                // Delete only rows confirmed in archive. (Invariant #11)
-                // RETURNING lets us count the rows actually moved (ES-07,
-                // TC-ES-07-02) rather than the number of policies applied.
-                var moved = conn.query(
-                    allocator,
-                    \\DELETE FROM events e
-                    \\WHERE event_type = $1
-                    \\  AND created_at <= NOW() - ($2 || ' days')::interval
-                    \\  AND EXISTS (
-                    \\    SELECT 1 FROM events_archive ea
-                    \\    WHERE ea.idempotency_key = e.idempotency_key
-                    \\  )
-                    \\RETURNING e.event_id
-                ,
-                    &.{
-                        event_type,
-                        intToStr(param_alloc, keep_days) catch continue,
-                    },
-                ) catch continue;
-                total_moved += moved.rows.len;
-                moved.deinit();
-            } else if (std.mem.eql(u8, policy, "hard_delete_days")) {
-                const keep_days_str = policy_row[2] orelse continue;
-                const keep_days = std.fmt.parseInt(i64, keep_days_str, 10) catch continue;
-                var deleted = conn.query(
-                    allocator,
-                    \\DELETE FROM events
-                    \\WHERE event_type = $1
-                    \\  AND created_at <= NOW() - ($2 || ' days')::interval
-                    \\RETURNING event_id
-                ,
-                    &.{
-                        event_type,
-                        intToStr(param_alloc, keep_days) catch continue,
-                    },
-                ) catch continue;
-                total_moved += deleted.rows.len;
-                deleted.deinit();
-            } else if (std.mem.eql(u8, policy, "keep_count")) {
-                const keep_count_str = policy_row[3] orelse continue;
-                const keep_count = std.fmt.parseInt(i64, keep_count_str, 10) catch continue;
-                // Move rows beyond the keep_count most recent.
-                // Parameterised. (ES-07, security)
-                conn.exec(
-                    \\INSERT INTO events_archive
-                    \\  (event_id, instance_id, event_type, payload, actor_id,
-                    \\   created_at, sequence_number, idempotency_key, metadata, global_seq,
-                    \\   archived_at, tenant_id)
-                    \\  SELECT event_id, instance_id, event_type, payload, actor_id,
-                    \\         created_at, sequence_number, idempotency_key, metadata, global_seq,
-                    \\         NOW() AS archived_at, tenant_id
-                    \\  FROM events
-                    \\  WHERE event_type = $1
-                    \\    AND event_id NOT IN (
-                    \\      SELECT event_id FROM events
-                    \\      WHERE event_type = $1
-                    \\      ORDER BY sequence_number DESC
-                    \\      LIMIT $2
-                    \\    )
-                    \\ON CONFLICT (idempotency_key) DO NOTHING
-                ,
-                    &.{
-                        event_type,
-                        intToStr(param_alloc, keep_count) catch continue,
-                    },
-                ) catch continue;
-                var moved = conn.query(
-                    allocator,
-                    \\DELETE FROM events e
-                    \\WHERE event_type = $1
-                    \\  AND e.event_id NOT IN (
-                    \\    SELECT event_id FROM events
-                    \\    WHERE event_type = $1
-                    \\    ORDER BY sequence_number DESC
-                    \\    LIMIT $2
-                    \\  )
-                    \\  AND EXISTS (
-                    \\    SELECT 1 FROM events_archive ea
-                    \\    WHERE ea.idempotency_key = e.idempotency_key
-                    \\  )
-                    \\RETURNING e.event_id
-                ,
-                    &.{
-                        event_type,
-                        intToStr(param_alloc, keep_count) catch continue,
-                    },
-                ) catch continue;
-                total_moved += moved.rows.len;
-                moved.deinit();
-            } else if (std.mem.eql(u8, policy, "hard_delete_count")) {
-                const keep_count_str = policy_row[3] orelse continue;
-                const keep_count = std.fmt.parseInt(i64, keep_count_str, 10) catch continue;
-                var deleted = conn.query(
-                    allocator,
-                    \\DELETE FROM events e
-                    \\WHERE e.event_type = $1
-                    \\  AND e.event_id NOT IN (
-                    \\    SELECT event_id FROM events
-                    \\    WHERE event_type = $1
-                    \\    ORDER BY sequence_number DESC
-                    \\    LIMIT $2
-                    \\  )
-                    \\RETURNING e.event_id
-                ,
-                    &.{
-                        event_type,
-                        intToStr(param_alloc, keep_count) catch continue,
-                    },
-                ) catch continue;
-                total_moved += deleted.rows.len;
-                deleted.deinit();
-            }
-        }
-
-        // Apply global fallback retention.
-        if (retention_days > 0) {
-            conn.exec(
-                \\INSERT INTO events_archive
-                \\  (event_id, instance_id, event_type, payload, actor_id,
-                \\   created_at, sequence_number, idempotency_key, metadata, global_seq,
-                \\   archived_at, tenant_id)
-                \\  SELECT event_id, instance_id, event_type, payload, actor_id,
-                \\         created_at, sequence_number, idempotency_key, metadata, global_seq,
-                \\         NOW() AS archived_at, tenant_id
-                \\  FROM events
-                \\  WHERE created_at <= NOW() - ($1 || ' days')::interval
-                \\    AND event_type NOT IN (
-                \\      SELECT event_type FROM event_retention_policies
-                \\    )
-                \\ON CONFLICT (idempotency_key) DO NOTHING
-            ,
-                &.{uintToStr(param_alloc, retention_days) catch return StoreError.TransactionFailed},
-            ) catch return StoreError.TransactionFailed;
-            var moved = conn.query(
-                allocator,
-                \\DELETE FROM events e
-                \\WHERE created_at <= NOW() - ($1 || ' days')::interval
-                \\  AND event_type NOT IN (
-                \\    SELECT event_type FROM event_retention_policies
-                \\  )
-                \\  AND EXISTS (
-                \\    SELECT 1 FROM events_archive ea
-                \\    WHERE ea.idempotency_key = e.idempotency_key
-                \\  )
-                \\RETURNING e.event_id
-            ,
-                &.{uintToStr(param_alloc, retention_days) catch return StoreError.TransactionFailed},
-            ) catch return StoreError.TransactionFailed;
-            total_moved += moved.rows.len;
-            moved.deinit();
-        }
-
-        return total_moved;
-    }
+    // Store.archive() (ES-07's row-level archival-move mechanics) has been
+    // REMOVED. Its DELETE FROM events / DELETE FROM events_archive-adjacent
+    // pattern is incompatible with PAR-03's "No DELETE statement SHALL run
+    // against events or events_archive at any point" rule. The mechanism it
+    // implemented is superseded by PartitionRetention.runArchivalAging() /
+    // runEphemeralDrop() (src/scheduler/partition_retention.zig), which
+    // operate at whole-PARTITION granularity via DETACH/ATTACH/DROP rather
+    // than row-level DELETE. See src/design/par-03-partition-scoped-
+    // retention.md's "Store.archive() retirement" section for the full
+    // removal scope, the verified zero-call-site finding (confirmed: the
+    // three `store.archive(...)` sites in src/api/routes/definitions.zig
+    // resolve to the UNRELATED definition.Store.archive(),
+    // src/definition/store.zig, a workflow-definition status transition with
+    // no events/events_archive interaction), and the disposition of its
+    // former dependent tests (TC-ES-07-01, TC-ES-07-02, TC-ADP-11-02,
+    // TC-ADP-11-03 in tests/integration/event_store_integration_test.zig,
+    // rewritten to assert the retirement and exercise PartitionRetention
+    // instead). upsertRetentionPolicy() (above) is NOT removed — it
+    // implements ADP-11's config-time rejection AC, which does not touch
+    // events/events_archive rows and is not in conflict with PAR-03.
 };
 
 // ---------------------------------------------------------------------------

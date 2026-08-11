@@ -41,6 +41,9 @@ pub const RegistryError = error{
     PayloadValidationFailed,
     /// INSERT to event_type_registry failed (transient DB error).
     TransactionFailed,
+    /// PAR-03 AC1: delete retention_class rejected for a protected family
+    /// ({INSTANCE_*, TASK_*, GATEWAY_*, EXECUTION_*}).
+    RetentionClassForbidden,
 };
 
 // ---------------------------------------------------------------------------
@@ -55,6 +58,13 @@ pub const EventTypeRecord = struct {
     description: ?[]const u8,
     created_at: i64,
     updated_at: i64,
+    /// PAR-03: 'retain_forever' | 'archive_queryable' | 'delete'. DEFAULT
+    /// 'archive_queryable' at the DB level (migration 1149) — a row written
+    /// before that migration ran (impossible in this batch's target fresh-
+    /// migrated environment, see PAR-01's Scoping note, but defensive
+    /// regardless) reads back as 'archive_queryable', the non-destructive
+    /// default, never as 'delete'.
+    retention_class: []const u8 = "archive_queryable",
 };
 
 pub const RegisterParams = struct {
@@ -62,6 +72,8 @@ pub const RegisterParams = struct {
     schema_version: u32,
     json_schema: []const u8,
     description: ?[]const u8,
+    /// PAR-03: 'retain_forever' | 'archive_queryable' | 'delete'.
+    retention_class: []const u8 = "archive_queryable",
 };
 
 /// One field-level failure from JSON Schema validation.
@@ -142,17 +154,18 @@ pub const Registry = struct {
         if (existing.rows.len > 0) return RegistryError.DuplicateEventTypeVersion;
 
         // INSERT event_type_registry.
-        // All five $N parameters — no string interpolation. (security)
+        // All six $N parameters — no string interpolation. (security)
         conn.exec(
             \\INSERT INTO event_type_registry
-            \\  (name, schema_version, json_schema, description)
-            \\VALUES ($1, $2, $3, $4)
+            \\  (name, schema_version, json_schema, description, retention_class)
+            \\VALUES ($1, $2, $3, $4, $5)
         ,
             &.{
                 params.name,
                 uintToStr(param_alloc, params.schema_version) catch return RegistryError.TransactionFailed,
                 params.json_schema,
                 params.description orelse "null",
+                params.retention_class,
             },
         ) catch return RegistryError.TransactionFailed;
 
@@ -165,6 +178,7 @@ pub const Registry = struct {
             .schema_version = params.schema_version,
             .json_schema = params.json_schema,
             .description = params.description,
+            .retention_class = params.retention_class,
             .created_at = now,
             .updated_at = now,
         };
@@ -228,11 +242,16 @@ pub const Registry = struct {
         defer self.pool.release(conn);
 
         // Parameterised query — no string interpolation. (ES-05, security)
+        // PAR-03: retention_class added as an 8th column (registry.zig
+        // changes section of src/design/par-03-partition-scoped-retention.md)
+        // so Store.append()'s routing decision can read it via this same
+        // call, without widening validatePayload()'s released signature.
         const result = conn.query(
             allocator,
             \\SELECT id, name, schema_version, json_schema, description,
             \\       EXTRACT(EPOCH FROM created_at)::bigint * 1000000,
-            \\       EXTRACT(EPOCH FROM updated_at)::bigint * 1000000
+            \\       EXTRACT(EPOCH FROM updated_at)::bigint * 1000000,
+            \\       retention_class
             \\FROM event_type_registry
             \\WHERE name = $1
             \\ORDER BY schema_version DESC
@@ -262,6 +281,7 @@ pub const Registry = struct {
             .description = null,
             .created_at = parseI64(colText(row, 5) orelse "") orelse 0,
             .updated_at = parseI64(colText(row, 6) orelse "") orelse 0,
+            .retention_class = undefined,
         };
 
         rec.name = allocator.dupe(u8, colText(row, 1) orelse event_type) catch
@@ -280,6 +300,14 @@ pub const Registry = struct {
                 return RegistryError.TransactionFailed;
         }
 
+        // PAR-03: retention_class is NOT NULL DEFAULT 'archive_queryable' at
+        // the DB level (migration 1149), so colText(row, 7) should never be
+        // null in practice — degrade to the same non-destructive default
+        // rather than failing the read if it somehow is.
+        rec.retention_class = allocator.dupe(u8, colText(row, 7) orelse "archive_queryable") catch
+            return RegistryError.TransactionFailed;
+        errdefer allocator.free(rec.retention_class);
+
         return rec;
     }
 
@@ -288,6 +316,7 @@ pub const Registry = struct {
         allocator.free(record.name);
         allocator.free(record.json_schema);
         if (record.description) |d| allocator.free(d);
+        allocator.free(record.retention_class);
     }
 
     /// After a PayloadValidationFailed error, return per-field failure detail.
@@ -338,6 +367,27 @@ pub fn validateRegisterParams(params: RegisterParams) RegistryError!void {
     if (params.name.len == 0) return RegistryError.EventTypeNameEmpty;
     if (params.name.len > 128) return RegistryError.EventTypeNameTooLong;
     if (!isJsonObject(params.json_schema)) return RegistryError.InvalidJsonSchema;
+    // PAR-03 AC1. Separate prefix check from store.zig's isProtectedEventFamily
+    // (private to store.zig, which imports registry.zig, not the reverse) —
+    // this is an intentional, accepted duplication (design doc's Open
+    // questions, same reasoning as the ephemeral-drop guard's SQL-side
+    // duplication in partition_retention.zig).
+    if (std.mem.eql(u8, params.retention_class, "delete") and
+        isProtectedEventFamilyName(params.name))
+    {
+        return RegistryError.RetentionClassForbidden;
+    }
+}
+
+/// PAR-03 AC1's protected-family set, verbatim: {INSTANCE_*, TASK_*,
+/// GATEWAY_*, EXECUTION_*}. Private, module-level — matches store.zig's
+/// isProtectedEventFamily, which is also private. Both copies must stay in
+/// sync if the prefix list ever changes.
+fn isProtectedEventFamilyName(event_type: []const u8) bool {
+    return std.mem.startsWith(u8, event_type, "INSTANCE_") or
+        std.mem.startsWith(u8, event_type, "TASK_") or
+        std.mem.startsWith(u8, event_type, "GATEWAY_") or
+        std.mem.startsWith(u8, event_type, "EXECUTION_");
 }
 
 /// Free the allocator-owned strings of a ValidationFailure slice.
