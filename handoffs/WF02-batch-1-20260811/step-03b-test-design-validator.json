@@ -1,0 +1,47 @@
+{
+  "handoff_id": "686bce70-b200-47ee-aa3f-28541558ca7d",
+  "run_id": "WF02-batch-1-20260811",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-1-20260811/step-03b-test-design-validator.json",
+  "created_at": "2026-08-11T09:45:16Z",
+  "started_at": "2026-08-11T10:44:27Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-01",
+      "MIG-04",
+      "MIG-05",
+      "MIG-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/DDL-01.md",
+      "tests/specs/MIG-04.md",
+      "tests/specs/MIG-05.md",
+      "tests/specs/MIG-06.md",
+      "src/platform/ddl_validate.zig",
+      "tests/integration/migration_resume_test.zig",
+      "tests/integration/platform_migrations_admin_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: validate TEST-DESIGNER Step 3 output for DDL-01, MIG-04, MIG-05, MIG-06 (all MUST). Verify every MUST AC has a runnable test OR a documented structural/non-testable justification (MIG-05 AC5 specifically -- confirm the justification is sound, i.e. that the design genuinely has no runtime code for this AC per the already-accepted CODE-DESIGN-VALIDATOR Step 1b decision, and that this is not being used to paper over a real gap). No error.SkipZigTest. Fixtures isolated. Confirm the DDL-01 AC5 rename/fix TEST-DESIGNER made (renamed pre-existing tests to avoid a name collision, added a new timing-based AC5 test) is real and doesn't break anything.",
+    "acceptance_criteria": [
+      "Every MUST AC traced to a real test or a sound non-testable justification",
+      "MIG-05 AC5 justification verified sound, not a cover for a real gap",
+      "No error.SkipZigTest",
+      "Test isolation clean",
+      "Build steps genuinely pass with stated counts"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
