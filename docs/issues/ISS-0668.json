@@ -1,0 +1,20 @@
+{
+  "id": "ISS-0668",
+  "title": "Lego catalog (templates/lego-catalog.md) is shallow for Types A/B/D: no per-type schema doc and the CUSTOM: convention is under-documented outside Type C",
+  "severity": "MINOR",
+  "status": "OPEN",
+  "discovered_at": "2026-08-11T08:19:09Z",
+  "discovered_during": "Review of templates/lego-catalog.md prompted by the user, alongside the stage-16 requirement-batch loop (WF02-batch-0-20260811)",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/706",
+  "description": "templates/lego-catalog.md classifies implementation work into Types A-E and states (in its own \"Adding a new Lego piece\" checklist, step 4) that every active pattern should have a templates/<name>.schema.md field-by-field doc. Only Type C (migration.schema.md, 124 lines) actually has one. Types A (crud-endpoint), B (list-page), and D (react-flow-node) have a codegen tool and a worked-example template.yaml with inline comments, but no standalone schema doc -- inconsistent with the catalog's own stated bar for what counts as a complete Lego piece.\n\nSeparately, the CUSTOM: block convention -- the mechanism that stops a low-capability implementer from either fabricating test assertions or hand-editing generated boilerplate -- is explained in real depth only inside migration.schema.md (Type C). lego-catalog.md itself states the rule in one sentence (\"edit only the parts the codegen marks // CUSTOM: ... Never edit generated boilerplate outside CUSTOM blocks\"). A model working a Type A/B/D spec has to infer the same discipline from that single line rather than a worked explanation.\n\nThird, smaller gap: the catalog has no guidance for the partial-fit case -- a requirement that is mostly Type A/B/D but needs one small hand-written deviation. The selection rules say 'when in doubt, prefer Type E,' but there's no worked example of how much CUSTOM-block deviation is still acceptable within Type A/B/D before a requirement should instead be classified Type E.",
+  "impact": "Not currently blocking: the live requirement backlog (stages 16, 17, F8, BRW -- 108 DRAFT requirements as of 2026-08-11) classifies almost entirely as Type C (migration/schema) or Type E (novel logic) by a rough keyword scan of requirement bodies; zero requirements in the current backlog appear to need Type B (list-page) or Type D (react-flow-node), and Type A (CRUD endpoint) is a large but not yet-encountered fraction. The gap will start to matter once a stage with real frontend/admin-page or CRUD-heavy work is drained -- most likely F8 or a later stage. batch-0 (already merged, PR #703) shows the Type C / Type E path works correctly end-to-end today (see handoffs/WF02-batch-0-20260811/step-01-code-designer.json and step-01b-code-design-validator.json for evidence of real classification, lint runs, and line-number-verified design work).",
+  "suggested_fix": [
+    "Write templates/crud-endpoint.schema.md and templates/list-page.schema.md mirroring migration.schema.md's structure (field-by-field table, worked example, codegen output description, validation/lint expectations).",
+    "Consider templates/react-flow-node.schema.md too, or fold it into list-page.schema.md's doc if the two templates turn out to share most of their field vocabulary.",
+    "Promote the CUSTOM: block convention out of a single sentence in lego-catalog.md's 'How implementers use this catalog' section into its own short subsection there, so the rule doesn't live only inside the Type C schema doc.",
+    "Add a short worked example (or a paragraph) to lego-catalog.md's selection rules covering the partial-fit case: how much CUSTOM-block deviation keeps a requirement in Type A/B/D versus when it should be reclassified Type E."
+  ],
+  "affected_requirement": null,
+  "related_issues": [],
+  "recurrence_count": 1
+}
