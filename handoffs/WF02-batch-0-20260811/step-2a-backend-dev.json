@@ -1,0 +1,45 @@
+{
+  "handoff_id": "fb3f1b5e-13e7-4970-9af2-a80a99d0f107",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-0-20260811/step-2a-backend-dev.json",
+  "created_at": "2026-08-11T05:23:33Z",
+  "started_at": "2026-08-11T05:44:30Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-05",
+      "MIG-01",
+      "MIG-02",
+      "MIG-03"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/ddl-05-reserved-plat-namespace-check.md",
+      "src/design/mig-02-mig-03-platform-migration-fanout.md",
+      "templates/specs/mig-01-platform-migrations-control-table.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Implement DDL-05, MIG-01, MIG-02, MIG-03 per the validated (PASS) design artefacts in artifacts_in. MIG-01: run tools/codegen_migration.py on the Type C YAML to generate the migration file + integration test scaffold, then hand-edit the CUSTOM blocks per the design doc's explicit note (CREATE SCHEMA IF NOT EXISTS platform; schema-qualification -- the codegen has no schema-preamble field). DDL-05: write src/platform/ddl_namespace.zig implementing checkNamespace per the design's public interface, verdict table, and the AC2 rename-direction worked example exactly as specified. MIG-02/MIG-03: write src/platform/migration_fanout.zig implementing runFanout/applyToTenant per the design's public interface, transaction-boundary protocol, and advisory-lock semantics -- read the full design doc for the exact FanoutRequest/FanoutResult/FanoutError/DdlStep shapes and the state-transition lifecycle before writing code. Follow backend_developer_guide.md conventions throughout (typed error sets, prepared statements only, no SQL string interpolation, pure transition-function rule not applicable here but the general purity/testability conventions apply).",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build check exits 0 (build + scoped zig fmt --check)",
+      "python tools/lint_sql_param_types.py src tests exits 0 (no BLOCKER/MAJOR)",
+      "MIG-01 migration applies cleanly via zig build migrate against BPM_TEST_DB_URL",
+      "Every acceptance criterion in DDL-05, MIG-01, MIG-02, MIG-03 is implemented (not just compiled)",
+      "No mocks/stubs/fakes; all DB access via real PostgreSQL through the Pool",
+      "Implementation committed to feature/WF02-batch-0-20260811"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

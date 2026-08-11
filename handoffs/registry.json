@@ -23748,6 +23748,28 @@
       "stage": "Stage 16",
       "completed_at": "2026-08-11T05:40:33Z",
       "started_at": "2026-08-11T05:36:47Z"
+    },
+    {
+      "handoff_id": "fb3f1b5e-13e7-4970-9af2-a80a99d0f107",
+      "file": "handoffs/WF02-batch-0-20260811/step-2a-backend-dev.json",
+      "run_id": "WF02-batch-0-20260811",
+      "step": "2a",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-11T05:23:33Z",
+      "status": "PENDING",
+      "stage": "Stage 16"
+    },
+    {
+      "handoff_id": "fb3f1b5e-13e7-4970-9af2-a80a99d0f107",
+      "file": "handoffs/WF02-batch-0-20260811/step-2a-backend-dev.json",
+      "run_id": "WF02-batch-0-20260811",
+      "step": "2a",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-11T05:23:33Z",
+      "status": "IN_PROGRESS",
+      "stage": "Stage 16"
     }
   ],
   "last_updated": "2026-08-11T05:40:33Z"
