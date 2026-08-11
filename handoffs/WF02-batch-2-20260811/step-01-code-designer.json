@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-2-20260811/step-01-code-designer.json",
   "created_at": "2026-08-11T11:46:10Z",
   "started_at": "2026-08-11T12:08:08Z",
-  "completed_at": "2026-08-11T11:59:36Z",
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T12:09:49Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -33,7 +33,15 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1: closed DDL-02 AC5 gap. Added file ([]const u8) and byte_offset (u32) fields to ddl_validate.zig StatementDescriptor (DDL-01/DDL-02 type only), and four matching fields (constraining_statement_file/byte_offset, depended_on_statement_file/byte_offset) to ConstrainBeforeExpandDetail. Confirmed purely additive: checkNamespace is called via a 3-field anonymous struct literal built from StatementDescriptor, never StatementDescriptor itself, so ddl_namespace.zig (DDL-05, released) is untouched and its StatementDescriptor type and all its unit tests are unaffected. Design doc updated with a new \"Which StatementDescriptor?\" and \"Backward compatibility with DDL-05\" section documenting this verification, plus a note that DDL-01 own existing unit tests will need literal updates (mechanical, BACKEND-DEV-side, not a design gap).",
+    "artifacts_out": [
+      "src/design/ddl-02-constrain-before-expand-check.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b) for rework re-validation"
+  },
   "rework_count": 1,
   "max_rework": 3
 }

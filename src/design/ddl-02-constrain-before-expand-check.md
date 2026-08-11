@@ -103,10 +103,80 @@ pub const OrderingRole = enum {
 `ColumnRef` names the column a statement's ordering role applies to. A single-column shape
 covers every DDL-02 acceptance criterion (`SET NOT NULL`, single-column `CHECK`, a simple
 `FOREIGN KEY`); a constraint spanning multiple columns is out of scope (see "Open questions").
-`StatementDescriptor` gains two new optional fields (`ordering_role: OrderingRole = .irrelevant`,
-`ordering_column: ?ColumnRef = null`) populated by the same out-of-scope parser that already
-sets `class`/`kind`/`order`/`text` — this is an in-place extension of the existing struct, not
-a parallel type, so every statement flows through all four checks off one descriptor.
+`StatementDescriptor` (the `ddl_validate.zig` one — DDL-01/DDL-02's type, **not**
+`ddl_namespace.zig`'s smaller same-named type; see "Which `StatementDescriptor`?" below) gains
+FOUR new fields, populated by the same out-of-scope parser that already sets
+`class`/`kind`/`order`/`text`: `ordering_role: OrderingRole = .irrelevant`,
+`ordering_column: ?ColumnRef = null`, `file: []const u8`, and `byte_offset: u32`. This is an
+in-place extension of the existing struct, not a parallel type, so every statement flows
+through all four checks off one descriptor.
+
+`file` is the migration file path (or filename — caller's convention, this design does not
+prescribe absolute vs. relative) the statement was parsed from; `byte_offset` is the 0-based
+byte position of the statement's first character within that file's raw text, captured by the
+(out-of-scope) parser at parse time, before any validation runs — exactly like `order`, this is
+data the parser already has for free while walking the file and validation cannot reconstruct
+after the fact. `file` and `byte_offset` are unconditional fields (no default value), unlike the
+two DDL-02-specific optional fields above, because DDL-01's existing three checks also name a
+statement in their rejection details (AC1/AC2/AC3's "naming that statement" wording) and gain
+the same file/offset precision for free — see "Backward compatibility" below for why this is
+still purely additive despite having no default.
+
+### Which `StatementDescriptor`?
+
+This codebase has two distinct types that happen to share the name `StatementDescriptor`:
+
+- `ddl_namespace.StatementDescriptor` (DDL-05, already RELEASED): `{ kind, object_name,
+  previous_object_name }`. Consumed only by `checkNamespace`.
+- `ddl_validate.StatementDescriptor` (DDL-01, extended by DDL-02): `{ kind, object_name,
+  previous_object_name, class, order, text }` today — a superset built for the aggregate
+  pipeline, per its own doc comment ("A superset of ddl_namespace.StatementDescriptor's shape").
+
+DDL-02's four new fields are added to **`ddl_validate.StatementDescriptor` only**.
+`ddl_namespace.StatementDescriptor` is untouched — DDL-02 has no reason to touch it, since
+`checkConstrainBeforeExpand` never calls `checkNamespace` or constructs a
+`ddl_namespace.StatementDescriptor`.
+
+### Backward compatibility with DDL-05's released `ddl_namespace.zig`
+
+Checked directly against `src/platform/ddl_validate.zig`'s current source: `validatePlatformDDL`
+calls `ddl_namespace.checkNamespace(file_set.actor, .{ .kind = stmt.kind, .object_name =
+stmt.object_name, .previous_object_name = stmt.previous_object_name })` — an anonymous struct
+literal that names exactly three fields of `ddl_validate.StatementDescriptor` (`stmt`) and
+constructs a fresh, separate `ddl_namespace.StatementDescriptor` value from them field-by-field.
+It does **not** pass `stmt` itself, and `ddl_namespace.zig`'s own `StatementDescriptor` type
+definition is in a different file and is never referenced from `ddl_validate.zig` except via
+this three-field literal.
+
+Consequently, adding `file` and `byte_offset` (or any other field) to `ddl_validate
+.StatementDescriptor` cannot change what `checkNamespace` receives, cannot break `checkNamespace`
+itself (`ddl_namespace.zig` is not edited by this rework at all — zero lines changed), and cannot
+break any of DDL-05's existing unit tests in `ddl_namespace.zig`, all of which construct
+`ddl_namespace.StatementDescriptor` literals directly and never go through
+`ddl_validate.StatementDescriptor`. The only file whose struct-literal call sites need the two
+new required fields added are `ddl_validate.zig`'s own DDL-01 unit tests (see "Migration impact
+on DDL-01's existing tests" below) — DDL-05's test file needs no change.
+
+**Verdict: purely additive.** No wrapper/extension wrapper type is needed; the narrowest safe
+change is adding the two new fields directly to `ddl_validate.StatementDescriptor`, exactly as
+`ordering_role`/`ordering_column` already do in this same design.
+
+### Migration impact on DDL-01's existing tests
+
+`file` and `byte_offset` have no default value (unlike `ordering_role`/`ordering_column`, which
+default to `.irrelevant`/`null` so pre-DDL-02 call sites compile unchanged). Zig struct literals
+must set every field without a default, so DDL-01's existing test file
+(`src/platform/ddl_validate.zig`'s own `test` blocks, all of which construct `StatementDescriptor`
+literals directly) will fail to compile until each literal gains a `.file = "..."` and
+`.byte_offset = ...` entry. This is expected, mechanical, BACKEND-DEV-side work — not a design
+gap — and is called out explicitly so it is not mistaken for scope creep into DDL-01: the
+rejection-detail fields DDL-01's own AC1/AC2/AC3 already promise ("naming that statement") become
+strictly more precise (file + byte offset, not just order + text) for free, with no behavior
+change to any DDL-01 verdict. An alternative that avoids touching DDL-01's test file would be
+giving `file`/`byte_offset` empty/zero defaults (`file: []const u8 = ""`, `byte_offset: u32 = 0`)
+— rejected here because a silently-defaulted empty file name defeats AC5's purpose (a rejection
+message that claims to name a file but names an empty string is worse than a compile error
+forcing every call site to supply real data).
 
 ```zig
 pub const ColumnRef = struct {
@@ -122,12 +192,30 @@ DDL-02 AC2's worked example (`ADD COLUMN ... NULL` immediately followed by `SET 
 no backfill between them: here the expand statement IS present, just with nothing satisfying
 the backfill requirement between it and the constrain).
 
+Per AC5 ("The rejection message names the file and the byte offset of both the constraining
+statement and the statement it depends on"), the detail also carries `constraining_statement_file`
+/ `constraining_statement_byte_offset` and `depended_on_statement_file` /
+`depended_on_statement_byte_offset`, copied straight from the two `StatementDescriptor`s'
+new `file`/`byte_offset` fields (see "Public interface" above) at the point
+`checkConstrainBeforeExpand` builds the verdict — no new lookup or computation, since both
+descriptors are already in hand when the violation is detected. The depended-on file/offset
+pair is `null` exactly when `depended_on_statement_order`/`text` are `null` (dependency missing
+entirely — there is no statement to name a file/offset for); when the dependency exists but is
+merely out of order (AC2's case), all four depended-on fields are populated, including
+file/offset, even though it is the same file set (AC5's wording does not restrict "names the
+file" to only the cross-file case — a single-file violation still names that one file for both
+statements, satisfying AC5 trivially when both statements share a file).
+
 ```zig
 pub const ConstrainBeforeExpandDetail = struct {
     constraining_statement_order: u32,
     constraining_statement_text: []const u8,
+    constraining_statement_file: []const u8,
+    constraining_statement_byte_offset: u32,
     depended_on_statement_order: ?u32,
     depended_on_statement_text: ?[]const u8,
+    depended_on_statement_file: ?[]const u8,
+    depended_on_statement_byte_offset: ?u32,
     column: ColumnRef,
 };
 ```
