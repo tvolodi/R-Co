@@ -23837,6 +23837,17 @@
       "started_at": "2026-08-11T07:08:09Z",
       "completed_at": "2026-08-11T07:09:56Z",
       "result_status": "PASS"
+    },
+    {
+      "handoff_id": "8463468d-2dfc-4fad-b3a1-47222420280c",
+      "file": "handoffs/WF02-batch-0-20260811/step-06-doc-updater.json",
+      "run_id": "WF02-batch-0-20260811",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-11T05:23:33Z",
+      "status": "PENDING",
+      "stage": "Stage 16"
     }
   ],
   "last_updated": "2026-08-11T07:09:56Z"
