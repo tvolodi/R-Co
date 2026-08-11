@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-1-20260811/step-03b-test-design-validator.json",
   "created_at": "2026-08-11T09:45:16Z",
   "started_at": "2026-08-11T10:44:27Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T10:47:42Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -41,7 +41,20 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "FAIL",
+    "summary": "Test design for DDL-01/MIG-04/MIG-05/MIG-06 fails the build-verification gate. DDL-01 (21/21, zig build test-ddl-validate) and MIG-06 (6/6, zig build test-integration-mig06) verified passing exactly as claimed. DDL-01 AC5 timing test and the TC-DDL-01-order/order-b rename were verified by direct inspection of src/platform/ddl_validate.zig: the rename is a string-label-only change (no logic touched), and the new TC-DDL-01-AC5 genuinely measures wall-clock time around a 200-statement call with a real <100ms assertion. MIG-05 AC5 non-testable-by-design justification verified sound: read src/platform/migration_fanout.zig end to end and confirmed zero content-hash/checksum/file-comparison code exists anywhere in the module, matching the already-accepted CODE-DESIGN-VALIDATOR Step 1b decision (verified in handoffs/WF02-batch-1-20260811/step-01b-code-design-validator.json). No error.SkipZigTest found in any of the three target files (grep, zero matches). lint_test_isolation.py tests/integration: OK, 0 BLOCKER (141 files checked). BLOCKER FOUND: zig build test-integration-mig04-mig05 does NOT reproduce the claimed 9/9 -- actual, reproduced twice with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test and BPM_DB_URL=postgres://bpm:bpm@localhost:5432/bpm_dev set explicitly, is 8/9 passing with TC-MIG-04-03 (resume query plan uses platform_migrations_resume_idx) failing deterministically at tests/integration/migration_resume_test.zig:328 (testing.expect(found_index_scan) fails). Root cause: TC-MIG-04-03 runs EXPLAIN against a migration_id with zero fixture rows seeded (no INSERT before the EXPLAIN), so the Postgres planner correctly chooses a sequential scan over platform.platform_migrations for an empty/near-empty partial-index candidate rather than an index scan -- the test as written cannot reliably observe the index being used because it never populates enough matching rows to make the index scan cheaper than a seq scan. This is a test-design defect, not an infrastructure problem: the index itself exists correctly (migrations/1144_platform_migrations_control_table.sql:38, CREATE INDEX ... platform_migrations_resume_idx ... WHERE status IN ('pending','failed')), and MIG-04 AC3 is genuinely unverified by any passing test. Per the workflow enforcement rules, a MUST requirement (MIG-04) lacking a real, currently-passing test for one of its ACs is a hard FAIL with no exception for the other 8 tests in the same file passing.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "ISS-TDV-001",
+        "severity": "BLOCKER",
+        "description": "tests/integration/migration_resume_test.zig::TC-MIG-04-03 (\"resume's tenant snapshot query plan uses platform_migrations_resume_idx\") fails deterministically against zig build test-integration-mig04-mig05 (8/9 passing, reproduced twice), contradicting tests/specs/MIG-04.md and the TEST-DESIGNER handoff's claimed 9/9. The test seeds zero fixture rows for its migration_id before running EXPLAIN, so the Postgres planner chooses a sequential scan over the (correctly existing) partial index platform_migrations_resume_idx on an empty/near-empty table -- the EXPLAIN output never contains the index name and testing.expect(found_index_scan) fails. Fix: seed enough matching (status IN ('pending','failed')) fixture rows for this test's own migration_id before the EXPLAIN (or otherwise force/encourage the planner toward the index scan, e.g. via a realistic row count) so the assertion reflects genuine index usage rather than an artifact of an empty table. MIG-04 AC3 is currently unverified by any passing test.",
+        "affected_requirement": "MIG-04"
+      }
+    ],
+    "next_action": "Route back to TEST-DESIGNER for rework (fix TC-MIG-04-03 fixture seeding so the EXPLAIN plan genuinely exercises platform_migrations_resume_idx)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
