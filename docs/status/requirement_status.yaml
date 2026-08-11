@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-11T11:18:59Z'
+last_updated: '2026-08-11T14:01:57Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4364,10 +4364,15 @@ requirements:
     test_run: tests/reports/report-20260811-WF02-batch-1.yaml
     released_at: '2026-08-11T11:18:11Z'
   DDL-02:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Expand-then-constrain ordering check
+    implemented_in:
+    - src/platform/ddl_validate.zig
+    test_spec: tests/specs/DDL-02.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:40Z'
   DDL-03:
     status: DRAFT
     stage: '16'
@@ -4547,25 +4552,51 @@ requirements:
     priority: SHOULD
     title: Outbox gate hysteresis and escalation
   ORD-01:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Effect completion claim guard
+    implemented_in:
+    - src/ordering/mod.zig
+    - src/ordering/cursor.zig
+    - src/ordering/consumer.zig
+    - src/ordering/observability.zig
+    - migrations/1145_ord01_plat_effect_completion.sql
+    test_spec: tests/specs/ORD-01.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:44Z'
   ORD-02:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Per-correlation execute guard
+    implemented_in:
+    - src/ordering/mod.zig
+    - src/ordering/cursor.zig
+    - src/ordering/consumer.zig
+    - src/ordering/observability.zig
+    test_spec: tests/specs/ORD-02.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:48Z'
   ORD-03:
     status: DRAFT
     stage: '16'
     priority: SHOULD
     title: Sequence order guard and gap sweeping
   ORD-04:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Cross-correlation parallelism and lag metrics
+    implemented_in:
+    - src/ordering/mod.zig
+    - src/ordering/cursor.zig
+    - src/ordering/consumer.zig
+    - src/ordering/observability.zig
+    - migrations/1146_ord04_plat_correlation_cursor.sql
+    test_spec: tests/specs/ORD-04.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:51Z'
   PAR-01:
     status: DRAFT
     stage: '16'

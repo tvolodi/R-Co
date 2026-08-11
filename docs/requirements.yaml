@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-11T11:18:15Z'
+generated_at: '2026-08-11T14:00:51Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -11112,7 +11112,7 @@ requirements:
     title: Expand-then-constrain ordering check
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** DDL-01, adding a cross-statement ordering check to the same validation pass.
 
@@ -11129,8 +11129,13 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:09:57Z'
+    last_updated: '2026-08-11T14:00:40Z'
     workflow: PW-05
+    implemented_in:
+    - src/platform/ddl_validate.zig
+    test_spec: tests/specs/DDL-02.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:40Z'
   DDL-03:
     id: DDL-03
     title: Phased DDL generation
@@ -11828,7 +11833,7 @@ requirements:
     title: Effect completion claim guard
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > A BPM Consumer SHALL claim a pending effect completion with `SELECT completion_id, correlation_id, sequence_no FROM plat_effect_completion WHERE status = 'PENDING' ORDER BY correlation_id, sequence_no FOR UPDATE SKIP LOCKED LIMIT 1`, executed inside the transaction that will apply it. `SKIP LOCKED` guarantees no two consumers hold the same completion row. The claim guard SHALL NOT be relied on to serialise two different rows of the same correlation; that is the execute guard of ORD-02.
 
@@ -11843,14 +11848,23 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:28Z'
+    last_updated: '2026-08-11T14:00:44Z'
     workflow: PW-07
+    implemented_in:
+    - src/ordering/mod.zig
+    - src/ordering/cursor.zig
+    - src/ordering/consumer.zig
+    - src/ordering/observability.zig
+    - migrations/1145_ord01_plat_effect_completion.sql
+    test_spec: tests/specs/ORD-01.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:44Z'
   ORD-02:
     id: ORD-02
     title: Per-correlation execute guard
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > Inside the claim transaction a BPM Consumer SHALL evaluate `SELECT pg_try_advisory_xact_lock(hashtext(correlation_id)::bigint)` before applying a completion. A `false` result SHALL cause an immediate `ROLLBACK`, returning the row to `PENDING` without incrementing any retry counter, and the consumer SHALL move to another correlation. The lock is transaction-scoped and SHALL NOT be released by an explicit unlock call.
 
@@ -11865,8 +11879,16 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:29Z'
+    last_updated: '2026-08-11T14:00:48Z'
     workflow: PW-07
+    implemented_in:
+    - src/ordering/mod.zig
+    - src/ordering/cursor.zig
+    - src/ordering/consumer.zig
+    - src/ordering/observability.zig
+    test_spec: tests/specs/ORD-02.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:48Z'
   ORD-03:
     id: ORD-03
     title: Sequence order guard and gap sweeping
@@ -11895,7 +11917,7 @@ requirements:
     title: Cross-correlation parallelism and lag metrics
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > Completions belonging to different `correlation_id` values SHALL continue to be applied in parallel: distinct correlations take distinct advisory lock keys and distinct `plat_correlation_cursor` rows, so `consumer_count` correlations (default 8) are applied concurrently. The platform SHALL expose per-correlation lag `max(sequence_no) - applied_seq`, the age of the oldest `PENDING` row, and the rate at which the execute guard of ORD-02 returns `false`.
 
@@ -11910,8 +11932,17 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:31Z'
+    last_updated: '2026-08-11T14:00:51Z'
     workflow: PW-07
+    implemented_in:
+    - src/ordering/mod.zig
+    - src/ordering/cursor.zig
+    - src/ordering/consumer.zig
+    - src/ordering/observability.zig
+    - migrations/1146_ord04_plat_correlation_cursor.sql
+    test_spec: tests/specs/ORD-04.md
+    test_run: tests/reports/report-20260811-WF02-batch-2.yaml
+    released_at: '2026-08-11T14:00:51Z'
   PAR-01:
     id: PAR-01
     title: Monthly range partitioning of the event log
