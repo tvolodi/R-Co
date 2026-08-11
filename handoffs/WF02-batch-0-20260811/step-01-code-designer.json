@@ -1,0 +1,40 @@
+{
+  "handoff_id": "66e782b2-dfee-43a2-b3dc-a93d8954a930",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-batch-0-20260811/step-01-code-designer.json",
+  "created_at": "2026-08-11T05:23:33Z",
+  "started_at": "2026-08-11T05:25:59Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-05",
+      "MIG-01",
+      "MIG-02",
+      "MIG-03"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Produce design artefact(s) for 4 MUST requirements from docs/requirements.yaml (stage 16): DDL-05 (Reserved plat_ object namespace), MIG-01 (Platform migration control table), MIG-02 (Control row commits with the DDL), MIG-03 (Tenant migration fanout with continue on failure). Read the full requirement bodies directly from docs/requirements.yaml (python: yaml.safe_load, encoding utf-8-sig) under keys DDL-05/MIG-01/MIG-02/MIG-03 -- each has a full body with Acceptance Criteria and a See: cross-reference list. IMPORTANT SCOPING NOTE: DDL-05 body mentions ValidatePlatformDDL and DDL-01 (the full platform-DDL validator) as sibling/extending work -- DDL-01 is NOT in this batch (it is planned for a later batch, batch index 1). Design DDL-05 as a minimal, self-contained namespace-reservation check that can be called standalone now (e.g. as its own function checking a statement/object name against the plat_ prefix) and will later be composed into DDL-01 ValidatePlatformDDL when that lands -- do not attempt to build the full ValidatePlatformDDL multi-check pipeline in this batch, only the DDL-05 namespace piece. MIG-01/02/03 together define: a new platform.platform_migrations control table (MIG-01, Type C migration), transactional control-row-commits-with-DDL semantics (MIG-02), and the tenant fanout loop with pg_try_advisory_lock and continue-on-failure semantics (MIG-03, likely Type E novel logic in src/db/ or a new src/platform/ module, integrating with the already-RELEASED SPT-01 schema-per-tenant infrastructure in src/db/migrations.zig, src/db/pool.zig, src/db/provisioning.zig -- read those files for the existing patterns/conventions to build on). Classify each requirement per templates/lego-catalog.md (mixed Type C + Type E is expected). Output artefacts per requirement under artifacts_out.",
+    "acceptance_criteria": [
+      "Every acceptance criterion in DDL-05, MIG-01, MIG-02, MIG-03 bodies is covered by the design",
+      "Design is implementation-code-free (no Zig function bodies, no SQL DDL outside Type C YAML)",
+      "Type C migration YAML(s) exist for MIG-01 (platform_migrations table + partial index)",
+      "Type E prose design exists for the novel fanout/transaction/advisory-lock logic (MIG-02, MIG-03) and the DDL-05 namespace check",
+      "Design explicitly scopes DDL-05 as a standalone namespace check, not the full DDL-01 ValidatePlatformDDL pipeline",
+      "Design references existing SPT-01 infrastructure (src/db/migrations.zig, src/db/pool.zig, src/db/provisioning.zig) rather than reinventing tenant schema enumeration"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
