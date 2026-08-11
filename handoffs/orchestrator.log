@@ -1075,3 +1075,4 @@
 2026-08-11T14:25:13Z | ROUTE | WF02-batch-3-20260811 | 4df1f4d6 | ORCH -> BACKEND-DEV | PENDING (step 00 git-setup)
 2026-08-11T14:25:13Z | MODULE_LOCK | WF02-batch-3-20260811 | 4df1f4d6 | ORCH | owned_modules=[migrations/, src/event_store/, src/scheduler/]
 2026-08-11T14:26:03Z | HANDOFF_COMPLETED | WF02-batch-3-20260811 | 4df1f4d6 | BACKEND-DEV | PASS: Step 00 git-setup complete per docs/agents/protocols/GIT_SETUP.md. git fetch origin main OK; merge-base --is-ancestor origin/main HEAD exit 0; no stale local branch; created feature/WF02-batch-3-20260811, verified via git branch --show-current, pushed -u origin exit 0. next_action=Route to CODE-DESIGNER (Step 1)
+2026-08-11T14:28:31Z | ROUTE | WF02-batch-3-20260811 | 8dbe72e4 | ORCH -> CODE-DESIGNER | PENDING (step 01 design, high-risk events partitioning)
