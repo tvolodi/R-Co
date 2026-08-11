@@ -99,37 +99,55 @@ ordering being efficiently queryable) exercise the index's *behavioral* contract
 *physical presence per partition* is inherited structurally from `LIKE ... INCLUDING DEFAULTS`
 and is not independently asserted via `pg_indexes` in any test in this batch (see Gap note).
 
-## Gap note — PAR-01 AC4 (`PartitionMissingForWrite`) is NOT implemented, and therefore NOT tested
+### TC-PAR01-04-01: append with created_at in an unpartitioned month returns PartitionMissingForWrite
+**Given:** The real, currently-attached partition of `events` that covers `now()` (identified live
+via `pg_get_expr(c.relpartbound, c.oid)` against `pg_inherits`/`pg_class`, not assumed by name),
+detached with its exact bound expression captured for reattachment.
+**When:** An append is issued whose `created_at` (Postgres's own `now()` default — `AppendParams`
+has no override) now falls in the gap the detach just opened.
+**Then:** `Store.append()` returns `StoreError.PartitionMissingForWrite` (mapped by
+`src/api/errors.zig`'s `problemPartitionMissingForWrite()` to HTTP 503), zero rows are written
+(`countEvents` by the append's `idempotency_key` returns 0), and the detached partition is
+unconditionally reattached via a `defer` registered immediately after the detach succeeds — so the
+live partition set is restored regardless of test outcome, with no leaked state for any test
+running after it.
+**Layer:** integration
+**Acceptance criterion mapped:** AC4.
+**Implemented by:** `tests/integration/event_store_integration_test.zig`
+`TC-PAR01-04-01: append with created_at in an unpartitioned month returns PartitionMissingForWrite`
+(added by BACKEND-DEV commit `fa63e32d`, REWORK 1).
+
+## Gap note — PAR-01 AC4 (`PartitionMissingForWrite`) — RESOLVED (REWORK 1)
 
 AC4 requires: *"GIVEN an append whose `created_at` falls in a month with no attached partition,
 WHEN it executes, THEN it fails with `PartitionMissingForWrite` and a structured error rather than
 being routed to another partition."*
 
-This is a genuine, unclosed gap — not a test-coverage omission I can close from this role:
+This was a genuine, unclosed implementation gap at the time of the original TEST-DESIGNER pass
+(`StoreError` declared no such variant; the INSERT failure path collapsed every Postgres error to
+the generic `TransactionFailed`; `src/api/errors.zig` had no mapping) — routed to BACKEND-DEV as
+REWORK 1 rather than fixed from this role. BACKEND-DEV's commit `fa63e32d` closes it:
 
-- `src/design/par-01-monthly-range-partitioning.md`'s own "Error taxonomy" table (line 533)
-  specifies this explicitly as a **new `StoreError` variant** `PartitionMissingForWrite`, mapped
-  by `src/api/errors.zig` to HTTP 503.
-- `src/event_store/store.zig`'s `StoreError` error set (lines 39–72) declares no such variant.
-- The actual INSERT failure path for this exact scenario (`conn.query(insert_sql, ...)` at
-  `store.zig:600-618`) catches **any** Postgres error generically and maps it to
-  `StoreError.TransactionFailed` — there is no SQLSTATE-specific branch that distinguishes "no
-  partition for this row's `created_at`" from any other INSERT failure.
-- `grep -rn "PartitionMissingForWrite" --include="*.zig"` across the whole repo returns zero hits
-  outside comments (`partition_maintenance.zig:208`'s prose reference to the concept). No `.zig`
-  file declares, returns, or asserts this error.
-- `src/api/errors.zig` has no mapping entry for it either (confirmed absent).
+- `src/event_store/store.zig`: `StoreError` gains the `PartitionMissingForWrite` variant; the
+  `append()` INSERT catch branch checks `conn.lastSqlState() == "23514"` (Postgres
+  `check_violation`, the SQLSTATE partition routing raises for "no partition of relation ... found
+  for row") before falling back to the generic `TransactionFailed`. The SQLSTATE bytes are copied
+  to a local buffer before issuing `ROLLBACK`, since `lastSqlState()` aliases into the connection's
+  mutable state and `ROLLBACK`'s own `exec()` call resets it.
+- `vendor/pg/pg.zig` / `src/db/pool.zig`: new SQLSTATE-preservation plumbing
+  (`Conn.last_sqlstate`, `lastSqlState()`) — previously every server error collapsed to a generic
+  `PgError.ServerError`/`PoolError.QueryFailed` with no way to distinguish the specific condition.
+- `src/api/errors.zig`: `problemPartitionMissingForWrite()` maps the new variant to HTTP 503
+  (transient/retryable — the request succeeds once `plat_partition_maintenance`, PAR-02, attaches
+  the missing partition — not a permanent client-input rejection).
+- `tests/integration/event_store_integration_test.zig`: new `TC-PAR01-04-01` (above), verified by
+  this TEST-DESIGNER re-validation pass to detach the real current-month partition, assert the
+  specific `PartitionMissingForWrite`/HTTP-503-mapped error, assert zero rows written, and
+  unconditionally reattach the partition via `defer` — confirmed via two consecutive
+  `zig build test-integration-event-store` runs (29/29 both times) that the detach/reattach cycle
+  is idempotent and leaves no state for a subsequent run or sibling test to trip over.
 
-**Disposition:** this is a functional implementation gap, not a missing test — writing a test that
-asserts `StoreError.PartitionMissingForWrite` would not compile (the error variant does not
-exist), and a test that merely asserts the current generic `TransactionFailed` behavior would be
-asserting AC4 is violated, not that it is satisfied. TEST-DESIGNER's role does not extend to
-implementing new `StoreError` variants or `src/api/errors.zig` HTTP-status mappings. This is
-recorded as a BLOCKER-severity finding for TEST-DESIGN-VALIDATOR and ORCH to route as a follow-up
-BACKEND-DEV fix (implement the `StoreError.PartitionMissingForWrite` variant + SQLSTATE-specific
-catch + `src/api/errors.zig` HTTP 503 mapping), after which a real integration test (append into a
-deliberately unprovisioned future month, assert the specific error) must be added before PAR-01
-can be considered fully TESTED against its own stated AC4.
+AC4 is now soundly proven. No gap remains for this acceptance criterion.
 
 ## Traceability Matrix
 
@@ -138,7 +156,7 @@ can be considered fully TESTED against its own stated AC4.
 | AC1 — partition strategy / PK shape | TC-PAR-01-01 |
 | AC2 — global idempotency across months | TC-PAR-01-02 |
 | AC3 — atomic append + idempotency claim (commit direction) | TC-PAR-01-03 |
-| AC4 — `PartitionMissingForWrite` on missing partition | **NOT COVERED — see Gap note; requirement not implemented** |
+| AC4 — `PartitionMissingForWrite` on missing partition | TC-PAR01-04-01 |
 | AC5 — per-partition `(instance_id, sequence_num)` index | TC-PAR-01-04 |
 
 ## Execution Notes For TEST-RUNNER
@@ -147,6 +165,7 @@ can be considered fully TESTED against its own stated AC4.
   `test-integration-event-store` (all require `BPM_TEST_DB_URL`).
 - No dedicated `par01_*_test.zig` file exists; PAR-01's schema/constraint shape is exercised
   transitively through the par02/par03 fixture files (which insert against the PAR-01-shaped
-  tables) and through `event_store_integration_test.zig`'s append/read/idempotency suite, which
-  runs entirely through the PAR-01 mechanism as of this batch.
-- Do not mark PAR-01 fully RELEASED/TESTED while the AC4 gap above remains open.
+  tables) and through `event_store_integration_test.zig`'s append/read/idempotency suite
+  (including `TC-PAR01-04-01` for AC4), which runs entirely through the PAR-01 mechanism as of
+  this batch.
+- All five ACs are now traced to passing tests; no open gap remains for PAR-01 in this spec.

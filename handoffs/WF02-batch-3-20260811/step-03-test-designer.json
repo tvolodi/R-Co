@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-3-20260811/step-03-test-designer.json",
   "created_at": "2026-08-11T14:26:03Z",
   "started_at": "2026-08-11T17:57:39Z",
-  "completed_at": "2026-08-11T17:05:52Z",
-  "status": "PENDING",
+  "completed_at": "2026-08-11T18:01:39Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -41,7 +41,15 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 re-validation: TC-PAR01-04-01 (BACKEND-DEV commit fa63e32d) genuinely proves PAR-01 AC4 per its exact docs/requirements.yaml wording -- reads back the real current-month events partition via pg_get_expr, detaches it, asserts StoreError.PartitionMissingForWrite (HTTP 503 via problemPartitionMissingForWrite), asserts zero rows written via countEvents, and unconditionally reattaches via a defer registered immediately after the detach succeeds (no leaked state). Ran zig build test-integration-event-store twice in a row -- 29/29 both times -- confirming the detach/reattach cycle is idempotent and does not corrupt state for subsequent runs/tests. tests/specs/PAR-01.md AC4 Gap note closed and retitled RESOLVED (REWORK 1), traced to TC-PAR01-04-01 in both the Test Cases section and the Traceability Matrix, same pattern as every other AC in the file. Full previously-passing batch-3 suite re-run to confirm no regression from the SQLSTATE-preservation plumbing added to vendor/pg/pg.zig and src/db/pool.zig (shared infrastructure): test-partition-attach 2/2, test-partition-maintenance 5/5, test-partition-retention 4/4, test-integration-par02 3/3, test-integration-par03 4/4, test-integration-event-store 29/29 (twice). All 6 build steps exited 0, zero regressions. python tools/lint_test_isolation.py tests/integration: OK, 146 files checked, no isolation issues (116 pre-existing baseline suppressions unrelated to this change). MINOR gaps (PAR-02 AC3/AC5, PAR-03 AC4/AC5/AC6, PAR-04 AC3/AC4) and already-filed ISS-0670/GH-711 (PAR-02 AC5 emission) intentionally left open per rework scope -- not touched in this pass.",
+    "artifacts_out": [
+      "tests/specs/PAR-01.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
   "rework_count": 1,
   "max_rework": 3
 }
