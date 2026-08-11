@@ -179,6 +179,126 @@ fn failingStep(conn: *Conn, schema_name: []const u8) anyerror!void {
     return error.SimulatedDdlFailure;
 }
 
+/// Recovers the tenant_id this step is currently running for from
+/// `schema_name` alone, by inverting `pool_mod.schemaNameForTenant`'s
+/// deterministic "tenant_" + (uuid with hyphens stripped) encoding. This is
+/// the only way a `DdlStep` (a plain `*const fn`, no closure capture in Zig)
+/// can recover per-tenant identity without module-level shared state, which
+/// `tools/lint_test_isolation.py`'s T020 check forbids in this file (and
+/// which docs/anti-patterns.md's threadlocal-tenant_context entry warns
+/// against independently — shared mutable state across test blocks is the
+/// exact class of bug ISS-0145 documents).
+fn tenantIdFromSchemaName(buf: *[36]u8, schema_name: []const u8) ?[]const u8 {
+    const prefix = "tenant_";
+    if (!std.mem.startsWith(u8, schema_name, prefix)) return null;
+    const hex = schema_name[prefix.len..];
+    if (hex.len != 32) return null; // 32 hex chars = a UUID with hyphens stripped
+    var out: usize = 0;
+    for (hex, 0..) |c, i| {
+        if (i == 8 or i == 12 or i == 16 or i == 20) {
+            buf[out] = '-';
+            out += 1;
+        }
+        buf[out] = c;
+        out += 1;
+    }
+    return buf[0..out];
+}
+
+/// MIG-01 AC1: "GIVEN a fanout begins, WHEN the control rows are seeded,
+/// THEN exactly one row exists per enabled tenant at status = 'pending',
+/// keyed by (migration_id, tenant_id)." `runFanout` seeds ALL snapshot
+/// tenants' control rows (loop 1) strictly before applying `step` to ANY
+/// tenant (loop 2) — see src/platform/migration_fanout.zig's runFanout. This
+/// step function exploits that ordering: using the SAME `conn` it was given
+/// (already inside this tenant's own `BEGIN`/`SET LOCAL search_path`
+/// transaction, per applyToTenant), it reads its own tenant's control row —
+/// schema-qualified `platform.platform_migrations`, so search_path does not
+/// affect resolution — which has not yet been mutated by `markDone` or
+/// `recordFailureSeparately` (both run strictly AFTER `step` returns), and
+/// asserts it is exactly one row, `status = 'pending'`, `completed_at IS
+/// NULL`. No module-level shared state is used: the tenant_id is recovered
+/// from `schema_name` alone (see tenantIdFromSchemaName above), keeping this
+/// step fully self-contained per Zig's lack of closures for `*const fn`
+/// callbacks and per T020's ban on module-level mutable `var` shared across
+/// test blocks.
+fn seedCheckingFailingStep(conn: *Conn, schema_name: []const u8) anyerror!void {
+    var buf: [36]u8 = undefined;
+    const tenant_id = tenantIdFromSchemaName(&buf, schema_name) orelse return error.TestUnexpectedSchemaName;
+
+    var rows = try conn.query(
+        std.testing.allocator,
+        "SELECT status, completed_at FROM platform.platform_migrations WHERE tenant_id = $1::uuid",
+        &.{tenant_id},
+    );
+    defer rows.deinit();
+
+    if (rows.rows.len != 1) return error.TestExpectedExactlyOneSeededRow;
+    const row = rows.rows[0];
+    const status = row[0] orelse return error.TestExpectedStatus;
+    if (!std.mem.eql(u8, status, "pending")) return error.TestExpectedPendingStatus;
+    if (row[1] != null) return error.TestExpectedNullCompletedAt;
+
+    return error.SimulatedDdlFailure;
+}
+
+// ---------------------------------------------------------------------------
+// MIG-01 AC1 / TC-MIG-01-AC1-fanout: control rows are seeded to 'pending',
+// one per enabled tenant, BEFORE any tenant's DDL step runs. Lives in this
+// file (not platform_migrations_control_table_test.zig) because it exercises
+// runFanout's actual seed-then-apply ordering, not just the table's static
+// shape/constraints — the control-table test file has no seeding code path
+// of its own to call.
+// ---------------------------------------------------------------------------
+
+test "TC-MIG-01-AC1-fanout: control rows are seeded pending for every tenant before any step runs" {
+    const alloc = testing.allocator;
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const tenant_a = try randomUuidStr(alloc);
+    defer alloc.free(tenant_a);
+    const tenant_b = try randomUuidStr(alloc);
+    defer alloc.free(tenant_b);
+    try insertActiveTenant(&pool, tenant_a);
+    defer cleanupTenant(&pool, tenant_a);
+    try insertActiveTenant(&pool, tenant_b);
+    defer cleanupTenant(&pool, tenant_b);
+
+    const migration_id = try randomToken(alloc, "mig01ac1seed");
+    defer alloc.free(migration_id);
+    defer cleanupControlRows(&pool, migration_id);
+    const run_id = try randomToken(alloc, "run01ac1seed");
+    defer alloc.free(run_id);
+
+    // seedCheckingFailingStep asserts (inside itself, for whichever tenant it
+    // is called for) that exactly one row exists, status = 'pending',
+    // completed_at IS NULL — i.e. the row this test's own fixture tenant
+    // received from runFanout's seed loop, untouched by markDone /
+    // recordFailureSeparately (both run strictly after step() returns). If
+    // that assertion fails, the step returns a DIFFERENT error than
+    // SimulatedDdlFailure, which the outer expectError below would not
+    // match, failing this test loudly with the specific broken invariant.
+    const result = try runFanout(alloc, &pool, .{ .migration_id = migration_id, .run_id = run_id }, seedCheckingFailingStep);
+    try testing.expectEqual(@as(u32, 0), result.pending);
+    try testing.expect(result.failed >= 2);
+
+    // Both fixture tenants' rows ended up 'failed' with error_msg exactly
+    // "SimulatedDdlFailure" — proving the step's internal pending-row
+    // assertion actually ran and passed for BOTH tenants (a wrong assertion
+    // inside the step would have surfaced as a different error_msg here).
+    for ([_][]const u8{ tenant_a, tenant_b }) |tid| {
+        const row = (try readControlRow(alloc, &pool, migration_id, tid)) orelse return error.TestExpectedControlRow;
+        defer freeControlRow(alloc, row);
+        try testing.expectEqualStrings("failed", row.status);
+        const msg = row.error_msg orelse return error.TestExpectedErrorMsg;
+        try testing.expectEqualStrings("SimulatedDdlFailure", msg);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // MIG-02 AC1 / TC-MIG-02-01: a tenant's DDL commits, THEN the done row
 // commits in that same transaction.
