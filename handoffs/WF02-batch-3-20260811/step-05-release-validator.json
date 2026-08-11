@@ -1,0 +1,40 @@
+{
+  "handoff_id": "c8e32585-ffa8-4170-9049-20e6c2d083fc",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-batch-3-20260811/step-05-release-validator.json",
+  "created_at": "2026-08-11T18:28:21Z",
+  "started_at": "2026-08-11T18:28:21Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/reports/report-20260811-WF02-batch-3.yaml"
+    ]
+  },
+  "task": {
+    "description": "Validate that PAR-01, PAR-02, PAR-03, PAR-04 (stage 16, monthly-range event-store partitioning) meet all MUST acceptance criteria and applicable NFRs before release. TEST-RUNNER Step 4 PASSED with all 6 batch-specific targets at expected counts (test-partition-attach 2/2, test-partition-maintenance 5/5, test-partition-retention 4/4, test-integration-par02 3/3, test-integration-par03 4/4, test-integration-event-store 29/29) plus full unit suite clean (1067/1131, 0 failures). One rework cycle occurred earlier (PAR-01 AC4 PartitionMissingForWrite, found missing by TEST-DESIGNER, fixed by BACKEND-DEV, independently re-verified by TEST-DESIGN-VALIDATOR). Known, documented, non-blocking MINOR gaps remain: PAR-02 AC3, PAR-03 AC4/AC5, PAR-04 AC3/AC4 (correct implementations, thin/no direct test coverage) and PAR-02 AC5/PAR-03 AC6 (event emission -- TEST-DESIGN-VALIDATOR reclassified this MAJOR since the emission call sites are genuinely absent, not just untested, but agreed it should not block this gate since it is already filed as ISS-0670/GH-711, open, and the underlying requirement text is not falsely marked RELEASED). Confirm whether these gaps are acceptable to release against, or should block.",
+    "acceptance_criteria": [
+      "Every MUST AC in PAR-01/02/03/04 is verified against the actual passing test evidence, not just trusted from the handoff chain",
+      "Confirm ISS-0670/GH-711 (PAR-02 AC5/PAR-03 AC6 emission gap) is correctly scoped as non-blocking for this release (requirement not falsely marked RELEASED, issue is open/tracked)",
+      "Any applicable NFRs (performance, if any specified for these requirements) checked",
+      "Release decision written to docs/status/ per Output File Format Rules (.yaml)"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
