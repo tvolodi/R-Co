@@ -1,0 +1,47 @@
+{
+  "handoff_id": "7cd43d97-d8fc-4a48-bca9-3d06d20b21ec",
+  "run_id": "WF02-batch-2-20260811",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-batch-2-20260811/step-01-code-designer.json",
+  "created_at": "2026-08-11T11:46:10Z",
+  "started_at": "2026-08-11T12:08:08Z",
+  "completed_at": "2026-08-11T12:09:49Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-02",
+      "ORD-01",
+      "ORD-02",
+      "ORD-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Produce design artefact(s) for 4 MUST requirements from docs/requirements.yaml (stage 16): DDL-02 (cross-statement ordering check, extends DDL-01's ValidatePlatformDDL -- rejects a migration file set that constrains a column before it exists/is backfilled, e.g. SET NOT NULL / ADD CONSTRAINT without NOT VALID / ADD COLUMN NOT NULL without a default appearing before the expand+backfill statements it depends on), ORD-01 (effect-completion claim via SELECT...FOR UPDATE SKIP LOCKED against a new plat_effect_completion table), ORD-02 (per-correlation advisory-lock execute guard: pg_try_advisory_xact_lock(hashtext(correlation_id)::bigint), false result rolls back without incrementing retry), ORD-04 (per-correlation parallelism + lag observability via a new plat_correlation_cursor table, exposing max(sequence_no)-applied_seq lag, oldest-pending-row age, and execute-guard false-rate). Read the full requirement bodies directly from docs/requirements.yaml (yaml.safe_load, utf-8-sig) -- read ALL acceptance criteria carefully, this preview only showed the first sentence of each. CRITICAL: this is SUBSTANTIALLY NEW subsystem work -- grep confirms no plat_effect_completion or plat_correlation_cursor tables/code exist anywhere yet (only mentioned as naming-convention examples in DDL-05's design doc). You must design the full new schema (Type C) for both tables from scratch, following DDL-05's plat_ namespace convention (both table names already start with plat_, correctly). Read src/platform/ddl_validate.zig (DDL-01, to extend for DDL-02) and src/platform/ddl_namespace.zig in full before designing DDL-02. For ORD-01/02/04, check if any existing consumer/worker-polling pattern exists elsewhere in this codebase (e.g. timer/DLQ processing, webhook delivery) to follow established conventions for FOR UPDATE SKIP LOCKED polling loops and advisory-lock usage -- do not invent a new pattern if one already exists.\n\nREWORK 1 (routed by ORCH after CODE-DESIGN-VALIDATOR Step 1b FAIL):\n- [BLOCKER] DDL-02 AC5 (\"The rejection message names the file and the byte offset of both the constraining statement and the statement it depends on.\") is not covered. ConstrainBeforeExpandDetail in src/design/ddl-02-constrain-before-expand-check.md only defines statement_order/statement_text fields (an ordinal position, not a byte offset, and no file field at all). Fix ONLY this gap in DDL-02's design: add file and byte-offset fields to ConstrainBeforeExpandDetail (and to the StatementDescriptor input type if the byte offset must be captured at parse time before validation runs), update the design's verdict/detail section and any worked examples to reflect the new fields, and confirm this does not require changing DDL-01's existing StatementDescriptor type in a way that breaks DDL-05's already-released ddl_namespace.zig usage of it (check compatibility). ORD-01/02/04's design and the two Type C migration YAMLs are NOT in scope for this rework -- they already passed with no issues.",
+    "acceptance_criteria": [
+      "Every acceptance criterion in DDL-02, ORD-01, ORD-02, ORD-04 is covered by the design",
+      "Design is implementation-code-free",
+      "DDL-02 explicitly extends src/platform/ddl_validate.zig's ValidatePlatformDDL rather than creating a parallel validator",
+      "New plat_effect_completion and plat_correlation_cursor tables designed as Type C migration(s), following the plat_ reserved namespace correctly",
+      "ORD-01/02/04 design cites any existing polling/advisory-lock convention in this codebase it follows, or explicitly notes none exists and justifies the new pattern"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1: closed DDL-02 AC5 gap. Added file ([]const u8) and byte_offset (u32) fields to ddl_validate.zig StatementDescriptor (DDL-01/DDL-02 type only), and four matching fields (constraining_statement_file/byte_offset, depended_on_statement_file/byte_offset) to ConstrainBeforeExpandDetail. Confirmed purely additive: checkNamespace is called via a 3-field anonymous struct literal built from StatementDescriptor, never StatementDescriptor itself, so ddl_namespace.zig (DDL-05, released) is untouched and its StatementDescriptor type and all its unit tests are unaffected. Design doc updated with a new \"Which StatementDescriptor?\" and \"Backward compatibility with DDL-05\" section documenting this verification, plus a note that DDL-01 own existing unit tests will need literal updates (mechanical, BACKEND-DEV-side, not a design gap).",
+    "artifacts_out": [
+      "src/design/ddl-02-constrain-before-expand-check.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b) for rework re-validation"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

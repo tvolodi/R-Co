@@ -1,0 +1,259 @@
+stage: "Stage 16"
+date: "2026-08-11T13:52:48Z"
+run_id: WF02-batch-2-20260811
+workflow_id: WF-02
+workflow_step: "05"
+decision: APPROVED
+
+requirement_ids:
+  - DDL-02
+  - ORD-01
+  - ORD-02
+  - ORD-04
+
+prior_gates:
+  design_validation_step_1b: PASS
+  security_review_step_2c: PASS
+  test_design_validation_step_3b: PASS
+  test_execution_step_4: PASS
+  test_report: tests/reports/report-20260811-WF02-batch-2.yaml
+  note: >
+    One resolved rework cycle at Step 1b (DDL-02 AC5 byte-offset gap) prior to
+    this validation. Step 3 (TEST-DESIGNER) upgraded the ordering integration
+    suite to genuine multi-OS-thread concurrency tests for ORD-01 AC1 and
+    ORD-04 AC1, which surfaced ISS-0669/GH-709 (Pool.acquire() thread-
+    contention bug) as a byproduct of writing the tests, not as a defect in
+    this batch's own deliverable. TEST-DESIGN-VALIDATOR forwarded it rather
+    than fixing inline and asserted production code does not hit it; this
+    step independently re-verified that claim (see issue_iss_0669_reassessment
+    below) rather than trusting it.
+
+acceptance_criteria_audit:
+  method: >
+    Read full requirement bodies and Acceptance Criteria for DDL-02, ORD-01,
+    ORD-02, ORD-04 directly from docs/requirements.yaml. Cross-checked every
+    AC against actual Zig test source, not just the test report or spec
+    claims: src/platform/ddl_validate.zig (28 tests total, 7 DDL-02-specific:
+    AC1-AC5 plus tiebreak/conservative supplementary tests), src/ordering/observability.zig
+    (4 pure unit tests, ORD-04 AC2/AC3 contention-window math),
+    tests/integration/ord01_plat_effect_completion_test.zig (3 tests, schema/
+    constraint layer), tests/integration/ord04_plat_correlation_cursor_test.zig
+    (4 tests, schema/constraint layer), tests/integration/ordering_consumer_test.zig
+    (10 tests: 3 ORD-01 claim-query tests, 3 ORD-02 execute-guard tests, 2
+    runOneCycle connection-discipline tests, and 2 genuine multi-thread
+    concurrency tests -- TC-ORD-01-AC1-concurrent and TC-ORD-04-AC1-concurrent
+    -- using real std.Thread.spawn with start-gate/arrival-gate barriers, not
+    sequential simulation). Also read src/ordering/consumer.zig,
+    src/ordering/mod.zig, src/ordering/cursor.zig, src/db/pool.zig's acquire()
+    and applyRequestStorageRouting(), and build.zig's module wiring for
+    src/ordering/* line-by-line. Independently re-ran every layer: test-ddl-validate
+    (28/28), test-ordering (4/4), test-integration-ord01 (3/3),
+    test-integration-ord04 (4/4), test-integration-ordering (10/10, run twice,
+    identical both times) -- all match the test report exactly, exit code 0
+    each.
+  ddl_02:
+    ac1: covered (TC-DDL-02-AC1, ADD COLUMN NOT NULL with no default and no
+      prior expand -> ConstrainBeforeExpand)
+    ac2: covered (TC-DDL-02-AC2, SET NOT NULL immediately after ADD COLUMN
+      NULL with no backfill -> ConstrainBeforeExpand, names both statements)
+    ac3: covered (TC-DDL-02-AC3, expand + NOT VALID check + backfill +
+      VALIDATE CONSTRAINT sequence -> ACCEPT)
+    ac4: covered (TC-DDL-02-AC4, ADD CONSTRAINT FOREIGN KEY without NOT VALID
+      -> ConstrainBeforeExpand)
+    ac5: covered (TC-DDL-02-AC5, rejection detail names file and byte offset
+      for both the constraining statement and the statement it depends on)
+    plus: TC-DDL-02-tiebreak (an earlier lock-class failure reported instead
+      of a later constrain-before-expand violation) and TC-DDL-02-conservative
+      (a bare SET NOT NULL with zero prior statements for that column
+      anywhere in the file set is rejected) -- both strengthen AC1/AC2's
+      literal wording against edge cases.
+  ord_01:
+    ac1: covered (TC-ORD-01-AC1-concurrent: 8 real std.Thread.spawn threads,
+      each on its own pre-acquired connection, race FOR UPDATE SKIP LOCKED on
+      one PENDING row via a start-gate barrier so all 8 claims genuinely
+      overlap -- exactly one wins, the other 7 receive no row, none blocks;
+      this is the AC's literal "8 consumers polling ... claim concurrently"
+      scenario, not a sequential simulation)
+    ac2: covered (TC-ORD-01-AC2, claimOneCompletion returns null, not an
+      error, when no PENDING row is available)
+    ac3: covered structurally -- SKIP LOCKED's row-lock-release-on-backend-exit
+      behavior is a PostgreSQL guarantee this batch relies on rather than
+      implements; TC-ORD-01-AC1/AC5's locked-row test proves the claim query
+      correctly respects an in-flight lock, and ORD-02's crash-equivalent test
+      (TC-ORD-02-AC3, rollback releases the guard "same as a crash") covers
+      the same release-on-abort mechanism at the advisory-lock layer this
+      batch owns
+    ac4: covered (TC-ORD-01-AC4, two PENDING rows of the same correlation_id
+      with different sequence_no both claimed concurrently by two separate
+      connections, no blocking, no error)
+    ac5: covered (TC-ORD-01-AC1/AC5, claim query ordered by (correlation_id,
+      sequence_no) -- proven by draining the shared PENDING set and showing
+      the locked row (seq 1) is never returned while the unlocked row (seq 2)
+      is reachable)
+  ord_02:
+    ac1: covered (TC-ORD-02-AC1, a second consumer's tryExecuteGuard on the
+      SAME correlation returns .busy while the first holds it, and does not
+      block -- getting past the call at all is the non-blocking proof)
+    ac2: covered (TC-ORD-02-AC1's own comment/assertion: the try-variant never
+      blocks, since pg_advisory_xact_lock -- the blocking form -- is never
+      called on this path; a blocking call would have hung the test)
+    ac3: covered (TC-ORD-02-AC3, a rolled-back transaction releases the guard
+      immediately, "same as a crash," and a successor acquires it right after)
+    ac4: covered structurally -- hashtext() collisions are a PostgreSQL
+      built-in function property, not application logic this batch writes;
+      the AC's actual claim ("neither is misapplied, ordering decided by
+      ORD-03's cursor") depends on ORD-03, explicitly out of this batch's
+      scope per the design doc's stated boundary (steps 4-7 belong to ORD-03)
+    ac5: covered (TC-ORD-02-AC5, the guard is released at COMMIT and a
+      successor can then acquire it)
+  ord_04:
+    ac1: covered (TC-ORD-04-AC1-concurrent: 8 real threads, each on its own
+      pre-acquired connection, race claims across 8 fixture correlations via
+      a start-gate barrier, each acquires its own execute guard, and a SECOND
+      arrival-gate barrier deterministically proves all 8 are simultaneously
+      holding their guard at the same instant -- not a probabilistic sample.
+      This is the claim+execute-guard half of AC1's "applied concurrently"
+      guarantee, which is all this batch owns; full "applied" requires
+      ORD-03's apply step, explicitly out of scope and stubbed via
+      stubAlwaysDeferred per the design doc)
+    ac2: covered (src/ordering/observability.zig's ObservabilityCounters unit
+      tests -- contention ratio and lag-window math -- plus OrderingConfig's
+      lag_threshold=100 field; the sweeper that evaluates lag and escalates is
+      ORD-03's gap-sweeper concern, not this batch's, per the design doc's
+      explicit step 4-9 boundary)
+    ac3: covered (ObservabilityCounters unit tests: contentionRatioLastWindow
+      computes busy/attempts correctly, and "exactly 50 percent is at
+      threshold, not exceeding it" is a dedicated test -- the consumer_count
+      step-down action itself is flagged as an open, non-blocking wiring
+      decision in the design doc's Open Question 4, same class of deferral as
+      MIG-06's known_migration_ids in batch-1)
+    ac4: not yet applicable -- dead-lettering is ORD-03's step 9, explicitly
+      out of this batch's scope; no AC4 code exists to test because ORD-03
+      has not landed
+    ac5: not yet applicable -- EXECUTION_EFFECT_APPLIED is emitted by the
+      apply step, which is ORD-03's stubAlwaysDeferred placeholder in this
+      batch (never applies anything, by design, so this batch cannot and
+      should not fire this event yet)
+
+migration_idempotency:
+  method: >
+    Ran `zig build migrate` twice in immediate succession with BPM_DB_URL and
+    BPM_TEST_DB_URL set explicitly in the shell session
+    (postgres://bpm:bpm@localhost:5432/bpm_dev and
+    postgres://bpm:bpm@localhost:5433/bpm_test respectively, matching the
+    running r-co-db-1/r-co-db_test-1 containers).
+  first_run: "All files including 1145_ord01_plat_effect_completion.sql and 1146_ord04_plat_correlation_cursor.sql reported skip; \"No new migrations to apply.\"; exit code 0."
+  second_run: "Identical output -- all files skip; \"No new migrations to apply.\"; exit code 0."
+  result: PASS -- confirmed clean, idempotent no-op both times.
+
+nfr_benchmarks:
+  applicable: false
+  ran_bench: true
+  note: >
+    Ran `zig build bench` for completeness. All 5 existing NFR checks pass
+    (NFR-01 read p99 0.782ms, NFR-01 write p99 1.842ms, NFR-02 throughput
+    71514.0 events/sec, NFR-04 replay 37.6ms, NFR-04 snapshot-replay 4.7ms,
+    all well within threshold). This batch adds no HTTP routes and no
+    consumer loop wired into any production executable yet (see
+    issue_iss_0669_reassessment below) -- there is no new surface for
+    tests/bench/bench.zig to measure. Same precedent as batch-0 and batch-1.
+
+issue_iss_0669_reassessment:
+  question: >
+    ISS-0669/GH-709 (Pool.acquire() loses row-lock isolation under genuine
+    multi-OS-thread contention, discovered while writing this batch's own
+    concurrency tests) was forwarded rather than fixed inline.
+    TEST-DESIGN-VALIDATOR asserted this batch's actual production code path
+    does not hit it. Independently reassessed as final sign-off: does this
+    genuinely not block DDL-02/ORD-01/ORD-02/ORD-04, or could a real
+    multi-consumer production deployment -- which is the explicit point of
+    ORD-04's "8 consumers" requirement -- hit the same bug?
+  evidence_read:
+    - "docs/issues/ISS-0669.json: the bug is in src/db/pool.zig's Pool.acquire()
+      (and/or applyRequestStorageRouting(), which reads Zig 0.16 threadlocal
+      tenant_context state per src/db/pool.zig:258-274) when acquire() itself
+      is raced across raw std.Thread.spawn-created OS threads. Confirmed NOT
+      a client-side aliasing bug and NOT a PostgreSQL/SKIP LOCKED bug (an
+      equivalent plain-Python/psycopg2 harness with real threads and the same
+      barrier synchronization produced exactly one winner every time)."
+    - "src/ordering/consumer.zig (read in full): runOneCycle() calls
+      pool.acquire() exactly once per cycle, synchronously, on whatever
+      thread calls it; pollLoopStep() calls runOneCycle() once per invocation
+      and returns. Neither function spawns a thread, and neither is called
+      from more than one place in this batch's own code. There is no
+      std.Thread.spawn anywhere in src/ordering/*.zig."
+    - "build.zig (searched for ordering_consumer_mod/ordering_cursor_mod
+      references): both modules are imported ONLY by
+      tests/integration/ordering_consumer_test.zig's test binary. Grepped
+      src/main.zig, src/scheduler/scheduler.zig, and src/effects/worker.zig
+      for pollLoopStep/runOneCycle/ordering_consumer/consumer_count --
+      zero matches in all three. This batch's consumer loop is not wired
+      into any production executable at all yet."
+    - "src/design/ord-01-02-04-correlated-effect-reentry.md 'Open questions'
+      #1 (lines 434-439): explicitly defers 'which existing background-thread
+      mechanism runs consumer_count copies of pollLoopStep concurrently' to
+      BACKEND-DEV as a future wiring decision, calling it 'non-blocking...a
+      wiring choice, not an open design question about correctness' for THIS
+      batch. Multi-consumer production deployment (the scenario that would
+      actually race Pool.acquire() across raw threads the way ISS-0669
+      reproduces) is explicitly out of this batch's delivered scope."
+    - "src/effects/worker.zig (grepped): single poll loop (sweepOnce), no
+      Thread.spawn -- the one existing precedent the design doc points at for
+      'reuse an existing polling mechanism' does not itself spawn N racing
+      threads against a shared Pool either. src/webhook/dispatcher.zig spawns
+      exactly one background thread for itself, not N threads sharing one
+      Pool. No existing codebase precedent currently does what ISS-0669's
+      repro does (N raw OS threads all calling Pool.acquire() on one shared
+      *Pool concurrently) in any production path today."
+    - "tests/integration/ordering_consumer_test.zig lines 418-463 (section
+      header comment) and lines 605-611/828-835 (both concurrency tests):
+      documents that an earlier test version DID race pool.acquire()+begin()
+      itself across the 8 threads and was empirically confirmed broken (all
+      8 threads claimed the identical row); the committed version
+      pre-acquires and begin()s all connections sequentially from the main
+      thread before spawning any racing thread, so only the claim/guard QUERY
+      -- the thing ORD-01/ORD-02 actually implement -- races across threads.
+      This is legitimate test isolation from a different, already-broken
+      component, not concealment: it is documented in the test file itself,
+      in ISS-0669, and cross-referenced in both directions."
+  judgment: >
+    ISS-0669 is a real, latent defect in src/db/pool.zig -- not merely a test-
+    infrastructure artifact -- and TEST-DESIGN-VALIDATOR's forwarding
+    decision is correct for a different reason than "it's just a test
+    problem": it is that THIS BATCH's own deliverable never exercises the
+    broken code path in production, because the consumer loop this batch
+    implements is not wired into any concurrently-running production
+    executable yet. ORD-04's "8 consumers" requirement is fully real and its
+    eventual production deployment WOULD be the exact scenario ISS-0669
+    reproduces IF that deployment spawns 8 raw OS threads each independently
+    calling Pool.acquire() on one shared Pool -- which is a plausible, even
+    likely, implementation choice for whichever future batch answers the
+    design doc's Open Question 1. That makes ISS-0669 a hard release-blocking
+    prerequisite for THAT future batch (the one that actually wires
+    consumer_count concurrent loops into main.zig/scheduler.zig), not for
+    this one. Confirmed this batch introduces zero new callers of
+    Pool.acquire() from raw spawned threads in any production path: the only
+    raw-thread callers anywhere in src/ are src/api/routes/onboarding.zig's
+    single background saga thread and src/identity/provider/bootstrap.zig's
+    single HTTP-call thread, both pre-existing and both spawning exactly one
+    thread (not N threads racing one shared Pool), neither touched by this
+    batch. Recommendation carried forward (not actioned by this handoff,
+    since RELEASE-VALIDATOR does not fix): the future ORD-03/consumer-wiring
+    batch must treat ISS-0669/GH-709 as a hard pre-requisite gate before
+    choosing a raw-std.Thread.spawn-based deployment for consumer_count
+    loops, or must use Io.Threaded's own task-spawning API instead of raw
+    OS threads if that sidesteps the bug -- this should be stated explicitly
+    in that future batch's own design artefact so CODE-DESIGN-VALIDATOR
+    catches it if forgotten.
+
+blocking_issues: []
+
+approved_requirements:
+  - "DDL-02"
+  - "ORD-01"
+  - "ORD-02"
+  - "ORD-04"
+
+not_approved_requirements: []
+
+next_action: "Route to DOC-UPDATER (Step 6)"

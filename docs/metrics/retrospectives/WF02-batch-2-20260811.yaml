@@ -1,0 +1,535 @@
+run_id: WF02-batch-2-20260811
+run_date: '2026-08-11'
+completed_date: '2026-08-11'
+requirement_ids:
+  - DDL-02
+  - ORD-01
+  - ORD-02
+  - ORD-04
+workflow_type: WF-02 (Stage 16 batch 2 -- expand-then-constrain ordering check, effect-completion claim/execute guards, cross-correlation parallelism observability)
+
+summary: >-
+  WF-02 feature-development run implementing Stage 16's third batch, extending
+  batch 1's platform DDL validator (DDL-01, RELEASED) and opening substantially
+  new subsystem work for correlated-effect reentry ordering (PW-07). DDL-02
+  extends src/platform/ddl_validate.zig's ValidatePlatformDDL with a
+  cross-statement expand-then-constrain ordering check. ORD-01/ORD-02/ORD-04
+  are the first landed slice of the ordering subsystem: a new
+  plat_effect_completion table and FOR UPDATE SKIP LOCKED claim guard (ORD-01),
+  a per-correlation pg_try_advisory_xact_lock execute guard (ORD-02), and a new
+  plat_correlation_cursor table plus lag/contention observability counters
+  (ORD-04) -- with ORD-03 (order guard, gap sweeping) and full multi-consumer
+  production wiring explicitly deferred to a future batch per the design doc's
+  own stated scope boundary. BACKEND-DEV implemented all four requirements in
+  one Step 2a pass. SECURITY-REVIEWER passed the tenant-data-path gate
+  (new tables classified .all_schemas, matching the process doc's system-wide
+  framing; SQL parameterization verified on both the claim query and the
+  advisory-lock hashtext() call; zero catch unreachable). TEST-DESIGNER's
+  concurrency review (a task-specific mandated check, not a routine step)
+  found the original ORD-01 AC1 / ORD-04 AC1 tests were sequential-only
+  simulations and replaced them with genuine 8-real-OS-thread concurrency
+  tests -- which surfaced ISS-0669/GH-709 (Pool.acquire() loses row-lock
+  isolation under raw-thread contention) as a byproduct of writing the tests,
+  not as a defect in this batch's own deliverable. TEST-DESIGN-VALIDATOR and
+  RELEASE-VALIDATOR each independently re-verified (not merely trusted) that
+  this batch's own production code never exercises the broken path, and
+  RELEASE-VALIDATOR carried the finding forward as an explicit hard
+  pre-requisite for whichever future batch wires consumer_count concurrent
+  loops into production. DOC-UPDATER (this step) is setting all four
+  requirements to RELEASED, updating the changelog with the pre-requisite
+  prominently flagged, and writing this retrospective.
+
+  All 4 MUST requirements approved for release. One genuine rework cycle
+  occurred (code-designer, rework_count=1) triggered by a CODE-DESIGN-VALIDATOR
+  FAIL at Step 1b on DDL-02 AC5 (byte-offset gap) -- caught at the earliest
+  possible gate, before any implementation code existed. A second, non-rework
+  event of note: TEST-DESIGNER's own mandated concurrency-coverage check
+  (not a gate failure) escalated the original sequential-simulation tests to
+  genuine multi-thread tests and, in doing so, discovered ISS-0669/GH-709, a
+  real MAJOR defect in shared infrastructure (src/db/pool.zig) outside this
+  batch's own code. This is a third distinct pattern across the three Stage 16
+  batches run today: batch 0's rework was a RELEASE-VALIDATOR-caught missing-
+  coverage gap; batch 1's rework was a TEST-DESIGN-VALIDATOR-caught
+  false-positive test-fixture defect; this run's rework was a
+  CODE-DESIGN-VALIDATOR-caught design-completeness gap (caught before any code
+  was written, the cheapest possible point in the pipeline), and its
+  infrastructure discovery (ISS-0669) was found by strengthening test coverage
+  beyond the minimum the original design called for, not by any gate failing.
+
+estimation:
+  source: null
+  rules_version: null
+  difficulty: null
+  difficulty_rationale: >-
+    No estimation.yaml or estimation.json exists at
+    handoffs/WF02-batch-2-20260811/ (verified: directory listing shows only
+    step-*.json files, no estimation file). Per this role's file
+    ("Retrospective (WF-02 and WF-04 runs only)" section) and
+    docs/agents/metrics.md §6, the full estimated-vs-actual variance_pct
+    computation is conditional on that file existing and is skipped here.
+    This retrospective documents actuals per step (from real
+    started_at/completed_at clock stamps) and the rework cycle qualitatively
+    instead, following the same precedent as
+    docs/metrics/retrospectives/WF02-batch-0-20260811.yaml and
+    docs/metrics/retrospectives/WF02-batch-1-20260811.yaml.
+  integration_surface: null
+  integration_surface_rationale: null
+  surcharge_pct: null
+  estimated_minutes: {}
+  notes: >-
+    Same structural gap noted in WF02-batch-0-20260811's and
+    WF02-batch-1-20260811's retrospectives (and WF03-GH521-20260808's before
+    them): ORCH's dispatch behaviour for whether an estimation file is
+    generated is inconsistent across runs. Not re-litigated here; see
+    WF02-batch-0-20260811's rule_adjustments for the standing recommendation.
+
+actual_step_durations:
+  - step: step-00a (TEST-RUNNER -- Green-Main Gate)
+    agent: TEST-RUNNER
+    started_at: '2026-08-11T11:36:18Z'
+    completed_at: '2026-08-11T11:39:32Z'
+    actual_minutes: 3.2
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Confirmed main clean before batch-2 implementation started: zig build
+      test 93/93 steps (1042/1106 tests, 64 skipped), plus 6 targeted
+      prior-batch steps (test-ddl-namespace, test-ddl-validate,
+      test-integration-mig01/02-03/04-05/06) all exit 0. No infrastructure
+      defects discovered this run's Green-Main Gate -- test-integration
+      umbrella deliberately not run per the still-open ISS-0665/GH-702
+      capacity issue, targeted steps substituted per task instructions.
+
+  - step: step-00 (BACKEND-DEV -- git-setup)
+    agent: BACKEND-DEV
+    started_at: '2026-08-11T11:42:21Z'
+    completed_at: '2026-08-11T11:46:10Z'
+    actual_minutes: 3.8
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      fn:git-setup PASS -- feature/WF02-batch-2-20260811 created. Worktree
+      could not check out main directly (sibling worktree holds it);
+      confirmed HEAD already contained origin/main's tip via
+      git merge-base --is-ancestor origin/main HEAD rather than a literal
+      checkout, then pushed -u origin.
+
+  - step: step-01 (CODE-DESIGNER -- design artefact, REWORK 1)
+    agent: CODE-DESIGNER
+    started_at: '2026-08-11T12:08:08Z'
+    completed_at: '2026-08-11T12:09:49Z'
+    actual_minutes: 1.7
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 1
+    notes: >-
+      This handoff file's started_at/completed_at span covers ONLY the
+      REWORK 1 pass (rework_count=1 on the persisted file, matching batch-1's
+      precedent of the original pass-1 work and CODE-DESIGN-VALIDATOR's first
+      FAIL pass not producing separately time-stamped handoff files distinct
+      from the final PASS one). REWORK 1 itself was narrow and fast: added
+      file ([]const u8) and byte_offset (u32) fields to ddl_validate.zig's
+      StatementDescriptor and four matching fields to
+      ConstrainBeforeExpandDetail, and confirmed the change does not reach
+      DDL-05's already-released ddl_namespace.zig (checkNamespace's sole call
+      site passes an anonymous struct literal, not StatementDescriptor
+      itself). See rework_steps below for the original gap.
+
+  - step: step-01b (CODE-DESIGN-VALIDATOR -- hard gate, re-validation)
+    agent: CODE-DESIGN-VALIDATOR
+    started_at: '2026-08-11T12:11:31Z'
+    completed_at: '2026-08-11T12:12:01Z'
+    actual_minutes: 0.5
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      RE-VALIDATION PASS after REWORK 1. Independently confirmed (not merely
+      accepted CODE-DESIGNER's claim) that ddl_namespace.checkNamespace's
+      sole call site (ddl_validate.zig:179) passes an anonymous 3-field
+      struct literal, and grepped the whole src/ tree for any other
+      checkNamespace/ddl_namespace.StatementDescriptor reference (none found).
+      Confirmed via the rework diff (5540e73d..1ccc6b56) that only the DDL-02
+      design doc plus bookkeeping changed -- ORD-01/02/04's design and both
+      migration YAMLs are byte-identical, no scope creep. Fastest gate pass
+      of this run, reflecting a narrow, well-isolated rework.
+
+  - step: step-2a (BACKEND-DEV -- implementation)
+    agent: BACKEND-DEV
+    started_at: '2026-08-11T12:15:41Z'
+    completed_at: '2026-08-11T12:45:28Z'
+    actual_minutes: 29.8
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Implemented DDL-02 (checkConstrainBeforeExpand state machine extension
+      to ValidatePlatformDDL) and the first landed slice of ORD-01/02/04:
+      codegen'd two new Type C migrations (plat_effect_completion,
+      plat_correlation_cursor), and four new src/ordering/ modules
+      (mod/cursor/consumer/observability.zig) implementing the claim guard,
+      execute guard, and lag/contention observability counters, following
+      effects/worker.zig's connection-acquisition discipline (GH-654/ISS-0649)
+      with an explicit ORD-03 stub extension point. This is the largest
+      single implementation step of the three Stage 16 batches run today
+      (substantially new subsystem, 4 new files plus 2 new migrations, vs.
+      batch 0's 1 new file and batch 1's 3 file extensions), and its duration
+      reflects that scope, not friction -- all gates passed clean on the
+      first Step 2a submission (zig build, zig build migrate, zig build check,
+      lint_sql_param_types.py 0 findings, 95/95 build steps, 1053/1117 tests).
+
+  - step: step-2c (SECURITY-REVIEWER -- tenant-data-path gate)
+    agent: SECURITY-REVIEWER
+    started_at: '2026-08-11T12:48:46Z'
+    completed_at: '2026-08-11T12:51:48Z'
+    actual_minutes: 3.0
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      PASS against the numbered security invariants on the first pass.
+      Covered 2 new tables and 4 new src/ordering/ modules; explicitly
+      assessed and resolved the tenant-scoping question for
+      plat_effect_completion/plat_correlation_cursor (system-wide .all_schemas
+      classification, matching the process doc's framing, not a single
+      cross-tenant control table), verified SQL parameterization on the
+      FOR UPDATE SKIP LOCKED claim and the advisory-lock hashtext() call
+      specifically (both bound as $N params, never string-interpolated), and
+      assessed the consumer/worker DB access level as the existing
+      accepted pattern for system-wide background workers, not a new
+      escalation.
+
+  - step: step-03 (TEST-DESIGNER -- specs + mandated concurrency review + gap closure)
+    agent: TEST-DESIGNER
+    started_at: '2026-08-11T12:54:24Z'
+    completed_at: '2026-08-11T13:32:41Z'
+    actual_minutes: 38.3
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Longest step of this run. Wrote all four test specs (DDL-02, ORD-01,
+      ORD-02, ORD-04.md) tracing every AC to a specific test case, AND
+      executed the task's explicitly mandated concurrency-coverage check:
+      found the original ORD-01 AC1 / ORD-04 AC1 tests were sequential-only
+      (one goroutine-equivalent locking a row, then a second proving SKIP
+      LOCKED skips it) rather than genuinely concurrent, and wrote two new
+      real-multi-thread tests (TC-ORD-01-AC1-concurrent,
+      TC-ORD-04-AC1-concurrent, 8 real std.Thread.spawn OS threads each).
+      Building those tests surfaced ISS-0669/GH-709 (see rework_steps below
+      -- not a rework cycle in the formal sense, since no upstream gate
+      rejected anything, but a significant time cost this step's duration
+      reflects): diagnosing whether the collision was client-side,
+      PostgreSQL-side, or infrastructure-side (writing and running an
+      equivalent pure-Python threading+psycopg2 comparison harness to rule
+      out the first two), isolating the workaround (pre-acquire connections
+      sequentially before racing only the claim query), filing ISS-0669/GH-709,
+      and fixing one further genuine flake (replaced a probabilistic
+      yield/spin sample with a deterministic rendezvous barrier, re-run 6+
+      consecutive times with zero flakes after the fix).
+
+  - step: step-03b (TEST-DESIGN-VALIDATOR -- hard gate)
+    agent: TEST-DESIGN-VALIDATOR
+    started_at: '2026-08-11T13:36:38Z'
+    completed_at: '2026-08-11T13:41:08Z'
+    actual_minutes: 4.5
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      PASS on the first pass -- no rework needed at this gate. Beyond the
+      standard checks, independently verified the specific risk the task
+      called out: that the ISS-0669 workaround (pre-acquiring connections
+      sequentially before spawning racing threads) does not accidentally
+      serialize away the very concurrency being tested. Traced
+      cursor.claimOneCompletion/tryExecuteGuard to confirm they take only a
+      pre-opened conn handle and make no further pool calls, so the
+      workaround is client-side bookkeeping (BEGIN) that cannot pre-decide
+      the race outcome -- the actual FOR UPDATE SKIP LOCKED / advisory-lock
+      queries still race genuinely from within the spawned threads. Re-ran
+      test-integration-ordering THREE consecutive times (not the usual two)
+      given its thread-concurrency sensitivity: 10/10 every time.
+
+  - step: step-04 (TEST-RUNNER -- full report run)
+    agent: TEST-RUNNER
+    started_at: '2026-08-11T13:44:23Z'
+    completed_at: '2026-08-11T13:47:01Z'
+    actual_minutes: 2.6
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      test-ddl-validate 28/28, test-ordering 4/4, test-integration-ord01 3/3,
+      test-integration-ord04 4/4, test-integration-ordering run TWICE per
+      task instruction given the thread-concurrency sensitivity (10/10 both
+      runs, confirmed reproducible not flaky), full unit suite 1053/1117
+      passed (64 skipped, 0 failed). Report written to
+      tests/reports/report-20260811-WF02-batch-2.yaml.
+
+  - step: step-05 (RELEASE-VALIDATOR -- validation, APPROVED)
+    agent: RELEASE-VALIDATOR
+    started_at: '2026-08-11T13:50:04Z'
+    completed_at: '2026-08-11T13:52:48Z'
+    actual_minutes: 2.7
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      Single pass, no rework needed. Independently re-read every AC in all 4
+      requirement bodies against actual Zig test source, re-ran every layer
+      itself matching the report exactly, re-ran zig build migrate twice
+      (clean idempotent no-op both times), and ran zig build bench for
+      completeness (all 5 NFR checks pass, no new HTTP surface to measure).
+      The task's explicit acceptance criterion -- reassess whether ISS-0669
+      forwarding is genuinely correct or should block this release, not just
+      trust TEST-DESIGN-VALIDATOR's claim -- was independently re-derived
+      from source: read consumer.zig in full, grepped all 3 candidate
+      production wiring points (main.zig, scheduler.zig, worker.zig) for
+      pollLoopStep/runOneCycle/ordering_consumer/consumer_count (zero
+      matches), and confirmed the only existing raw-thread callers anywhere
+      in src/ (onboarding.zig's saga thread, bootstrap.zig's HTTP-call
+      thread) are pre-existing, untouched by this batch, and each spawn
+      exactly one thread, not N threads racing one shared Pool. Recommendation
+      carried forward explicitly in the release decision file as a hard
+      pre-requisite for the future consumer-wiring batch.
+
+  - step: step-06 (DOC-UPDATER -- this step)
+    agent: DOC-UPDATER
+    started_at: '2026-08-11T13:58:52Z'
+    completed_at: '2026-08-11T14:05:10Z'
+    actual_minutes: 6.3
+    estimated_minutes: null
+    variance_pct: null
+    rework_count: 0
+    notes: >-
+      CHANGELOG.md updated under [Unreleased] -- 2026-08-11 with a detailed
+      Stage 16 batch 2 entry (DDL-02/ORD-01/ORD-02/ORD-04, the Step 1b rework
+      cycle, the Step 3 concurrency-test upgrade, and the ISS-0669/GH-709
+      pre-requisite prominently flagged in a leading blockquote so it is not
+      buried under the per-requirement bullets). docs/requirements.yaml: all
+      4 requirements set to RELEASED via tools/reqctl.py set-status (canonical
+      write path, not hand-edited) plus targeted Edit calls for
+      test_spec/test_run (fields set-status does not itself populate,
+      matching batch-0/batch-1's exact precedent). docs/status/
+      requirement_status.yaml regenerated via reqctl.py render-status. This
+      retrospective file.
+
+wall_clock_span:
+  from: '2026-08-11T11:36:18Z'   # step-00a started_at
+  to:   '2026-08-11T14:05:10Z'   # step-06 (this step) completed_at
+  total_minutes: 148.9
+  note: >-
+    Wall-clock span from step-00a (Green-Main Gate) through step-06
+    (DOC-UPDATER) completion. Slower end-to-end than batch 1 (102.2 min
+    through step-06) and comparable to batch 0 (175.1 min through step-06),
+    primarily because this run opened substantially new subsystem work (the
+    first ordering/ modules) rather than extending an already-established
+    one, and because Step 03 (TEST-DESIGNER) spent significant time on a
+    task-mandated concurrency-coverage upgrade that also required diagnosing
+    a genuine, previously-unknown infrastructure defect (ISS-0669) well
+    enough to file it accurately and confirm it does not block this batch --
+    time spent strengthening coverage beyond the design's original claim, not
+    time lost to a gate rejection. The two untimed gaps in this run (step-01b
+    to step-2a, and step-2c to step-03) reflect ORCH's own dispatch/triage
+    time between agent handoffs, not additional agent work.
+
+rework_steps:
+  - step: step-01b (CODE-DESIGN-VALIDATOR, first pass -- not separately persisted)
+    trigger: >-
+      CODE-DESIGN-VALIDATOR's first validation pass FAILed (BLOCKER) on
+      DDL-02 AC5 ("The rejection message names the file and the byte offset
+      of both the constraining statement and the statement it depends on.").
+      CODE-DESIGNER's original design doc (src/design/ddl-02-constrain-before-expand-check.md)
+      defined ConstrainBeforeExpandDetail with only statement_order/
+      statement_text fields -- an ordinal position, not a byte offset, and no
+      file field at all. This gap was caught before any implementation code
+      existed, the cheapest point in the pipeline for a design-completeness
+      gap to surface.
+    resolution: >-
+      CODE-DESIGNER (step-01, rework_count=1) added file ([]const u8) and
+      byte_offset (u32) fields to ddl_validate.zig's StatementDescriptor
+      (the DDL-01/DDL-02 type specifically), and four matching fields
+      (constraining_statement_file/byte_offset,
+      depended_on_statement_file/byte_offset) to ConstrainBeforeExpandDetail.
+      Explicitly checked and documented that this is purely additive:
+      checkNamespace (DDL-05's function) is called via a 3-field anonymous
+      struct literal built from StatementDescriptor, never StatementDescriptor
+      itself, so ddl_namespace.zig (already RELEASED) and its own,
+      differently-shaped StatementDescriptor type are untouched. Design doc
+      gained a new "Which StatementDescriptor?" and "Backward compatibility
+      with DDL-05" section documenting this verification.
+    reverification: >-
+      CODE-DESIGN-VALIDATOR re-validated PASS (step-01b, this persisted
+      handoff) -- independently re-confirmed the non-breaking claim by
+      reading ddl_validate.zig's checkNamespace call site (line 179) itself
+      rather than accepting CODE-DESIGNER's summary, and grepped the whole
+      src/ tree for any other checkNamespace/ddl_namespace.StatementDescriptor
+      reference (none found outside ddl_namespace.zig's own test blocks).
+      Confirmed via git diff (5540e73d..1ccc6b56) that the rework touched
+      only the DDL-02 design doc plus handoff/registry/log bookkeeping --
+      ORD-01/02/04's design doc and both migration YAMLs are byte-identical,
+      no scope creep. tools/lint_design_artefact.py on the updated doc: OK,
+      0 issues. BACKEND-DEV (step-2a) later confirmed the mechanical
+      consequence flagged in the design doc (DDL-01's own existing unit test
+      call sites needed literal updates to supply the two new fields) was
+      handled cleanly with all tests passing.
+    why_this_matters_for_the_pipeline: >-
+      Third distinct rework failure mode across the three Stage 16 batches
+      run today: batch 0's rework was RELEASE-VALIDATOR-caught missing
+      coverage (an AC with zero passing test evidence); batch 1's rework was
+      TEST-DESIGN-VALIDATOR-caught false-positive fixture defect (a test that
+      ran and had actually been failing); this run's rework was
+      CODE-DESIGN-VALIDATOR-caught design-completeness (an AC's required
+      output shape not yet designed), caught at Step 1b before any
+      implementation code was written at all -- the cheapest of the three
+      gates in terms of downstream rework cost, since no code, no tests, and
+      no security review needed to be redone.
+
+  - step: step-03 (TEST-DESIGNER -- concurrency-coverage upgrade, not a rework cycle)
+    trigger: >-
+      Not a gate FAIL or rework in the formal rework_count sense -- this was
+      a task-mandated check ("pay special attention to ORD-01's AC about 8
+      concurrent consumers... confirm the existing tests actually exercise
+      real concurrent access... or document clearly if infeasible") that
+      TEST-DESIGNER executed proactively within its own Step 3 pass. The
+      original ORD-01 AC1 / ORD-04 AC1 tests (written by BACKEND-DEV at
+      Step 2a) were sequential-only: one connection locking a row, then a
+      second connection proving SKIP LOCKED correctly skips it -- a valid
+      test of SKIP LOCKED's semantics, but not a genuine proof of the AC's
+      literal "8 consumers polling... claim concurrently" scenario.
+    resolution: >-
+      TEST-DESIGNER added TC-ORD-01-AC1-concurrent and
+      TC-ORD-04-AC1-concurrent to tests/integration/ordering_consumer_test.zig:
+      8 real std.Thread.spawn OS threads, each on its own pre-acquired
+      connection, racing a real claim/guard query via a start-gate spin
+      barrier (and, for ORD-04, a second arrival-gate barrier deterministically
+      proving all 8 threads hold their guard simultaneously). Writing these
+      tests surfaced that racing pool.acquire()+begin() itself (not just the
+      subsequent query) across raw OS threads breaks SKIP LOCKED's row-lock
+      isolation -- confirmed via a client-side elimination check (distinct
+      backend PIDs, distinct per-thread memory addresses) and a
+      cross-language elimination check (an equivalent pure-Python
+      threading+psycopg2 harness with the same barrier pattern produced
+      exactly one winner every time, ruling out PostgreSQL/environment
+      causes). Filed as ISS-0669/GH-709 (docs/issues/ISS-0669.json), and
+      worked around in the final tests by pre-acquiring all connections
+      sequentially from the main thread before spawning the racing threads --
+      isolating the tests from the separate, already-broken pool-acquisition
+      path so they still genuinely exercise the claim/guard queries ORD-01/
+      ORD-02 actually implement.
+    reverification: >-
+      TEST-DESIGN-VALIDATOR (step-03b) independently assessed the specific
+      risk that the workaround could make the concurrency assertion vacuous
+      -- traced cursor.claimOneCompletion/tryExecuteGuard to confirm neither
+      makes any further pool call once given a connection, so pre-acquiring
+      is inert client-side bookkeeping that cannot pre-decide the race.
+      RELEASE-VALIDATOR (step-05) independently re-derived, from source
+      rather than from TEST-DESIGN-VALIDATOR's claim, that this batch's own
+      production code (src/ordering/consumer.zig) never calls pool.acquire()
+      from more than one thread, and that no production executable wires the
+      consumer loop in yet -- confirming ISS-0669 does not block this
+      release while explicitly carrying forward the pre-requisite for the
+      future batch that will wire it in.
+    why_this_matters_for_the_pipeline: >-
+      A genuine infrastructure defect (MAJOR severity, src/db/pool.zig) was
+      found not because a gate rejected something, but because TEST-DESIGNER
+      held its own coverage to a stricter bar than the minimum the upstream
+      design/implementation had already passed with. This is the opposite
+      failure direction from batch 0's and batch 1's reworks (both caught
+      something already in the pipeline that was insufficient); this is a
+      case where strengthening test rigor beyond what was already accepted
+      surfaced a real defect in shared infrastructure that no prior Stage 16
+      batch's testing had exercised (no earlier batch drove genuine raw-thread
+      contention against Pool.acquire()). The correct pipeline response --
+      file and forward per Unblock-Everything's forwarding boundary, not fix
+      inline (out of TEST-DESIGNER's remit) and not silently work around
+      without disclosure -- was followed at every subsequent gate: each of
+      TEST-DESIGN-VALIDATOR, RELEASE-VALIDATOR, and now this changelog entry
+      independently re-verified the forwarding decision from source rather
+      than propagating a prior agent's claim unchecked.
+
+rule_adjustments: []
+
+prevention_notes:
+  - >-
+    This is the second time in three Stage 16 batches run today that a
+    sequential-connection test was initially mistaken for adequate coverage
+    of a literal "N concurrent consumers" acceptance criterion (the first
+    being implicit in how AC1 was originally written for ORD-01/ORD-04 by
+    BACKEND-DEV at Step 2a, before TEST-DESIGNER's Step 3 review caught it).
+    An AC phrased as "GIVEN N consumers polling... WHEN they claim
+    concurrently" should be treated as requiring genuine multi-connection,
+    multi-thread (or multi-process) test evidence by default, not sequential
+    simulation, unless a documented infeasibility justification is written
+    and reviewed. TEST-DESIGNER's own test_developer_guide.md workflow already
+    caught this correctly this run; consider whether CODE-DESIGNER or
+    BACKEND-DEV should flag "genuinely concurrent" ACs explicitly in the
+    design artefact itself so the concurrency-test requirement is visible
+    before Step 2a implementation, not only at Step 3 review.
+  - >-
+    ISS-0669/GH-709 (Pool.acquire() loses row-lock isolation under raw
+    std.Thread.spawn contention) is now a documented, open, MAJOR-severity
+    pre-requisite gate for the future ORD-03/consumer-wiring batch. This is
+    carried in three independently-written places (docs/issues/ISS-0669.json,
+    docs/status/release-stage16-WF02-batch-2-20260811.yaml's
+    issue_iss_0669_reassessment section, and this CHANGELOG.md entry's
+    leading blockquote) specifically so it is not lost between now and
+    whichever future run picks up ORD-03/multi-consumer wiring -- per the
+    explicit instruction that this must not be buried. The future batch's own
+    CODE-DESIGNER should restate it explicitly in that batch's design
+    artefact so CODE-DESIGN-VALIDATOR has a concrete claim to check, per
+    RELEASE-VALIDATOR's own stated recommendation.
+  - >-
+    Same zero-Green-Main-Gate-defects pattern as batch 1: this run's Step 00a
+    found nothing to fix (3.2 min, in line with batch 1's 2.9 min), a sharp
+    contrast with batch 0's 56.3-minute Green-Main Gate dominated by
+    diagnosing ISS-0663/ISS-0664. ISS-0665 (full test-integration umbrella
+    concurrency reliability, still open) continues to be correctly avoided by
+    substituting targeted build steps, as in both prior batches.
+
+artifacts:
+  - handoffs/WF02-batch-2-20260811/step-00a-test-runner.json
+  - handoffs/WF02-batch-2-20260811/step-00-backend-dev-git-setup.json
+  - handoffs/WF02-batch-2-20260811/step-01-code-designer.json
+  - handoffs/WF02-batch-2-20260811/step-01b-code-design-validator.json
+  - handoffs/WF02-batch-2-20260811/step-2a-backend-dev.json
+  - handoffs/WF02-batch-2-20260811/step-2c-security-reviewer.json
+  - handoffs/WF02-batch-2-20260811/step-03-test-designer.json
+  - handoffs/WF02-batch-2-20260811/step-03b-test-design-validator.json
+  - handoffs/WF02-batch-2-20260811/step-04-test-runner.json
+  - handoffs/WF02-batch-2-20260811/step-05-release-validator.json
+  - handoffs/WF02-batch-2-20260811/step-06-doc-updater.json
+  - src/design/ddl-02-constrain-before-expand-check.md
+  - src/design/ord-01-02-04-correlated-effect-reentry.md
+  - src/platform/ddl_validate.zig
+  - src/ordering/mod.zig
+  - src/ordering/cursor.zig
+  - src/ordering/consumer.zig
+  - src/ordering/observability.zig
+  - migrations/1145_ord01_plat_effect_completion.sql
+  - migrations/1146_ord04_plat_correlation_cursor.sql
+  - tests/integration/ord01_plat_effect_completion_test.zig
+  - tests/integration/ord04_plat_correlation_cursor_test.zig
+  - tests/integration/ordering_consumer_test.zig
+  - tests/specs/DDL-02.md
+  - tests/specs/ORD-01.md
+  - tests/specs/ORD-02.md
+  - tests/specs/ORD-04.md
+  - tests/reports/report-20260811-WF02-batch-2.yaml
+  - docs/status/release-stage16-WF02-batch-2-20260811.yaml
+  - docs/status/requirement_status.yaml
+  - docs/issues/ISS-0669.json
+  - CHANGELOG.md
+  - docs/requirements.yaml
+
+next_action: >-
+  Route to BACKEND-DEV Step Final (git-merge) -- PR creation, checks,
+  squash-merge, branch deletion, and return to clean main are a separate
+  dispatch after this handoff completes; not performed here per explicit
+  instruction (this worktree stays on feature/WF02-batch-2-20260811). The
+  future consumer-wiring batch that lands ORD-03 and wires consumer_count
+  concurrent loops into production MUST treat ISS-0669/GH-709 as a hard
+  pre-requisite gate -- see docs/issues/ISS-0669.json and this file's
+  prevention_notes.

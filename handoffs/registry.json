@@ -23737,37 +23737,16 @@
       "stage": "Stage 16"
     },
     {
-      "handoff_id": "71bcef0b-9353-4e02-b697-73471396d5de",
-      "file": "handoffs/WF02-batch-2-20260811/step-00a-test-runner.json",
+      "handoff_id": "c51a3d8d-cd48-4eb3-9573-e18067ddd94a",
+      "file": "handoffs/WF02-batch-2-20260811/step-final-backend-dev-git-merge.json",
       "run_id": "WF02-batch-2-20260811",
-      "step": "00a",
-      "from_agent": "ORCH",
-      "to_agent": "TEST-RUNNER",
-      "created_at": "2026-08-11T11:35:54Z",
-      "status": "PENDING",
-      "stage": "Stage 16"
-    },
-    {
-      "handoff_id": "71bcef0b-9353-4e02-b697-73471396d5de",
-      "file": "handoffs/WF02-batch-2-20260811/step-00a-test-runner.json",
-      "run_id": "WF02-batch-2-20260811",
-      "step": "00a",
-      "from_agent": "ORCH",
-      "to_agent": "TEST-RUNNER",
-      "created_at": "2026-08-11T11:35:54Z",
-      "status": "COMPLETED"
-    },
-    {
-      "handoff_id": "a4aad9b4-30d5-45e6-9218-93d37657aa4e",
-      "file": "handoffs/WF02-batch-2-20260811/step-00-backend-dev-git-setup.json",
-      "run_id": "WF02-batch-2-20260811",
-      "step": "00",
+      "step": "final",
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
-      "created_at": "2026-08-11T11:39:32Z",
+      "created_at": "2026-08-11T11:46:10Z",
       "status": "PENDING",
       "stage": "Stage 16"
     }
   ],
-  "last_updated": "2026-08-11T11:31:05Z"
+  "last_updated": "2026-08-11T13:52:48Z"
 }

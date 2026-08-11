@@ -2328,6 +2328,118 @@ pub fn build(b: *std.Build) void {
     test_integration_effects_subsystem_step.dependOn(&clean_test_db.step);
     test_integration_effects_subsystem_step.dependOn(&run_effects_subsystem_integration_tests.step);
 
+    // WF02-batch-2-20260811 / ORD-01/02/04: narrow steps for the two new
+    // plat_effect_completion / plat_correlation_cursor migration integration
+    // tests, matching the effects_subsystem narrow-step precedent immediately
+    // above (own addTest root, own Run via addIntegrationRun, own `test-*`
+    // step — NOT added to the test_integration_others_step umbrella per
+    // ISS-0665/GH-702, still open).
+    const ord01_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/ord01_plat_effect_completion_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_ord01_integration_tests = addIntegrationRun(b, ord01_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_ord01_step = b.step("test-integration-ord01", "Run ORD-01 plat_effect_completion claim-guard integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_ord01_step.dependOn(&clean_test_db.step);
+    test_integration_ord01_step.dependOn(&run_ord01_integration_tests.step);
+
+    const ord04_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/ord04_plat_correlation_cursor_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_ord04_integration_tests = addIntegrationRun(b, ord04_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_ord04_step = b.step("test-integration-ord04", "Run ORD-04 plat_correlation_cursor integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_ord04_step.dependOn(&clean_test_db.step);
+    test_integration_ord04_step.dependOn(&run_ord04_integration_tests.step);
+
+    // src/ordering/ (ORD-01/02/04 consumer logic) unit tests — pure/no-DB
+    // logic (mod.zig's enums, ObservabilityCounters' windowing math) live
+    // here; the DB-touching functions (cursor.zig, consumer.zig) are
+    // exercised by test-integration-ordering below.
+    const ordering_mod = b.createModule(.{
+        .root_source_file = b.path("src/ordering/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const ordering_observability_mod = b.createModule(.{
+        .root_source_file = b.path("src/ordering/observability.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "ordering_mod", .module = ordering_mod },
+        },
+    });
+    const ordering_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/ordering/observability.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "ordering_mod", .module = ordering_mod },
+            },
+        }),
+    });
+    const run_ordering_unit_tests = b.addRunArtifact(ordering_unit_tests);
+    const test_ordering_step = b.step("test-ordering", "Run ORD-01/02/04 src/ordering/ pure unit tests (no DB)");
+    test_ordering_step.dependOn(&run_ordering_unit_tests.step);
+    // Pure/no-DB unit tests belong on the `test` aggregate step too, per
+    // lint_test_wiring.py's ISS-0150/GH-466 requirement that every Run
+    // artifact be reachable from an aggregate step, not only a narrow
+    // opt-in one.
+    test_step.dependOn(&run_ordering_unit_tests.step);
+
+    // src/ordering/cursor.zig + consumer.zig integration tests (claim guard,
+    // execute guard, connection-acquisition discipline) — real PostgreSQL.
+    const ordering_cursor_mod = b.createModule(.{
+        .root_source_file = b.path("src/ordering/cursor.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "ordering_mod", .module = ordering_mod },
+        },
+    });
+    const ordering_consumer_mod = b.createModule(.{
+        .root_source_file = b.path("src/ordering/consumer.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "ordering_mod", .module = ordering_mod },
+            .{ .name = "ordering_cursor", .module = ordering_cursor_mod },
+            .{ .name = "ordering_observability", .module = ordering_observability_mod },
+            .{ .name = "obs_metrics", .module = obs_metrics_mod },
+        },
+    });
+    var ordering_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 4) catch @panic("OOM");
+    ordering_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    ordering_integration_imports.appendSliceAssumeCapacity(&.{
+        .{ .name = "ordering_mod", .module = ordering_mod },
+        .{ .name = "ordering_cursor", .module = ordering_cursor_mod },
+        .{ .name = "ordering_observability", .module = ordering_observability_mod },
+        .{ .name = "ordering_consumer", .module = ordering_consumer_mod },
+    });
+    const ordering_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/ordering_consumer_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = ordering_integration_imports.items,
+        }),
+    });
+    const run_ordering_integration_tests = addIntegrationRun(b, ordering_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_ordering_step = b.step("test-integration-ordering", "Run ORD-01/02/04 src/ordering/ claim-guard + execute-guard integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_ordering_step.dependOn(&clean_test_db.step);
+    test_integration_ordering_step.dependOn(&run_ordering_integration_tests.step);
+
     // ISS-0637 / GH-619: narrow step for EXT-02 webhook dispatch + audit
     // tests only, so TC-EXT-02-INT-08 (and siblings) can be iterated on
     // without paying for the full ~40-binary test-integration umbrella.

@@ -1,0 +1,125 @@
+# Migration + integration-test parameter file (Lego Type C)
+# Requirement: ORD-04 (primary owner of applied_seq's lag semantics), read by
+# ORD-02 (execute guard reads applied_seq while holding the advisory lock) and
+# ORD-03 (order guard compares sequence_no to applied_seq + 1; cursor advance is
+# a later batch). See src/design/ord-01-02-04-correlated-effect-reentry.md and
+# docs/processes/system/effect-reentry-ordering.md (Outputs table, row 2).
+#
+# Naming: plat_ prefix per DDL-05 (src/platform/ddl_namespace.zig). Same scope
+# reasoning as plat_effect_completion: per-tenant data, default migration scope
+# (runs in every schema pass), unqualified name.
+
+schema_version: 1
+migration_number: 1146   # next free number after ord01_plat_effect_completion (1145)
+name: ord04_plat_correlation_cursor
+requirement_ids: [ORD-04, ORD-02]
+purpose: |
+  Creates plat_correlation_cursor, one row per correlation_id carrying the
+  highest sequence_no successfully applied (applied_seq). ORD-02's execute guard
+  reads this value while holding the per-correlation advisory lock (process doc
+  step 4); ORD-04's lag metric is max(sequence_no) [from plat_effect_completion]
+  minus applied_seq per correlation_id, read directly off this table with no
+  separate aggregate table needed. ORD-03 (a later batch) owns the conditional
+  UPDATE ... WHERE applied_seq = $2 - 1 cursor-advance statement and the
+  MissingCursorRow recovery (insert at applied_seq=0) — this migration only
+  creates the table shape both ORD-02 (read-only, this batch) and ORD-03
+  (read-write, later batch) need, per the Type E design's explicit statement
+  that ORD-03's design must not need a schema change here.
+
+tables:
+  - mode: create
+    name: plat_correlation_cursor
+    columns:
+      - { name: correlation_id, type: text,          pk: true }
+      - { name: applied_seq,    type: bigint,         not_null: true, default: 0, check: "applied_seq >= 0" }
+      - { name: updated_at,     type: "timestamptz",  not_null: true, default: now() }
+      - { name: created_at,     type: "timestamptz",  not_null: true, default: now() }
+    indexes:
+      # ORD-04's lag query joins this table against
+      # plat_effect_completion.correlation_id; correlation_id is already the
+      # PK here so no secondary index is needed for the join itself. This
+      # index supports the sweep's "which correlations have any lag at all"
+      # scan without a full table scan once the table is large.
+      - { name: idx_plat_correlation_cursor_updated, columns: [updated_at] }
+
+fixtures:
+  - name: correlation_a
+    kind: random_string
+  - name: seed_cursor_row
+    kind: sql_setup
+    sql: |
+      INSERT INTO plat_correlation_cursor (correlation_id, applied_seq)
+      VALUES ($1, 4);
+    params: [correlation_a]
+
+test_cases:
+  - name: insert_then_read_applied_seq
+    description: A newly inserted cursor row is retrievable and starts at the seeded applied_seq.
+    requirement_ref: ORD-04
+    arrange: ""
+    act: |
+      const result = try h.conn.query(std.testing.allocator,
+          "SELECT applied_seq FROM plat_correlation_cursor WHERE correlation_id = $1",
+          &.{fx.correlation_a});
+    assertions: |
+      // CUSTOM: assert result.rows.len == 1 and applied_seq == "4".
+
+  - name: primary_key_prevents_duplicate_correlation_row
+    description: >
+      A second INSERT for the same correlation_id without ON CONFLICT fails —
+      proves the PK enforces exactly one cursor row per correlation, which
+      ORD-02's execute guard (reading this row while holding the advisory lock
+      keyed on the same correlation_id) depends on for a well-defined read.
+    requirement_ref: ORD-04
+    arrange: ""
+    act: |
+      const result = h.conn.exec(
+          "INSERT INTO plat_correlation_cursor (correlation_id, applied_seq) VALUES ($1, 0)",
+          &.{fx.correlation_a});
+    assertions: |
+      // CUSTOM: assert error.UniqueConstraintViolation (Postgres 23505 on the PK);
+      // SELECT still returns exactly 1 row with applied_seq == "4" (unchanged).
+
+  - name: applied_seq_check_constraint_rejects_negative
+    description: applied_seq cannot go negative — CHECK constraint enforced.
+    requirement_ref: ORD-04
+    arrange: ""
+    act: |
+      const result = h.conn.exec(
+          "INSERT INTO plat_correlation_cursor (correlation_id, applied_seq) VALUES ($1, -1)",
+          &.{"other-correlation-not-yet-seeded"});
+    assertions: |
+      // CUSTOM: assert error.CheckConstraintViolation (Postgres 23514).
+
+  - name: lag_computable_via_join_against_completion_table
+    description: >
+      ORD-04 AC2's lag formula (max(sequence_no) - applied_seq) is computable
+      directly by joining plat_effect_completion against this table, with no
+      extra schema needed — smoke-tests the two Type C migrations' compatibility
+      with each other (this table's fixture must be seeded together with
+      plat_effect_completion rows of the same correlation_id via the sibling
+      migration's fixtures; assumed already present in the shared test schema
+      once both migrations have applied).
+    requirement_ref: ORD-04
+    arrange: |
+      try h.conn.exec(
+          "INSERT INTO plat_effect_completion (correlation_id, sequence_no, status) VALUES ($1, 5, 'PENDING'), ($1, 6, 'PENDING')",
+          &.{fx.correlation_a});
+    act: |
+      const result = try h.conn.query(std.testing.allocator,
+          \\SELECT MAX(pec.sequence_no) - pcc.applied_seq AS lag
+          \\FROM plat_effect_completion pec
+          \\JOIN plat_correlation_cursor pcc ON pcc.correlation_id = pec.correlation_id
+          \\WHERE pec.correlation_id = $1
+          \\GROUP BY pcc.applied_seq
+      ,
+          &.{fx.correlation_a});
+    assertions: |
+      // CUSTOM: assert result.rows.len == 1 and lag == "2" (max sequence_no 6
+      // minus seeded applied_seq 4).
+
+rollback_strategy: |
+  Forward-only. plat_correlation_cursor is a monotonically-advancing control
+  table; no DROP migration. If retired, a future migration archives cursor
+  state before any structural change, per docs/anti-patterns.md's DROP-table
+  entry.
