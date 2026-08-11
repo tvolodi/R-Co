@@ -1,5 +1,5 @@
 run_id: WF02-batch-0-20260811
-report_date: "2026-08-11T06:42:11Z"
+report_date: "2026-08-11T07:05:18Z"
 agent: TEST-RUNNER
 workflow_id: WF-02
 workflow_step: "04"
@@ -48,10 +48,14 @@ layers:
     command: "zig build test-integration-mig02-mig03 --summary all"
     exit_code: 0
     result: PASS
-    summary: "Build Summary: 6/6 steps succeeded; 8/8 tests passed"
-    tests_total: 8
-    tests_passed: 8
+    summary: "Build Summary: 6/6 steps succeeded; 9/9 tests passed"
+    tests_total: 9
+    tests_passed: 9
     tests_failed: 0
+    note: >
+      RE-RUN after REWORK 1: TEST-DESIGNER added TC-MIG-02-04 closing the
+      MIG-02 AC4 coverage gap identified by TEST-DESIGN-VALIDATOR. Count
+      increased from 8/8 to 9/9; all tests including the new one pass.
 
   - name: unit-full
     command: "zig build test --summary all"
@@ -95,10 +99,26 @@ summary:
   breakdown:
     ddl_namespace: "10/10 passed, 0 failed"
     integration_mig01: "5/5 passed, 0 failed"
-    integration_mig02_mig03: "8/8 passed, 0 failed"
+    integration_mig02_mig03: "9/9 passed, 0 failed"
     unit_full: "1021/1085 passed, 0 failed, 64 skipped"
   overall_status: PASS
 
 issues: []
 
-next_action: "Route to RELEASE-VALIDATOR (Step 5)"
+rerun_history:
+  - rerun: 1
+    reason: >
+      TEST-DESIGNER REWORK 1 added TC-MIG-02-04 to
+      tests/integration/migration_fanout_test.zig, closing the MIG-02 AC4
+      coverage gap. All 4 commands re-run in full with env vars set
+      explicitly (BPM_TEST_DB_URL, BPM_DB_URL) since the ambient shell
+      environment carried a stale BPM_TEST_DB_URL.
+    result: >
+      All 4 commands exit 0. test-integration-mig02-mig03 now 9/9 (was
+      8/8); the other three layers unchanged (ddl-namespace 10/10,
+      integration-mig01 5/5, unit-full 1021/1085 passed / 64 skipped).
+      Full zig build test-integration umbrella not run per handoff
+      instructions (ISS-0665/GH-702 host capacity issue).
+    verified_at: "2026-08-11T07:05:18Z"
+
+next_action: "Route to RELEASE-VALIDATOR (Step 5) for re-validation"
