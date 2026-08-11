@@ -27,11 +27,33 @@
 -- short-circuit this migration's own DROP/CREATE for the CURRENT schema —
 -- confirmed live as the root cause of Migration 4's partition-seeding bug
 -- below (search this file for "no partition of relation events found").
+--
+-- events / events_archive / plat_event_idempotency / event_payload_store are
+-- all PER_TENANT (docs/anti-patterns.md dual-schema classification, matching
+-- how events/events_archive were already per-tenant before PAR-01 — see
+-- src/design/par-01-monthly-range-partitioning.md's note on
+-- plat_event_idempotency). GBL-112_tnt01_drop_legacy_public_business_tables.sql
+-- (order ~1112, runs before this file) already permanently dropped
+-- public.events/public.events_archive as part of that classification. This
+-- file must therefore be a no-op during the `public` schema pass — it is
+-- not enough to guard individual CREATEs (as the pre-existing
+-- webhook_deliveries guard below does); Migration 1's DROP/CREATE for
+-- events/events_archive previously ran unconditionally and recreated them
+-- in public, regressing TC-TNT-01-02/01-04/02-01/07-02/07-04 (confirmed live
+-- via CI run 31524488824 on PR #713). Every DO block in this file therefore
+-- early-returns when current_schema() = 'public', and Migrations 1-3's DDL
+-- (below) is wrapped in its own guarded DO block since plain top-level DDL
+-- cannot itself be conditional.
 DO $$
 DECLARE
     v_is_partitioned BOOLEAN;
     v_row_count BIGINT;
 BEGIN
+    IF current_schema() = 'public' THEN
+        RAISE NOTICE 'PAR-01: public schema pass — skipping (events/events_archive/plat_event_idempotency/event_payload_store are PER_TENANT; see GBL-112).';
+        RETURN;
+    END IF;
+
     SELECT EXISTS (
         SELECT 1 FROM pg_partitioned_table pt
         JOIN pg_class c ON c.oid = pt.partrelid
@@ -58,128 +80,149 @@ BEGIN
         END IF;
     END IF;
 
-    -- Falls through to the DROP/CREATE block below (top-level statements in
-    -- this file, not inside this DO block — see anti-patterns.md: guarding a
-    -- DO block cannot itself skip subsequent top-level statements, so the
-    -- v_is_partitioned check above only protects against re-entering THIS
-    -- block's own side effects; the top-level DROP/CREATE statements below
-    -- are naturally idempotent via IF EXISTS / IF NOT EXISTS instead).
+    -- Falls through to the guarded DO block below (Migrations 1-3), which
+    -- performs its own current_schema()-scoped idempotent DROP/CREATE via
+    -- EXECUTE'd dynamic SQL — see the note on that block for why plain
+    -- top-level DDL statements cannot themselves be made conditional here.
 END $$;
 
--- ── Migration 1: schema rebuild (events, events_archive) ───────────────────
+-- ── Migrations 1-3: schema rebuild (events, events_archive), the
+-- plat_event_idempotency sidecar, and event_payload_store ──────────────────
 -- Only actually destructive on a fresh/empty schema (guarded above); a
 -- second run against an already-partitioned schema no-ops these via
 -- IF EXISTS / IF NOT EXISTS, but to make the whole file a true no-op on
 -- re-run we re-check partitioned state here too (cheap, avoids relying
 -- solely on the DO block above having "returned" — plain SQL has no such
 -- control flow across statements).
+--
+-- events / events_archive / plat_event_idempotency / event_payload_store are
+-- all PER_TENANT (see file-header note and GBL-112) and must not be
+-- (re)created during the `public` schema pass. Migration files here are
+-- executed as raw multi-statement SQL via the simple query protocol
+-- (src/db/migrations.zig runForSchema -> conn.simpleQuery), not through
+-- psql, so \if/\gset are not available and plain top-level DDL cannot
+-- itself be conditional. Migrations 1-3's DDL is therefore wrapped in a
+-- single current_schema()-guarded DO block using EXECUTE'd dynamic SQL
+-- (same technique Migration 4 below already uses for its EXECUTE format(...)
+-- CREATE TABLE / ATTACH PARTITION calls).
+DO $par01_migration_1_3$
+BEGIN
+    IF current_schema() = 'public' THEN
+        RAISE NOTICE 'PAR-01: public schema pass — skipping Migrations 1-3 (events/events_archive/plat_event_idempotency/event_payload_store are PER_TENANT; see GBL-112).';
+        RETURN;
+    END IF;
 
-DROP TABLE IF EXISTS event_payload_store;   -- FK to events(event_id); drop before events
-DROP TABLE IF EXISTS webhook_deliveries;    -- FK to events(event_id); drop before events
-DROP TABLE IF EXISTS events_archive;
-DROP TABLE IF EXISTS events;
+    EXECUTE 'DROP TABLE IF EXISTS event_payload_store';   -- FK to events(event_id); drop before events
+    EXECUTE 'DROP TABLE IF EXISTS webhook_deliveries';    -- FK to events(event_id); drop before events
+    EXECUTE 'DROP TABLE IF EXISTS events_archive';
+    EXECUTE 'DROP TABLE IF EXISTS events';
 
-CREATE TABLE events (
-    event_id          UUID            NOT NULL DEFAULT gen_random_uuid(),
-    instance_id       UUID            NOT NULL,
-    event_type        TEXT            NOT NULL,
-    payload           JSONB           NOT NULL DEFAULT '{}',
-    actor_id          UUID            NOT NULL,
-    created_at        TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    sequence_number   BIGINT          NOT NULL,
-    idempotency_key   TEXT            NOT NULL,
-    metadata          JSONB           NOT NULL DEFAULT '{}',
-    global_seq        BIGINT          NOT NULL DEFAULT nextval('events_global_seq'),
-    tenant_id         UUID            NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
-    PRIMARY KEY (event_id, created_at)
-) PARTITION BY RANGE (created_at);
+    EXECUTE '
+    CREATE TABLE events (
+        event_id          UUID            NOT NULL DEFAULT gen_random_uuid(),
+        instance_id       UUID            NOT NULL,
+        event_type        TEXT            NOT NULL,
+        payload           JSONB           NOT NULL DEFAULT ''{}'',
+        actor_id          UUID            NOT NULL,
+        created_at        TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+        sequence_number   BIGINT          NOT NULL,
+        idempotency_key   TEXT            NOT NULL,
+        metadata          JSONB           NOT NULL DEFAULT ''{}'',
+        global_seq        BIGINT          NOT NULL DEFAULT nextval(''events_global_seq''),
+        tenant_id         UUID            NOT NULL DEFAULT ''00000000-0000-0000-0000-000000000000'',
+        PRIMARY KEY (event_id, created_at)
+    ) PARTITION BY RANGE (created_at)';
 
--- PostgreSQL requires every UNIQUE index on a partitioned table to include
--- ALL partition-key columns (error C0A000, verified live against a real
--- PostgreSQL 15+ instance: "UNIQUE constraint on partitioned table must
--- include all partitioning columns"). uq_event_sequence therefore widens to
--- include created_at, matching the exact same structural requirement that
--- already forced events' own PK to widen from (event_id) to
--- (event_id, created_at). In practice this does not weaken ES-02's "strict
--- per-instance ordering" guarantee: sequence_number is assigned exactly once
--- per (instance_id, sequence_number) pair inside a single Store.append()
--- transaction, and created_at is stamped by that same INSERT — two rows
--- genuinely sharing (instance_id, sequence_number) could previously only
--- arise from a application-level bug, which this index still catches
--- identically; it merely also requires created_at to match, which for any
--- correctly-functioning caller it always does (each sequence_number is
--- assigned to exactly one row, at exactly one created_at).
-CREATE UNIQUE INDEX uq_event_sequence ON events (instance_id, sequence_number, created_at);
-CREATE INDEX idx_events_global_seq ON events (global_seq);
-CREATE INDEX idx_events_instance_seq ON events (instance_id, sequence_number);
-CREATE INDEX idx_events_instance_time ON events (instance_id, created_at);
-CREATE INDEX idx_events_type ON events (event_type);
-CREATE INDEX idx_events_tenant_instance_seq ON events (tenant_id, instance_id, sequence_number);
-CREATE INDEX idx_events_tenant_global_seq ON events (tenant_id, global_seq);
-CREATE INDEX idx_events_instance_order ON events (instance_id, created_at DESC, sequence_number DESC);
-CREATE INDEX idx_events_tenant_pipeline_run_seq
-    ON events (tenant_id, (metadata->>'pipeline_run_id'), sequence_number);
+    -- PostgreSQL requires every UNIQUE index on a partitioned table to include
+    -- ALL partition-key columns (error C0A000, verified live against a real
+    -- PostgreSQL 15+ instance: "UNIQUE constraint on partitioned table must
+    -- include all partitioning columns"). uq_event_sequence therefore widens to
+    -- include created_at, matching the exact same structural requirement that
+    -- already forced events' own PK to widen from (event_id) to
+    -- (event_id, created_at). In practice this does not weaken ES-02's "strict
+    -- per-instance ordering" guarantee: sequence_number is assigned exactly once
+    -- per (instance_id, sequence_number) pair inside a single Store.append()
+    -- transaction, and created_at is stamped by that same INSERT — two rows
+    -- genuinely sharing (instance_id, sequence_number) could previously only
+    -- arise from a application-level bug, which this index still catches
+    -- identically; it merely also requires created_at to match, which for any
+    -- correctly-functioning caller it always does (each sequence_number is
+    -- assigned to exactly one row, at exactly one created_at).
+    EXECUTE 'CREATE UNIQUE INDEX uq_event_sequence ON events (instance_id, sequence_number, created_at)';
+    EXECUTE 'CREATE INDEX idx_events_global_seq ON events (global_seq)';
+    EXECUTE 'CREATE INDEX idx_events_instance_seq ON events (instance_id, sequence_number)';
+    EXECUTE 'CREATE INDEX idx_events_instance_time ON events (instance_id, created_at)';
+    EXECUTE 'CREATE INDEX idx_events_type ON events (event_type)';
+    EXECUTE 'CREATE INDEX idx_events_tenant_instance_seq ON events (tenant_id, instance_id, sequence_number)';
+    EXECUTE 'CREATE INDEX idx_events_tenant_global_seq ON events (tenant_id, global_seq)';
+    EXECUTE 'CREATE INDEX idx_events_instance_order ON events (instance_id, created_at DESC, sequence_number DESC)';
+    EXECUTE 'CREATE INDEX idx_events_tenant_pipeline_run_seq
+        ON events (tenant_id, (metadata->>''pipeline_run_id''), sequence_number)';
 
--- uq_event_idempotency (idempotency_key) is deliberately NOT recreated here —
--- global idempotency now lives in plat_event_idempotency (Migration 2 below).
--- Partitioning would otherwise silently narrow idempotency_key uniqueness to
--- per-partition scope, which PAR-01 AC2 forbids.
+    -- uq_event_idempotency (idempotency_key) is deliberately NOT recreated here —
+    -- global idempotency now lives in plat_event_idempotency (Migration 2 below).
+    -- Partitioning would otherwise silently narrow idempotency_key uniqueness to
+    -- per-partition scope, which PAR-01 AC2 forbids.
 
-CREATE TABLE events_archive (
-    event_id          UUID            NOT NULL,
-    instance_id       UUID            NOT NULL,
-    event_type        TEXT            NOT NULL,
-    payload           JSONB           NOT NULL DEFAULT '{}',
-    actor_id          UUID            NOT NULL,
-    created_at        TIMESTAMPTZ     NOT NULL,
-    sequence_number   BIGINT          NOT NULL,
-    idempotency_key   TEXT            NOT NULL,
-    metadata          JSONB           NOT NULL DEFAULT '{}',
-    global_seq        BIGINT          NOT NULL,
-    tenant_id         UUID            NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
-    archived_at       TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (event_id, created_at)
-) PARTITION BY RANGE (created_at);
+    EXECUTE '
+    CREATE TABLE events_archive (
+        event_id          UUID            NOT NULL,
+        instance_id       UUID            NOT NULL,
+        event_type        TEXT            NOT NULL,
+        payload           JSONB           NOT NULL DEFAULT ''{}'',
+        actor_id          UUID            NOT NULL,
+        created_at        TIMESTAMPTZ     NOT NULL,
+        sequence_number   BIGINT          NOT NULL,
+        idempotency_key   TEXT            NOT NULL,
+        metadata          JSONB           NOT NULL DEFAULT ''{}'',
+        global_seq        BIGINT          NOT NULL,
+        tenant_id         UUID            NOT NULL DEFAULT ''00000000-0000-0000-0000-000000000000'',
+        archived_at       TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (event_id, created_at)
+    ) PARTITION BY RANGE (created_at)';
 
-CREATE INDEX idx_archive_instance ON events_archive (instance_id, sequence_number);
-CREATE INDEX idx_archive_type ON events_archive (event_type);
-CREATE INDEX idx_archive_time ON events_archive (created_at);
-CREATE INDEX idx_events_archive_tenant_instance_seq ON events_archive (tenant_id, instance_id, sequence_number);
-CREATE INDEX idx_events_archive_tenant_global_seq ON events_archive (tenant_id, global_seq);
-CREATE INDEX idx_events_archive_tenant_pipeline_run_seq
-    ON events_archive (tenant_id, (metadata->>'pipeline_run_id'), sequence_number);
+    EXECUTE 'CREATE INDEX idx_archive_instance ON events_archive (instance_id, sequence_number)';
+    EXECUTE 'CREATE INDEX idx_archive_type ON events_archive (event_type)';
+    EXECUTE 'CREATE INDEX idx_archive_time ON events_archive (created_at)';
+    EXECUTE 'CREATE INDEX idx_events_archive_tenant_instance_seq ON events_archive (tenant_id, instance_id, sequence_number)';
+    EXECUTE 'CREATE INDEX idx_events_archive_tenant_global_seq ON events_archive (tenant_id, global_seq)';
+    EXECUTE 'CREATE INDEX idx_events_archive_tenant_pipeline_run_seq
+        ON events_archive (tenant_id, (metadata->>''pipeline_run_id''), sequence_number)';
 
--- uq_event_archive_idempotency (013's index) is likewise not recreated for the
--- same partition-key reason; plat_event_idempotency supersedes its purpose.
+    -- uq_event_archive_idempotency (013's index) is likewise not recreated for the
+    -- same partition-key reason; plat_event_idempotency supersedes its purpose.
 
--- ── Migration 2: plat_event_idempotency ─────────────────────────────────────
--- Global (non-partitioned) idempotency-key uniqueness across events AND
--- events_archive AND events_ephemeral (PAR-03), written in the same
--- transaction as every append.
+    -- ── Migration 2: plat_event_idempotency ─────────────────────────────────
+    -- Global (non-partitioned) idempotency-key uniqueness across events AND
+    -- events_archive AND events_ephemeral (PAR-03), written in the same
+    -- transaction as every append.
 
-CREATE TABLE IF NOT EXISTS plat_event_idempotency (
-    idempotency_key   TEXT            PRIMARY KEY,
-    event_id          UUID            NOT NULL,
-    created_at        TIMESTAMPTZ     NOT NULL
-);
+    EXECUTE 'CREATE TABLE IF NOT EXISTS plat_event_idempotency (
+        idempotency_key   TEXT            PRIMARY KEY,
+        event_id          UUID            NOT NULL,
+        created_at        TIMESTAMPTZ     NOT NULL
+    )';
 
-CREATE INDEX IF NOT EXISTS idx_plat_event_idempotency_event
-    ON plat_event_idempotency (event_id, created_at);
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_plat_event_idempotency_event
+        ON plat_event_idempotency (event_id, created_at)';
 
--- ── Migration 3: re-establish event_payload_store / webhook_deliveries FKs ──
--- against the widened (event_id, created_at) PK. A composite FK to a
--- partitioned parent must reference the FULL partition key, not event_id
--- alone.
+    -- ── Migration 3: re-establish event_payload_store FK ────────────────────
+    -- against the widened (event_id, created_at) PK. A composite FK to a
+    -- partitioned parent must reference the FULL partition key, not event_id
+    -- alone. (webhook_deliveries keeps its own separate guard below, since it
+    -- additionally depends on webhook_subscriptions existing.)
 
-CREATE TABLE IF NOT EXISTS event_payload_store (
-    id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
-    event_id    UUID    NOT NULL,
-    created_at  TIMESTAMPTZ NOT NULL,
-    payload     JSONB   NOT NULL,
-    byte_size   INTEGER NOT NULL,
-    UNIQUE (event_id, created_at),
-    FOREIGN KEY (event_id, created_at) REFERENCES events (event_id, created_at) ON DELETE CASCADE
-);
+    EXECUTE 'CREATE TABLE IF NOT EXISTS event_payload_store (
+        id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id    UUID    NOT NULL,
+        created_at  TIMESTAMPTZ NOT NULL,
+        payload     JSONB   NOT NULL,
+        byte_size   INTEGER NOT NULL,
+        UNIQUE (event_id, created_at),
+        FOREIGN KEY (event_id, created_at) REFERENCES events (event_id, created_at) ON DELETE CASCADE
+    )';
+END
+$par01_migration_1_3$;
 
 -- webhook_deliveries.subscription_id FKs to webhook_subscriptions, a
 -- PER_TENANT table (docs/anti-patterns.md's dual-schema classification;
@@ -277,6 +320,14 @@ DECLARE
     v_range_start TIMESTAMPTZ;
     v_range_end TIMESTAMPTZ;
 BEGIN
+    -- Public-schema guard, explicit for defense-in-depth even though this
+    -- block is already naturally a no-op there: events is never partitioned
+    -- in `public` (Migrations 1-3 above skip that schema pass entirely), so
+    -- the v_is_partitioned check just below would already evaluate false.
+    IF current_schema() = 'public' THEN
+        RETURN;
+    END IF;
+
     -- Idempotency: if events is already partitioned (the guard at the top of
     -- this file already returned in that case for the DO block above, but
     -- this is a SEPARATE DO block — plain top-level SQL has no cross-
