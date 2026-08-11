@@ -1,0 +1,44 @@
+{
+  "handoff_id": "cca235b4-15b8-460e-9186-c7622161e8cf",
+  "run_id": "WF02-batch-1-20260811",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-1-20260811/step-2a-backend-dev.json",
+  "created_at": "2026-08-11T09:45:16Z",
+  "started_at": "2026-08-11T10:03:08Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-01",
+      "MIG-04",
+      "MIG-05",
+      "MIG-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/ddl-01-validate-platform-ddl.md",
+      "src/design/mig-04-mig-05-mig-06-resume-idempotency-admin-surface.md"
+    ]
+  },
+  "task": {
+    "description": "Implement DDL-01, MIG-04, MIG-05, MIG-06 per the validated (PASS) design artefacts in artifacts_in. DDL-01: new src/platform/ddl_validate.zig with ValidatePlatformDDL composing ddl_namespace.checkNamespace plus new lock-class and non-concurrent-index checks, first-failure-in-statement-order aggregation (AC5). MIG-04: resumeFanout() added to existing src/platform/migration_fanout.zig, querying platform_migrations_resume_idx for pending/failed tenants only. MIG-05: change seedPendingRow's SQL to ON CONFLICT (migration_id, tenant_id) DO UPDATE ... WHERE status != 'done', plus an isAlreadyDone() pre-check so done tenants never get a transaction opened. MIG-06: three HTTP routes in new src/api/routes/platform_migrations.zig (POST run, GET status, POST resume) gated by Role.PLATFORM_ADMIN per the existing onboarding.zig/webhooks.zig convention, plus assertNoOutstandingMigrations boot-time gate in src/main.zig::runApiServer following startup_assertions.zig's exact shape (typed error, FATAL log line, std.process.exit(78)). Read both design docs in full before writing any code -- they specify exact function signatures, error taxonomies, and the 3 open-question interim resolutions CODE-DESIGN-VALIDATOR already accepted (MIG-05 AC5 = process discipline only, no runtime code; MIG-06 AC2 = caller-supplied known_migration_ids parameter; MIG-06 role = Role.PLATFORM_ADMIN).",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build check exits 0",
+      "python tools/lint_sql_param_types.py src tests exits 0",
+      "Every acceptance criterion in DDL-01, MIG-04, MIG-05, MIG-06 is implemented (MIG-05 AC5 satisfied by the accepted process-discipline reading, not runtime code)",
+      "No mocks/stubs/fakes; all DB access via real PostgreSQL through the Pool",
+      "Real unit + integration tests written and passing for all new code, with own addTest/build.zig wiring (verified real by deliberate-break test)",
+      "Implementation committed to feature/WF02-batch-1-20260811"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
