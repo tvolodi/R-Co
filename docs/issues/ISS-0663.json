@@ -1,0 +1,27 @@
+{
+  "issue_id": "ISS-0663",
+  "title": "tools/clean_test_db.py's run_psql() silently swallows FK-violation and other real failures whose stderr happens to contain \"relation\"",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "test infrastructure / gate integrity",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": null,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/700",
+  "requirement_ids": [],
+  "summary": "Discovered while running the Step 00a Green-Main Gate for WF02-batch-0-20260811 (DDL-05, MIG-01, MIG-02, MIG-03). `zig build test-env-verify` reported C4 (schema baseline) FAIL: 11 leaked `public.tenant` rows (storage_mode='SCHEMA') with no matching `public.tenant_schemas` row or real Postgres schema -- left behind by an unrelated interrupted test run. `python tools/clean_test_db.py --include-fixtures` (the documented remedy, matching the exact ISS-0140/GH-443 half-provisioned-row scenario the script's own comments describe) reported 'Test database cleaned' with no errors, but the leaked rows were still present afterward -- reproduced identically both via the Bash tool's psql resolution and via PowerShell, ruling out the known Windows psql-shim resolution bug (GH-280/ISS-0040) as the cause.",
+  "root_cause": {
+    "type": "gate_matches_substring_not_structured_signal",
+    "details": "tools/clean_test_db.py's run_psql() (around line 102-114) treats any non-zero psql exit whose stderr contains the substrings 'does not exist' or 'relation' as a benign, ignorable condition and returns True (success) without printing a warning. This is over-broad: PostgreSQL's own foreign-key-violation error text routinely contains the word 'relation' (e.g. '...violates foreign key constraint \"...\" on table ... referenced from relation ...'), so a genuine DELETE failure caused by FK ordering, RLS, or any other relation-referencing error is silently swallowed and reported as clean. Verified directly: running the exact same DELETE statements (`DELETE FROM public.tenant t WHERE t.storage_mode = 'SCHEMA' AND t.slug != 'default' AND NOT EXISTS (SELECT 1 FROM public.tenant_schemas ts WHERE ts.tenant_id = t.id)` and `DELETE FROM public.tenant WHERE tenant_type = 'production' AND slug != 'default'`) via a direct psycopg2 connection (bypassing run_psql's subprocess+psql-CLI path entirely) deleted all 12 leaked rows successfully with no error at all -- so the underlying SQL is correct and the rows ARE deletable; something about the psql-CLI invocation path in run_psql() is failing without being reported, and the failure is being classified as an ignorable 'does not exist' condition it is not."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-11T04:51:13Z",
+  "resolved_at": null,
+  "prevention": [
+    "Match psql failures by SQLSTATE / a narrow, anchored error-class check, never by an unanchored substring like 'relation' that overlaps with normal FK-violation error text.",
+    "When ignoring a specific expected error class (missing table before first migration), print what was ignored and why, so a genuine silent failure is distinguishable from an expected no-op in the log.",
+    "Add a post-condition check after the cleanup sweep (query for remaining leaked rows) so the script itself fails loudly if its cleanup did not converge, rather than reporting 'Test database cleaned' unconditionally."
+  ]
+}
