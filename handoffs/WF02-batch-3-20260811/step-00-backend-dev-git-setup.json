@@ -1,0 +1,44 @@
+{
+  "handoff_id": "4df1f4d6-c96a-4846-adba-f9a67e7e4966",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-3-20260811/step-00-backend-dev-git-setup.json",
+  "created_at": "2026-08-11T14:23:14Z",
+  "started_at": "2026-08-11T14:25:13Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "owned_modules": [
+      "migrations/",
+      "src/event_store/",
+      "src/scheduler/"
+    ]
+  },
+  "task": {
+    "description": "Step 00 git-setup per docs/agents/protocols/GIT_SETUP.md. Branch name: feature/WF02-batch-3-20260811. This worktree cannot checkout main directly -- confirm HEAD contains origin/main via git merge-base --is-ancestor. First step of a HIGH-RISK WF-02 pipeline implementing 4 MUST requirements that restructure the core events table: PAR-01 (PARTITION BY RANGE (created_at) on events/events_archive, widening PK to (event_id, created_at), a separate idempotency_key uniqueness table), PAR-02 (daily plat_partition_maintenance scheduler job, idempotent, keeps lead_months future partitions attached), PAR-03 (partition-scoped retention via DETACH/ATTACH between events and events_archive, DROP TABLE confined to ephemeral partitions), PAR-04 (CHECK constraints required before ATTACH PARTITION for fast catalog-only attach, AttachScanRequired error if missing). Create feature/WF02-batch-3-20260811 branch, push -u origin.",
+    "acceptance_criteria": [
+      "branch HEAD verified to contain origin/main tip",
+      "git branch --show-current outputs feature/WF02-batch-3-20260811",
+      "git push -u origin feature/WF02-batch-3-20260811 exited 0"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
