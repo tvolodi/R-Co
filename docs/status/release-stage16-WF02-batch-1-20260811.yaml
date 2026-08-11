@@ -1,0 +1,200 @@
+stage: "Stage 16"
+date: "2026-08-11T11:13:20Z"
+run_id: WF02-batch-1-20260811
+workflow_id: WF-02
+workflow_step: "05"
+decision: APPROVED
+
+requirement_ids:
+  - DDL-01
+  - MIG-04
+  - MIG-05
+  - MIG-06
+
+prior_gates:
+  design_validation_step_1b: PASS
+  security_review_step_2c: PASS
+  test_design_validation_step_3b: PASS
+  test_execution_step_4: PASS
+  test_report: tests/reports/report-20260811-WF02-batch-1.yaml
+  note: >
+    This batch had one rework cycle at Step 3b (a test-fixture defect in
+    TC-MIG-04-03's EXPLAIN assertion, corrected by TEST-DESIGNER and
+    re-validated PASS by TEST-DESIGN-VALIDATOR) prior to this validation.
+
+acceptance_criteria_audit:
+  method: >
+    Read full requirement bodies and Acceptance Criteria for DDL-01, MIG-04,
+    MIG-05, MIG-06 directly from docs/requirements.yaml (yaml.safe_load,
+    utf-8-sig). Cross-checked every AC against tests/specs/DDL-01.md,
+    MIG-04.md, MIG-05.md, MIG-06.md AND the actual Zig test source --
+    src/platform/ddl_validate.zig (21 tests), tests/integration/migration_resume_test.zig
+    (9 tests, MIG-04 + MIG-05), tests/integration/platform_migrations_admin_test.zig
+    (6 tests, MIG-06) -- not just the test report or spec-doc claims. Also
+    read src/platform/migration_fanout.zig, src/api/routes/platform_migrations.zig,
+    and src/main.zig's route-registration code line-by-line. Independently
+    re-ran every layer myself: test-ddl-validate (21/21), test-integration-mig04-mig05
+    (9/9), test-integration-mig06 (6/6) -- all match the test report exactly,
+    exit code 0 each.
+  ddl_01:
+    ac1: covered (TC-DDL-01-AC1, DROP COLUMN -> UnboundedExclusiveLock)
+    ac2: covered (TC-DDL-01-AC2, CREATE INDEX without CONCURRENTLY -> NonConcurrentIndexBuild)
+    ac3: covered (TC-DDL-01-AC3, ALTER COLUMN SET DATA TYPE -> UnboundedExclusiveLock)
+    ac4: covered (TC-DDL-01-AC4, determinism + no-DB-required, reinforced by the whole
+      module's pure-function shape -- no allocator/handle/clock/env var anywhere in
+      src/platform/ddl_validate.zig)
+    ac5: covered (TC-DDL-01-AC5, 200 statements validated in <100ms, verified with a
+      test-local wall-clock timer that does not touch the module's own purity contract)
+    plus: composition proofs (TC-DDL-01-composition, -composition-b) that the DDL-05
+      namespace check fires correctly through this module's aggregation pipeline, and
+      ordering proofs (TC-DDL-01-order, -order-b) that the first failing statement in
+      file order is reported and later statements are never inspected once an earlier
+      one fails.
+  mig_04:
+    ac1: covered (TC-MIG-04-01, resume touches only pending/failed, done tenant's
+      completed_at is byte-identical after resume)
+    ac2: covered (TC-MIG-04-02, all-done resume executes zero DDL via mustNotBeCalledStep
+      and returns zero counts)
+    ac3: covered (TC-MIG-04-03, EXPLAIN under `SET LOCAL enable_seqscan = off` with 40
+      seeded pending/failed rows confirms platform_migrations_resume_idx is used --
+      this is the AC that had the Step 3b rework: originally ran EXPLAIN against zero
+      seeded rows so the planner chose a seqscan on cost grounds alone; TEST-DESIGNER's
+      fix seeds a realistic row count so the index is genuinely the cheaper plan, not
+      merely forced)
+    ac4: covered (TC-MIG-04-04, ORDER BY tenant_id ascending verified both directly via
+      the resume SQL text and via an actual resumeFanout call)
+    ac5: covered (TC-MIG-04-05, resume's control-row upsert and DDL step commit/rollback
+      together -- same applyToTenant protocol as MIG-02, reused verbatim)
+  mig_05:
+    ac1: covered (TC-MIG-05-01, re-run of a done tenant via mustNotBeCalledStep --
+      zero DDL, completed_at unchanged)
+    ac2: covered (TC-MIG-05-02, re-run of a failed tenant is re-attempted and reaches done)
+    ac3: covered (TC-MIG-05-03, direct seed-step SQL against an already-done row leaves
+      status/completed_at/error_msg all untouched)
+    ac4: covered (TC-MIG-05-04, fanout loop's isAlreadyDone() pre-check skips a done
+      tenant without invoking step() -- proven via failingStep raising for any tenant
+      actually invoked, and tenant_done's completed_at staying byte-identical)
+    ac5: >
+      NOT independently testable at the runtime level, and genuinely so -- confirmed by
+      reading src/platform/migration_fanout.zig in full. Zero content-hash, checksum, or
+      immutability-related code exists anywhere in the module: the control table upsert
+      (seedPendingRow) keys only on (migration_id, tenant_id) and status; markDone and
+      recordFailureSeparately touch only status/completed_at/error_msg/run_id. There is
+      no column to compare a file's content hash against, and the design doc's own Open
+      Question 1 (src/design/mig-04-mig-05-mig-06-resume-idempotency-admin-surface.md
+      lines 556-585) explicitly leaves the enforcement mechanism (hash-check-at-call-site
+      vs. pure process/tooling discipline) unresolved as a deliberate, disclosed scoping
+      decision -- not a silently missing implementation. This reasoning was accepted at
+      Step 1b (CODE-DESIGN-VALIDATOR) and re-confirmed at Step 3b
+      (TEST-DESIGN-VALIDATOR); this pass independently re-verified it by reading the
+      module's source directly rather than trusting either prior claim.
+  mig_06:
+    ac1: covered (TC-MIG-06-01, non-PLATFORM_ADMIN caller gets 403 on run/status/resume,
+      zero control rows written by any of the three forbidden calls)
+    ac2: covered (TC-MIG-06-02, unknown migration_id -> 404 UnknownMigration, zero
+      control rows written) -- see "MIG-06 known_migration_ids placeholder" below for
+      the production-wiring judgment call this AC required.
+    ac3: covered (TC-MIG-06-03, status response body contains done/failed/pending counts
+      plus per-tenant error_msg and completed_at for both fixture tenants)
+    ac4: covered (TC-MIG-06-04, two independent migration_ids produce fully independent
+      control-row sets with no cross-referencing state)
+    ac5: covered (TC-MIG-06-05 + -05b, boot-time gate raises OutstandingPendingMigrations
+      when a pending row exists and the row-count check confirms a clean state
+      contributes none)
+
+mig_06_known_migration_ids_placeholder:
+  question: >
+    BACKEND-DEV flagged that src/main.zig's route registration (lines 1147-1189) wires
+    handleRunMigration/handleResumeMigration with a NO-OP DdlStep (executes `SELECT 1`
+    only) and an EMPTY known_migration_ids slice, since no on-disk migration-file
+    registry/parser exists yet for the platform.platform_migrations fanout system (that
+    is DDL-01's future migration-plan CLI, not built in this batch). Does this make
+    MIG-06 AC2 genuinely untestable/broken in production (release-blocking), or is it a
+    legitimate, already-scoped integration-point deferral?
+  evidence_read:
+    - "src/api/routes/platform_migrations.zig handleRunMigration (lines 93-148): the
+      known_migration_ids membership check runs BEFORE any control-row write, returns
+      404 with body containing the literal string UnknownMigration on a miss -- this is
+      exactly AC2's observable contract, and it is fully exercised by
+      TC-MIG-06-02, which supplies its OWN known_migration_ids test double (&.{\"some_other_migration\"})
+      independent of main.zig's wiring."
+    - "src/main.zig lines 1147-1189: known_migration_ids is hardcoded to an empty slice
+      (&.{}) at the route-registration call site, with an explicit doc comment (lines
+      1153-1172) naming this as the interim state pending a real registry, and a no-op
+      DdlStep (SELECT 1) with a comment naming it as pending real DdlStep
+      implementations once DDL-01/MIG-01's migration-plan CLI exists."
+    - "src/design/mig-04-mig-05-mig-06-resume-idempotency-admin-surface.md Open Question
+      2 (lines 587-603): explicitly anticipated this exact gap before implementation --
+      'this design does not have that enumeration to call... Recommend
+      handleRunMigration's UnknownMigration check be implemented against whatever
+      registry DDL-01/MIG-01's eventual migration-plan CLI defines... a placeholder
+      registry, e.g. a caller-supplied known_migration_ids parameter... would satisfy
+      AC2's observable behavior without waiting on DDL-01... Not blocking this handoff's
+      PASS status: the HANDLER-side contract... is fully specified; only the registry's
+      own data source is open.'"
+  judgment: >
+    Legitimate, already-scoped integration-point deferral -- NOT release-blocking.
+    handleRunMigration's OWN CONTRACT (the thing MIG-06 AC2 actually specifies: check
+    membership before writing any control row, 404 UnknownMigration on a miss) is
+    correct and fully integration-tested via a test-supplied known_migration_ids set,
+    exactly as the design doc anticipated. The empty slice at the main.zig call site is
+    a real, disclosed production consequence -- every /admin/migrations/run call will
+    404 as UnknownMigration until a real registry is wired in -- but that consequence
+    is the deliberately conservative, non-destructive interim behavior the design doc
+    named in Open Question 2 and CODE-DESIGN-VALIDATOR accepted at Step 1b, not a gap
+    discovered after the fact or a stub silently masquerading as complete. It is
+    equivalent in kind to MIG-05 AC5 and DDL-05 AC5/MIG-03 AC4 in batch-0: an
+    explicitly-scoped-out integration point, not a defect. Distinguishing factor from
+    the anti-patterns catalogue's "TODO that returns success" entry (GH-473/ISS-0155):
+    that stub silently accepted ANY input as valid, defeating its requirement's central
+    guarantee. Here the effect is the opposite and fail-safe -- the handler currently
+    rejects EVERYTHING as unknown rather than silently accepting something it
+    shouldn't, and the code path that will supply real entries once a registry exists
+    is already correct and already tested.
+
+migration_idempotency:
+  method: >
+    Ran `zig build migrate` twice in immediate succession with BPM_TEST_DB_URL and
+    BPM_DB_URL set explicitly in the shell session.
+  first_run: "1144_platform_migrations_control_table.sql and all prior files reported skip; \"No new migrations to apply.\"; exit code 0."
+  second_run: "Identical output -- all files skip; \"No new migrations to apply.\"; exit code 0."
+  result: PASS -- confirmed clean, idempotent no-op both times.
+
+nfr_benchmarks:
+  applicable: false
+  ran_bench: true
+  note: >
+    Ran `zig build bench` for completeness -- all 5 existing NFR checks pass
+    (NFR-01 read p99 0.937ms, NFR-01 write p99 1.995ms, NFR-02 throughput
+    67454.6 events/sec, NFR-04 replay 44.2ms, NFR-04 snapshot-replay 9.8ms, all
+    well within threshold). This batch adds 3 real HTTP endpoints (MIG-06's
+    run/status/resume), but tests/bench/bench.zig contains no HTTP-route-level
+    latency/throughput harness at all -- every measurement it makes
+    (measureReadP99/measureWriteP99/measureThroughput/measureReplayMs) is a
+    direct DB-level event-store operation, with no code path anywhere in the
+    test suite that drives a request through src/main.zig's router for ANY
+    route, not only this batch's three new ones. This is a pre-existing,
+    codebase-wide infrastructure gap, not something specific to MIG-06 that
+    this batch should be blocked on introducing. Per
+    docs/agents/workflows/WF-04_full_test_run.md, HTTP-level NFR benchmarking
+    (Step 6 of that workflow) is a separate, dedicated pre-release/full-suite
+    pass, distinct from a single WF-02 batch's Step 5 -- consistent with
+    batch-0's own precedent (docs/status/release-stage16-WF02-batch-0-20260811.yaml)
+    which recorded the same endpoints as "not applicable, no route to measure
+    against in this batch" before they existed. Now that the routes exist,
+    the correct next step is a future WF-04 pass (or a dedicated ADHOC task)
+    to build an HTTP-level bench harness covering them, not for this batch to
+    invent one ad hoc. Flagged here explicitly rather than silently skipped,
+    per this role's instructions.
+
+blocking_issues: []
+
+approved_requirements:
+  - "DDL-01"
+  - "MIG-04"
+  - "MIG-05"
+  - "MIG-06"
+
+not_approved_requirements: []
+
+next_action: "Route to DOC-UPDATER (Step 6)"

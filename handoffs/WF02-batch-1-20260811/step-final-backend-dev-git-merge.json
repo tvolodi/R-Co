@@ -1,0 +1,42 @@
+{
+  "handoff_id": "73c90ccf-3d14-4169-a3d0-4fad565e3a02",
+  "run_id": "WF02-batch-1-20260811",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-1-20260811/step-final-backend-dev-git-merge.json",
+  "created_at": "2026-08-11T09:45:16Z",
+  "started_at": "2026-08-11T11:23:56Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-01",
+      "MIG-04",
+      "MIG-05",
+      "MIG-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Step Final git-merge per docs/agents/protocols/GIT_MERGE.md. All WF-02 pipeline steps PASSED (including one resolved rework cycle at Step 3b). Branch: feature/WF02-batch-1-20260811. Rebase onto origin/main, push, create PR, verify CI checks actually reach a terminal pass state (do not assume -- poll gh pr checks with a bounded active wait, do not just wait passively for a notification that will not come), squash-merge, delete branch (local AND remote), return to clean main-equivalent state.",
+    "acceptance_criteria": [
+      "git rebase origin/main succeeds",
+      "zig build and zig build test pass after rebase",
+      "PR created, all CI checks reach a genuine terminal pass state (verified via gh pr checks, not assumed)",
+      "PR squash-merged",
+      "feature/WF02-batch-1-20260811 branch deleted (local and remote)",
+      "Repo returned to clean state tracking origin/main"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

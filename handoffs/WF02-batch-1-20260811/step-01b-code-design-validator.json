@@ -1,0 +1,48 @@
+{
+  "handoff_id": "38ca3a1d-221c-43da-8742-cbdea78cebc4",
+  "run_id": "WF02-batch-1-20260811",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-1-20260811/step-01b-code-design-validator.json",
+  "created_at": "2026-08-11T09:45:16Z",
+  "started_at": "2026-08-11T09:58:23Z",
+  "completed_at": "2026-08-11T10:00:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-01",
+      "MIG-04",
+      "MIG-05",
+      "MIG-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/ddl-01-validate-platform-ddl.md",
+      "src/design/mig-04-mig-05-mig-06-resume-idempotency-admin-surface.md"
+    ]
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER Step 01 design for DDL-01, MIG-04, MIG-05, MIG-06 (stage 16). CODE-DESIGNER returned result.status PARTIAL with 3 flagged open questions (all explicitly marked by the designer as non-blocking, with a chosen interim resolution for each). Your job includes judging whether ORCH should accept each interim resolution as reasonable (in which case treat as PASS with notes) or whether one/more genuinely needs REQ-ANALYST clarification before BACKEND-DEV proceeds (in which case FAIL with that specific issue). The 3 questions: (1) MIG-05 AC5 migration-file-immutability enforcement -- designer chose option (b), pure process/tooling discipline, no runtime code -- assess if this is a defensible reading of MIG-05's other ACs and the existing migration_id free-text design. (2) MIG-06 AC2 'the migration set' registry -- designer proposes an interim caller-supplied known_migration_ids parameter to handleRunMigration -- assess if this genuinely satisfies AC2's observable behavior (404 UnknownMigration, no control rows written) without requiring DDL-01's not-yet-built CLI. (3) MIG-06's platform-operator role mapped to existing Role.PLATFORM_ADMIN -- assess if this is consistent with the requirement text and the rest of this batch/batch-0.",
+    "acceptance_criteria": [
+      "Every AC in DDL-01, MIG-04, MIG-05, MIG-06 traced to a design section",
+      "No implementation code in the design",
+      "DDL-01 correctly composes ddl_namespace.checkNamespace() rather than re-deriving it",
+      "MIG-04/05/06 correctly extend migration_fanout.zig rather than redesigning it",
+      "Each of the 3 flagged open questions independently judged: accept the interim resolution, or FAIL with specific escalation need"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "DDL-01 and MIG-04/05/06 design artefacts validated. Coverage: every AC in DDL-01 (5 ACs) and MIG-04/05/06 (5+5+5 ACs) traces to a design section (verdict table, data-flow diagram, or explicit caller-side note). No implementation code present in either artefact (signatures and SQL snippets only, no function bodies, both files pass lint_design_artefact.py exit 0/no issues). Verified against source: DDL-01 correctly calls ddl_namespace.checkNamespace() (src/platform/ddl_namespace.zig) via field projection rather than re-deriving RESERVED_PREFIX/the plat_ rule. MIG-04/05/06 correctly extend the existing migration_fanout.zig (runFanout/FanoutRequest/FanoutResult/applyToTenant/seedPendingRow all read and reused/edited in place, not redesigned). Judgment on the 3 flagged open questions: (1) MIG-05 AC5 migration-file-immutability -- ACCEPTED. Verified migrations/1144_platform_migrations_control_table.sql: migration_id is free-text with no content_hash/checksum column and no content-binding of any kind; neither runFanout nor resumeFanout's signatures receive file content, only migration_id strings, so no runtime code path could observe a content change without a new mechanism entirely. 'Frozen' in the requirement text is a property of file content vs identifier, which reads as a pre-runtime/tooling concept given the existing schema has zero content-binding. Option (b) (process/tooling discipline, no runtime code) is a defensible reading of AC5's 'the change is rejected' given this constraint; a content-hash column would be new Type C scope the designer correctly declined to invent unilaterally. (2) MIG-06 AC2 'the migration set' -- ACCEPTED. The interim known_migration_ids parameter to handleRunMigration gives BACKEND-DEV a concrete, testable contract: check-before-any-control-row-write ordering is fully specified, and the observable behavior (404 UnknownMigration, zero control rows) is implementable and testable today without DDL-01's not-yet-built CLI/parser. Sufficiently specified; only the registry's future data source is deferred, not the handler contract. (3) MIG-06 'platform-operator role' mapped to Role.PLATFORM_ADMIN -- ACCEPTED. Verified directly against src/api/middleware/auth.zig:81-102: Role enum has exactly 6 values (PLATFORM_ADMIN, PROCESS_DESIGNER, PROCESS_OPERATOR, TASK_WORKER, VIEWER, AGENT_RUNNER), PLATFORM_ADMIN is the sole/top-priority admin role, no PLATFORM_OPERATOR value exists anywhere in the codebase. Confirmed the cited RBAC convention (actor.role != .PLATFORM_ADMIN) appears verbatim at onboarding.zig lines 54/290/385. Mapping is accurate and consistent with every other admin-gated route in the codebase. All three interim resolutions are reasonable, narrow, non-blocking, and leave BACKEND-DEV with an unambiguous contract to implement against.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a implementation)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

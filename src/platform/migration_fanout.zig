@@ -68,6 +68,44 @@ pub const FanoutError = error{
     SnapshotQueryFailed,
 };
 
+// ---------------------------------------------------------------------------
+// MIG-04 — resume
+// ---------------------------------------------------------------------------
+
+/// Request/result types deliberately shaped to match FanoutRequest/
+/// FanoutResult field for field, so callers (MIG-06's resume route) can
+/// treat runFanout and resumeFanout uniformly.
+pub const ResumeRequest = struct {
+    migration_id: []const u8,
+    run_id: []const u8,
+};
+
+pub const ResumeResult = struct {
+    run_id: []const u8,
+    done: u32,
+    failed: u32,
+    /// Count of rows that were pending/failed at resume start but were still
+    /// pending because the tenant's own connection acquisition never even
+    /// completed (mirrors FanoutResult.pending's meaning). Always 0 at a
+    /// normal return in this design — applyToTenant always records done or
+    /// failed for every tenant it is given.
+    pending: u32,
+};
+
+pub const ResumeError = error{
+    /// Same advisory-lock contention as MIG-03 AC2 — a resume run and a
+    /// fresh run() (or another resume()) of the SAME migration_id must not
+    /// interleave; both acquire the identical
+    /// pg_try_advisory_lock(hashtext(migration_id)) key runFanout already
+    /// uses, so a resume() cannot race a run() for the same migration_id
+    /// either.
+    MigrationAlreadyRunning,
+    PoolExhausted,
+    /// The pending/failed-tenant snapshot query itself failed (distinct from
+    /// a per-tenant DDL failure).
+    SnapshotQueryFailed,
+};
+
 /// One tenant's unit of DDL work, supplied by the caller. Runs inside the
 /// per-tenant transaction this module opens; must NOT open or commit its own
 /// transaction — runFanout owns the transaction boundary (MIG-02's whole
@@ -158,10 +196,22 @@ pub fn runFanout(
     // Loop: apply step() to every snapshot tenant in order. A per-tenant
     // failure never stops the loop (MIG-03 AC1) — applyToTenant never
     // raises for a DDL failure, only records TenantOutcome.failed.
+    //
+    // MIG-05 AC4: a tenant whose row is ALREADY 'done' after the seed step
+    // (seedPendingRow's ON CONFLICT ... WHERE status != 'done' guard leaves
+    // a done row completely untouched) is skipped here WITHOUT opening a
+    // connection or transaction against that tenant's schema — the
+    // isAlreadyDone() pre-check reuses lock_conn, already held for the whole
+    // run, so this costs no extra pool.acquire() call.
     // ------------------------------------------------------------------
     var done_count: u32 = 0;
     var failed_count: u32 = 0;
     for (tenant_ids) |tenant_id| {
+        const already_done = isAlreadyDone(lock_conn, request.migration_id, tenant_id) catch false;
+        if (already_done) {
+            done_count += 1;
+            continue;
+        }
         const outcome = applyToTenant(allocator, pool, request, tenant_id, step);
         switch (outcome) {
             .done => done_count += 1,
@@ -170,6 +220,97 @@ pub fn runFanout(
     }
 
     return FanoutResult{
+        .run_id = request.run_id,
+        .done = done_count,
+        .failed = failed_count,
+        .pending = 0,
+    };
+}
+
+// ---------------------------------------------------------------------------
+// resumeFanout — MIG-04
+// ---------------------------------------------------------------------------
+
+/// Applies `step` only to tenants whose platform.platform_migrations row for
+/// `request.migration_id` is 'pending' or 'failed', read through
+/// platform_migrations_resume_idx. A 'done' row is never re-applied (MIG-04
+/// body). Reuses applyToTenant for the per-tenant MIG-02 transaction
+/// protocol, so resume and a fresh run share the exact same commit-with-DDL
+/// semantics (MIG-04 AC5).
+///
+/// Does NOT call seedPendingRow — every row it will touch already exists (it
+/// read the row to find the tenant in the first place); seeding is
+/// runFanout's job for a fresh run only.
+pub fn resumeFanout(
+    allocator: std.mem.Allocator,
+    pool: *Pool,
+    request: ResumeRequest,
+    step: DdlStep,
+) ResumeError!ResumeResult {
+    // Same advisory-lock protocol as runFanout: a resume run and a fresh
+    // run() (or another resume()) of the SAME migration_id must not
+    // interleave.
+    const lock_conn = pool.acquire() catch return ResumeError.PoolExhausted;
+    var lock_acquired = false;
+    defer {
+        if (lock_acquired) {
+            releaseMigrationLock(lock_conn, request.migration_id);
+        }
+        pool.release(lock_conn);
+    }
+
+    lock_acquired = acquireMigrationLock(lock_conn, request.migration_id) catch return ResumeError.PoolExhausted;
+    if (!lock_acquired) {
+        return ResumeError.MigrationAlreadyRunning;
+    }
+
+    // Snapshot: tenants whose control row for this migration_id is 'pending'
+    // or 'failed', ordered by tenant_id ascending (MIG-04 AC4:
+    // reproducibility between a run and its resume). Served by
+    // platform_migrations_resume_idx (MIG-04 AC3).
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const arena_alloc = arena.allocator();
+
+    var snapshot_result = lock_conn.query(
+        arena_alloc,
+        \\SELECT tenant_id::text
+        \\FROM platform.platform_migrations
+        \\WHERE migration_id = $1 AND status IN ('pending', 'failed')
+        \\ORDER BY tenant_id
+    ,
+        &.{request.migration_id},
+    ) catch return ResumeError.SnapshotQueryFailed;
+    defer snapshot_result.deinit();
+
+    const tenant_count = snapshot_result.rows.len;
+    var tenant_ids = allocator.alloc([]const u8, tenant_count) catch return ResumeError.SnapshotQueryFailed;
+    defer allocator.free(tenant_ids);
+    for (snapshot_result.rows, 0..) |row, i| {
+        const tenant_id_col = row[0] orelse return ResumeError.SnapshotQueryFailed;
+        tenant_ids[i] = allocator.dupe(u8, tenant_id_col) catch return ResumeError.SnapshotQueryFailed;
+    }
+    defer for (tenant_ids) |tid| allocator.free(tid);
+
+    // applyToTenant expects a FanoutRequest (migration_id, run_id) — build
+    // one from ResumeRequest's identical fields so the SAME per-tenant MIG-02
+    // transaction protocol is reused verbatim (MIG-04 AC5).
+    const fanout_request = FanoutRequest{
+        .migration_id = request.migration_id,
+        .run_id = request.run_id,
+    };
+
+    var done_count: u32 = 0;
+    var failed_count: u32 = 0;
+    for (tenant_ids) |tenant_id| {
+        const outcome = applyToTenant(allocator, pool, fanout_request, tenant_id, step);
+        switch (outcome) {
+            .done => done_count += 1,
+            .failed => failed_count += 1,
+        }
+    }
+
+    return ResumeResult{
         .run_id = request.run_id,
         .done = done_count,
         .failed = failed_count,
@@ -313,18 +454,51 @@ fn releaseMigrationLock(conn: *Conn, migration_id: []const u8) void {
     ) catch {};
 }
 
-/// Seed a 'pending' control row for (migration_id, tenant_id). Idempotent:
-/// ON CONFLICT DO NOTHING leaves an already-existing row (from a prior run,
-/// in any status) untouched, so re-running the seed step never regresses a
-/// done/failed row back to pending.
+/// Seed a 'pending' control row for (migration_id, tenant_id) — MIG-05
+/// idempotent re-run semantics. `ON CONFLICT ... DO UPDATE ... WHERE status
+/// != 'done'` makes the conflict-action's predicate false for an
+/// already-'done' row, so Postgres leaves that row COMPLETELY unmodified
+/// (status, completed_at, error_msg all untouched — MIG-05 AC1/AC3). For a
+/// 'failed' row (or no row at all), the predicate is true / the row is
+/// absent, so the row is reset to 'pending' with a fresh run_id (MIG-05
+/// AC2), which lets the fanout loop's isAlreadyDone() pre-check correctly
+/// return false and pick the tenant back up via applyToTenant.
 fn seedPendingRow(conn: *Conn, request: FanoutRequest, tenant_id: []const u8) PoolError!void {
     try conn.exec(
         \\INSERT INTO platform.platform_migrations (migration_id, tenant_id, status, run_id)
         \\VALUES ($1, $2::uuid, 'pending', $3)
-        \\ON CONFLICT (migration_id, tenant_id) DO NOTHING
+        \\ON CONFLICT (migration_id, tenant_id) DO UPDATE
+        \\SET status = 'pending', run_id = EXCLUDED.run_id
+        \\WHERE platform.platform_migrations.status != 'done'
     ,
         &.{ request.migration_id, tenant_id, request.run_id },
     );
+}
+
+/// MIG-05 AC4: cheap pre-check reusing the lock connection already held for
+/// the whole run (no extra pool.acquire() call). Returns true only for a row
+/// that is GENUINELY 'done' after seeding — seedPendingRow has already run
+/// by the time this is called, so a row that WAS failed and just got reset
+/// to pending by the ON CONFLICT DO UPDATE correctly returns false here and
+/// falls through to applyToTenant. A missing row (should not normally
+/// happen, since seedPendingRow just ran for this exact tenant) also
+/// correctly returns false, so the tenant still gets a real attempt rather
+/// than being silently skipped.
+fn isAlreadyDone(conn: *Conn, migration_id: []const u8, tenant_id: []const u8) PoolError!bool {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    var result = try conn.query(
+        a,
+        "SELECT status FROM platform.platform_migrations WHERE migration_id = $1 AND tenant_id = $2::uuid",
+        &.{ migration_id, tenant_id },
+    );
+    defer result.deinit();
+
+    if (result.rows.len == 0 or result.rows[0].len == 0) return false;
+    const status = result.rows[0][0] orelse return false;
+    return std.mem.eql(u8, status, "done");
 }
 
 /// Move the control row to 'done', setting completed_at and clearing

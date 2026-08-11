@@ -1,0 +1,51 @@
+{
+  "handoff_id": "a5b1104c-6660-4464-9e6b-cf76a1645385",
+  "run_id": "WF02-batch-1-20260811",
+  "workflow_id": "WF-02",
+  "step": "2c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-batch-1-20260811/step-2c-security-reviewer.json",
+  "created_at": "2026-08-11T09:45:16Z",
+  "started_at": "2026-08-11T10:26:10Z",
+  "completed_at": "2026-08-11T10:29:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-01",
+      "MIG-04",
+      "MIG-05",
+      "MIG-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/platform/ddl_validate.zig",
+      "src/operations/pending_migration_gate.zig",
+      "src/api/routes/platform_migrations.zig",
+      "src/platform/migration_fanout.zig",
+      "src/main.zig"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: review DDL-01/MIG-04/MIG-05/MIG-06 against docs/agents/instructions/security-invariants.md. This is a tenant-data-path change: three NEW admin HTTP routes (src/api/routes/platform_migrations.zig -- run/status/resume, cross-tenant blast radius) gated by Role.PLATFORM_ADMIN, and a new boot-time DB-touching gate (src/operations/pending_migration_gate.zig). Check: role-gate correctness on all 3 routes (403 for non-PLATFORM_ADMIN, verified not just present but actually checked BEFORE any DB write), SQL parameterization, no catch unreachable, and specifically whether the MIG-06 status endpoint could leak cross-tenant information to a caller who should not see other tenants' migration failure details (even though PLATFORM_ADMIN legitimately sees all tenants, confirm this is the intended design, not an accidental broadening).",
+    "acceptance_criteria": [
+      "Every numbered security invariant checked against the diff",
+      "All 3 new routes verified to check Role.PLATFORM_ADMIN before any DB write or read",
+      "SQL parameterization verified",
+      "No catch unreachable on realistic DB failure paths",
+      "Cross-tenant data exposure via the status endpoint explicitly assessed"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Security review for DDL-01/MIG-04/MIG-05/MIG-06 (commit ff7fc6a6): INV-1 (tenant isolation) applies and satisfied - lint_migration_schema.py and lint_sql_table_refs.py both exit 0; no migration files added; platform.platform_migrations is a platform-schema control table, not tenant business data. INV-2 (field authorisation) applies and satisfied - handleMigrationStatus per-tenant fields (tenant_id/status/error_msg/completed_at) are intentional per MIG-06 AC3 requirement text for a PLATFORM_ADMIN-only aggregate endpoint, not an accidental broadening. INV-3 not applicable (no Lua/Wasm host-API files touched). INV-4 not applicable (no secret material in any new/changed file, verified by grep). INV-5 not applicable (status endpoint is a platform-operator aggregate view, not a per-tenant lookup-by-ID resource probeable cross-tenant; no forbidden/not-found asymmetry exists on this route). INV-7 (SQL parameterisation) applies and satisfied - every SQL call site in platform_migrations.zig, pending_migration_gate.zig, and migration_fanout.zig uses $N placeholders exclusively; migration_id/tenant_id are never concatenated into SQL text; lint_sql_param_types.py exits 0; targeted grep for allocPrint-built SQL found zero hits. INV-8 (no catch unreachable) applies and satisfied - zero occurrences of catch unreachable anywhere in git diff main...HEAD. Additionally verified by hand: all three route handlers (handleRunMigration, handleMigrationStatus, handleResumeMigration) check actor.role != .PLATFORM_ADMIN as the literal first statement, before body parsing, pool.acquire(), or any query - an unauthorized caller triggers zero DB reads or writes. The seedPendingRow ON CONFLICT ... DO UPDATE ... WHERE status != 'done' guard is a standard Postgres conflict-predicate pattern: when the predicate is false (row is done), Postgres leaves the row completely unmodified, so a done row cannot be silently overwritten or downgraded. zig build and zig build test-ddl-validate both pass clean.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

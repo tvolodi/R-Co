@@ -61,6 +61,9 @@ pub const obs_metrics = @import("obs_metrics"); // OBS-02 Prometheus metrics
 pub const obs_audit = @import("obs/audit.zig"); // OBS-03 audit query service
 pub const obs_alerts = @import("obs/alerts.zig"); // OBS-06 alerting hooks
 pub const startup_assertions = @import("operations/startup_assertions.zig"); // PI-09 fail-fast startup assertion
+pub const pending_migration_gate = @import("operations/pending_migration_gate.zig"); // MIG-06 AC5 fail-fast startup assertion
+pub const migration_fanout = @import("platform/migration_fanout.zig"); // MIG-02..05 platform migration fanout/resume
+pub const platform_migrations_routes = @import("api/routes/platform_migrations.zig"); // MIG-06 admin surface
 pub const webhook_subscription_store = @import("webhook/subscription_store.zig"); // EXT-02 subscription storage
 pub const webhook_dispatcher = @import("webhook/dispatcher.zig"); // EXT-02 webhook delivery dispatcher
 pub const identity_registry = @import("identity/registry.zig"); // IDN-01 user registry persistence
@@ -150,6 +153,19 @@ fn runApiServer(io: std.Io, allocator: std.mem.Allocator, config: config_mod.Con
             .{ .key = "error", .value = .{ .string = @errorName(err) } },
         };
         obs_logger.log(allocator, .ERROR, "main", "database configuration assertion failed", &startup_fields) catch {};
+        const EX_CONFIG = 78;
+        std.process.exit(EX_CONFIG);
+    };
+
+    // MIG-06 AC5: refuse to serve traffic while any platform migration has
+    // outstanding 'pending' rows. Second fail-fast gate in the same sequence
+    // as assertDatabaseConfiguration above, run immediately after it and
+    // before any schema provisioning.
+    pending_migration_gate.assertNoOutstandingMigrations(allocator, &pool) catch |err| {
+        const pending_fields = [_]obs_logger.LogField{
+            .{ .key = "error", .value = .{ .string = @errorName(err) } },
+        };
+        obs_logger.log(allocator, .ERROR, "main", "outstanding platform migration assertion failed", &pending_fields) catch {};
         const EX_CONFIG = 78;
         std.process.exit(EX_CONFIG);
     };
@@ -1127,6 +1143,49 @@ fn serveRequest(
                         resp_status = 405;
                         resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
                     }
+                }
+            } else if (std.mem.eql(u8, seg4, "migrations")) {
+                // MIG-06: migration admin surface.
+                // POST /api/v1/admin/migrations/run
+                // GET  /api/v1/admin/migrations/{migration_id}/status
+                // POST /api/v1/admin/migrations/{migration_id}/resume
+                //
+                // No-op DdlStep: no real DDL step registry exists yet for the
+                // platform.platform_migrations fanout system (see the design
+                // doc's Open Questions §2 — the same gap that motivates the
+                // caller-supplied known_migration_ids parameter below). A
+                // future wiring task supplies real DdlStep implementations
+                // once DDL-01/MIG-01's migration-plan CLI exists; until then
+                // this satisfies the route contract (run/status/resume
+                // reachable, gated, correctly shaped responses) without
+                // executing arbitrary DDL.
+                const noOpStep = struct {
+                    fn step(conn: *db_pool.Conn, schema_name: []const u8) anyerror!void {
+                        _ = schema_name;
+                        try conn.exec("SELECT 1", &.{});
+                    }
+                }.step;
+                // No migration registry exists yet (see handler doc comment)
+                // so the known set is empty — every run request 404s as
+                // UnknownMigration until a real registry is wired in, which
+                // is the conservative, non-destructive interim behavior.
+                const known_migration_ids: []const []const u8 = &.{};
+
+                if (seg5.len == 0 and method == .POST) {
+                    const r = platform_migrations_routes.handleRunMigration(pool, req_alloc, actor, body, known_migration_ids, noOpStep);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else if (seg5.len > 0 and std.mem.eql(u8, seg6, "status") and method == .GET) {
+                    const r = platform_migrations_routes.handleMigrationStatus(pool, req_alloc, actor, seg5);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else if (seg5.len > 0 and std.mem.eql(u8, seg6, "resume") and method == .POST) {
+                    const r = platform_migrations_routes.handleResumeMigration(pool, req_alloc, actor, seg5, noOpStep);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 404;
+                    resp_body = "{\"type\":\"not_found\",\"status\":404}";
                 }
             } else if (std.mem.eql(u8, seg4, "tenants") and seg5.len > 0) {
                 // POST /api/v1/admin/tenants/{tenant_id}/export    (TNT-06)
