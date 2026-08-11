@@ -1,0 +1,46 @@
+{
+  "handoff_id": "c2db85fb-b958-4aff-a0f3-5ad4d1adb33e",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-0-20260811/step-03b-test-design-validator.json",
+  "created_at": "2026-08-11T05:23:33Z",
+  "started_at": "2026-08-11T06:33:09Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-05",
+      "MIG-01",
+      "MIG-02",
+      "MIG-03"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/DDL-05.md",
+      "tests/specs/MIG-01.md",
+      "tests/specs/MIG-02.md",
+      "tests/specs/MIG-03.md",
+      "src/platform/ddl_namespace.zig",
+      "tests/integration/platform_migrations_control_table_test.zig",
+      "tests/integration/migration_fanout_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: validate TEST-DESIGNER Step 3 output. Verify every MUST requirement (all 4 are MUST) has a runnable integration/unit test, no error.SkipZigTest on any MUST test, fixtures are isolated (per-test UUIDs, proper cleanup), tests are self-sufficient (connect to real PostgreSQL, no mocks/stubs). Also check: for the MIG-01 migration which adds a new table with CHECK constraints (status enum), a schema contract test exists per the anti-patterns doc TEST-DESIGN-VALIDATOR checklist (CHECK constraint -> schema contract test requirement).",
+    "acceptance_criteria": [
+      "Every MUST requirement AC traced to a real, runnable test",
+      "No error.SkipZigTest on any MUST test",
+      "Test isolation verified (tools/lint_test_isolation.py clean)",
+      "Schema contract test check for MIG-01 CHECK constraints"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
