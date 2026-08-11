@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-2-20260811/step-03b-test-design-validator.json",
   "created_at": "2026-08-11T11:46:10Z",
   "started_at": "2026-08-11T13:36:38Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T13:41:08Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -39,7 +39,18 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Validated TEST-DESIGNER's Step 3 output for DDL-02, ORD-01, ORD-02, ORD-04 (all MUST). (1) Read TC-ORD-01-AC1-concurrent and TC-ORD-04-AC1-concurrent in full (tests/integration/ordering_consumer_test.zig lines 567-900): both genuinely spawn 8 real std.Thread.spawn OS threads that race real FOR UPDATE SKIP LOCKED claims (cursor.claimOneCompletion) / pg_try_advisory_xact_lock calls (cursor.tryExecuteGuard) against shared fixture rows over a StartGate spin-barrier -- not simulated. (2) Critically assessed the pre-acquire-connections-sequentially workaround: connections are pool.acquire()'d and begin()'d sequentially on the main thread BEFORE any thread spawns (lines 608-612, 831-835), but the actual claim/guard SQL query is issued FROM WITHIN each spawned thread, over that thread's own already-open connection, released simultaneously by start_gate.set(). Verified cursor.claimOneCompletion and cursor.tryExecuteGuard (src/ordering/cursor.zig) take only a pre-opened conn handle and make no further pool calls, so pre-acquiring is a client-side bookkeeping step (BEGIN) that takes no row/advisory lock and cannot pre-decide the race outcome. The genuine, concurrently-issued FOR UPDATE SKIP LOCKED / pg_try_advisory_xact_lock queries are what the assertions (exactly 1 of 8 claims; all 8 pass a second full rendezvous ArrivalGate barrier while still holding their guard, which a serialized implementation would hang forever on) depend on. The workaround does NOT serialize away the tested concurrency -- it isolates the test from a separate, already-broken component (Pool.acquire() under raw-thread contention) so the actual claim/guard operations still race genuinely. (3) Read docs/issues/ISS-0669.json and confirmed GitHub #709 is open and correctly queued (handoffs/global_queue.json:1831). Traced src/ordering/consumer.zig::runOneCycle (single pool.acquire() call site, line 98, one connection per full claim-guard-apply cycle, never held across the poll-interval sleep per the module header's GH-654/ISS-0649 discipline) and confirmed this batch's production code never races pool.acquire() from multiple raw OS threads -- the module's own design doc (src/design/ord-01-02-04-correlated-effect-reentry.md Open Question #1) explicitly defers consumer_count-loop scheduling to reuse src/scheduler/scheduler.zig's or src/effects/worker.zig's existing polling mechanism, neither of which uses std.Thread.spawn (grep-verified, no matches in either file). ISS-0669 is therefore a genuine, adjacent infrastructure defect that does not block DDL-02/ORD-01/ORD-02/ORD-04's own MUST requirements from being correctly implemented or genuinely tested -- filing and forwarding (not fixing inline) was the correct call under Unblock-Everything's forwarding boundary. (4) Every AC traced to a real test for all 4 requirements (verified against docs/requirements.yaml verbatim bodies); grep confirms zero error.SkipZigTest in ddl_validate.zig, and the single SkipZigTest in ordering_consumer_test.zig is the loud BPM_TEST_DB_URL-absence guard (prints diagnostic, does not silently skip when DB is reachable), not a coverage skip. tools/lint_test_isolation.py tests/integration: OK, 144 files checked, 0 BLOCKER. Test-block counts in source match spec claims exactly (DDL-02: 7 in ddl_validate.zig; ordering_consumer_test.zig: 10; observability.zig: 4; ord04_plat_correlation_cursor_test.zig: 4; ord01_plat_effect_completion_test.zig: 3) -- no gap, no case labelled deferred/future/phase-2 within this batch's implemented scope. Fixtures use per-test bpm.uuid.newUuidV4 UUIDs throughout (no static/sequential IDs), and defer cleanup(...) / defer-loop cleanup is registered immediately after connection acquisition, before any insert, surviving test failure. Fail-first: DDL-02.md documents an explicit mutation-test re-verification; ORD-01/ORD-04's two new concurrent tests are net-new test blocks that could not have existed (let alone passed) against pre-batch code, and TEST-DESIGNER's own handoff (step-03-test-designer.json) documents the binary going from 8/8 to 10/10 tests upon their addition -- accepted as sufficient fail-first evidence per the checklist's fallback clause, though the individual ORD-01.md/ORD-04.md spec files could be more explicit about this (MINOR, noted in issues, not a gate failure). (5) Re-ran all 5 targeted build steps with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test and BPM_DB_URL=postgres://bpm:bpm@localhost:5432/bpm_dev set explicitly: test-ddl-validate 28/28, test-ordering 4/4, test-integration-ord01 3/3, test-integration-ord04 4/4, test-integration-ordering 10/10 -- all exit 0, all counts match spec claims exactly. Ran test-integration-ordering THREE consecutive times (not just twice) given its thread-concurrency sensitivity: 10/10 every time, confirming reproducibility, not flakiness. No credentials/secrets/production URLs hardcoded in any test file; all SQL uses parameterised $N placeholders.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "tests/specs/ORD-01.md and tests/specs/ORD-04.md do not include an explicit fail-first re-verification section for TC-ORD-01-AC1-concurrent / TC-ORD-04-AC1-concurrent analogous to DDL-02.md's mutation-test writeup. Fail-first is still adequately evidenced (net-new test blocks; TEST-DESIGNER's own handoff documents the 8/8 -> 10/10 count change), so this does not block PASS, but TEST-DESIGNER should add a short fail-first note to both spec files for consistency with this batch's own DDL-02.md precedent."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
