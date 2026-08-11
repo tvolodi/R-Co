@@ -296,10 +296,15 @@ test "TC-DDL-01-AC4: validatePlatformDDL is deterministic and requires no databa
     try testing.expectEqual(ValidationVerdict.accept, verdict2);
 }
 
-// DDL-01 AC5: first failure in statement order is reported — a file set with
+// DDL-01: first failure in statement order is reported — a file set with
 // a passing statement first and a failing statement second must report the
 // SECOND statement (order=2), not silently accept because the first passed.
-test "TC-DDL-01-AC5: first failing statement in order is reported, earlier accepts are skipped" {
+// Named "order" (not "AC5") to avoid colliding with the genuine AC5
+// (docs/requirements.yaml's 200-statement/100ms performance criterion,
+// tested separately below as TC-DDL-01-AC5) — this test instead supports
+// AC1/AC2/AC3's "naming that statement" wording for a multi-statement file
+// set; see tests/specs/DDL-01.md's naming-disambiguation note.
+test "TC-DDL-01-order: first failing statement in order is reported, earlier accepts are skipped" {
     const stmts = [_]StatementDescriptor{
         .{
             .kind = .create,
@@ -332,11 +337,14 @@ test "TC-DDL-01-AC5: first failing statement in order is reported, earlier accep
     }
 }
 
-// DDL-01 AC5 companion: no later statement is even inspected once an earlier
-// one fails — verified here by having statement 1 fail the lock-class check
-// and statement 2 carry an otherwise-detectable namespace violation; the
-// verdict must name statement 1, proving statement 2 was never reached.
-test "TC-DDL-01-AC5b: a later statement's violation is never reported once an earlier one fails" {
+// DDL-01 ordering companion: no later statement is even inspected once an
+// earlier one fails — verified here by having statement 1 fail the
+// lock-class check and statement 2 carry an otherwise-detectable namespace
+// violation; the verdict must name statement 1, proving statement 2 was
+// never reached. See TC-DDL-01-order above for the naming-disambiguation
+// note (this is "order-b", not "AC5b" — no collision with the AC5
+// performance test below).
+test "TC-DDL-01-order-b: a later statement's violation is never reported once an earlier one fails" {
     const stmts = [_]StatementDescriptor{
         .{
             .kind = .alter,
@@ -404,6 +412,60 @@ test "TC-DDL-01-composition-b: platform CREATE without plat_ prefix is refused a
         },
         else => return error.TestExpectedUnreservedPlatformObject,
     }
+}
+
+/// Wall-clock nanosecond timer for TC-DDL-01-AC5's timing assertion only.
+/// Zig 0.16 removed std.time.Timer / nanoTimestamp() from the public API
+/// (see src/api/routes/instances.zig's currentMicrosecondTimestamp and
+/// src/expr/benchmark.zig's getTimeNanos for the two other places this
+/// codebase already reimplements the same platform primitives); this test
+/// file needs its own copy purely to measure elapsed wall-clock time around
+/// the call below. The module under test (validatePlatformDDL) itself takes
+/// no clock dependency anywhere -- this timer lives ONLY in the test, never
+/// in src/platform/ddl_validate.zig, so the module's own DDL-01 AC4 purity
+/// contract ("no clock") is untouched.
+fn testTimeNanos() i64 {
+    const builtin = @import("builtin");
+    if (builtin.os.tag == .windows) {
+        const windows = std.os.windows;
+        const ft: i64 = windows.ntdll.RtlGetSystemTimePrecise();
+        const unix_100ns: i64 = ft - 116_444_736_000_000_000;
+        return unix_100ns * 100;
+    } else {
+        const posix = std.posix;
+        var ts: posix.timespec = undefined;
+        _ = posix.system.clock_gettime(.MONOTONIC, &ts);
+        return ts.sec * 1_000_000_000 + ts.nsec;
+    }
+}
+
+// DDL-01 AC5: GIVEN a file set of 200 accepted statements, WHEN validated,
+// THEN the verdict is returned in under 100 ms. Deterministic in outcome
+// (all 200 statements are `other`-classed CREATE TABLE statements that
+// unconditionally ACCEPT, so the verdict itself never varies), only the
+// wall-clock budget is environment-dependent -- this is DDL-01's own stated
+// acceptance criterion, not an NFR benchmark, so it belongs in this unit
+// test file rather than tests/bench. A 100ms budget against a pure,
+// allocation-free, O(n) loop over 200 elements has enormous headroom; this
+// is not a tight timing assertion prone to environment flakiness.
+test "TC-DDL-01-AC5: 200 accepted statements validate in under 100ms" {
+    var stmts: [200]StatementDescriptor = undefined;
+    for (&stmts, 0..) |*stmt, i| {
+        stmt.* = .{
+            .kind = .create,
+            .object_name = "orders",
+            .class = .other,
+            .order = @intCast(i + 1),
+            .text = "CREATE TABLE orders (id uuid PRIMARY KEY)",
+        };
+    }
+
+    const start_ns = testTimeNanos();
+    const verdict = validatePlatformDDL(.{ .statements = &stmts, .actor = .tenant });
+    const elapsed_ns = testTimeNanos() - start_ns;
+
+    try testing.expectEqual(ValidationVerdict.accept, verdict);
+    try testing.expect(elapsed_ns < 100 * std.time.ns_per_ms);
 }
 
 // Empty file set trivially accepts.
