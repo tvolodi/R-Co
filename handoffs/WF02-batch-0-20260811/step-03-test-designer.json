@@ -7,9 +7,9 @@
   "to_agent": "TEST-DESIGNER",
   "file": "handoffs/WF02-batch-0-20260811/step-03-test-designer.json",
   "created_at": "2026-08-11T05:23:33Z",
-  "started_at": "2026-08-11T06:19:07Z",
+  "started_at": "2026-08-11T06:50:32Z",
   "completed_at": "2026-08-11T06:30:03Z",
-  "status": "COMPLETED",
+  "status": "IN_PROGRESS",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -29,7 +29,7 @@
     ]
   },
   "task": {
-    "description": "BACKEND-DEV already wrote real integration/unit tests as part of Step 2a implementation (test-ddl-namespace: 10/10 unit tests; test-integration-mig01: 5/5; test-integration-mig02-mig03: 7/7). Your job: (1) write the formal test spec files tests/specs/DDL-05.md, tests/specs/MIG-01.md, tests/specs/MIG-02.md, tests/specs/MIG-03.md per test_developer_guide.md format, tracing each requirement acceptance criterion (read full bodies from docs/requirements.yaml) to the specific existing test case(s) that cover it. (2) Verify every AC actually has a covering test -- if you find a genuine gap, write the missing test case yourself in the existing test files (do not duplicate coverage that already exists). (3) Confirm no error.SkipZigTest exists on any MUST-requirement test.",
+    "description": "BACKEND-DEV already wrote real integration/unit tests as part of Step 2a implementation (test-ddl-namespace: 10/10 unit tests; test-integration-mig01: 5/5; test-integration-mig02-mig03: 7/7). Your job: (1) write the formal test spec files tests/specs/DDL-05.md, tests/specs/MIG-01.md, tests/specs/MIG-02.md, tests/specs/MIG-03.md per test_developer_guide.md format, tracing each requirement acceptance criterion (read full bodies from docs/requirements.yaml) to the specific existing test case(s) that cover it. (2) Verify every AC actually has a covering test -- if you find a genuine gap, write the missing test case yourself in the existing test files (do not duplicate coverage that already exists). (3) Confirm no error.SkipZigTest exists on any MUST-requirement test.\n\nREWORK 1 (routed by ORCH after RELEASE-VALIDATOR Step 5 FAIL):\n- [MAJOR] MIG-02 AC4 (\"GIVEN the failure-recording transaction itself fails, WHEN the fanout continues, THEN the row remains pending and the MIG-04 resume query covers it\") has NO test evidence. tests/specs/MIG-02.md documented this as a deliberate deferral, claiming bpm.pool.Pool has no fault-injection hook without violating DIRECTIVE T-1. This claim is INCORRECT: Pool.init() takes a real, non-mock pool_size config parameter (minimum 2, src/db/pool.zig line ~432/448). A genuine, non-mock fault-injection test IS possible: create a Pool with pool_size=2 in the test, acquire and hold both connections open (without releasing) so the pool is genuinely exhausted, then trigger runFanout such that applyToTenant's DDL transaction fails for a tenant -- this routes into recordFailureSeparately, whose own pool.acquire() call will then genuinely fail with PoolExhausted (a real error from a real resource-exhaustion condition, not a mock), exercising logSwallowedFailure's \"migration_fanout.failure_record_acquire_failed\" path and proving the control row stays at its already-seeded pending status with no crash/panic and no escalation -- exactly what AC4 requires. Add this test case to tests/integration/migration_fanout_test.zig, update tests/specs/MIG-02.md's AC4 row and Coverage note to point to it instead of documenting a deferral, and re-verify zig build test-integration-mig02-mig03 passes with the new test included.",
     "acceptance_criteria": [
       "tests/specs/DDL-05.md, MIG-01.md, MIG-02.md, MIG-03.md exist and trace every AC to a specific test case",
       "Any genuine coverage gap found is closed with a new test case",
@@ -38,26 +38,7 @@
     ],
     "functions_to_call": []
   },
-  "result": {
-    "status": "PASS",
-    "summary": "Wrote tests/specs/DDL-05.md, MIG-01.md, MIG-02.md, MIG-03.md tracing every acceptance criterion in docs/requirements.yaml to the specific existing Zig test case that covers it. Found one genuine coverage gap: MIG-01 AC1 (control rows seeded to status=pending, one per enabled tenant, at fanout start) had no direct test -- all existing tests only inspected control rows after runFanout completed (already done/failed). Closed it by adding \"TC-MIG-01-AC1-fanout: control rows are seeded pending for every tenant before any step runs\" to tests/integration/migration_fanout_test.zig, using a DdlStep (seedCheckingFailingStep) that asserts its own tenant row is pending with null completed_at using the same in-transaction conn it receives, deriving tenant_id from schema_name to avoid any module-level shared state (T020). Fail-first confirmed live: temporarily changed the seed SQL literal from pending to done in src/platform/migration_fanout.zig, reran, watched the new test go red with TestExpectedPendingStatus while the other 7 tests stayed green, then reverted (diff confirmed identical to original) and reran green. Two other ACs were found genuinely out of scope for this batch, not silently dropped: DDL-05 AC5 (first-failure-in-statement-order) belongs to DDL-01, which does not exist yet (CODE-DESIGN-VALIDATOR already accepted this scoping at Step 01b); MIG-03 AC4 (tenant-onboarding catch-up path) belongs to the onboarding module, also not yet amended, per the design doc's own Open Questions section. MIG-02 AC4 (failure-recording transaction itself fails) is recorded as a narrower documented gap -- deterministic fault injection into pool connection acquisition has no test hook without violating DIRECTIVE T-1, and the behavior it describes only becomes fully testable once MIG-04's resume path exists. MIG-02 AC5 (no cross-connection control-row writes) is a structural invariant verified by source inspection, not a runtime-observable behavior. No error.SkipZigTest found anywhere in any of the three files (grep confirmed zero matches in all three). All three targeted build steps reconfirmed passing after the addition: zig build test-ddl-namespace (10/10), zig build test-integration-mig01 (5/5, unchanged), zig build test-integration-mig02-mig03 (8/8, was 7/7 before the new test). tools/lint_test_isolation.py tests/integration exits 0 with no new isolation issues (139 files checked). tools/lint_handoffs.py exits 0, 0 BLOCKER, 0 new MAJOR.",
-    "artifacts_out": [
-      "tests/specs/DDL-05.md",
-      "tests/specs/MIG-01.md",
-      "tests/specs/MIG-02.md",
-      "tests/specs/MIG-03.md",
-      "tests/integration/migration_fanout_test.zig"
-    ],
-    "issues": [
-      {
-        "id": "ISS-NOTE-MIG02-AC4",
-        "severity": "MINOR",
-        "description": "MIG-02 AC4 (failure-recording transaction itself fails, row stays pending) has no direct test in this batch -- deterministic fault injection at that exact point has no test hook without violating DIRECTIVE T-1 (no mocks/stubs of the real pool). Code path matches the requirement per the design doc's Error taxonomy table and the logSwallowedFailure doc comment. Revisit when MIG-04 (resume path) is implemented so a real end-to-end seed-pending -> double-failure -> resume test becomes possible.",
-        "affected_requirement": "MIG-02"
-      }
-    ],
-    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
-  },
-  "rework_count": 0,
+  "result": null,
+  "rework_count": 1,
   "max_rework": 3
 }
