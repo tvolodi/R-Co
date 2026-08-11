@@ -31,6 +31,7 @@ Usage:
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
 import os
 import socket
@@ -40,6 +41,25 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _queue_sync import sync_queue_from_origin  # noqa: E402
 import reqctl_batch_plan  # noqa: E402
+
+
+def batch_key(requirement_ids: list[str]) -> str:
+    """Stable content identity for a batch, independent of its position in
+    any particular build_plan() call's output list.
+
+    build_plan() recomputes the batch list fresh from the CURRENTLY-DRAFT
+    requirement set on every call (correct in isolation — requirement status
+    changes as batches complete). But as soon as one batch's requirements
+    flip DRAFT -> RELEASED, they drop out of scope, which reshuffles every
+    later batch's array position. A bare `enumerate()` index is therefore
+    not a stable identifier across calls, even though handoffs/batch_queue.json
+    used to key claimed/done state by exactly that position — see
+    ISS-0667 / GH-705. Hashing the sorted requirement_ids instead gives a
+    batch an identity that survives any number of earlier batches
+    completing, since it is a pure function of the batch's own content.
+    """
+    digest = hashlib.sha256(",".join(sorted(requirement_ids)).encode("utf-8")).hexdigest()
+    return digest[:12]
 
 BATCH_QUEUE_FILE = "handoffs/batch_queue.json"
 LOCK_FILE = "handoffs/batch_queue.lock"
@@ -128,38 +148,49 @@ def main() -> int:
         if not batches:
             return 2  # nothing left to batch
 
-        # Items are keyed by (stage, batch_index) so two independently-planned
+        # Items are keyed by (stage, batch_key) so two independently-planned
         # sequences (e.g. the unscoped 92-item backlog and the BRW-* stage)
         # never collide on a bare numeric index — see reqctl_batch_plan.py's
         # build_plan() docstring for why they must not interleave.
+        #
+        # batch_key (a content hash of the batch's requirement_ids — see
+        # batch_key() above) is the STABLE identity used for claimed/done
+        # matching. batch_index is retained only as an informational ordinal
+        # for this call's plan (human-readable "batch N of M" display) — it
+        # is never used to look up or compare against queue state, because
+        # build_plan()'s output reshuffles position every time an earlier
+        # batch's requirements leave DRAFT status. Using position as identity
+        # silently skipped batches after every release — see ISS-0667 / GH-705.
         stage_key = stage or "__all__"
 
-        active_locks: set[int] = set()
-        done_indices: set[int] = set()
+        active_locks: set[str] = set()
+        done_keys: set[str] = set()
         for item in queue.get("items", []):
             if item.get("stage_key") != stage_key:
                 continue
-            idx = item.get("batch_index")
-            if idx is None:
+            key = item.get("batch_key")
+            if key is None:
                 continue
             if item.get("status") == "DONE":
-                done_indices.add(idx)
+                done_keys.add(key)
             elif item.get("status") == "IN_PROGRESS":
                 # Never reclaimed on wall-clock time alone — see MUTEX_TTL_MINUTES
                 # comment above.
-                active_locks.add(idx)
+                active_locks.add(key)
 
         any_actively_locked = False
         for idx, batch_ids in enumerate(batches):
-            if idx in done_indices:
+            key = batch_key(batch_ids)
+            if key in done_keys:
                 continue
-            if idx in active_locks:
+            if key in active_locks:
                 any_actively_locked = True
                 continue
 
             now = _utcnow()
             claimed_item = {
                 "stage_key": stage_key,
+                "batch_key": key,
                 "batch_index": idx,
                 "requirement_ids": batch_ids,
                 "status": "IN_PROGRESS",
@@ -170,7 +201,7 @@ def main() -> int:
             }
 
             existing = next(
-                (i for i in queue["items"] if i.get("stage_key") == stage_key and i.get("batch_index") == idx),
+                (i for i in queue["items"] if i.get("stage_key") == stage_key and i.get("batch_key") == key),
                 None,
             )
             if existing is not None:

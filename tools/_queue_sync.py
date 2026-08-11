@@ -47,13 +47,29 @@ import subprocess
 QUEUE_PATH_IN_REPO = "handoffs/global_queue.json"
 
 
-def _merge_items_by_issue_id(origin_q: dict, local_fallback: dict) -> dict:
-    """Union origin's items with local_fallback's by issue_id.
+def _item_identity(item: dict) -> tuple:
+    """Return the tuple that identifies an item across independent queue
+    files sharing this merge helper.
 
-    Origin's copy wins for any issue_id present in both (it is the
+    handoffs/global_queue.json items are keyed by "issue_id" alone.
+    handoffs/batch_queue.json items (tools/reqctl_batch_claim.py) have no
+    "issue_id" — they are keyed by ("stage_key", "batch_key"), since a WF-02
+    batch has no GitHub issue to key off. Support both shapes generically
+    instead of hardcoding "issue_id", which raised KeyError on every
+    batch_queue.json call (ISS-0666 / GH-704).
+    """
+    if "issue_id" in item:
+        return ("issue_id", item["issue_id"])
+    return ("stage_key/batch_key", item.get("stage_key"), item.get("batch_key"))
+
+
+def _merge_items_by_identity(origin_q: dict, local_fallback: dict) -> dict:
+    """Union origin's items with local_fallback's by _item_identity().
+
+    Origin's copy wins for any identity present in both (it is the
     authoritative, already-pushed state for that item — this is what
     protects against the cross-workspace race sync_queue_from_origin exists
-    for). Any issue_id present ONLY in local_fallback is carried over
+    for). Any identity present ONLY in local_fallback is carried over
     as-is: this is what a same-session, not-yet-pushed queue_add.py call
     made moments ago, and origin has no opinion on it yet because it was
     never pushed. Dropping it here would silently discard a same-session
@@ -64,10 +80,10 @@ def _merge_items_by_issue_id(origin_q: dict, local_fallback: dict) -> dict:
     """
     merged = dict(origin_q)
     origin_items = origin_q.get("items", [])
-    origin_ids = {item["issue_id"] for item in origin_items}
+    origin_identities = {_item_identity(item) for item in origin_items}
     local_only = [
         item for item in local_fallback.get("items", [])
-        if item["issue_id"] not in origin_ids
+        if _item_identity(item) not in origin_identities
     ]
     merged["items"] = origin_items + local_only
     return merged
@@ -85,13 +101,13 @@ def sync_queue_from_origin(local_fallback: dict, queue_path: str = QUEUE_PATH_IN
     to "a JSON file two independent checkouts each hold a stale copy of,"
     not specific to the GitHub-issue queue.
 
-    The merge (see _merge_items_by_issue_id) preserves two guarantees at
-    once: origin's copy is authoritative for any issue_id it already knows
-    about (the cross-workspace race this module was built for), while an
-    issue_id that exists ONLY in local_fallback — e.g. a second same-session
-    queue_add.py call for a different issue, made before the first call's
-    addition was ever pushed — is preserved rather than silently dropped
-    (ISS-0643 / GH-639).
+    The merge (see _merge_items_by_identity) preserves two guarantees at
+    once: origin's copy is authoritative for any item identity it already
+    knows about (the cross-workspace race this module was built for), while
+    an identity that exists ONLY in local_fallback — e.g. a second
+    same-session queue_add.py call for a different issue, made before the
+    first call's addition was ever pushed — is preserved rather than
+    silently dropped (ISS-0643 / GH-639).
 
     Falls back to `local_fallback` unmerged if the fetch or remote read
     fails for any reason (offline, no remote configured, network hiccup) —
@@ -121,7 +137,7 @@ def sync_queue_from_origin(local_fallback: dict, queue_path: str = QUEUE_PATH_IN
             check=True,
         )
         origin_q = json.loads(proc.stdout.decode("utf-8-sig"))
-        return _merge_items_by_issue_id(origin_q, local_fallback)
+        return _merge_items_by_identity(origin_q, local_fallback)
     except Exception as exc:
         print(f"[_queue_sync] could not read {queue_path} from origin/main ({exc}); using local copy (may be genuinely new/uncommitted) — staleness guarantee weakened to same-machine only", file=sys.stderr)
         return local_fallback

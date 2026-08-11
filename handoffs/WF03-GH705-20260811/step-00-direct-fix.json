@@ -1,0 +1,57 @@
+{
+  "handoff_id": "d9d2b3a7-2c4e-4f8a-9b1e-7a3f5c6d8e91",
+  "run_id": "WF03-GH705-20260811",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "ORCH",
+  "file": "handoffs/WF03-GH705-20260811/step-00-direct-fix.json",
+  "created_at": "2026-08-11T09:00:00Z",
+  "started_at": "2026-08-11T09:00:00Z",
+  "completed_at": "2026-08-11T09:31:31Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Fix GH-705 / ISS-0667 (BLOCKER: reqctl_batch_claim.py uses unstable positional batch_index, silently skipping batches after any release in a multi-batch stage). Originally dispatched to a background WF-03 worktree agent (workspace r-co-2-fix); that agent was stopped/cancelled by an out-of-band action before any work landed (no branch, no commits, no handoff files). At the user's explicit direction, redone as a direct, transparent fix in the main session on branch feature/WF03-GH705-20260811 instead of a second opaque background agent, since this was a small, well-scoped, mechanical fix with a known root cause and solution shape -- not the kind of work that benefits from worktree isolation.",
+    "acceptance_criteria": [
+      "reqctl_batch_claim.py keys claimed/done batches by content (stable hash of requirement_ids), not by build_plan()'s positional index",
+      "reqctl_batch_release.py matches the same way (accepts batch_key, falls back to legacy positional batch_index)",
+      "Existing handoffs/batch_queue.json entries (batch 0 DONE, batch 1 IN_PROGRESS/r-co-1-loop) migrated in place, preserving the paused stage-16 loop's lock exactly",
+      "Regression test reproduces the exact bug scenario and passes",
+      "_queue_sync.py's hardcoded issue_id key (ISS-0666/GH-704, same file, discovered during the same stage-16 run) fixed in the same pass since it's the same code path",
+      "python tools/lint_handoffs.py exits with 0 BLOCKER / 0 MAJOR"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause: reqctl_batch_plan.build_plan() recomputes the batch list fresh from the currently-DRAFT requirement set on every call (correct in isolation), but reqctl_batch_claim.py matched claimed/done state against handoffs/batch_queue.json using the bare positional index from that call's enumerate() -- unstable, since completing a batch removes its requirements from DRAFT scope and reshuffles every later batch's array position. Fix: added batch_key(requirement_ids) to reqctl_batch_claim.py (sha256 of the sorted, comma-joined requirement IDs, first 12 hex chars) as a content-stable identity; claim/skip logic now matches on batch_key, with batch_index retained only as an informational display ordinal. reqctl_batch_release.py updated to accept a batch_key selector (preferred) with backward-compatible positional fallback. Existing handoffs/batch_queue.json entries migrated in place with their correct batch_key (batch 0: 848b69e7a499, batch 1: d5019e857a4f) -- the paused stage-16 loop's IN_PROGRESS lock on batch 1 (DDL-01/MIG-04/MIG-05/MIG-06, workspace r-co-1-loop) is unchanged. Also fixed ISS-0666/GH-704 in the same pass (same file, _queue_sync.py): _merge_items_by_issue_id renamed _merge_items_by_identity, now dispatches on a generic _item_identity() helper that handles both global_queue.json's issue_id-keyed shape and batch_queue.json's (stage_key, batch_key)-keyed shape, instead of hardcoding item['issue_id'] and raising KeyError on every batch_queue.json call. New regression test tools/test_reqctl_batch_claim.py (3 cases, all pass): batch_key is content-stable and order-independent; the exact reshuffle-after-release scenario no longer skips or double-claims a batch; _queue_sync's merge handles the batch_queue.json item shape without KeyError. Verified against a scratch copy of the real batch_queue.json: claiming stage 16 with a throwaway workspace correctly skipped the IN_PROGRESS batch and claimed the genuinely-next batch instead. Verified sync_queue_from_origin() still works against the real, current global_queue.json (116 items, no regression on the GitHub-issue-queue path used by gh_claim.py/queue_release.py/queue_add.py). python tools/lint_handoffs.py: 0 BLOCKER, 0 MAJOR (1 pre-existing MINOR + 291 baselined/acknowledged, all unrelated).",
+    "artifacts_out": [
+      "tools/reqctl_batch_claim.py",
+      "tools/reqctl_batch_release.py",
+      "tools/_queue_sync.py",
+      "tools/test_reqctl_batch_claim.py",
+      "handoffs/batch_queue.json",
+      "docs/issues/ISS-0667.json",
+      "docs/issues/ISS-0666.json"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH705-20260811",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-GH705-20260811",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Commit, push, open PR, squash-merge to main, close GH-705 and GH-704, then resume the paused stage-16 loop agent"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
