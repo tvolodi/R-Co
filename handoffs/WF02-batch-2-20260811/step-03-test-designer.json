@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-2-20260811/step-03-test-designer.json",
   "created_at": "2026-08-11T11:46:10Z",
   "started_at": "2026-08-11T12:54:24Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-11T13:32:41Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -39,7 +39,35 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Wrote tests/specs/DDL-02.md, ORD-01.md, ORD-02.md, ORD-04.md tracing every AC in docs/requirements.yaml to specific existing (BACKEND-DEV) or newly-added (TEST-DESIGNER) test cases. Concurrency review (the mandated check): confirmed the existing tests for ORD-01 AC1 (8 consumers claim concurrently) and ORD-04 AC1 (8 correlations applied concurrently) were sequential-only (one test goroutine opening connection A to lock a row, then connection B to prove SKIP LOCKED skips it) -- this does NOT prove the literal 'N consumers claim/poll concurrently' guarantee. Added two genuinely concurrent tests to tests/integration/ordering_consumer_test.zig: TC-ORD-01-AC1-concurrent (8 real std.Thread.spawn OS threads racing a FOR UPDATE SKIP LOCKED claim on one PENDING row; asserts exactly 1 of 8 wins) and TC-ORD-04-AC1-concurrent (8 threads racing 8 distinct-correlation rows; asserts a bijection via SKIP LOCKED plus a deterministic rendezvous-barrier proof that all 8 threads hold their execute guard simultaneously). Building these tests surfaced a genuine, separate infrastructure defect: racing pool.acquire()+begin() itself across raw OS threads (not just the claim query) breaks SKIP LOCKED's row-lock isolation -- all 8 threads observed claiming the same row, confirmed not a client-side bug (distinct backend PIDs, distinct per-thread memory addresses) and confirmed not a Postgres/server issue (an equivalent pure-Python threading+psycopg2 test using the same pattern works correctly). Isolated to Pool.acquire() under raw-thread contention (plausibly Zig 0.16's Io.Threaded reentrancy), filed as GH-709 / ISS-0669 (docs/issues/ISS-0669.json, queued via tools/queue_add.py), and worked around in the final tests by pre-acquiring all connections sequentially before the race -- this isolates the tests from the separate pool defect so they genuinely exercise claimOneCompletion/tryExecuteGuard (the functions ORD-01/ORD-02 actually implement) under real contention. No error.SkipZigTest on any MUST-covering test when BPM_TEST_DB_URL is set (grep-verified; the only SkipZigTest occurrences are the standard 'env var absent' infra-guard branch, pre-existing pattern used identically across this whole test file family). All 5 targeted build steps re-run clean: test-ddl-validate 28/28, test-ordering 4/4, test-integration-ord01 3/3, test-integration-ord04 4/4, test-integration-ordering 10/10 (was 8/8 before the 2 additions) -- the ordering step re-run 6+ consecutive times with zero flakes after fixing an initial timing-based flake in the overlap-detection logic (replaced a probabilistic yield/spin sample with a deterministic rendezvous barrier). DDL-02's 7 pre-existing BACKEND-DEV test cases were found to already fully cover all 5 numbered ACs with no gap; a mutation-test fail-first check was run and reverted to confirm this. lint_test_isolation.py passes clean (144 files, 0 new issues).",
+    "artifacts_out": [
+      "tests/specs/DDL-02.md",
+      "tests/specs/ORD-01.md",
+      "tests/specs/ORD-02.md",
+      "tests/specs/ORD-04.md",
+      "tests/integration/ordering_consumer_test.zig",
+      "docs/issues/ISS-0669.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0669",
+        "severity": "MAJOR",
+        "description": "Pool.acquire() loses row-lock isolation guarantees under genuine multi-OS-thread contention (raw std.Thread.spawn threads racing pool.acquire()+begin() itself, not just the subsequent query) -- filed as GH-709, queued to handoffs/global_queue.json. Worked around in the final ORD-01/ORD-04 concurrency tests by pre-acquiring connections sequentially before the race; does not block this handoff but is a real, separate defect in src/db/pool.zig outside TEST-DESIGNER's remit to fix.",
+        "affected_requirement": null
+      }
+    ],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": "skipped",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
