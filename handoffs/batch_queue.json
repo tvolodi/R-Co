@@ -59,14 +59,11 @@
         "PAR-03",
         "PAR-04"
       ],
-      "status": "IN_PROGRESS",
-      "lock": {
-        "workspace_id": "r-co-1-loop",
-        "locked_at": "2026-08-11T14:18:34Z"
-      },
+      "status": "DONE",
+      "lock": null,
       "claimed_at": "2026-08-11T14:18:34Z",
-      "completed_at": null,
-      "run_id": null
+      "completed_at": "2026-08-11T19:07:30Z",
+      "run_id": "WF02-batch-3-20260811"
     }
   ]
 }
