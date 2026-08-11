@@ -1,0 +1,47 @@
+{
+  "handoff_id": "c38a881c-3799-4626-86a1-bf3c7661118f",
+  "run_id": "WF02-batch-2-20260811",
+  "workflow_id": "WF-02",
+  "step": "2c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-batch-2-20260811/step-2c-security-reviewer.json",
+  "created_at": "2026-08-11T11:46:10Z",
+  "started_at": "2026-08-11T12:48:46Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-02",
+      "ORD-01",
+      "ORD-02",
+      "ORD-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/platform/ddl_validate.zig",
+      "src/ordering/mod.zig",
+      "src/ordering/cursor.zig",
+      "src/ordering/consumer.zig",
+      "src/ordering/observability.zig",
+      "migrations/1145_ord01_plat_effect_completion.sql",
+      "migrations/1146_ord04_plat_correlation_cursor.sql"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: review DDL-02/ORD-01/ORD-02/ORD-04 against docs/agents/instructions/security-invariants.md. New tables (plat_effect_completion, plat_correlation_cursor) and new consumer/locking logic (src/ordering/). Check: SQL parameterization on all new queries (especially the FOR UPDATE SKIP LOCKED claim and the advisory-lock hashtext expression -- confirm correlation_id is never string-interpolated into the hashtext() call), no catch unreachable on realistic DB/lock-contention failure paths, whether plat_effect_completion/plat_correlation_cursor need tenant-scoping (is this a cross-tenant platform-level table like platform.platform_migrations, or does it need per-tenant isolation -- read the requirement bodies' framing carefully), and whether the consumer/worker code has any capability-gating concerns (does it run with elevated/platform-level DB access, and is that appropriate given it processes completions across potentially all tenants).",
+    "acceptance_criteria": [
+      "Every numbered security invariant checked against the diff",
+      "SQL parameterization verified including the advisory-lock hashtext() call",
+      "No catch unreachable",
+      "Tenant-scoping requirement for the two new tables explicitly assessed",
+      "Consumer/worker DB access level assessed for appropriateness"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
