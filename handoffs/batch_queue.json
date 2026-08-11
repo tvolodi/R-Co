@@ -32,6 +32,25 @@
       "claimed_at": "2026-08-11T07:36:30Z",
       "completed_at": "2026-08-11T11:34:36Z",
       "run_id": "WF02-batch-1-20260811"
+    },
+    {
+      "stage_key": "16",
+      "batch_key": "b04c0f6c5910",
+      "batch_index": 0,
+      "requirement_ids": [
+        "DDL-02",
+        "ORD-01",
+        "ORD-02",
+        "ORD-04"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-1-loop",
+        "locked_at": "2026-08-11T11:35:15Z"
+      },
+      "claimed_at": "2026-08-11T11:35:15Z",
+      "completed_at": null,
+      "run_id": null
     }
   ]
 }
