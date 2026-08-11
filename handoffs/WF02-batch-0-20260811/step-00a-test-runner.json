@@ -1,0 +1,37 @@
+{
+  "handoff_id": "b44d8e9a-4274-47d8-ba7e-eb922298d4eb",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "step": "00a",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-batch-0-20260811/step-00a-test-runner.json",
+  "created_at": "2026-08-11T04:23:48Z",
+  "started_at": "2026-08-11T04:24:12Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-05",
+      "MIG-01",
+      "MIG-02",
+      "MIG-03"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Green-Main Gate: run the full integration + unit test suite against current main (HEAD) BEFORE any WF-02 implementation starts for batch 0 (DDL-05, MIG-01, MIG-02, MIG-03). Run docs/guides/test_infrastructure_guide.md Infrastructure Health Checklist first, then the full test suite. Report exact pass/fail counts.",
+    "acceptance_criteria": [
+      "Infrastructure Health Checklist passes",
+      "Full test suite executed",
+      "Exact pass/fail counts reported with evidence (not summarized/guessed)"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
