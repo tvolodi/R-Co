@@ -7,9 +7,9 @@
   "to_agent": "TEST-DESIGNER",
   "file": "handoffs/WF02-batch-3-20260811/step-03-test-designer.json",
   "created_at": "2026-08-11T14:26:03Z",
-  "started_at": "2026-08-11T16:49:53Z",
+  "started_at": "2026-08-11T17:57:39Z",
   "completed_at": "2026-08-11T17:05:52Z",
-  "status": "COMPLETED",
+  "status": "PENDING",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -31,7 +31,7 @@
     ]
   },
   "task": {
-    "description": "BACKEND-DEV already implemented and wrote real tests for PAR-01/02/03/04 (test-partition-attach, test-partition-maintenance, test-partition-retention, test-integration-par02, test-integration-par03, plus rewrote TC-ES-07-01/02 and TC-ADP-11-02/03 in event_store_integration_test.zig -- 28/28 total confirmed passing at implementation time). Write tests/specs/PAR-01.md, PAR-02.md, PAR-03.md, PAR-04.md per test_developer_guide.md format, tracing every AC (read full bodies from docs/requirements.yaml) to specific existing test cases. SECURITY-REVIEWER noted two MINOR non-blocking observations worth a second look from a test-coverage angle (not necessarily new tests, but confirm they are not silent gaps): (1) PartitionMaintenanceScheduler/PartitionRetention are not yet wired into main.zig or given a per-tenant fanout loop -- confirm this matches PAR-02/03's own AC scope (they may legitimately only require the job LOGIC to exist and be correct, with scheduling/wiring being a separate concern) rather than being an unstated gap. (2) event_payload_store's FK does not cover events_ephemeral -- confirm whether any PAR-01-04 AC requires large-payload delete-class events to work, or whether this is genuinely out of scope. Also specifically verify TC-ADP-11-02 (rewritten to prove protected event types can never be hard-deleted) and TC-ADP-11-03 continue to fully satisfy ADP-11's (already-RELEASED, MUST) acceptance criteria -- read ADP-11's body and tests/specs/ADP-11.md if it exists, do not just trust that a rename occurred correctly.",
+    "description": "BACKEND-DEV already implemented and wrote real tests for PAR-01/02/03/04 (test-partition-attach, test-partition-maintenance, test-partition-retention, test-integration-par02, test-integration-par03, plus rewrote TC-ES-07-01/02 and TC-ADP-11-02/03 in event_store_integration_test.zig -- 28/28 total confirmed passing at implementation time). Write tests/specs/PAR-01.md, PAR-02.md, PAR-03.md, PAR-04.md per test_developer_guide.md format, tracing every AC (read full bodies from docs/requirements.yaml) to specific existing test cases. SECURITY-REVIEWER noted two MINOR non-blocking observations worth a second look from a test-coverage angle (not necessarily new tests, but confirm they are not silent gaps): (1) PartitionMaintenanceScheduler/PartitionRetention are not yet wired into main.zig or given a per-tenant fanout loop -- confirm this matches PAR-02/03's own AC scope (they may legitimately only require the job LOGIC to exist and be correct, with scheduling/wiring being a separate concern) rather than being an unstated gap. (2) event_payload_store's FK does not cover events_ephemeral -- confirm whether any PAR-01-04 AC requires large-payload delete-class events to work, or whether this is genuinely out of scope. Also specifically verify TC-ADP-11-02 (rewritten to prove protected event types can never be hard-deleted) and TC-ADP-11-03 continue to fully satisfy ADP-11's (already-RELEASED, MUST) acceptance criteria -- read ADP-11's body and tests/specs/ADP-11.md if it exists, do not just trust that a rename occurred correctly.\n\nREWORK 1 (routed by ORCH directly in-session, not via the autonomous loop, after BACKEND-DEV Step 2a REWORK 1 implemented PartitionMissingForWrite):\n- Re-validate that the new integration test TC-PAR01-04-01 (in the event-store integration suite, per BACKEND-DEV commit fa63e32d) genuinely proves PAR-01 AC4 per its exact wording in docs/requirements.yaml -- read the test body directly, confirm it detaches the current-month partition, asserts the specific PartitionMissingForWrite/HTTP 503 error, asserts zero rows written, and unconditionally re-attaches the partition afterward (no leaked test state).\n- Update tests/specs/PAR-01.md to close its previously-documented Gap note for AC4 now that the implementation and test exist -- trace AC4 to TC-PAR01-04-01 the same way every other AC in that file is traced.\n- Re-run the full previously-passing suite for this batch to confirm no regression from the SQLSTATE-preservation plumbing BACKEND-DEV added to vendor/pg/pg.zig and src/db/pool.zig (this touches shared infrastructure other tests may depend on): test-partition-attach, test-partition-maintenance, test-partition-retention, test-integration-par02, test-integration-par03, test-integration-event-store.\n- The MINOR gaps (PAR-02 AC3/AC5, PAR-03 AC4/AC5/AC6, PAR-04 AC3/AC4) and BACKEND-DEV's filed ISS-0670/GH-711 (PAR-02 AC5 emission, deferred -- no instance_id convention exists) remain open and documented as before; do not attempt to close them in this rework pass unless genuinely trivial. Do not let them block PASS if AC4 itself is now soundly proven.\n- If AC4 is now soundly proven and the full suite is green: result.status PASS, next_action Route to TEST-DESIGN-VALIDATOR (Step 3b).",
     "acceptance_criteria": [
       "tests/specs/PAR-01.md, PAR-02.md, PAR-03.md, PAR-04.md exist and trace every AC to a specific test case",
       "SECURITY-REVIEWER's two MINOR observations assessed for whether they represent genuine coverage gaps",
@@ -41,36 +41,7 @@
     ],
     "functions_to_call": []
   },
-  "result": {
-    "status": "PARTIAL",
-    "summary": "Wrote tests/specs/PAR-01.md, PAR-02.md, PAR-03.md, PAR-04.md tracing every AC to specific existing test cases in test-partition-attach (2), test-partition-maintenance (5), test-partition-retention (4), test-integration-par02 (3), test-integration-par03 (4), test-integration-event-store (28, incl. rewritten TC-ES-07-01/02 and TC-ADP-11-01/02/03). Closed one genuine coverage gap: RegistryError.RetentionClassForbidden (PAR-03 AC1's app-level guard, a pure DB-free function) was asserted by NO test anywhere in the suite -- added TC-PAR-03-01/02/03 to tests/unit/event_store_test.zig, confirmed passing. ADP-11 (RELEASED, MUST) re-verified line-by-line: TC-ADP-11-01 unchanged and still passing; TC-ADP-11-02/03 rewritten to prove the identical AC clauses (non-protected hard-delete configurability; protected-family archive/queryability) through PartitionRetention's DETACH/ATTACH/runEphemeralDrop mechanism instead of the retired Store.archive() row-level DELETE -- genuinely equivalent-or-stronger end-to-end proof, not a name-preserving rename. Confirmed by reading both rewritten test bodies in full. SECURITY-REVIEWER's two MINOR observations assessed: (a) PartitionMaintenanceScheduler/PartitionRetention's absence from main.zig and lack of per-tenant fanout matches the established, already-RELEASED SCH-02 Scheduler.pollDueTimers() precedent (also unwired from main.zig) -- job logic is correct and independently callable/tested, which is what PAR-02/03's AC text actually requires for this batch; not a coverage gap, documented in PAR-02.md's Observation A. (b) event_payload_store's FK gap for >4096-byte delete-class events: none of PAR-01-04's ACs require large-payload delete-class events to work end-to-end; genuinely out of scope for this batch, fails safe (TransactionFailed/rollback, no corruption), documented in PAR-03.md's Observation B. All 6 targeted build steps re-run and pass with exact counts stated above, all exit 0. No error.SkipZigTest on any MUST-requirement test (the sole SkipZigTest hit is the standard BPM_TEST_DB_URL-absent guard, not a deferred-coverage skip). lint_test_isolation.py: OK, 0 issues (146 files checked). status is PARTIAL, not PASS: while investigating PAR-01 AC4 to write its spec, discovered PAR-01 AC4 (StoreError.PartitionMissingForWrite, an append into a month with no attached partition) is NOT IMPLEMENTED AT ALL -- src/design/par-01-monthly-range-partitioning.md's own Error taxonomy table specifies it as a new StoreError variant mapped to HTTP 503 by src/api/errors.zig, but StoreError declares no such variant and the actual failure path (store.zig:600-618) catches the underlying Postgres error generically as StoreError.TransactionFailed. This is a functional implementation gap outside TEST-DESIGNER's write-scope (cannot write a test asserting an error variant that does not compile), not a test-authoring gap -- documented in detail in tests/specs/PAR-01.md's Gap note. Also flagged as MINOR/follow-up (not blocking): PAR-02 AC3/AC5 (severity-threshold assertion, EXECUTION_PARTITION_CREATED emission) and PAR-03 AC4/AC5/AC6 (Adp11GuardTripped trip path, ORPHAN_PARTITION transition, EXECUTION_PARTITION_DETACHED/DROPPED emission) have correct, reviewable implementations but no test drives the specific failure/emission path -- documented in each spec's own Gap note section.",
-    "artifacts_out": [
-      "tests/specs/PAR-01.md",
-      "tests/specs/PAR-02.md",
-      "tests/specs/PAR-03.md",
-      "tests/specs/PAR-04.md",
-      "tests/unit/event_store_test.zig"
-    ],
-    "issues": [
-      {
-        "severity": "BLOCKER",
-        "description": "PAR-01 AC4 (StoreError.PartitionMissingForWrite) is unimplemented. src/design/par-01-monthly-range-partitioning.md's Error taxonomy table (line 533) specifies a new StoreError variant mapped to HTTP 503 by src/api/errors.zig; StoreError (src/event_store/store.zig:39-72) declares no such variant, src/api/errors.zig has no mapping for it, and the append INSERT failure path (store.zig:600-618) catches the underlying Postgres 'no partition of relation' error generically as StoreError.TransactionFailed with no SQLSTATE-specific branch. grep -rn PartitionMissingForWrite --include=*.zig returns zero hits outside a single prose comment. Requires a BACKEND-DEV fix (implement the StoreError variant + SQLSTATE-specific catch + HTTP 503 mapping) before a real test can be written and PAR-01 can be considered fully TESTED against its own AC4. See tests/specs/PAR-01.md Gap note for full trace."
-      },
-      {
-        "severity": "MINOR",
-        "description": "PAR-02 AC3 (WARN at future_count==1, BLOCKER at future_count==0) and AC5 (EXECUTION_PARTITION_CREATED event emission) have correct, simple, reviewable implementations (partition_maintenance.zig:231-236 severity branch; no emission call site found for AC5 at all) but neither is exercised by a dedicated test. See tests/specs/PAR-02.md Gap note."
-      },
-      {
-        "severity": "MINOR",
-        "description": "PAR-03 AC4 (Adp11GuardTripped trip path), AC5 (ORPHAN_PARTITION transition on failed re-attach), and AC6 (EXECUTION_PARTITION_DETACHED/DROPPED event emission) have correct, reviewable implementations but no test drives the specific failure/emission path. See tests/specs/PAR-03.md Gap note."
-      },
-      {
-        "severity": "MINOR",
-        "description": "PAR-04 AC4 (partition-level CHECK rejects NULL tenant_id) and AC3 (>1s attach reported as AttachScanRequired) are implemented and structurally exercised transitively (every successful attach in this batch's other integration tests would have failed with AttachScanRequired had the constraint been absent) but have no direct assertion. AC3 is not deterministically testable without artificial latency injection, which was not attempted. See tests/specs/PAR-04.md Gap note and Traceability note."
-      }
-    ],
-    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
-  },
-  "rework_count": 0,
+  "result": null,
+  "rework_count": 1,
   "max_rework": 3
 }
