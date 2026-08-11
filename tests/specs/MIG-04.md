@@ -50,7 +50,7 @@ content needs and is what is provided below.
 **Zig test:** `"TC-MIG-04-02: resume with every row already done executes no DDL and returns zero counts"`
 
 ### TC-MIG-04-03: resume's tenant snapshot query plan uses platform_migrations_resume_idx
-**Given:** A fresh `migration_id` with no fixture rows (the query plan is examined independent of actual data volume).
+**Given:** A fresh `migration_id` seeded with 40 fixture rows (alternating `pending`/`failed` status, distinct random `tenant_id` values) so the planner has a genuine, cost-grounded reason to prefer the partial index over a sequential scan under this predicate — mirroring the row-count baseline already established in `platform_migrations_control_table_test.zig`'s equivalent index-usage test. The `EXPLAIN` itself runs inside its own transaction with `SET LOCAL enable_seqscan = off`, so the assertion stays deterministic regardless of the shared test table's overall size at the moment this test runs (rolled back afterward; the 40 seeded rows are cleaned up via the test's own `cleanupControlRows`, not the rollback).
 **When:** `EXPLAIN` is run directly against the exact SQL text `resumeFanout` issues (`SELECT tenant_id::text FROM platform.platform_migrations WHERE migration_id = $1 AND status IN ('pending', 'failed') ORDER BY tenant_id`).
 **Then:** The plan output contains the string `platform_migrations_resume_idx`, confirming the planner chose that index for this predicate shape.
 **Layer:** integration

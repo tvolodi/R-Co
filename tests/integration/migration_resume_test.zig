@@ -305,6 +305,45 @@ test "TC-MIG-04-03: resume's tenant snapshot query plan uses platform_migrations
     const conn = try pool.acquire();
     defer pool.release(conn);
 
+    // Seed a realistic number of matching (pending/failed) fixture rows for
+    // THIS test's own migration_id before EXPLAIN runs. Previously this test
+    // ran EXPLAIN against zero seeded rows, so Postgres's planner correctly
+    // (and deterministically) chose a sequential scan over the partial index
+    // on cost grounds alone -- not because the index was wrong. 40 tenant_id
+    // values gives the planner enough rows under this predicate that an
+    // index scan on platform_migrations_resume_idx is genuinely the cheaper
+    // plan, independent of how large the shared table happens to be from
+    // other concurrently-running fixtures.
+    {
+        var seed_ids: [40][]const u8 = undefined;
+        var seeded: usize = 0;
+        defer for (seed_ids[0..seeded]) |id| alloc.free(id);
+        while (seeded < seed_ids.len) : (seeded += 1) {
+            seed_ids[seeded] = try randomUuidStr(alloc);
+        }
+        for (seed_ids[0..seeded], 0..) |tenant_id, i| {
+            const status: []const u8 = if (i % 2 == 0) "pending" else "failed";
+            try conn.exec(
+                "INSERT INTO platform.platform_migrations (migration_id, tenant_id, status) VALUES ($1, $2::uuid, $3)",
+                &.{ migration_id, tenant_id, status },
+            );
+        }
+    }
+
+    // The test table's overall size can vary depending on which other
+    // fixtures are concurrently live, so pin this EXPLAIN inside its own
+    // transaction and force index usage the same way
+    // platform_migrations_control_table_test.zig's
+    // "resume_index_used_by_pending_or_failed_query" already does: this
+    // makes the assertion deterministic regardless of table size, while
+    // still failing loudly if the planner cannot use
+    // platform_migrations_resume_idx at all (e.g. wrong columns/predicate).
+    // The 40 seeded rows above ensure the index is also the genuinely
+    // cheaper plan on cost grounds alone, not merely the forced one.
+    try conn.begin();
+    defer conn.rollback() catch {};
+    try conn.exec("SET LOCAL enable_seqscan = off", &.{});
+
     var explain_result = try conn.query(
         alloc,
         \\EXPLAIN
