@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-3-20260811/step-01b-code-design-validator.json",
   "created_at": "2026-08-11T14:26:03Z",
   "started_at": "2026-08-11T15:24:02Z",
-  "completed_at": "2026-08-11T15:11:51Z",
-  "status": "PENDING",
+  "completed_at": "2026-08-11T15:26:20Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 16",
@@ -40,7 +40,13 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 2 re-validated and PASSES. Independently re-verified all 5 focus points against actual source, not design-doc claims. (1) validatePayload() interface genuinely untouched: grep confirms exactly one external call site (store.zig:262); design instead threads retention_class through a second registry.getType() call (store.zig, after line 267, still pre-BEGIN). EventTypeRecord{} is constructed in exactly 2 places in registry.zig (registerType() placeholder, getType() real parse) and getType()'s one external caller (instances.zig:896) only reads a success/error signal and immediately calls freeTypeRecord() -- confirmed by reading that call site in full. freeTypeRecord() currently frees exactly 3 fields (name/json_schema/description), matching the design's claimed baseline before adding a 4th (retention_class). Claim accurate. (2) events_ephemeral partition provisioning confirmed genuinely wired: par-02-partition-maintenance-job.md's runMaintenanceCycle() body sketch step 2 and Data flow diagram both now iterate parent in [\"events\", \"events_ephemeral\"], not events alone; Open questions #4 marks this RESOLVED with correct cross-reference to par-03's REWORK 2 section. Not a claim without substance -- the loop body, the CREATE TABLE templating, and the attachPartitionTimed() call are all shown widened. (3) TC-ADP-11-02 rewrite is concretely groundable: traced the full chain -- WIDGET_CREATED (non-protected) registered with retention_class=delete passes REWORK 1's RetentionClassForbidden guard (does not match {INSTANCE_,TASK_,GATEWAY_,EXECUTION_}* prefixes) -> Store.append() -> getType() reads retention_class=delete -> target_table=events_ephemeral -> INSERT lands in events_ephemeral (a real partitioned table that now gets partitions via fix (2)) -> PartitionRetention.runEphemeralDrop() queries plat_partition_catalog for parent_table=events_ephemeral rows and can find/guard/drop the row. No remaining gap in this chain -- confirmed by reading store.zig::append(), registry.zig::getType(), and PAR-04's attachPartitionTimed()/verifyAttachConstraints() (unchanged, correctly depended upon). (4) Rework 1's RetentionClassForbidden guard (Zig-side validateRegisterParams + DB-level chk_retention_class_protected_family CHECK) is untouched by rework 2 and remains intact; isProtectedEventFamily/ProtectedFamilyHardDeleteForbidden in store.zig (ADP-11, pre-existing) confirmed still present and unaffected. PAR-01/02/03/04 AC coverage spot-checked against docs/requirements.yaml verbatim bodies -- notably PAR-03's own requirement prose already names events_ephemeral and \"the type never routes to events_ephemeral\" (AC1), confirming the routing mechanism this rework adds is not an invention but closes a gap between the requirement text and the prior design's silence on the mechanism. Store.archive() confirmed still present at store.zig:947 (expected -- removal is BACKEND-DEV Step 2a scope per this design, not yet executed). (5) All 4 design docs (par-01, par-02, par-03, par-04) pass tools/lint_design_artefact.py with 0 issues. Both Type C migration YAMLs (par-02-partition-catalog, par-03-retention-class) pass lint and tools/codegen_migration.py --dry-run exits 0 for both, with generated SQL/test previews covering their codegen-scoped acceptance criteria (events_ephemeral's hand-written CREATE TABLE is correctly excluded from the YAML per the already-resolved Y125 composite-PK constraint, documented in both the YAML header and design Open questions #2). No new gap of comparable severity found. This rework genuinely closes the gap identified in rework 1's FAIL -- not a placeholder or a claim without mechanism.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a implementation)"
+  },
   "rework_count": 1,
   "max_rework": 3
 }
