@@ -332,8 +332,7 @@ test "TC-ES-05-02b: payload failing the registered schema is rejected with per-f
 
     // Wrong type on a declared property.
     {
-        var f = try registry.validatePayloadAgainstSchema(talloc,
-            schema,
+        var f = try registry.validatePayloadAgainstSchema(talloc, schema,
             \\{"order_id":"ord-1","amount":"not-a-number"}
         );
         defer freeFailureList(&f);
@@ -358,8 +357,7 @@ test "TC-ES-05-02b: payload failing the registered schema is rejected with per-f
 
     // Multiple simultaneous constraint violations are all reported.
     {
-        var f = try registry.validatePayloadAgainstSchema(talloc,
-            schema,
+        var f = try registry.validatePayloadAgainstSchema(talloc, schema,
             \\{"order_id":"far-too-long","amount":-5}
         );
         defer freeFailureList(&f);

@@ -179,16 +179,26 @@ gap together, per SECURITY-REVIEWER's suggestion) rather than blocking this hand
 - **AC5** (`EXECUTION_PARTITION_CREATED` event on each creation): `grep -rn
   "EXECUTION_PARTITION_CREATED"` across `src/scheduler/partition_maintenance.zig` returns no hits
   — the event-store append this AC clause requires is not visibly wired into
-  `ensurePartitionAttached()`. This is a second real, closeable gap of the same MINOR character as
-  the AC3 gap above (the event type name exists in the platform's event vocabulary per the
-  requirement text, but no call site emits it). Recommend the same follow-up disposition: file for
-  BACKEND-DEV, do not block this handoff.
+  `ensurePartitionAttached()`. Confirmed genuinely missing (not just untested) during REWORK 1
+  (WF02-batch-3-20260811): investigated implementing it directly, and it is NOT small/self-contained
+  as originally characterized here. `Store.append()` requires `instance_id` to already exist as an
+  ACTIVE row in `instance_projections` (`StoreError.InstanceNotFound` otherwise) — `partition_maintenance.zig`
+  is a platform-level daily job with no owning workflow instance, and no "system"/platform
+  `instance_id` convention exists anywhere in this codebase (`instance_projections` has no seeded
+  platform row; grepped every other `EXECUTION_*` platform-level event named in
+  docs/requirements.yaml — `EXECUTION_MIGRATION_VALIDATED`, `EXECUTION_OUTBOX_GATE_OPENED`,
+  `EXECUTION_CORRELATION_LAG` — none are implemented in `src/` either, so there is no existing
+  precedent to copy). Closing this gap requires a real design decision (what `instance_id`/`actor_id`/
+  `idempotency_key` a non-instance-scoped platform event uses, and whether `Store.append()`'s
+  `InstanceNotFound` gate needs a carve-out) that is out of scope for a REWORK cycle whose BLOCKER is
+  PAR-01 AC4. Recommend routing to CODE-DESIGNER for a short design note on the platform-event
+  append convention (applies to all four unimplemented `EXECUTION_*` platform events above, not just
+  this one), then BACKEND-DEV implements against that design. Do not block this handoff on it.
 
-Both gaps above are flagged here rather than silently passed over, per this role's "no silent
-gaps" instruction, but are treated as MINOR/follow-up rather than BLOCKER because — unlike PAR-01
-AC4 — the missing piece in each case is a small, self-contained addition to already-correct,
-already-tested surrounding logic, not a missing error-taxonomy member that the design doc
-specifies as a new type.
+The AC3 gap above is treated as MINOR/follow-up (self-contained addition to already-correct,
+already-tested logic). The AC5 gap is a real, closeable gap but NOT self-contained — see the
+revised note above — and should not be scoped as a quick fix in a future handoff either; it needs
+the design decision first.
 
 ## Execution Notes For TEST-RUNNER
 

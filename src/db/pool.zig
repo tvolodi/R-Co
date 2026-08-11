@@ -510,6 +510,16 @@ pub const Conn = struct {
         };
     }
 
+    /// SQLSTATE (e.g. "23514") of the most recent exec()/query() call's
+    /// ErrorResponse, or null if that call did not error. Lets callers that
+    /// receive PoolError.QueryFailed distinguish specific server-side error
+    /// conditions (e.g. PAR-01 AC4's "no partition of relation" check
+    /// violation) from any other generic query failure, without widening
+    /// PoolError itself with every possible Postgres condition.
+    pub fn lastSqlState(self: *const Conn) ?[]const u8 {
+        return self._pg.lastSqlState();
+    }
+
     /// Execute a parameterised query and return all result rows.
     ///
     /// Returns a QueryResult whose memory is owned by the caller; call

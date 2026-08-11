@@ -69,6 +69,14 @@ pub const StoreError = error{
     InvalidRetentionPolicyValue,
     /// hard-delete retention is forbidden for replay-critical families.
     ProtectedFamilyHardDeleteForbidden,
+    /// An append's created_at falls in a calendar month with no attached
+    /// partition on events/events_ephemeral → HTTP 503 (PAR-01 AC4). Distinct
+    /// from the generic TransactionFailed: this is Postgres SQLSTATE 23514
+    /// (check_violation) raised by partition routing finding no matching
+    /// partition, not an ordinary constraint failure, and it is transient —
+    /// resolved by the next plat_partition_maintenance run (PAR-02) rather
+    /// than a caller input error.
+    PartitionMissingForWrite,
 };
 
 // ---------------------------------------------------------------------------
@@ -613,7 +621,31 @@ pub const Store = struct {
                 generated_event_id,
             },
         ) catch {
+            // PAR-01 AC4: an append whose created_at falls in a calendar
+            // month with no attached partition on the target table fails
+            // Postgres's partition routing with SQLSTATE 23514
+            // (check_violation) — "no partition of relation ... found for
+            // row" — not an ordinary constraint violation. Distinguish it
+            // from every other INSERT failure here (which stays
+            // TransactionFailed) so the caller gets a structured, transient
+            // (HTTP 503, see src/api/errors.zig) error instead of a generic
+            // 5xx, per the Error taxonomy in
+            // src/design/par-01-monthly-range-partitioning.md.
+            // lastSqlState() returns a slice INTO the connection's mutable
+            // last_sqlstate field, not an owned copy — conn.exec("ROLLBACK")
+            // immediately below issues a new query, which resets that same
+            // backing array before this code can read it. Copy the bytes out
+            // to a local buffer first so the comparison sees the INSERT's
+            // SQLSTATE, not ROLLBACK's (empty) one.
+            var sqlstate_buf: [5]u8 = undefined;
+            const is_partition_missing = if (conn.lastSqlState()) |s| blk: {
+                @memcpy(&sqlstate_buf, s);
+                break :blk std.mem.eql(u8, &sqlstate_buf, "23514");
+            } else false;
             conn.exec("ROLLBACK", &.{}) catch {};
+            if (is_partition_missing) {
+                return StoreError.PartitionMissingForWrite;
+            }
             return StoreError.TransactionFailed;
         };
         defer {

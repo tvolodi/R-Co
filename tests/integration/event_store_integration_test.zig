@@ -2394,3 +2394,153 @@ test "TC-ES-07-02: PartitionRetention.runArchivalAging reports partitions moved 
     try std.testing.expectEqualStrings("ATTACHED", catalog_rows_after.rows[0][1] orelse "");
     _ = second_result;
 }
+
+// ---------------------------------------------------------------------------
+// PAR-01 AC4: append into a month with no attached partition
+//
+// "GIVEN an append whose created_at falls in a month with no attached
+// partition, WHEN it executes, THEN it fails with PartitionMissingForWrite
+// and a structured error rather than being routed to another partition."
+// (docs/requirements.yaml PAR-01 AC4; Error taxonomy in
+// src/design/par-01-monthly-range-partitioning.md, line ~533.)
+//
+// AppendParams has no created_at override — every row's created_at is
+// Postgres's own now() default (see events' column default) — so the only
+// way to reproduce "no attached partition for created_at" is to remove the
+// partition that WOULD cover now() at test time, exactly as
+// TC-ES-07-02 above attaches/detaches synthetic partitions for its own
+// purposes. events is a real, shared, persistent database
+// (BPM_TEST_DB_URL) — detaching the CURRENT month's live partition is only
+// safe if reattachment is unconditional, so the reattach runs in a `defer`
+// registered immediately after the detach succeeds, before the assertions
+// that could fail the test. The exact bound is read back from Postgres
+// itself (pg_get_expr) rather than reconstructed by hand, so reattachment is
+// byte-exact regardless of which day/month this suite happens to run on.
+// ---------------------------------------------------------------------------
+test "TC-PAR01-04-01: append with created_at in an unpartitioned month returns PartitionMissingForWrite" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const type_name = try uniqueName(alloc, &h, "PAR0104");
+    defer alloc.free(type_name);
+    const idem_key = try uniqueName(alloc, &h, "par01-04");
+    defer alloc.free(idem_key);
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+    defer cleanupEventType(&pool, type_name);
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = type_name,
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_str = try h.newUuidString(alloc);
+    defer alloc.free(inst_str);
+    const def_str = try h.newUuidString(alloc);
+    defer alloc.free(def_str);
+    try insertInstance(&pool, inst_str, def_str);
+    defer cleanupInstance(&pool, inst_str, &.{idem_key});
+
+    const inst_uuid = try parseUuid(alloc, inst_str);
+    const actor_uuid = h.newUuid();
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+
+    // Identify the real partition that currently covers now() and read back
+    // its exact bound expression + physical relation name from Postgres.
+    var current_partition_rows = try conn.query(
+        alloc,
+        "SELECT c.relname, pg_get_expr(c.relpartbound, c.oid) " ++
+            "FROM pg_inherits i JOIN pg_class c ON c.oid = i.inhrelid " ++
+            "WHERE i.inhparent = 'events'::regclass " ++
+            "AND pg_get_expr(c.relpartbound, c.oid) IS NOT NULL " ++
+            "AND now() >= (regexp_match(pg_get_expr(c.relpartbound, c.oid), E'FROM \\\\(''(.+?)''\\\\)'))[1]::timestamptz " ++
+            "AND now() < (regexp_match(pg_get_expr(c.relpartbound, c.oid), E'TO \\\\(''(.+?)''\\\\)'))[1]::timestamptz",
+        &.{},
+    );
+    defer current_partition_rows.deinit();
+    if (current_partition_rows.rows.len == 0) {
+        // No partition currently covers now() at all — PAR-02's maintenance
+        // job has already fallen behind in this environment, so the
+        // condition this test targets already holds unconditionally.
+        // Appending now must already fail with PartitionMissingForWrite;
+        // nothing to detach/reattach.
+        const err = store.append(alloc, AppendParams{
+            .instance_id = inst_uuid,
+            .event_type = type_name,
+            .payload = "{}",
+            .actor_id = actor_uuid,
+            .idempotency_key = idem_key,
+            .metadata = null,
+        });
+        try std.testing.expectError(StoreError.PartitionMissingForWrite, err);
+        try std.testing.expectEqual(@as(i64, 0), try countEvents(&pool, alloc, idem_key));
+        return;
+    }
+    const partition_name = try alloc.dupe(u8, current_partition_rows.rows[0][0] orelse return error.TestUnexpectedResult);
+    defer alloc.free(partition_name);
+    const partition_bound = try alloc.dupe(u8, current_partition_rows.rows[0][1] orelse return error.TestUnexpectedResult);
+    defer alloc.free(partition_bound);
+
+    // Detach the live current-month partition from events. From this point
+    // on, reattachment MUST happen no matter what (test failure, assertion
+    // panic, or success) — this is the current, real database's own active
+    // partition, shared with every other test and developer against
+    // BPM_TEST_DB_URL.
+    const detach_sql = try std.fmt.allocPrint(alloc, "ALTER TABLE events DETACH PARTITION {s}", .{partition_name});
+    defer alloc.free(detach_sql);
+    try conn.exec(detach_sql, &.{});
+
+    defer reattach: {
+        const reattach_sql = std.fmt.allocPrint(
+            alloc,
+            "ALTER TABLE events ATTACH PARTITION {s} {s}",
+            .{ partition_name, partition_bound },
+        ) catch |e| {
+            std.debug.print(
+                "\nCRITICAL: failed to format reattach SQL for {s} ({s}) — partition is DETACHED, fix manually: ALTER TABLE events ATTACH PARTITION {s} {s};\n",
+                .{ partition_name, @errorName(e), partition_name, partition_bound },
+            );
+            break :reattach;
+        };
+        defer alloc.free(reattach_sql);
+        conn.exec(reattach_sql, &.{}) catch |e| {
+            std.debug.print(
+                "\nCRITICAL: failed to reattach {s} after PAR-01 AC4 test ({s}) — fix manually: {s};\n",
+                .{ partition_name, @errorName(e), reattach_sql },
+            );
+        };
+    }
+
+    // The append must now fail: created_at (now()) falls in the gap this
+    // test just opened. Postgres partition routing raises SQLSTATE 23514
+    // ("no partition of relation ... found for row"), which store.zig maps
+    // to StoreError.PartitionMissingForWrite (not the generic
+    // TransactionFailed every other INSERT failure on this path maps to).
+    const err = store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = type_name,
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = idem_key,
+        .metadata = null,
+    });
+    try std.testing.expectError(StoreError.PartitionMissingForWrite, err);
+
+    // No event row must have been inserted — the rejection must not leave a
+    // partial write (same discipline as TC-ES-01-02's InstanceNotFound case).
+    try std.testing.expectEqual(@as(i64, 0), try countEvents(&pool, alloc, idem_key));
+}

@@ -166,3 +166,19 @@ pub fn problemServiceUnavailable(detail: []const u8) ProblemDetails {
         .detail = detail,
     };
 }
+
+/// HTTP 503 — Service Unavailable, specifically for
+/// `event_store.StoreError.PartitionMissingForWrite` (PAR-01 AC4): an append
+/// whose `created_at` falls in a calendar month with no attached partition
+/// on `events`/`events_ephemeral`. 503 rather than 422 because this is not a
+/// client input error — the request is well-formed and will succeed once
+/// `plat_partition_maintenance` (PAR-02) attaches the missing partition, so
+/// it is transient/retryable, not a permanent rejection of the payload.
+pub fn problemPartitionMissingForWrite(detail: []const u8) ProblemDetails {
+    return .{
+        .type = BASE ++ "partition-missing-for-write",
+        .title = "Partition Missing For Write",
+        .status = 503,
+        .detail = detail,
+    };
+}
