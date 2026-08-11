@@ -1865,6 +1865,19 @@
       "completed_at": "2026-08-11T18:22:57Z",
       "run_id": "WF02-batch-3-20260811",
       "deferred_reason": "Fixed inline by TEST-RUNNER within WF02-batch-3-20260811 per Unblock-Everything (blocked this run own event-store test results); not left for a separate WF-03 pickup."
+    },
+    {
+      "issue_id": "ISS-0672",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/306#issuecomment-5257910135",
+      "title": "PIN-01 AC1: service_catalog has no version/status column",
+      "severity": "MAJOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-11T19:35:04Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

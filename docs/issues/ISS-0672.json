@@ -1,0 +1,29 @@
+{
+  "issue_id": "ISS-0672",
+  "title": "PIN-01 AC1: service_catalog has no version/status column — \"active version\"/DEPRECATED concept does not exist in schema",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "schema gap / design blocker",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "f385495e-5502-4541-b370-0d8ebaf0ef13",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/306#issuecomment-5257910135",
+  "requirement_ids": [
+    "PIN-01",
+    "PIN-03"
+  ],
+  "summary": "While designing PIN-01 (dependency version resolution at instance start) against the real current schema, found that public.service_catalog (migrations/049_repository_service_catalog.sql, altered only by migrations/GBL-117_svc01_service_catalog_scope.sql) has no version or status column at all -- service_id is the table's PRIMARY KEY, one row per service, not one row per service-version. PIN-01 AC1's trigger condition (\"names no catalog entry with an active version\") and PIN-03 AC3 (\"pinned catalog entry version is set to DEPRECATED\") both assume a per-version status this table does not have. src/engine/service_task.zig's resolveCatalogEndpoint() and every other existing caller already treat the catalog as unversioned. This blocks full implementation of PIN-01's catalog_entry resolution branch to its literal AC text; a provisional stopgap interpretation (each row is an implicit single active version, no version history) is documented in src/design/pin-01-dependency-version-resolution.md Open questions #1 but the real schema decision (add version/status columns vs. accept the degenerate single-version reading) needs REQ-ANALYST/ORCH, not a unilateral CODE-DESIGNER call.",
+  "root_cause": {
+    "type": "missing_schema_concept",
+    "details": "service_catalog was designed (REPO-07/SVC-01) as an unversioned per-service registry. PIN-01/PIN-03, added later in the same requirements set, assume the catalog has version history and per-version lifecycle status (active/DEPRECATED) that was never built."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-11T19:33:24Z",
+  "resolved_at": null,
+  "prevention": [
+    "REQ-ANALYST/ORCH should decide between widening service_catalog with real version/status columns (breaking reshape of an already-RELEASED table) or formally accepting the single-implicit-version reading before BACKEND-DEV implements PIN-01's catalog_entry resolution branch.",
+    "CODE-DESIGNER should flag this class of cross-requirement schema assumption mismatch (a later requirement assuming infrastructure an earlier, already-RELEASED requirement never built) as an explicit Open question rather than silently picking an interpretation, as done here."
+  ]
+}
