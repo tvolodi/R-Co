@@ -1,0 +1,47 @@
+{
+  "handoff_id": "03b694b0-0a80-407a-b830-853b44832c9f",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-batch-3-20260811/step-03-test-designer.json",
+  "created_at": "2026-08-11T14:26:03Z",
+  "started_at": "2026-08-11T16:49:53Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/db/partition_attach.zig",
+      "src/scheduler/partition_maintenance.zig",
+      "src/scheduler/partition_retention.zig",
+      "src/event_store/store.zig",
+      "tests/integration/par02_partition_catalog_test.zig",
+      "tests/integration/par03_retention_class_test.zig",
+      "tests/integration/event_store_integration_test.zig"
+    ]
+  },
+  "task": {
+    "description": "BACKEND-DEV already implemented and wrote real tests for PAR-01/02/03/04 (test-partition-attach, test-partition-maintenance, test-partition-retention, test-integration-par02, test-integration-par03, plus rewrote TC-ES-07-01/02 and TC-ADP-11-02/03 in event_store_integration_test.zig -- 28/28 total confirmed passing at implementation time). Write tests/specs/PAR-01.md, PAR-02.md, PAR-03.md, PAR-04.md per test_developer_guide.md format, tracing every AC (read full bodies from docs/requirements.yaml) to specific existing test cases. SECURITY-REVIEWER noted two MINOR non-blocking observations worth a second look from a test-coverage angle (not necessarily new tests, but confirm they are not silent gaps): (1) PartitionMaintenanceScheduler/PartitionRetention are not yet wired into main.zig or given a per-tenant fanout loop -- confirm this matches PAR-02/03's own AC scope (they may legitimately only require the job LOGIC to exist and be correct, with scheduling/wiring being a separate concern) rather than being an unstated gap. (2) event_payload_store's FK does not cover events_ephemeral -- confirm whether any PAR-01-04 AC requires large-payload delete-class events to work, or whether this is genuinely out of scope. Also specifically verify TC-ADP-11-02 (rewritten to prove protected event types can never be hard-deleted) and TC-ADP-11-03 continue to fully satisfy ADP-11's (already-RELEASED, MUST) acceptance criteria -- read ADP-11's body and tests/specs/ADP-11.md if it exists, do not just trust that a rename occurred correctly.",
+    "acceptance_criteria": [
+      "tests/specs/PAR-01.md, PAR-02.md, PAR-03.md, PAR-04.md exist and trace every AC to a specific test case",
+      "SECURITY-REVIEWER's two MINOR observations assessed for whether they represent genuine coverage gaps",
+      "ADP-11 (RELEASED) confirmed still fully satisfied by the rewritten TC-ADP-11-02/03",
+      "Any genuine coverage gap found is closed with a new test case",
+      "No error.SkipZigTest on any MUST-requirement test"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
