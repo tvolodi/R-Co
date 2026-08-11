@@ -1,0 +1,27 @@
+{
+  "issue_id": "ISS-0670",
+  "title": "PAR-02 AC5: EXECUTION_PARTITION_CREATED event not emitted — needs a platform-event append design (no instance_id convention exists)",
+  "status": "OPEN",
+  "severity": "MINOR",
+  "category": "event-store / platform-event design gap",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "a5613a5b-624c-449f-8415-542c097d478e",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/711",
+  "requirement_ids": [
+    "PAR-02"
+  ],
+  "summary": "PAR-02 AC5 (each partition creation appends EXECUTION_PARTITION_CREATED carrying partition name + range bounds) is unimplemented. src/scheduler/partition_maintenance.zig::ensurePartitionAttached() creates and attaches partitions but never calls Store.append() or emits any event. Investigated fixing directly during REWORK 1: Store.append() requires instance_id to exist as an ACTIVE row in instance_projections (StoreError.InstanceNotFound otherwise); partition_maintenance.zig is a platform-level daily job with no owning workflow instance, and no system/platform instance_id convention exists anywhere in this codebase. Every other platform-level EXECUTION_* event of the same shape named in docs/requirements.yaml (EXECUTION_MIGRATION_VALIDATED, EXECUTION_OUTBOX_GATE_OPENED, EXECUTION_CORRELATION_LAG, EXECUTION_INGRESS_REFUSED, EXECUTION_PARTITION_DETACHED, EXECUTION_PARTITION_DROPPED) is also unimplemented, confirming no precedent exists to copy. Needs a CODE-DESIGNER design note establishing the platform-event append convention before BACKEND-DEV can implement — not a quick fix. Sub-finding of GH #223 (PAR-02 parent requirement tracking issue).",
+  "root_cause": {
+    "type": "missing_design_convention",
+    "details": "No design artefact in this codebase specifies how a non-instance-scoped platform/system event (instance_id has no owning workflow instance) should be appended through Store.append(), which hard-requires an ACTIVE instance_projections row. This blocks EXECUTION_PARTITION_CREATED (PAR-02 AC5) and at least five other EXECUTION_* platform events named in docs/requirements.yaml."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-11T17:29:26Z",
+  "resolved_at": null,
+  "prevention": [
+    "CODE-DESIGNER should produce a short design note establishing the platform-event append convention (instance_id/actor_id/idempotency_key shape for non-instance-scoped events, and whether Store.append() needs an InstanceNotFound carve-out or platform events need a dedicated lower-level insert path) before any of the six affected EXECUTION_* events are implemented."
+  ]
+}

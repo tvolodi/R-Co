@@ -1,0 +1,210 @@
+stage: "Stage 16"
+date: "2026-08-11T18:32:22Z"
+run_id: WF02-batch-3-20260811
+workflow_id: WF-02
+workflow_step: "05"
+decision: PARTIAL
+
+requirement_ids:
+  - PAR-01
+  - PAR-02
+  - PAR-03
+  - PAR-04
+
+prior_gates:
+  design_validation_step_1b: PASS
+  security_review_step_2c: PASS
+  test_design_validation_step_3b: PASS
+  test_execution_step_4: PASS (with one rework cycle, PAR-01 AC4)
+  test_report: tests/reports/report-20260811-WF02-batch-3.yaml
+
+independent_verification_method: >
+  Did not trust the handoff chain's claims at face value. (1) Read the exact AC wording for
+  PAR-01/02/03/04 directly from docs/requirements.yaml (not from tests/specs/ paraphrases).
+  (2) Read tests/specs/PAR-01.md, PAR-02.md, PAR-03.md, PAR-04.md in full, including their
+  Gap notes and Traceability Matrices. (3) Re-ran, myself, all 6 batch-specific build targets
+  plus the environment health check against the live db_test container (not reused from the
+  report): test-partition-attach (2/2, exit 0), test-partition-maintenance (5/5, exit 0),
+  test-partition-retention (4/4, exit 0), test-integration-par02 (3/3, exit 0),
+  test-integration-par03 (4/4, exit 0), test-integration-event-store (29/29, exit 0),
+  test-env-verify (HEALTHY 10/10) -- every count matches tests/reports/report-20260811-WF02-batch-3.yaml
+  exactly, confirming the reported infra_incident (ISS-0671/GH-712, default tenant
+  storage_mode routing) is genuinely resolved and not just claimed resolved. (4) Read
+  TC-PAR01-04-01's full test body in tests/integration/event_store_integration_test.zig
+  and cross-checked it against src/event_store/store.zig's PartitionMissingForWrite variant
+  and src/api/errors.zig's HTTP 503 mapping -- confirmed the REWORK 1 fix (commit fa63e32d)
+  is real, not just described. (5) Independently grepped src/ (not docs/design/, which does
+  reference these events in prose/pseudocode) for EXECUTION_PARTITION_CREATED,
+  EXECUTION_PARTITION_DETACHED, EXECUTION_PARTITION_DROPPED -- zero matches in any .zig file,
+  confirming the emission gap is a genuine absence of implementation, not merely absence of
+  a test. (6) Checked docs/BPM_Platform_Functional_Requirements.md for NFR-01..07 applicability
+  and tests/bench/bench.zig for any PAR-0x benchmark -- none exists; PAR-04 AC1/AC3's
+  embedded timing thresholds (50ms/1s) are self-measured by attachPartitionTimed() at
+  runtime and exercised transitively (every attach in this batch returned .ok with no
+  AttachScanRequired), not a zig build bench target -- confirmed NFR benchmarks are not
+  applicable to this batch's own surface.
+
+acceptance_criteria_audit:
+  par_01:
+    title: Monthly range partitioning of the event log
+    ac1: "covered (TC-PAR-01-01, transitively via par02/par03 fixtures + migration 1147 inspection)"
+    ac2: "covered (TC-PAR-01-02, TC-ES-03-01 duplicate idempotency_key path)"
+    ac3: "covered, positive direction (TC-PAR-01-03, TC-ES-01-01); negative/rollback direction not
+      separately exercised -- MINOR, structural (BEGIN/COMMIT bracketing is a 2-line invariant,
+      any DB driver failure mid-transaction already rolls back by Postgres protocol, not by
+      application logic that could regress silently)."
+    ac4: "covered (TC-PAR01-04-01, REWORK 1, commit fa63e32d). Independently re-read: detaches the
+      real current-month partition, asserts StoreError.PartitionMissingForWrite / HTTP 503,
+      asserts zero rows written, unconditionally reattaches via defer. Confirmed against
+      src/event_store/store.zig:79,647 and src/api/errors.zig:171-177 -- the SQLSTATE 23514
+      check_violation-driven variant is genuinely implemented, not stubbed."
+    ac5: "covered (TC-PAR-01-04, transitively via LIKE ... INCLUDING DEFAULTS at every partition
+      creation site; index physical presence not independently asserted via pg_indexes -- MINOR,
+      same class as PAR-04's transitive-evidence ACs below)."
+    verdict: PASS -- all 5 ACs have real implementation and passing test evidence; no MUST AC is
+      unimplemented.
+
+  par_02:
+    title: Proactive future partition creation
+    ac1: "covered (TC-PAR-02-01/02/05, month-grid math)"
+    ac2: "covered (TC-PAR-02-04/06/07, DB-enforced idempotency gate)"
+    ac3: "implemented, thin coverage -- WARN/BLOCKER severity branch (partition_maintenance.zig:231-236)
+      is 3 lines of pure integer comparison, no test drives runMaintenanceCycle() to
+      future_count exactly 1 or 0. MINOR, acceptable as documented follow-up (ISS/GH not yet
+      filed for this specific sub-gap per the handoff context -- recommend TEST-DESIGNER add
+      in a follow-up batch, non-blocking for this release)."
+    ac4: "covered (TC-PAR-02-03, computeNextRunDelayMs immediate-fire-on-restart path)"
+    ac5: >
+      NOT MET. AC5 text: "Each creation appends EXECUTION_PARTITION_CREATED carrying the
+      partition name and its range bounds." Independently grepped src/scheduler/partition_maintenance.zig
+      and the whole of src/ for EXECUTION_PARTITION_CREATED: zero call sites. This is not a
+      test-coverage gap (no test written) -- it is an implementation gap (no code exists to
+      test). ensurePartitionAttached() creates and attaches partitions but never calls
+      Store.append() or emits any event. Filed as ISS-0670/GH-711 (OPEN), root-caused to a
+      genuine missing design convention (no platform/system instance_id exists for
+      Store.append()'s InstanceNotFound-gated API to accept a non-instance-scoped event) --
+      correctly scoped as needing CODE-DESIGNER input, not a quick BACKEND-DEV fix.
+    verdict: PARTIAL -- AC1/AC2/AC4 solid, AC3 acceptable-thin, AC5 UNMET (MUST AC, zero
+      implementation). See disposition below.
+
+  par_03:
+    title: Partition-scoped retention and archival
+    ac1: "covered, two independent layers (TC-PAR-03-01/02/03 app-level guard, NEW this batch,
+      closing a real pre-existing coverage gap; TC-PAR-03-04/05/06 DB-level CHECK backstop)"
+    ac2: "covered (TC-PAR-03-08 DETACH/ATTACH no-row-copy aging + queryability; TC-PAR-03-09
+      idempotent re-run; TC-PAR-03-07 delete-class converse routing)"
+    ac3: "implemented, thin coverage -- pre-drop guard SQL shape unit-tested (TC-PAR-03-11);
+      TC-PAR-03-07 exercises only the non-tripping path. MINOR, acceptable (guard is
+      defense-in-depth behind two independent AC1 layers that already prevent the condition
+      it guards against in normal operation)."
+    ac4: "implemented, no direct test -- Adp11GuardTripped branch (partition_retention.zig:323-326)
+      is simple pure logic, structurally unreachable in normal operation (same reasoning as
+      AC3). MINOR, acceptable as documented follow-up."
+    ac5: "implemented, no direct test -- ORPHAN_PARTITION transition on failed re-attach
+      (archiveOnePartition()'s markOrphan(), retryOrphanedAttaches()) not exercised by a test
+      that deliberately induces the failure. MINOR, acceptable as documented follow-up,
+      same class as PAR-02 AC3."
+    ac6: >
+      NOT MET. AC6 text: "Detach and drop each append EXECUTION_PARTITION_DETACHED or
+      EXECUTION_PARTITION_DROPPED to the event log." Independently grepped
+      src/scheduler/partition_retention.zig and the whole of src/: zero call sites for either
+      event name. Same class of gap as PAR-02 AC5 -- implementation, not test-coverage.
+      Filed under the same ISS-0670/GH-711 umbrella (the design-note recommendation in that
+      issue explicitly covers all six unimplemented EXECUTION_* platform events, including
+      these two).
+    verdict: PARTIAL -- AC1/AC2 solid, AC3/AC4/AC5 acceptable-thin, AC6 UNMET (MUST AC, zero
+      implementation). See disposition below.
+
+  par_04:
+    title: Partition constraints declared before attach
+    ac1: "covered transitively -- every successful attach in this batch's par02/par03/ADP-11-rewrite
+      integration tests (6/6 targeted steps, independently re-run and confirmed this session)
+      is a live, non-vacuous exercise of verifyAttachConstraints() returning .ok; a constraint
+      mismatch anywhere would have hard-failed as UnexpectedAttachScanRequired, which never
+      happened."
+    ac2: "covered transitively, same mechanism as AC1 (a missing tenant CHECK would surface as
+      AttachScanRequired; never observed)."
+    ac3: "implemented, not deterministically testable -- correctly judged: driving a real ATTACH
+      PARTITION past a 1s wall-clock budget deterministically is inherently flaky and would
+      contradict AC1's own '<50ms regardless of size' claim. Code-reviewed
+      (attachPartitionTimed(), partition_attach.zig:239-255) rather than test-asserted. This
+      is a legitimate exception to 'deterministic tests only', not a coverage shortcut."
+    ac4: "implemented (CHECK (tenant_id IS NOT NULL) declared verbatim at every creation call
+      site, confirmed by grep), no direct NULL-insert test. MINOR, acceptable -- textual
+      presence already confirmed by every attach's .ok verdict (a missing CHECK would fail
+      the attach itself, not just this insert test)."
+    ac5: "covered (TC-PAR-04-01 formatting correctness) + transitively (every successful attach)."
+    verdict: PASS -- all 5 ACs have real implementation; AC3/AC4 lack direct tests but the
+      thinness is well-reasoned and structurally backstopped, not a hidden implementation gap.
+
+nfr_applicability:
+  nfr_01_04_platform_benchmarks: >
+    Not applicable to this batch. Checked docs/BPM_Platform_Functional_Requirements.md
+    (NFR-01 API latency, NFR-02 append throughput, NFR-04 10,000-event replay) and
+    tests/bench/bench.zig: no PAR-0x benchmark target exists, and none of PAR-01..04
+    introduces a new HTTP endpoint or changes the reconstruction query path (that is
+    PAR-06, a separate, later requirement). zig build bench was not run for this batch on
+    that basis -- consistent with batch-0's identical "not applicable, no new HTTP surface"
+    finding for DDL-05/MIG-01..03.
+  par_04_embedded_timing_thresholds: >
+    PAR-04 AC1 (<50ms attach) and AC3 (>1s reported as AttachScanRequired) are
+    requirement-embedded design constraints, not platform-wide NFR-01..07 targets. Verified
+    these are self-measured at runtime by attachPartitionTimed() (partition_attach.zig) and
+    exercised transitively: every attach performed by this batch's re-run integration tests
+    (par02, par03, event-store -- 36 total test cases across the three targets) completed
+    with AttachVerdict.ok and no AttachScanRequired was ever raised, which is live evidence
+    the fast path held throughout this batch's real usage, not merely a code-review claim.
+
+blocking_issues:
+  - id: ISS-0670
+    github_issue: "https://github.com/tvolodi/R-Co/issues/711"
+    severity: MAJOR
+    status: OPEN
+    scope: "PAR-02 AC5, PAR-03 AC6"
+    description: >
+      EXECUTION_PARTITION_CREATED (PAR-02 AC5) and EXECUTION_PARTITION_DETACHED /
+      EXECUTION_PARTITION_DROPPED (PAR-03 AC6) are not emitted anywhere in src/ --
+      confirmed by direct grep, not inferred from the issue text alone. These are not
+      optional/SHOULD clauses: both ACs are plain bullets in a MUST-priority requirement's
+      Acceptance Criteria list, with the same unconditional phrasing ("Each creation
+      appends...", "Detach and drop each append...") as every other AC in the same list.
+      Per docs/anti-patterns.md's governing rule ("RELEASE-VALIDATOR MUST return FAIL if any
+      MUST requirement has no passing integration test evidence... 'will be addressed later'
+      is not an acceptance criterion"), and by the stronger fact that this is missing
+      implementation rather than merely missing test coverage, these two specific ACs cannot
+      be treated as met. The root cause (no platform/system instance_id convention exists for
+      Store.append()'s InstanceNotFound-gated API) is correctly scoped as needing a
+      CODE-DESIGNER design note before BACKEND-DEV can close it -- this is not a quick fix,
+      and forcing it into this handoff's rework budget would be the wrong move. It should
+      remain a tracked, scheduled follow-up.
+    disposition: >
+      Does NOT block PAR-01 or PAR-04, which have no comparable gap. DOES block PAR-02 and
+      PAR-03 from being marked fully RELEASED as-is: their status should move to a state that
+      reflects "implemented and tested except for AC5/AC6 respectively, tracked via
+      ISS-0670/GH-711" rather than an unqualified RELEASED that silently claims full AC
+      coverage. Recommend DOC-UPDATER route PAR-02/PAR-03 to a partial-release / TESTED-not-RELEASED
+      marking (see reqctl.py's available status values) with ISS-0670/GH-711 referenced, while
+      PAR-01/PAR-04 proceed to full RELEASED.
+
+approved_requirements:
+  - "PAR-01"
+  - "PAR-04"
+
+partially_approved_requirements:
+  - id: "PAR-02"
+    met: ["AC1", "AC2", "AC3", "AC4"]
+    unmet: ["AC5"]
+    tracking: "ISS-0670 / GH-711 (OPEN)"
+  - id: "PAR-03"
+    met: ["AC1", "AC2", "AC3", "AC4", "AC5"]
+    unmet: ["AC6"]
+    tracking: "ISS-0670 / GH-711 (OPEN)"
+
+not_approved_requirements: []
+
+next_action: >
+  Route to DOC-UPDATER (Step 6): mark PAR-01 and PAR-04 RELEASED in full. Mark PAR-02 and
+  PAR-03 as tested-with-known-gap (not unqualified RELEASED) pending ISS-0670/GH-711, with
+  the specific unmet AC (PAR-02 AC5, PAR-03 AC6) recorded against the tracking issue in
+  requirement_status.yaml so a future release of the EXECUTION_* platform-event design closes
+  both in one pass rather than each being independently rediscovered.

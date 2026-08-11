@@ -430,9 +430,27 @@ def main() -> None:
             "slug LIKE 'exp%' OR slug LIKE 'adp%' OR slug LIKE 'webhook%' OR "
             "slug = 'legacy-fixture'"
         )
+        # GH-712/ISS-0672: this DELETE lacked the "slug != 'default'" guard that
+        # every other DELETE in this function has. The harness's persistent
+        # 'default' tenant (id=00000000...0000) is seeded with tenant_type='test'
+        # (see helpers.zig ensureDefaultOidcSeeds()'s comment on why), and if its
+        # storage_mode was LEGACY_RLS at the moment this ran (e.g. before migration
+        # 087_default_tenant_storage_mode_cutover.sql's one-time flip, or after any
+        # process that recreated the row via a plain INSERT and took the column's
+        # LEGACY_RLS default), this statement matched and deleted the "never
+        # dropped" fixture the comment above and drop_orphaned_tenant_schemas()
+        # both promise to preserve. The next test run's ensureDefaultOidcSeeds()
+        # then silently re-INSERTs it from scratch at storage_mode=LEGACY_RLS
+        # (fresh INSERT, not the ON CONFLICT UPDATE branch, since the row was
+        # gone) -- search_path then resolves to "public", but every event-store
+        # table lives only in the tenant_default schema, so every test that
+        # exercises the default tenant fails with "relation ... does not exist".
+        # Reproduced live: WF02-batch-3-20260811's test-integration-event-store
+        # run failed 22/29 this way immediately after an --include-fixtures
+        # cleanup swept 28 LEGACY_RLS rows with no slug exclusion.
         run_psql(
             "DELETE FROM public.tenant WHERE "
-            "storage_mode='LEGACY_RLS' AND tenant_type='test'"
+            "storage_mode='LEGACY_RLS' AND tenant_type='test' AND slug != 'default'"
         )
         # Re-sweep schemas the fixture rows left behind.
         drop_orphaned_tenant_schemas()

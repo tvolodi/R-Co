@@ -1,0 +1,31 @@
+{
+  "issue_id": "ISS-0671",
+  "title": "clean_test_db.py --include-fixtures LEGACY_RLS sweep lacks slug!='default' guard, can delete the harness's persistent default tenant fixture",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "test infrastructure / gate integrity",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "6bf73e6b-6e1d-42f3-ba5e-83291f0528ec",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/712",
+  "requirement_ids": [],
+  "summary": "tools/clean_test_db.py's --include-fixtures sweep has two DELETEs targeting leaked fixture tenant rows. The slug-prefix DELETE and every other DELETE in this file carries an explicit slug != 'default' guard to protect the harness's persistent tenant_default fixture (id 00000000-0000-0000-0000-000000000000). The second DELETE (line ~433) does not: `DELETE FROM public.tenant WHERE storage_mode='LEGACY_RLS' AND tenant_type='test'`. The default tenant's tenant_type is 'test' (see tests/integration/helpers.zig ensureDefaultOidcSeeds()), so if its storage_mode is LEGACY_RLS at the moment this sweep runs, this statement deletes the row the comment two lines above promises is 'never dropped'. Reproduced live during WF02-batch-3-20260811: ORCH's INFRA_UNBLOCK step ran clean_test_db.py --include-fixtures to clear 50 leaked rows (22 orphaned SCHEMA tenants + 28 LEGACY_RLS children); the default tenant was apparently swept up as one of the 28. zig build test-integration-event-store immediately came back 7/29 (expected 29/29), all 22 failures on 'relation ... does not exist' (instance_projections, event_type_registry, events), traced via docker logs to search_path resolving to 'public' instead of 'tenant_default,public' because ensureDefaultOidcSeeds()'s next fresh INSERT (no existing row to ON CONFLICT UPDATE against) took the storage_mode column default (LEGACY_RLS) instead of the SCHEMA mode migration 087_default_tenant_storage_mode_cutover.sql had previously established.",
+  "root_cause": {
+    "type": "missing_guard_clause_inconsistent_with_sibling_deletes",
+    "details": "Every other DELETE in tools/clean_test_db.py that could plausibly match the default tenant row carries an explicit slug != 'default' (or equivalent) exclusion. The --include-fixtures LEGACY_RLS sweep added under ISS-0112/GH-375 omitted this guard, so it silently deletes the harness's persistent fixture whenever that fixture's storage_mode happens to be LEGACY_RLS at sweep time -- which is the DB column default and therefore the state any fresh re-INSERT of the row lands in, creating a self-reinforcing failure mode: delete strips SCHEMA mode's provenance, the very next test run's ensureDefaultOidcSeeds() re-creates the row at the LEGACY_RLS default, and every subsequent default-tenant test fails until someone manually re-flips storage_mode."
+  },
+  "resolution": {
+    "type": "fixed_in_run",
+    "details": "Added 'AND slug != '\\''default'\\''' to the LEGACY_RLS DELETE in tools/clean_test_db.py (--include-fixtures branch), matching the guard pattern used by every other DELETE in the file. Repaired current bpm_test data: UPDATE public.tenant SET storage_mode='SCHEMA' WHERE id='00000000-0000-0000-0000-000000000000' AND storage_mode='LEGACY_RLS' (safe -- public.tenant_schemas already had the tenant_default row, confirming the schema was genuinely provisioned; this only re-applies what migration 087 had already established once). Re-verified zig build test-env-verify HEALTHY 10/10, test-integration-event-store 29/29, test-integration-par02 3/3, test-integration-par03 4/4, full zig build test unit suite 1067/1131 (64 skipped, 0 new failures vs. batch-2's 1053/1117 baseline)."
+  },
+  "verification": "zig build test-env-verify (10/10 HEALTHY), zig build test-integration-event-store (29/29), zig build test-integration-par02 (3/3), zig build test-integration-par03 (4/4), zig build test (1067/1131, 64 skipped, exit 0) all re-run and confirmed green after the fix, within WF02-batch-3-20260811's TEST-RUNNER step (handoff 6bf73e6b-6e1d-42f3-ba5e-83291f0528ec).",
+  "files_changed": [
+    "tools/clean_test_db.py"
+  ],
+  "created_at": "2026-08-11T18:22:57Z",
+  "resolved_at": "2026-08-11T18:22:57Z",
+  "prevention": [
+    "Add a defensive assertion inside ensureDefaultOidcSeeds()'s ON CONFLICT DO UPDATE path (or a startup self-heal) that re-asserts storage_mode='SCHEMA' for the default tenant whenever public.tenant_schemas already has its row, so this class of bug self-corrects on the very next test run instead of silently degrading every default-tenant test.",
+      "Related but distinct from ISS-0663/GH-700 (same file, run_psql()'s substring-based error swallowing) -- both defects live in tools/clean_test_db.py and both surfaced via the same --include-fixtures cleanup path; consider a combined hardening pass on this script (structured SQLSTATE-based error handling + a post-condition check that the default tenant row still exists and is SCHEMA-mode after any sweep)."
+  ]
+}

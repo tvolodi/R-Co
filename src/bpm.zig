@@ -24,6 +24,19 @@ pub const dlq_routes = @import("api/routes/dlq.zig"); // OBS-05
 pub const api_authorization = @import("api/authorization.zig"); // IDN-03
 pub const scheduler = @import("scheduler/store.zig"); // SCH-01
 pub const scheduler_poller = @import("scheduler/scheduler.zig"); // SCH-02
+pub const partition_maintenance = @import("scheduler/partition_maintenance.zig"); // PAR-02
+pub const partition_retention = @import("scheduler/partition_retention.zig"); // PAR-03
+// PAR-04: named module, not a relative @import. partition_maintenance.zig and
+// partition_retention.zig (both relatively owned by THIS file, re-exported
+// above) each import partition_attach.zig as the named module
+// `@import("partition_attach")` (see build.zig's partition_attach_mod
+// comment — their own standalone addTest roots cannot reach src/db/ via a
+// relative path that escapes their module root). A second, relative
+// ownership of the same file from here would violate Zig 0.16's single-owner
+// module rule the same way src/lua/ vs src/simulation/ already documents
+// above — so this re-export uses the identical named module instead of
+// `@import("db/partition_attach.zig")`.
+pub const partition_attach = @import("partition_attach");
 pub const reconstruction = @import("engine/reconstruction.zig"); // EE-11
 pub const transition = @import("engine/transition.zig"); // EE-12
 pub const snapshot_writer = @import("engine/snapshot_writer.zig"); // ISS-601

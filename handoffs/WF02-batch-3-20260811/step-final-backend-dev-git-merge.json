@@ -1,0 +1,40 @@
+{
+  "handoff_id": "279e2315-4c36-4f4b-9054-4d5da83c9cb9",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-3-20260811/step-final-backend-dev-git-merge.json",
+  "created_at": "2026-08-11T18:44:58Z",
+  "started_at": "2026-08-11T18:44:58Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Step Final git-merge for feature/WF02-batch-3-20260811 (33 commits ahead of main, working tree clean). Push the branch, open a PR summarizing the split release (PAR-01/PAR-04 fully RELEASED, PAR-02/PAR-03 TESTED but withheld pending ISS-0670/GH-711), verify CI green, squash-merge, delete the branch, return to a clean main. Per CLAUDE.md GitHub Branch Management (MANDATORY) -- this is pre-authorized, do not ask for confirmation.",
+    "acceptance_criteria": [
+      "Branch pushed to origin",
+      "PR opened with an accurate description of the split release",
+      "All CI checks pass (verify via gh pr checks, and run python tools/check_github_status.py before attributing any red check)",
+      "Squash-merged to main",
+      "Feature branch deleted (remote + local)",
+      "Working tree returns to a clean main"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

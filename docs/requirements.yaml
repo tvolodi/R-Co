@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-11T14:00:51Z'
+generated_at: '2026-08-11T18:38:47Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -11948,7 +11948,7 @@ requirements:
     title: Monthly range partitioning of the event log
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** ES-07, replacing the row-by-row archival move with a partition lifecycle.
 
@@ -11965,14 +11965,24 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:32Z'
+    last_updated: '2026-08-11T18:38:39Z'
     workflow: PW-06
+    implemented_in:
+    - migrations/1147_par01_events_partitioning.sql
+    - src/event_store/store.zig
+    - src/api/errors.zig
+    test_spec: tests/specs/PAR-01.md
+    test_run: tests/reports/report-20260811-WF02-batch-3.yaml
+    tested_at: '2026-08-11T18:24:52Z'
+    release_run: WF02-batch-3-20260811
+    release_decision: docs/status/release-stage16-WF02-batch-3-20260811.yaml
+    released_at: '2026-08-11T18:38:39Z'
   PAR-02:
     id: PAR-02
     title: Proactive future partition creation
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > The scheduler SHALL run `plat_partition_maintenance` daily at 00:15 UTC in every tenant schema and SHALL keep `lead_months` future monthly partitions attached at all times, default 2. Partition creation SHALL be idempotent: creating a partition that already exists and is attached is a no-op. No append SHALL ever be the operation that creates a partition.
 
@@ -11987,14 +11997,24 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:33Z'
+    last_updated: '2026-08-11T18:38:46Z'
     workflow: PW-06
+    note: AC1/AC2/AC3/AC4 met; AC5 (EXECUTION_PARTITION_CREATED event emission) NOT MET -- zero call sites
+      in src/, confirmed by grep. Tracked as ISS-0670 / GH-711 (OPEN, MAJOR). Held at TESTED, not RELEASED,
+      until AC5 is implemented -- see docs/status/release-stage16-WF02-batch-3-20260811.yaml for RELEASE-VALIDATOR's
+      full reasoning.
+    implemented_in:
+    - src/scheduler/partition_maintenance.zig
+    - migrations/1148_par02_partition_catalog.sql
+    test_spec: tests/specs/PAR-02.md
+    test_run: tests/reports/report-20260811-WF02-batch-3.yaml
+    tested_at: '2026-08-11T18:24:52Z'
   PAR-03:
     id: PAR-03
     title: Partition-scoped retention and archival
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** ADP-11, giving the deletion prohibition a physical retention mechanism.
 
@@ -12012,14 +12032,24 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:34Z'
+    last_updated: '2026-08-11T18:38:47Z'
     workflow: PW-06
+    note: AC1-AC5 met; AC6 (EXECUTION_PARTITION_DETACHED / EXECUTION_PARTITION_DROPPED event emission)
+      NOT MET -- zero call sites in src/, confirmed by grep. Tracked as ISS-0670 / GH-711 (OPEN, MAJOR),
+      same umbrella issue as PAR-02 AC5. Held at TESTED, not RELEASED, until AC6 is implemented -- see
+      docs/status/release-stage16-WF02-batch-3-20260811.yaml for RELEASE-VALIDATOR's full reasoning.
+    implemented_in:
+    - src/scheduler/partition_retention.zig
+    - migrations/1149_par03_retention_class.sql
+    test_spec: tests/specs/PAR-03.md
+    test_run: tests/reports/report-20260811-WF02-batch-3.yaml
+    tested_at: '2026-08-11T18:24:52Z'
   PAR-04:
     id: PAR-04
     title: Partition constraints declared before attach
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > Every partition SHALL carry `CHECK (tenant_id IS NOT NULL)` and a CHECK matching its own range bounds, both declared on the standalone table before `ATTACH PARTITION` is issued. With both constraints present PostgreSQL validates the attach from the catalog and takes `SHARE UPDATE EXCLUSIVE`; without them it scans the partition under a stronger lock. An attach against a partition missing either constraint SHALL be refused with `AttachScanRequired`.
 
@@ -12034,8 +12064,16 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:35Z'
+    last_updated: '2026-08-11T18:38:41Z'
     workflow: PW-06
+    implemented_in:
+    - src/db/partition_attach.zig
+    test_spec: tests/specs/PAR-04.md
+    test_run: tests/reports/report-20260811-WF02-batch-3.yaml
+    tested_at: '2026-08-11T18:24:52Z'
+    release_run: WF02-batch-3-20260811
+    release_decision: docs/status/release-stage16-WF02-batch-3-20260811.yaml
+    released_at: '2026-08-11T18:38:41Z'
   PAR-05:
     id: PAR-05
     title: Online conversion to a partitioned event log

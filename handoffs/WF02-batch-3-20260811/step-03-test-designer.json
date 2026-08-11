@@ -1,0 +1,55 @@
+{
+  "handoff_id": "03b694b0-0a80-407a-b830-853b44832c9f",
+  "run_id": "WF02-batch-3-20260811",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-batch-3-20260811/step-03-test-designer.json",
+  "created_at": "2026-08-11T14:26:03Z",
+  "started_at": "2026-08-11T17:57:39Z",
+  "completed_at": "2026-08-11T18:01:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-01",
+      "PAR-02",
+      "PAR-03",
+      "PAR-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/db/partition_attach.zig",
+      "src/scheduler/partition_maintenance.zig",
+      "src/scheduler/partition_retention.zig",
+      "src/event_store/store.zig",
+      "tests/integration/par02_partition_catalog_test.zig",
+      "tests/integration/par03_retention_class_test.zig",
+      "tests/integration/event_store_integration_test.zig"
+    ]
+  },
+  "task": {
+    "description": "BACKEND-DEV already implemented and wrote real tests for PAR-01/02/03/04 (test-partition-attach, test-partition-maintenance, test-partition-retention, test-integration-par02, test-integration-par03, plus rewrote TC-ES-07-01/02 and TC-ADP-11-02/03 in event_store_integration_test.zig -- 28/28 total confirmed passing at implementation time). Write tests/specs/PAR-01.md, PAR-02.md, PAR-03.md, PAR-04.md per test_developer_guide.md format, tracing every AC (read full bodies from docs/requirements.yaml) to specific existing test cases. SECURITY-REVIEWER noted two MINOR non-blocking observations worth a second look from a test-coverage angle (not necessarily new tests, but confirm they are not silent gaps): (1) PartitionMaintenanceScheduler/PartitionRetention are not yet wired into main.zig or given a per-tenant fanout loop -- confirm this matches PAR-02/03's own AC scope (they may legitimately only require the job LOGIC to exist and be correct, with scheduling/wiring being a separate concern) rather than being an unstated gap. (2) event_payload_store's FK does not cover events_ephemeral -- confirm whether any PAR-01-04 AC requires large-payload delete-class events to work, or whether this is genuinely out of scope. Also specifically verify TC-ADP-11-02 (rewritten to prove protected event types can never be hard-deleted) and TC-ADP-11-03 continue to fully satisfy ADP-11's (already-RELEASED, MUST) acceptance criteria -- read ADP-11's body and tests/specs/ADP-11.md if it exists, do not just trust that a rename occurred correctly.\n\nREWORK 1 (routed by ORCH directly in-session, not via the autonomous loop, after BACKEND-DEV Step 2a REWORK 1 implemented PartitionMissingForWrite):\n- Re-validate that the new integration test TC-PAR01-04-01 (in the event-store integration suite, per BACKEND-DEV commit fa63e32d) genuinely proves PAR-01 AC4 per its exact wording in docs/requirements.yaml -- read the test body directly, confirm it detaches the current-month partition, asserts the specific PartitionMissingForWrite/HTTP 503 error, asserts zero rows written, and unconditionally re-attaches the partition afterward (no leaked test state).\n- Update tests/specs/PAR-01.md to close its previously-documented Gap note for AC4 now that the implementation and test exist -- trace AC4 to TC-PAR01-04-01 the same way every other AC in that file is traced.\n- Re-run the full previously-passing suite for this batch to confirm no regression from the SQLSTATE-preservation plumbing BACKEND-DEV added to vendor/pg/pg.zig and src/db/pool.zig (this touches shared infrastructure other tests may depend on): test-partition-attach, test-partition-maintenance, test-partition-retention, test-integration-par02, test-integration-par03, test-integration-event-store.\n- The MINOR gaps (PAR-02 AC3/AC5, PAR-03 AC4/AC5/AC6, PAR-04 AC3/AC4) and BACKEND-DEV's filed ISS-0670/GH-711 (PAR-02 AC5 emission, deferred -- no instance_id convention exists) remain open and documented as before; do not attempt to close them in this rework pass unless genuinely trivial. Do not let them block PASS if AC4 itself is now soundly proven.\n- If AC4 is now soundly proven and the full suite is green: result.status PASS, next_action Route to TEST-DESIGN-VALIDATOR (Step 3b).",
+    "acceptance_criteria": [
+      "tests/specs/PAR-01.md, PAR-02.md, PAR-03.md, PAR-04.md exist and trace every AC to a specific test case",
+      "SECURITY-REVIEWER's two MINOR observations assessed for whether they represent genuine coverage gaps",
+      "ADP-11 (RELEASED) confirmed still fully satisfied by the rewritten TC-ADP-11-02/03",
+      "Any genuine coverage gap found is closed with a new test case",
+      "No error.SkipZigTest on any MUST-requirement test"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 re-validation: TC-PAR01-04-01 (BACKEND-DEV commit fa63e32d) genuinely proves PAR-01 AC4 per its exact docs/requirements.yaml wording -- reads back the real current-month events partition via pg_get_expr, detaches it, asserts StoreError.PartitionMissingForWrite (HTTP 503 via problemPartitionMissingForWrite), asserts zero rows written via countEvents, and unconditionally reattaches via a defer registered immediately after the detach succeeds (no leaked state). Ran zig build test-integration-event-store twice in a row -- 29/29 both times -- confirming the detach/reattach cycle is idempotent and does not corrupt state for subsequent runs/tests. tests/specs/PAR-01.md AC4 Gap note closed and retitled RESOLVED (REWORK 1), traced to TC-PAR01-04-01 in both the Test Cases section and the Traceability Matrix, same pattern as every other AC in the file. Full previously-passing batch-3 suite re-run to confirm no regression from the SQLSTATE-preservation plumbing added to vendor/pg/pg.zig and src/db/pool.zig (shared infrastructure): test-partition-attach 2/2, test-partition-maintenance 5/5, test-partition-retention 4/4, test-integration-par02 3/3, test-integration-par03 4/4, test-integration-event-store 29/29 (twice). All 6 build steps exited 0, zero regressions. python tools/lint_test_isolation.py tests/integration: OK, 146 files checked, no isolation issues (116 pre-existing baseline suppressions unrelated to this change). MINOR gaps (PAR-02 AC3/AC5, PAR-03 AC4/AC5/AC6, PAR-04 AC3/AC4) and already-filed ISS-0670/GH-711 (PAR-02 AC5 emission) intentionally left open per rework scope -- not touched in this pass.",
+    "artifacts_out": [
+      "tests/specs/PAR-01.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

@@ -4,6 +4,96 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-11
 
+### Split release — Stage 16 batch 3: PAR-01, PAR-04 RELEASED in full; PAR-02, PAR-03 TESTED but withheld (event-emission gap)
+
+> **KNOWN GAP — NOT GLOSSED OVER:** [ISS-0670 / GH-711](https://github.com/tvolodi/R-Co/issues/711)
+> (MAJOR, **OPEN**) — `EXECUTION_PARTITION_CREATED` (PAR-02 AC5) and
+> `EXECUTION_PARTITION_DETACHED` / `EXECUTION_PARTITION_DROPPED` (PAR-03 AC6) are **not emitted
+> anywhere in `src/`** — confirmed by direct grep across the whole tree, not inferred from test
+> coverage gaps. This is a genuine missing implementation, not a missing test: PAR-02's
+> `ensurePartitionAttached()` creates and attaches partitions but never calls `Store.append()` or
+> emits any event, and the same is true of PAR-03's detach/drop paths. RELEASE-VALIDATOR
+> root-caused this to a real missing design convention — no platform/system `instance_id` exists
+> for `Store.append()`'s `InstanceNotFound`-gated API to accept a non-instance-scoped event —
+> correctly scoped as needing a CODE-DESIGNER design note before BACKEND-DEV can close it, not a
+> quick fix that belonged in this batch's rework budget. Because both ACs are plain unconditional
+> bullets in a MUST-priority requirement's Acceptance Criteria list, this project's own governing
+> rule (`docs/anti-patterns.md`: "RELEASE-VALIDATOR MUST return FAIL if any MUST requirement has
+> no passing integration test evidence... 'will be addressed later' is not an acceptance
+> criterion") means PAR-02 and PAR-03 cannot be marked unqualified `RELEASED`. **PAR-01 and PAR-04
+> have no comparable gap and are RELEASED in full below.** Full reasoning:
+> `docs/status/release-stage16-WF02-batch-3-20260811.yaml`.
+
+- **PAR-01 — Monthly range partitioning of the event log.** `migrations/1147_par01_events_partitioning.sql`
+  converts `events`/`events_archive` to `PARTITION BY RANGE (created_at)`, one partition per calendar
+  month (`events_YYYY_MM`), widening the primary key to `(event_id, created_at)` and preserving global
+  `idempotency_key` uniqueness via the separate non-partitioned `plat_event_idempotency` table written
+  in the same transaction as every append. `src/event_store/store.zig` gains the `PartitionMissingForWrite`
+  `StoreError` variant (an append whose `created_at` falls in a month with no attached partition fails
+  cleanly rather than being routed elsewhere), mapped to HTTP 503 by `src/api/errors.zig`'s
+  `problemPartitionMissingForWrite()`. All 5 ACs have real implementation and passing test evidence
+  (AC4 via `TC-PAR01-04-01`, added in this batch's rework cycle — see Pipeline note below).
+- **PAR-04 — Partition constraints declared before attach.** `src/db/partition_attach.zig` declares
+  `CHECK (tenant_id IS NOT NULL)` and a matching range CHECK on every standalone partition *before*
+  `ATTACH PARTITION` is issued, so PostgreSQL validates the attach from the catalog under
+  `SHARE UPDATE EXCLUSIVE` rather than scanning under a stronger lock; a partition missing either
+  constraint is refused with `AttachScanRequired`. Explicitly designed as the shared attach
+  infrastructure PAR-02 and PAR-03 both route through, and this batch's dozens of successful attaches
+  across `par02`/`par03`/event-store integration tests are live, non-vacuous, non-mocked evidence the
+  constraint-before-attach discipline holds — a mismatch anywhere would have hard-failed as
+  `UnexpectedAttachScanRequired`, which never happened. AC3 (>1s attach reported as
+  `AttachScanRequired`) is code-reviewed rather than test-asserted, a deliberate exception to
+  deterministic-tests-only since driving a real attach past a 1s wall-clock budget on purpose would be
+  inherently flaky and would contradict AC1's own <50ms claim.
+- **PAR-02 — Proactive future partition creation — TESTED, withheld from RELEASED.**
+  `src/scheduler/partition_maintenance.zig` (`migrations/1148_par02_partition_catalog.sql`) runs
+  `plat_partition_maintenance` daily, keeping `lead_months` (default 2) future monthly partitions
+  attached, idempotently, with WARN/BLOCKER severity escalation as the future-partition count falls to
+  1/0, and SCH-05 missed-run recovery on restart. AC1/AC2/AC4 are solidly covered; AC3's severity
+  branch is thin (3 lines of pure integer comparison, no test drives it to exactly 1/0 — MINOR,
+  acceptable follow-up). **AC5 (`EXECUTION_PARTITION_CREATED` emission) is unimplemented — see the
+  gap box above.** Status held at `TESTED`, not `RELEASED`.
+- **PAR-03 — Partition-scoped retention and archival — TESTED, withheld from RELEASED.**
+  `src/scheduler/partition_retention.zig` (`migrations/1149_par03_retention_class.sql`) ages `events`
+  partitions out via `DETACH ... CONCURRENTLY` + `ATTACH` to `events_archive` (no row copy), confines
+  hard `DROP TABLE` to `events_ephemeral` partitions holding only `delete`-class event types, and
+  guards every ephemeral drop with a live `ADP-11`-protected-type count check
+  (`Adp11GuardTripped` as BLOCKER on a non-zero count, partition stays attached). AC1 now has two
+  independent test layers (app-level guard, new this batch, closing a real pre-existing coverage gap,
+  plus the pre-existing DB-level CHECK backstop); AC2 covered including idempotent re-run. AC3/AC4/AC5
+  are thin (structurally unreachable defense-in-depth branches, same class as PAR-02 AC3 — MINOR,
+  acceptable follow-up). **AC6 (`EXECUTION_PARTITION_DETACHED`/`EXECUTION_PARTITION_DROPPED` emission)
+  is unimplemented — see the gap box above.** Status held at `TESTED`, not `RELEASED`.
+- **Pipeline note (rework, caught by the pipeline as intended):** PAR-01 AC4 required a rework cycle at
+  Step 4 (TEST-RUNNER/BACKEND-DEV) — the original attempt returned the generic `TransactionFailed`
+  StoreError with no HTTP mapping for a missing-partition write. BACKEND-DEV added the dedicated
+  `PartitionMissingForWrite` variant (`src/event_store/store.zig`) driven by the real SQLSTATE 23514
+  `check_violation`, plumbed through `vendor/pg/pg.zig`/`src/db/pool.zig`'s new SQLSTATE-preservation
+  path, and mapped it to HTTP 503 in `src/api/errors.zig`. `TC-PAR01-04-01` (commit `fa63e32d`)
+  independently re-verified by RELEASE-VALIDATOR: detaches the real current-month partition, asserts
+  the 503, asserts zero rows written, unconditionally reattaches via `defer`.
+- **Infrastructure issue found and fixed inline this run (unrelated to PAR-01..04's own code, filed per
+  No-Issue-Left-Local-Only):** [ISS-0671/GH-712](https://github.com/tvolodi/R-Co/issues/712) (MAJOR,
+  **RESOLVED**) — `tools/clean_test_db.py`'s `--include-fixtures` sweep deleted the harness's persistent
+  default-tenant fixture because its `LEGACY_RLS` DELETE lacked the `slug != 'default'` guard every
+  other DELETE in the file already has, which flipped the default tenant's `storage_mode` back to
+  `LEGACY_RLS` on the next seed and caused `test-integration-event-store` to fail 22/29 with
+  "relation ... does not exist" (schema-routing, not partitioning). Root-caused via `docker logs`
+  (the local `psql` on PATH is a non-functional WinGet shim, see ISS-0663/GH-700), fixed the guard,
+  repaired the live data, and re-ran every affected target clean (29/29). Does not change PAR-01..04's
+  own PASS verdict.
+- **Verified:** `zig build test-partition-attach` 2/2, `test-partition-maintenance` 5/5,
+  `test-partition-retention` 4/4, `test-integration-par02` 3/3, `test-integration-par03` 4/4,
+  `test-integration-event-store` 29/29 (initially 7/29 due to the infra incident above, clean after
+  the fix), `zig build test` 1067/1131 passed (64 skipped, 0 failed) — independently re-run by
+  RELEASE-VALIDATOR itself, not merely trusted from the test report. Full report:
+  `tests/reports/report-20260811-WF02-batch-3.yaml`.
+- **Requirement status:** PAR-01, PAR-04 → `RELEASED`. PAR-02, PAR-03 → `TESTED` (unmet AC5/AC6
+  respectively, tracked as ISS-0670/GH-711, recorded against each requirement's `note` field in
+  `docs/requirements.yaml`/`docs/status/requirement_status.yaml`). See
+  `docs/status/release-stage16-WF02-batch-3-20260811.yaml` for RELEASE-VALIDATOR's full decision
+  record and independent-verification method.
+
 ### Released — Stage 16 batch 2: DDL-02, ORD-01, ORD-02, ORD-04 (expand-then-constrain ordering check, effect-completion claim/execute guards, cross-correlation parallelism observability)
 
 > **PRE-REQUISITE FOR THE NEXT ORD BATCH — READ BEFORE WIRING MULTI-CONSUMER THREADING:**
