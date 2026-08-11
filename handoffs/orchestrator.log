@@ -1062,3 +1062,4 @@
 2026-08-11T13:44:14Z | BENCH_ENV_CHECK | WF02-batch-2-20260811 | --- | ORCH | CLEARED (test-env-verify 10/10)
 2026-08-11T13:44:23Z | ROUTE | WF02-batch-2-20260811 | 43fb2e26 | ORCH -> TEST-RUNNER | PENDING (step 04 test execution)
 2026-08-11T13:47:01Z | HANDOFF_COMPLETED | WF02-batch-2-20260811 | 43fb2e26 | TEST-RUNNER | PASS: DDL-02/ORD-01/ORD-02/ORD-04 test execution complete -- test-ddl-validate 28/28, test-ordering 4/4, test-integration-ord01 3/3, test-integration-ord04 4/4, test-integration-ordering 10/10 (run 1) + 10/10 (run 2, reproducible/not flaky), zig build test full unit suite 1053/1117 pass (64 skipped), all exit 0. test-integration umbrella excluded per ISS-0665/GH-702. Report: tests/reports/report-20260811-WF02-batch-2.yaml. next_action=Route to RELEASE-VALIDATOR (Step 5)
+2026-08-11T13:50:04Z | ROUTE | WF02-batch-2-20260811 | ed6138c7 | ORCH -> RELEASE-VALIDATOR | PENDING (step 05 release validation)
