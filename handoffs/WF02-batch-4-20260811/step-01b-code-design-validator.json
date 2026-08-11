@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-batch-4-20260811/step-01b-code-design-validator.json",
   "created_at": "2026-08-11T19:36:59Z",
   "started_at": "2026-08-11T19:36:59Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-11T19:41:05Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": "Stage 16",
@@ -40,7 +40,32 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "PAR-05, PAR-06, PIN-02 validated with standard full-coverage checks: all acceptance criteria traced to specific design sections, no implementation code present, correct Lego catalog classification (all Type E except PAR-06's Type C column-addition slice), all four artefacts plus the PAR-06 migration YAML lint 0 BLOCKER/0 MAJOR via tools/lint_design_artefact.py, and tools/codegen_migration.py --dry-run on the PAR-06 YAML exits 0 with preview output covering all three test cases (columns exist/nullable, pre-migration NULL window, index shape). PIN-01 required an independent scope judgment rather than a standard pass/fail: CODE-DESIGNER flagged AC1 (catalog-version resolution) and AC2 (module-ref resolution) as genuinely blocked, not merely deferred. I independently verified both claims rather than trusting the design doc's assertions: read migrations/049_repository_service_catalog.sql and migrations/GBL-117_svc01_service_catalog_scope.sql in full and confirmed service_catalog has service_id as its sole PRIMARY KEY with no version/status column anywhere (grep across migrations/ for ALTER TABLE.*service_catalog found only GBL-117, which adds only scope/owner_tenant_id) -- AC1's trigger condition ('no catalog entry with an active version') has no schema representation to query. Separately confirmed grep -rn module_ref src/ returns zero matches in src/ (only the design doc itself matches), and cross-checked both docs/requirements.yaml and the canonical docs/status/requirement_status.yaml, which both independently confirm PLC-01 is status PENDING, stage 15, priority SHOULD -- genuinely unbuilt, not just unscheduled. VERDICT: option (a) -- proceed with PIN-01 explicitly scoped to AC3 (variable_schema validation, resolves against the real existing variable_schemas table) and AC4 (pin_overrides, no external catalog required) plus AC5 (deterministic ordering, applies to whatever pins are actually produced) in this batch. AC1/AC2 are honestly and loudly documented as BLOCKING in a dedicated Scoping note and two Open Questions, not silently dropped or glossed -- this is the opposite of the catalogued ES-05 stub anti-pattern (docs/anti-patterns.md), which condemns silently returning success on a requirement marked RELEASED; PIN-01 stays at DRAFT and makes no completeness claim. ISS-0672 (MAJOR) is filed locally and commented on GH-306 documenting the schema gap for REQ-ANALYST/ORCH follow-up. The AC3/AC4 slice is independently useful: combined with PIN-02 it delivers a real, testable, end-to-end mechanism (variable validation + override application + durable pin-set recording in INSTANCE_STARTED), not a hollow partial. Pulling PIN-01 entirely (option b) would block PIN-02/03/04/05 indefinitely on an unrelated SHOULD-priority, unscheduled requirement (PLC-01) for no corresponding gain, when 60% of PIN-01's AC surface plus its ordering guarantee are buildable today against real, verified infrastructure. This matches the CODE-DESIGNER rule verified in .claude/agents/code-designer.md ('if a requirement is ambiguous, note it as an open question, mark handoff PARTIAL') rather than either guessing silently or stalling the whole batch.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "ISS-0672",
+        "severity": "MAJOR",
+        "description": "PIN-01 AC1 (catalog-version resolution) is blocked: public.service_catalog has no version/status column (confirmed by reading migrations/049_repository_service_catalog.sql and migrations/GBL-117_svc01_service_catalog_scope.sql in full -- service_id is the sole PRIMARY KEY, one row per service not per version). PIN-01's design implements a clearly-marked provisional stopgap (degenerate single-implicit-version reading) for this branch; the real schema decision (add version/status columns vs. formally accept the degenerate reading) needs REQ-ANALYST/ORCH before the catalog_entry branch can be implemented to its full AC text. Filed on GH-306 (comment) and docs/issues/ISS-0672.json. This handoff's verdict (option a) scopes PIN-01's implementation in this batch to AC3/AC4 only; AC1 remains open and tracked.",
+        "affected_requirement": "PIN-01"
+      },
+      {
+        "id": "PIN-01-AC2-BLOCKED",
+        "severity": "MAJOR",
+        "description": "PIN-01 AC2 (module-ref resolution) is blocked: PLC-01 (the process module catalog PIN-01 AC2 depends on) does not exist in this codebase. Confirmed via grep -rn module_ref src/ (zero matches outside the design doc itself) and by reading both docs/requirements.yaml and the canonical docs/status/requirement_status.yaml, which both independently show PLC-01 as status: PENDING, stage 15, priority: SHOULD. PIN-01's design specifies the resolution query shape against PLC-01's own proposed schema so BACKEND-DEV has it ready the moment PLC-01 ships, but implementation of this branch is sequenced behind PLC-01 landing, not merely deferred by choice. This handoff's verdict (option a) scopes PIN-01's implementation in this batch to AC3/AC4 only; AC2 remains open and tracked, to be revisited once PLC-01 lands in a future batch.",
+        "affected_requirement": "PIN-01"
+      },
+      {
+        "id": "ISS-0672-ID-MISMATCH",
+        "severity": "MINOR",
+        "description": "GH-306's comment (posted by CODE-DESIGNER during this run) refers to the locally filed issue as 'ISS-0680', but only docs/issues/ISS-0672.json actually exists on disk with matching content (same schema-gap finding, same GH-306 link). docs/issues/ISS-0680.json does not exist, and no reference to ISS-0680 appears anywhere else in docs/ or handoffs/ except the GH-306 comment body itself. Likely a working-number mismatch between the comment draft and the file actually written. Does not affect the substance of the schema-gap finding (independently verified in this validation pass) but should be corrected so the GH-306 comment and the local issue file agree on one ID -- recommend DOC-UPDATER or a follow-up edit correct the GH-306 comment to reference ISS-0672.",
+        "affected_requirement": "PIN-01"
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 2a) for PAR-05, PAR-06, PIN-02 in full, and for PIN-01 scoped explicitly to AC3 (variable_schema validation) and AC4 (pin_overrides) plus AC5 (deterministic ordering) -- AC1/AC2 are NOT in scope for this batch's implementation and must not be silently attempted; BACKEND-DEV should implement the catalog_entry/module resolution branches only as far as the design's explicitly-marked-provisional stopgap queries (Public interface section), returning UnresolvedCatalogRef/UnresolvedModuleRef per the design's error taxonomy for any reference that does not resolve under that degenerate reading -- not as a TODO or silent no-op. PIN-01's remaining AC1/AC2 full-text coverage stays tracked under ISS-0672 and GH-306 pending REQ-ANALYST/ORCH schema decision and PLC-01 landing in a future batch/run. Also recommend a follow-up edit correcting the ISS-0680/ISS-0672 ID mismatch in the GH-306 comment (MINOR, non-blocking)."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
