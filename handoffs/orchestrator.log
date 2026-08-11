@@ -976,3 +976,4 @@
 2026-08-11T05:23:33Z | COMPLETE | WF02-batch-0-20260811 | ea039e76 | BACKEND-DEV | PASS branch=feature/WF02-batch-0-20260811
 2026-08-11T05:25:59Z | ROUTE | WF02-batch-0-20260811 | 66e782b2 | ORCH -> CODE-DESIGNER | PENDING (step 01 design)
 2026-08-11T05:33:55Z | COMPLETE | WF02-batch-0-20260811 | 66e782b2 | CODE-DESIGNER | PASS DDL-05 (Type E namespace check) + MIG-01 (Type C platform_migrations control table) + MIG-02/MIG-03 (Type E transactional fanout) design artefacts produced -> CODE-DESIGN-VALIDATOR Step 01b
+2026-08-11T05:36:47Z | ROUTE | WF02-batch-0-20260811 | d03df140 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING (step 01b design validation)

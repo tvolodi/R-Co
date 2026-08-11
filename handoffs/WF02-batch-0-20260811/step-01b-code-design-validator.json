@@ -1,0 +1,45 @@
+{
+  "handoff_id": "d03df140-4fd8-4a1c-85e8-ae24e2c27514",
+  "run_id": "WF02-batch-0-20260811",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-0-20260811/step-01b-code-design-validator.json",
+  "created_at": "2026-08-11T05:23:33Z",
+  "started_at": "2026-08-11T05:36:47Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-05",
+      "MIG-01",
+      "MIG-02",
+      "MIG-03"
+    ],
+    "related_handoff_ids": [
+      "66e782b2-dfee-43a2-b3dc-a93d8954a930"
+    ],
+    "artifacts_in": [
+      "src/design/ddl-05-reserved-plat-namespace-check.md",
+      "src/design/mig-02-mig-03-platform-migration-fanout.md",
+      "templates/specs/mig-01-platform-migrations-control-table.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER Step 01 design artefacts for DDL-05, MIG-01, MIG-02, MIG-03 (stage 16). Hard gate: BACKEND-DEV cannot start until this returns PASS. Check every acceptance criterion in each requirement (read full bodies from docs/requirements.yaml) is covered, the design is implementation-code-free, and it is complete enough for BACKEND-DEV to implement without ambiguity.",
+    "acceptance_criteria": [
+      "Every AC in DDL-05, MIG-01, MIG-02, MIG-03 is traced to a specific design section",
+      "No implementation code (Zig function bodies, SQL DDL outside the Type C YAML)",
+      "Design correctly scopes DDL-05 as standalone (not the full DDL-01 ValidatePlatformDDL pipeline)",
+      "Design correctly builds on existing SPT-01 infrastructure rather than reinventing it",
+      "tools/lint_design_artefact.py run against each artefact with 0 BLOCKER"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
