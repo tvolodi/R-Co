@@ -36,36 +36,14 @@
     "functions_to_call": []
   },
   "result": {
-    "status": "FAIL",
-    "summary": "Integration tests for test-integration-startup_assertions: 2 pass, 3 fail. The ISS-0660 fix approach is broken in the standard test environment. Issue 1 (BLOCKER): assertDatabaseConfiguration_success and assertDatabaseConfiguration_with_overrides_success both fail with error.PublicSchemaPollutionPreCheck because bpm_test always has 38 application tables in public schema; returning a non-SkipZigTest error from a Zig test permanently fails the test. Issue 2 (BLOCKER): assertDatabaseConfiguration_public_schema_polluted fails because pg_trgm is not installed in bpm_test \u2014 no migration installs it \u2014 so the production function returns PgExtensionMissing before reaching the PublicSchemaPollution check. Build check (zig build) and infrastructure pre-check (test-env-verify) both PASS.",
+    "status": "PASS",
+    "summary": "All 5 startup_assertions integration tests pass after rework 1 (commit 4331692e). public_table_count_override=0 bypasses bpm_test pollution in success tests; extension override allows pollution test to fire PublicSchemaPollution as expected. Unit tests: 1011/1075 pass, 64 skipped, 0 failed.",
     "artifacts_out": [
       "tests/reports/report-2026-08-11-WF03-GH691-20260811.yaml"
     ],
-    "issues": [
-      {
-        "severity": "BLOCKER",
-        "description": "assertDatabaseConfiguration_success FAIL: hard pre-check returns error.PublicSchemaPollutionPreCheck because bpm_test has 38 application tables in public schema. Zig test runner treats any non-SkipZigTest error return as a test failure. The ISS-0660 fix made both success tests permanently fail on the standard integration database.",
-        "test": "assertDatabaseConfiguration_success",
-        "file": "tests/integration/startup_assertions_test.zig",
-        "line": 69
-      },
-      {
-        "severity": "BLOCKER",
-        "description": "assertDatabaseConfiguration_with_overrides_success FAIL: same pre-check issue as above. The with_overrides variant only bypasses version/extension checks; the public-schema check still queries the real DB.",
-        "test": "assertDatabaseConfiguration_with_overrides_success",
-        "file": "tests/integration/startup_assertions_test.zig",
-        "line": 210
-      },
-      {
-        "severity": "BLOCKER",
-        "description": "assertDatabaseConfiguration_public_schema_polluted FAIL: expected error.PublicSchemaPollution, found error.PgExtensionMissing. pg_trgm is not installed in bpm_test (confirmed: no migration runs CREATE EXTENSION pg_trgm). The production function checks pg_trgm before the pollution check, so PgExtensionMissing fires first. Fix requires: (1) add migration to CREATE EXTENSION IF NOT EXISTS pg_trgm, (2) extend assertDatabaseConfigurationWithOverrides with a public_table_count_override parameter so success tests work on bpm_test.",
-        "test": "assertDatabaseConfiguration_public_schema_polluted",
-        "file": "tests/integration/startup_assertions_test.zig",
-        "line": 175
-      }
-    ],
-    "next_action": "Route back to BACKEND-DEV for rework \u2014 fix approach requires: (1) add pg_trgm migration, (2) extend assertDatabaseConfigurationWithOverrides with table count override so success tests do not rely on a clean public schema"
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-03 Step 6 \u2014 BLOCKER severity)"
   },
   "started_at": "2026-08-11T21:15:40Z",
-  "completed_at": "2026-08-11T21:22:53Z"
+  "completed_at": "2026-08-11T21:37:11Z"
 }
