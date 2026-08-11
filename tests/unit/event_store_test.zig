@@ -201,6 +201,67 @@ test "TC-ES-05-06: valid object schema document is accepted" {
 }
 
 // ---------------------------------------------------------------------------
+// TC-PAR-03-01: PAR-03 AC1's app-level guard — RegistryError.RetentionClassForbidden
+//
+// PAR-03 AC1: "GIVEN an event type in the set {INSTANCE_*, TASK_*, GATEWAY_*,
+// EXECUTION_*}, WHEN retention class `delete` is configured for it, THEN
+// configuration is rejected with `RetentionClassForbidden` and the type never
+// routes to `events_ephemeral`."
+//
+// registry.validateRegisterParams() (registry.zig) implements this check as a
+// pure, DB-free function — registerType() calls it before acquiring any
+// connection, the same ES-05 pattern TC-ES-05-03/05/06 above already exercise
+// for this exact function. Before this test, RegistryError.RetentionClassForbidden
+// was never asserted anywhere in the suite: the only integration coverage of
+// this guard (event_store_integration_test.zig's TC-ADP-11-02) only exercises
+// the PERMITTED path (a non-protected name), and
+// par03_retention_class_test.zig's DB-CHECK-constraint test bypasses
+// Registry.registerType() entirely via a raw SQL UPDATE — so the app-level
+// guard itself (the first line of defense named explicitly by AC1) was a
+// silent, untested gap. This closes it directly against the production bytes.
+test "TC-PAR-03-01: registerType rejects retention_class=delete for a protected-family name" {
+    const protected_names = [_][]const u8{
+        "INSTANCE_STARTED",
+        "TASK_COMPLETED",
+        "GATEWAY_EVALUATED",
+        "EXECUTION_PARTITION_CREATED",
+    };
+    for (protected_names) |name| {
+        var p = validRegisterParams();
+        p.name = name;
+        p.retention_class = "delete";
+        try std.testing.expectError(
+            RegistryError.RetentionClassForbidden,
+            registry.validateRegisterParams(p),
+        );
+    }
+}
+
+// The converse of TC-PAR-03-01: a non-protected name with retention_class =
+// 'delete' is the permitted path TC-ADP-11-02 exercises end-to-end against a
+// real DB — this asserts the pure guard itself does not over-reject it.
+test "TC-PAR-03-02: registerType permits retention_class=delete for a non-protected name" {
+    var p = validRegisterParams();
+    p.name = "WIDGET_CREATED";
+    p.retention_class = "delete";
+    try registry.validateRegisterParams(p);
+}
+
+// Protected-family names with a non-'delete' retention_class (the two allowed
+// modes per ADP-11/PAR-03: retain_forever, archive_queryable) must NOT be
+// rejected — the guard is specifically retention_class=='delete' AND
+// protected-family, not protected-family alone.
+test "TC-PAR-03-03: registerType permits protected-family names with non-delete retention_class" {
+    const allowed_classes = [_][]const u8{ "retain_forever", "archive_queryable" };
+    for (allowed_classes) |class| {
+        var p = validRegisterParams();
+        p.name = "INSTANCE_STARTED";
+        p.retention_class = class;
+        try registry.validateRegisterParams(p);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // TC-ES-05-02: payload validation against the REGISTERED schema (ISS-0155)
 //
 // ES-05: "WHEN a caller appends a payload that fails the registered schema,
