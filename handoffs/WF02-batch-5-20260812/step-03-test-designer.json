@@ -1,0 +1,83 @@
+{
+  "handoff_id": "wf02-batch-5-20260812-03-test-designer",
+  "run_id": "WF02-batch-5-20260812",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-08-12T14:33:56Z",
+  "started_at": "2026-08-12T14:34:47Z",
+  "completed_at": "2026-08-12T14:52:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PIN-03",
+      "PIN-04",
+      "PIN-05",
+      "PRM-01"
+    ],
+    "related_handoff_ids": [
+      "wf02-batch-5-20260812-02a-backend-dev",
+      "wf02-batch-5-20260812-02a-adhoc-fix-iss0688",
+      "wf02-batch-5-20260812-02c-security-reviewer"
+    ],
+    "artifacts_in": [
+      "src/design/pin-03-no-fallback-to-latest-version.md",
+      "src/design/pin-04-pin-resolution-on-replay-and-sub-processes.md",
+      "src/design/pin-05-explicit-instance-pin-rebind.md",
+      "src/design/prm-01-promotion-plan-and-diff-report.md",
+      "src/engine/pin_rebind.zig",
+      "src/api/routes/pin_rebind.zig",
+      "src/definition/promotion_plan.zig",
+      "src/api/routes/promotions.zig",
+      "src/engine/pin_resolver.zig",
+      "src/engine/reconstruction.zig"
+    ]
+  },
+  "task": {
+    "description": "Design and write integration tests for PIN-03, PIN-04, PIN-05, PRM-01 per their design artefacts (src/design/pin-03-no-fallback-to-latest-version.md, src/design/pin-04-pin-resolution-on-replay-and-sub-processes.md, src/design/pin-05-explicit-instance-pin-rebind.md, src/design/prm-01-promotion-plan-and-diff-report.md) and their real AC text in docs/requirements.yaml. Implementation is complete and PASSed SECURITY-REVIEWER (handoffs/WF02-batch-5-20260812/step-02c-security-reviewer.json) -- read the actual implementation before designing tests: src/engine/pin_rebind.zig, src/api/routes/pin_rebind.zig, src/definition/promotion_plan.zig, src/api/routes/promotions.zig, the extensions to src/engine/pin_resolver.zig (mergeEffectivePins, EffectivePin, findEffectivePinForRef) and src/engine/reconstruction.zig (reconstructEffectivePins), the new GET /api/v1/instances/{id}/pins route in src/api/routes/instances.zig, and migrations/1154_pin05_instance_pins_rebound_event_type.sql.\n\nSECURITY-REVIEWER's Step 2c PASS explicitly flagged (as a non-blocking observation, not a security defect) that this diff adds no new test files yet -- that gap is exactly this step's job to close now.\n\nKnown scope notes from CODE-DESIGNER (Step 1, PARTIAL) that TEST-DESIGN must respect, not fight: PIN-03 AC3 (pinned catalog entry set to DEPRECATED after instance start -> execution proceeds on pinned version) is explicitly out of scope -- service_catalog has no version/status column (ISS-0672/GH-306, still open), so there is no DEPRECATED state to construct in a test fixture. Do NOT write a test that attempts this AC literally; instead, per the design's Open questions #1 scoped structural substitute, write the test that proves retirement-doesn't-affect-in-flight-pins using the catalog_entry degenerate stopgap and/or variable_schema kinds that ARE real -- confirm the design artefact's exact substitute wording and test exactly that, marking clearly in the test spec which literal AC3 sub-clause is not covered and why (do not silently claim full AC3 coverage).\n\nAlso relevant: an ADHOC fix for ISS-0688/GH-745 landed on this branch mid-run (a pre-existing regression, dead bpm_effective_tenant_id() calls removed from instance.zig and five other files, already SECURITY-REVIEWER-reviewed and PASSed as part of Step 2c). This fix is what makes POST /api/v1/instances usable at all under SCHEMA mode again -- your fixtures for starting instances (needed by every one of PIN-03/04/05's tests, which all depend on instance creation and the resulting pin set) should now work correctly. If you hit any residual instance-creation failure that looks like this same class of defect, do not silently route around it -- flag it immediately, it would mean the fix was incomplete.\n\nRequirement-by-requirement coverage needed:\n- PIN-03: node execution with a reference absent from the pin set raises PinMissing and enters the retry-then-dead-letter path (verify against dead_letter_items / SERVICE_TASK item type, per the implementation); a newer catalog entry published mid-flight does not affect an in-flight instance (invokes the pinned version); retry-budget exhaustion for a PinMissing step lands in the dead-letter queue with the reference name in the payload; no code path substitutes the current active version for a missing/unresolvable pin (a real negative-space assertion, not just a happy-path test).\n- PIN-04: state reconstruction reads pins only from INSTANCE_STARTED + latest INSTANCE_PINS_REBOUND, never the live catalog (write a test that changes the live catalog after start and confirms reconstruction still reflects the ORIGINAL pinned version); sub-process child inherits parent's pin set, entries the parent already pins carry source=inherited and the parent's version; a child ref resolving to a different version than an inherited pin uses the inherited one and records the conflict in the child's INSTANCE_STARTED payload; GET /api/v1/instances/{id}/pins returns the effective set with each entry's source event id; reconstruction issues zero live catalog/module registry reads (can be asserted via query-count instrumentation or by design inspection + a targeted assertion, per whatever mechanism this codebase's existing tests use for similar claims).\n- PIN-05: valid rebind on a running instance appends INSTANCE_PINS_REBOUND with prior_version/new_version/actor/reason per changed entry; rebind naming a ref absent from the current pin set -> 422 UnknownPinRef, applies NONE of the request's entries (test this with a MIX of valid+invalid entries in one request to prove all-or-nothing, not just an all-invalid request); rebind on a COMPLETED/CANCELLED/terminal instance -> 409 InstanceNotRebindable; rebind request with no reason field -> 422.\n- PRM-01: valid rebind... (n/a, this is promotion) -- caller without promotion.submit -> 403, creates no promotion_reviews row (confirm this design decision: PRM-01 itself does not persist a review row at all, per the design's Open questions #1 -- do not write a test asserting a promotion_reviews row exists after a SUCCESSFUL submission either, since that table/write is out of this requirement's own scope); target tenant holding no version of process_key -> every plan entry change_kind=added, plan accepted; source and target identical after canonicalisation -> 422 EmptyPromotionPlan; source_tenant_id naming a production tenant -> 422 InvalidPromotionSource; the plan is computed before any transaction that writes to the target tenant opens (a real ordering assertion, e.g. confirm no target-tenant row changes on a plan-computation call, or via code inspection cross-checked against a test).\n\nStandard TEST-DESIGNER conventions apply: integration tests over real Postgres (BPM_TEST_DB_URL), isolated fixtures (no hardcoded UUIDs, proper defer cleanup), every MUST-priority AC covered by a runnable test (PIN-03/PIN-04/PIN-05/PRM-01 are all MUST except PIN-05 which is SHOULD -- read docs/requirements.yaml's priority field directly, do not assume). No error.SkipZigTest on any test covering a MUST requirement without a justified, TEST-DESIGN-VALIDATOR-visible reason.\n\nIMPORTANT ENVIRONMENT NOTE: this shell's process environment may carry a stale BPM_TEST_DB_URL from a different workspace. Before running any build/test command, run `unset BPM_TEST_DB_URL BPM_DB_URL BPM_BENCH_DB_URL` then explicitly export .env's real values (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test, BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev) before any zig build invocation.",
+    "acceptance_criteria": [
+      "Every MUST-priority AC bullet of PIN-03, PIN-04, PRM-01 has a runnable integration test (verify priority field in docs/requirements.yaml directly)",
+      "PIN-05 (SHOULD) covered per standard test-designer conventions",
+      "PIN-03 AC3's out-of-scope status is respected: no test asserts the literal DEPRECATED-catalog-entry scenario; the design's scoped structural substitute is tested instead and the gap is documented in the test spec, not silently claimed as covered",
+      "PIN-05 all-or-nothing rebind tested with a MIXED valid+invalid entry set, not only all-invalid",
+      "PRM-01: no test asserts a promotion_reviews row is written on success (out of this requirement's scope per the design)",
+      "Test specs written to tests/specs/, test code written to appropriate tests/ location following repo convention",
+      "Fixtures isolated, no hardcoded UUIDs, proper defer cleanup",
+      "No error.SkipZigTest on any MUST-requirement test without justified reason"
+    ],
+    "functions_to_call": [
+      "fn:read-test-conventions"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Integration test specs and code written for PIN-03, PIN-04, PIN-05, PRM-01. PIN-03 (MUST): 5/5 tests pass, covering AC1/AC2/AC4/AC5 fully and AC3 via the design's documented scoped structural substitute (AC3's literal DEPRECATED-status scenario remains uncovered, tracked ISS-0672/GH-306, not silently claimed). PIN-05 (SHOULD): 4/4 tests pass, covering AC1-AC4 including a MIXED valid+invalid all-or-nothing case. PRM-01 (MUST): 5/5 tests pass, covering AC1-AC5. PIN-04 (MUST): 3/5 tests pass (AC1, AC4, AC5) but 2/5 FAIL (AC2, AC3 - sub-process pin inheritance and conflict recording) because this AC pair is genuinely unimplemented in src/engine/instance.zig's startSubProcessesForPendingEventsInTx() - it calls the plain InstanceStore.create() path for the child instance with no parent-pin merge step and no pin_inheritance_conflicts field anywhere in the codebase outside the design doc. Per Unblock-Everything and No-SkipZigTest-on-MUST, these two tests were written as real, runnable, fail-first-confirmed tests against the AC text rather than skipped or watered down - they correctly fail against current code, which is the expected signal for a real implementation gap discovered during test design. Filed as BLOCKER below.",
+    "artifacts_out": [
+      "tests/specs/PIN-03.md",
+      "tests/specs/PIN-04.md",
+      "tests/specs/PIN-05.md",
+      "tests/specs/PRM-01.md",
+      "tests/integration/pin03_no_fallback_to_latest_version_test.zig",
+      "tests/integration/pin04_pin_resolution_replay_subprocess_test.zig",
+      "tests/integration/pin05_explicit_instance_pin_rebind_test.zig",
+      "tests/integration/prm01_promotion_plan_diff_report_test.zig",
+      "build.zig"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "PIN-04 AC2/AC3 (sub-process pin inheritance: child inherits parent's pin set with source=inherited; conflicting child-resolved version recorded in the child's INSTANCE_STARTED payload as pin_inheritance_conflicts) is not implemented. src/engine/instance.zig's startSubProcessesForPendingEventsInTx() calls self.create() for the child with no parent pin lookup/merge step at all; InstanceStore.create() has no parent_instance_id parameter; grep -rn \"pin_inheritance_conflicts|inheritPins\" src/ matches only inside src/design/pin-04-*.md. TC-PIN-04-03 and TC-PIN-04-04 in tests/integration/pin04_pin_resolution_replay_subprocess_test.zig are real, runnable tests against the literal AC text (not skipped) and FAIL against the current implementation with a genuine Postgres server error surfaced through persistEmittedEventsInTx() <- InstanceStore.create() <- startSubProcessesForPendingEventsInTx() <- completeTask(), confirmed live via zig build test-integration-pin04 (3/5 pass, 2/5 fail). Needs a BACKEND-DEV fix adding a parent-pin-set merge step to child instance creation before this AC pair can pass. See tests/specs/PIN-04.md for full detail."
+      },
+      {
+        "severity": "MINOR",
+        "description": "PIN-05 AC3 requirement text names terminal statuses COMPLETED/CANCELLED/FAILED, but this codebase's instance_projections.status has no FAILED value anywhere - the equivalent terminal-failure status is ERROR. src/engine/pin_rebind.zig's isTerminalStatus() already documents this mapping in its own doc comment (pre-existing implementation choice, not introduced by this test-design step). Flagged here per this file's own convention of surfacing drift between requirement wording and codebase vocabulary; not a functional gap since every terminal status this codebase can actually produce (COMPLETED, CANCELLED, ERROR) is covered by isTerminalStatus()'s existing unit tests plus this handoff's TC-PIN-05-03 integration test."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

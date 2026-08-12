@@ -2821,6 +2821,71 @@ pub fn build(b: *std.Build) void {
     test_integration_pin02_step.dependOn(&clean_test_db.step);
     test_integration_pin02_step.dependOn(&run_pin02_solo_tests.step);
 
+    // PIN-03 (WF02-batch-5-20260812, Step 3): no fallback to latest version
+    // — AC1/AC2/AC4/AC5. AC3 out of scope (ISS-0672/GH-306); see
+    // tests/specs/PIN-03.md for the documented scoped structural substitute.
+    const pin03_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/pin03_no_fallback_to_latest_version_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_pin03_solo_tests = addIntegrationRun(b, pin03_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_pin03_step = b.step("test-integration-pin03", "Run pin03_no_fallback_to_latest_version_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_pin03_step.dependOn(&clean_test_db.step);
+    test_integration_pin03_step.dependOn(&run_pin03_solo_tests.step);
+
+    // PIN-04 (WF02-batch-5-20260812, Step 3): pin resolution on replay and
+    // in sub-processes — AC1/AC2/AC3/AC4/AC5. See tests/specs/PIN-04.md.
+    // NOTE: AC2/AC3 (sub-process pin inheritance) tests are EXPECTED TO FAIL
+    // against the current implementation — a genuine implementation gap
+    // found during test design (startSubProcessesForPendingEventsInTx() has
+    // no pin-inheritance merge step). See this file's own header comment.
+    const pin04_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/pin04_pin_resolution_replay_subprocess_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_pin04_solo_tests = addIntegrationRun(b, pin04_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_pin04_step = b.step("test-integration-pin04", "Run pin04_pin_resolution_replay_subprocess_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_pin04_step.dependOn(&clean_test_db.step);
+    test_integration_pin04_step.dependOn(&run_pin04_solo_tests.step);
+
+    // PIN-05 (WF02-batch-5-20260812, Step 3): explicit instance pin rebind
+    // (SHOULD) — AC1/AC2/AC3/AC4. See tests/specs/PIN-05.md.
+    const pin05_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/pin05_explicit_instance_pin_rebind_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_pin05_solo_tests = addIntegrationRun(b, pin05_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_pin05_step = b.step("test-integration-pin05", "Run pin05_explicit_instance_pin_rebind_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_pin05_step.dependOn(&clean_test_db.step);
+    test_integration_pin05_step.dependOn(&run_pin05_solo_tests.step);
+
+    // PRM-01 (WF02-batch-5-20260812, Step 3): promotion plan and diff report
+    // — AC1/AC2/AC3/AC4/AC5. See tests/specs/PRM-01.md.
+    const prm01_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/prm01_promotion_plan_diff_report_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_prm01_solo_tests = addIntegrationRun(b, prm01_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_prm01_step = b.step("test-integration-prm01", "Run prm01_promotion_plan_diff_report_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_prm01_step.dependOn(&clean_test_db.step);
+    test_integration_prm01_step.dependOn(&run_prm01_solo_tests.step);
+
     const exp201_202_solo_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/exp201_202_entities_test.zig"),
