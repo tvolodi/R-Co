@@ -22,6 +22,7 @@ const dlq_store_mod = @import("../dlq/store.zig");
 const pin_resolver_mod = @import("pin_resolver.zig");
 const tenant_context = @import("tenant_context");
 const metrics = @import("obs_metrics");
+const role_registry_mod = @import("../identity/role_registry.zig"); // IDN-05
 // Named module, not a relative import — see the note in src/main.zig (ISS-0155).
 const json_schema = @import("json_schema");
 
@@ -957,6 +958,22 @@ pub const InstanceStore = struct {
                 break;
             }
 
+            // IDN-05: ROLE assignee resolution — mirror of the same logic in
+            // applyTransition; resolves ROLE→GROUP inside the open transaction.
+            if (assignee_type) |at| {
+                if (std.mem.eql(u8, at, "ROLE")) {
+                    if (assignee_ref) |ar| {
+                        if (role_registry_mod.resolveRoleInTx(conn2, ar)) |group_uuid| {
+                            const hex = uuidToHex(a, group_uuid) catch null;
+                            if (hex) |h| {
+                                assignee_type = "GROUP";
+                                assignee_ref = h;
+                            }
+                        }
+                    }
+                }
+            }
+
             // Generate a fresh UUID v4 for the token row.
             var token_bytes: Uuid = undefined;
             fillRandom(&token_bytes);
@@ -1041,6 +1058,7 @@ pub const InstanceStore = struct {
         self: *InstanceStore,
         allocator: std.mem.Allocator,
         task_store: *task_mod.TaskStore,
+        role_store: *role_registry_mod.TenantRoleStore,
         instance_id: Uuid,
         old_state: transition_mod.InstanceState,
         event: transition_mod.TransitionEvent,
@@ -1231,6 +1249,32 @@ pub const InstanceStore = struct {
                     form_schema_json = extractFormSchemaJson(a, attrs);
                 }
                 break;
+            }
+
+            // IDN-05: ROLE assignee resolution — if assignee_type is "ROLE",
+            // look up the role name in the tenant's tenant_role table inside
+            // this transaction.  On success: rebind to GROUP + resolved UUID.
+            // On null (unbound or transient error): keep ROLE type so the task
+            // is created in PENDING/unresolved state — instance stays ACTIVE.
+            _ = role_store; // pool available for future direct-pool overload
+            if (assignee_type) |at| {
+                if (std.mem.eql(u8, at, "ROLE")) {
+                    if (assignee_ref) |ar| {
+                        if (role_registry_mod.resolveRoleInTx(conn, ar)) |group_uuid| {
+                            // Role bound — convert binary UUID to hex string and
+                            // create task with GROUP semantics (IDN-02 rules apply).
+                            const hex = uuidToHex(a, group_uuid) catch null;
+                            if (hex) |h| {
+                                assignee_type = "GROUP";
+                                assignee_ref = h;
+                            }
+                            // If uuidToHex fails (OOM), fall through and keep ROLE
+                            // so the task is created in unresolved-PENDING state.
+                        }
+                        // null → role unbound; keep assignee_type="ROLE" and
+                        // assignee_ref=<original_role_name> → task created PENDING.
+                    }
+                }
             }
 
             // Locate the token parked on this task node to obtain token_id.

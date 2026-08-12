@@ -1,0 +1,63 @@
+stage: "WF03-GH714-20260812"
+date: "2026-08-12T07:51:16Z"
+iss_ref: "ISS-0673"
+github_issue: "https://github.com/tvolodi/R-Co/issues/714"
+branch: "feature/WF03-GH714-20260812"
+decision: "APPROVED"
+
+fix_summary: >
+  GBL-142 migration drops 8 shadow tables from the public schema that were
+  accidentally created by migrations 1145, 1146, 1148, 1149 (ORD/PAR batch)
+  which lacked schema scope guards. Migrations patched with DO $$ wrapper +
+  early-return guard (ISS-0185-family recurrence fix). Migration-only change;
+  no Zig source code modified.
+
+blocker_cleared:
+  tool: "tools/lint_dual_schema_table_names.py"
+  exit_code: 0
+  findings: 0
+  verdict: PASS
+  tables_previously_duplicated:
+    - events_ephemeral
+    - events_ephemeral_2026_08
+    - events_ephemeral_2026_09
+    - events_ephemeral_2026_10
+    - plat_correlation_cursor
+    - plat_effect_completion
+    - plat_partition_catalog
+    - plat_partition_maintenance_run_log
+
+test_results:
+  zig_build: PASS
+  unit_tests: "1067 pass / 64 skip / 0 fail (1131 total)"
+  build_steps: "101/101 succeeded"
+  regressions: 0
+
+nfr_assessment:
+  benchmarks_run: false
+  rationale: >
+    This is a schema-only fix (SQL DDL DROP + scope-guard wrapper). No Zig source
+    code, no application logic, and no data-path code was changed. The `zig build bench`
+    suite (NFR-01 p99 latency, NFR-02 event throughput, NFR-04 replay time) exercises
+    tenant-schema code paths only. Dropping public-schema shadow tables has no effect
+    on any benchmark metric. No NFR regression expected or observed.
+  nfr_01_api_latency_p99: "unaffected — no code path changed"
+  nfr_02_event_throughput: "unaffected — no code path changed"
+  nfr_04_state_reconstruction: "unaffected — no code path changed"
+
+schema_invariant:
+  schema_per_tenant_maintained: true
+  rationale: >
+    GBL-142 removes only the spurious public-schema copies created by unguarded
+    migrations. Tenant schemas (including tenant_default) are unmodified. The
+    scope-guard patches on 1145/1146/1148/1149 ensure future migration runs skip
+    the CREATE TABLE if already applied in the correct tenant schema, preventing
+    recurrence.
+
+blocking_issues: []
+
+approved_requirements:
+  - "ISS-0673 (GH-714 BLOCKER — dual-schema shadow tables)"
+
+test_report_ref: "tests/reports/report-2026-08-12-WF03-GH714-20260812.yaml"
+next_action: "Route to DOC-UPDATER to set ISS-0673 status RESOLVED and update CHANGELOG"

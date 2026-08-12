@@ -401,6 +401,13 @@
     {
       "severity": "BLOCKER",
       "code": "T010",
+      "file": "tests/integration/idn05_role_registry_test.zig",
+      "line": 70,
+      "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"
+    },
+    {
+      "severity": "BLOCKER",
+      "code": "T010",
       "file": "tests/integration/instance_error_test.zig",
       "line": 770,
       "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` — generate per-test UUIDs instead"

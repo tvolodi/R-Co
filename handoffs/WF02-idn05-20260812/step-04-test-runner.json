@@ -1,0 +1,38 @@
+{
+  "handoff_id": "b8c9d0e1",
+  "run_id": "WF02-idn05-20260812",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "status": "COMPLETED",
+  "created_at": "2026-08-12T12:10:02Z",
+  "started_at": "2026-08-12T12:40:22Z",
+  "completed_at": "2026-08-12T13:04:01Z",
+  "workflow": "WF-02",
+  "context": {
+    "requirement_ids": [
+      "IDN-05"
+    ],
+    "description": "Step 04: Execute IDN-05 test suite and full regression check.",
+    "artifacts_in": [
+      "tests/specs/IDN-05.md",
+      "tests/integration/idn05_role_registry_test.zig",
+      "handoffs/WF02-idn05-20260812/step-03b-test-design-validator.json"
+    ],
+    "branch": "feature/WF02-idn05-20260812"
+  },
+  "task": {
+    "description": "Execute the IDN-05 test suite and verify no regressions:\n\n1. zig build (must exit 0)\n2. zig build test (unit tests, must exit 0)\n3. zig build test-integration-idn05 (must pass all 7 TCs: TC-IDN05-01..07)\n4. Report: pass/fail counts for each step\n\nWrite a structured test report to tests/reports/report-2026-08-12-WF02-idn05-20260812.yaml.\n\nIf any test fails, report the failure details and return FAIL. Do not attempt to fix failures inline \u2014 report and return FAIL.\n\nAlso run python tools/lint_handoffs.py (must exit 0)."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 3 layers passed (rework 1, commit a8c19322). zig build: exit 0. zig build test: exit 0 (unit tests). zig build test-integration-idn05: exit 0 (7/7 TCs pass). lint_handoffs.py: exit 0.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-12-WF02-idn05-20260812.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

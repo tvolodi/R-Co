@@ -1,0 +1,41 @@
+{
+  "handoff_id": "f6a7b8c9",
+  "run_id": "WF02-idn05-20260812",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "status": "COMPLETED",
+  "created_at": "2026-08-12T11:29:51Z",
+  "started_at": "2026-08-12T11:46:07Z",
+  "completed_at": "2026-08-12T11:55:31Z",
+  "workflow": "WF-02",
+  "context": {
+    "requirement_ids": [
+      "IDN-05"
+    ],
+    "description": "Step 03: Design and write integration tests for IDN-05 Named role registry.",
+    "artifacts_in": [
+      "src/design/idn05-role-registry.md",
+      "src/identity/role_registry.zig",
+      "src/api/routes/identity.zig",
+      "src/engine/instance.zig",
+      "migrations/1154_idn05_tenant_role_registry.sql",
+      "handoffs/WF02-idn05-20260812/step-02c-security-reviewer.json"
+    ]
+  },
+  "task": {
+    "description": "Write a test spec and integration tests for IDN-05. All MUST acceptance criteria must have a runnable integration test. Required test cases:\n\nTC-IDN05-01: POST /roles creates a binding \u2014 given a valid name + group_id that exists in the tenant, POST /roles returns 201 and a JSON body with id/name/group_id/created_at.\n\nTC-IDN05-02: POST /roles with unknown group_id returns 404 GROUP_NOT_FOUND.\n\nTC-IDN05-03: POST /roles upserts \u2014 binding same role name twice with different group_ids succeeds (idempotent update), second call returns 200.\n\nTC-IDN05-04: GET /roles lists all bindings for the calling tenant.\n\nTC-IDN05-05: Tenant isolation \u2014 role name registered in tenant A is invisible to GET /roles on tenant B.\n\nTC-IDN05-06: ROLE assignee resolution at task activation \u2014 given a HUMAN_TASK node with assignee_type=ROLE whose assignee_ref has a binding in the registry, when the node activates (EE-03), the Task is created with GROUP semantics (group_id set).\n\nTC-IDN05-07: ROLE assignee unresolved \u2014 given a HUMAN_TASK node with assignee_type=ROLE whose assignee_ref has NO binding, when the node activates, the Task is created in PENDING status (not ERROR).\n\nWrite test spec to tests/specs/IDN-05.md and integration test code following the same patterns as other integration tests in tests/. Wire the test binary/step in build.zig. No SkipZigTest on MUST tests. Fixtures must be isolated (no shared state between tests).\n\nVerify: python tools/lint_test_isolation.py exits 0 and python tools/lint_handoffs.py exits 0."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK-1/3: Fixed TSDV-IDN05-01 BLOCKER. TC-IDN05-05 now provisions a fresh tenant B schema via provisionTenantSchema, acquires a connection routed to that schema, queries COUNT(*) FROM tenant_role WHERE name = role_name, and asserts the result is 0. The prior deferred comment and `_ = count` discard are removed. lint_test_isolation.py exits 0 (baseline line updated for 2-line import addition). lint_handoffs.py exits 0 after handoff completion. Compiled with zig build, committed to feature/WF02-idn05-20260812 (91f1f3d6).",
+    "artifacts_out": [
+      "tests/integration/idn05_role_registry_test.zig",
+      "tests/specs/IDN-05.md",
+      "tools/lint_test_isolation.baseline.json"
+    ],
+    "issues": []
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

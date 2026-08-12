@@ -11,6 +11,8 @@ const build_options = @import("build_options");
 // because migrations.zig already belongs to that module (a Zig file may belong
 // to exactly one module).
 const migrationOrder = db_provisioning.migrationOrder;
+const migrationScope = db_provisioning.migrationScope;
+const MigrationScope = db_provisioning.MigrationScope;
 const declaresPublicScopeHeader = db_provisioning.declaresPublicScopeHeader;
 const declaresUnqualifiedTableWork = db_provisioning.declaresUnqualifiedTableWork;
 
@@ -228,6 +230,28 @@ pub fn main(init: std.process.Init) !void {
                 .{filename},
             );
             std.process.exit(1);
+        }
+
+        // ISS-0644 / GH-643: tenant_only migrations must never run in the public
+        // schema pass. Record a ledger entry so the schema_migrations count stays
+        // consistent with the on-disk file count (matching the invariant held by
+        // all existing tenant_only migrations 026/093/095), but skip SQL execution.
+        const scope = migrationScope(filename, sql_bytes);
+        if (scope == MigrationScope.tenant_only) {
+            conn.exec(
+                "INSERT INTO public.schema_migrations (schema_name, version) VALUES ('public', $1)",
+                &.{filename},
+            ) catch |err| {
+                std.log.err("Failed to record tenant_only migration {s}: {}", .{ filename, err });
+                std.process.exit(1);
+            };
+            std.log.info("  skip (tenant_only) {s}", .{filename});
+            if (file_order > walked_order) {
+                walked_order = file_order;
+                walked_name = filename;
+            }
+            applied_count += 1;
+            continue;
         }
 
         conn.exec("BEGIN", &.{}) catch |err| {

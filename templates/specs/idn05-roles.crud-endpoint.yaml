@@ -1,0 +1,46 @@
+schema_version: 1
+resource_name: roles
+store_module: src/identity/role_registry.zig
+store_struct: role_registry.TenantRoleStore
+requirement_ids: [IDN-05]
+purpose: |
+  Expose the per-tenant named-role registry (tenant_role table) over HTTP.
+  GET /roles lists all bindings for the calling tenant.
+  POST /roles creates or updates (upserts) a binding; returns HTTP 404 if the
+  supplied group_id does not exist in the tenant's groups table.
+  Both endpoints require PROCESS_DESIGNER or PLATFORM_ADMIN; TASK_WORKER and
+  PROCESS_OPERATOR are not authorised.
+
+endpoints:
+  - method: GET
+    path: /api/v1/roles
+    operation: list
+    actor_required: true
+    rbac: [PROCESS_DESIGNER, PLATFORM_ADMIN]
+    store_method: store.listRoles
+    success_status: 200
+    response_wrapper: roles
+    error_map:
+      PoolExhausted:      503
+      PersistenceFailed:  500
+
+  - method: POST
+    path: /api/v1/roles
+    operation: custom
+    actor_required: true
+    rbac: [PROCESS_DESIGNER, PLATFORM_ADMIN]
+    body_type: UpsertRoleBody
+    body_fields:
+      - { name: name,     type: "[]const u8" }
+      - { name: group_id, type: "[]const u8" }
+    store_method: store.upsertRole
+    success_status: 200
+    # CUSTOM: validate name: non-empty, <= 128 codepoints, no control chars → 422 INVALID_ROLE_NAME
+    # CUSTOM: validate group_id: valid UUID v4 hex format → 422 INVALID_GROUP_ID
+    # CUSTOM: call store.upsertRole(allocator, name, group_id)
+    error_map:
+      GroupNotFound:      404
+      RoleNameInvalid:    422
+      GroupIdInvalid:     422
+      PoolExhausted:      503
+      PersistenceFailed:  500

@@ -2,6 +2,7 @@ const std = @import("std");
 const auth = @import("../middleware/auth.zig");
 const identity_service = @import("../../identity/service.zig");
 const identity_registry = @import("../../identity/registry.zig");
+const role_registry = @import("../../identity/role_registry.zig");
 const pool_mod = @import("pool");
 const env = @import("env");
 
@@ -1159,6 +1160,136 @@ fn isValidLifecyclePayload(allocator: std.mem.Allocator, body: []const u8) bool 
 
     if (parsed.value != .object) return false;
     return parsed.value.object.count() == 0;
+}
+
+// ── IDN-05: Role registry handlers ───────────────────────────────────────────
+
+/// GET /api/v1/roles — list all role bindings for the calling tenant.
+/// Requires PROCESS_DESIGNER or PLATFORM_ADMIN.
+pub fn handleListRoles(
+    store: *role_registry.TenantRoleStore,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+) HandlerResult {
+    if (actor.role != .PROCESS_DESIGNER and actor.role != .PLATFORM_ADMIN)
+        return errorResult(allocator, 403, "forbidden");
+
+    const roles = store.listRoles(allocator) catch |err| return switch (err) {
+        role_registry.TenantRoleError.PoolExhausted => errorResult(allocator, 503, "SERVICE_UNAVAILABLE"),
+        else => errorResult(allocator, 500, "INTERNAL_ERROR"),
+    };
+    defer {
+        for (roles) |r| r.deinit(allocator);
+        allocator.free(roles);
+    }
+
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
+
+    buf.appendSlice(allocator, "{\"roles\":[") catch return errorResult(allocator, 500, "serialization_failed");
+    for (roles, 0..) |role, idx| {
+        if (idx > 0) buf.append(allocator, ',') catch return errorResult(allocator, 500, "serialization_failed");
+        const entry = serializeTenantRole(allocator, role) catch return errorResult(allocator, 500, "serialization_failed");
+        defer allocator.free(entry);
+        buf.appendSlice(allocator, entry) catch return errorResult(allocator, 500, "serialization_failed");
+    }
+    buf.appendSlice(allocator, "]}") catch return errorResult(allocator, 500, "serialization_failed");
+
+    return .{ .status_code = 200, .body = buf.toOwnedSlice(allocator) catch return errorResult(allocator, 500, "serialization_failed") };
+}
+
+/// POST /api/v1/roles — create or update a role name → group_id binding.
+/// Requires PROCESS_DESIGNER or PLATFORM_ADMIN.
+pub fn handleUpsertRole(
+    store: *role_registry.TenantRoleStore,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    body: []const u8,
+) HandlerResult {
+    if (actor.role != .PROCESS_DESIGNER and actor.role != .PLATFORM_ADMIN)
+        return errorResult(allocator, 403, "forbidden");
+
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        allocator,
+        body,
+        .{ .allocate = .alloc_always },
+    ) catch return errorResult(allocator, 400, "MALFORMED_JSON");
+    defer parsed.deinit();
+
+    if (parsed.value != .object) return errorResult(allocator, 400, "MALFORMED_JSON");
+    const obj = parsed.value.object;
+
+    const name_val = obj.get("name") orelse return errorResult(allocator, 422, "INVALID_ROLE_NAME");
+    const name = switch (name_val) {
+        .string => |s| s,
+        else => return errorResult(allocator, 422, "INVALID_ROLE_NAME"),
+    };
+
+    const gid_val = obj.get("group_id") orelse return errorResult(allocator, 422, "INVALID_GROUP_ID");
+    const group_id = switch (gid_val) {
+        .string => |s| s,
+        else => return errorResult(allocator, 422, "INVALID_GROUP_ID"),
+    };
+
+    const role = store.upsertRole(allocator, name, group_id) catch |err| return switch (err) {
+        role_registry.TenantRoleError.RoleNameInvalid => errorResult(allocator, 422, "INVALID_ROLE_NAME"),
+        role_registry.TenantRoleError.GroupIdInvalid => errorResult(allocator, 422, "INVALID_GROUP_ID"),
+        role_registry.TenantRoleError.GroupNotFound => errorResult(allocator, 404, "GROUP_NOT_FOUND"),
+        role_registry.TenantRoleError.PoolExhausted => errorResult(allocator, 503, "SERVICE_UNAVAILABLE"),
+        else => errorResult(allocator, 500, "INTERNAL_ERROR"),
+    };
+    defer role.deinit(allocator);
+
+    return .{ .status_code = 200, .body = serializeTenantRole(allocator, role) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
+fn serializeTenantRole(allocator: std.mem.Allocator, role: role_registry.TenantRole) ![]u8 {
+    // created_at is epoch-microseconds; convert to ISO 8601 UTC string.
+    const secs = @divTrunc(role.created_at, 1_000_000);
+    const us = @mod(role.created_at, 1_000_000);
+    const epoch = std.time.epoch;
+    const epoch_secs = epoch.EpochSeconds{ .secs = @intCast(@max(0, secs)) };
+    const yd = epoch_secs.getEpochDay().calculateYearDay();
+    const md = yd.calculateMonthDay();
+    const ds = epoch_secs.getDaySeconds();
+    const escaped_name = try jsonEscapeAlloc(allocator, role.name);
+    defer allocator.free(escaped_name);
+    return std.fmt.allocPrint(
+        allocator,
+        "{{\"id\":\"{s}\",\"name\":{s},\"group_id\":\"{s}\",\"created_at\":\"{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}.{d:0>6}Z\"}}",
+        .{
+            role.id,
+            escaped_name,
+            role.group_id,
+            @as(u32, yd.year),
+            @as(u32, @intFromEnum(md.month)),
+            @as(u32, md.day_index + 1),
+            @as(u32, ds.getHoursIntoDay()),
+            @as(u32, ds.getMinutesIntoHour()),
+            @as(u32, ds.getSecondsIntoMinute()),
+            @as(u64, @intCast(@max(0, us))),
+        },
+    );
+}
+
+fn jsonEscapeAlloc(allocator: std.mem.Allocator, s: []const u8) ![]u8 {
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
+    try buf.append(allocator, '"');
+    for (s) |c| {
+        switch (c) {
+            '"' => try buf.appendSlice(allocator, "\\\""),
+            '\\' => try buf.appendSlice(allocator, "\\\\"),
+            '\n' => try buf.appendSlice(allocator, "\\n"),
+            '\r' => try buf.appendSlice(allocator, "\\r"),
+            '\t' => try buf.appendSlice(allocator, "\\t"),
+            else => try buf.append(allocator, c),
+        }
+    }
+    try buf.append(allocator, '"');
+    return buf.toOwnedSlice(allocator);
 }
 
 fn errorResult(allocator: std.mem.Allocator, status_code: u16, code: []const u8) HandlerResult {

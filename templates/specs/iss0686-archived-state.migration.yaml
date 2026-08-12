@@ -1,0 +1,67 @@
+# Migration + integration-test parameter file (Lego Type C)
+#
+# CODE-DESIGNER output for ISS-0686 (GH-733 / WF03-GH733-20260812).
+# Extends plat_partition_catalog.state to accept the new 'ARCHIVED' terminal
+# state written by archiveLegacyTable() after a successful events_legacy rename.
+#
+# IMPLEMENTER NOTE (BACKEND-DEV, read before running codegen):
+# The existing unnamed CHECK on state (auto-named plat_partition_catalog_state_check
+# by Postgres 15, confirmed by migration 1148_par02_partition_catalog.sql) must be
+# dropped before the ADD CONSTRAINT below can succeed with the same name.
+# Prepend this statement manually in the generated migration file:
+#
+#   ALTER TABLE plat_partition_catalog
+#       DROP CONSTRAINT IF EXISTS plat_partition_catalog_state_check;
+#
+# The codegen does not emit DROP CONSTRAINT; add it by hand after running codegen.
+# See src/design/ISS-0686-events-legacy-archival-integration.md §Migration requirement
+# for the full rationale and the per-tenant DO $$ guard convention.
+
+schema_version: 1
+migration_number: 1153   # next free after 1152_iss0670_platform_event_types_seed.sql
+name: iss0686_archived_state
+requirement_ids: [PAR-05, PAR-03]
+purpose: |
+  Extends the plat_partition_catalog.state CHECK constraint to include 'ARCHIVED',
+  a new terminal state written by archiveLegacyTable() after events_legacy is
+  renamed to events_legacy_archived. Without this migration the catalog UPDATE
+  at the end of archiveLegacyTable() fails with a constraint violation.
+
+tables:
+  - mode: alter
+    name: plat_partition_catalog
+    add_constraints:
+      - kind: check
+        name: plat_partition_catalog_state_check
+        expression: "state IN ('ATTACHED', 'DETACHED', 'ORPHAN_PARTITION', 'DROPPED', 'ARCHIVED')"
+
+fixtures: []
+
+test_cases:
+  - name: archived_state_accepted
+    description: >
+      A plat_partition_catalog row whose state is updated to 'ARCHIVED' is accepted
+      by the extended CHECK constraint without a violation.
+    requirement_ref: PAR-05
+    arrange: |
+      try h.conn.exec(
+          "INSERT INTO plat_partition_catalog " ++
+          "  (table_name, parent_table, range_start, range_end, state) " ++
+          "VALUES ('events_legacy_archived_test', 'events_legacy', " ++
+          "        '1970-01-01'::timestamptz, NOW(), 'ATTACHED')",
+          &.{},
+      );
+    act: |
+      try h.conn.exec(
+          "UPDATE plat_partition_catalog SET state = 'ARCHIVED' " ++
+          "WHERE table_name = 'events_legacy_archived_test'",
+          &.{},
+      );
+    assertions: |
+      // CUSTOM: verify exactly one row has state='ARCHIVED'.
+      // Expected: SELECT count(*) = 1 WHERE table_name='events_legacy_archived_test' AND state='ARCHIVED'.
+
+rollback_strategy: |
+  Append-only. To roll back: DROP the new constraint and re-add with the original
+  four-value list. No data loss; any 'ARCHIVED' rows will fail the old constraint
+  but the column is not dropped.
