@@ -1,0 +1,30 @@
+{
+  "handoff_id": "73300700-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH733-20260812",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-12T09:21:09Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "iss_ref": "ISS-0686",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/733",
+    "branch": "feature/WF03-GH733-20260812"
+  },
+  "task": {
+    "description": "Step 7+Final for WF03-GH733-20260812: (1) CHANGELOG.md: ISS-0686 entry. (2) ISS-0686.json RESOLVED. (3) Commit. (4) gh pr create --base main --title 'feat(par05): ISS-0686 register events_legacy in plat_partition_catalog + archiveLegacyTable (#733)'. (5) gh pr merge --squash --delete-branch. (6) git checkout main && git pull. (7) Update global_queue ISS-0686 RESOLVED. (8) gh issue close 733. (9) orchestrator.log RESOLVE/QUEUE_REL/LOOP. (10) lint_handoffs.py exit 0.",
+    "acceptance_criteria": [
+      "CHANGELOG updated",
+      "ISS-0686.json RESOLVED",
+      "PR merged",
+      "GH-733 closed",
+      "queue RESOLVED"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "started_at": "2026-08-12T09:21:09Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS"
+}
