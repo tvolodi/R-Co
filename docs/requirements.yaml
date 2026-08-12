@@ -2367,7 +2367,7 @@ requirements:
     title: UI clearly labels test tenants and blocks accidental production actions
     stage: 14
     priority: MUST
-    status: PENDING
+    status: RELEASED
     body: |-
       > The platform UI SHALL display a persistent, visually distinct indicator on
       > every page when the user is operating within a test tenant. Actions that
@@ -2415,6 +2415,15 @@ requirements:
       has all steps still PENDING with null results -- dispatched but never executed. No banner/indicator
       component found in web/src. Genuinely not built.
     type: requirement
+    implemented_in:
+    - web/src/components/layout/TestEnvironmentBanner.tsx
+    - web/src/components/ui/ConfirmPromoteModal.tsx
+    - web/src/pages/admin/tenants/TenantsPage.tsx
+    - web/src/pages/definitions/DefinitionEditorPage.tsx
+    - web/src/auth/useTenantContext.ts
+    - web/src/components/layout/AppShell.tsx
+    released_at: '2026-08-12T15:15:56Z'
+    last_updated: '2026-08-12T15:15:56Z'
   ENV-05:
     id: ENV-05
     title: Test tenant lifecycle management
@@ -3477,7 +3486,7 @@ requirements:
     title: Named role registry and ROLE assignee resolution
     stage: 5
     priority: MUST
-    status: PENDING
+    status: RELEASED
     body: |-
       <!-- CHANGE: Added 2026-07-21. Discovered as a prerequisite gap during REQ-VALIDATOR review of Stage 15 (SOL-01, SOL-03): PD-05 declares HUMAN_TASK assignee_type = ROLE as valid syntax, but no released requirement specifies how a ROLE assignee_ref is registered or resolved to actual users. IDN-03 covers only the fixed 3-tier platform RBAC (PLATFORM_ADMIN / PROCESS_DESIGNER / TASK_WORKER / PROCESS_OPERATOR), a different concept from an open-ended, tenant-defined business role name. Without this requirement, SOL-01's "role the pack expects the tenant to provide" and SOL-03's "role mapping" gate are not testable. -->
 
@@ -3507,6 +3516,13 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
+    implemented_in:
+    - src/identity/role_registry.zig
+    - src/api/routes/identity.zig
+    - src/engine/instance.zig
+    - migrations/1154_idn05_tenant_role_registry.sql
+    released_at: '2026-08-12T13:10:48Z'
+    last_updated: '2026-08-12T13:10:48Z'
   IN-UI-01:
     id: IN-UI-01
     title: Instance board

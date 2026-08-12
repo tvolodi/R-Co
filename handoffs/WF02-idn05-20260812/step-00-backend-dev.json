@@ -1,0 +1,34 @@
+{
+  "handoff_id": "a1b2c3d4",
+  "run_id": "WF02-idn05-20260812",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "status": "COMPLETED",
+  "created_at": "2026-08-12T10:43:13Z",
+  "started_at": "2026-08-12T10:44:00Z",
+  "completed_at": "2026-08-12T10:45:32Z",
+  "workflow": "WF-02",
+  "context": {
+    "requirement_ids": ["IDN-05"],
+    "description": "Step 00: git-setup for WF02-idn05-20260812. Create feature branch from main and push to origin.",
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md. Create branch feature/WF02-idn05-20260812 from current main HEAD, push to origin. Record branch_name, base_commit_sha, and push_status in result.",
+    "fn": "fn:git-setup",
+    "branch_name": "feature/WF02-idn05-20260812"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created and pushed feature/WF02-idn05-20260812 from main HEAD f707ccd5a6ac7a11acd6f7be28931007035ee2d5.",
+    "branch_name": "feature/WF02-idn05-20260812",
+    "base_commit_sha": "f707ccd5a6ac7a11acd6f7be28931007035ee2d5",
+    "push_status": "success",
+    "artifacts_out": ["branch: feature/WF02-idn05-20260812"],
+    "issues": [],
+    "next_action": "ORCH routes to next step per WF-02"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

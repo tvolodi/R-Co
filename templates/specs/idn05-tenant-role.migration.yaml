@@ -1,0 +1,85 @@
+schema_version: 1
+migration_number: 1154
+name: idn05_tenant_role_registry
+requirement_ids: [IDN-05]
+purpose: |
+  Add the per-tenant named-role registry table (tenant_role) for IDN-05.
+  This table maps tenant-defined business role names (e.g. "Finance Approver")
+  to an existing group_id, enabling HUMAN_TASK nodes with assignee_type=ROLE to
+  be resolved to GROUP semantics at task activation (EE-03). The table is
+  provisioned in each tenant's own schema (SPT architecture); no tenant_id
+  column is needed. The same role name string may independently map to different
+  groups in different tenants.
+
+tables:
+  - mode: create
+    name: tenant_role
+    columns:
+      - { name: id,         type: uuid,        pk: true,       default: gen_random_uuid() }
+      - { name: name,       type: text,        not_null: true }
+      - { name: group_id,   type: uuid,        not_null: true, fk: "groups(id) ON DELETE RESTRICT" }
+      - { name: created_at, type: timestamptz, not_null: true, default: now() }
+    constraints:
+      - { kind: unique, columns: [name] }
+    indexes:
+      - { name: idx_tenant_role_name,  columns: [name] }
+      - { name: idx_tenant_role_group, columns: [group_id] }
+
+fixtures:
+  - name: group_id
+    kind: sql_setup
+    sql: |
+      INSERT INTO groups (name, display_name) VALUES ('test-group', 'Test Group')
+      RETURNING id
+  - name: role_name
+    kind: sql_literal
+    value: "'test-role'"
+
+test_cases:
+  - name: insert_and_select_binding
+    description: |
+      Insert a role binding and verify it can be retrieved by name.
+    requirement_ref: IDN-05
+    arrange: ""
+    act: |
+      // CUSTOM: INSERT INTO tenant_role (name, group_id) VALUES ($role_name, $group_id);
+      // CUSTOM: SELECT id, name, group_id FROM tenant_role WHERE name = $role_name;
+    assertions: |
+      // CUSTOM: assert 1 row returned; assert group_id matches; assert id is not null.
+
+  - name: unique_constraint_on_name
+    description: |
+      Inserting a duplicate role name within the same tenant schema must fail with a
+      unique-constraint violation (PostgreSQL error code 23505).
+    requirement_ref: IDN-05
+    arrange: |
+      // CUSTOM: INSERT INTO tenant_role (name, group_id) VALUES ($role_name, $group_id);
+    act: |
+      // CUSTOM: INSERT INTO tenant_role (name, group_id) VALUES ($role_name, $group_id);
+    assertions: |
+      // CUSTOM: expect error code 23505.
+
+  - name: upsert_rebinding
+    description: |
+      ON CONFLICT (name) DO UPDATE correctly replaces the group_id when a role is
+      re-bound to a different group.
+    requirement_ref: IDN-05
+    arrange: |
+      // CUSTOM: INSERT INTO groups (name, display_name) VALUES ('group-b', 'Group B') RETURNING id;
+      // CUSTOM: INSERT INTO tenant_role (name, group_id) VALUES ($role_name, $group_id);
+    act: |
+      // CUSTOM: INSERT INTO tenant_role (name, group_id) VALUES ($role_name, $group_b_id)
+      // CUSTOM:   ON CONFLICT (name) DO UPDATE SET group_id = EXCLUDED.group_id;
+    assertions: |
+      // CUSTOM: SELECT group_id FROM tenant_role WHERE name = $role_name; assert equals group_b_id.
+
+  - name: fk_reject_missing_group
+    description: |
+      Inserting a binding where group_id does not exist in groups must be rejected
+      by the FK constraint (PostgreSQL error code 23503).
+    requirement_ref: IDN-05
+    arrange: ""
+    act: |
+      // CUSTOM: INSERT INTO tenant_role (name, group_id) VALUES ($role_name, gen_random_uuid());
+    assertions: |
+      // CUSTOM: expect error code 23503.

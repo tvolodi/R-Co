@@ -1,0 +1,37 @@
+{
+  "handoff_id": "env04-s01-0002",
+  "run_id": "WF02-env04-20260812",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "status": "COMPLETED",
+  "created_at": "2026-08-12T14:13:19Z",
+  "started_at": "2026-08-12T14:24:37Z",
+  "completed_at": "2026-08-12T14:25:41Z",
+  "workflow": "WF-02",
+  "context": {
+    "requirement_ids": [
+      "ENV-04"
+    ],
+    "description": "Step 01: Design the ENV-04 UI changes \u2014 persistent test-tenant banner, confirmation modal for promotion, tenant switcher labels.",
+    "artifacts_in": [
+      "docs/requirements.yaml (ENV-04 entry)",
+      "templates/lego-catalog.md",
+      "web/src/ (existing frontend structure)"
+    ]
+  },
+  "task": {
+    "description": "Produce a design artefact for ENV-04 (UI clearly labels test tenants and blocks accidental production actions) at src/design/env04-test-tenant-ui.md.\n\nBefore writing, read:\n- The full ENV-04 requirement (docs/requirements.yaml or python tools/reqctl.py show ENV-04)\n- The existing web/src/ structure to understand the frontend codebase\n- ENV-01/ENV-02/ENV-03 related implementations to understand how tenant_type field and promotion API are already implemented\n- SH-01 and SH-03 related UI (shell navigation, role-aware navigation) if present\n\nThe design must cover all ENV-04 acceptance criteria:\n1. Persistent banner on every page when tenant_type='test': text 'TEST ENVIRONMENT' + paired production tenant name\n2. Confirmation modal before 'Promote to Production': exact modal text specified in the requirement\n3. No banner on production tenants\n4. Admin tenant switcher: [TEST] suffix + visual distinction for test tenants\n5. Instance list on test tenant: only shows test tenant instances (no production data)\n6. 'Promote to Production' button only on Process Definition detail when tenant is test + definition status is ACTIVE\n\nDesign must specify:\n- Which React components to create or modify\n- Where to read tenant_type from (likely from the current session/user context already fetched)\n- How to conditionally render the banner (layout component, not per-page)\n- The exact text for the banner and confirmation modal\n- Edge cases: mobile viewport (banner fixed, not collapsible), user has access to both tenants (reflects current session only)\n\nClassify per templates/lego-catalog.md. The design MUST NOT contain TypeScript implementation code."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for ENV-04 test-tenant UI (Type E). REWORK(1/3): split DFD fenced block (57 lines) into three blocks of ≤40 lines each with prose headings. lint_design_artefact.py exits 0.",
+    "artifacts_out": [
+      "src/design/env04-test-tenant-ui.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

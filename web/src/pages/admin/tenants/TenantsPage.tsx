@@ -161,9 +161,32 @@ export default function TenantsPage() {
             </thead>
             <tbody>
               {(data.items ?? []).map((row) => (
-                <tr key={row.slug} data-testid={`tenant-row-${row.slug}`}>
+                <tr
+                  key={row.slug}
+                  data-testid={`tenant-row-${row.slug}`}
+                  style={row.tenant_type === 'test' ? { background: '#fefce8' } : undefined}
+                >
                   <td style={{ padding: '.5rem .75rem', borderBottom: '1px solid #f1f5f9' }}>{row.slug}</td>
-                  <td style={{ padding: '.5rem .75rem', borderBottom: '1px solid #f1f5f9' }}>{row.display_name}</td>
+                  <td style={{ padding: '.5rem .75rem', borderBottom: '1px solid #f1f5f9' }}>
+                    {row.tenant_type === 'test' && (
+                      <span
+                        data-testid={`tenant-type-badge-${row.slug}`}
+                        style={{
+                          display: 'inline-block',
+                          marginRight: '.4rem',
+                          padding: '.1rem .4rem',
+                          borderRadius: '999px',
+                          fontSize: '.72rem',
+                          fontWeight: 600,
+                          background: '#fef08a',
+                          color: '#713f12',
+                        }}
+                      >
+                        TEST
+                      </span>
+                    )}
+                    {row.display_name}{row.tenant_type === 'test' ? ' [TEST]' : ''}
+                  </td>
                   <td style={{ padding: '.5rem .75rem', borderBottom: '1px solid #f1f5f9' }}>{row.idp_realm_id}</td>
                   <td style={{ padding: '.5rem .75rem', borderBottom: '1px solid #f1f5f9' }}>
                     <span

@@ -69,6 +69,7 @@ pub const uuid = @import("util/uuid.zig");
 pub const identity_registry = @import("identity/registry.zig"); // IDN-01
 pub const identity_service = @import("identity/service.zig"); // IDN-01
 pub const identity_routes = @import("api/routes/identity.zig"); // IDN-01
+pub const role_registry = @import("identity/role_registry.zig"); // IDN-05
 pub const oidc_agent_lifecycle = @import("oidc/agent_lifecycle.zig"); // OIDC-16..26
 pub const obs_metrics = @import("obs_metrics"); // OBS-02
 pub const obs_audit = @import("obs/audit.zig"); // OBS-03

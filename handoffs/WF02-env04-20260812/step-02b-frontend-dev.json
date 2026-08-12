@@ -1,0 +1,54 @@
+{
+  "handoff_id": "env04-s2b-0004",
+  "run_id": "WF02-env04-20260812",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "status": "COMPLETED",
+  "created_at": "2026-08-12T14:29:02Z",
+  "started_at": "2026-08-12T14:29:46Z",
+  "completed_at": "2026-08-12T14:36:03Z",
+  "workflow": "WF-02",
+  "context": {
+    "requirement_ids": [
+      "ENV-04"
+    ],
+    "description": "Step 02b: Implement ENV-04 frontend changes per approved design.",
+    "artifacts_in": [
+      "src/design/env04-test-tenant-ui.md",
+      "handoffs/WF02-env04-20260812/step-01b-code-design-validator.json"
+    ],
+    "branch": "feature/WF02-env04-20260812"
+  },
+  "task": {
+    "description": "Implement ENV-04 per the approved design at src/design/env04-test-tenant-ui.md. Steps:\n\n1. Read the design in full before writing any code.\n2. Extend UserSession type and AuthProvider to include tenant_type, tenant_id, and production_tenant_display_name (from the GET /api/v1/tenants/:slug response). The backend already emits tenant_type; verify whether production_tenant_display_name requires a backend JOIN or if the frontend can resolve it from a second API call.\n3. Create web/src/components/TestEnvironmentBanner.tsx \u2014 sticky yellow bar, z-index 200, shown only when tenant_type === 'test', displays 'TEST ENVIRONMENT' + production tenant name (or '(unknown)' fallback). Not collapsible.\n4. Insert TestEnvironmentBanner into the AppShell layout component (AppShell.tsx or equivalent), above ApiConnectivityBanner.\n5. Create web/src/components/ConfirmPromoteModal.tsx \u2014 modal with the exact text from ENV-04 AC-2: 'You are about to promote <definition_name> to production tenant <production_display_name>. This will create a DRAFT version that requires separate activation. Confirm?' \u2014 danger-red Confirm button, disabled during in-flight mutation.\n6. In DefinitionEditorPage (or wherever the Process Definition detail is shown): add 'Promote to Production' button shown only when tenantType === 'test' && def.status === 'ACTIVE'. On click open ConfirmPromoteModal; on confirm call definitionsApi.promote(...).\n7. In TenantsPage (admin tenant list): add [TEST] badge and yellow row/card tint for rows where tenant_type === 'test'.\n\nValidation:\n- pnpm run type-check (must exit 0)\n- pnpm run lint (must exit 0)\n- pnpm run build (must exit 0)\n- python tools/lint_handoffs.py (must exit 0)\n- Commit all changes to feature/WF02-env04-20260812\n\nDo NOT implement anything not in the design. If the backend needs a change for production_tenant_display_name, note it in result.issues as a MINOR \u2014 implement the (unknown) fallback path for now.",
+    "branch": "feature/WF02-env04-20260812"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ENV-04 frontend: UserSession type enrichment (tenant_id, tenant_type, production_tenant_display_name), AuthProvider + OidcCallbackPage updated to store new fields, useTenantContext extended, TestEnvironmentBanner (sticky yellow bar, z=200), AppShell updated to render TestEnvironmentBanner above ApiConnectivityBanner, ConfirmPromoteModal with exact prescribed text + danger-red Confirm button, definitionsApi.promote() method, Promote to Production button in DefinitionEditorPage toolbar (gated on tenantType===test && def.status===ACTIVE && hasDesignerRole), TenantsPage TEST badge + yellow row tint. All validation gates pass: type-check 0, lint 0, build success.",
+    "artifacts_out": [
+      "web/src/types/api.ts",
+      "web/src/api/tenants.ts",
+      "web/src/api/definitions.ts",
+      "web/src/auth/useTenantContext.ts",
+      "web/src/auth/AuthProvider.tsx",
+      "web/src/pages/OidcCallbackPage.tsx",
+      "web/src/components/layout/TestEnvironmentBanner.tsx",
+      "web/src/components/layout/AppShell.tsx",
+      "web/src/components/ui/ConfirmPromoteModal.tsx",
+      "web/src/pages/definitions/DefinitionEditorPage.tsx",
+      "web/src/pages/admin/tenants/TenantsPage.tsx"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "code": "OQ-1",
+        "description": "production_tenant_display_name relies on the backend Tenant response including this field (denormalized JOIN). If the backend does not yet return it, the banner will show (unknown) fallback per design \u00a78 OQ-1. Backend change tracked separately as ENV-04 open question."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER (WF-02 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

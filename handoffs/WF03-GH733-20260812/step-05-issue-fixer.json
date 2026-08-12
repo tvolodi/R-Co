@@ -1,0 +1,31 @@
+{
+  "handoff_id": "73300050-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH733-20260812",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-12T08:30:56Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "iss_ref": "ISS-0686",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/733",
+    "branch": "feature/WF03-GH733-20260812"
+  },
+  "task": {
+    "description": "Steps 0.5+1: Confirm GH-733 open. Update ISS-0686.json IN_PROGRESS. Read src/db/partition_conversion.zig (PartitionConverter), src/scheduler/partition_retention.zig (PartitionRetention.runArchivalAging), src/design/par-05-online-partition-conversion.md (Open question #5), tests/specs/PAR-05.md (coverage note). Document in ISS-0686.json root_cause.details: exact lack of integration, which function in partition_retention.zig should handle events_legacy, and what plat_partition_catalog state would be needed.",
+    "acceptance_criteria": [],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosis complete (Category A -- implementation gap, not a test or environment error). GH-733 confirmed OPEN. ISS-0686.json updated to IN_PROGRESS with full root_cause.details. Three findings documented: (1) exact missing integration point in partition_conversion.zig: no catalog INSERT for events_legacy after reconcileOrRollback() succeeds; (2) exact query in partition_retention.zig that must be extended: runArchivalAging() line ~94 WHERE parent_table = 'events' is hardcoded -- must also handle parent_table = 'events_legacy' via a non-DETACH archival path since events_legacy is a standalone unpartitioned table, not a partition of events; (3) exact plat_partition_catalog column values for events_legacy row: table_name='events_legacy', parent_table='events_legacy', range_start='1970-01-01 00:00:00+00', range_end=NOW() at swap completion, state='ATTACHED'.",
+    "artifacts_out": [
+      "docs/issues/ISS-0686.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER via ORCH for PAR-05/PAR-03 integration design artefact (Open questions #5 resolution)"
+  },
+  "started_at": "2026-08-12T08:30:56Z",
+  "completed_at": "2026-08-12T08:34:11Z"
+}
