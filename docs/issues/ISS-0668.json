@@ -2,7 +2,7 @@
   "id": "ISS-0668",
   "title": "Lego catalog (templates/lego-catalog.md) is shallow for Types A/B/D: no per-type schema doc and the CUSTOM: convention is under-documented outside Type C",
   "severity": "MINOR",
-  "status": "OPEN",
+  "status": "IN_PROGRESS",
   "discovered_at": "2026-08-11T08:19:09Z",
   "discovered_during": "Review of templates/lego-catalog.md prompted by the user, alongside the stage-16 requirement-batch loop (WF02-batch-0-20260811)",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/706",
