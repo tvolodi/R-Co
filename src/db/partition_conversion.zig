@@ -313,6 +313,27 @@ pub const PartitionConverter = struct {
                 },
                 .ok => {},
             }
+
+            // ISS-0681 / GH-724 (PAR-05 AC5): record this partition in
+            // plat_partition_catalog with parent_table='events_part' — the
+            // SAME bookkeeping ensurePartitionAttached() performs for PAR-02's
+            // daily job, via the shared helper. Without this row,
+            // reconcileOrRollback()'s self-join over plat_partition_catalog
+            // (filtered on parent_table = 'events_legacy' / 'events') never
+            // matches anything for a partition created through this
+            // conversion path, so its mismatch-detection loop body never
+            // runs and AC5's guarantee silently never fires. Same transaction
+            // as the CREATE TABLE + ATTACH above.
+            partition_maintenance.upsertPartitionCatalogRow(
+                conn,
+                partition_name,
+                "events_part",
+                start_text,
+                end_text,
+            ) catch {
+                conn.exec("ROLLBACK", &.{}) catch {};
+                return ConversionError.TransactionFailed;
+            };
         }
 
         // Backfill INSERT ... SELECT ... ON CONFLICT DO NOTHING for this
@@ -411,6 +432,30 @@ pub const PartitionConverter = struct {
             return ConversionError.TransactionFailed;
         };
 
+        // ISS-0681 / GH-724 (PAR-05 AC5): plat_partition_catalog.parent_table
+        // must track the SAME rename that just happened at the table level,
+        // in the SAME transaction, or reconcileOrRollback()'s self-join
+        // (WHERE lp.parent_table = 'events_legacy' AND np.parent_table =
+        // 'events') never matches any real row even after backfillOneMonth()
+        // starts populating the catalog — the population gap and this rename
+        // gap are two halves of the same defect. Two disjoint predicates (old
+        // value 'events' vs old value 'events_part'), so statement order
+        // between them does not matter.
+        conn.exec(
+            "UPDATE plat_partition_catalog SET parent_table = 'events_legacy', updated_at = NOW() WHERE parent_table = 'events'",
+            &.{},
+        ) catch {
+            conn.exec("ROLLBACK", &.{}) catch {};
+            return ConversionError.TransactionFailed;
+        };
+        conn.exec(
+            "UPDATE plat_partition_catalog SET parent_table = 'events', updated_at = NOW() WHERE parent_table = 'events_part'",
+            &.{},
+        ) catch {
+            conn.exec("ROLLBACK", &.{}) catch {};
+            return ConversionError.TransactionFailed;
+        };
+
         conn.exec("COMMIT", &.{}) catch return ConversionError.TransactionFailed;
     }
 
@@ -421,14 +466,32 @@ pub const PartitionConverter = struct {
     /// Per-month COUNT(*) comparison between events_legacy and the new
     /// events partitions. On mismatch, issues the inverse rename before
     /// returning ConversionRowCountMismatch.
+    ///
+    /// ISS-0681 / GH-724 (REWORK 3): originally self-joined
+    /// plat_partition_catalog on TWO catalog-registered families — one for
+    /// events (parent_table='events') and one for events_legacy
+    /// (parent_table='events_legacy') — matching rows by substring-derived
+    /// suffix. That shape can never match in the real scenario this design
+    /// targets (see the design doc's own Scoping note and Open questions §5):
+    /// `events_legacy` IS the original pre-PAR-01 UNPARTITIONED table after
+    /// swap()'s rename — it has no per-month children of its own and is
+    /// never itself registered into plat_partition_catalog as a parent, so
+    /// `parent_table = 'events_legacy'` never has any row to match, by
+    /// construction, not merely by omission. PAR-05's own AC5 text says
+    /// "per-month count(*) is compared between events_legacy and the new
+    /// partitions" — a comparison against events_legacy AS A WHOLE, filtered
+    /// per month, not a second catalog-registered partition family. Fixed
+    /// shape: drive the loop from the NEW side's own catalog rows alone
+    /// (parent_table='events', populated by backfillOneMonth() + swap()'s
+    /// rename-time UPDATE) and use each row's own range_start/range_end to
+    /// bound a COUNT(*) query directly against events_legacy for that month.
     pub fn reconcileOrRollback(self: *PartitionConverter, allocator: std.mem.Allocator, conn: *db.Conn) ConversionError!void {
         var rows = conn.query(
             allocator,
-            \\SELECT lp.table_name, np.table_name
-            \\FROM plat_partition_catalog lp
-            \\JOIN plat_partition_catalog np
-            \\  ON substring(lp.table_name from 'events_legacy_(.*)') = substring(np.table_name from 'events_(.*)')
-            \\WHERE lp.parent_table = 'events_legacy' AND np.parent_table = 'events'
+            \\SELECT table_name, range_start, range_end
+            \\FROM plat_partition_catalog
+            \\WHERE parent_table = 'events'
+            \\ORDER BY range_start
         ,
             &.{},
         ) catch |err| switch (err) {
@@ -438,11 +501,12 @@ pub const PartitionConverter = struct {
         defer rows.deinit();
 
         for (rows.rows) |row| {
-            if (row.len < 2 or row[0] == null or row[1] == null) continue;
-            const legacy_partition = row[0].?;
-            const new_partition = row[1].?;
+            if (row.len < 3 or row[0] == null or row[1] == null or row[2] == null) continue;
+            const new_partition = row[0].?;
+            const range_start_text = row[1].?;
+            const range_end_text = row[2].?;
 
-            const legacy_count = try countRowsInTable(allocator, conn, legacy_partition);
+            const legacy_count = try countRowsInRange(allocator, conn, "events_legacy", range_start_text, range_end_text);
             const new_count = try countRowsInTable(allocator, conn, new_partition);
 
             if (legacy_count != new_count) {
@@ -495,6 +559,46 @@ fn countRowsInTable(allocator: std.mem.Allocator, conn: *db.Conn, table_name: []
     defer allocator.free(sql);
 
     const row = conn.queryRow(allocator, sql, &.{}) catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return ConversionError.PoolExhausted,
+        else => return ConversionError.TransactionFailed,
+    };
+    if (row == null) return 0;
+    const r = row.?;
+    defer {
+        for (r) |c| if (c) |v| allocator.free(v);
+        allocator.free(r);
+    }
+    if (r.len == 0 or r[0] == null) return 0;
+    return std.fmt.parseInt(i64, r[0].?, 10) catch return ConversionError.TransactionFailed;
+}
+
+/// ISS-0681 / GH-724 (REWORK 3): count rows in `table_name` whose created_at
+/// falls in [range_start_text, range_end_text) — used by reconcileOrRollback()
+/// to compare events_legacy (the whole pre-PAR-01 unpartitioned table, never
+/// itself split into catalog-registered monthly children) against each new
+/// partition's own row-count for that same month, per PAR-05 AC5's literal
+/// text ("per-month count(*) is compared between events_legacy and the new
+/// partitions"). table_name is identifier-quoted the same way
+/// countRowsInTable() is (always sourced from plat_partition_catalog, never
+/// external input); the range bounds are ordinary parameterised values, not
+/// identifiers, so they bind via $1/$2 rather than textual interpolation.
+fn countRowsInRange(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    table_name: []const u8,
+    range_start_text: []const u8,
+    range_end_text: []const u8,
+) ConversionError!i64 {
+    if (std.mem.indexOfScalar(u8, table_name, '"') != null) return ConversionError.TransactionFailed;
+
+    const sql = std.fmt.allocPrint(
+        allocator,
+        "SELECT COUNT(*) FROM \"{s}\" WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz",
+        .{table_name},
+    ) catch return ConversionError.TransactionFailed;
+    defer allocator.free(sql);
+
+    const row = conn.queryRow(allocator, sql, &.{ range_start_text, range_end_text }) catch |err| switch (err) {
         db.PoolError.ExhaustedPool => return ConversionError.PoolExhausted,
         else => return ConversionError.TransactionFailed,
     };

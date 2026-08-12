@@ -117,12 +117,21 @@ fn createUnpartitionedEventsFixture(conn: *bpm.pool.Conn) !void {
     ,
         &.{},
     );
+    // ISS-0681 / GH-724 (REWORK 3): must match 1148_par02_partition_catalog.sql's
+    // real column set exactly — backfillOneMonth()/swap() now go through
+    // partition_maintenance.zig's upsertPartitionCatalogRow()/UPDATE
+    // statements, which reference created_at/updated_at (the same columns
+    // ensurePartitionAttached() already relies on for its own catalog
+    // upsert). The prior narrower fixture shape (missing both timestamp
+    // columns) predates that call path and no longer matches production.
     try conn.exec(
         "CREATE TABLE plat_partition_catalog (" ++
             "id uuid PRIMARY KEY DEFAULT gen_random_uuid(), " ++
             "table_name text NOT NULL UNIQUE, parent_table text NOT NULL, " ++
             "range_start timestamptz NOT NULL, range_end timestamptz NOT NULL, " ++
-            "state text NOT NULL DEFAULT 'ATTACHED')",
+            "state text NOT NULL DEFAULT 'ATTACHED', " ++
+            "created_at timestamptz NOT NULL DEFAULT now(), " ++
+            "updated_at timestamptz NOT NULL DEFAULT now())",
         &.{},
     );
 }

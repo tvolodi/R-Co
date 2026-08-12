@@ -313,14 +313,7 @@ pub const PartitionMaintenanceScheduler = struct {
             .ok => {},
         }
 
-        conn.exec(
-            \\INSERT INTO plat_partition_catalog (table_name, parent_table, range_start, range_end, state)
-            \\VALUES ($1, $2, $3::timestamptz, $4::timestamptz, 'ATTACHED')
-            \\ON CONFLICT (table_name) DO UPDATE SET state = 'ATTACHED', parent_table = EXCLUDED.parent_table,
-            \\  range_start = EXCLUDED.range_start, range_end = EXCLUDED.range_end, updated_at = NOW()
-        ,
-            &.{ partition_name, parent, start_text, end_text },
-        ) catch |err| switch (err) {
+        upsertPartitionCatalogRow(conn, partition_name, parent, start_text, end_text) catch |err| switch (err) {
             db.PoolError.ExhaustedPool => return PartitionMaintenanceError.PoolExhausted,
             else => return PartitionMaintenanceError.TransactionFailed,
         };
@@ -332,6 +325,33 @@ pub const PartitionMaintenanceScheduler = struct {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+/// PAR-05 (WF02-batch-4-20260811, REWORK 3 / ISS-0681): shared upsert helper
+/// so BOTH this job's own ensurePartitionAttached() AND
+/// src/db/partition_conversion.zig's backfillOneMonth() record the same
+/// plat_partition_catalog bookkeeping after a successful
+/// attachPartitionTimed() call — one definition, not a fork, per the same
+/// "reuse partition_maintenance.zig's helpers" preference the MonthRange
+/// doc comment below already establishes. Without this row,
+/// reconcileOrRollback()'s (PAR-05 AC5) self-join over plat_partition_catalog
+/// has nothing to match for any events_part-derived partition, so its
+/// mismatch-detection loop body never runs (ISS-0681 / GH-724).
+pub fn upsertPartitionCatalogRow(
+    conn: *db.Conn,
+    table_name: []const u8,
+    parent_table: []const u8,
+    range_start_text: []const u8,
+    range_end_text: []const u8,
+) db.PoolError!void {
+    try conn.exec(
+        \\INSERT INTO plat_partition_catalog (table_name, parent_table, range_start, range_end, state)
+        \\VALUES ($1, $2, $3::timestamptz, $4::timestamptz, 'ATTACHED')
+        \\ON CONFLICT (table_name) DO UPDATE SET state = 'ATTACHED', parent_table = EXCLUDED.parent_table,
+        \\  range_start = EXCLUDED.range_start, range_end = EXCLUDED.range_end, updated_at = NOW()
+    ,
+        &.{ table_name, parent_table, range_start_text, range_end_text },
+    );
+}
 
 /// PAR-05 (WF02-batch-4-20260811): made `pub` so
 /// src/db/partition_conversion.zig can reuse the SAME month-arithmetic
