@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-12T17:11:52Z'
+last_updated: '2026-08-12T17:18:02Z'
 requirements:
   ADM-UI-01:
     status: RELEASED

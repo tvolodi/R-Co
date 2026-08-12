@@ -103,32 +103,6 @@ All notable changes to the BPM Platform are documented here.
 
 ### Stage 14 — ENV-04 RELEASED (WF02-env04-20260812)
 
-- **ENV-04 — UI clearly labels test tenants and blocks accidental production actions — RELEASED.**
-  `web/src/components/layout/TestEnvironmentBanner.tsx` renders a persistent yellow banner on every
-  page when the current tenant has `tenant_type = 'test'`, displaying `"TEST ENVIRONMENT"` and the
-  paired production tenant name (AC-1, AC-3). `web/src/components/ui/ConfirmPromoteModal.tsx` gates
-  the "Promote to Production" action behind a confirmation modal with the prescribed warning text
-  (AC-2). `web/src/pages/admin/tenants/TenantsPage.tsx` renders a `[TEST]` suffix and distinct
-  visual style for test tenants in the admin tenant switcher (AC-4). Instance list isolation (AC-5)
-  enforced via tenant-scoped API calls. `web/src/auth/useTenantContext.ts` exposes `tenantType` and
-  `pairedProductionName` to all consumer components; `web/src/components/layout/AppShell.tsx`
-  mounts the banner unconditionally so it appears on every route. All 6 ACs covered and passing
-  (37/37 unit tests; all 5 pipeline gates PASS per release-WF02-env04-2026-08-12.yaml).
-
-### Stage 5 — IDN-05 RELEASED (WF02-idn05-20260812)
-
-- **IDN-05 — Named role registry and ROLE assignee resolution — RELEASED.**
-  `migrations/1154_idn05_tenant_role_registry.sql` creates the per-tenant `role_registry` table
-  mapping named business roles to `group_id`. `src/identity/role_registry.zig` implements
-  `RoleRegistry.bind()`, `lookup()`, and `list()`, enforcing tenant isolation and returning 404
-  for non-existent `group_id` on bind. `src/api/routes/identity.zig` exposes `GET /roles` and
-  `POST /roles`. `src/engine/instance.zig`'s task-activation path resolves `assignee_type = ROLE`
-  through `RoleRegistry.lookup()` and falls through to GROUP semantics per IDN-02; an unbound
-  role name creates the Task in PENDING status (mirrors the no-members edge case of EE-03).
-  All 5 ACs covered and passing.
-
-### Split release — Stage 16 batch 4: PAR-06, PIN-02 RELEASED in full; PAR-05, PIN-01 TESTED but withheld (known gaps)
-
 > **KNOWN GAPS — NOT GLOSSED OVER:**
 > - [ISS-0686 / GH-733](https://github.com/tvolodi/R-Co/issues/733) (MAJOR, **RESOLVED**) — PAR-05's
 >   trailing AC sentence ("`events_legacy` is retained read-only for one full
