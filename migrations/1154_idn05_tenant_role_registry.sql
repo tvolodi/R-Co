@@ -1,6 +1,7 @@
 -- IDN-05: per-tenant named-role registry
 -- Runs inside each tenant's own schema (SPT architecture).
 -- No tenant_id column — schema search path provides tenant isolation.
+-- scope: tenant_only
 
 CREATE TABLE IF NOT EXISTS tenant_role (
     id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
