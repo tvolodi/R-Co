@@ -1,0 +1,47 @@
+{
+  "handoff_id": "70200300-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH702-20260812",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-12T03:38:49Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 3 BACKEND-DEV implement",
+    "iss_ref": "ISS-0665",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/702",
+    "branch": "feature/WF03-GH702-20260812",
+    "artifacts_in": [
+      "handoffs/WF03-GH702-20260812/step-02-code-designer.json",
+      "tests/integration/helpers.zig",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Implement the ISS-0665 fix per the validated design. Changes: (1) tests/integration/helpers.zig: in runMigrations() after pg_advisory_lock acquire (around line 130), add: read BPM_TEST_STMT_TIMEOUT env var (default '300s'), SET statement_timeout to that value, add defer to restore it to '60s' after DDL work. Same pattern in runMigrationsForSchema() after line 193. (2) docs/guides/test_developer_guide.md: add section 10.2 'Running integration tests on resource-constrained hosts'. Commit: 'fix(test): ISS-0665 widen statement_timeout for migration window, add BPM_TEST_STMT_TIMEOUT override (#702)'. Push to feature/WF03-GH702-20260812.",
+    "acceptance_criteria": [
+      "runMigrations() SET statement_timeout before DDL work with defer restore",
+      "runMigrationsForSchema() same pattern",
+      "BPM_TEST_STMT_TIMEOUT env var used (default '300s')",
+      "configureSessionTimeouts() unchanged (60s stays)",
+      "test_developer_guide.md section 10.2 added",
+      "zig build exits 0",
+      "commit pushed",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ISS-0665: added BPM_TEST_STMT_TIMEOUT-driven statement_timeout bracket in runMigrations() and runMigrationsForSchema() in tests/integration/helpers.zig. Each function now widens statement_timeout to the env var value (default '300s') immediately after acquiring the advisory lock, with a defer that restores '60s' on all exit paths. Also added docs/guides/test_developer_guide.md section 10.2 explaining resource-constrained host remedies. zig build exits 0, error-set check clean. Commit 61611d85 pushed to feature/WF03-GH702-20260812.",
+    "artifacts_out": [
+      "tests/integration/helpers.zig",
+      "docs/guides/test_developer_guide.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "started_at": "2026-08-12T03:38:49Z",
+  "completed_at": "2026-08-12T03:41:53Z"
+}
