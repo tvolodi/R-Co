@@ -1,0 +1,60 @@
+{
+  "handoff_id": "wf02-batch-5-20260812-03b-test-design-validator",
+  "run_id": "WF02-batch-5-20260812",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-08-12T15:51:24Z",
+  "started_at": "2026-08-12T15:52:01Z",
+  "completed_at": "2026-08-12T15:57:49Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PIN-03",
+      "PIN-04",
+      "PIN-05",
+      "PRM-01"
+    ],
+    "related_handoff_ids": [
+      "wf02-batch-5-20260812-03-test-designer",
+      "wf02-batch-5-20260812-02a-backend-dev",
+      "wf02-batch-5-20260812-02c-security-reviewer-rereview1"
+    ],
+    "artifacts_in": [
+      "tests/specs/PIN-03.md",
+      "tests/specs/PIN-04.md",
+      "tests/specs/PIN-05.md",
+      "tests/specs/PRM-01.md",
+      "tests/integration/pin03_no_fallback_to_latest_version_test.zig",
+      "tests/integration/pin04_pin_resolution_replay_subprocess_test.zig",
+      "tests/integration/pin05_explicit_instance_pin_rebind_test.zig",
+      "tests/integration/prm01_promotion_plan_diff_report_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Hard gate (WF-02 Step 3b): validate TEST-DESIGNER's test specs and test code for PIN-03, PIN-04, PIN-05, PRM-01 before TEST-RUNNER (Step 4) may run the full suite. Read tests/specs/PIN-03.md, PIN-04.md, PIN-05.md, PRM-01.md, and the corresponding test files tests/integration/pin03_no_fallback_to_latest_version_test.zig, pin04_pin_resolution_replay_subprocess_test.zig, pin05_explicit_instance_pin_rebind_test.zig, prm01_promotion_plan_diff_report_test.zig in full.\n\nIMPORTANT: since the specs were written, a rework cycle happened. TEST-DESIGNER's original PIN-04 test file had 2 tests (TC-PIN-04-03, TC-PIN-04-04) that correctly FAILED against a real implementation gap (sub-process pin inheritance was unimplemented) -- this was legitimate, not a design flaw, per Unblock-Everything/No-SkipZigTest-on-MUST. BACKEND-DEV then fixed the implementation (commit 49ae102a) AND, while doing so, also modified the PIN-04 test file itself -- discovered and fixed what BACKEND-DEV describes as 'a genuine TEST-DESIGNER fixture defect: the parent graph had no SERVICE_TASK node at all despite the file's own doc comments requiring the parent and child to reference the same service_id, so TC-PIN-04-03/04 were structurally unreachable under any implementation' -- fixed by adding a parent-side SERVICE_TASK node wired as a provably-dead gateway branch (never executed at runtime, but visible to PinResolver.resolve()'s whole-graph scan). This was flagged as a MINOR issue in BACKEND-DEV's handoff, not silently done.\n\nYOUR JOB, beyond the standard checklist: (1) independently verify that BACKEND-DEV's fixture change to the PIN-04 test file is legitimate and was actually a pre-existing test defect, not BACKEND-DEV quietly weakening a test to make it pass (per core-directives.md's Never-Satisfy-a-Gate-by-Editing-What-It-Measures rule -- a developer editing the TEST that gates their own work is exactly the scenario that rule exists for, even though in this case the editor was BACKEND-DEV acting under an explicit 'flag, don't silently edit' instruction and did disclose it). Read the actual diff (`git show 49ae102a -- tests/integration/pin04_pin_resolution_replay_subprocess_test.zig`) and confirm: does the added SERVICE_TASK node change what TC-PIN-04-03/04 actually assert/verify, or does it only make a previously-unreachable-but-correctly-specified test reachable? If the assertions themselves were weakened, watered down, or now test something materially different and less rigorous than the original spec's intent, that is a FAIL. If it genuinely only fixes an unreachable fixture without touching what is asserted, that is legitimate and should PASS. (2) Standard checklist: every MUST requirement (PIN-03, PIN-04, PRM-01 -- confirm priority field yourself) has a runnable integration test for every AC except PIN-03 AC3's documented, justified scope exclusion; PIN-05 (SHOULD) has reasonable coverage; no unjustified error.SkipZigTest; fixtures are isolated (no hardcoded UUIDs, proper defer cleanup) per python3 tools/lint_test_isolation.py; tests are self-sufficient. (3) Confirm the tests actually run and produce the pass counts claimed (re-run zig build test-integration-pin03/pin04/pin05/prm01 yourself, do not trust the reported counts on faith).",
+    "acceptance_criteria": [
+      "BACKEND-DEV's PIN-04 test fixture edit (commit 49ae102a) independently confirmed legitimate (fixes reachability only, does not weaken assertions) or FAILed if it does not",
+      "Every MUST requirement AC has a runnable integration test except PIN-03 AC3's justified scope exclusion",
+      "No unjustified error.SkipZigTest on a MUST test",
+      "lint_test_isolation.py passes with no BLOCKER",
+      "Independently re-run test-integration-pin03/pin04/pin05/prm01 and confirm claimed pass counts",
+      "Clear PASS/FAIL verdict"
+    ],
+    "functions_to_call": [
+      "fn:validate-test-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "TEST-DESIGNER output for PIN-03, PIN-04, PIN-05, PRM-01 validated -- PASS. Fixture-edit legitimacy (special focus item): independently verified BACKEND-DEV commit 49ae102a's edit to tests/integration/pin04_pin_resolution_replay_subprocess_test.zig is LEGITIMATE, not a watered-down gate. git diff dbb2de56..49ae102a on this file shows exactly one hunk (lines 468-542, setupParentChildWithServiceTaskChild), purely additive: adds an EXCLUSIVE_GATEWAY (GW) + a dead-branch SERVICE_TASK (PS) + a second END (E2) node to the PARENT graph so PinResolver.resolve() (src/engine/pin_resolver.zig, confirmed by reading resolve() directly: it iterates for (input.graph.nodes) filtering only on node_type == SERVICE_TASK, with no reachability/position check) produces a catalog_entry pin on the parent for the child to inherit. Exactly one line was removed (the old direct PT->SP edge), replaced by an is_default=true GW->SP edge that is provably always taken (confirmed against src/engine/transition.zig EXCLUSIVE_GATEWAY case and its own TC-EE-02-06 default-fallback test) -- so PT->GW->SP is runtime-equivalent to the removed PT->SP edge and PS is never entered. Zero try std.testing.expect* assertion lines in TC-PIN-04-03/TC-PIN-04-04 were touched by the diff (confirmed by reading both full test bodies, lines 557-715, unchanged before/after). This is a genuine fixture-reachability fix, correctly disclosed as a MINOR issue in the BACKEND-DEV handoff, not silent editing of what the gate measures. SECURITY-REVIEWER's independent re-review (step-02c-security-reviewer-rereview1.json) reached the same conclusion via a separate spot-check, corroborating but not substituting for this verification. Standard checklist: priorities confirmed directly from docs/requirements.yaml (PIN-03 MUST, PIN-04 MUST, PIN-05 SHOULD, PRM-01 MUST). Every MUST AC has a runnable integration test except PIN-03 AC3's documented, justified scope exclusion (service_catalog has no version/status column, ISS-0672/GH-306) -- correctly implemented via TC-PIN-03-05's scoped structural substitute, not silently claimed as full coverage. PIN-05 (SHOULD) has reasonable AC1-AC4 coverage including a genuine mixed valid+invalid all-or-nothing case (TC-PIN-05-02). No error.SkipZigTest found in any of the four test files (grepped all four; the one PIN-04 match is a doc-comment reference, not an actual skip call). Test block counts match spec case counts exactly (PIN-03: 5, PIN-04: 5, PIN-05: 4, PRM-01: 5); no case labelled deferred/future/phase 2. python tools/lint_test_isolation.py: OK, 158 files checked, no isolation issues (116 pre-existing baseline suppressions, none touching these four files). All fixtures use per-test random UUIDs/random service IDs (randomId()/randomUuidStr()), all instance/definition/tenant state is cleaned up via defer, no shared mutable state across test blocks, no cross-test ordering dependency. PRM-01's tests additionally use helpers.acquireIntegrationLock()/releaseIntegrationLock() to serialize against sibling binaries since they provision/drop real tenant schemas -- correct per the anti-patterns.md guidance on tenant_default/shared-schema destructive operations. Independently re-ran all four suites myself (env reset per task instructions: unset then explicit BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test, BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev) and confirmed via Zig's own Build Summary line (exit code 0, N/N steps succeeded) rather than trusting reported counts: test-integration-pin03 5/5 pass, test-integration-pin04 5/5 pass (was 3/5 pre-fix, confirming the fix), test-integration-pin05 4/4 pass, test-integration-prm01 5/5 pass. Pipeline-test checks (7)-(11) not applicable: PIN-03/04/05/PRM-01 are backend/API-only requirements with no sequential UI action and no web/tests/e2e/pipelines/ reference exists or is expected for them.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
