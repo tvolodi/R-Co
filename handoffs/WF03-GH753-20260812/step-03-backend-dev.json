@@ -1,0 +1,47 @@
+{
+  "handoff_id": "wf03-gh753-20260812-03-backend-dev",
+  "run_id": "WF03-GH753-20260812",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "03",
+  "from_agent": "CODE-DESIGN-VALIDATOR",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH753-20260812/step-03-backend-dev.json",
+  "created_at": "2026-08-12T22:08:33Z",
+  "started_at": "2026-08-12T22:08:33Z",
+  "completed_at": "2026-08-12T22:15:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0691.json",
+      "docs/issue-reports/WF03-GH753-20260812-inner-report.yaml"
+    ]
+  },
+  "task": {
+    "description": "Step 03-backend-dev for ISS-0691/GH-753",
+    "acceptance_criteria": [
+      "See inner report"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implementation: capture-and-free at line 254 (appendSimulationEvent) and line 264 (store.append). defer if (.metadata.len > 0) alloc.free(.metadata) at both call sites. Production code untouched. zig build exits 0. App-fix business-logic test-only path: skipping Step 04/04b, advancing directly to Step 05 per Fix Scope Rule.",
+    "artifacts_out": [
+      "tests/integration/sim01_04_simulation_mode_test.zig",
+      "docs/issue-reports/WF03-GH753-20260812-inner-report.yaml"
+    ],
+    "issues": [],
+    "git_evidence": null,
+    "next_action": "Route to TEST-RUNNER (Step 05) - test-only fix, skips Step 4/4b per Fix Scope Rule"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

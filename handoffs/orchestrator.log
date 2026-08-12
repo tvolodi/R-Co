@@ -1372,4 +1372,13 @@
 2026-08-12T18:08:44Z | ROUTE | WF02-batch-6-20260812 | 6621e151 | ORCH -> TEST-RUNNER | PENDING (Step 00a Green-Main Gate)
 2026-08-12T18:13:05Z | ROUTE | WF03-GH750-20260812 | wf03-gh750-20260812-00 | ORCH -> ISSUE-FIXER | PENDING (Step 00, GH #750 doc-updater agent fix)
 2026-08-12T18:13:05Z | ROUTE | WF03-GH744-20260812 | wf03-gh744-20260812-00 | ORCH -> ISSUE-FIXER | PENDING (Step 00, GH #744 clean_test_db.py SYSTEM_ROLES fix)
+<<<<<<< HEAD
 2026-08-12T18:49:54Z | COMPLETE | WF02-batch-6-20260812 | 6621e151 | TEST-RUNNER | FAIL
+=======
+2026-08-12T22:05:33Z | ROUTE | WF03-GH753-20260812 | wf03-gh753-20260812-00 | ORCH -> ISSUE-FIXER | PENDING (Step 00, GH #753 DebugAllocator leak in TC-SIM-01-01)
+2026-08-12T22:05:33Z | ROUTE | WF03-GH752-20260812 | wf03-gh752-20260812-00 | ORCH -> ISSUE-FIXER | PENDING (Step 00, GH #752 test-integration advisory-lock contention continuation of ISS-0665)
+2026-08-12T22:06:55Z | START | WF03-GH753-20260812 | wf03-gh753-20260812-00 | ISSUE-FIXER | Dispatched Step 00 (ISS-0691 filing + triage)
+2026-08-12T22:06:56Z | START | WF03-GH752-20260812 | wf03-gh752-20260812-00 | ISSUE-FIXER | Dispatched Step 00 (ISS-0692 filing + triage)
+2026-08-12T22:08:33Z | STEP_CLAIM | WF03-GH753-20260812 | wf03-gh753 | ISSUE-FIXER | Step 00 claimed: registry lookup + GH filing + ISS update
+2026-08-12T22:08:33Z | STEP_CLAIM | WF03-GH753-20260812 | wf03-gh753 | ISSUE-FIXER | Step 00 claimed: registry lookup + GH filing + ISS update\n2026-08-12T22:08:33Z | FILE_ISS | WF03-GH753-20260812 | wf03-gh753 | ISSUE-FIXER | Filed adjacent issues ISS-0694/GH-754 (adp06:271) and ISS-0695/GH-755 (api03:988); line 254 leak folded into this ISS at Step 00 scope expansion\n2026-08-12T22:11:00Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753 | ISSUE-FIXER | Step 01 root-cause confirmed; 2 leaks in TC-SIM-01-01 verified under std.testing.allocator\n2026-08-12T22:13:30Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753 | CODE-DESIGNER | Step 02 design artefact written (src/design/fix-iss-0691.md); Type-E prose, 1 file changed, no production code touched\n2026-08-12T22:14:30Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753 | CODE-DESIGN-VALIDATOR | Step 02b PASS hard gate (a-g all PASS or N/A)\n2026-08-12T22:15:30Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753 | BACKEND-DEV | Step 03 implemented: capture-and-free at sim01_04:254+264; test-only fix; production untouched; zig build exits 0\n2026-08-12T22:18:30Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753 | TEST-RUNNER | Step 05 PASS: zig build test-integration-stage11-sim-xc04 = 14/14 tests passed, 0 leaks; zig build test = 1071/1135; lint_test_isolation BLOCKER=0; lint_handoffs exits 0\n
+>>>>>>> b6d8447a (fix(tests): GH-753/ISS-0691 free record.metadata in TC-SIM-01-01)

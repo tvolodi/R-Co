@@ -251,7 +251,12 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
     const real_instance_uuid = try parseUuidString(real_instance_id);
     const real_tenant_id = try simulation.tenant_store.parseTenantId(real_tenant_str);
 
-    _ = try simulation.appendSimulationEvent(alloc, &store, &ctx, .{
+    // ISS-0691 / GH-753: capture and free record.metadata -- duplicateFromParams()
+    // (src/event_store/store.zig:1368) heap-allocates record.metadata via
+    // allocator.dupe; an `_ = ...` capture leaks it. Both the simulation-appended
+    // event and the real-tenant event below must have their .metadata freed
+    // to keep DebugAllocator quiet.
+    const sim_appended_record = try simulation.appendSimulationEvent(alloc, &store, &ctx, .{
         .instance_id = sim_instance_uuid,
         .event_type = event_type,
         .payload = "{\"kind\":\"simulation\"}",
@@ -260,8 +265,9 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
         .metadata = null,
         .pipeline_run_id = null,
     });
+    defer if (sim_appended_record.metadata.len > 0) alloc.free(sim_appended_record.metadata);
 
-    _ = try store.append(alloc, AppendParams{
+    const real_appended = try store.append(alloc, AppendParams{
         .tenant_id = real_tenant_str,
         .instance_id = real_instance_uuid,
         .event_type = event_type,
@@ -271,6 +277,7 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
         .metadata = null,
         .pipeline_run_id = null,
     });
+    defer if (real_appended.record.metadata.len > 0) alloc.free(real_appended.record.metadata);
 
     const real_events = try simulation.queryTenantEvents(alloc, &store, real_tenant_id, .{
         .after_global_seq = null,

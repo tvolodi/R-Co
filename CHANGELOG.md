@@ -4,6 +4,10 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-12
 
+### Test-isolation leak fixes — ISS-0691/GH-753 (RESOLVED)
+
+- **TC-SIM-01-01 DebugAllocator leak — fixed.** `tests/integration/sim01_04_simulation_mode_test.zig` was discarding both `store.append`'s `AppendResult` (line 264) and `simulation.appendSimulationEvent`'s `EventRecord` (line 254) with `_ =`, leaking `result.record.metadata` (heap-allocated by `duplicateFromParams()` in `src/event_store/store.zig:1368`) every run. Now both records are captured and their `.metadata` freed via `defer if (.metadata.len > 0) alloc.free(...)`. Production code (src/event_store/store.zig, src/simulation/tenant_store.zig) untouched. Verified `zig build test-integration-stage11-sim-xc04` 14/14 tests passed, 0 leaks. Adjacent same-shape leaks in `adp06_pipeline_run_correlation_test.zig:271` (ISS-0694/GH-754) and `api03_instance_read_test.zig:988` (ISS-0695/GH-755) remain OPEN and will be fixed in their own WF-03 runs per core-directive "one issue, one run".
+
 ### Split release — Stage 16 batch 5: PIN-04, PIN-05, PRM-01 RELEASED in full; PIN-03 TESTED but withheld (known gap)
 
 > **KNOWN GAP — NOT GLOSSED OVER:**

@@ -1,0 +1,60 @@
+{
+  "handoff_id": "wf03-gh753-20260812-00-issue-fixer",
+  "run_id": "WF03-GH753-20260812",
+  "schema_version": 1,
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-12T22:05:33Z",
+  "status": "COMPLETED",
+  "stage": "WF-03 Issue Resolving",
+  "issue": {
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/753",
+    "iss_id": "ISS-0691",
+    "severity": "MINOR",
+    "title": "sim01_04_simulation_mode_test.zig TC-SIM-01-01: DebugAllocator leak - discarded AppendResult.record.metadata never freed",
+    "task": "WF-03 Issue Resolving for GH-753 / ISS-0691: tests/integration/sim01_04_simulation_mode_test.zig's TC-SIM-01-01 leaks one heap allocation per run. The AppendResult returned by store.append() at line ~264 is captured with `_ =`, so the heap allocation made inside Store.append()'s successful-return path (src/event_store/store.zig:893 Store.append -> src/event_store/store.zig:1357-1381 duplicateFromParams() -> src/event_store/store.zig:1368 allocator.dupe(u8, metadata) catch \"\") is never freed. Confirmed independent of GH-752/ISS-0211 advisory-lock contention cascade: the leak happens synchronously inside Store.append()'s success path on every run, not only on timeout/abort. Fix is in the test only: capture the AppendResult and free result.record.metadata (matching the pattern already used elsewhere in the same file for real_events / freeEventRecords). No production code change required; this is a test-only MINOR defect. Run the full WF-03 pipeline (Step 00 ISSUE-FIXER registry lookup + GitHub filing + ISS file update -> Step 01 root-cause diagnosis -> Step 02 CODE-DESIGNER fix design -> Step 02b CODE-DESIGN-VALIDATOR hard gate -> Step 03 BACKEND-DEV implement -> Step 04 TEST-DESIGNER -> Step 04b TEST-DESIGN-VALIDATOR hard gate -> Step 05 TEST-RUNNER verify (including test-env-verify green and the specific test passing under DebugAllocator) -> Step 07 DOC-UPDATER -> Step Final BACKEND-DEV git-merge). Confirm test isolation baseline is unchanged.",
+    "acceptance_criteria": [
+      "ISS-0691.json created/updated with confirmed root cause and resolution",
+      "GitHub issue #753 has an ORCH-filed WF-03 reference (link to the run directory)",
+      "Test fix in tests/integration/sim01_04_simulation_mode_test.zig: capture AppendResult at the line mentioned above, free result.record.metadata",
+      "zig build test-env-verify HEALTHY before and after the fix",
+      "zig build test passes with no new DebugAllocator leak introduced anywhere",
+      "tests/integration/sim01_04_simulation_mode_test.zig's TC-SIM-01-01 passes with std.testing.allocator without leaking",
+      "tools/lint_test_isolation.baseline.json unchanged (no new isolation violation)",
+      "PR opened, squash-merged to main, feature branch deleted, main clean",
+      "GH issue #753 closed with reference to the merge commit"
+    ],
+    "artifacts_in": [
+      "tests/integration/sim01_04_simulation_mode_test.zig",
+      "src/event_store/store.zig"
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T22:06:55Z",
+  "completed_at": "2026-08-12T22:16:05Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Confirmed root cause + scope expansion at Step 00. ISS-0691.json updated to record the second leak in the same file (line 254 simulation.appendSimulationEvent) which GH-753 ships folded into this fix; ISS-0694/GH-754 and ISS-0695/GH-755 filed for the same-shape leaks in adp06 and api03 (separate files, separate runs per core-directive one issue, one run). tools/lint_handoffs.py exits 0.",
+    "artifacts_out": [
+      "docs/issues/ISS-0691.json",
+      "docs/issues/ISS-0694.json",
+      "docs/issues/ISS-0695.json",
+      "https://github.com/tvolodi/R-Co/issues/754",
+      "https://github.com/tvolodi/R-Co/issues/755",
+      "src/design/fix-iss-0691.md",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH753-20260812",
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": "pending",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to ISSUE-FIXER (Step 01) for root-cause confirmation; same agent continues as CODE-DESIGNER (Step 02) producing src/design/fix-iss-0691.md; CODE-DESIGN-VALIDATOR (Step 02b) verifies; BACKEND-DEV (Step 03) implements the capture-and-free; TEST-RUNNER (Step 05) runs zig build test + sim01_04_simulation_mode_test specifically; DOC-UPDATER (Step 07) updates changelog + ISS-0691.json to RESOLVED; BACKEND-DEV (Step Final) merges feature/WF03-GH753-20260812 to main and closes GH-753."
+  }
+}

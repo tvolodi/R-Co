@@ -1,0 +1,135 @@
+---
+# WF03-GH753-20260812 — Inner Report (consolidated Steps 01–07)
+#
+# Single-shot session executing the full WF-03 pipeline for ISS-0691/GH-753.
+# Each step is recorded with its agent, function calls, and evidence below.
+# Per-step handoff JSON files in handoffs/WF03-GH753-20260812/ reference this
+# file as their `artifacts_in` for shared evidence.
+
+issue_id: ISS-0691
+github_issue: https://github.com/tvolodi/R-Co/issues/753
+run_id: WF03-GH753-20260812
+workflow_id: WF-03
+severity: MINOR
+category: test-isolation / DebugAllocator-leak
+adjacent_issues_filed_at_step_00:
+  - id: ISS-0694
+    gh: https://github.com/tvolodi/R-Co/issues/754
+    file: tests/integration/adp06_pipeline_run_correlation_test.zig
+    line: 271
+  - id: ISS-0695
+    gh: https://github.com/tvolodi/R-Co/issues/755
+    file: tests/integration/api03_instance_read_test.zig
+    line: 988
+
+steps:
+
+  - step: "01-issue-fixer"
+    agent: ISSUE-FIXER
+    completed_at: 2026-08-12T22:11:00Z
+    action: "Root-cause confirmation"
+    diagnosis:
+      category: A (logic error in test, not production)
+      category_severity: MINOR
+      root_cause: |
+        The AppendResult returned by Store.append() (src/event_store/store.zig:893)
+        has its .record.metadata heap-allocated by duplicateFromParams()
+        (src/event_store/store.zig:1368: allocator.dupe(u8, metadata) catch "").
+        Both leak sites in sim01_04_simulation_mode_test.zig TC-SIM-01-01
+        discarded the heap-owning record without freeing it.
+      verified_under_std_testing_allocator:
+        - "sim01_04_simulation_mode_test.zig:254:45 — 1 leak"
+        - "sim01_04_simulation_mode_test.zig:264:25 — 1 leak"
+    files_to_change:
+      - "tests/integration/sim01_04_simulation_mode_test.zig"
+    issues: []
+
+  - step: "02-code-designer"
+    agent: CODE-DESIGNER
+    completed_at: 2026-08-12T22:13:30Z
+    action: "Produce design artefact"
+    artifacts_out:
+      - "src/design/fix-iss-0691.md"
+    design_summary: |
+      Minimal Type-E prose design. One test file changed. Production code
+      untouched. Capture-and-free pattern with len > 0 guard to avoid
+      freeing a literal returned by the catch branch in duplicateFromParams.
+      Mirrors the existing freeEventRecords pattern in the same file.
+
+  - step: "02b-code-design-validator"
+    agent: CODE-DESIGN-VALIDATOR
+    completed_at: 2026-08-12T22:14:30Z
+    action: "Hard gate — validate design"
+    verdict: PASS
+    checks:
+      a_addresses_root_cause: PASS
+      b_signatures_documented: PASS (signatures unchanged)
+      c_no_implementation_code: PASS
+      d_error_taxonomy_updated: PASS (no changes)
+      e_callers_listed: PASS (one test file, two call sites in same fn)
+      f_scope_le_5_files: PASS (1 file changed)
+      g_codegen_dry_run: N/A (Type-E prose, no codegen)
+    issues: []
+
+  - step: "03-backend-dev"
+    agent: BACKEND-DEV
+    completed_at: 2026-08-12T22:15:30Z
+    action: "Implement fix"
+    files_changed:
+      - "tests/integration/sim01_04_simulation_mode_test.zig"
+    diff_summary: |
+      Replaced _ = try simulation.appendSimulationEvent(...) and
+      _ = try store.append(...) at lines 254 / 264 with
+      `const sim_appended_record = try simulation.appendSimulationEvent(...)`
+      followed by `defer if (sim_appended_record.metadata.len > 0) alloc.free(...)`,
+      and `const real_appended = try store.append(...)` followed by
+      `defer if (real_appended.record.metadata.len > 0) alloc.free(...)`.
+    production_code_changed: false
+    unit_test_local: "tests/integration/sim01_04_simulation_mode_test.zig"
+    issues: []
+
+  - step: "05-test-runner"
+    agent: TEST-RUNNER
+    completed_at: 2026-08-12T22:18:30Z
+    action: "Verify the fix"
+    precheck:
+      zig_build_test_env_verify: BLOCKED-BY-C3-C4 (pre-existing schema-ledger
+        delta = 1, unrelated to this fix; concurrent WF03-GH752 owns ISS-0692
+        for the 300s statement_timeout continuation of ISS-0665)
+    commands_and_results:
+      - cmd: "zig build test-integration-stage11-sim-xc04 (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test)"
+        exit: 0
+        output: "Build Summary: 6/6 steps succeeded; 14/14 tests passed"
+        leaks: 0
+      - cmd: "zig build test --summary all"
+        exit: 0
+        output: "Build Summary: 103/103 steps succeeded; 1071/1135 tests passed (64 skipped)"
+        leaks: 0
+      - cmd: "zig build (default)"
+        exit: 0
+        output: OK
+      - cmd: "tools/lint_test_isolation.py tests/integration"
+        exit: 1
+        output: "BLOCKER=0 MAJOR=4 MINOR=0; 4 sim01 MAJOR findings are line-shifted
+          pre-existing T030 (TC-SIM-03-01..04), shifted from 364/372/384/397 to
+          371/379/391/404 due to the +7 lines the fix added above TC-SIM-03-01.
+          No new violations introduced."
+      - cmd: "tools/lint_handoffs.py"
+        exit: 0
+        output: "Acknowledged pre-existing MINOR/ACKNOWLEDGED-BLOCKER entries only."
+    verdict: PASS
+    issues: []
+
+  - step: "07-doc-updater"
+    agent: DOC-UPDATER
+    completed_at: 2026-08-12T22:19:30Z
+    action: "Update CHANGELOG + ISS-0691.json status"
+    artifacts_out:
+      - "CHANGELOG.md"
+      - "docs/issues/ISS-0691.json"
+    issues: []
+
+final_step:
+  step: "final-backend-dev"
+  agent: BACKEND-DEV
+  action: "Open PR, squash-merge to main, delete branch, close GH-753"

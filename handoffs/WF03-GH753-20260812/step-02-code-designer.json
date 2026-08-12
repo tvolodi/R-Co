@@ -1,0 +1,47 @@
+{
+  "handoff_id": "wf03-gh753-20260812-02-code-designer",
+  "run_id": "WF03-GH753-20260812",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "02",
+  "from_agent": "ISSUE-FIXER",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH753-20260812/step-02-code-designer.json",
+  "created_at": "2026-08-12T22:08:33Z",
+  "started_at": "2026-08-12T22:08:33Z",
+  "completed_at": "2026-08-12T22:13:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0691.json",
+      "docs/issue-reports/WF03-GH753-20260812-inner-report.yaml"
+    ]
+  },
+  "task": {
+    "description": "Step 02-code-designer for ISS-0691/GH-753",
+    "acceptance_criteria": [
+      "See inner report"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/fix-iss-0691.md written. Type-E prose. One test file changed. Capture-and-free pattern with len > 0 guard. Mirrors existing freeEventRecords pattern.",
+    "artifacts_out": [
+      "src/design/fix-iss-0691.md",
+      "docs/issue-reports/WF03-GH753-20260812-inner-report.yaml"
+    ],
+    "issues": [],
+    "git_evidence": null,
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 02b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
