@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-12T13:10:48Z'
+generated_at: '2026-08-12T15:15:56Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -2367,7 +2367,7 @@ requirements:
     title: UI clearly labels test tenants and blocks accidental production actions
     stage: 14
     priority: MUST
-    status: PENDING
+    status: RELEASED
     body: |-
       > The platform UI SHALL display a persistent, visually distinct indicator on
       > every page when the user is operating within a test tenant. Actions that
@@ -2415,6 +2415,15 @@ requirements:
       has all steps still PENDING with null results -- dispatched but never executed. No banner/indicator
       component found in web/src. Genuinely not built.
     type: requirement
+    implemented_in:
+    - web/src/components/layout/TestEnvironmentBanner.tsx
+    - web/src/components/ui/ConfirmPromoteModal.tsx
+    - web/src/pages/admin/tenants/TenantsPage.tsx
+    - web/src/pages/definitions/DefinitionEditorPage.tsx
+    - web/src/auth/useTenantContext.ts
+    - web/src/components/layout/AppShell.tsx
+    released_at: '2026-08-12T15:15:56Z'
+    last_updated: '2026-08-12T15:15:56Z'
   ENV-05:
     id: ENV-05
     title: Test tenant lifecycle management

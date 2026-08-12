@@ -207,6 +207,9 @@ export interface UserSession {
   loginSource: 'oidc' | null
   tenant_slug: string | null
   tenant_display_name: string | null
+  tenant_id: string | null
+  tenant_type: 'production' | 'test' | null
+  production_tenant_display_name: string | null
 }
 
 export interface User {

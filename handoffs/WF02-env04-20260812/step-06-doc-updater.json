@@ -1,0 +1,29 @@
+{
+  "handoff_id": "env04-s06-0009",
+  "run_id": "WF02-env04-20260812",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "status": "IN_PROGRESS",
+  "created_at": "2026-08-12T15:14:24Z",
+  "started_at": "2026-08-12T15:14:24Z",
+  "completed_at": null,
+  "workflow": "WF-02",
+  "context": {
+    "requirement_ids": [
+      "ENV-04"
+    ],
+    "description": "Step 06 + Step Final: Update ENV-04 status to RELEASED, update CHANGELOG, PR + squash-merge + branch cleanup.",
+    "artifacts_in": [
+      "docs/status/release-WF02-env04-2026-08-12.yaml",
+      "web/tests/reports/report-2026-08-12-WF02-env04-20260812.yaml",
+      "handoffs/WF02-env04-20260812/step-05-release-validator.json"
+    ]
+  },
+  "task": {
+    "description": "Step 06:\n1. Run reqctl.py to set ENV-04 RELEASED (check the exact syntax with python tools/reqctl.py --help)\n2. Update CHANGELOG.md with ENV-04 entry\n3. Run python tools/reqctl.py validate\n4. Run python tools/lint_handoffs.py\n\nStep Final:\n5. Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md for feature/WF02-env04-20260812\n6. PR, CI green, squash-merge, delete branch\n7. Confirm repo on clean main\n\nReturn PASS only when ENV-04 is RELEASED and repo is on clean main."
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

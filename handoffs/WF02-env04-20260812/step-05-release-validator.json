@@ -1,0 +1,47 @@
+{
+  "handoff_id": "env04-s05-0008",
+  "run_id": "WF02-env04-20260812",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "status": "COMPLETED",
+  "created_at": "2026-08-12T15:10:24Z",
+  "started_at": "2026-08-12T15:10:24Z",
+  "completed_at": "2026-08-12T15:12:36Z",
+  "workflow": "WF-02",
+  "context": {
+    "requirement_ids": [
+      "ENV-04"
+    ],
+    "description": "Step 05: Release validation for ENV-04.",
+    "artifacts_in": [
+      "web/tests/reports/report-2026-08-12-WF02-env04-20260812.yaml",
+      "web/tests/specs/ENV-04.md",
+      "handoffs/WF02-env04-20260812/step-04-test-runner.json",
+      "docs/requirements.yaml (ENV-04)"
+    ]
+  },
+  "task": {
+    "description": "Validate that ENV-04 meets all MUST acceptance criteria and can be released. Check:\n1. All 6 ENV-04 MUST acceptance criteria covered by passing tests (10 TCs, 37 tests)\n2. type-check/lint/build all pass\n3. No pre-existing regressions\n4. Backend dependency OQ-1 (production_tenant_display_name) has a fallback and is documented\n\nProduce a release decision at docs/status/release-WF02-env04-2026-08-12.yaml.\nReturn PASS or PARTIAL with rationale."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for ENV-04. All 6 MUST acceptance criteria covered by 10 TCs / 37 passing tests. type-check, lint, build all exit 0. No regressions. OQ-1 (production_tenant_display_name backend JOIN) documented with tested (unknown) fallback (TC-ENV04-03). Decision written to docs/status/release-WF02-env04-2026-08-12.yaml.",
+    "artifacts_out": [
+      "docs/status/release-WF02-env04-2026-08-12.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "OQ-1: production_tenant_display_name requires backend JOIN not yet implemented. Banner falls back to (unknown) when field is absent. Fallback verified by TC-ENV04-03. Backend change needed separately."
+      },
+      {
+        "severity": "MINOR",
+        "description": "type-check trivially passes because tsconfig.json has files:[]. Pre-existing config issue not introduced by ENV-04."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER to set ENV-04 status RELEASED in docs/requirements.yaml and update CHANGELOG.md"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -2,12 +2,16 @@ import { client } from './client'
 
 export interface Tenant {
   slug: string
+  tenant_id?: string
   display_name: string
   idp_realm_id: string | null
   hostname?: string
   redirect_uris?: string[]
   status: 'ACTIVE' | 'INACTIVE'
   created_at: string
+  tenant_type: 'production' | 'test'
+  production_tenant_id: string | null
+  production_tenant_display_name: string | null
 }
 
 export interface TenantListResponse {

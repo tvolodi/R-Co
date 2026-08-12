@@ -28,6 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginSource: 'oidc',
         tenant_slug: e2e.tenant_slug ?? null,
         tenant_display_name: e2e.tenant_display_name ?? null,
+        tenant_id: (e2e as Record<string, unknown>).tenant_id as string | null ?? null,
+        tenant_type: (e2e as Record<string, unknown>).tenant_type as 'production' | 'test' | null ?? null,
+        production_tenant_display_name: (e2e as Record<string, unknown>).production_tenant_display_name as string | null ?? null,
       }
     }
     return null
@@ -89,10 +92,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const tenantSlug = resolveTenantSlug(payload)
     let tenantDisplayName: string | null = null
+    let tenantId: string | null = null
+    let tenantType: 'production' | 'test' | null = null
+    let productionTenantDisplayName: string | null = null
     if (tenantSlug) {
       try {
         const tenant = await tenantsApi.getBySlug(tenantSlug)
         tenantDisplayName = tenant.display_name
+        tenantId = tenant.tenant_id ?? null
+        tenantType = tenant.tenant_type ?? null
+        productionTenantDisplayName = tenant.production_tenant_display_name ?? null
       } catch {
         console.error('[AuthProvider] Could not resolve tenant display name', tenantSlug)
         // tenantDisplayName stays null → rendered as 'Unknown workspace'
@@ -106,6 +115,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginSource: 'oidc',
       tenant_slug: tenantSlug,
       tenant_display_name: tenantDisplayName,
+      tenant_id: tenantId,
+      tenant_type: tenantType,
+      production_tenant_display_name: productionTenantDisplayName,
     })
   }, [])
 
