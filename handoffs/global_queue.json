@@ -2096,6 +2096,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0690",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/750",
+      "title": "Copilot doc-updater mirror missing project-board-update step",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-12T17:42:56Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

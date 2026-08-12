@@ -150,7 +150,32 @@ As the final step in every workflow, you MUST manage the GitHub feature branch t
    git fetch origin && git branch -r | grep feature/<run-id> || echo "Branch deleted"
    ```
 
-5. **Record in handoff result:**
+5. **Close each requirement's own tracking issue (WF-02 runs only, MANDATORY — do not skip).**
+   Every requirement migrated from the original backlog has its own `requirement`-labeled
+   GitHub issue. This tracking issue is never closed automatically by a merge — it must be
+   closed here, explicitly, or it sits open forever even after the requirement is fully
+   RELEASED (this exact gap went unnoticed across six batches before being caught and fixed
+   on 2026-08-12 — see `.claude/agents/doc-updater.md`'s equivalent section for the full
+   incident note; the two files must stay in sync, see `CLAUDE.md` §"Canonical instruction
+   surfaces").
+   For each requirement ID this run set to `RELEASED`:
+   ```bash
+   # gh issue list --search searches ALL of GitHub by relevance, not just this repo, even
+   # run from inside the repo — filter the JSON output by exact title prefix yourself:
+   gh issue list --label requirement --state open --limit 300 --json number,title
+   # then match number,title where title starts with "<REQ-ID> " or "<REQ-ID>—"
+   gh issue comment <number> --body "Released via <run_id> (PR #<N>, commit <sha>). <one-line summary>."
+   gh issue close <number>
+   ```
+   For each requirement ID this run left at `TESTED` (not RELEASED — e.g. a known, tracked
+   AC gap), do NOT close the issue — instead comment explaining the held-back status:
+   ```bash
+   gh issue comment <number> --body "Tested via <run_id> (PR #<N>) but held at TESTED, not RELEASED: <which AC(s), why, and the ISS/GH number tracking the gap>."
+   ```
+   If a requirement ID has no matching open `requirement`-labeled issue, this step is a
+   no-op for that ID — do not create one.
+
+6. **Record in handoff result:**
    - `artifacts_out`: include PR number (e.g., `PR #28`) and merge commit SHA
    - `summary`: note successful merge and branch deletion
 
