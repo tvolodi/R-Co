@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "created_at": null,
-  "last_updated": "2026-08-12T22:25:00Z",
+  "last_updated": "2026-08-12T23:11:16Z",
   "entries": [
     {
       "handoff_id": "iss201-git-merge-final",
@@ -26903,6 +26903,44 @@
       "completed_at": "2026-08-12T22:25:00Z",
       "status": "COMPLETED",
       "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "wf03-gh752-20260812-05-test-runner",
+      "file": "handoffs/WF03-GH752-20260812/step-05-test-runner.json",
+      "run_id": "WF03-GH752-20260812",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "status": "COMPLETED",
+      "created_at": "2026-08-12T23:05:57Z",
+      "started_at": "2026-08-12T23:05:57Z",
+      "completed_at": "2026-08-12T23:09:39Z",
+      "result": {
+        "status": "FAIL",
+        "summary": "Pre-check gate does not exit 0; 5-run sequence halted at step 2 per handoff protocol. C3/C4/C5 fail. C6 PASS. See tests/reports/ISS-0692-step05-runs.md for full diagnostics."
+      }
+    },
+    {
+      "handoff_id": "wf03-gh752-20260812-03-rework1-backend-dev",
+      "file": "handoffs/WF03-GH752-20260812/step-03-rework1-backend-dev.json",
+      "run_id": "WF03-GH752-20260812",
+      "step": "03-rework1",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-12T23:11:16Z",
+      "status": "PENDING",
+      "started_at": "2026-08-12T23:11:16Z"
+    },
+    {
+      "handoff_id": "wf03-gh752-20260812-05-retry1-test-runner",
+      "file": "handoffs/WF03-GH752-20260812/step-05-retry1-test-runner.json",
+      "run_id": "WF03-GH752-20260812",
+      "step": "05-retry1",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-12T23:11:16Z",
+      "status": "PENDING",
+      "started_at": "2026-08-12T23:11:16Z"
     }
   ]
 }
