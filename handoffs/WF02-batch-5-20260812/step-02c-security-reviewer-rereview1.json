@@ -1,0 +1,48 @@
+{
+  "handoff_id": "wf02-batch-5-20260812-02c-security-reviewer-rereview1",
+  "run_id": "WF02-batch-5-20260812",
+  "workflow_id": "WF-02",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "created_at": "2026-08-12T15:42:07Z",
+  "started_at": "2026-08-12T15:42:41Z",
+  "completed_at": "2026-08-12T15:47:35Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PIN-04"
+    ],
+    "related_handoff_ids": [
+      "wf02-batch-5-20260812-02a-backend-dev",
+      "wf02-batch-5-20260812-02c-security-reviewer",
+      "wf02-batch-5-20260812-03-test-designer"
+    ],
+    "artifacts_in": [
+      "src/engine/instance.zig"
+    ]
+  },
+  "task": {
+    "description": "Re-review (WF-02 Step 2c, second pass on this run) after a REWORK cycle. Your first pass (handoffs/WF02-batch-5-20260812/step-02c-security-reviewer.json) PASSed the original PIN-03/PIN-04/PIN-05/PRM-01 implementation plus the ISS-0688 tenant-scoping fix. Since then, TEST-DESIGNER (Step 3) found PIN-04 AC2/AC3 (sub-process pin inheritance) was never actually implemented, and BACKEND-DEV's rework (commit 49ae102a) just added it. Review ONLY the NEW diff from that rework commit -- do not re-review the already-PASSed prior work.\n\nGet the real diff: `git show 49ae102a --stat` and `git show 49ae102a -- src/engine/instance.zig`. The new code is `createWithParentInheritance()` and a new 'Step d.6' inside `createInternal()` (the renamed/split former `InstanceStore.create()`) that: (1) fetches the PARENT instance's effective pin set via the existing `reconstruction.reconstructEffectivePins()` (already-reviewed, unchanged logic, just a new call site), and (2) merges it against the CHILD's independently-resolved pin set -- shared refs get replaced with the parent's {resolved_id, version} tagged source=inherited, and a version mismatch is recorded in a new pin_inheritance_conflicts[] field on the child's INSTANCE_STARTED payload.\n\nFocus the INV-1 tenant-isolation check specifically on: does the new parent-pin-set lookup correctly stay within the same tenant as the child being created? A sub-process child is created from startSubProcessesForPendingEventsInTx(), itself invoked from within the SAME tenant-scoped request/transaction context as its parent (same instance graph, same tenant) -- confirm this is actually true in the code (not assumed) and that the new lookup does not introduce any path where a child could be created under one tenant while reading a PARENT's pin set under a different/wrong tenant scope (e.g. via a stale tenant_context, a wrong schema on search_path at the moment of the lookup, or a parent_instance_id sourced from anything other than the already-validated same-tenant subprocess_links row).\n\nAlso note BACKEND-DEV's own report flagged two additional fixes bundled into this same commit as blocking-defect fixes (Unblock-Everything): (a) persistEmittedEventsInTx() was using a stale ON CONFLICT (idempotency_key) DO NOTHING against events' unique index, which PAR-01 had already dropped -- fixed by claiming the key via plat_event_idempotency first, said to match event_store/store.zig's established pattern; (b) a use-after-free in the new merge code (dangling pointers into a block-scoped defer'd EffectivePin slice) that corrupted the child's payload with invalid UTF-8 -- fixed by duping the three fields from the function's own arena. Neither of these is your primary security focus (memory safety / idempotency-key mechanics are not tenant-isolation invariants per se) but confirm neither one reintroduces or masks a tenant-scoping defect as a side effect -- e.g. the idempotency-key fix touches the same INSERT ... events statement family already reviewed for INV-1 in the first pass, confirm the tenant/instance scoping of that statement is unchanged by this fix.\n\nDecide PASS or FAIL for just this rework's new diff. If FAIL, be specific -- this is rework_count 1/3 on the BACKEND-DEV handoff already, a security FAIL here would push toward 2/3.",
+    "acceptance_criteria": [
+      "New createWithParentInheritance()/Step d.6 code reviewed against INV-1 specifically for cross-tenant parent-pin-set-lookup risk",
+      "Confirmed parent_instance_id source is validated same-tenant (via subprocess_links or equivalent), not an unchecked input",
+      "The two bundled non-security fixes (idempotency key, use-after-free) confirmed not to mask or reintroduce a tenant-scoping defect",
+      "Clear PASS/FAIL verdict"
+    ],
+    "functions_to_call": [
+      "fn:run-security-checklist"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-review of commit 49ae102a (PIN-04 AC2/AC3 sub-process pin inheritance rework) only -- prior PASSed work (806bc6dc) not re-reviewed. INV-1 (primary focus, tenant isolation on the new parent-pin-set lookup): PASS. Traced the full call chain -- parent_instance_id passed to createWithParentInheritance() (instance.zig new fn, ~line 542) originates from startSubProcessesForPendingEventsInTx()'s own parent_instance_id parameter (line 4441), itself sourced from completeTask()'s task.instance_id (line 1997), which comes from task_store.getById(task_id) (line 1487) on the same tenant-scoped pool -- never from unvalidated input. The new Step d.6 code's call to reconstruction.reconstructEffectivePins() (reconstruction.zig:288) acquires its connection via pool.acquire() on self.pool, the SAME *Pool instance used throughout InstanceStore/completeTask -- not a separate pool. Pool.acquire() (src/db/pool.zig:829-882) unconditionally calls applyRequestStorageRouting() on EVERY acquire, re-deriving search_path from the ambient currentRequestTenantId() each time (pool.zig:275-318) -- there is no cached/stale search_path window and no way for this new lookup to run under a different tenant's schema than the rest of the request. The pin lookup is scoped by instance_id alone under that tenant-locked search_path, consistent with schema-per-tenant isolation (not a bypassable row-level predicate). INV-7 (no SQL interpolation): PASS, all new SQL uses $N placeholders (reconstruction.zig $1::uuid; new plat_event_idempotency/events statements use $1-$5). INV-8 (no catch unreachable): PASS, none introduced in the diff. INV-2/INV-3/INV-5: not applicable (no new API response struct, no Lua/Wasm host function, no new lookup-by-ID handler in this diff). INV-4: not applicable (no secret material touched). Verified via tools/lint_migration_schema.py (exit 0), tools/lint_sql_table_refs.py (exit 0), tools/lint_sql_param_types.py src tests (exit 0), and manual grep of the diff for 'catch unreachable' and allocPrint-based SQL interpolation (none found). Bundled fix (a) idempotency-key mechanics in persistEmittedEventsInTx(): confirmed the events INSERT's tenant/instance scoping (instance_id_hex bound as $1) is unchanged -- only the idempotency-claim mechanism (claim plat_event_idempotency first, matching event_store/store.zig's established ES-03/PAR-01 pattern) and an explicit event_id column changed; plat_event_idempotency is not a per-tenant business table (absent from lint_migration_schema.py's BUSINESS_TABLES) and this mirrors an already-reviewed pattern used elsewhere, not new tenant-scoping surface. Bundled fix (b) use-after-free (dupe ref/resolved_id/version from the function's own arena instead of aliasing the freed parent_effective_pins slice): a memory-lifetime fix only: does not change which tenant's data is read or written, no tenant-scoping impact. Also spot-checked the bundled test-fixture change (tests/integration/pin04_pin_resolution_replay_subprocess_test.zig) -- adds a dead-branch SERVICE_TASK node so the parent fixture actually has a pin to inherit, well-documented and self-contained to the single-tenant test scenario; does not touch or weaken any tenant-isolation assertion.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER / TEST-RUNNER re-verification (Step 3) for commit 49ae102a"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
