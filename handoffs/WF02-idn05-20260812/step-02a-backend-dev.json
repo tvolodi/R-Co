@@ -1,0 +1,29 @@
+{
+  "handoff_id": "d4e5f6a7",
+  "run_id": "WF02-idn05-20260812",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "status": "PENDING",
+  "created_at": "2026-08-12T11:07:40Z",
+  "started_at": "2026-08-12T11:08:17Z",
+  "completed_at": null,
+  "workflow": "WF-02",
+  "context": {
+    "requirement_ids": ["IDN-05"],
+    "description": "Step 02a: Implement IDN-05 Named role registry backend — migration, TenantRoleStore module, GET/POST /roles API, EE-03 ROLE resolution integration.",
+    "artifacts_in": [
+      "src/design/idn05-role-registry.md",
+      "templates/specs/idn05-tenant-role.migration.yaml",
+      "templates/specs/idn05-roles.crud-endpoint.yaml",
+      "handoffs/WF02-idn05-20260812/step-01b-code-design-validator.json"
+    ]
+  },
+  "task": {
+    "description": "Implement IDN-05 per the approved design at src/design/idn05-role-registry.md. Steps:\n\n1. Run codegen_migration.py on templates/specs/idn05-tenant-role.migration.yaml to generate the migration SQL file (migrations/1154_idn05_tenant_role_registry.sql or next available number). Verify it compiles with zig build migrate.\n\n2. Run codegen_crud_endpoint.py on templates/specs/idn05-roles.crud-endpoint.yaml to generate scaffolding. Then complete the full implementation:\n   - src/roles/ directory with TenantRoleStore (listRoles, upsertRole functions)\n   - GET /roles handler: list all role bindings for calling tenant, RBAC gate (PROCESS_DESIGNER or PLATFORM_ADMIN)\n   - POST /roles handler: create/update binding; validate group_id exists (HTTP 404 if not); RBAC gate\n   - Wire routes in src/router.zig (or equivalent)\n\n3. Integrate into EE-03 task activation:\n   - Add resolveRoleInTx function to TenantRoleStore\n   - In the HUMAN_TASK activation path: if assignee_type=ROLE, look up role name in tenant_role table; if found set group_id; if NOT found, create task in PENDING status (no error — mirrors 'group with no current members' edge case)\n   - Follow the design §4 algorithm exactly\n\n4. Validate:\n   - zig build (must exit 0)\n   - zig build test (must exit 0)\n   - python tools/lint_sql_param_types.py (must exit 0)\n   - python tools/lint_test_isolation.py (must exit 0)\n   - python tools/lint_handoffs.py (must exit 0)\n   - Commit all changes to feature/WF02-idn05-20260812 with message: feat(IDN-05): named role registry and ROLE assignee resolution\n\nThis is backend-only; no frontend changes needed. Frontier note: this is a new module — use the same patterns as IDN-02 (groups) for the store structure.\n\nDo NOT implement anything not in the design. Do NOT touch unrelated files.",
+    "branch": "feature/WF02-idn05-20260812"
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

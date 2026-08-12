@@ -1,0 +1,45 @@
+{
+  "handoff_id": "73300300-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH733-20260812",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-12T09:01:14Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "iss_ref": "ISS-0686",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/733",
+    "branch": "feature/WF03-GH733-20260812",
+    "artifacts_in": [
+      "src/design/ISS-0686-events-legacy-archival-integration.md",
+      "templates/specs/iss0686-archived-state.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Implement ISS-0686 per the validated design. CHANGE 1: in src/db/partition_conversion.zig::reconcileOrRollback(), after the for-loop, add an INSERT INTO plat_partition_catalog (table_name='events_legacy', parent_table='events_legacy', range_start=epoch, range_end=NOW(), state='ATTACHED') ON CONFLICT DO NOTHING. CHANGE 2: extend src/scheduler/partition_retention.zig::runArchivalAging() to query for rows with parent_table='events_legacy' AND state='ATTACHED' AND archival threshold met, then call new archiveLegacyTable() method. archiveLegacyTable(): ADD COLUMN archived_at, SET archived_at=NOW(), RENAME to events_legacy_archived, UPDATE plat_partition_catalog state='ARCHIVED'. MIGRATION: run codegen_migration.py to generate migrations/1153_iss0686_archived_state.sql from templates/specs/iss0686-archived-state.migration.yaml, then add the DROP CONSTRAINT IF EXISTS prepend as noted in the spec. Update tests/specs/PAR-05.md to remove the coverage gap note. Commit: 'feat(par05): ISS-0686 register events_legacy in plat_partition_catalog + archiveLegacyTable (#733)'. Push. zig build exit 0. lint exit 0.",
+    "acceptance_criteria": [
+      "reconcileOrRollback inserts events_legacy into plat_partition_catalog",
+      "archiveLegacyTable implemented in partition_retention.zig",
+      "migration 1153 created",
+      "zig build exits 0",
+      "commit pushed",
+      "lint exit 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ISS-0686: reconcileOrRollback() now registers events_legacy in plat_partition_catalog; archiveLegacyTable() added to PartitionRetention; migration 1153_iss0686_archived_state.sql generated and DROP CONSTRAINT prepended; integration test iss0686_archived_state_test.zig generated with CUSTOM assertion filled; tests/specs/PAR-05.md coverage gap note removed. zig build exits 0. Committed and pushed feat(par05): ISS-0686 register events_legacy in plat_partition_catalog + archiveLegacyTable (#733). lint_handoffs.py exits 0.",
+    "artifacts_out": [
+      "migrations/1153_iss0686_archived_state.sql",
+      "tests/integration/iss0686_archived_state_test.zig",
+      "src/db/partition_conversion.zig",
+      "src/scheduler/partition_retention.zig",
+      "tests/specs/PAR-05.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "completed_at": "2026-08-12T09:06:47Z"
+}

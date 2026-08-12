@@ -69,6 +69,7 @@ pub const webhook_dispatcher = @import("webhook/dispatcher.zig"); // EXT-02 webh
 pub const identity_registry = @import("identity/registry.zig"); // IDN-01 user registry persistence
 pub const identity_service = @import("identity/service.zig"); // IDN-01 user registry service
 pub const identity_routes = @import("api/routes/identity.zig"); // IDN-01 user registry HTTP handlers
+pub const role_registry_mod = @import("identity/role_registry.zig"); // IDN-05 named-role registry
 pub const bootstrap_audit = @import("bootstrap/audit.zig"); // TNT-04 public schema startup audit
 pub const onboarding_mod = @import("identity/onboarding.zig"); // OIDC-35 onboarding orchestration
 pub const onboarding_routes = @import("api/routes/onboarding.zig"); // OIDC-35 onboarding HTTP handlers
@@ -205,6 +206,7 @@ fn runApiServer(io: std.Io, allocator: std.mem.Allocator, config: config_mod.Con
 
     var id_registry = identity_registry.Registry.init(&pool);
     var id_svc = identity_service.Service.init(&id_registry);
+    var role_store = role_registry_mod.TenantRoleStore.init(&pool);
 
     var readiness_svc = api_health_readiness.ReadinessService.init(allocator, &pool, &.{});
 
@@ -232,6 +234,7 @@ fn runApiServer(io: std.Io, allocator: std.mem.Allocator, config: config_mod.Con
             &ev_store,
             &readiness_svc,
             &id_svc,
+            &role_store,
             std.ascii.eqlIgnoreCase(config.env, "production"),
         ) catch |err| {
             const err_fields = [_]obs_logger.LogField{
@@ -254,6 +257,7 @@ fn serveRequest(
     ev_store: *event_store.Store,
     readiness: *api_health_readiness.ReadinessService,
     id_svc: *identity_service.Service,
+    role_store: *role_registry_mod.TenantRoleStore,
     production_mode: bool,
 ) !void {
     var recv_buffer: [8192]u8 = undefined;
@@ -1490,13 +1494,37 @@ fn serveRequest(
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";
             }
+        } else if (std.mem.eql(u8, resource, "roles")) {
+            // ── /api/v1/roles — IDN-05 named-role registry ────────────────────
+            const actor = authenticated_ctx orelse api_auth.AuthContext{
+                .user_id = user_id,
+                .role = .TASK_WORKER,
+                .is_bootstrap = false,
+                .token_id = user_id,
+                .principal = user_id,
+            };
+
+            if (seg4.len == 0) {
+                if (method == .GET) {
+                    const r = identity_routes.handleListRoles(role_store, req_alloc, actor);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else if (method == .POST) {
+                    const r = identity_routes.handleUpsertRole(role_store, req_alloc, actor, body);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 405;
+                    resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                }
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
         } else {
             resp_status = 404;
             resp_body = "{\"type\":\"not_found\",\"status\":404}";
         }
-
-        // API-09: emit a structured log entry so trace_id appears in the log
-        // file for every /api/v1/... request (TC-API-09-INT-03).
         {
             const req_log_fields = [_]obs_logger.LogField{
                 .{ .key = "method", .value = .{ .string = @tagName(method) } },

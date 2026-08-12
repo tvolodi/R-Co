@@ -1,0 +1,42 @@
+{
+  "handoff_id": "73300200-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH733-20260812",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-12T08:30:56Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "iss_ref": "ISS-0686",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/733",
+    "branch": "feature/WF03-GH733-20260812"
+  },
+  "task": {
+    "description": "Type C/D design for ISS-0686. The fix: integrate events_legacy into PAR-03's archival aging by registering it in plat_partition_catalog after the online conversion is complete, so the existing PartitionRetention.runArchivalAging() loop handles it. Design: (1) In partition_conversion.zig, when the PartitionConverter marks the conversion as complete, insert a row into plat_partition_catalog for events_legacy with appropriate state/parent_table/dates. (2) Verify PartitionRetention.runArchivalAging() queries plat_partition_catalog and would pick up the events_legacy entry. (3) Specify exact column values for the plat_partition_catalog insert. Write design to src/design/ISS-0686-events-legacy-archival-integration.md.",
+    "acceptance_criteria": [],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for ISS-0686 events_legacy archival integration - types: [C, E]. REWORK 1 applied: archiveLegacyTable() code block trimmed to signature + pseudocode (E050 resolved); migration spec templates/specs/iss0686-archived-state.migration.yaml created (codegen --dry-run exit 0).",
+    "artifacts_out": [
+      "src/design/ISS-0686-events-legacy-archival-integration.md",
+      "templates/specs/iss0686-archived-state.migration.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "retryOrphanedAttaches() does not cover parent_table=events_legacy orphans -- flagged as Open questions #1 in the design artefact for BACKEND-DEV"
+      },
+      {
+        "severity": "MINOR",
+        "description": "Rename-target collision on retry (events_legacy_archived already exists) -- flagged as Open questions #2 for BACKEND-DEV"
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "started_at": "2026-08-12T08:30:56Z",
+  "completed_at": "2026-08-12T08:51:09Z",
+  "rework_count": 1
+}
