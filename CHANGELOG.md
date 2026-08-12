@@ -191,6 +191,19 @@ All notable changes to the BPM Platform are documented here.
 - ISS-0680 (GH-722): Add errdefer in PinResolver.resolve() to free allocator-owned
   resolved_id/version/ref fields from all accumulated pins on error return paths.
 
+- ISS-0675 (GH-716) MINOR: Remove dead code Store.reconstructBounded() (and its private
+  helpers lookupOrRepairEventWindowInternal, mergeEventRowsBySequence, rowSequenceNumber, plus
+  the two StoreError variants ReconstructionWindowMissing/UnboundedReconstructionRefused and the
+  now-unused EventWindow struct) from src/event_store/store.zig. Confirmed zero call sites in
+  src/ or tests/ — src/engine/reconstruction.zig's reconstructInstance()/
+  eventWindowForInstanceInTx() was already the sole live PAR-06 bounded-reconstruction path and
+  is unchanged by this fix. Updated stale comments referencing the deleted function
+  (src/engine/instance.zig, tests/integration/par06_reconstruction_bounded_test.zig,
+  tests/integration/par06_instance_projections_event_window_test.zig, tests/specs/PAR-06.md,
+  src/design/par-06-time-bounded-reconstruction.md). No behavioral change: test-integration-par06
+  3/3, test-integration-par06-reconstruction 5/5, full unit suite 1071/1135 pass matching the
+  pre-existing baseline exactly — zero regressions.
+
 ## [Unreleased] — 2026-08-11
 
 ### Split release — Stage 16 batch 3: PAR-01, PAR-04 RELEASED in full; PAR-02, PAR-03 TESTED but withheld (event-emission gap)
