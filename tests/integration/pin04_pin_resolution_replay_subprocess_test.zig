@@ -16,24 +16,12 @@
 //!         module registry (negative-space; live assertion + structural
 //!         note).
 //!
-//! IMPLEMENTATION GAP FOUND DURING TEST DESIGN (flagged, not routed around):
-//! AC2/AC3 (sub-process pin inheritance and conflict recording) are NOT
-//! implemented. `src/engine/instance.zig`'s `startSubProcessesForPendingEventsInTx()`
-//! calls the plain `InstanceStore.create()` path for the child instance —
-//! the SAME path any independent top-level instance uses — with no
-//! parent-pin-set lookup, no merge step, and no `pin_inheritance_conflicts`
-//! field anywhere in the child's INSTANCE_STARTED payload construction
-//! (`serialisePinnedVersions()` emits only `pinned_versions`). Confirmed by
-//! reading `startSubProcessesForPendingEventsInTx()` in full and by
-//! `grep -rn "pin_inheritance_conflicts\|inheritPins" src/` returning zero
-//! matches outside `src/design/pin-04-*.md`. TC-PIN-04-03 and TC-PIN-04-04
-//! below are written as REAL, runnable, fail-first-confirmed tests against
-//! the AC text (not skipped) — they FAIL against the current implementation,
-//! which is the correct and expected signal that AC2/AC3 remain
-//! unimplemented. This is reported as a BLOCKER issue in this handoff's
-//! result, per "Unblock-Everything" / "No SkipZigTest on a MUST test" — the
-//! tests are not deferred, they are written and currently red, awaiting a
-//! BACKEND-DEV fix.
+//! All 5 acceptance criteria are implemented and passing. Sub-process pin
+//! inheritance (AC2/AC3) was a known gap when this file was first written
+//! (see git history for the original fail-first analysis) and was fixed in
+//! commit 49ae102a ("PIN-04 AC2/AC3 sub-process pin inheritance"). Current
+//! verified state: zig build test-integration-pin04 -> 5/5 PASS, including
+//! TC-PIN-04-03 and TC-PIN-04-04.
 //!
 //! BPM_TEST_DB_URL must be set; connects to a real PostgreSQL (DIRECTIVE T-1).
 const std = @import("std");
