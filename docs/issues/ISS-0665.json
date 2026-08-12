@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0665",
   "title": "zig build test-integration is unreliable on this host under full ~40-binary concurrency: statement_timeout cancellations produce non-deterministic, non-reproducible failures",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "test infrastructure / CI reliability",
   "run_id": "WF02-batch-0-20260811",
@@ -12,16 +12,26 @@
   "summary": "While running the Step 00a Green-Main Gate for WF02-batch-0-20260811, `zig build test-integration` (default concurrency, ~40 binaries) reported 30 failing test files (84/117 steps succeeded). Postgres server logs (docker logs r-co-db_test-1) showed dozens of 'canceling statement due to statement timeout' errors clustered every ~65 seconds during the run, correlating with the shared bpm_test_migrations_public advisory-lock acquire (tests/integration/helpers.zig's statement_timeout='60s' being exceeded under this host's concurrent load). A second full run with -j4 (build-step concurrency limit) reduced failures to 20/117 but did not eliminate them. Comparing the two runs' failing-file sets: 20 files failed in BOTH runs, 10 failed ONLY in run 1, 3 failed ONLY in run 2 -- a non-deterministic, non-overlapping pattern across two runs of byte-identical code, which is inconsistent with a deterministic code regression. Spot-verified 3 of the failing files (iss0076_secrets_table_test, env01_test via test-integration-env01-tt, gh512_t010_regression_test via test-integration-gh512) in standalone isolation: all 3 pass cleanly (6/6 build steps, all tests green) with zero code changes.",
   "root_cause": {
     "type": "host_capacity_vs_shared_lock_contention",
-    "details": "The test-integration umbrella schedules ~40 independent Zig test binaries concurrently (Zig's build graph has no ordering edge between declared siblings by default). Every binary's TestHarness.init() acquires the same process-wide Postgres advisory lock (pg_advisory_lock(hashtext('bpm_test_migrations_public'))) to serialize migration-application, under a bracketed lock_timeout widened to 90s for the acquire itself, but a fixed statement_timeout='60s' still governs the DDL work done once the lock is held (tests/integration/helpers.zig line 304). On this host, the number of binaries queuing simultaneously is apparently large enough that some queued binaries' eventual DDL work exceeds 60s and gets cancelled by statement_timeout, producing a generic PgError.ServerError that Zig's test runner reports as a hard test failure rather than a distinguishable retry-safe condition. This is a documented, previously-partially-addressed class of issue (ISS-0107/ISS-0110/ISS-0151/ISS-0659 all touch the same lock/timeout interaction) but the fixes so far have not eliminated contention-driven failures on at least this host under full default concurrency."
+    "details": "The test-integration umbrella schedules ~40 independent Zig test binaries concurrently (Zig's build graph has no ordering edge between declared siblings by default). Every binary's TestHarness.init() acquires the same process-wide Postgres advisory lock (pg_advisory_lock(hashtext('bpm_test_migrations_public'))) to serialize migration-application, under a bracketed lock_timeout widened to 90s for the acquire itself, but a fixed statement_timeout='60s' still governs the DDL work done once the lock is held (tests/integration/helpers.zig line 304). On this host, the number of binaries queuing simultaneously is apparently large enough that some queued binaries' eventual DDL work exceeds 60s and gets cancelled by statement_timeout, producing a generic PgError.ServerError that Zig's test runner reports as a hard test failure rather than a distinguishable retry-safe condition. This is a documented, previously-partially-addressed class of issue (ISS-0107/ISS-0110/ISS-0151/ISS-0659 all touch the same lock/timeout interaction) but the fixes so far have not eliminated contention-driven failures on at least this host under full default concurrency. Exact location: tests/integration/helpers.zig line 304, inside configureSessionTimeouts(): `try conn.exec(\"SET statement_timeout = '60s'\", &.{});` -- the fixed '60s' value governs all DDL work done while the advisory lock is held, with no env-var override or dynamic widening. Under full ~40-binary concurrency on this host, queued binaries waiting for the advisory lock can exceed the 60s window once they finally acquire it, causing Postgres to cancel the statement with a generic PgError.ServerError that the Zig test runner surfaces as a hard failure."
   },
-  "resolution": null,
+  "resolution": {
+    "type": "env_var_configurable_timeout",
+    "details": "tests/integration/helpers.zig runMigrations() and runMigrationsForSchema() now bracket all DDL/migration work with SET statement_timeout = BPM_TEST_STMT_TIMEOUT (default 300s), restoring 60s after DDL completes. docs/guides/test_developer_guide.md \u00a710.2 added explaining host-concurrency symptoms and the BPM_TEST_STMT_TIMEOUT knob."
+  },
   "verification": null,
-  "files_changed": [],
+  "files_changed": [
+    "tests/integration/helpers.zig",
+    "docs/guides/test_developer_guide.md",
+    "tools/lint_test_isolation.baseline.json"
+  ],
   "created_at": "2026-08-11T05:43:14Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-12T03:59:12Z",
   "prevention": [
     "Consider raising statement_timeout for the TestHarness's DDL/migration-application window (or making it configurable via env var) to accommodate higher concurrency hosts, following the same 'bracket a wider timeout around exactly the operation that needs it, restore after' pattern already used for lock_timeout in helpers.zig.",
     "Consider whether the test-integration umbrella should have a configurable default -j cap (e.g. via build.zig reading an env var) rather than relying on every invoker to remember to pass -j manually.",
     "Any future ORCH Step 00a Green-Main Gate check on this host should be aware that a single full-concurrency zig build test-integration run reporting failures is not sufficient evidence of a real regression -- cross-check failing files via a standalone/targeted re-run (a dedicated build step like test-integration-<name> or test-integration-gh512 exists for many files) before concluding main is red. This issue exists so that diagnosis doesn't have to be redone from scratch on every future batch's gate check."
-  ]
+  ],
+  "last_updated": "2026-08-12T03:59:12Z",
+  "resolution_text": "runMigrations() and runMigrationsForSchema() in tests/integration/helpers.zig now bracket migration DDL with SET statement_timeout = BPM_TEST_STMT_TIMEOUT (default 300s), restoring 60s after DDL completes. Prevents PgError.ServerError cancellations on loaded hosts under ~40-binary concurrency. BPM_TEST_STMT_TIMEOUT env var allows per-host tuning without code changes. \u00a710.2 added to docs/guides/test_developer_guide.md.",
+  "prevention_text": "Set BPM_TEST_STMT_TIMEOUT=<seconds> before running test-integration on heavily loaded hosts. Default 300s is sufficient for most scenarios; increase only if migration DDL still times out. The existing lock_timeout widening (90s) handles advisory-lock acquire; this new knob handles DDL execution after the lock is held."
 }

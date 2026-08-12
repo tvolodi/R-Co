@@ -6,6 +6,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+- ISS-0665 (GH-702): Widen statement_timeout for DDL/migration window in TestHarness.
+  runMigrations() and runMigrationsForSchema() now bracket migration work with
+  SET statement_timeout to BPM_TEST_STMT_TIMEOUT (default: 300s), restoring 60s
+  after DDL completes. Prevents statement_timeout cancellations under high concurrency
+  (~40 test binaries on loaded hosts). Added §10.2 to test_developer_guide.md.
+
 - ISS-0663 (GH-700): Fix clean_test_db.py run_psql() silently swallowing FK-violation failures.
   Removed over-broad `or "relation"` substring guard (FK error messages contain "relation").
   Added `_psql_is_native()` to detect Windows .cmd psql shims and fall back to docker-compose exec
