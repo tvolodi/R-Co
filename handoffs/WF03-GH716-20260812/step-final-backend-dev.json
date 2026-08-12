@@ -1,0 +1,40 @@
+{
+  "handoff_id": "2eb891a0-d501-4254-a1df-63ebd54b5698",
+  "run_id": "WF03-GH716-20260812",
+  "workflow_id": "WF-03",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-12T10:07:17Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "PAR-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "WF-03 Step Final (git-merge, hard gate, runs ONCE) for GH-716 / ISS-0675 / PAR-06. All prior steps complete: Step 00 (git-setup) PASS, Step 0.5/1 (ISSUE-FIXER diagnosis) PASS recommending deletion, Step 2 (CODE-DESIGNER) SKIPPED with verified rationale (pure dead-code deletion, no design content needed), Step 3 (BACKEND-DEV implementation) PASS -- deleted Store.reconstructBounded() and helpers/error variants from src/event_store/store.zig, Step 4 (TEST-DESIGNER) SKIPPED (no business logic changed), Step 5 (TEST-RUNNER) PASS -- zero regressions, full baseline match, Step 6 (RELEASE-VALIDATOR) SKIPPED (MINOR severity, not BLOCKER), Step 7 (DOC-UPDATER) PASS -- CHANGELOG updated, PAR-06 requirement status confirmed accurate (still RELEASED).\n\nBranch feature/WF03-GH716-20260812 already has several commits pushed to origin from earlier ADHOC/TEST-RUNNER/DOC-UPDATER steps in this run (this is expected -- an earlier ADHOC step pushed slightly ahead of the normal Step Final push, but no PR was opened yet). Complete the full Step Final procedure:\n\n1. Push the branch (including the latest Step 7 commit d43c97a7 and any commits after it) to origin.\n2. Open a PR from feature/WF03-GH716-20260812 to main. Title should reference GH-716 and PAR-06. Body should summarize: what was deleted (dead code Store.reconstructBounded() and helpers), why (unreferenced duplicate of reconstruction.zig's live, tested path; wiring it up instead would have been a regression since it lacked the live path's correct empty-window fallback), test verification (zero regressions, full baseline match), and 'Closes #716'.\n3. Wait for CI to complete, then run `python tools/check_github_status.py` FIRST (mandatory per core-directives.md's 'Never Call a Red Pipeline OK Without a Source') before characterizing CI as green or red. Quote its actual output.\n4. If CI is green: squash-merge the PR, delete the branch (local and remote), and confirm main is up to date locally.\n5. If CI is red: investigate per core-directives.md (read the failing step, determine if platform-caused or code-caused using check_github_status.py's output) and fix or report accurately -- do not merge on a red pipeline.\n6. Close GitHub issue #716 with an accurate resolution comment summarizing the fix and linking the merge commit.\n7. Update handoffs/global_queue.json: find the GH-716 entry (status QUEUED, lock null) and set status to RESOLVED, run_id to WF03-GH716-20260812, started_at/completed_at to real timestamps.\n8. Complete this handoff and confirm the repo is back to a clean main with no stale feature branches.",
+    "acceptance_criteria": [
+      "Branch pushed to origin",
+      "PR opened, referencing GH-716, with 'Closes #716'",
+      "python tools/check_github_status.py run and quoted BEFORE characterizing CI result",
+      "CI verified green via actual evidence (not assumed)",
+      "PR squash-merged, branch deleted (local + remote)",
+      "main is clean and up to date after merge",
+      "GitHub issue #716 closed with accurate resolution comment",
+      "handoffs/global_queue.json GH-716 entry updated to RESOLVED with this run_id"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T10:07:51Z",
+  "completed_at": null
+}
