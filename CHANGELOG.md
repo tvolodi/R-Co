@@ -149,6 +149,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+- ISS-0673 (GH-714) BLOCKER: Add GBL-142 migration to drop 8 PER_TENANT shadow tables
+  (events_ephemeral*, plat_correlation_cursor, plat_effect_completion, plat_partition_catalog,
+  plat_partition_maintenance_run_log) erroneously created in the `public` schema by migrations
+  1145/1146/1148/1149 that lacked schema-scope guards. Patch those migrations with
+  DO $$ + early-return guards matching the 1147 pattern. lint_dual_schema_table_names: 0 BLOCKER.
+
 - ISS-0669 (GH-709): Fix Pool.mutex OS-thread safety: replace std.Io.Mutex (cooperative,
   unsafe under raw std.Thread.spawn reentrancy) with PoolMutex (atomic spinlock wrapper).
   Move applyRequestStorageRouting() and maybeRedirectToTenantHost() outside the critical
