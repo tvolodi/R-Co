@@ -1,0 +1,37 @@
+{
+  "handoff_id": "66900050-0000-0000-0000-000000000000",
+  "run_id": "WF03-ISS0669-20260812",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-12T04:04:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "iss_ref": "ISS-0669",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/709",
+    "branch": "feature/WF03-ISS0669-20260812"
+  },
+  "task": {
+    "description": "Steps 0.5+1: Confirm GH-709 open. Update ISS-0669.json status IN_PROGRESS. Read src/db/pool.zig Pool.acquire() and applyRequestStorageRouting(). Read tests/integration/ordering_consumer_test.zig to understand the workaround. Document in ISS-0669.json root_cause.details: which specific call in Pool.acquire() is unsafe under raw OS thread reentrancy, whether it is Io.Threaded that is non-reentrant or something else.",
+    "acceptance_criteria": [],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosis complete (Category A — Pool implementation bug). Pool.acquire() is unsafe under concurrent raw std.Thread.spawn OS threads due to two distinct defects: (1) Pool.mutex is std.Io.Mutex (async-cooperative, not thread-safe for raw OS threads) — under contention two raw threads can both be granted the lock; (2) applyRequestStorageRouting() is called WHILE the mutex is held and issues up to 3 SQL round-trips via Io.Threaded, whose async I/O dispatch is keyed by task frame (not OS thread), producing I/O response misdelivery across concurrent raw threads. Misdelivered BEGIN responses leave connections in auto-commit mode; FOR UPDATE SKIP LOCKED in auto-commit acquires+releases the row lock instantly, making the same row visible to all 8 threads. No source files were modified. Diagnosis written to docs/issues/ISS-0669.json root_cause.",
+    "diagnosis_category": "A",
+    "affected_functions": [
+      "src/db/pool.zig:Pool.acquire()",
+      "src/db/pool.zig:applyRequestStorageRouting()",
+      "src/db/pool.zig:maybeRedirectToTenantHost()"
+    ],
+    "root_cause_type": "io_threaded_reentrancy_from_raw_os_threads_confirmed",
+    "fix_approach": "Replace Pool.mutex from std.Io.Mutex to std.Thread.Mutex; move applyRequestStorageRouting/maybeRedirectToTenantHost calls to OUTSIDE the mutex critical section (after popping the connection from idle_indices, the connection is exclusively owned — no lock needed for the SQL setup calls).",
+    "artifacts_out": ["docs/issues/ISS-0669.json"],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3) — diagnosis only; no source files were changed. The fix (Pool.mutex type change + restructure) is a separate BACKEND-DEV task."
+  },
+  "completed_at": "2026-08-12T04:08:30Z",
+  "started_at": "2026-08-12T04:04:00Z"
+}
