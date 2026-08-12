@@ -1,0 +1,38 @@
+run_id: WF02-batch-5-20260812
+created_at: '2026-08-12T11:15:34Z'
+rules_version: '1.1'
+requirement_ids:
+- PIN-03
+- PIN-04
+- PIN-05
+- PRM-01
+difficulty: 4
+difficulty_rationale: PIN-03/04/05 touch the engine execution path (node execution,
+  replay/reconstruction, sub-process inheritance) and add a new mutating endpoint
+  (rebind-pins) with its own event type; PRM-01 adds a new promotion-plan diff subsystem
+  reusing but substantially extending existing promotion.zig/export_import.zig machinery.
+  Cross-module, novel diff logic.
+integration_surface: high
+integration_surface_rationale: Touches src/engine/instance.zig, src/engine/pin_resolver.zig,
+  src/engine/reconstruction.zig, src/engine/transition.zig (execution path), new API
+  routes (rebind-pins, GET pins, POST promotions), new migrations for INSTANCE_PINS_REBOUND
+  event handling and promotion_reviews table.
+steps:
+- code-designer
+- code-design-validator
+- backend-dev
+- test-designer
+- test-design-validator
+- test-runner
+- release-validator
+- doc-updater
+estimated_minutes:
+  code-designer: 8
+  code-design-validator: 22
+  backend-dev: 9
+  test-designer: 3
+  test-design-validator: 38
+  test-runner: 6
+  release-validator: 2
+  doc-updater: 2
+  total: 90
