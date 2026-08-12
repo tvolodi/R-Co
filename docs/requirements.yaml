@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-11T18:38:47Z'
+generated_at: '2026-08-12T06:32:49Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -12079,7 +12079,7 @@ requirements:
     title: Online conversion to a partitioned event log
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > The one-time conversion of an existing `events` table into a partitioned parent SHALL run online. A new parent is created alongside, historical rows are backfilled in `created_at` windows of one calendar month with one transaction per window and `ON CONFLICT (event_id, created_at) DO NOTHING`, and the tables are exchanged by a rename swap inside a single transaction. `plat_event_idempotency` SHALL be created and populated before the swap, so global `idempotency_key` uniqueness is never absent.
 
@@ -12095,14 +12095,25 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:37Z'
+    last_updated: '2026-08-12T06:32:35Z'
     workflow: PW-06
+    note: 'AC1-AC5 met (online conversion pipeline: parent creation, resumable per-month backfill with
+      idempotent ON CONFLICT DO NOTHING, transactional swap, reconcileOrRollback() with inverse-rename
+      on mismatch -- all independently re-run 6/6 passing). Trailing AC sentence (events_legacy retained
+      read-only for one archive_after_months cycle then attached to events_archive, never emptied row
+      by row) NOT MET -- PartitionConverter has no code path handing events_legacy to PartitionRetention.runArchivalAging()
+      (PAR-03). Tracked as ISS-0686 / GH-733 (OPEN, MAJOR). Held at TESTED, not RELEASED, until archival
+      integration is implemented -- see docs/status/release-stage16-WF02-batch-4-20260811.yaml for RELEASE-VALIDATOR''s
+      full reasoning.'
+    implemented_in:
+    - src/db/partition_conversion.zig
+    - src/scheduler/partition_maintenance.zig
   PAR-06:
     id: PAR-06
     title: Time-bounded instance reconstruction queries
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > Partition pruning is driven by `created_at` while instance reconstruction identifies work by `instance_id`. The platform SHALL resolve this by bounding every reconstruction query with a time predicate, not by accepting per-partition index fan-out. `instances.first_event_at` and `instances.last_event_at` SHALL be maintained in the same transaction as every append, and the reconstruction query SHALL be `SELECT * FROM events WHERE instance_id = $1 AND created_at >= $2 AND created_at < $3 ORDER BY sequence_num`, with `$2` and `$3` taken from those two columns.
 
@@ -12118,14 +12129,19 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:38Z'
+    last_updated: '2026-08-12T06:32:11Z'
     workflow: PW-06
+    implemented_in:
+    - migrations/1150_par06_instance_projections_event_window.sql
+    - src/engine/reconstruction.zig
+    - src/event_store/store.zig
+    released_at: '2026-08-12T06:32:11Z'
   PIN-01:
     id: PIN-01
     title: Dependency version resolution at instance start
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** PD-08, from the process graph to the non-graph versioned artefacts an instance depends on.
 
@@ -12142,14 +12158,32 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:39Z'
+    last_updated: '2026-08-12T06:32:49Z'
     workflow: PW-03
+    note: 'AC3/AC4/AC5 met (VariableSchemaViolation validation, UnresolvedPinOverride resolution, deterministic
+      (kind, ref) ordering -- all independently re-run 9/9 passing, including confirmation that two BLOCKER/MAJOR
+      bugs found mid-run against this exact AC surface, ISS-0679 VariableSchemaViolation false-positive
+      and ISS-0683/GH-727 AC4 double-free, are genuinely fixed). AC1/AC2 (service_catalog version/status
+      resolution, PLC-01 module-catalog resolution) NOT MET -- service_catalog has no version/status column
+      and PLC-01 does not exist in this codebase. Tracked as ISS-0672 / GH-306 (OPEN). Unlike a typical
+      partial-release gap, this was a deliberate, validated scope-phasing decision made explicitly by
+      CODE-DESIGNER at Step 1 (src/design/pin-01-dependency-version-resolution.md Scoping note and Open
+      questions #1/#2) and confirmed PASS by CODE-DESIGN-VALIDATOR at Step 1b KNOWING AC1/AC2 were out
+      of scope -- not a late discovery or quality escape. This provenance does not change the release
+      marking (PIN-01 is one requirement with 5 MUST-priority AC bullets; 2 of 5 remain unimplemented
+      regardless of how early or deliberately that was decided) but lower risk than a typical gap: a bounded,
+      tracked scope-phasing decision with a clear unblock condition (service_catalog schema changes +
+      PLC-01 shipping). Held at TESTED, not RELEASED -- see docs/status/release-stage16-WF02-batch-4-20260811.yaml
+      partially_approved_requirements[1].scope_marking_rationale for full reasoning.'
+    implemented_in:
+    - src/engine/pin_resolver.zig
+    - src/engine/instance.zig
   PIN-02:
     id: PIN-02
     title: Pin set recorded in INSTANCE_STARTED
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL record the resolved pin set as the `pinned_versions[]` field of the `INSTANCE_STARTED` event payload, appended in the same transaction as the instance row insert. The event log is the record of record for pins; no side table stores them.
 
@@ -12164,8 +12198,13 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:40Z'
+    last_updated: '2026-08-12T06:32:16Z'
     workflow: PW-03
+    implemented_in:
+    - migrations/1151_pin02_instance_started_pinned_versions.sql
+    - src/engine/instance.zig
+    - src/engine/pin_resolver.zig
+    released_at: '2026-08-12T06:32:16Z'
   PIN-03:
     id: PIN-03
     title: No fallback to latest version

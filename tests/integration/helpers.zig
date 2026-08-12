@@ -1020,7 +1020,6 @@ pub const TestHarness = struct {
         return @constCast(try bpm.uuid.newUuidV4(allocator));
     }
 
-
     /// Initialise the harness:
     ///  1. Reads BPM_TEST_DB_URL from the environment.
     ///  2. Connects directly to the test database (no pool overhead needed).

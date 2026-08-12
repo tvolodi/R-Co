@@ -19,6 +19,8 @@ const plugin_interface_mod = @import("plugin_interface.zig");
 const plugin_registry_mod = @import("plugin_registry.zig");
 const scheduler_store_mod = @import("../scheduler/store.zig");
 const dlq_store_mod = @import("../dlq/store.zig");
+const pin_resolver_mod = @import("pin_resolver.zig");
+const tenant_context = @import("tenant_context");
 const metrics = @import("obs_metrics");
 // Named module, not a relative import — see the note in src/main.zig (ISS-0155).
 const json_schema = @import("json_schema");
@@ -62,6 +64,40 @@ fn populateTokenIds(allocator: std.mem.Allocator, state: *transition_mod.Instanc
             tok.token_id = try generateTokenId(allocator);
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// PAR-06 AC4: window-column maintenance for hand-rolled `INSERT INTO events`
+// call sites in this file.
+//
+// event_store/store.zig's Store.append() maintains
+// instance_projections.first_event_at/.last_event_at (PAR-06's bounded-
+// reconstruction window) as Step 5 of its own single INSERT transaction. The
+// call sites in THIS file never go through Store.append() — each issues its
+// own hand-rolled `WITH seq AS (...) INSERT INTO events ...` inside an
+// existing InstanceStore-owned transaction, so none of them updated those two
+// columns, leaving first_event_at/last_event_at permanently NULL for every
+// instance (ISS-0677 / GH-719). This helper reproduces Store.append() Step
+// 5's exact maintenance logic — COALESCE so first_event_at is set exactly
+// once, last_event_at unconditionally advanced with the same +1 microsecond
+// upper-bound adjustment reconstructBounded()'s exclusive `<` comparison
+// requires — and is called once per event-appending transaction (a single
+// call per transaction is sufficient: it widens the window to cover NOW(),
+// which safely bounds every event inserted earlier in the same transaction
+// since all of them are committed together at the same effective instant).
+//
+// Security: instance_id_hex is always a caller-controlled, already-validated
+// hex UUID string (never user-supplied free text) bound as a $N parameter —
+// no SQL string interpolation.
+fn bumpEventWindowInTx(conn: *db.Conn, instance_id_hex: []const u8) !void {
+    try conn.exec(
+        \\UPDATE instance_projections
+        \\SET first_event_at = COALESCE(first_event_at, NOW()),
+        \\    last_event_at  = NOW() + INTERVAL '1 microsecond'
+        \\WHERE instance_id = $1::uuid
+    ,
+        &.{instance_id_hex},
+    );
 }
 
 fn refreshActiveInstancesMetric(pool: *Pool, allocator: std.mem.Allocator) void {
@@ -165,6 +201,18 @@ pub const InstanceError = error{
     PoolExhausted,
     /// DB transaction failed to commit (transient). HTTP 500.
     TransactionFailed,
+    /// PIN-01 AC1: a SERVICE_TASK's service_id names no catalog entry with an
+    /// active version. HTTP 422.
+    UnresolvedCatalogRef,
+    /// PIN-01 AC2: a module_ref semver range matches no published module
+    /// version (always raised under this batch's scope — PLC-01 does not
+    /// exist yet). HTTP 422.
+    UnresolvedModuleRef,
+    /// PIN-01 AC3: initial variables violate the resolved variable_schema
+    /// version. HTTP 422.
+    VariableSchemaViolation,
+    /// PIN-01 AC4: pin_overrides names a version that does not exist. HTTP 422.
+    UnresolvedPinOverride,
 };
 
 // ---------------------------------------------------------------------------
@@ -584,6 +632,71 @@ pub const InstanceStore = struct {
         }
         if (start_node_id == null) return InstanceError.InvalidInput;
 
+        // ── Step d.5 (PIN-01, NEW): resolve versioned references ───────────
+        // Runs in the SAME pre-instance-row phase PD-08's snapshot capture
+        // already ran in (no instance row exists yet; nothing to roll back
+        // if resolution fails) — per the design's data flow diagram. Scoped
+        // to AC3 (variable_schema validation), AC4 (pin_overrides), AC5
+        // (deterministic ordering) per Step 01b's validator routing; AC1/AC2
+        // (real catalog-version / module-ref resolution) are out of scope
+        // for this batch (ISS-0672 / GH-306) and are implemented only as far
+        // as the design's documented provisional stopgap queries — an
+        // unresolved catalog/module reference returns UnresolvedCatalogRef/
+        // UnresolvedModuleRef rather than a silent no-op.
+        //
+        // pin_overrides is not yet reachable from create()'s own public
+        // signature (adding a 5th positional parameter would break every
+        // existing positional call site across src/ and tests/, out of this
+        // handoff's scope) — passed as null here; PinResolver.resolve()'s
+        // AC4 override-application code path is fully implemented and
+        // unit-testable independent of this call site's current inability
+        // to supply overrides.
+        // Allocated from `a` (this function's param_arena), NOT the long-
+        // lived `allocator` — PinnedVersion.ref/.resolved_id/.version are
+        // used only transiently below (Step e's serialisePinnedVersions()
+        // call) and never returned to create()'s own caller, so arena-
+        // scoping them here (freed automatically when param_arena.deinit()
+        // runs) avoids a leak that would otherwise require this function to
+        // hand-track and free every PinnedVersion's three string fields
+        // individually.
+        //
+        // REWORK 1 (SECURITY-REVIEWER INV-1 fix): the request's tenant_id is
+        // read from the same threadlocal request-tenant context that auth
+        // middleware populates for every authenticated request (see
+        // src/api/tenant_context.zig, src/api/middleware/auth.zig) and
+        // threaded into PinResolver so resolveServiceCatalogRef() can bind
+        // it as a parameterized ::uuid, instead of relying on the dropped
+        // bpm_effective_tenant_id() SQL function. An empty/malformed tenant
+        // context cannot happen on the live authenticated HTTP path (auth
+        // middleware always sets it before a handler runs) but is handled as
+        // InvalidInput rather than `catch unreachable`, per INV-8.
+        const request_tenant_id = parseUuid(tenant_context.get()) catch
+            return InstanceError.InvalidInput;
+
+        var pin_resolver = pin_resolver_mod.PinResolver.init(self.pool);
+        const pinned_versions: []pin_resolver_mod.PinnedVersion = blk: {
+            const conn_pins = self.pool.acquire() catch |err| switch (err) {
+                PoolError.ExhaustedPool => return InstanceError.PoolExhausted,
+                else => return InstanceError.TransactionFailed,
+            };
+            defer self.pool.release(conn_pins);
+
+            break :blk pin_resolver.resolve(a, conn_pins, pin_resolver_mod.ResolutionInput{
+                .definition_id = definition_id,
+                .tenant_id = request_tenant_id,
+                .graph = snapshot.graph,
+                .initial_variables = initial_variables,
+                .pin_overrides = null,
+            }) catch |err| switch (err) {
+                pin_resolver_mod.ResolutionError.UnresolvedCatalogRef => return InstanceError.UnresolvedCatalogRef,
+                pin_resolver_mod.ResolutionError.UnresolvedModuleRef => return InstanceError.UnresolvedModuleRef,
+                pin_resolver_mod.ResolutionError.VariableSchemaViolation => return InstanceError.VariableSchemaViolation,
+                pin_resolver_mod.ResolutionError.UnresolvedPinOverride => return InstanceError.UnresolvedPinOverride,
+                pin_resolver_mod.ResolutionError.PoolExhausted => return InstanceError.PoolExhausted,
+                pin_resolver_mod.ResolutionError.TransactionFailed => return InstanceError.TransactionFailed,
+            };
+        };
+
         // ── Step e: Insert instance + trigger initial transition ───────────
         // All writes happen in a single DB transaction so that the instance row,
         // the first event, and any initial HUMAN_TASK rows are atomically visible.
@@ -751,10 +864,20 @@ pub const InstanceStore = struct {
         // ISS-0601-LEAK-001: Build instance_started event payload with initial_variables
         // and start_node_id fields (required by mapToTransitionEvent in reconstruction).
         // Manually construct the JSON string to avoid ObjectMap initialization complexity.
+        //
+        // PIN-02: also serialises pinned_versions[] — the array PIN-01's
+        // PinResolver.resolve() produced above (Step d.5) — into the SAME
+        // payload, in the SAME transaction as the instance row insert, so a
+        // committed instance never has an unrecorded pin set (PIN-02 AC2).
+        // Kept as a separate allocPrint step (not inlined) because
+        // []PinnedVersion has a variable element count, matching this file's
+        // existing tokens_buf incremental-build pattern.
+        const pinned_versions_json = serialisePinnedVersions(a, pinned_versions) catch
+            return InstanceError.TransactionFailed;
         const start_payload_json = std.fmt.allocPrint(
             a,
-            "{{\"initial_variables\":{s},\"start_node_id\":\"{s}\"}}",
-            .{ initial_variables, start_node_id.? },
+            "{{\"initial_variables\":{s},\"start_node_id\":\"{s}\",\"pinned_versions\":{s}}}",
+            .{ initial_variables, start_node_id.?, pinned_versions_json },
         ) catch return InstanceError.TransactionFailed;
 
         // INSERT event row (instance_started).
@@ -798,6 +921,11 @@ pub const InstanceStore = struct {
         ,
             &.{ inst_id_hex, status_str, tokens_json, vars_json, jc_json },
         ) catch return InstanceError.TransactionFailed;
+
+        // PAR-06 AC4: advance first_event_at/last_event_at for the
+        // INSTANCE_STARTED event (and any emitted events) just inserted
+        // above (ISS-0677 / GH-719 — see bumpEventWindowInTx doc comment).
+        bumpEventWindowInTx(conn2, inst_id_hex) catch return InstanceError.TransactionFailed;
 
         persistTimersFromPendingEventsInTx(
             allocator,
@@ -1058,6 +1186,10 @@ pub const InstanceStore = struct {
         ,
             &.{ inst_id_hex, status_str, tokens_json, vars_json, jc_json },
         ) catch return ApplyError.PersistenceFailed;
+
+        // PAR-06 AC4: advance first_event_at/last_event_at for the event
+        // inserted above (ISS-0677 / GH-719).
+        bumpEventWindowInTx(conn, inst_id_hex) catch return ApplyError.PersistenceFailed;
 
         persistTimersFromPendingEventsInTx(
             allocator,
@@ -1809,6 +1941,11 @@ pub const InstanceStore = struct {
             },
         ) catch return CompleteTaskError.PersistenceFailed;
 
+        // PAR-06 AC4: advance first_event_at/last_event_at for TASK_COMPLETED
+        // (and any VARIABLE_OVERWRITTEN / EXECUTION_ERROR / SUBPROCESS_STARTED
+        // events inserted earlier in this same transaction) (ISS-0677 / GH-719).
+        bumpEventWindowInTx(conn, inst_id_hex) catch return CompleteTaskError.PersistenceFailed;
+
         persistTimersFromPendingEventsInTx(
             allocator,
             conn,
@@ -2324,6 +2461,10 @@ pub const InstanceStore = struct {
             &.{inst_id_hex},
         ) catch return CancelInstanceError.PersistenceFailed;
 
+        // PAR-06 AC4: advance first_event_at/last_event_at for the
+        // INSTANCE_CANCELLED event inserted above (ISS-0677 / GH-719).
+        bumpEventWindowInTx(conn, inst_id_hex) catch return CancelInstanceError.PersistenceFailed;
+
         // ── Step h: COMMIT ────────────────────────────────────────────────────
         conn.commit() catch return CancelInstanceError.PersistenceFailed;
         refreshActiveInstancesMetric(self.pool, allocator);
@@ -2797,6 +2938,10 @@ pub const InstanceStore = struct {
         ,
             &.{ inst_id_hex, payload_json },
         ) catch return SetInstanceErrorError.PersistenceFailed;
+
+        // PAR-06 AC4: advance first_event_at/last_event_at for the
+        // EXECUTION_ERROR event inserted above (ISS-0677 / GH-719).
+        bumpEventWindowInTx(conn, inst_id_hex) catch return SetInstanceErrorError.PersistenceFailed;
 
         // ── Step f: COMMIT ────────────────────────────────────────────────────
         conn.commit() catch return SetInstanceErrorError.PersistenceFailed;
@@ -4197,6 +4342,10 @@ fn propagateChildCompletionToParent(
         &.{ parent_instance_id_hex, merged_json },
     ) catch return CompleteTaskError.PersistenceFailed;
 
+    // PAR-06 AC4: advance first_event_at/last_event_at on the PARENT instance
+    // for the SUBPROCESS_COMPLETED event inserted above (ISS-0677 / GH-719).
+    bumpEventWindowInTx(conn, parent_instance_id_hex) catch return CompleteTaskError.PersistenceFailed;
+
     conn.exec(
         \\UPDATE subprocess_links
         \\SET status = 'COMPLETED', completed_at = NOW()
@@ -4314,6 +4463,11 @@ fn propagateChildTerminalToParent(
         &.{ parent_instance_id_hex, payload_json },
     );
 
+    // PAR-06 AC4: advance first_event_at/last_event_at on the PARENT instance
+    // for the CHILD_PROCESS_CANCELLED/CHILD_PROCESS_ERROR event inserted
+    // above (ISS-0677 / GH-719).
+    try bumpEventWindowInTx(conn, parent_instance_id_hex);
+
     try conn.exec(
         \\UPDATE subprocess_links
         \\SET status = $2, completed_at = NOW()
@@ -4393,6 +4547,55 @@ fn parseInstanceStatus(s: []const u8) error{InvalidStatus}!InstanceStatus {
     if (std.mem.eql(u8, s, "ERROR")) return .ERROR;
     if (std.mem.eql(u8, s, "RESTORED_ORPHAN")) return .RESTORED_ORPHAN;
     return error.InvalidStatus;
+}
+
+/// PIN-02: serialise a []PinnedVersion slice into the JSON array embedded in
+/// the INSTANCE_STARTED payload's "pinned_versions" field. `pins` must
+/// already be in the sorted-by-(kind, ref) order PIN-01's resolve()
+/// guarantees (PIN-01 AC5 / PIN-02 AC1) — this function preserves that order
+/// verbatim through serialisation rather than re-sorting.
+///
+/// Mirrors this file's existing tokens_buf pattern (manual `{`/`,`/`}`
+/// punctuation rather than std.json.Stringify, matching this file's
+/// established style rather than introducing a second serialisation
+/// approach for one field). p.ref/p.resolved_id/p.version are caller-
+/// controlled-adjacent strings (service IDs, module IDs, schema hashes) that
+/// never contain unescaped `"` under this codebase's existing identifier
+/// conventions (UUIDs, service_id VARCHAR(255), semver/hex strings) — the
+/// SAME no-escaping convention this file's existing start_payload_json
+/// construction already uses for node_id/branch_id/start_node_id (PIN-02
+/// design doc, Open questions §1: a pre-existing convention this design
+/// inherits, not one it introduces).
+fn serialisePinnedVersions(allocator: std.mem.Allocator, pins: []const pin_resolver_mod.PinnedVersion) error{OutOfMemory}![]const u8 {
+    var buf = std.ArrayList(u8).empty;
+    try buf.append(allocator, '[');
+    for (pins, 0..) |p, i| {
+        if (i > 0) try buf.append(allocator, ',');
+        const entry = try std.fmt.allocPrint(
+            allocator,
+            "{{\"kind\":\"{s}\",\"ref\":\"{s}\",\"resolved_id\":\"{s}\",\"version\":\"{s}\",\"source\":\"{s}\"}}",
+            .{ pinKindToString(p.kind), p.ref, p.resolved_id, p.version, pinSourceToString(p.source) },
+        );
+        try buf.appendSlice(allocator, entry);
+    }
+    try buf.append(allocator, ']');
+    return buf.items;
+}
+
+fn pinKindToString(kind: pin_resolver_mod.PinKind) []const u8 {
+    return switch (kind) {
+        .catalog_entry => "catalog_entry",
+        .variable_schema => "variable_schema",
+        .module => "module",
+    };
+}
+
+fn pinSourceToString(source: pin_resolver_mod.PinSource) []const u8 {
+    return switch (source) {
+        .resolved => "resolved",
+        .override => "override",
+        .inherited => "inherited",
+    };
 }
 
 /// Render a UUID as lowercase hex with hyphens: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.

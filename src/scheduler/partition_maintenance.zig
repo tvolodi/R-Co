@@ -320,14 +320,7 @@ pub const PartitionMaintenanceScheduler = struct {
             .ok => {},
         }
 
-        conn.exec(
-            \\INSERT INTO plat_partition_catalog (table_name, parent_table, range_start, range_end, state)
-            \\VALUES ($1, $2, $3::timestamptz, $4::timestamptz, 'ATTACHED')
-            \\ON CONFLICT (table_name) DO UPDATE SET state = 'ATTACHED', parent_table = EXCLUDED.parent_table,
-            \\  range_start = EXCLUDED.range_start, range_end = EXCLUDED.range_end, updated_at = NOW()
-        ,
-            &.{ partition_name, parent, start_text, end_text },
-        ) catch |err| switch (err) {
+        upsertPartitionCatalogRow(conn, partition_name, parent, start_text, end_text) catch |err| switch (err) {
             db.PoolError.ExhaustedPool => return PartitionMaintenanceError.PoolExhausted,
             else => return PartitionMaintenanceError.TransactionFailed,
         };
@@ -371,7 +364,40 @@ pub const PartitionMaintenanceScheduler = struct {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-const MonthRange = struct {
+/// PAR-05 (WF02-batch-4-20260811, REWORK 3 / ISS-0681): shared upsert helper
+/// so BOTH this job's own ensurePartitionAttached() AND
+/// src/db/partition_conversion.zig's backfillOneMonth() record the same
+/// plat_partition_catalog bookkeeping after a successful
+/// attachPartitionTimed() call — one definition, not a fork, per the same
+/// "reuse partition_maintenance.zig's helpers" preference the MonthRange
+/// doc comment below already establishes. Without this row,
+/// reconcileOrRollback()'s (PAR-05 AC5) self-join over plat_partition_catalog
+/// has nothing to match for any events_part-derived partition, so its
+/// mismatch-detection loop body never runs (ISS-0681 / GH-724).
+pub fn upsertPartitionCatalogRow(
+    conn: *db.Conn,
+    table_name: []const u8,
+    parent_table: []const u8,
+    range_start_text: []const u8,
+    range_end_text: []const u8,
+) db.PoolError!void {
+    try conn.exec(
+        \\INSERT INTO plat_partition_catalog (table_name, parent_table, range_start, range_end, state)
+        \\VALUES ($1, $2, $3::timestamptz, $4::timestamptz, 'ATTACHED')
+        \\ON CONFLICT (table_name) DO UPDATE SET state = 'ATTACHED', parent_table = EXCLUDED.parent_table,
+        \\  range_start = EXCLUDED.range_start, range_end = EXCLUDED.range_end, updated_at = NOW()
+    ,
+        &.{ table_name, parent_table, range_start_text, range_end_text },
+    );
+}
+
+/// PAR-05 (WF02-batch-4-20260811): made `pub` so
+/// src/db/partition_conversion.zig can reuse the SAME month-arithmetic
+/// helpers rather than forking a second definition, per that design's Public
+/// interface note ("BACKEND-DEV reuses partition_maintenance.zig's existing
+/// private helpers of the same names and shapes, either by making them pub
+/// there (preferred: one definition, not a fork)...").
+pub const MonthRange = struct {
     start_us: i64,
     end_us: i64,
     /// "YYYY_MM" suffix.
@@ -403,7 +429,7 @@ fn currentMonthStartUs(allocator: std.mem.Allocator, conn: *db.Conn) PartitionMa
 
 /// Compute the [start, end) range (in UTC microseconds) and "YYYY_MM" suffix
 /// for `month_start_us + offset` months.
-fn monthRange(month_start_us: i64, offset: u32) MonthRange {
+pub fn monthRange(month_start_us: i64, offset: u32) MonthRange {
     const start_us = addMonthsUs(month_start_us, @intCast(offset));
     const end_us = addMonthsUs(month_start_us, @as(i64, @intCast(offset)) + 1);
 
@@ -414,9 +440,9 @@ fn monthRange(month_start_us: i64, offset: u32) MonthRange {
     return .{ .start_us = start_us, .end_us = end_us, .suffix = suffix };
 }
 
-const YearMonth = struct { year: u16, month: u8 };
+pub const YearMonth = struct { year: u16, month: u8 };
 
-fn usToYearMonth(us: i64) YearMonth {
+pub fn usToYearMonth(us: i64) YearMonth {
     const secs = @divFloor(us, 1_000_000);
     const epoch_secs: u64 = @intCast(@max(secs, 0));
     const epoch_day = std.time.epoch.EpochSeconds{ .secs = epoch_secs };
@@ -428,7 +454,7 @@ fn usToYearMonth(us: i64) YearMonth {
 /// Add `n` calendar months (may be negative) to a UTC-microseconds timestamp
 /// that is already a month boundary (00:00:00 on the 1st), returning the new
 /// month boundary. Only ever called with month-boundary inputs in this file.
-fn addMonthsUs(month_start_us: i64, n: i64) i64 {
+pub fn addMonthsUs(month_start_us: i64, n: i64) i64 {
     const ymd = usToYearMonth(month_start_us);
     var total_months: i64 = @as(i64, ymd.year) * 12 + @as(i64, ymd.month - 1) + n;
     const new_year: i64 = @divFloor(total_months, 12);
@@ -439,7 +465,7 @@ fn addMonthsUs(month_start_us: i64, n: i64) i64 {
     return yearMonthToUs(@intCast(new_year), new_month);
 }
 
-fn yearMonthToUs(year: u16, month: u8) i64 {
+pub fn yearMonthToUs(year: u16, month: u8) i64 {
     var days: i64 = 0;
     var y: u16 = 1970;
     while (y < year) : (y += 1) {
@@ -454,13 +480,13 @@ fn yearMonthToUs(year: u16, month: u8) i64 {
     return days * 86_400_000_000;
 }
 
-fn isLeapYear(year: u16) bool {
+pub fn isLeapYear(year: u16) bool {
     if (@mod(year, 4) != 0) return false;
     if (@mod(year, 100) != 0) return true;
     return @mod(year, 400) == 0;
 }
 
-fn formatTimestamptzLiteral(allocator: std.mem.Allocator, us: i64) ![]u8 {
+pub fn formatTimestamptzLiteral(allocator: std.mem.Allocator, us: i64) ![]u8 {
     const ymd_and_time = usToDateTimeParts(us);
     return std.fmt.allocPrint(
         allocator,
@@ -469,9 +495,9 @@ fn formatTimestamptzLiteral(allocator: std.mem.Allocator, us: i64) ![]u8 {
     );
 }
 
-const DateTimeParts = struct { year: u16, month: u8, day: u8, hour: u8, minute: u8, second: u8 };
+pub const DateTimeParts = struct { year: u16, month: u8, day: u8, hour: u8, minute: u8, second: u8 };
 
-fn usToDateTimeParts(us: i64) DateTimeParts {
+pub fn usToDateTimeParts(us: i64) DateTimeParts {
     const secs = @divFloor(us, 1_000_000);
     const epoch_secs: u64 = @intCast(@max(secs, 0));
     const epoch_day = std.time.epoch.EpochSeconds{ .secs = epoch_secs };
@@ -499,7 +525,7 @@ fn todayUtcDateString(buf: *[64]u8, now_us: i64) ![]const u8 {
     return std.fmt.bufPrint(buf, "{d:0>4}-{d:0>2}-{d:0>2}", .{ parts.year, parts.month, parts.day });
 }
 
-fn intToStr(allocator: std.mem.Allocator, value: u32) error{OutOfMemory}![]u8 {
+pub fn intToStr(allocator: std.mem.Allocator, value: u32) error{OutOfMemory}![]u8 {
     return std.fmt.allocPrint(allocator, "{d}", .{value});
 }
 

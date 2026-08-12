@@ -1,0 +1,59 @@
+{
+  "handoff_id": "e0439a14-f763-4e97-b2a4-b4250e455f81",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "02a-2",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-4-20260811/step-02a-2-backend-dev.json",
+  "created_at": "2026-08-12T04:36:00Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PIN-01",
+      "PAR-06"
+    ],
+    "related_handoff_ids": [
+      "dffa6e06-c532-4022-a9ab-2797e5bab4c7",
+      "1a767404-3f5b-4173-914f-39cc2049ab37"
+    ],
+    "artifacts_in": [
+      "src/engine/pin_resolver.zig",
+      "tests/integration/pin01_ac345_resolution_test.zig",
+      "tests/integration/pin01_test_root.zig",
+      "tests/integration/par06_reconstruction_bounded_test.zig",
+      "docs/issues/ISS-0683.json"
+    ]
+  },
+  "task": {
+    "description": "NEW handoff (not a rework of the exhausted step-02a handoff, which is at its 3/3 rework ceiling) for a genuine defect TEST-DESIGN-VALIDATOR (Step 3b, handoff 1a767404-3f5b-4173-914f-39cc2049ab37) found via independent re-verification: this run's own PIN-01 code crashing on this run's own PIN-01 AC4 accepting-path test. Same \"own acceptance criteria = in-run rework\" rule as the earlier ISS-0676/0677/0679/0681 cycle -- this stays in the active WF-02 run, tracked as its own handoff with a fresh rework budget rather than deferred.\n\nFIX REQUIRED -- ISS-0683 / GH-727 (BLOCKER): src/engine/pin_resolver.zig's applyPinOverrides() (~line 458-529) reads a pin_overrides entry's version field via jsonStringField(), which returns a slice pointing directly into the std.json.parseFromSlice() ParseResult's own storage -- memory that applyPinOverrides()'s own `defer parsed.deinit()` frees when the function returns. applyOverrideToPins() (line 533-543) stores that JSON-parser-owned slice directly into PinnedVersion.version. resolve()'s Step 6 success-path cleanup loop (line 170-196) then unconditionally calls allocator.free(src.version) on every pin, assuming every .version is always allocator-owned -- for an overridden pin this double-frees memory std.json's parser already freed, which Zig's DebugAllocator catches as \"Invalid free\" and panics the process. This is PIN-01 AC4's accepting/happy path (a valid override is supplied and applied), reproduced deterministically on every resolve() call where a pin_overrides entry successfully matches -- not an edge case. The variable_schema override branch (line 513-526) has the identical pattern.\nFIX: in applyOverrideToPins() (or at its call site in applyPinOverrides()), allocator.dupe(u8, version) (and resolved_id, if not already allocator-owned in all call paths) via the CALLER's allocator before storing into the pin, and free the ORIGINAL p.version/p.resolved_id being replaced -- mirroring the dupe-then-free pattern resolve()'s own Step 6 loop already uses for the non-override path. Apply the same fix to both the catalog_entry branch and the variable_schema override branch (line 513-526) -- ISS-0683 documents both have the identical bug. Verify live: zig build test-integration-pin01 must be 9/9 clean pass, no crash, not just 8/9 -- run it as its own blocking foreground command, twice, to confirm no flakiness (the crash reproduced identically across 2 seeds in TEST-DESIGN-VALIDATOR's run).\n\nALSO -- documentation-only cleanup (non-blocking on its own, but fold into this same commit since a rework cycle is already required): 3 stale test-source comment blocks referencing already-fixed issues need correcting so they stop misleading future readers:\n1. tests/integration/par06_reconstruction_bounded_test.zig, above TC-PAR-06-01 (lines ~171-178): \"KNOWN FAILING ... ISS-0677\" -- ISS-0677 was fixed in commit 29314c89; TC-PAR-06-01 now passes cleanly. Remove or update the comment to state the fix landed.\n2. tests/integration/par06_reconstruction_bounded_test.zig, above TC-PAR-06-05 (lines ~486-492): same stale ISS-0677 reference -- TC-PAR-06-05 still fails but for the different, already-tracked ISS-0682/GH-725 reason (uppercase \"TASK_COMPLETED\" literal in this test's own fixture at line ~550, mismatching reconstruction.zig's lowercase-only dispatcher). Update the comment to reference ISS-0682 instead of ISS-0677, and optionally fix the literal to lowercase \"task_completed\" directly (TEST-DESIGN-VALIDATOR noted this would likely make the test pass) -- your call whether to fix it now or leave ISS-0682 as its own tracked item; if you fix it, verify live and update ISS-0682's status.\n3. tests/integration/pin01_ac345_resolution_test.zig, above TC-PIN-01-01 (lines ~194-204): \"KNOWN FAILING ... ISS-0679\" -- ISS-0679 was fixed in this run's earlier rework 2 (commit 29314c89); TC-PIN-01-01/-02 both pass their logical assertions now. Remove or update the comment to state the fix landed.\n\nRead .env directly for BPM_TEST_DB_URL -- this host remaps Postgres to non-default ports, currently postgres://bpm:bpm@localhost:5434/bpm_test.",
+    "acceptance_criteria": [
+      "ISS-0683 fixed: zig build test-integration-pin01 is 9/9 clean pass, no crash, confirmed on 2 consecutive runs",
+      "Both affected branches (catalog_entry override and variable_schema override) in applyPinOverrides()/applyOverrideToPins() fixed, not just the one the crashing test happened to exercise",
+      "zig build, zig build check, zig build test all exit 0 with no regressions",
+      "The 3 stale KNOWN FAILING comment blocks corrected to reflect current reality",
+      "No new AC scope touched beyond ISS-0683 and the 3 documentation fixes -- do not re-open PAR-05/PAR-06/PIN-02, all already verified clean",
+      "Any NEW incidental defect found is filed as its own ISS + GitHub issue and forwarded to the global queue -- not fixed inline unless it genuinely blocks this step"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0683/GH-727 (BLOCKER, PIN-01 AC4 double-free) fixed in src/engine/pin_resolver.zig: applyOverrideToPins() now takes the allocator, allocator.dupe()s the incoming resolved_id/version before storing into the pin, and frees the pin's OLD resolved_id/version before overwriting -- mirroring the dupe-then-free pattern resolve()'s own Step 6 success-path loop already uses. Both applyPinOverrides() call sites (catalog_entry branch and variable_schema branch) fixed identically; the caller now unconditionally frees its own resolved.resolved_id/.version / current.resolved_id/.version via defer regardless of match outcome, since applyOverrideToPins() takes an independent dupe rather than aliasing the caller's copy. Verified live: zig build test-integration-pin01 run TWICE as separate blocking foreground commands (different random seeds 0xc560c37 and a second distinct seed) -- both runs report 9 pass (9 total), 0 crashes, 0 'Invalid free' panics, identical result both times. TC-PIN-01-03 (the AC4 override success path that was crashing) now passes cleanly. NOTE: 8 pre-existing memory leaks remain in TC-PIN-01-02 and TC-PIN-01-04 (both error-return paths, unrelated to the double-free) -- these are the separately tracked, still-open ISS-0680/GH-722 (resolve() leaking allocator-owned fields on early error returns), explicitly out of scope for this fix. Also folded in the 3 documentation-only comment cleanups: (1) TC-PAR-06-01's stale ISS-0677 'KNOWN FAILING' comment updated to state the fix landed in commit 29314c89; (2) TC-PAR-06-05's stale ISS-0677 comment updated to reference ISS-0682/GH-725 instead, AND the root cause itself fixed (uppercase TASK_COMPLETED literal in the test fixture changed to lowercase task_completed) -- verified live via zig build test-integration-par06-reconstruction: 5/5 tests passed, exit 0, no leaks; ISS-0682 marked RESOLVED and GH-725 closed; (3) TC-PIN-01-01's stale ISS-0679 comment updated to state the fix landed in commit 29314c89. zig build, zig build check (build + scoped zig fmt --check), and zig build test (unit suite, lint_test_wiring PASS) all exit 0 with no regressions. python3 tools/lint_sql_param_types.py src tests: 0 BLOCKER/MAJOR/MINOR.",
+    "artifacts_out": [
+      "src/engine/pin_resolver.zig",
+      "tests/integration/par06_reconstruction_bounded_test.zig",
+      "tests/integration/pin01_ac345_resolution_test.zig",
+      "docs/issues/ISS-0683.json",
+      "docs/issues/ISS-0682.json"
+    ],
+    "issues": [],
+    "next_action": "Re-submit to SECURITY-REVIEWER (Step 2c) for re-review, then TEST-DESIGN-VALIDATOR (Step 3b) re-verification"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T04:36:00Z",
+  "completed_at": "2026-08-12T04:48:11Z"
+}

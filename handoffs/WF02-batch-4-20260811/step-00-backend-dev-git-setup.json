@@ -1,0 +1,53 @@
+{
+  "handoff_id": "b3f6e9a2-7c1d-4e5a-9b8f-2d4c6a1e0f37",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-4-20260811/step-00-backend-dev-git-setup.json",
+  "created_at": "2026-08-11T19:12:36Z",
+  "started_at": "2026-08-11T19:13:40Z",
+  "completed_at": "2026-08-11T19:14:02Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-05",
+      "PAR-06",
+      "PIN-01",
+      "PIN-02"
+    ],
+    "related_handoff_ids": [
+      "handoffs/WF02-batch-4-20260811/step-00a-test-runner.json"
+    ],
+    "artifacts_in": [],
+    "owned_modules": [
+      "migrations/",
+      "src/event_store/",
+      "src/repository/",
+      "src/definition/"
+    ]
+  },
+  "task": {
+    "description": "Step 00 git-setup per docs/agents/protocols/GIT_SETUP.md. Branch name: feature/WF02-batch-4-20260811. Green-Main Gate (step 00a) already cleared by TEST-RUNNER (test-env-verify HEALTHY 10/10). First step of a WF-02 pipeline implementing 4 MUST requirements: PAR-05 (online conversion of the existing events table into a partitioned parent via CREATE TABLE ... PARTITION BY RANGE, monthly-windowed backfill with ON CONFLICT (event_id, created_at) DO NOTHING, plat_event_idempotency populated before an atomic rename swap), PAR-06 (time-bounded instance reconstruction queries pruned by instances.first_event_at/last_event_at rather than per-partition fan-out, merging events + events_archive results by sequence_num), PIN-01 (dependency version resolution at instance start for service catalog refs, variable_schema version, and module_ref semver ranges, each resolving to a {kind, ref, resolved_id, version, source} entry before the instance row is written), PIN-02 (resolved pin set recorded as pinned_versions[] on INSTANCE_STARTED in the same transaction as the instance row insert, event log as sole record of record). Create feature/WF02-batch-4-20260811 branch, push -u origin.",
+    "acceptance_criteria": [
+      "git pull --ff-only origin main exited 0",
+      "git branch --show-current outputs feature/WF02-batch-4-20260811",
+      "git push -u origin feature/WF02-batch-4-20260811 exited 0"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "git-setup per docs/agents/protocols/GIT_SETUP.md: git checkout main OK (already on main, clean); git pull --ff-only origin main exit 0 (already up to date, main untouched since batch-3 merge at 38cb7967); no stale local or remote branch found for feature/WF02-batch-4-20260811; created and checked out feature/WF02-batch-4-20260811 from main; git branch --show-current confirms exact match; pushed with -u origin, exit 0, remote confirms new branch (git fetch; git branch -r shows origin/feature/WF02-batch-4-20260811).",
+    "artifacts_out": ["branch: feature/WF02-batch-4-20260811"],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 1)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

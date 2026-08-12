@@ -1,0 +1,73 @@
+{
+  "handoff_id": "b872b068-a5dc-4380-a6c6-097b0edb12bc",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-batch-4-20260811/step-05-release-validator.json",
+  "created_at": "2026-08-12T06:07:02Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-05",
+      "PAR-06",
+      "PIN-01",
+      "PIN-02"
+    ],
+    "related_handoff_ids": [
+      "525faa14-8203-480d-95c2-d80f619b4668"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-08-12-WF02-batch-4-20260811.yaml",
+      "docs/requirements.yaml",
+      "docs/status/release-stage16-WF02-batch-3-20260811.yaml"
+    ]
+  },
+  "task": {
+    "description": "Make the release decision for this batch. TEST-RUNNER PASSed Step 4 (handoff 525faa14-8203-480d-95c2-d80f619b4668): all 5 batch-specific integration targets ran to full completion -- par05 6/6, par06-reconstruction 5/5, pin01 (AC3/AC4/AC5) 9/9, pin02 5/5; the sole red item (par06 migration-slice 1/3) is confirmed pre-existing ISS-0678/GH-720, out of this batch's scope. Unit suite 1071/1135 pass, 0 failed, 64 skipped. zig build exit 0.\n\nIndependently verify every MUST AC yourself -- read the exact AC wording from docs/requirements.yaml directly (not paraphrased from tests/specs/), read tests/specs/PAR-05.md, PAR-06.md, PIN-01.md, PIN-02.md in full including their traceability, and re-run this batch's key test targets yourself against real Postgres (BPM_TEST_DB_URL from .env, currently port 5434 -- if your shell shows a different port such as 5453, unset any stale BPM_TEST_DB_URL/BPM_DB_URL first) rather than trusting the report at face value.\n\nPAR-05: FULL scope, all 5 ACs -- verify each is genuinely implemented and tested (parent creation alongside live table, PartitionRangeGap on coverage gap, ON CONFLICT idempotent backfill, lock_timeout=3s swap+rollback+retry, ConversionRowCountMismatch detection + inverse rename via the reworked reconcileOrRollback()/plat_partition_catalog bookkeeping, events_legacy retention).\nPAR-06: FULL scope, all 6 ACs -- verify partition pruning, cross-archive merge, ReconstructionWindowMissing repair-and-retry, first_event_at/last_event_at maintenance now covering all 12 instance.zig call sites (not just Store.append()), unbounded-reconstruction refusal, +1-microsecond upper bound.\nPIN-02: FULL scope, all 5 ACs.\nPIN-01: SCOPED to AC3 (VariableSchemaViolation), AC4 (UnresolvedPinOverride), AC5 (deterministic ordering) ONLY. AC1 (UnresolvedCatalogRef/catalog-version resolution) and AC2 (UnresolvedModuleRef/module resolution) are explicitly OUT OF SCOPE for this batch, tracked as ISS-0672/GH-306 (service_catalog has no version/status column; PLC-01 module catalog does not exist yet). This is a design-time scope decision made and validated back at Step 1/1b, not a gap discovered late.\n\nDECIDE how PIN-01's partial scope should release: check docs/status/release-stage16-WF02-batch-3-20260811.yaml for this exact run's own precedent -- in that batch, PAR-02/PAR-03 had a MUST AC with zero implementation (not merely thin test coverage) and were released as \"tested-with-known-gap\" (not unqualified RELEASED, not BLOCKED) pending a tracking issue, while the fully covered PAR-01/PAR-04 went to full RELEASED. Decide whether PIN-01 should follow the same pattern (partially_approved_requirements, met=[AC3,AC4,AC5], unmet=[AC1,AC2], tracking=ISS-0672/GH-306) given the AC1/AC2 gap here was a deliberate, validated scope decision from Step 1b rather than a late discovery -- note this distinction explicitly in your decision rationale, since it may or may not change the appropriate release marking relative to the batch-3 precedent.\n\nAlso independently confirm the two known/tracked non-blocking issues (ISS-0678/GH-720, ISS-0680/GH-722) are genuinely pre-existing/out-of-scope and not silently masking a real gap in this batch's own acceptance criteria.\n\nCheck whether NFR benchmarks (zig build bench) are applicable to this batch's own surface -- PAR-05/PAR-06 touch the event/reconstruction query path directly, so unlike batch-3's PAR-01..04 (which batch-3 correctly found NFR-not-applicable), this batch may need NFR-01 (API latency) / NFR-04 (10,000-event replay) checked given PAR-06 changes the reconstruction query itself. Verify applicability yourself rather than assuming either way.",
+    "acceptance_criteria": [
+      "Every MUST AC for PAR-05 (5), PAR-06 (6), PIN-02 (5) independently verified against real test evidence, not just the report's claims",
+      "PIN-01 AC3/AC4/AC5 independently verified; AC1/AC2 scope decision explicitly addressed with a release-marking rationale (RELEASED vs tested-with-known-gap) referencing the batch-3 precedent",
+      "NFR/benchmark applicability to PAR-05/PAR-06 explicitly checked and reasoned, not assumed",
+      "docs/status/release-stage16-<date>-WF02-batch-4-20260811.yaml written per the batch-3 precedent's format",
+      "Explicit approved_requirements / partially_approved_requirements / not_approved_requirements lists",
+      "Any NEW incidental defect found is filed as its own ISS + GitHub issue and forwarded to the global queue -- not fixed inline"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Independent verification complete for PAR-05, PAR-06, PIN-01, PIN-02. Release decision: PARTIAL. PAR-06 and PIN-02 APPROVED in full (all ACs implemented, tested, independently re-run: par06-reconstruction 5/5, pin02 5/5). PAR-05 and PIN-01 partially approved: PAR-05's 5 GIVEN/WHEN/THEN ACs are met (independently re-run 6/6, including confirming an in-batch rework of AC5's reconcileOrRollback(), ISS-0681/GH-724) but its trailing events_legacy retention/archival-integration sentence has zero implementation, newly filed as ISS-0686/GH-733. PIN-01's committed scope this batch (AC3/AC4/AC5) is met (independently re-run 9/9, 0 assertion failures, confirming both the ISS-0679/GH-721 VariableSchemaViolation fix and the ISS-0683/GH-727 AC4 double-free fix hold); AC1/AC2 remain unimplemented, a deliberate Step-1/1b-validated scope decision tracked under ISS-0672/GH-306 -- given the same partially_approved_requirements marking as batch-3's PAR-02/PAR-03 precedent despite the different (deliberate vs. discovered) provenance, since the release marking tracks whether MUST ACs are met, not why they are unmet. Confirmed ISS-0678/GH-720 and ISS-0680/GH-722 are genuinely pre-existing/out-of-scope via gh issue view and live reproduction, not masking a new gap. Determined NFR-04 (10,000-event replay) is applicable to PAR-06's changed reconstruction query path but the existing zig build bench 'replay_10000_ms' target measures an unrelated synthetic table scan, never calling reconstruction.reconstructInstance() -- filed as new incidental issue ISS-0685/GH-732 rather than treating the benchmark's green result as validating NFR-04 for this batch. Two new incidental defects filed this session (ISS-0685/GH-732 NFR-04 benchmark fidelity gap; ISS-0686/GH-733 PAR-05 events_legacy archival-integration gap), both registered locally, on GitHub, and added to the global queue.",
+    "artifacts_out": [
+      "docs/status/release-stage16-WF02-batch-4-20260811.yaml",
+      "docs/issues/ISS-0685.json",
+      "docs/issues/ISS-0686.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0685",
+        "severity": "MINOR",
+        "description": "zig build bench's NFR-04 'replay_10000_ms' target measures a synthetic nfr_bench_events table scan, not reconstruction.reconstructInstance()'s real PAR-06 bounded query. Filed, GitHub issue #732, queued.",
+        "affected_requirement": "PAR-06"
+      },
+      {
+        "id": "ISS-0686",
+        "severity": "MAJOR",
+        "description": "PAR-05's trailing AC sentence (events_legacy retention/archival integration with PAR-03's PartitionRetention.runArchivalAging()) has zero implementation. Filed, GitHub issue #733, queued.",
+        "affected_requirement": "PAR-05"
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 6): mark PAR-06 and PIN-02 RELEASED in full. Mark PAR-05 and PIN-01 as tested-with-known-gap (not unqualified RELEASED) in requirement_status.yaml per the partially_approved_requirements detail in docs/status/release-stage16-WF02-batch-4-20260811.yaml (PAR-05 tracking ISS-0686/GH-733; PIN-01 tracking ISS-0672/GH-306, with the scope_marking_rationale explicitly noting PIN-01's gap was a deliberate Step-1b-validated scope decision, not a late discovery, even though the release marking pattern matches batch-3's PAR-02/PAR-03 precedent). Record ISS-0678/GH-720, ISS-0680/GH-722, ISS-0685/GH-732, ISS-0686/GH-733 as open, non-blocking tracked issues."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T06:07:02Z",
+  "completed_at": "2026-08-12T06:26:13Z"
+}

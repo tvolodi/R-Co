@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0680",
+  "title": "PIN-01: PinResolver.resolve() leaks allocator-owned PinnedVersion fields on every error path after Step 3/AC3/AC4",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "memory safety",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/722",
+  "requirement_ids": ["PIN-01"],
+  "summary": "src/engine/pin_resolver.zig's PinResolver.resolve() allocates each PinnedVersion's resolved_id/version (and, for the variable_schema entry, ref) via the caller's long-lived allocator parameter, not the function's local arena. The ONLY cleanup for these allocator-owned strings is in the SUCCESS path (the loop building the final 'owned' slice, which explicitly frees them after duplicating). Every error return before that point -- validateVariableSchema()'s VariableSchemaViolation, applyPinOverrides()'s UnresolvedPinOverride, and any PoolExhausted/TransactionFailed from either -- returns immediately via 'try', leaking every allocator-owned field already stored in pins.items at that point. Confirmed live via Zig's DebugAllocator: tests/integration/pin01_ac345_resolution_test.zig's TC-PIN-01-04 (an UnresolvedPinOverride case) reports 13 leaked allocations.",
+  "root_cause": {
+    "type": "missing_errdefer_cleanup",
+    "details": "resolve()'s arena (arena.deinit() via defer) only frees the arena's OWN allocations (the ArrayList backing storage, extractStringField's service_id copies) -- it has no effect on allocator-owned memory. No errdefer or equivalent covers the same cleanup the success-path loop performs, on any of the function's several early-return error paths after at least one PinnedVersion has been appended."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-12T03:02:17Z",
+  "resolved_at": null,
+  "prevention": [
+    "Add an errdefer immediately after pins starts being populated that walks pins.items and frees each entry's allocator-owned fields the same way the success path's cleanup loop already does, mirroring the errdefer pattern already used later in the same function around the 'owned' allocation.",
+    "When a function separates an arena allocator (for transient/local state) from a caller-supplied allocator (for returned/long-lived state) inside the same loop, audit every early-return path for whether caller-allocator-owned state accumulated so far needs explicit cleanup -- the arena's own defer does not cover it."
+  ]
+}

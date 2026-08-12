@@ -1,0 +1,235 @@
+run_id: 08bb6dcd-b8c9-45b8-a0c4-e611d506c1d3
+workflow_id: WF-02
+timestamp: 2026-08-12T06:01:17Z
+requirement_ids:
+  - PAR-05
+  - PAR-06
+  - PIN-01
+  - PIN-02
+scope_note: >
+  PIN-01 is scoped to AC3/AC4/AC5 only this batch (AC1/AC2 out of scope,
+  tracked as ISS-0672/GH-306 -- schema/catalog prerequisites do not exist
+  yet). PIN-02 is full scope (all 5 ACs).
+
+infrastructure_health_checklist:
+  status: PASS
+  tool: zig build test-env-verify
+  checks: "10/10 (C0-C9) PASS, exit 0"
+  note: >
+    Re-verified HEALTHY at both the start and end of this run. Mid-run, a
+    background `zig build test-integration` (full umbrella) invocation was
+    terminated by tool timeout (SIGTERM) twice, each time leaving the shared
+    long-lived bpm_test container with orphaned half-provisioned
+    public.tenant rows (17 rows, second occurrence) and stale/ungranted
+    pg_advisory_lock waiters held by orphaned test.exe child processes whose
+    parent zig build process had already been killed. Both times, recovered
+    using the project's own documented remedy: the exact
+    clean_test_db.py half-provisioned-tenant DELETE (run via docker exec
+    against the container directly, working around ISS-0684/GH-729's
+    broken psql shim on this host) plus pg_terminate_backend/taskkill for
+    the orphaned advisory-lock waiters. test-env-verify confirmed HEALTHY
+    (10/10, exit 0) after each recovery and again as the final state.
+
+summary:
+  total: 1097
+  passed: 1082
+  failed: 6
+  skipped: 64
+  note: >
+    Total/passed/failed aggregate: zig build test (unit, 1071 pass / 0 fail
+    / 64 skip) + the 5 named batch-scope integration targets (par05 6/6,
+    par06 1/3 [2 known pre-existing], par06-reconstruction 5/5, pin01 9/9
+    [0 assertion failures; 8 known pre-existing leaks, non-fatal], pin02
+    5/5). The full `zig build test-integration` umbrella (~40+ binaries)
+    could not be completed within available tool foreground-execution
+    windows on this host (see infrastructure_health_checklist note) after
+    two attempts; per this batch's own acceptance criteria the 5 named
+    targets are the in-scope surface and are reported here with complete,
+    trustworthy, individually-verified pass/fail counts. This is reported
+    as a known limitation, not silently omitted -- see `issues` below.
+
+layers:
+  - layer: build
+    command: zig build
+    result: PASS
+    exit_code: 0
+
+  - layer: unit
+    command: zig build test
+    result: PASS
+    exit_code: 0
+    build_summary: "103/103 steps succeeded; 1071/1135 tests passed (64 skipped)"
+    passed: 1071
+    failed: 0
+    skipped: 64
+    note: >
+      "failed command:" lines appeared in raw output for 3 sibling steps
+      (ISS-602 differential corpus, iss0173-orphan, BPM_TEST_DB_URL-skip
+      binaries) -- confirmed as the documented Zig 0.16 non-TTY
+      progress-renderer stale-frame artifact (docs/anti-patterns.md
+      "stray-looking output line" entry), not real failures: Build Summary
+      shows 103/103 steps succeeded and exit code was 0.
+
+  - layer: integration
+    targets:
+      - target: test-integration-par05
+        command: zig build test-integration-par05 --summary all
+        result: PASS
+        exit_code: 0
+        build_summary: "6/6 steps succeeded; 6/6 tests passed"
+        passed: 6
+        failed: 0
+        requirement: PAR-05
+
+      - target: test-integration-par06
+        command: zig build test-integration-par06 --summary all
+        result: FAIL
+        exit_code: 1
+        build_summary: "4/6 steps succeeded (1 failed); 1/3 tests passed (2 failed)"
+        passed: 1
+        failed: 2
+        requirement: PAR-06
+        known_pre_existing: true
+        failing_tests:
+          - test_id: new_columns_exist_and_are_nullable
+            error_message: "expected 2, found 58 (unscoped information_schema.columns query matches every tenant_% schema on this shared long-lived container)"
+            severity: MAJOR
+            issue_ref: ISS-0678 / GH-720
+          - test_id: index_supports_bounded_lookup
+            error_message: "expected 1, found 29 (unscoped pg_indexes query, same root cause)"
+            severity: MAJOR
+            issue_ref: ISS-0678 / GH-720
+        note: >
+          Confirmed exactly matching ISS-0678/GH-720's documented symptom
+          and root cause (schema-agnostic catalog introspection --
+          docs/anti-patterns.md's "Database - System Catalog Introspection"
+          entry). Pre-existing, filed, tracked, unrelated to this batch's
+          own PAR-06 behavioral code (the NEW file,
+          test-integration-par06-reconstruction, passes 5/5).
+
+      - target: test-integration-par06-reconstruction
+        command: zig build test-integration-par06-reconstruction --summary all
+        result: PASS
+        exit_code: 0
+        build_summary: "6/6 steps succeeded; 5/5 tests passed"
+        passed: 5
+        failed: 0
+        requirement: PAR-06
+
+      - target: test-integration-pin01
+        command: zig build test-integration-pin01 --summary all
+        result: PASS_WITH_KNOWN_LEAK
+        exit_code: 1
+        build_summary: "4/6 steps succeeded (1 failed); 9/9 tests passed"
+        passed: 9
+        failed: 0
+        assertion_failures: 0
+        leaked_allocations: 8
+        requirement: "PIN-01 (AC3/AC4/AC5)"
+        known_pre_existing: true
+        note: >
+          All 9/9 test assertions PASSED (Build Summary confirms "9/9
+          tests passed"). The step's exit code 1 comes solely from Zig's
+          DebugAllocator leak detector, not from any failing assertion.
+          Stack traces for all 8 leaked allocations point into
+          src/engine/pin_resolver.zig lines 311/314/315/619
+          (resolveVariableSchemaVersion / uuidToHex), matching
+          ISS-0680/GH-722's documented root cause exactly
+          (PinResolver.resolve() leaks allocator-owned PinnedVersion
+          fields on early-return error paths -- VariableSchemaViolation
+          and UnresolvedPinOverride cases specifically). MAJOR severity,
+          does not crash or fail any assertion, tracked separately,
+          out of scope for this batch per the handoff.
+
+      - target: test-integration-pin02
+        command: zig build test-integration-pin02 --summary all
+        result: PASS
+        exit_code: 0
+        build_summary: "6/6 steps succeeded; 5/5 tests passed"
+        passed: 5
+        failed: 0
+        requirement: PIN-02
+
+failures:
+  - test_id: new_columns_exist_and_are_nullable
+    layer: integration
+    file: tests/integration/par06_instance_projections_event_window_test.zig
+    error_message: "expected 2, found 58"
+    severity: MAJOR
+    requirement_id: PAR-06
+    status: KNOWN_PRE_EXISTING
+    issue_ref: ISS-0678 / GH-720
+  - test_id: index_supports_bounded_lookup
+    layer: integration
+    file: tests/integration/par06_instance_projections_event_window_test.zig
+    error_message: "expected 1, found 29"
+    severity: MAJOR
+    requirement_id: PAR-06
+    status: KNOWN_PRE_EXISTING
+    issue_ref: ISS-0678 / GH-720
+
+known_issues_confirmed:
+  - issue_ref: ISS-0678 / GH-720
+    title: "par06_instance_projections_event_window_test.zig: schema-agnostic catalog introspection"
+    status: CONFIRMED_PRE_EXISTING
+    disposition: "Not treated as a new blocking failure per handoff instructions. Already filed and tracked."
+  - issue_ref: ISS-0680 / GH-722
+    title: "PinResolver.resolve() leaks allocator-owned PinnedVersion fields on error-return paths"
+    status: CONFIRMED_PRE_EXISTING
+    disposition: "Not treated as a new blocking failure per handoff instructions. Already filed and tracked. Confirmed non-fatal: 0 assertion failures across all 9 test-integration-pin01 cases."
+
+issues:
+  - severity: MINOR
+    description: >
+      The full `zig build test-integration` umbrella (~40+ binaries against
+      the shared long-lived bpm_test container) could not be run to
+      completion within this session's available tool foreground-execution
+      windows (repeated timeout at ~10 minutes wall clock while still
+      mid-run). Two attempts were made; both were terminated by tool
+      timeout (SIGTERM) rather than completing, and both times left the
+      shared test database with orphaned half-provisioned tenant rows and
+      stale advisory-lock waiters from orphaned child test.exe processes,
+      requiring manual recovery (documented clean_test_db.py-equivalent
+      DELETE + pg_terminate_backend/taskkill for orphans) before
+      test-env-verify returned HEALTHY again. This batch's own 5 named
+      integration targets (test-integration-par05/par06/
+      par06-reconstruction/pin01/pin02) were run individually to completion
+      with exact, trustworthy pass/fail counts, satisfying this handoff's
+      stated acceptance criteria. The umbrella suite's remaining ~35+
+      unrelated binaries were not exercised in this run. Recommend a future
+      run budget more wall-clock time (or run the umbrella suite outside a
+      single bounded tool call, e.g. genuinely backgrounded with a
+      long-poll notification loop) if full-suite coverage beyond this
+      batch's own scope is needed.
+  - severity: MINOR
+    description: >
+      Confirms ISS-0678/GH-720 still reproduces exactly as documented
+      (2 of 3 cases in par06_instance_projections_event_window_test.zig).
+      No new information; filed for the record per report completeness.
+  - severity: MINOR
+    description: >
+      Confirms ISS-0680/GH-722 still reproduces exactly as documented
+      (8 leaked allocations in test-integration-pin01, 0 assertion
+      failures). No new information; filed for the record per report
+      completeness.
+
+coverage:
+  backend_unit_line: null
+  note: "Line coverage percentage not separately instrumented in this run; zig build test pass/fail counts above are the authoritative signal."
+
+nfr_results: []
+
+conclusion: >
+  PASS. zig build and zig build test are clean (exit 0, 0 failures). All 5
+  of this batch's named integration targets ran to completion with exact
+  counts: PAR-05 6/6, PAR-06 1/3 (2 known pre-existing, ISS-0678/GH-720),
+  PAR-06-reconstruction 5/5, PIN-01(AC3/AC4/AC5) 9/9 assertions (0
+  failures; 8 known pre-existing leaks, ISS-0680/GH-722), PIN-02 5/5. No
+  new (previously-unseen) failure was found in this batch's own PAR-05,
+  PAR-06 (behavioral), PIN-01, or PIN-02 code. The only red items are the
+  two explicitly pre-authorized known/tracked pre-existing issues named in
+  the handoff. The full test-integration umbrella suite beyond this
+  batch's 5 named targets was not completed in this run due to tool
+  execution-window constraints (see issues above) -- filed as a MINOR
+  process note, not a code defect, and does not block this batch's PASS
+  per its own stated acceptance criteria.

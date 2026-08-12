@@ -78,6 +78,19 @@ pub const StoreError = error{
     /// resolved by the next plat_partition_maintenance run (PAR-02) rather
     /// than a caller input error.
     PartitionMissingForWrite,
+    /// PAR-06 AC3: instance_projections.first_event_at/.last_event_at is NULL
+    /// for the requested instance_id when a bounded reconstruction read is
+    /// attempted. NOT a terminal failure by design — callers should perform
+    /// the one-time repair scan (repairEventWindow()) and retry. Surfaced as
+    /// a typed error rather than a silent unbounded fallback so a caller that
+    /// forgets to repair cannot silently regress to an unbounded scan.
+    ReconstructionWindowMissing,
+    /// PAR-06 AC5: a bounded-reconstruction call site was invoked without a
+    /// resolvable first_event_at/last_event_at pair (distinct from
+    /// ReconstructionWindowMissing's NULL-columns-in-the-DB case — this is a
+    /// caller that bypassed the window lookup step entirely). Refused before
+    /// any query executes.
+    UnboundedReconstructionRefused,
 };
 
 // ---------------------------------------------------------------------------
@@ -183,6 +196,15 @@ pub const RetentionPolicyUpsertParams = struct {
     policy: RetentionPolicyMode,
     keep_days: ?u32 = null,
     keep_count: ?u32 = null,
+};
+
+/// PAR-06: the resolved [first_event_at, last_event_at) bound for a single
+/// instance's reconstruction query, in UTC microseconds. last_event_at_us
+/// already carries the design's +1 microsecond upper-bound adjustment, so
+/// callers use a plain exclusive `<` comparison.
+const EventWindow = struct {
+    first_event_at_us: i64,
+    last_event_at_us: i64,
 };
 
 pub const RetentionPolicyViolation = struct {
@@ -853,16 +875,32 @@ pub const Store = struct {
             };
         }
 
-        // Step 5: UPDATE instance_projections (last_event_seq, updated_at). (DB-03)
+        // Step 5: UPDATE instance_projections (last_event_seq, updated_at,
+        // PAR-06 AC4's first_event_at/last_event_at window columns). (DB-03)
+        // $3 is the SAME created_at the just-inserted events/events_ephemeral
+        // row received (RETURNING created_at_us, read into
+        // inserted_created_at_us_text above) — converted from UTC-microseconds
+        // bigint text to timestamptz via to_timestamp(), matching the
+        // conversion the large-payload side-table INSERT immediately above
+        // already performs for the same value. first_event_at uses COALESCE
+        // so it is set exactly once, on the instance's first append (PAR-06
+        // design doc, "Store.append() extension"); last_event_at is
+        // unconditionally overwritten on every append and always carries the
+        // +1 microsecond upper-bound adjustment AT WRITE TIME, so the bounded
+        // reconstruction query can use a plain exclusive `<` comparison.
         // Parameterised — no interpolation. (security)
         conn.exec(
             \\UPDATE instance_projections
-            \\SET last_event_seq = $1, updated_at = NOW()
+            \\SET last_event_seq  = $1,
+            \\    updated_at      = NOW(),
+            \\    first_event_at  = COALESCE(first_event_at, to_timestamp($3::bigint / 1000000.0)),
+            \\    last_event_at   = to_timestamp($3::bigint / 1000000.0) + INTERVAL '1 microsecond'
             \\WHERE instance_id = $2
         ,
             &.{
                 intToStr(param_alloc, sequence_number) catch return StoreError.TransactionFailed,
                 uuidToHex(param_alloc, params.instance_id) catch return StoreError.TransactionFailed,
+                inserted_created_at_us_text,
             },
         ) catch {
             conn.exec("ROLLBACK", &.{}) catch {};
@@ -1193,6 +1231,232 @@ pub const Store = struct {
     }
 
     // -----------------------------------------------------------------------
+    // reconstructBounded (PAR-06 AC1, AC2, AC3, AC5, AC6)
+    // -----------------------------------------------------------------------
+
+    /// Time-bounded instance reconstruction: reads instance_projections'
+    /// first_event_at/last_event_at window, performs the one-time repair scan
+    /// if either is NULL (PAR-06 AC3), then issues the bounded query against
+    /// events (and events_archive if the instance's window crosses an
+    /// archived month, PAR-06 AC2) so PostgreSQL's partition pruning applies
+    /// (PAR-06 AC1). This is THE reconstruction entry point PAR-06 AC5's
+    /// refusal rule binds — src/engine/reconstruction.zig's
+    /// reconstructInstance() is this store method's caller (see the design
+    /// doc's Open questions §1); Store.read()/Store.readHistory() remain
+    /// available for their existing non-reconstruction callers (e.g. API-05's
+    /// history endpoint, an admin/debug listing) per PAR-06's Error taxonomy
+    /// note that AC5's refusal rule targets reconstruction call sites
+    /// specifically, not every unbounded read in this file.
+    ///
+    /// The repair-and-retry is performed internally — the caller always
+    /// receives the final, successful result (PAR-06 design doc, Open
+    /// questions §4: "Store absorbing retry-shaped internal mechanics" is
+    /// this codebase's established convention, c.f. append()'s own duplicate-
+    /// detection fallback).
+    ///
+    /// Returns InstanceNotFound if instance_id does not exist.
+    /// All SQL uses $N placeholders — no string interpolation. (security)
+    pub fn reconstructBounded(
+        self: *Store,
+        allocator: std.mem.Allocator,
+        instance_id: Uuid,
+        tenant_id: []const u8,
+    ) StoreError![]EventRecord {
+        var param_arena = std.heap.ArenaAllocator.init(allocator);
+        defer param_arena.deinit();
+        const param_alloc = param_arena.allocator();
+
+        const conn = self.pool.acquire() catch |err| switch (err) {
+            PoolError.ExhaustedPool => return StoreError.PoolExhausted,
+            else => return StoreError.TransactionFailed,
+        };
+        defer self.pool.release(conn);
+
+        const instance_hex = uuidToHex(param_alloc, instance_id) catch return StoreError.TransactionFailed;
+
+        const window = try self.lookupOrRepairEventWindowInternal(allocator, conn, instance_hex);
+
+        // Bounded query (PAR-06 AC1, AC5, AC6): $2/$3 are never omitted or
+        // defaulted to an open range — an unbounded reconstruction request is
+        // a refused query form, not a slow one. window.first_event_at_us /
+        // window.last_event_at_us are always non-null by this point (either
+        // read directly, or just repaired above), so this call can never
+        // itself construct an unbounded query — UnboundedReconstructionRefused
+        // exists for a caller that bypasses this lookup entirely (see the
+        // Error taxonomy doc comment on StoreError.UnboundedReconstructionRefused).
+        const rows = conn.query(
+            allocator,
+            \\SELECT event_id, instance_id, event_type, payload, actor_id,
+            \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
+            \\       sequence_number, idempotency_key, metadata, global_seq
+            \\FROM events
+            \\WHERE instance_id = $1
+            \\  AND tenant_id = $4::uuid
+            \\  AND created_at >= to_timestamp($2::bigint / 1000000.0)
+            \\  AND created_at <  to_timestamp($3::bigint / 1000000.0)
+            \\ORDER BY sequence_number ASC
+        ,
+            &.{
+                instance_hex,
+                intToStr(param_alloc, window.first_event_at_us) catch return StoreError.TransactionFailed,
+                intToStr(param_alloc, window.last_event_at_us) catch return StoreError.TransactionFailed,
+                tenant_id,
+            },
+        ) catch return StoreError.TransactionFailed;
+        var mrows = rows;
+        defer mrows.deinit();
+
+        // PAR-06 AC2: merge in events_archive using the SAME bounded predicate
+        // — reuses readHistory()'s existing two-table UNION ALL shape rather
+        // than inventing a new merge mechanism. events_archive may not exist
+        // in every environment (unit-test / not-yet-migrated schemas); a
+        // relation-not-found query failure there is treated as "no archived
+        // rows" rather than propagated, matching reconstruction.zig's own
+        // existing fallback pattern for the identical situation.
+        const archive_rows = conn.query(
+            allocator,
+            \\SELECT event_id, instance_id, event_type, payload, actor_id,
+            \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
+            \\       sequence_number, idempotency_key, metadata, global_seq
+            \\FROM events_archive
+            \\WHERE instance_id = $1
+            \\  AND tenant_id = $4::uuid
+            \\  AND created_at >= to_timestamp($2::bigint / 1000000.0)
+            \\  AND created_at <  to_timestamp($3::bigint / 1000000.0)
+            \\ORDER BY sequence_number ASC
+        ,
+            &.{
+                instance_hex,
+                intToStr(param_alloc, window.first_event_at_us) catch return StoreError.TransactionFailed,
+                intToStr(param_alloc, window.last_event_at_us) catch return StoreError.TransactionFailed,
+                tenant_id,
+            },
+        ) catch null;
+
+        if (archive_rows == null or archive_rows.?.rows.len == 0) {
+            if (archive_rows) |ar| {
+                var mar = ar;
+                mar.deinit();
+            }
+            return rowsToEventRecords(allocator, mrows.rows);
+        }
+
+        var mar = archive_rows.?;
+        defer mar.deinit();
+
+        // Merge by sequence_number (PAR-06 AC2 / XC-05 determinism) — both
+        // sides are already individually ORDER BY sequence_number ASC, so a
+        // simple merge-by-comparison over the two already-sorted row sets
+        // produces the fully merged, sequence_number-ordered output.
+        const merged = mergeEventRowsBySequence(allocator, mrows.rows, mar.rows) catch return StoreError.TransactionFailed;
+        return merged;
+    }
+
+    /// Internal: read instance_projections.first_event_at/.last_event_at for
+    /// instance_id; if either is NULL, perform PAR-06 AC3's one-time repair
+    /// scan (MIN/MAX(created_at) over events WHERE instance_id = $1) and
+    /// UPDATE the columns (guarded by `WHERE first_event_at IS NULL` so a
+    /// concurrent repair for the same instance cannot overwrite a window a
+    /// racing caller already repaired), then re-read.
+    fn lookupOrRepairEventWindowInternal(
+        self: *Store,
+        allocator: std.mem.Allocator,
+        conn: *db.Conn,
+        instance_hex: []const u8,
+    ) StoreError!EventWindow {
+        _ = self;
+        var param_arena = std.heap.ArenaAllocator.init(allocator);
+        defer param_arena.deinit();
+        const param_alloc = param_arena.allocator();
+
+        const check_row = conn.query(
+            allocator,
+            \\SELECT 1, (EXTRACT(EPOCH FROM first_event_at) * 1000000)::bigint,
+            \\       (EXTRACT(EPOCH FROM last_event_at) * 1000000)::bigint
+            \\FROM instance_projections WHERE instance_id = $1
+        ,
+            &.{instance_hex},
+        ) catch return StoreError.TransactionFailed;
+        var mcheck = check_row;
+        defer mcheck.deinit();
+
+        if (mcheck.rows.len == 0) return StoreError.InstanceNotFound;
+
+        const row = mcheck.rows[0];
+        const first_raw: ?[]const u8 = if (row.len > 1) row[1] else null;
+        const last_raw: ?[]const u8 = if (row.len > 2) row[2] else null;
+
+        if (first_raw != null and last_raw != null) {
+            return EventWindow{
+                .first_event_at_us = std.fmt.parseInt(i64, first_raw.?, 10) catch return StoreError.TransactionFailed,
+                .last_event_at_us = std.fmt.parseInt(i64, last_raw.?, 10) catch return StoreError.TransactionFailed,
+            };
+        }
+
+        // PAR-06 AC3 repair scan: ONE full scan of events for this instance,
+        // ONE time, to backfill the window columns for a previously-
+        // unrepaired instance.
+        const scan_row = conn.query(
+            allocator,
+            \\SELECT (EXTRACT(EPOCH FROM MIN(created_at)) * 1000000)::bigint,
+            \\       (EXTRACT(EPOCH FROM MAX(created_at)) * 1000000)::bigint
+            \\FROM events WHERE instance_id = $1
+        ,
+            &.{instance_hex},
+        ) catch return StoreError.TransactionFailed;
+        var mscan = scan_row;
+        defer mscan.deinit();
+
+        if (mscan.rows.len == 0 or mscan.rows[0].len < 2 or mscan.rows[0][0] == null or mscan.rows[0][1] == null) {
+            // No events at all for this instance (should not occur in
+            // practice — an instance always has at least INSTANCE_STARTED —
+            // but handled explicitly rather than propagating a NULL bound
+            // into the caller's query as an unbounded scan).
+            return StoreError.ReconstructionWindowMissing;
+        }
+
+        const min_us = std.fmt.parseInt(i64, mscan.rows[0][0].?, 10) catch return StoreError.TransactionFailed;
+        const max_us = std.fmt.parseInt(i64, mscan.rows[0][1].?, 10) catch return StoreError.TransactionFailed;
+
+        conn.exec(
+            \\UPDATE instance_projections
+            \\SET first_event_at = to_timestamp($2::bigint / 1000000.0),
+            \\    last_event_at  = to_timestamp($3::bigint / 1000000.0) + INTERVAL '1 microsecond'
+            \\WHERE instance_id = $1
+            \\  AND first_event_at IS NULL
+        ,
+            &.{
+                instance_hex,
+                intToStr(param_alloc, min_us) catch return StoreError.TransactionFailed,
+                intToStr(param_alloc, max_us) catch return StoreError.TransactionFailed,
+            },
+        ) catch return StoreError.TransactionFailed;
+
+        // Re-read to pick up either this caller's own UPDATE or a concurrent
+        // repair's already-advanced value (equivalent per the design's
+        // concurrency note — both computations read the same underlying rows).
+        const reread = conn.query(
+            allocator,
+            \\SELECT (EXTRACT(EPOCH FROM first_event_at) * 1000000)::bigint,
+            \\       (EXTRACT(EPOCH FROM last_event_at) * 1000000)::bigint
+            \\FROM instance_projections WHERE instance_id = $1
+        ,
+            &.{instance_hex},
+        ) catch return StoreError.TransactionFailed;
+        var mreread = reread;
+        defer mreread.deinit();
+
+        if (mreread.rows.len == 0 or mreread.rows[0].len < 2 or mreread.rows[0][0] == null or mreread.rows[0][1] == null) {
+            return StoreError.ReconstructionWindowMissing;
+        }
+
+        return EventWindow{
+            .first_event_at_us = std.fmt.parseInt(i64, mreread.rows[0][0].?, 10) catch return StoreError.TransactionFailed,
+            .last_event_at_us = std.fmt.parseInt(i64, mreread.rows[0][1].?, 10) catch return StoreError.TransactionFailed,
+        };
+    }
+
+    // -----------------------------------------------------------------------
     // pointInTime (ES-06)
     // -----------------------------------------------------------------------
 
@@ -1393,6 +1657,66 @@ fn rowsToEventRecords(allocator: std.mem.Allocator, rows: [][]?[]u8) StoreError!
         records[i] = rowToEventRecord(allocator, rows[i], "") catch return StoreError.TransactionFailed;
     }
     return records;
+}
+
+/// PAR-06 AC2: merge two already-sequence_number-ordered row sets (events,
+/// events_archive) into one EventRecord slice ordered by sequence_number ASC.
+/// Both inputs are individually ORDER BY sequence_number ASC (guaranteed by
+/// the SQL that produced them), so a standard two-pointer merge produces a
+/// fully sorted, byte-identical-to-unbounded-merge result (PAR-06 AC2 /
+/// XC-05 determinism) without re-sorting either side.
+fn mergeEventRowsBySequence(
+    allocator: std.mem.Allocator,
+    events_rows: [][]?[]u8,
+    archive_rows: [][]?[]u8,
+) StoreError![]EventRecord {
+    const total = events_rows.len + archive_rows.len;
+    const records = allocator.alloc(EventRecord, total) catch return StoreError.TransactionFailed;
+    var written: usize = 0;
+    errdefer {
+        for (records[0..written]) |rec| {
+            allocator.free(rec.event_type);
+            allocator.free(rec.payload);
+            allocator.free(rec.metadata);
+        }
+        allocator.free(records);
+    }
+
+    var ei: usize = 0;
+    var ai: usize = 0;
+    while (ei < events_rows.len and ai < archive_rows.len) {
+        const e_seq = rowSequenceNumber(events_rows[ei]);
+        const a_seq = rowSequenceNumber(archive_rows[ai]);
+        if (e_seq <= a_seq) {
+            records[written] = rowToEventRecord(allocator, events_rows[ei], "") catch return StoreError.TransactionFailed;
+            written += 1;
+            ei += 1;
+        } else {
+            records[written] = rowToEventRecord(allocator, archive_rows[ai], "") catch return StoreError.TransactionFailed;
+            written += 1;
+            ai += 1;
+        }
+    }
+    while (ei < events_rows.len) : (ei += 1) {
+        records[written] = rowToEventRecord(allocator, events_rows[ei], "") catch return StoreError.TransactionFailed;
+        written += 1;
+    }
+    while (ai < archive_rows.len) : (ai += 1) {
+        records[written] = rowToEventRecord(allocator, archive_rows[ai], "") catch return StoreError.TransactionFailed;
+        written += 1;
+    }
+
+    return records;
+}
+
+/// Parse column 6 (sequence_number, per the SELECT column list both
+/// reconstructBounded() query branches share) as i64. Defaults to 0 (sorts
+/// first) on a malformed/missing value rather than failing the whole merge —
+/// mirrors rowToEventRecord()'s own existing "parse or 0" tolerance.
+fn rowSequenceNumber(row: []?[]u8) i64 {
+    if (row.len <= 6) return 0;
+    const s = row[6] orelse return 0;
+    return std.fmt.parseInt(i64, s, 10) catch 0;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,70 @@
+{
+  "handoff_id": "1a767404-3f5b-4173-914f-39cc2049ab37",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-4-20260811/step-03b-test-design-validator.json",
+  "created_at": "2026-08-12T04:24:14Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-05",
+      "PAR-06",
+      "PIN-01",
+      "PIN-02"
+    ],
+    "related_handoff_ids": [
+      "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+      "dffa6e06-c532-4022-a9ab-2797e5bab4c7",
+      "bfd75fb4-1567-4757-8e49-be5cda7d1ed4"
+    ],
+    "artifacts_in": [
+      "tests/specs/PAR-05.md",
+      "tests/specs/PAR-06.md",
+      "tests/specs/PIN-01.md",
+      "tests/specs/PIN-02.md",
+      "tests/integration/par05_online_partition_conversion_test.zig",
+      "tests/integration/par06_reconstruction_bounded_test.zig",
+      "tests/integration/par06_instance_projections_event_window_test.zig",
+      "tests/integration/pin01_ac345_resolution_test.zig",
+      "tests/integration/pin01_service_catalog_tenant_scope_test.zig",
+      "tests/integration/pin01_test_root.zig",
+      "tests/integration/pin02_instance_started_pinned_versions_test.zig",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER's Step 3 output (handoff 67a40957-17d3-41d0-b28c-f9edd4870c4d, commit 0d123515) per your standard checklist, with important context: since that commit, BACKEND-DEV ran two further rework cycles (commits 29314c89, 01d9f6a3) that fixed 4 of the 5 correctness defects the new tests originally exposed (ISS-0676 PAR-05 constraint, ISS-0677 PAR-06 window maintenance, ISS-0679 PIN-01 AC3 schema validation, ISS-0681 PAR-05 AC5 reconciliation) -- all now verified green live by BACKEND-DEV and independently re-reviewed and PASSed by SECURITY-REVIEWER (commit 99fbc164, second re-review). Two residual issues remain OPEN and correctly out of scope for this batch (both are genuine test-fixture bugs / pre-existing defects unrelated to this batch's own production code, not test-design gaps): ISS-0678/GH-720 (schema-agnostic catalog query in the pre-existing par06_instance_projections_event_window_test.zig) and ISS-0682/GH-725 (wrong-case string literal in TC-PAR-06-05's hand-crafted fixture). ISS-0680/GH-722 (PinResolver.resolve() memory leak on error paths) is also open and out of scope (memory hygiene, not an AC correctness failure).\n\nYour validation must independently confirm, not just trust the chain of claims:\n1. Every MUST AC in scope (PAR-05 all 5, PAR-06 all 6, PIN-02 all 5, PIN-01 AC3/AC4/AC5) has a real, passing integration test NOW (re-run the targets yourself against BPM_TEST_DB_URL from .env -- do not just read BACKEND-DEV's claimed counts).\n2. PIN-01.md correctly documents the AC1/AC2 out-of-scope decision with ISS-0672/GH-306.\n3. Known stale test-source comments: tests/integration/par06_reconstruction_bounded_test.zig has two \"KNOWN FAILING ... ISS-0677\" comment blocks (around TC-PAR-06-01 and TC-PAR-06-05) that are now stale since ISS-0677 was fixed in commit 29314c89 -- TC-PAR-06-01 should now pass cleanly; TC-PAR-06-05 still fails but for the DIFFERENT, unrelated reason ISS-0682 documents (casing bug), not the original ISS-0677 cause. Flag this as a MINOR finding requiring a documentation-only comment update (not a rework-worthy defect) -- the comments should be corrected to avoid misleading a future reader about why TC-PAR-06-05 is still red.\n4. Confirm test-case counts in each spec match implemented test counts.\n5. Confirm fixture isolation, no SkipZigTest on in-scope MUST tests, parameterized SQL only.\n6. Run python tools/lint_test_isolation.py tests/integration and python tools/lint_handoffs.py -- both must exit 0.\n\nRead .env directly for BPM_TEST_DB_URL -- do not hardcode ports.\n\nREWORK 1 RE-VERIFICATION (post your own FAIL, commit 666e49d0): your Step 3b FAIL correctly\nidentified ISS-0683/GH-727 (PIN-01 AC4 double-free crash) as a genuine BLOCKER. It has since\nbeen fixed: BACKEND-DEV (new handoff e0439a14-f763-4e97-b2a4-b4250e455f81, commit 51583e25)\nduped the override's resolved_id/version via the caller allocator before storing into the\npin, instead of storing a dangling std.json-ParseResult-owned slice. SECURITY-REVIEWER\nindependently re-reviewed and PASSed the fix (commit f9efb490, REWORK 3 FINAL on that gate).\nBACKEND-DEV also fixed the 3 stale \"KNOWN FAILING\" test comments you flagged as MINOR, AND\nfixed ISS-0682/GH-725 (TC-PAR-06-05's uppercase fixture literal) as a bonus, closing that\nGitHub issue.\n\nPlease re-verify, independently (do not just trust these claims):\n1. Re-run zig build test-integration-pin01 against real Postgres (BPM_TEST_DB_URL from .env)\n   at least once, ideally twice with different seeds like your original run -- confirm 9/9\n   clean pass, 0 crashes, 0 \"Invalid free\" panics. This is the specific defect that failed\n   your last verdict.\n2. Re-run test-integration-par06-reconstruction -- confirm it is now 5/5 (BACKEND-DEV claims\n   the ISS-0682 fixture fix brought TC-PAR-06-05 to green too, up from the 4/5 you observed).\n3. Spot-check that the 3 stale comment blocks (par06_reconstruction_bounded_test.zig above\n   TC-PAR-06-01 and TC-PAR-06-05; pin01_ac345_resolution_test.zig above TC-PIN-01-01) no\n   longer reference already-fixed issues as if they were still open.\n4. Re-confirm the other 3 targets (test-integration-par05, test-integration-par06 migration\n   slice, test-integration-pin02) are still clean -- they should be untouched by this cycle,\n   but confirm rather than assume.\n5. Run python tools/lint_test_isolation.py tests/integration and python tools/lint_handoffs.py\n   -- both must exit 0.\n\nIf everything is now genuinely clean, PASS and route to TEST-RUNNER (Step 4). If anything is\nstill red, FAIL again with specific evidence -- do not pass on the strength of the prior\nagents' claims alone.\n",
+    "acceptance_criteria": [
+      "Independent re-run confirms every in-scope MUST AC has a genuinely passing test against real Postgres",
+      "PIN-01.md AC1/AC2 scoping documented with correct ISS/GH reference",
+      "Stale KNOWN FAILING comments in par06_reconstruction_bounded_test.zig identified and dispositioned (MINOR finding, not a blocking rework)",
+      "Spec vs implemented test-case counts verified matching",
+      "lint_test_isolation.py and lint_handoffs.py both exit 0",
+      "PASS/FAIL/PARTIAL verdict with specific evidence per item, not a general impression",
+      "Any NEW incidental defect found is filed as its own ISS + GitHub issue and forwarded to the global queue -- not fixed inline"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 re-verification of WF02-batch-4-20260811 Step 3b, independently re-run against real Postgres (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test) rather than trusted from claims. test-integration-pin01: run twice with different random seeds (0x71e962bf, 0xd80a0ba5) -- BOTH runs 9/9 tests passed, 0 crashes, 0 \"Invalid free\" panics. The ISS-0683/GH-727 double-free defect that failed my prior verdict is confirmed fixed. Both runs show 8 pre-existing allocator leaks on TC-PIN-01-02 (3) and TC-PIN-01-04 (5) error paths -- these match ISS-0680/GH-722 (PinResolver.resolve() memory leak on error paths, already OPEN and explicitly out of scope for this batch), not the double-free. test-integration-par06-reconstruction: 5/5 pass (up from 4/5 previously) -- ISS-0682/GH-725 fixture casing fix confirmed working. test-integration-par05: 6/6 pass, clean, unchanged. test-integration-par06 (migration-slice, par06_instance_projections_event_window_test.zig): 1/3 pass, 2 fail (\"expected 2, found 54\" and \"expected 1, found 27\") -- this is the pre-existing, already-tracked ISS-0678/GH-720 (schema-agnostic information_schema/pg_indexes queries matching every tenant schema in the shared test DB), confirmed still OPEN on GitHub and explicitly named as out-of-scope for this batch in the handoff task; not a regression introduced by this cycle. test-integration-pin02: 5/5 pass, clean, unchanged. Spec-vs-implemented test-case counts verified: par05 6/6, par06-reconstruction 5/5, pin01 9/9 (6 in pin01_ac345_resolution_test.zig + 3 in pin01_service_catalog_tenant_scope_test.zig via pin01_test_root.zig), pin02 5/5 -- all match. All 3 previously-flagged stale \"KNOWN FAILING\" comment blocks (par06_reconstruction_bounded_test.zig above TC-PAR-06-01 and TC-PAR-06-05; pin01_ac345_resolution_test.zig above TC-PIN-01-01/-02) now correctly document their issues as fixed (ISS-0677/GH-719 fixed in 29314c89; ISS-0679/GH-721 fixed in 29314c89; TC-PAR-06-05 correctly attributes its remaining/now-fixed failure to the distinct ISS-0682/GH-725 casing bug, not stale ISS-0677 text) -- none references an already-fixed issue as still open. python tools/lint_test_isolation.py tests/integration: exit 0 (\"OK -- 153 file(s) checked, no isolation issues\"). python tools/lint_handoffs.py: exit 0 (\"2560 handoffs checked -- 0 BLOCKER, 0 MAJOR, 1 MINOR, 291 ACKNOWLEDGED\", all pre-existing baselined entries unrelated to this handoff). No new incidental defects found; the one apparent anomaly (par06 migration-slice 2 failures) was verified to be the already-filed, already-OPEN ISS-0678/GH-720, not a new regression -- no new issue filed.",
+    "artifacts_out": [
+      "handoffs/WF02-batch-4-20260811/step-03b-test-design-validator.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-08-12T05:04:16Z",
+  "completed_at": "2026-08-12T05:09:15Z"
+}

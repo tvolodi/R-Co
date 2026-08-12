@@ -1,0 +1,99 @@
+# Migration + integration-test parameter file (Lego Type C)
+# Requirement: PAR-06 — Time-bounded instance reconstruction queries
+# Produced by: CODE-DESIGNER (WF02-batch-4-20260811, Step 01)
+# See: src/design/par-06-time-bounded-reconstruction.md for the full design — this
+# YAML covers ONLY the schema-shaped slice (the two new columns + supporting index).
+# The bounded-query shape, the append-time maintenance UPDATE, and the
+# ReconstructionWindowMissing repair path are Type E prose in that companion design
+# document — they are not expressible in this template's flat column-list schema.
+
+schema_version: 1
+migration_number: 1150   # next free number; current max at design time is
+                          # 1149_par03_retention_class.sql (confirmed via
+                          # `ls migrations/ | sort`). BACKEND-DEV: re-check this is
+                          # still free immediately before writing the file, in case
+                          # a sibling design in this same batch also claims 1150.
+name: par06_instance_projections_event_window
+requirement_ids: [PAR-06]
+purpose: |
+  Add two nullable TIMESTAMPTZ columns to instance_projections — first_event_at and
+  last_event_at — that bound every instance-reconstruction query by created_at so
+  PAR-01's partition pruning actually applies to reads keyed by instance_id (which
+  carries no pruning information on its own). Both columns are maintained by
+  Store.append() in the SAME transaction as every event insert (see the companion
+  Type E design's Public interface section for the exact UPDATE statement — this is
+  an application-code change, not expressible in this migration YAML). Left nullable
+  deliberately: a NULL pair on an existing instance triggers the design's
+  ReconstructionWindowMissing self-healing repair path rather than a migration-time
+  backfill, so this migration performs no data backfill of its own.
+
+tables:
+  - mode: alter
+    name: instance_projections
+    add_columns:
+      - name: first_event_at
+        type: "timestamptz"
+        not_null: false
+      - name: last_event_at
+        type: "timestamptz"
+        not_null: false
+    indexes:
+      - name: idx_instance_projections_event_window
+        columns: [instance_id, first_event_at, last_event_at]
+
+fixtures:
+  - name: instance_id
+    kind: uuid
+  - name: definition_id
+    kind: uuid
+  - name: seed_instance
+    kind: sql_setup
+    sql: |
+      INSERT INTO instance_projections (instance_id, definition_id, status, started_at, updated_at)
+      VALUES ($1, $2, 'ACTIVE', now(), now())
+      ON CONFLICT (instance_id) DO NOTHING;
+    params: [instance_id, definition_id]
+
+test_cases:
+  - name: new_columns_exist_and_are_nullable
+    description: instance_projections carries first_event_at/last_event_at, both nullable.
+    requirement_ref: PAR-06
+    arrange: ""
+    act: |
+      // SELECT column_name, is_nullable FROM information_schema.columns
+      // WHERE table_name = 'instance_projections'
+      //   AND column_name IN ('first_event_at', 'last_event_at')
+    assertions: |
+      // CUSTOM: assert both columns present, both is_nullable = 'YES'.
+
+  - name: pre_migration_instance_has_null_window
+    description: An instance row inserted before this migration's application-code
+      companion (Store.append()'s window maintenance) runs still has NULL columns —
+      the migration itself performs no backfill.
+    requirement_ref: PAR-06
+    arrange: |
+      // seed_instance already inserted with no first_event_at/last_event_at supplied
+    act: |
+      // SELECT first_event_at, last_event_at FROM instance_projections WHERE instance_id = fx.instance_id
+    assertions: |
+      // CUSTOM: assert both columns are NULL for a row inserted without them.
+
+  - name: index_supports_bounded_lookup
+    description: idx_instance_projections_event_window exists and covers
+      (instance_id, first_event_at, last_event_at) for the bounded-query lookup
+      the companion Type E design's Public interface performs before every
+      reconstruction.
+    requirement_ref: PAR-06
+    arrange: ""
+    act: |
+      // SELECT indexdef FROM pg_indexes WHERE indexname = 'idx_instance_projections_event_window'
+    assertions: |
+      // CUSTOM: assert index exists and its definition covers instance_id, first_event_at, last_event_at in that order.
+
+rollback_strategy: |
+  Forward-only. Both columns are nullable with no DEFAULT, so no data-preservation
+  step is needed to add them. If they must be removed, a subsequent migration must
+  first confirm no in-flight reconstruction code path still reads them (i.e. the
+  companion Type E design's Store.append()/bounded-query changes have themselves
+  been reverted first), then drop the columns and the index in one migration —
+  never drop ahead of the application-code revert.

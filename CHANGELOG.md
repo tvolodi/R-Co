@@ -4,6 +4,133 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-12
 
+### Split release — Stage 16 batch 4: PAR-06, PIN-02 RELEASED in full; PAR-05, PIN-01 TESTED but withheld (known gaps)
+
+> **KNOWN GAPS — NOT GLOSSED OVER:**
+> - [ISS-0686 / GH-733](https://github.com/tvolodi/R-Co/issues/733) (MAJOR, **OPEN**) — PAR-05's
+>   trailing AC sentence ("`events_legacy` is retained read-only for one full
+>   `archive_after_months` cycle and then attached to `events_archive`; it is never emptied row by
+>   row") has zero implementation. `PartitionConverter` (`src/db/partition_conversion.zig`) has no
+>   code path handing `events_legacy` off to PAR-03's `PartitionRetention.runArchivalAging()` —
+>   confirmed by reading both modules in full and grepping each for the other's identifiers.
+>   AC1–AC5 (the conversion pipeline itself: parent creation, resumable backfill, transactional
+>   swap, reconciliation-with-rollback) are fully implemented and independently re-run 6/6 passing.
+> - [ISS-0672 / GH-306](https://github.com/tvolodi/R-Co/issues/306) (OPEN) — PIN-01's AC1/AC2
+>   (`service_catalog` version/status resolution, PLC-01 module-catalog resolution) are
+>   unimplemented: `service_catalog` has no version/status column and PLC-01 (process module
+>   catalog) does not exist in this codebase. Unlike a typical partial-release gap, this was a
+>   **deliberate, validated scope-phasing decision** made explicitly by CODE-DESIGNER at Step 1
+>   (`src/design/pin-01-dependency-version-resolution.md` Scoping note and Open questions #1/#2)
+>   and confirmed PASS by CODE-DESIGN-VALIDATOR at Step 1b *knowing* AC1/AC2 were out of scope —
+>   not a late discovery or quality escape. That provenance does not change the release marking:
+>   PIN-01 is one requirement with 5 MUST-priority AC bullets, and 2 of 5 have no implementation
+>   behind them regardless of how early or deliberately the deferral was decided. AC3/AC4/AC5 are
+>   fully implemented and independently re-run 9/9 passing.
+>
+> Because both gaps are unconditional bullets in MUST-priority requirements' Acceptance Criteria
+> lists, this project's own governing rule (`docs/anti-patterns.md`: "'will be addressed later' is
+> not an acceptance criterion") means PAR-05 and PIN-01 cannot be marked unqualified `RELEASED`.
+> **PAR-06 and PIN-02 have no comparable gap and are RELEASED in full below.** Full reasoning:
+> `docs/status/release-stage16-WF02-batch-4-20260811.yaml`.
+
+- **PAR-06 — Time-bounded instance reconstruction queries — RELEASED.**
+  `migrations/1150_par06_instance_projections_event_window.sql` adds the `instance_projections`
+  window columns; `src/event_store/store.zig`'s `Store.append()` maintains
+  `first_event_at`/`last_event_at` in the same transaction as every append (`last_event_at`
+  advances to `created_at + 1 microsecond` so the final event is included by the exclusive `<`
+  comparison), with a `ReconstructionWindowMissing` repair-and-retry path for legacy rows.
+  `src/engine/reconstruction.zig`'s `reconstructInstance()` bounds its query by that window against
+  both the live partitioned `events` table and `events_archive`, pruning to exactly one partition
+  per instance month. All 6 ACs have real implementation and passing, independently re-run test
+  evidence (AC1–AC4/AC6 via direct tests; AC5's unbounded-refusal is refusal-by-construction — no
+  caller-supplied time predicate exists on the public API at all — the same reasoning class as
+  batch-3's PAR-04 AC3).
+- **PIN-02 — Pin set recorded in INSTANCE_STARTED — RELEASED.** `migrations/1151_pin02_instance_started_pinned_versions.sql`
+  widens `INSTANCE_STARTED`'s registered JSON Schema for `pinned_versions[]`.
+  `InstanceStore.create()` (`src/engine/instance.zig`) now calls `PinResolver.resolve()` before the
+  instance row insert and serializes the resolved pin set into the `INSTANCE_STARTED` payload in
+  the same transaction — the event log is the sole record of record (no side table). All 5 ACs
+  covered and independently re-run 5/5 passing.
+- **PAR-05 — Online conversion to a partitioned event log — TESTED, withheld from RELEASED.**
+  `src/db/partition_conversion.zig` implements coverage validation, `events_part` creation,
+  `plat_event_idempotency` backfill, a resumable per-month backfill loop (idempotent via
+  `ON CONFLICT DO NOTHING`), a transactional swap under `lock_timeout`, and
+  `reconcileOrRollback()` with inverse-rename on mismatch. AC1–AC5 covered and independently
+  re-run 6/6 passing. **The trailing AC sentence on `events_legacy` retention/archival handoff to
+  PAR-03 is unimplemented — see the gap box above.** Status held at `TESTED`, not `RELEASED`.
+- **PIN-01 — Dependency version resolution at instance start (AC3/AC4/AC5 scope) — TESTED,
+  withheld from RELEASED.** `src/engine/pin_resolver.zig` implements `variable_schema`
+  resolution/validation, `pin_overrides` application, and deterministic `(kind, ref)` ordering via
+  `std.mem.sort`. AC3–AC5 covered and independently re-run 9/9 passing. **AC1/AC2
+  (`service_catalog`/PLC-01 catalog resolution) are out of scope this batch by deliberate design
+  decision — see the gap box above.** Status held at `TESTED`, not `RELEASED`.
+- **Security fix (tenant-scoping, caught by the pipeline as intended):** SECURITY-REVIEWER's
+  Step 2c review **FAILED** the original implementation on a cross-tenant data leak (INV-1):
+  `pin_resolver.zig`'s `resolveServiceCatalogRef()` filtered `service_catalog` by
+  `bpm_effective_tenant_id()`, a SQL function already dropped by the `LEGACY_RLS`-to-`SCHEMA`
+  cutover migrations — every `SERVICE_TASK` instance-start would fail outright on a fully-migrated
+  schema, and the mechanism could never correctly tenant-scope under `SCHEMA` mode regardless.
+  Fixed in commit `23eff3b2`: `tenant_id` is now threaded through `ResolutionInput` and bound as a
+  parameterized `$2::uuid` against `service_catalog.owner_tenant_id`, sourced from the existing
+  threadlocal `tenant_context` populated by auth middleware (never client-supplied). A new
+  regression test (`pin01_service_catalog_tenant_scope_test.zig`, 3/3 passing) proves cross-tenant
+  denial, not just a same-tenant happy path. Re-reviewed **PASS** in commit `39d13534`.
+- **Test-design-validator catch (memory safety, caught by the pipeline as intended):**
+  TEST-DESIGN-VALIDATOR's Step 3b independent re-run **FAILED** a genuine BLOCKER
+  memory-safety defect ([ISS-0683/GH-727](https://github.com/tvolodi/R-Co/issues/727)): a
+  double-free / "Invalid free" panic in `pin_resolver.zig`'s `applyPinOverrides()`/
+  `applyOverrideToPins()` on PIN-01 AC4's accepting/happy path — crashing every real
+  instance-start that supplied a matching pin override. Fixed in commit `51583e25`:
+  `applyOverrideToPins()` now `allocator.dupe()`s the incoming `resolved_id`/`version` before
+  storing into the pin (freeing what it replaces) instead of storing a dangling
+  `std.json`-`ParseResult`-owned slice that `resolve()`'s cleanup loop later double-freed.
+  Re-reviewed PASS in commit `f9efb490`; TEST-DESIGN-VALIDATOR re-verified PASS afterward.
+- **Further rework surfaced by TEST-DESIGNER's own fail-first tests (Step 3), fixed before this
+  batch reached TESTED:** 5 additional own-AC BLOCKER/MAJOR defects were discovered against this
+  batch's own implementation, none of them test-design gaps —
+  [ISS-0676/GH-718](https://github.com/tvolodi/R-Co/issues/718) (PAR-05 `events_part` missing its
+  `(event_id, created_at)` unique constraint, blocking backfill/swap `ON CONFLICT`),
+  [ISS-0677/GH-719](https://github.com/tvolodi/R-Co/issues/719) (PAR-06 AC4 —
+  `InstanceStore.create()` and 11 other raw `INSERT INTO events` call sites in `instance.zig` never
+  set `instance_projections.first_event_at`/`last_event_at`),
+  [ISS-0679/GH-721](https://github.com/tvolodi/R-Co/issues/721) (PIN-01 AC3 —
+  `validateVariableSchema()` misused `registry.validatePayloadAgainstSchema()`'s whole-object
+  contract against a single scalar field value, rejecting every conforming scalar variable),
+  [ISS-0681/GH-724](https://github.com/tvolodi/R-Co/issues/724) (PAR-05 AC5 —
+  `reconcileOrRollback()`'s mismatch-detection self-join never matched any row because
+  `backfillOneMonth()` never populated `plat_partition_catalog` and `swap()` never updated
+  `parent_table` on rename), and ISS-0683/GH-727 (the double-free above). Required 3 further
+  BACKEND-DEV rework cycles (final commit `01d9f6a3`), 2 further SECURITY-REVIEWER re-reviews, and
+  1 TEST-DESIGN-VALIDATOR FAIL before genuinely passing — all independently re-confirmed fixed by
+  RELEASE-VALIDATOR's own live re-run, not merely by reading the issue files' presence.
+- **RELEASE-VALIDATOR's own additional finding (Step 5, not caught by any earlier gate):**
+  ISS-0686/GH-733 (the PAR-05 `events_legacy` archival-integration gap in the gap box above) — no
+  local ISS number or GitHub issue existed for this specific gap prior to Step 5's own independent
+  reading of `src/db/partition_conversion.zig` and `src/scheduler/partition_retention.zig`; the
+  design document's own "Open questions #5" had flagged it only in prose.
+- **Non-blocking tracked issues carried forward (open, do not gate this batch):**
+  [ISS-0678/GH-720](https://github.com/tvolodi/R-Co/issues/720) (MAJOR — pre-existing
+  schema-agnostic `information_schema`/`pg_indexes` query in a pre-existing PAR-06 test file,
+  unrelated to this batch's own behavioral code),
+  [ISS-0680/GH-722](https://github.com/tvolodi/R-Co/issues/722) (MAJOR — `PinResolver.resolve()`
+  leaks allocator-owned `PinnedVersion` fields on every error-return path; recommend prioritizing
+  since it affects every production `UnresolvedPinOverride`/`VariableSchemaViolation` rejection,
+  not just this batch's scope), and
+  [ISS-0685/GH-732](https://github.com/tvolodi/R-Co/issues/732) (MINOR — the NFR-04
+  `replay_10000_ms` benchmark measures a synthetic standalone table scan, not PAR-06's real
+  bounded-reconstruction query path; a benchmark-fidelity gap, not a PAR-06 functional defect).
+- **Infrastructure issue found and fixed inline mid-run (unrelated to PAR-05/06/PIN-01/02's own
+  code, filed per No-Issue-Left-Local-Only):** 109 orphaned `public.tenant` rows
+  (`storage_mode=SCHEMA`, no matching `tenant_schemas` row — the ISS-0605/GH-537 half-provisioned
+  pattern) accumulated on the shared `bpm_test` container. `tools/clean_test_db.py`'s designed
+  self-heal reported exit 0 success but silently did nothing, root-caused to a **new** tooling
+  defect ([ISS-0684/GH-729](https://github.com/tvolodi/R-Co/issues/729), MAJOR): the script
+  resolves `psql` via `shutil.which("psql")`, which on this host resolves to a WinGet `.cmd` shim
+  that silently drops its `-c` SQL argument, making every mutating `run_psql()` call a silent
+  no-op. Unblocked by running the exact same DELETE SQL directly via `docker exec` into the
+  container's own real `psql`, bypassing the broken host-side shim — removed exactly the 109
+  orphan rows. `zig build test-env-verify`: HEALTHY, 10/10 checks PASS afterward.
+
 ### Added
 
 - ISS-0670 (GH-711): Implement PAR-02 AC5. Add Store.appendPlatform() to src/event_store/store.zig

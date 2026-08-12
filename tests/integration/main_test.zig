@@ -218,6 +218,10 @@ const mig01_platform_migrations_control_table_integration = @import("platform_mi
 // (commit-with-DDL transaction boundary, advisory-lock contention, continue
 // on failure).
 const mig02_mig03_migration_fanout_integration = @import("migration_fanout_test.zig");
+// WF02-batch-4-20260811 REWORK 1 — PIN-01 SECURITY-REVIEWER INV-1 fix:
+// PinResolver.resolveServiceCatalogRef() tenant scoping (bound ::uuid param,
+// not the dropped bpm_effective_tenant_id() SQL function).
+const pin01_rework1_tenant_scope_integration = @import("pin01_service_catalog_tenant_scope_test.zig");
 
 comptime {
     _ = std;
@@ -321,6 +325,7 @@ comptime {
     _ = gh512_t010_regression_integration;
     _ = mig01_platform_migrations_control_table_integration;
     _ = mig02_mig03_migration_fanout_integration;
+    _ = pin01_rework1_tenant_scope_integration;
 }
 
 test "integration placeholder" {

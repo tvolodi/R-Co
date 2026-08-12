@@ -1,0 +1,434 @@
+stage: "Stage 16"
+date: "2026-08-12T06:17:57Z"
+run_id: WF02-batch-4-20260811
+workflow_id: WF-02
+workflow_step: "05"
+decision: PARTIAL
+
+requirement_ids:
+  - PAR-05
+  - PAR-06
+  - PIN-01
+  - PIN-02
+
+prior_gates:
+  design_validation_step_1b: PASS
+  security_review_step_2c: >
+    PASS after two rework cycles: rework 1 fixed a PIN-01 tenant-scope INV-1 BLOCKER
+    (resolveServiceCatalogRef() filtered by a dropped SQL function, commit 23eff3b2,
+    re-reviewed PASS commit 39d13534); a separate rework cycle (commit 51583e25, ISS-0683/GH-727)
+    fixed a PIN-01 AC4 double-free ("Invalid free" panic) on the pin_overrides success path,
+    re-reviewed PASS commit f9efb490.
+  test_design_validation_step_3b: PASS (re-verified after the ISS-0683/GH-727 double-free rework)
+  test_execution_step_4: "PASS (handoff 525faa14-8203-480d-95c2-d80f619b4668)"
+  test_report: tests/reports/report-2026-08-12-WF02-batch-4-20260811.yaml
+
+independent_verification_method: >
+  Did not trust the handoff chain's claims at face value. (1) Read the exact AC wording for
+  PAR-05/PAR-06/PIN-01/PIN-02 directly from docs/requirements.yaml (not from tests/specs/
+  paraphrases) -- lines 12077-12168. (2) Read tests/specs/PAR-05.md, PAR-06.md, PIN-01.md,
+  PIN-02.md in full, including their Scoping notes, Prior-coverage traceability, Implementation
+  notes, and Fail-first confirmations. (3) Unset any stale BPM_TEST_DB_URL/BPM_DB_URL from the
+  shell (none was actually set this session; confirmed clean), read .env directly
+  (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test), confirmed via `docker ps` that
+  r-co-db_test-1 (port 5434) is the correct healthy container for this checkout and
+  r-co-2-db_test-1 (port 5453) is a separate sibling checkout's container, not this one's. Ran
+  `zig build test-env-verify` myself: HEALTHY, 10/10 checks PASS. (4) Re-ran, myself, all 5
+  named batch-specific integration targets plus the full build and unit suite against the live
+  db_test container, exporting BPM_TEST_DB_URL/BPM_DB_URL explicitly in each shell invocation
+  (each Bash tool call is a fresh shell; build.zig test steps read the env var directly, they do
+  not auto-load .env the way test-env-verify's own Python helper does):
+    - zig build (exit 0, clean, no output)
+    - zig build test-integration-par05 --summary all: 6/6 tests passed (matches report exactly)
+    - zig build test-integration-par06-reconstruction --summary all: 5/5 tests passed (matches
+      report exactly)
+    - zig build test-integration-pin01 --summary all: 9/9 tests passed, 0 assertion failures, 8
+      leaked allocations all stack-traced into src/engine/pin_resolver.zig lines 311/314/315
+      (resolveVariableSchemaVersion/uuidToHex) -- matches ISS-0680/GH-722's documented signature
+      exactly, and critically: 0 "Invalid free" panics, confirming ISS-0683/GH-727's double-free
+      rework (commit 51583e25) is genuinely fixed, not just claimed fixed in the GitHub comment.
+    - zig build test-integration-pin02 --summary all: 5/5 tests passed (matches report exactly)
+    - zig build test-integration-par06 --summary all (the pre-existing migration-slice file, NOT
+      in this batch's own scope but re-run to independently confirm the report's "known
+      pre-existing" characterization): 1/3 passed, 2 failed with unscoped
+      information_schema.columns/pg_indexes row counts (my own run observed 8/4 rows on this
+      session's accumulated tenant-schema count vs the report's 58/29 -- the absolute counts
+      differ because they are a function of how many tenant_% schemas have accumulated on the
+      shared long-lived container at run time, but the FAILURE MODE is identical: an unscoped
+      catalog-introspection query counting every tenant schema instead of just tenant_default,
+      exactly ISS-0678/GH-720's documented root cause).
+  (5) Ran `gh issue view 720` and `gh issue view 722`: both OPEN, both match this session's own
+  live reproduction exactly (confirmed genuinely pre-existing, not masking a new gap in this
+  batch's own PAR-06/PIN-01 acceptance criteria). (6) Ran `gh issue view 306` (the PIN-01
+  requirement-tracking issue) and its comment thread: confirmed the AC1/AC2 schema-gap finding
+  (service_catalog has no version/status column; PLC-01 module catalog table does not exist) is
+  a genuine CODE-DESIGNER finding from Step 1, logged as ISS-0672 and referenced correctly (one
+  comment self-corrects an initial ISS-0680 typo). (7) Ran `gh issue list --search "ISS-0672"`:
+  confirmed GH #727 exists as a SEPARATE, already-resolved-in-this-run issue (the double-free
+  above), distinct from ISS-0672's schema-gap tracking -- not a naming collision. (8) Checked
+  git log (39d13534 back through 9ac7c2eb, f3e02764, 23eff3b2, 51583e25, f9efb490, 666e49d0,
+  6e9e82c5, 42bfa289): confirmed the full rework chain for both the INV-1 tenant-scope fix and
+  the AC4 double-free fix actually happened on this branch, in the order the GitHub comments and
+  test reports claim, not merely asserted. Also found, via `gh issue view 724` (surfaced while
+  searching for any existing PAR-05 events_legacy tracking issue), that PAR-05 AC5's
+  reconcileOrRollback() had its OWN separate rework cycle this batch (ISS-0681/GH-724: the
+  mismatch-detection self-join never matched any row because backfillOneMonth() never populated
+  plat_partition_catalog and swap() never updated parent_table on rename) -- confirmed fixed by
+  reading src/db/partition_conversion.zig's own inline comments at the fix site (lines 435-457,
+  488-500) referencing ISS-0681/GH-724 by name, cross-checked against git log commit 01d9f6a3
+  ("PAR-05 AC5 reconciliation fix (REWORK 3/3, ISS-0681/GH-724)"), and independently re-confirmed
+  live: this session's own test-integration-par05 run (6/6 passed) includes TC-PAR-05-06, the
+  exact case GH-724 documents as failing before the fix. (9) Checked
+  docs/BPM_Platform_Functional_Requirements.md for NFR-01/NFR-04 applicability and read
+  tests/bench/bench.zig's measureReplayMs() in full (the NFR-04 "replay_10000_ms" benchmark
+  target): confirmed it seeds and scans a STANDALONE nfr_bench_events table by (run_id, seq) and
+  never calls src/engine/reconstruction.zig's reconstructInstance() or issues PAR-06's actual
+  bounded query against the real partitioned events table -- ran `zig build bench` myself after
+  starting the stopped r-co-db-1 dev container (all 5 NFR targets passed=true,
+  replay_10000_ms actual=34.283ms), but this result does NOT validate PAR-06's real
+  reconstruction path since the benchmark never exercises it. Filed as a new incidental issue
+  (ISS-0685/GH-732) rather than silently treating "bench passed" as validating PAR-06's NFR-04
+  compliance. (10) Read src/db/partition_conversion.zig and src/scheduler/partition_retention.zig
+  in full and grepped each for the other's identifiers: confirmed events_legacy has genuinely
+  zero integration with PAR-03's archival-aging machinery -- filed as ISS-0686/GH-733 (see
+  blocking_issues below), since no existing tracking issue covered this specific gap (only the
+  design document's own prose "Open questions #5" flagged it).
+
+acceptance_criteria_audit:
+  par_05:
+    title: Online conversion to a partitioned event log
+    ac1: "covered (TC-PAR-05-01: parent created alongside; live events table confirmed still
+      accepting appends via a post-createParent() insert)"
+    ac2: "covered (TC-PAR-05-02: PartitionRangeGap on a zero-row events table; confirmed
+      events_part does not exist afterward)"
+    ac3: "covered (TC-PAR-05-03: backfillAllMonths() run twice against the same months list;
+      row count identical after the re-run, ON CONFLICT DO NOTHING absorbing duplicates --
+      fail-first confirmed by temporarily removing the ON CONFLICT clause and observing a real
+      23505 duplicate-key failure)"
+    ac4: "covered (TC-PAR-05-04: swap() renames events->events_legacy and events_part->events
+      inside one transaction, verified via pg_class/pg_namespace)"
+    ac5: "covered, both halves (TC-PAR-05-05 passing path: matching counts, no inverse rename;
+      TC-PAR-05-06 failing path: a deliberately mismatched partition triggers
+      ConversionRowCountMismatch AND the inverse rename to events_part_failed/events_legacy->events,
+      verified via pg_class). NOTE: this AC had its own within-batch rework cycle (ISS-0681/
+      GH-724, REWORK 3/3, commit 01d9f6a3): reconcileOrRollback()'s self-join against
+      plat_partition_catalog originally never matched any row (backfillOneMonth() never
+      populated the catalog; swap() never updated parent_table on rename), so the
+      mismatch-detection loop silently no-opped and always returned success. Confirmed fixed by
+      reading the current implementation's inline fix-site comments plus this session's own live
+      re-run (6/6 passed, including TC-PAR-05-06 which is the exact case GH-724 documents as
+      failing pre-fix)."
+    ac6_trailing_sentence: >
+      NOT MET. Text: "events_legacy is retained read-only for one full archive_after_months
+      cycle and then attached to events_archive; it is never emptied row by row." Confirmed by
+      reading src/db/partition_conversion.zig in full: PartitionConverter has no code path that
+      touches PAR-03's PartitionRetention.runArchivalAging() or gives it any awareness of a
+      table named events_legacy as a distinct parent to age. This is an acknowledged
+      implementation gap, not a missing test -- tests/specs/PAR-05.md's own Coverage note states
+      this explicitly and traces it to the design document's own Open questions #5
+      ("flagged for REQ-ANALYST/CODE-DESIGNER follow-up when PAR-05 is actually implemented --
+      not blocking THIS design"). No local ISS/GitHub issue number existed for this specific gap
+      prior to this session's own search -- filed this session as ISS-0686/GH-733 (see
+      blocking_issues below) so the design's deferral note is now a tracked issue, not only prose.
+    verdict: >
+      PARTIAL -- AC1-AC5 (the 5 GIVEN/WHEN/THEN bullets) all have real implementation and
+      passing, non-vacuous test evidence, independently re-run and confirmed 6/6. The trailing
+      events_legacy-retention sentence is unimplemented, matching the pattern of a MUST
+      requirement with one unmet clause. See disposition below.
+
+  par_06:
+    title: Time-bounded instance reconstruction queries
+    ac1_bounded_query_and_pruning: "covered (TC-PAR-06-02: bounded query reads exactly both
+      committed events via reconstructInstance(); TC-PAR-06-03: EXPLAIN JSON plan shows exactly
+      one partition scanned for the instance's month, fail-first-confirmed by temporarily
+      removing the bound and observing every partition scanned)"
+    ac2_archive_merge: "covered (TC-PAR-06-05: one live-table event + one events_archive event
+      inside the window, reconstructInstance() reflects both, proving the same bounded predicate
+      applies to events_archive and results merge by sequence_number)"
+    ac3_reconstructionwindowmissing_repair: "covered (TC-PAR-06-04: NULL first_event_at/
+      last_event_at is repaired inline by a single MIN/MAX(created_at) scan inside
+      eventWindowForInstanceInTx(), confirmed by reading the implementation directly -- the
+      design's Open questions #4 clarifies this repair is internal/transparent rather than a
+      distinct returned error, which is what the test asserts against)"
+    ac4_last_event_at_same_transaction: "covered (TC-PAR-06-01: last_event_at advances in the
+      same transaction as Store.append(); first_event_at stays fixed per COALESCE) -- NOTE:
+      an incidental finding (ISS-0676, referenced in PIN-01/PAR-06 traceability but pre-existing
+      to this batch, already registered) documents that InstanceStore.create()'s own hand-rolled
+      INSTANCE_STARTED INSERT is one of 12 raw 'INSERT INTO events' call sites in instance.zig,
+      not all of which necessarily go through Store.append()'s window-maintenance UPDATE --
+      this is called out in the handoff task description as 'now covering all 12 instance.zig
+      call sites' being part of this batch's claimed scope; TC-PAR-06-01 exercises the
+      Store.append() path specifically (the shared window-maintenance UPDATE both
+      reconstructBounded() [dead] and reconstructInstance() [live] rely on), which is the one
+      this AC's text names ('every append'). Confirmed sufficient for this AC's own wording."
+    ac5_unbounded_refusal: "asserted architecturally, not directly tested by a new named test
+      case in this batch's two PAR-06 files -- reconstruction.reconstructInstance()'s only entry
+      point takes an instance_id and derives $2/$3 internally from
+      instance_projections.first_event_at/.last_event_at (confirmed by reading
+      reconstruction.zig: no caller-supplied time-predicate parameter exists on the public API
+      at all), so an 'unbounded reconstruction request' is not a form the API can even express --
+      refusal-by-construction rather than a runtime-checked refusal path. MINOR, acceptable:
+      the same reasoning class as batch-3's PAR-04 AC3 (a structural property verified by code
+      reading rather than a dedicated failing-input test), and no test asserts otherwise."
+    ac6_plus_one_microsecond: "covered (TC-PAR-06-01 and TC-PAR-06-02 together: last_event_at
+      advances to created_at + 1 microsecond, and the final/second event IS included by the
+      exclusive < comparison -- this is the same evidence PAR-06.md's own traceability cites)"
+    verdict: >
+      PASS -- all 6 ACs have real implementation and are covered by either a direct,
+      independently re-run passing test (AC1-AC4, AC6) or a sound structural/architectural
+      argument for AC5 consistent with this run's own precedent for that class of AC. The
+      pre-existing, unrelated par06_instance_projections_event_window_test.zig 2-test failure
+      (ISS-0678/GH-720) is confirmed genuinely pre-existing and outside this batch's own
+      behavioral code -- independently re-reproduced this session with a different absolute row
+      count (8/4 vs the report's 58/29) but an identical failure mechanism, which is exactly
+      what a schema-agnostic catalog-introspection bug on a shared, growing container predicts.
+
+  pin_01:
+    title: Dependency version resolution at instance start
+    scope_this_batch: "AC3, AC4, AC5 only -- AC1/AC2 explicitly out of scope, tracked ISS-0672/GH-306"
+    ac1_unresolvedcatalogref: "OUT OF SCOPE this batch. service_catalog has no version/status
+      column (confirmed via GH-306's own CODE-DESIGNER comment thread, itself independently
+      re-read this session) -- there is structurally no way to express the AC's literal trigger
+      condition against the current schema. Not implemented, not tested, by design."
+    ac2_unresolvedmoduleref: "OUT OF SCOPE this batch. PLC-01 (process module catalog) does not
+      exist in this codebase -- process_module_catalog is not a real table. Not implemented, not
+      tested, by design."
+    ac3_variableschemaviolation: "covered (TC-PIN-01-01 accepting half, TC-PIN-01-02 rejecting
+      half) -- both independently re-run and passing. NOTE: this AC's implementation had its own
+      BLOCKER-severity bug during this run (ISS-0679/GH-721, validateVariableSchema() misusing
+      registry.validatePayloadAgainstSchema()'s whole-object contract against a single scalar
+      field value, which would have made the accepting half fail universally) -- confirmed FIXED
+      by this session's own live re-run of test-integration-pin01 (9/9 passed, including
+      TC-PIN-01-01's accepting case), not merely by reading the ISS file's presence."
+    ac4_unresolvedpinoverride: "covered (TC-PIN-01-03 valid-override accept, TC-PIN-01-04
+      invalid-version reject) -- both independently re-run and passing. This AC's accepting half
+      (TC-PIN-01-03) is exactly the code path ISS-0683/GH-727's double-free panic was in: this
+      session's own live re-run confirms 0 'Invalid free' panics across 9/9 tests, independently
+      verifying the double-free rework (commit 51583e25) actually holds, not just that the
+      report claims it holds."
+    ac5_deterministic_ordering: "covered (TC-PIN-01-05: field-level byte-identity across two
+      resolve() calls, not merely sort-order, per the spec's own fail-first note that a
+      2-element fixture's ordering alone would not discriminate; TC-PIN-01-06: single-element
+      degenerate case) -- confirmed the std.mem.sort(PinnedVersion, owned, {}, pinLessThan) call
+      is real in src/engine/pin_resolver.zig:198, sorting by the (kind, ref) tuple PIN-01's AC5
+      text specifies."
+    verdict: >
+      PARTIAL by design -- AC3/AC4/AC5 (this batch's full committed scope) all have real
+      implementation and passing, independently re-run test evidence (9/9), including
+      confirmation that TWO BLOCKER/MAJOR-severity bugs discovered mid-run against this exact
+      AC surface (ISS-0679 VariableSchemaViolation false-positive, ISS-0683/GH-727 AC4
+      double-free) are genuinely fixed, not just claimed fixed. AC1/AC2 are unimplemented and
+      untested, tracked under ISS-0672/GH-306. See disposition below for the scope-marking
+      decision (this AC1/AC2 gap is NOT the same class of finding as batch-3's PAR-02 AC5/PAR-03
+      AC6 -- see rationale).
+
+  pin_02:
+    title: Pin set recorded in INSTANCE_STARTED
+    ac1_pinned_versions_count: "covered (TC-PIN-02-01: exactly 2 entries, one catalog_entry one
+      variable_schema, read directly from the events row's payload, not via any projection)"
+    ac2_rollback_on_append_failure: "covered (TC-PIN-02-02: a guaranteed PIN-01-stage
+      UnresolvedCatalogRef-shaped resolution failure leaves zero instance_projections rows and
+      zero events rows, confirmed by a direct zero-count query)"
+    ac3_event_log_is_record_of_record: "covered by construction and confirmed by code search
+      (TC-PIN-02-03: reads pinned_versions[] via a direct events table query as the test's ONLY
+      data source; grep of pin_resolver.zig/instance.zig for any pin-named side table returns no
+      matches -- re-verified this session)"
+    ac4_zero_catalog_module_references: "covered (TC-PIN-02-04: a definition with no
+      SERVICE_TASK/SUB_PROCESS nodes produces exactly one variable_schema entry end-to-end
+      through the real INSTANCE_STARTED payload, not just at the PinResolver.resolve() level)"
+    ac5_legal_source_values: "covered (TC-PIN-02-05: every entry's source is one of resolved/
+      override/inherited, verified directly against the fixture's two resolved-only entries)"
+    verdict: >
+      PASS -- all 5 ACs have real implementation and passing test evidence, independently
+      re-run this session (5/5), matching the report exactly.
+
+nfr_applicability:
+  nfr_01_02_general_latency_throughput: >
+    Applicable platform-wide, not specific to this batch's own new surface (PAR-05/PAR-06/PIN-01/
+    PIN-02 add no new HTTP endpoint). zig build bench's NFR-01 (p99 read 1.010ms, p99 write
+    2.586ms) and NFR-02 (append throughput 65369 events/sec) targets both pass their thresholds
+    by a wide margin, run live this session after starting the stopped r-co-db-1 dev container
+    (BPM_DB_URL target, port 5442) that zig build bench requires. These two targets are
+    unaffected by this batch's changes either way (no read/write API path changed) and are
+    reported for completeness, not as evidence specific to PAR-05/PAR-06.
+  nfr_04_reconstruction_replay_INAPPLICABLE_AS_MEASURED: >
+    PAR-06 changes the reconstruction query path itself (the bounded
+    "SELECT * FROM events WHERE instance_id = $1 AND created_at >= $2 AND created_at < $3"
+    predicate against the now-partitioned events table, plus the events_archive merge), which is
+    exactly the surface NFR-04 (docs/BPM_Platform_Functional_Requirements.md: "Replaying an
+    instance with up to 10,000 events SHALL complete in <=5 seconds") and EE-11 govern. Unlike
+    batch-3's PAR-01..04 (correctly found not-applicable -- no new HTTP surface, no reconstruction
+    query change), this batch's surface change means NFR-04 SHOULD be exercised.
+    However: read tests/bench/bench.zig's measureReplayMs() (the existing "replay_10000_ms"
+    target) in full and confirmed by grep that it seeds and scans a STANDALONE nfr_bench_events
+    table by (run_id, seq) -- it never calls src/engine/reconstruction.zig's
+    reconstructInstance() or eventWindowForInstanceInTx(), and never issues PAR-06's actual
+    bounded query against the real partitioned events table or events_archive. Ran zig build
+    bench live this session: all 5 targets report passed=true (replay_10000_ms
+    actual=34.283ms against the 5000ms threshold), but this number is NOT evidence about
+    PAR-06's real reconstruction path's latency under partition pruning or archive merge --
+    it measures an unrelated synthetic table scan that predates PAR-06 and was never updated to
+    exercise it. Treating the green "replay_10000_ms" result as satisfying NFR-04 for THIS batch
+    would be exactly the kind of unverified benchmark-label trust this handoff was written to
+    prevent. Filed as a new incidental issue (ISS-0685/GH-732, MINOR -- benchmark fidelity gap,
+    not a functional defect in PAR-06 itself) rather than silently accepted or silently ignored.
+    This batch's OWN integration tests (TC-PAR-06-02/-03/-04/-05, all independently re-run
+    passing) are real evidence the bounded query is correct and prunes partitions as designed;
+    what is missing is NFR-04's specific latency-at-10,000-events claim against the real code
+    path, which remains unverified by any benchmark after this batch, tracked via ISS-0685/GH-732.
+
+blocking_issues:
+  - id: ISS-0678
+    github_issue: "https://github.com/tvolodi/R-Co/issues/720"
+    severity: MAJOR
+    status: OPEN
+    scope: "par06_instance_projections_event_window_test.zig (pre-existing test file, NOT this
+      batch's own PAR-06 behavioral code)"
+    description: >
+      Schema-agnostic information_schema.columns/pg_indexes queries in a PRE-EXISTING test file
+      (from an earlier Step 2a, not this batch's new par06_reconstruction_bounded_test.zig) match
+      every accumulated tenant_% schema on the shared long-lived bpm_test container instead of
+      just tenant_default. Independently re-reproduced this session (8/4 rows observed vs the
+      report's 58/29 -- absolute counts vary with container schema accumulation, failure mode
+      identical). Confirmed genuinely pre-existing and unrelated to this batch's own PAR-06
+      changes: the NEW file, test-integration-par06-reconstruction, passes 5/5 independently.
+    disposition: "Does NOT block PAR-06's own release -- this batch's own PAR-06 behavioral
+      surface (the bounded query, archive merge, repair path, window maintenance) is fully
+      covered by test-integration-par06-reconstruction (5/5, independently re-run). Tracked
+      separately, does not gate this batch."
+  - id: ISS-0680
+    github_issue: "https://github.com/tvolodi/R-Co/issues/722"
+    severity: MAJOR
+    status: OPEN
+    scope: "PIN-01 (AC3/AC4 error paths, resolve())"
+    description: >
+      PinResolver.resolve() leaks allocator-owned PinnedVersion fields (resolved_id/version/ref)
+      on early-return error paths (VariableSchemaViolation, UnresolvedPinOverride,
+      PoolExhausted/TransactionFailed) -- confirmed via this session's own live re-run (8 leaked
+      allocations, 0 assertion failures, stack traces matching the issue's documented signature
+      exactly).
+    disposition: "Does NOT block PIN-01's AC3/AC4/AC5 release -- 0 assertion failures across
+      9/9 independently re-run tests confirms this is a resource leak on error paths, not a
+      functional/correctness defect. A production instance-start rejection leaks memory
+      proportional to SERVICE_TASK count per rejected request; tracked separately as MAJOR,
+      recommend prioritizing given it affects every UnresolvedPinOverride/VariableSchemaViolation
+      rejection in production, not just this batch's own scope."
+  - id: ISS-0672
+    github_issue: "https://github.com/tvolodi/R-Co/issues/306 (requirement issue's own comment thread)"
+    severity: "N/A (design-time scope decision, not a defect)"
+    status: OPEN
+    scope: "PIN-01 AC1, AC2"
+    description: >
+      service_catalog has no version/status column and PLC-01 (process module catalog) does not
+      exist in this codebase yet -- both are genuine, confirmed schema/table absences, not
+      implementation shortcuts. This scoping was made explicitly by CODE-DESIGNER at Step 1
+      (src/design/pin-01-dependency-version-resolution.md's Scoping note and Open questions
+      #1/#2) and confirmed PASS by CODE-DESIGN-VALIDATOR at Step 1b -- i.e. the design was
+      validated WITH this gap known and explicit, not discovered as a surprise during or after
+      implementation.
+    disposition: >
+      DOES block PIN-01 from being marked fully RELEASED as-is: AC1/AC2 are plain MUST-priority
+      bullets in PIN-01's Acceptance Criteria list, unconditionally worded ("GIVEN a SERVICE_TASK
+      reference that names no catalog entry with an active version, WHEN... THEN... returns HTTP
+      422 UnresolvedCatalogRef"), with zero implementation behind them. See rationale below for
+      why this still receives the same partially_approved_requirements marking as batch-3's
+      PAR-02/PAR-03 despite the different provenance of the gap.
+  - id: ISS-0685
+    github_issue: "https://github.com/tvolodi/R-Co/issues/732"
+    severity: MINOR
+    status: OPEN
+    scope: "NFR-04 benchmark fidelity (tests/bench/bench.zig), not PAR-06's own implementation"
+    description: >
+      zig build bench's NFR-04 "replay_10000_ms" target measures a synthetic standalone table
+      scan, not reconstruction.reconstructInstance()'s real PAR-06 bounded query. Filed this
+      session as a new incidental finding (see nfr_applicability above).
+    disposition: "Does NOT block this batch's release -- PAR-06's own integration tests already
+      provide real, independently re-run evidence the bounded query is correct; what's missing
+      is NFR-04's specific 10,000-event latency claim against the real path, which is a
+      benchmark-coverage gap, not a PAR-06 functional defect. Tracked for a future benchmark fix."
+  - id: ISS-0686
+    github_issue: "https://github.com/tvolodi/R-Co/issues/733"
+    severity: MAJOR
+    status: OPEN
+    scope: "PAR-05 (trailing AC sentence: events_legacy retention/archival integration)"
+    description: >
+      PAR-05's trailing AC sentence ("events_legacy is retained read-only for one full
+      archive_after_months cycle and then attached to events_archive; it is never emptied row by
+      row") has zero implementation. PartitionConverter (src/db/partition_conversion.zig) has no
+      code path that hands events_legacy off to PartitionRetention.runArchivalAging() (PAR-03)
+      after the archive_after_months cycle -- confirmed by reading both modules in full and
+      grepping each for the other's identifiers; no call site references the other.
+      events_legacy is left retained indefinitely with no automatic transition to events_archive
+      once its retention window elapses. Unlike ISS-0670/GH-711 (batch-3's precedent, which
+      already had a filed, numbered tracking issue by the time batch-3's RELEASE-VALIDATOR ran),
+      no local ISS number or GitHub issue was found for this specific gap when searched this
+      session (docs/issues/issue_index.json, gh issue search) -- the design document's own Open
+      questions #5 flagged it in prose but it had not yet been converted into a tracked issue.
+      Filed this session as part of this handoff's incidental-defect duty.
+    disposition: >
+      Blocks PAR-05 from unqualified full RELEASED status; does not block AC1-AC5 (the
+      conversion pipeline itself), which are independently re-run and confirmed working (6/6).
+      See partially_approved_requirements below. This mirrors batch-3's PAR-02 AC5/PAR-03 AC6
+      pattern closely enough (a MUST AC with genuinely zero implementation, not merely thin test
+      coverage) that the same partial-release treatment applies.
+
+approved_requirements:
+  - "PAR-06"
+  - "PIN-02"
+
+partially_approved_requirements:
+  - id: "PAR-05"
+    met: ["AC1", "AC2", "AC3", "AC4", "AC5"]
+    unmet: ["events_legacy retention/archival integration (trailing AC sentence)"]
+    tracking: "ISS-0686 / GH-733 (OPEN, filed this session)"
+  - id: "PIN-01"
+    met: ["AC3", "AC4", "AC5"]
+    unmet: ["AC1", "AC2"]
+    tracking: "ISS-0672 / GH-306 (OPEN)"
+    scope_marking_rationale: >
+      Applying the SAME partially_approved_requirements pattern as batch-3's PAR-02/PAR-03,
+      despite a real and deliberately-noted difference in provenance. Batch-3's PAR-02
+      AC5/PAR-03 AC6 gap was discovered AS A SURPRISE during RELEASE-VALIDATOR's own independent
+      grep -- no design document flagged it in advance, and CODE-DESIGN-VALIDATOR's Step 1b PASS
+      did not know the gap existed. PIN-01's AC1/AC2 gap is the opposite: it was surfaced BY
+      CODE-DESIGNER at Step 1 (a real schema-absence finding, not a shortcut), stated explicitly
+      in the design document's own Scoping note and Open questions, and CODE-DESIGN-VALIDATOR
+      PASSed the design AT STEP 1B KNOWING AC1/AC2 were out of scope -- the whole downstream
+      chain (TEST-DESIGNER's spec, TEST-DESIGN-VALIDATOR, TEST-RUNNER, this handoff's own task
+      description) treats it as a pre-agreed, validated scope boundary rather than a defect.
+      Decision: this distinction changes the QUALITATIVE framing (this is planned, tracked,
+      forward-looking scope-phasing -- not a missed requirement or a quality escape) but does
+      NOT change the RELEASE MARKING itself. The requirement's text in docs/requirements.yaml is
+      unconditional: PIN-01 is one requirement with 5 MUST-priority AC bullets, and 2 of the 5
+      have no implementation behind them regardless of how well-reasoned or how far in advance
+      the decision to defer them was made. A requirement_status.yaml entry of unqualified
+      RELEASED would silently claim full AC coverage to any future reader who has not read this
+      release decision or the design document's own scoping note -- exactly the failure mode
+      docs/anti-patterns.md's governing rule for RELEASE-VALIDATOR warns against ("'will be
+      addressed later' is not an acceptance criterion", regardless of how deliberately or how
+      early "later" was decided). The batch-3 precedent's own language already generalizes
+      correctly here: it says a requirement moves to a qualified state when "any MUST AC has no
+      passing integration test evidence" -- it does not carve out an exception for ACs whose
+      absence was foreseen. Practically: PIN-01's AC1/AC2 gap is LOWER RISK than batch-3's
+      PAR-02/PAR-03 gap (a known, bounded, tracked scope-phasing decision with a clear unblock
+      condition -- service_catalog schema changes + PLC-01 shipping -- vs. batch-3's gap, which
+      needed a net-new design convention invented from scratch), and that lower risk is worth
+      recording explicitly in this rationale for DOC-UPDATER and any future reader. But "lower
+      risk" and "well-planned" are not the same axis as "fully met" -- the release marking tracks
+      the latter, and on that axis PIN-01 and batch-3's PAR-02/PAR-03 are the same case.
+
+not_approved_requirements: []
+
+next_action: >
+  Route to DOC-UPDATER (Step 6): mark PAR-06 and PIN-02 RELEASED in full. Mark PAR-05 as
+  tested-with-known-gap (not unqualified RELEASED) pending ISS-0686/GH-733 (events_legacy
+  archival-integration gap, newly filed this session), with AC1-AC5 recorded as met. Mark PIN-01
+  as tested-with-known-gap (not unqualified RELEASED) pending ISS-0672/GH-306, with AC3/AC4/AC5
+  recorded as met and AC1/AC2 recorded as a deliberate, validated scope-phasing decision (see
+  scope_marking_rationale above) rather than an implementation defect -- requirement_status.yaml
+  should record both the unmet ACs AND this provenance distinction, so a future reader
+  understands PIN-01's gap differs in kind from batch-3's PAR-02/PAR-03 gap even though the
+  release marking pattern is the same. Also record ISS-0678/GH-720 (pre-existing par06 test
+  file), ISS-0680/GH-722 (PIN-01 leak, MAJOR, recommend prioritizing since it affects every
+  production rejection path), and ISS-0685/GH-732 (NFR-04 benchmark fidelity gap) as open,
+  non-blocking tracked issues in the requirement/release notes.

@@ -1,0 +1,47 @@
+{
+  "handoff_id": "8f34a344-2abb-4042-83dc-1a52707b6a18",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "adhoc-env",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-4-20260811/step-adhoc-env-backend-dev.json",
+  "created_at": "2026-08-12T05:13:05Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "ADHOC infrastructure blocker (per ORCHESTRATOR.md \"Infrastructure problems -- ADHOC handoff, not deferral\"): before TEST-RUNNER (Step 4) can be dispatched, ORCH ran the mandatory pre-check \"zig build test-env-verify\" and it reports UNHEALTHY at check C4 (schema baseline). Two issues were found and resolved/need resolving:\n\n1. (Already resolved by ORCH, no action needed) A stale BPM_TEST_DB_URL shell environment variable (pointing at port 5453, a DIFFERENT sibling checkout's db_test container -- r-co-2-db_test-1) was shadowing the correct .env value (port 5434, r-co-db_test-1). ORCH unset it for its own shell. If you are dispatched via a fresh subagent shell this should not recur, but if you see a connection succeed against an unexpected/unhealthy-looking dataset, check for this shell-level override before assuming .env itself is wrong -- .env on disk is correct (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test).\n\n2. (Your task) check_tenant_schemas_consistent reports 109 tenants recorded in the tenant registry table with no matching per-tenant Postgres schema on db_test (r-co-db_test-1, port 5434) -- e.g. tenant 8bb465e2-128a-40a4-9bb8-2a6e2b8d30ab expected schema tenant_8bb465e2128a40a49bb82a6e2b8d30ab, which does not exist. This is accumulated drift on the shared, long-lived db_test container (many prior test runs/sessions), not something this WF-02 run's own changes caused. Run the tool's own suggested remedy: python tools/verify_schema_baseline.py --check-tenants --auto-fix (with BPM_TEST_DB_URL set to the correct .env value, port 5434). Confirm it actually repairs the drift (either by provisioning the missing schemas or by removing orphaned tenant-registry rows -- read the tool's own logic to understand which direction --auto-fix takes before running it, since either has real consequences on a shared test container). After running it, re-run python tools/verify_schema_baseline.py --check-tenants (no --auto-fix) to confirm PASS, then run zig build test-env-verify (with a clean shell, no stale BPM_TEST_DB_URL/BPM_DB_URL env vars set -- let it load purely from .env) and confirm ALL 10 checks PASS, exit 0.",
+    "acceptance_criteria": [
+      "python tools/verify_schema_baseline.py --check-tenants --auto-fix run and its actual effect understood/reported (not run blindly)",
+      "python tools/verify_schema_baseline.py --check-tenants (no --auto-fix) reports PASS after the fix",
+      "zig build test-env-verify exits 0 with all 10 checks PASS, run from a shell with no stale BPM_TEST_DB_URL/BPM_DB_URL overrides",
+      "No unrelated schema/data changes made beyond what --auto-fix performs",
+      "Any NEW incidental defect found is filed as its own ISS + GitHub issue and forwarded to the global queue -- not fixed inline unless it genuinely blocks this step"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Read verify_schema_baseline.py --auto-fix source before running it: it only re-applies the GBL-133 iss0112 schema-ledger-reconcile migration (additive/idempotent, ON CONFLICT DO NOTHING / IF NOT EXISTS throughout), which backfills public.schema_migrations ledger rows for schemas that already exist -- it never creates tenant Postgres schemas and never deletes/prunes public.tenant rows. Ran it with BPM_TEST_DB_URL=port 5434: applied cleanly (ledger checks already OK, 0 net effect there), but as expected it did NOT fix check_tenant_schemas_consistent (still 109 missing schemas after auto-fix -- confirmed by re-running --check-tenants). Root cause of the 109 orphans: public.tenant rows with storage_mode=SCHEMA, tenant_type=production, no matching public.tenant_schemas row -- the exact half-provisioned pattern ISS-0605/GH-537 already diagnosed and designed a self-heal for (tools/clean_test_db.py lines ~408-412, a targeted DELETE FROM public.tenant WHERE storage_mode=SCHEMA AND slug != default AND NOT EXISTS (tenant_schemas row) -- safe, only ever matches never-fully-provisioned rows). That self-heal is already wired into zig build test-env-verify C4 (verify_test_env.py _run_clean_test_db_sweep()). However, running python tools/clean_test_db.py directly did NOT remove the 109 rows despite reporting exit 0 success -- root-caused to a NEW, separate tooling defect (filed as ISS-0684 / GH-729, MAJOR): clean_test_db.py resolves psql via shutil.which(\"psql\"), which on this host resolves to a WinGet .cmd shim that silently drops its -c SQL argument (reproduced with subprocess.run + explicit argv, no shell involved -- even a deliberately invalid query returns a fixed \"1\" with exit 0), so every mutating run_psql() call in that script is currently a silent no-op on this host. Unblocked by running the exact orphan-row DELETE SQL from clean_test_db.py verbatim (unmodified) directly via docker exec into the r-co-db_test-1 container's own real psql (bypassing the broken host-side shim) -- removed exactly the 109 orphan rows, no other data or schema changes. Final verification: python tools/verify_schema_baseline.py --check-tenants -> all 4 checks OK, exit 0. zig build test-env-verify (clean shell, no BPM_TEST_DB_URL/BPM_DB_URL overrides, loaded purely from .env) -> C0-C9 all PASS, \"verify_test_env: HEALTHY -- 10 checks passed\", exit 0.",
+    "artifacts_out": [
+      "docs/issues/ISS-0684.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0684 / GH-729 (filed, not fixed -- out of scope for this ADHOC task): tools/clean_test_db.py resolves psql via shutil.which(\"psql\"), which on this host resolves to a non-functional WinGet .cmd shim that silently drops -c SQL arguments (always returns a fixed \"1\", exit 0, regardless of the SQL passed, even for deliberately invalid queries). This makes every mutating run_psql() call in clean_test_db.py (the ISS-0140/GH-443 orphan-tenant sweep included) a silent no-op on this host while the script reports success -- meaning the C4 self-heal path (ISS-0605/GH-537) that zig build test-env-verify already relies on does not actually heal anything here, and the same 109-row drift will silently reaccumulate and require the same manual docker-exec workaround unless ISS-0684 is fixed."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T05:13:05Z",
+  "completed_at": "2026-08-12T05:22:34Z"
+}
