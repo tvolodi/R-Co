@@ -96,6 +96,25 @@
       "claimed_at": "2026-08-12T11:11:40Z",
       "completed_at": "2026-08-12T17:24:54Z",
       "run_id": "WF02-batch-5-20260812"
+    },
+    {
+      "stage_key": "16",
+      "batch_key": "4c5bcf433769",
+      "batch_index": 0,
+      "requirement_ids": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "status": "IN_PROGRESS",
+      "lock": {
+        "workspace_id": "r-co-1-loop",
+        "locked_at": "2026-08-12T18:04:57Z"
+      },
+      "claimed_at": "2026-08-12T18:04:57Z",
+      "completed_at": null,
+      "run_id": null
     }
   ]
 }
