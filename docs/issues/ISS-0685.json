@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0685",
+  "title": "NFR-04 zig build bench 'replay_10000_ms' target measures a synthetic nfr_bench_events table scan, not reconstruction.reconstructInstance()'s actual PAR-06 bounded query",
+  "status": "OPEN",
+  "severity": "MINOR",
+  "category": "benchmark fidelity / NFR coverage gap",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "b872b068-a5dc-4380-a6c6-097b0edb12bc",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/732",
+  "requirement_ids": ["PAR-06", "NFR-04"],
+  "summary": "tests/bench/bench.zig's measureReplayMs() (the NFR-04 'replay_10000_ms' benchmark target) seeds a standalone nfr_bench_events table keyed by (run_id, seq) and measures 'SELECT payload FROM nfr_bench_events WHERE run_id = $1 ORDER BY seq ASC' plus a per-row payload-length scan. This never calls src/engine/reconstruction.zig's reconstructInstance() (or its private eventWindowForInstanceInTx() helper), and never issues PAR-06's actual bounded reconstruction query ('SELECT * FROM events WHERE instance_id = $1 AND created_at >= $2 AND created_at < $3 ORDER BY sequence_num' against the real, partitioned events table). Confirmed by grepping tests/bench/bench.zig for 'reconstruction'/'instance_id'/'first_event_at'/'last_event_at': zero matches outside a comment. WF02-batch-4-20260811 (PAR-06) changed the reconstruction query path itself, so this is the run where NFR-04's benchmark should have been exercising the real code path and was not. zig build bench was run live during RELEASE-VALIDATOR's WF02-batch-4-20260811 Step 5 verification and all 5 NFR targets reported passed=true (replay_10000_ms actual=34.283ms against real events table volume of only ~200-10000 synthetic rows in a side table, not the partitioned events table with attached archive partitions PAR-06 actually targets), but this result says nothing about the real reconstructInstance() bounded-query path's latency under partition pruning / cross-archive merge, because that path is never invoked by the benchmark.",
+  "root_cause": {
+    "type": "benchmark_does_not_exercise_the_code_path_it_claims_to_measure",
+    "details": "bench.zig's replay benchmark predates PAR-06 (it seeds and scans a dedicated nfr_bench_events table designed as a generic 'how fast can we scan N rows' proxy) and was never updated when reconstruction.reconstructInstance() and its bounded created_at predicate were introduced. The benchmark's NFR-04 label and 'replay_10000_ms' metric name imply it measures instance-reconstruction replay time, but it actually measures raw sequential table scan throughput against an unrelated table with no partitioning, no instance_id/created_at predicate, and no archive-merge behavior."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-12T06:17:57Z",
+  "resolved_at": null,
+  "prevention": [
+    "Add a bench.zig target (or extend measureReplayMs) that seeds a real instance via InstanceStore.create()/Store.append() with up to 10,000 events spanning the partitioned events table (and optionally events_archive, to also exercise PAR-06 AC2's cross-archive merge), then times reconstruction.reconstructInstance() directly -- mirroring how tests/integration/par06_reconstruction_bounded_test.zig already exercises the real call path, just at NFR-04's full 10,000-event scale instead of the test spec's small fixtures.",
+    "When a requirement changes a query path that an existing named NFR benchmark claims to cover (as PAR-06 does for NFR-04), CODE-DESIGNER/RELEASE-VALIDATOR should explicitly verify the benchmark's implementation still calls the real changed code, not just that the benchmark target runs and its metric label matches the NFR ID."
+  ]
+}
