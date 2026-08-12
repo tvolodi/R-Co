@@ -14,11 +14,20 @@
 -- (read-write, later batch) need, per the Type E design's explicit statement
 -- that ORD-03's design must not need a schema change here.
 
-CREATE TABLE IF NOT EXISTS plat_correlation_cursor (
-    correlation_id text PRIMARY KEY,
-    applied_seq bigint NOT NULL DEFAULT 0 CHECK (applied_seq >= 0),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    created_at timestamptz NOT NULL DEFAULT now()
-);
+DO $$
+BEGIN
+    IF current_schema() = 'public' THEN
+        RAISE NOTICE 'ORD-04: public schema pass — skipping plat_correlation_cursor (PER_TENANT; see GBL-142).';
+        RETURN;
+    END IF;
 
-CREATE INDEX IF NOT EXISTS idx_plat_correlation_cursor_updated ON plat_correlation_cursor (updated_at);
+    CREATE TABLE IF NOT EXISTS plat_correlation_cursor (
+        correlation_id text PRIMARY KEY,
+        applied_seq bigint NOT NULL DEFAULT 0 CHECK (applied_seq >= 0),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        created_at timestamptz NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_plat_correlation_cursor_updated
+        ON plat_correlation_cursor (updated_at);
+END $$;

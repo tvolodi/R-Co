@@ -16,18 +16,28 @@
 -- "Duplicate completions"), and the claim index matches the ORD-01 claim query's
 -- exact WHERE/ORDER BY shape (status='PENDING' ORDER BY correlation_id, sequence_no).
 
-CREATE TABLE IF NOT EXISTS plat_effect_completion (
-    completion_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    correlation_id text NOT NULL,
-    sequence_no bigint NOT NULL,
-    status text NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPLIED','DEAD')),
-    payload jsonb NOT NULL DEFAULT '{}'::jsonb,
-    received_at timestamptz NOT NULL DEFAULT now(),
-    applied_at timestamptz,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT plat_effect_completion_correlation_seq_uq UNIQUE (correlation_id, sequence_no)
-);
+DO $$
+BEGIN
+    IF current_schema() = 'public' THEN
+        RAISE NOTICE 'ORD-01: public schema pass — skipping plat_effect_completion (PER_TENANT; see GBL-142).';
+        RETURN;
+    END IF;
 
-CREATE INDEX IF NOT EXISTS idx_plat_effect_completion_claim ON plat_effect_completion (correlation_id, sequence_no) WHERE status = 'PENDING';
+    CREATE TABLE IF NOT EXISTS plat_effect_completion (
+        completion_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        correlation_id text NOT NULL,
+        sequence_no bigint NOT NULL,
+        status text NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPLIED','DEAD')),
+        payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+        received_at timestamptz NOT NULL DEFAULT now(),
+        applied_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT plat_effect_completion_correlation_seq_uq UNIQUE (correlation_id, sequence_no)
+    );
 
-CREATE INDEX IF NOT EXISTS idx_plat_effect_completion_correlation ON plat_effect_completion (correlation_id, sequence_no);
+    CREATE INDEX IF NOT EXISTS idx_plat_effect_completion_claim
+        ON plat_effect_completion (correlation_id, sequence_no) WHERE status = 'PENDING';
+
+    CREATE INDEX IF NOT EXISTS idx_plat_effect_completion_correlation
+        ON plat_effect_completion (correlation_id, sequence_no);
+END $$;

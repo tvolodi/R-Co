@@ -8,25 +8,33 @@
 -- partition state, per docs/processes/system/event-log-partitioning.md's
 -- plat_partition_catalog output.
 
-CREATE TABLE IF NOT EXISTS plat_partition_catalog (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    table_name text NOT NULL,
-    parent_table text NOT NULL,
-    range_start timestamptz NOT NULL,
-    range_end timestamptz NOT NULL,
-    state text NOT NULL DEFAULT 'ATTACHED',
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT plat_partition_catalog_table_uq UNIQUE (table_name),
-    CHECK (state IN ('ATTACHED', 'DETACHED', 'ORPHAN_PARTITION', 'DROPPED'))
-);
+DO $$
+BEGIN
+    IF current_schema() = 'public' THEN
+        RAISE NOTICE 'PAR-02: public schema pass — skipping plat_partition_catalog / plat_partition_maintenance_run_log (PER_TENANT; see GBL-142).';
+        RETURN;
+    END IF;
 
-CREATE INDEX IF NOT EXISTS idx_plat_partition_catalog_parent_state ON plat_partition_catalog (parent_table, state);
+    CREATE TABLE IF NOT EXISTS plat_partition_catalog (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        table_name text NOT NULL,
+        parent_table text NOT NULL,
+        range_start timestamptz NOT NULL,
+        range_end timestamptz NOT NULL,
+        state text NOT NULL DEFAULT 'ATTACHED',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT plat_partition_catalog_table_uq UNIQUE (table_name),
+        CHECK (state IN ('ATTACHED', 'DETACHED', 'ORPHAN_PARTITION', 'DROPPED'))
+    );
 
-CREATE TABLE IF NOT EXISTS plat_partition_maintenance_run_log (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    run_date date NOT NULL,
-    ran_at timestamptz NOT NULL DEFAULT now(),
-    future_partition_count integer NOT NULL DEFAULT 0,
-    CONSTRAINT plat_partition_maintenance_run_log_date_uq UNIQUE (run_date)
-);
+    CREATE INDEX IF NOT EXISTS idx_plat_partition_catalog_parent_state ON plat_partition_catalog (parent_table, state);
+
+    CREATE TABLE IF NOT EXISTS plat_partition_maintenance_run_log (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        run_date date NOT NULL,
+        ran_at timestamptz NOT NULL DEFAULT now(),
+        future_partition_count integer NOT NULL DEFAULT 0,
+        CONSTRAINT plat_partition_maintenance_run_log_date_uq UNIQUE (run_date)
+    );
+END $$;

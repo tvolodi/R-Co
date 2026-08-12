@@ -86,6 +86,11 @@ DO $$
 DECLARE
     v_is_partitioned BOOLEAN;
 BEGIN
+    IF current_schema() = 'public' THEN
+        RAISE NOTICE 'PAR-03: public schema pass — skipping events_ephemeral rebuild (PER_TENANT; see GBL-112 / GBL-142).';
+        RETURN;
+    END IF;
+
     SELECT EXISTS (
         SELECT 1 FROM pg_partitioned_table pt
         JOIN pg_class c ON c.oid = pt.partrelid
@@ -142,6 +147,11 @@ DECLARE
     v_range_start TIMESTAMPTZ;
     v_range_end TIMESTAMPTZ;
 BEGIN
+    IF current_schema() = 'public' THEN
+        RAISE NOTICE 'PAR-03: public schema pass — skipping events_ephemeral partition seed (PER_TENANT; see GBL-112 / GBL-142).';
+        RETURN;
+    END IF;
+
     IF EXISTS (
         SELECT 1 FROM pg_partitioned_table pt
         JOIN pg_class c ON c.oid = pt.partrelid
