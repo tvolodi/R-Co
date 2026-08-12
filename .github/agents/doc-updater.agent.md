@@ -150,14 +150,27 @@ As the final step in every workflow, you MUST manage the GitHub feature branch t
    git fetch origin && git branch -r | grep feature/<run-id> || echo "Branch deleted"
    ```
 
-5. **Close each requirement's own tracking issue (WF-02 runs only, MANDATORY — do not skip).**
+5. **If this run resolves a GitHub issue** (WF-03, or any workflow closing an issue), update
+   the project board per `docs/agents/protocols/PROJECT_BOARD.md`:
+   ```bash
+   # non-UAT-scoped issue (no requirement ID, or the requirement has no UAT scenario match):
+   python3 tools/gh_project_status.py <issue-number> --target implemented
+   python3 tools/gh_project_status.py <issue-number> --target done
+   # UAT-scoped issue (requirement ID matches a file under tests/simulation/scenarios/):
+   python3 tools/gh_project_status.py <issue-number> --target implemented
+   # — stop here; UAT-RUNNER advances it to validated/done in its own WF-05 run
+   ```
+   A failure of this call (rate limit, network) is logged as `BOARD_UPDATE_FAILED` and never
+   fails the handoff — the board is a visibility aid, not a gate.
+
+6. **Close each requirement's own tracking issue (WF-02 runs only, MANDATORY — do not skip).**
    Every requirement migrated from the original backlog has its own `requirement`-labeled
-   GitHub issue. This tracking issue is never closed automatically by a merge — it must be
-   closed here, explicitly, or it sits open forever even after the requirement is fully
-   RELEASED (this exact gap went unnoticed across six batches before being caught and fixed
-   on 2026-08-12 — see `.claude/agents/doc-updater.md`'s equivalent section for the full
-   incident note; the two files must stay in sync, see `CLAUDE.md` §"Canonical instruction
-   surfaces").
+   GitHub issue, separate from any bug/WF-03 issue this run may also be closing (step 5).
+   This tracking issue is never closed automatically by a merge — it must be closed here,
+   explicitly, or it sits open forever even after the requirement is fully RELEASED (this
+   exact gap went unnoticed across six batches before being caught and fixed on 2026-08-12 —
+   see `.claude/agents/doc-updater.md`'s equivalent section for the full incident note; the
+   two files must stay in sync, see `CLAUDE.md` §"Canonical instruction surfaces").
    For each requirement ID this run set to `RELEASED`:
    ```bash
    # gh issue list --search searches ALL of GitHub by relevance, not just this repo, even
@@ -175,7 +188,7 @@ As the final step in every workflow, you MUST manage the GitHub feature branch t
    If a requirement ID has no matching open `requirement`-labeled issue, this step is a
    no-op for that ID — do not create one.
 
-6. **Record in handoff result:**
+7. **Record in handoff result:**
    - `artifacts_out`: include PR number (e.g., `PR #28`) and merge commit SHA
    - `summary`: note successful merge and branch deletion
 
