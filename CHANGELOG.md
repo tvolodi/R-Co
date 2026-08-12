@@ -7,7 +7,7 @@ All notable changes to the BPM Platform are documented here.
 ### Split release — Stage 16 batch 4: PAR-06, PIN-02 RELEASED in full; PAR-05, PIN-01 TESTED but withheld (known gaps)
 
 > **KNOWN GAPS — NOT GLOSSED OVER:**
-> - [ISS-0686 / GH-733](https://github.com/tvolodi/R-Co/issues/733) (MAJOR, **OPEN**) — PAR-05's
+> - [ISS-0686 / GH-733](https://github.com/tvolodi/R-Co/issues/733) (MAJOR, **RESOLVED**) — PAR-05's
 >   trailing AC sentence ("`events_legacy` is retained read-only for one full
 >   `archive_after_months` cycle and then attached to `events_archive`; it is never emptied row by
 >   row") has zero implementation. `PartitionConverter` (`src/db/partition_conversion.zig`) has no
@@ -57,7 +57,7 @@ All notable changes to the BPM Platform are documented here.
   `ON CONFLICT DO NOTHING`), a transactional swap under `lock_timeout`, and
   `reconcileOrRollback()` with inverse-rename on mismatch. AC1–AC5 covered and independently
   re-run 6/6 passing. **The trailing AC sentence on `events_legacy` retention/archival handoff to
-  PAR-03 is unimplemented — see the gap box above.** Status held at `TESTED`, not `RELEASED`.
+  PAR-03 is now implemented — see ISS-0686/GH-733 (`### Added` above). PAR-05 fully RELEASED.**
 - **PIN-01 — Dependency version resolution at instance start (AC3/AC4/AC5 scope) — TESTED,
   withheld from RELEASED.** `src/engine/pin_resolver.zig` implements `variable_schema`
   resolution/validation, `pin_overrides` application, and deterministic `(kind, ref)` ordering via
@@ -132,6 +132,12 @@ All notable changes to the BPM Platform are documented here.
   orphan rows. `zig build test-env-verify`: HEALTHY, 10/10 checks PASS afterward.
 
 ### Added
+
+- ISS-0686 (GH-733): Implement PAR-05 events_legacy archival integration.
+  `reconcileOrRollback()` now registers `events_legacy` in `plat_partition_catalog`
+  after successful conversion. New `archiveLegacyTable()` in `partition_retention.zig`
+  renames `events_legacy` → `events_legacy_archived` and updates catalog state to `'ARCHIVED'`.
+  Migration 1153 extends `plat_partition_catalog.state` CHECK constraint with `'ARCHIVED'`.
 
 - ISS-0670 (GH-711): Implement PAR-02 AC5. Add Store.appendPlatform() to src/event_store/store.zig
   for non-instance-scoped platform events (bypasses instance_projections lookup). Add platform.zig
