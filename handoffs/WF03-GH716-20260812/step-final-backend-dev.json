@@ -6,7 +6,7 @@
   "from_agent": "ORCH",
   "to_agent": "BACKEND-DEV",
   "created_at": "2026-08-12T10:07:17Z",
-  "status": "IN_PROGRESS",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": null,
@@ -32,9 +32,49 @@
       "fn:git-merge"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "GH-716/PAR-06 Step Final completed with a material deviation from the dispatched task: during rebase-before-push, discovered a second, independently-dispatched pipeline instance for the identical issue had already opened and squash-merged PR #739 (commit a6490f61) at 2026-08-12T09:35:34Z, closing GH-716, ~32 minutes before this handoff was dispatched -- a duplicate-dispatch race on the shared run_id label, not a code conflict. Reconciled rather than re-merged: rebased this branch onto post-#739 main (store.zig deletion matched exactly; this branch additionally removed 2 now-unreachable StoreError variants + EventWindow struct that #739 left behind, plus design-doc/comment updates #739 did not include); preserved both runs handoff audit trails under distinct filenames (append-only, no history dropped); resolved orchestrator.log/registry.json rebase conflicts by union; removed a duplicate CHANGELOG entry. Incidentally discovered tests/integration/iss0686_archived_state_test.zig (GH-733, unrelated) was unwired in build.zig, blocking this branch own zig build test gate -- fixed inline per Unblock-Everything (wired as new addTest root matching par05_solo_tests pattern; fixed a real setup(h.conn) vs setup(&h.conn) pointer-mismatch bug in its generated boilerplate; zig fmt applied), filed and closed as GitHub #741. Could not push the rebased branch to the original feature/WF03-GH716-20260812 ref (non-fast-forward; force-push is forbidden by role file) so opened PR #742 from a fresh branch feature/WF03-GH716-20260812-final instead. All validation green: zig build / zig build check / zig build test / zig build migrate all exit 0; lint_sql_param_types.py 0 findings; test-integration-par06 3/3, test-integration-par06-reconstruction 5/5, newly-wired test-integration-iss0686 all pass against real PostgreSQL. check_github_status.py: \"GitHub Actions status: operational -- platform healthy. A red run is therefore attributable to the change under test.\" All 8 CI checks on PR #742 passed (verified via gh pr checks and gh run view --json jobs, cross-checked against gh pr view --json statusCheckRollup). Squash-merged as 677c9829. GH-716 was already closed by #739; posted an accurate resolution comment on it documenting both the original fix and this reconciliation. handoffs/global_queue.json GH-716 entry was already RESOLVED with run_id WF03-GH716-20260812 (set by the #739 run, since both runs shared the label) -- verified accurate, no further edit needed. Both feature branches (original feature/WF03-GH716-20260812 and feature/WF03-GH716-20260812-final) deleted locally and remotely; main confirmed clean and up to date.",
+    "artifacts_out": [
+      "src/event_store/store.zig",
+      "src/engine/instance.zig",
+      "build.zig",
+      "tests/integration/iss0686_archived_state_test.zig",
+      "src/design/par-06-time-bounded-reconstruction.md",
+      "tests/specs/PAR-06.md",
+      "CHANGELOG.md",
+      "handoffs/WF03-GH716-20260812/step-00-backend-dev-legacy-run.json",
+      "handoffs/WF03-GH716-20260812/step-07-doc-updater-legacy-run.json",
+      "handoffs/orchestrator.log",
+      "handoffs/registry.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "ORCH dispatched two independent pipeline runs for the same GitHub issue (GH-716) under the identical run_id WF03-GH716-20260812, racing to completion; the second (this handoff) had to detect and reconcile the collision manually during Step Final. Worth a queue-locking or run_id-uniqueness check in ORCH dispatch logic to prevent recurrence."
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH716-20260812-final",
+      "commit_sha_list": [
+        "3cd8d77d",
+        "cdea369e",
+        "0f8fd3dd",
+        "5494f231",
+        "79c58109",
+        "bd2fc006",
+        "2a4135d7",
+        "677c9829"
+      ],
+      "remote_branch": "feature/WF03-GH716-20260812-final (deleted after merge)",
+      "push_status": "pushed (no force; opened fresh branch since original feature/WF03-GH716-20260812 diverged non-fast-forward after being consumed by concurrent PR #739)",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/742",
+      "pr_create_error": null
+    },
+    "next_action": "ORCH marks run COMPLETED and releases owned_modules lock. Consider filing a process issue for the duplicate-dispatch root cause noted above."
+  },
   "rework_count": 0,
   "max_rework": 3,
   "started_at": "2026-08-12T10:07:51Z",
-  "completed_at": null
+  "completed_at": "2026-08-12T10:37:09Z"
 }
