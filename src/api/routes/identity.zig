@@ -1254,12 +1254,14 @@ fn serializeTenantRole(allocator: std.mem.Allocator, role: role_registry.TenantR
     const yd = epoch_secs.getEpochDay().calculateYearDay();
     const md = yd.calculateMonthDay();
     const ds = epoch_secs.getDaySeconds();
+    const escaped_name = try jsonEscapeAlloc(allocator, role.name);
+    defer allocator.free(escaped_name);
     return std.fmt.allocPrint(
         allocator,
         "{{\"id\":\"{s}\",\"name\":{s},\"group_id\":\"{s}\",\"created_at\":\"{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}.{d:0>6}Z\"}}",
         .{
             role.id,
-            jsonEscapeAlloc(allocator, role.name) catch "\"\"",
+            escaped_name,
             role.group_id,
             @as(u32, yd.year),
             @as(u32, @intFromEnum(md.month)),

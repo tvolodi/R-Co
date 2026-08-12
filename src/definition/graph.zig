@@ -637,12 +637,15 @@ fn checkHumanTask(
         },
     };
 
+    // Accept either the legacy `role` key or the IDN-05 `assignee_type`+`assignee_ref` schema.
     const role_ok: bool = blk: {
-        const v = obj.get("role") orelse break :blk false;
-        break :blk switch (v) {
-            .string => |s| s.len > 0,
-            else => false,
-        };
+        if (obj.get("role")) |v| {
+            if (v == .string and v.string.len > 0) break :blk true;
+        }
+        if (obj.get("assignee_type")) |v| {
+            if (v == .string and v.string.len > 0) break :blk true;
+        }
+        break :blk false;
     };
     if (!role_ok) {
         try addViolation(allocator, violations, "HUMAN_TASK_MISSING_ROLE", "Node '{s}' (HUMAN_TASK) is missing required attribute 'role'", .{node.id});

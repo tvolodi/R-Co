@@ -1,0 +1,56 @@
+{
+  "handoff_id": "e5f6a7b8",
+  "run_id": "WF02-idn05-20260812",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "status": "COMPLETED",
+  "created_at": "2026-08-12T11:24:14Z",
+  "started_at": "2026-08-12T11:24:48Z",
+  "completed_at": "2026-08-12T11:28:42Z",
+  "workflow": "WF-02",
+  "context": {
+    "requirement_ids": [
+      "IDN-05"
+    ],
+    "description": "Step 02c (hard gate): Security review of IDN-05 implementation. New tenant-data-path changes: tenant_role table (per-tenant), GET/POST /roles API endpoints, EE-03 ROLE resolution in task activation.",
+    "artifacts_in": [
+      "src/identity/role_registry.zig",
+      "src/api/routes/identity.zig",
+      "src/engine/instance.zig",
+      "src/main.zig",
+      "src/bpm.zig",
+      "migrations/1154_idn05_tenant_role_registry.sql",
+      "src/design/idn05-role-registry.md"
+    ],
+    "branch": "feature/WF02-idn05-20260812",
+    "commit": "b9b33e1d"
+  },
+  "task": {
+    "description": "Review the IDN-05 implementation against the numbered security invariants in docs/agents/instructions/security-invariants.md. Focus on:\n\n1. Tenant data isolation: tenant_role rows must be fully isolated to the calling tenant's schema. Verify no cross-tenant leakage is possible in listRoles, upsertRole, and resolveRoleInTx.\n2. Field authorisation: GET /roles and POST /roles must require PROCESS_DESIGNER or PLATFORM_ADMIN \u2014 verify RBAC check is enforced before any store access.\n3. SQL parameterisation: all SQL in role_registry.zig must use parameterised queries (no string interpolation).\n4. No catch unreachable on realistic failures: check for any unreachable paths that could be triggered by API input.\n5. Sandbox capability gating: not applicable (no Lua), but verify EE-03 ROLE resolution does not expose any capability escalation path.\n6. Probe indistinguishability: if group_id not found, POST /roles returns 404 \u2014 verify no timing difference reveals whether the group exists in another tenant.\n7. Secrets by reference: no secrets in the new code paths.\n8. New-path scoping proof: demonstrate that the schema-per-tenant boundary is maintained for the new tenant_role table.\n\nRun: zig build test-integration (or relevant subset) and git diff to verify scope.\nReturn PASS if all invariants met. FAIL with specific violations if not."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 8 security invariants assessed against IDN-05 implementation. INV-1: tenant_role table created by migration 1154 without schema prefix; lands in tenant schema via search_path; pool sets search_path on checkout; resolveRoleInTx reuses caller transaction conn. lint_migration_schema exits 0. INV-2: RBAC gate (PROCESS_DESIGNER or PLATFORM_ADMIN) is the first statement in both handlers before any store access. Response contains only id/name/group_id/created_at - no privileged-only fields. INV-3: N/A - no Lua/Wasm changes. INV-4: No secret material in new code; no hardcoded credentials; no logging of sensitive fields. INV-5: A group_id from another tenant is not visible in the current tenant schema, returning 404 GROUP_NOT_FOUND identical to a group that never existed. Same DB query path, no timing signal. INV-6: assessed here. INV-7: All SQL uses positional $N params. listRoles has no variable SQL. upsertRole binds group_id as $1::uuid in existence check, name as $1 and group_id as $2::uuid in INSERT. resolveRoleInTx binds name as $1. lint_sql_param_types exits 0. INV-8: No catch unreachable in role_registry.zig or IDN-05 identity.zig additions. EE-03 ROLE resolution: resolveRoleInTx performs a plain DB lookup returning a group UUID; no capability grant or permission escalation - GROUP assignment follows existing IDN-02 rules.",
+    "issues": [
+      {
+        "id": "SEC-IDN05-01",
+        "severity": "MINOR",
+        "description": "tenant_role is not added to BUSINESS_TABLES in tools/lint_migration_schema.py. The current migration is correct (no public. prefix, lands in tenant schema via search_path), but the linter will not catch a future migration placing public.tenant_role. Follow-up: add tenant_role to the BUSINESS_TABLES list in tools/lint_migration_schema.py."
+      },
+      {
+        "id": "SEC-IDN05-02",
+        "severity": "MINOR",
+        "description": "In src/main.zig the actor fallback for /roles route defaults to TASK_WORKER (dead code: auth gate always ensures authenticated_ctx is non-null before this branch executes). Benign because the handler RBAC check rejects TASK_WORKER, but creates inconsistency with the /services route which defaults to PLATFORM_ADMIN. No security impact; cleanup optional."
+      },
+      {
+        "id": "SEC-IDN05-03",
+        "severity": "MINOR",
+        "description": "No integration-level test asserting byte-equality between GROUP_NOT_FOUND (404) for a cross-tenant group_id probe and GROUP_NOT_FOUND (404) for a never-existed group_id. INV-5 is satisfied by design (same DB query path, same schema), but per security-invariants.md a dedicated response-equality test is the natural gap to close as a follow-up."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

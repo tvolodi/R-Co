@@ -1,0 +1,48 @@
+{
+  "handoff_id": "b8c9d0e1",
+  "run_id": "WF02-idn05-20260812",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "status": "COMPLETED",
+  "created_at": "2026-08-12T12:10:02Z",
+  "started_at": "2026-08-12T12:10:33Z",
+  "completed_at": "2026-08-12T12:14:24Z",
+  "workflow": "WF-02",
+  "context": {
+    "requirement_ids": [
+      "IDN-05"
+    ],
+    "description": "Step 04: Execute IDN-05 test suite and full regression check.",
+    "artifacts_in": [
+      "tests/specs/IDN-05.md",
+      "tests/integration/idn05_role_registry_test.zig",
+      "handoffs/WF02-idn05-20260812/step-03b-test-design-validator.json"
+    ],
+    "branch": "feature/WF02-idn05-20260812"
+  },
+  "task": {
+    "description": "Execute the IDN-05 test suite and verify no regressions:\n\n1. zig build (must exit 0)\n2. zig build test (unit tests, must exit 0)\n3. zig build test-integration-idn05 (must pass all 7 TCs: TC-IDN05-01..07)\n4. Report: pass/fail counts for each step\n\nWrite a structured test report to tests/reports/report-2026-08-12-WF02-idn05-20260812.yaml.\n\nIf any test fails, report the failure details and return FAIL. Do not attempt to fix failures inline \u2014 report and return FAIL.\n\nAlso run python tools/lint_handoffs.py (must exit 0)."
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "zig build: PASS (exit 0). zig build test (unit): PASS (exit 0). zig build test-integration-idn05: FAIL \u2014 2 compilation errors in tests/integration/idn05_role_registry_test.zig (lines 542, 645): definition_mod.Store.init called with 1 argument; function signature requires 2 (allocator, pool). Tests did not execute; all 7 TCs unverified. ORCH must spawn ADHOC BACKEND-DEV to fix ISS-IDN05-COMPILE-01 then redispatch TEST-RUNNER.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-12-WF02-idn05-20260812.yaml"
+    ],
+    "issues": [
+      {
+        "id": "ISS-IDN05-COMPILE-01",
+        "severity": "BLOCKER",
+        "description": "idn05_role_registry_test.zig calls definition_mod.Store.init(&pool) at lines 542 and 645 with 1 argument. Current Store.init signature is init(allocator: std.mem.Allocator, pool: *Pool) \u2014 requires 2 arguments. Compilation fails; tests cannot run. Fix: add the allocator argument to both call sites, e.g. definition_mod.Store.init(allocator, &pool).",
+        "files": [
+          "tests/integration/idn05_role_registry_test.zig"
+        ],
+        "action": "BACKEND-DEV to fix both call sites and re-dispatch TEST-RUNNER"
+      }
+    ],
+    "next_action": "ORCH spawn ADHOC BACKEND-DEV: fix ISS-IDN05-COMPILE-01, then redispatch TEST-RUNNER for step-04 of WF02-idn05-20260812"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

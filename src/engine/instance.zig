@@ -958,6 +958,22 @@ pub const InstanceStore = struct {
                 break;
             }
 
+            // IDN-05: ROLE assignee resolution — mirror of the same logic in
+            // applyTransition; resolves ROLE→GROUP inside the open transaction.
+            if (assignee_type) |at| {
+                if (std.mem.eql(u8, at, "ROLE")) {
+                    if (assignee_ref) |ar| {
+                        if (role_registry_mod.resolveRoleInTx(conn2, ar)) |group_uuid| {
+                            const hex = uuidToHex(a, group_uuid) catch null;
+                            if (hex) |h| {
+                                assignee_type = "GROUP";
+                                assignee_ref = h;
+                            }
+                        }
+                    }
+                }
+            }
+
             // Generate a fresh UUID v4 for the token row.
             var token_bytes: Uuid = undefined;
             fillRandom(&token_bytes);

@@ -193,10 +193,9 @@ test "TC-IDN05-01: POST /roles creates a binding — 200 with id/name/group_id/c
     defer alloc.free(group_id);
 
     var store = role_registry.TenantRoleStore.init(&pool);
-    const result = identity_routes.handleUpsertRole(&store, alloc, adminActor(), blk: {
-        const b = try std.fmt.allocPrint(alloc, "{{\"name\":\"{s}\",\"group_id\":\"{s}\"}}", .{ role_name, group_id });
-        break :blk b;
-    });
+    const req_body = try std.fmt.allocPrint(alloc, "{{\"name\":\"{s}\",\"group_id\":\"{s}\"}}", .{ role_name, group_id });
+    defer alloc.free(req_body);
+    const result = identity_routes.handleUpsertRole(&store, alloc, adminActor(), req_body);
     const body_owned = result.body;
     defer freeRouteBody(alloc, body_owned);
 
@@ -539,7 +538,7 @@ test "TC-IDN05-06: ROLE assignee resolved at task activation — task has GROUP 
     };
     const graph = definition_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    var def_store = definition_mod.Store.init(&pool);
+    var def_store = definition_mod.Store.init(alloc, &pool);
     const created_by = makeCreatorUuid();
     const def = try def_store.create(alloc, .{
         .name = def_name,
@@ -642,7 +641,7 @@ test "TC-IDN05-07: unresolved ROLE assignee — task created, instance stays ACT
     };
     const graph = definition_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    var def_store = definition_mod.Store.init(&pool);
+    var def_store = definition_mod.Store.init(alloc, &pool);
     const created_by = makeCreatorUuid();
     const def = try def_store.create(alloc, .{
         .name = def_name,
