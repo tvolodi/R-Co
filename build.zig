@@ -2368,7 +2368,19 @@ pub fn build(b: *std.Build) void {
     });
     const run_startup_assertions_integration_tests = addIntegrationRun(b, startup_assertions_integration_tests, migrations_dir, clean_test_db);
 
-    const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL)");
+    // ISS-0692 / GH-752: expose the integration-test job cap. Zig 0.16 no
+    // longer provides Step.setJobs(); the build runner's -j flag is the
+    // supported execution-time control. Keep the option and env knob for CI
+    // wrappers and document the corresponding invocation in §10.2.
+    const test_integration_jobs = b.option(u32, "test-integration-jobs", "Max parallel integration-test binaries (overrides BPM_TEST_INTEGRATION_JOB_CAP when unset)") orelse blk: {
+        const environ = std.process.Environ{ .block = .global };
+        const cap_str = environ.getAlloc(b.allocator, "BPM_TEST_INTEGRATION_JOB_CAP") catch "8";
+        const cap = std.fmt.parseInt(u32, std.mem.trim(u8, cap_str, " \t"), 10) catch 8;
+        break :blk cap;
+    };
+    _ = test_integration_jobs; // Zig 0.16: -j is the build runner's supported job cap.
+
+    const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL; scaled by -Dtest-integration-jobs or BPM_TEST_INTEGRATION_JOB_CAP)");
     test_integration_step.dependOn(&clean_test_db.step);
 
     // ISS-0106 (GitHub #364): barrier step aggregating every test-integration

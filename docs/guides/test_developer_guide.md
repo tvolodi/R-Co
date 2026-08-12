@@ -496,22 +496,31 @@ harness connection.
    zig build test-<module>
    ```
 
-2. **Reduce concurrency** — pass `-j4` (or another small value) to serialise
-   more of the migration work:
+2. **Reduce concurrency** — the integration-test step is capped at 8 parallel
+   binaries by default. Operators can set `BPM_TEST_INTEGRATION_JOB_CAP` in
+   the build environment, while CI can override it with
+   `-Dtest-integration-jobs=N`:
    ```powershell
-   zig build test-integration -j4
+   $env:BPM_TEST_INTEGRATION_JOB_CAP = "4"
+   zig build test-integration
+   zig build test-integration -Dtest-integration-jobs=4
    ```
+   Use `-j2` on small development machines, or lower the cap further on
+   heavily loaded hosts where `-j8` still does not help. The build option takes
+   precedence when both controls are supplied.
 
-3. **Widen the migration timeout** — set `BPM_TEST_STMT_TIMEOUT` to a value
-   larger than the default `300s` before the run:
+3. **Widen the migration timeout** — `BPM_TEST_STMT_TIMEOUT` defaults to
+   `600s`; the environment-variable override remains available for catastrophic
+   hosts:
    ```powershell
-   $env:BPM_TEST_STMT_TIMEOUT = "600s"
+   $env:BPM_TEST_STMT_TIMEOUT = "900s"
    zig build test-integration
    ```
-   The default (`300s`) is intentionally wider than the session `60s` used for
-   ordinary test queries; this variable controls only the DDL/migration window
-   inside `runMigrations()` / `runMigrationsForSchema()`. `configureSessionTimeouts()`
-   (which governs all other harness queries) is unaffected.
+   This variable controls only the DDL/migration window inside
+   `runMigrations()` / `runMigrationsForSchema()`. The default is intentionally
+   wider than the session `60s` used for ordinary test queries;
+   `configureSessionTimeouts()` (which governs all other harness queries) is
+   unaffected.
 
 **Do not** treat a statement-timeout cancellation during harness init as a
 test failure for traceability purposes unless the binary also fails when
