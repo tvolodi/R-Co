@@ -1,0 +1,43 @@
+{
+  "handoff_id": "e472892f-288b-4761-be67-3c8686b6630d",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-batch-4-20260811/step-final-doc-updater.json",
+  "created_at": "2026-08-12T06:40:44Z",
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-05",
+      "PAR-06",
+      "PIN-01",
+      "PIN-02"
+    ],
+    "related_handoff_ids": [
+      "1647733f-8564-4b05-80d0-454a97db6284"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Step Final: manage the feature/WF02-batch-4-20260811 branch to completion on GitHub. This is a hard requirement, pre-authorized per the Zero Manual Work directive -- do not ask for confirmation before pushing/merging.\n\nThis run's final scope, for an accurate PR title/body: PAR-05 (online partition conversion) and PIN-01 (dependency version resolution, scoped to AC3/AC4/AC5) released as TESTED (known gaps: PAR-05 events_legacy archival integration, ISS-0686/GH-733; PIN-01 AC1/AC2 catalog/module resolution, deliberately out of scope, ISS-0672/GH-306). PAR-06 (time-bounded reconstruction) and PIN-02 (pin set in INSTANCE_STARTED) released as RELEASED in full.\n\nIMPORTANT -- the PR description MUST accurately describe two things beyond the routine feature scope, since this run required real quality-gate rework:\n1. A genuine SECURITY-REVIEWER FAIL: PIN-01's service_catalog resolution (resolveServiceCatalogRef() in src/engine/pin_resolver.zig) originally filtered by a dropped legacy SQL function (bpm_effective_tenant_id(), removed by the LEGACY_RLS-to-SCHEMA cutover migrations), which would have made every SERVICE_TASK instance-start either crash (function does not exist) or, if resurrected, fail to tenant-scope correctly. Fixed by threading a proper tenant_id through as a parameterized ::uuid bound against service_catalog.owner_tenant_id, mirroring the existing correct pattern in src/repository/service_catalog.zig. Re-reviewed and PASSed by SECURITY-REVIEWER after the fix (commit 23eff3b2, re-review commit 39d13534).\n2. A genuine TEST-DESIGN-VALIDATOR FAIL discovered mid-run: TEST-DESIGNER's new tests exposed 5 further BLOCKER-severity defects in this batch's own PAR-05/PAR-06/PIN-01 implementation (a missing unique constraint blocking PAR-05's ON CONFLICT backfill, PAR-06's window-column maintenance never covering instance.zig's raw event-append call sites, a JSON-schema-validation contract mismatch rejecting every valid PIN-01 variable, a PAR-05 reconciliation check that never actually fired, and a PIN-01 double-free crash on the pin_overrides accepting path) -- all fixed across further BACKEND-DEV rework cycles, each re-verified independently by SECURITY-REVIEWER and TEST-DESIGN-VALIDATOR before this branch was allowed to proceed.\n\nFollow your role file's GitHub Branch Management procedure exactly:\n1. Push the branch (git push -u origin feature/WF02-batch-4-20260811 if not already pushed).\n2. Create the PR (gh pr create --base main) with an accurate title and the body described above.\n3. Wait for and verify CI checks. Before characterizing ANY red or cancelled check, run python tools/check_github_status.py and quote its actual output -- this is mandatory, not optional, per core-directives.md's \"Never Call a Red Pipeline OK Without a Source\" directive. If a check is genuinely red (not platform-caused), diagnose and fix it -- do not merge past a genuine failure.\n4. Once green (or a platform-caused failure is confirmed via the status check and does not represent a real code defect), squash-merge and delete the branch (gh pr merge --squash --delete-branch).\n5. Verify branch deletion on GitHub.\n6. If this run resolves any GitHub issues that were fully closed within this run (check which of the ISS-*/GH-* issues filed or referenced in this run were actually resolved vs. merely filed-and-forwarded to the queue -- most were filed and forwarded to the global queue for LATER resolution, NOT resolved in this run, so do NOT close them; only GH-725/ISS-0682 was genuinely fixed and closed already mid-run by BACKEND-DEV -- verify its current state rather than assuming), update the project board accordingly per docs/agents/protocols/PROJECT_BOARD.md.\n7. Return to a clean main: git checkout main, git pull --ff-only origin main, verify branch --show-current is main, verify clean working tree.\n\nRecord in your handoff result: PR number, merge commit SHA, confirmation branch deleted, confirmation of clean main.",
+    "acceptance_criteria": [
+      "Branch pushed to origin",
+      "PR created with accurate title/body describing the split TESTED/RELEASED outcome and both rework cycles",
+      "python tools/check_github_status.py run and quoted before characterizing any red/cancelled check",
+      "CI genuinely green (or a confirmed platform-caused failure, not a real defect) before merging",
+      "PR squash-merged, branch deleted, both verified",
+      "Local repo returned to clean main, verified via git branch --show-current and git status",
+      "Handoff result records PR number and merge commit SHA"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T06:40:44Z",
+  "completed_at": null
+}
