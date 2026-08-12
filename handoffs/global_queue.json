@@ -2050,12 +2050,12 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/733",
       "title": "PAR-05 events_legacy has no archival-aging integration with PAR-03",
       "severity": "MAJOR",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "lock": null,
       "added_at": "2026-08-12T06:24:47Z",
-      "started_at": null,
-      "completed_at": null,
-      "run_id": null,
+      "started_at": "2026-08-12T08:29:09Z",
+      "completed_at": "2026-08-12T09:30:00Z",
+      "run_id": "WF03-GH733-20260812",
       "deferred_reason": null
     }
   ]
