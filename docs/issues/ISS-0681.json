@@ -1,24 +1,28 @@
 {
   "issue_id": "ISS-0681",
   "title": "PAR-05: PartitionConverter.backfillOneMonth() never populates plat_partition_catalog, so reconcileOrRollback() always finds zero rows and silently accepts any row-count mismatch",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "BLOCKER",
   "category": "correctness / requirement violation",
   "run_id": "WF02-batch-4-20260811",
   "workflow_id": "WF-02",
   "handoff_id": "dffa6e06-c532-4022-a9ab-2797e5bab4c7",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/724",
-  "requirement_ids": ["PAR-05"],
+  "requirement_ids": [
+    "PAR-05"
+  ],
   "summary": "PAR-05 AC5 requires reconcileOrRollback() to compare per-month row counts between events_legacy and the new events partitions, and to inverse-rename + return ConversionRowCountMismatch on any divergence. reconcileOrRollback() (src/db/partition_conversion.zig) discovers the per-month partition pairs to compare via a self-join on plat_partition_catalog: 'WHERE lp.parent_table = events_legacy AND np.parent_table = events'. However PartitionConverter.backfillOneMonth() (Step 4, the per-month CREATE+ATTACH loop) calls partition_attach.zig's attachPartitionTimed() directly to attach each month partition, and never inserts a row into plat_partition_catalog afterward -- that INSERT is only performed by a DIFFERENT caller, src/scheduler/partition_maintenance.zig's ensurePartitionAttached() (PAR-02's daily maintenance job), which PartitionConverter never invokes. Consequence: after a real PAR-05 conversion, plat_partition_catalog has zero rows for any events_part-derived partition, so reconcileOrRollback()'s join always returns zero rows, the mismatch-detection loop body never executes, and the function returns success (no error) unconditionally -- even when a real row-count divergence exists between events_legacy and the new events partitions. Confirmed live: tests/integration/par05_online_partition_conversion_test.zig's TC-PAR-05-06 (deliberately deletes one row from a post-swap partition, then expects reconcileOrRollback() to detect the mismatch, inverse-rename, and return ConversionError.ConversionRowCountMismatch) fails with 'expected error.ConversionRowCountMismatch, found void' against a real PostgreSQL 15.14 instance -- reconcileOrRollback() returns cleanly despite the row-count corruption still present. This is a distinct root cause from ISS-0676/GH-718 (the ON CONFLICT 42P10 constraint-missing defect, already fixed in this same rework) and from ISS-0678/GH-720 (a different file, par06_instance_projections_event_window_test.zig's unscoped catalog query) -- discovered while re-verifying PAR-05's test suite after fixing ISS-0676, not something the ISS-0676 fix caused or could have caused (git history confirms backfillOneMonth()/reconcileOrRollback() were unchanged by that fix).",
   "root_cause": {
     "type": "missing_side_effect_on_alternate_call_path",
     "details": "plat_partition_catalog population (the INSERT INTO plat_partition_catalog ... ON CONFLICT (table_name) DO UPDATE ... statement) lives only inside src/scheduler/partition_maintenance.zig's ensurePartitionAttached(), which wraps attachPartitionTimed() for PAR-02's daily maintenance job. src/db/partition_conversion.zig's PartitionConverter.backfillOneMonth() calls attachPartitionTimed() directly (bypassing ensurePartitionAttached() entirely) since the partition-creation SQL shape differs slightly (partition_conversion.zig builds its own CREATE TABLE against events_part rather than the maintenance job's fixed parent), so it never gained the plat_partition_catalog bookkeeping ensurePartitionAttached() performs alongside the same attach call. reconcileOrRollback() (Step 6, PAR-05 AC5) was written assuming plat_partition_catalog is populated for every attached partition regardless of which code path attached it."
   },
-  "resolution": null,
-  "verification": null,
-  "files_changed": [],
+  "resolution": "Fixed in WF02-batch-4-20260811 rework. Two changes in src/db/partition_conversion.zig: (1) each backfilled partition now gets a plat_partition_catalog row via upsertPartitionCatalogRow() at creation time, and (2) the final rename step now updates plat_partition_catalog.parent_table in the same transaction as the table-level rename. See lines 317-336 and 435-457.",
+  "verification": "Verified live: both fix sites cite this issue directly. Merged via PR #734, currently present on main.",
+  "files_changed": [
+    "src/db/partition_conversion.zig"
+  ],
   "created_at": "2026-08-12T03:39:40Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-12T07:55:22Z",
   "prevention": [
     "Have PartitionConverter.backfillOneMonth() insert/upsert its own plat_partition_catalog row (table_name=partition_name, parent_table='events_part', state='ATTACHED') immediately after each successful attachPartitionTimed() call, mirroring ensurePartitionAttached()'s own INSERT ... ON CONFLICT (table_name) DO UPDATE shape -- OR factor the plat_partition_catalog upsert out of ensurePartitionAttached() into a small shared helper both partition_maintenance.zig and partition_conversion.zig call after every ATTACH PARTITION, so the bookkeeping cannot be forgotten by a second caller again.",
     "reconcileOrRollback()'s swap()-time rename from events_part to events also needs the corresponding plat_partition_catalog.parent_table values updated from 'events_part' to 'events' (and events_legacy's own rows would need 'events' relabelled to 'events_legacy') for the AC5 self-join predicate ('parent_table = events_legacy' / 'parent_table = events') to ever match real rows -- verify this rename-time bookkeeping is also added, not just the initial backfillOneMonth() INSERT, or the self-join will still return zero rows after the population gap above is fixed."

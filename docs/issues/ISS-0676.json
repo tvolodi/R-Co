@@ -1,24 +1,28 @@
 {
   "issue_id": "ISS-0676",
   "title": "PAR-05: partition_conversion.zig's createParent() never adds the (event_id, created_at) unique constraint events_part needs for its own ON CONFLICT clauses",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "BLOCKER",
   "category": "correctness / migration logic",
   "run_id": "WF02-batch-4-20260811",
   "workflow_id": "WF-02",
   "handoff_id": "67a40957-17d3-41d0-b28c-f9edd4870c4d",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/718",
-  "requirement_ids": ["PAR-05"],
+  "requirement_ids": [
+    "PAR-05"
+  ],
   "summary": "src/db/partition_conversion.zig's PartitionConverter.createParent() issues CREATE TABLE events_part (LIKE events INCLUDING DEFAULTS INCLUDING IDENTITY) PARTITION BY RANGE (created_at). LIKE ... INCLUDING DEFAULTS INCLUDING IDENTITY does not copy constraints (confirmed live against PostgreSQL 15.14: a source table's PRIMARY KEY/UNIQUE constraints are copied only with the separate INCLUDING CONSTRAINTS/INCLUDING INDEXES clauses, neither specified here). events_part is therefore created with zero constraints. Both backfillOneMonth() (PAR-05 AC1/AC3) and swap() (PAR-05 AC4) issue INSERT INTO events_part ... ON CONFLICT (event_id, created_at) DO NOTHING -- without a matching unique constraint/index on events_part, PostgreSQL raises 42P10 'there is no unique or exclusion constraint matching the ON CONFLICT specification' on the FIRST insert. Every real invocation of backfillOneMonth()/swap() against a real PostgreSQL database fails immediately.",
   "root_cause": {
     "type": "incomplete_ddl_clause",
     "details": "The design document (src/design/par-05-online-partition-conversion.md, Public interface Step 2) specifies the exact LIKE clause list without ever adding a follow-up ALTER TABLE events_part ADD CONSTRAINT ... PRIMARY KEY (event_id, created_at) -- the design itself has the same gap the implementation faithfully reproduced. 1147_par01_events_partitioning.sql's own from-scratch path declares PRIMARY KEY (event_id, created_at) explicitly in its CREATE TABLE statement rather than relying on LIKE to copy it, which is the pattern this conversion path needs to match."
   },
-  "resolution": null,
-  "verification": null,
-  "files_changed": [],
+  "resolution": "Fixed in WF02-batch-4-20260811 rework (commit range including 29314c89). partition_conversion.zig createParent() now runs ALTER TABLE events_part ADD PRIMARY KEY (event_id, created_at) explicitly after the LIKE ... INCLUDING DEFAULTS INCLUDING IDENTITY create. See src/db/partition_conversion.zig lines 138-181.",
+  "verification": "Verified live: fix comment cites this issue; ON CONFLICT (event_id, created_at) clauses in backfillOneMonth()/swap() now have a matching constraint to target. Merged via PR #734, currently present on main.",
+  "files_changed": [
+    "src/db/partition_conversion.zig"
+  ],
   "created_at": "2026-08-12T03:02:17Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-12T07:55:22Z",
   "prevention": [
     "Add INCLUDING CONSTRAINTS (and possibly INCLUDING INDEXES) to the LIKE clause in createParent(), OR explicitly ALTER TABLE events_part ADD PRIMARY KEY (event_id, created_at) immediately after the CREATE TABLE statement -- matching 1147_par01_events_partitioning.sql's own explicit PK declaration.",
     "When a design doc specifies a CREATE TABLE (LIKE ...) statement, explicitly verify which constraint-copy clauses (INCLUDING CONSTRAINTS/INDEXES) are needed for any ON CONFLICT clause the same module issues against the new table -- LIKE's default behavior silently omits constraints, and this is easy to miss when reading the design prose rather than testing the actual DDL live."
