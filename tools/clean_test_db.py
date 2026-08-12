@@ -469,15 +469,79 @@ def main() -> None:
         # Re-sweep schemas the fixture rows left behind.
         drop_orphaned_tenant_schemas()
 
+    # ISS-0687 (GitHub #744): schema-qualify the reseed target. `roles` is a
+    # PER_TENANT table whose canonical home is `tenant_default` (confirmed
+    # via docker exec against bpm_test: `\dt public.roles` -> no relation,
+    # `\dt tenant_default.roles` -> present). The previous bare
+    # `INSERT INTO roles (...)` resolved against `public` (no `search_path`
+    # override on the bare psql connection) and therefore ALWAYS failed
+    # with `relation "roles" does not exist`. run_psql()'s
+    # "does not exist" substring guard then silently returned True -- the
+    # exact anti-pattern flagged in docs/anti-patterns.md
+    # ("A gate matches a substring anywhere in a subprocess's full
+    # stdout/stderr, instead of matching a structured signal") -- masking
+    # the failure and making the reseed appear to succeed. Schema-qualify
+    # the INSERT to `tenant_default.roles` (the only place the table
+    # exists) so the reseed actually reaches its target.
+    expected_role_count = len(SYSTEM_ROLES)
     for role_name, role_description in SYSTEM_ROLES:
         sql = (
-            "INSERT INTO roles (name, description, is_system) "
+            "INSERT INTO tenant_default.roles (name, description, is_system) "
             f"VALUES ('{role_name}', '{role_description}', true) "
             "ON CONFLICT (name) DO NOTHING"
         )
         if not run_psql(sql):
             print("ERROR: Failed to reseed mandatory system roles; aborting integration run.", file=sys.stderr)
             sys.exit(1)
+
+    # ISS-0687 (GitHub #744) — defense in depth. Even with the schema fix
+    # above, a future change could regress the reseed in a different way
+    # (e.g. re-introducing a bare `INSERT INTO roles`, or the
+    # `tenant_default.roles` table being absent on a cold-start database
+    # before any migration has run). Re-query the actual count of system
+    # roles after the reseed loop and fail loudly if the expected set is
+    # not present, so a masked failure here cannot silently regress test
+    # fixtures again. Uses run_psql_query() (returns [] on connection
+    # error) -- on cold-start where the table doesn't exist yet, the query
+    # yields zero rows, which fails the >= expected_role_count check below
+    # and produces a clear, actionable error instead of a downstream
+    # fixture failure much later in the test run.
+    seeded_roles = run_psql_query(
+        "SELECT name FROM tenant_default.roles WHERE is_system = true"
+    )
+    if len(seeded_roles) < expected_role_count:
+        # Detect the cold-start "table doesn't exist" case specifically,
+        # since the [] result is indistinguishable from "zero rows" there.
+        # Don't try to be clever about recovering -- if the harness hasn't
+        # migrated yet, the rest of this script's invariants don't apply
+        # either. Surface it as a loud, structured error.
+        relation_exists = run_psql_query(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = 'tenant_default' AND table_name = 'roles'"
+        )
+        if not relation_exists:
+            print(
+                "ERROR: clean_test_db.py cannot reseed system roles: "
+                "tenant_default.roles does not exist. The test database has "
+                "not been migrated yet (cold-start). Run the migrations before "
+                "invoking clean_test_db.py, or use the full `zig build "
+                "test-integration-*` pipeline that wires clean_test_db as an "
+                "ordering predecessor of TestHarness.init().",
+                file=sys.stderr,
+            )
+        else:
+            missing = sorted(
+                {r[0] for r in SYSTEM_ROLES} - set(seeded_roles)
+            )
+            print(
+                f"ERROR: clean_test_db.py reseeded only {len(seeded_roles)} of "
+                f"{expected_role_count} expected system roles in "
+                f"tenant_default.roles. Missing: {missing}. Test fixtures "
+                "that depend on these roles will fail downstream; aborting "
+                "integration run.",
+                file=sys.stderr,
+            )
+        sys.exit(1)
 
     # ISS-0663: post-condition re-queries. Both use run_psql_query() which returns []
     # on connection error, so cold-start databases pass safely.
