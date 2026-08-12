@@ -13,6 +13,7 @@
 const std = @import("std");
 const db = @import("pool");
 const pipeline_context_mod = @import("pipeline_context");
+const platform = @import("platform.zig");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
 const registry_mod = @import("registry.zig");
@@ -139,6 +140,14 @@ pub const AppendResult = struct {
     is_duplicate: bool,
 };
 
+/// Parameters for a platform-scoped EXECUTION_* event (no owning workflow instance).
+/// instance_id, actor_id, tenant_id are fixed to platform sentinels by appendPlatform.
+pub const PlatformAppendParams = struct {
+    event_type: []const u8,
+    payload: []const u8,
+    idempotency_key: []const u8,
+};
+
 pub const ReadOpts = struct {
     tenant_id: []const u8 = DEFAULT_TENANT_ID,
     /// Return events with sequence_number ≤ value; null = no upper limit (ES-06).
@@ -237,6 +246,161 @@ pub const Store = struct {
 
     pub fn deinit(self: *Store) void {
         _ = self;
+    }
+
+    // -----------------------------------------------------------------------
+    // appendPlatform (PAR-02 AC5, ISS-0670)
+    // -----------------------------------------------------------------------
+
+    /// Append a platform-scoped EXECUTION_* event.
+    ///
+    /// Differences from append():
+    ///  - Skips instance_projections existence check.
+    ///  - Skips instance_sequence counter; sequence_number is written as 0.
+    ///  - Uses PLATFORM_INSTANCE_ID, PLATFORM_ACTOR_ID, PLATFORM_TENANT_ID sentinels.
+    ///  - Does NOT update instance_projections.last_event_seq.
+    ///  - ES-03 idempotency, ES-05 registry validation, DB-03 atomicity preserved.
+    ///
+    /// Returns AppendResult with is_duplicate=true if idempotency_key already committed.
+    pub fn appendPlatform(
+        self: *Store,
+        allocator: std.mem.Allocator,
+        params: PlatformAppendParams,
+    ) StoreError!AppendResult {
+        // Pre-write validation.
+        if (params.idempotency_key.len == 0) return StoreError.IdempotencyKeyMissing;
+        if (params.idempotency_key.len > 255) return StoreError.IdempotencyKeyTooLong;
+        if (!isJsonObject(params.payload)) return StoreError.PayloadInvalid;
+
+        // ES-05: registry validation.
+        self.registry.validatePayload(allocator, params.event_type, params.payload) catch |err| switch (err) {
+            registry_mod.RegistryError.UnknownEventType => return StoreError.UnknownEventType,
+            registry_mod.RegistryError.PayloadValidationFailed => return StoreError.PayloadSchemaInvalid,
+            registry_mod.RegistryError.PoolExhausted => return StoreError.PoolExhausted,
+            else => return StoreError.TransactionFailed,
+        };
+
+        // PAR-03: retention-class routing (events vs events_ephemeral).
+        const type_record = self.registry.getType(allocator, params.event_type) catch |err| switch (err) {
+            registry_mod.RegistryError.UnknownEventType => return StoreError.UnknownEventType,
+            registry_mod.RegistryError.PoolExhausted => return StoreError.PoolExhausted,
+            else => return StoreError.TransactionFailed,
+        };
+        defer registry_mod.Registry.freeTypeRecord(allocator, type_record);
+        const target_table: []const u8 = if (std.mem.eql(u8, type_record.retention_class, "delete"))
+            "events_ephemeral"
+        else
+            "events";
+
+        const conn = self.pool.acquire() catch |err| switch (err) {
+            PoolError.ExhaustedPool => return StoreError.PoolExhausted,
+            else => return StoreError.TransactionFailed,
+        };
+        defer self.pool.release(conn);
+
+        conn.exec("BEGIN", &.{}) catch return StoreError.TransactionFailed;
+        errdefer conn.exec("ROLLBACK", &.{}) catch {};
+
+        // Platform events are cross-tenant; public schema holds all three event tables.
+        conn.exec("SET LOCAL search_path TO public", &.{}) catch {
+            conn.exec("ROLLBACK", &.{}) catch {};
+            return StoreError.TransactionFailed;
+        };
+
+        // ES-03: idempotency via plat_event_idempotency.
+        const idem_rows = conn.query(
+            allocator,
+            \\INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at)
+            \\VALUES ($1, gen_random_uuid(), NOW())
+            \\ON CONFLICT (idempotency_key) DO NOTHING
+            \\RETURNING event_id, (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us
+        ,
+            &.{params.idempotency_key},
+        ) catch {
+            conn.exec("ROLLBACK", &.{}) catch {};
+            return StoreError.TransactionFailed;
+        };
+        defer {
+            var mr = idem_rows;
+            mr.deinit();
+        }
+
+        const generated_event_id: []const u8 = if (idem_rows.rows.len > 0 and idem_rows.rows[0].len > 0)
+            (idem_rows.rows[0][0] orelse "")
+        else
+            "";
+
+        if (idem_rows.rows.len == 0) {
+            conn.exec("ROLLBACK", &.{}) catch {};
+            return AppendResult{
+                .record = EventRecord{
+                    .event_id = std.mem.zeroes(Uuid),
+                    .instance_id = std.mem.zeroes(Uuid),
+                    .event_type = "",
+                    .payload = "",
+                    .actor_id = std.mem.zeroes(Uuid),
+                    .created_at = 0,
+                    .sequence_number = 0,
+                    .idempotency_key = params.idempotency_key,
+                    .metadata = "{}",
+                    .global_seq = 0,
+                },
+                .is_duplicate = true,
+            };
+        }
+
+        // INSERT into target table with platform sentinels; sequence_number=0 (no per-instance stream).
+        const insert_sql_events =
+            \\INSERT INTO events
+            \\  (event_id, instance_id, event_type, payload, actor_id,
+            \\   sequence_number, idempotency_key, metadata, tenant_id, global_seq)
+            \\VALUES
+            \\  ($1::uuid, $2::uuid, $3, $4::jsonb, $5::uuid,
+            \\   0, $6, '{}'::jsonb, $7::uuid, nextval('events_global_seq'))
+        ;
+        const insert_sql_ephemeral =
+            \\INSERT INTO events_ephemeral
+            \\  (event_id, instance_id, event_type, payload, actor_id,
+            \\   sequence_number, idempotency_key, metadata, tenant_id, global_seq)
+            \\VALUES
+            \\  ($1::uuid, $2::uuid, $3, $4::jsonb, $5::uuid,
+            \\   0, $6, '{}'::jsonb, $7::uuid, nextval('events_global_seq'))
+        ;
+        const insert_sql = if (std.mem.eql(u8, target_table, "events_ephemeral"))
+            insert_sql_ephemeral
+        else
+            insert_sql_events;
+
+        conn.exec(insert_sql, &.{
+            generated_event_id,
+            platform.PLATFORM_INSTANCE_ID,
+            params.event_type,
+            params.payload,
+            platform.PLATFORM_ACTOR_ID,
+            params.idempotency_key,
+            platform.PLATFORM_TENANT_ID,
+        }) catch {
+            conn.exec("ROLLBACK", &.{}) catch {};
+            return StoreError.TransactionFailed;
+        };
+
+        conn.exec("COMMIT", &.{}) catch return StoreError.TransactionFailed;
+
+        return AppendResult{
+            .record = EventRecord{
+                .event_id = std.mem.zeroes(Uuid),
+                .instance_id = std.mem.zeroes(Uuid),
+                .event_type = "",
+                .payload = params.payload,
+                .actor_id = std.mem.zeroes(Uuid),
+                .created_at = 0,
+                .sequence_number = 0,
+                .idempotency_key = params.idempotency_key,
+                .metadata = "{}",
+                .global_seq = 0,
+            },
+            .is_duplicate = false,
+        };
     }
 
     // -----------------------------------------------------------------------

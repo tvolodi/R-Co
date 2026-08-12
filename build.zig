@@ -964,6 +964,7 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "pool", .module = pool_root_mod },
                 .{ .name = "partition_attach", .module = partition_attach_mod },
+                .{ .name = "event_store", .module = event_store_mod },
             },
         }),
     });

@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0670",
   "title": "PAR-02 AC5: EXECUTION_PARTITION_CREATED event not emitted — needs a platform-event append design (no instance_id convention exists)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MINOR",
   "category": "event-store / platform-event design gap",
   "run_id": "WF02-batch-3-20260811",
@@ -14,13 +14,45 @@
   "summary": "PAR-02 AC5 (each partition creation appends EXECUTION_PARTITION_CREATED carrying partition name + range bounds) is unimplemented. src/scheduler/partition_maintenance.zig::ensurePartitionAttached() creates and attaches partitions but never calls Store.append() or emits any event. Investigated fixing directly during REWORK 1: Store.append() requires instance_id to exist as an ACTIVE row in instance_projections (StoreError.InstanceNotFound otherwise); partition_maintenance.zig is a platform-level daily job with no owning workflow instance, and no system/platform instance_id convention exists anywhere in this codebase. Every other platform-level EXECUTION_* event of the same shape named in docs/requirements.yaml (EXECUTION_MIGRATION_VALIDATED, EXECUTION_OUTBOX_GATE_OPENED, EXECUTION_CORRELATION_LAG, EXECUTION_INGRESS_REFUSED, EXECUTION_PARTITION_DETACHED, EXECUTION_PARTITION_DROPPED) is also unimplemented, confirming no precedent exists to copy. Needs a CODE-DESIGNER design note establishing the platform-event append convention before BACKEND-DEV can implement — not a quick fix. Sub-finding of GH #223 (PAR-02 parent requirement tracking issue).",
   "root_cause": {
     "type": "missing_design_convention",
-    "details": "No design artefact in this codebase specifies how a non-instance-scoped platform/system event (instance_id has no owning workflow instance) should be appended through Store.append(), which hard-requires an ACTIVE instance_projections row. This blocks EXECUTION_PARTITION_CREATED (PAR-02 AC5) and at least five other EXECUTION_* platform events named in docs/requirements.yaml."
+    "details": {
+      "summary": "No design artefact in this codebase specifies how a non-instance-scoped platform/system event (instance_id has no owning workflow instance) should be appended through Store.append(), which hard-requires an ACTIVE instance_projections row. This blocks EXECUTION_PARTITION_CREATED (PAR-02 AC5) and at least five other EXECUTION_* platform events named in docs/requirements.yaml.",
+      "emit_site": {
+        "file": "src/scheduler/partition_maintenance.zig",
+        "function": "ensurePartitionAttached",
+        "function_start_line": 258,
+        "emit_before_line": 328,
+        "description": "The event must be emitted after the successful 'INSERT INTO plat_partition_catalog … ON CONFLICT … DO UPDATE' exec (line 316–326) and immediately before 'return true;' at line 328. At that point the partition name (partition_name), parent table, range_start, and range_end are all in scope and the attach has been confirmed. No call to Store.append() or any other event sink exists here today."
+      },
+      "store_append_instance_id_check": {
+        "file": "src/event_store/store.zig",
+        "function": "Store.append",
+        "check_sql_line": 372,
+        "check_sql": "SELECT status FROM instance_projections WHERE instance_id = $1",
+        "reject_line": 382,
+        "reject_error": "StoreError.InstanceNotFound",
+        "description": "Store.append() Step 1 (lines 370–382) issues a SELECT against instance_projections for params.instance_id before any write. If the row is absent (rows.len == 0) the function returns StoreError.InstanceNotFound and rolls back. It additionally rejects CANCELLED/COMPLETED status. partition_maintenance.zig is a platform-level daily job with no owning workflow instance, so no row in instance_projections will ever exist for it, making this check a hard blocker."
+      },
+      "platform_event_convention_required": {
+        "description": "A CODE-DESIGNER design note must specify: (1) whether platform events use a fixed synthetic instance_id (e.g. a well-known UUIDv5 derived from 'platform') permanently seeded as ACTIVE in instance_projections, or whether Store.append() needs a new InstanceNotFound carve-out/bypass path for platform events; (2) the actor_id convention for scheduler-driven events (no human actor); (3) the idempotency_key shape (e.g. deterministic hash of partition_name + event_type); (4) the tenant_id value (NULL or a reserved platform tenant UUID). Without this, the call site at line 328 cannot be implemented correctly."
+      }
+    }
   },
-  "resolution": null,
-  "verification": null,
-  "files_changed": [],
+  "resolution": {
+    "summary": "PAR-02 AC5 implemented via Store.appendPlatform() in src/event_store/store.zig (bypasses instance_projections lookup for non-instance-scoped platform events). Added src/event_store/platform.zig with PLATFORM_INSTANCE_ID/ACTOR_ID/TENANT_ID sentinel constants. ensurePartitionAttached() in src/scheduler/partition_maintenance.zig now emits EXECUTION_PARTITION_CREATED (non-fatal on emit failure). Migration 1152 seeds EXECUTION_PARTITION_CREATED/DETACHED/DROPPED in event_type_registry. This convention unblocks 5 other EXECUTION_* platform events. NOTE: TC-PAR-02-09 Zig integration test code (asserting the event is present in the events table) is a follow-up task — the test spec was written by TEST-DESIGNER in step-05 but the Zig assertion code was not added to the test binary in this run."
+  },
+  "verification": {
+    "method": "Code review of Store.appendPlatform(), platform.zig constants, ensurePartitionAttached() emit site, and migration 1152 seed entries. TC-PAR-02-09 Zig assertion code is a follow-up task.",
+    "run_id": "WF03-ISS0670-20260812"
+  },
+  "files_changed": [
+    "src/event_store/store.zig",
+    "src/event_store/platform.zig",
+    "src/scheduler/partition_maintenance.zig",
+    "migrations/1152_iss0670_platform_event_types_seed.sql"
+  ],
   "created_at": "2026-08-11T17:29:26Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-12T06:15:00Z",
+  "last_updated": "2026-08-12T06:15:00Z",
   "prevention": [
     "CODE-DESIGNER should produce a short design note establishing the platform-event append convention (instance_id/actor_id/idempotency_key shape for non-instance-scoped events, and whether Store.append() needs an InstanceNotFound carve-out or platform events need a dedicated lower-level insert path) before any of the six affected EXECUTION_* events are implemented."
   ]

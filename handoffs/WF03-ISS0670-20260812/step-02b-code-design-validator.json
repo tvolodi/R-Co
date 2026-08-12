@@ -1,0 +1,36 @@
+{
+  "handoff_id": "667002b1-0000-0000-0000-000000000000",
+  "run_id": "WF03-ISS0670-20260812",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-12T05:28:03Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "iss_ref": "ISS-0670",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/711",
+    "branch": "feature/WF03-ISS0670-20260812"
+  },
+  "task": {
+    "description": "Validate design. AC checks: (1) Platform-event convention specified (instance_id approach or bypass). (2) ensurePartitionAttached() call site specified. (3) Any required migration for platform instance seeding specified. (4) PAR-02 AC5 test assertion unblocked. (5) Design unambiguous for BACKEND-DEV.",
+    "acceptance_criteria": [],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact ISS-0670-platform-event-convention.md validated. All 7 acceptance checks pass. Store.appendPlatform() fully specified. PLATFORM_INSTANCE_ID/ACTOR_ID/TENANT_ID constants specified. Call site at ensurePartitionAttached() line 328 specified with full Zig snippet. Payload structure (partition_name, parent_table, range_start, range_end) specified. Idempotency key scheme specified. Event type registry seed migration specified. Design is unambiguous for BACKEND-DEV.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "check": "Migration number collision",
+        "detail": "The design names the seed migration '1150_platform_event_types_seed.sql'. Migration 1150 already exists on feature/WF02-batch-4-20260811 as '1150_par06_instance_projections_event_window.sql' and has been applied to bpm_test. BACKEND-DEV MUST use migration number 1152 or higher (e.g., '1152_iss0670_platform_event_types_seed.sql') to avoid filename collision and sequence conflict. This does not affect the PASS decision; the rest of the design is correct."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 2a). BACKEND-DEV must use migration number >= 1152 for the event type registry seed."
+  },
+  "status": "COMPLETED",
+  "started_at": "2026-08-12T05:28:03Z",
+  "completed_at": "2026-08-12T05:37:56Z"
+}

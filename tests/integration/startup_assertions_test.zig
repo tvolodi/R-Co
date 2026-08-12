@@ -31,21 +31,10 @@ fn cleanupTestPool(pool: *db_pool.Pool, allocator: std.mem.Allocator) void {
 }
 
 test "assertDatabaseConfiguration_success" {
-    // This test assumes:
-    // 1. PostgreSQL 14.0+ is running at BPM_TEST_DB_URL
-    // 2. pg_trgm extension is installed
-    // 3. public schema has 0 application tables (in a clean environment)
-    //
-    // NOTE: BPM platform migrations populate `public` with application
-    // tables. On `bpm_test` (the standard integration DB) this baseline
-    // is non-zero, so the production function correctly reports
-    // `PublicSchemaPollution`. We assert here that:
-    //   - If the baseline is empty, the function returns void (success path).
-    //   - If the baseline has BPM platform tables, the function returns
-    //     `PublicSchemaPollution` (pollution check fired as designed).
-    //
-    // This keeps the test robust against any BPM test environment while
-    // still exercising the function's success and pollution paths.
+    // Uses assertDatabaseConfigurationWithOverrides to simulate a clean schema
+    // (public_table_count=0) and ensure pg_trgm is treated as installed
+    // (bpm_test may not have it). Tests the happy path: when version, extensions,
+    // and schema are all OK, the function returns void.
 
     var io_threaded = std.Io.Threaded.init(testing.allocator, .{});
     defer io_threaded.deinit();
@@ -54,19 +43,7 @@ test "assertDatabaseConfiguration_success" {
     const pool = try setupTestPool(io, testing.allocator);
     defer cleanupTestPool(pool, testing.allocator);
 
-    // Act
-    const result = startup_assertions.assertDatabaseConfiguration(testing.allocator, pool);
-
-    // Assert - either path is a passing outcome for this test.
-    if (result) {
-        // success path: function returned void
-    } else |err| switch (err) {
-        error.PublicSchemaPollution => {
-            // baseline pollution path: BPM platform tables are present.
-            // Function correctly detected them.
-        },
-        else => return err,
-    }
+    try startup_assertions.assertDatabaseConfigurationWithOverrides(testing.allocator, pool, null, &.{"pg_trgm"}, 0);
 }
 
 test "assertDatabaseConfiguration_version_too_old" {
@@ -90,6 +67,7 @@ test "assertDatabaseConfiguration_version_too_old" {
         pool,
         old_version,
         &extensions,
+        null,
     );
 
     // Assert
@@ -129,6 +107,7 @@ test "assertDatabaseConfiguration_extension_missing" {
         pool,
         version,
         &extensions,
+        null,
     );
 
     // Assert
@@ -164,15 +143,21 @@ test "assertDatabaseConfiguration_public_schema_polluted" {
         _ = conn.exec("DROP TABLE IF EXISTS dummy_pollution_test", &.{}) catch {};
     }
 
-    // Act
-    const result = startup_assertions.assertDatabaseConfiguration(testing.allocator, pool);
+    // Act — uses extension override (pg_trgm may not be in bpm_test) but real
+    // public schema query. bpm_test has BPM tables in public, so PublicSchemaPollution fires.
+    const result = startup_assertions.assertDatabaseConfigurationWithOverrides(
+        testing.allocator,
+        pool,
+        140000,
+        &.{"pg_trgm"},
+        null,
+    );
 
     // Assert
     try testing.expectError(startup_assertions.StartupAssertionError.PublicSchemaPollution, result);
 
     // Expected FATAL line format (emitted to stderr):
-    // FATAL startup.database PUBLIC_SCHEMA_POLLUTION table_count=1 expected=0
-    // (table_count may be higher if system tables are counted)
+    // FATAL startup.database PUBLIC_SCHEMA_POLLUTION table_count=N expected=0
 }
 
 // Additional test: verify override variant advances past extension and version
@@ -191,22 +176,13 @@ test "assertDatabaseConfiguration_with_overrides_success" {
     const version: u32 = 140000; // PostgreSQL 14.0
     const extensions = [_][]const u8{"pg_trgm"};
 
-    // Act
-    const result = startup_assertions.assertDatabaseConfigurationWithOverrides(
+    // Act — overrides version and extensions; passes 0 for public_table_count to
+    // simulate a clean schema regardless of what bpm_test actually contains.
+    try startup_assertions.assertDatabaseConfigurationWithOverrides(
         testing.allocator,
         pool,
         version,
         &extensions,
+        0,
     );
-
-    // Assert - either success or pollution-detected is a passing outcome
-    // (BPM platform tables legitimately occupy `public` in bpm_test).
-    if (result) {
-        // success path
-    } else |err| switch (err) {
-        error.PublicSchemaPollution => {
-            // baseline pollution path
-        },
-        else => return err,
-    }
 }

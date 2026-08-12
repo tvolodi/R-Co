@@ -1,0 +1,57 @@
+{
+  "handoff_id": "69100700-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH691-20260811",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-11T21:39:07Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 7 DOC-UPDATER + Step Final",
+    "requirement_ids": ["PI-09"],
+    "iss_ref": "ISS-0660",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/691",
+    "related_handoff_ids": [
+      "81b01143-e88d-4f5a-91c0-bf84fe594b3a",
+      "69100300-0000-0000-0000-000000000000",
+      "69100500-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH691-20260811/step-03-backend-dev.json",
+      "handoffs/WF03-GH691-20260811/step-05-test-runner.json",
+      "docs/issues/ISS-0660.json"
+    ],
+    "branch": "feature/WF03-GH691-20260811",
+    "pr_to_create": true
+  },
+  "task": {
+    "description": "Step 7 (DOC-UPDATER) + Step Final (git-merge) for WF03-GH691-20260811. STEP 7: (1) Update CHANGELOG.md: add an entry for ISS-0660 fix — 'Remove PublicSchemaPollution tolerance from startup_assertions integration tests; use assertDatabaseConfigurationWithOverrides with public_table_count_override=0 for success tests; fix public_schema_polluted test to use extension override (GH-691)'. (2) Update docs/issues/ISS-0660.json: set status to 'RESOLVED', add resolution_text and prevention_text, update last_updated. (3) Run python3 tools/reqctl.py set-status PI-09 TESTED (or check current status and skip if already TESTED/RELEASED). STEP FINAL: (4) Commit all changes to feature/WF03-GH691-20260811. (5) Create a PR: gh pr create --base main --title 'fix(test): ISS-0660 remove PublicSchemaPollution tolerance in startup_assertions (#691)' --body '<description>'. (6) Merge: gh pr merge --squash --delete-branch. (7) Return to main: git checkout main && git pull --ff-only origin main. (8) Release the global_queue lock: python3 tools/queue_release.py GH-691 tvolodi-51316 --status RESOLVED (use .venv/Scripts/python.exe). (9) Run lint_handoffs.py exit 0. (10) Close GH-691: gh issue close 691 --repo tvolodi/R-Co --comment 'Fixed via PR #<number>. ISS-0660 resolved.'",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated",
+      "docs/issues/ISS-0660.json status = RESOLVED",
+      "PR created and squash-merged to main",
+      "feature/WF03-GH691-20260811 branch deleted",
+      "GH-691 closed on GitHub",
+      "global_queue GH-691 lock released (status RESOLVED)",
+      "git checkout main, clean working tree",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0660 RESOLVED: CHANGELOG.md updated, docs/issues/ISS-0660.json set to RESOLVED, PR #717 squash-merged to main (f6f9e100), feature/WF03-GH691-20260811 branch deleted, GH-691 closed, global_queue GH-691 released, repo returned to clean main. lint_handoffs.py exit 0.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0660.json",
+      "docs/status/requirement_status.yaml",
+      "handoffs/registry.json",
+      "handoffs/WF03-GH691-20260811/registry.json"
+    ],
+    "issues": [],
+    "next_action": "Workflow WF03-GH691-20260811 complete"
+  },
+  "started_at": "2026-08-11T21:39:07Z",
+  "completed_at": "2026-08-11T21:50:36Z"
+}

@@ -131,6 +131,43 @@ All notable changes to the BPM Platform are documented here.
   container's own real `psql`, bypassing the broken host-side shim — removed exactly the 109
   orphan rows. `zig build test-env-verify`: HEALTHY, 10/10 checks PASS afterward.
 
+### Added
+
+- ISS-0670 (GH-711): Implement PAR-02 AC5. Add Store.appendPlatform() to src/event_store/store.zig
+  for non-instance-scoped platform events (bypasses instance_projections lookup). Add platform.zig
+  with PLATFORM_INSTANCE_ID/ACTOR_ID/TENANT_ID constants. ensurePartitionAttached() in
+  partition_maintenance.zig now emits EXECUTION_PARTITION_CREATED (non-fatal). Migration 1152
+  seeds EXECUTION_PARTITION_CREATED/DETACHED/DROPPED in event_type_registry.
+  NOTE: TC-PAR-02-09 integration test assertion (Zig code) is a follow-up task.
+
+### Documentation
+
+- ISS-0668 (GH-706): Add Type A and Type B Lego schema docs (templates/crud-endpoint.schema.md,
+  templates/list-page.schema.md). Expand CUSTOM: block convention in lego-catalog.md into its
+  own subsection with anatomy examples and partial-fit guidance for when Type A/B/D deviation
+  should tip to Type E.
+
+### Fixed
+
+- ISS-0669 (GH-709): Fix Pool.mutex OS-thread safety: replace std.Io.Mutex (cooperative,
+  unsafe under raw std.Thread.spawn reentrancy) with PoolMutex (atomic spinlock wrapper).
+  Move applyRequestStorageRouting() and maybeRedirectToTenantHost() outside the critical
+  section — connections are exclusively owned once popped from idle_indices. Prevents
+  response misdelivery and false concurrent lock grants that caused FOR UPDATE SKIP LOCKED
+  to allow multiple threads to claim the same row.
+
+- ISS-0665 (GH-702): Widen statement_timeout for DDL/migration window in TestHarness.
+  runMigrations() and runMigrationsForSchema() now bracket migration work with
+  SET statement_timeout to BPM_TEST_STMT_TIMEOUT (default: 300s), restoring 60s
+  after DDL completes. Prevents statement_timeout cancellations under high concurrency
+  (~40 test binaries on loaded hosts). Added §10.2 to test_developer_guide.md.
+
+- ISS-0663 (GH-700): Fix clean_test_db.py run_psql() silently swallowing FK-violation failures.
+  Removed over-broad `or "relation"` substring guard (FK error messages contain "relation").
+  Added `_psql_is_native()` to detect Windows .cmd psql shims and fall back to docker-compose exec
+  (shims ignore SQL arguments). Added post-condition re-queries after cleanup to fail loudly if
+  rows still present. Added verbose warning on ignorable errors.
+
 ## [Unreleased] — 2026-08-11
 
 ### Split release — Stage 16 batch 3: PAR-01, PAR-04 RELEASED in full; PAR-02, PAR-03 TESTED but withheld (event-emission gap)
@@ -274,6 +311,13 @@ All notable changes to the BPM Platform are documented here.
 - **No requirement status change** — developer-experience / pipeline-infrastructure fix.
 
 ## [Unreleased] — 2026-08-10
+
+### Fixed
+- ISS-0660 (GH-691): Remove `PublicSchemaPollution` tolerance from startup assertions integration tests.
+  Both `_success` tests now use `assertDatabaseConfigurationWithOverrides` with `public_table_count_override=0`
+  to test the happy path without depending on bpm_test's schema state. `assertDatabaseConfiguration_public_schema_polluted`
+  now uses extension override to bypass missing `pg_trgm` in bpm_test while querying the real table count.
+  Extended `assertDatabaseConfigurationWithOverrides` signature with optional `public_table_count_override: ?u32` parameter.
 
 ### Fixed — ISS-0084 (PI-09 / GH-299): Operations runbook + fail-fast startup assertion
 

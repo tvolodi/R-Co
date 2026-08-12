@@ -1,0 +1,54 @@
+{
+  "handoff_id": "669002b1-0000-0000-0000-000000000000",
+  "run_id": "WF03-ISS0669-20260812",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-12T04:14:55Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "iss_ref": "ISS-0669",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/709",
+    "branch": "feature/WF03-ISS0669-20260812",
+    "artifacts_in": [
+      "src/design/ISS-0669-pool-mutex-fix.md",
+      "handoffs/WF03-ISS0669-20260812/step-02-code-designer.json"
+    ]
+  },
+  "task": {
+    "description": "Validate the design at src/design/ISS-0669-pool-mutex-fix.md. Verify: (1) Mutex change from Io.Mutex to Thread.Mutex — all call sites updated (no lingering io args). (2) applyRequestStorageRouting and maybeRedirectToTenantHost called OUTSIDE the critical section after connection is exclusively owned. (3) No other Io.Threaded operations inside the mutex. (4) release() signature-only changes are safe. (5) Design is unambiguous for BACKEND-DEV to implement. PASS or FAIL.",
+    "acceptance_criteria": [
+      "mutex type change fully specified",
+      "routing calls outside lock",
+      "design unambiguous",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/ISS-0669-pool-mutex-fix.md validated — all acceptance criteria covered. Six mutex call-site edits correctly enumerated (acquire x2, release x4). SQL helpers moved outside critical section with exclusive-ownership established before unlock. release() confirmed already safe. One MINOR documentation inconsistency: table header reads '(4 total)' but lists 6 rows; clarifying note '(Six edit points total)' is present immediately below — BACKEND-DEV will not be misled.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "check": "Change 3 table header vs body count mismatch",
+        "detail": "The 'Affected call sites' table header says '(4 total)' but enumerates 6 rows with a clarifying note '(Six edit points total across the four logical call sites.)'. The table body is complete and correct; only the header count is wrong. Does not block implementation."
+      }
+    ],
+    "checks": {
+      "change1_mutex_type": "PASS — std.Thread.Mutex is correct; .lock()/.unlock() (no io arg) correctly specified.",
+      "change2_init_sentinel": "PASS — .mutex = .init unchanged; both mutex types expose pub const init.",
+      "change3_call_sites": "PASS (with MINOR doc note) — all 6 lock/unlock edit points correctly identified across acquire() and release(). Header says '4 total'; body says 6. Body is authoritative.",
+      "change4_acquire_reorder": "PASS — self.mutex.unlock() precedes both maybeRedirectToTenantHost and applyRequestStorageRouting in the pseudocode. Exclusive ownership (idle_count decrement + conn capture) established before unlock.",
+      "change5_release_safety": "PASS — release() already executes all SQL outside the critical section. Only signature renames (Change 3) required.",
+      "other_io_threaded_inside_mutex": "PASS — pg.Conn.connectUrl(self.io,...) remains inside lock (stale-conn block) but is identified in Open Question 1 as an accepted blocking wait under Thread.Mutex; out-of-scope for ISS-0669. No other Io-threaded calls hidden inside critical section.",
+      "design_unambiguous": "PASS — pseudocode, key invariants, error taxonomy, and state-transition diagram give BACKEND-DEV a complete implementation map."
+    },
+    "next_action": "Route to BACKEND-DEV (Step 2a)"
+  },
+  "status": "COMPLETED",
+  "started_at": "2026-08-12T04:14:55Z",
+  "completed_at": "2026-08-12T04:17:02Z"
+}

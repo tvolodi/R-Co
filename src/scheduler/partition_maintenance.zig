@@ -18,6 +18,8 @@ const db = @import("pool");
 // cannot escape its own module root with a relative path that crosses into
 // src/db/ (Zig 0.16's single-owner module rule).
 const partition_attach = @import("partition_attach");
+const event_store = @import("event_store");
+const Store = event_store.Store;
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -56,9 +58,15 @@ const PROVISIONED_PARENTS = [_][]const u8{ "events", "events_ephemeral" };
 pub const PartitionMaintenanceScheduler = struct {
     pool: *db.Pool,
     config: PartitionMaintenanceConfig,
+    /// Optional: set to emit platform events on partition creation (ISS-0670, PAR-02 AC5).
+    store: ?*Store = null,
 
     pub fn init(pool: *db.Pool, config: PartitionMaintenanceConfig) PartitionMaintenanceScheduler {
         return .{ .pool = pool, .config = config };
+    }
+
+    pub fn initWithStore(pool: *db.Pool, config: PartitionMaintenanceConfig, store: *Store) PartitionMaintenanceScheduler {
+        return .{ .pool = pool, .config = config, .store = store };
     }
 
     /// Background loop entry point: sleeps until the next scheduled run (or
@@ -262,7 +270,6 @@ pub const PartitionMaintenanceScheduler = struct {
         parent: []const u8,
         range: MonthRange,
     ) PartitionMaintenanceError!bool {
-        _ = self;
         const partition_name = try std.fmt.allocPrint(allocator, "{s}_{s}", .{ parent, range.suffix });
         defer allocator.free(partition_name);
 
@@ -317,6 +324,37 @@ pub const PartitionMaintenanceScheduler = struct {
             db.PoolError.ExhaustedPool => return PartitionMaintenanceError.PoolExhausted,
             else => return PartitionMaintenanceError.TransactionFailed,
         };
+
+        // PAR-02 AC5: emit EXECUTION_PARTITION_CREATED (ISS-0670). Non-fatal.
+        if (self.store) |s| {
+            const payload_json = std.fmt.allocPrint(
+                allocator,
+                "{{\"partition_name\":\"{s}\",\"parent_table\":\"{s}\"," ++
+                    "\"range_start\":\"{s}\",\"range_end\":\"{s}\"}}",
+                .{ partition_name, parent, start_text, end_text },
+            ) catch null;
+            if (payload_json) |pj| {
+                defer allocator.free(pj);
+                const ikey = std.fmt.allocPrint(
+                    allocator,
+                    "EXECUTION_PARTITION_CREATED:{s}",
+                    .{partition_name},
+                ) catch null;
+                if (ikey) |ik| {
+                    defer allocator.free(ik);
+                    _ = s.appendPlatform(allocator, .{
+                        .event_type = "EXECUTION_PARTITION_CREATED",
+                        .payload = pj,
+                        .idempotency_key = ik,
+                    }) catch |err| {
+                        std.log.warn(
+                            "appendPlatform EXECUTION_PARTITION_CREATED failed for {s}: {any}",
+                            .{ partition_name, err },
+                        );
+                    };
+                }
+            }
+        }
 
         return true;
     }

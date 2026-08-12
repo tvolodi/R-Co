@@ -1,0 +1,40 @@
+{
+  "handoff_id": "6910ADHC-0000-0000-0000-000000000000",
+  "run_id": "ADHOC-GH691-infra-20260811",
+  "step": "00-adhoc",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-11T21:06:41Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "ADHOC — service startup before TEST-RUNNER (WF03-GH691-20260811)",
+    "requirement_ids": [],
+    "related_handoff_ids": ["69100300-0000-0000-0000-000000000000"],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "ADHOC: Start all required backend services and apply pending migrations. test-env-verify reports C1 (db_test container unhealthy), C3 (migrate fails), C4 (cleanup fails), C6 (stale locks query fails). Root cause: db_test container is unhealthy. Run: (1) docker compose up -d db_test --wait  (2) Wait until docker compose ps shows db_test as healthy  (3) zig build migrate  (4) Re-run: .venv\\Scripts\\python.exe tools\\verify_test_env.py (or zig build test-env-verify) and confirm exit 0 (all checks pass). Return PASS only when test-env-verify exits 0.",
+    "acceptance_criteria": [
+      "docker compose ps db_test shows healthy",
+      "zig build migrate exits 0",
+      "zig build test-env-verify exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "db_test container started healthy (r-co-2-db_test-1, port 5453). zig build migrate: 124/124 applied (all skipped, already up to date). Fixed clean_test_db.py to fall back to docker-compose exec when psql.exe is absent on Windows (C4 was failing with FileNotFoundError). verify_test_env.py: 10/10 checks PASS, exit 0.",
+    "artifacts_out": ["tools/clean_test_db.py"],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "psql.exe not installed on host; clean_test_db.py direct-URL mode failed with FileNotFoundError on Windows. Fixed by adding _psql_native_available() guard that falls back to docker-compose exec when no real psql binary exists.",
+        "file": "tools/clean_test_db.py"
+      }
+    ],
+    "next_action": "Redispatch TEST-RUNNER for WF03-GH691-20260811"
+  },
+  "started_at": "2026-08-11T21:06:41Z",
+  "completed_at": "2026-08-11T21:14:00Z"
+}

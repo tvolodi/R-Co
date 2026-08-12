@@ -129,6 +129,21 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, url: 
     try conn.exec("SET lock_timeout = '5s'", &.{});
     defer conn.exec("SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public'))", &.{}) catch {};
 
+    // ISS-0665: widen statement_timeout for the DDL window; defer restores
+    // configureSessionTimeouts() value ('60s') on all exit paths.
+    const _environ_rm = portable_env.globalEnviron();
+    var _owned_timeout_rm: ?[]u8 = null;
+    const _stmt_timeout_rm: []const u8 = blk: {
+        const v = _environ_rm.getAlloc(allocator, "BPM_TEST_STMT_TIMEOUT") catch break :blk "300s";
+        _owned_timeout_rm = v;
+        break :blk v;
+    };
+    defer if (_owned_timeout_rm) |s| allocator.free(s);
+    var _set_buf_rm: [64]u8 = undefined;
+    const _set_sql_rm = std.fmt.bufPrint(&_set_buf_rm, "SET statement_timeout = '{s}'", .{_stmt_timeout_rm}) catch "SET statement_timeout = '300s'";
+    try conn.exec(_set_sql_rm, &.{});
+    defer conn.exec("SET statement_timeout = '60s'", &.{}) catch {};
+
     try markPublicGlobalSkipsApplied(conn);
 
     const resolved = try resolveMigrationsDir(allocator);
@@ -191,6 +206,21 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
     try conn.exec("SELECT pg_advisory_lock(hashtext($1))", &.{schema});
     try conn.exec("SET lock_timeout = '5s'", &.{});
     defer conn.exec("SELECT pg_advisory_unlock(hashtext($1))", &.{schema}) catch {};
+
+    // ISS-0665: widen statement_timeout for the DDL window; defer restores
+    // configureSessionTimeouts() value ('60s') on all exit paths.
+    const _environ_rfs = portable_env.globalEnviron();
+    var _owned_timeout_rfs: ?[]u8 = null;
+    const _stmt_timeout_rfs: []const u8 = blk: {
+        const v = _environ_rfs.getAlloc(allocator, "BPM_TEST_STMT_TIMEOUT") catch break :blk "300s";
+        _owned_timeout_rfs = v;
+        break :blk v;
+    };
+    defer if (_owned_timeout_rfs) |s| allocator.free(s);
+    var _set_buf_rfs: [64]u8 = undefined;
+    const _set_sql_rfs = std.fmt.bufPrint(&_set_buf_rfs, "SET statement_timeout = '{s}'", .{_stmt_timeout_rfs}) catch "SET statement_timeout = '300s'";
+    try conn.exec(_set_sql_rfs, &.{});
+    defer conn.exec("SET statement_timeout = '60s'", &.{}) catch {};
 
     {
         var already_migrated = conn.query(
@@ -989,7 +1019,6 @@ pub const TestHarness = struct {
         // the caller to copy on every call defeats the purpose of the helper.
         return @constCast(try bpm.uuid.newUuidV4(allocator));
     }
-
 
     /// Initialise the harness:
     ///  1. Reads BPM_TEST_DB_URL from the environment.

@@ -1,0 +1,45 @@
+{
+  "handoff_id": "700002b1-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH700-20260812",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-12T02:44:32Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 2b CODE-DESIGN-VALIDATOR (hard gate)",
+    "requirement_ids": [],
+    "iss_ref": "ISS-0663",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/700",
+    "related_handoff_ids": [
+      "70000050-0000-0000-0000-000000000000",
+      "70000200-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH700-20260812/step-02-code-designer.json",
+      "docs/issues/ISS-0663.json"
+    ],
+    "branch": "feature/WF03-GH700-20260812"
+  },
+  "task": {
+    "description": "Step 2b: Hard gate — validate the CODE-DESIGNER artefact. Read step-02-code-designer.json result.summary. Verify: (1) Design covers the over-broad 'relation' fix (Change 1). (2) Design covers verbose warning on ignored errors. (3) Design covers post-condition re-query (Change 2). (4) Design is sufficient for BACKEND-DEV to implement without ambiguity: function names, line ranges, SQL queries, exception types all specified. (5) No production source changes (tools/ only). If all pass: PASS. If any fail: FAIL with BLOCKER items.",
+    "acceptance_criteria": [
+      "Change 1: over-broad 'relation' branch removal specified",
+      "Change 1: ignorable-error warning print specified",
+      "Change 2: post-condition re-query SQL specified",
+      "Change 2: RuntimeError on convergence failure specified",
+      "BACKEND-DEV can implement without ambiguity",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E inline design for ISS-0663 validated — all 7 checks pass.\n\n1. Change 1 — over-broad 'relation' branch removal: SPECIFIED. Design explicitly states 'Drop `or \"relation\" in stderr_lower` entirely' with rationale (FK-violation messages contain 'relation', so the old guard silently swallowed genuine DELETE failures).\n\n2. Change 1 — narrow 'does not exist' replacement: SPECIFIED. Exact replacement code block provided; condition `if \"does not exist\" in stderr_lower:` is unambiguous.\n\n3. Change 1 — ignorable-error warning print: SPECIFIED. Exact `print(f\"[clean_test_db] IGNORED non-zero psql exit: ...\", flush=True)` shown with format string (stderr truncated to 200 chars, reason text included).\n\n4. Change 1 — non-ignorable failure path: SPECIFIED. `raise RuntimeError(f\"psql failed (exit {result.returncode}): ...\\nSQL: ...\")` with exact format.\n\n5. Change 2 — post-condition re-query SQL (both queries): SPECIFIED. Query 1: SCHEMA-orphan check (storage_mode='SCHEMA', no matching tenant_schemas row). Query 2: residual test/production tenant check. Both SQL strings quoted verbatim.\n\n6. Change 2 — RuntimeError on convergence failure: SPECIFIED. Both conditional `raise RuntimeError(f\"clean_test_db: {n} rows still present after cleanup — cleanup did not converge\")` statements present.\n\n7. Sufficient for BACKEND-DEV without reading diagnosis: YES. Function name (run_psql), line range (107-113; actual 106-112 — minor off-by-one, code block uniquely identifies target), insertion point (before line 468 `print('Test database cleaned.')`), exact replacement code, and SQL queries all specified.\n\n8. Production source changes: NONE. 'Only tools/clean_test_db.py is modified.'\n\nlint_handoffs.py: exit 0 — 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing baseline), 291 ACKNOWLEDGED.",
+    "artifacts_out": [],
+    "issues": []
+  },
+  "started_at": "2026-08-12T02:44:32Z",
+  "completed_at": "2026-08-12T02:46:48Z"
+}

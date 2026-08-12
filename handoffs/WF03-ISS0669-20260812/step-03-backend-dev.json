@@ -1,0 +1,44 @@
+{
+  "handoff_id": "66900300-0000-0000-0000-000000000000",
+  "run_id": "WF03-ISS0669-20260812",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-12T04:18:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "iss_ref": "ISS-0669",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/709",
+    "branch": "feature/WF03-ISS0669-20260812",
+    "artifacts_in": [
+      "src/design/ISS-0669-pool-mutex-fix.md",
+      "src/db/pool.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement the ISS-0669 fix per src/design/ISS-0669-pool-mutex-fix.md. Changes to src/db/pool.zig only. (1) Change Pool.mutex field from std.Io.Mutex to std.Thread.Mutex. (2) Rename all lock/unlock call sites: lockUncancelable(self.io) -> lock(), unlock(self.io) -> unlock(). (3) In acquire(): restructure so self.mutex.unlock() is called BEFORE applyRequestStorageRouting() and maybeRedirectToTenantHost() — the connection is exclusively owned by the caller after it is popped from idle_indices. (4) Handle the new error paths in acquire() if the routing SQL fails (connection must be released back or cleaned up). Note: pg.Conn.connectUrl(self.io,...) in the stale-conn reconnection block may need to remain under the lock or handle specially — refer to the design's Open Question 1 section for guidance. Commit: 'fix(pool): ISS-0669 replace Io.Mutex with Thread.Mutex, routing outside critical section (#709)'. Push to feature/WF03-ISS0669-20260812. Run lint_handoffs.py exit 0.",
+    "acceptance_criteria": [
+      "Pool.mutex is std.Thread.Mutex",
+      "no lockUncancelable(io) or unlock(io) calls remain",
+      "applyRequestStorageRouting called AFTER mutex.unlock()",
+      "zig build exits 0",
+      "commit pushed",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ISS-0669 fix in src/db/pool.zig: (1) Added PoolMutex wrapper (std.atomic.Mutex + Thread.yield spinlock) as std.Thread.Mutex does not exist in Zig 0.16; (2) Changed Pool.mutex field to PoolMutex; (3) Restructured Pool.acquire() to call mutex.unlock() BEFORE maybeRedirectToTenantHost() and applyRequestStorageRouting(), with re-lock-pushback-unlock error paths; (4) Renamed all lockUncancelable(io)/unlock(io) call sites in release() to lock()/unlock(). zig build exits 0, no error-set issues.",
+    "artifacts_out": ["src/db/pool.zig"],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "note": "std.Thread.Mutex does not exist in Zig 0.16. Replaced with file-local PoolMutex wrapper (std.atomic.Mutex + Thread.yield spin). This is a spinlock, adequate for the pool's low-contention short critical section. A futex-based blocking mutex would be a future improvement if the pool grows larger."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "completed_at": "2026-08-12T04:28:23Z"
+}

@@ -1,0 +1,46 @@
+{
+  "handoff_id": "69100200-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH691-20260811",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-11T20:49:14Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 2 CODE-DESIGNER",
+    "requirement_ids": ["PI-09"],
+    "iss_ref": "ISS-0660",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/691",
+    "related_handoff_ids": [
+      "81b01143-e88d-4f5a-91c0-bf84fe594b3a",
+      "69100050-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0660.json",
+      "tests/integration/startup_assertions_test.zig",
+      "tests/specs/ISS-0084.md"
+    ],
+    "branch": "feature/WF03-GH691-20260811"
+  },
+  "task": {
+    "description": "Step 2: Produce a Type E (inline) design artefact for ISS-0660 fix. The fix is test-code-only (no production source changes). Design must specify exactly: (1) The replacement logic for the polymorphic PASS block in tests/integration/startup_assertions_test.zig at the two affected locations (lines ~60-69 and ~202-211): replace `if (result) {} else |err| switch(err) { error.PublicSchemaPollution => {} else => return err }` with a hard pre-check BEFORE calling assertDatabaseConfiguration — query pg_tables WHERE schemaname='public' AND tablename NOT IN ('schema_migrations', 'migrations_lock') and fail the test if any rows are returned. (2) The signature/return type changes needed (if any) so the result from assertDatabaseConfiguration is matched only against `void` (strict). (3) Any update required to tests/specs/ISS-0084.md to remove the polymorphic PASS shape. This is MINOR severity — proportional inline design is sufficient. Do NOT produce a separate src/design/ file. Write the design inline in the handoff result.summary. Acceptance criteria are taken from GH-691: AC-1: startup_assertions_test.zig no longer accepts PublicSchemaPollution as PASS; AC-2: a public.tenant_seed table added before the test causes it to FAIL, not PASS-by-tolerance.",
+    "acceptance_criteria": [
+      "Design maps to AC-1: no PublicSchemaPollution tolerance in test contract",
+      "Design maps to AC-2: pre-check query specified that fails when unexpected tables present",
+      "No src/design/ file created (Type E — inline)",
+      "No production source changes designed (test code only)",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "## ISS-0660 Inline Design (Type E — MINOR)\n\n### Change 1: tests/integration/startup_assertions_test.zig\n\n#### 1.1 Affected locations\n\nTwo test functions contain the polymorphic PASS block to remove:\n- `assertDatabaseConfiguration_success` (~lines 56–69): `const result = startup_assertions.assertDatabaseConfiguration(...); if (result) {} else |err| switch (err) { error.PublicSchemaPollution => {}, else => return err }`\n- `assertDatabaseConfiguration_with_overrides_success` (~lines 193–211): same pattern for `assertDatabaseConfigurationWithOverrides`\n\n#### 1.2 Replacement pattern — identical for both test functions\n\nStep A — insert a hard pre-check block BEFORE the call to `assertDatabaseConfiguration`:\n\n```zig\n// Pre-check: public schema must be empty before the production assertion is invoked.\n{\n    var conn = try pool.acquire();\n    defer pool.release(conn);\n    var precheck = try conn.query(\n        testing.allocator,\n        \"SELECT tablename FROM pg_tables\" ++\n        \" WHERE schemaname = 'public'\" ++\n        \" AND tablename NOT IN ('schema_migrations', 'migrations_lock')\",\n        &.{},\n    );\n    defer precheck.deinit();\n    if (precheck.rows.len > 0) return error.PublicSchemaPollutionPreCheck;\n}\n```\n\nStep B — replace the polymorphic `const result = …` + switch block with a strict `try` call:\n\nFor `assertDatabaseConfiguration_success`:\n```zig\n// Act — strict: only void is a passing outcome.\ntry startup_assertions.assertDatabaseConfiguration(testing.allocator, pool);\n```\n\nFor `assertDatabaseConfiguration_with_overrides_success` (preserve existing `version` / `extensions` setup):\n```zig\n// Act — strict: only void is a passing outcome.\ntry startup_assertions.assertDatabaseConfigurationWithOverrides(\n    testing.allocator,\n    pool,\n    version,\n    &extensions,\n);\n```\n\n#### 1.3 Zig idiom notes\n\n- `pool.acquire()` returns `PoolError!*Conn`; use `try`.\n- `conn.query(allocator, sql, &.{})` returns `PoolError!QueryResult`; `QueryResult.rows` is `[][]?[]u8`; check `rows.len > 0`.\n- `defer precheck.deinit()` is mandatory — `query()` allocates the result and the caller owns it.\n- The pre-check is wrapped in its own `{ }` block so `defer pool.release(conn)` fires before the production call; the pool connection is not held across both calls.\n- `return error.PublicSchemaPollutionPreCheck` is valid from a test function (`anyerror!void`); the test runner surfaces it as an explicit named failure.\n- No `pool` pointer-vs-value change needed: the existing tests already use `*db_pool.Pool` and pass `pool` directly to `assertDatabaseConfiguration`.\n\n#### 1.4 Allowlist rationale\n\nThe query excludes `('schema_migrations', 'migrations_lock')` — the two migration-runner control tables that are always present in both `bpm` and `bpm_test` databases. Every other row in `pg_tables WHERE schemaname='public'` is an unexpected application table that the success path must not tolerate.\n\n#### 1.5 No production source changes required\n\n`assertDatabaseConfiguration` and `assertDatabaseConfigurationWithOverrides` already return `StartupAssertionError!void`. The `try` call propagates any non-void result (including `PublicSchemaPollution`) as a test failure. `src/` is untouched.\n\n---\n\n### Change 2: tests/specs/ISS-0084.md\n\n#### 2.1 Section 3.1 Success Path — replace Expected Result\n\nRemove the NOTE comment block in the test implementation code (lines immediately before the Act block) that documents polymorphic acceptance:\n> \"NOTE: BPM platform migrations populate `public` with application tables. On `bpm_test` this baseline is non-zero, so the production function correctly reports `PublicSchemaPollution`. We assert here that: If the baseline is empty, the function returns void. If the baseline has BPM platform tables, the function returns `PublicSchemaPollution`.\"\n\nReplace the Expected Result bullet with:\n> - Returns `void` (no error). This is the ONLY passing outcome; `error.PublicSchemaPollution` is NOT an accepted PASS shape.\n> - A hard pre-check (`SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename NOT IN ('schema_migrations','migrations_lock')`) runs BEFORE the production assertion. If any rows are returned the test fails with `error.PublicSchemaPollutionPreCheck`.\n> - If the test environment has BPM application tables in `public`, the pre-check fails, signalling an environment setup problem rather than silently accepting it as a passing outcome.\n\n#### 2.2 Section 6 Acceptance Criteria — add two items\n\nAppend:\n> - [ ] Neither `assertDatabaseConfiguration_success` nor `assertDatabaseConfiguration_with_overrides_success` contains a polymorphic block accepting `error.PublicSchemaPollution` as PASS (AC-1, GH-691)\n> - [ ] Pre-check fails with `error.PublicSchemaPollutionPreCheck` when a `public.tenant_seed` table exists before the call (AC-2, GH-691)\n\n#### 2.3 Sections 3.2–3.4, 4, 5, 7 unchanged\n\n`assertDatabaseConfiguration_public_schema_polluted` (3.4) remains correct as-is — it explicitly creates a pollution table and expects `error.PublicSchemaPollution`, which is the correct test for the production detection path.\n\n---\n\n### Artefact summary\n\n- No `src/design/` file created (Type E inline).\n- No production source changes.\n- Two test function bodies modified in `tests/integration/startup_assertions_test.zig`.\n- Two sections updated in `tests/specs/ISS-0084.md` (3.1 Expected Result; 6 criteria list).\n- AC-1 satisfied: no polymorphic PASS block in either success test after the change.\n- AC-2 satisfied: pre-check query catches unexpected public tables before production code runs; `public.tenant_seed` would be detected and fail with `error.PublicSchemaPollutionPreCheck`.",
+    "artifacts_out": [],
+    "issues": []
+  },
+  "started_at": "2026-08-11T20:49:39Z",
+  "completed_at": "2026-08-11T20:53:33Z",
+  "status": "COMPLETED"
+}
