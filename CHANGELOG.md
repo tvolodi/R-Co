@@ -4,6 +4,33 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-12
 
+### Split release — Stage 16 batch 5: PIN-03, PIN-04, PIN-05, PRM-01 TESTED
+
+- **PIN-03 — No fallback to latest version — TESTED.**
+  `PinResolver.resolve()` (`src/engine/pin_resolver.zig`) no longer falls back to the latest
+  available version when a pin is unresolved — it returns an error instead. Instance start
+  (`src/engine/instance.zig`) calls `PinResolver.resolve()` and surfaces the error through
+  `INSTANCE_FAILED` rather than silently proceeding with a different version. All 5 ACs covered
+  and independently re-run 5/5 passing.
+
+- **PIN-04 — Pin resolution on replay and in sub-processes — TESTED.**
+  `createWithParentInheritance()` (`src/engine/instance.zig`) propagates the parent instance's
+  resolved pin set into child instances spawned via replay or sub-process execution. Conflicting
+  pins are detected and recorded in `PinConflict` during `PinResolver.resolve()`. All 5 ACs
+  covered and independently re-run 5/5 passing (REWORK 1 fixed AC2/AC3 — 3/5 → 5/5).
+
+- **PIN-05 — Explicit instance pin rebind — TESTED.**
+  New `INSTANCE_PINS_REBOUND` event type captures explicit rebind operations. New
+  `GET /api/v1/instances/{id}/pins` endpoint returns the current pinned version set.
+  New `POST /api/v1/instances/{id}/pins/rebind` endpoint applies a new pin set and emits
+  `INSTANCE_PINS_REBOUND`. All 4 ACs covered and independently re-run 4/4 passing.
+
+- **PRM-01 — Promotion plan and diff report — TESTED.**
+  New `src/definition/promotion_plan.zig` implements promotion plan authoring with diff
+  reporting against the current running instance state. `GET /api/v1/promotions` and
+  `POST /api/v1/promotions` endpoints on `src/api/routes/promotions.zig`. All 5 ACs covered
+  and independently re-run 5/5 passing.
+
 ### Split release — Stage 16 batch 4: PAR-06, PIN-02 RELEASED in full; PAR-05, PIN-01 TESTED but withheld (known gaps)
 
 > **KNOWN GAPS — NOT GLOSSED OVER:**
