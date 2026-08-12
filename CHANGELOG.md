@@ -178,6 +178,9 @@ All notable changes to the BPM Platform are documented here.
   filters to par06_instance_projections_event_window_test schema-introspection queries. Without
   the filter, queries matched all tenant schemas not just the target.
 
+- ISS-0680 (GH-722): Add errdefer in PinResolver.resolve() to free allocator-owned
+  resolved_id/version/ref fields from all accumulated pins on error return paths.
+
 ## [Unreleased] — 2026-08-11
 
 ### Split release — Stage 16 batch 3: PAR-01, PAR-04 RELEASED in full; PAR-02, PAR-03 TESTED but withheld (event-emission gap)

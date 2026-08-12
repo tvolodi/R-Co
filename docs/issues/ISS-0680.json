@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0680",
   "title": "PIN-01: PinResolver.resolve() leaks allocator-owned PinnedVersion fields on every error path after Step 3/AC3/AC4",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "memory safety",
   "run_id": "WF02-batch-4-20260811",
@@ -14,11 +14,11 @@
     "type": "missing_errdefer_cleanup",
     "details": "resolve()'s arena (arena.deinit() via defer) only frees the arena's OWN allocations (the ArrayList backing storage, extractStringField's service_id copies) -- it has no effect on allocator-owned memory. No errdefer or equivalent covers the same cleanup the success-path loop performs, on any of the function's several early-return error paths after at least one PinnedVersion has been appended."
   },
-  "resolution": null,
-  "verification": null,
-  "files_changed": [],
+  "resolution": "Added errdefer immediately after pins starts being populated in PinResolver.resolve() that walks pins.items and frees each entry's allocator-owned resolved_id, version, and (for variable_schema entries) ref fields, mirroring the cleanup the success-path loop already performs. Covers all error return paths: VariableSchemaViolation (validateVariableSchema), UnresolvedPinOverride (applyPinOverrides), PoolExhausted, and TransactionFailed.",
+  "verification": "TC-PIN-01-04 (UnresolvedPinOverride error path) no longer reports leaked allocations under Zig DebugAllocator.",
+  "files_changed": ["src/engine/pin_resolver.zig"],
   "created_at": "2026-08-12T03:02:17Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-12T08:21:18Z",
   "prevention": [
     "Add an errdefer immediately after pins starts being populated that walks pins.items and frees each entry's allocator-owned fields the same way the success path's cleanup loop already does, mirroring the errdefer pattern already used later in the same function around the 'owned' allocation.",
     "When a function separates an arena allocator (for transient/local state) from a caller-supplied allocator (for returned/long-lived state) inside the same loop, audit every early-return path for whether caller-allocator-owned state accumulated so far needs explicit cleanup -- the arena's own defer does not cover it."

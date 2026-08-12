@@ -104,6 +104,13 @@ pub const PinResolver = struct {
         const a = arena.allocator();
 
         var pins: std.ArrayList(PinnedVersion) = .empty;
+        // Free allocator-owned strings in any accumulated pins on error.
+        // resolved_id/version are always allocator-owned; ref is allocator-owned only for .variable_schema.
+        errdefer for (pins.items) |p| {
+            if (p.kind == .variable_schema) allocator.free(p.ref);
+            allocator.free(p.resolved_id);
+            allocator.free(p.version);
+        };
 
         // ── Step 2/3: catalog_entry candidates (SERVICE_TASK nodes carrying
         // service_id — the ADP-08 catalog-reference form, not "url") ───────
