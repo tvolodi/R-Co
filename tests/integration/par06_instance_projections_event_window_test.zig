@@ -25,6 +25,7 @@ test "par06_instance_projections_event_window: new_columns_exist_and_are_nullabl
         alloc,
         \\SELECT column_name, is_nullable FROM information_schema.columns
         \\WHERE table_name = 'instance_projections'
+        \\  AND table_schema = 'tenant_default'
         \\  AND column_name IN ('first_event_at', 'last_event_at')
         \\ORDER BY column_name
     ,
@@ -88,7 +89,7 @@ test "par06_instance_projections_event_window: index_supports_bounded_lookup" {
 
     var rows = try h.conn.query(
         alloc,
-        "SELECT indexdef FROM pg_indexes WHERE indexname = 'idx_instance_projections_event_window'",
+        "SELECT indexdef FROM pg_indexes WHERE indexname = 'idx_instance_projections_event_window' AND schemaname = 'tenant_default'",
         &.{},
     );
     defer rows.deinit();
