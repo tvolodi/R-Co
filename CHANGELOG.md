@@ -4,6 +4,15 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-12
 
+### Added
+
+- ISS-0670 (GH-711): Implement PAR-02 AC5. Add Store.appendPlatform() to src/event_store/store.zig
+  for non-instance-scoped platform events (bypasses instance_projections lookup). Add platform.zig
+  with PLATFORM_INSTANCE_ID/ACTOR_ID/TENANT_ID constants. ensurePartitionAttached() in
+  partition_maintenance.zig now emits EXECUTION_PARTITION_CREATED (non-fatal). Migration 1152
+  seeds EXECUTION_PARTITION_CREATED/DETACHED/DROPPED in event_type_registry.
+  NOTE: TC-PAR-02-09 integration test assertion (Zig code) is a follow-up task.
+
 ### Documentation
 
 - ISS-0668 (GH-706): Add Type A and Type B Lego schema docs (templates/crud-endpoint.schema.md,
