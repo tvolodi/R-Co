@@ -2083,6 +2083,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0689",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/748",
+      "title": "pin04 test header stale after AC2/AC3 fix",
+      "severity": "MINOR",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-12T16:39:25Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }

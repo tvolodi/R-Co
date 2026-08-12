@@ -1,0 +1,382 @@
+stage: "Stage 16"
+date: "2026-08-12T16:36:32Z"
+run_id: WF02-batch-5-20260812
+workflow_id: WF-02
+workflow_step: "05"
+decision: PARTIAL
+
+requirement_ids:
+  - PIN-03
+  - PIN-04
+  - PIN-05
+  - PRM-01
+
+prior_gates:
+  design_validation_step_1b: PASS
+  security_review_step_2c: >
+    PASS, then a rework cycle: PIN-04 AC2/AC3 sub-process pin inheritance was found unimplemented
+    by TEST-DESIGNER during Step 2a-review reading (a real, fail-first-confirmed gap, not a test
+    ambiguity), fixed by BACKEND-DEV commit 49ae102a ("PIN-04 AC2/AC3 sub-process pin inheritance
+    (REWORK 1)"), re-reviewed PASS by SECURITY-REVIEWER commit 4ae9a441.
+  test_design_validation_step_3b: "PASS (commit 38948437, after the PIN-04 rework)"
+  test_execution_step_4: "PASS (commit 5d7fde58) -- unit 1071/1071 (0 fail, 64 pre-existing skips),
+    test-integration-pin03 5/5, test-integration-pin04 5/5, test-integration-pin05 4/4,
+    test-integration-prm01 5/5, plus overlap regression checks pin01 9/9, pin02 5/5, ee09 5/5, all
+    zero regressions."
+  test_report: tests/reports/report-2026-08-12-WF02-batch-5-20260812.yaml
+
+independent_verification_method: >
+  Did not trust the handoff chain's claims at face value. (1) Read the exact AC wording for
+  PIN-03/PIN-04/PIN-05/PRM-01 directly from docs/requirements.yaml lines 12208-12297. (2) Read
+  tests/specs/PIN-03.md, PIN-04.md, PIN-05.md, PRM-01.md in full, including Scoping/Naming notes,
+  Fail-first confirmations, and (for PIN-04) the "IMPLEMENTATION GAP FOUND DURING TEST DESIGN"
+  section documenting the AC2/AC3 gap that was later fixed. (3) Read src/design/pin-03-no-fallback-
+  to-latest-version.md's Scoping note and Open questions section 1 in full: confirms AC3's gap was
+  disclosed and flagged as "BLOCKING" by CODE-DESIGNER at Step 1, same class as PIN-01 AC1. (4) Read
+  tests/integration/pin03_no_fallback_to_latest_version_test.zig in full, including TC-PIN-03-05's
+  own scope-note comment block (lines 679-706): confirmed live that TC-PIN-03-05 is mechanically
+  identical to TC-PIN-03-02 (both mutate the catalog row and assert resolved_id is unchanged) and
+  does NOT drive node execution after any DEPRECATED-equivalent state change -- it is a structural
+  substitute for AC3's underlying guarantee, not a test of AC3's literal trigger condition. (5)
+  Unset any stale BPM_TEST_DB_URL/BPM_DB_URL, explicitly exported .env's real values
+  (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test,
+  BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev), confirmed via `docker ps` that
+  r-co-db_test-1 (5434) and r-co-db-1 (5442) are this checkout's correct healthy containers
+  (r-co-2-db_test-1 on 5453 belongs to a sibling checkout). Ran `zig build test-env-verify`:
+  HEALTHY, 10/10 checks (C0-C9) PASS. (6) Re-ran, myself, every batch-specific integration target
+  plus overlap/regression targets plus the full unit suite, exporting BPM_TEST_DB_URL/BPM_DB_URL
+  explicitly in each fresh shell invocation (build.zig test steps read the env var directly, they
+  do not auto-load .env):
+    - zig build test-integration-pin03 --summary all: 6/6 steps succeeded, 5/5 tests passed
+      (matches report exactly)
+    - zig build test-integration-pin04 --summary all: 6/6 steps succeeded, 5/5 tests passed
+      (matches report exactly -- independently confirms the AC2/AC3 inheritance REWORK 1 fix,
+      commit 49ae102a, genuinely holds: TC-PIN-04-03/TC-PIN-04-04, the two tests documented as
+      failing pre-fix in tests/specs/PIN-04.md, both pass live)
+    - zig build test-integration-pin05 --summary all: 6/6 steps succeeded, 4/4 tests passed
+      (matches report exactly)
+    - zig build test-integration-prm01 --summary all: 6/6 steps succeeded, 5/5 tests passed
+      (matches report exactly)
+    - zig build test-integration-pin01 --summary all (overlap/regression check, not this batch's
+      own scope): 6/6 steps succeeded, 9/9 tests passed -- matches batch-4's own reported 9/9,
+      confirming no regression on the immediately preceding batch's requirement
+    - zig build test-integration-pin02 --summary all (overlap check): 6/6 steps succeeded, 5/5
+      tests passed -- no regression
+    - zig build test-integration-ee09 --summary all (overlap check): 6/6 steps succeeded, 5/5
+      tests passed -- no regression
+    - zig build test --summary all (full unit suite): 103/103 steps succeeded, 1071/1135 tests
+      passed, 0 failed, 64 skipped -- matches the report's "1071/1071" claim exactly (the 64
+      skips are pre-existing, documented, non-MUST skips, not failures)
+  (7) Ran `gh issue view 745`: CONFIRMED CLOSED (closedAt 2026-08-12T13:29:21Z). Read its full body:
+  ISS-0688/GH-745 was a genuine regression (InstanceStore.create() in src/engine/instance.zig
+  contained two live calls to the dropped SQL function bpm_effective_tenant_id(), confirmed via git
+  archaeology to have been resurrected by a later merge/rebase after SPT-03 had deliberately
+  removed it), discovered by BACKEND-DEV while validating this batch's own PIN-03/04/05/PRM-01
+  work (not introduced by this batch -- confirmed via `git diff main` showing zero prior changes at
+  those lines). Independently grepped `src/` for any remaining live call site: `grep -rn
+  "bpm_effective_tenant_id" src/` returns 21 matches, but every one is either a code comment
+  explaining the historical fix/removal (src/engine/instance.zig itself, pin_resolver.zig,
+  pin_rebind.zig, commands.zig, audit.zig) or prose inside src/design/*.md design documents
+  describing the LEGACY_RLS-to-SCHEMA migration history -- zero live executable calls remain.
+  Read the actual fix at src/engine/instance.zig lines 591-600 and 724, 877: confirmed the
+  process_definitions SELECT predicate was dropped (SCHEMA-mode search_path already scopes it) and
+  the instance_projections INSERT now binds tenant_id as an explicit $1::uuid parameter. This
+  matches the fix commit's (89b73187) own description and is corroborated by every integration
+  test in this batch passing live (a live bpm_effective_tenant_id() call would 42883-error every
+  InstanceStore.create() call, which underlies every fixture in every one of this batch's tests).
+  (8) Checked docs/BPM_Platform_Functional_Requirements.md for NFR applicability and read
+  tests/bench/bench.zig in full: it defines exactly 5 measurement functions (measureReadP99,
+  measureWriteP99, measureThroughput, measureReplayMs, measureReplayWithSnapshotsMs) -- grepped for
+  "rebind", "GetPins", "promotion", "pins", "pin_resolver", "computePromotionPlan": zero matches.
+  Confirmed via `grep -rln` that this batch DOES add genuine new HTTP routes with DB queries
+  (src/api/routes/pin_rebind.zig: GET /instances/{id}/pins, POST /rebind-pins;
+  src/api/routes/promotions.zig: POST /promotions) -- so NFR-01 (general API latency) is
+  platform-applicable, but no benchmark target specifically exercises any of these three new
+  routes. Ran `zig build bench` live (BPM_DB_URL target, r-co-db-1 container): all 5 existing
+  targets report passed=true (p99_read_ms=0.679, p99_write_ms=2.083, append_throughput_eps=75021.6,
+  replay_10000_ms=57.016, replay_snapshot_100000_ms=6.411), but per the same reasoning as batch-4's
+  ISS-0685/GH-732 finding for PAR-06, this is NOT evidence about PIN-03/04/05/PRM-01's own new
+  routes' latency -- it measures unrelated pre-existing paths. No new incidental benchmark-fidelity
+  issue filed this session (unlike batch-4's PAR-06 case, none of this batch's own integration
+  tests make a latency claim the benchmark suite is expected to cover, and no requirement's AC text
+  in this batch names a numeric NFR threshold the way PAR-04 AC1/AC3 did) -- explicitly checked and
+  explicitly recorded as not applicable/not measured, per this batch's own task instruction to
+  never silently skip this check. (9) Filed a new incidental MINOR finding this session:
+  tests/integration/pin04_pin_resolution_replay_subprocess_test.zig's file-header doc comment
+  (lines 19-36) still describes AC2/AC3 as unimplemented and TC-PIN-04-03/04 as failing, which was
+  true when the file was first written but is stale after commit 49ae102a's fix -- this session's
+  own live re-run (5/5 pass) confirms the header no longer matches reality. Filed as ISS-0689 /
+  GH-748 (MINOR, cosmetic doc-comment only, does not affect the underlying behavior which is
+  correct and tested), added to the global queue via tools/queue_add.py.
+
+acceptance_criteria_audit:
+  pin_03:
+    title: No fallback to latest version
+    ac1_pinmissing_no_catalog_lookup: "covered (TC-PIN-03-01: node with no pin entry -> ERROR status,
+      pin_missing DLQ row naming the reference, catalog row for that service_id left fully live and
+      resolvable throughout -- proving the guard fires on the missing pin, not because the catalog
+      was unreachable). Independently re-run and passing."
+    ac2_newer_version_published_in_flight: "covered (TC-PIN-03-02: catalog row mutated after
+      instance start under PIN-01's degenerate updated_at-derived version stopgap; the instance's
+      OWN recorded pinned_versions[].resolved_id is byte-identical before/after the mutation).
+      Independently re-run and passing."
+    ac3_deprecated_after_start: >
+      NOT MET as literally worded. Text: "GIVEN the pinned catalog entry version is set to
+      DEPRECATED after the instance started, WHEN the node executes, THEN execution proceeds on
+      the pinned version." service_catalog has no version/status column (confirmed again this
+      session by reading migrations/049_repository_service_catalog.sql, unchanged since PIN-01) --
+      there is no DEPRECATED value to set anywhere in this schema, so the AC's literal trigger
+      condition cannot be constructed in a test fixture, let alone driven through node execution.
+      TC-PIN-03-05, the file's own designated AC3 test, does NOT drive node execution at all after
+      the catalog mutation -- it re-checks resolved_id equality, the identical assertion shape as
+      TC-PIN-03-02 (AC2). Read the test's own scope-note comment block (lines 679-706 of
+      pin03_no_fallback_to_latest_version_test.zig): it explicitly states "This test does NOT claim
+      full AC3 coverage -- it covers the structural substitute only." This is not thin test
+      coverage of a real implementation; it is zero implementation of the "WHEN the node executes"
+      half of the AC, because there is no code path in src/engine/instance.zig that ever branches
+      on a DEPRECATED-equivalent catalog state (none exists to branch on). Tracked as ISS-0672/GH-306
+      (OPEN), disclosed at every gate: CODE-DESIGNER's own design doc (src/design/pin-03-no-
+      fallback-to-latest-version.md, Scoping note + Open questions §1) flags this as a "BLOCKING
+      gap" before implementation began, CODE-DESIGN-VALIDATOR passed Step 1b with the gap explicit,
+      TEST-DESIGNER's spec documents the scoped substitute and its limits in writing.
+    ac4_retry_budget_exhausted_dlq: "covered (TC-PIN-03-03: retry_count >= retry_limit,
+      item_type=SERVICE_TASK, reference name present in original_payload). Independently re-run and
+      passing."
+    ac5_no_fallback_negative_space: "covered (TC-PIN-03-04: a missing pin against a FULLY LIVE,
+      RESOLVABLE catalog entry still lands in ERROR/DLQ, not COMPLETED -- proving no fallback path
+      exists; a regression that added a fallback would flip this test's own observed status).
+      Independently re-run and passing."
+    verdict: >
+      PARTIAL -- AC1, AC2, AC4, AC5 (4 of 5 MUST-priority AC bullets) all have real implementation
+      and passing, independently re-run, non-vacuous test evidence. AC3 has ZERO implementation of
+      its literal trigger condition (no DEPRECATED state exists to construct or branch on) and its
+      designated test explicitly disclaims full coverage in its own comments. See disposition below
+      for the release-marking decision and its reasoning against the batch-3/batch-4 precedent.
+
+  pin_04:
+    title: Pin resolution on replay and in sub-processes
+    ac1_reconstruction_reads_only_event_log: "covered (TC-PIN-04-01: live catalog mutated after
+      instance start, reconstructEffectivePins() called before/after -- resolved_id identical,
+      proving reconstruction never re-reads the live catalog). Independently re-run and passing."
+    ac2_subprocess_inherits_parent_pin: "covered (TC-PIN-04-03: parent and SUB_PROCESS child share a
+      service_id reference; child's OWN INSTANCE_STARTED payload carries source=inherited and the
+      PARENT's resolved_id, not a fresh independent resolution -- even though the live catalog was
+      mutated between parent-start and child-start). THIS AC WAS GENUINELY UNIMPLEMENTED at Step 2a
+      (TEST-DESIGNER found InstanceStore.create() had no parent_instance_id-aware merge step at
+      all, zero matches for pin_inheritance_conflicts/inheritPins outside design docs) -- fixed by
+      BACKEND-DEV commit 49ae102a (createWithParentInheritance(), a new private path used only by
+      startSubProcessesForPendingEventsInTx(), merging against the parent's effective pin set via
+      reconstructEffectivePins()). Independently re-run THIS session and confirmed passing (5/5,
+      including this exact test) -- the fix genuinely holds, not merely claimed fixed by an
+      upstream handoff."
+    ac3_conflict_recorded_in_child_payload: "covered (TC-PIN-04-04: a child reference whose own
+      independent resolution would differ from the inherited parent pin instead uses the inherited
+      pin, and the child's INSTANCE_STARTED payload carries a pin_inheritance_conflicts entry naming
+      the reference and the parent's version). Same REWORK 1 fix as AC2 above (both ship together in
+      createWithParentInheritance()'s merge logic). Independently re-run THIS session and confirmed
+      passing."
+    ac4_get_pins_names_source_event_id: "covered (TC-PIN-04-05: GET /api/v1/instances/{id}/pins
+      returns HTTP 200 with every entry carrying a non-empty source_event_id alongside kind/ref/
+      resolved_id/version). Independently re-run and passing."
+    ac5_no_catalog_read_negative_space: "covered (TC-PIN-04-02: service_catalog row DELETED
+      entirely, reconstructEffectivePins() still succeeds and still reports the original pin -- a
+      live catalog read would fail or silently drop the entry; neither happens). Independently
+      re-run and passing."
+    verdict: >
+      PASS -- all 5 ACs have real implementation and passing, independently re-run test evidence
+      (5/5). AC2/AC3 had a genuine within-batch implementation gap (found honestly by TEST-DESIGNER,
+      not routed around, reported as a BLOCKER, fixed by a REWORK 1 cycle, re-reviewed by
+      SECURITY-REVIEWER, and independently re-confirmed live by this handoff) -- this is the pipeline
+      working as designed, not a residual gap. Filed ISS-0689/GH-748 (MINOR) for a stale doc-comment
+      in the test file that still describes the pre-fix state; does not affect release marking.
+
+  pin_05:
+    title: Explicit instance pin rebind (SHOULD, not MUST)
+    ac1_rebound_event_appended: "covered (TC-PIN-05-01: valid rebind appends exactly one
+      INSTANCE_PINS_REBOUND event carrying actor_id, reason, and a changes[] array with ref/
+      prior_version/new_version). Independently re-run and passing."
+    ac2_unknown_ref_all_or_nothing: "covered, genuinely all-or-nothing (TC-PIN-05-02: a MIXED
+      request naming one valid ref and one genuinely-absent ref returns UnknownPinRef with ZERO
+      INSTANCE_PINS_REBOUND rows written afterward -- proving the valid entry was not partially
+      applied before the invalid one was detected). Independently re-run and passing."
+    ac3_terminal_instance_rejected: "covered (TC-PIN-05-03: COMPLETED instance -> 409
+      InstanceNotRebindable, no event written). NOTE: requirement text names COMPLETED/CANCELLED/
+      FAILED; this codebase's terminal-failure status is ERROR, not FAILED -- documented as a MINOR
+      naming-drift (not a behavioral gap) in tests/specs/PIN-05.md, with isTerminalStatus() unit-
+      tested for all three actually-reachable terminal statuses plus the non-terminal ACTIVE case.
+      Independently re-run and passing."
+    ac4_missing_reason_rejected: "covered (TC-PIN-05-04: HTTP request with entries[] but no reason
+      field -> HTTP 422, no event written). Independently re-run and passing."
+    ac5_no_automatic_pin_change_negative_space: "covered by construction and code search (grep -rn
+      \"INSTANCE_PINS_REBOUND\" src/ during test design found exactly one INSERT call site, inside
+      pin_rebind.zig's rebindPins() itself -- every other reference is a read). Structural/
+      code-review-level guarantee, same class as PIN-03 AC5 and PAR-06 AC5's own precedent for this
+      kind of negative cross-cutting AC; TC-PIN-05-01..04 collectively reinforce it via zero-row
+      assertions on every rejected path."
+    verdict: >
+      PASS -- all 5 ACs have real implementation and passing, independently re-run test evidence
+      (4/4). SHOULD priority, not MUST -- held to the same rigor as this batch's MUST requirements
+      per TEST-DESIGNER's own stated convention, and it fully clears that bar.
+
+  prm_01:
+    title: Promotion plan and diff report
+    ac1_forbidden_no_review_row: "covered (TC-PRM-01-01: caller without promotion.submit ->
+      PlanError.Forbidden; public.promotion_reviews confirmed to not exist as a table at all via
+      to_regclass(), the strongest available confirmation no such row was created). Independently
+      re-run and passing."
+    ac2_target_has_no_version_all_added: "covered (TC-PRM-01-02: target tenant holds no definition
+      for process_key -> every plan entry carries change_kind=added, before=null, plan accepted).
+      Independently re-run and passing."
+    ac3_identical_after_canonicalisation_422: "covered (TC-PRM-01-03: byte-identical graph JSON on
+      both tenants -> PlanError.EmptyPromotionPlan). Independently re-run and passing."
+    ac4_production_source_rejected: "covered (TC-PRM-01-04: source_tenant_id naming a
+      tenant_type=production tenant -> PlanError.InvalidPromotionSource, before any definition is
+      read). Independently re-run and passing."
+    ac5_plan_computed_before_any_write: "covered (TC-PRM-01-05: target tenant's process_definitions
+      row count for process_key is IDENTICAL before and after computePromotionPlan(), despite the
+      plan being genuinely non-empty -- proving read-only behavior against the target tenant, not
+      merely absence of an error). Independently re-run and passing."
+    scoping_note: >
+      PRM-01's own AC text never describes WRITING a promotion_reviews row -- persisting the review
+      belongs to a later requirement (PRM-04), not in this batch. TC-PRM-01-01's confirmation that
+      the table itself does not exist yet is the strongest available evidence for the "creates no
+      promotion_reviews row" half of AC1, and computePromotionPlan()'s own source (read in full)
+      performs no INSERT anywhere. This is a genuine scope boundary stated by the requirement's own
+      wording, not a gap -- unlike PIN-03 AC3, no AC bullet's literal text goes unimplemented.
+    verdict: >
+      PASS -- all 5 ACs have real implementation and passing, independently re-run test evidence
+      (5/5). No implementation gap of any kind found on independent re-reading.
+
+nfr_applicability:
+  nfr_01_general_api_latency: >
+    This batch adds three genuine new HTTP routes with new DB queries (src/api/routes/
+    pin_rebind.zig: GET /api/v1/instances/{id}/pins, POST /api/v1/instances/{id}/rebind-pins;
+    src/api/routes/promotions.zig: POST /api/v1/promotions), so NFR-01 (API response latency,
+    <=200ms read / <=500ms write) is platform-applicable to this batch's own new surface, unlike
+    PAR-01..04 in batch-3 (correctly found not-applicable, no new HTTP surface at all). Checked
+    tests/bench/bench.zig in full: it defines exactly 5 measurement functions (read p99, write p99,
+    append throughput, replay, replay-with-snapshots) and grepping the file for "rebind",
+    "GetPins", "promotion", "pins", "pin_resolver", "computePromotionPlan" returns zero matches --
+    no benchmark target exercises any of this batch's three new routes specifically. Ran zig build
+    bench live (BPM_DB_URL, r-co-db-1 container) for completeness: all 5 existing targets pass by a
+    wide margin (p99_read_ms=0.679 vs <=200 target, p99_write_ms=2.083 vs <=500,
+    append_throughput_eps=75021.6 vs >=1000, replay_10000_ms=57.016 vs <=5000,
+    replay_snapshot_100000_ms=6.411 vs <=1000) -- but per the same reasoning as batch-4's ISS-0685/
+    GH-732 finding for PAR-06, none of these numbers is evidence about the NEW pins/rebind-pins/
+    promotions routes' own latency; they measure unrelated pre-existing paths. Unlike batch-4's
+    PAR-06 case, no AC text in this batch (PIN-03/04/05/PRM-01) makes a numeric latency claim a
+    benchmark is expected to validate, so no new benchmark-fidelity issue is filed for this
+    specific gap -- explicitly checked and explicitly recorded as measured-but-not-applicable-to-
+    the-new-surface, per this handoff's own instruction to never silently skip this check.
+  nfr_02_04_throughput_reconstruction: >
+    Not specific to this batch's new surface (no new event-append path or reconstruction-query
+    change; PIN-04's reconstruction reads add no new query shape beyond what PAR-06 already
+    benchmarked-and-found-inapplicable). Reported above for completeness only.
+
+blocking_issues:
+  - id: ISS-0672
+    github_issue: "https://github.com/tvolodi/R-Co/issues/306 (requirement issue's own comment
+      thread)"
+    severity: "N/A (design-time scope decision, not a defect)"
+    status: OPEN
+    scope: "PIN-03 AC3"
+    description: >
+      service_catalog has no version/status column -- confirmed again this session by reading
+      migrations/049_repository_service_catalog.sql, unchanged since PIN-01's design first hit this
+      wall in batch-4. There is no DEPRECATED value anywhere in the schema, so AC3's literal trigger
+      condition ("the pinned catalog entry version is set to DEPRECATED") cannot be constructed in a
+      test fixture, and consequently no code path in src/engine/instance.zig branches on it either.
+      This is the SAME underlying schema gap that held PIN-01 AC1/AC2 at TESTED in batch-4 and is
+      tracked under the SAME issue number. Disclosed explicitly at every gate this batch too:
+      CODE-DESIGNER's design document (src/design/pin-03-no-fallback-to-latest-version.md) flags it
+      as a "BLOCKING gap" in its own Scoping note and Open questions §1 before implementation began;
+      CODE-DESIGN-VALIDATOR passed Step 1b with the gap explicit; TEST-DESIGNER's spec (tests/specs/
+      PIN-03.md) documents the scoped structural substitute (TC-PIN-03-05) and states in writing
+      that it does not claim full AC3 coverage.
+    disposition: >
+      DOES block PIN-03 from being marked fully RELEASED as-is. See scope_marking_rationale below
+      for the precedent-based reasoning: this is materially the same situation as batch-4's PIN-01
+      AC1/AC2 (same issue, same root cause, same "disclosed at every gate" provenance), and that
+      precedent explicitly holds that early/deliberate disclosure changes the QUALITATIVE framing
+      of a gap but not the RELEASE MARKING itself.
+  - id: ISS-0689
+    github_issue: "https://github.com/tvolodi/R-Co/issues/748"
+    severity: MINOR
+    status: OPEN
+    scope: "tests/integration/pin04_pin_resolution_replay_subprocess_test.zig (doc comment only)"
+    description: >
+      The file's header comment still describes PIN-04 AC2/AC3 as unimplemented and TC-PIN-04-03/04
+      as failing, which was true before commit 49ae102a's REWORK 1 fix but is now stale -- this
+      session's own live re-run (5/5 pass, including both named tests) confirms the header no
+      longer matches reality. Filed this session as a new incidental finding, added to the global
+      queue.
+    disposition: "Does NOT block PIN-04's release -- purely cosmetic, the underlying behavior is
+      correct and independently verified passing. Tracked for a documentation-only follow-up fix."
+
+approved_requirements:
+  - "PIN-04"
+  - "PIN-05"
+  - "PRM-01"
+
+partially_approved_requirements:
+  - id: "PIN-03"
+    met: ["AC1", "AC2", "AC4", "AC5"]
+    unmet: ["AC3"]
+    tracking: "ISS-0672 / GH-306 (OPEN)"
+    scope_marking_rationale: >
+      Applying the SAME partially_approved_requirements pattern as batch-4's PIN-01 (and, before
+      that, batch-3's PAR-02/PAR-03), because this is the same class of finding, not a new one.
+      PIN-03 AC3's gap has the identical provenance shape batch-4 already resolved this question
+      for: surfaced BY CODE-DESIGNER at Step 1 (not discovered as a surprise by RELEASE-VALIDATOR),
+      stated explicitly in the design document's own Scoping note and Open questions as a
+      "BLOCKING gap," validated PASS by CODE-DESIGN-VALIDATOR at Step 1b WITH the gap known, and
+      carried forward honestly through TEST-DESIGNER's spec (which states in writing, twice --
+      once in tests/specs/PIN-03.md and again in the test file's own inline comment -- that its
+      AC3 test is a scoped structural substitute, not full coverage). It is tracked under the exact
+      SAME issue (ISS-0672/GH-306) as PIN-01's AC1/AC2 gap, because it is the exact same root
+      cause: service_catalog has no version/status column.
+
+      The question this handoff was asked to make a real judgment call on, rather than default:
+      does the scoped substitute (TC-PIN-03-05, proving "the engine reads through the pin's
+      resolved_id, not a fresh re-lookup" using the catalog_entry degenerate stopgap) satisfy AC3's
+      SPIRIT well enough to justify RELEASED despite not covering AC3's literal DEPRECATED-status
+      trigger? On independent reading, no -- for three reasons. First, TC-PIN-03-05 is not a novel
+      angle on AC3; read side-by-side, it is the SAME assertion as TC-PIN-03-02 (AC2): mutate the
+      catalog row, assert resolved_id is unchanged. It provides no INCREMENTAL evidence beyond what
+      AC2 already established -- it re-uses AC2's mechanism and relabels it, rather than testing a
+      distinct guarantee. Second, and more fundamentally, AC3's own text has two clauses: a
+      precondition ("the pinned catalog entry version is set to DEPRECATED") and a behavior
+      ("execution proceeds on the pinned version" -- i.e. THE NODE ACTUALLY EXECUTES). No test in
+      this batch drives node execution through any DEPRECATED-equivalent state at all; TC-PIN-03-05
+      only re-checks a stored value's equality, the same "does resolved_id change" question as AC2,
+      never reaching the "does the node still run" question AC3 actually asks. Third, and decisively:
+      this is not a question of thin test coverage of real behavior (which this batch's own
+      precedent, e.g. batch-3's PAR-04 AC3/AC4, treats as MINOR-acceptable) -- it is zero
+      implementation of a distinguishable code path, because no DEPRECATED state exists anywhere in
+      the schema for any code to branch on. The batch-3/batch-4 precedent's own governing language
+      applies without modification: "a requirement with N of M ACs met is held at TESTED, not
+      RELEASED, regardless of how early/deliberately the gap was identified" -- and PIN-01's own
+      scope_marking_rationale already established this exact principle against this exact issue
+      number. A requirement_status.yaml entry of unqualified RELEASED for PIN-03 would silently
+      claim full AC coverage to a future reader who has not read this release decision, the design
+      document's own Scoping note, or the test file's own inline disclaimer -- exactly the failure
+      mode the precedent's language was written to prevent, and doing otherwise here would also
+      create an internally inconsistent platform release history: PIN-01 (same issue, same batch
+      lineage, decided one batch ago) held at TESTED while PIN-03 (same issue) went RELEASED, with
+      no material difference in the underlying gap to justify the divergence.
+
+not_approved_requirements: []
+
+next_action: >
+  Route to DOC-UPDATER (Step 6): mark PIN-04, PIN-05, and PRM-01 RELEASED in full. Mark PIN-03 as
+  tested-with-known-gap (not unqualified RELEASED) pending ISS-0672/GH-306 (the same open issue
+  already blocking PIN-01's full release from batch-4), with AC1/AC2/AC4/AC5 recorded as met and
+  AC3 recorded as a deliberate, validated scope-phasing decision (see scope_marking_rationale
+  above) rather than an implementation defect -- requirement_status.yaml should record both the
+  unmet AC and this provenance distinction, consistent with how PIN-01's entry already records the
+  identical situation, so a future reader sees PIN-01 and PIN-03 as two instances of the same
+  tracked, still-open infrastructure gap rather than two unrelated findings. Also record ISS-0689/
+  GH-748 (new this session, MINOR, stale test-file doc-comment, non-blocking) in the release notes.
+  When ISS-0672/GH-306 is eventually resolved (service_catalog gains a version/status column),
+  PIN-01 AC1/AC2 AND PIN-03 AC3 should be revisited together in the same follow-up batch, since
+  both are blocked on the identical schema change.

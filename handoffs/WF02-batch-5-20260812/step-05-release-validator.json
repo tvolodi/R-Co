@@ -1,0 +1,64 @@
+{
+  "handoff_id": "wf02-batch-5-20260812-05-release-validator",
+  "run_id": "WF02-batch-5-20260812",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "created_at": "2026-08-12T16:16:15Z",
+  "started_at": "2026-08-12T16:16:57Z",
+  "completed_at": "2026-08-12T16:36:32Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PIN-03",
+      "PIN-04",
+      "PIN-05",
+      "PRM-01"
+    ],
+    "related_handoff_ids": [
+      "wf02-batch-5-20260812-04-test-runner",
+      "wf02-batch-5-20260812-03b-test-design-validator"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-08-12-WF02-batch-5-20260812.yaml",
+      "docs/status/release-stage16-WF02-batch-4-20260811.yaml",
+      "docs/status/release-stage16-WF02-batch-3-20260811.yaml"
+    ]
+  },
+  "task": {
+    "description": "Independent verification and release decision (WF-02 Step 5) for PIN-03, PIN-04, PIN-05, PRM-01. Do not trust the handoff chain's claims at face value -- re-derive the release recommendation from primary sources: docs/requirements.yaml's actual AC text, the design artefacts in src/design/, the actual implementation, and by re-running the batch's own test targets yourself.\n\nPrior gates: design (Step 1b) PASS, security review (Step 2c) PASS then a rework cycle (PIN-04 AC2/AC3 sub-process pin inheritance was found unimplemented by TEST-DESIGNER, fixed by BACKEND-DEV commit 49ae102a, re-reviewed PASS by SECURITY-REVIEWER), test design validation (Step 3b) PASS, test execution (Step 4) PASS -- unit suite 1071/1071, test-integration-pin03 5/5, test-integration-pin04 5/5, test-integration-pin05 4/4, test-integration-prm01 5/5, plus overlap checks on pin01/pin02/ee09 all clean, zero regressions.\n\nMAKE A REAL JUDGMENT CALL on RELEASED vs TESTED-with-known-gap, following the precedent this exact stage has already established twice: WF02-batch-3-20260811 (PAR-02/PAR-03 held at TESTED for a genuine implementation gap found by RELEASE-VALIDATOR's own independent reading) and WF02-batch-4-20260811 (PIN-01 held at TESTED for AC1/AC2 blocked on the SAME service_catalog/PLC-01 infrastructure gap this batch's PIN-03 AC3 also hits -- read docs/status/release-stage16-WF02-batch-4-20260811.yaml for the exact reasoning and provenance framing used there, since PIN-03 AC3 is materially the same situation: a deliberate, validated, disclosed scope-phasing decision (not a late discovery or quality escape) tracked under the SAME issue, ISS-0672/GH-306).\n\nSpecifically evaluate PIN-03: 4 of 5 AC bullets (AC1, AC2, AC4, AC5) are fully implemented and tested; AC3 (pinned catalog entry set to DEPRECATED after instance start -> execution proceeds on pinned version) has ZERO implementation because service_catalog has no version/status column -- there is no DEPRECATED state to construct. This was disclosed at every gate (CODE-DESIGNER Step 1 PARTIAL, CODE-DESIGN-VALIDATOR Step 1b PASS with explicit acknowledgment, TEST-DESIGNER's test spec documenting the gap and testing a scoped structural substitute instead). Decide: does this one unmet AC (out of 5, on a MUST requirement) hold PIN-03 at TESTED rather than RELEASED, matching the batch-3/batch-4 precedent exactly (a requirement with N of M ACs met is held at TESTED, not RELEASED, regardless of how early/deliberately the gap was identified)? Or does the structural substitute the design specified and TEST-DESIGNER implemented actually satisfy AC3's SPIRIT even if not its literal letter, justifying RELEASED? Read PIN-03 AC3's exact wording and the scoped substitute test yourself before deciding -- this is exactly the kind of judgment call RELEASE-VALIDATOR exists to make, do not default to either answer without reading the primary sources.\n\nPIN-04, PIN-05, PRM-01 have no known scope gaps -- verify this yourself (re-read their AC text, confirm every bullet has a passing test) before recommending RELEASED for them.\n\nAlso independently verify: (1) re-run at least test-integration-pin03/pin04/pin05/prm01 yourself, do not trust the reported counts; (2) confirm the ISS-0688/GH-745 ADHOC fix (dead bpm_effective_tenant_id() calls) that landed mid-run is genuinely resolved and GitHub issue #745 is closed; (3) check whether NFR benchmarks apply to this batch's own surface (per batch-3's precedent of explicitly checking this rather than silently skipping it) -- PIN-03/04/05/PRM-01 add new API routes and DB queries; check tests/bench/bench.zig for any applicable benchmark target.\n\nCRITICAL ENVIRONMENT NOTE: this shell's process environment may carry a stale BPM_TEST_DB_URL from a different workspace. Before any build/test command, run `unset BPM_TEST_DB_URL BPM_DB_URL BPM_BENCH_DB_URL` then explicitly export .env's real values (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test, BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev).",
+    "acceptance_criteria": [
+      "Independent re-verification, not trust-the-chain",
+      "Explicit RELEASED vs TESTED decision per requirement with stated reasoning",
+      "PIN-03's AC3 gap evaluated against the batch-3/batch-4 precedent with a real judgment call, not a default",
+      "Release decision document written to docs/status/",
+      "NFR/benchmark applicability explicitly checked, not silently skipped"
+    ],
+    "functions_to_call": [
+      "fn:validate-release"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Independent verification complete for PIN-03/PIN-04/PIN-05/PRM-01 (Stage 16 batch 5). PIN-04, PIN-05, PRM-01 RELEASED in full (all ACs independently re-verified with real, non-vacuous, passing tests -- 5/5, 4/4, 5/5 respectively, re-run live). PIN-03 held at TESTED (PARTIAL) -- AC1/AC2/AC4/AC5 met (5/5 including scoped substitute re-run live), AC3 (pinned catalog entry set to DEPRECATED -> execution proceeds on pinned version) has zero implementation because service_catalog has no version/status column (ISS-0672/GH-306, the SAME open issue that held PIN-01 AC1/AC2 at TESTED in the immediately preceding batch). Read AC3's exact wording and TC-PIN-03-05's own inline scope-note: the scoped substitute is mechanically identical to the AC2 test (re-checks resolved_id equality) and never drives node execution through any DEPRECATED-equivalent state, so it does not reach AC3's actual behavioral claim. Applying the same precedent as batch-3 (PAR-02/PAR-03) and batch-4 (PIN-01): a MUST requirement with any unmet AC bullet is held at TESTED, not RELEASED, regardless of how early or deliberately the gap was disclosed. Independently re-ran all 4 batch-specific integration targets (pin03 5/5, pin04 5/5, pin05 4/4, prm01 5/5) plus overlap regression checks (pin01 9/9, pin02 5/5, ee09 5/5) plus the full unit suite (1071/1071 pass, 0 fail, 64 pre-existing skips) plus zig build test-env-verify (10/10 HEALTHY) -- all counts matched the TEST-RUNNER report exactly, zero regressions found. Confirmed ISS-0688/GH-745 (dropped bpm_effective_tenant_id() regression) is genuinely resolved: GitHub issue #745 is CLOSED, and grep of src/ confirms zero live executable calls remain (all matches are comments/design-doc prose). Checked NFR/benchmark applicability explicitly rather than skipping it: this batch adds 3 new HTTP routes (GET pins, POST rebind-pins, POST promotions) making NFR-01 platform-applicable, but tests/bench/bench.zig has no benchmark target for any of them -- ran zig build bench live for completeness (all 5 existing targets pass by wide margins) but explicitly recorded this as not evidence for the new routes' own latency. Filed one new incidental MINOR finding: ISS-0689/GH-748, a stale doc-comment in pin04_pin_resolution_replay_subprocess_test.zig that still describes the pre-REWORK-1 unimplemented state even though the fix (commit 49ae102a) is confirmed live-passing; added to the global queue.",
+    "artifacts_out": [
+      "docs/status/release-stage16-WF02-batch-5-20260812.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "N/A",
+        "description": "ISS-0672/GH-306 (OPEN): PIN-03 AC3 has zero implementation because service_catalog lacks a version/status column -- same root cause already blocking PIN-01 AC1/AC2 from batch-4. Held PIN-03 at TESTED, not RELEASED."
+      },
+      {
+        "severity": "MINOR",
+        "description": "ISS-0689/GH-748 (OPEN, filed this session): stale doc-comment in tests/integration/pin04_pin_resolution_replay_subprocess_test.zig still describes the pre-fix unimplemented AC2/AC3 state; does not affect PIN-04 release marking."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 6): mark PIN-04/PIN-05/PRM-01 RELEASED in full; mark PIN-03 tested-with-known-gap (AC1/AC2/AC4/AC5 met, AC3 unmet, tracked ISS-0672/GH-306) consistent with PIN-01's existing entry from batch-4."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
