@@ -1,0 +1,44 @@
+{
+  "handoff_id": "70000200-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH700-20260812",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-12T02:40:51Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 2 CODE-DESIGNER",
+    "requirement_ids": [],
+    "iss_ref": "ISS-0663",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/700",
+    "related_handoff_ids": [
+      "70000000-0000-0000-0000-000000000000",
+      "70000050-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0663.json",
+      "tools/clean_test_db.py"
+    ],
+    "branch": "feature/WF03-GH700-20260812"
+  },
+  "task": {
+    "description": "Step 2: Produce a Type E (inline) design artefact for ISS-0663 fix. This is a Python tool fix only (tools/clean_test_db.py). Read the file first, then design: (1) In run_psql(), change the over-broad 'or relation in stderr_lower' guard to only match the narrow 'does not exist' pattern (drop the 'relation' branch). (2) When a non-zero psql exit is being treated as ignorable, print a warning line: the exact SQL that was run, the stderr content, and why it is being treated as ignorable. (3) After each cleanup sweep (after all DELETE/cleanup operations), add a post-condition re-query to verify 0 leaked rows remain — if rows still exist, raise an error (do NOT swallow). Specify: exact line numbers/function names to change, what the new condition should be, what the post-check query should be. MAJOR severity — proportional inline (Type E) design is sufficient. No src/design/ file needed.",
+    "acceptance_criteria": [
+      "Design covers the over-broad 'relation' substring fix",
+      "Design covers the warning on ignorable errors",
+      "Design covers the post-condition re-query for leaked rows",
+      "No production source changes (tools/ only)",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E inline design for ISS-0663 — tools/clean_test_db.py silent-failure fix.\n\n## Change 1: run_psql() error guard (lines 107-113)\n\nFile: tools/clean_test_db.py\nFunction: run_psql(sql: str) -> bool\nTarget: the `if result.returncode != 0:` block at lines 107-113\n\nCurrent code:\n```\n    if result.returncode != 0:\n        # Ignore \"relation does not exist\" errors (table may not have been created yet).\n        stderr_lower = result.stderr.lower()\n        if \"does not exist\" in stderr_lower or \"relation\" in stderr_lower:\n            return True\n        print(f\"WARNING: psql '{sql[:60]}...' failed: {result.stderr.strip()}\", file=sys.stderr)\n        return False\n```\n\nReplace with:\n```\n    if result.returncode != 0:\n        stderr_lower = result.stderr.lower()\n        if \"does not exist\" in stderr_lower:\n            # Narrow guard: missing table/object before first migration is expected.\n            print(\n                f\"[clean_test_db] IGNORED non-zero psql exit: {result.stderr.strip()[:200]}\"\n                f\" — reason: table/object does not exist yet\",\n                flush=True,\n            )\n            return True\n        raise RuntimeError(\n            f\"psql failed (exit {result.returncode}): {result.stderr.strip()[:400]}\\n\"\n            f\"SQL: {sql[:200]}\"\n        )\n```\n\nKey decisions:\n- Drop `or \"relation\" in stderr_lower` entirely. PostgreSQL FK-violation messages always contain the word \"relation\" (e.g. 'referenced from relation \"X\"'), so that branch silently swallows genuine DELETE failures — the root cause of ISS-0663.\n- Keep `\"does not exist\" in stderr_lower` for the one legitimate ignorable case: cold-start database where a table has not been created yet before the first migration runs.\n- When treating an error as ignorable, print a visible log line with the stderr content (truncated to 200 chars) and the reason. Do NOT swallow silently.\n- On non-ignorable failure: raise RuntimeError rather than return False. Some DELETE callers in main() (lines ~357, ~358, ~362-365) do not check the return value, so return False would silently continue. raise propagates unconditionally and cannot be ignored. The TRUNCATE caller at line ~340 already does `if not ok: sys.exit(1)` and will become `try/except RuntimeError: sys.exit(1)` or can simply let the unhandled exception abort the script.\n- No change to run_psql_query() — it is best-effort/read-only and already returns [] on failure.\n\n## Change 2: post-condition re-query (insert before line 468)\n\nFile: tools/clean_test_db.py\nFunction: main()\nInsert point: immediately before `print(\"Test database cleaned.\", flush=True)` at line 468\n\nInsert this block (approximately lines 465-467 after insertion):\n```\n    # Post-condition: verify no half-provisioned SCHEMA tenant rows survived cleanup.\n    leaked_schema_tenants = run_psql_query(\n        \"SELECT id::text FROM public.tenant t \"\n        \"WHERE t.storage_mode = 'SCHEMA' AND t.slug != 'default' \"\n        \"AND NOT EXISTS (SELECT 1 FROM public.tenant_schemas ts WHERE ts.tenant_id = t.id)\"\n    )\n    if leaked_schema_tenants:\n        n = len(leaked_schema_tenants)\n        raise RuntimeError(\n            f\"clean_test_db: {n} rows still present after cleanup — cleanup did not converge\"\n        )\n\n    # Post-condition: verify no non-default test/production tenants survived cleanup.\n    leaked_tenants = run_psql_query(\n        \"SELECT id::text FROM public.tenant \"\n        \"WHERE slug != 'default' AND tenant_type IN ('test', 'production')\"\n    )\n    if leaked_tenants:\n        n = len(leaked_tenants)\n        raise RuntimeError(\n            f\"clean_test_db: {n} rows still present after cleanup — cleanup did not converge\"\n        )\n```\n\nKey decisions:\n- First query (SCHEMA orphan check) directly validates the ISS-0663 scenario: half-provisioned SCHEMA tenant rows with no matching tenant_schemas entry, which the DELETE at lines ~362-365 is supposed to remove.\n- Second query (test/production tenant check) validates the broader DELETE sweep at lines ~357-358.\n- run_psql_query() returns [] on any failure (connection error, missing table, etc.), which is the correct cold-start behaviour: if the table does not exist yet, there are no leaked rows. The post-condition is satisfied in both the empty-DB and the cleaned-DB case.\n- Placement: after both drop_orphaned_tenant_schemas() calls (lines 418 and 456), after the --include-fixtures sweep (lines ~422-456), and after the system role reseed (lines ~458-466), before the final success print at line 468. All cleanup operations including the optional fixture sweep have completed at this point.\n- No special handling needed for run_psql_query() failure beyond the [] check — consistent with its existing best-effort contract.\n\n## No other changes\nNo production source changes. Only tools/clean_test_db.py is modified.",
+    "artifacts_out": [],
+    "issues": []
+  },
+  "started_at": "2026-08-12T02:40:51Z",
+  "completed_at": "2026-08-12T02:43:27Z"
+}

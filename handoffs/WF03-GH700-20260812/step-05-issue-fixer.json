@@ -1,0 +1,41 @@
+{
+  "handoff_id": "70000050-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH700-20260812",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-12T02:38:33Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 0.5+1 ISSUE-FIXER",
+    "requirement_ids": [],
+    "iss_ref": "ISS-0663",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/700",
+    "related_handoff_ids": ["70000000-0000-0000-0000-000000000000"],
+    "artifacts_in": [
+      "docs/issues/ISS-0663.json",
+      "handoffs/WF03-GH700-20260812/step-00-backend-dev.json"
+    ],
+    "branch": "feature/WF03-GH700-20260812"
+  },
+  "task": {
+    "description": "Steps 0.5+1 for WF03-GH700-20260812. STEP 0.5: Verify GH-700 is open (https://github.com/tvolodi/R-Co/issues/700). Read docs/issues/ISS-0663.json and update status from OPEN to IN_PROGRESS, update last_updated. STEP 1: Perform root-cause diagnosis. Read tools/clean_test_db.py, focusing on the run_psql() function (around lines 102-114). Locate the substring 'does not exist' / 'relation' check that silently swallows real DELETE failures. Document: exact lines, the over-broad condition, and the correct fix approach (match by SQLSTATE or narrow anchored check, add post-condition re-query). Update docs/issues/ISS-0663.json root_cause.details with line references.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0663.json status updated to IN_PROGRESS",
+      "docs/issues/ISS-0663.json root_cause.details references exact lines in run_psql()",
+      "GH-700 confirmed open",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosis complete (Category A — Logic error in test infrastructure). tools/clean_test_db.py run_psql() lines 102-116: the guard on lines 110-111 (`if \"does not exist\" in stderr_lower or \"relation\" in stderr_lower: return True`) is over-broad — it silently swallows any psql failure whose stderr contains the word 'relation', which includes all FK-violation errors. GH-700 confirmed OPEN. ISS-0663.json updated: status IN_PROGRESS, root_cause.details updated with exact line references and correct-fix approach. No source files changed in this step (diagnosis only).",
+    "artifacts_out": ["docs/issues/ISS-0663.json"],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 2): fix run_psql() by replacing the unanchored 'relation' branch with a narrow anchored 'does not exist' check and adding a post-condition re-query, then run zig build to validate."
+  },
+  "started_at": "2026-08-12T02:38:33Z",
+  "completed_at": "2026-08-12T02:39:31Z"
+}

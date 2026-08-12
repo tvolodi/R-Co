@@ -1,0 +1,57 @@
+{
+  "handoff_id": "70000700-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH700-20260812",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-12T03:13:12Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 7 DOC-UPDATER + Step Final",
+    "requirement_ids": [],
+    "iss_ref": "ISS-0663",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/700",
+    "related_handoff_ids": [
+      "70000000-0000-0000-0000-000000000000",
+      "70000300-0000-0000-0000-000000000000",
+      "70000500-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH700-20260812/step-05-test-runner.json",
+      "docs/issues/ISS-0663.json"
+    ],
+    "branch": "feature/WF03-GH700-20260812",
+    "pr_to_create": true
+  },
+  "task": {
+    "description": "Step 7 (DOC-UPDATER) + Step Final (git-merge) for WF03-GH700-20260812. STEP 7: (1) Update CHANGELOG.md with ISS-0663 fix entry. (2) Update docs/issues/ISS-0663.json: status RESOLVED, resolution_text, prevention_text, last_updated. STEP FINAL: (3) Commit all changes. (4) gh pr create --base main --title 'fix(tools): ISS-0663 clean_test_db.py silent FK-violation + psql.cmd shim detection (#700)'. (5) gh pr merge --squash --delete-branch. (6) git checkout main && git pull. (7) .venv/Scripts/python.exe tools/queue_release.py GH-700 tvolodi-51316 --status RESOLVED. (8) gh issue close 700 --repo tvolodi/R-Co --comment 'Fixed. ISS-0663 resolved — run_psql() no longer swallows FK-violation errors; _psql_is_native() detects Windows .cmd shim and falls back to docker-compose exec. Post-condition re-query added. 10/10 test-env-verify + 14/14 integration tests pass.' (9) lint_handoffs.py exit 0.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated",
+      "docs/issues/ISS-0663.json status = RESOLVED",
+      "PR squash-merged to main",
+      "branch deleted",
+      "GH-700 closed on GitHub",
+      "global_queue GH-700 RESOLVED",
+      "git on main, clean",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with ISS-0663 fix entry under [Unreleased] 2026-08-12 ### Fixed. docs/issues/ISS-0663.json set to RESOLVED with resolution_text and verification. Committed 'docs: ISS-0663 RESOLVED — changelog + issue status'. Pushed to feature/WF03-GH700-20260812. PR #723 created and squash-merged to main (merge SHA 9634b811). Branch feature/WF03-GH700-20260812 deleted. git on main, clean. global_queue.json GH-700 set to RESOLVED. GH-700 closed on GitHub. orchestrator.log updated. lint_handoffs.py exits 0.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0663.json",
+      "handoffs/global_queue.json",
+      "handoffs/orchestrator.log",
+      "handoffs/registry.json",
+      "PR #723"
+    ],
+    "issues": [],
+    "next_action": "Workflow WF03-GH700-20260812 complete. GH-700 RESOLVED."
+  },
+  "started_at": "2026-08-12T03:13:12Z",
+  "completed_at": "2026-08-12T03:19:32Z"
+}
