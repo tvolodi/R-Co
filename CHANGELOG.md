@@ -174,6 +174,10 @@ All notable changes to the BPM Platform are documented here.
   (shims ignore SQL arguments). Added post-condition re-queries after cleanup to fail loudly if
   rows still present. Added verbose warning on ignorable errors.
 
+- ISS-0678 (GH-720): Add `AND table_schema = 'tenant_default'` / `schemaname = 'tenant_default'`
+  filters to par06_instance_projections_event_window_test schema-introspection queries. Without
+  the filter, queries matched all tenant schemas not just the target.
+
 - ISS-0680 (GH-722): Add errdefer in PinResolver.resolve() to free allocator-owned
   resolved_id/version/ref fields from all accumulated pins on error return paths.
 
