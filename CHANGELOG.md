@@ -2,6 +2,16 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — 2026-08-12
+
+### Fixed
+
+- ISS-0663 (GH-700): Fix clean_test_db.py run_psql() silently swallowing FK-violation failures.
+  Removed over-broad `or "relation"` substring guard (FK error messages contain "relation").
+  Added `_psql_is_native()` to detect Windows .cmd psql shims and fall back to docker-compose exec
+  (shims ignore SQL arguments). Added post-condition re-queries after cleanup to fail loudly if
+  rows still present. Added verbose warning on ignorable errors.
+
 ## [Unreleased] — 2026-08-11
 
 ### Split release — Stage 16 batch 3: PAR-01, PAR-04 RELEASED in full; PAR-02, PAR-03 TESTED but withheld (event-emission gap)
