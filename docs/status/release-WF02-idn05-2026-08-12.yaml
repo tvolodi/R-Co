@@ -1,0 +1,76 @@
+stage: "WF02-idn05-20260812"
+date: "2026-08-12T13:07:03Z"
+decision: "APPROVED"
+
+requirement: IDN-05
+requirement_title: "Named role registry and ROLE assignee resolution"
+branch: "feature/WF02-idn05-20260812"
+commit: "a8c19322"
+
+nfr_results:
+  zig_build: "PASS (exit 0)"
+  unit_tests: "PASS (all pass, exit 0)"
+  integration_idn05: "PASS (7/7 TCs, exit 0)"
+  lint_handoffs: "PASS (exit 0, per TEST-RUNNER report)"
+  regressions: "NONE (no pre-existing failures surfaced)"
+
+must_acceptance_criteria:
+  - id: "IDN-05-AC-1"
+    text: "ROLE → GROUP resolution at task activation"
+    covered_by: ["TC-IDN05-06"]
+    result: PASS
+  - id: "IDN-05-AC-2"
+    text: "Unresolved ROLE → PENDING task, instance does NOT transition to ERROR"
+    covered_by: ["TC-IDN05-07"]
+    result: PASS
+  - id: "IDN-05-AC-3"
+    text: "Role names scoped per tenant (same name may bind different groups in different tenants)"
+    covered_by: ["TC-IDN05-05"]
+    result: PASS
+  - id: "IDN-05-AC-4"
+    text: "GET /roles lists registered role names and bound group_id for calling tenant"
+    covered_by: ["TC-IDN05-04"]
+    result: PASS
+  - id: "IDN-05-AC-5"
+    text: "POST /roles creates or updates binding; non-existent group_id → HTTP 404"
+    covered_by: ["TC-IDN05-01", "TC-IDN05-02", "TC-IDN05-03"]
+    result: PASS
+
+test_summary:
+  tc_total: 7
+  tc_passed: 7
+  tc_failed: 0
+  rework_count: 1
+  rework_reason: "Run 1 failed with compile error ISS-IDN05-COMPILE-01; resolved in commit a8c19322"
+
+security_review:
+  status: PASS
+  handoff: "handoffs/WF02-idn05-20260812/step-02c-security-reviewer.json"
+  invariants_assessed: 8
+  invariants_met: 8
+  non_blocking_minors:
+    - id: SEC-IDN05-01
+      description: "tenant_role not in BUSINESS_TABLES list in lint_migration_schema.py — follow-up linter update required"
+    - id: SEC-IDN05-02
+      description: "main.zig actor fallback for /roles defaults to TASK_WORKER (benign dead code; handler RBAC gate rejects it)"
+    - id: SEC-IDN05-03
+      description: "No byte-equality test for cross-tenant probe indistinguishability (INV-5 satisfied by design; follow-up test gap)"
+
+migration:
+  id: 1154
+  file: "migrations/1154_idn05_tenant_role_registry.sql"
+  scope: tenant_only
+  schema_safe: true
+  public_schema_impact: false
+  notes: >
+    Creates tenant_role table without schema prefix — lands in tenant schema via
+    search_path (SPT architecture). FK to groups(id) ON DELETE RESTRICT.
+    No public. prefix anywhere in the migration. lint_migration_schema: exit 0
+    (per SECURITY-REVIEWER INV-1 assessment).
+
+blocking_issues: []
+
+approved_requirements:
+  - IDN-05
+
+next_action: "Route to DOC-UPDATER to set IDN-05 status RELEASED and update CHANGELOG.md"

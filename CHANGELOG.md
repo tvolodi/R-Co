@@ -4,6 +4,18 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-12
 
+### Stage 5 — IDN-05 RELEASED (WF02-idn05-20260812)
+
+- **IDN-05 — Named role registry and ROLE assignee resolution — RELEASED.**
+  `migrations/1154_idn05_tenant_role_registry.sql` creates the per-tenant `role_registry` table
+  mapping named business roles to `group_id`. `src/identity/role_registry.zig` implements
+  `RoleRegistry.bind()`, `lookup()`, and `list()`, enforcing tenant isolation and returning 404
+  for non-existent `group_id` on bind. `src/api/routes/identity.zig` exposes `GET /roles` and
+  `POST /roles`. `src/engine/instance.zig`'s task-activation path resolves `assignee_type = ROLE`
+  through `RoleRegistry.lookup()` and falls through to GROUP semantics per IDN-02; an unbound
+  role name creates the Task in PENDING status (mirrors the no-members edge case of EE-03).
+  All 5 ACs covered and passing.
+
 ### Split release — Stage 16 batch 4: PAR-06, PIN-02 RELEASED in full; PAR-05, PIN-01 TESTED but withheld (known gaps)
 
 > **KNOWN GAPS — NOT GLOSSED OVER:**

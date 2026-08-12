@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-12T06:32:55Z'
+last_updated: '2026-08-12T13:11:04Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1390,10 +1390,16 @@ requirements:
     released_at: '2026-05-24T08:37:42Z'
     release_run: WF02-idn04-20260524
   IDN-05:
-    status: PENDING
+    status: RELEASED
     stage: 5
     priority: MUST
     title: Named role registry and ROLE assignee resolution
+    implemented_in:
+    - src/identity/role_registry.zig
+    - src/api/routes/identity.zig
+    - src/engine/instance.zig
+    - migrations/1154_idn05_tenant_role_registry.sql
+    released_at: '2026-08-12T13:10:48Z'
   IN-UI-01:
     status: RELEASED
     stage: F3
