@@ -6,6 +6,13 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+- ISS-0669 (GH-709): Fix Pool.mutex OS-thread safety: replace std.Io.Mutex (cooperative,
+  unsafe under raw std.Thread.spawn reentrancy) with PoolMutex (atomic spinlock wrapper).
+  Move applyRequestStorageRouting() and maybeRedirectToTenantHost() outside the critical
+  section — connections are exclusively owned once popped from idle_indices. Prevents
+  response misdelivery and false concurrent lock grants that caused FOR UPDATE SKIP LOCKED
+  to allow multiple threads to claim the same row.
+
 - ISS-0665 (GH-702): Widen statement_timeout for DDL/migration window in TestHarness.
   runMigrations() and runMigrationsForSchema() now bracket migration work with
   SET statement_timeout to BPM_TEST_STMT_TIMEOUT (default: 300s), restoring 60s

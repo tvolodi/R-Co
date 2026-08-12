@@ -7,6 +7,23 @@
 //! Design artefact: src/design/db.md
 const std = @import("std");
 
+/// OS-thread-safe mutex for raw std.Thread callers.
+/// std.Thread.Mutex does not exist in Zig 0.16; this wrapper provides the
+/// same no-parameter .lock() / .unlock() interface via std.atomic.Mutex.
+const PoolMutex = struct {
+    inner: std.atomic.Mutex = .unlocked,
+
+    pub const init: PoolMutex = .{};
+
+    pub fn lock(m: *PoolMutex) void {
+        while (!m.inner.tryLock()) std.Thread.yield() catch {};
+    }
+
+    pub fn unlock(m: *PoolMutex) void {
+        m.inner.unlock();
+    }
+};
+
 const pg = @import("pg");
 const tenant_context_mod = @import("tenant_context");
 const pipeline_context_mod = @import("pipeline_context");
@@ -720,7 +737,7 @@ pub const Pool = struct {
     idle_indices: []usize,
     /// Number of currently idle connections (valid range: 0..conns.len).
     idle_count: usize,
-    mutex: std.Io.Mutex,
+    mutex: PoolMutex,
     /// Cached PostgreSQL server_version_num; verified >= 150000 in init().
     pg_version: u32,
 
@@ -810,10 +827,12 @@ pub const Pool = struct {
     /// with a single retry.  Returns ConnectionFailed if both validation and
     /// replacement fail.
     pub fn acquire(self: *Pool) PoolError!*Conn {
-        self.mutex.lockUncancelable(self.io);
-        defer self.mutex.unlock(self.io);
+        self.mutex.lock();
 
-        if (self.idle_count == 0) return PoolError.ExhaustedPool;
+        if (self.idle_count == 0) {
+            self.mutex.unlock();
+            return PoolError.ExhaustedPool;
+        }
 
         self.idle_count -= 1;
         const idx = self.idle_indices[self.idle_count];
@@ -825,6 +844,7 @@ pub const Pool = struct {
             conn._pg = pg.Conn.connectUrl(self.io, self.allocator, conn._url) catch {
                 self.idle_indices[self.idle_count] = idx;
                 self.idle_count += 1;
+                self.mutex.unlock();
                 return PoolError.ConnectionFailed;
             };
             conn._is_valid = true;
@@ -837,16 +857,24 @@ pub const Pool = struct {
             }
         }
 
+        // Critical section ends: conn is exclusively owned by this caller.
+        self.mutex.unlock();
+
         // TNT-06: Redirect to tenant-specific host if db_host IS NOT NULL.
+        // Runs outside the lock — conn is exclusively owned at this point.
         maybeRedirectToTenantHost(conn, self.allocator, self.io) catch |err| {
+            self.mutex.lock();
             self.idle_indices[self.idle_count] = idx;
             self.idle_count += 1;
+            self.mutex.unlock();
             return err;
         };
 
         applyRequestStorageRouting(conn) catch |err| {
+            self.mutex.lock();
             self.idle_indices[self.idle_count] = idx;
             self.idle_count += 1;
+            self.mutex.unlock();
             return err;
         };
 
@@ -876,10 +904,10 @@ pub const Pool = struct {
             // Reconnect to default URL; on failure mark invalid for reconnect on next acquire.
             const default_pg = pg.Conn.connectUrl(self.io, self.allocator, conn._url) catch {
                 conn._is_valid = false;
-                self.mutex.lockUncancelable(self.io);
+                self.mutex.lock();
                 self.idle_indices[self.idle_count] = conn._pool_idx;
                 self.idle_count += 1;
-                self.mutex.unlock(self.io);
+                self.mutex.unlock();
                 return;
             };
             conn._pg = default_pg;
@@ -905,8 +933,8 @@ pub const Pool = struct {
         // returning it to idle.
         clearConnectionAdvisoryLocks(conn);
 
-        self.mutex.lockUncancelable(self.io);
-        defer self.mutex.unlock(self.io);
+        self.mutex.lock();
+        defer self.mutex.unlock();
 
         if (!conn._is_valid) {
             // Reset failed — discard this connection slot. On next acquire it will
