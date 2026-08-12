@@ -174,6 +174,9 @@ All notable changes to the BPM Platform are documented here.
   (shims ignore SQL arguments). Added post-condition re-queries after cleanup to fail loudly if
   rows still present. Added verbose warning on ignorable errors.
 
+- ISS-0680 (GH-722): Add errdefer in PinResolver.resolve() to free allocator-owned
+  resolved_id/version/ref fields from all accumulated pins on error return paths.
+
 ## [Unreleased] — 2026-08-11
 
 ### Split release — Stage 16 batch 3: PAR-01, PAR-04 RELEASED in full; PAR-02, PAR-03 TESTED but withheld (event-emission gap)
