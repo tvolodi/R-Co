@@ -1,0 +1,73 @@
+---
+run_id: WF02-env04-20260812
+handoff_id: env04-s04-0007
+requirement_ids:
+  - ENV-04
+branch: feature/WF02-env04-20260812
+generated_at: "2026-08-12T15:09:06Z"
+agent: TEST-RUNNER
+rework_count: 1
+commit: 0334c14c
+
+overall_result: PASS
+
+layers:
+  - name: type-check
+    command: "pnpm run type-check"
+    exit_code: 0
+    status: PASS
+    note: >
+      tsc --noEmit targets tsconfig.json which has "files": [] — checks 0 files.
+      Trivially passes; pre-existing config issue (not introduced by ENV-04).
+
+  - name: lint
+    command: "pnpm run lint"
+    exit_code: 0
+    status: PASS
+    note: ESLint warnings about unsupported TS 5.9.3 are advisory only; exit 0.
+
+  - name: unit-tests
+    command: "pnpm run test"
+    exit_code: 0
+    status: PASS
+    files_run: 10
+    tests_total: 37
+    tests_passed: 37
+    tests_failed: 0
+    env04_tests:
+      - file: src/components/layout/__tests__/TestEnvironmentBanner.test.tsx
+        tests: 3
+        status: PASS
+        cases:
+          - TC-ENV04-01
+          - TC-ENV04-02
+          - TC-ENV04-03
+      - file: src/components/ui/__tests__/ConfirmPromoteModal.test.tsx
+        tests: 2
+        status: PASS
+      - file: src/pages/definitions/__tests__/DefinitionEditorPage.promote.test.tsx
+        tests: 3
+        status: PASS
+        cases:
+          - TC-ENV04-06
+          - TC-ENV04-07
+          - TC-ENV04-07b
+      - file: src/pages/admin/tenants/__tests__/TenantsPage.test.tsx
+        tests: 1
+        status: PASS
+      - file: src/pages/instances/__tests__/InstanceBoardPage.tenant-isolation.test.tsx
+        tests: 1
+        status: PASS
+
+  - name: build
+    command: "pnpm run build"
+    exit_code: 0
+    status: PASS
+    note: >
+      TS2352 double-cast fix applied in commit 0334c14c resolved all 3 errors.
+      368 modules transformed; built in ~3.88s. No blocking errors.
+
+issues: []
+
+artifacts_out:
+  - web/tests/reports/report-2026-08-12-WF02-env04-20260812.yaml

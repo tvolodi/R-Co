@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-12T13:11:04Z'
+last_updated: '2026-08-12T15:16:01Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1018,10 +1018,18 @@ requirements:
     release_decision: docs/status/release-stage14-env-batch1-20260611.yaml
     note: Implemented in run WF02-env-batch1-20260610; source files not individually tracked.
   ENV-04:
-    status: PENDING
+    status: RELEASED
     stage: 14
     priority: MUST
     title: UI clearly labels test tenants and blocks accidental production actions
+    implemented_in:
+    - web/src/components/layout/TestEnvironmentBanner.tsx
+    - web/src/components/ui/ConfirmPromoteModal.tsx
+    - web/src/pages/admin/tenants/TenantsPage.tsx
+    - web/src/pages/definitions/DefinitionEditorPage.tsx
+    - web/src/auth/useTenantContext.ts
+    - web/src/components/layout/AppShell.tsx
+    released_at: '2026-08-12T15:15:56Z'
     note: Found untracked during a docs/requirements/ audit (2026-07-21). Sibling requirements ENV-01/02/03/05
       are RELEASED but ENV-04 was never in this tracker. Its pipeline run (handoffs/WF02-env-batch2-20260610)
       has all steps still PENDING with null results -- dispatched but never executed. No banner/indicator

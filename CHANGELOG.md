@@ -4,6 +4,20 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-12
 
+### Stage 14 — ENV-04 RELEASED (WF02-env04-20260812)
+
+- **ENV-04 — UI clearly labels test tenants and blocks accidental production actions — RELEASED.**
+  `web/src/components/layout/TestEnvironmentBanner.tsx` renders a persistent yellow banner on every
+  page when the current tenant has `tenant_type = 'test'`, displaying `"TEST ENVIRONMENT"` and the
+  paired production tenant name (AC-1, AC-3). `web/src/components/ui/ConfirmPromoteModal.tsx` gates
+  the "Promote to Production" action behind a confirmation modal with the prescribed warning text
+  (AC-2). `web/src/pages/admin/tenants/TenantsPage.tsx` renders a `[TEST]` suffix and distinct
+  visual style for test tenants in the admin tenant switcher (AC-4). Instance list isolation (AC-5)
+  enforced via tenant-scoped API calls. `web/src/auth/useTenantContext.ts` exposes `tenantType` and
+  `pairedProductionName` to all consumer components; `web/src/components/layout/AppShell.tsx`
+  mounts the banner unconditionally so it appears on every route. All 6 ACs covered and passing
+  (37/37 unit tests; all 5 pipeline gates PASS per release-WF02-env04-2026-08-12.yaml).
+
 ### Stage 5 — IDN-05 RELEASED (WF02-idn05-20260812)
 
 - **IDN-05 — Named role registry and ROLE assignee resolution — RELEASED.**
