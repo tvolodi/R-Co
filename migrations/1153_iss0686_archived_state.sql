@@ -7,8 +7,12 @@
 -- renamed to events_legacy_archived. Without this migration the catalog UPDATE
 -- at the end of archiveLegacyTable() fails with a constraint violation.
 
-ALTER TABLE plat_partition_catalog
-    DROP CONSTRAINT IF EXISTS plat_partition_catalog_state_check;
-
-ALTER TABLE plat_partition_catalog
-    ADD CONSTRAINT plat_partition_catalog_state_check CHECK (state IN ('ATTACHED', 'DETACHED', 'ORPHAN_PARTITION', 'DROPPED', 'ARCHIVED'));
+DO $$ BEGIN
+    -- plat_partition_catalog is PER_TENANT; skip in public schema (GBL-142 removed the shadow copy)
+    IF current_schema() = 'public' THEN RETURN; END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = current_schema() AND tablename = 'plat_partition_catalog') THEN RETURN; END IF;
+    ALTER TABLE plat_partition_catalog
+        DROP CONSTRAINT IF EXISTS plat_partition_catalog_state_check;
+    ALTER TABLE plat_partition_catalog
+        ADD CONSTRAINT plat_partition_catalog_state_check CHECK (state IN ('ATTACHED', 'DETACHED', 'ORPHAN_PARTITION', 'DROPPED', 'ARCHIVED'));
+END $$;
