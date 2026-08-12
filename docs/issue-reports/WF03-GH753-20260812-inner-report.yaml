@@ -132,4 +132,45 @@ steps:
 final_step:
   step: "final-backend-dev"
   agent: BACKEND-DEV
+  completed_at: 2026-08-12T22:25:00Z
   action: "Open PR, squash-merge to main, delete branch, close GH-753"
+  pr_url: https://github.com/tvolodi/R-Co/pull/756
+  merge_sha: 34d0512c6edc08554b3c6964d858fa8681e5f595
+  merge_branch: main
+  merge_date: 2026-08-12T22:19:16Z
+  follow_up_commit:
+    sha: 5b4f9aaa73d4c1fa9f5d572678d1ee7093377c95
+    reason: |
+      The squash-merge auto-merge of PR #756 introduced unresolved git
+      conflict markers into both handoffs/registry.json and
+      handoffs/orchestrator.log because rebase could not resolve append-only
+      files with concurrent additions on both sides. Follow-up commit strips
+      markers, dedupes registry entries (was 2846 with dups, now 2613 unique),
+      and appends the 3 final-step audit lines to bring the log to HEAD+3.
+  gh_753_state: CLOSED
+  gh_753_state_reason: COMPLETED
+  gh_753_url: https://github.com/tvolodi/R-Co/issues/753
+  branch_deleted: feature/WF03-GH753-20260812 (local + remote)
+  verification:
+    - command: "python tools/lint_handoffs.py"
+      exit: 0
+      note: "Only pre-existing H010 MINOR (12 of 2686, 0.4%) remains -- identical ratio to pre-merge state."
+    - command: "git log --oneline origin/main -3"
+      exit: 0
+      note: "Both 34d0512c (squash-merge) and 5b4f9aaa (follow-up audit-fix) are on main."
+    - command: "gh issue view 753 --json state,stateReason"
+      exit: 0
+      note: "state=CLOSED, stateReason=COMPLETED."
+
+deviations_from_canonical_wf03:
+  - "Steps 4 and 4b (test-design / test-design-validator) skipped -- Fix Scope Rule: test-only fix in TC-SIM-01-01, no new behaviour to design."
+  - "Step 6 (release-validator) skipped -- MINOR severity, no impact on NFRs."
+  - "Ran as a single-thread session rather than per-agent subagent dispatch -- ISS-0691 scoped narrowly enough that the orchestrator-trip overhead would have exceeded the actual work."
+  - "Detection of rebase-introduced conflict markers during Step Final triggered an unplanned follow-up commit (5b4f9aaa) to repair the audit-trail corruption before reporting PASS."
+
+cross_references:
+  - docs/issues/ISS-0691.json
+  - src/design/fix-iss-0691.md
+  - handoffs/WF03-GH753-20260812/step-*.json
+  - handoffs/WF03-GH753-20260812/step-final-backend-dev.json
+  - CHANGELOG.md (under [Unreleased] - 2026-08-12)
