@@ -1,0 +1,23 @@
+{
+  "handoff_id": "wf03-gh732-20260812-00-backend-dev",
+  "schema_version": 1,
+  "run_id": "WF03-GH732-20260812",
+  "step": "00-backend-dev",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-12T09:36:00Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-12T09:40:19Z",
+  "task": {
+    "description": "GH-732 / ISS-0685: Fix NFR-04 bench replay_10000_ms — was measuring synthetic nfr_bench_events full table scan with no bounded predicate. Fix: add instance_id + sequence_number columns to nfr_bench_events (matching real events schema), seed with instance_id=run_id, compute first/last event time window (mirroring eventWindowForInstanceInTx), issue PAR-06 bounded query: WHERE instance_id=$1 AND created_at >= $2 AND created_at < $3 ORDER BY sequence_number ASC.",
+    "requirement_ids": ["NFR-04", "PAR-06"],
+    "artifacts_in": ["tests/bench/bench.zig"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated measureReplayMs() in tests/bench/bench.zig to use PAR-06 bounded query predicate. ensureBenchTable adds instance_id/sequence_number columns and (instance_id, created_at) index. seedEvents sets instance_id=run_id. measureReplayMs does window lookup then bounded query. zig build exit 0. PR #740 squash-merged to main.",
+    "artifacts_out": ["tests/bench/bench.zig", "CHANGELOG.md"],
+    "issues": [],
+    "next_action": "RESOLVED — GH-732/ISS-0685 closed"
+  }
+}

@@ -1907,12 +1907,12 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/716",
       "title": "PAR-06 Store.reconstructBounded() is dead code -- unused duplicate of reconstruction.zig's live bounded-reconstruction path",
       "severity": "MINOR",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "lock": null,
       "added_at": "2026-08-11T20:36:35Z",
-      "started_at": null,
-      "completed_at": null,
-      "run_id": null,
+      "started_at": "2026-08-12T09:26:51Z",
+      "completed_at": "2026-08-12T09:35:46Z",
+      "run_id": "WF03-GH716-20260812",
       "deferred_reason": null
     },
     {
@@ -2037,12 +2037,12 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/732",
       "title": "NFR-04 bench replay_10000_ms measures synthetic table scan, not real PAR-06 reconstruction query",
       "severity": "MINOR",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "lock": null,
       "added_at": "2026-08-12T06:18:49Z",
-      "started_at": null,
-      "completed_at": null,
-      "run_id": null,
+      "started_at": "2026-08-12T09:26:51Z",
+      "completed_at": "2026-08-12T09:40:19Z",
+      "run_id": "WF03-GH732-20260812",
       "deferred_reason": null
     },
     {
