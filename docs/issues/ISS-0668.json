@@ -2,7 +2,7 @@
   "id": "ISS-0668",
   "title": "Lego catalog (templates/lego-catalog.md) is shallow for Types A/B/D: no per-type schema doc and the CUSTOM: convention is under-documented outside Type C",
   "severity": "MINOR",
-  "status": "IN_PROGRESS",
+  "status": "RESOLVED",
   "discovered_at": "2026-08-11T08:19:09Z",
   "discovered_during": "Review of templates/lego-catalog.md prompted by the user, alongside the stage-16 requirement-batch loop (WF02-batch-0-20260811)",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/706",
@@ -16,5 +16,8 @@
   ],
   "affected_requirement": null,
   "related_issues": [],
-  "recurrence_count": 1
+  "recurrence_count": 1,
+  "resolution_text": "Added templates/crud-endpoint.schema.md (Type A) and templates/list-page.schema.md (Type B) mirroring migration.schema.md structure. Expanded CUSTOM: block convention in templates/lego-catalog.md into a dedicated subsection with anatomy examples. Added partial-fit guidance to selection rules for when Type A/B/D deviation should reclassify to Type E.",
+  "prevention_text": "lego-catalog.md completeness bar now requires a .schema.md for every pattern type before it can be marked complete. The CUSTOM: block convention is documented in lego-catalog.md directly, not only inside Type C's schema doc.",
+  "last_updated": "2026-08-12T05:21:29Z"
 }
