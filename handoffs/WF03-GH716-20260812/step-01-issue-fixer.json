@@ -1,0 +1,47 @@
+{
+  "handoff_id": "8bb1745f-ea2b-4a98-83ce-a50b0e87ec2b",
+  "run_id": "WF03-GH716-20260812",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-12T09:16:08Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "PAR-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0675.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 1 (root cause diagnosis) for GH-716 / ISS-0675: src/event_store/store.zig's Store.reconstructBounded() (and its private helpers lookupOrRepairEventWindowInternal/mergeEventRowsBySequence/rowSequenceNumber) is dead code -- confirmed via grep across src/ and tests/ that it is never called, only referenced in its own doc comments, a design doc, and test-file comments describing it as dead. The actual live PAR-06 bounded-reconstruction entry point is src/engine/reconstruction.zig's reconstructInstance() (calling its private eventWindowForInstanceInTx()), which is an independently-written duplicate of the same window-lookup-and-repair logic. ORCH has already read both implementations in full and found: (1) both implement the same window-lookup + one-time-repair-scan + bounded-query logic; (2) they diverge on tenant scoping -- Store.reconstructBounded() filters events/events_archive by an explicit tenant_id param, reconstruction.zig's live path has no tenant_id predicate anywhere (correct for current schema: instance_projections lost its tenant_id column via GBL-084/GBL-123_rls_removal.sql, so a tenant_id filter against it would not compile; events/events_archive still carry tenant_id today per PAR-01/migration 1147, so Store.reconstructBounded()'s query is schema-valid but unreachable); (3) they ALSO diverge on empty-window behavior -- reconstruction.zig's eventWindowForInstanceInTx() falls back to an unbounded-in-effect [0, now] window when the repair scan finds zero events (documented rationale: instance rows may have fully migrated to events_archive), while store.zig's lookupOrRepairEventWindowInternal() returns StoreError.ReconstructionWindowMissing in that same case -- an error variant that, per grep, is ONLY ever returned by this dead code path (never reachable from any live caller); (4) StoreError.UnboundedReconstructionRefused is declared but never constructed/returned anywhere in the codebase -- fully vestigial; (5) the PAR-06 design doc (src/design/par-06-time-bounded-reconstruction.md, Open Questions #1) explicitly left 'which function is THE reconstruction entry point' unresolved, and BACKEND-DEV built both instead of resolving the ambiguity (this IS ISS-0675's own recorded root_cause.details); (6) tests/integration/par06_reconstruction_bounded_test.zig's own file header already states outright that Store.reconstructBounded() is dead code and every test in that file exercises reconstruction.zig's live path instead -- the test suite has already converged on treating reconstruction.zig as sole source of truth. YOUR JOB: verify this diagnosis independently (do not just trust it -- re-run the greps, re-read both files), confirm there is no reason to prefer option 2 from the GH issue (wiring Store.reconstructBounded() up as reconstruction.zig's delegate) over option 1 (deleting the dead code), and update docs/issues/ISS-0675.json's root_cause/resolution fields with your confirmed findings. State explicitly whether you recommend deletion (option 1) or delegation (option 2) and why -- this determines the CODE-DESIGNER/BACKEND-DEV task in the next steps.",
+    "acceptance_criteria": [
+      "Diagnosis independently verifies reconstructBounded() has zero live callers",
+      "Diagnosis confirms or refutes the tenant-scoping and empty-window behavioral divergences",
+      "Explicit recommendation: delete dead code (option 1) vs wire as delegate (option 2), with reasoning",
+      "docs/issues/ISS-0675.json updated with confirmed root_cause; status remains OPEN pending fix"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Independently re-verified GH-716/ISS-0675 diagnosis by reading both implementations in full and re-running the greps. Confirmed zero live call sites for Store.reconstructBounded() (only comments/design-doc/test-header references). Confirmed the tenant-scoping divergence (dead code filters events/events_archive by tenant_id; live reconstruction.zig path has no tenant_id predicate, correct for current schema since instance_projections lost tenant_id via GBL-084/GBL-123). Confirmed a SECOND, previously-unstated-as-precisely divergence: empty-window behavior differs -- dead code returns StoreError.ReconstructionWindowMissing when the repair scan finds zero events, while live code falls back to an unbounded-in-effect [0, now] window specifically to handle fully-archived instances correctly; the dead code would incorrectly fail that case. Confirmed StoreError.ReconstructionWindowMissing is reachable only from the dead code (2 return sites) and StoreError.UnboundedReconstructionRefused is fully vestigial (declared, never constructed). Confirmed no switch-on-StoreError elsewhere in the codebase references either variant by name; the sole StoreError switch (retentionPolicyErrorCode) uses an else catch-all and is unaffected by removing them. Recommendation: option 1 (delete Store.reconstructBounded() + its private helpers lookupOrRepairEventWindowInternal/mergeEventRowsBySequence/rowSequenceNumber, and delete the two now-fully-unreachable StoreError variants) over option 2 (delegation), because delegation would force reconstruction.zig to either regress its correct empty-window fallback or carry extra reconciliation glue -- strictly worse than deleting the unused duplicate. docs/issues/ISS-0675.json updated with full confirmed findings under root_cause.details.independent_verification; status left OPEN; no resolution fabricated.",
+    "artifacts_out": [
+      "docs/issues/ISS-0675.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (or directly to BACKEND-DEV per this run categorization) to implement option 1: delete Store.reconstructBounded() and its private helpers plus the two dead StoreError variants from src/event_store/store.zig"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T09:16:52Z",
+  "completed_at": "2026-08-12T09:19:05Z"
+}

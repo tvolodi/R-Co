@@ -39,14 +39,13 @@ promised coverage).
 
 ## Implementation note — which function is PAR-06 AC5's reconstruction entry point
 
-Per an incidental finding filed during this handoff (ISS-0675 / GH-716, already registered by
-BACKEND-DEV before this step): `src/event_store/store.zig`'s `Store.reconstructBounded()` is
-**dead code** — not called anywhere in `src/` or `tests/`. The actually-wired PAR-06
-bounded-reconstruction path is `src/engine/reconstruction.zig`'s `reconstructInstance()`
-(via its private `eventWindowForInstanceInTx()` helper), confirmed by reading both files in
-full. All integration tests below therefore exercise `reconstruction.reconstructInstance()`,
-not the unreferenced `Store.reconstructBounded()` — testing the dead function would prove
-nothing about the platform's actual behaviour. `Store.append()`'s window-maintenance UPDATE
+Per an incidental finding filed during this handoff (ISS-0675 / GH-716): `src/event_store/
+store.zig`'s `Store.reconstructBounded()` **was dead code** — not called anywhere in `src/` or
+`tests/` — confirmed by reading both files in full, and has since been removed (GH-716). The
+actually-wired PAR-06 bounded-reconstruction path is `src/engine/reconstruction.zig`'s
+`reconstructInstance()` (via its private `eventWindowForInstanceInTx()` helper). All integration
+tests below therefore exercise `reconstruction.reconstructInstance()`, which was already the sole
+live path even before the dead function's removal. `Store.append()`'s window-maintenance UPDATE
 (AC4) is shared by both code paths and is exercised directly via `Store.append()`/
 `InstanceStore.create()`, which are real, live call sites.
 

@@ -4,12 +4,12 @@
 //! par06_instance_projections_event_window_test.zig, which covers only the
 //! migration's schema slice (columns + index) per that file's own header.
 //!
-//! Implementation note (ISS-0675 / GH-716, filed by BACKEND-DEV before this
-//! step): src/event_store/store.zig's Store.reconstructBounded() is DEAD
-//! CODE -- not called anywhere in src/ or tests/. The actually-wired PAR-06
+//! Implementation note (ISS-0675 / GH-716): src/event_store/store.zig's
+//! Store.reconstructBounded() WAS dead code -- not called anywhere in src/ or
+//! tests/ -- and has since been removed (GH-716). The actually-wired PAR-06
 //! reconstruction entry point is src/engine/reconstruction.zig's
-//! reconstructInstance(). Every test below exercises that live path, not the
-//! unreferenced Store.reconstructBounded().
+//! reconstructInstance(). Every test below exercises that live path, which
+//! was already the sole path exercised even before the dead code's removal.
 //!
 //! BPM_TEST_DB_URL must be set; connects to a real PostgreSQL (DIRECTIVE T-1).
 const std = @import("std");

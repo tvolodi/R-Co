@@ -1,0 +1,51 @@
+{
+  "handoff_id": "d23fd3ba-aeb2-4379-91ea-ef5b4617e14f",
+  "run_id": "WF03-GH716-20260812",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-12T09:21:27Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "PAR-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0675.json",
+      "handoffs/WF03-GH716-20260812/step-01-issue-fixer.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2 for GH-716 / ISS-0675. ISSUE-FIXER's Step 1 diagnosis (this run) independently confirmed: Store.reconstructBounded() in src/event_store/store.zig (plus its private helpers lookupOrRepairEventWindowInternal, mergeEventRowsBySequence, rowSequenceNumber) is unreachable dead code with ZERO live callers; src/engine/reconstruction.zig's reconstructInstance()/eventWindowForInstanceInTx() is the sole live, tested PAR-06 bounded-reconstruction path; and the dead code's own empty-window behavior (StoreError.ReconstructionWindowMissing on a zero-row repair scan) is a regression relative to the live path's correct [0, now] fallback for fully-archived instances, so wiring the dead code up as a delegate (GH-716's suggested option 2) would introduce a real behavioral regression, not just consolidate. This is a pure code-DELETION task: remove Store.reconstructBounded() and its three private helpers, and remove the two StoreError variants that become fully unreachable once it's gone (ReconstructionWindowMissing -- reachable ONLY from the deleted helper; UnboundedReconstructionRefused -- already never constructed anywhere). No new public interface, no new data flow, no new error taxonomy, no schema change, no state transition is being introduced -- everything being removed is superseded by an already-existing, already-integrated, already-tested implementation in a different file. Per templates/lego-catalog.md's Type A-E classification, this does not fit any type that produces new design content (a Type E prose design's required sections -- public interface, data flow, error taxonomy, state transitions -- would all be empty or 'N/A, removing existing dead surface' for a subtractive change with no live consumer). YOUR JOB: confirm this classification is correct by independently checking (a) whether Store.reconstructBounded()'s public signature is referenced by name anywhere outside src/event_store/store.zig itself (exported via a module root, re-exported, or documented in an OpenAPI/API surface) such that removing it is itself a interface-breaking design decision needing a Type E artefact, and (b) whether removing StoreError.ReconstructionWindowMissing / .UnboundedReconstructionRefused requires updating any exhaustive switch/error-set consumer elsewhere (ISSUE-FIXER found the one switch site, retentionPolicyErrorCode, uses a non-exhaustive `else => null` catch-all and compiles unaffected -- verify this yourself). If confirmed, return result.status SKIPPED with a one-paragraph rationale (this becomes the design-decision record CLAUDE.md/ORCHESTRATOR.md ask for) rather than fabricating a Type E document with no real content. If your own reading finds a reason a design artefact IS needed (e.g. a hidden external caller, or a reason the error-set removal isn't safe), produce the artefact and say so explicitly instead.",
+    "acceptance_criteria": [
+      "Independently confirms Store.reconstructBounded() has no external/public-API consumers beyond store.zig itself",
+      "Independently confirms StoreError.ReconstructionWindowMissing / UnboundedReconstructionRefused removal is safe (no exhaustive switch depends on them)",
+      "Either returns SKIPPED with documented rationale, or produces a Type E artefact if genuinely warranted -- decision must be explicit and justified, not silent"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "SKIPPED",
+    "summary": "Independently re-verified all three checks rather than trusting ISSUE-FIXER Step 1's classification, and confirmed a pure-deletion Type E design artefact is not warranted. (1) grep -rn \"reconstructBounded\" across src/, tests/, web/, docs/ finds zero call expressions (\".reconstructBounded(\") anywhere in the repo -- every hit is the definition itself (store.zig:1259), its own doc comments (store.zig:1234,1712-1713), one unrelated numeric-convention comment (src/engine/instance.zig:83), the PAR-06 design doc's prose, and test-file/spec comments that explicitly document it as dead code (tests/integration/par06_reconstruction_bounded_test.zig:8-12, tests/specs/PAR-06.md:43-48). Read reconstruction.zig in full: it does NOT call Store.reconstructBounded() anywhere, despite reconstructBounded()'s own doc comment (store.zig:1242-1244) asserting reconstruction.zig \"is this store method's caller\" -- that comment is stale/aspirational, not accurate; flagged as a note for BACKEND-DEV to remove along with the function. No OpenAPI reference (src/api/openapi, src/tools/openapi_gen.zig, src/api/routes/openapi.zig grep clean) and no docs/api directory exists in this repo. (2) grep -rn for ReconstructionWindowMissing/UnboundedReconstructionRefused: confirmed the only two return sites are inside the dead lookupOrRepairEventWindowInternal() (store.zig:1415, 1450); UnboundedReconstructionRefused is never constructed anywhere (vestigial). Read retentionPolicyErrorCode() (store.zig:1737-1743) directly -- its switch matches only ProtectedFamilyHardDeleteForbidden and InvalidRetentionPolicyValue by name with an 'else => null' catch-all, so it is non-exhaustive and compiles unaffected by removing the two variants; grepped all 85 files matching a StoreError-adjacent switch pattern and confirmed via a tighter grep for 'StoreError)' / 'StoreError.Reconstruction' / 'StoreError.Unbounded' that retentionPolicyErrorCode is the only production switch touching StoreError at all, and it does not name either variant. (3) Checked module exports: no src/root.zig exists in this repo; src/main.zig re-exports the module as 'pub const event_store = @import(\"event_store/store.zig\")', an internal import only -- no external caller reaches reconstructBounded() through it, and no docs/api/ or OpenAPI spec documents it as a stable public contract. All three independent checks confirm the ISSUE-FIXER diagnosis: this is a genuinely pure subtractive removal of fully dead code with zero live/documented consumers, fully superseded by the already-integrated, already-tested reconstruction.zig path, so a Type E prose design (whose mandatory sections -- new public interface, new data flow, new error taxonomy, new state transitions -- would all be empty or inapplicable) would not be a real design-decision record, just a fabricated artefact satisfying a template. No design artefact produced; this handoff's result record itself documents the verified decision for BACKEND-DEV to proceed directly with deletion (Store.reconstructBounded() + its private helpers lookupOrRepairEventWindowInternal/mergeEventRowsBySequence/rowSequenceNumber, plus the two now-fully-unreachable StoreError variants and their doc comments), and BACKEND-DEV should also strip the stale reconstruction.zig-is-the-caller claim from the doc comment being deleted (moot once deleted) and check for any similar stale cross-reference comments elsewhere referencing reconstructBounded() by name (e.g. instance.zig:83's comment, which describes a shared numeric convention and should be reworded to not reference the deleted function by name).",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "CODE-DESIGNER correctly flagged an H004 BLOCKER (started_at 2026-08-12T09:21:27Z preceded created_at 2026-08-12T09:34:00Z) rather than silencing it. Root cause: ORCH hand-typed created_at in the handoff-creation script instead of using the exact output of the immediately preceding python tools/utcnow.py call (which read 09:21:27Z and was correctly used for started_at moments later). Corrected at the source per core-directives.md: created_at fixed to 2026-08-12T09:21:27Z, the genuine clock reading captured for this handoff's creation, restoring started_at >= created_at. No fabricated new timestamp was introduced -- the correction reuses the one real clock reading already on record for this step."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV to implement the confirmed pure-deletion fix (skip Type E artefact per this SKIPPED result; no CODE-DESIGN-VALIDATOR gate needed for a no-artefact SKIPPED design step, ORCH to confirm routing). ORCH must also resolve the H004 timestamp BLOCKER on this handoff file (see issues[0]) before or alongside routing."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T09:21:27Z",
+  "completed_at": "2026-08-12T09:22:56Z"
+}

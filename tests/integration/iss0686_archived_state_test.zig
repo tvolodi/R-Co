@@ -15,15 +15,13 @@ const std = @import("std");
 const pg = @import("pg");
 const helpers = @import("helpers.zig");
 
-const Fixtures = struct {
-};
+const Fixtures = struct {};
 
 fn setup(allocator: std.mem.Allocator, conn: *pg.Conn) !Fixtures {
     _ = conn;
     _ = allocator;
     // CUSTOM: realise per-test fixtures here (UUIDs, random strings, seed SQL).
-    return Fixtures{
-    };
+    return Fixtures{};
 }
 
 test "iss0686_archived_state: archived_state_accepted" {
@@ -31,20 +29,20 @@ test "iss0686_archived_state: archived_state_accepted" {
     // covers: PAR-05
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
+    const fx = try setup(std.testing.allocator, &h.conn);
     _ = fx;
 
     try h.conn.exec(
         "INSERT INTO plat_partition_catalog " ++
-        "  (table_name, parent_table, range_start, range_end, state) " ++
-        "VALUES ('events_legacy_archived_test', 'events_legacy', " ++
-        "        '1970-01-01'::timestamptz, NOW(), 'ATTACHED')",
+            "  (table_name, parent_table, range_start, range_end, state) " ++
+            "VALUES ('events_legacy_archived_test', 'events_legacy', " ++
+            "        '1970-01-01'::timestamptz, NOW(), 'ATTACHED')",
         &.{},
     );
 
     try h.conn.exec(
         "UPDATE plat_partition_catalog SET state = 'ARCHIVED' " ++
-        "WHERE table_name = 'events_legacy_archived_test'",
+            "WHERE table_name = 'events_legacy_archived_test'",
         &.{},
     );
 

@@ -330,3 +330,27 @@ arithmetic helpers. Concrete changes required, by call site:
    PascalCase name of what happened) — CODE-DESIGN-VALIDATOR/BACKEND-DEV may adjust the literal
    string if a different name is preferred; PAR-06's AC is satisfied by the refusal behaviour, not
    by this design's suggested name for it.
+
+## Resolution (GH-716)
+
+Open question §1 above was left genuinely undecided at design time, and BACKEND-DEV's original
+implementation (commit 9ac7c2eb) resolved it by building both candidates instead of choosing one:
+`Store.reconstructBounded()` (plus its private helpers) in `store.zig`, and an independently
+written duplicate window-lookup-and-repair path in `src/engine/reconstruction.zig`
+(`eventWindowForInstanceInTx()` / `reconstructInstance()`). This left `Store.reconstructBounded()`
+as unreferenced dead code — never called from `src/` or `tests/` — while `reconstruction.zig`'s
+path was the one actually wired up and exercised by the test suite. The two also diverged
+behaviourally (tenant-scoping predicate present only in the dead code; empty-window handling
+differed, with the dead code returning `ReconstructionWindowMissing` on a zero-row repair scan
+where the live path correctly falls back to an unbounded-in-effect window for fully-archived
+instances), making the dead code a maintenance hazard rather than a harmless duplicate.
+
+ISS-0675/GH-716 tracked this as a code-quality defect. WF03-GH716-20260812 resolved open question
+§1 retroactively: `Store.reconstructBounded()`, its private helpers
+(`lookupOrRepairEventWindowInternal`, `mergeEventRowsBySequence`, `rowSequenceNumber`), the
+now-fully-unreachable `StoreError.ReconstructionWindowMissing` / `.UnboundedReconstructionRefused`
+variants, and the now-unused `EventWindow` struct were deleted from `store.zig`.
+`src/engine/reconstruction.zig` is confirmed as THE sole PAR-06 bounded-reconstruction entry point
+going forward — no other call site should be introduced in `store.zig` for this purpose. See
+ISS-0675 for the full verification trail (zero live callers, non-exhaustive `StoreError` switch
+confirmed safe to shrink, behavioural divergence analysis).
