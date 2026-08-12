@@ -1,0 +1,158 @@
+{
+  "handoff_id": "wf03-gh752-20260812-01-issue-fixer",
+  "run_id": "WF03-GH752-20260812",
+  "schema_version": 1,
+  "step": "01",
+  "from_agent": "ISSUE-FIXER",
+  "to_agent": "ORCH",
+  "file": "handoffs/WF03-GH752-20260812/step-01-issue-fixer.json",
+  "created_at": "2026-08-12T22:06:56Z",
+  "started_at": "2026-08-12T22:06:56Z",
+  "completed_at": "2026-08-12T22:25:41Z",
+  "status": "COMPLETED",
+  "stage": "WF-03 Issue Resolving — Steps 0.5 + 1 (ISS registry + diagnose)",
+  "issue": {
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/752",
+    "iss_id": "ISS-0692",
+    "severity": "BLOCKER",
+    "title": "zig build test-integration: continuation of ISS-0665 — 300s BPM_TEST_STMT_TIMEOUT default insufficient under full concurrency on this host",
+    "task": "ISSUE-FIXER Step 0.5 + Step 1: registry lookup confirmed (ISS-0692 already exists at docs/issues/ISS-0692.json, severity=BLOCKER, github_issue=https://github.com/tvolodi/R-Co/issues/752); root-cause diagnosis completed; chosen mitigation recorded; sibling GH-753/ISS-0691 confirmed resolved in WF03-GH753-20260812 (commit 34d0512c, post-merge audit-fix 5b4f9aaa).",
+    "acceptance_criteria_check": {
+      "ISS-0692.json created/updated with confirmed root cause": "EXISTING (created 2026-08-12T22:05:33Z). Diagnosis entered below; resolution pending BACKEND-DEV step.",
+      "GitHub issue #752 has an ORCH-filed WF-03 reference": "VERIFIED — issue references this run via handoffs/WF03-GH752-20260812/.",
+      "Root-cause analysis identifies (a)/(b)/(c) or combination": "PASS — see `result.diagnosis` below.",
+      "GH-753/ISS-0691 sibling triage": "VERIFIED RESOLVED in commit 34d0512c on main. ISS-0691.json `status: RESOLVED`; CHANGELOG.md entry present; PR #756 closed. Adjacent ISS-0694/0695 a/w GH-754/755 deferred to their own runs (per sibling-run decision).",
+      "tools/lint_test_isolation.baseline.json unchanged": "PENDING — no change needed for the chosen mitigation; BACKEND-DEV step must confirm."
+    }
+  },
+  "context": {
+    "stage": "WF-03 Step 0.5 + Step 1",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh752-20260812-00-issue-fixer"
+    ],
+    "artifacts_in": [
+      "tests/integration/helpers.zig",
+      "build.zig",
+      "docs/guides/test_developer_guide.md",
+      "docs/issues/ISS-0665.json",
+      "docs/issues/ISS-0692.json",
+      "docs/issues/ISS-0691.json",
+      "docs/issues/issue_index.json"
+    ],
+    "artifacts_examined": [
+      "tests/integration/helpers.zig lines 1-320 (runMigrations + runMigrationsForSchema + ISS-0665 timeout bracket + ISS-0151 advisory-lock comment + defer unlock paths)",
+      "build.zig lines 2370-2470 (test-integration step + others-internal barrier + run_iss503_after_others)",
+      "docs/guides/test_developer_guide.md §10.2 (existing ISS-0665 mitigation guidance)",
+      "docs/issues/ISS-0665.json (predecessor resolution, BPM_TEST_STMT_TIMEOUT=300s default, files_changed=list)",
+      "docs/issues/ISS-0691.json (sibling GH-753 resolved 2026-08-12T22:19:30Z, fix in commit 34d0512c)",
+      "docs/issues/issue_index.json (ISS-0211 also present, same github_issue=GH-752; NOT a duplicate — ISS-0211 is the WF02-batch-6 inbound finding, ISS-0692 is the WF03-GH752 fixing run's local ID; both reference gh-752 by design)",
+      "handoffs/orchestrator.log (last 5 lines, GH-753 sibling final-step completion timestamp 2026-08-12T22:25:00Z)",
+      "handoffs/WF03-GH753-20260812/* (sibling handoff chain, all FINAL state, completed in same window)"
+    ]
+  },
+  "task": {
+    "description": "ISSUE-FIXER Step 0.5 + Step 1 deliverable: registry verified, diagnosis produced, mitigation decided, code-design artefact WRITE order issued for next agent.",
+    "acceptance_criteria": [
+      "ISS-0692.json exists and contains the (preliminary) root_cause + resolution field shapes",
+      "Diagnosis explicitly identifies which mitigation (a/b/c) with independent evidence chain",
+      "Sister-issue GH-753/ISS-0691 confirmed separately resolved (NOT in scope of this run)",
+      "Issue Queue protocol: no new issues filed — only the existing GH-752/ISS-0692 is in scope",
+      "Sibling ISS-0694/0695 (GH-754/755) NOT adopted into this run (already in the queue from sibling run)"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed GH-752/ISS-0692 as a HOST-CAPACITY contention issue that masquerades as a deterministic test-integration failure. ISS-0665's fix (BPM_TEST_STMT_TIMEOUT=300s default) is structurally correct and IS doing what it was designed to do (broaden the DDL window against ~65s statement-timeout cancellations), but on THIS host under full ~40-binary concurrency, that default is still insufficient for the simultaneous lock-acquisition storm. The host exhibits a stark concurrency gradient (52 failures at full → 2 failures at -j4 → 2 failures at -j4-repeat), which is the signature of host-CPU/I/O contention, NOT a deterministic code regression. Chosen mitigation is a COMBINATION of (b) PRIMARY + (a) AUXILIARY: add a default -j cap to the test-integration build step in build.zig (with an env-var escape hatch) so the host does not get asked to schedule ~40 binaries simultaneously; AND raise the BPM_TEST_STMT_TIMEOUT default from 300s to 600s as a secondary safety net for the residual queue depth after the -j cap. Mitigation (c) was investigated but the assembled lock-release path (defer + catch{} on every error branch in runMigrations / runMigrationsForSchema) is already correct; the ungranted locks reported after a CANCELLED run are leftover from process termination (test runner hard-kills the binary), which bypasses defer. Mitigation (c) as a code change is therefore NOT actionable; the ungranted-lock leak is a CONSEQUENCE of the cancellation storm that mitigation (b) prevents, not an independent defect.",
+    "diagnosis": {
+      "root_cause": "host_capacity_contention_under_full_concurrency",
+      "evidence_chain": [
+        {
+          "evidence": "Concurrency gradient",
+          "detail": "ISS-0665 mitigation holder reported 52 failures at full concurrency → 2 failures at -j4 → 2 failures at -j4-repeat, on the SAME commit, byte-identical code. This is a textbook capacity-contention pattern: failures drop ~26x when scheduling concurrency is reduced ~10x. A deterministic code regression would NOT show this gradient.",
+          "source": "ISS-0665.json (predecessor issue) + GH-752 issue body (verbatim)"
+        },
+        {
+          "evidence": "stack-trace signature",
+          "detail": "Failures cluster as PgError.ServerError during pg_advisory_lock(hashtext('bpm_test_migrations_public')) acquisition in tests/integration/helpers.zig. The advisory lock is the shared bottleneck — every binary queues behind it for the duration of the migration DDL. The 'test runner failed to respond for ~1m<N>ms' entries are Zig's build runner killing stragglers that exceed its own per-step timeout, NOT a test logic failure.",
+          "source": "tests/integration/helpers.zig lines 121-165 (runMigrations advisory lock + statement_timeout bracket)"
+        },
+        {
+          "evidence": "60s ambient timeout still bites non-DDL work",
+          "detail": "ISS-0665 broadened the DDL window only (SET statement_timeout = BPM_TEST_STMT_TIMEOUT bracketed around the migration calls). Every OTHER query that the harness runs during init keeps the configureSessionTimeouts() ambient of 60s. Under heavy contention, ANY of those queries — e.g. the public.tenant_schemas / public.schema_migrations COUNT probes that gate the runForSchema fast path (lines ~243-275) — can exceed 60s and be cancelled. The 300s DDL window therefore does not protect the full TestHarness.init() critical section.",
+          "source": "tests/integration/helpers.zig lines 210-225 (runMigrationsForSchema timeout bracket) + line 304 (configureSessionTimeouts default 60s) + lines 243-275 (fast-path probes)"
+        },
+        {
+          "evidence": "ISS-0665 mitigation is structurally correct",
+          "detail": "ISS-0665.json names-and-shames the same symptom tree (ISS-0107, ISS-0110, ISS-0151, ISS-0659) and lands the right code shape: bracket a wider timeout around EXACTLY the contended operation, restore the ambient immediately after. The 300s default was a reasonable server-class starting point; on this host's full concurrency, the contention window is larger than 300s on the slowest binary.",
+          "source": "ISS-0665.json root_cause + resolution sections"
+        },
+        {
+          "evidence": "lock-release path is correct (mitigation c investigation)",
+          "detail": "runMigrations() and runMigrationsForSchema() both release the advisory lock via `defer conn.exec(\"SELECT pg_advisory_unlock(...)\", ...) catch {};` placed AFTER the SET statement_timeout bracket. The `defer` runs on every ZIG error path; the `catch {}` swallows any DB error during unlock so the unlock attempt itself cannot escalate the failure. The release path is therefore complete. The ungranted locks after a CANCELLED run are leftover from PROCESS termination (Zig test runner hard-kills the binary after its per-step timeout fires), which bypasses Zig's defer. Mitigation (c) as a code change is not actionable without rewriting the test-runner termination semantics.",
+          "source": "tests/integration/helpers.zig lines 121-136 (runMigrations release) + lines 197-212 (runMigrationsForSchema release)"
+        },
+        {
+          "evidence": "build.zig test-integration step has no -j default",
+          "detail": "build.zig line 2371 declares `test_integration_step = b.step(\"test-integration\", ...)` and aggregates ~40 binaries via dependOn. Zig's build runner defaults to N-1 jobs on N CPU cores; on this host that means ~40 binaries are scheduled simultaneously. There is no project-level -j cap; the only knob is the operator remembering to pass -j4 on every invocation. This is a host-dependent reliability hazard that the build file itself should not expose.",
+          "source": "build.zig lines 2370-2470 (test-integration step + barrier + ~40 dependents)"
+        }
+      ],
+      "failure_category": "E — environment / host capacity contention (not a code regression; not a test logic defect; not a missing requirement)",
+      "chosen_mitigation": {
+        "primary": "(b) add a default -j cap to the test-integration build step in build.zig with an env-var escape hatch (BPM_TEST_INTEGRATION_JOB_CAP, default 8); honor `b.option(u32, \"test-integration-jobs\", ...)` for the deterministic CI setting",
+        "secondary": "(a) raise BPM_TEST_STMT_TIMEOUT default from 300s to 600s in tests/integration/helpers.zig lines ~139 and ~217, keeping the env-var override intact",
+        "rejected": "(c) no code change — defer/catch unlock path is already correct; leftover ungranted locks are a CONSEQUENCE of the cancellation storm that mitigation (b) prevents, not an independent defect",
+        "rationale": "The concurrency gradient is the strongest single evidence this is a host-capacity issue. Reducing concurrency (b) addresses the root cause; raising the per-DDL timeout (a) is a secondary safety net for any residual queue depth after the -j cap. Adopting only (a) would still schedule ~40 binaries competing for the same DB; the contention window would merely be 2x larger — the storm would still blow through it on a fully-loaded host. Adopting only (b) without (a) leaves the residual queue depth at the new -j-bound, which is still enough to time out a 300s DDL window on the slowest binary of a worst-case batch. Adopting (c) is not a code change — the unlock path is already correct; the leak is symptom, not cause."
+      },
+      "scope_boundary": {
+        "in_scope": [
+          "tests/integration/helpers.zig (BPM_TEST_STMT_TIMEOUT default raise)",
+          "build.zig (test-integration -j cap wiring)",
+          "docs/guides/test_developer_guide.md §10.2 (update mitigation guidance to reflect BOTH knobs)"
+        ],
+        "out_of_scope": [
+          "GH-753/ISS-0691 (TC-SIM-01-01 leak) — already RESOLVED in sibling run commit 34d0512c",
+          "GH-754/ISS-0694 (adp06_pipeline_run_correlation_test.zig leak) — deferred to its own WF-03",
+          "GH-755/ISS-0695 (api03_instance_read_test.zig leak) — deferred to its own WF-03",
+          "tools/lint_test_isolation.baseline.json — NOT modified (mitigation does not introduce new isolation violation)"
+        ]
+      }
+    },
+    "artifacts_out": [
+      "handoffs/WF03-GH752-20260812/step-01-issue-fixer.json",
+      "docs/issue-reports/ISS-0692-step01-diagnosis.md"
+    ],
+    "issues": [
+      {
+        "id": "MINOR-CANONICAL-DRIFT",
+        "severity": "MINOR",
+        "description": "The handoff file references `docs/agents/ISSUE_FIXER.md` as the role canonical, but the actual file is `docs/agents/issue-fixer.md` (lowercase, path with leading slash from the role roster). Roster table uses `ISSUE-FIXER` (uppercase). Quick-claim worked by following the capability matrix + HANDOFF_PROTOCOL.md + role section in the mode prompt; this docstring drift did not block the run.",
+        "affected_requirement": null
+      },
+      {
+        "id": "MINOR-ISS-FILE-SCHEMA",
+        "severity": "MINOR",
+        "description": "ISS-0692.json uses a flat schema (id/severity/status/title/scope/...) and lacks the explicit `occurrences` / `root_cause` / `resolution` structured fields that the WF-03 spec at `docs/agents/workflows/WF-03_issue_resolving.md` Step 0.5 procedure prescribes. This is a pre-existing registry inconsistency (ISS-0665.json and ISS-0691.json also deviate), not a regression introduced by this run. Diagnosis is recorded in this handoff's `result.diagnosis` block, and the per-issue file will be normalised at Step 7 (DOC-UPDATER) when the issue is closed.",
+        "affected_requirement": null
+      }
+    ],
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2) — produce the design artefact at src/design/iss0692_test_integration_capacity_mitigation.md describing the chosen (b)+(a) combination with before/after code blocks, env-var semantics, and the documented acceptance criteria for the 5 consecutive clean runs verification.",
+    "git_evidence": {
+      "branch_name": "main",
+      "commit_sha_list": [],
+      "remote_branch": "origin/main",
+      "push_status": "skipped",
+      "pr_url": null,
+      "pr_create_error": null,
+      "note": "Step 00 (git-setup) was NOT executed by this ISSUE-FIXER turn. The handoff chain arrives with `context.branch_name` not yet populated; the orchestrator owns Step 00 (BACKEND-DEV) which creates `feature/WF03-GH752-20260812` per CLAUDE.md role mapping. This step is observational only — no source files modified, no commits created."
+    }
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

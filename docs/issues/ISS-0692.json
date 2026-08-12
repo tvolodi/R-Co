@@ -1,0 +1,13 @@
+{
+  "id": "ISS-0692",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/752",
+  "severity": "BLOCKER",
+  "status": "OPEN",
+  "title": "zig build test-integration: continuation of ISS-0665 — 300s BPM_TEST_STMT_TIMEOUT default insufficient under full concurrency on this host",
+  "scope": "tests/integration/helpers.zig (statement_timeout tuning), build.zig (test-integration -j default cap), docs/guides/test_developer_guide.md",
+  "discovered_by": "ISSUE-FIXER",
+  "discovered_during": "GH-752 triage",
+  "description": "zig build test-integration is non-deterministic and fails differently across consecutive clean runs on the SAME commit (origin/main 2c7046e1), against a freshly-verified-healthy BPM_TEST_DB_URL. Failures cluster as runMigrations/runMigrationsForSchema failing with ServerError while acquiring pg_advisory_lock(hashtext('bpm_test_migrations_public')) or with 'test runner failed to respond' entries. After each run, zig build test-env-verify reports ungranted advisory locks left behind. This is a CONTINUATION of ISS-0665 (RESOLVED 2026-08-12, #702): ISS-0665's fix widened DDL statement_timeout to BPM_TEST_STMT_TIMEOUT (default 300s) and reduced but did NOT eliminate contention failures on this host. docker logs r-co-db_test-1 during failure runs shows 'canceling statement due to statement timeout' errors clustered at ~65s intervals (the 300s default is bracketed around DDL; the 60s ambient timeout from configureSessionTimeouts governs other queries). Concurrency gradient: 52 failures (full concurrency) → 2 failures (-j4) → 2 failures (-j4-repeat), consistent with host-capacity contention. Per-host mitigation needed.",
+  "disposition": "BLOCKER — WF-02 Green-Main Gate cannot proceed while zig build test-integration is not reliably green on main. Mitigation candidates: (1) raise BPM_TEST_STMT_TIMEOUT default further (e.g. 600s), (2) add default -j cap to the test-integration build step (e.g. -j8), (3) investigate whether the ungranted-lock leak after each run can be eliminated independently of the timeout widening.",
+  "created_at": "2026-08-12T22:05:33Z"
+}

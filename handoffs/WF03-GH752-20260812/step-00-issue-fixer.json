@@ -1,0 +1,50 @@
+{
+  "handoff_id": "wf03-gh752-20260812-00-issue-fixer",
+  "run_id": "WF03-GH752-20260812",
+  "schema_version": 1,
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-12T22:05:33Z",
+  "status": "COMPLETED",
+  "stage": "WF-03 Issue Resolving",
+  "issue": {
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/752",
+    "iss_id": "ISS-0692",
+    "severity": "BLOCKER",
+    "title": "zig build test-integration: continuation of ISS-0665 — 300s BPM_TEST_STMT_TIMEOUT default insufficient under full concurrency on this host",
+    "task": "WF-03 Issue Resolving for GH-752 / ISS-0692: zig build test-integration (against a freshly-verified-healthy BPM_TEST_DB_URL, per zig build test-env-verify reporting HEALTHY 10/10 immediately before each run) is non-deterministic and fails differently across consecutive clean runs on the SAME commit (origin/main 2c7046e1). Most failures are runMigrations / runMigrationsForSchema failing with PgError.ServerError while acquiring pg_advisory_lock(hashtext('bpm_test_migrations_public')) in tests/integration/helpers.zig, plus several 'test runner failed to respond for ~1m<N>ms' entries, plus genuine non-contention failures (one example: tests/integration/sim01_04_simulation_mode_test.zig TC-SIM-01-01 DebugAllocator leak, filed as GH-753/ISS-0691, handled in a sibling WF-03 run). After each run, zig build test-env-verify reports ungranted advisory locks left behind. This is a CONTINUATION of ISS-0665 (RESOLVED 2026-08-12, #702): ISS-0665's fix widened DDL statement_timeout to BPM_TEST_STMT_TIMEOUT (default 300s) bracketed around the migration DDL window in tests/integration/helpers.zig runMigrations() and runMigrationsForSchema(); the fix is present in the current main tree (lines 132-145, 210-223). Despite that fix, statement-timeout cancellations still occur at ~65s intervals during failure runs (verified via docker logs r-co-db_test-1). Concurrency gradient observed on this host: 52 failures (full default concurrency) → 2 failures (-j4) → 2 failures (-j4-repeat), consistent with host-capacity contention, NOT with a deterministic code regression. Candidate mitigations to investigate (do not pre-commit to a specific one — diagnose first): (a) raise the default BPM_TEST_STMT_TIMEOUT further (e.g. 600s or 900s) in the blk fall-through in tests/integration/helpers.zig lines ~139 and ~217; (b) add a default -j cap to the test-integration build step in build.zig (e.g. -j8 or -j6) so Zig does not schedule ~40 binaries simultaneously on this host; (c) investigate whether the 'ungranted locks after each run' symptom is a SEPARATE defect (lock not released on the cancellation path) that should be fixed independently. Run the full WF-03 pipeline. This is BLOCKER severity — PRM-02/PRM-03/PRM-04/PRM-05 WF-02 implementation cannot proceed until test-integration is reliably green on main (per docs/guides/test_infrastructure_guide.md §4).",
+    "acceptance_criteria": [
+      "ISS-0692.json created/updated with confirmed root cause (continuation-of-ISS-0665 vs independent defect) and chosen mitigation",
+      "GitHub issue #752 has an ORCH-filed WF-03 reference (link to the run directory)",
+      "Root-cause analysis explicitly identifies whether mitigation (a), (b), or (c) (or a combination) is correct, with evidence",
+      "If mitigation (a): tests/integration/helpers.zig default BPM_TEST_STMT_TIMEOUT raised; BPM_TEST_STMT_TIMEOUT env var still respected",
+      "If mitigation (b): build.zig test-integration step has a configurable default -j cap (env var or fixed), with rationale",
+      "If mitigation (c): identified and fixed the lock-leak path; ungranted locks count after a run is 0",
+      "5 consecutive clean `zig build test-integration` runs on the fix branch complete with 'Build Summary: N/N steps succeeded' and zero ServerError / 'test runner failed to respond' entries",
+      "`zig build test-env-verify` reports 0 ungranted locks (C6 PASS) immediately after each of those 5 runs, no manual db_test restart between them",
+      "TC-SIM-01-01 DebugAllocator leak (GH-753/ISS-0691) is triaged separately; either resolved in the sibling WF-03 run or explicitly NOT addressed here with rationale",
+      "tools/lint_test_isolation.baseline.json unchanged (no new isolation violation)",
+      "docs/guides/test_developer_guide.md updated to document the new mitigation(s)",
+      "PR opened, squash-merged to main, feature branch deleted, main clean",
+      "GH issue #752 closed with reference to the merge commit"
+    ],
+    "artifacts_in": [
+      "tests/integration/helpers.zig",
+      "build.zig",
+      "docs/guides/test_developer_guide.md",
+      "docs/issues/ISS-0665.json"
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T22:06:56Z",
+  "completed_at": "2026-08-12T22:25:41Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Step 00 handoff (orchestrator-dispatched ISSUE-FIXER turn-key) consumed in Step 01. No fix action performed at this handoff — this was an orchestration dispatch entry that forwards the issue payload to the ISSUE-FIXER. The substantive Step 0.5 + Step 1 work is recorded in step-01-issue-fixer.json (PASS).",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "See step-01-issue-fixer.json — diagnoses and routes to CODE-DESIGNER."
+  }
+}
