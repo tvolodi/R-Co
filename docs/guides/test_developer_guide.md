@@ -499,15 +499,47 @@ harness connection.
 2. **Reduce concurrency** — the integration-test step is capped at 8 parallel
    binaries by default. Operators can set `BPM_TEST_INTEGRATION_JOB_CAP` in
    the build environment, while CI can override it with
-   `-Dtest-integration-jobs=N`:
+   `-Dtest-integration-jobs=N`.
+
+   **The cap only takes effect when the build runner is invoked with `-j<N>`**.
+   Zig 0.16 removed `Step.setJobs()`; the `BPM_TEST_INTEGRATION_JOB_CAP` env
+   var and `-Dtest-integration-jobs=N` build option are surfaced in build
+   diagnostics, but the build runner itself does not pick them up
+   automatically. Use the wrapper scripts to apply the cap by default:
+
+   ```powershell
+   # Windows — reads BPM_TEST_INTEGRATION_JOB_CAP (default 8) and runs
+   # `zig build test-integration -j$N --summary all`:
+   scripts/run-test-integration.ps1
+
+   # Linux/macOS:
+   ./scripts/run-test-integration.sh
+
+   # Override at the call site:
+   scripts/run-test-integration.ps1 -Jobs 4
+   BPM_TEST_INTEGRATION_JOB_CAP=4 ./scripts/run-test-integration.sh
+   ```
+
+   Or invoke `zig build test-integration -j$N` directly:
+
    ```powershell
    $env:BPM_TEST_INTEGRATION_JOB_CAP = "4"
-   zig build test-integration
-   zig build test-integration -Dtest-integration-jobs=4
+   zig build test-integration -j4
+   zig build test-integration -j4 -Dtest-integration-jobs=4
    ```
+
    Use `-j2` on small development machines, or lower the cap further on
-   heavily loaded hosts where `-j8` still does not help. The build option takes
-   precedence when both controls are supplied.
+   heavily loaded hosts where `-j8` still does not help. The build option
+   takes precedence when both controls are supplied; the wrapper scripts
+   resolve the same precedence (env var > -Jobs flag > default 8).
+
+   **Important:** invoking `zig build test-integration` *without* `-j`
+   (with or without the env var set) leaves the cap unenforced — the
+   default job width is whatever the runner decides (typically
+   `#cores`/`-j1`). On a 16-core host this means ~16 concurrent test
+   binaries, which is the workload that produced the original
+   ISS-0692 / GH-752 capacity regressions. Use the wrapper or pass
+   `-jN` explicitly.
 
 3. **Widen the migration timeout** — `BPM_TEST_STMT_TIMEOUT` defaults to
    `600s`; the environment-variable override remains available for catastrophic

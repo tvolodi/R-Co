@@ -497,11 +497,9 @@ pub fn uuidBytesToString(allocator: std.mem.Allocator, uuid: [16]u8) ![]const u8
     );
 }
 
-/// Cached per-process tag. The first generateOwnerTag() call in a process
-/// fills it; subsequent calls in the same process return the same value.
-/// Different processes have independent atomics, so concurrent test binaries
-/// generate distinct tags without coordination. Access to the cached slice is
-/// guarded by `tag_repr_lock`; `cached_owner_tag` publishes readiness.
+/// Cached per-process tag. Process-lifetime atomic: first generateOwnerTag()
+/// call fills it, subsequent calls return the same value. Different processes
+/// have independent atomics, so concurrent test binaries get distinct tags.
 var cached_owner_tag: std.atomic.Value(bool) = .init(false);
 
 /// Tag-representation storage. Ownership is transferred to the first
