@@ -466,6 +466,61 @@ When a test is suspected flaky:
 
 ---
 
+### 10.2 Running integration tests on resource-constrained hosts
+
+The integration test suite launches ~40 test binaries in parallel by default
+(controlled by `zig build -j<N>`). On a loaded host each binary independently
+calls `TestHarness.init()`, which serializes its DDL/migration work behind a
+per-schema advisory lock, but the lock holder can still consume substantial
+wall time when Postgres is under CPU or I/O pressure.
+
+**Symptom:** one or more test binaries fail with a generic `PgError.ServerError`
+during `TestHarness.init()`, with no obvious assertion failure in the test
+logic itself. Postgres logs (if accessible) will show:
+
+```
+ERROR: canceling statement due to statement timeout
+```
+
+This is an **infrastructure failure**, not a code regression. The test logic
+is sound; the host could not sustain full concurrency within the ambient
+`statement_timeout = '60s'` that `configureSessionTimeouts()` sets for every
+harness connection.
+
+**Remedies (in order of preference):**
+
+1. **Re-run the failing binary in isolation** — if it passes alone, the
+   original failure was a contention artifact:
+   ```powershell
+   $env:BPM_TEST_DB_URL = "postgres://bpm:bpm@localhost:5433/bpm_test"
+   zig build test-<module>
+   ```
+
+2. **Reduce concurrency** — pass `-j4` (or another small value) to serialise
+   more of the migration work:
+   ```powershell
+   zig build test-integration -j4
+   ```
+
+3. **Widen the migration timeout** — set `BPM_TEST_STMT_TIMEOUT` to a value
+   larger than the default `300s` before the run:
+   ```powershell
+   $env:BPM_TEST_STMT_TIMEOUT = "600s"
+   zig build test-integration
+   ```
+   The default (`300s`) is intentionally wider than the session `60s` used for
+   ordinary test queries; this variable controls only the DDL/migration window
+   inside `runMigrations()` / `runMigrationsForSchema()`. `configureSessionTimeouts()`
+   (which governs all other harness queries) is unaffected.
+
+**Do not** treat a statement-timeout cancellation during harness init as a
+test failure for traceability purposes unless the binary also fails when
+re-run in isolation with a relaxed timeout. If isolation re-runs consistently
+pass, the issue is host capacity — file a capacity note but do not open a code
+defect (ISS) against the test or the migration it ran.
+
+---
+
 ## 11. Pipeline Tests
 
 ### 11.1 What pipeline tests are
