@@ -1,0 +1,83 @@
+{
+  "handoff_id": "1a767404-3f5b-4173-914f-39cc2049ab37",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-4-20260811/step-03b-test-design-validator.json",
+  "created_at": "2026-08-12T04:24:14Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-05",
+      "PAR-06",
+      "PIN-01",
+      "PIN-02"
+    ],
+    "related_handoff_ids": [
+      "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+      "dffa6e06-c532-4022-a9ab-2797e5bab4c7",
+      "bfd75fb4-1567-4757-8e49-be5cda7d1ed4"
+    ],
+    "artifacts_in": [
+      "tests/specs/PAR-05.md",
+      "tests/specs/PAR-06.md",
+      "tests/specs/PIN-01.md",
+      "tests/specs/PIN-02.md",
+      "tests/integration/par05_online_partition_conversion_test.zig",
+      "tests/integration/par06_reconstruction_bounded_test.zig",
+      "tests/integration/par06_instance_projections_event_window_test.zig",
+      "tests/integration/pin01_ac345_resolution_test.zig",
+      "tests/integration/pin01_service_catalog_tenant_scope_test.zig",
+      "tests/integration/pin01_test_root.zig",
+      "tests/integration/pin02_instance_started_pinned_versions_test.zig",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER's Step 3 output (handoff 67a40957-17d3-41d0-b28c-f9edd4870c4d, commit 0d123515) per your standard checklist, with important context: since that commit, BACKEND-DEV ran two further rework cycles (commits 29314c89, 01d9f6a3) that fixed 4 of the 5 correctness defects the new tests originally exposed (ISS-0676 PAR-05 constraint, ISS-0677 PAR-06 window maintenance, ISS-0679 PIN-01 AC3 schema validation, ISS-0681 PAR-05 AC5 reconciliation) -- all now verified green live by BACKEND-DEV and independently re-reviewed and PASSed by SECURITY-REVIEWER (commit 99fbc164, second re-review). Two residual issues remain OPEN and correctly out of scope for this batch (both are genuine test-fixture bugs / pre-existing defects unrelated to this batch's own production code, not test-design gaps): ISS-0678/GH-720 (schema-agnostic catalog query in the pre-existing par06_instance_projections_event_window_test.zig) and ISS-0682/GH-725 (wrong-case string literal in TC-PAR-06-05's hand-crafted fixture). ISS-0680/GH-722 (PinResolver.resolve() memory leak on error paths) is also open and out of scope (memory hygiene, not an AC correctness failure).\n\nYour validation must independently confirm, not just trust the chain of claims:\n1. Every MUST AC in scope (PAR-05 all 5, PAR-06 all 6, PIN-02 all 5, PIN-01 AC3/AC4/AC5) has a real, passing integration test NOW (re-run the targets yourself against BPM_TEST_DB_URL from .env -- do not just read BACKEND-DEV's claimed counts).\n2. PIN-01.md correctly documents the AC1/AC2 out-of-scope decision with ISS-0672/GH-306.\n3. Known stale test-source comments: tests/integration/par06_reconstruction_bounded_test.zig has two \"KNOWN FAILING ... ISS-0677\" comment blocks (around TC-PAR-06-01 and TC-PAR-06-05) that are now stale since ISS-0677 was fixed in commit 29314c89 -- TC-PAR-06-01 should now pass cleanly; TC-PAR-06-05 still fails but for the DIFFERENT, unrelated reason ISS-0682 documents (casing bug), not the original ISS-0677 cause. Flag this as a MINOR finding requiring a documentation-only comment update (not a rework-worthy defect) -- the comments should be corrected to avoid misleading a future reader about why TC-PAR-06-05 is still red.\n4. Confirm test-case counts in each spec match implemented test counts.\n5. Confirm fixture isolation, no SkipZigTest on in-scope MUST tests, parameterized SQL only.\n6. Run python tools/lint_test_isolation.py tests/integration and python tools/lint_handoffs.py -- both must exit 0.\n\nRead .env directly for BPM_TEST_DB_URL -- do not hardcode ports.",
+    "acceptance_criteria": [
+      "Independent re-run confirms every in-scope MUST AC has a genuinely passing test against real Postgres",
+      "PIN-01.md AC1/AC2 scoping documented with correct ISS/GH reference",
+      "Stale KNOWN FAILING comments in par06_reconstruction_bounded_test.zig identified and dispositioned (MINOR finding, not a blocking rework)",
+      "Spec vs implemented test-case counts verified matching",
+      "lint_test_isolation.py and lint_handoffs.py both exit 0",
+      "PASS/FAIL/PARTIAL verdict with specific evidence per item, not a general impression",
+      "Any NEW incidental defect found is filed as its own ISS + GitHub issue and forwarded to the global queue -- not fixed inline"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Independent re-verification against real PostgreSQL (BPM_TEST_DB_URL from .env, port 5434) confirms 4 of 5 test targets are genuinely clean: test-integration-par05 6/6 pass, test-integration-par06 (migration slice) 3/3 pass, test-integration-par06-reconstruction 4/5 pass with the one failure (TC-PAR-06-05) confirmed to be the documented, already-tracked ISS-0682/GH-725 fixture casing bug (observed .ACTIVE not .COMPLETED, matching ISS-0682's own root-cause description, not the original ISS-0677 window-maintenance defect) -- correctly out of scope, and test-integration-pin02 5/5 pass. test-integration-pin01, however, does NOT pass cleanly: 8/9 tests pass but TC-PIN-01-03 ('resolve applies a valid pin_overrides entry, source becomes override') CRASHES the entire test binary with a Zig DebugAllocator 'Invalid free' panic (double-free), reproduced identically across two independent runs with different random seeds. Root-caused by reading src/engine/pin_resolver.zig: applyPinOverrides() stores a std.json-parser-owned string slice (freed by its own defer parsed.deinit() on return) directly into PinnedVersion.version via applyOverrideToPins(), and resolve()'s Step 6 success-path cleanup loop then double-frees it via the caller's allocator. This is PIN-01 AC4's ACCEPTING/happy path (a valid override is supplied and applied) -- not an edge case, and not covered by the already-tracked ISS-0680/GH-722 (which documents leaks on resolve()'s ERROR-return paths only, a different mechanism). Filed as NEW issue ISS-0683 / GH-727 (BLOCKER) and queued via queue_add.py. Per the TEST-DESIGN-VALIDATOR checklist, a MUST AC's test that crashes the binary is not a 'real, passing integration test' -- this is a hard-gate BLOCKER, so the batch result is FAIL despite the other four targets being clean. Separately confirmed: (a) PIN-01.md correctly documents the AC1/AC2 out-of-scope decision with ISS-0672/GH-306 references, matching pin_resolver.zig's own top-of-file scoping comment; (b) the 'KNOWN FAILING ... ISS-0677' comment blocks above TC-PAR-06-01 and TC-PAR-06-05 in par06_reconstruction_bounded_test.zig are stale (ISS-0677 fixed in commit 29314c89, verified via git log/git show) -- TC-PAR-06-01 now passes cleanly and TC-PAR-06-05 fails for the different, already-tracked ISS-0682 reason, not the original ISS-0677 cause -- flagged as a required MINOR documentation-only cleanup, not blocking on its own; (c) an ADDITIONAL similarly-stale 'KNOWN FAILING ... ISS-0679' comment block (lines 194-204) exists above TC-PIN-01-01 in pin01_ac345_resolution_test.zig -- ISS-0679 is confirmed fixed (TC-PIN-01-01/-02 both pass their logical assertions now), so this comment is also stale and should be corrected in the same cleanup pass, though it does not itself block the gate; (d) spec-vs-implemented test-case counts all match (PAR-05: 6/6, PAR-06 migration-slice: 3/3, PAR-06 behavioural: 5/5, PIN-01: 6/6 new + 3/3 REWORK-1 traced-not-duplicated, PIN-02: 5/5); (e) fixture isolation verified (per-test random UUIDs/schema names throughout, defer-based cleanup, no error.SkipZigTest on any in-scope MUST test, all SQL uses parameterized $N placeholders, no string interpolation into SQL); (f) both required lint gates exit 0: python tools/lint_test_isolation.py tests/integration (153 files checked, no isolation issues, 116 baseline-suppressed) and python tools/lint_handoffs.py (pre-existing baseline-acknowledged findings only, exit 0).",
+    "artifacts_out": [
+      "docs/issues/ISS-0683.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0683",
+        "severity": "BLOCKER",
+        "description": "NEW, filed this step. PIN-01 AC4: PinResolver.applyPinOverrides() (src/engine/pin_resolver.zig ~line 458-529) stores a std.json ParseResult-owned string slice (the override's 'version' field, read via jsonStringField()) directly into PinnedVersion.version via applyOverrideToPins() (line 533-543). applyPinOverrides()'s own defer parsed.deinit() frees that backing memory when the function returns, leaving p.version dangling. resolve()'s Step 6 success-path cleanup loop (line 170-196) then unconditionally calls allocator.free(src.version) on every pin on the assumption all .version fields are allocator-owned -- for an overridden pin this is a double-free, caught by Zig's DebugAllocator as 'Invalid free' and panics the process. Crashes test-integration-pin01's TC-PIN-01-03 deterministically (reproduced twice, different seeds). This is PIN-01 AC4's accepting/happy path, not an edge case -- any production instance start supplying a valid pin_overrides entry for a catalog_entry or variable_schema reference will crash the process. Distinct from ISS-0680/GH-722 (leaks on resolve()'s error-return paths only -- a different, non-crashing mechanism). GitHub: https://github.com/tvolodi/R-Co/issues/727. Filed, not fixed inline -- TEST-DESIGN-VALIDATOR has no write access to src/. Routes to BACKEND-DEV for fix; blocks TEST-RUNNER on PIN-01 AC4 until resolved.",
+        "affected_requirement": "PIN-01"
+      },
+      {
+        "id": "ISS-0684-CANDIDATE-STALE-COMMENT",
+        "severity": "MINOR",
+        "description": "tests/integration/par06_reconstruction_bounded_test.zig carries two 'KNOWN FAILING ... ISS-0677' comment blocks (above TC-PAR-06-01, lines 171-178, and above TC-PAR-06-05, lines 486-492) that are now stale: ISS-0677 was fixed in commit 29314c89 (confirmed via git log/git show). TC-PAR-06-01 now passes cleanly against real PostgreSQL (confirmed live, 4/5 in this file pass). TC-PAR-06-05 still fails, but for the different, already-separately-tracked reason ISS-0682/GH-725 documents (uppercase 'TASK_COMPLETED' literal in the test's own hand-crafted events_archive fixture at line ~550, mismatching reconstruction.zig's lowercase-only event-type dispatcher) -- confirmed independently by running the test and observing the exact failure signature (.ACTIVE not .COMPLETED at line 578) matching ISS-0682's documented mechanism, not by trusting the issue file's claim alone. Comments should be corrected to avoid misleading a future reader about why TC-PAR-06-05 is still red. Per the routing handoff's explicit instruction, this is a documentation-only cleanup, does not block PASS on its own, and TEST-DESIGN-VALIDATOR has no write access to test source -- routing to ORCH for a trivial BACKEND-DEV or TEST-DESIGNER doc-comment fix. ADDITIONALLY (found independently during this review, same class): tests/integration/pin01_ac345_resolution_test.zig carries a similarly stale 'KNOWN FAILING ... ISS-0679' comment block (lines 194-204) above TC-PIN-01-01. ISS-0679 is confirmed fixed (TC-PIN-01-01 and TC-PIN-01-02 both pass their logical assertions against real PostgreSQL) -- this comment should be corrected in the same cleanup pass. Not filed as a separate GitHub issue per the routing handoff's explicit instruction to note it as a required-but-non-blocking cleanup rather than a tracked defect; ORCH should fold this into whatever vehicle addresses the PAR-06 stale comments.",
+        "affected_requirement": "PAR-06"
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV for a rework cycle fixing ISS-0683/GH-727 (PIN-01 AC4 double-free in applyPinOverrides()/applyOverrideToPins() -- dupe the override's version/resolved_id via the caller allocator before storing into PinnedVersion, freeing what is being replaced, mirroring the existing dupe-then-free discipline in resolve()'s own Step 6 loop), then return to TEST-DESIGN-VALIDATOR for re-verification (re-run test-integration-pin01 and confirm 9/9 clean) before routing to TEST-RUNNER. While in that rework cycle, also correct the stale 'KNOWN FAILING ... ISS-0677' comments in par06_reconstruction_bounded_test.zig (TC-PAR-06-01, TC-PAR-06-05) and the stale 'KNOWN FAILING ... ISS-0679' comment in pin01_ac345_resolution_test.zig (TC-PIN-01-01) as a documentation-only cleanup -- none of these three block re-verification on their own, but should not ride into TEST-RUNNER unfixed given a rework cycle is already required for ISS-0683."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T04:24:14Z",
+  "completed_at": "2026-08-12T04:32:08Z"
+}

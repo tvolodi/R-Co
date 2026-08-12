@@ -1,0 +1,28 @@
+{
+  "issue_id": "ISS-0683",
+  "title": "PIN-01 AC4: PinResolver.applyPinOverrides() stores a JSON-parser-owned string pointer into PinnedVersion.version, causing a double-free (Invalid free panic) on the valid-override success path",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "memory safety / correctness",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "1a767404-3f5b-4173-914f-39cc2049ab37",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/727",
+  "requirement_ids": [
+    "PIN-01"
+  ],
+  "summary": "Independently re-running `zig build test-integration-pin01` (against real PostgreSQL, BPM_TEST_DB_URL from .env) during TEST-DESIGN-VALIDATOR's Step 3b verification pass showed 8 pass, 1 crash (9 total) -- not the clean all-green result the routing handoff described. TC-PIN-01-03 ('resolve applies a valid pin_overrides entry, source becomes override') crashes the test binary with a Zig DebugAllocator 'Invalid free' panic at src/engine/pin_resolver.zig:195 (allocator.free(src.version) inside resolve()'s Step 6 success-path cleanup loop). Root cause: applyPinOverrides() (pin_resolver.zig ~line 458) parses pin_overrides JSON with std.json.parseFromSlice(..., allocator, ...) and reads the override's version field via jsonStringField(), which returns a slice pointing directly into the parsed JSON value's own storage (owned by `parsed`, freed by applyPinOverrides()'s own `defer parsed.deinit()` on return). For the catalog_entry branch, when an override matches, applyOverrideToPins() (line 533) stores that JSON-parser-owned slice directly into p.version -- a pointer that dangles the instant applyPinOverrides() returns. resolve()'s Step 6 cleanup loop (line 170-196) then unconditionally calls allocator.free(src.version) on every pin, assuming every .version is always allocator-owned (true for the non-override path) -- for an overridden pin this frees memory std.json's parser already freed, a genuine double-free that Zig's DebugAllocator catches as 'Invalid free' and panics the process. This reproduces deterministically on every resolve() call where a pin_overrides entry successfully matches and applies -- i.e. PIN-01 AC4's accepting/happy path, not an edge case. The variable_schema override branch (line 513-526) has the identical pattern (version is again the JSON-parser-owned slice passed into applyOverrideToPins).",
+  "root_cause": {
+    "type": "dangling_pointer_double_free",
+    "details": "applyOverrideToPins() stores a string slice owned by a short-lived std.json ParseResult (freed by applyPinOverrides()'s defer parsed.deinit()) directly into a long-lived PinnedVersion.version field that resolve()'s Step 6 cleanup loop later frees via the caller-supplied `allocator`, on the (here-false) assumption that all PinnedVersion string fields are always allocator-owned. The pointer is valid at the moment of assignment but dangles by the time resolve() reaches its cleanup loop, and freeing already-freed memory corrupts the DebugAllocator's bucket canary."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-12T04:29:55Z",
+  "resolved_at": null,
+  "prevention": [
+    "applyPinOverrides() should allocator.dupe(u8, version) (and resolved_id, if not already allocator-owned in all call paths) before calling applyOverrideToPins(), and free the ORIGINAL p.version/p.resolved_id being replaced -- mirroring the dupe-then-free pattern resolve()'s own Step 6 loop already uses for the non-override path. Alternatively, track field provenance (JSON-owned vs allocator-owned) explicitly so the Step 6 cleanup loop only frees what it actually allocated.",
+    "When a function stores a caller-scope pointer (a JSON-parsed field, a request-scoped buffer) into a struct whose lifetime and cleanup discipline is owned by a DIFFERENT, longer-lived scope, verify explicitly which allocator produced the pointer before it crosses that boundary -- do not assume 'it's a []const u8 field on this struct, so it's allocator-owned' just because sibling fields on the same struct happen to be."
+  ]
+}

@@ -2005,6 +2005,19 @@
       "completed_at": null,
       "run_id": null,
       "deferred_reason": null
+    },
+    {
+      "issue_id": "ISS-0683",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/727",
+      "title": "PIN-01 AC4: applyPinOverrides() double-free (Invalid free) on valid-override success path",
+      "severity": "BLOCKER",
+      "status": "QUEUED",
+      "lock": null,
+      "added_at": "2026-08-12T04:31:15Z",
+      "started_at": null,
+      "completed_at": null,
+      "run_id": null,
+      "deferred_reason": null
     }
   ]
 }
