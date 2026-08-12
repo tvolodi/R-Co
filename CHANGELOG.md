@@ -157,8 +157,6 @@ All notable changes to the BPM Platform are documented here.
 
 - GH-732 / ISS-0685: Fix NFR-04 bench replay_10000_ms — was measuring nfr_bench_events full table scan; now uses PAR-06 bounded query predicate (instance_id + created_at window) matching reconstructInstance() in reconstruction.zig.
 
-- GH-716: Remove dead Store.reconstructBounded() from store.zig; live PAR-06 path is reconstruction.zig's eventWindowForInstanceInTx().
-
 - ISS-0673 (GH-714) BLOCKER: Add GBL-142 migration to drop 8 PER_TENANT shadow tables
   (events_ephemeral*, plat_correlation_cursor, plat_effect_completion, plat_partition_catalog,
   plat_partition_maintenance_run_log) erroneously created in the `public` schema by migrations

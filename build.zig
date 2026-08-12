@@ -2768,6 +2768,27 @@ pub fn build(b: *std.Build) void {
     test_integration_par05_step.dependOn(&clean_test_db.step);
     test_integration_par05_step.dependOn(&run_par05_solo_tests.step);
 
+    // ISS-0686 (GH-733, PAR-05/PAR-03): plat_partition_catalog.state CHECK
+    // constraint extended to accept 'ARCHIVED', written by archiveLegacyTable()
+    // after events_legacy is renamed to events_legacy_archived. Wired here as
+    // its own solo addTest root, matching the par05 pattern above — this file
+    // was introduced by commit 81205de9 (PR #738) without a build.zig wiring
+    // entry, which left it UNWIRED per lint_test_wiring.py (unrelated to this
+    // branch's own change; fixed here per Unblock-Everything since it failed
+    // `zig build test` for anyone on this base).
+    const iss0686_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0686_archived_state_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0686_solo_tests = addIntegrationRun(b, iss0686_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_iss0686_step = b.step("test-integration-iss0686", "Run iss0686_archived_state_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_iss0686_step.dependOn(&clean_test_db.step);
+    test_integration_iss0686_step.dependOn(&run_iss0686_solo_tests.step);
+
     // PAR-06 (WF02-batch-4-20260811, Step 3): behavioural coverage (window
     // maintenance, bounded reconstruction, partition pruning, repair-on-NULL,
     // events_archive merge) — extends par06_instance_projections_event_window_test.zig's
