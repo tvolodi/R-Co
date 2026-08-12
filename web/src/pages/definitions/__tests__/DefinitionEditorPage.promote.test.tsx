@@ -131,7 +131,7 @@ afterEach(() => {
 describe('ENV-04 — DefinitionEditorPage promote button', () => {
   it('TC-ENV04-06: Promote to Production button shown when test tenant with ACTIVE definition and designer role', () => {
     mockUseParams.mockReturnValue({ id: 'def-123' })
-    mockUseDefinition.mockReturnValue({ data: ACTIVE_DEFINITION, isLoading: false } as ReturnType<typeof useDefinition>)
+    mockUseDefinition.mockReturnValue({ data: ACTIVE_DEFINITION, isLoading: false } as unknown as ReturnType<typeof useDefinition>)
     mockUseAuth.mockReturnValue({ ...AUTH_VALUE_BASE, session: DESIGNER_SESSION })
     mockUseTenantContext.mockReturnValue({
       tenantType: 'test',
@@ -151,7 +151,7 @@ describe('ENV-04 — DefinitionEditorPage promote button', () => {
 
   it('TC-ENV04-07: Promote to Production button absent when tenantType is production', () => {
     mockUseParams.mockReturnValue({ id: 'def-123' })
-    mockUseDefinition.mockReturnValue({ data: ACTIVE_DEFINITION, isLoading: false } as ReturnType<typeof useDefinition>)
+    mockUseDefinition.mockReturnValue({ data: ACTIVE_DEFINITION, isLoading: false } as unknown as ReturnType<typeof useDefinition>)
     mockUseAuth.mockReturnValue({
       ...AUTH_VALUE_BASE,
       session: {
@@ -178,7 +178,7 @@ describe('ENV-04 — DefinitionEditorPage promote button', () => {
   it('TC-ENV04-07b: Promote to Production button absent when definition status is DRAFT (test tenant)', () => {
     const DRAFT_DEFINITION = { ...ACTIVE_DEFINITION, status: 'DRAFT' as const }
     mockUseParams.mockReturnValue({ id: 'def-123' })
-    mockUseDefinition.mockReturnValue({ data: DRAFT_DEFINITION, isLoading: false } as ReturnType<typeof useDefinition>)
+    mockUseDefinition.mockReturnValue({ data: DRAFT_DEFINITION, isLoading: false } as unknown as ReturnType<typeof useDefinition>)
     mockUseAuth.mockReturnValue({ ...AUTH_VALUE_BASE, session: DESIGNER_SESSION })
     mockUseTenantContext.mockReturnValue({
       tenantType: 'test',
