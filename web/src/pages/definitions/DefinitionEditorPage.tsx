@@ -7,17 +7,21 @@
 
 import { useParams, useBlocker } from 'react-router-dom'
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { ReactFlowProvider } from '@xyflow/react'
 import type { Node, Edge } from '@xyflow/react'
 
 import { useDefinition, useCreateDefinition } from '@/hooks/useDefinitions'
 import { definitionsApi } from '@/api/definitions'
 import { useAuth } from '@/auth/AuthContext'
+import { useTenantContext } from '@/auth/useTenantContext'
+import { queryKeys } from '@/api/queryKeys'
 import type { DefinitionGraph } from '@/types/api'
 import type { CanvasNodeData, CanvasEdgeData } from '@/utils/canvas/graphToFlow'
 import { graphToFlow } from '@/utils/canvas/graphToFlow'
 import { flowToGraph } from '@/utils/canvas/flowToGraph'
 import { useCanvasHistoryStore } from '@/stores/canvasHistoryStore'
+import { ConfirmPromoteModal } from '@/components/ui/ConfirmPromoteModal'
 
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
 import NodePalette from '@/components/canvas/NodePalette'
@@ -45,6 +49,8 @@ export default function DefinitionEditorPage() {
   const { data: def, isLoading } = useDefinition(id!)
   const create = useCreateDefinition()
   const { session } = useAuth()
+  const { tenantType, productionDisplayName, tenantId } = useTenantContext()
+  const qc = useQueryClient()
 
   const [name, setName] = useState('')
   const [version, setVersion] = useState('1.0.0')
@@ -54,6 +60,10 @@ export default function DefinitionEditorPage() {
   const [showRawJson, setShowRawJson] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [showPromoteModal, setShowPromoteModal] = useState(false)
+  const [promoting, setPromoting] = useState(false)
+  const [promoteMessage, setPromoteMessage] = useState<string | null>(null)
+  const [promoteError, setPromoteError] = useState<string | null>(null)
 
   const hasDesignerRole = session?.roles?.some((r) => DESIGNER_ROLES.includes(r)) ?? false
 
@@ -101,7 +111,30 @@ export default function DefinitionEditorPage() {
     }
     return map
   }, [currentGraph])
+  // ── Promote to Production handler ───────────────────────────────────────────
 
+  async function handlePromoteConfirm() {
+    if (!def?.name || !tenantId) return
+    setPromoting(true)
+    setPromoteError(null)
+    try {
+      await definitionsApi.promote(tenantId, def.name)
+      setShowPromoteModal(false)
+      qc.invalidateQueries({ queryKey: queryKeys.definitions.all })
+      setPromoteMessage('Definition promoted. A DRAFT version is now available in production.')
+      setTimeout(() => setPromoteMessage(null), 4000)
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string }
+      const codeMap: Record<string, string> = {
+        not_a_test_tenant: 'This operation requires a test tenant.',
+        production_tenant_inactive: 'The paired production tenant is inactive. Contact your platform administrator.',
+        forbidden: 'You do not have the required role on both tenants.',
+      }
+      setPromoteError(err.code ? (codeMap[err.code] ?? 'Promotion failed. Please try again.') : 'Promotion failed. Please try again.')
+    } finally {
+      setPromoting(false)
+    }
+  }
   // ── Export handler ──────────────────────────────────────────────────────────
 
   async function handleExport() {
@@ -404,6 +437,15 @@ export default function DefinitionEditorPage() {
               {exporting ? 'Exporting…' : 'Export'}
             </button>
           )}
+          {hasDesignerRole && !isNew && tenantType === 'test' && def?.status === 'ACTIVE' && (
+            <button
+              data-testid="promote-to-production-btn"
+              onClick={() => { setPromoteError(null); setShowPromoteModal(true) }}
+              style={toolbarButtonStyle(undefined)}
+            >
+              Promote to Production
+            </button>
+          )}
           {!isReadOnly && (
             <>
               <button
@@ -493,6 +535,36 @@ export default function DefinitionEditorPage() {
           }}
         >
           Definition saved.
+        </div>
+      )}
+
+      {promoteMessage && (
+        <div
+          data-testid="promote-success-toast"
+          style={{
+            padding: '8px 16px',
+            background: 'var(--color-success-light, #d3f9d8)',
+            color: 'var(--color-success-dark, #2f9e44)',
+            fontSize: 'var(--text-sm, 0.875rem)',
+            borderBottom: '1px solid var(--color-success, #40c057)',
+          }}
+        >
+          {promoteMessage}
+        </div>
+      )}
+
+      {promoteError && (
+        <div
+          data-testid="promote-error-toast"
+          style={{
+            padding: '8px 16px',
+            background: 'var(--color-error-light, #ffe3e3)',
+            color: 'var(--color-error-dark, #c92a2a)',
+            fontSize: 'var(--text-sm, 0.875rem)',
+            borderBottom: '1px solid var(--color-error, #fa5252)',
+          }}
+        >
+          {promoteError}
         </div>
       )}
 
@@ -702,6 +774,16 @@ export default function DefinitionEditorPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showPromoteModal && def && (
+        <ConfirmPromoteModal
+          definitionName={def.name}
+          productionDisplayName={productionDisplayName ?? '(unknown)'}
+          onConfirm={() => void handlePromoteConfirm()}
+          onCancel={() => setShowPromoteModal(false)}
+          isLoading={promoting}
+        />
       )}
     </div>
   )

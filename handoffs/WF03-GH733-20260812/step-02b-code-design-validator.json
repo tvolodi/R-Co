@@ -1,0 +1,39 @@
+{
+  "handoff_id": "733002b1-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH733-20260812",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-12T08:30:56Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "iss_ref": "ISS-0686",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/733",
+    "branch": "feature/WF03-GH733-20260812"
+  },
+  "task": {
+    "description": "Validate: (1) Design specifies exact plat_partition_catalog insert with all required columns. (2) PartitionRetention.runArchivalAging() actually queries these rows. (3) No risk of double-archiving. (4) Design is unambiguous for BACKEND-DEV.",
+    "acceptance_criteria": [],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 validated. E050 resolved: archiveLegacyTable() is now a signature + 6-step pseudocode block (well under 40 lines). Type C spec templates/specs/iss0686-archived-state.migration.yaml present; lint_design_artefact.py exits 0 on both artefacts; codegen_migration.py --dry-run exits 0 and preview covers PAR-05/PAR-03 acceptance criteria. All 6 targeted checks pass.",
+    "artifacts_out": [
+      "templates/specs/iss0686-archived-state.migration.yaml"
+    ],
+    "issues": [],
+    "targeted_checks": {
+      "check_1_insert_location_and_on_conflict": "PASS — INSERT after reconcileOrRollback() for-loop close, ON CONFLICT (table_name) DO NOTHING present.",
+      "check_2a_sentinel_parent_table": "PASS — runArchivalAging() new branch queries WHERE parent_table = 'events_legacy' AND state = 'ATTACHED'.",
+      "check_2b_no_detach_partition": "PASS — archiveLegacyTable() uses only ADD COLUMN + RENAME + UPDATE catalog; no DETACH PARTITION step.",
+      "check_4_archived_migration": "PASS — templates/specs/iss0686-archived-state.migration.yaml delivered; lint exits 0; codegen --dry-run exits 0; DROP CONSTRAINT prerequisite documented in YAML implementer note.",
+      "check_5_unambiguous": "PASS — design unambiguous; 3 open questions explicitly flagged with resolution options for BACKEND-DEV.",
+      "check_6_data_loss": "PASS — no DROP TABLE or DELETE; rename only; archived_at column added; no data destroyed."
+    },
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV if applicable."
+  },
+  "started_at": "2026-08-12T08:30:56Z",
+  "completed_at": "2026-08-12T08:59:44Z"
+}

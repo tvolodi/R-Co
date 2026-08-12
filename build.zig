@@ -2912,6 +2912,20 @@ pub fn build(b: *std.Build) void {
     test_integration_idn03_step.dependOn(&clean_test_db.step);
     test_integration_idn03_step.dependOn(&run_idn03_solo_tests.step);
 
+    // IDN-05: Named role registry and ROLE assignee resolution (WF02-idn05-20260812).
+    const idn05_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/idn05_role_registry_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_idn05_solo_tests = addIntegrationRun(b, idn05_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_idn05_step = b.step("test-integration-idn05", "Run IDN-05 role registry integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_idn05_step.dependOn(&clean_test_db.step);
+    test_integration_idn05_step.dependOn(&run_idn05_solo_tests.step);
+
     const iss206_solo_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/iss206_token_multiset_test.zig"),

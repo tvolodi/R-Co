@@ -2,6 +2,7 @@ import { Outlet, NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/auth/AuthContext'
 import { ApiConnectivityBanner } from './ApiConnectivityBanner'
+import { TestEnvironmentBanner } from './TestEnvironmentBanner'
 import { TenantHeader } from './TenantHeader'
 import { dlqApi } from '@/api/dlq'
 import { queryKeys } from '@/api/queryKeys'
@@ -133,6 +134,7 @@ export function AppShell() {
 
       {/* Main content */}
       <main style={{ flex: 1, overflow: 'auto', background: '#f8fafc' }}>
+        <TestEnvironmentBanner />
         <ApiConnectivityBanner />
         <Outlet />
       </main>

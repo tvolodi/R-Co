@@ -44,10 +44,16 @@ export default function OidcCallbackPage() {
         setToken(token)
         const realmSlug = resolveRealmFromUrl() ?? sessionStorage.getItem('bpm_realm_slug') ?? null
         let tenantDisplayName: string | null = null
+        let tenantId: string | null = null
+        let tenantType: 'production' | 'test' | null = null
+        let productionTenantDisplayName: string | null = null
         if (realmSlug) {
           try {
             const tenantData = await tenantsApi.getBySlug(realmSlug)
             tenantDisplayName = tenantData?.display_name ?? null
+            tenantId = tenantData?.tenant_id ?? null
+            tenantType = tenantData?.tenant_type ?? null
+            productionTenantDisplayName = tenantData?.production_tenant_display_name ?? null
           } catch {
             // non-fatal — workspace header will show slug as fallback
           }
@@ -59,6 +65,9 @@ export default function OidcCallbackPage() {
           loginSource: 'oidc',
           tenant_slug: realmSlug,
           tenant_display_name: tenantDisplayName,
+          tenant_id: tenantId,
+          tenant_type: tenantType,
+          production_tenant_display_name: productionTenantDisplayName,
         })
         navigate('/', { replace: true })
       } catch {
