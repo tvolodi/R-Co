@@ -1,0 +1,44 @@
+{
+  "handoff_id": "71400300-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH714-20260812",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-12T07:13:50Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "iss_ref": "ISS-0673",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/714",
+    "branch": "feature/WF03-GH714-20260812",
+    "artifacts_in": [
+      "src/design/ISS-0673-dual-schema-drop.md"
+    ]
+  },
+  "task": {
+    "description": "Implement ISS-0673 fix on feature/WF03-GH714-20260812 per src/design/ISS-0673-dual-schema-drop.md. CHANGE 1: Create migrations/GBL-142_iss0673_drop_dual_schema_shadows.sql — drops all 8 tables (events_ephemeral, events_ephemeral_2026_08/09/10, plat_correlation_cursor, plat_effect_completion, plat_partition_catalog, plat_partition_maintenance_run_log) from public using explicit public.tablename qualification. Must be idempotent and only run when current_schema() = 'public' (defensive guard). CHANGE 2: Patch migrations/1145_ord01_plat_effect_completion.sql, 1146_ord04_plat_correlation_cursor.sql, 1148_par02_partition_catalog.sql, 1149_par03_retention_class.sql — add DO $$ BEGIN IF current_schema() = 'public' THEN RAISE NOTICE ...; RETURN; END IF; [existing DDL]; END $$; wrapper to all CREATE TABLE statements, matching the 1147_par01_events_partitioning.sql pattern. Commit: 'fix(db): ISS-0673 GBL-142 drop dual-schema shadow tables from public + scope guards (#714)'. Push. zig build exit 0. lint_handoffs.py exit 0.",
+    "acceptance_criteria": [
+      "GBL-142 migration created, drops 8 tables from public only",
+      "1145/1146/1148/1149 patched with DO $$ + early-return guards",
+      "zig build exits 0",
+      "commit pushed to feature/WF03-GH714-20260812",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created GBL-142_iss0673_drop_dual_schema_shadows.sql (drops 8 PER_TENANT shadow tables from public, children before parent, existence-guarded, RESTRICT). Patched 1145/1146/1148 with DO $$ early-return guards. Patched 1149 DO blocks 2 and 3 with public-schema early-return guards. zig build exits 0, no error-set output. Committed and pushed to feature/WF03-GH714-20260812.",
+    "artifacts_out": [
+      "migrations/GBL-142_iss0673_drop_dual_schema_shadows.sql",
+      "migrations/1145_ord01_plat_effect_completion.sql",
+      "migrations/1146_ord04_plat_correlation_cursor.sql",
+      "migrations/1148_par02_partition_catalog.sql",
+      "migrations/1149_par03_retention_class.sql"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "started_at": "2026-08-12T07:13:50Z",
+  "completed_at": "2026-08-12T07:17:05Z"
+}

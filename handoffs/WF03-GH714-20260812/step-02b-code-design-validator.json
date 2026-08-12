@@ -1,0 +1,49 @@
+{
+  "handoff_id": "714002b1-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH714-20260812",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-12T06:32:48Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "iss_ref": "ISS-0673",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/714",
+    "branch": "feature/WF03-GH714-20260812"
+  },
+  "task": {
+    "description": "Validate the design: (1) DROP statements target tenant_default/tenant_* only, NOT public. (2) All 10 tables addressed. (3) Migration is idempotent (IF EXISTS). (4) No data loss in public. (5) Design unambiguous for BACKEND-DEV.",
+    "acceptance_criteria": [],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "rework_cycle": 1,
+    "summary": "REWORK 1 re-validation PASS. All BLOCKER/MAJOR issues from cycle 0 are resolved. CDV-001: all 8 tables reclassified PER_TENANT; GBL-142 drops from public only via explicit public.%I EXECUTE — no tenant schema loop. CDV-002: 1145/1146/1148/1149 now use DO \\$\\$ + IF current_schema() = 'public' THEN RETURN early-exit (1147 pattern) — not -- scope: public. OQ-1 closed by ORCH (2026-08-12, documented in design Section 1 and Section 10). GBL-142 current_schema() != 'public' guard is correct defensive belt-and-suspenders for a GBL- migration. No tenant schema data is touched. Migration is idempotent (existence checks + IF NOT EXISTS). Design is unambiguous for BACKEND-DEV.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "CDV-004",
+        "severity": "MINOR",
+        "check": "Type E artefact contains verbatim SQL DDL",
+        "description": "src/design/ISS-0673-dual-schema-drop.md is Type E but includes verbatim SQL for GBL-142 and all source-migration patches. Accepted as justified: no Type A-D codegen template exists for corrective DROP migrations; the SQL is the specification. No header note was added (CDV-004 optional fix); does not block PASS.",
+        "required_fix": "Optional: add a header note. Not required to unblock BACKEND-DEV."
+      }
+    ],
+    "checks_passed": [
+      "CDV-001 FIXED: All 8 tables PER_TENANT. GBL-142 drops public.<name> only via EXECUTE format('DROP TABLE public.%I RESTRICT', v_table) — no tenant schema loop.",
+      "CDV-002 FIXED: 1145/1146/1148/1149 all use DO \\$\\$ IF current_schema() = 'public' THEN RAISE NOTICE + RETURN early-exit. No -- scope: public anywhere.",
+      "OQ-1 CLOSED: Section 10 RESOLVED. Section 1 cites ORCH classification authority (2026-08-12).",
+      "GBL-142 guard IF current_schema() != 'public' THEN RETURN: correct defensive guard for GBL- migration; redundant with explicit public.%I schema qualification in EXECUTE.",
+      "Data loss in tenant schemas: NONE. Every DROP uses explicit public.%I qualification. No tenant_* schema ever referenced.",
+      "Idempotency: GBL-142 guarded by v_exists_pub AND v_exists_ten check per table; source patches use CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS.",
+      "Coverage: all 8 tables in v_tables array; all 4 source migrations patched (6a/6b/6c/6d); all OQs resolved or acknowledged in Section 10.",
+      "Error taxonomy: Section 7 covers dependent_objects_still_exist (EXCEPTION block), undefined_table (existence-check guard), 42501 insufficient_privilege (propagates).",
+      "Dependencies: Section 9 correct. No public.tenant loop, no application-state dependency, no other open corrective migration dependency."
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 2a): implement GBL-142 migration file and apply DO \\$\\$ early-return patches to migrations 1145/1146/1148/1149."
+  },
+  "started_at": "2026-08-12T06:32:48Z",
+  "completed_at": "2026-08-12T07:11:16Z"
+}

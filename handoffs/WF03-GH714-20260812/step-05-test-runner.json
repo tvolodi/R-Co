@@ -1,0 +1,35 @@
+{
+  "handoff_id": "71400500-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH714-20260812",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-12T07:18:24Z",
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "iss_ref": "ISS-0673",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/714",
+    "branch": "feature/WF03-GH714-20260812"
+  },
+  "task": {
+    "description": "Verify ISS-0673 fix. ORCH confirmed 10/10 healthy. KEY TEST: after zig build migrate runs GBL-142 against bpm_test, run python tools/lint_dual_schema_table_names.py — must return 0 BLOCKER findings (all 8 shadow tables cleared from public). Also: zig build test (unit), integration smoke test. Note: if C3/C4 fail with stray 1150/1151 entries, delete them via docker exec psql. Write report to tests/reports/report-2026-08-12-WF03-GH714-20260812.yaml.",
+    "acceptance_criteria": [
+      "lint_dual_schema_table_names exits 0 (0 BLOCKER)",
+      "zig build exits 0",
+      "unit tests pass",
+      "report written"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All acceptance criteria met. lint_dual_schema_table_names.py: 0 BLOCKER findings. zig build: exit 0. Unit tests: 1067/1131 pass (64 skip), 101/101 steps succeeded. ISS-0673 fix verified — 8 shadow tables cleared from public schema by GBL-142 migration.",
+    "artifacts_out": ["tests/reports/report-2026-08-12-WF03-GH714-20260812.yaml"],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR or DOC-UPDATER per WF-03 completion"
+  },
+  "status": "COMPLETED",
+  "started_at": "2026-08-12T07:18:24Z",
+  "completed_at": "2026-08-12T12:24:11Z"
+}
