@@ -20,6 +20,7 @@ const plugin_registry_mod = @import("plugin_registry.zig");
 const scheduler_store_mod = @import("../scheduler/store.zig");
 const dlq_store_mod = @import("../dlq/store.zig");
 const pin_resolver_mod = @import("pin_resolver.zig");
+const reconstruction_mod = @import("reconstruction.zig");
 const tenant_context = @import("tenant_context");
 const metrics = @import("obs_metrics");
 // Named module, not a relative import — see the note in src/main.zig (ISS-0155).
@@ -247,6 +248,11 @@ pub const ErrorType = enum {
     SERVICE_TASK_FAILURE,
     TRANSFORM_EVALUATION_ERROR,
     TRANSFORM_RESULT_NON_OBJECT,
+    /// PIN-03 AC1: a SERVICE_TASK/SUB_PROCESS node's reference (service_id /
+    /// module_ref) has no entry in the instance's effective pin set. Routed
+    /// through the SAME retry-then-dead-letter path as SERVICE_TASK_FAILURE
+    /// (PIN-03 AC4) — no new retry/DLQ mechanism, only a new named cause.
+    PIN_MISSING,
 };
 
 // ---------------------------------------------------------------------------
@@ -3013,6 +3019,33 @@ fn processServiceTaskRuntimeInTx(
 ) CompleteTaskError!ServiceTaskRuntimeOutcome {
     var current_state = initial_state;
 
+    // ── PIN-03 (Open questions §2, wiring choice b): fetch the instance's
+    // CURRENT effective pin set once per call, via PIN-04's
+    // reconstructEffectivePins() (the SAME merge logic GET .../pins and
+    // PIN-05's rebindPins() use — one merge implementation, so this loop's
+    // enforcement never disagrees with what those two report). A single
+    // fetch per completeTask() call (not per node-execution iteration)
+    // avoids a redundant read on every SERVICE_TASK step within the same
+    // advancement batch — this loop typically executes 0-1 SERVICE_TASK
+    // nodes per completeTask() call (outer_guard caps it at 32 for runaway
+    // cascades), so the extra read is bounded either way. A failure to fetch
+    // the pin set here (pool exhaustion, corrupt log) is NOT silently
+    // downgraded to "treat as no pins" — it surfaces the same
+    // PersistenceFailed/PoolExhausted CompleteTaskError this function
+    // already returns for other pre-existing DB failures, since silently
+    // treating a fetch failure as "no pins" would let every SERVICE_TASK
+    // node in this call incorrectly raise PinMissing.
+    var effective_pins: []pin_resolver_mod.EffectivePin = &.{};
+    defer if (effective_pins.len > 0) pin_resolver_mod.freeEffectivePins(allocator, effective_pins);
+    {
+        effective_pins = reconstruction_mod.reconstructEffectivePins(allocator, self.pool, instance_id) catch |err| switch (err) {
+            reconstruction_mod.ReconstructionError.InstanceNotFound => &.{}, // pre-PIN-02 instance or none started yet: no pins recorded
+            reconstruction_mod.ReconstructionError.PoolExhausted => return CompleteTaskError.PoolExhausted,
+            reconstruction_mod.ReconstructionError.OutOfMemory => return CompleteTaskError.OutOfMemory,
+            else => return CompleteTaskError.PersistenceFailed,
+        };
+    }
+
     var outer_guard: usize = 0;
     while (outer_guard < 32) : (outer_guard += 1) {
         var service_node_id: ?[]const u8 = null;
@@ -3284,6 +3317,96 @@ fn processServiceTaskRuntimeInTx(
                     continue;
                 },
             }
+        }
+
+        // ── PIN-03 AC1/AC4/AC5 (Data flow Step 1): before any catalog/module
+        // resolution call, check this node's reference against the
+        // instance's effective pin set. No matching entry -> PIN_MISSING,
+        // routed through the SAME retry-then-dead-letter path as
+        // SERVICE_TASK_FAILURE below (AC4) -- the catalog lookup
+        // (parseConfigFromNodeAttributes()) is NEVER reached in that case
+        // (AC1). A pin entry WITH a match proceeds unconditionally to the
+        // existing resolution call below -- there is no fallback branch to
+        // the current active version anywhere in this guard (AC5).
+        pin_guard: {
+            const attrs = service_node_attrs orelse break :pin_guard;
+            const service_id = pin_resolver_mod.extractStringField(allocator, attrs, "service_id") orelse break :pin_guard;
+            defer allocator.free(service_id);
+
+            if (pin_resolver_mod.findEffectivePinForRef(effective_pins, .catalog_entry, service_id) != null) {
+                break :pin_guard; // pinned -- proceed to existing resolution below unmodified
+            }
+
+            const vars_json = std.json.Stringify.valueAlloc(
+                allocator,
+                std.json.Value{ .object = current_state.variables },
+                .{},
+            ) catch return CompleteTaskError.OutOfMemory;
+            defer allocator.free(vars_json);
+
+            const reason = std.fmt.allocPrint(
+                allocator,
+                "PIN_MISSING: no pin entry for service_id '{s}'",
+                .{service_id},
+            ) catch return CompleteTaskError.OutOfMemory;
+            defer allocator.free(reason);
+
+            const payload_json = buildExecutionErrorPayload(allocator, instance_id_hex, .{
+                .instance_id = instance_id,
+                .error_type = .PIN_MISSING,
+                .affected_node = service_node_id,
+                .affected_field = null,
+                .reason = reason,
+                .variable_state = vars_json,
+                .evaluated_conditions = null,
+                .actor_id = instance_id_hex,
+            }) catch return CompleteTaskError.OutOfMemory;
+
+            // AC4: PIN_MISSING follows the SAME dead-letter sink
+            // SERVICE_TASK_FAILURE already uses (dlq_store_mod's
+            // SERVICE_TASK item type — no new DLQ mechanism, no new column;
+            // the reference name is already carried in error_chain_json /
+            // the EXECUTION_ERROR payload's `reason` above).
+            const pin_missing_chain = std.fmt.allocPrint(
+                allocator,
+                "[{{\"attempt\":1,\"kind\":\"pin_missing\",\"reason\":{s}}}]",
+                .{std.json.Stringify.valueAlloc(allocator, std.json.Value{ .string = reason }, .{}) catch return CompleteTaskError.OutOfMemory},
+            ) catch return CompleteTaskError.OutOfMemory;
+            defer allocator.free(pin_missing_chain);
+
+            conn.exec(
+                \\INSERT INTO dead_letter_items (
+                \\  entry_type, instance_id, reason, error_detail, retry_count,
+                \\  max_retries, status, item_type, retry_limit, original_payload,
+                \\  error_chain, processor_metadata, first_failed_at, last_failed_at,
+                \\  source_ref, updated_at
+                \\)
+                \\VALUES (
+                \\  'pin_missing', $1::uuid, 'PIN_MISSING: no pin entry for reference',
+                \\  jsonb_build_object('chain', $2::jsonb), 1, 1, 'pending', $3, 1,
+                \\  jsonb_build_object('node_id', $4::text, 'service_id', $5::text),
+                \\  $2::jsonb, jsonb_build_object('source_module', 'engine.pin_resolver', 'trace_id', $6::text),
+                \\  NOW(), NOW(), $6, NOW()
+                \\)
+                \\ON CONFLICT (item_type, source_ref, last_failed_at) DO NOTHING
+            ,
+                &.{
+                    instance_id_hex,
+                    pin_missing_chain,
+                    dlq_store_mod.itemTypeToString(.SERVICE_TASK),
+                    service_node_id.?,
+                    service_id,
+                    instance_id_hex,
+                },
+            ) catch return CompleteTaskError.PersistenceFailed;
+
+            try recordExecutionErrorEventInTx(conn, allocator, instance_id_hex, payload_json, instance_id_hex);
+
+            current_state.status = .ERROR;
+            return ServiceTaskRuntimeOutcome{
+                .state = current_state,
+                .error_payload_json = payload_json,
+            };
         }
 
         const cfg = service_task_mod.parseConfigFromNodeAttributes(
@@ -3711,6 +3834,7 @@ fn buildExecutionErrorPayload(
         .SERVICE_TASK_FAILURE => "SERVICE_TASK_FAILURE",
         .TRANSFORM_EVALUATION_ERROR => "TRANSFORM_EVALUATION_ERROR",
         .TRANSFORM_RESULT_NON_OBJECT => "TRANSFORM_RESULT_NON_OBJECT",
+        .PIN_MISSING => "PIN_MISSING",
     };
 
     // Helper: serialise a string as a JSON-quoted value.
@@ -3767,6 +3891,19 @@ fn buildExecutionErrorPayload(
             }
         },
         .TRANSFORM_RESULT_NON_OBJECT => {
+            if (args.affected_node) |node| {
+                const node_json = try strJson(allocator, node);
+                defer allocator.free(node_json);
+                try buf.appendSlice(allocator, ",\"affected_node\":");
+                try buf.appendSlice(allocator, node_json);
+            }
+        },
+        .PIN_MISSING => {
+            // PIN-03 AC1/AC4: affected_node carries the node id; the missing
+            // reference name (service_id/module_ref) is folded into `reason`
+            // by the call site below (buildExecutionErrorPayload()'s
+            // existing args.reason field — no new payload field needed,
+            // mirrors how SERVICE_TASK_FAILURE already puts detail in reason).
             if (args.affected_node) |node| {
                 const node_json = try strJson(allocator, node);
                 defer allocator.free(node_json);

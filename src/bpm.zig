@@ -12,6 +12,8 @@ pub const snapshot = @import("definition/snapshot.zig"); // PD-08
 pub const export_import = @import("definition/export_import.zig"); // PD-09
 pub const engine = @import("engine/instance.zig"); // EE-01
 pub const pin_resolver = @import("engine/pin_resolver.zig"); // PIN-01
+pub const pin_rebind = @import("engine/pin_rebind.zig"); // PIN-05
+pub const pin_rebind_routes = @import("api/routes/pin_rebind.zig"); // PIN-05
 pub const tasks = @import("tasks/store.zig"); // EE-03
 pub const task_routes = @import("api/routes/tasks.zig"); // API-04 / EE-04
 pub const instance_routes = @import("api/routes/instances.zig"); // API-03 / OBS-04
@@ -107,6 +109,8 @@ pub const effects_worker = @import("effects/worker.zig"); // EXP-301 worker loop
 pub const secrets = @import("secrets/mod.zig"); // EXP-501 secrets provider surface
 pub const promotion_mod = @import("definition/promotion.zig"); // ENV-03 definition promotion domain
 pub const promotion_routes = @import("api/routes/promotion.zig"); // ENV-03 promotion HTTP handler
+pub const promotion_plan_mod = @import("definition/promotion_plan.zig"); // PRM-01 promotion plan and diff report
+pub const promotions_routes = @import("api/routes/promotions.zig"); // PRM-01 promotion plan HTTP handler
 pub const tenant_lifecycle_admin = @import("admin/tenant_lifecycle.zig"); // ENV-05 reset/delete lifecycle
 pub const entities = @import("entities/mod.zig"); // EXP-201/EXP-202 entities subsystem
 

@@ -1244,6 +1244,85 @@ fn currentMicrosecondTimestamp() i64 {
     }
 }
 
+// ---------------------------------------------------------------------------
+// handleGetPins  (PIN-04 AC4)
+// ---------------------------------------------------------------------------
+
+/// GET /api/v1/instances/:id/pins
+///
+/// Returns the instance's CURRENT effective pin set — INSTANCE_STARTED's
+/// pinned_versions[] (PIN-02) merged with every INSTANCE_PINS_REBOUND row
+/// (PIN-05), latest-wins per {kind,ref} — with each entry's source event id
+/// (PIN-04 AC4). Reads ONLY the event log; never queries the live service
+/// catalog or module registry (PIN-04 AC5).
+///
+/// Success:        HTTP 200 + JSON { "pins": [ {kind, ref, resolved_id,
+///                  version, source, source_event_id}, ... ] }
+/// Not found:      HTTP 404  — no event log for this instance_id.
+/// Invalid UUID:   HTTP 422.
+/// Pool exhausted: HTTP 503.
+/// Server error:   HTTP 500.
+pub fn handleGetPins(
+    store: *instance_mod.InstanceStore,
+    allocator: std.mem.Allocator,
+    instance_id_str: []const u8,
+) HandlerResult {
+    const instance_id = parseUuid(instance_id_str) catch
+        return errorResult(allocator, 422, "INVALID_INSTANCE_ID", "instance_id is not a valid UUID");
+
+    const pins = reconstruction_mod.reconstructEffectivePins(allocator, store.pool, instance_id) catch |err| switch (err) {
+        error.InstanceNotFound => return errorResult(allocator, 404, "INSTANCE_NOT_FOUND", "Instance not found"),
+        error.PoolExhausted => return errorResult(allocator, 503, "SERVICE_UNAVAILABLE", "Service temporarily unavailable"),
+        else => return errorResult(allocator, 500, "INTERNAL_ERROR", "Failed to reconstruct pin set"),
+    };
+    defer reconstruction_mod.pin_resolver_mod.freeEffectivePins(allocator, pins);
+
+    var buf = std.ArrayList(u8).empty;
+    buf.appendSlice(allocator, "{\"pins\":[") catch
+        return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+    for (pins, 0..) |ep, i| {
+        if (i > 0) buf.append(allocator, ',') catch
+            return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+        const entry = std.fmt.allocPrint(
+            allocator,
+            "{{\"kind\":\"{s}\",\"ref\":\"{s}\",\"resolved_id\":\"{s}\",\"version\":\"{s}\",\"source\":\"{s}\",\"source_event_id\":\"{s}\"}}",
+            .{
+                pinKindStr(ep.pin.kind),
+                ep.pin.ref,
+                ep.pin.resolved_id,
+                ep.pin.version,
+                pinSourceStr(ep.pin.source),
+                ep.source_event_id,
+            },
+        ) catch return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+        defer allocator.free(entry);
+        buf.appendSlice(allocator, entry) catch
+            return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+    }
+    buf.appendSlice(allocator, "]}") catch
+        return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+
+    const body = buf.toOwnedSlice(allocator) catch
+        return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+    return .{ .status_code = 200, .body = body };
+}
+
+fn pinKindStr(kind: reconstruction_mod.pin_resolver_mod.PinKind) []const u8 {
+    return switch (kind) {
+        .catalog_entry => "catalog_entry",
+        .variable_schema => "variable_schema",
+        .module => "module",
+    };
+}
+
+fn pinSourceStr(source: reconstruction_mod.pin_resolver_mod.PinSource) []const u8 {
+    return switch (source) {
+        .resolved => "resolved",
+        .override => "override",
+        .inherited => "inherited",
+    };
+}
+
 fn errorResult(
     allocator: std.mem.Allocator,
     status: u16,

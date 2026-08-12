@@ -38,6 +38,143 @@ pub const PinnedVersion = struct {
     source: PinSource,
 };
 
+// ---------------------------------------------------------------------------
+// PIN-04 / PIN-05 shared types (src/design/pin-04-pin-resolution-on-replay-
+// and-sub-processes.md Public interface, src/design/pin-05-explicit-
+// instance-pin-rebind.md Public interface §RebindChange).
+//
+// Placed here (not in instance.zig or reconstruction.zig) because both PIN-04
+// (reconstruction.zig's mergeEffectivePins() caller) and PIN-05
+// (pin_rebind.zig's rebindPins(), which also calls mergeEffectivePins()) need
+// the SAME EffectivePin/RebindEventRow shapes — this module is the one both
+// already depend on for PinnedVersion/PinKind.
+// ---------------------------------------------------------------------------
+
+/// A pin entry merged with its source event id — the shape GET .../pins
+/// (PIN-04 AC4) and PIN-03's execution-time lookup both consume.
+pub const EffectivePin = struct {
+    pin: PinnedVersion,
+    /// The events.event_id (text form) of the INSTANCE_STARTED or
+    /// INSTANCE_PINS_REBOUND row this entry's CURRENT version came from.
+    source_event_id: []const u8,
+};
+
+/// One INSTANCE_PINS_REBOUND event row, as read back from the event log for
+/// mergeEffectivePins() to fold into the base INSTANCE_STARTED set.
+/// PIN-05 (src/engine/pin_rebind.zig) is the writer of this event type; this
+/// shape must stay in lockstep with PIN-05's RebindChange (PIN-05 is the
+/// shape's source of truth since it is the writer).
+pub const RebindEventRow = struct {
+    event_id: []const u8,
+    changes: []const RebindChangeEntry,
+};
+
+/// One changed entry as recorded in an INSTANCE_PINS_REBOUND payload.
+pub const RebindChangeEntry = struct {
+    kind: PinKind,
+    ref: []const u8,
+    prior_version: []const u8,
+    new_version: []const u8,
+};
+
+/// Merges an INSTANCE_STARTED base set with zero or more INSTANCE_PINS_REBOUND
+/// overlays (in event order), producing the effective set with per-entry
+/// provenance (PIN-04 AC1/AC4). Pure function — no I/O. `rebind_events` must
+/// be ordered oldest -> newest; the LAST row that touches a given {kind,ref}
+/// wins (PIN-04 Data flow Step 3: "last INSTANCE_PINS_REBOUND per ref wins").
+///
+/// Every returned EffectivePin's .pin.ref/.resolved_id/.version and
+/// .source_event_id are freshly allocator-owned dupes — callers own and must
+/// free them (mirrors resolve()'s existing ownership convention for
+/// PinnedVersion's string fields).
+pub fn mergeEffectivePins(
+    allocator: std.mem.Allocator,
+    started_pins: []const PinnedVersion,
+    started_event_id: []const u8,
+    rebind_events: []const RebindEventRow,
+) error{OutOfMemory}![]EffectivePin {
+    var out = std.ArrayList(EffectivePin).empty;
+    errdefer {
+        for (out.items) |ep| {
+            allocator.free(ep.pin.ref);
+            allocator.free(ep.pin.resolved_id);
+            allocator.free(ep.pin.version);
+            allocator.free(ep.source_event_id);
+        }
+        out.deinit(allocator);
+    }
+
+    for (started_pins) |p| {
+        try out.append(allocator, .{
+            .pin = .{
+                .kind = p.kind,
+                .ref = try allocator.dupe(u8, p.ref),
+                .resolved_id = try allocator.dupe(u8, p.resolved_id),
+                .version = try allocator.dupe(u8, p.version),
+                .source = p.source,
+            },
+            .source_event_id = try allocator.dupe(u8, started_event_id),
+        });
+    }
+
+    // Fold each rebind row's changes in event order — the LAST row touching
+    // a given {kind, ref} determines that entry's final resolved_id/version/
+    // source_event_id (PIN-04 Data flow Step 3).
+    for (rebind_events) |rebind| {
+        for (rebind.changes) |change| {
+            var found = false;
+            for (out.items) |*ep| {
+                if (ep.pin.kind != change.kind) continue;
+                if (!std.mem.eql(u8, ep.pin.ref, change.ref)) continue;
+
+                const new_resolved_id = try allocator.dupe(u8, change.new_version);
+                const new_version = try allocator.dupe(u8, change.new_version);
+                const new_source_event_id = try allocator.dupe(u8, rebind.event_id);
+                allocator.free(ep.pin.resolved_id);
+                allocator.free(ep.pin.version);
+                allocator.free(ep.source_event_id);
+                ep.pin.resolved_id = new_resolved_id;
+                ep.pin.version = new_version;
+                ep.pin.source = .override;
+                ep.source_event_id = new_source_event_id;
+                found = true;
+                break;
+            }
+            if (!found) {
+                // A rebind that named a ref not present in the base set at
+                // merge time (should not happen under PIN-05's own
+                // UnknownPinRef validation gate, which validates against
+                // this SAME merge — defensive only). Add it so the merged
+                // set stays a superset rather than silently dropping a
+                // recorded rebind.
+                try out.append(allocator, .{
+                    .pin = .{
+                        .kind = change.kind,
+                        .ref = try allocator.dupe(u8, change.ref),
+                        .resolved_id = try allocator.dupe(u8, change.new_version),
+                        .version = try allocator.dupe(u8, change.new_version),
+                        .source = .override,
+                    },
+                    .source_event_id = try allocator.dupe(u8, rebind.event_id),
+                });
+            }
+        }
+    }
+
+    return out.toOwnedSlice(allocator);
+}
+
+/// Frees a []EffectivePin slice produced by mergeEffectivePins().
+pub fn freeEffectivePins(allocator: std.mem.Allocator, pins: []const EffectivePin) void {
+    for (pins) |ep| {
+        allocator.free(ep.pin.ref);
+        allocator.free(ep.pin.resolved_id);
+        allocator.free(ep.pin.version);
+        allocator.free(ep.source_event_id);
+    }
+    allocator.free(pins);
+}
+
 pub const ResolutionError = error{
     /// A SERVICE_TASK's service_id names no catalog entry with an active
     /// version (PIN-01 AC1). HTTP 422.
@@ -597,10 +734,45 @@ fn pinLessThan(_: void, a: PinnedVersion, b: PinnedVersion) bool {
     return std.mem.order(u8, a.ref, b.ref) == .lt;
 }
 
+/// PIN-03: looks up `ref` (a service_id or module_ref string) in `pins`, the
+/// current instance's effective pin set. Returns the matching PinnedVersion
+/// or null. Pure function — no I/O, no allocation beyond what pins/ref
+/// already own. Called from the SERVICE_TASK/SUB_PROCESS completion loop
+/// immediately before the existing parseConfigFromNodeAttributes()/module-
+/// resolution call (src/design/pin-03-no-fallback-to-latest-version.md
+/// Public interface).
+pub fn findPinForRef(
+    pins: []const PinnedVersion,
+    kind: PinKind,
+    ref: []const u8,
+) ?PinnedVersion {
+    for (pins) |p| {
+        if (p.kind == kind and std.mem.eql(u8, p.ref, ref)) return p;
+    }
+    return null;
+}
+
+/// Same lookup as findPinForRef(), against a []EffectivePin slice (PIN-04's
+/// merged, provenance-tagged set) instead of a raw []PinnedVersion — the
+/// shape processServiceTaskRuntimeInTx()'s PIN-03 guard actually holds,
+/// since it fetches the pin set via reconstructEffectivePins(). Avoids
+/// forcing every EffectivePin caller to first unwrap to []PinnedVersion just
+/// to call findPinForRef().
+pub fn findEffectivePinForRef(
+    pins: []const EffectivePin,
+    kind: PinKind,
+    ref: []const u8,
+) ?PinnedVersion {
+    for (pins) |ep| {
+        if (ep.pin.kind == kind and std.mem.eql(u8, ep.pin.ref, ref)) return ep.pin;
+    }
+    return null;
+}
+
 /// Extract a top-level string field from a raw JSON object string, or null
 /// if absent/not a string. Mirrors the attribute-parsing convention already
 /// used by service_task.zig / instance.zig's parseAssigneeFields.
-fn extractStringField(allocator: std.mem.Allocator, json_text: []const u8, field: []const u8) ?[]const u8 {
+pub fn extractStringField(allocator: std.mem.Allocator, json_text: []const u8, field: []const u8) ?[]const u8 {
     const parsed = std.json.parseFromSlice(std.json.Value, allocator, json_text, .{}) catch return null;
     defer parsed.deinit();
     const obj = switch (parsed.value) {
@@ -701,4 +873,95 @@ test "uuidToHex/parseUuid: round-trips" {
     defer std.testing.allocator.free(hex);
     const parsed = try parseUuid(hex);
     try std.testing.expectEqualSlices(u8, &uuid, &parsed);
+}
+
+// ---------------------------------------------------------------------------
+// PIN-04 mergeEffectivePins() unit tests
+// ---------------------------------------------------------------------------
+
+test "mergeEffectivePins: no rebind events -> base set unchanged, tagged with started_event_id" {
+    const started = [_]PinnedVersion{
+        .{ .kind = .catalog_entry, .ref = "svc-a", .resolved_id = "svc-a", .version = "100", .source = .resolved },
+    };
+    const merged = try mergeEffectivePins(std.testing.allocator, &started, "evt-1", &.{});
+    defer freeEffectivePins(std.testing.allocator, merged);
+
+    try std.testing.expectEqual(@as(usize, 1), merged.len);
+    try std.testing.expectEqualStrings("svc-a", merged[0].pin.ref);
+    try std.testing.expectEqualStrings("100", merged[0].pin.version);
+    try std.testing.expectEqualStrings("evt-1", merged[0].source_event_id);
+    try std.testing.expectEqual(PinSource.resolved, merged[0].pin.source);
+}
+
+test "mergeEffectivePins: a rebind overlay replaces the matching ref and tags the rebind's event id" {
+    const started = [_]PinnedVersion{
+        .{ .kind = .catalog_entry, .ref = "svc-a", .resolved_id = "svc-a", .version = "100", .source = .resolved },
+        .{ .kind = .variable_schema, .ref = "def-1", .resolved_id = "def-1", .version = "hash-1", .source = .resolved },
+    };
+    const changes = [_]RebindChangeEntry{
+        .{ .kind = .catalog_entry, .ref = "svc-a", .prior_version = "100", .new_version = "200" },
+    };
+    const rebinds = [_]RebindEventRow{
+        .{ .event_id = "evt-rebind-1", .changes = &changes },
+    };
+    const merged = try mergeEffectivePins(std.testing.allocator, &started, "evt-1", &rebinds);
+    defer freeEffectivePins(std.testing.allocator, merged);
+
+    try std.testing.expectEqual(@as(usize, 2), merged.len);
+    // svc-a was rebound: version 200, source event = the rebind row.
+    try std.testing.expectEqualStrings("200", merged[0].pin.version);
+    try std.testing.expectEqualStrings("evt-rebind-1", merged[0].source_event_id);
+    try std.testing.expectEqual(PinSource.override, merged[0].pin.source);
+    // def-1 untouched: still tagged with the INSTANCE_STARTED event id.
+    try std.testing.expectEqualStrings("hash-1", merged[1].pin.version);
+    try std.testing.expectEqualStrings("evt-1", merged[1].source_event_id);
+}
+
+test "findPinForRef: matches by kind and ref, returns null when absent" {
+    const pins = [_]PinnedVersion{
+        .{ .kind = .catalog_entry, .ref = "svc-a", .resolved_id = "svc-a", .version = "100", .source = .resolved },
+        .{ .kind = .variable_schema, .ref = "def-1", .resolved_id = "def-1", .version = "hash-1", .source = .resolved },
+    };
+    const found = findPinForRef(&pins, .catalog_entry, "svc-a");
+    try std.testing.expect(found != null);
+    try std.testing.expectEqualStrings("100", found.?.version);
+
+    try std.testing.expect(findPinForRef(&pins, .catalog_entry, "svc-b") == null);
+    // Same ref string, different kind -> no match (kind is part of the key).
+    try std.testing.expect(findPinForRef(&pins, .module, "svc-a") == null);
+}
+
+test "findEffectivePinForRef: matches by kind and ref against merged pins" {
+    const eps = [_]EffectivePin{
+        .{
+            .pin = .{ .kind = .catalog_entry, .ref = "svc-a", .resolved_id = "svc-a", .version = "100", .source = .resolved },
+            .source_event_id = "evt-1",
+        },
+    };
+    const found = findEffectivePinForRef(&eps, .catalog_entry, "svc-a");
+    try std.testing.expect(found != null);
+    try std.testing.expectEqualStrings("100", found.?.version);
+    try std.testing.expect(findEffectivePinForRef(&eps, .catalog_entry, "svc-missing") == null);
+}
+
+test "mergeEffectivePins: last rebind wins when the same ref is rebound twice" {
+    const started = [_]PinnedVersion{
+        .{ .kind = .catalog_entry, .ref = "svc-a", .resolved_id = "svc-a", .version = "100", .source = .resolved },
+    };
+    const changes1 = [_]RebindChangeEntry{
+        .{ .kind = .catalog_entry, .ref = "svc-a", .prior_version = "100", .new_version = "200" },
+    };
+    const changes2 = [_]RebindChangeEntry{
+        .{ .kind = .catalog_entry, .ref = "svc-a", .prior_version = "200", .new_version = "300" },
+    };
+    const rebinds = [_]RebindEventRow{
+        .{ .event_id = "evt-rebind-1", .changes = &changes1 },
+        .{ .event_id = "evt-rebind-2", .changes = &changes2 },
+    };
+    const merged = try mergeEffectivePins(std.testing.allocator, &started, "evt-1", &rebinds);
+    defer freeEffectivePins(std.testing.allocator, merged);
+
+    try std.testing.expectEqual(@as(usize, 1), merged.len);
+    try std.testing.expectEqualStrings("300", merged[0].pin.version);
+    try std.testing.expectEqualStrings("evt-rebind-2", merged[0].source_event_id);
 }

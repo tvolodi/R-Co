@@ -1,0 +1,27 @@
+{
+  "issue_id": "ISS-0687",
+  "title": "clean_test_db.py's SYSTEM_ROLES reseed into `roles` always silently fails: run_psql()'s \"does not exist\" guard swallows the real per-tenant-table error",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "test infrastructure",
+  "run_id": "WF02-batch-5-20260812",
+  "workflow_id": "WF-02",
+  "handoff_id": "wf02-batch-5-20260812-02a-backend-dev",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/744",
+  "requirement_ids": [],
+  "summary": "tools/clean_test_db.py's main() reseeds mandatory system roles via `INSERT INTO roles (name, description, is_system) VALUES (...) ON CONFLICT (name) DO NOTHING` (line ~474), executed through run_psql() -- a bare `psql -c` invocation with no `search_path` override, so it always resolves against `public` only. `roles` is a PER_TENANT table (canonical home tenant_default, confirmed via docker exec against bpm_test: `\\dt public.roles` -> no relation, `\\dt tenant_default.roles` -> present) -- so this INSERT ALWAYS fails with `relation \"roles\" does not exist`. run_psql()'s own error handling (lines 114-123) treats ANY stderr containing the substring \"does not exist\" as the narrow, expected \"table missing before first migration on a cold-start database\" case and silently returns True (success) instead of surfacing the failure -- so the reseed has, as far as could be determined, NEVER actually executed successfully in this codebase's history without anyone noticing, because the masking guard makes it look identical to the intentional cold-start skip case it was written for. Consequence: `tests/integration/pin01_ac345_resolution_test.zig` (6 tests) and `tests/integration/pin01_service_catalog_tenant_scope_test.zig` (3 tests) -- run via the dedicated `zig build test-integration-pin01` step, which depends on `clean_test_db` -- fail 9/9 immediately after TestHarness.init(), all with the identical 'relation \"roles\" does not exist' signature bubbling out of whatever downstream fixture/role lookup those tests rely on. Confirmed NOT caused by this batch's (WF02-batch-5-20260812, PIN-03/PIN-04/PIN-05/PRM-01) changes: reproduced identically after `git stash` reverted every file this batch touched, rebuilding and rerunning `zig build test-integration-pin01` against the exact same pre-existing branch state -- same 9/9 failure, same stderr signature, same root file (tools/clean_test_db.py, untouched by this batch).",
+  "root_cause": {
+    "type": "gate_matches_substring_not_structured_signal",
+    "details": "run_psql()'s 'does not exist' string match (docs/anti-patterns.md's own catalogued anti-pattern: 'A gate matches a substring anywhere in a subprocess's full stdout/stderr, instead of matching a structured signal') cannot distinguish 'table doesn't exist yet because no migration has run' (the case it was written to tolerate) from 'table exists, but not in the search_path this bare psql connection resolves against' (the actual, permanent condition for any PER_TENANT-classified table referenced without an explicit SET search_path or explicit schema qualification). Every other reseed/query in this same file that targets a PER_TENANT table is written schema-qualified or with an explicit tenant_default routing comment (see the file's own SYSTEM_ROLES-adjacent TENANT_SCHEMAS handling and its GH-402 TODO) -- the SYSTEM_ROLES INSERT block is the one call site that was not."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-12T12:08:28Z",
+  "resolved_at": null,
+  "prevention": [
+    "Qualify the INSERT as `INSERT INTO tenant_default.roles (...)` (or prefix the psql invocation with `SET search_path TO tenant_default,public;`) so the reseed actually reaches the table it targets.",
+    "Narrow run_psql()'s masking guard from a bare substring match on \"does not exist\" to a check that ALSO confirms the referenced table is expected to be absent pre-migration (e.g. by checking against a known cold-start table list, or by using a structured SQLSTATE check -- 42P01 -- combined with a caller-supplied allow-list of table names permitted to be missing) rather than accepting any 'does not exist' message unconditionally as harmless.",
+    "Add a post-condition check after the reseed loop (a SELECT COUNT(*) FROM tenant_default.roles WHERE is_system) that fails loudly if the expected system roles are not present, so a masked failure here cannot silently regress test fixtures again."
+  ]
+}
