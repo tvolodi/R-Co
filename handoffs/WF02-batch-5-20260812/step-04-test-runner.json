@@ -1,0 +1,59 @@
+{
+  "handoff_id": "wf02-batch-5-20260812-04-test-runner",
+  "run_id": "WF02-batch-5-20260812",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-12T16:01:27Z",
+  "started_at": "2026-08-12T16:01:59Z",
+  "completed_at": "2026-08-12T16:12:55Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PIN-03",
+      "PIN-04",
+      "PIN-05",
+      "PRM-01"
+    ],
+    "related_handoff_ids": [
+      "wf02-batch-5-20260812-03b-test-design-validator"
+    ],
+    "artifacts_in": [
+      "tests/integration/pin03_no_fallback_to_latest_version_test.zig",
+      "tests/integration/pin04_pin_resolution_replay_subprocess_test.zig",
+      "tests/integration/pin05_explicit_instance_pin_rebind_test.zig",
+      "tests/integration/prm01_promotion_plan_diff_report_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Run the full test suite for this batch (PIN-03, PIN-04, PIN-05, PRM-01) and produce a structured test report with exact pass/fail counts -- not vague summaries. Environment pre-check already confirmed HEALTHY (10/10) immediately before this dispatch.\n\nMinimum required: run each of the four dedicated integration test targets (test-integration-pin03, test-integration-pin04, test-integration-pin05, test-integration-prm01) and report exact N/M pass counts for each -- these were last independently verified by TEST-DESIGN-VALIDATOR at 5/5, 5/5, 4/4, 5/5 respectively; confirm those counts still hold now (nothing should have changed since, but verify rather than assume).\n\nAlso run the broader regression surface to catch anything this batch might have disturbed: zig build test (full unit suite) and, if time permits within a reasonable session budget, a wider integration sweep (zig build test-integration or test-integration-main) -- if a full sweep is too slow to complete in one session, that is acceptable, but say so explicitly rather than silently omitting it, and prioritize at minimum re-running the other Stage-16 batches' own dedicated test targets that could plausibly be affected by this batch's shared-file changes (this batch touched src/engine/instance.zig significantly, which many other requirements' tests also exercise) -- e.g. test-integration-pin01, test-integration-ee01 or equivalent, if such targets exist (check build.zig for the actual target names, do not guess).\n\nPer Unblock-Everything: if you find a test failure, determine root cause. If it is genuinely caused by this batch's own changes, that blocks this run -- route back to BACKEND-DEV, do not just report and move on. If it is a pre-existing, unrelated failure (confirm via git stash or by checking whether the same test fails on main), file it (ISS + GitHub issue + queue_add.py) and continue -- do not let an unrelated pre-existing failure block this run's own completion, but do not silently omit it from your report either.\n\nCRITICAL ENVIRONMENT NOTE: this shell's process environment may carry a stale BPM_TEST_DB_URL from a different workspace. Before any build/test command, run `unset BPM_TEST_DB_URL BPM_DB_URL BPM_BENCH_DB_URL` then explicitly `export BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test` and `export BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev`.\n\nWrite your structured report to tests/reports/ as YAML (per Output File Format Rules -- .yaml, never .json) with exact pass/fail/skip counts per target, not prose summaries alone.",
+    "acceptance_criteria": [
+      "Exact pass/fail counts reported for test-integration-pin03/pin04/pin05/prm01",
+      "zig build test (unit suite) run with exact pass/fail counts",
+      "Any failure attributed as this-batch-caused (blocks the run) or pre-existing/unrelated (filed + queued, does not block)",
+      "Structured YAML report written to tests/reports/"
+    ],
+    "functions_to_call": [
+      "fn:run-test-suite"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Environment HEALTHY (10/10). Unit suite: 1071 pass / 0 fail / 64 skip (zig build test, exit 0). All 4 required integration targets confirmed exactly matching TEST-DESIGN-VALIDATOR counts with zero deviation: test-integration-pin03 5/5, test-integration-pin04 5/5, test-integration-pin05 4/4, test-integration-prm01 5/5. Additionally ran 3 shared-file-overlap regression targets (src/engine/instance.zig was significantly modified this batch) as a precaution: test-integration-pin01 9/9, test-integration-pin02 5/5, test-integration-ee09 5/5 (no dedicated ee01 target exists in build.zig) -- all pass cleanly, no regressions. The two previously-known pre-existing issues against PIN-01 (ISS-0678/GH-720, ISS-0680/GH-722) are both now CLOSED and do not reproduce. The broader ~40-binary test-integration-main umbrella sweep was attempted twice but did not complete within this session execution window (consistent with the prior WF02-batch-4 report); reported explicitly as a MINOR limitation, not silently omitted. Zero failures found anywhere in this run.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-12-WF02-batch-5-20260812.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "zig build test-integration-main (~40-binary umbrella) did not complete within this session's available execution windows after two attempts. Does not block this run: the 4 required targets, the full unit suite, and 3 additional shared-file-overlap targets were all run individually to completion with exact counts and all passed. Not filed as a new GitHub issue since it is a session execution-window constraint already documented in the prior WF02-batch-4 test-runner report, not a code defect."
+      }
+    ],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
