@@ -514,6 +514,21 @@ pub const PartitionConverter = struct {
                 return ConversionError.ConversionRowCountMismatch;
             }
         }
+
+        // ISS-0686: register events_legacy in the partition catalog so
+        // PartitionRetention.runArchivalAging() can discover and archive it
+        // after archive_after_months have elapsed.  ON CONFLICT DO NOTHING
+        // makes this idempotent on a re-run.
+        conn.exec(
+            \\INSERT INTO plat_partition_catalog
+            \\  (table_name, parent_table, range_start, range_end, state)
+            \\VALUES
+            \\  ('events_legacy', 'events_legacy',
+            \\   '1970-01-01 00:00:00+00'::timestamptz, NOW(), 'ATTACHED')
+            \\ON CONFLICT (table_name) DO NOTHING
+        ,
+            &.{},
+        ) catch return ConversionError.TransactionFailed;
     }
 
     fn inverseRename(self: *PartitionConverter, conn: *db.Conn) ConversionError!void {

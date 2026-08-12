@@ -112,6 +112,33 @@ pub const PartitionRetention = struct {
             try self.archiveOnePartition(allocator, conn, table_name, range_start_text, range_end_text, &result);
         }
 
+        // ISS-0686: handle events_legacy registered with parent_table='events_legacy'
+        // (sentinel).  Same archive_after_months threshold applies.
+        var legacy_row = conn.query(
+            allocator,
+            \\SELECT table_name, range_start, range_end FROM plat_partition_catalog
+            \\WHERE parent_table = 'events_legacy' AND state = 'ATTACHED'
+            \\  AND range_end < NOW() - ($1 || ' months')::interval
+            \\LIMIT 1
+        ,
+            &.{archive_after_months_text},
+        ) catch |err| switch (err) {
+            db.PoolError.ExhaustedPool => return RetentionError.PoolExhausted,
+            else => return RetentionError.TransactionFailed,
+        };
+        defer legacy_row.deinit();
+
+        if (legacy_row.rows.len > 0) {
+            const lrow = legacy_row.rows[0];
+            if (lrow.len >= 3) {
+                if (lrow[0]) |legacy_table_name| {
+                    if (legacy_table_name.len > 0) {
+                        try self.archiveLegacyTable(allocator, conn, legacy_table_name, &result);
+                    }
+                }
+            }
+        }
+
         return result;
     }
 
@@ -268,6 +295,85 @@ pub const PartitionRetention = struct {
                 result.orphaned += 1;
             },
         }
+    }
+
+    /// ISS-0686: archive the events_legacy table by adding archived_at,
+    /// renaming to events_legacy_archived, and updating the catalog to
+    /// state='ARCHIVED'.  No DETACH PARTITION — events_legacy was never a
+    /// partition of events.  Reuses result.detached_and_reattached counter
+    /// (semantics: "moved to archive") per design doc §Open questions 3.
+    fn archiveLegacyTable(
+        self: *PartitionRetention,
+        allocator: std.mem.Allocator,
+        conn: *db.Conn,
+        table_name: []const u8,
+        result: *ArchivalAgingResult,
+    ) RetentionError!void {
+        _ = self;
+
+        // Open question #2 guard: if a prior attempt completed the RENAME but
+        // not the catalog UPDATE, events_legacy_archived already exists while
+        // the catalog still has table_name='events_legacy'.  Skip ADD COLUMN +
+        // RENAME and proceed directly to the catalog UPDATE.
+        const target_exists_row = conn.queryRow(
+            allocator,
+            "SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace " ++
+                "WHERE c.relname = 'events_legacy_archived' AND n.nspname = current_schema()",
+            &.{},
+        ) catch return RetentionError.TransactionFailed;
+        const already_renamed = target_exists_row != null;
+        if (target_exists_row) |row| {
+            for (row) |c| if (c) |v| allocator.free(v);
+            allocator.free(row);
+        }
+
+        if (!already_renamed) {
+            const add_col_sql = std.fmt.allocPrint(
+                allocator,
+                "ALTER TABLE {s} ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+                .{table_name},
+            ) catch return RetentionError.TransactionFailed;
+            defer allocator.free(add_col_sql);
+            conn.exec(add_col_sql, &.{}) catch {
+                markOrphan(conn, table_name);
+                result.orphaned += 1;
+                return;
+            };
+
+            // Explicit SET for any rows that pre-date the ADD COLUMN default fill.
+            const set_sql = std.fmt.allocPrint(
+                allocator,
+                "UPDATE {s} SET archived_at = NOW() WHERE archived_at IS NULL",
+                .{table_name},
+            ) catch return RetentionError.TransactionFailed;
+            defer allocator.free(set_sql);
+            conn.exec(set_sql, &.{}) catch {
+                markOrphan(conn, table_name);
+                result.orphaned += 1;
+                return;
+            };
+
+            const rename_sql = std.fmt.allocPrint(
+                allocator,
+                "ALTER TABLE {s} RENAME TO events_legacy_archived",
+                .{table_name},
+            ) catch return RetentionError.TransactionFailed;
+            defer allocator.free(rename_sql);
+            conn.exec(rename_sql, &.{}) catch {
+                markOrphan(conn, table_name);
+                result.orphaned += 1;
+                return;
+            };
+        }
+
+        conn.exec(
+            "UPDATE plat_partition_catalog " ++
+                "SET table_name = 'events_legacy_archived', state = 'ARCHIVED', updated_at = NOW() " ++
+                "WHERE table_name = $1",
+            &.{table_name},
+        ) catch return RetentionError.TransactionFailed;
+
+        result.detached_and_reattached += 1;
     }
 
     /// Runs the ADP-11 pre-drop guard and DROP TABLE for every

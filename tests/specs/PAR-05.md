@@ -137,15 +137,14 @@ idempotency guarantee rather than passing vacuously. Reverted after confirming t
 ## Coverage note
 
 PAR-05 AC6 ("`events_legacy` is retained read-only for one full `archive_after_months` cycle and
-then attached to `events_archive`; it is never emptied row by row") is **not** implemented by
-`PartitionConverter` — per the design document's own Dependencies/Open questions §5, this is a
-genuine, acknowledged integration gap between PAR-05's design and PAR-03's existing
-`PartitionRetention.runArchivalAging()`, which has no awareness of a table literally named
-`events_legacy` as a distinct parent. The design explicitly states this is "flagged for
-REQ-ANALYST/CODE-DESIGNER follow-up when PAR-05 is actually implemented — not blocking THIS
-design." No test asserts AC6's retention/attach behavior because no code path implements it yet;
-this is not a test-coverage oversight, it mirrors the implementation's own documented scope
-boundary. (PAR-05's own AC bullet list in `docs/requirements.yaml` has 5 acceptance-criteria
-bullets plus the trailing `events_legacy` retention sentence — TC-PAR-05-01 through -06 above
-map 1:1 onto the five GIVEN/WHEN/THEN bullets, split into passing/failing halves where a bullet
-describes both.)
+then attached to `events_archive`; it is never emptied row by row") is implemented by ISS-0686
+(GH-733 / WF03-GH733-20260812): `reconcileOrRollback()` now registers `events_legacy` in
+`plat_partition_catalog`, and `PartitionRetention.runArchivalAging()` now queries for
+`parent_table = 'events_legacy'` rows and calls `archiveLegacyTable()` to rename the table and
+update the catalog to `state = 'ARCHIVED'`. The migration `1153_iss0686_archived_state.sql`
+extends the CHECK constraint to accept `'ARCHIVED'`. Integration test coverage for this path is
+provided by `tests/integration/iss0686_archived_state_test.zig` (archived_state_accepted).
+(PAR-05's own AC bullet list in `docs/requirements.yaml` has 5 acceptance-criteria bullets plus
+the trailing `events_legacy` retention sentence — TC-PAR-05-01 through -06 above map 1:1 onto
+the five GIVEN/WHEN/THEN bullets, split into passing/failing halves where a bullet describes
+both.)
