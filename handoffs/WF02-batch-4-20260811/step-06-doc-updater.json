@@ -1,0 +1,61 @@
+{
+  "handoff_id": "1647733f-8564-4b05-80d0-454a97db6284",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-batch-4-20260811/step-06-doc-updater.json",
+  "created_at": "2026-08-12T06:28:46Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-05",
+      "PAR-06",
+      "PIN-01",
+      "PIN-02"
+    ],
+    "related_handoff_ids": [
+      "b872b068-a5dc-4380-a6c6-097b0edb12bc"
+    ],
+    "artifacts_in": [
+      "docs/status/release-stage16-WF02-batch-4-20260811.yaml"
+    ]
+  },
+  "task": {
+    "description": "RELEASE-VALIDATOR (Step 5, handoff b872b068-a5dc-4380-a6c6-097b0edb12bc) returned PARTIAL and wrote docs/status/release-stage16-WF02-batch-4-20260811.yaml with a detailed per-requirement decision. Update requirement status per its next_action EXACTLY:\n\n- PAR-06: set RELEASED in full via python tools/reqctl.py set-status PAR-06 RELEASED --implemented-in src/db/store.zig src/engine/instance.zig migrations/1150_par06_instance_projections_event_window.sql (adjust file list to match the actual implementation files -- check the Step 2a handoffs for the exact artifacts_out list).\n- PIN-02: set RELEASED in full via reqctl.py, implemented-in migrations/1151_pin02_instance_started_pinned_versions.sql src/engine/instance.zig.\n- PAR-05: this is a PARTIAL/tested-with-known-gap case, NOT unqualified RELEASED. Check what status values reqctl.py supports (python tools/reqctl.py --help or read tools/reqctl.py directly) for a \"tested but not fully released\" state -- the batch-3 precedent (docs/status/release-stage16-WF02-batch-3-20260811.yaml, requirements PAR-02/PAR-03) handled this exact situation; check what status DOC-UPDATER actually set for PAR-02/PAR-03 in that prior run by reading requirement_status.yaml's current PAR-02/PAR-03 entries (git blame / git log if needed) and replicate that same status value for PAR-05, with AC1-AC5 recorded as met and the trailing events_legacy-retention/archival-integration sentence recorded as unmet, tracked ISS-0686/GH-733.\n- PIN-01: same tested-with-known-gap status as PAR-05 (match whatever status value batch-3 used for PAR-02/PAR-03), with AC3/AC4/AC5 recorded as met, AC1/AC2 recorded as unmet -- IMPORTANT: also record the RELEASE-VALIDATOR's explicit note that this gap has different provenance than a typical partial release (it was a deliberate, validated Step 1/1b scope-phasing decision, not a late discovery) -- read docs/status/release-stage16-WF02-batch-4-20260811.yaml's partially_approved_requirements[1].scope_marking_rationale for the exact wording to preserve/reference, tracked ISS-0672/GH-306.\n\nUpdate CHANGELOG.md noting: PAR-05 (online partition conversion, tested-with-known-gap on events_legacy archival integration), PAR-06 (time-bounded reconstruction, RELEASED), PIN-01 (dependency version resolution, tested-with-known-gap on AC1/AC2 catalog/module resolution -- deliberately out of scope), PIN-02 (pin set in INSTANCE_STARTED, RELEASED). Note the security fix (INV-1 tenant-scoping) and the two hard-gate rework cycles this run required (SECURITY-REVIEWER FAIL->fix->PASS on INV-1; TEST-DESIGN-VALIDATOR FAIL->fix->PASS on a PIN-01 AC4 double-free, ISS-0683/GH-727) as notable quality-gate catches, not just a routine release.\n\nWrite the retrospective at docs/metrics/retrospectives/WF02-batch-4-20260811.yaml. No estimation.yaml exists for this run (check handoffs/WF02-batch-4-20260811/ -- none was created at run start), so skip the estimated-vs-actual variance comparison, but still write a retrospective documenting: (1) the PIN-01 design-scope decision (AC1/AC2 out of scope, made at Step 1/1b, tracked ISS-0672/GH-306); (2) the SECURITY-REVIEWER Step 2c FAIL->fix->PASS cycle on INV-1 (cross-tenant data leak in service_catalog resolution, fixed via tenant-scoped parameterized queries); (3) the TEST-DESIGNER Step 3 discovery of 5 further own-AC BLOCKER defects (ISS-0676, ISS-0677, ISS-0679, ISS-0681, ISS-0683) requiring 3 additional BACKEND-DEV rework cycles and 2 further SECURITY-REVIEWER re-reviews and 1 TEST-DESIGN-VALIDATOR FAIL before genuinely passing; (4) RELEASE-VALIDATOR's own additional finding (ISS-0686, PAR-05 events_legacy archival gap) discovered independently at Step 5, not caught by any earlier gate; (5) the ADHOC infrastructure fix mid-run (109 orphaned tenant schemas on the shared test container, ISS-0684 filed for a related broken psql-shim tooling defect). Compute step durations from started_at/completed_at across all the handoffs in handoffs/WF02-batch-4-20260811/ for whatever metrics are meaningful without an estimation baseline (e.g. total wall-clock per step, rework-cycle counts per gate).\n\nRun the mandatory registry cleanup procedure (archive terminal entries for this run_id into handoffs/WF02-batch-4-20260811/registry.json, remove from active handoffs/registry.json).\n\nDo NOT do Step Final (PR/merge/branch deletion) in this handoff -- that is a separate handoff ORCH will dispatch next, after this one completes.",
+    "acceptance_criteria": [
+      "PAR-06 and PIN-02 set to RELEASED via reqctl.py, not hand-edited",
+      "PAR-05 and PIN-01 set to the same tested-with-known-gap status value batch-3 used for PAR-02/PAR-03, not unqualified RELEASED",
+      "requirement_status.yaml regenerated via reqctl.py render-status",
+      "CHANGELOG.md updated with accurate description of scope, gaps, and the rework cycles",
+      "docs/metrics/retrospectives/WF02-batch-4-20260811.yaml written, noting both the PIN-01 scope decision and the SECURITY-REVIEWER/TEST-DESIGN-VALIDATOR rework cycles",
+      "Registry cleanup performed (terminal entries archived to per-run registry.json, removed from active registry.json)",
+      "Every file in artifacts_out, no Step Final work performed in this handoff"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated requirement status for the Stage 16 batch-4 quartet via reqctl.py (canonical write path): PAR-06 and PIN-02 set to RELEASED in full (implemented_in from Step 2a/2a-2 BACKEND-DEV artifacts_out plus commit-body-confirmed migration/instance.zig call sites). PAR-05 and PIN-01 set to TESTED (tested-with-known-gap), matching the exact status value batch-3 used for its equivalent PAR-02/PAR-03 partial-release precedent (confirmed via requirement_status.yaml history, not invented) -- each with a --note recording the specific met/unmet ACs and tracking issue (ISS-0686/GH-733 for PAR-05; ISS-0672/GH-306 for PIN-01, including the scope_marking_rationale provenance distinction RELEASE-VALIDATOR asked to be preserved). requirement_status.yaml regenerated cleanly via reqctl.py render-status (463 entries). CHANGELOG.md updated with a split-release entry naming both known gaps, the INV-1 SECURITY-REVIEWER FAIL->fix->PASS cycle, the ISS-0683/GH-727 TEST-DESIGN-VALIDATOR FAIL->fix->PASS double-free cycle, the 5 further own-AC defects TEST-DESIGNER surfaced, RELEASE-VALIDATOR's own ISS-0686 finding, and the ADHOC infrastructure fix (109 orphaned tenant schemas, ISS-0684 psql-shim tooling defect). Retrospective written at docs/metrics/retrospectives/WF02-batch-4-20260811.yaml (no estimation.yaml existed for this run, confirmed via directory listing, so the estimated-vs-actual variance section was skipped per role instructions; step durations computed from real started_at/completed_at across all 13 handoffs in handoffs/WF02-batch-4-20260811/, and every narrative event from the task description documented in its own dedicated section). Registry cleanup performed: 12 terminal (COMPLETED) entries for this run_id archived to handoffs/WF02-batch-4-20260811/registry.json; active handoffs/registry.json reduced from 2324 to 2312 entries (this handoff's own PENDING entry remains active until completion below). No new incidental defects were found during this step's own work.",
+    "artifacts_out": [
+      "docs/status/requirement_status.yaml",
+      "CHANGELOG.md",
+      "docs/metrics/retrospectives/WF02-batch-4-20260811.yaml",
+      "handoffs/registry.json",
+      "handoffs/WF02-batch-4-20260811/registry.json"
+    ],
+    "issues": [],
+    "next_action": "Step Final (PR creation, CI checks, squash-merge, branch deletion, project board update, return to clean main) is the next and final step of this run -- a separate handoff ORCH will dispatch next, not performed here per explicit instruction."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T06:28:46Z",
+  "completed_at": "2026-08-12T06:38:24Z"
+}

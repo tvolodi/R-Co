@@ -145,29 +145,56 @@ pub fn reconstructInstance(
     ) catch return ReconstructionError.OutOfMemory;
     _ = replay_source;
 
-    // Primary query: UNION ALL across events + events_archive ordered by
-    // sequence_number ASC.  Falls back to events-only when events_archive is
+    // PAR-06 AC1/AC5: this is THE reconstruction entry point PAR-06's
+    // refusal-of-unbounded-requests rule binds (confirmed against this
+    // file's actual contents per the design doc's Open questions §1 — this
+    // is the closest and, on inspection, only match for "instance
+    // reconstruction" in this codebase). Look up
+    // instance_projections.first_event_at/.last_event_at and bound the event
+    // query by created_at so PAR-01's partition pruning actually applies
+    // (without this bound, every reconstruction forces a scan of every
+    // attached partition). A NULL window (PAR-06 AC3) triggers the one-time
+    // repair scan below, performed inline rather than via a second round
+    // trip through event_store.Store (this file already holds `conn`).
+    const window = eventWindowForInstanceInTx(ra, conn, inst_id_hex) catch |err| switch (err) {
+        error.QueryFailed => return ReconstructionError.QueryFailed,
+        error.OutOfMemory => return ReconstructionError.OutOfMemory,
+    };
+
+    // Primary query: UNION ALL across events + events_archive, BOTH bounded
+    // by the SAME [first_event_at, last_event_at) window (PAR-06 AC2), ordered
+    // by sequence_number ASC. Falls back to events-only when events_archive is
     // absent (SQLSTATE 42P01 — common in unit-test environments).
-    // Security: instance_id bound as $1 — no SQL string interpolation.
+    // Security: instance_id bound as $1, window bounds as $2/$3 — no SQL
+    // string interpolation.
     const union_sql =
         \\SELECT event_type, payload, sequence_number
         \\FROM events
         \\WHERE instance_id = $1::uuid
+        \\  AND created_at >= to_timestamp($2::bigint / 1000000.0)
+        \\  AND created_at <  to_timestamp($3::bigint / 1000000.0)
         \\UNION ALL
         \\SELECT event_type, payload, sequence_number
         \\FROM events_archive
         \\WHERE instance_id = $1::uuid
+        \\  AND created_at >= to_timestamp($2::bigint / 1000000.0)
+        \\  AND created_at <  to_timestamp($3::bigint / 1000000.0)
         \\ORDER BY sequence_number ASC
     ;
     const events_only_sql =
         \\SELECT event_type, payload, sequence_number
         \\FROM events
         \\WHERE instance_id = $1::uuid
+        \\  AND created_at >= to_timestamp($2::bigint / 1000000.0)
+        \\  AND created_at <  to_timestamp($3::bigint / 1000000.0)
         \\ORDER BY sequence_number ASC
     ;
 
-    var rows = conn.query(ra, union_sql, &.{inst_id_hex}) catch
-        conn.query(ra, events_only_sql, &.{inst_id_hex}) catch
+    const window_start_text = std.fmt.allocPrint(ra, "{d}", .{window.first_event_at_us}) catch return ReconstructionError.OutOfMemory;
+    const window_end_text = std.fmt.allocPrint(ra, "{d}", .{window.last_event_at_us}) catch return ReconstructionError.OutOfMemory;
+
+    var rows = conn.query(ra, union_sql, &.{ inst_id_hex, window_start_text, window_end_text }) catch
+        conn.query(ra, events_only_sql, &.{ inst_id_hex, window_start_text, window_end_text }) catch
         return ReconstructionError.QueryFailed;
     defer rows.deinit();
 
@@ -1217,6 +1244,139 @@ fn hexNibble(c: u8) error{InvalidUuid}!u8 {
 inline fn colGet(row: []?[]u8, i: usize) []const u8 {
     if (i >= row.len) return "";
     return row[i] orelse "";
+}
+
+// ---------------------------------------------------------------------------
+// PAR-06: bounded-reconstruction event window lookup + repair
+// ---------------------------------------------------------------------------
+
+/// The resolved [first_event_at, last_event_at) bound for one instance's
+/// reconstruction query, in UTC microseconds. last_event_at_us already
+/// carries the design's +1 microsecond upper-bound adjustment (see
+/// src/design/par-06-time-bounded-reconstruction.md's Public interface), so
+/// callers use a plain exclusive `<` comparison.
+const EventWindow = struct {
+    first_event_at_us: i64,
+    last_event_at_us: i64,
+};
+
+const EventWindowError = error{ QueryFailed, OutOfMemory };
+
+/// Read instance_projections.first_event_at/.last_event_at for instance_id
+/// (already confirmed to exist by the caller's own preceding query in
+/// reconstructInstance()/reconstructInstanceWithSnapshot()). If either column
+/// is NULL (PAR-06 AC3), perform the one-time repair scan (MIN/MAX(created_at)
+/// over events WHERE instance_id = $1) and UPDATE the columns, guarded by
+/// `WHERE first_event_at IS NULL` so a concurrent repair for the same
+/// instance cannot overwrite a window a racing caller already repaired, then
+/// re-read. Mirrors event_store.Store's own
+/// lookupOrRepairEventWindowInternal() (PAR-06's Public interface specifies
+/// the same repair shape at both call sites — this file cannot import that
+/// method directly without a Store instance, which reconstructInstance()'s
+/// existing signature does not carry).
+fn eventWindowForInstanceInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    inst_id_hex: []const u8,
+) EventWindowError!EventWindow {
+    const check_row = conn.query(
+        allocator,
+        \\SELECT (EXTRACT(EPOCH FROM first_event_at) * 1000000)::bigint,
+        \\       (EXTRACT(EPOCH FROM last_event_at) * 1000000)::bigint
+        \\FROM instance_projections WHERE instance_id = $1::uuid
+    ,
+        &.{inst_id_hex},
+    ) catch return EventWindowError.QueryFailed;
+    var mcheck = check_row;
+    defer mcheck.deinit();
+
+    if (mcheck.rows.len > 0 and mcheck.rows[0].len >= 2 and
+        mcheck.rows[0][0] != null and mcheck.rows[0][1] != null)
+    {
+        return EventWindow{
+            .first_event_at_us = std.fmt.parseInt(i64, mcheck.rows[0][0].?, 10) catch return EventWindowError.QueryFailed,
+            .last_event_at_us = std.fmt.parseInt(i64, mcheck.rows[0][1].?, 10) catch return EventWindowError.QueryFailed,
+        };
+    }
+
+    // PAR-06 AC3 repair scan: ONE full scan of events for this instance, ONE
+    // time, to backfill the window columns for a previously-unrepaired
+    // instance.
+    const scan_row = conn.query(
+        allocator,
+        \\SELECT (EXTRACT(EPOCH FROM MIN(created_at)) * 1000000)::bigint,
+        \\       (EXTRACT(EPOCH FROM MAX(created_at)) * 1000000)::bigint
+        \\FROM events WHERE instance_id = $1::uuid
+    ,
+        &.{inst_id_hex},
+    ) catch return EventWindowError.QueryFailed;
+    var mscan = scan_row;
+    defer mscan.deinit();
+
+    if (mscan.rows.len == 0 or mscan.rows[0].len < 2 or mscan.rows[0][0] == null or mscan.rows[0][1] == null) {
+        // No events found in `events` for this instance at repair time — the
+        // instance's rows may have already fully migrated to events_archive.
+        // Fall back to an unbounded-in-effect window ([0, now]) rather than
+        // failing reconstruction outright: reconstructInstance()'s caller
+        // already confirmed the instance_projections row exists (Step 2's
+        // preceding query), so a bounded query that finds zero rows here
+        // would incorrectly report InstanceNotFound for a real, fully-
+        // archived instance. now_us is read from the same repair-scan
+        // connection so the bound is still server-clock-derived.
+        const now_row = conn.query(
+            allocator,
+            "SELECT (EXTRACT(EPOCH FROM NOW()) * 1000000)::bigint",
+            &.{},
+        ) catch return EventWindowError.QueryFailed;
+        var mnow = now_row;
+        defer mnow.deinit();
+        const now_us: i64 = if (mnow.rows.len > 0 and mnow.rows[0].len > 0 and mnow.rows[0][0] != null)
+            (std.fmt.parseInt(i64, mnow.rows[0][0].?, 10) catch 0)
+        else
+            0;
+        return EventWindow{ .first_event_at_us = 0, .last_event_at_us = now_us + 1 };
+    }
+
+    const min_us = std.fmt.parseInt(i64, mscan.rows[0][0].?, 10) catch return EventWindowError.QueryFailed;
+    const max_us = std.fmt.parseInt(i64, mscan.rows[0][1].?, 10) catch return EventWindowError.QueryFailed;
+
+    conn.exec(
+        \\UPDATE instance_projections
+        \\SET first_event_at = to_timestamp($2::bigint / 1000000.0),
+        \\    last_event_at  = to_timestamp($3::bigint / 1000000.0) + INTERVAL '1 microsecond'
+        \\WHERE instance_id = $1::uuid
+        \\  AND first_event_at IS NULL
+    ,
+        &.{
+            inst_id_hex,
+            std.fmt.allocPrint(allocator, "{d}", .{min_us}) catch return EventWindowError.OutOfMemory,
+            std.fmt.allocPrint(allocator, "{d}", .{max_us}) catch return EventWindowError.OutOfMemory,
+        },
+    ) catch return EventWindowError.QueryFailed;
+
+    const reread = conn.query(
+        allocator,
+        \\SELECT (EXTRACT(EPOCH FROM first_event_at) * 1000000)::bigint,
+        \\       (EXTRACT(EPOCH FROM last_event_at) * 1000000)::bigint
+        \\FROM instance_projections WHERE instance_id = $1::uuid
+    ,
+        &.{inst_id_hex},
+    ) catch return EventWindowError.QueryFailed;
+    var mreread = reread;
+    defer mreread.deinit();
+
+    if (mreread.rows.len > 0 and mreread.rows[0].len >= 2 and
+        mreread.rows[0][0] != null and mreread.rows[0][1] != null)
+    {
+        return EventWindow{
+            .first_event_at_us = std.fmt.parseInt(i64, mreread.rows[0][0].?, 10) catch return EventWindowError.QueryFailed,
+            .last_event_at_us = std.fmt.parseInt(i64, mreread.rows[0][1].?, 10) catch return EventWindowError.QueryFailed,
+        };
+    }
+
+    // Should not occur (the UPDATE either won or a concurrent repair did),
+    // but degrade to the just-computed scan bounds rather than failing.
+    return EventWindow{ .first_event_at_us = min_us, .last_event_at_us = max_us + 1 };
 }
 
 /// Map InstanceStatus to its TEXT representation stored in instance_projections.

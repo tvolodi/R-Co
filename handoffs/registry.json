@@ -1,35 +1,8 @@
 {
+  "schema_version": 1,
+  "created_at": null,
+  "last_updated": "2026-08-12T06:26:13Z",
   "entries": [
-    {
-      "handoff_id": "66800000-0000-0000-0000-000000000000",
-      "file": "handoffs/WF03-ISS0668-20260812/step-00-backend-dev.json",
-      "run_id": "WF03-ISS0668-20260812",
-      "step": "00",
-      "from_agent": "ORCH",
-      "to_agent": "BACKEND-DEV",
-      "created_at": "2026-08-12T05:11:33Z",
-      "status": "COMPLETED"
-    },
-    {
-      "handoff_id": "05d81aaa-6e62-4847-a189-49a6c3df56af",
-      "file": "handoffs/WF03-ISS0668-20260812/step-05-issue-fixer.json",
-      "run_id": "WF03-ISS0668-20260812",
-      "step": "05",
-      "from_agent": "BACKEND-DEV",
-      "to_agent": "ISSUE-FIXER",
-      "created_at": "2026-08-12T05:17:04Z",
-      "status": "COMPLETED"
-    },
-    {
-      "handoff_id": "1499564d-b7eb-463b-bf03-bb8d96754791",
-      "file": "handoffs/WF03-ISS0668-20260812/step-03-backend-dev.json",
-      "run_id": "WF03-ISS0668-20260812",
-      "step": "03",
-      "from_agent": "BACKEND-DEV",
-      "to_agent": "BACKEND-DEV",
-      "created_at": "2026-08-12T05:17:04Z",
-      "status": "COMPLETED"
-    },
     {
       "handoff_id": "224d6bec-0315-4f3e-a070-86f007ddddba",
       "file": "handoffs/ADHOC-gh402-migration-order-20260803/step-00-backend-dev-migration-fix.json",
@@ -3109,7 +3082,7 @@
       "to_agent": "CODE-DESIGN-VALIDATOR",
       "created_at": "2026-08-08T11:53:14Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — Step 2"
+      "stage": "WF-03 Issue Resolving \u2014 Step 2"
     },
     {
       "handoff_id": "a38f764b-2941-42f6-ab70-c3130d55e775",
@@ -18277,7 +18250,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-01T14:47:43Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — Step 00 (git-setup) for TC-OIDC-22-01 bootstrap constraint query failure"
+      "stage": "WF-03 Issue Resolving \u2014 Step 00 (git-setup) for TC-OIDC-22-01 bootstrap constraint query failure"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-02",
@@ -18288,7 +18261,7 @@
       "to_agent": "CODE-DESIGNER",
       "created_at": "2026-08-01T14:52:30Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 2 — Code design for ISS-0126 fix"
+      "stage": "WF-03 Step 2 \u2014 Code design for ISS-0126 fix"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-02b",
@@ -18299,7 +18272,7 @@
       "to_agent": "CODE-DESIGN-VALIDATOR",
       "created_at": "2026-08-01T14:56:10Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 2b — Validate design for ISS-0126 fix"
+      "stage": "WF-03 Step 2b \u2014 Validate design for ISS-0126 fix"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-03",
@@ -18310,7 +18283,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-01T15:01:00Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 3 — Apply fix per design for ISS-0126"
+      "stage": "WF-03 Step 3 \u2014 Apply fix per design for ISS-0126"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-05-issue-fixer",
@@ -18321,7 +18294,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-01T14:50:50Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 0.5/1 — Issue registry + root-cause diagnosis for ISS-0126"
+      "stage": "WF-03 Step 0.5/1 \u2014 Issue registry + root-cause diagnosis for ISS-0126"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-05",
@@ -18332,7 +18305,7 @@
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-08-01T15:33:16Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 5 — Verify TC-OIDC-22-01 passes; no OIDC regression"
+      "stage": "WF-03 Step 5 \u2014 Verify TC-OIDC-22-01 passes; no OIDC regression"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-07",
@@ -18343,7 +18316,7 @@
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-08-01T15:58:18Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 7 — DOC-UPDATER"
+      "stage": "WF-03 Step 7 \u2014 DOC-UPDATER"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-final",
@@ -18354,7 +18327,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-01T16:02:08Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step Final — git-merge"
+      "stage": "WF-03 Step Final \u2014 git-merge"
     },
     {
       "handoff_id": "40020000-0000-0000-0000-000000000000",
@@ -21688,7 +21661,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T03:43:28Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 0.5 — ISS-0131 registry lookup"
+      "stage": "WF-03 Step 0.5 \u2014 ISS-0131 registry lookup"
     },
     {
       "handoff_id": "d512febe-8308-45ff-a59a-72dc2133d74d",
@@ -21699,7 +21672,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T03:43:28Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 1 — root cause diagnosis"
+      "stage": "WF-03 Step 1 \u2014 root cause diagnosis"
     },
     {
       "handoff_id": "a9d7b772-96e7-4759-87cc-f30b88a56993",
@@ -21710,7 +21683,7 @@
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-08-09T03:48:25Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 5 — integration test verification"
+      "stage": "WF-03 Step 5 \u2014 integration test verification"
     },
     {
       "handoff_id": "b5d20c64-559d-4978-8d6a-ab7ee8aeee79",
@@ -21797,7 +21770,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T04:33:37Z",
       "status": "COMPLETED",
-      "stage": "Step 3 — implement fix"
+      "stage": "Step 3 \u2014 implement fix"
     },
     {
       "handoff_id": "d8ad27ea-5fd3-40dc-90f0-ca5e85cf9963",
@@ -21876,7 +21849,7 @@
       "to_agent": "CODE-DESIGNER",
       "created_at": "2026-08-09T05:21:43Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 2 — fix design"
+      "stage": "WF-03 Step 2 \u2014 fix design"
     },
     {
       "handoff_id": "8095a21a-7946-4de5-b3b7-c91d65390f60",
@@ -21920,7 +21893,7 @@
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-08-09T05:41:40Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 7 — documentation"
+      "stage": "WF-03 Step 7 \u2014 documentation"
     },
     {
       "handoff_id": "5ff58680-b488-4300-9377-0f3c46451f4b",
@@ -22019,7 +21992,7 @@
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-08-09T06:16:57Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — Step 7"
+      "stage": "WF-03 Issue Resolving \u2014 Step 7"
     },
     {
       "handoff_id": "1379ca6c-241e-48cd-8514-5920213a3926",
@@ -22206,7 +22179,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T08:38:16Z",
       "status": "COMPLETED",
-      "stage": "Step 00 — git-setup"
+      "stage": "Step 00 \u2014 git-setup"
     },
     {
       "handoff_id": "1690cd9d-ae29-41e4-8e1c-d2083b5d3d26",
@@ -22217,7 +22190,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T09:55:00Z",
       "status": "COMPLETED",
-      "stage": "Step 00 — git-setup"
+      "stage": "Step 00 \u2014 git-setup"
     },
     {
       "handoff_id": "03591c24-48e8-4928-8d86-10a293e1d3eb",
@@ -22228,7 +22201,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T09:55:00Z",
       "status": "COMPLETED",
-      "stage": "Step 0.5 — registry lookup"
+      "stage": "Step 0.5 \u2014 registry lookup"
     },
     {
       "handoff_id": "d671b493-d65b-4228-a86a-e17c4f65c18e",
@@ -22239,7 +22212,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T09:55:00Z",
       "status": "COMPLETED",
-      "stage": "Step 1 — root cause diagnosis"
+      "stage": "Step 1 \u2014 root cause diagnosis"
     },
     {
       "handoff_id": "10472669-e0a5-40b8-8bee-4b60269cfb93",
@@ -22250,7 +22223,7 @@
       "to_agent": "CODE-DESIGNER",
       "created_at": "2026-08-09T09:58:00Z",
       "status": "COMPLETED",
-      "stage": "Step 2 — fix design"
+      "stage": "Step 2 \u2014 fix design"
     },
     {
       "handoff_id": "d7f54c2e-ac72-42ce-b20f-bf923544d462",
@@ -22261,7 +22234,7 @@
       "to_agent": "CODE-DESIGN-VALIDATOR",
       "created_at": "2026-08-09T10:02:00Z",
       "status": "COMPLETED",
-      "stage": "Step 2b — design validation"
+      "stage": "Step 2b \u2014 design validation"
     },
     {
       "handoff_id": "f2712ca7-9939-4004-a582-770bfdd23c9f",
@@ -22272,7 +22245,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T10:02:00Z",
       "status": "COMPLETED",
-      "stage": "Step 3 — implement fix"
+      "stage": "Step 3 \u2014 implement fix"
     },
     {
       "handoff_id": "e4f03e3b-d174-404c-9ced-2d6404a5c302",
@@ -22283,7 +22256,7 @@
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-08-09T10:06:00Z",
       "status": "COMPLETED",
-      "stage": "Step 5 — test verification"
+      "stage": "Step 5 \u2014 test verification"
     },
     {
       "handoff_id": "ff965720-c39d-441e-840b-a7898f81367c",
@@ -22294,7 +22267,7 @@
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-08-09T10:09:54Z",
       "status": "COMPLETED",
-      "stage": "Step 7 — changelog/issue update"
+      "stage": "Step 7 \u2014 changelog/issue update"
     },
     {
       "handoff_id": "5f6ff84d-ac87-4232-9df6-9145c5e64389",
@@ -22305,7 +22278,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T10:14:00Z",
       "status": "COMPLETED",
-      "stage": "Step Final — git-merge"
+      "stage": "Step Final \u2014 git-merge"
     },
     {
       "handoff_id": "fa4ae9f2-54be-408a-9975-97130764d01a",
@@ -22624,7 +22597,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T12:07:36Z",
       "status": "COMPLETED",
-      "stage": "Step 00 — git-setup"
+      "stage": "Step 00 \u2014 git-setup"
     },
     {
       "handoff_id": "b4ca8005-80ae-483d-b4a9-1be352298931",
@@ -22635,7 +22608,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T12:09:28Z",
       "status": "COMPLETED",
-      "stage": "Step 0.5 — registry lookup"
+      "stage": "Step 0.5 \u2014 registry lookup"
     },
     {
       "handoff_id": "55ba6715-5b18-45e3-b155-d38a1cd640cf",
@@ -22646,7 +22619,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T12:09:28Z",
       "status": "COMPLETED",
-      "stage": "Step 1 — diagnosis"
+      "stage": "Step 1 \u2014 diagnosis"
     },
     {
       "handoff_id": "c0ddc0e0-667b-403d-8917-3d68a759782d",
@@ -22866,7 +22839,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T13:03:46Z",
       "status": "COMPLETED",
-      "stage": "Step 00 — git-setup"
+      "stage": "Step 00 \u2014 git-setup"
     },
     {
       "handoff_id": "10ecd97f-1749-452d-a58f-5ad72781da0f",
@@ -23687,45 +23660,17 @@
       "stage": "Step Final"
     },
     {
-      "handoff_id": "6910ADHC-0000-0000-0000-000000000000",
-      "file": "handoffs/ADHOC-GH691-infra-20260811/step-00-backend-dev.json",
-      "run_id": "ADHOC-GH691-infra-20260811",
-      "step": "00-adhoc",
-      "from_agent": "ORCH",
-      "to_agent": "BACKEND-DEV",
-      "created_at": "2026-08-11T21:06:41Z",
-      "status": "COMPLETED"
-    },
-    {
-      "handoff_id": "69100300-REWORK1-0000-0000-000000000000",
-      "file": "handoffs/WF03-GH691-20260811/step-03-backend-dev.json",
+      "handoff_id": "81b01143-e88d-4f5a-91c0-bf84fe594b3a",
+      "file": "handoffs/WF03-GH691-20260811/step-00-backend-dev.json",
       "run_id": "WF03-GH691-20260811",
-      "step": "3",
+      "step": "00",
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
-      "created_at": "2026-08-11T21:26:24Z",
+      "created_at": "2026-08-10T22:00:26Z",
       "status": "COMPLETED",
-      "rework_count": 1
-    },
-    {
-      "handoff_id": "69100501-0000-0000-0000-000000000000",
-      "file": "handoffs/WF03-GH691-20260811/step-05-test-runner.json",
-      "run_id": "WF03-GH691-20260811",
-      "step": "5-retry",
-      "from_agent": "ORCH",
-      "to_agent": "TEST-RUNNER",
-      "created_at": "2026-08-11T21:34:08Z",
-      "status": "COMPLETED"
-    },
-    {
-      "handoff_id": "69100700-0000-0000-0000-000000000000",
-      "file": "handoffs/WF03-GH691-20260811/step-07-doc-updater.json",
-      "run_id": "WF03-GH691-20260811",
-      "step": "7",
-      "from_agent": "ORCH",
-      "to_agent": "DOC-UPDATER",
-      "created_at": "2026-08-11T21:39:07Z",
-      "status": "COMPLETED"
+      "stage": "WF-03 Issue Resolving",
+      "started_at": "2026-08-10T22:00:31Z",
+      "completed_at": "2026-08-10T22:02:13Z"
     },
     {
       "handoff_id": "a1e9f5c2-3d4b-4e6a-9f1c-7b8d2a5e6c10",
@@ -23819,6 +23764,99 @@
       "completed_at": "2026-08-11T19:04:16Z",
       "status": "COMPLETED",
       "stage": "Stage 16"
+    },
+    {
+      "handoff_id": "1647733f-8564-4b05-80d0-454a97db6284",
+      "file": "handoffs/WF02-batch-4-20260811/step-06-doc-updater.json",
+      "run_id": "WF02-batch-4-20260811",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-12T06:28:46Z",
+      "status": "COMPLETED",
+      "stage": "Stage 16"
+    },
+    {
+      "handoff_id": "e472892f-288b-4761-be67-3c8686b6630d",
+      "file": "handoffs/WF02-batch-4-20260811/step-final-doc-updater.json",
+      "run_id": "WF02-batch-4-20260811",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-12T06:40:44Z",
+      "status": "IN_PROGRESS",
+      "stage": "Stage 16"
+    },
+    {
+      "handoff_id": "66800000-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-ISS0668-20260812/step-00-backend-dev.json",
+      "run_id": "WF03-ISS0668-20260812",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-12T05:11:33Z",
+      "status": "PENDING"
+    },
+    {
+      "handoff_id": "05d81aaa-6e62-4847-a189-49a6c3df56af",
+      "file": "handoffs/WF03-ISS0668-20260812/step-05-issue-fixer.json",
+      "run_id": "WF03-ISS0668-20260812",
+      "step": "05",
+      "from_agent": "BACKEND-DEV",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-12T05:17:04Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "1499564d-b7eb-463b-bf03-bb8d96754791",
+      "file": "handoffs/WF03-ISS0668-20260812/step-03-backend-dev.json",
+      "run_id": "WF03-ISS0668-20260812",
+      "step": "03",
+      "from_agent": "BACKEND-DEV",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-12T05:17:04Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "6910ADHC-0000-0000-0000-000000000000",
+      "file": "handoffs/ADHOC-GH691-infra-20260811/step-00-backend-dev.json",
+      "run_id": "ADHOC-GH691-infra-20260811",
+      "step": "00-adhoc",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-11T21:06:41Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "69100300-REWORK1-0000-0000-000000000000",
+      "file": "handoffs/WF03-GH691-20260811/step-03-backend-dev.json",
+      "run_id": "WF03-GH691-20260811",
+      "step": "3",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-11T21:26:24Z",
+      "status": "COMPLETED",
+      "rework_count": 1
+    },
+    {
+      "handoff_id": "69100501-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-GH691-20260811/step-05-test-runner.json",
+      "run_id": "WF03-GH691-20260811",
+      "step": "5-retry",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-11T21:34:08Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "69100700-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-GH691-20260811/step-07-doc-updater.json",
+      "run_id": "WF03-GH691-20260811",
+      "step": "7",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-11T21:39:07Z",
+      "status": "COMPLETED"
     },
     {
       "handoff_id": "01071772-de31-499e-aeee-16ec4dadf230",
@@ -24064,16 +24102,6 @@
       "status": "PENDING"
     },
     {
-      "handoff_id": "66800000-0000-0000-0000-000000000000",
-      "file": "handoffs/WF03-ISS0668-20260812/step-00-backend-dev.json",
-      "run_id": "WF03-ISS0668-20260812",
-      "step": "00",
-      "from_agent": "ORCH",
-      "to_agent": "BACKEND-DEV",
-      "created_at": "2026-08-12T05:11:33Z",
-      "status": "PENDING"
-    },
-    {
       "handoff_id": "66800050-0000-0000-0000-000000000000",
       "file": "handoffs/WF03-ISS0668-20260812/step-05-issue-fixer.json",
       "run_id": "WF03-ISS0668-20260812",
@@ -24183,6 +24211,5 @@
       "created_at": "2026-08-12T06:15:41Z",
       "status": "PENDING"
     }
-  ],
-  "last_updated": "2026-08-12T05:24:38Z"
+  ]
 }

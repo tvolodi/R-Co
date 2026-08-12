@@ -161,6 +161,33 @@ pub fn handleCreate(
             "INTERNAL_ERROR",
             "Internal server error",
         ),
+        // PIN-01: versioned-reference resolution failures. All four are HTTP
+        // 422 per PIN-01's own AC text (see src/design/pin-01-dependency-
+        // version-resolution.md's Error taxonomy).
+        error.UnresolvedCatalogRef => return errorResult(
+            allocator,
+            422,
+            "UNRESOLVED_CATALOG_REF",
+            "A SERVICE_TASK node references a service_id with no resolvable catalog entry",
+        ),
+        error.UnresolvedModuleRef => return errorResult(
+            allocator,
+            422,
+            "UNRESOLVED_MODULE_REF",
+            "A SUB_PROCESS node references a module_ref with no resolvable module version",
+        ),
+        error.VariableSchemaViolation => return errorResult(
+            allocator,
+            422,
+            "VARIABLE_SCHEMA_VIOLATION",
+            "initial_variables violate the definition's registered variable_schema",
+        ),
+        error.UnresolvedPinOverride => return errorResult(
+            allocator,
+            422,
+            "UNRESOLVED_PIN_OVERRIDE",
+            "pin_overrides names a version that does not exist",
+        ),
     };
     // Free caller-owned Instance slices.
     defer {

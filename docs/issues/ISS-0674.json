@@ -1,0 +1,27 @@
+{
+  "issue_id": "ISS-0674",
+  "title": "PIN-01: resolveServiceCatalogRef() calls bpm_effective_tenant_id(), a SQL function dropped by GBL-116/123/130/131 -- breaks every SERVICE_TASK instance-start and is not tenant-scoped in SCHEMA mode",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "tenant isolation / correctness",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "bfd75fb4-1567-4757-8e49-be5cda7d1ed4",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/715",
+  "requirement_ids": ["PIN-01"],
+  "summary": "src/engine/pin_resolver.zig's resolveServiceCatalogRef() (PIN-01, commit 9ac7c2eb) issues `SELECT service_id, ... FROM service_catalog WHERE service_id = $1 AND (scope = 'global' OR owner_tenant_id = bpm_effective_tenant_id())`. This runs unconditionally for every SERVICE_TASK node found in a definition graph, inside InstanceStore.create() (src/engine/instance.zig Step d.5) on the live POST /api/v1/instances path. bpm_effective_tenant_id() was defined once (migrations/028_adp02_tenant_scope_persistence.sql) for the old LEGACY_RLS model and is DROP FUNCTION'd by four later migrations (GBL-116, GBL-123, GBL-130, GBL-131 -- orders 1116/1123/1130/1131, all real applied migrations per migrationOrder()'s +1000 GBL- offset). In any fully-migrated environment the function does not exist, so any instance-start with a resolvable SERVICE_TASK service_id fails with Postgres 42883 (surfaced as an untyped HTTP 500 via pin_resolver.zig's generic TransactionFailed branch). Even if the function existed, src/db/pool.zig's applyRequestStorageRouting() only sets bpm.tenant_id in LEGACY_RLS mode -- SCHEMA mode (the current architecture) never sets it, so the predicate would not correctly identify the calling tenant. The design doc claims this 'reuses SVC-01's existing tenant-visibility rule verbatim' but does not: src/repository/service_catalog.zig's getServiceForTenant() (the actual SVC-01 implementation) uses a bound $2::uuid parameter, not a session-derived function. PinResolver.ResolutionInput has no tenant_id field at all, so the resolver had no bound parameter available to use.",
+  "root_cause": {
+    "type": "wrong_tenant_scoping_mechanism",
+    "details": "PinResolver.resolve()/ResolutionInput never threads tenant_id through from InstanceStore.create()'s call site, even though that call site has the request's tenant context available. resolveServiceCatalogRef() therefore reached for a SQL-session-global mechanism (bpm_effective_tenant_id(), tied to the deprecated LEGACY_RLS set_config('bpm.tenant_id', ...) convention) instead of a bound $N parameter matching src/repository/service_catalog.zig's getServiceForTenant() or src/definition/service_scope_validator.zig's application-code comparison pattern."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-11T20:35:22Z",
+  "resolved_at": null,
+  "prevention": [
+    "Add tenant_id: []const u8 (or [16]u8, matching service_scope_validator.zig's convention) to PinResolver.ResolutionInput and thread it from InstanceStore.create()'s existing request-tenant context.",
+    "Change resolveServiceCatalogRef()'s query to bind owner_tenant_id = $2::uuid from that parameter, mirroring ServiceCatalog.getServiceForTenant() exactly.",
+    "Add an integration test that starts an instance whose graph contains a SERVICE_TASK node with a resolvable service_id against a fully-migrated (post-GBL-131) schema, so this class of 'compiles but the referenced DB function is gone' defect is caught before merge -- none of PIN-01's own unit tests are DB-bound (per pin_resolver.zig's own file-level test-scoping comment), so this was never exercised against a real schema in this batch."
+  ]
+}

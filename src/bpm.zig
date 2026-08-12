@@ -11,6 +11,7 @@ pub const definition = @import("definition/store.zig");
 pub const snapshot = @import("definition/snapshot.zig"); // PD-08
 pub const export_import = @import("definition/export_import.zig"); // PD-09
 pub const engine = @import("engine/instance.zig"); // EE-01
+pub const pin_resolver = @import("engine/pin_resolver.zig"); // PIN-01
 pub const tasks = @import("tasks/store.zig"); // EE-03
 pub const task_routes = @import("api/routes/tasks.zig"); // API-04 / EE-04
 pub const instance_routes = @import("api/routes/instances.zig"); // API-03 / OBS-04
@@ -24,7 +25,18 @@ pub const dlq_routes = @import("api/routes/dlq.zig"); // OBS-05
 pub const api_authorization = @import("api/authorization.zig"); // IDN-03
 pub const scheduler = @import("scheduler/store.zig"); // SCH-01
 pub const scheduler_poller = @import("scheduler/scheduler.zig"); // SCH-02
-pub const partition_maintenance = @import("scheduler/partition_maintenance.zig"); // PAR-02
+// PAR-05 (WF02-batch-4-20260811): partition_maintenance is now reached via
+// the SAME named module `@import("partition_maintenance")` that
+// src/db/partition_conversion.zig also depends on (build.zig's
+// partition_maintenance_mod), rather than the relative
+// `@import("scheduler/partition_maintenance.zig")` this line used before.
+// Both this file (bpm_src_mod) and partition_conversion_mod now pull in
+// partition_maintenance.zig's compiled unit — a relative import here
+// alongside partition_conversion's named-module import of the same file
+// would violate Zig 0.16's single-owner module rule ("file exists in
+// multiple modules"), the identical class of conflict partition_attach's
+// own named-module re-export (below) was already introduced to avoid.
+pub const partition_maintenance = @import("partition_maintenance");
 pub const partition_retention = @import("scheduler/partition_retention.zig"); // PAR-03
 // PAR-04: named module, not a relative @import. partition_maintenance.zig and
 // partition_retention.zig (both relatively owned by THIS file, re-exported
@@ -37,6 +49,10 @@ pub const partition_retention = @import("scheduler/partition_retention.zig"); //
 // above — so this re-export uses the identical named module instead of
 // `@import("db/partition_attach.zig")`.
 pub const partition_attach = @import("partition_attach");
+// PAR-05: named module — see partition_maintenance's comment above for the
+// identical rationale (src/db/partition_conversion.zig cannot be reached
+// both relatively-from-nowhere and as partition_conversion_mod's own root).
+pub const partition_conversion = @import("partition_conversion");
 pub const reconstruction = @import("engine/reconstruction.zig"); // EE-11
 pub const transition = @import("engine/transition.zig"); // EE-12
 pub const snapshot_writer = @import("engine/snapshot_writer.zig"); // ISS-601

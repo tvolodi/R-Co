@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0678",
+  "title": "par06_instance_projections_event_window_test.zig: schema-agnostic information_schema/pg_indexes queries match every tenant schema, not just tenant_default",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "test correctness / system catalog introspection",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/720",
+  "requirement_ids": ["PAR-06"],
+  "summary": "tests/integration/par06_instance_projections_event_window_test.zig's new_columns_exist_and_are_nullable and index_supports_bounded_lookup tests query information_schema.columns and pg_indexes without a schema filter (docs/anti-patterns.md's documented 'Database -- System Catalog Introspection' anti-pattern). On this repo's shared, long-lived bpm_test container (98 accumulated tenant_% schemas observed live), both queries return one row per schema containing the matching table/index -- 54 rows instead of 2, and 27 rows instead of 1 -- rather than the single tenant_default copy the tests actually intend to check. Confirmed live via direct psql query and via zig build test-integration-par06, which fails both tests with exactly this row-count mismatch.",
+  "root_cause": {
+    "type": "schema_agnostic_catalog_query",
+    "details": "Same class as GH #392 / ISS-0126 (already in docs/anti-patterns.md's own catalogue): information_schema.columns/pg_indexes queried by table_name/indexname alone, with no table_schema/schemaname filter, so PostgreSQL returns one row per schema containing a same-named relation. instance_projections is a PER_TENANT table (created once per tenant schema by the migration pass), so every accumulated tenant schema on this long-lived shared test database contributes its own matching row. The failure was likely not visible when the file was first written in this same run, before enough tenant schemas had accumulated."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-12T03:02:17Z",
+  "resolved_at": null,
+  "prevention": [
+    "Add table_schema = 'tenant_default' / schemaname = 'tenant_default' to both queries, matching the migration's own PER_TENANT classification of instance_projections.",
+    "Any new system-catalog introspection test written against this codebase's shared long-lived bpm_test database must schema-qualify its query per docs/anti-patterns.md's existing catalogue entry -- the anti-pattern is already documented but was not applied when this specific test file was written."
+  ]
+}

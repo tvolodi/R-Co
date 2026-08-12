@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0675",
+  "title": "PAR-06: Store.reconstructBounded() in src/event_store/store.zig is dead code -- unused duplicate of reconstruction.zig's live bounded-reconstruction path, risk of future behavioral drift",
+  "status": "OPEN",
+  "severity": "MINOR",
+  "category": "code quality / maintenance hazard",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "bfd75fb4-1567-4757-8e49-be5cda7d1ed4",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/716",
+  "requirement_ids": ["PAR-06"],
+  "summary": "src/event_store/store.zig's Store.reconstructBounded() (PAR-06, commit 9ac7c2eb) is not called anywhere in src/ or tests/ -- confirmed via grep, which only matches its own definition/doc comments and one test-file comment describing it. The live PAR-06 bounded-reconstruction path is src/engine/reconstruction.zig's eventWindowForInstanceInTx() + reconstructInstance(), an independently-written duplicate of the same window-lookup-and-repair logic. The two disagree on tenant scoping: Store.reconstructBounded() takes an explicit tenant_id parameter and filters events/events_archive by it; reconstruction.zig's live path has no tenant_id parameter or predicate anywhere, relying entirely on search_path scoping, which is correct for the current schema since instance_projections had its tenant_id column dropped by GBL-084/GBL-123_rls_removal.sql (events/events_archive still carry tenant_id today, re-added by PAR-01/migration 1147, so Store.reconstructBounded()'s query is schema-valid, just unreachable). Not an active vulnerability since the dead function isn't called, but a maintenance hazard: a future caller could wire up the more 'defensively scoped'-looking dead function without realizing reconstruction.zig's version is the actually-integrated one, producing inconsistent tenant-scoping behavior between two code paths meant to do the same thing.",
+  "root_cause": {
+    "type": "duplicate_implementation",
+    "details": "PAR-06's design doc left the exact call-site ambiguous ('whether exposed as a new Store.reconstructBounded() wrapper, or a function inside reconstruction.zig that itself performs the lookup' -- design doc Open questions). BACKEND-DEV implemented both instead of choosing one, leaving Store.reconstructBounded() as unreferenced dead code alongside the actually-wired reconstruction.zig implementation."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-11T20:35:22Z",
+  "resolved_at": null,
+  "prevention": [
+    "Delete Store.reconstructBounded() and its private helpers (lookupOrRepairEventWindowInternal, mergeEventRowsBySequence, rowSequenceNumber) from store.zig, leaving reconstruction.zig as the single source of truth for PAR-06 bounded reconstruction -- OR wire reconstruction.zig to delegate to Store.reconstructBounded() if that is meant to be the long-term public API.",
+    "Either way, end up with exactly one implementation of the window-lookup-and-repair logic, not two independently maintained copies that can drift on tenant-scoping behavior."
+  ]
+}

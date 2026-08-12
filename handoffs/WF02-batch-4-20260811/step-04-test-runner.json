@@ -1,0 +1,76 @@
+{
+  "handoff_id": "525faa14-8203-480d-95c2-d80f619b4668",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-batch-4-20260811/step-04-test-runner.json",
+  "created_at": "2026-08-12T05:26:07Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-05",
+      "PAR-06",
+      "PIN-01",
+      "PIN-02"
+    ],
+    "related_handoff_ids": [
+      "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+      "1a767404-3f5b-4173-914f-39cc2049ab37",
+      "e0439a14-f763-4e97-b2a4-b4250e455f81",
+      "8f34a344-2abb-4042-83dc-1a52707b6a18"
+    ],
+    "artifacts_in": [
+      "tests/specs/PAR-05.md",
+      "tests/specs/PAR-06.md",
+      "tests/specs/PIN-01.md",
+      "tests/specs/PIN-02.md"
+    ]
+  },
+  "task": {
+    "description": "Execute the full test suite for this batch (PAR-05, PAR-06, PIN-01 scoped to AC3/AC4/AC5, PIN-02). ORCH already ran zig build test-env-verify immediately before this dispatch: HEALTHY, all 10 checks PASS, exit 0 (confirmed from a clean shell with no stale BPM_TEST_DB_URL/BPM_DB_URL overrides -- read .env directly, current values BPM_DB_URL port 5442, BPM_TEST_DB_URL port 5434; if your shell somehow shows a different port, unset any pre-set BPM_TEST_DB_URL/BPM_DB_URL env vars first, this host had a stale shell-level override earlier in this run pointing at a DIFFERENT sibling checkout's container on port 5453).\n\nExtensive rework happened in this run before you: SECURITY-REVIEWER PASSed 3 times (INV-1 tenant-scoping fix, then two re-reviews of correctness fixes), BACKEND-DEV fixed 5 own-AC BLOCKER defects across 2 handoffs (ISS-0676 PAR-05 constraint, ISS-0677 PAR-06 window maintenance, ISS-0679 PIN-01 AC3 schema validation, ISS-0681 PAR-05 AC5 reconciliation, ISS-0683 PIN-01 AC4 double-free), and TEST-DESIGN-VALIDATOR independently re-verified all of it clean (PASS, commit 7dcd80d7). Run the full suite yourself regardless -- do not shortcut based on the prior chain's claims.\n\nRun, in order: zig build (fail routes to BACKEND-DEV) -> zig build test (unit) -> the full integration suite including but not limited to this batch's specific targets (test-integration-par05, test-integration-par06, test-integration-par06-reconstruction, test-integration-pin01, test-integration-pin02) -- run zig build test-integration for the full suite if that is this repo's convention, or the individual scoped targets if that is faster and equally complete; your judgment per test_infrastructure_guide.md. Report EXACT pass/fail counts per target, not vague summaries -- this run's history has repeatedly needed precise numbers to catch real regressions.\n\nKnown pre-existing, already-tracked, out-of-scope issues you may observe and should NOT treat as new failures requiring you to block: ISS-0678/GH-720 (a schema-agnostic catalog-introspection bug in the PRE-EXISTING par06_instance_projections_event_window_test.zig migration-slice test, causes 2 of its 3 cases to fail on this shared long-lived container -- confirmed pre-existing and unrelated to this batch's own code), ISS-0680/GH-722 (PinResolver.resolve() memory leak on error-return paths only, MAJOR, does not crash or fail any assertion, tracked separately). If you observe anything else red that is NOT one of these two, treat it as a real new failure per the Unblock-Everything directive -- diagnose and route to BACKEND-DEV if it is this batch's own code failing its own tests, or file+queue if genuinely unrelated/pre-existing.\n\nRead .env directly for BPM_TEST_DB_URL/BPM_DB_URL -- never hardcode ports.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0 (unit suite)",
+      "All in-scope integration targets for PAR-05, PAR-06, PIN-01 (AC3/AC4/AC5 only), PIN-02 run with exact pass/fail counts reported",
+      "No new (previously-unseen) test failure beyond the 2 known-tracked pre-existing issues (ISS-0678, ISS-0680) goes unaddressed -- diagnosed, routed, or filed per Unblock-Everything",
+      "tests/reports/report-<date>-WF02-batch-4-20260811.yaml written per test_developer_guide.md format",
+      "Any NEW incidental defect found is filed as its own ISS + GitHub issue and forwarded to the global queue -- not fixed inline unless it genuinely blocks this step"
+    ],
+    "functions_to_call": [
+      "fn:write-test-report",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "zig build: PASS (exit 0). zig build test (unit): PASS, 1071/1135 passed, 0 failed, 64 skipped, exit 0, 103/103 build steps succeeded. Integration -- 5 named batch-scope targets each run individually to completion: test-integration-par05 6/6 PASS; test-integration-par06 1/3 pass, 2 fail (KNOWN PRE-EXISTING, ISS-0678/GH-720, confirmed exact-match reproduction: unscoped catalog-introspection query returns 58/29 rows instead of 2/1 on this shared long-lived container); test-integration-par06-reconstruction 5/5 PASS; test-integration-pin01 (AC3/AC4/AC5) 9/9 test assertions PASS, 0 failures, 8 leaked allocations (KNOWN PRE-EXISTING, ISS-0680/GH-722, confirmed exact-match reproduction: PinResolver.resolve() leaks allocator-owned fields on VariableSchemaViolation/UnresolvedPinOverride error-return paths, non-fatal); test-integration-pin02 5/5 PASS. No new (previously-unseen) failure found in this batch's own PAR-05, PAR-06 (behavioral), PIN-01, or PIN-02 code -- the only red items are the two pre-authorized known/tracked issues. The full `zig build test-integration` umbrella suite (~40+ binaries) could not be completed within available tool foreground-execution windows after two attempts (each terminated by tool timeout mid-run, requiring DB recovery -- orphaned tenant rows + stale advisory-lock waiters from killed child processes, both times restored to HEALTHY via the documented clean_test_db.py-equivalent remedy); filed as a MINOR process issue in the test report, not a code defect, and does not block this batch's PASS since this batch's acceptance criteria names the 5 specific targets, all of which ran to full, trustworthy completion.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-12-WF02-batch-4-20260811.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Full zig build test-integration umbrella suite not completed in this run due to tool foreground-execution time limits on this host; this batch's own 5 named integration targets were run individually to full completion instead, satisfying the handoff's acceptance criteria. See test report issues section for detail and recommendation."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0678 / GH-720 confirmed still reproducing exactly as documented (pre-existing, tracked, not this batch's scope)."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0680 / GH-722 confirmed still reproducing exactly as documented (pre-existing, tracked, not this batch's scope, non-fatal)."
+      }
+    ],
+    "next_action": "Route to RELEASE-VALIDATOR (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T05:26:07Z",
+  "completed_at": "2026-08-12T06:02:18Z"
+}
