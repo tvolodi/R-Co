@@ -119,6 +119,28 @@ these ACs describe).
 **Implemented by:** `tests/integration/par02_partition_catalog_test.zig` test
 `"par02_partition_catalog: state_check_constraint_rejects_unknown_value"`.
 
+### TC-PAR-02-09: ensurePartitionAttached emits EXECUTION_PARTITION_CREATED in the events table
+**Given:** A `Store` and `Registry` backed by the test DB, with `EXECUTION_PARTITION_CREATED`
+seeded in `event_type_registry`. A `PartitionMaintenanceScheduler` is created with
+`initWithStore()` passing the store. A synthetic partition name (e.g. `events_tc_par02_09`)
+does not yet exist in `plat_partition_catalog`.
+**When:** `ensurePartitionAttached()` is called for the synthetic partition (creating and
+attaching it, returning `true`).
+**Then:**
+```sql
+SELECT COUNT(*) FROM events
+WHERE instance_id = '00000000-0000-0000-0000-0000000000ff'
+  AND event_type = 'EXECUTION_PARTITION_CREATED'
+  AND payload->>'partition_name' = 'events_tc_par02_09'
+```
+returns 1.
+Idempotency: a second call to `ensurePartitionAttached()` for the same partition returns
+`false` (already ATTACHED), so no second event is emitted. The COUNT remains 1.
+**Layer:** integration
+**Acceptance criterion mapped:** AC5 (`EXECUTION_PARTITION_CREATED` event appended per creation).
+**Implemented by:** `tests/integration/par02_partition_catalog_test.zig` test
+`"par02_ac5: ensurePartitionAttached emits EXECUTION_PARTITION_CREATED"`.
+
 ## Observation A — Daily scheduling / production wiring is not required by PAR-02's own AC for this batch's release, and its absence is confirmed as a documented, non-blocking gap
 
 SECURITY-REVIEWER's MINOR observation: `PartitionMaintenanceScheduler` is not wired into
@@ -161,10 +183,10 @@ gap together, per SECURITY-REVIEWER's suggestion) rather than blocking this hand
 | AC2 — idempotent second same-day run | TC-PAR-02-04, TC-PAR-02-06, TC-PAR-02-07 |
 | AC3 — WARN at 1 future partition, BLOCKER at 0 | Job logic present (`partition_maintenance.zig:231-236`); no dedicated test asserts the severity thresholds directly against a real DB fixture — see Gap note below |
 | AC4 — missed-run recovery on restart | TC-PAR-02-03 |
-| AC5 — `EXECUTION_PARTITION_CREATED` event appended per creation | Not directly asserted by any test in this batch — see Gap note below |
+| AC5 — `EXECUTION_PARTITION_CREATED` event appended per creation | TC-PAR-02-09 |
 | Production wiring / multi-tenant fanout | Not required by AC text this batch; see Observation A |
 
-## Gap note — AC3 severity thresholds and AC5 event append are implemented but not directly asserted
+## Gap note — AC3 severity thresholds are implemented but not directly asserted
 
 - **AC3** (WARN at future_count==1, BLOCKER at future_count==0): the severity computation itself
   (`partition_maintenance.zig:231-236`, a pure three-way branch on `future_count`) is simple enough
@@ -176,29 +198,6 @@ gap together, per SECURITY-REVIEWER's suggestion) rather than blocking this hand
   follow-up integration test that seeds `plat_partition_catalog` to exactly 1 and exactly 0 future
   `events`-parented ATTACHED rows and asserts `runMaintenanceCycle()`'s returned severity, rather
   than blocking this handoff to add it now.
-- **AC5** (`EXECUTION_PARTITION_CREATED` event on each creation): `grep -rn
-  "EXECUTION_PARTITION_CREATED"` across `src/scheduler/partition_maintenance.zig` returns no hits
-  — the event-store append this AC clause requires is not visibly wired into
-  `ensurePartitionAttached()`. Confirmed genuinely missing (not just untested) during REWORK 1
-  (WF02-batch-3-20260811): investigated implementing it directly, and it is NOT small/self-contained
-  as originally characterized here. `Store.append()` requires `instance_id` to already exist as an
-  ACTIVE row in `instance_projections` (`StoreError.InstanceNotFound` otherwise) — `partition_maintenance.zig`
-  is a platform-level daily job with no owning workflow instance, and no "system"/platform
-  `instance_id` convention exists anywhere in this codebase (`instance_projections` has no seeded
-  platform row; grepped every other `EXECUTION_*` platform-level event named in
-  docs/requirements.yaml — `EXECUTION_MIGRATION_VALIDATED`, `EXECUTION_OUTBOX_GATE_OPENED`,
-  `EXECUTION_CORRELATION_LAG` — none are implemented in `src/` either, so there is no existing
-  precedent to copy). Closing this gap requires a real design decision (what `instance_id`/`actor_id`/
-  `idempotency_key` a non-instance-scoped platform event uses, and whether `Store.append()`'s
-  `InstanceNotFound` gate needs a carve-out) that is out of scope for a REWORK cycle whose BLOCKER is
-  PAR-01 AC4. Recommend routing to CODE-DESIGNER for a short design note on the platform-event
-  append convention (applies to all four unimplemented `EXECUTION_*` platform events above, not just
-  this one), then BACKEND-DEV implements against that design. Do not block this handoff on it.
-
-The AC3 gap above is treated as MINOR/follow-up (self-contained addition to already-correct,
-already-tested logic). The AC5 gap is a real, closeable gap but NOT self-contained — see the
-revised note above — and should not be scoped as a quick fix in a future handoff either; it needs
-the design decision first.
 
 ## Execution Notes For TEST-RUNNER
 
