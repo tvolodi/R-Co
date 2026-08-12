@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-12T15:15:56Z'
+generated_at: '2026-08-12T17:00:33Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -12226,7 +12226,7 @@ requirements:
     title: No fallback to latest version
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > The platform SHALL resolve every versioned dependency during execution through the instance's pin set. A reference with no pin entry raises the typed error `PinMissing` and the step enters the standard retry then dead-letter path. The engine SHALL NOT resolve the current active version in place of a missing pin, and retiring or deprecating a pinned version SHALL NOT affect instances already pinned to it.
 
@@ -12241,14 +12241,37 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:41Z'
+    last_updated: '2026-08-12T17:00:33Z'
     workflow: PW-03
+    note: 'AC1/AC2/AC4/AC5 met (PinMissing raised naming the reference with no catalog lookup, pinned
+      version invoked despite a newer catalog entry published in flight, retry-budget-exhausted DLQ entry
+      naming the reference, no fallback path for a missing pin against a fully live catalog entry -- all
+      independently re-run 4/4 passing). AC3 (WHEN the pinned catalog entry version is set to DEPRECATED
+      after the instance started, THEN execution proceeds on the pinned version) NOT MET -- service_catalog
+      has no version/status column, so no DEPRECATED value exists anywhere in the schema for any code
+      path to branch on; TC-PIN-03-05, the file''s own designated AC3 test, does not drive node execution
+      after the catalog mutation and is mechanically identical to the AC2 test (re-checks resolved_id
+      equality only). Tracked as ISS-0672 / GH-306 (OPEN) -- the SAME issue already blocking PIN-01 AC1/AC2
+      from batch-4, same root cause (service_catalog schema gap). Unlike a typical partial-release gap,
+      this was a deliberate, validated scope-phasing decision made explicitly by CODE-DESIGNER at Step
+      1 (src/design/pin-03-no-fallback-to-latest-version.md Scoping note and Open questions #1, flagged
+      as a BLOCKING gap before implementation began) and confirmed PASS by CODE-DESIGN-VALIDATOR at Step
+      1b KNOWING AC3 was out of scope -- not a late discovery or quality escape. This provenance does
+      not change the release marking (PIN-03 is one requirement with 5 MUST-priority AC bullets; 1 of
+      5 remains unimplemented regardless of how early or deliberately that was decided), consistent with
+      PIN-01''s own precedent for this exact issue. Held at TESTED, not RELEASED -- see docs/status/release-stage16-WF02-batch-5-20260812.yaml
+      partially_approved_requirements[0].scope_marking_rationale for full reasoning. When ISS-0672/GH-306
+      is resolved (service_catalog gains a version/status column), PIN-01 AC1/AC2 and PIN-03 AC3 should
+      be revisited together in the same follow-up batch.'
+    implemented_in:
+    - src/engine/instance.zig
+    - src/engine/pin_resolver.zig
   PIN-04:
     id: PIN-04
     title: Pin resolution on replay and in sub-processes
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL read the effective pin set during state reconstruction from `INSTANCE_STARTED` and the most recent `INSTANCE_PINS_REBOUND` event, never from the live service catalog or module registry. A sub-process child instance inherits its parent's pin set and adds entries only for references the parent does not carry. `GET /api/v1/instances/{id}/pins` returns the effective set with the source event identifier for each entry.
 
@@ -12263,14 +12286,19 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:42Z'
+    last_updated: '2026-08-12T17:00:03Z'
     workflow: PW-03
+    implemented_in:
+    - src/engine/instance.zig
+    - src/engine/pin_resolver.zig
+    - src/api/routes/pin_rebind.zig
+    released_at: '2026-08-12T17:00:03Z'
   PIN-05:
     id: PIN-05
     title: Explicit instance pin rebind
     stage: '16'
     priority: SHOULD
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL change an instance's pins only through `POST /api/v1/instances/{id}/rebind-pins`, which takes explicit `{kind, ref, version}` entries and a mandatory reason, and appends `INSTANCE_PINS_REBOUND` recording the prior version, the new version, the actor and the reason for each changed entry. The operation is all-or-nothing and is rejected on a terminal instance. No automatic process upgrades a running instance's pins.
 
@@ -12285,14 +12313,17 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:43Z'
+    last_updated: '2026-08-12T17:00:09Z'
     workflow: PW-03
+    implemented_in:
+    - src/api/routes/pin_rebind.zig
+    released_at: '2026-08-12T17:00:09Z'
   PRM-01:
     id: PRM-01
     title: Promotion plan and diff report
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** ENV-03, replacing a direct test-tenant to production-tenant copy with a computed, reviewable plan.
 
@@ -12309,8 +12340,11 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:44Z'
+    last_updated: '2026-08-12T17:00:15Z'
     workflow: PW-01
+    implemented_in:
+    - src/api/routes/promotions.zig
+    released_at: '2026-08-12T17:00:15Z'
   PRM-02:
     id: PRM-02
     title: Conflict pre-flight rejection

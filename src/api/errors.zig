@@ -225,3 +225,48 @@ pub fn problemUnresolvedPinOverride(detail: []const u8) ProblemDetails {
         .detail = detail,
     };
 }
+
+/// HTTP 422 — a rebind entry's {kind, ref} is absent from the instance's
+/// current effective pin set (PIN-05 AC2). None of the request's entries are
+/// applied.
+pub fn problemUnknownPinRef(detail: []const u8) ProblemDetails {
+    return .{
+        .type = BASE ++ "unknown-pin-ref",
+        .title = "Unknown Pin Ref",
+        .status = 422,
+        .detail = detail,
+    };
+}
+
+/// HTTP 409 — instance status is COMPLETED, CANCELLED or FAILED; its pin set
+/// can no longer be rebound (PIN-05 AC3).
+pub fn problemInstanceNotRebindable(detail: []const u8) ProblemDetails {
+    return .{
+        .type = BASE ++ "instance-not-rebindable",
+        .title = "Instance Not Rebindable",
+        .status = 409,
+        .detail = detail,
+    };
+}
+
+/// HTTP 422 — the source and target definitions are identical after
+/// canonicalisation; there is nothing to promote (PRM-01 AC3).
+pub fn problemEmptyPromotionPlan(detail: []const u8) ProblemDetails {
+    return .{
+        .type = BASE ++ "empty-promotion-plan",
+        .title = "Empty Promotion Plan",
+        .status = 422,
+        .detail = detail,
+    };
+}
+
+/// HTTP 422 — source_tenant_id names a production tenant, not a test tenant
+/// (PRM-01 AC4).
+pub fn problemInvalidPromotionSource(detail: []const u8) ProblemDetails {
+    return .{
+        .type = BASE ++ "invalid-promotion-source",
+        .title = "Invalid Promotion Source",
+        .status = 422,
+        .detail = detail,
+    };
+}

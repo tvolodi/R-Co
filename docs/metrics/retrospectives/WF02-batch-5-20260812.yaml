@@ -1,0 +1,557 @@
+run_id: WF02-batch-5-20260812
+run_date: '2026-08-12'
+completed_date: '2026-08-12'
+requirement_ids:
+  - PIN-03
+  - PIN-04
+  - PIN-05
+  - PRM-01
+workflow_type: >-
+  WF-02 (Stage 16 batch 5 -- dependency pinning continued + promotion pipeline
+  start: PIN-03 no fallback to latest version, PIN-04 pin resolution on replay
+  and in sub-processes, PIN-05 explicit instance pin rebind (SHOULD), PRM-01
+  promotion plan and diff report)
+
+summary: >-
+  WF-02 feature-development run implementing Stage 16's sixth batch (PIN-03
+  through PIN-05 completing the dependency-pinning subsystem batch-4 started,
+  plus PRM-01 opening the new promotion-plan pipeline). PIN-03 raises
+  PinMissing for unpinned references and continues to invoke the pinned
+  version despite catalog changes in flight, with no fallback to the current
+  active version. PIN-04 reads the effective pin set during reconstruction
+  solely from event history, adds sub-process pin inheritance, and exposes
+  GET /api/v1/instances/{id}/pins. PIN-05 adds an explicit, all-or-nothing
+  pin-rebind endpoint rejected on terminal instances. PRM-01 computes a
+  promotion plan (added/modified/removed diff across graph, variable_schema,
+  service catalog bindings and module_ref resolutions) before any write to
+  the target tenant. RELEASE-VALIDATOR (Step 5) returned PARTIAL: PIN-04,
+  PIN-05, PRM-01 approved RELEASED in full; PIN-03 held at TESTED
+  (tested-with-known-gap) on AC3, the SAME issue (ISS-0672/GH-306) that held
+  PIN-01 AC1/AC2 at TESTED in the immediately preceding batch. DOC-UPDATER
+  (this step) is recording that split accurately in docs/requirements.yaml
+  (via docs/status/requirement_status.yaml, generated), CHANGELOG.md, and
+  this retrospective.
+
+  Four notable events this run, in the order they occurred: (1) the PIN-03
+  AC3 scope decision at Step 1/1b (CODE-DESIGNER PARTIAL, CODE-DESIGN-VALIDATOR
+  PASS with explicit acknowledgment) -- a design-time choice, not a defect,
+  matching PIN-01's own precedent pattern from the prior batch almost exactly;
+  (2) an ADHOC mid-run infrastructure fix for ISS-0688/GH-745 (a pre-existing
+  regression, NOT part of this batch's own requirements, discovered by
+  BACKEND-DEV during Step 2a verification: two dead calls to a dropped SQL
+  function bpm_effective_tenant_id() in src/engine/instance.zig plus 9 further
+  survivor call sites across five more files, breaking POST /api/v1/instances
+  entirely under SCHEMA mode), fixed via an ADHOC BACKEND-DEV dispatch before
+  the pipeline could proceed since it blocked this run's own testability, then
+  re-reviewed by SECURITY-REVIEWER as part of the normal Step 2c gate; (3) a
+  genuine TEST-DESIGNER discovery at Step 3 that PIN-04 AC2/AC3 (sub-process
+  pin inheritance and conflict recording) was claimed implemented by
+  BACKEND-DEV's Step 2a summary but was actually unimplemented, triggering
+  REWORK 1 on the BACKEND-DEV handoff (commit 49ae102a), a SECURITY-REVIEWER
+  re-review PASS on the new tenant-data-path logic, and independent
+  confirmation by TEST-DESIGN-VALIDATOR that a bundled test-fixture edit in
+  that same rework commit was a legitimate reachability fix, not a weakened
+  assertion; (4) RELEASE-VALIDATOR's own additional finding (ISS-0689/GH-748,
+  a stale doc comment in the PIN-04 test file) discovered independently at
+  Step 5.
+
+pin_03_scope_decision:
+  decided_at: "Step 1 (CODE-DESIGNER), confirmed Step 1b (CODE-DESIGN-VALIDATOR)"
+  what: >-
+    AC3 ("GIVEN the pinned catalog entry version is set to DEPRECATED after
+    the instance started, WHEN the node executes, THEN execution proceeds on
+    the pinned version") was marked explicitly out of scope for this batch.
+    service_catalog has no version/status column (confirmed unchanged since
+    PIN-01's design first hit this wall in batch-4 by reading
+    migrations/049_repository_service_catalog.sql), so no DEPRECATED value
+    exists anywhere in the schema for any code path to branch on -- a genuine,
+    confirmed schema absence, not an implementation shortcut. Documented in
+    src/design/pin-03-no-fallback-to-latest-version.md's own Scoping note and
+    Open questions #1 as a "BLOCKING gap" before implementation began, and
+    CODE-DESIGN-VALIDATOR PASSed the design at Step 1b knowing AC3 was
+    deferred. TEST-DESIGNER's spec (tests/specs/PIN-03.md) and the test
+    file's own inline comment (TC-PIN-03-05, lines 679-706) both state in
+    writing that the AC3 test is a scoped structural substitute, not full
+    coverage -- it re-checks resolved_id equality, the same assertion shape
+    as the AC2 test, rather than driving node execution through any
+    DEPRECATED-equivalent state.
+  tracking: "ISS-0672 / GH-306 (OPEN) -- the SAME issue already blocking PIN-01 AC1/AC2"
+  why_it_matters: >-
+    RELEASE-VALIDATOR (Step 5) treated this identically to PIN-01's own
+    precedent one batch ago: the deliberate, validated, early-disclosed
+    provenance changes the QUALITATIVE framing (this is planned, tracked,
+    forward-looking scope-phasing, not a missed requirement or a quality
+    escape) but does NOT change the RELEASE MARKING itself -- PIN-03 is one
+    requirement with 5 MUST-priority AC bullets, and 1 of 5 has no
+    implementation behind it regardless of how early or deliberately that was
+    decided. RELEASE-VALIDATOR's own scope_marking_rationale additionally
+    reasoned explicitly about whether TC-PIN-03-05's structural substitute
+    satisfies AC3's SPIRIT well enough to justify RELEASED anyway, and
+    concluded no: it provides no incremental evidence beyond what AC2 already
+    established, and never reaches AC3's actual "does the node still execute"
+    question. Recorded here so a future reader of this retrospective sees
+    PIN-01 and PIN-03 as two instances of the same tracked, still-open
+    infrastructure gap rather than two unrelated findings. When ISS-0672/
+    GH-306 is resolved (service_catalog gains a version/status column), PIN-01
+    AC1/AC2 and PIN-03 AC3 should be revisited together in the same follow-up
+    batch.
+
+adhoc_infrastructure_fix:
+  trigger: >-
+    BACKEND-DEV discovered during Step 2a verification (before this batch's
+    own PIN-03/04/05/PRM-01 implementation could be validated) that
+    InstanceStore.create() in src/engine/instance.zig contained two live
+    calls to bpm_effective_tenant_id(), a SQL function already dropped by the
+    LEGACY_RLS-to-SCHEMA cutover migrations. Confirmed via git archaeology to
+    have been resurrected by a later merge/rebase after SPT-03 had
+    deliberately removed it, and confirmed genuinely pre-existing (not
+    introduced by this batch) via `git diff main` showing zero prior changes
+    at those lines. Broke POST /api/v1/instances entirely under SCHEMA mode
+    (every InstanceStore.create() call would 42883-error), which blocked this
+    run's own testability since every fixture in every one of this batch's
+    tests depends on instance creation.
+  scope_found: >-
+    The mandated grep sweep of src/ for the same dead function found 9
+    further genuine survivor call sites beyond the two named ones, across
+    five more files: src/definition/store.zig (7 predicate call sites plus 1
+    stale doc comment), src/definition/export_import.zig (2 predicate sites),
+    src/definition/snapshot.zig (1 predicate site), src/obs/audit.zig (1
+    predicate site in list() plus 1 INSERT site in writeAuditInTx()), and
+    src/entities/commands.zig (1 INSERT site in ensureEntityInstanceProjection()).
+  fix: >-
+    Commit 89b73187 (ADHOC BACKEND-DEV dispatch): the process_definitions
+    SELECT predicate was dropped everywhere (SCHEMA-mode search_path already
+    scopes it) and every INSERT site now binds tenant_id as an explicit
+    $1::uuid parameter sourced from the already-threaded request-scoped
+    tenant context. Also added tools/lint_dropped_tenant_function.py as a
+    standing CI check (wired into the "Source linters" job) to flag any
+    future bpm_effective_tenant_id() call while allowing explanatory
+    comments.
+  masking_discovery: >-
+    BACKEND-DEV's own diagnosis surfaced why this regression had gone
+    undetected: a per-tenant-SCHEMA copy of bpm_effective_tenant_id() still
+    exists in every tenant_* schema and silently falls back to the all-zero
+    UUID (SCHEMA mode never sets the bpm.tenant_id GUC it reads) rather than
+    erroring. The 5 named pre-existing test files all exercise the default
+    tenant (UUID 00000000-...-000000000000), so the broken code's zero-UUID
+    fallback happened to coincidentally match, masking the bug for any tenant
+    other than the seeded default.
+  verification: >-
+    git stash A/B comparison (stashed fix, reran test-integration-main,
+    restored fix) confirmed: pre-fix baseline already showed 44 pre-existing,
+    unrelated failures (timers, webhooks, effects, DLQ, obs04 timeline);
+    post-fix reduces this to 43 (concurrent_instances_test's
+    TC-EE-12-01/03, which exercises InstanceStore.create() under concurrency,
+    now passes); zero new failures introduced (empty diff of failing-test-name
+    sets). Re-reviewed by SECURITY-REVIEWER as part of the normal Step 2c
+    gate for this run (not a separate re-review cycle -- folded into the
+    same-day Step 2c pass alongside this batch's own new code).
+  why_this_matters_for_the_pipeline: >-
+    Second consecutive Stage 16 batch run (after batch-4's own mid-run ADHOC
+    for orphaned tenant schemas) where a pre-existing defect outside the
+    batch's own requirement scope surfaced mid-run and blocked testability --
+    fixed inline per Unblock-Everything rather than deferred, with the
+    mandated grep-sweep discipline (checking all 11 call sites, not just the
+    2 originally reported) catching 9 additional survivors that a narrower
+    fix would have missed.
+
+test_designer_pin04_rework:
+  gate: "Step 3 (TEST-DESIGNER) discovery, Step 2a REWORK 1 (BACKEND-DEV), Step 2c re-review (SECURITY-REVIEWER), Step 3b independent confirmation (TEST-DESIGN-VALIDATOR)"
+  finding: >-
+    PIN-04 AC2 (sub-process inherits parent pin) and AC3 (conflict recorded
+    in child payload) were claimed implemented by BACKEND-DEV's Step 2a
+    summary but were, on TEST-DESIGNER's own reading of the code, entirely
+    unimplemented: InstanceStore.create() had no parent_instance_id-aware
+    merge step at all, and a grep for pin_inheritance_conflicts/inheritPins
+    returned zero matches anywhere outside design docs. TEST-DESIGNER wrote
+    two real, fail-first-confirmed tests (TC-PIN-04-03, TC-PIN-04-04) against
+    AC2/AC3's literal wording rather than skipping or softening them, and
+    reported the gap as a BLOCKER rather than routing around it.
+  fix: >-
+    Commit 49ae102a (REWORK 1): a new private path,
+    createWithParentInheritance(), used only by
+    startSubProcessesForPendingEventsInTx(), merges the child's own resolved
+    pins against the parent's effective pin set via
+    reconstructEffectivePins(). Entries for references the parent already
+    pins carry source=inherited and the parent's resolved_id/version; a child
+    reference that would otherwise resolve differently instead uses the
+    inherited pin, with the conflict recorded in the child's own
+    INSTANCE_STARTED payload under pin_inheritance_conflicts.
+  bundled_fixture_edit: >-
+    The same rework commit also edited
+    tests/integration/pin04_pin_resolution_replay_subprocess_test.zig's
+    setupParentChildWithServiceTaskChild fixture (adding an
+    EXCLUSIVE_GATEWAY + dead-branch SERVICE_TASK + second END node to the
+    parent graph, purely additive except for one replaced edge, so that
+    PinResolver.resolve() produces a catalog_entry pin on the parent for the
+    child to inherit). TEST-DESIGN-VALIDATOR independently verified via `git
+    diff dbb2de56..49ae102a` on this file that the change is a legitimate
+    reachability fix, not a weakened assertion: exactly one hunk, purely
+    additive except for one edge swap that is provably runtime-equivalent to
+    the edge it replaced (confirmed against transition.zig's
+    EXCLUSIVE_GATEWAY default-fallback handling and its own TC-EE-02-06
+    test), and zero `try std.testing.expect*` assertion lines in either
+    TC-PIN-04-03 or TC-PIN-04-04 were touched by the diff.
+    SECURITY-REVIEWER's independent re-review reached the same conclusion via
+    a separate spot-check, corroborating but not substituting for
+    TEST-DESIGN-VALIDATOR's own verification.
+  reverification: >-
+    SECURITY-REVIEWER re-reviewed PASS in commit 4ae9a441, confirming the new
+    tenant-data-path merge logic introduces no new tenant-isolation or
+    injection surface. TEST-DESIGN-VALIDATOR re-verified PASS afterward
+    (commit 38948437). RELEASE-VALIDATOR's own live re-run at Step 5
+    independently confirmed 5/5 test-integration-pin04, including both named
+    tests, genuinely passing.
+  outcome: "Discovered at Step 3, fixed at Step 2a REWORK 1, re-reviewed PASS at Step 2c and Step 3b -- 1 rework cycle"
+
+release_validator_finding:
+  type: "NEW incidental finding, does not affect release marking"
+  scope: "tests/integration/pin04_pin_resolution_replay_subprocess_test.zig (doc comment only)"
+  description: >-
+    RELEASE-VALIDATOR (Step 5) found, during its own live re-run, that the
+    file's header doc comment (lines 19-36) still describes PIN-04 AC2/AC3 as
+    unimplemented and TC-PIN-04-03/04 as failing -- true before commit
+    49ae102a's fix, stale afterward. This session's own live re-run (5/5
+    pass, including both named tests) confirms the header no longer matches
+    reality.
+  disposition: >-
+    Filed as ISS-0689/GH-748 (MINOR, cosmetic doc-comment only). Does NOT
+    block PIN-04's release -- the underlying behavior is correct and
+    independently verified passing. Added to the global queue for a later
+    documentation-only follow-up fix.
+  why_this_matters_for_the_pipeline: >-
+    Third consecutive Stage 16 batch run (after batch-3's PAR-02 AC5/PAR-03
+    AC6, batch-4's PAR-05 events_legacy gap) where RELEASE-VALIDATOR's own
+    independent Step 5 verification -- not any upstream gate -- caught a
+    distinct finding nothing earlier was scoped to catch. Here the finding is
+    lower-severity than the prior two (a stale comment, not an unimplemented
+    AC) precisely because the AC gap it might have described (PIN-04 AC2/AC3)
+    was already caught and fixed two gates earlier, at Step 3 -- showing the
+    pipeline catching problems progressively earlier as it iterates on the
+    same subsystem across batches.
+
+estimation:
+  source: handoffs/WF02-batch-5-20260812/estimation.yaml
+  rules_version: '1.1'
+  difficulty: 4
+  difficulty_rationale: >-
+    PIN-03/04/05 touch the engine execution path (node execution,
+    replay/reconstruction, sub-process inheritance) and add a new mutating
+    endpoint (rebind-pins) with its own event type; PRM-01 adds a new
+    promotion-plan diff subsystem reusing but substantially extending
+    existing promotion.zig/export_import.zig machinery. Cross-module, novel
+    diff logic.
+  integration_surface: high
+  integration_surface_rationale: >-
+    Touches src/engine/instance.zig, src/engine/pin_resolver.zig,
+    src/engine/reconstruction.zig, src/engine/transition.zig (execution
+    path), new API routes (rebind-pins, GET pins, POST promotions), new
+    migrations for INSTANCE_PINS_REBOUND event handling and promotion_reviews
+    table.
+  surcharge_pct: null
+  estimated_minutes:
+    code-designer: 8
+    code-design-validator: 22
+    backend-dev: 9
+    test-designer: 3
+    test-design-validator: 38
+    test-runner: 6
+    release-validator: 2
+    doc-updater: 2
+    total: 90
+  actual_vs_estimate: >-
+    Actual step durations (see actual_step_durations below) run well above
+    estimate on every step: code-designer 9.2min (est 8, +15%), backend-dev
+    (combined initial + ADHOC + rework, since the estimate does not itemize
+    an ADHOC line) 106.7min against a 9min estimate for "backend-dev" alone,
+    test-design-validator 5.8min (est 38, -85%), release-validator 19.6min
+    (est 2, +880%). The estimate's own "backend-dev: 9" line clearly did not
+    anticipate the ADHOC ISS-0688/GH-745 fix (54.2min) or the REWORK 1 cycle
+    (41.5min) -- both genuinely necessary, unplanned work discovered mid-run,
+    not estimation error in the ordinary sense. Excluding the ADHOC/rework
+    additions, the base backend-dev implementation step alone (Step 2a proper)
+    took 41.5min against the 9min estimate, a genuine and large variance.
+    Per this role's rule (adjust docs/metrics/estimation_rules.json only when
+    |variance_pct| > 25% for a step across >=2 CONSECUTIVE runs at the same
+    difficulty), this is the first run with an itemized estimation.yaml in
+    the Stage 16 batch series (batch-0 through batch-4 retrospectives all
+    record "no estimation.yaml exists"), so there is no second consecutive
+    data point yet to compare against -- no rule_adjustments made this run;
+    flagged in prevention_notes for future comparison once a second
+    difficulty-4/high-integration-surface run with its own estimation.yaml
+    exists.
+  notes: >-
+    First Stage 16 batch retrospective with a real estimation.yaml to compare
+    against (batch-0 through batch-4 all report "no estimation.yaml exists").
+    Treat this run's variances as the FIRST data point for difficulty=4,
+    integration_surface=high, not yet actionable under the 2-consecutive-runs
+    rule.
+
+actual_step_durations:
+  - step: step-01 (CODE-DESIGNER -- design artefact)
+    agent: CODE-DESIGNER
+    started_at: '2026-08-12T11:23:05Z'
+    completed_at: '2026-08-12T11:32:18Z'
+    actual_minutes: 9.2
+    rework_count: 0
+    notes: >-
+      Single pass. Produced 4 design artefacts (PIN-03, PIN-04, PIN-05,
+      PRM-01), including PIN-03's explicit AC3 scope-phasing decision (see
+      pin_03_scope_decision above).
+
+  - step: step-01b (CODE-DESIGN-VALIDATOR -- hard gate)
+    agent: CODE-DESIGN-VALIDATOR
+    started_at: '2026-08-12T11:35:21Z'
+    completed_at: '2026-08-12T11:38:11Z'
+    actual_minutes: 2.8
+    rework_count: 0
+    notes: >-
+      PASS on the first pass, including explicit confirmation that PIN-03's
+      AC3 scope-phasing was a validated, deliberate decision rather than an
+      oversight.
+
+  - step: step-02a (BACKEND-DEV -- initial implementation)
+    agent: BACKEND-DEV
+    started_at: '2026-08-12T14:56:56Z'
+    completed_at: '2026-08-12T15:38:28Z'
+    actual_minutes: 41.5
+    rework_count: 1
+    notes: >-
+      rework_count=1 reflects REWORK 1 (commit 49ae102a, PIN-04 AC2/AC3
+      sub-process pin inheritance) folded into this persisted handoff's
+      window -- see test_designer_pin04_rework above. Covers the original
+      PIN-03/04/05/PRM-01 implementation (commit 2735aced) plus the rework
+      fix.
+
+  - step: step-02a-adhoc (BACKEND-DEV -- ISS-0688/GH-745 pre-existing regression fix)
+    agent: BACKEND-DEV
+    started_at: '2026-08-12T12:32:24Z'
+    completed_at: '2026-08-12T13:26:33Z'
+    actual_minutes: 54.2
+    rework_count: 0
+    notes: >-
+      Separately persisted ADHOC handoff, dispatched between step-01b and the
+      main step-02a implementation once the pre-existing regression was
+      discovered blocking this run's own testability. See
+      adhoc_infrastructure_fix above for full detail.
+
+  - step: step-02c (SECURITY-REVIEWER -- tenant-data-path gate, initial + re-review)
+    agent: SECURITY-REVIEWER
+    started_at: '2026-08-12T14:25:30Z'
+    completed_at: '2026-08-12T14:32:05Z'
+    actual_minutes: 6.6
+    rework_count: 0
+    notes: >-
+      Initial pass (commit 806bc6dc), PASS on this batch's own new code plus
+      the ADHOC ISS-0688 fix together.
+
+  - step: step-02c-rereview1 (SECURITY-REVIEWER -- re-review of PIN-04 REWORK 1)
+    agent: SECURITY-REVIEWER
+    started_at: '2026-08-12T15:42:41Z'
+    completed_at: '2026-08-12T15:47:35Z'
+    actual_minutes: 4.9
+    rework_count: 0
+    notes: >-
+      Re-review (commit 4ae9a441) of BACKEND-DEV's REWORK 1 fix (commit
+      49ae102a) for the PIN-04 AC2/AC3 sub-process inheritance gap -- see
+      test_designer_pin04_rework above. PASS.
+
+  - step: step-03 (TEST-DESIGNER -- specs + integration tests, fail-first discovery pass)
+    agent: TEST-DESIGNER
+    started_at: '2026-08-12T14:34:47Z'
+    completed_at: '2026-08-12T14:52:30Z'
+    actual_minutes: 17.7
+    rework_count: 0
+    notes: >-
+      Wrote test specs and integration tests for all 4 requirements;
+      discovered the PIN-04 AC2/AC3 implementation gap (see
+      test_designer_pin04_rework above) via genuine fail-first test failures
+      against real code, not against a gap in the test design itself.
+
+  - step: step-03b (TEST-DESIGN-VALIDATOR -- hard gate)
+    agent: TEST-DESIGN-VALIDATOR
+    started_at: '2026-08-12T15:52:01Z'
+    completed_at: '2026-08-12T15:57:49Z'
+    actual_minutes: 5.8
+    rework_count: 0
+    notes: >-
+      PASS after the PIN-04 REWORK 1 fix and its SECURITY-REVIEWER
+      re-review. Independently verified the bundled test-fixture edit in
+      commit 49ae102a was a legitimate reachability fix, not a weakened
+      assertion -- see test_designer_pin04_rework above.
+
+  - step: step-04 (TEST-RUNNER -- full report run)
+    agent: TEST-RUNNER
+    started_at: '2026-08-12T16:01:59Z'
+    completed_at: '2026-08-12T16:12:55Z'
+    actual_minutes: 10.9
+    rework_count: 0
+    notes: >-
+      Report written to tests/reports/report-2026-08-12-WF02-batch-5-20260812.yaml,
+      PASS. Unit suite 1071/1071 (0 fail, 64 pre-existing skips);
+      test-integration-pin03 5/5, -pin04 5/5, -pin05 4/4, -prm01 5/5; plus
+      overlap regression checks -pin01 9/9, -pin02 5/5, -ee09 5/5, zero
+      regressions. The ~40-binary test-integration-main umbrella sweep did
+      not complete within this session's execution window after two
+      attempts -- reported explicitly as a MINOR limitation (consistent with
+      the prior batch-4 report), not silently omitted.
+
+  - step: step-05 (RELEASE-VALIDATOR -- validation, PARTIAL / split release, own new finding)
+    agent: RELEASE-VALIDATOR
+    started_at: '2026-08-12T16:16:57Z'
+    completed_at: '2026-08-12T16:36:32Z'
+    actual_minutes: 19.6
+    rework_count: 0
+    notes: >-
+      Single pass, no rework needed at this gate itself -- but discovered and
+      filed ISS-0689/GH-748 (see release_validator_finding above),
+      independently re-ran all 4 batch-specific integration targets plus 3
+      overlap-regression targets plus the full unit suite, and split the
+      release: PIN-04/PIN-05/PRM-01 approved in full; PIN-03 held at
+      partially-approved with the single unmet AC enumerated explicitly,
+      matching batch-4's PIN-01 precedent status value and reasoning.
+
+  - step: step-06 (DOC-UPDATER -- this step)
+    agent: DOC-UPDATER
+    started_at: '2026-08-12T16:51:03Z'
+    completed_at: PENDING_AT_WRITE_TIME
+    actual_minutes: null
+    rework_count: 0
+    notes: >-
+      docs/requirements.yaml: PIN-04/PIN-05/PRM-01 set to RELEASED, PIN-03
+      set to TESTED (matching PIN-01's own precedent status value from the
+      immediately preceding batch), all four via tools/reqctl.py set-status
+      (canonical write path). PIN-03's note records the specific met/unmet
+      ACs and tracking issue reference (ISS-0672/GH-306, the same issue as
+      PIN-01's), preserving the scope_marking_rationale provenance
+      distinction per the task description. docs/status/requirement_status.yaml
+      regenerated via reqctl.py render-status (463 entries). CHANGELOG.md
+      updated with a split-release entry naming the AC3 gap, the ADHOC
+      ISS-0688/GH-745 pre-existing-regression fix, the PIN-04 AC2/AC3 REWORK
+      1 cycle, and RELEASE-VALIDATOR's own ISS-0689/GH-748 finding. This
+      retrospective file. Exact completed_at for this step is stamped on the
+      handoff file itself at completion time (python tools/utcnow.py), not
+      invented here. This run's own Step Final (branch push, PR, CI
+      verification, squash-merge, branch deletion, return to clean main) is
+      performed as part of this same DOC-UPDATER dispatch, per this run's
+      explicit task instruction (unlike batch-4, where Step Final was a
+      separate follow-up handoff) -- recorded in the Step Final handoff and
+      this file's git_evidence-equivalent artifact list once complete.
+
+wall_clock_span:
+  from: '2026-08-12T11:11:40Z'   # batch claim (handoffs/batch_queue.json lock.locked_at)
+  to:   '2026-08-12T16:36:32Z'   # step-05 (RELEASE-VALIDATOR) completed_at -- last fully-timestamped step at retrospective write time
+  total_minutes: 324.9
+  note: >-
+    Wall-clock span from batch claim through step-05 (RELEASE-VALIDATOR)
+    completion; step-06 (this step)'s own completed_at is not yet known at
+    the time this file is written and will be stamped separately on the
+    handoff itself. Substantially shorter than batch-4 (673.6 min through
+    step-05, by far the longest Stage 16 batch run to date) -- this run had
+    one rework cycle (PIN-04 AC2/AC3) plus one ADHOC infrastructure fix,
+    versus batch-4's three concurrent rework threads (3-cycle BACKEND-DEV
+    rework, 3-round SECURITY-REVIEWER re-review chain, a separate
+    double-free sub-cycle) plus its own ADHOC fix.
+
+rework_steps:
+  - step: step-02a (BACKEND-DEV -- PIN-04 AC2/AC3 sub-process pin inheritance, REWORK 1)
+    summary: "See test_designer_pin04_rework above for full detail."
+
+rule_adjustments: []
+
+prevention_notes:
+  - >-
+    Second consecutive Stage 16 batch run (after batch-4's ISS-0684 psql-shim
+    defect) where a defect outside the batch's own requirement scope
+    surfaced mid-run and had to be diagnosed and fixed under time pressure
+    before the pipeline could proceed -- this run's (ISS-0688/GH-745, dead
+    bpm_effective_tenant_id() calls resurrected by a later merge/rebase) is
+    a genuine regression in previously-correct code, not a recurrence of a
+    previously-tracked issue, and its own masking mechanism (a per-tenant
+    SCHEMA shim silently falling back to the all-zero UUID rather than
+    erroring) meant it had already been silently broken for every non-default
+    tenant before this run's BACKEND-DEV happened to catch it during Step 2a
+    verification. Worth considering whether tools/lint_dropped_tenant_function.py
+    (added this run as the direct fix for this class of defect) should be
+    backfilled to check for other already-dropped SQL functions with the same
+    silent-fallback risk profile, rather than only the one function this
+    incident named.
+  - >-
+    This is the first Stage 16 batch run with a real, itemized
+    estimation.yaml (rules_version 1.1) -- batch-0 through batch-4 all
+    predate it. The estimate's per-step minutes are already visibly
+    miscalibrated against this run's actuals (see estimation.actual_vs_estimate
+    above), most sharply on backend-dev (9min estimated vs 41.5min actual for
+    the base implementation step alone, before ADHOC/rework time) and
+    release-validator (2min estimated vs 19.6min actual). No
+    rule_adjustments were made this run because the governing rule requires
+    >=2 CONSECUTIVE runs at the same difficulty/integration_surface pairing
+    before adjusting docs/metrics/estimation_rules.json, and this is the
+    first such data point. Flagging explicitly so the NEXT difficulty=4,
+    integration_surface=high run's retrospective checks this one's numbers
+    before deciding whether the 25% threshold is crossed twice in a row.
+  - >-
+    Third consecutive Stage 16 batch run (after batch-3's PAR-02 AC5/PAR-03
+    AC6, batch-4's PAR-05 events_legacy gap) where RELEASE-VALIDATOR's own
+    independent Step 5 verification caught a distinct finding no earlier gate
+    was scoped to catch -- though notably lower-severity this time (a stale
+    doc comment, ISS-0689/GH-748, rather than an unimplemented AC), because
+    the AC-level gap on the same subsystem (PIN-04 AC2/AC3) was already
+    caught two gates earlier by TEST-DESIGNER at Step 3. Continues to support
+    considering whether CODE-DESIGN-VALIDATOR's Step 1b review should include
+    a check for stale doc-comment risk on any test file a REWORK commit
+    touches, closing this specific gap one step earlier in future runs.
+
+artifacts:
+  - handoffs/WF02-batch-5-20260812/step-01-code-designer.json
+  - handoffs/WF02-batch-5-20260812/step-01b-code-design-validator.json
+  - handoffs/WF02-batch-5-20260812/step-02a-adhoc-fix-iss0688.json
+  - handoffs/WF02-batch-5-20260812/step-02a-backend-dev.json
+  - handoffs/WF02-batch-5-20260812/step-02c-security-reviewer.json
+  - handoffs/WF02-batch-5-20260812/step-02c-security-reviewer-rereview1.json
+  - handoffs/WF02-batch-5-20260812/step-03-test-designer.json
+  - handoffs/WF02-batch-5-20260812/step-03b-test-design-validator.json
+  - handoffs/WF02-batch-5-20260812/step-04-test-runner.json
+  - handoffs/WF02-batch-5-20260812/step-05-release-validator.json
+  - handoffs/WF02-batch-5-20260812/step-06-doc-updater.json
+  - handoffs/WF02-batch-5-20260812/estimation.yaml
+  - src/design/pin-03-no-fallback-to-latest-version.md
+  - src/design/pin-04-pin-resolution-replay-subprocess.md
+  - src/design/pin-05-explicit-instance-pin-rebind.md
+  - src/design/prm-01-promotion-plan-diff-report.md
+  - src/engine/instance.zig
+  - src/engine/pin_resolver.zig
+  - src/engine/reconstruction.zig
+  - src/api/routes/pin_rebind.zig
+  - src/api/routes/promotions.zig
+  - src/definition/store.zig
+  - src/definition/export_import.zig
+  - src/definition/snapshot.zig
+  - src/obs/audit.zig
+  - src/entities/commands.zig
+  - tools/lint_dropped_tenant_function.py
+  - tests/integration/pin03_no_fallback_to_latest_version_test.zig
+  - tests/integration/pin04_pin_resolution_replay_subprocess_test.zig
+  - tests/integration/pin05_explicit_instance_pin_rebind_test.zig
+  - tests/integration/prm01_promotion_plan_diff_report_test.zig
+  - tests/specs/PIN-03.md
+  - tests/specs/PIN-04.md
+  - tests/specs/PIN-05.md
+  - tests/specs/PRM-01.md
+  - tests/reports/report-2026-08-12-WF02-batch-5-20260812.yaml
+  - docs/status/release-stage16-WF02-batch-5-20260812.yaml
+  - docs/status/requirement_status.yaml
+  - docs/issues/ISS-0688.json
+  - docs/issues/ISS-0689.json
+  - CHANGELOG.md
+  - docs/requirements.yaml
+
+next_action: >-
+  Step Final (branch push, PR, CI verification, squash-merge, branch
+  deletion, return to clean main) is performed within this same DOC-UPDATER
+  dispatch per this run's explicit task instruction. A future batch
+  resolving ISS-0672/GH-306 (service_catalog version/status column) unblocks
+  both PIN-01 AC1/AC2 and PIN-03 AC3 together -- they should be revisited in
+  the same follow-up batch since both are blocked on the identical schema
+  change. ISS-0689/GH-748 (stale PIN-04 test-file doc comment) remains open
+  on the global queue for a documentation-only follow-up fix.

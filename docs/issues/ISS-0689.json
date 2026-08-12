@@ -1,0 +1,13 @@
+{
+  "id": "ISS-0689",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/748",
+  "severity": "MINOR",
+  "status": "OPEN",
+  "title": "pin04_pin_resolution_replay_subprocess_test.zig header comment stale after AC2/AC3 inheritance fix",
+  "scope": "tests/integration/pin04_pin_resolution_replay_subprocess_test.zig (doc comment only, no functional defect)",
+  "discovered_by": "RELEASE-VALIDATOR",
+  "discovered_during": "WF02-batch-5-20260812 Step 5 (independent verification of PIN-03/PIN-04/PIN-05/PRM-01)",
+  "description": "The file's header doc comment (lines 19-36) still describes PIN-04 AC2/AC3 sub-process pin inheritance as unimplemented and TC-PIN-04-03/04 as failing, but commit 49ae102a fixed the gap and this session's own live re-run confirms 5/5 tests pass including TC-PIN-04-03/04. The header was never updated after the fix landed.",
+  "disposition": "Does NOT block PIN-04's release -- purely a stale doc-comment, actual behavior is correct and tested live this session.",
+  "created_at": "2026-08-12T16:36:32Z"
+}

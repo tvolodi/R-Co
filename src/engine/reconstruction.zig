@@ -20,6 +20,7 @@ const Token = transition_mod.Token;
 const TransitionEvent = transition_mod.TransitionEvent;
 const PendingEvent = transition_mod.PendingEvent;
 const snapshot_mod = @import("../definition/snapshot.zig");
+pub const pin_resolver_mod = @import("pin_resolver.zig");
 
 /// Uuid is [16]u8 — same concrete type as snapshot_mod.Uuid and instance_mod.Uuid.
 pub const Uuid = snapshot_mod.Uuid;
@@ -262,6 +263,232 @@ pub fn reconstructInstance(
     }
 
     return state;
+}
+
+// ---------------------------------------------------------------------------
+// PIN-04: reconstructEffectivePins
+// ---------------------------------------------------------------------------
+
+/// Reconstruct the CURRENT effective pin set for `instance_id` by reading
+/// ONLY the event log — the INSTANCE_STARTED row's pinned_versions[] payload
+/// (PIN-02) as the base set, merged with every INSTANCE_PINS_REBOUND row
+/// (PIN-05) in event order via pin_resolver_mod.mergeEffectivePins() (PIN-04
+/// AC1, AC4, AC5).
+///
+/// Open questions §1 (PIN-04 design): implemented as a separate sibling
+/// function rather than widening reconstructInstance()'s return type —
+/// avoids touching every existing reconstructInstance() call site (a wider
+/// blast radius the design explicitly leaves to BACKEND-DEV's judgement).
+///
+/// Issues NO read against service_catalog or process_module_catalog (PIN-04
+/// AC5) — only `events`/`events_archive`, exactly as reconstructInstance()
+/// itself does. Never reads the live catalog.
+///
+/// Security: instance_id is bound as $1::uuid — no SQL string interpolation.
+pub fn reconstructEffectivePins(
+    allocator: std.mem.Allocator,
+    pool: *Pool,
+    instance_id: Uuid,
+) ReconstructionError![]pin_resolver_mod.EffectivePin {
+    var row_arena = std.heap.ArenaAllocator.init(allocator);
+    defer row_arena.deinit();
+    const ra = row_arena.allocator();
+
+    const inst_id_hex = uuidToHex(ra, instance_id) catch return ReconstructionError.OutOfMemory;
+
+    const conn = pool.acquire() catch |err| switch (err) {
+        PoolError.ExhaustedPool => return ReconstructionError.PoolExhausted,
+        else => return ReconstructionError.QueryFailed,
+    };
+    defer pool.release(conn);
+
+    // Only the two event types this merge cares about — a narrower query
+    // than reconstructInstance()'s full replay, since no transition() call
+    // is needed to compute the effective pin set (PIN-04 Scoping note: this
+    // is a read of already-persisted, already-resolved data).
+    // Security: $1 = instance_id — bound as $N, no SQL string interpolation.
+    const sql =
+        \\SELECT event_id::text, event_type, payload, sequence_number
+        \\FROM events
+        \\WHERE instance_id = $1::uuid
+        \\  AND event_type IN ('instance_started', 'INSTANCE_PINS_REBOUND')
+        \\ORDER BY sequence_number ASC
+    ;
+    const sql_archive =
+        \\SELECT event_id::text, event_type, payload, sequence_number
+        \\FROM events_archive
+        \\WHERE instance_id = $1::uuid
+        \\  AND event_type IN ('instance_started', 'INSTANCE_PINS_REBOUND')
+        \\ORDER BY sequence_number ASC
+    ;
+
+    var rows = conn.query(ra, sql, &.{inst_id_hex}) catch
+        return ReconstructionError.QueryFailed;
+    defer rows.deinit();
+
+    // Fall back to the archive table if nothing was found live — mirrors
+    // reconstructInstance()'s UNION ALL intent without requiring the archive
+    // table to exist (some unit-test environments lack it).
+    if (rows.rows.len == 0) {
+        var archive_rows = conn.query(ra, sql_archive, &.{inst_id_hex}) catch null;
+        if (archive_rows) |*ar| {
+            defer ar.deinit();
+            if (ar.rows.len > 0) {
+                return mergeFromRows(allocator, ra, ar.rows);
+            }
+        }
+        return ReconstructionError.InstanceNotFound;
+    }
+
+    return mergeFromRows(allocator, ra, rows.rows);
+}
+
+/// Shared row-walking logic for reconstructEffectivePins() — separated so
+/// the live-table and archive-table paths above don't duplicate the parse
+/// loop. `rows` must already be ordered by sequence_number ASC.
+fn mergeFromRows(
+    allocator: std.mem.Allocator,
+    ra: std.mem.Allocator,
+    rows: []const []?[]u8,
+) ReconstructionError![]pin_resolver_mod.EffectivePin {
+    var started_pins: []pin_resolver_mod.PinnedVersion = &.{};
+    var started_event_id: []const u8 = "";
+    var rebind_events = std.ArrayList(pin_resolver_mod.RebindEventRow).empty;
+
+    for (rows) |row| {
+        const event_id = colGet(row, 0);
+        const event_type = colGet(row, 1);
+        const payload_json = colGet(row, 2);
+
+        if (std.mem.eql(u8, event_type, "instance_started")) {
+            started_event_id = event_id;
+            started_pins = parseStartedPins(ra, payload_json) catch
+                return ReconstructionError.ReplayFailed;
+        } else if (std.mem.eql(u8, event_type, "INSTANCE_PINS_REBOUND")) {
+            const changes = parseReboundChanges(ra, payload_json) catch
+                return ReconstructionError.ReplayFailed;
+            rebind_events.append(ra, .{ .event_id = event_id, .changes = changes }) catch
+                return ReconstructionError.OutOfMemory;
+        }
+    }
+
+    if (started_event_id.len == 0) return ReconstructionError.InstanceNotFound;
+
+    return pin_resolver_mod.mergeEffectivePins(
+        allocator,
+        started_pins,
+        started_event_id,
+        rebind_events.items,
+    ) catch return ReconstructionError.OutOfMemory;
+}
+
+/// Parse the "pinned_versions" array out of an instance_started event
+/// payload — mirrors instance.zig's serialisePinnedVersions() output shape
+/// in reverse. All returned strings are allocated from `ra` (the caller's
+/// row-scoped arena) — the caller does not need to free them individually.
+fn parseStartedPins(ra: std.mem.Allocator, payload_json: []const u8) error{ OutOfMemory, ParseFailed }![]pin_resolver_mod.PinnedVersion {
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        ra,
+        payload_json,
+        .{ .allocate = .alloc_always },
+    ) catch return error.ParseFailed;
+    const obj = switch (parsed.value) {
+        .object => |o| o,
+        else => return error.ParseFailed,
+    };
+    const pv_val = obj.get("pinned_versions") orelse return &.{};
+    const arr = switch (pv_val) {
+        .array => |a| a,
+        else => return &.{},
+    };
+
+    var out = std.ArrayList(pin_resolver_mod.PinnedVersion).empty;
+    for (arr.items) |item| {
+        const o = switch (item) {
+            .object => |oo| oo,
+            else => continue,
+        };
+        const kind_str = jsonStr(o, "kind") orelse continue;
+        const kind = parsePinKind(kind_str) orelse continue;
+        const ref = jsonStr(o, "ref") orelse continue;
+        const resolved_id = jsonStr(o, "resolved_id") orelse continue;
+        const version = jsonStr(o, "version") orelse continue;
+        const source_str = jsonStr(o, "source") orelse "resolved";
+        const source = parsePinSource(source_str);
+
+        out.append(ra, .{
+            .kind = kind,
+            .ref = ref,
+            .resolved_id = resolved_id,
+            .version = version,
+            .source = source,
+        }) catch return error.OutOfMemory;
+    }
+    return out.toOwnedSlice(ra);
+}
+
+/// Parse the "changes" array out of an INSTANCE_PINS_REBOUND event payload
+/// (PIN-05's RebindChange shape). All returned strings are allocated from
+/// `ra` — the caller does not need to free them individually.
+fn parseReboundChanges(ra: std.mem.Allocator, payload_json: []const u8) error{ OutOfMemory, ParseFailed }![]pin_resolver_mod.RebindChangeEntry {
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        ra,
+        payload_json,
+        .{ .allocate = .alloc_always },
+    ) catch return error.ParseFailed;
+    const obj = switch (parsed.value) {
+        .object => |o| o,
+        else => return error.ParseFailed,
+    };
+    const changes_val = obj.get("changes") orelse return &.{};
+    const arr = switch (changes_val) {
+        .array => |a| a,
+        else => return &.{},
+    };
+
+    var out = std.ArrayList(pin_resolver_mod.RebindChangeEntry).empty;
+    for (arr.items) |item| {
+        const o = switch (item) {
+            .object => |oo| oo,
+            else => continue,
+        };
+        const kind_str = jsonStr(o, "kind") orelse continue;
+        const kind = parsePinKind(kind_str) orelse continue;
+        const ref = jsonStr(o, "ref") orelse continue;
+        const prior_version = jsonStr(o, "prior_version") orelse continue;
+        const new_version = jsonStr(o, "new_version") orelse continue;
+
+        out.append(ra, .{
+            .kind = kind,
+            .ref = ref,
+            .prior_version = prior_version,
+            .new_version = new_version,
+        }) catch return error.OutOfMemory;
+    }
+    return out.toOwnedSlice(ra);
+}
+
+fn jsonStr(obj: std.json.ObjectMap, field: []const u8) ?[]const u8 {
+    const v = obj.get(field) orelse return null;
+    return switch (v) {
+        .string => |s| s,
+        else => null,
+    };
+}
+
+fn parsePinKind(s: []const u8) ?pin_resolver_mod.PinKind {
+    if (std.mem.eql(u8, s, "catalog_entry")) return .catalog_entry;
+    if (std.mem.eql(u8, s, "variable_schema")) return .variable_schema;
+    if (std.mem.eql(u8, s, "module")) return .module;
+    return null;
+}
+
+fn parsePinSource(s: []const u8) pin_resolver_mod.PinSource {
+    if (std.mem.eql(u8, s, "override")) return .override;
+    if (std.mem.eql(u8, s, "inherited")) return .inherited;
+    return .resolved;
 }
 
 /// Re-arm unresolved waits from the durable instance_waits table.

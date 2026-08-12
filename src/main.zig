@@ -84,6 +84,9 @@ pub const api_auth = @import("api/middleware/auth.zig"); // API-08 auth middlewa
 pub const tenant_migration_admin = @import("admin/tenant_migration.zig"); // TNT-06 export/import admin handlers
 pub const tenant_lifecycle_admin = @import("admin/tenant_lifecycle.zig"); // ENV-05 reset/delete lifecycle handlers
 pub const promotion_routes = @import("api/routes/promotion.zig"); // ENV-03 definition promotion handler
+pub const promotions_routes = @import("api/routes/promotions.zig"); // PRM-01 promotion plan endpoint
+pub const pin_rebind_mod = @import("engine/pin_rebind.zig"); // PIN-05 explicit instance pin rebind
+pub const pin_rebind_routes = @import("api/routes/pin_rebind.zig"); // PIN-05 rebind-pins HTTP handler
 pub const tenant_status_middleware = @import("api/middleware/tenant_status.zig"); // TNT-06 MIGRATING status middleware
 pub const service_catalog_repo = @import("repository/service_catalog.zig"); // SVC-01/SVC-04 service catalog store
 pub const services_routes = @import("api/routes/services.zig"); // SVC-04 service catalog HTTP handlers
@@ -785,6 +788,16 @@ fn serveRequest(
                 const r = instance_routes.handleCancel(inst_store, task_store_inst, req_alloc, seg4, user_id);
                 resp_status = r.status_code;
                 resp_body = r.body;
+            } else if (std.mem.eql(u8, seg5, "pins") and method == .GET) {
+                // PIN-04 AC4: GET /api/v1/instances/:id/pins — must precede plain /:id
+                const r = instance_routes.handleGetPins(inst_store, req_alloc, seg4);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (std.mem.eql(u8, seg5, "rebind-pins") and method == .POST) {
+                // PIN-05: POST /api/v1/instances/:id/rebind-pins — must precede plain /:id
+                const r = pin_rebind_routes.handleRebindPins(inst_store.pool, req_alloc, user_id, seg4, body);
+                resp_status = r.status_code;
+                resp_body = r.body;
             } else if (seg5.len == 0 and method == .GET) {
                 // GET /api/v1/instances/:id
                 const r = instance_routes.handleGetById(inst_store, req_alloc, seg4);
@@ -1391,6 +1404,23 @@ fn serveRequest(
             } else if (method == .POST and seg6.len == 0) {
                 resp_status = 400;
                 resp_body = "{\"error\":\"invalid_lifecycle_action\"}";
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
+        } else if (std.mem.eql(u8, resource, "promotions")) {
+            // PRM-01: POST /api/v1/promotions
+            const actor = api_auth.AuthContext{
+                .user_id = user_id,
+                .role = .PLATFORM_ADMIN,
+                .is_bootstrap = false,
+                .token_id = user_id,
+                .principal = user_id,
+            };
+            if (seg4.len == 0 and method == .POST) {
+                const r = promotions_routes.handleCreatePromotionPlan(pool, req_alloc, actor, body);
+                resp_status = r.status_code;
+                resp_body = r.body;
             } else {
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";

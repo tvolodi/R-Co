@@ -1,0 +1,73 @@
+{
+  "handoff_id": "wf02-batch-5-20260812-01-code-designer",
+  "run_id": "WF02-batch-5-20260812",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-12T11:15:34Z",
+  "started_at": "2026-08-12T11:23:05Z",
+  "completed_at": "2026-08-12T11:32:18Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PIN-03",
+      "PIN-04",
+      "PIN-05",
+      "PRM-01"
+    ],
+    "related_handoff_ids": [
+      "wf02-batch-5-20260812-00-backend-dev"
+    ],
+    "artifacts_in": [
+      "docs/requirements.yaml",
+      "src/engine/pin_resolver.zig",
+      "src/design/pin-01-dependency-version-resolution.md",
+      "docs/processes/system/instance-version-pinning.md",
+      "src/engine/instance.zig",
+      "src/definition/promotion.zig",
+      "src/api/routes/promotion.zig",
+      "docs/issues/ISS-0672.json"
+    ]
+  },
+  "task": {
+    "description": "Design PIN-03 (no fallback to latest version), PIN-04 (pin resolution on replay and in sub-processes), PIN-05 (explicit instance pin rebind), and PRM-01 (promotion plan and diff report). Read the FULL body and acceptance criteria for each directly from docs/requirements.yaml (do not paraphrase from this handoff). Read docs/processes/system/instance-version-pinning.md in full (steps 11-17 are this batch's scope).\n\nCRITICAL CONTEXT: a prior batch (WF02-batch-4-20260811) implemented PIN-01 scoped down to AC3/AC4/AC5 only, because AC1 (service_catalog version/status resolution) and AC2 (module_ref/PLC-01 resolution) depend on infrastructure that does not exist in this codebase: service_catalog has no version/status column, and PLC-01 (process module catalog) is still status PENDING (confirmed by direct check today). This gap is tracked as ISS-0672/GH-306 (OPEN). Read src/design/pin-01-dependency-version-resolution.md in full (its Scoping note and Open questions #1/#2) and src/engine/pin_resolver.zig in full (its module docstring explains the AC3/4/5-only scope and how catalog_entry/module candidates are handled: catalog_entry resolves via a degenerate single-version stopgap against service_catalog, module candidates ALWAYS return UnresolvedModuleRef since PLC-01 does not exist).\n\nYOUR JOB: determine, for EACH of PIN-03/PIN-04/PIN-05/PRM-01, whether it hits the SAME missing-infrastructure wall PIN-01 did, or whether it can be fully implemented against what pin_resolver.zig and instance.zig already produce today (the PinnedVersion[] pin set, however scoped, IS real and IS written into INSTANCE_STARTED via PIN-02, which shipped RELEASED). Reasoning hint (verify this yourself, do not take it on faith): PIN-03 (no fallback to latest at EXECUTION time) and PIN-04 (replay reads pins from the event log, sub-process inheritance) and PIN-05 (explicit rebind via a new endpoint) are about BEHAVIOR AROUND whatever pin set exists -- they consume/extend the pin set PIN-01/PIN-02 already produce, they do not need to resolve NEW reference kinds themselves. It is plausible they are fully implementable today with zero new gap, but you must verify this by reading the actual AC text of each and cross-checking against what pin_resolver.zig/instance.zig actually do -- do not assume. If any AC of PIN-03/04/05 genuinely requires service_catalog version history or PLC-01 to be meaningfully testable (e.g. an AC that specifically exercises the DEPRECATED-version-after-instance-start scenario, which needs real catalog version history to express), flag it explicitly as an open question / scope note the same way PIN-01's design did, and note whether it can be tested via the variable_schema/pin_overrides kinds instead (which ARE real) as a scoped substitute. Do NOT silently attempt something impossible and do NOT silently skip an AC -- if something is out of scope, say so explicitly, mark the handoff PARTIAL with an explicit open question, per code-designer.md's own rule.\n\nPRM-01 is a DIFFERENT subsystem (promotion plan/diff, extends ENV-03) -- read src/definition/promotion.zig and src/api/routes/promotion.zig in full first (ENV-03's existing promoteDefinition()/export_import.zig machinery already does export/import/audit; PRM-01 needs a PRE-WRITE diff/plan computation, a new POST /api/v1/promotions endpoint gated on promotion.submit permission, and (per its AC text) a promotion_reviews table/row). PRM-01's body also references REPO-07 and PLC-01 for the diff surface -- apply the same honesty check: does PRM-01's own AC text require service_catalog version diffing or PLC-01 module diffing to pass, or can the diff plan (process graph, variable_schema, service catalog BINDINGS [not versions], permission rules) be computed fully against what exists today? Its own AC bullets (permission check, added/modified/removed diffing, EmptyPromotionPlan, InvalidPromotionSource) look implementable without either gap -- verify and confirm or refute this.\n\nClassify each requirement per templates/lego-catalog.md (Type A-E) with stated rationale, same as PIN-01's design did. Produce one design artefact per requirement (or a combined artefact per related group if that is cleaner -- your call, follow templates/lego-catalog.md's own guidance) in src/design/. No implementation code, no fenced code block over the linter's 40-line cap. Run python3 tools/lint_design_artefact.py <file> on every artefact you write before returning.",
+    "acceptance_criteria": [
+      "One design artefact per requirement (or justified combined artefact) exists in src/design/",
+      "Every PIN-03/PIN-04/PIN-05/PRM-01 acceptance criterion from docs/requirements.yaml is either designed for or explicitly flagged as an open question with honest rationale (no silent skips)",
+      "Design explicitly states whether PIN-03/04/05/PRM-01 hit the ISS-0672/GH-306 missing-infrastructure wall (service_catalog versioning, PLC-01) or not, with evidence",
+      "Type classification per templates/lego-catalog.md with stated rationale for each requirement",
+      "No implementation code in the design; no fenced code block exceeds 40 lines",
+      "python3 tools/lint_design_artefact.py passes (no BLOCKER) on every artefact written"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Design artefacts written for all four requirements (PIN-03, PIN-04, PIN-05, PRM-01), each classified Type E. PIN-04, PIN-05 and PRM-01 are fully designed against existing infrastructure with no ISS-0672/GH-306 gap in any of their AC bullets (verified against actual AC text and actual code: reconstruction.zig, service_task.zig, instance.zig's SERVICE_TASK loop, promotion.zig were all read in full). PIN-03 is PARTIAL: AC1/AC2/AC4/AC5 are fully designed (confirmed via code read that execution-time node handling never consults the pin set today -- a genuine, independently-scoped gap, NOT the ISS-0672 kind), but AC3 (pinned catalog entry set to DEPRECATED after instance start) hits the same ISS-0672/GH-306 wall PIN-01 AC1 hit: service_catalog has no status column, so there is no DEPRECATED value to set or test against. Flagged explicitly as an open question in pin-03's own design (Open questions #1), with a scoped structural substitute specified (prove retirement-doesn't-affect-in-flight-pins using the catalog_entry degenerate stopgap and variable_schema kinds PIN-01 already resolves) rather than silently skipped or silently attempted. Overall handoff marked PARTIAL because of this one AC, mirroring WF02-batch-4-20260811's PIN-01 precedent.",
+    "artifacts_out": [
+      "src/design/pin-03-no-fallback-to-latest-version.md",
+      "src/design/pin-04-pin-resolution-on-replay-and-sub-processes.md",
+      "src/design/pin-05-explicit-instance-pin-rebind.md",
+      "src/design/prm-01-promotion-plan-and-diff-report.md"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "PIN-03 AC3 (pinned catalog entry version set to DEPRECATED after instance start -> execution proceeds on the pinned version) cannot be coded or tested against real schema: service_catalog has no version/status column (same root cause as ISS-0672/GH-306, PIN-01 AC1). This is PIN-03's SECOND acceptance criterion blocked on the same missing schema concept as PIN-01 AC1. Tracked as an extension of ISS-0672/GH-306 rather than a new issue, since the root cause and required fix (REQ-ANALYST/ORCH decision on adding version/status columns to service_catalog vs. accepting the degenerate single-version reading) are identical. See src/design/pin-03-no-fallback-to-latest-version.md Open questions #1 for the full reasoning and the scoped structural substitute this design specifies instead."
+      },
+      {
+        "severity": "MINOR",
+        "description": "PRM-01's own AC text never describes writing a promotion_reviews row (only asserts one is NOT created on failure paths); the process document assigns that INSERT to PRM-04 (a later, not-yet-designed requirement), not PRM-01. This design therefore does not include a promotion_reviews migration. Flagged as an open question (prm-01-promotion-plan-and-diff-report.md Open questions #1) in case REQ-ANALYST intends PRM-01 itself to persist a minimal review row ahead of PRM-04's full review-state-machine -- would pull a Type C migration into PRM-01's own artefact set if so."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b) \u2014 PIN-04/PIN-05/PRM-01 are ready for full validation; PIN-03 needs validator confirmation that its AC3 open-question framing (PARTIAL, not silent skip) is acceptable before BACKEND-DEV proceeds, same as PIN-01's precedent handling in WF02-batch-4-20260811."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -4,33 +4,104 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-12
 
+### Split release — Stage 16 batch 5: PIN-04, PIN-05, PRM-01 RELEASED in full; PIN-03 TESTED but withheld (known gap)
+
+> **KNOWN GAP — NOT GLOSSED OVER:**
+> - [ISS-0672 / GH-306](https://github.com/tvolodi/R-Co/issues/306) (OPEN) — PIN-03's AC3
+>   (`WHEN the pinned catalog entry version is set to DEPRECATED after the instance started, THEN
+>   execution proceeds on the pinned version`) is unimplemented: `service_catalog` has no
+>   version/status column, so no `DEPRECATED` value exists anywhere in the schema for any code
+>   path to branch on. This is the **SAME underlying schema gap, tracked under the SAME issue
+>   number**, that already held PIN-01 AC1/AC2 at `TESTED` in batch-4. Unlike a typical
+>   partial-release gap, this was a **deliberate, validated scope-phasing decision** made
+>   explicitly by CODE-DESIGNER at Step 1 (`src/design/pin-03-no-fallback-to-latest-version.md`
+>   Scoping note and Open questions §1, flagged as a "BLOCKING gap" before implementation began)
+>   and confirmed PASS by CODE-DESIGN-VALIDATOR at Step 1b *knowing* AC3 was out of scope — not a
+>   late discovery or quality escape. `TC-PIN-03-05`, the test file's own designated AC3 test,
+>   explicitly disclaims full AC3 coverage in its own inline comments: it re-checks `resolved_id`
+>   equality (the same assertion shape as the AC2 test) rather than driving node execution through
+>   any DEPRECATED-equivalent state, because no such state can be constructed. AC1, AC2, AC4, AC5
+>   are fully implemented and independently re-run 4/4 passing.
+>
+> Because this is an unconditional bullet in a MUST-priority requirement's Acceptance Criteria
+> list, this project's own governing rule (`docs/anti-patterns.md`: "'will be addressed later' is
+> not an acceptance criterion") means PIN-03 cannot be marked unqualified `RELEASED`, consistent
+> with PIN-01's own precedent for this exact issue one batch ago. **PIN-04, PIN-05 and PRM-01
+> have no comparable gap and are RELEASED in full below.** Full reasoning:
+> `docs/status/release-stage16-WF02-batch-5-20260812.yaml`.
+
+- **PIN-04 — Pin resolution on replay and in sub-processes — RELEASED.** `src/engine/instance.zig`
+  reads the effective pin set during state reconstruction solely from `INSTANCE_STARTED`/
+  `INSTANCE_PINS_REBOUND` event history, never from the live service catalog or module registry
+  (`reconstructEffectivePins()`, confirmed by mutating the live catalog after instance start and
+  observing no change to the reconstructed result). Sub-process children inherit the parent's pin
+  set via a new `createWithParentInheritance()` path, merging against
+  `reconstructEffectivePins()`'s output; a child reference whose own resolution would differ from
+  an inherited pin instead uses the inherited pin, with the conflict recorded in the child's
+  `INSTANCE_STARTED` payload (`pin_inheritance_conflicts`). `GET /api/v1/instances/{id}/pins`
+  returns each entry's `source_event_id`. All 5 ACs covered and independently re-run 5/5 passing.
+  **AC2/AC3 (sub-process pin inheritance and conflict recording) were genuinely unimplemented at
+  Step 2a** — see the TEST-DESIGNER discovery / REWORK 1 entry below.
+- **PIN-05 — Explicit instance pin rebind (SHOULD) — RELEASED.** `src/api/routes/pin_rebind.zig`
+  adds `POST /api/v1/instances/{id}/rebind-pins`: a valid rebind appends exactly one
+  `INSTANCE_PINS_REBOUND` event carrying `actor_id`, `reason`, and a `changes[]` array with
+  `ref`/`prior_version`/`new_version`; an unknown ref is rejected all-or-nothing (zero rows
+  written, even when mixed with a valid ref in the same request); a terminal instance
+  (`COMPLETED`/`CANCELLED`/`ERROR`, this codebase's actually-reachable terminal statuses) is
+  rejected with HTTP 409 `InstanceNotRebindable`; a missing `reason` field is rejected with HTTP
+  422. All 5 ACs covered and independently re-run 4/4 passing. Held to the same rigor as this
+  batch's MUST requirements despite its SHOULD priority.
+- **PRM-01 — Promotion plan and diff report — RELEASED.** `src/api/routes/promotions.zig` adds
+  `POST /api/v1/promotions`, computing a promotion plan before any write to the target tenant:
+  callers without `promotion.submit` get HTTP 403 with no `promotion_reviews` row created (the
+  table does not exist yet — persisting a review belongs to a later requirement, PRM-04, not this
+  batch); a target tenant with no existing version of `process_key` gets an all-`added` plan;
+  byte-identical graph JSON after canonicalisation returns `EmptyPromotionPlan`; a
+  `source_tenant_id` naming a `tenant_type=production` tenant is rejected with
+  `InvalidPromotionSource` before any definition is read; the target tenant's
+  `process_definitions` row count is confirmed identical before and after plan computation,
+  proving read-only behavior. All 5 ACs covered and independently re-run 5/5 passing — no
+  implementation gap of any kind found on independent re-reading.
+- **PIN-03 — No fallback to latest version — TESTED, withheld from RELEASED.**
+  `src/engine/instance.zig`/`src/engine/pin_resolver.zig` raise `PinMissing` (naming the reference,
+  no catalog lookup) for an unpinned reference, continue to invoke the pinned version despite a
+  newer catalog entry published in flight, land a retry-budget-exhausted step in the DLQ naming
+  the reference, and never substitute the current active version for a missing/unresolvable pin
+  (verified against a fully live, resolvable catalog entry). AC1, AC2, AC4, AC5 covered and
+  independently re-run 4/4 passing. **AC3 (DEPRECATED-after-start) is out of scope this batch by
+  deliberate design decision — see the gap box above.** Status held at `TESTED`, not `RELEASED`.
+- **Pre-existing regression found and fixed inline mid-run (ISS-0688/GH-745, unrelated to this
+  batch's own PIN-03/04/05/PRM-01 code, filed per No-Issue-Left-Local-Only):** `InstanceStore.create()`
+  in `src/engine/instance.zig` contained two live calls to `bpm_effective_tenant_id()`, a SQL
+  function already dropped by the `LEGACY_RLS`-to-`SCHEMA` cutover — confirmed via git archaeology
+  to have been resurrected by a later merge/rebase after SPT-03 had deliberately removed it, and
+  confirmed via `git diff main` to be genuinely pre-existing, not introduced by this batch.
+  Discovered by BACKEND-DEV during Step 2a verification: broke `POST /api/v1/instances` entirely
+  under `SCHEMA` mode (every `InstanceStore.create()` call would 42883-error), which blocked this
+  run's own testability since every fixture in every one of this batch's tests depends on instance
+  creation. Nine further survivor call sites across five more files carried the same dead
+  reference. Fixed via an ADHOC BACKEND-DEV dispatch (commit `89b73187`): the
+  `process_definitions` SELECT predicate was dropped (`SCHEMA`-mode `search_path` already scopes
+  it) and the `instance_projections` INSERT now binds `tenant_id` as an explicit `$1::uuid`
+  parameter. Re-reviewed by SECURITY-REVIEWER as part of the normal Step 2c gate.
+- **TEST-DESIGNER catch (implementation gap, caught by the pipeline as intended):** Step 3
+  discovered that PIN-04 AC2/AC3 (sub-process pin inheritance and conflict recording) was claimed
+  implemented by BACKEND-DEV's Step 2a summary but was, in fact, entirely unimplemented —
+  `InstanceStore.create()` had no `parent_instance_id`-aware merge step at all, zero matches for
+  `pin_inheritance_conflicts`/`inheritPins` outside design docs. Two real, fail-first-confirmed
+  tests (`TC-PIN-04-03`, `TC-PIN-04-04`) were written against AC2/AC3's literal text rather than
+  skipped, triggering **REWORK 1** on the BACKEND-DEV handoff (commit `49ae102a`, adding
+  `createWithParentInheritance()`), a SECURITY-REVIEWER re-review **PASS** on the new tenant-data-path
+  logic, and independent confirmation by TEST-DESIGN-VALIDATOR that a bundled test-fixture edit in
+  the same rework commit was a legitimate reachability fix, not a weakened assertion.
+- **RELEASE-VALIDATOR's own additional finding (Step 5, not caught by any earlier gate):**
+  [ISS-0689/GH-748](https://github.com/tvolodi/R-Co/issues/748) (MINOR) —
+  `tests/integration/pin04_pin_resolution_replay_subprocess_test.zig`'s file-header doc comment
+  still described AC2/AC3 as unimplemented and `TC-PIN-04-03`/`04` as failing, stale after commit
+  `49ae102a`'s fix. Cosmetic only — the underlying behavior is correct and independently re-verified
+  passing (5/5); does not affect release marking.
+
 ### Stage 14 — ENV-04 RELEASED (WF02-env04-20260812)
-
-- **ENV-04 — UI clearly labels test tenants and blocks accidental production actions — RELEASED.**
-  `web/src/components/layout/TestEnvironmentBanner.tsx` renders a persistent yellow banner on every
-  page when the current tenant has `tenant_type = 'test'`, displaying `"TEST ENVIRONMENT"` and the
-  paired production tenant name (AC-1, AC-3). `web/src/components/ui/ConfirmPromoteModal.tsx` gates
-  the "Promote to Production" action behind a confirmation modal with the prescribed warning text
-  (AC-2). `web/src/pages/admin/tenants/TenantsPage.tsx` renders a `[TEST]` suffix and distinct
-  visual style for test tenants in the admin tenant switcher (AC-4). Instance list isolation (AC-5)
-  enforced via tenant-scoped API calls. `web/src/auth/useTenantContext.ts` exposes `tenantType` and
-  `pairedProductionName` to all consumer components; `web/src/components/layout/AppShell.tsx`
-  mounts the banner unconditionally so it appears on every route. All 6 ACs covered and passing
-  (37/37 unit tests; all 5 pipeline gates PASS per release-WF02-env04-2026-08-12.yaml).
-
-### Stage 5 — IDN-05 RELEASED (WF02-idn05-20260812)
-
-- **IDN-05 — Named role registry and ROLE assignee resolution — RELEASED.**
-  `migrations/1154_idn05_tenant_role_registry.sql` creates the per-tenant `role_registry` table
-  mapping named business roles to `group_id`. `src/identity/role_registry.zig` implements
-  `RoleRegistry.bind()`, `lookup()`, and `list()`, enforcing tenant isolation and returning 404
-  for non-existent `group_id` on bind. `src/api/routes/identity.zig` exposes `GET /roles` and
-  `POST /roles`. `src/engine/instance.zig`'s task-activation path resolves `assignee_type = ROLE`
-  through `RoleRegistry.lookup()` and falls through to GROUP semantics per IDN-02; an unbound
-  role name creates the Task in PENDING status (mirrors the no-members edge case of EE-03).
-  All 5 ACs covered and passing.
-
-### Split release — Stage 16 batch 4: PAR-06, PIN-02 RELEASED in full; PAR-05, PIN-01 TESTED but withheld (known gaps)
 
 > **KNOWN GAPS — NOT GLOSSED OVER:**
 > - [ISS-0686 / GH-733](https://github.com/tvolodi/R-Co/issues/733) (MAJOR, **RESOLVED**) — PAR-05's

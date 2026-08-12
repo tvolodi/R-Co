@@ -405,11 +405,13 @@ pub const ENTITY_STREAM_DEFINITION_ID = "00000000-0000-0000-0000-0000000e2117";
 ///
 /// The projection row is written exactly as `src/engine/instance.zig` writes one
 /// for a process instance — `status 'ACTIVE'`, empty `variables`/`current_nodes`,
-/// `tenant_id` from `bpm_effective_tenant_id()` so the forced RLS policy admits it
-/// — differing only in carrying the entity sentinel `definition_id` and a NULL
-/// `correlation_key`. `ON CONFLICT (instance_id) DO NOTHING` keeps it idempotent
-/// across repeated calls, and also self-repairs a mapping row left over from
-/// before this fix, whose projection row never existed.
+/// `tenant_id` bound as an explicit $N parameter (ISS-0688 / GH-745: never from
+/// the dropped bpm_effective_tenant_id() SQL function or a session GUC — see
+/// the INV-1 fix pattern in src/engine/instance.zig) — differing only in
+/// carrying the entity sentinel `definition_id` and a NULL `correlation_key`.
+/// `ON CONFLICT (instance_id) DO NOTHING` keeps it idempotent across repeated
+/// calls, and also self-repairs a mapping row left over from before this fix,
+/// whose projection row never existed.
 fn getOrCreateEntityTypeInstance(
     allocator: std.mem.Allocator,
     conn: *db.Conn,
@@ -438,7 +440,7 @@ fn getOrCreateEntityTypeInstance(
     const id_str = row[0] orelse return error.TransactionFailed;
     const instance_id = try entities_mod.parseUuid(id_str);
 
-    try ensureEntityInstanceProjection(allocator, conn, schema_name, id_str);
+    try ensureEntityInstanceProjection(allocator, conn, schema_name, tenant_id, id_str);
 
     return instance_id;
 }
@@ -449,6 +451,7 @@ fn ensureEntityInstanceProjection(
     allocator: std.mem.Allocator,
     conn: *db.Conn,
     schema_name: []const u8,
+    tenant_id: []const u8,
     instance_id_str: []const u8,
 ) !void {
     const sql = std.fmt.allocPrint(allocator,
@@ -456,13 +459,13 @@ fn ensureEntityInstanceProjection(
         \\    (tenant_id, instance_id, definition_id, correlation_key,
         \\     status, variables, current_nodes, started_at, updated_at)
         \\VALUES
-        \\    ({s}.bpm_effective_tenant_id(), $1::uuid, $2::uuid, NULL,
+        \\    ($1::uuid, $2::uuid, $3::uuid, NULL,
         \\     'ACTIVE', '{{}}'::jsonb, '[]'::jsonb, NOW(), NOW())
         \\ON CONFLICT (instance_id) DO NOTHING
-    , .{ schema_name, schema_name }) catch return error.OutOfMemory;
+    , .{schema_name}) catch return error.OutOfMemory;
     defer allocator.free(sql);
 
-    conn.exec(sql, &.{ instance_id_str, ENTITY_STREAM_DEFINITION_ID }) catch return error.TransactionFailed;
+    conn.exec(sql, &.{ tenant_id, instance_id_str, ENTITY_STREAM_DEFINITION_ID }) catch return error.TransactionFailed;
 }
 
 fn updateProjection(

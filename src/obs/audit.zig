@@ -106,7 +106,6 @@ pub fn list(
         \\  trace_id::text
         \\FROM audit_entries
         \\WHERE 1=1
-        \\  AND tenant_id = bpm_effective_tenant_id()
     ) catch return error.OutOfMemory;
 
     var pidx: usize = 1;
@@ -389,9 +388,17 @@ pub fn validateAuditChain(
 /// Chain hash (XC-02): reads the previous chain hash WITHIN THE SAME TRANSACTION
 /// and computes this row's chain hash. FOR UPDATE is not needed here because the
 /// chain-hash query is part of the same serializable transaction.
+///
+/// ISS-0688 / GH-745: `tenant_id` is bound as an explicit $N parameter — the
+/// caller supplies it (e.g. from the request's tenant_context) rather than
+/// this function reading it from the dropped bpm_effective_tenant_id() SQL
+/// function. audit_entries.tenant_id still exists as a NOT NULL column under
+/// each per-tenant schema (SCHEMA-mode routing does not drop it, only the
+/// public copy was dropped), so it must be supplied explicitly.
 pub fn writeAuditInTx(
     allocator: std.mem.Allocator,
     conn: *db.Conn,
+    tenant_id: []const u8,
     actor_id: ?[]const u8,
     action: []const u8,
     resource_type: []const u8,
@@ -433,15 +440,16 @@ pub fn writeAuditInTx(
         \\    (tenant_id, audit_id, actor_id, action, resource_type,
         \\     resource_id, before_state, after_state, trace_id, pipeline_run_id)
         \\VALUES
-        \\    (bpm_effective_tenant_id(), $1::uuid,
-        \\     NULLIF($2, '')::uuid,
-        \\     $3, $4, $5,
-        \\     NULLIF($6, '')::jsonb,
+        \\    ($1::uuid, $2::uuid,
+        \\     NULLIF($3, '')::uuid,
+        \\     $4, $5, $6,
         \\     NULLIF($7, '')::jsonb,
-        \\     NULLIF($8, ''),
-        \\     NULLIF($9, '')::uuid)
+        \\     NULLIF($8, '')::jsonb,
+        \\     NULLIF($9, ''),
+        \\     NULLIF($10, '')::uuid)
     ,
         &.{
+            tenant_id,
             audit_id_hex,
             actor_param,
             action,

@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-12T15:16:01Z'
+last_updated: '2026-08-12T17:18:02Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4729,25 +4729,59 @@ requirements:
     - src/engine/pin_resolver.zig
     released_at: '2026-08-12T06:32:16Z'
   PIN-03:
-    status: DRAFT
+    status: TESTED
     stage: '16'
     priority: MUST
     title: No fallback to latest version
+    implemented_in:
+    - src/engine/instance.zig
+    - src/engine/pin_resolver.zig
+    note: 'AC1/AC2/AC4/AC5 met (PinMissing raised naming the reference with no catalog lookup, pinned
+      version invoked despite a newer catalog entry published in flight, retry-budget-exhausted DLQ entry
+      naming the reference, no fallback path for a missing pin against a fully live catalog entry -- all
+      independently re-run 4/4 passing). AC3 (WHEN the pinned catalog entry version is set to DEPRECATED
+      after the instance started, THEN execution proceeds on the pinned version) NOT MET -- service_catalog
+      has no version/status column, so no DEPRECATED value exists anywhere in the schema for any code
+      path to branch on; TC-PIN-03-05, the file''s own designated AC3 test, does not drive node execution
+      after the catalog mutation and is mechanically identical to the AC2 test (re-checks resolved_id
+      equality only). Tracked as ISS-0672 / GH-306 (OPEN) -- the SAME issue already blocking PIN-01 AC1/AC2
+      from batch-4, same root cause (service_catalog schema gap). Unlike a typical partial-release gap,
+      this was a deliberate, validated scope-phasing decision made explicitly by CODE-DESIGNER at Step
+      1 (src/design/pin-03-no-fallback-to-latest-version.md Scoping note and Open questions #1, flagged
+      as a BLOCKING gap before implementation began) and confirmed PASS by CODE-DESIGN-VALIDATOR at Step
+      1b KNOWING AC3 was out of scope -- not a late discovery or quality escape. This provenance does
+      not change the release marking (PIN-03 is one requirement with 5 MUST-priority AC bullets; 1 of
+      5 remains unimplemented regardless of how early or deliberately that was decided), consistent with
+      PIN-01''s own precedent for this exact issue. Held at TESTED, not RELEASED -- see docs/status/release-stage16-WF02-batch-5-20260812.yaml
+      partially_approved_requirements[0].scope_marking_rationale for full reasoning. When ISS-0672/GH-306
+      is resolved (service_catalog gains a version/status column), PIN-01 AC1/AC2 and PIN-03 AC3 should
+      be revisited together in the same follow-up batch.'
   PIN-04:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Pin resolution on replay and in sub-processes
+    implemented_in:
+    - src/engine/instance.zig
+    - src/engine/pin_resolver.zig
+    - src/api/routes/pin_rebind.zig
+    released_at: '2026-08-12T17:00:03Z'
   PIN-05:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: SHOULD
     title: Explicit instance pin rebind
+    implemented_in:
+    - src/api/routes/pin_rebind.zig
+    released_at: '2026-08-12T17:00:09Z'
   PRM-01:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Promotion plan and diff report
+    implemented_in:
+    - src/api/routes/promotions.zig
+    released_at: '2026-08-12T17:00:15Z'
   PRM-02:
     status: DRAFT
     stage: '16'
