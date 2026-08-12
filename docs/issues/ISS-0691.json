@@ -1,0 +1,39 @@
+{
+  "id": "ISS-0691",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/753",
+  "severity": "MINOR",
+  "status": "RESOLVED",
+  "title": "sim01_04_simulation_mode_test.zig TC-SIM-01-01: DebugAllocator leak - discarded AppendResult.record.metadata never freed",
+  "scope": "tests/integration/sim01_04_simulation_mode_test.zig (test-only leak, no production code path affected) -- plus same-shape adjacent leaks in tests/integration/adp06_pipeline_run_correlation_test.zig:271 (filed as GH-754), tests/integration/api03_instance_read_test.zig:988 (filed as GH-755), and the line 254 appendSimulationEvent leak in the same sim01 file (folded into this ISS at Step 00 since it is the same module and a one-line free).",
+  "discovered_by": "ISSUE-FIXER",
+  "discovered_during": "GH-753 triage",
+  "description": "tests/integration/sim01_04_simulation_mode_test.zig's TC-SIM-01-01 ('simulation events are isolated from real tenant queries') leaks one heap allocation per run, detected by std.testing.allocator (DebugAllocator). The leak is in the discarded AppendResult from store.append() at line 264: the returned record's .metadata field is heap-allocated by duplicateFromParams() (src/event_store/store.zig:1368) via allocator.dupe(u8, metadata), and since the result is captured with `_ =`, no code path frees it. The same test also leaks via the line-254 simulation.appendSimulationEvent(...) call (which returns the same .record); folded into this ISS since it is the same file and a single-line fix parallel to line 264. Confirmed independent of GH-752/ISS-0211 advisory-lock contention cascade: the leak reproduces on every successful run, not just on timeout/abort. Adjacent same-shape leaks in tests/integration/adp06_pipeline_run_correlation_test.zig:271 and tests/integration/api03_instance_read_test.zig:988 are in scope of GH-754 and GH-755 (filed at Step 00) and will be fixed in subsequent WF-03 runs; their existence does not change this ISS's resolution.",
+  "disposition": "Test-only allocation leak; no production code path affected; does not by itself fail a build unless DebugAllocator leak detection is explicitly checked/reported. Fix: in this ISS, capture the AppendResult at sim01_04_simulation_mode_test.zig line ~264 AND capture the returned EventRecord at line ~254, freeing record.metadata for both (matching the pattern already used for real_events / freeEventRecords in the same file). Production code unchanged.",
+  "adjacent_leaks_forwarded": [
+    {
+      "file": "tests/integration/adp06_pipeline_run_correlation_test.zig",
+      "line": 271,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/754",
+      "local_iss": "ISS-0694",
+      "reason": "Same-shape leak; separate file; deferred to its own WF-03 run per core-directive 'one issue, one run'."
+    },
+    {
+      "file": "tests/integration/api03_instance_read_test.zig",
+      "line": 988,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/755",
+      "local_iss": "ISS-0695",
+      "reason": "Same-shape leak; separate file; deferred to its own WF-03 run per core-directive 'one issue, one run'."
+    }
+  ],
+  "last_updated": "2026-08-12T22:19:30Z",
+  "resolution": {
+    "type": "capture_and_free_in_test",
+    "details": "At tests/integration/sim01_04_simulation_mode_test.zig line 254, capture the returned EventRecord from simulation.appendSimulationEvent into `sim_appended_record` and free its .metadata with `defer if (.metadata.len > 0) alloc.free(.metadata)`. At line 264, capture the returned AppendResult from store.append into `real_appended` and free `real_appended.record.metadata` the same way. The `len > 0` guard avoids freeing a literal returned by duplicateFromParams()'s `catch \"\"` failure path. Production code (src/event_store/store.zig, src/simulation/tenant_store.zig) untouched. Verified: zig build test-integration-stage11-sim-xc04 reports 14/14 tests passed AND 0 leaks (was 2 leaks pre-fix); zig build test still 1071/1135; tools/lint_test_isolation.baseline.json unmodified (only line-number shift of pre-existing T030 from +7 lines added above TC-SIM-03-01)."
+  },
+  "resolved_at": "2026-08-12T22:19:30Z",
+  "prevention": [
+    "When reviewing tests that capture the return value of Store.append() with `_ =`, the agent must verify whether the returned record has any heap-allocated fields (today: .metadata owned by the long-lived allocator via duplicateFromParams()). Same for simulation.appendSimulationEvent(), which returns the same record directly. A `_ =` capture silently leaks .metadata on every run under std.testing.allocator. Always capture, and free `.metadata` if `> 0`.",
+    "For any future AppendResult/EventRecord return value, mirror the existing freeEventRecords pattern (defer freeEventRecords / event_record.deinit / explicit metadata free with the empty-string guard)."
+  ],
+  "adjacent_leaks_forwarded_note": "ISS-0694/GH-754 and ISS-0695/GH-755 remain OPEN; their respective WF-03 runs will resolve them in their own branch+PR."
+}

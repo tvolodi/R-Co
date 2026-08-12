@@ -1,0 +1,13 @@
+{
+  "id": "ISS-0695",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/755",
+  "severity": "MINOR",
+  "status": "OPEN",
+  "title": "api03_instance_read_test.zig \u2014 DebugAllocator leak: discarded AppendResult.record.metadata",
+  "scope": "tests/integration/api03_instance_read_test.zig (test-only leak, no production code path affected). Forwarded from ISS-0691/GH-753 scope expansion at Step 00.",
+  "discovered_by": "ISSUE-FIXER",
+  "discovered_during": "GH-753 triage (Step 00 scope expansion)",
+  "description": "tests/integration/api03_instance_read_test.zig leaks one heap allocation per run. The discarded AppendResult captures the return value of store.append() with _ =, but the returned .record.metadata is heap-allocated by duplicateFromParams() (src/event_store/store.zig:1368). Same-shape leak as ISS-0691/GH-753 (different file, same root cause). Filed as a separate issue per core-directive one issue, one run.",
+  "disposition": "Test-only allocation leak; no production code path affected. Fix: capture the AppendResult and free result.record.metadata.",
+  "created_at": "2026-08-12T22:08:33Z"
+}
