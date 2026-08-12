@@ -1,0 +1,53 @@
+{
+  "handoff_id": "wf02-batch-5-20260812-01b-code-design-validator",
+  "run_id": "WF02-batch-5-20260812",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-12T11:35:17Z",
+  "started_at": "2026-08-12T11:35:21Z",
+  "completed_at": "2026-08-12T11:38:11Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PIN-03",
+      "PIN-04",
+      "PIN-05",
+      "PRM-01"
+    ],
+    "related_handoff_ids": [
+      "wf02-batch-5-20260812-01-code-designer"
+    ],
+    "artifacts_in": [
+      "src/design/pin-03-no-fallback-to-latest-version.md",
+      "src/design/pin-04-pin-resolution-on-replay-and-sub-processes.md",
+      "src/design/pin-05-explicit-instance-pin-rebind.md",
+      "src/design/prm-01-promotion-plan-and-diff-report.md"
+    ]
+  },
+  "task": {
+    "description": "Hard gate (WF-02 Step 1b) \u2014 validate CODE-DESIGNER output for PIN-03, PIN-04, PIN-05, PRM-01 (handoff wf02-batch-5-20260812-01-code-designer, result.status=PARTIAL). Read all four design artefacts in full, plus docs/requirements.yaml for the real AC text of each requirement, plus src/engine/pin_resolver.zig, src/engine/instance.zig, src/definition/promotion.zig, src/api/routes/promotion.zig for ground truth on what exists today. Verify: (1) PIN-04, PIN-05, PRM-01 are complete designs covering every one of their own AC bullets with no unjustified gaps or ambiguity BACKEND-DEV would have to resolve unilaterally. (2) PIN-03s PARTIAL framing is legitimate, not a cop-out: confirm AC3 (DEPRECATED-after-start) genuinely cannot be built against the current service_catalog schema (no version/status column) by checking the schema yourself (migrations/049_repository_service_catalog.sql and any later ALTERs), and confirm the design proposes a real, implementable scoped structural substitute for AC1/AC2/AC4/AC5 rather than skipping them too. (3) No implementation code in any artefact; no fenced code block exceeds 40 lines (python3 tools/lint_design_artefact.py already reported 0 findings per CODE-DESIGNER \u2014 spot check this claim). (4) Type classification (per templates/lego-catalog.md) is defensible for each requirement. Decide PASS (all four designs \u2014 including PIN-03s scoped PARTIAL coverage \u2014 are implementation-ready and the scope decision is honestly justified) or FAIL (design is incomplete, ambiguous, contains implementation code, or the PIN-03 scope-down is not actually forced by the schema). This determines whether BACKEND-DEV may proceed.",
+    "acceptance_criteria": [
+      "Every AC of PIN-04/PIN-05/PRM-01 is covered by the design with no ambiguity for BACKEND-DEV",
+      "PIN-03 AC3s scope-down is verified against the real service_catalog schema, not taken on faith",
+      "No implementation code present in any artefact; fenced code blocks all under 40 lines",
+      "Type classification is defensible for each requirement",
+      "Clear PASS/FAIL verdict with reasoning"
+    ],
+    "functions_to_call": [
+      "fn:validate-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All four design artefacts (PIN-03, PIN-04, PIN-05, PRM-01) validated as implementation-ready. PIN-04, PIN-05, PRM-01 cover every AC bullet with no ambiguity BACKEND-DEV would have to resolve unilaterally, no implementation code, all fenced code blocks under the 40-line cap (max 38, in PIN-05). PIN-03 PARTIAL framing is legitimate, not a cop-out: independently confirmed via migrations/049_repository_service_catalog.sql and every later ALTER (GBL-117 adds only scope/owner_tenant_id) that service_catalog has no version/status column, matching ISS-0672/GH-306 which already names PIN-03 AC3 as blocked by the same gap and was filed a batch earlier. PIN-03 proposes a real, testable scoped structural substitute for AC1/AC2/AC4/AC5 (execution-time PinMissing guard reusing the existing SERVICE_TASK completion loop, ErrorType taxonomy, and dead-letter routing) and does not skip them. Type E classification is defensible for all four requirements per templates/lego-catalog.md elimination order (Type C/A/D/B ruled out with cited reasons) and its \"What stays in Type E\" list (engine kernel/replay logic, cross-module orchestration). python tools/lint_design_artefact.py run independently against all four files: 0 findings on each, confirming CODE-DESIGNER claim. Ground truth spot-checked against src/engine/pin_resolver.zig, src/engine/instance.zig, src/engine/service_task.zig, src/engine/reconstruction.zig, src/definition/promotion.zig, src/api/routes/promotion.zig -- every referenced function/pattern (parseConfigFromNodeAttributes, resolveCatalogEndpoint, startSubProcessesForPendingEventsInTx, CompleteTaskError/FOR UPDATE NOWAIT locking pattern, promoteDefinition/NotATestTenant/ActiveDefinitionNotFound) exists as described. promotion_reviews table confirmed absent from all migrations, supporting PRM-01 Classification rationale section 1 scope boundary.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) for PIN-03 (scoped AC1/AC2/AC4/AC5), PIN-04, PIN-05, PRM-01 implementation"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
