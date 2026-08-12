@@ -34,7 +34,7 @@
     {
       "issue_id": "GH-501",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/501",
-      "title": "src/oidc/jwks.zig does not compile under Zig 0.16 yet `zig build` is green \u2014 ISS-0172 blind spot in the OIDC token-cache path",
+      "title": "src/oidc/jwks.zig does not compile under Zig 0.16 yet `zig build` is green — ISS-0172 blind spot in the OIDC token-cache path",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -51,7 +51,7 @@
     {
       "issue_id": "GH-502",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/502",
-      "title": "CapabilitySet.summary() does not compile under Zig 0.16 (stale std.ArrayList init) \u2014 a public, uncalled function body that `zig build test-lua` reports as green (ISS-0174)",
+      "title": "CapabilitySet.summary() does not compile under Zig 0.16 (stale std.ArrayList init) — a public, uncalled function body that `zig build test-lua` reports as green (ISS-0174)",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -203,7 +203,7 @@
     {
       "issue_id": "GH-526",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/526",
-      "title": "ISS-0206: store.zig rowToDefinition leaks on allocation failure \u2014 4 sequential dupes, zero errdefer guards",
+      "title": "ISS-0206: store.zig rowToDefinition leaks on allocation failure — 4 sequential dupes, zero errdefer guards",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -248,7 +248,7 @@
     {
       "issue_id": "GH-537",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/537",
-      "title": "ISS-0605 \u2014 test-env-verify C4 schema baseline fails: 5 tenants missing Postgres schemas (unrelated to BPM_TEST_DB_URL port fix)",
+      "title": "ISS-0605 — test-env-verify C4 schema baseline fails: 5 tenants missing Postgres schemas (unrelated to BPM_TEST_DB_URL port fix)",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -313,7 +313,7 @@
       "issue_id": "GH-566",
       "issue_number": 566,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/566",
-      "title": "ISS-0617 \u2014 exp601_tier_quota_test: tenant tier-profile override not applied, resolver returns 200000 default instead of 10 (4 blocks)",
+      "title": "ISS-0617 — exp601_tier_quota_test: tenant tier-profile override not applied, resolver returns 200000 default instead of 10 (4 blocks)",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -330,7 +330,7 @@
       "issue_id": "GH-567",
       "issue_number": 567,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/567",
-      "title": "ISS-0618 \u2014 sch02_timer_polling_test: skip-locked count is 0 and forced-failure rollback doesn't surface TransactionFailed (2 blocks)",
+      "title": "ISS-0618 — sch02_timer_polling_test: skip-locked count is 0 and forced-failure rollback doesn't surface TransactionFailed (2 blocks)",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -347,7 +347,7 @@
       "issue_id": "GH-568",
       "issue_number": 568,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/568",
-      "title": "ISS-0619 \u2014 idn02/idn03: group task claim and role-scoped task list return 403/500 instead of 200 (3 blocks)",
+      "title": "ISS-0619 — idn02/idn03: group task claim and role-scoped task list return 403/500 instead of 200 (3 blocks)",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -363,7 +363,7 @@
     {
       "issue_id": "GH-573",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/573",
-      "title": "GBL-134 dropped tenant_default copies of 4 PER_TENANT-classified tables \u2014 possible data loss, already executed",
+      "title": "GBL-134 dropped tenant_default copies of 4 PER_TENANT-classified tables — possible data loss, already executed",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -397,7 +397,7 @@
     {
       "issue_id": "GH-576",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/576",
-      "title": "quota_enforcement.zig reads PER_TENANT usage tables unqualified via pool \u2014 fails for every LEGACY_RLS tenant",
+      "title": "quota_enforcement.zig reads PER_TENANT usage tables unqualified via pool — fails for every LEGACY_RLS tenant",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -683,7 +683,7 @@
     {
       "issue_id": "ISS-0175",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/503",
-      "title": "LuaJIT build input luajit_relver.txt git-ignored but required by build.zig \u2014 fresh clone cannot build test-lua",
+      "title": "LuaJIT build input luajit_relver.txt git-ignored but required by build.zig — fresh clone cannot build test-lua",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -792,7 +792,7 @@
       "issue_id": "GH-383",
       "issue_number": 383,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/383",
-      "title": "ISS-0120 \u2014 EXP-402 orphan restore SQL leaves parameter $2 untyped",
+      "title": "ISS-0120 — EXP-402 orphan restore SQL leaves parameter $2 untyped",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -824,7 +824,7 @@
       "issue_id": "GH-382",
       "issue_number": 382,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/382",
-      "title": "ISS-0119 \u2014 Timer retry, pending, locking, and rollback semantics fail",
+      "title": "ISS-0119 — Timer retry, pending, locking, and rollback semantics fail",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -853,7 +853,7 @@
     {
       "issue_id": "GH-619",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/619",
-      "title": "ISS-0637: TC-EXT-02-INT-08 conn loses search_path after COMMIT \u2014 audit_entries query fails",
+      "title": "ISS-0637: TC-EXT-02-INT-08 conn loses search_path after COMMIT — audit_entries query fails",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -868,7 +868,7 @@
     {
       "issue_id": "GH-621",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/621",
-      "title": "TC-ADP-02-05: audit_entries.resource_id = $1::uuid vs TEXT column mismatch (C42883) \u2014 same root cause as ISS-0637",
+      "title": "TC-ADP-02-05: audit_entries.resource_id = $1::uuid vs TEXT column mismatch (C42883) — same root cause as ISS-0637",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -886,7 +886,7 @@
       "issue_id": "GH-618",
       "issue_number": 618,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/618",
-      "title": "ISS-0636: createSubscription ignores req.secret \u2014 webhook signing never activated via .secret field",
+      "title": "ISS-0636: createSubscription ignores req.secret — webhook signing never activated via .secret field",
       "severity": "MAJOR",
       "labels": [],
       "status": "RESOLVED",
@@ -935,7 +935,7 @@
       "issue_id": "GH-380",
       "issue_number": 380,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/380",
-      "title": "ISS-0117 \u2014 EXP-401 definition creation accepts invalid process graphs",
+      "title": "ISS-0117 — EXP-401 definition creation accepts invalid process graphs",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -952,7 +952,7 @@
       "issue_id": "GH-379",
       "issue_number": 379,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/379",
-      "title": "ISS-0116 \u2014 Dead-letter queue persistence, retry, discard, and alert behavior fails",
+      "title": "ISS-0116 — Dead-letter queue persistence, retry, discard, and alert behavior fails",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -969,7 +969,7 @@
       "issue_id": "GH-378",
       "issue_number": 378,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/378",
-      "title": "ISS-0115 \u2014 Task claim and group authorization behavior violates integration expectations",
+      "title": "ISS-0115 — Task claim and group authorization behavior violates integration expectations",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -986,7 +986,7 @@
       "issue_id": "GH-375",
       "issue_number": 375,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/375",
-      "title": "ISS-0112 \u2014 Migration/schema drift and shared database state break 42 integration tests",
+      "title": "ISS-0112 — Migration/schema drift and shared database state break 42 integration tests",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -1050,7 +1050,7 @@
       "issue_id": "GH-360",
       "issue_number": 360,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/360",
-      "title": "ISS-0102 \u2014 6 OIDC integration test files (oidc09/10/11/12/15/35) not wired into any zig build target, never execute",
+      "title": "ISS-0102 — 6 OIDC integration test files (oidc09/10/11/12/15/35) not wired into any zig build target, never execute",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -1067,7 +1067,7 @@
       "issue_id": "GH-359",
       "issue_number": 359,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/359",
-      "title": "ISS-0101 \u2014 tenant_default shadow table + OutOfOrderMigration false-positive on cold-start db_test",
+      "title": "ISS-0101 — tenant_default shadow table + OutOfOrderMigration false-positive on cold-start db_test",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -1134,7 +1134,7 @@
     {
       "issue_id": "GH-643",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/643",
-      "title": "migrations.zig has no tenant-only scope primitive \u2014 13 PER_TENANT shadow tables from ISS-0641 will keep recurring on cold-start",
+      "title": "migrations.zig has no tenant-only scope primitive — 13 PER_TENANT shadow tables from ISS-0641 will keep recurring on cold-start",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -1150,7 +1150,7 @@
       "issue_id": "GH-352",
       "issue_number": 352,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/352",
-      "title": "ISS-0097 \u2014 threadlocal tenant context not inherited by worker threads spawned mid-test",
+      "title": "ISS-0097 — threadlocal tenant context not inherited by worker threads spawned mid-test",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -1180,7 +1180,7 @@
       "issue_id": "GH-351",
       "issue_number": 351,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/351",
-      "title": "ISS-0096 \u2014 6 integration test files still query the stale table name 'dead_letter_queue' (renamed to 'dead_letter_items')",
+      "title": "ISS-0096 — 6 integration test files still query the stale table name 'dead_letter_queue' (renamed to 'dead_letter_items')",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -1197,7 +1197,7 @@
       "issue_id": "GH-348",
       "issue_number": 348,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/348",
-      "title": "ISS-0094 \u2014 GBL-081/GBL-082 audit_entries.resource_id fix never applies to tenant_default or any per-tenant schema (runForSchema blanket-skips GBL-* for non-public)",
+      "title": "ISS-0094 — GBL-081/GBL-082 audit_entries.resource_id fix never applies to tenant_default or any per-tenant schema (runForSchema blanket-skips GBL-* for non-public)",
       "severity": "MAJOR",
       "labels": [
         "bug"
@@ -1214,7 +1214,7 @@
       "issue_id": "GH-338",
       "issue_number": 338,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/338",
-      "title": "ISS-0089 \u2014 svc01_service_catalog_scope_test.zig writes unqualified SQL that resolves against tenant_default instead of public",
+      "title": "ISS-0089 — svc01_service_catalog_scope_test.zig writes unqualified SQL that resolves against tenant_default instead of public",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1231,7 +1231,7 @@
       "issue_id": "GH-301",
       "issue_number": 301,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/301",
-      "title": "ISS-0086 (GOV-02) \u2014 Decide whether requirements get an explicit depends_on field",
+      "title": "ISS-0086 (GOV-02) — Decide whether requirements get an explicit depends_on field",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1336,7 +1336,7 @@
       "started_at": null,
       "completed_at": "2026-08-10T16:52:00Z",
       "run_id": null,
-      "deferred_reason": "Duplicate queue entry for the same issue_id \u2014 see the other GH-654 entry (added_at 2026-08-10T05:37:18Z) which already carries the real resolution (completed_at 2026-08-10T05:57:26Z). Marking this duplicate RESOLVED rather than deleting it, to preserve queue history.",
+      "deferred_reason": "Duplicate queue entry for the same issue_id — see the other GH-654 entry (added_at 2026-08-10T05:37:18Z) which already carries the real resolution (completed_at 2026-08-10T05:57:26Z). Marking this duplicate RESOLVED rather than deleting it, to preserve queue history.",
       "issue_number": 654,
       "labels": [
         "bug"
@@ -1498,7 +1498,7 @@
     {
       "issue_id": "GH-679",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/679",
-      "title": "ISS-0658 \u2014 Aggregate zig build test-integration unstable in workspace r-co-2: unrelated failures and multi-minute hangs block clean verification",
+      "title": "ISS-0658 — Aggregate zig build test-integration unstable in workspace r-co-2: unrelated failures and multi-minute hangs block clean verification",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -1544,7 +1544,7 @@
       "issue_id": "GH-299",
       "issue_number": 299,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/299",
-      "title": "ISS-0084 (PI-09) \u2014 Operations runbook and a fail-fast startup assertion",
+      "title": "ISS-0084 (PI-09) — Operations runbook and a fail-fast startup assertion",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1561,7 +1561,7 @@
       "issue_id": "GH-297",
       "issue_number": 297,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/297",
-      "title": "ISS-0082 (PI-07) \u2014 Gate tiering, flakiness policy, CI path filters",
+      "title": "ISS-0082 (PI-07) — Gate tiering, flakiness policy, CI path filters",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1578,7 +1578,7 @@
       "issue_id": "GH-295",
       "issue_number": 295,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/295",
-      "title": "ISS-0080 (PI-05) \u2014 Scored test-tier rubric and the fail-first rule",
+      "title": "ISS-0080 (PI-05) — Scored test-tier rubric and the fail-first rule",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1595,7 +1595,7 @@
       "issue_id": "GH-294",
       "issue_number": 294,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/294",
-      "title": "ISS-0079 (PI-04) \u2014 One command surface",
+      "title": "ISS-0079 (PI-04) — One command surface",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1612,7 +1612,7 @@
       "issue_id": "GH-293",
       "issue_number": 293,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/293",
-      "title": "ISS-0078 (PI-03) \u2014 A Zig build and lint gate",
+      "title": "ISS-0078 (PI-03) — A Zig build and lint gate",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1629,7 +1629,7 @@
       "issue_id": "GH-292",
       "issue_number": 292,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/292",
-      "title": "ISS-0077 (PI-02) \u2014 Numbered security invariants, and a security-reviewer agent",
+      "title": "ISS-0077 (PI-02) — Numbered security invariants, and a security-reviewer agent",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1646,7 +1646,7 @@
       "issue_id": "GH-291",
       "issue_number": 291,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/291",
-      "title": "ISS-0076 (PI-01) \u2014 Split CLAUDE.md into glob-scoped instruction files",
+      "title": "ISS-0076 (PI-01) — Split CLAUDE.md into glob-scoped instruction files",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1677,7 +1677,7 @@
     {
       "issue_id": "GH-693",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/693",
-      "title": "ISS-0661 \u2014 .github/agents/ and .github/instructions/ (Copilot harness) independently drifted from .claude/agents/, not yet reconciled",
+      "title": "ISS-0661 — .github/agents/ and .github/instructions/ (Copilot harness) independently drifted from .claude/agents/, not yet reconciled",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -1694,7 +1694,7 @@
     {
       "issue_id": "GH-694",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/694",
-      "title": "ISS-0662 \u2014 stray issue_id \"--help\" junk entry in handoffs/global_queue.json",
+      "title": "ISS-0662 — stray issue_id \"--help\" junk entry in handoffs/global_queue.json",
       "severity": "MAJOR",
       "status": "RESOLVED",
       "lock": null,
@@ -1712,7 +1712,7 @@
       "issue_id": "GH-283",
       "issue_number": 283,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/283",
-      "title": "ISS-0054 \u2014 WF03 Stage11 releasefix rework1: deterministic integration run exposes ADP-09/ADP-10 assertion failures (no stall)",
+      "title": "ISS-0054 — WF03 Stage11 releasefix rework1: deterministic integration run exposes ADP-09/ADP-10 assertion failures (no stall)",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1729,7 +1729,7 @@
       "issue_id": "GH-281",
       "issue_number": 281,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/281",
-      "title": "ISS-0048 \u2014 WF03 Stage11 rework1: aggregate integration blocked by missing OIDC31 env prerequisites (BPM_IDP_BASE_URL/BPM_TEST_URL)",
+      "title": "ISS-0048 — WF03 Stage11 rework1: aggregate integration blocked by missing OIDC31 env prerequisites (BPM_IDP_BASE_URL/BPM_TEST_URL)",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1746,7 +1746,7 @@
       "issue_id": "GH-280",
       "issue_number": 280,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/280",
-      "title": "ISS-0040 \u2014 API-05 valid-boundary test cases (page_size bounds, ISO timestamp variants) have no integration test coverage",
+      "title": "ISS-0040 — API-05 valid-boundary test cases (page_size bounds, ISO timestamp variants) have no integration test coverage",
       "severity": "MAJOR",
       "labels": [
         "issue"
@@ -1840,7 +1840,7 @@
     {
       "issue_id": "ISS-0670",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/711",
-      "title": "PAR-02 AC5: EXECUTION_PARTITION_CREATED event not emitted \u2014 needs a platform-event append design",
+      "title": "PAR-02 AC5: EXECUTION_PARTITION_CREATED event not emitted — needs a platform-event append design",
       "severity": "MINOR",
       "status": "RESOLVED",
       "lock": null,
@@ -1868,13 +1868,13 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/306#issuecomment-5257910135",
       "title": "PIN-01 AC1: service_catalog has no version/status column",
       "severity": "MAJOR",
-      "status": "QUEUED",
+      "status": "DEFERRED",
       "lock": null,
       "added_at": "2026-08-11T19:35:04Z",
       "started_at": null,
       "completed_at": null,
       "run_id": null,
-      "deferred_reason": null
+      "deferred_reason": "Requires REQ-ANALYST/ORCH schema design decision (service_catalog versioning) before implementation. Not a code bug."
     },
     {
       "issue_id": "ISS-0673",
@@ -1894,11 +1894,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/715",
       "title": "PIN-01 resolveServiceCatalogRef() calls dropped bpm_effective_tenant_id() -- breaks SERVICE_TASK instance-start, not tenant-scoped in SCHEMA mode",
       "severity": "BLOCKER",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "lock": null,
       "added_at": "2026-08-11T20:36:33Z",
       "started_at": null,
-      "completed_at": null,
+      "completed_at": "2026-08-12T07:59:01Z",
       "run_id": null,
       "deferred_reason": null
     },
@@ -1946,12 +1946,12 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/720",
       "title": "par06 migration test: schema-agnostic catalog queries match every tenant schema",
       "severity": "MAJOR",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "lock": null,
       "added_at": "2026-08-12T03:06:13Z",
-      "started_at": null,
-      "completed_at": null,
-      "run_id": null,
+      "started_at": "2026-08-12T08:03:32Z",
+      "completed_at": "2026-08-12T08:21:18Z",
+      "run_id": "WF03-GH720-20260812",
       "deferred_reason": null
     },
     {
@@ -1972,12 +1972,12 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/722",
       "title": "PIN-01 resolve() leaks allocator-owned fields on error paths",
       "severity": "MAJOR",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "lock": null,
       "added_at": "2026-08-12T03:12:18Z",
-      "started_at": null,
-      "completed_at": null,
-      "run_id": null,
+      "started_at": "2026-08-12T08:03:32Z",
+      "completed_at": "2026-08-12T13:24:36Z",
+      "run_id": "WF03-GH722-20260812",
       "deferred_reason": null
     },
     {
@@ -1998,11 +1998,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/725",
       "title": "TC-PAR-06-05 fixture uses uppercase TASK_COMPLETED, silently skipped by reconstruction dispatcher",
       "severity": "MAJOR",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "lock": null,
       "added_at": "2026-08-12T03:44:57Z",
       "started_at": null,
-      "completed_at": null,
+      "completed_at": "2026-08-12T07:59:01Z",
       "run_id": null,
       "deferred_reason": null
     },
@@ -2024,11 +2024,11 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/729",
       "title": "clean_test_db.py orphan-tenant DELETE silently no-ops: WinGet psql.CMD shim drops -c SQL argument",
       "severity": "MAJOR",
-      "status": "QUEUED",
+      "status": "RESOLVED",
       "lock": null,
       "added_at": "2026-08-12T05:21:48Z",
       "started_at": null,
-      "completed_at": null,
+      "completed_at": "2026-08-12T08:10:00Z",
       "run_id": null,
       "deferred_reason": null
     },

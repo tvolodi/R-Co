@@ -1,0 +1,35 @@
+{
+  "handoff_id": "72000700-0000-0000-0000-000000000000",
+  "run_id": "WF03-GH720-20260812",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-12T08:21:18Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "iss_ref": "ISS-0678",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/720",
+    "branch": "feature/WF03-GH720-20260812"
+  },
+  "task": {
+    "description": "Step 7+Final for WF03-GH720-20260812: (1) CHANGELOG.md: ISS-0678 (GH-720): Add `AND table_schema = 'tenant_default'` / `schemaname = 'tenant_default'` filters to par06_instance_projections_event_window_test schema-introspection queries. Without the filter, queries matched all tenant schemas not just the target, masking failures on schema-per-tenant deployments.. (2) ISS-0678.json status RESOLVED. (3) Commit. (4) gh pr create --base main --title 'fix(test): ISS-0678 add table_schema filter to par06 schema-introspection queries (#720)'. (5) gh pr merge --squash --delete-branch. (6) git checkout main && git pull. (7) Update global_queue ISS-0678 RESOLVED. (8) gh issue close 720. (9) orchestrator.log RESOLVE/QUEUE_REL/LOOP. (10) lint_handoffs.py exit 0.",
+    "acceptance_criteria": [
+      "CHANGELOG updated",
+      "ISS resolved",
+      "PR merged",
+      "issue closed",
+      "queue RESOLVED"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG updated with ISS-0678 entry; ISS-0678.json set to RESOLVED; commit 30c465ef pushed; PR #736 squash-merged (merge SHA 4dbb601f); branch deleted; global_queue ISS-0678 RESOLVED; GH-720 closed; orchestrator.log appended; repo on clean main.",
+    "artifacts_out": ["CHANGELOG.md", "docs/issues/ISS-0678.json", "handoffs/global_queue.json", "PR #736"],
+    "issues": [],
+    "next_action": "Proceed to WF03-GH722-20260812"
+  },
+  "started_at": "2026-08-12T08:21:18Z",
+  "completed_at": "2026-08-12T13:24:36Z"
+}
