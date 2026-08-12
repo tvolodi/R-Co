@@ -1,0 +1,68 @@
+{
+  "handoff_id": "367af40b-5fa9-484b-bd17-748277792599",
+  "run_id": "WF03-GH716-20260812",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-12T09:27:10Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [
+      "PAR-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0675.json",
+      "handoffs/WF03-GH716-20260812/step-01-issue-fixer.json",
+      "handoffs/WF03-GH716-20260812/step-02-code-designer.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 3 (implement fix) for GH-716 / ISS-0675. CODE-DESIGNER Step 2 (this run) returned SKIPPED with a full verified rationale (see that handoff's result.summary) confirming this is a pure code-deletion task with zero live callers and zero design risk. Implement exactly the confirmed deletion:\n\n1. In src/event_store/store.zig, DELETE:\n   - Store.reconstructBounded() (public method, ~line 1259-1353) including its doc comment block (~line 1233-1258, the 'reconstructBounded (PAR-06 AC1, AC2, AC3, AC5, AC6)' section header comment) -- note the doc comment contains a STALE/INACCURATE claim that reconstruction.zig 'is this store method's caller'; this is being removed, not corrected, since the whole function goes.\n   - lookupOrRepairEventWindowInternal() private helper (~line 1355-1457)\n   - mergeEventRowsBySequence() private helper (~line 1662-1710)\n   - rowSequenceNumber() private helper (~line 1712-1720)\n   - The EventWindow struct (~line 205) IF it is only used by the deleted functions (verify via grep -n \"EventWindow\" src/event_store/store.zig after removing the above -- if zero remaining references, delete the struct too)\n   - StoreError.ReconstructionWindowMissing and StoreError.UnboundedReconstructionRefused variants from the StoreError error set (~line 87, ~line 93) and their doc comments -- confirmed by CODE-DESIGNER to have zero live return sites and zero exhaustive-switch dependents once the dead helper is removed (retentionPolicyErrorCode()'s switch at ~line 1737 is non-exhaustive with an else catch-all and does not name either variant)\n2. Clean up stale references to the deleted function found during design verification:\n   - src/engine/instance.zig:83's comment mentions 'reconstructBounded()'s exclusive `<` comparison' as a numeric-convention reference -- reword it to describe the convention without naming the now-deleted function (e.g. reference reconstruction.zig's eventWindowForInstanceInTx()/reconstructInstance() bounded-query convention instead, since that is the still-live code establishing the same convention)\n   - src/design/par-06-time-bounded-reconstruction.md: this is a historical design document: do NOT rewrite its Open Questions section rationale (that's the accurate historical record of the ambiguity that caused this dead code), but DO add a brief note/addendum (e.g. a short 'Resolution (GH-716)' section) stating the ambiguity was resolved by deleting Store.reconstructBounded() and keeping reconstruction.zig as sole entry point, with a pointer to ISS-0675/GH-716\n   - tests/integration/par06_reconstruction_bounded_test.zig's file header (~line 7-12) currently describes Store.reconstructBounded() as 'DEAD CODE' in present tense; update it to past tense noting it WAS dead code and has now been removed (GH-716), since the function will no longer exist to describe\n   - tests/specs/PAR-06.md (~line 37-48): same treatment -- update present-tense 'is DEAD CODE'/'unreferenced' language to past tense noting removal via GH-716, if still accurate to leave the historical context\n   - src/event_store/store.zig:1713's comment 'reconstructBounded() query branches share' on rowSequenceNumber() is being deleted along with rowSequenceNumber() itself, so no action needed there\n\n3. Verify the codebase still compiles: `zig build` (or the project's standard build command) exits 0.\n4. Verify existing tests still pass: `zig build test-integration-par06` and `zig build test-integration-par06-reconstruction` both exit 0 -- these should be UNAFFECTED by this change since they already exercise only the live reconstruction.zig path (per the test file's own header, confirmed by ISSUE-FIXER).\n5. Run the full unit test suite (`zig build test` or the project's equivalent) and confirm no regressions.\n6. Update docs/issues/ISS-0675.json: set status to RESOLVED, fill in `resolution` (what was deleted, why, evidence tests still pass), `verification` (which tests were run and passed), `files_changed` (list every file touched), and `resolved_at` (real timestamp via python tools/utcnow.py).\n7. Commit the changes on this branch (feature/WF03-GH716-20260812) with a clear commit message referencing GH-716/ISS-0675/PAR-06. Do NOT push yet -- push happens at Step Final.\n\nDo NOT touch any other PAR-06 acceptance criteria or unrelated code. Do NOT modify reconstruction.zig's actual logic (it is already correct and is the surviving implementation) -- only the stale comment noted above in instance.zig, and no behavioral changes to reconstruction.zig itself.",
+    "acceptance_criteria": [
+      "Store.reconstructBounded() and its three private helpers fully removed from src/event_store/store.zig",
+      "StoreError.ReconstructionWindowMissing and .UnboundedReconstructionRefused removed if confirmed fully unreachable",
+      "EventWindow struct removed if it becomes unused, kept if still referenced",
+      "zig build exits 0 (compiles clean)",
+      "test-integration-par06 and test-integration-par06-reconstruction both pass",
+      "Full unit test suite (zig build test) passes with no regressions",
+      "Stale comments referencing the deleted function (instance.zig, test file headers, spec doc) updated",
+      "docs/issues/ISS-0675.json updated to RESOLVED with resolution/verification/files_changed/resolved_at filled in",
+      "Changes committed on feature/WF03-GH716-20260812 (not pushed)"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Deleted Store.reconstructBounded() and its three private helpers (lookupOrRepairEventWindowInternal, mergeEventRowsBySequence, rowSequenceNumber) from src/event_store/store.zig, plus the two now-fully-unreachable StoreError variants (ReconstructionWindowMissing, UnboundedReconstructionRefused) and the now-unused EventWindow struct, confirmed via grep to have zero remaining references. Updated stale comments referencing the deleted function in src/engine/instance.zig:83 (reworded to cite reconstruction.zig's live functions instead), the PAR-06 design doc (added a 'Resolution (GH-716)' section, left historical Open Questions untouched), and three test/spec files' present-tense 'is DEAD CODE' language updated to past tense noting removal via GH-716 (tests/integration/par06_reconstruction_bounded_test.zig, tests/specs/PAR-06.md, and tests/integration/par06_instance_projections_event_window_test.zig -- this third file was found during verification, not in the original task's file list, but carried the identical stale claim and was in scope as a genuine blocker per Unblock-Everything). zig build exits 0. zig build check (PI-03 gate) passed after running zig fmt on the 4 changed .zig files. python tools/lint_sql_param_types.py: 0 BLOCKER/MAJOR/MINOR. zig build test-integration-par06: 3/3 passed. zig build test-integration-par06-reconstruction: 5/5 passed. Full unit suite (zig build test): 103/103 build steps succeeded, 1071/1135 tests passed (64 skipped, pre-existing baseline), exit 0, no regressions. docs/issues/ISS-0675.json updated to RESOLVED with resolution/verification/files_changed/resolved_at filled in.",
+    "artifacts_out": [
+      "src/event_store/store.zig",
+      "src/engine/instance.zig",
+      "src/design/par-06-time-bounded-reconstruction.md",
+      "tests/integration/par06_reconstruction_bounded_test.zig",
+      "tests/integration/par06_instance_projections_event_window_test.zig",
+      "tests/specs/PAR-06.md",
+      "docs/issues/ISS-0675.json"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH716-20260812",
+      "commit_sha_list": [
+        "73955e8004d8ccf81eee598101f317976001c3da"
+      ],
+      "push_status": "skipped"
+    },
+    "next_action": "Route to TEST-RUNNER (Step 5), skipping TEST-DESIGNER (Step 4): this is a pure deletion of unreachable dead code with zero behavioral change to any surviving code path (reconstruction.zig, the sole live PAR-06 path, was not modified). No new business logic was introduced that would need new test-design coverage -- the existing test-integration-par06 / test-integration-par06-reconstruction suites already fully exercise the surviving live path and both pass (3/3, 5/5). ORCH makes the final routing call per WF-03's table."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T09:27:57Z",
+  "completed_at": "2026-08-12T09:38:53Z"
+}
