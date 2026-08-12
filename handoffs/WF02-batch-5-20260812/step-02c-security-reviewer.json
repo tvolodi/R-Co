@@ -1,0 +1,65 @@
+{
+  "handoff_id": "wf02-batch-5-20260812-02c-security-reviewer",
+  "run_id": "WF02-batch-5-20260812",
+  "workflow_id": "WF-02",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "created_at": "2026-08-12T14:24:49Z",
+  "started_at": "2026-08-12T14:25:30Z",
+  "completed_at": "2026-08-12T14:32:05Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PIN-03",
+      "PIN-04",
+      "PIN-05",
+      "PRM-01"
+    ],
+    "related_handoff_ids": [
+      "wf02-batch-5-20260812-02a-backend-dev",
+      "wf02-batch-5-20260812-02a-adhoc-fix-iss0688"
+    ],
+    "artifacts_in": [
+      "src/engine/pin_rebind.zig",
+      "src/api/routes/pin_rebind.zig",
+      "src/api/routes/promotions.zig",
+      "src/definition/promotion_plan.zig",
+      "src/engine/pin_resolver.zig",
+      "src/engine/reconstruction.zig",
+      "migrations/1154_pin05_instance_pins_rebound_event_type.sql",
+      "src/engine/instance.zig",
+      "src/definition/store.zig",
+      "src/definition/export_import.zig",
+      "src/definition/snapshot.zig",
+      "src/obs/audit.zig",
+      "src/entities/commands.zig",
+      "tools/lint_dropped_tenant_function.py",
+      "docs/issues/ISS-0688.json"
+    ]
+  },
+  "task": {
+    "description": "Hard gate (WF-02 Step 2c): review this batch's full diff against the numbered security invariants in docs/agents/instructions/security-invariants.md before TEST-DESIGNER may start. Run `git diff main...feature/WF02-batch-5-20260812 --stat` and `git diff main...feature/WF02-batch-5-20260812 -- src/ migrations/` yourself for the real diff -- do not rely solely on this description.\n\nTWO logically distinct pieces of work are on this branch and both are in scope:\n\n(1) This batch's own feature implementation (PIN-03 no-fallback-to-latest execution-time enforcement, PIN-04 replay/sub-process pin inheritance + new GET /api/v1/instances/{id}/pins, PIN-05 new POST /api/v1/instances/{id}/rebind-pins, PRM-01 new POST /api/v1/promotions promotion-plan/diff computation) -- new files src/engine/pin_rebind.zig, src/definition/promotion_plan.zig, src/api/routes/pin_rebind.zig, src/api/routes/promotions.zig, extensions to src/engine/pin_resolver.zig and src/engine/reconstruction.zig, plus migrations/1154_pin05_instance_pins_rebound_event_type.sql. These are all NEW mutating/reading endpoints and queries touching tenant-scoped instance and definition data -- squarely in scope for INV-1 (tenant isolation) and INV-2 (field authorisation) at minimum.\n\n(2) An ADHOC blocker fix for ISS-0688/GH-745 (a PRE-EXISTING regression discovered mid-run, NOT part of this batch's own requirements): src/engine/instance.zig, src/definition/store.zig, src/definition/export_import.zig, src/definition/snapshot.zig, src/obs/audit.zig, src/entities/commands.zig all had dead bpm_effective_tenant_id() SQL function calls removed (that function was dropped by the LEGACY_RLS-to-SCHEMA cutover and doesn't exist in the public schema) and replaced with either SCHEMA-mode implicit routing (predicate removed, relying on search_path) or explicit parameterized tenant_id binding, depending on the call site -- read docs/issues/ISS-0688.json in full for the complete diagnosis and fix rationale. This is a SECOND, closely-related tenant-isolation-relevant change on the same branch and must be reviewed with the same rigor as the batch's own new code -- if anything, more carefully, since it is exactly the class of defect (a broken/missing tenant scope on a per-tenant table) that INV-1 exists to catch, and the immediately preceding batch (WF02-batch-4-20260811) had a SECURITY-REVIEWER FAIL on a near-identical defect in pin_resolver.zig (INV-1, tracked as that batch's own rework cycle 1). Pay particular attention to: (a) whether dropping the SELECT predicate entirely (relying purely on SCHEMA-mode search_path routing) is actually safe for every call site it was applied to, or whether any of those queries could run with an unexpected/uninitialized search_path; (b) whether the sites that switched to explicit $N-parameter binding correctly source that parameter from the authenticated request's real tenant context (never a caller-supplied/unvalidated value); (c) the fix's own stated discovery that a PER-TENANT-SCHEMA copy of bpm_effective_tenant_id() still exists in every tenant_* schema and silently falls back to the all-zero UUID rather than erroring when the bpm.tenant_id GUC is unset -- confirm the fix's removal approach actually eliminates reliance on that latent trap rather than merely working around it by coincidence (the fix's own summary states the pre-fix code path was accidentally masked because tests exercise the default/zero-UUID tenant); (d) the new tools/lint_dropped_tenant_function.py standing check -- confirm it actually would catch a reintroduction, is wired into CI, and does not merely satisfy the gate by pattern-matching something narrower than the real defect class (per core-directives.md's Never-Satisfy-a-Gate-by-Editing-What-It-Measures rule -- this is a lint ADDING new detection, not editing an existing gate's definition, so it should be fine, but verify its regex/logic is not so narrow it would miss a re-introduction with slightly different surrounding syntax).\n\nStandard scope test and checklist per your own agent file (.claude/agents/security-reviewer.md) and docs/agents/instructions/security-invariants.md apply as normal -- INV-1 through whichever invariants apply to routes/migrations/lookups in this diff. This diff includes new API routes (pin_rebind.zig, promotions.zig), a new migration, and multiple lookup-by-ID handlers (GET pins, POST rebind-pins targeting an instance by ID) -- confirm probe-indistinguishability (not-found vs forbidden) where relevant.",
+    "acceptance_criteria": [
+      "Every applicable invariant in docs/agents/instructions/security-invariants.md evaluated against the real diff (git diff main...feature/WF02-batch-5-20260812)",
+      "ISS-0688 fix's tenant-scoping approach (SCHEMA-mode implicit routing vs explicit parameter binding, per call site) is independently verified safe, not taken on faith",
+      "New API routes (pin_rebind.zig, promotions.zig) checked for probe-indistinguishability on lookup-by-ID paths",
+      "New migration checked against INV-1 schema conventions",
+      "Clear PASS/FAIL verdict with reasoning for each APPLIES invariant"
+    ],
+    "functions_to_call": [
+      "fn:run-security-checklist"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Security review of the full branch diff (git diff main...feature/WF02-batch-5-20260812) covering both this batch's own PIN-03/PIN-04/PIN-05/PRM-01 implementation and the ADHOC ISS-0688/GH-745 fix. INV-1 (tenant isolation) APPLIES and PASSES for both pieces: the ISS-0688 fix's dropped predicates (instance.zig, definition/store.zig, export_import.zig, snapshot.zig, obs/audit.zig) all target process_definitions/audit_entries, confirmed PER_TENANT business tables reached exclusively via SCHEMA-mode search_path routing -- dropping the redundant `AND tenant_id = bpm_effective_tenant_id()` predicate is safe there. Sites switched to explicit $N binding (instance.zig's instance_projections INSERT, entities/commands.zig's ensureEntityInstanceProjection, the dead writeAuditInTx) all source tenant_id from tenant_context.get() or a threaded params.tenant_id traced back to src/api/middleware/auth.zig's tenant_context.set() calls -- never caller-supplied. The per-tenant-schema bpm_effective_tenant_id() zero-UUID masking trap is structurally eliminated, not coincidentally avoided: grep -rn bpm_effective_tenant_id src/ returns zero functional call sites, only explanatory comments. tools/lint_dropped_tenant_function.py is real (ran it: exit 0), correctly matches Zig's `\\`-continued multiline SQL string calls and whitespace variants, correctly exempts // /// comment-only lines, and is genuinely wired into .github/workflows/ci.yml's Source linters job (verified in the diff, not just the script). This batch's own new code (pin_rebind.zig, promotion_plan.zig, reconstruction.zig's reconstructEffectivePins) uses the same SCHEMA-mode/explicit-$N pattern consistently, and promotion_plan.zig's cross-tenant reads explicitly set/restore tenant_context per side via defer, with source_tenant_id validated against real public.tenant.tenant_type data (not caller assertion) and the promotion.submit permission check reusing ENV-03/promotion.zig's already-reviewed per-source-tenant role-check shape. INV-2 (field authorisation) APPLIES/PASS: new response structs (GET .../pins, rebind response, promotion plan) contain only documented fields. INV-5 (probe indistinguishability) APPLIES/PASS: GET .../pins and POST .../rebind-pins both return uniform 404 INSTANCE_NOT_FOUND; cross-tenant access is structurally impossible under SCHEMA routing (not merely filtered), the strongest form of this invariant. INV-7 (no SQL interpolation) APPLIES/PASS: all SQL uses $N placeholders; lint_sql_param_types.py and the allocPrint/SQL-verb grep heuristic both clean. INV-8 (no catch unreachable) APPLIES/PASS: zero new instances in the diff. INV-3/INV-4 NOT APPLICABLE -- no Lua/Wasm host functions or secret material touched. python tools/lint_migration_schema.py and lint_sql_table_refs.py both exit 0. zig build exits 0. Non-blocking observation for the record: this diff adds no new test files (git diff --stat -- tests/ is empty) -- a coverage gap for TEST-DESIGNER to close, not a security defect.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
