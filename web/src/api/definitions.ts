@@ -6,6 +6,12 @@ import type {
   DefinitionStatus,
 } from '@/types/api'
 
+export interface PromoteResult {
+  definition_id: string
+  version: string
+  status: string
+}
+
 export const definitionsApi = {
   list: (params?: { status?: DefinitionStatus; name?: string; cursor?: string; page_size?: number }) =>
     client.get<CursorPage<ProcessDefinition>>('/api/v1/definitions', params as Record<string, unknown>),
@@ -45,4 +51,7 @@ export const definitionsApi = {
 
   getVersions: (name: string) =>
     client.get<CursorPage<ProcessDefinition>>('/api/v1/definitions', { name } as Record<string, unknown>),
+
+  promote: (testTenantId: string, definitionName: string) =>
+    client.post<PromoteResult>(`/api/v1/tenants/${testTenantId}/promote/${encodeURIComponent(definitionName)}`, {}),
 }
