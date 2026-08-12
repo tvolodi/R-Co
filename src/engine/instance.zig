@@ -66,6 +66,40 @@ fn populateTokenIds(allocator: std.mem.Allocator, state: *transition_mod.Instanc
     }
 }
 
+// ---------------------------------------------------------------------------
+// PAR-06 AC4: window-column maintenance for hand-rolled `INSERT INTO events`
+// call sites in this file.
+//
+// event_store/store.zig's Store.append() maintains
+// instance_projections.first_event_at/.last_event_at (PAR-06's bounded-
+// reconstruction window) as Step 5 of its own single INSERT transaction. The
+// call sites in THIS file never go through Store.append() — each issues its
+// own hand-rolled `WITH seq AS (...) INSERT INTO events ...` inside an
+// existing InstanceStore-owned transaction, so none of them updated those two
+// columns, leaving first_event_at/last_event_at permanently NULL for every
+// instance (ISS-0677 / GH-719). This helper reproduces Store.append() Step
+// 5's exact maintenance logic — COALESCE so first_event_at is set exactly
+// once, last_event_at unconditionally advanced with the same +1 microsecond
+// upper-bound adjustment reconstructBounded()'s exclusive `<` comparison
+// requires — and is called once per event-appending transaction (a single
+// call per transaction is sufficient: it widens the window to cover NOW(),
+// which safely bounds every event inserted earlier in the same transaction
+// since all of them are committed together at the same effective instant).
+//
+// Security: instance_id_hex is always a caller-controlled, already-validated
+// hex UUID string (never user-supplied free text) bound as a $N parameter —
+// no SQL string interpolation.
+fn bumpEventWindowInTx(conn: *db.Conn, instance_id_hex: []const u8) !void {
+    try conn.exec(
+        \\UPDATE instance_projections
+        \\SET first_event_at = COALESCE(first_event_at, NOW()),
+        \\    last_event_at  = NOW() + INTERVAL '1 microsecond'
+        \\WHERE instance_id = $1::uuid
+    ,
+        &.{instance_id_hex},
+    );
+}
+
 fn refreshActiveInstancesMetric(pool: *Pool, allocator: std.mem.Allocator) void {
     const conn = pool.acquire() catch {
         metrics.markActiveInstancesStale();
@@ -888,6 +922,11 @@ pub const InstanceStore = struct {
             &.{ inst_id_hex, status_str, tokens_json, vars_json, jc_json },
         ) catch return InstanceError.TransactionFailed;
 
+        // PAR-06 AC4: advance first_event_at/last_event_at for the
+        // INSTANCE_STARTED event (and any emitted events) just inserted
+        // above (ISS-0677 / GH-719 — see bumpEventWindowInTx doc comment).
+        bumpEventWindowInTx(conn2, inst_id_hex) catch return InstanceError.TransactionFailed;
+
         persistTimersFromPendingEventsInTx(
             allocator,
             conn2,
@@ -1147,6 +1186,10 @@ pub const InstanceStore = struct {
         ,
             &.{ inst_id_hex, status_str, tokens_json, vars_json, jc_json },
         ) catch return ApplyError.PersistenceFailed;
+
+        // PAR-06 AC4: advance first_event_at/last_event_at for the event
+        // inserted above (ISS-0677 / GH-719).
+        bumpEventWindowInTx(conn, inst_id_hex) catch return ApplyError.PersistenceFailed;
 
         persistTimersFromPendingEventsInTx(
             allocator,
@@ -1898,6 +1941,11 @@ pub const InstanceStore = struct {
             },
         ) catch return CompleteTaskError.PersistenceFailed;
 
+        // PAR-06 AC4: advance first_event_at/last_event_at for TASK_COMPLETED
+        // (and any VARIABLE_OVERWRITTEN / EXECUTION_ERROR / SUBPROCESS_STARTED
+        // events inserted earlier in this same transaction) (ISS-0677 / GH-719).
+        bumpEventWindowInTx(conn, inst_id_hex) catch return CompleteTaskError.PersistenceFailed;
+
         persistTimersFromPendingEventsInTx(
             allocator,
             conn,
@@ -2413,6 +2461,10 @@ pub const InstanceStore = struct {
             &.{inst_id_hex},
         ) catch return CancelInstanceError.PersistenceFailed;
 
+        // PAR-06 AC4: advance first_event_at/last_event_at for the
+        // INSTANCE_CANCELLED event inserted above (ISS-0677 / GH-719).
+        bumpEventWindowInTx(conn, inst_id_hex) catch return CancelInstanceError.PersistenceFailed;
+
         // ── Step h: COMMIT ────────────────────────────────────────────────────
         conn.commit() catch return CancelInstanceError.PersistenceFailed;
         refreshActiveInstancesMetric(self.pool, allocator);
@@ -2886,6 +2938,10 @@ pub const InstanceStore = struct {
         ,
             &.{ inst_id_hex, payload_json },
         ) catch return SetInstanceErrorError.PersistenceFailed;
+
+        // PAR-06 AC4: advance first_event_at/last_event_at for the
+        // EXECUTION_ERROR event inserted above (ISS-0677 / GH-719).
+        bumpEventWindowInTx(conn, inst_id_hex) catch return SetInstanceErrorError.PersistenceFailed;
 
         // ── Step f: COMMIT ────────────────────────────────────────────────────
         conn.commit() catch return SetInstanceErrorError.PersistenceFailed;
@@ -4286,6 +4342,10 @@ fn propagateChildCompletionToParent(
         &.{ parent_instance_id_hex, merged_json },
     ) catch return CompleteTaskError.PersistenceFailed;
 
+    // PAR-06 AC4: advance first_event_at/last_event_at on the PARENT instance
+    // for the SUBPROCESS_COMPLETED event inserted above (ISS-0677 / GH-719).
+    bumpEventWindowInTx(conn, parent_instance_id_hex) catch return CompleteTaskError.PersistenceFailed;
+
     conn.exec(
         \\UPDATE subprocess_links
         \\SET status = 'COMPLETED', completed_at = NOW()
@@ -4402,6 +4462,11 @@ fn propagateChildTerminalToParent(
     ,
         &.{ parent_instance_id_hex, payload_json },
     );
+
+    // PAR-06 AC4: advance first_event_at/last_event_at on the PARENT instance
+    // for the CHILD_PROCESS_CANCELLED/CHILD_PROCESS_ERROR event inserted
+    // above (ISS-0677 / GH-719).
+    try bumpEventWindowInTx(conn, parent_instance_id_hex);
 
     try conn.exec(
         \\UPDATE subprocess_links

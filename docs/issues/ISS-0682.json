@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0682",
+  "title": "TC-PAR-06-05 (par06_reconstruction_bounded_test.zig) manually inserts event_type='TASK_COMPLETED' (uppercase) into events_archive, but reconstruction.zig's mapper only matches lowercase 'task_completed', so the event is silently skipped as unknown",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "test correctness / fixture bug",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "dffa6e06-c532-4022-a9ab-2797e5bab4c7",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/725",
+  "requirement_ids": ["PAR-06"],
+  "summary": "tests/integration/par06_reconstruction_bounded_test.zig's TC-PAR-06-05 ('reconstruction merges events_archive rows within the bounded window') was explicitly written and commented as 'KNOWN FAILING against current code -- same root cause as TC-PAR-06-01 (ISS-0677/GH-719) ... Expected to pass once ISS-0677 is fixed.' ISS-0677/GH-719 (InstanceStore.create() never advancing instance_projections.first_event_at/last_event_at) was fixed in this same rework (WF02-batch-4-20260811 Step 2a rework 2): confirmed live via added temporary debug output that the window now correctly covers BOTH the INSTANCE_STARTED row and the manually-inserted events_archive row (window=[1786506186223528,1786506186256686), rows=2, both instance_started seq=1 and TASK_COMPLETED seq=2 returned by the bounded UNION ALL query) -- so the PAR-06 window-maintenance fix this test was gated on is verified working. However the test STILL fails: it expects reconst_state.status == .COMPLETED but observes .ACTIVE. Root cause is unrelated to PAR-06/window maintenance: the test's manual INSERT INTO events_archive (line ~550) sets event_type = 'TASK_COMPLETED' (uppercase), but src/engine/reconstruction.zig's mapToTransitionEvent()-style dispatcher (around line 1158) matches event types via std.mem.eql(u8, event_type, \"task_completed\") -- lowercase only, no case-insensitive fallback. Every REAL production TASK_COMPLETED insert (src/engine/instance.zig line ~1905, and the .task_completed => \"task_completed\" mapping at line ~1132) always writes the lowercase string. The test's uppercase literal therefore falls through to reconstruction.zig's else branch ('informational or unknown event type ... skipped'), so the manually-crafted archived event is silently dropped from replay and the instance never advances past its HUMAN_TASK node -- exactly mirroring ISS-0678's category (a bug in a TEST-DESIGNER-authored fixture, not in production code).",
+  "root_cause": {
+    "type": "test_fixture_literal_mismatch",
+    "details": "The test hand-crafts a raw SQL INSERT into events_archive to simulate a pre-archived TASK_COMPLETED event, and used the uppercase string 'TASK_COMPLETED' for event_type instead of matching the lowercase 'task_completed' string every real application code path (src/engine/instance.zig, src/event_store/store.zig's event_type_str switch) actually writes. reconstruction.zig's event-type dispatch is intentionally case-sensitive exact-match (matching every other event_type string comparison in this codebase, e.g. 'instance_started'), so this is a fixture-authoring error, not a dispatcher defect."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-12T03:44:04Z",
+  "resolved_at": null,
+  "prevention": [
+    "Change TC-PAR-06-05's manual INSERT INTO events_archive event_type literal from 'TASK_COMPLETED' to 'task_completed' (matching the lowercase convention every production INSERT/mapper in this codebase already uses) -- this alone should be sufficient for the test to pass, now that ISS-0677's window-maintenance fix is in place.",
+    "When a test hand-crafts a raw event row instead of going through the real append path (Store.append() / instance.zig's INSERT sites), cross-check the literal event_type string against the actual production constant/switch-arm spelling rather than guessing a plausible-looking uppercase variant -- this is the same class of drift ISS-0678 already flagged for this run's other new PAR-06 test file."
+  ]
+}

@@ -33,7 +33,7 @@ pub fn assertDatabaseConfiguration(
             .{ .key = "current", .value = .{ .integer = @as(i64, @intCast(version_num)) } },
             .{ .key = "required_min", .value = .{ .integer = @as(i64, @intCast(required_min)) } },
         };
-        
+
         // Emit exact FATAL line format for alert routing
         var buf: [256]u8 = undefined;
         const msg = std.fmt.bufPrint(&buf, "FATAL startup.database PG_VERSION_MISMATCH current={d} required_min={d}", .{ version_num, required_min }) catch "FATAL startup.database PG_VERSION_MISMATCH";
@@ -55,7 +55,7 @@ pub fn assertDatabaseConfiguration(
         const fields = [_]obs_logger.LogField{
             .{ .key = "extension", .value = .{ .string = "pg_trgm" } },
         };
-        
+
         // Emit exact FATAL line format for alert routing
         obs_logger.log(allocator, .ERROR, "startup.database", "FATAL startup.database PG_EXTENSION_MISSING extension=pg_trgm", &fields) catch {};
         return StartupAssertionError.PgExtensionMissing;
@@ -76,7 +76,7 @@ pub fn assertDatabaseConfiguration(
             .{ .key = "table_count", .value = .{ .integer = @as(i64, @intCast(table_count)) } },
             .{ .key = "expected", .value = .{ .integer = 0 } },
         };
-        
+
         // Emit exact FATAL line format for alert routing
         var buf: [256]u8 = undefined;
         const msg = std.fmt.bufPrint(&buf, "FATAL startup.database PUBLIC_SCHEMA_POLLUTION table_count={d} expected=0", .{table_count}) catch "FATAL startup.database PUBLIC_SCHEMA_POLLUTION";
@@ -199,7 +199,7 @@ pub fn assertDatabaseConfigurationWithOverrides(
             .{ .key = "table_count", .value = .{ .integer = @as(i64, @intCast(table_count)) } },
             .{ .key = "expected", .value = .{ .integer = 0 } },
         };
-        
+
         var buf: [256]u8 = undefined;
         const msg = std.fmt.bufPrint(&buf, "FATAL startup.database PUBLIC_SCHEMA_POLLUTION table_count={d} expected=0", .{table_count}) catch "FATAL startup.database PUBLIC_SCHEMA_POLLUTION";
         obs_logger.log(allocator, .ERROR, "startup.database", msg, &fields) catch {};

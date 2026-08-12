@@ -375,11 +375,69 @@ pub const PinResolver = struct {
             if (key.len == 0) continue;
 
             const value = obj.get(key) orelse continue; // Open questions §5: absence is not itself a violation under this design's conservative reading
-            const value_json = std.json.Stringify.valueAlloc(allocator, value, .{}) catch
-                return ResolutionError.TransactionFailed;
-            defer allocator.free(value_json);
 
-            var failures = registry_mod.validatePayloadAgainstSchema(allocator, schema_text, value_json) catch |err| switch (err) {
+            // ISS-0679 / GH-721: registry.validatePayloadAgainstSchema()'s
+            // contract requires its `payload` argument to be a JSON OBJECT
+            // (isJsonObject() guards on a leading '{') — it validates a whole
+            // event/instance payload object against a whole schema document,
+            // never a single scalar field against a single field schema. Each
+            // variable_schemas row here is scoped to ONE variable key, whose
+            // value is frequently a bare JSON scalar (e.g. `5`, `"x"`, `true`),
+            // which can never satisfy isJsonObject() — every conforming
+            // scalar-valued variable was therefore rejected unconditionally.
+            // Fix: wrap both sides in a synthetic single-key/single-property
+            // object before delegating to the existing validator, so its
+            // isJsonObject() guard is always satisfied and the real
+            // constraint checking (type/required/enum/minimum/etc., applied
+            // to the wrapped property) is unchanged.
+            var wrapped_value_obj = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+                return ResolutionError.TransactionFailed;
+            defer wrapped_value_obj.deinit(allocator);
+            wrapped_value_obj.put(allocator, key, value) catch
+                return ResolutionError.TransactionFailed;
+            const wrapped_value_json = std.json.Stringify.valueAlloc(
+                allocator,
+                std.json.Value{ .object = wrapped_value_obj },
+                .{},
+            ) catch return ResolutionError.TransactionFailed;
+            defer allocator.free(wrapped_value_json);
+
+            var parsed_field_schema = std.json.parseFromSlice(
+                std.json.Value,
+                allocator,
+                schema_text,
+                .{},
+            ) catch {
+                // A stored schema that no longer parses is a registry-
+                // integrity fault, not a caller error — matches
+                // validatePayloadAgainstSchema()'s own InvalidJsonSchema
+                // handling for this exact condition.
+                return ResolutionError.TransactionFailed;
+            };
+            defer parsed_field_schema.deinit();
+
+            var wrapped_props_obj = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+                return ResolutionError.TransactionFailed;
+            defer wrapped_props_obj.deinit(allocator);
+            wrapped_props_obj.put(allocator, key, parsed_field_schema.value) catch
+                return ResolutionError.TransactionFailed;
+
+            var wrapped_schema_obj = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+                return ResolutionError.TransactionFailed;
+            defer wrapped_schema_obj.deinit(allocator);
+            wrapped_schema_obj.put(allocator, "type", std.json.Value{ .string = "object" }) catch
+                return ResolutionError.TransactionFailed;
+            wrapped_schema_obj.put(allocator, "properties", std.json.Value{ .object = wrapped_props_obj }) catch
+                return ResolutionError.TransactionFailed;
+
+            const wrapped_schema_json = std.json.Stringify.valueAlloc(
+                allocator,
+                std.json.Value{ .object = wrapped_schema_obj },
+                .{},
+            ) catch return ResolutionError.TransactionFailed;
+            defer allocator.free(wrapped_schema_json);
+
+            var failures = registry_mod.validatePayloadAgainstSchema(allocator, wrapped_schema_json, wrapped_value_json) catch |err| switch (err) {
                 registry_mod.RegistryError.PoolExhausted => return ResolutionError.PoolExhausted,
                 else => return ResolutionError.TransactionFailed,
             };

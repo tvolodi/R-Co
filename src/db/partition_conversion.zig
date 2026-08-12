@@ -136,8 +136,18 @@ pub const PartitionConverter = struct {
     // -----------------------------------------------------------------------
 
     /// CREATE TABLE events_part (LIKE events INCLUDING DEFAULTS INCLUDING
-    /// IDENTITY) PARTITION BY RANGE (created_at). Idempotent: a second call
-    /// when events_part already exists (partitioned or not) is a no-op.
+    /// IDENTITY) PARTITION BY RANGE (created_at), then explicitly adds the
+    /// composite PRIMARY KEY (event_id, created_at) — matching how
+    /// 1147_par01_events_partitioning.sql declares this PK explicitly on its
+    /// own from-scratch `events` table. Postgres' `LIKE ... INCLUDING
+    /// DEFAULTS INCLUDING IDENTITY` does NOT copy constraints or indexes
+    /// (confirmed live against PostgreSQL 15.14): without this explicit
+    /// ALTER TABLE, events_part has zero constraints and every downstream
+    /// `INSERT ... ON CONFLICT (event_id, created_at) DO NOTHING` in
+    /// backfillOneMonth()/swap() fails with 42P10 ("no unique or exclusion
+    /// constraint matching the ON CONFLICT specification") — this was
+    /// ISS-0676 / GH-718. Idempotent: a second call when events_part already
+    /// exists (partitioned or not) is a no-op.
     pub fn createParent(self: *PartitionConverter, allocator: std.mem.Allocator, conn: *db.Conn) ConversionError!void {
         _ = self;
         const exists_row = conn.queryRow(
@@ -156,6 +166,18 @@ pub const PartitionConverter = struct {
 
         conn.exec(
             "CREATE TABLE events_part (LIKE events INCLUDING DEFAULTS INCLUDING IDENTITY) PARTITION BY RANGE (created_at)",
+            &.{},
+        ) catch |err| switch (err) {
+            db.PoolError.ExhaustedPool => return ConversionError.PoolExhausted,
+            else => return ConversionError.TransactionFailed,
+        };
+
+        // events_part needs the SAME composite PK as PAR-01's from-scratch
+        // `events` table (PRIMARY KEY (event_id, created_at)) so that the
+        // ON CONFLICT (event_id, created_at) clauses in backfillOneMonth()
+        // and swap() have a matching unique constraint to target.
+        conn.exec(
+            "ALTER TABLE events_part ADD PRIMARY KEY (event_id, created_at)",
             &.{},
         ) catch |err| switch (err) {
             db.PoolError.ExhaustedPool => return ConversionError.PoolExhausted,
