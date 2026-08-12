@@ -2747,6 +2747,58 @@ pub fn build(b: *std.Build) void {
     test_integration_par06_step.dependOn(&clean_test_db.step);
     test_integration_par06_step.dependOn(&run_par06_solo_tests.step);
 
+    // PAR-05 (WF02-batch-4-20260811): online partition conversion
+    // (src/db/partition_conversion.zig). Dedicated solo step per
+    // tests/specs/PAR-05.md's fixture note — each test builds its own
+    // isolated PostgreSQL schema (never the shared tenant_default.events
+    // table), so this does not need to be part of the concurrent
+    // test-integration-others-internal umbrella, but IS given its own step
+    // for fast standalone iteration, matching the par02/par03/par06 pattern.
+    const par05_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/par05_online_partition_conversion_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_par05_solo_tests = addIntegrationRun(b, par05_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_par05_step = b.step("test-integration-par05", "Run par05_online_partition_conversion_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_par05_step.dependOn(&clean_test_db.step);
+    test_integration_par05_step.dependOn(&run_par05_solo_tests.step);
+
+    // PAR-06 (WF02-batch-4-20260811, Step 3): behavioural coverage (window
+    // maintenance, bounded reconstruction, partition pruning, repair-on-NULL,
+    // events_archive merge) — extends par06_instance_projections_event_window_test.zig's
+    // migration-schema-only coverage. See tests/specs/PAR-06.md.
+    const par06_reconstruction_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/par06_reconstruction_bounded_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_par06_reconstruction_solo_tests = addIntegrationRun(b, par06_reconstruction_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_par06_reconstruction_step = b.step("test-integration-par06-reconstruction", "Run par06_reconstruction_bounded_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_par06_reconstruction_step.dependOn(&clean_test_db.step);
+    test_integration_par06_reconstruction_step.dependOn(&run_par06_reconstruction_solo_tests.step);
+
+    // PIN-02 (WF02-batch-4-20260811, Step 3): pin set recorded in
+    // INSTANCE_STARTED — FULL scope, all 5 ACs. See tests/specs/PIN-02.md.
+    const pin02_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/pin02_instance_started_pinned_versions_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_pin02_solo_tests = addIntegrationRun(b, pin02_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_pin02_step = b.step("test-integration-pin02", "Run pin02_instance_started_pinned_versions_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_pin02_step.dependOn(&clean_test_db.step);
+    test_integration_pin02_step.dependOn(&run_pin02_solo_tests.step);
+
     const exp201_202_solo_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/exp201_202_entities_test.zig"),

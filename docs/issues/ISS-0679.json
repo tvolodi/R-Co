@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0679",
+  "title": "PIN-01 AC3: validateVariableSchema() misuses registry.validatePayloadAgainstSchema() -- rejects every conforming variable, not just non-conforming ones",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "correctness / requirement violation",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/721",
+  "requirement_ids": ["PIN-01"],
+  "summary": "src/engine/pin_resolver.zig's PinResolver.validateVariableSchema() (PIN-01 AC3) calls registry.validatePayloadAgainstSchema(allocator, schema_text, value_json) once per registered variable_schemas row, passing the SINGLE FIELD VALUE (e.g. the JSON-serialised scalar 5 for a variable named count) as value_json. registry.validatePayloadAgainstSchema()'s contract requires payload to be a JSON OBJECT (its first check is isJsonObject(payload), which tests only that the trimmed input starts with '{'). A scalar value serialised on its own never starts with '{', so isJsonObject() is always false for any non-object variable value -- the common case, since individual variable values are typically scalars. Every registered variable_schemas row whose value in initial_variables is a scalar is therefore ALWAYS reported as a violation, regardless of whether the value genuinely conforms to the schema. AC3's accepting half can never pass; the rejecting half passes only vacuously.",
+  "root_cause": {
+    "type": "contract_mismatch",
+    "details": "registry.validatePayloadAgainstSchema()'s existing contract (ES-05: whole EVENT PAYLOAD vs whole SCHEMA DOCUMENT, both objects) is a poor fit for PIN-01 AC3's actual need (ONE FIELD VALUE vs that field's OWN schema, which may describe a scalar type). pin_resolver.zig's design comment claims to reuse 'the same JSON Schema validation primitive ES-05 already uses' but the reuse is structurally incompatible with the function's isJsonObject guard."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-12T03:02:17Z",
+  "resolved_at": null,
+  "prevention": [
+    "Wrap the field value in a synthetic one-key object and the field's schema in a synthetic one-property object schema before calling validatePayloadAgainstSchema(), OR add a lower-level entry point in registry.zig/src/tools/json_schema.zig that validates a single JSON value against a single schema document directly (no isJsonObject guard) and have pin_resolver.zig call that instead.",
+    "When reusing a shared validation primitive across two different call shapes (whole-object vs single-field), verify the primitive's structural guards against the ACTUAL shape being passed, not just its high-level purpose -- 'same validation primitive' claims in a design doc should be checked against the function's real preconditions before implementation, not assumed compatible."
+  ]
+}

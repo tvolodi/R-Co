@@ -1,0 +1,111 @@
+{
+  "handoff_id": "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-batch-4-20260811/step-03-test-designer.json",
+  "created_at": "2026-08-12T02:36:01Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PAR-05",
+      "PAR-06",
+      "PIN-01",
+      "PIN-02"
+    ],
+    "related_handoff_ids": [
+      "bfd75fb4-1567-4757-8e49-be5cda7d1ed4",
+      "dffa6e06-c532-4022-a9ab-2797e5bab4c7"
+    ],
+    "artifacts_in": [
+      "src/design/par-05-online-partition-conversion.md",
+      "src/design/par-06-time-bounded-reconstruction.md",
+      "src/design/pin-01-dependency-version-resolution.md",
+      "src/design/pin-02-pin-set-in-instance-started.md",
+      "src/db/partition_conversion.zig",
+      "migrations/1150_par06_instance_projections_event_window.sql",
+      "src/engine/pin_resolver.zig",
+      "migrations/1151_pin02_instance_started_pinned_versions.sql",
+      "src/engine/instance.zig",
+      "tests/integration/pin01_service_catalog_tenant_scope_test.zig",
+      "tests/integration/pin01_test_root.zig",
+      "tests/integration/par06_instance_projections_event_window_test.zig",
+      "docs/requirements.yaml"
+    ]
+  },
+  "task": {
+    "description": "Write test specs (tests/specs/PAR-05.md, PAR-06.md, PIN-01.md, PIN-02.md) and any missing test code for this batch, now that Step 2a (implementation) and Step 2c (SECURITY-REVIEWER, PASS after one rework cycle on INV-1) are both complete and committed (commits 9ac7c2eb, 23eff3b2, 39d13534 on this branch).\n\nSCOPE PER REQUIREMENT:\n- PAR-05 (online partition conversion): FULL scope, all 5 ACs in docs/requirements.yaml (parent creation alongside live table, PartitionRangeGap on coverage gap, ON CONFLICT idempotent backfill, lock_timeout=3s swap with rollback-and-retry, ConversionRowCountMismatch + inverse rename, events_legacy retention). Implementation is in src/db/partition_conversion.zig.\n- PAR-06 (time-bounded instance reconstruction): FULL scope, all 6 ACs (partition pruning via bounded predicate, cross-archive merge by sequence_num, ReconstructionWindowMissing repair-and-retry, last_event_at advanced in the append transaction, unbounded reconstruction refused, upper-bound +1 microsecond). Migration migrations/1150_par06_instance_projections_event_window.sql plus Store.append()/reconstructBounded() changes. NOTE: tests/integration/par06_instance_projections_event_window_test.zig already exists from Step 2a -- trace to it, do not duplicate; extend only if it does not already cover an AC.\n- PIN-02 (pin set in INSTANCE_STARTED): FULL scope, all 5 ACs (pinned_versions[] shape incl. variable_schema entry, rollback-on-append-failure leaves no instance row, event log as sole record of record, zero-catalog/zero-module minimal case, source enum values). migrations/1151_pin02_instance_started_pinned_versions.sql plus the instance.zig call site.\n- PIN-01: SCOPED ONLY to AC3 (VariableSchemaViolation on variable_schema mismatch), AC4 (UnresolvedPinOverride on pin_overrides naming a version that does not exist), and AC5 (pinned_versions[] deterministic ordering by kind then ref). Map these to the requirement body order in docs/requirements.yaml: AC1=UnresolvedCatalogRef (catalog, OUT OF SCOPE), AC2=UnresolvedModuleRef (module, OUT OF SCOPE), AC3=VariableSchemaViolation (IN SCOPE), AC4=UnresolvedPinOverride (IN SCOPE), AC5=deterministic ordering (IN SCOPE). Do NOT write or expect tests for AC1/AC2 -- these are explicitly out of scope for this batch, tracked as ISS-0672 / GH-306 (service_catalog has no version/status column; PLC-01 module catalog does not exist yet). The tests/specs/PIN-01.md spec file MUST state this scoping explicitly (which ACs are covered, which are deferred and why, with the ISS/GH reference) so TEST-DESIGN-VALIDATOR and RELEASE-VALIDATOR do not mistake the gap for an oversight. The 3 tenant-scoping regression tests in tests/integration/pin01_service_catalog_tenant_scope_test.zig already exist from the Step 2a SECURITY-REVIEWER rework (INV-1 fix, commit 23eff3b2) -- trace tests/specs/PIN-01.md to them for the tenant-isolation dimension of the AC1 resolution path (even though AC1 full catalog-version resolution is out of scope, the tenant-scoping of the lookup that DOES exist is in scope and already tested); do not duplicate this file.\n\nRead .env directly for BPM_TEST_DB_URL -- do not hardcode ports; this host remaps db/db_test to non-default ports via a local docker-compose.override.yml.",
+    "acceptance_criteria": [
+      "tests/specs/PAR-05.md, PAR-06.md, PIN-01.md, PIN-02.md all written per test_developer_guide.md format",
+      "PIN-01.md explicitly documents the AC1/AC2 out-of-scope decision with ISS-0672/GH-306 reference; does not silently omit them",
+      "Every MUST AC in scope (PAR-05 all 5, PAR-06 all 6, PIN-02 all 5, PIN-01 AC3/AC4/AC5) has at least one fully implemented, runnable integration test",
+      "No error.SkipZigTest on any in-scope MUST test",
+      "Existing tests (pin01_service_catalog_tenant_scope_test.zig, par06_instance_projections_event_window_test.zig) are traced to, not duplicated",
+      "All fixtures use per-test UUIDs; no shared/static fixture state; cleanup via defer even on failure",
+      "Spec test-case counts match implemented test counts exactly",
+      "python3 tools/lint_test_isolation.py tests/integration exits 0 with no BLOCKER",
+      "python3 tools/lint_handoffs.py exits 0",
+      "Fail-first confirmation recorded for every new/modified test",
+      "Any NEW incidental defect found is filed as its own ISS + GitHub issue and forwarded to the global queue per core-directives.md -- not fixed inline unless it genuinely blocks this step"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Wrote test specs (PAR-05.md, PAR-06.md, PIN-01.md, PIN-02.md) and test source for all four requirements. PIN-02 (5/5 tests pass) and PIN-01 AC5 ordering (2/2 pass) plus the 3 pre-existing REWORK 1 tenant-scope tests (3/3 pass) are fully green. PAR-05 (2/6 pass), PAR-06 reconstruction (3/5 pass), the pre-existing PAR-06 migration-slice file (1/3 pass), and PIN-01 AC3/AC4 (partial) are RED against real, newly-discovered production/test defects in the code this batch was implementing -- not against gaps in my own test design. Every test is fully implemented and runnable; the failures are genuine fail-first signal. Filed 5 new incidental issues (ISS-0676..ISS-0680 / GH-718..GH-722) covering: PAR-05 events_part missing its (event_id, created_at) unique constraint (blocks backfill/swap ON CONFLICT), PAR-06 InstanceStore.create() never populating first_event_at/last_event_at (12 raw INSERT call sites bypass Store.append()), a pre-existing schema-agnostic catalog-introspection bug in the existing PAR-06 migration test, PIN-01 validateVariableSchema() misusing registry.validatePayloadAgainstSchema() (rejects every conforming scalar variable), and a PinResolver.resolve() memory leak on error paths. All are BLOCKER/MAJOR, registered locally, filed on GitHub, and added to the global queue per the Issue Queue protocol -- none were fixed inline since they are BACKEND-DEV-scope production code changes outside TEST-DESIGNER write access. PIN-01 AC1/AC2 remain explicitly out of scope per ISS-0672/GH-306, documented in PIN-01.md. lint_test_isolation.py and lint_handoffs.py both exit 0.",
+    "artifacts_out": [
+      "tests/specs/PAR-05.md",
+      "tests/specs/PAR-06.md",
+      "tests/specs/PIN-01.md",
+      "tests/specs/PIN-02.md",
+      "tests/integration/par05_online_partition_conversion_test.zig",
+      "tests/integration/par06_reconstruction_bounded_test.zig",
+      "tests/integration/pin01_ac345_resolution_test.zig",
+      "tests/integration/pin01_test_root.zig",
+      "tests/integration/pin02_instance_started_pinned_versions_test.zig",
+      "build.zig",
+      "docs/issues/ISS-0676.json",
+      "docs/issues/ISS-0677.json",
+      "docs/issues/ISS-0678.json",
+      "docs/issues/ISS-0679.json",
+      "docs/issues/ISS-0680.json",
+      "docs/issues/issue_index.json",
+      "handoffs/global_queue.json"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "ISS-0676 / GH-718: PAR-05 partition_conversion.zig createParent() never adds the (event_id, created_at) unique constraint events_part needs for its own ON CONFLICT clauses -- blocks backfillOneMonth()/swap() against any real PostgreSQL."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "ISS-0677 / GH-719: PAR-06 AC4 -- InstanceStore.create() (and 11 other raw INSERT INTO events call sites in instance.zig) never sets instance_projections.first_event_at/last_event_at; only Store.append() does."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0678 / GH-720: pre-existing par06_instance_projections_event_window_test.zig uses schema-agnostic information_schema/pg_indexes queries that match every accumulated tenant schema on the shared bpm_test container, not just tenant_default."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "ISS-0679 / GH-721: PIN-01 AC3 -- validateVariableSchema() passes a single scalar field value to registry.validatePayloadAgainstSchema(), whose isJsonObject() guard requires a whole JSON object payload; every conforming scalar variable is incorrectly rejected as a violation."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0680 / GH-722: PIN-01 -- PinResolver.resolve() leaks allocator-owned PinnedVersion fields (resolved_id/version/ref) on every error return after Step 3 (VariableSchemaViolation, UnresolvedPinOverride, PoolExhausted, TransactionFailed)."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b) -- validator should confirm the RED tests correctly document ISS-0676..ISS-0680 as fail-first signal (not test-design gaps), and that ORCH schedules those 5 queued issues as their own WF-03 runs before this batch can reach TESTED/RELEASED."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-12T02:37:14Z",
+  "completed_at": "2026-08-12T03:22:20Z"
+}

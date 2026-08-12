@@ -1,0 +1,26 @@
+{
+  "issue_id": "ISS-0677",
+  "title": "PAR-06 AC4: InstanceStore.create()'s hand-rolled INSTANCE_STARTED insert never sets instance_projections.first_event_at/last_event_at",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "correctness / requirement violation",
+  "run_id": "WF02-batch-4-20260811",
+  "workflow_id": "WF-02",
+  "handoff_id": "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/719",
+  "requirement_ids": ["PAR-06"],
+  "summary": "PAR-06 AC4 requires that instance_projections.last_event_at is advanced in the SAME transaction as every event append. src/event_store/store.zig's Store.append() correctly implements this (Step 5 UPDATE, COALESCE on first_event_at, unconditional overwrite on last_event_at). However src/engine/instance.zig's InstanceStore.create() -- the call site that writes EVERY instance's very first event, INSTANCE_STARTED -- does not go through Store.append() at all; it issues its own hand-rolled INSERT INTO events statement (around line 850-865) that never touches the window columns. A grep of instance.zig shows 12 separate raw INSERT INTO events call sites (create(), completeTask(), cancel(), setError(), and others); none maintain the PAR-06 window columns. Practical consequence: every instance created by this codebase starts with first_event_at/last_event_at NULL and generally stays that way, making PAR-06 AC3's repair-on-NULL path load-bearing for essentially every reconstruction rather than the rare/one-time backfill case the design intended.",
+  "root_cause": {
+    "type": "bypassed_shared_maintenance_logic",
+    "details": "InstanceStore.create() (and sibling instance.zig functions) predate PAR-06 and were never updated to also perform PAR-06's window-column maintenance when PAR-06 shipped -- only Store.append() (a separate, less-used code path) was extended. This is the same architectural bypass PIN-02's own design document (src/design/pin-02-pin-set-in-instance-started.md, Open questions #2) already flagged for a different consequence (ES-05 JSON Schema validation is also skipped by these same hand-rolled INSERTs)."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [],
+  "created_at": "2026-08-12T03:02:17Z",
+  "resolved_at": null,
+  "prevention": [
+    "Either widen every hand-rolled INSERT INTO events call site in instance.zig to also issue the window-maintenance UPDATE store.zig's Store.append() Step 5 performs, or route instance.zig's event-append call sites through Store.append() instead of a raw INSERT (fixes this gap and the sibling ES-05 validation gap PIN-02 flagged, in one change).",
+    "When a requirement's maintenance logic (a column update, a validation check) is added to one call site (Store.append()) but the codebase has multiple independent hand-rolled call sites performing the same logical operation (event append), audit ALL of them before considering the requirement's AC satisfied -- a single reference implementation does not guarantee every caller uses it."
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-11T20:35:22Z",
+  "last_updated": "2026-08-12T03:02:17Z",
   "next_issue_id": 211,
   "issues": [
     {
@@ -2179,6 +2179,146 @@
       "discovered_in": "WF02-batch-4-20260811 SECURITY-REVIEWER Step 2c (docs/agents/instructions/security-invariants.md INV-1 review)",
       "created_at": "2026-08-11T20:35:22Z",
       "resolved_at": null
+    },
+    {
+      "issue_id": "ISS-0676",
+      "title": "PAR-05: partition_conversion.zig's createParent() never adds the (event_id, created_at) unique constraint events_part needs for its own ON CONFLICT clauses",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "correctness / migration logic",
+      "run_id": "WF02-batch-4-20260811",
+      "workflow_id": "WF-02",
+      "handoff_id": "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/718",
+      "requirement_ids": [
+        "PAR-05"
+      ],
+      "summary": "src/db/partition_conversion.zig's PartitionConverter.createParent() issues CREATE TABLE events_part (LIKE events INCLUDING DEFAULTS INCLUDING IDENTITY) PARTITION BY RANGE (created_at). LIKE ... INCLUDING DEFAULTS INCLUDING IDENTITY does not copy constraints (confirmed live against PostgreSQL 15.14: a source table's PRIMARY KEY/UNIQUE constraints are copied only with the separate INCLUDING CONSTRAINTS/INCLUDING INDEXES clauses, neither specified here). events_part is therefore created with zero constraints. Both backfillOneMonth() (PAR-05 AC1/AC3) and swap() (PAR-05 AC4) issue INSERT INTO events_part ... ON CONFLICT (event_id, created_at) DO NOTHING -- without a matching unique constraint/index on events_part, PostgreSQL raises 42P10 'there is no unique or exclusion constraint matching the ON CONFLICT specification' on the FIRST insert. Every real invocation of backfillOneMonth()/swap() against a real PostgreSQL database fails immediately.",
+      "root_cause": {
+        "type": "incomplete_ddl_clause",
+        "details": "The design document (src/design/par-05-online-partition-conversion.md, Public interface Step 2) specifies the exact LIKE clause list without ever adding a follow-up ALTER TABLE events_part ADD CONSTRAINT ... PRIMARY KEY (event_id, created_at) -- the design itself has the same gap the implementation faithfully reproduced. 1147_par01_events_partitioning.sql's own from-scratch path declares PRIMARY KEY (event_id, created_at) explicitly in its CREATE TABLE statement rather than relying on LIKE to copy it, which is the pattern this conversion path needs to match."
+      },
+      "resolution": null,
+      "verification": null,
+      "files_changed": [],
+      "created_at": "2026-08-12T03:02:17Z",
+      "resolved_at": null,
+      "prevention": [
+        "Add INCLUDING CONSTRAINTS (and possibly INCLUDING INDEXES) to the LIKE clause in createParent(), OR explicitly ALTER TABLE events_part ADD PRIMARY KEY (event_id, created_at) immediately after the CREATE TABLE statement -- matching 1147_par01_events_partitioning.sql's own explicit PK declaration.",
+        "When a design doc specifies a CREATE TABLE (LIKE ...) statement, explicitly verify which constraint-copy clauses (INCLUDING CONSTRAINTS/INDEXES) are needed for any ON CONFLICT clause the same module issues against the new table -- LIKE's default behavior silently omits constraints, and this is easy to miss when reading the design prose rather than testing the actual DDL live."
+      ]
+    },
+    {
+      "issue_id": "ISS-0677",
+      "title": "PAR-06 AC4: InstanceStore.create()'s hand-rolled INSTANCE_STARTED insert never sets instance_projections.first_event_at/last_event_at",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "correctness / requirement violation",
+      "run_id": "WF02-batch-4-20260811",
+      "workflow_id": "WF-02",
+      "handoff_id": "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/719",
+      "requirement_ids": [
+        "PAR-06"
+      ],
+      "summary": "PAR-06 AC4 requires that instance_projections.last_event_at is advanced in the SAME transaction as every event append. src/event_store/store.zig's Store.append() correctly implements this (Step 5 UPDATE, COALESCE on first_event_at, unconditional overwrite on last_event_at). However src/engine/instance.zig's InstanceStore.create() -- the call site that writes EVERY instance's very first event, INSTANCE_STARTED -- does not go through Store.append() at all; it issues its own hand-rolled INSERT INTO events statement (around line 850-865) that never touches the window columns. A grep of instance.zig shows 12 separate raw INSERT INTO events call sites (create(), completeTask(), cancel(), setError(), and others); none maintain the PAR-06 window columns. Practical consequence: every instance created by this codebase starts with first_event_at/last_event_at NULL and generally stays that way, making PAR-06 AC3's repair-on-NULL path load-bearing for essentially every reconstruction rather than the rare/one-time backfill case the design intended.",
+      "root_cause": {
+        "type": "bypassed_shared_maintenance_logic",
+        "details": "InstanceStore.create() (and sibling instance.zig functions) predate PAR-06 and were never updated to also perform PAR-06's window-column maintenance when PAR-06 shipped -- only Store.append() (a separate, less-used code path) was extended. This is the same architectural bypass PIN-02's own design document (src/design/pin-02-pin-set-in-instance-started.md, Open questions #2) already flagged for a different consequence (ES-05 JSON Schema validation is also skipped by these same hand-rolled INSERTs)."
+      },
+      "resolution": null,
+      "verification": null,
+      "files_changed": [],
+      "created_at": "2026-08-12T03:02:17Z",
+      "resolved_at": null,
+      "prevention": [
+        "Either widen every hand-rolled INSERT INTO events call site in instance.zig to also issue the window-maintenance UPDATE store.zig's Store.append() Step 5 performs, or route instance.zig's event-append call sites through Store.append() instead of a raw INSERT (fixes this gap and the sibling ES-05 validation gap PIN-02 flagged, in one change).",
+        "When a requirement's maintenance logic (a column update, a validation check) is added to one call site (Store.append()) but the codebase has multiple independent hand-rolled call sites performing the same logical operation (event append), audit ALL of them before considering the requirement's AC satisfied -- a single reference implementation does not guarantee every caller uses it."
+      ]
+    },
+    {
+      "issue_id": "ISS-0678",
+      "title": "par06_instance_projections_event_window_test.zig: schema-agnostic information_schema/pg_indexes queries match every tenant schema, not just tenant_default",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "test correctness / system catalog introspection",
+      "run_id": "WF02-batch-4-20260811",
+      "workflow_id": "WF-02",
+      "handoff_id": "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/720",
+      "requirement_ids": [
+        "PAR-06"
+      ],
+      "summary": "tests/integration/par06_instance_projections_event_window_test.zig's new_columns_exist_and_are_nullable and index_supports_bounded_lookup tests query information_schema.columns and pg_indexes without a schema filter (docs/anti-patterns.md's documented 'Database -- System Catalog Introspection' anti-pattern). On this repo's shared, long-lived bpm_test container (98 accumulated tenant_% schemas observed live), both queries return one row per schema containing the matching table/index -- 54 rows instead of 2, and 27 rows instead of 1 -- rather than the single tenant_default copy the tests actually intend to check. Confirmed live via direct psql query and via zig build test-integration-par06, which fails both tests with exactly this row-count mismatch.",
+      "root_cause": {
+        "type": "schema_agnostic_catalog_query",
+        "details": "Same class as GH #392 / ISS-0126 (already in docs/anti-patterns.md's own catalogue): information_schema.columns/pg_indexes queried by table_name/indexname alone, with no table_schema/schemaname filter, so PostgreSQL returns one row per schema containing a same-named relation. instance_projections is a PER_TENANT table (created once per tenant schema by the migration pass), so every accumulated tenant schema on this long-lived shared test database contributes its own matching row. The failure was likely not visible when the file was first written in this same run, before enough tenant schemas had accumulated."
+      },
+      "resolution": null,
+      "verification": null,
+      "files_changed": [],
+      "created_at": "2026-08-12T03:02:17Z",
+      "resolved_at": null,
+      "prevention": [
+        "Add table_schema = 'tenant_default' / schemaname = 'tenant_default' to both queries, matching the migration's own PER_TENANT classification of instance_projections.",
+        "Any new system-catalog introspection test written against this codebase's shared long-lived bpm_test database must schema-qualify its query per docs/anti-patterns.md's existing catalogue entry -- the anti-pattern is already documented but was not applied when this specific test file was written."
+      ]
+    },
+    {
+      "issue_id": "ISS-0679",
+      "title": "PIN-01 AC3: validateVariableSchema() misuses registry.validatePayloadAgainstSchema() -- rejects every conforming variable, not just non-conforming ones",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "correctness / requirement violation",
+      "run_id": "WF02-batch-4-20260811",
+      "workflow_id": "WF-02",
+      "handoff_id": "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/721",
+      "requirement_ids": [
+        "PIN-01"
+      ],
+      "summary": "src/engine/pin_resolver.zig's PinResolver.validateVariableSchema() (PIN-01 AC3) calls registry.validatePayloadAgainstSchema(allocator, schema_text, value_json) once per registered variable_schemas row, passing the SINGLE FIELD VALUE (e.g. the JSON-serialised scalar 5 for a variable named count) as value_json. registry.validatePayloadAgainstSchema()'s contract requires payload to be a JSON OBJECT (its first check is isJsonObject(payload), which tests only that the trimmed input starts with '{'). A scalar value serialised on its own never starts with '{', so isJsonObject() is always false for any non-object variable value -- the common case, since individual variable values are typically scalars. Every registered variable_schemas row whose value in initial_variables is a scalar is therefore ALWAYS reported as a violation, regardless of whether the value genuinely conforms to the schema. AC3's accepting half can never pass; the rejecting half passes only vacuously.",
+      "root_cause": {
+        "type": "contract_mismatch",
+        "details": "registry.validatePayloadAgainstSchema()'s existing contract (ES-05: whole EVENT PAYLOAD vs whole SCHEMA DOCUMENT, both objects) is a poor fit for PIN-01 AC3's actual need (ONE FIELD VALUE vs that field's OWN schema, which may describe a scalar type). pin_resolver.zig's design comment claims to reuse 'the same JSON Schema validation primitive ES-05 already uses' but the reuse is structurally incompatible with the function's isJsonObject guard."
+      },
+      "resolution": null,
+      "verification": null,
+      "files_changed": [],
+      "created_at": "2026-08-12T03:02:17Z",
+      "resolved_at": null,
+      "prevention": [
+        "Wrap the field value in a synthetic one-key object and the field's schema in a synthetic one-property object schema before calling validatePayloadAgainstSchema(), OR add a lower-level entry point in registry.zig/src/tools/json_schema.zig that validates a single JSON value against a single schema document directly (no isJsonObject guard) and have pin_resolver.zig call that instead.",
+        "When reusing a shared validation primitive across two different call shapes (whole-object vs single-field), verify the primitive's structural guards against the ACTUAL shape being passed, not just its high-level purpose -- 'same validation primitive' claims in a design doc should be checked against the function's real preconditions before implementation, not assumed compatible."
+      ]
+    },
+    {
+      "issue_id": "ISS-0680",
+      "title": "PIN-01: PinResolver.resolve() leaks allocator-owned PinnedVersion fields on every error path after Step 3/AC3/AC4",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "memory safety",
+      "run_id": "WF02-batch-4-20260811",
+      "workflow_id": "WF-02",
+      "handoff_id": "67a40957-17d3-41d0-b28c-f9edd4870c4d",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/722",
+      "requirement_ids": [
+        "PIN-01"
+      ],
+      "summary": "src/engine/pin_resolver.zig's PinResolver.resolve() allocates each PinnedVersion's resolved_id/version (and, for the variable_schema entry, ref) via the caller's long-lived allocator parameter, not the function's local arena. The ONLY cleanup for these allocator-owned strings is in the SUCCESS path (the loop building the final 'owned' slice, which explicitly frees them after duplicating). Every error return before that point -- validateVariableSchema()'s VariableSchemaViolation, applyPinOverrides()'s UnresolvedPinOverride, and any PoolExhausted/TransactionFailed from either -- returns immediately via 'try', leaking every allocator-owned field already stored in pins.items at that point. Confirmed live via Zig's DebugAllocator: tests/integration/pin01_ac345_resolution_test.zig's TC-PIN-01-04 (an UnresolvedPinOverride case) reports 13 leaked allocations.",
+      "root_cause": {
+        "type": "missing_errdefer_cleanup",
+        "details": "resolve()'s arena (arena.deinit() via defer) only frees the arena's OWN allocations (the ArrayList backing storage, extractStringField's service_id copies) -- it has no effect on allocator-owned memory. No errdefer or equivalent covers the same cleanup the success-path loop performs, on any of the function's several early-return error paths after at least one PinnedVersion has been appended."
+      },
+      "resolution": null,
+      "verification": null,
+      "files_changed": [],
+      "created_at": "2026-08-12T03:02:17Z",
+      "resolved_at": null,
+      "prevention": [
+        "Add an errdefer immediately after pins starts being populated that walks pins.items and frees each entry's allocator-owned fields the same way the success path's cleanup loop already does, mirroring the errdefer pattern already used later in the same function around the 'owned' allocation.",
+        "When a function separates an arena allocator (for transient/local state) from a caller-supplied allocator (for returned/long-lived state) inside the same loop, audit every early-return path for whether caller-allocator-owned state accumulated so far needs explicit cleanup -- the arena's own defer does not cover it."
+      ]
     }
   ]
 }
