@@ -4,6 +4,13 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-12
 
+### Documentation
+
+- ISS-0668 (GH-706): Add Type A and Type B Lego schema docs (templates/crud-endpoint.schema.md,
+  templates/list-page.schema.md). Expand CUSTOM: block convention in lego-catalog.md into its
+  own subsection with anatomy examples and partial-fit guidance for when Type A/B/D deviation
+  should tip to Type E.
+
 ### Fixed
 
 - ISS-0669 (GH-709): Fix Pool.mutex OS-thread safety: replace std.Io.Mutex (cooperative,
