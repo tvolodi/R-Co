@@ -526,6 +526,41 @@ pub const InstanceStore = struct {
         correlation_key: ?[]const u8,
         initial_variables: []const u8,
     ) InstanceError!Instance {
+        return self.createInternal(allocator, definition_id, correlation_key, initial_variables, null);
+    }
+
+    /// PIN-04 AC2/AC3: sub-process child creation. Identical to create()
+    /// except the child's independently-resolved pin set is merged against
+    /// the parent's EFFECTIVE pin set (reconstructEffectivePins() over
+    /// parent_instance_id, PIN-04's own read-only merge machinery) before
+    /// the child's INSTANCE_STARTED payload is built — every ref the parent
+    /// already pins is inherited (source=inherited, parent's resolved_id/
+    /// version win), and a child ref that would have independently resolved
+    /// to a DIFFERENT version than the inherited pin has that conflict
+    /// recorded in the child's own INSTANCE_STARTED payload
+    /// (pin_inheritance_conflicts[], design's Open questions §2 shape).
+    /// Called only from startSubProcessesForPendingEventsInTx() — never
+    /// exposed on the public API surface, so this does not add a 5th
+    /// positional parameter to the 269 existing create() call sites.
+    pub fn createWithParentInheritance(
+        self: *InstanceStore,
+        allocator: std.mem.Allocator,
+        definition_id: Uuid,
+        correlation_key: ?[]const u8,
+        initial_variables: []const u8,
+        parent_instance_id: Uuid,
+    ) InstanceError!Instance {
+        return self.createInternal(allocator, definition_id, correlation_key, initial_variables, parent_instance_id);
+    }
+
+    fn createInternal(
+        self: *InstanceStore,
+        allocator: std.mem.Allocator,
+        definition_id: Uuid,
+        correlation_key: ?[]const u8,
+        initial_variables: []const u8,
+        parent_instance_id: ?Uuid,
+    ) InstanceError!Instance {
         var param_arena = std.heap.ArenaAllocator.init(allocator);
         defer param_arena.deinit();
         const a = param_arena.allocator();
@@ -717,6 +752,105 @@ pub const InstanceStore = struct {
             };
         };
 
+        // ── Step d.6 (PIN-04 AC2/AC3, NEW): sub-process pin inheritance ────
+        // Only runs when this call is the child leg of
+        // startSubProcessesForPendingEventsInTx() (createWithParentInheritance()).
+        // Reuses reconstructEffectivePins() (PIN-04's own read-only merge
+        // machinery, already built for replay) to fetch the PARENT's
+        // effective pin set, then folds it over the child's own
+        // independently-resolved `pinned_versions` from Step d.5 above:
+        //   - ref present in the parent's set -> child's entry (if any) is
+        //     REPLACED with the parent's {resolved_id, version}, source =
+        //     inherited (AC2).
+        //   - child's own resolved version for that ref differed from the
+        //     parent's -> the conflict is recorded (AC3), never silently
+        //     dropped.
+        //   - ref absent from the parent's set -> child's own resolution
+        //     stands unchanged (PIN-01 behavior, source = resolved).
+        // Allocated from `a` (this call's param_arena) — never returned to
+        // create()'s own caller, mirroring pinned_versions' existing scoping
+        // above.
+        var effective_pinned_versions = pinned_versions;
+        var pin_inheritance_conflicts_json: []const u8 = "[]";
+        if (parent_instance_id) |parent_id| {
+            const parent_effective_pins = reconstruction_mod.reconstructEffectivePins(
+                a,
+                self.pool,
+                parent_id,
+            ) catch |err| switch (err) {
+                reconstruction_mod.ReconstructionError.PoolExhausted => return InstanceError.PoolExhausted,
+                else => return InstanceError.TransactionFailed,
+            };
+            defer reconstruction_mod.pin_resolver_mod.freeEffectivePins(allocator, parent_effective_pins);
+
+            var merged = std.ArrayList(pin_resolver_mod.PinnedVersion).empty;
+            var conflicts_buf = std.ArrayList(u8).empty;
+            conflicts_buf.append(a, '[') catch return InstanceError.TransactionFailed;
+            var conflict_count: usize = 0;
+
+            for (pinned_versions) |child_pin| {
+                var inherited: ?pin_resolver_mod.PinnedVersion = null;
+                for (parent_effective_pins) |pep| {
+                    if (pep.pin.kind != child_pin.kind) continue;
+                    if (!std.mem.eql(u8, pep.pin.ref, child_pin.ref)) continue;
+                    inherited = pep.pin;
+                    break;
+                }
+
+                if (inherited) |parent_pin| {
+                    if (!std.mem.eql(u8, parent_pin.version, child_pin.version)) {
+                        // AC3: child's own resolution would have produced a
+                        // DIFFERENT version than the inherited pin -- record
+                        // the conflict, then let the inherited pin win.
+                        if (conflict_count > 0) conflicts_buf.append(a, ',') catch return InstanceError.TransactionFailed;
+                        const conflict_entry = std.fmt.allocPrint(
+                            a,
+                            "{{\"kind\":\"{s}\",\"ref\":\"{s}\",\"child_resolved_version\":\"{s}\",\"parent_version\":\"{s}\"}}",
+                            .{ pinKindToString(child_pin.kind), child_pin.ref, child_pin.version, parent_pin.version },
+                        ) catch return InstanceError.TransactionFailed;
+                        conflicts_buf.appendSlice(a, conflict_entry) catch return InstanceError.TransactionFailed;
+                        conflict_count += 1;
+                    }
+                    // AC2: parent's pin wins regardless of conflict -- source=inherited.
+                    // parent_pin.ref/.resolved_id/.version alias
+                    // parent_effective_pins, which this block's own `defer
+                    // freeEffectivePins(...)` frees as soon as this `if
+                    // (parent_instance_id) |...| { ... }` block exits --
+                    // BEFORE serialisePinnedVersions() below ever reads
+                    // effective_pinned_versions. Dupe from `a` (this
+                    // function's param_arena, live for the whole call) so
+                    // these strings survive past that free; storing the raw
+                    // aliased slices here previously produced dangling
+                    // pointers, observed live as non-UTF8 garbage bytes
+                    // (Postgres C22021) once the INSTANCE_STARTED payload
+                    // was built downstream.
+                    merged.append(a, .{
+                        .kind = parent_pin.kind,
+                        .ref = a.dupe(u8, parent_pin.ref) catch return InstanceError.TransactionFailed,
+                        .resolved_id = a.dupe(u8, parent_pin.resolved_id) catch return InstanceError.TransactionFailed,
+                        .version = a.dupe(u8, parent_pin.version) catch return InstanceError.TransactionFailed,
+                        .source = .inherited,
+                    }) catch return InstanceError.TransactionFailed;
+                } else {
+                    // Ref absent from the parent's set -- child's own
+                    // resolution stands unchanged.
+                    merged.append(a, child_pin) catch return InstanceError.TransactionFailed;
+                }
+            }
+
+            // Any parent pin for a ref the child's OWN graph never referenced
+            // is NOT added -- PIN-04 AC2 only inherits for refs the child
+            // itself resolves; a parent pin the child has no node for would
+            // be meaningless in the child's payload. (Matches the design's
+            // Data flow Step 3: inheritance replaces/extends the child's own
+            // resolved set, keyed off the child's own refs.)
+
+            conflicts_buf.append(a, ']') catch return InstanceError.TransactionFailed;
+
+            effective_pinned_versions = merged.toOwnedSlice(a) catch return InstanceError.TransactionFailed;
+            pin_inheritance_conflicts_json = conflicts_buf.items;
+        }
+
         // ── Step e: Insert instance + trigger initial transition ───────────
         // All writes happen in a single DB transaction so that the instance row,
         // the first event, and any initial HUMAN_TASK rows are atomically visible.
@@ -900,18 +1034,25 @@ pub const InstanceStore = struct {
         // Manually construct the JSON string to avoid ObjectMap initialization complexity.
         //
         // PIN-02: also serialises pinned_versions[] — the array PIN-01's
-        // PinResolver.resolve() produced above (Step d.5) — into the SAME
-        // payload, in the SAME transaction as the instance row insert, so a
-        // committed instance never has an unrecorded pin set (PIN-02 AC2).
-        // Kept as a separate allocPrint step (not inlined) because
+        // PinResolver.resolve() produced above (Step d.5), possibly replaced
+        // by Step d.6's inherited merge for a sub-process child — into the
+        // SAME payload, in the SAME transaction as the instance row insert,
+        // so a committed instance never has an unrecorded pin set (PIN-02
+        // AC2). Kept as a separate allocPrint step (not inlined) because
         // []PinnedVersion has a variable element count, matching this file's
         // existing tokens_buf incremental-build pattern.
-        const pinned_versions_json = serialisePinnedVersions(a, pinned_versions) catch
+        //
+        // PIN-04 AC3: pin_inheritance_conflicts[] is always present (empty
+        // array "[]" for a non-sub-process instance, or one with no
+        // inheritance conflicts) per the design's Open questions §2 —
+        // backward-compatible with any existing consumer that ignores
+        // unknown fields.
+        const pinned_versions_json = serialisePinnedVersions(a, effective_pinned_versions) catch
             return InstanceError.TransactionFailed;
         const start_payload_json = std.fmt.allocPrint(
             a,
-            "{{\"initial_variables\":{s},\"start_node_id\":\"{s}\",\"pinned_versions\":{s}}}",
-            .{ initial_variables, start_node_id.?, pinned_versions_json },
+            "{{\"initial_variables\":{s},\"start_node_id\":\"{s}\",\"pinned_versions\":{s},\"pin_inheritance_conflicts\":{s}}}",
+            .{ initial_variables, start_node_id.?, pinned_versions_json, pin_inheritance_conflicts_json },
         ) catch return InstanceError.TransactionFailed;
 
         // INSERT event row (instance_started).
@@ -4038,8 +4179,19 @@ fn buildOverwrittenPayload(
 //
 // For each engine-emitted cascade event, insert a row into the events table
 // with the deterministic "engine:<16-hex-digits>" idempotency key computed by
-// transition().  Uses ON CONFLICT (idempotency_key) DO NOTHING so that a
-// retry of the orchestrator step is safely absorbed.
+// transition().  A retry of the orchestrator step is safely absorbed by
+// claiming the key in plat_event_idempotency FIRST (PAR-01: global,
+// non-partitioned idempotency-key uniqueness now lives there, NOT in a
+// UNIQUE index on the partitioned events table — see events'
+// uq_event_idempotency removal note in
+// migrations/1147_par01_events_partitioning.sql). If that INSERT returns no
+// row, the key was already claimed by a prior attempt and this event is
+// skipped entirely (mirrors src/event_store/store.zig's Store.append()
+// pattern, ISS-0670 platform convention) — the earlier bare
+// `ON CONFLICT (idempotency_key) DO NOTHING` directly against events raised
+// PostgreSQL C42P10 ("no unique or exclusion constraint matching the ON
+// CONFLICT specification") once PAR-01 dropped that index, since events no
+// longer carries any constraint idempotency_key alone can resolve against.
 //
 // The sequence numbers are assigned by bumping instance_sequence in the same
 // CTE pattern used for the trigger event.
@@ -4126,6 +4278,27 @@ fn persistEmittedEventsInTx(
         const payload_json = buildEmittedEventPayload(a, emitted.payload) catch
             return PersistEmittedEventsError.OutOfMemory;
 
+        // Claim the idempotency key in plat_event_idempotency FIRST, in the
+        // SAME transaction as the events insert below (PAR-01 global
+        // idempotency, see doc comment above). Zero RETURNING rows means a
+        // prior attempt already claimed this key -- absorb the retry by
+        // skipping straight to the next emitted event, matching this
+        // function's pre-PAR-01 "silently absorbed" contract.
+        var idem_rows = conn.query(
+            a,
+            \\INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at)
+            \\VALUES ($1, gen_random_uuid(), NOW())
+            \\ON CONFLICT (idempotency_key) DO NOTHING
+            \\RETURNING event_id::text
+        ,
+            &.{emitted.idempotency_key},
+        ) catch return PersistEmittedEventsError.PersistenceFailed;
+        defer idem_rows.deinit();
+
+        if (idem_rows.rows.len == 0) continue;
+        const claimed_event_id = idem_rows.rows[0][0] orelse
+            return PersistEmittedEventsError.PersistenceFailed;
+
         conn.exec(
             \\WITH seq AS (
             \\    INSERT INTO instance_sequence (instance_id, next_seq)
@@ -4135,13 +4308,12 @@ fn persistEmittedEventsInTx(
             \\    RETURNING next_seq - 1 AS val
             \\)
             \\INSERT INTO events
-            \\    (instance_id, event_type, payload, actor_id,
+            \\    (event_id, instance_id, event_type, payload, actor_id,
             \\     sequence_number, idempotency_key)
-            \\SELECT $1::uuid, $2, $3::jsonb, $1::uuid, seq.val, $4
+            \\SELECT $5::uuid, $1::uuid, $2, $3::jsonb, $1::uuid, seq.val, $4
             \\FROM seq
-            \\ON CONFLICT (idempotency_key) DO NOTHING
         ,
-            &.{ instance_id_hex, event_type_str, payload_json, emitted.idempotency_key },
+            &.{ instance_id_hex, event_type_str, payload_json, emitted.idempotency_key, claimed_event_id },
         ) catch return PersistEmittedEventsError.PersistenceFailed;
     }
 }
@@ -4286,11 +4458,19 @@ fn startSubProcessesForPendingEventsInTx(
                 ) catch return CompleteTaskError.OutOfMemory;
                 defer allocator.free(parent_vars_json);
 
-                const child_instance = self.create(
+                // PIN-04 AC2/AC3: createWithParentInheritance() merges the
+                // child's own PinResolver.resolve() output against the
+                // parent's effective pin set (reconstructEffectivePins()) so
+                // refs the parent already pins are inherited and any
+                // resolution conflict is recorded in the child's own
+                // INSTANCE_STARTED payload — see instance.zig's
+                // createInternal() Step d.6.
+                const child_instance = self.createWithParentInheritance(
                     allocator,
                     child_definition_id,
                     null,
                     parent_vars_json,
+                    parent_instance_id,
                 ) catch |err| switch (err) {
                     InstanceError.PoolExhausted => return CompleteTaskError.PoolExhausted,
                     else => return CompleteTaskError.PersistenceFailed,
@@ -4352,8 +4532,6 @@ fn startSubProcessesForPendingEventsInTx(
                     tok.waiting_child_instance_id = allocator.dupe(u8, child_instance_id_hex) catch return CompleteTaskError.OutOfMemory;
                     break;
                 }
-
-                _ = parent_instance_id;
             },
             else => {},
         }

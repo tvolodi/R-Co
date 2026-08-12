@@ -468,15 +468,76 @@ fn setupParentChildWithServiceTaskChild(
     const parent_attrs = try std.fmt.allocPrint(alloc, "{{\"child_definition_id\":\"{s}\"}}", .{child_id_hex});
     defer alloc.free(parent_attrs);
 
+    // TEST-FIXTURE FIX (flagged in this handoff's result, not silently
+    // applied): this file's own header comment/TC-PIN-04-03 doc comment and
+    // tests/specs/PIN-04.md's "Given" both state the parent and child
+    // SERVICE_TASK nodes reference the SAME service_id -- but this fixture,
+    // as originally written by TEST-DESIGNER, gave the PARENT graph no
+    // SERVICE_TASK node at all (only START/HUMAN_TASK/SUB_PROCESS/END), so
+    // PinResolver.resolve() (which derives catalog_entry pins solely by
+    // scanning SERVICE_TASK nodes anywhere in the graph, independent of
+    // position/reachability -- src/engine/pin_resolver.zig resolve() Step
+    // 2/3) never produced a shared_svc_id pin on the PARENT to inherit from
+    // -- queryPinnedResolvedId(parent_hex, shared_svc_id) returned
+    // error.NotFound for BOTH TC-PIN-04-03 and TC-PIN-04-04, confirmed via
+    // debug instrumentation (payload dump showed pinned_versions containing
+    // only the always-present variable_schema pin, zero catalog_entry
+    // entries).
+    //
+    // Adding a PARENT-side SERVICE_TASK node (PS) for shared_svc_id makes the
+    // fixture match its own documented intent: the parent resolves and pins
+    // shared_svc_id at instance-CREATE time (resolve() scans the whole graph
+    // up front, regardless of node position/reachability), which is the
+    // precondition AC2/AC3 require to be testable at all. PS must NOT
+    // actually be entered by any token during either create()'s initial
+    // transition OR completeTask()'s cascade: confirmed by reading both in
+    // full that a SERVICE_TASK with no registered plugin handler
+    // (src/engine/instance.zig processServiceTaskRuntimeInTx(), the
+    // no-plugin branch) falls through to a REAL outbound HTTP call via
+    // service_task_mod.executeHttpRequest() against service_catalog's
+    // endpoint_url -- not viable in this test environment and forbidden by
+    // this repo's "no external network calls" rule regardless. PS is
+    // therefore wired as the FALSE branch of an EXCLUSIVE_GATEWAY (GW)
+    // inserted between PT and SP: the TRUE/default branch (GW -> SP,
+    // unconditioned edge, matches EXCLUSIVE_GATEWAY's documented
+    // first-true-condition-wins behavior against a graph with only one
+    // conditionless edge) is the ONLY one ever taken, so PT -> GW -> SP is
+    // functionally identical to the original PT -> SP edge; the dead branch
+    // (GW -> PS, condition "false") satisfies graph_mod.validateGraph()'s
+    // CHK-04 "every non-START/END node needs both incoming and outgoing
+    // edges" rule for PS via PS -> E2 (a second END node) without PS ever
+    // being reached at runtime. This is a test-fixture correction, not an
+    // implementation work-around -- src/engine/instance.zig's inheritance
+    // logic (createInternal() Step d.6) is unaffected by this edit.
+    const parent_svc_attrs = try std.fmt.allocPrint(
+        alloc,
+        "{{\"service_id\":\"{s}\",\"capabilities\":[\"service:call:{s}\"],\"method\":\"POST\",\"timeout_ms\":5000,\"retry_limit\":1}}",
+        .{ child_svc_id, child_svc_id },
+    );
+    defer alloc.free(parent_svc_attrs);
+
     const parent_nodes = [_]GraphNode{
         .{ .id = "S", .node_type = .START, .label = null, .attributes = null },
         .{ .id = "PT", .node_type = .HUMAN_TASK, .label = "Parent Task", .attributes = "{\"role\":\"tester\",\"assignee_type\":\"USER\",\"assignee_ref\":\"tester\"}" },
+        .{ .id = "GW", .node_type = .EXCLUSIVE_GATEWAY, .label = "Gateway", .attributes = null },
+        .{ .id = "PS", .node_type = .SERVICE_TASK, .label = "Parent Service (dead branch, pin-resolution only)", .attributes = parent_svc_attrs },
         .{ .id = "SP", .node_type = .SUB_PROCESS, .label = "Sub", .attributes = parent_attrs },
         .{ .id = "E", .node_type = .END, .label = null, .attributes = null },
+        .{ .id = "E2", .node_type = .END, .label = null, .attributes = null },
     };
     const parent_edges = [_]GraphEdge{
         .{ .id = "pe1", .source = "S", .target = "PT", .condition = null, .is_default = false },
-        .{ .id = "pe2", .source = "PT", .target = "SP", .condition = null, .is_default = false },
+        .{ .id = "pe1b", .source = "PT", .target = "GW", .condition = null, .is_default = false },
+        // GW's edge selection (src/engine/transition.zig EXCLUSIVE_GATEWAY
+        // case): non-default edges are only candidates when their condition
+        // evaluates true; is_default=true is the fallback taken when no
+        // non-default edge matches. pe2 -> SP is marked is_default=true so it
+        // is ALWAYS chosen (SP is the only edge whose condition could ever be
+        // true, and it has none) -- pe2b -> PS's "false" condition never
+        // matches, so PS is provably never entered at runtime.
+        .{ .id = "pe2", .source = "GW", .target = "SP", .condition = null, .is_default = true },
+        .{ .id = "pe2b", .source = "GW", .target = "PS", .condition = "false", .is_default = false },
+        .{ .id = "pe2c", .source = "PS", .target = "E2", .condition = null, .is_default = false },
         .{ .id = "pe3", .source = "SP", .target = "E", .condition = null, .is_default = false },
     };
 
