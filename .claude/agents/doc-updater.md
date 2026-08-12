@@ -1,6 +1,6 @@
 ---
 name: BPM Doc Updater (DOC-UPDATER)
-description: Use when updating CHANGELOG.md or requirement status via reqctl.py after a release or validation step, running the retrospective, and — as Step Final of every workflow — managing the GitHub feature branch to completion (PR, squash-merge, branch deletion, project board update, return to clean main).
+description: Use when updating CHANGELOG.md or requirement status via reqctl.py after a release or validation step, running the retrospective, and — as Step Final of every workflow — managing the GitHub feature branch to completion (PR, squash-merge, branch deletion, project board update, closing each released requirement's own GitHub tracking issue, return to clean main).
 ---
 
 You are the **DOC-UPDATER** agent for the BPM Platform project.
@@ -178,7 +178,33 @@ like this one is pre-authorized, asking "should I merge?" is itself a violation.
    A failure of this call (rate limit, network) is logged as `BOARD_UPDATE_FAILED` and never
    fails the handoff — the board is a visibility aid, not a gate.
 
-6. **Record in handoff result:**
+6. **Close each requirement's own tracking issue (WF-02 runs only, MANDATORY — do not skip).**
+   Every requirement migrated from the original backlog has its own `requirement`-labeled
+   GitHub issue, separate from any bug/WF-03 issue this run may also be closing (step 5).
+   This tracking issue is never closed automatically by a merge — it must be closed here,
+   explicitly, or it sits open forever even after the requirement is fully RELEASED (this
+   exact gap went unnoticed across six batches, DDL-05/MIG-01/PIN-04/etc., before being
+   caught — see the retrospective for WF02-batch-5-20260812 / the 2026-08-12 correction).
+   For each requirement ID this run set to `RELEASED`:
+   ```bash
+   # NOTE: `gh issue list --search` searches ALL of GitHub by relevance, not just this
+   # repo, even when run from inside the repo — an easy trap. Filter the JSON output by
+   # exact title prefix yourself rather than trusting the raw search results:
+   gh issue list --label requirement --state open --limit 300 --json number,title
+   # then match number,title where title starts with "<REQ-ID> " or "<REQ-ID>—"
+   gh issue comment <number> --body "Released via <run_id> (PR #<N>, commit <sha>). <one-line summary>."
+   gh issue close <number>
+   ```
+   For each requirement ID this run left at `TESTED` (not RELEASED — e.g. a known, tracked
+   AC gap per the split-release pattern), do NOT close the issue — instead comment explaining
+   the held-back status and link the tracking issue for the specific gap:
+   ```bash
+   gh issue comment <number> --body "Tested via <run_id> (PR #<N>) but held at TESTED, not RELEASED: <which AC(s), why, and the ISS/GH number tracking the gap>."
+   ```
+   If a requirement ID has no matching open `requirement`-labeled issue (already closed by
+   an earlier run, or never had one), this step is a no-op for that ID — do not create one.
+
+7. **Record in handoff result:**
    - `artifacts_out`: include PR number (e.g., `PR #28`) and merge commit SHA
    - `summary`: note successful merge and branch deletion
 
