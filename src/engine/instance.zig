@@ -552,6 +552,20 @@ pub const InstanceStore = struct {
         // ── Step b: Load and verify the definition ─────────────────────────
         // Acquire connection, SELECT id+status, release before step d.
         // Security: definition_id bound as $1::uuid — no SQL string interpolation.
+        //
+        // ISS-0688 / GH-745: no ` AND tenant_id = bpm_effective_tenant_id()`
+        // predicate here. process_definitions is a PER_TENANT table reached
+        // via SCHEMA-mode search_path routing (tenant_context.set(), applied
+        // before create() runs) — the predicate is unnecessary once the
+        // correct schema is on search_path, and public.bpm_effective_tenant_id()
+        // no longer exists after the LEGACY_RLS-to-SCHEMA cutover (GBL-116/
+        // 123/130/131). This mirrors SPT-03's original fix (commit
+        // 584408611586c) after a later merge/rebase silently reintroduced
+        // this predicate. Do not reintroduce a per-tenant-schema copy of
+        // bpm_effective_tenant_id() either — that variant falls back to
+        // current_setting('bpm.tenant_id', true), which SCHEMA mode never
+        // sets (src/db/pool.zig applyRequestStorageRouting(), SCHEMA branch),
+        // so it would silently resolve to the zero UUID rather than error.
         const def_id_hex = uuidToHex(a, definition_id) catch
             return InstanceError.TransactionFailed;
         var definition_artifact_hash: ?[]const u8 = null;
@@ -567,7 +581,6 @@ pub const InstanceStore = struct {
                 allocator,
                 \\SELECT id, status, definition_artifact_hash FROM process_definitions
                 \\WHERE id = $1::uuid
-                \\  AND tenant_id = bpm_effective_tenant_id()
             ,
                 &.{def_id_hex},
             ) catch return InstanceError.TransactionFailed;
@@ -724,6 +737,20 @@ pub const InstanceStore = struct {
         const ck_param = correlation_key orelse "";
         const definition_artifact_hash_param = definition_artifact_hash orelse "";
 
+        // ISS-0688 / GH-745: tenant_id is bound as an explicit $N parameter
+        // sourced from the same threadlocal request-tenant context read for
+        // the PIN-01 fix above (request_tenant_id), never from
+        // bpm_effective_tenant_id() (dropped from public by the
+        // LEGACY_RLS-to-SCHEMA cutover; a per-tenant-schema copy still
+        // exists but falls back to the zero UUID in SCHEMA mode since
+        // bpm.tenant_id is never set there — see the Step b comment above).
+        // instance_projections.tenant_id still exists as a NOT NULL column
+        // under each per-tenant schema (confirmed via \d against bpm_test),
+        // so it must be supplied explicitly rather than dropped from the
+        // INSERT column list.
+        const tenant_id_hex = uuidToHex(a, request_tenant_id) catch
+            return InstanceError.TransactionFailed;
+
         const conn2 = self.pool.acquire() catch |err| switch (err) {
             PoolError.ExhaustedPool => return InstanceError.PoolExhausted,
             else => return InstanceError.TransactionFailed,
@@ -741,8 +768,8 @@ pub const InstanceStore = struct {
             \\    (tenant_id, instance_id, definition_id, correlation_key,
             \\     definition_artifact_hash, status, variables, current_nodes, started_at, updated_at)
             \\VALUES
-            \\    (bpm_effective_tenant_id(), $1::uuid, $2::uuid, NULLIF($3, ''), NULLIF($4, ''),
-            \\     'ACTIVE', $5::jsonb, '[]'::jsonb, NOW(), NOW())
+            \\    ($1::uuid, $2::uuid, $3::uuid, NULLIF($4, ''), NULLIF($5, ''),
+            \\     'ACTIVE', $6::jsonb, '[]'::jsonb, NOW(), NOW())
             \\ON CONFLICT (tenant_id, definition_id, correlation_key)
             \\    WHERE correlation_key IS NOT NULL DO NOTHING
             \\RETURNING
@@ -754,7 +781,7 @@ pub const InstanceStore = struct {
             \\    (EXTRACT(EPOCH FROM started_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
         ,
-            &.{ inst_id_hex, def_id_hex, ck_param, definition_artifact_hash_param, initial_variables },
+            &.{ tenant_id_hex, inst_id_hex, def_id_hex, ck_param, definition_artifact_hash_param, initial_variables },
         ) catch return InstanceError.TransactionFailed;
         defer {
             var r = ins_rows;

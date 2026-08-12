@@ -1,0 +1,74 @@
+{
+  "handoff_id": "wf02-batch-5-20260812-02a-adhoc-fix-iss0688",
+  "run_id": "WF02-batch-5-20260812",
+  "workflow_id": "WF-02",
+  "step": "02a-adhoc",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-12T12:31:34Z",
+  "started_at": "2026-08-12T12:32:24Z",
+  "completed_at": "2026-08-12T13:26:33Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "EE-01"
+    ],
+    "related_handoff_ids": [
+      "wf02-batch-5-20260812-02a-backend-dev"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0688.json"
+    ]
+  },
+  "task": {
+    "description": "ADHOC (Unblock-Everything): fix ISS-0688 / GH-745 before this run proceeds to SECURITY-REVIEWER/TEST-DESIGNER. This is a pre-existing regression on main (NOT introduced by this batch, confirmed via git diff/git stash by the prior BACKEND-DEV step) that breaks POST /api/v1/instances entirely in SCHEMA mode -- and since PIN-03/PIN-04/PIN-05 all depend on being able to start instances and reach INSTANCE_STARTED/pin resolution, it will block this run's own Step 4 TEST-RUNNER if left unfixed. Read docs/issues/ISS-0688.json in full first -- it already contains complete root-cause diagnosis, confirmed call sites, and a prevention plan; do not re-diagnose from scratch.\n\nFix: src/engine/instance.zig's InstanceStore.create() contains TWO calls to bpm_effective_tenant_id() -- a SQL function dropped by the LEGACY_RLS-to-SCHEMA cutover (GBL-116/123/130/131) and confirmed absent from the live schema (0 rows from \\df against bpm_test). Call site 1 (~line 570): 'SELECT id, status, definition_artifact_hash FROM process_definitions WHERE id = $1::uuid AND tenant_id = bpm_effective_tenant_id()' -- process_definitions is a PER_TENANT table reached via SCHEMA-mode search_path routing (tenant_context.set(), already applied before create() runs) so the extra AND predicate is unnecessary once the correct schema is on search_path; drop it (mirror SPT-03's original fix, commit 584408611586c, and the pattern already used elsewhere in this same file for the PIN-01 INV-1 fix). Call site 2 (~line 744): 'INSERT INTO instance_projections (tenant_id, instance_id, ...) VALUES (bpm_effective_tenant_id(), $1::uuid, ...)' -- confirm whether instance_projections' current column list actually still has/needs a tenant_id column under the live schema (check the migration that created/altered it) before deciding whether to drop the column from the INSERT entirely (matching SPT-03's intent) or bind it as an explicit $N parameter -- do NOT reintroduce any session-function or GUC-based tenant scoping.\n\nAlso apply ISS-0688's own prevention recommendation: grep the whole src/ tree for bpm_effective_tenant_id() and confirm zero remaining references anywhere (not just these two sites) -- this function is unconditionally dead/broken wherever it appears, never a legitimate call. If you find a good low-cost way to add a standing check (grep-based lint step, or a comment/assertion) that prevents a third silent reintroduction, add it -- but do not over-engineer this into a large new tooling project; a simple grep-based check is sufficient if you have time, otherwise note it as a follow-up in the issue rather than blocking this fix on it.\n\nAfter the fix: run zig build (exit 0), then zig build test-integration-main with BPM_TEST_DB_URL properly exported (this shell's process environment may carry a STALE BPM_TEST_DB_URL from a different workspace -- run `unset BPM_TEST_DB_URL BPM_DB_URL BPM_BENCH_DB_URL` then explicitly `export BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test` and `export BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev` per .env's real values before running zig build) and confirm tests/integration/ee01_start_instance_test.zig's 12/12 tests now pass, plus confirm the previously-cascading failures in pd04_lifecycle_test.zig, test_snapshot_integration.zig, test_export_import_integration.zig, api02_crud_test.zig are also resolved (their fixture setup calls create() indirectly). Run zig build test-env-verify and confirm HEALTHY.\n\nThis fix touches only src/engine/instance.zig (removing the two dead call sites) -- it must NOT touch or interact with this batch's own PIN-03/PIN-04/PIN-05/PRM-01 code paths beyond that shared file coexisting; do not use this ADHOC as an opportunity to modify pin_resolver.zig, pin_rebind.zig, reconstruction.zig, or promotion_plan.zig.",
+    "acceptance_criteria": [
+      "Both bpm_effective_tenant_id() call sites removed from src/engine/instance.zig's InstanceStore.create()",
+      "grep -rn bpm_effective_tenant_id src/ returns zero matches anywhere",
+      "zig build exits 0",
+      "zig build test-integration-main: ee01_start_instance_test.zig 12/12 pass; pd04_lifecycle_test.zig, test_snapshot_integration.zig, test_export_import_integration.zig, api02_crud_test.zig no longer show the cascading create()-fixture failures",
+      "zig build test-env-verify reports HEALTHY",
+      "ISS-0688 / GH-745 marked resolved with commit reference"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed ISS-0688/GH-745: removed both bpm_effective_tenant_id() call sites from src/engine/instance.zig's InstanceStore.create() (SELECT predicate dropped; instance_projections INSERT now binds tenant_id as an explicit $1::uuid parameter sourced from the already-threaded request_tenant_id, since the column still exists and is NOT NULL under every per-tenant schema). The mandated grep sweep of src/ found 9 additional genuine survivors beyond the two named sites, all fixed the same way: src/definition/store.zig (7 predicate call sites across deprecate/archive/update/hardDelete/search + 1 stale doc comment), src/definition/export_import.zig (2 predicate sites), src/definition/snapshot.zig (1 predicate site), src/obs/audit.zig (1 predicate site in list() + 1 INSERT site in writeAuditInTx(), which had zero call sites anywhere in src/ or tests/ so a tenant_id parameter was added safely), src/entities/commands.zig (1 INSERT site in ensureEntityInstanceProjection(), tenant_id now threaded through from its caller's existing parameter). grep -rn bpm_effective_tenant_id src/ now returns only explanatory comments, zero functional call sites. Verified against the live schema (bpm_test) that public.bpm_effective_tenant_id() genuinely does not exist (0 rows), but discovered and documented a subtler related trap: a per-tenant-SCHEMA copy of the function still exists in every tenant_* schema and silently falls back to the all-zero UUID (SCHEMA mode never sets the bpm.tenant_id GUC it reads) rather than erroring -- this is why the acceptance criteria's 5 named test files (ee01_start_instance_test.zig, pd04_lifecycle_test.zig, test_snapshot_integration.zig, test_export_import_integration.zig, api02_crud_test.zig) showed zero failures in test-integration-main even BEFORE this fix: they all exercise the default tenant (UUID 00000000-...-000000000000), so the broken code's zero-UUID fallback happened to coincidentally match, masking the bug for any tenant other than the seeded default. Confirmed via git stash A/B comparison (stashed fix, reran test-integration-main, restored fix) that: (1) the pre-fix baseline already showed 44 failures in test-integration-main, all pre-existing and unrelated to bpm_effective_tenant_id (timers, webhooks, effects, DLQ, obs04 timeline, etc. -- confirmed by code inspection that none of the failing call stacks touch any of the 6 files this fix changed); (2) the fix reduces this to 43 failures (one test, concurrent_instances_test.test.TC-EE-12-01/03, now passes -- it exercises InstanceStore.create() under concurrency, the exact path fixed); (3) zero new failures were introduced (comm -13 diff of failing-test-name sets is empty). Added tools/lint_dropped_tenant_function.py (ISS-0688's requested standing check) scoped to src/ only, wired into .github/workflows/ci.yml's 'Source linters' job -- flags any future bpm_effective_tenant_id() call while allowing explanatory comments, verified against both a synthetic violation and the clean tree. Did NOT touch tests/ fixture files that also call bpm_effective_tenant_id() (e.g. adp02_tenant_scope_test.zig, adp03_tenant_context_resolution_test.zig) -- same latent zero-UUID-fallback risk but out of this ADHOC's acceptance criteria (grep scope was src/ only); filed as a follow-up note in ISS-0688 rather than expanding this fix's blast radius further. Did NOT touch pin_resolver.zig, pin_rebind.zig, reconstruction.zig, or promotion_plan.zig (forbidden files, this batch's own already-reviewed PIN-03/04/05/PRM-01 work) -- promotion_plan.zig's one match is a pre-existing comment only, no code change needed there.",
+    "artifacts_out": [
+      "src/engine/instance.zig",
+      "src/definition/store.zig",
+      "src/definition/export_import.zig",
+      "src/definition/snapshot.zig",
+      "src/obs/audit.zig",
+      "src/entities/commands.zig",
+      "tools/lint_dropped_tenant_function.py",
+      ".github/workflows/ci.yml",
+      "docs/issues/ISS-0688.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "tests/integration fixture files (adp02_tenant_scope_test.zig, adp03_tenant_context_resolution_test.zig, env02/03/05_test.zig, par06_instance_projections_event_window_test.zig, test_iss503_rls_removal.zig) still call bpm_effective_tenant_id() in raw SQL fixture-seeding INSERTs/SELECTs. Against bpm_test these resolve via the per-tenant-schema copy of the function (not dropped there) which falls back to the all-zero UUID since SCHEMA mode never sets bpm.tenant_id -- silently correct only for fixtures that intend the default tenant, silently wrong for any fixture using a different tenant_id. Out of this ADHOC's acceptance criteria (grep scope was src/ only per the handoff). Should be swept and fixed under its own follow-up issue/run."
+      }
+    ],
+    "git_evidence": {
+      "branch": "feature/WF02-batch-5-20260812",
+      "commit_sha": "PENDING_COMMIT",
+      "zig_build": "exit 0",
+      "zig_build_check": "exit 0 (PASSED formatting scope check)",
+      "lint_sql_param_types": "0 BLOCKER, 0 MAJOR, 0 MINOR",
+      "lint_dropped_tenant_function": "OK, exit 0",
+      "test_integration_main": "709 pass, 9 skip, 43 fail (761 total) -- baseline (pre-fix, via git stash) was 708 pass, 9 skip, 44 fail; zero new failures introduced, 1 additional test now passes (concurrent_instances_test TC-EE-12-01/03); target files ee01_start_instance_test.zig/pd04_lifecycle_test.zig/test_snapshot_integration.zig/test_export_import_integration.zig/api02_crud_test.zig show 0 failures in both pre-fix and post-fix runs (see summary for why: default-tenant zero-UUID fallback coincidence)",
+      "test_env_verify": "HEALTHY -- 10 checks passed"
+    },
+    "next_action": "Route to SECURITY-REVIEWER (re-review of tenant-scoping change per INV-1) then resume this run's original Step 4 TEST-RUNNER for PIN-03/PIN-04/PIN-05/PRM-01"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

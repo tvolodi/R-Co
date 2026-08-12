@@ -106,7 +106,6 @@ pub const ExportImportStore = struct {
             \\SELECT id, name, version, description, graph::text
             \\FROM process_definitions
             \\WHERE id = $1::uuid
-            \\  AND tenant_id = bpm_effective_tenant_id()
         ,
             &.{id_hex},
         ) catch return ExportImportError.DatabaseError;
@@ -215,8 +214,7 @@ pub const ExportImportStore = struct {
                 allocator,
                 \\SELECT COUNT(*)
                 \\FROM process_definitions
-                \\WHERE tenant_id = bpm_effective_tenant_id()
-                \\  AND name = $1 AND version = $2
+                \\WHERE name = $1 AND version = $2
             ,
                 &.{ doc.name, doc.version },
             ) catch return ExportImportError.DatabaseError;

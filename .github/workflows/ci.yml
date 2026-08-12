@@ -121,6 +121,14 @@ jobs:
       - name: Legacy table-name references
         run: python3 tools/lint_sql_table_refs.py
 
+      - name: Dropped tenant-scoping function (ISS-0688 / GH-745)
+        # Standing check per ISS-0688's prevention plan: bpm_effective_tenant_id()
+        # was dropped from public by the LEGACY_RLS-to-SCHEMA cutover and is
+        # unconditionally broken wherever src/ still calls it -- guards against a
+        # third silent reintroduction (it had already been removed once by SPT-03,
+        # commit 584408611586c, then silently resurfaced in instance.zig).
+        run: python3 tools/lint_dropped_tenant_function.py
+
       - name: Migration schema conventions
         run: python3 tools/lint_migration_schema.py
 
