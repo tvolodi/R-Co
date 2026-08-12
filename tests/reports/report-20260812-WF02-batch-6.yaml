@@ -1,0 +1,141 @@
+run_id: WF02-batch-6-20260812
+report_date: "2026-08-12T18:49:54Z"
+agent: TEST-RUNNER
+workflow_id: WF-02
+workflow_step: "00a"
+gate: Green-Main Gate
+
+requirement_ids:
+  - PRM-02
+  - PRM-03
+  - PRM-04
+  - PRM-05
+
+commit_under_test: 2c7046e1
+branch: main (verified HEAD matches origin/main; run executed from a worktree of the same repo)
+
+environment_setup:
+  note: >
+    This is a git worktree (handoffs/... agent-ac541404bbcfae762), not the primary checkout.
+    No .env existed at session start; copied from the primary checkout's .env (same shared
+    r-co Docker Compose project/containers as the primary checkout -- not an isolated stack).
+    docker-compose.override.yml was also missing initially; an early `./make.ps1 up` before
+    it was copied in briefly remapped db/db_test to the unmapped default ports 5432/5433
+    (colliding with unrelated host processes) before being corrected. web/node_modules did
+    not exist either; `npm install` (502 packages) was required before frontend tests could run.
+    A machine-wide User-scope environment variable BPM_TEST_DB_URL (pointing at an unrelated
+    checkout's port 5453) also had to be overridden per-invocation throughout, since raw
+    `zig build` invocations (not routed through make.ps1's Import-DotEnv) pick it up silently.
+    All three gaps were corrected and verified before evidence was collected.
+
+pre_checks:
+  test_env_verify_initial:
+    command: "zig build test-env-verify"
+    result: PASS
+    summary: "verify_test_env: HEALTHY — 10 checks passed"
+    note: "Re-verified multiple times throughout the run after db_test restarts; always returned to 10/10 HEALTHY before each evidence-gathering test-integration run."
+
+layers:
+  - name: build
+    command: "zig build"
+    exit_code: 0
+    result: PASS
+
+  - name: unit
+    command: "zig build test --summary all"
+    exit_code: 0
+    result: PASS
+    summary: "Build Summary: 103/103 steps succeeded; 1071/1135 tests passed (64 skipped)"
+    tests_total: 1135
+    tests_passed: 1071
+    tests_failed: 0
+    tests_skipped: 64
+    note: >
+      Raw output contains "failed command: ... test.exe ... --listen=-" lines despite
+      exit code 0 and 103/103 steps succeeded. This is the documented Zig 0.16 non-TTY
+      live-progress-renderer artifact (ISS-0143/GH-448, reconfirmed in every prior batch
+      report in this run) -- not a build-graph failure. Trusted the "Build Summary: N/N
+      steps succeeded" line and process exit code over the "failed command" substring.
+
+  - name: integration
+    command: "zig build test-integration --summary all"
+    exit_code: null
+    result: FAIL
+    summary: >
+      Not reliably green on this commit. Three independent evidence-gathering attempts at
+      default concurrency plus one at -j4, each preceded by a verified-HEALTHY (10/10)
+      zig build test-env-verify and (for later attempts) a fresh db_test restart:
+      Attempt 1 (full concurrency) -- 52 distinct test failures across ~30 files, dominant
+      signature runMigrations failed: error.ServerError from pg_advisory_lock acquisition
+      in tests/integration/helpers.zig, plus several "test runner failed to respond"
+      entries and one genuine DebugAllocator leak (sim01_04_simulation_mode_test.zig
+      TC-SIM-01-01). Attempt 2 (full concurrency, after db_test restart) -- 2 failures,
+      both "test runner failed to respond" against different binaries than attempt 1.
+      Attempt 3 (-j4) -- 2 failures, still not clean. Attempt 4 (full concurrency, extra
+      time budget) -- never reached a Build Summary line; its process tree was still
+      actively executing 11-12 concurrent test.exe binaries several minutes in
+      (confirmed via Get-Process, not exit code) before being terminated to end the
+      gate check within a reasonable time. docker logs r-co-db_test-1 during attempt 1
+      show repeated "canceling statement due to statement timeout" errors clustered at
+      ~65s intervals. Root-caused (to the extent in scope for TEST-RUNNER) to the same
+      mechanism as ISS-0665 (RESOLVED 2026-08-12T03:59:12Z, GH #702): ISS-0665's fix
+      (BPM_TEST_STMT_TIMEOUT, default 300s, bracketing DDL in
+      tests/integration/helpers.zig) IS present in the current tree but does not fully
+      eliminate contention failures on this host, at full concurrency OR at -j4.
+      Filed as ISS-0211 / GH #752 (see issues below) rather than fixed inline, per
+      TEST-RUNNER's Green-Main Gate role boundary.
+    tests_failed_attempt1: 52
+    tests_failed_attempt2: 2
+    tests_failed_attempt3_j4: 2
+    attempt4_outcome: "terminated in-progress, no Build Summary reached"
+
+  - name: frontend-unit
+    command: "cd web && npm run test"
+    exit_code: 0
+    result: PASS
+    summary: "Test Files 10 passed (10); Tests 37 passed (37)"
+    tests_total: 37
+    tests_passed: 37
+    tests_failed: 0
+    note: "Required `npm install` first (web/node_modules did not exist in this fresh worktree)."
+
+excluded_by_instruction:
+  - command: "cd web && npm run test:e2e"
+    reason: >
+      Not required for Step 00a per the handoff instructions (Green-Main Gate covers
+      build/unit/integration/frontend-unit layers per ORCHESTRATOR.md's Step 00a
+      description). Not run.
+
+post_checks:
+  test_env_verify_final:
+    command: "zig build test-env-verify"
+    result: PASS
+    summary: "verify_test_env: HEALTHY — 10 checks passed"
+    note: "db_test restarted and re-verified HEALTHY after terminating the final in-progress test-integration attempt, to leave infrastructure clean for the next agent."
+
+summary:
+  total_layers: 4
+  layers_passed: 3
+  layers_failed: 1
+  overall_status: FAIL
+  breakdown:
+    build: PASS
+    unit: "1071/1135 passed, 0 failed, 64 skipped — PASS"
+    integration: "non-deterministic, 2-52 failures across 4 attempts, never a clean Build Summary — FAIL"
+    frontend_unit: "37/37 passed, 0 failed — PASS"
+
+issues:
+  - iss_id: ISS-0211
+    github_issue: "https://github.com/tvolodi/R-Co/issues/752"
+    severity: BLOCKER
+    status: OPEN
+    title: >
+      zig build test-integration: statement_timeout contention under full concurrency
+      continues despite ISS-0665 fix (300s DDL window insufficient / not fully effective
+      at reduced concurrency either)
+    classification: >
+      Test infrastructure reliability defect, forwarded per Unblock-Everything /
+      No Issue Left Local-Only rather than fixed inline (out of scope for the
+      Green-Main Gate role). Related to ISS-0106/ISS-0107/ISS-0151/ISS-0665.
+
+next_action: "STOP — do not implement on red main; ISS-0211/GH-752 must be fixed in its own WF-03 run before WF02-batch-6-20260812 proceeds to Step 00 (git-setup)."

@@ -1,8 +1,23 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-12T06:23:57Z",
-  "next_issue_id": 211,
+  "last_updated": "2026-08-12T18:37:15Z",
+  "next_issue_id": 212,
   "issues": [
+    {
+      "id": "ISS-0211",
+      "title": "zig build test-integration: statement_timeout contention under full concurrency continues despite ISS-0665 fix (300s DDL window insufficient / not fully effective at reduced concurrency either)",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF02-batch-6-20260812",
+      "handoff_id": "6621e151-eee2-4ffd-b1bd-b8881d8c5fa5",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "vendor/pg/pg.zig",
+        "build.zig (test-integration-others-internal barrier step)"
+      ],
+      "created_at": "2026-08-12T18:37:15Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/752"
+    },
     {
       "id": "ISS-0085",
       "title": "ISS-0085 (GOV-01) \u2014 Apply the UAT scenario schema v1.1 addendum to the agent docs",

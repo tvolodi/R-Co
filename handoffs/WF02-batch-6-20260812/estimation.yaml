@@ -1,0 +1,36 @@
+run_id: WF02-batch-6-20260812
+created_at: '2026-08-12T18:08:44Z'
+rules_version: '1.1'
+requirement_ids:
+- PRM-02
+- PRM-03
+- PRM-04
+- PRM-05
+difficulty: 4
+difficulty_rationale: 'Four tightly-coupled MUST requirements implementing a full
+  approval-gate pipeline: conflict pre-flight, SHA-256 plan-digest binding, a 6-state
+  promotion_reviews state machine with a partial unique index, and a non-bypassable
+  human-approval gate across multiple new API routes.'
+integration_surface: medium
+integration_surface_rationale: Extends the existing PRM-01 promotion module (src/definition/promotion_plan.zig,
+  src/api/routes/promotions.zig) and adds one new migration; touches the promotion
+  route family and definition module but not engine/scheduler/auth internals.
+steps:
+- code-designer
+- code-design-validator
+- backend-dev
+- test-designer
+- test-design-validator
+- test-runner
+- release-validator
+- doc-updater
+estimated_minutes:
+  code-designer: 6
+  code-design-validator: 19
+  backend-dev: 8
+  test-designer: 2
+  test-design-validator: 31
+  test-runner: 5
+  release-validator: 1
+  doc-updater: 1
+  total: 73

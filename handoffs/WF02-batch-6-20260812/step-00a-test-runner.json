@@ -1,0 +1,69 @@
+{
+  "handoff_id": "6621e151-eee2-4ffd-b1bd-b8881d8c5fa5",
+  "run_id": "WF02-batch-6-20260812",
+  "workflow_id": "WF-02",
+  "step": "00a",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-batch-6-20260812/step-00a-test-runner.json",
+  "created_at": "2026-08-12T18:08:44Z",
+  "started_at": "2026-08-12T18:09:34Z",
+  "completed_at": "2026-08-12T18:49:54Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Green-Main Gate for WF02-batch-6-20260812. Run the full existing test suite on main (current HEAD, before any feature branch is created) to confirm main is not red before implementation of PRM-02/PRM-03/PRM-04/PRM-05 begins. This is a hard gate per ORCHESTRATOR.md WF-02 Step 00a: if ANY existing test fails, file each failure cluster as its own ISS + GitHub issue, forward to the global queue via tools/queue_add.py, and return FAIL — do not implement on a red main.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test (unit) exits 0",
+      "zig build test-integration exits 0 (after Infrastructure Health Checklist passes)",
+      "cd web && npm run test exits 0",
+      "Every pre-check in test_infrastructure_guide.md section 3 passes before any test binary runs",
+      "If any layer fails: each distinct failure is filed as ISS + GitHub issue + global queue entry, and result.status is FAIL"
+    ],
+    "functions_to_call": [
+      "fn:write-test-report",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Green-Main Gate FAIL. zig build (PASS, exit 0), zig build test (PASS, 103/103 steps, 1071/1135 tests, 64 skipped) and cd web && npm run test (PASS, 37/37, required a first-time npm install in this fresh worktree) all passed. zig build test-integration is NOT reliably green on main @ 2c7046e1: 4 independent evidence-gathering attempts (3 at default concurrency, 1 at -j4), each preceded by a verified-HEALTHY Infrastructure Health Checklist, produced non-deterministic failure counts (52, 2, 2, and one terminated in-progress with no clean Build Summary reached) with a shared signature of Postgres pg_advisory_lock contention and \"canceling statement due to statement timeout\" errors (confirmed via docker logs r-co-db_test-1). Root-caused to the same mechanism as the just-resolved ISS-0665 (GH #702, resolved 2026-08-12T03:59:12Z): that fix (BPM_TEST_STMT_TIMEOUT default 300s bracketing DDL in tests/integration/helpers.zig) is present in the current tree but does not fully eliminate contention failures on this host at full concurrency or at -j4. Filed as ISS-0211 (GitHub issue #752) rather than fixed inline, per the Green-Main Gate role boundary. Infrastructure was left healthy (10/10 checks) for the next agent.",
+    "artifacts_out": [
+      "tests/reports/report-20260812-WF02-batch-6.yaml",
+      "docs/issues/ISS-0211.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0211",
+        "severity": "BLOCKER",
+        "description": "zig build test-integration: statement_timeout/advisory-lock contention under concurrency is not reliably green on main, despite the ISS-0665 fix being present. Non-deterministic failures (2-52) across 4 attempts; no clean run achieved. GitHub issue: https://github.com/tvolodi/R-Co/issues/752",
+        "affected_requirement": null
+      }
+    ],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": "skipped",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "STOP — do not implement on red main; forwarded issues must be fixed in their own runs first."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
