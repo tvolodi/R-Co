@@ -174,6 +174,10 @@ All notable changes to the BPM Platform are documented here.
   (shims ignore SQL arguments). Added post-condition re-queries after cleanup to fail loudly if
   rows still present. Added verbose warning on ignorable errors.
 
+- ISS-0678 (GH-720): Add `AND table_schema = 'tenant_default'` / `schemaname = 'tenant_default'`
+  filters to par06_instance_projections_event_window_test schema-introspection queries. Without
+  the filter, queries matched all tenant schemas not just the target.
+
 ## [Unreleased] — 2026-08-11
 
 ### Split release — Stage 16 batch 3: PAR-01, PAR-04 RELEASED in full; PAR-02, PAR-03 TESTED but withheld (event-emission gap)
