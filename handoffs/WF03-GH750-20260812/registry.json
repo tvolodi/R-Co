@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "run_id": "WF03-GH750-20260812",
+  "entries": [
+    {
+      "handoff_id": "wf03-gh750-20260812-00",
+      "file": "handoffs/WF03-GH750-20260812/step-00-issue-fixer.json",
+      "run_id": "WF03-GH750-20260812",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-12T18:13:05Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving",
+      "completed_at": "2026-08-12T18:19:12Z"
+    }
+  ]
+}

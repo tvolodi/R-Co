@@ -1,12 +1,12 @@
 {
   "issue_id": "ISS-0690",
   "title": ".github/agents/doc-updater.agent.md (Copilot harness) is missing the project-board-update step present in .claude/agents/doc-updater.md",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MINOR",
   "category": "adapter drift / cross-harness consistency",
-  "run_id": null,
-  "workflow_id": null,
-  "handoff_id": null,
+  "run_id": "WF03-GH750-20260812",
+  "workflow_id": "WF-03",
+  "handoff_id": "wf03-gh750-20260812-00",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/750",
   "requirement_ids": [],
   "summary": "While fixing ISS-XXXX (DOC-UPDATER never closes a requirement's own GitHub tracking issue at Step Final), found that .github/agents/doc-updater.agent.md's GitHub Branch Management section is a full independent copy of .claude/agents/doc-updater.md's, not a pointer -- and it is missing an entire step present in the canonical file: step 5, updating the GitHub Project board per docs/agents/protocols/PROJECT_BOARD.md (python tools/gh_project_status.py ... --target implemented/done for issues this run resolves). The Copilot-harness DOC-UPDATER therefore never updates the project board at all, only the Claude-harness one does. This is pre-existing drift, not something introduced by the requirement-tracking-issue fix -- confirmed by grep: 'gh_project_status' and 'PROJECT_BOARD' appear zero times in .github/agents/doc-updater.agent.md.",
@@ -14,14 +14,31 @@
     "type": "adapter_drift",
     "details": "Per CLAUDE.md's 'Canonical instruction surfaces' section: '.github/agents/*.md and .github/instructions/*.md are the parallel entry point for the GitHub Copilot harness; they are adapters, not a second canonical copy -- if one of them disagrees with its .claude/agents/ counterpart, that is a defect to report, not two valid variants to keep in sync by hand.' The two files were evidently maintained independently at some point (the Copilot mirror is a full rewrite, not a thin adapter/pointer), and PROJECT_BOARD.md's step was added to the canonical .claude/agents/doc-updater.md without the corresponding update ever being made to the Copilot mirror."
   },
-  "resolution": null,
-  "verification": null,
-  "files_changed": [],
+  "resolution": {
+    "category": "A — Logic/configuration drift",
+    "fix_summary": "Inserted canonical step 5 (project-board update) into .github/agents/doc-updater.agent.md between the existing Verify cleanup (now step 4) and the requirement-tracking-issue step (now step 6). Renumbered the in-file 'Record in handoff result' from step 6 to step 7. The inserted step 5 is byte-identical to .claude/agents/doc-updater.md's step 5 (814 chars, verified via Python compare).",
+    "commit_sha": "06c71d5d",
+    "commit_sha_pre_rebase": "10f0a7ae",
+    "files_changed": [".github/agents/doc-updater.agent.md"],
+    "diff_stats": "1 file changed, 21 insertions(+), 8 deletions(-)"
+  },
+  "verification": {
+    "step5_byte_identical": true,
+    "step5_chars_github": 814,
+    "step5_chars_canonical": 814,
+    "step_numbering_match": true,
+    "gh_project_status_references_in_github_file": 4,
+    "PROJECT_BOARD_references_in_github_file": 1,
+    "gh_project_status_references_before_fix": 0,
+    "PROJECT_BOARD_references_before_fix": 0
+  },
+  "files_changed": [".github/agents/doc-updater.agent.md"],
   "created_at": "2026-08-12T17:41:57Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-12T18:18:00Z",
   "prevention": [
-    "Add the missing project-board-update step to .github/agents/doc-updater.agent.md, mirroring .claude/agents/doc-updater.md's step 5 exactly.",
+    "Add the missing project-board-update step to .github/agents/doc-updater.agent.md, mirroring .claude/agents/doc-updater.md's step 5 exactly. [DONE — commit 10f0a7ae, byte-identical to canonical step 5]",
     "Consider whether the .github/agents/*.md files should become thin pointers into .claude/agents/*.md rather than full independent copies, to make this class of drift structurally impossible rather than relying on manual sync discipline.",
-    "A periodic or CI-driven diff check between the two harness's agent instruction sets (excluding harness-specific frontmatter) would catch this class of drift automatically."
+    "A periodic or CI-driven diff check between the two harness's agent instruction sets (excluding harness-specific frontmatter) would catch this class of drift automatically. The pre-existing step-6 prose still has minor drift between the two files (the canonical file has the longer .claude/agents/wf02-batch-5 retrospective prose; the Copilot mirror has the shorter .github/agents/ pre-2026-08-12 wording); GH-750's scope is only the project-board step, so this sister drift is out of scope here but worth a follow-up ISS.",
+    "Future change to .claude/agents/doc-updater.md must be mirrored to .github/agents/doc-updater.agent.md in the same commit (or enforced by a CI diff check). If the project ever makes the .github/agents/*.md files thin pointers into .claude/agents/*.md, this rule becomes moot."
   ]
 }

@@ -1,0 +1,38 @@
+{
+  "report_id": "WF03-GH744-20260812-step-00-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-GH744-20260812",
+  "step": "00",
+  "created_at": "2026-08-12T18:28:36Z",
+  "summary": "Diagnosed and fixed GitHub issue #744 (ISS-0687): clean_test_db.py's SYSTEM_ROLES reseed always silently failed because (a) the INSERT was written bare `INSERT INTO roles(...)` and resolved against `public` (no search_path override on the bare psql connection), whereas `roles` is a PER_TENANT table that only exists in `tenant_default`; and (b) run_psql()'s `if 'does not exist' in stderr_lower: return True` substring guard swallowed the resulting `relation \"roles\" does not exist` error. Applied two coordinated fixes: (1) schema-qualified the INSERT to `tenant_default.roles` so the reseed actually reaches the target; (2) added a defense-in-depth post-condition check that re-queries `tenant_default.roles WHERE is_system = true` after the loop and fails the script with a clear, structured error (loud SystemExit(1) + missing-roles list, or with a cold-start-specific message if the table itself does not exist) if the expected 6 system roles are not present. Verified both directions: (a) before-fix reproduces the bug deterministically (6× 'IGNORED non-zero psql exit (table does not exist): ERROR: relation \"roles\" does not exist' then 'Test database cleaned.' with exit 0, despite all 6 INSERTs failing); (b) after-fix exits 0 with 6 system roles actually present in `tenant_default.roles` when seeded from empty (DELETE FROM tenant_default.roles WHERE is_system=true → run script → 6 rows); (c) defense-in-depth check fires correctly when the INSERT is monkey-patched to silently succeed but the table is empty (script exits 1 with 'reseeded only 0 of 6 expected system roles ... Missing: [...]').",
+  "files_created": [],
+  "files_modified": [
+    "tools/clean_test_db.py"
+  ],
+  "tests_run": [
+    {
+      "name": "Reproduce bug (clean_test_db.py unmodified, HEAD version)",
+      "status": "fail",
+      "detail": "All 6 INSERT INTO roles calls failed with 'relation \"roles\" does not exist'; run_psql()'s substring guard silently swallowed each failure; script exited 0 with 'Test database cleaned.' even though 0 rows were inserted. Verified by git-stashing the working-tree fix and re-running."
+    },
+    {
+      "name": "Fix end-to-end (clean_test_db.py with fix applied)",
+      "status": "pass",
+      "detail": "Pre-state: 0 system roles in tenant_default.roles (after DELETE FROM tenant_default.roles WHERE is_system=true). Ran python tools/clean_test_db.py. Post-state: 6 system roles (AGENT_RUNNER, PLATFORM_ADMIN, PROCESS_DESIGNER, PROCESS_OPERATOR, TASK_WORKER, VIEWER) present, exit 0, no error from the post-condition check. Verified against r-co-2-db_test-1 (the docker-compose-managed db_test container, port 5453)."
+    },
+    {
+      "name": "Defense-in-depth post-condition check (monkey-patched run_psql to silently succeed, empty table)",
+      "status": "pass",
+      "detail": "Drove clean_test_db.main() with run_psql() monkey-patched to always return True and table state empty. Script correctly aborted with SystemExit(1) and printed: 'ERROR: clean_test_db.py reseeded only 0 of 6 expected system roles in tenant_default.roles. Missing: [AGENT_RUNNER, PLATFORM_ADMIN, PROCESS_DESIGNER, PROCESS_OPERATOR, TASK_WORKER, VIEWER]. Test fixtures that depend on these roles will fail downstream; aborting integration run.' Confirms the post-condition catches regressions that the substring guard re-introduces."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Update docs/issues/ISS-0687.json with resolution (do this as part of the handoff completion so the local registry is closed at the same time the GitHub issue is closed).",
+    "Add an entry to docs/anti-patterns.md cross-referencing this incident under the existing 'gate matches a substring' entry (optional; the working-tree fix already cites that anti-pattern in its comment block).",
+    "Wire up a follow-up to also narrow run_psql()'s substring guard — the current fix works around the guard, but the guard itself is still the same anti-pattern that masked this defect (docs/anti-patterns.md calls it out as a known pattern). Out of scope for this issue; suggest filing as a follow-up issue.",
+    "Run the downstream regression: zig build test-integration-pin01 (the test step identified in the issue as failing 9/9 because of this bug) to confirm those tests now pass.",
+    "Mark this fix complete: route to TEST-RUNNER (WF-03 Step 3) to validate the test-integration-pin01 step now passes with the fix applied."
+  ],
+  "blockers": []
+}

@@ -1,0 +1,64 @@
+{
+  "handoff_id": "wf03-gh750-20260812-00",
+  "schema_version": 1,
+  "run_id": "WF03-GH750-20260812",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-12T18:13:05Z",
+  "started_at": "2026-08-12T18:13:05Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-12T18:19:12Z",
+  "stage": "WF-03 Issue Resolving",
+  "issue": {
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/750",
+    "title": ".github/agents/doc-updater.agent.md (Copilot harness) missing the project-board-update step present in the canonical .claude/agents/ file",
+    "local_issue_id": "ISS-0690"
+  },
+  "task": "Fix the discrepancy between .github/agents/doc-updater.agent.md and .claude/agents/doc-updater.md - the GitHub harness version is missing the project-board-update step",
+  "diagnosis": {
+    "category": "A — adapter drift / configuration",
+    "evidence": [
+      "Confirmed pre-existing GH-750 / ISS-0690 records (filed 2026-08-12T17:41:57Z) — not a new issue, no re-filing needed.",
+      "Verified .github/agents/doc-updater.agent.md's GitHub Branch Management section had 5 steps; .claude/agents/doc-updater.md had 7 steps — numbering and contents diverged at step 5.",
+      "Step 5 in the canonical file ('If this run resolves a GitHub issue, update the project board per docs/agents/protocols/PROJECT_BOARD.md ...') was entirely absent from the Copilot mirror.",
+      "grep -c 'gh_project_status' on .github/agents/doc-updater.agent.md returned 0 before the fix; returns 4 after.",
+      "grep -c 'PROJECT_BOARD' on .github/agents/doc-updater.agent.md returned 0 before the fix; returns 1 after."
+    ]
+  },
+  "fix": {
+    "files_changed": [".github/agents/doc-updater.agent.md"],
+    "diff_stats": "1 file changed, 21 insertions(+), 8 deletions(-)",
+    "description": "Inserted canonical step 5 (project-board update) into .github/agents/doc-updater.agent.md between the existing Verify cleanup (now step 4) and the requirement-tracking-issue step (now step 6). Renumbered the in-file 'Record in handoff result' from step 6 to step 7. The inserted step 5 is byte-identical to .claude/agents/doc-updater.md's step 5 (814 chars, verified).",
+    "commit_sha": "06c71d5d",
+    "commit_sha_pre_rebase": "10f0a7ae",
+    "commit_message": "fix(doc-updater): mirror project-board-update step to Copilot harness (GH-750, ISS-0690)",
+    "pushed": true,
+    "pushed_to": "origin/main",
+    "target_branch": "main",
+    "rebase_note": "Pushed via rebase onto origin/main (commit hash changed 10f0a7ae -> 06c71d5d because a batch-claim commit 2c7046e1 landed on origin/main between commit and push; diff content identical)."
+  },
+  "verification": {
+    "step5_byte_identical_to_canonical": true,
+    "step5_chars_github": 814,
+    "step5_chars_canonical": 814,
+    "step_numbering_1_to_7_match": true,
+    "gh_project_status_references_in_github_file_after_fix": 4,
+    "PROJECT_BOARD_references_in_github_file_after_fix": 1,
+    "pre_fix_reference_counts_were_zero": true,
+    "local_issue_updated_to_RESOLVED": true,
+    "local_issue_has_files_changed_commit_sha_resolution": true
+  },
+  "out_of_scope_notes": [
+    "Pre-existing sister drift in step 6 (requirement-tracking-issue close) prose: the canonical file has longer explanations (mentions DDL-05/MIG-01/PIN-04, the wf02-batch-5 retrospective, the longer 'gh issue list --search' caveat, and the longer 'TESTED held-back' wording). The Copilot mirror retains its shorter pre-2026-08-12 wording. GH-750's explicit scope is only the project-board step, so this sister drift is intentionally left for a follow-up ISS.",
+    "The structural problem (these Copilot-mirror files being full independent copies rather than thin pointers) is also pre-existing and out of scope."
+  ],
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed Category A (adapter drift) in .github/agents/doc-updater.agent.md: inserted the canonical project-board-update step 5 (byte-identical to .claude/agents/doc-updater.md, 814 chars), renumbered the requirement-tracking-issue step 5→6 and the record-in-handoff step 6→7. Committed to main and pushed to origin/main as 06c71d5d (was 10f0a7ae before rebase; rebased onto a batch-claim commit that landed on origin/main during this run). Local ISS-0690/GH-750 marked RESOLVED. Cross-harness step numbering 1–7 now matches. Lint_handoffs.py: 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing), 291 ACKNOWLEDGED — exit 0.",
+    "artifacts_out": [".github/agents/doc-updater.agent.md", "docs/issues/ISS-0690.json", "handoffs/WF03-GH750-20260812/step-00-issue-fixer.json", "handoffs/WF03-GH750-20260812/registry.json"],
+    "commit_sha": "06c71d5d",
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3) — no source code changed, no executable test required; recommend proceeding to doc-updater (WF-03 Step Final) for changelog entry and GH-750 close comment."
+  }
+}
