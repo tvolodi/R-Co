@@ -35,5 +35,6 @@
     "Grep the whole src/ tree for bpm_effective_tenant_id() as a standing pre-merge/pre-release check -- it is a dropped function, so any surviving reference is unconditionally broken code, never a legitimate call.",
     "Add an integration test (or a build-time lint) asserting zero references to bpm_effective_tenant_id() anywhere under src/, so a future rebase/merge cannot silently resurrect it a third time.",
     "IMPLEMENTED: tools/lint_dropped_tenant_function.py, wired into .github/workflows/ci.yml's 'Source linters' job -- scans src/ for any bpm_effective_tenant_id() call (allowing explanatory comments), exits 1 on any functional match. Deliberately scoped to src/ only: tests/integration fixture files (adp02_tenant_scope_test.zig, adp03_tenant_context_resolution_test.zig, env02/03/05_test.zig, par06_instance_projections_event_window_test.zig, test_iss503_rls_removal.zig) still call bpm_effective_tenant_id() in raw SQL fixture-seeding and were left unfixed (out of this issue's acceptance criteria) -- they carry the SAME latent zero-UUID-fallback risk this issue documents (silently correct only when the fixture targets the default tenant) and should be swept under a dedicated follow-up issue."
-  ]
+  ],
+  "github_issue_closed_via_commit": "89b73187"
 }

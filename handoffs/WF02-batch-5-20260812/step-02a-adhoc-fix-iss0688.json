@@ -59,7 +59,7 @@
     ],
     "git_evidence": {
       "branch": "feature/WF02-batch-5-20260812",
-      "commit_sha": "PENDING_COMMIT",
+      "commit_sha": "89b73187",
       "zig_build": "exit 0",
       "zig_build_check": "exit 0 (PASSED formatting scope check)",
       "lint_sql_param_types": "0 BLOCKER, 0 MAJOR, 0 MINOR",
