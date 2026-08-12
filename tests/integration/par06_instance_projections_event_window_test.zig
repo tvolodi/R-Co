@@ -7,8 +7,11 @@
 // Covers ONLY the migration's schema slice (columns + index) per the YAML's
 // own header note; the bounded-query/repair-path behaviour specified by the
 // companion Type E design (src/design/par-06-time-bounded-reconstruction.md)
-// is exercised by store.zig's own reconstructBounded()/append() call paths,
-// not re-tested here.
+// is exercised by src/engine/reconstruction.zig's reconstructInstance()/
+// eventWindowForInstanceInTx() and Store.append() call paths (see
+// par06_reconstruction_bounded_test.zig; store.zig's now-deleted
+// Store.reconstructBounded() was dead code, removed via GH-716), not
+// re-tested here.
 //
 // BPM_TEST_DB_URL must be set; the test connects to a real PostgreSQL.
 const std = @import("std");

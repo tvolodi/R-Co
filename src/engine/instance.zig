@@ -80,8 +80,9 @@ fn populateTokenIds(allocator: std.mem.Allocator, state: *transition_mod.Instanc
 // instance (ISS-0677 / GH-719). This helper reproduces Store.append() Step
 // 5's exact maintenance logic — COALESCE so first_event_at is set exactly
 // once, last_event_at unconditionally advanced with the same +1 microsecond
-// upper-bound adjustment reconstructBounded()'s exclusive `<` comparison
-// requires — and is called once per event-appending transaction (a single
+// upper-bound adjustment reconstruction.zig's eventWindowForInstanceInTx() /
+// reconstructInstance() exclusive `<` comparison requires — and is called
+// once per event-appending transaction (a single
 // call per transaction is sufficient: it widens the window to cover NOW(),
 // which safely bounds every event inserted earlier in the same transaction
 // since all of them are committed together at the same effective instant).

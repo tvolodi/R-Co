@@ -78,19 +78,6 @@ pub const StoreError = error{
     /// resolved by the next plat_partition_maintenance run (PAR-02) rather
     /// than a caller input error.
     PartitionMissingForWrite,
-    /// PAR-06 AC3: instance_projections.first_event_at/.last_event_at is NULL
-    /// for the requested instance_id when a bounded reconstruction read is
-    /// attempted. NOT a terminal failure by design — callers should perform
-    /// the one-time repair scan (repairEventWindow()) and retry. Surfaced as
-    /// a typed error rather than a silent unbounded fallback so a caller that
-    /// forgets to repair cannot silently regress to an unbounded scan.
-    ReconstructionWindowMissing,
-    /// PAR-06 AC5: a bounded-reconstruction call site was invoked without a
-    /// resolvable first_event_at/last_event_at pair (distinct from
-    /// ReconstructionWindowMissing's NULL-columns-in-the-DB case — this is a
-    /// caller that bypassed the window lookup step entirely). Refused before
-    /// any query executes.
-    UnboundedReconstructionRefused,
 };
 
 // ---------------------------------------------------------------------------
