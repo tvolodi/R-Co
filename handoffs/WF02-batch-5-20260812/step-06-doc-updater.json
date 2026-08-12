@@ -55,7 +55,21 @@
       "handoffs/batch_queue.json"
     ],
     "issues": [],
-    "next_action": "Workflow complete for WF02-batch-5-20260812"
+    "next_action": "Workflow complete for WF02-batch-5-20260812",
+    "git_evidence": {
+      "branch_name": "feature/WF02-batch-5-20260812",
+      "commit_sha_list": [
+        "0892ec66",
+        "eebbb808",
+        "128b8e4b"
+      ],
+      "remote_branch": null,
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/749",
+      "merge_commit_sha": "609f0703343c8f336096d21beb90a9000f292051",
+      "pr_create_error": null,
+      "note": "PR #749 pre-existed (opened by a sibling workspace running a stale, superseded DOC-UPDATER task version); updated its title/body to the authoritative outcome rather than opening a duplicate PR. Two merge commits on the feature branch: eebbb808 (origin/main, routine), 128b8e4b (origin/feature/WF02-batch-5-20260812, reconciling the duplicate dispatch). Batch queue claim 5413361521cc released to DONE via tools/reqctl_batch_release.py, committed b3a13ea9 directly to main."
+    }
   },
   "rework_count": 0,
   "max_rework": 3
