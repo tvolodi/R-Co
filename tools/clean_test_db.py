@@ -105,12 +105,19 @@ def run_psql(sql: str) -> bool:
     cmd = _psql_base_cmd() + ["-c", sql]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        # Ignore "relation does not exist" errors (table may not have been created yet).
         stderr_lower = result.stderr.lower()
-        if "does not exist" in stderr_lower or "relation" in stderr_lower:
+        if "does not exist" in stderr_lower:
+            # Narrow guard: missing table/object before first migration is expected.
+            print(
+                f"[clean_test_db] IGNORED non-zero psql exit (table does not exist): "
+                f"{result.stderr.strip()[:200]}",
+                flush=True,
+            )
             return True
-        print(f"WARNING: psql '{sql[:60]}...' failed: {result.stderr.strip()}", file=sys.stderr)
-        return False
+        raise RuntimeError(
+            f"clean_test_db: psql returned exit {result.returncode}, "
+            f"stderr: {result.stderr.strip()[:500]}"
+        )
     return True
 
 
@@ -464,6 +471,29 @@ def main() -> None:
         if not run_psql(sql):
             print("ERROR: Failed to reseed mandatory system roles; aborting integration run.", file=sys.stderr)
             sys.exit(1)
+
+    # ISS-0663: post-condition re-queries. Both use run_psql_query() which returns []
+    # on connection error, so cold-start databases pass safely.
+    orphaned_schema_rows = run_psql_query(
+        "SELECT id::text FROM public.tenant t "
+        "WHERE t.storage_mode = 'SCHEMA' AND t.slug != 'default' "
+        "AND NOT EXISTS (SELECT 1 FROM public.tenant_schemas ts WHERE ts.tenant_id = t.id)"
+    )
+    if orphaned_schema_rows:
+        raise RuntimeError(
+            f"clean_test_db: {len(orphaned_schema_rows)} orphaned tenant rows still present "
+            "after cleanup — did not converge"
+        )
+
+    leaked_tenant_rows = run_psql_query(
+        "SELECT id::text FROM public.tenant "
+        "WHERE slug != 'default' AND tenant_type IN ('test', 'production')"
+    )
+    if leaked_tenant_rows:
+        raise RuntimeError(
+            f"clean_test_db: {len(leaked_tenant_rows)} orphaned tenant rows still present "
+            "after cleanup — did not converge"
+        )
 
     print("Test database cleaned.", flush=True)
 
