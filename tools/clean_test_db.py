@@ -61,11 +61,18 @@ _DIRECT_DB_URL: str | None = None
 _PSQL_EXECUTABLE: str = shutil.which("psql") or "psql"
 
 
+def _psql_is_native() -> bool:
+    """Return True only when _PSQL_EXECUTABLE is a real binary (not a Windows .cmd shim).
+    A .cmd file cannot forward arbitrary arguments — it must use the docker-compose path."""
+    exe = _PSQL_EXECUTABLE or ""
+    return not exe.lower().endswith(".cmd")
+
+
 def _psql_base_cmd() -> list[str]:
     """Return the psql invocation prefix (connection portion only) for the
     active connection mode — direct BPM_TEST_DB_URL if set, else
     docker-compose exec into the db_test container."""
-    if _DIRECT_DB_URL:
+    if _DIRECT_DB_URL and _psql_is_native():
         return [_PSQL_EXECUTABLE, _DIRECT_DB_URL]
     return ["docker-compose", "exec", "-T", "db_test", "psql", "-U", USER, "-d", DB]
 
