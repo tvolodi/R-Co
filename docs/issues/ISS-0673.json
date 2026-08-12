@@ -1,0 +1,72 @@
+{
+  "id": "ISS-0673",
+  "title": "tools/lint_dual_schema_table_names.py BLOCKER: 8 tables duplicated public/tenant_default (events_ephemeral*, plat_partition_catalog, plat_partition_maintenance_run_log, plat_correlation_cursor, plat_effect_completion) — ISS-0185-family recurrence; post-GBL-141 ORD/PAR batch migrations lack scope guards",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "migration-runner / schema-per-tenant-drift",
+  "run_id": "WF03-GH714-20260812",
+  "handoff_id": "71400050-0000-0000-0000-000000000000",
+  "affected_areas": [
+    "tools/lint_dual_schema_table_names.py",
+    "migrations/1145_ord01_plat_effect_completion.sql",
+    "migrations/1146_ord04_plat_correlation_cursor.sql",
+    "migrations/1148_par02_partition_catalog.sql",
+    "migrations/1149_par03_retention_class.sql"
+  ],
+  "created_at": "2026-08-12T06:34:54Z",
+  "resolved_at": "2026-08-12T07:53:23Z",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/714",
+  "notes": "Discovered as a pre-existing BLOCKER confirmed for branch feature/WF03-GH714-20260812. GH-714 is OPEN. The linter reports 8 duplicated tables (the issue title states 10; the discrepancy is because event_payload_store's public shadow was already dropped by GBL-141, and plat_event_idempotency in 1147_par01_events_partitioning.sql already has an IF current_schema() = 'public' THEN RETURN early-exit guard). The 8 are a direct recurrence of the ISS-0185 / ISS-0641 family: migrations in the ORD/PAR batch (1145-1149) were written AFTER GBL-141 closed the previous 14 instances, but replicated the same unguarded pattern.",
+  "root_cause": {
+    "summary": "Four source migrations in the 1145-1149 (ORD/PAR) batch create tables using unqualified CREATE TABLE IF NOT EXISTS DDL with no scope guard header (-- scope: public) and no schema-detection primitive (IF current_schema() = 'public' THEN RETURN). The migration runner (migrations.zig migrationScope(), default .all_schemas) replays every such migration in every schema pass (public, then tenant_default, then per-tenant schemas), creating the same table in all of them.",
+    "details": {
+      "offending_migrations": [
+        {
+          "file": "migrations/1145_ord01_plat_effect_completion.sql",
+          "tables_created": [
+            "plat_effect_completion"
+          ],
+          "missing_guard": "No '-- scope: public' header, no IF current_schema() = 'public' early-return, no schema-qualified DDL. Plain CREATE TABLE IF NOT EXISTS plat_effect_completion (...) at top level. Runs unconditionally in every schema pass."
+        },
+        {
+          "file": "migrations/1146_ord04_plat_correlation_cursor.sql",
+          "tables_created": [
+            "plat_correlation_cursor"
+          ],
+          "missing_guard": "No '-- scope: public' header, no IF current_schema() = 'public' early-return, no schema-qualified DDL. Plain CREATE TABLE IF NOT EXISTS plat_correlation_cursor (...) at top level. Runs unconditionally in every schema pass."
+        },
+        {
+          "file": "migrations/1148_par02_partition_catalog.sql",
+          "tables_created": [
+            "plat_partition_catalog",
+            "plat_partition_maintenance_run_log"
+          ],
+          "missing_guard": "No '-- scope: public' header, no IF current_schema() = 'public' early-return. Two top-level CREATE TABLE IF NOT EXISTS statements run unconditionally in every schema pass."
+        },
+        {
+          "file": "migrations/1149_par03_retention_class.sql",
+          "tables_created": [
+            "events_ephemeral",
+            "events_ephemeral_2026_08",
+            "events_ephemeral_2026_09",
+            "events_ephemeral_2026_10"
+          ],
+          "missing_guard": "The DO blocks guard existence using n.nspname = current_schema() correctly, but lack an IF current_schema() = 'public' THEN RETURN early-exit (unlike 1147_par01_events_partitioning.sql which has exactly this guard). Without it, the events_ephemeral CREATE TABLE and its monthly partition seed loop run in the public schema pass, creating public.events_ephemeral + 3 monthly partition tables — even though events_ephemeral is classified PER_TENANT (has tenant_id column, same family as events/events_archive, canonical home = tenant_default). The monthly partitions events_ephemeral_2026_08/09/10 are implicit shadow artefacts: they are created by 1149's partition-seed loop which also lacks the public-schema guard."
+        }
+      ],
+      "mechanism": "migrations.zig migrationScope() defaults to .all_schemas for any migration that does not carry a '-- scope: public' or '-- scope: per_tenant' header. Under .all_schemas, the runner applies the file once per schema in the database (public, tenant_default, and any tenant_<uuid> schemas). Top-level DDL statements execute inside the schema's own search_path context, so an unqualified CREATE TABLE creates the table in whichever schema is currently active.",
+      "why_gbl141_did_not_cover_these": "GBL-141 (ISS-0641, 2026-08-09) fixed 14 tables from migrations 004, 007, 008, 010, 012, 019, 026, 058, 093, 095. Migrations 1145-1149 were written and applied AFTER GBL-141 — they are from the ORD-01/ORD-04/PAR-02/PAR-03 feature batch and were not present at the time of the ISS-0641 classification. They repeat the unguarded pattern that GBL-141 cleaned up, extending the shadow-table lineage by 8 new instances.",
+      "contrast_with_correctly_guarded_sibling": "1147_par01_events_partitioning.sql (PAR-01, same batch) correctly has IF current_schema() = 'public' THEN RETURN at the top of its DO block, which is why plat_event_idempotency (also created in that file) is NOT in the linter's 8-table report. The fix for 1149 must replicate this pattern.",
+      "linter_output": "[BLOCKER] ISS-0185: 8 table name(s) duplicated between public and tenant_default: events_ephemeral, events_ephemeral_2026_08, events_ephemeral_2026_09, events_ephemeral_2026_10, plat_correlation_cursor, plat_effect_completion, plat_partition_catalog, plat_partition_maintenance_run_log"
+    }
+  },
+  "candidate_resolution": "For each of the 8 tables: (1) classify as GLOBAL_REGISTRY (canonical=public, drop tenant shadow via new GBL-142) or PER_TENANT (canonical=tenant_default, drop public shadow via new GBL-142) using FK-chain analysis and row-count inspection; (2) add a new GBL-142 corrective DROP migration following GBL-141 pattern (idempotent, RESTRICT-only, both-schemas existence guard before dropping); (3) patch each source migration (1145, 1146, 1148, 1149) with the appropriate scope primitive to prevent recurrence on cold-start: GLOBAL_REGISTRY tables need '-- scope: public' header + schema-qualification; PER_TENANT tables (events_ephemeral from 1149) need IF current_schema() = 'public' THEN RETURN guard in the DO block (matching 1147 pattern).",
+  "prevention": [
+    "tools/lint_dual_schema_table_names.py is the state-based safety net — must be run pre-flight on every test-integration and migrate pass.",
+    "Source migrations must be patched with the scope primitive to permanently close the shadow-creation path on cold-start (per GBL-141 header: the 13 PER_TENANT fixes there are cleanup-only and recur on cold-start until source files are patched).",
+    "1147_par01_events_partitioning.sql already demonstrates the correct PER_TENANT guard pattern (IF current_schema() = 'public' THEN RETURN) — replicate it in 1149."
+  ],
+  "last_updated": "2026-08-12T07:53:23Z",
+  "resolution_text": "GBL-142 migration drops 8 shadow tables from public schema: events_ephemeral, events_ephemeral_2026_08, events_ephemeral_2026_09, events_ephemeral_2026_10, plat_correlation_cursor, plat_effect_completion, plat_partition_catalog, plat_partition_maintenance_run_log. Source migrations 1145/1146/1148/1149 patched with DO \\$\\$ + early-return guards (IF current_schema() = 'public' THEN RETURN) matching the 1147 pattern. lint_dual_schema_table_names reports 0 BLOCKER findings.",
+  "prevention_text": "Every new migration that creates PER_TENANT tables must include a DO \\$\\$ block with IF current_schema() = 'public' THEN RETURN guard at the top, matching the pattern established in 1147_par01_events_partitioning.sql. tools/lint_dual_schema_table_names.py is the state-based safety net — must be run pre-flight on every test-integration and migrate pass."
+}
