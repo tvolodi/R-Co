@@ -170,12 +170,19 @@ fn ensureBenchTable(conn: *db.Conn) !void {
     try conn.exec(
         \\CREATE TABLE IF NOT EXISTS nfr_bench_events (
         \\    run_id TEXT NOT NULL,
+        \\    instance_id TEXT NOT NULL DEFAULT '',
         \\    seq BIGINT NOT NULL,
+        \\    sequence_number BIGINT NOT NULL DEFAULT 0,
         \\    payload JSONB NOT NULL,
         \\    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         \\    PRIMARY KEY (run_id, seq)
         \\)
     , &.{});
+    // Backfill columns added by GH-732 on pre-existing bench tables (idempotent).
+    conn.exec("ALTER TABLE nfr_bench_events ADD COLUMN IF NOT EXISTS instance_id TEXT NOT NULL DEFAULT ''", &.{}) catch {};
+    conn.exec("ALTER TABLE nfr_bench_events ADD COLUMN IF NOT EXISTS sequence_number BIGINT NOT NULL DEFAULT 0", &.{}) catch {};
+    // PAR-06 AC1 bounded query requires (instance_id, created_at) index.
+    conn.exec("CREATE INDEX IF NOT EXISTS idx_nfr_bench_instance_created ON nfr_bench_events (instance_id, created_at)", &.{}) catch {};
 }
 
 fn resolveDbUrl(init: std.process.Init) error{MissingDbUrl}!ResolvedDbUrl {
@@ -315,8 +322,9 @@ fn seedEvents(conn: *db.Conn, run_id: []const u8, count: usize) !void {
     while (i < count) : (i += 1) {
         const seq: i64 = @intCast(i + 1);
         const seq_str = try std.fmt.bufPrint(&seq_buf, "{d}", .{seq});
+        // instance_id = run_id so the PAR-06 bounded replay query can filter by instance.
         try conn.exec(
-            "INSERT INTO nfr_bench_events (run_id, seq, payload) VALUES ($1, $2, $3::jsonb)",
+            "INSERT INTO nfr_bench_events (run_id, instance_id, seq, sequence_number, payload) VALUES ($1, $1, $2, $2, $3::jsonb)",
             &.{ run_id, seq_str, "{}" },
         );
     }
@@ -411,15 +419,34 @@ fn measureThroughput(io: std.Io, conn: *db.Conn, run_id: []const u8, seconds: f6
 }
 
 fn measureReplayMs(io: std.Io, conn: *db.Conn, run_id: []const u8) !f64 {
+    // PAR-06 window lookup: derive [first_event_at, last_event_at) for this
+    // instance — mirrors eventWindowForInstanceInTx() in reconstruction.zig.
+    const window_row = conn.queryRow(
+        std.heap.page_allocator,
+        \\SELECT (EXTRACT(EPOCH FROM MIN(created_at)) * 1000000)::bigint,
+        \\       (EXTRACT(EPOCH FROM MAX(created_at)) * 1000000 + 1)::bigint
+        \\FROM nfr_bench_events WHERE instance_id = $1
+    ,
+        &.{run_id},
+    ) catch return error.BenchmarkQueryFailed;
+    const window = window_row orelse return error.BenchmarkQueryFailed;
+    const first_us = window[0] orelse return error.BenchmarkQueryFailed;
+    const last_us = window[1] orelse return error.BenchmarkQueryFailed;
+
     const start = std.Io.Clock.real.now(io).toMicroseconds();
+    // PAR-06 AC1: bounded query — same predicate shape as reconstructInstance().
     var rows = try conn.query(
         std.heap.page_allocator,
-        "SELECT payload FROM nfr_bench_events WHERE run_id = $1 ORDER BY seq ASC",
-        &.{run_id},
+        \\SELECT payload FROM nfr_bench_events
+        \\WHERE instance_id = $1
+        \\  AND created_at >= to_timestamp($2::bigint / 1000000.0)
+        \\  AND created_at <  to_timestamp($3::bigint / 1000000.0)
+        \\ORDER BY sequence_number ASC
+    ,
+        &.{ run_id, first_us, last_us },
     );
     defer rows.deinit();
 
-    // Scan each payload to exercise per-event processing during replay.
     var payload_bytes: usize = 0;
     for (rows.rows) |row| {
         if (row.len == 0 or row[0] == null) return error.BenchmarkQueryFailed;
