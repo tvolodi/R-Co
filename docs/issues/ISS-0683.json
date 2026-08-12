@@ -16,9 +16,14 @@
     "type": "dangling_pointer_double_free",
     "details": "applyOverrideToPins() stores a string slice owned by a short-lived std.json ParseResult (freed by applyPinOverrides()'s defer parsed.deinit()) directly into a long-lived PinnedVersion.version field that resolve()'s Step 6 cleanup loop later frees via the caller-supplied `allocator`, on the (here-false) assumption that all PinnedVersion string fields are always allocator-owned. The pointer is valid at the moment of assignment but dangles by the time resolve() reaches its cleanup loop, and freeing already-freed memory corrupts the DebugAllocator's bucket canary."
   },
-  "resolution": null,
-  "verification": null,
-  "files_changed": [],
+  "resolution": {
+    "type": "fix_applied_pending_reverification",
+    "details": "src/engine/pin_resolver.zig: applyOverrideToPins() now takes the allocator, allocator.dupe()s the incoming resolved_id/version before storing into the pin, and frees the pin's OLD resolved_id/version before overwriting -- mirroring the dupe-then-free pattern resolve()'s own Step 6 success-path loop already uses for the non-override path. At both applyPinOverrides() call sites (catalog_entry branch ~line 501-520, variable_schema branch ~line 522-543), the resolved.resolved_id/.version and current.resolved_id/.version returned by resolveServiceCatalogRef()/resolveVariableSchemaVersion() are now unconditionally freed by the CALLER via defer (both are always allocator-owned per those functions' own contract), regardless of whether the override matches -- applyOverrideToPins() takes its own independent dupe rather than aliasing the caller's copy, so the two frees can never collide."
+  },
+  "verification": "zig build test-integration-pin01 run twice (2 separate foreground invocations, different random seeds 0xc560c37 and a second distinct seed): both runs report 9 pass (9 total), 0 crashes, 0 \"Invalid free\" panics -- identical result both times. TC-PIN-01-03 (the AC4 override success path that was crashing) now passes cleanly. zig build / zig build check / zig build test all exit 0 with no regressions. NOTE: 8 pre-existing memory leaks remain in TC-PIN-01-02 and TC-PIN-01-04 (both error-return paths) -- these are the separately tracked, still-open ISS-0680/GH-722 (resolve() leaking allocator-owned PinnedVersion fields on early error returns), NOT a symptom of the double-free this issue tracks, and out of scope for this fix per the routing handoff.",
+  "files_changed": [
+    "src/engine/pin_resolver.zig"
+  ],
   "created_at": "2026-08-12T04:29:55Z",
   "resolved_at": null,
   "prevention": [

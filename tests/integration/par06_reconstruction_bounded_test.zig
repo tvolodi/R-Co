@@ -168,14 +168,9 @@ fn freeReconstState(alloc: std.mem.Allocator, state: bpm.transition.InstanceStat
 // TC-PAR-06-01: last_event_at advances in the same transaction as append
 // ---------------------------------------------------------------------------
 
-// KNOWN FAILING against current code — ISS-0677 / GH-719 (filed during this
-// same handoff): InstanceStore.create()'s hand-rolled INSTANCE_STARTED
-// insert never sets instance_projections.first_event_at/.last_event_at (only
-// Store.append() does). This assertion on w1 (the window immediately after
-// create()) is expected to fail until ISS-0677 is fixed — that is real,
-// correct fail-first signal for PAR-06 AC4, not a defect in this test. Do
-// NOT silence/skip this assertion to make the suite green; fix ISS-0677
-// instead.
+// ISS-0677 / GH-719 (InstanceStore.create()'s hand-rolled INSTANCE_STARTED
+// insert never setting instance_projections.first_event_at/.last_event_at)
+// was fixed in commit 29314c89. TC-PAR-06-01 now passes cleanly.
 test "TC-PAR-06-01: Store.append advances last_event_at, first_event_at stays fixed via COALESCE" {
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
@@ -483,13 +478,12 @@ test "TC-PAR-06-04: NULL window is transparently repaired by one scan during rec
 // TC-PAR-06-05: archived-instance merge
 // ---------------------------------------------------------------------------
 
-// KNOWN FAILING against current code — same root cause as TC-PAR-06-01
-// (ISS-0677 / GH-719): the freshly-created instance's window is NULL
-// immediately after InstanceStore.create() returns, so this test's manual
-// last_event_at widen starts from a NULL baseline instead of
-// INSTANCE_STARTED's real created_at, and the archived row can fall outside
-// the window the (buggy) starting state produces. Expected to pass once
-// ISS-0677 is fixed. Do NOT silence/skip; fix ISS-0677 instead.
+// ISS-0677 / GH-719 (the window-maintenance root cause TC-PAR-06-01 also hit)
+// was fixed in commit 29314c89. This test's manual INSERT INTO events_archive
+// below used event_type = 'TASK_COMPLETED' (uppercase), but
+// reconstruction.zig's dispatcher matches the lowercase 'task_completed'
+// literal only (matching every real production write path) — see
+// ISS-0682 / GH-725. Fixed here by lowercasing the fixture's literal.
 test "TC-PAR-06-05: reconstruction merges events_archive rows within the bounded window" {
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
@@ -547,7 +541,7 @@ test "TC-PAR-06-05: reconstruction merges events_archive rows within the bounded
     try conn.exec(
         \\INSERT INTO events_archive (event_id, instance_id, event_type, payload, actor_id,
         \\    created_at, sequence_number, idempotency_key, global_seq, tenant_id)
-        \\VALUES ($1::uuid, $2::uuid, 'TASK_COMPLETED', '{"task_node_id":"T","output_variables":{}}',
+        \\VALUES ($1::uuid, $2::uuid, 'task_completed', '{"task_node_id":"T","output_variables":{}}',
         \\    $3::uuid, NOW(), 2, $4, 999999998, '00000000-0000-0000-0000-000000000000'::uuid)
     ,
         &.{ archived_event_id, inst_hex, actor_hex, idem },

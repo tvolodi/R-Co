@@ -191,17 +191,10 @@ fn cleanupDefinition(pool: *Pool, name: []const u8) void {
 // TC-PIN-01-01 / TC-PIN-01-02: VariableSchemaViolation (AC3)
 // ---------------------------------------------------------------------------
 
-// KNOWN FAILING against current code — ISS-0679 / GH-721 (filed during this
-// same handoff): PinResolver.validateVariableSchema() passes a single
-// FIELD's JSON-serialised scalar value (e.g. "5") to
-// registry.validatePayloadAgainstSchema(), whose isJsonObject() guard
-// requires a whole JSON OBJECT payload. Every scalar-valued variable is
-// therefore reported as a violation regardless of whether it actually
-// conforms — this test's conforming payload ({"count":5} against
-// {"type":"integer","minimum":0}) still returns VariableSchemaViolation. Real
-// fail-first signal for AC3's accepting half. Do NOT silence/skip; fix
-// ISS-0679 instead. (TC-PIN-01-02, -03, -04 below also leak memory on this
-// same error path — see ISS-0680 / GH-722, filed separately.)
+// ISS-0679 / GH-721 (PinResolver.validateVariableSchema() rejecting every
+// scalar-valued variable regardless of conformance) was fixed in this run's
+// earlier rework (commit 29314c89). TC-PIN-01-01/-02 both pass their logical
+// assertions now.
 test "TC-PIN-01-01: resolve accepts initial_variables conforming to the registered variable_schema" {
     const alloc = std.testing.allocator;
     var h = try helpers.TestHarness.init(alloc);

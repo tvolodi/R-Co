@@ -503,10 +503,19 @@ pub const PinResolver = struct {
                     // implicit "version" (updated_at-derived) can ever match.
                     const resolved = self.resolveServiceCatalogRef(allocator, conn, ref, tenant_id) catch
                         return ResolutionError.UnresolvedPinOverride;
+                    // resolved.resolved_id/.version are allocator-owned
+                    // (dupe'd inside resolveServiceCatalogRef() with
+                    // `allocator`) and are ALWAYS this call's own copies to
+                    // free, regardless of match outcome — applyOverrideToPins()
+                    // takes its own dupe when it stores into the pin (see
+                    // ISS-0683: it must never store a pointer this scope
+                    // frees).
+                    defer allocator.free(resolved.resolved_id);
+                    defer allocator.free(resolved.version);
                     if (!std.mem.eql(u8, resolved.version, version)) {
                         return ResolutionError.UnresolvedPinOverride;
                     }
-                    if (!applyOverrideToPins(pins, .catalog_entry, ref, resolved.resolved_id, version)) {
+                    if (!applyOverrideToPins(allocator, pins, .catalog_entry, ref, resolved.resolved_id, resolved.version)) {
                         return ResolutionError.UnresolvedPinOverride;
                     }
                 },
@@ -517,10 +526,18 @@ pub const PinResolver = struct {
                     const current = self.resolveVariableSchemaVersion(allocator, conn, parseDefinitionIdFromRef(ref) catch
                         return ResolutionError.UnresolvedPinOverride) catch
                         return ResolutionError.UnresolvedPinOverride;
+                    // current.ref/.resolved_id/.version are all
+                    // allocator-owned (resolveVariableSchemaVersion() builds
+                    // them all with `allocator`) and are this call's own
+                    // copies to free — applyOverrideToPins() dupes what it
+                    // needs before storing (ISS-0683).
+                    defer allocator.free(current.ref);
+                    defer allocator.free(current.resolved_id);
+                    defer allocator.free(current.version);
                     if (!std.mem.eql(u8, current.version, version)) {
                         return ResolutionError.UnresolvedPinOverride;
                     }
-                    if (!applyOverrideToPins(pins, .variable_schema, ref, current.resolved_id, version)) {
+                    if (!applyOverrideToPins(allocator, pins, .variable_schema, ref, current.resolved_id, current.version)) {
                         return ResolutionError.UnresolvedPinOverride;
                     }
                 },
@@ -530,11 +547,31 @@ pub const PinResolver = struct {
     }
 };
 
-fn applyOverrideToPins(pins: []PinnedVersion, kind: PinKind, ref: []const u8, resolved_id: []const u8, version: []const u8) bool {
+/// Applies an override's resolved_id/version onto the matching pin.
+///
+/// ISS-0683 fix: `resolved_id`/`version` here are the CALLER's own
+/// allocator-owned copies (freed by the caller's own `defer` regardless of
+/// whether a match is found) — this function must never store those
+/// pointers directly into the long-lived `pins` slice, since resolve()'s
+/// Step 6 success-path cleanup loop unconditionally frees every pin's
+/// `.resolved_id`/`.version` via `allocator`, and storing an alias the
+/// caller ALSO frees would double-free it. Instead: `allocator.dupe()` a
+/// fresh copy for the pin, and free the pin's OLD `.resolved_id`/`.version`
+/// (both allocator-owned already, set by the earlier resolve() steps)
+/// before overwriting — mirroring the dupe-then-free pattern resolve()'s own
+/// Step 6 loop already uses for the non-override path.
+fn applyOverrideToPins(allocator: std.mem.Allocator, pins: []PinnedVersion, kind: PinKind, ref: []const u8, resolved_id: []const u8, version: []const u8) bool {
     for (pins) |*p| {
         if (p.kind == kind and std.mem.eql(u8, p.ref, ref)) {
-            p.resolved_id = resolved_id;
-            p.version = version;
+            const new_resolved_id = allocator.dupe(u8, resolved_id) catch return false;
+            const new_version = allocator.dupe(u8, version) catch {
+                allocator.free(new_resolved_id);
+                return false;
+            };
+            allocator.free(p.resolved_id);
+            allocator.free(p.version);
+            p.resolved_id = new_resolved_id;
+            p.version = new_version;
             p.source = .override;
             return true;
         }
