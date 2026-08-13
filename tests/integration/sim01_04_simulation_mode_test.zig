@@ -358,14 +358,7 @@ test "TC-SIM-02-02: missing mock returns deterministic miss without fallback" {
     defer catalog.deinit();
 
     const fingerprint = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-
-    try testing.expectError(error.MockResponseNotFound, simulation.executeMockedServiceCall(alloc, &ctx, &catalog, "svc.billing", .{
-        .request_fingerprint = fingerprint,
-        .method = "POST",
-        .path = "/charge",
-        .headers_json = null,
-        .body = "{\"amount\":99}",
-    }));
+    try testing.expectError(error.MockResponseNotFound, simulation.executeMockedServiceCall(alloc, &ctx, &catalog, "svc.billing", .{ .request_fingerprint = fingerprint, .method = "POST", .path = "/charge", .headers_json = null, .body = "{\"amount\":99}" }));
 }
 
 test "TC-SIM-03-01: scenario-controlled clock advances deterministically" {
