@@ -10,7 +10,9 @@
     "GH-758"
   ],
   "severity": "BLOCKER",
-  "status": "OPEN",
+  "status": "IN_PROGRESS",
+  "github_issue_confirmed": true,
+  "step_0.5_completed_at": "2026-08-13T13:42:03Z",
   "category": "test-infrastructure/pg-client-hang",
   "scope": "tests/integration/*.zig (any test going through acquireIntegrationLock + Pool); vendor/pg/pg.zig (sync pg.Conn wrapper); src/db/pool.zig (Pool.init). NOT a production code path -- the integration-test client only.",
   "affected_areas": [
