@@ -1,0 +1,79 @@
+{
+  "handoff_id": "wf02-grd-ui-batch19-20260813-01-code-designer",
+  "run_id": "WF02-grd-ui-batch19-20260813",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-grd-ui-batch19-20260813/step-01-code-designer.json",
+  "created_at": "2026-08-13T17:05:54Z",
+  "started_at": "2026-08-13T17:05:54Z",
+  "completed_at": "2026-08-13T17:10:09Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8",
+    "requirement_ids": [
+      "GRD-UI-02",
+      "GRD-UI-03",
+      "GRD-UI-04",
+      "GRD-UI-05"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/requirements.yaml",
+      "web/src/",
+      "web/tests/"
+    ],
+    "branch_name": "feature/WF02-grd-ui-batch19-20260813"
+  },
+  "task": {
+    "description": "WF-02 Step 01 (CODE-DESIGNER) for GRD-UI Batch 19: GRD-UI-02, GRD-UI-03, GRD-UI-04, GRD-UI-05.\n\nAll 4 requirements are F8 MUST and concern frontend guard/scan infrastructure:\n- GRD-UI-02: `web/tests/guards/source-scan.spec.ts` \u2014 scan web/src/**/*.{ts,tsx,css} for banned patterns\n- GRD-UI-03: `web/tests/guards/bundle-scan.spec.ts` \u2014 scan built web/dist/assets/*.js\n- GRD-UI-04: `web/tests/guards/meta-control.spec.ts` \u2014 test each guard pattern has offender/bystander fixtures\n- GRD-UI-05: Redacted violation reporting \u2014 no matched substring in output, write to YAML report file\n\nPrerequisite: GRD-UI-01 (DRAFT) defines the PATTERNS forbidlist. Since it is a prerequisite of all 4, it must also be designed inline.\n\nDesign task: Produce a Type-A/B design artefact at `src/design/grd-ui-batch19-guard-scans.md` specifying:\n\n1. **GRD-UI-01 inline prerequisite** (forbidlist):\n   - File: `web/src/guards/forbidlist.ts`\n   - A `PATTERNS` array of entries with shape: `{ name: string; pattern: RegExp; appliesTo: 'source' | 'bundle' | 'both'; allowedPaths?: string[] }`\n   - Initial patterns needed for RND-UI-01 (classifyError as sole status reader): `status-read-outside-classifier`, `missing-query-state-boundary`\n   - Plus a `raw-fetch-outside-client` pattern (no direct fetch/axios outside web/src/api/client.ts)\n   - Plus a `literal-colour` pattern (no hex colour literals in components except web/src/styles/tokens.css)\n\n2. **GRD-UI-02 source-scan spec interface**:\n   - Where it lives: `web/tests/guards/source-scan.spec.ts`\n   - How it reads PATTERNS (import from web/src/guards/forbidlist.ts)\n   - How it walks files (node:fs, glob, or fast-glob)\n   - How it reports violations: `{ file: string; line: number; patternName: string }` (no matched text)\n   - `npm run guards` script to add to package.json\n\n3. **GRD-UI-03 bundle-scan spec interface**:\n   - Where it lives: `web/tests/guards/bundle-scan.spec.ts`\n   - How it triggers a real vite build (execSync or spawnSync)\n   - How it reads the built assets\n   - Fail-on-empty guard (no vacuous pass)\n\n4. **GRD-UI-04 meta-control spec interface**:\n   - Where it lives: `web/tests/guards/meta-control.spec.ts`\n   - Fixture directory: `web/tests/guards/fixtures/offender/<pattern>.txt` and `web/tests/guards/fixtures/bystander/<pattern>.txt`\n   - One test per PATTERNS entry: assert offender matches, bystander does not\n\n5. **GRD-UI-05 redacted reporting**:\n   - Reporter helper: `web/tests/guards/reporter.ts`\n   - Output format: `{ file, line, patternName }` \u2014 NO matched substring\n   - Write YAML report to `tests/reports/guard-report-<date>-<run_id>.yaml`\n   - Assertion in the guard suite that output contains no string matching `/sk-|password|secret|token/i`\n\n6. **Files NOT to change**\n\n7. **Acceptance criteria** for FRONTEND-DEV\n\nDesign must contain type shapes, file locations, and function signatures ONLY \u2014 no implementation code.",
+    "acceptance_criteria": [
+      "src/design/grd-ui-batch19-guard-scans.md created",
+      "GRD-UI-01 PATTERNS structure specified inline",
+      "GRD-UI-02 source-scan spec structure specified",
+      "GRD-UI-03 bundle-scan spec structure specified",
+      "GRD-UI-04 meta-control fixture structure specified",
+      "GRD-UI-05 redacted reporter interface specified",
+      "npm run guards script added to spec",
+      "No implementation code in design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for grd-ui guard scan infrastructure (GRD-UI-01..05) \u2014 Type E. Forbidlist shape, 10 seed patterns, source-scan/bundle-scan/meta-control spec structures, reporter interface, npm run guards script, 3 open questions flagged.",
+    "artifacts_out": [
+      "src/design/grd-ui-batch19-guard-scans.md"
+    ],
+    "issues": [
+      {
+        "id": "OQ-1",
+        "severity": "MINOR",
+        "description": "Path conflict: GRD-UI-01 body says web/tests/guards/forbidlist.ts; handoff task says web/src/guards/forbidlist.ts. Design uses requirement path."
+      },
+      {
+        "id": "OQ-2",
+        "severity": "MINOR",
+        "description": "status-read-outside-classifier in handoff task description not present in GRD-UI-01 ten-seed list. REQ-ANALYST must reconcile."
+      },
+      {
+        "id": "OQ-3",
+        "severity": "MINOR",
+        "description": "Node.js version in CI: if <18.17 fast-glob required. Implementor must confirm."
+      }
+    ],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

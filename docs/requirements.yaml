@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-13T16:40:33Z'
+generated_at: '2026-08-13T18:11:11Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -11455,7 +11455,7 @@ requirements:
     title: Frontend source scan gate
     stage: F8
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > `web/tests/guards/source-scan.spec.ts` SHALL apply every `PATTERNS` entry whose `appliesTo` is `source` or `both` to `web/src/**/*.{ts,tsx,css}`. A match on a path outside that pattern's `allowedPaths` SHALL fail the gate. `allowedPaths` SHALL be honoured exactly: `raw-fetch-outside-client` permits `web/src/api/client.ts` and `literal-colour` permits `web/src/styles/tokens.css`. The scan SHALL run with no network access and SHALL complete within 30 s. `npm run guards` SHALL be a required status check, so a merge SHALL NOT proceed on a scan failure.
 
@@ -11470,14 +11470,15 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:11Z'
+    last_updated: '2026-08-13T18:11:08Z'
     workflow: PW-16
+    released_at: '2026-08-13T18:11:08Z'
   GRD-UI-03:
     id: GRD-UI-03
     title: Post-build bundle scan gate
     stage: F8
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > `web/tests/guards/bundle-scan.spec.ts` SHALL delete the build output with `rmSync('web/dist', { recursive: true, force: true })`, run a real `vite build`, and apply every `PATTERNS` entry whose `appliesTo` is `bundle` or `both` to `web/dist/assets/*.js`. The scan SHALL fail rather than pass when the build produces no assets, so an empty directory cannot yield a vacuous pass. The bundle scan exists because a banned module can enter the shipped artefact through a dependency without appearing in `web/src/`.
 
@@ -11492,14 +11493,15 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:12Z'
+    last_updated: '2026-08-13T18:11:09Z'
     workflow: PW-16
+    released_at: '2026-08-13T18:11:09Z'
   GRD-UI-04:
     id: GRD-UI-04
     title: Two-sided META control per guard pattern
     stage: F8
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > Every entry in `PATTERNS` SHALL carry a two-sided META control in `web/tests/guards/meta-control.spec.ts`. The control SHALL assert that the pattern matches `web/tests/guards/fixtures/offender/<pattern>.txt`, a synthetic offender, and that it does not match `web/tests/guards/fixtures/bystander/<pattern>.txt`, an innocent bystander. A pattern added without both fixtures SHALL fail the gate. The META controls SHALL run before the source scan and the bundle scan, so a dead or over-broad guard is reported before its clean result is trusted.
 
@@ -11514,14 +11516,15 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:13Z'
+    last_updated: '2026-08-13T18:11:10Z'
     workflow: PW-16
+    released_at: '2026-08-13T18:11:10Z'
   GRD-UI-05:
     id: GRD-UI-05
     title: Redacted guard violation reporting
     stage: F8
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > A guard violation SHALL be reported as `{ file, line, patternName }` and SHALL NOT carry the matched substring or any surrounding source text, so a credential or token caught by a pattern is never printed to a CI log. The same redacted records SHALL be written to `tests/reports/report-<date>-<run_id>.yaml`. A redaction assertion SHALL run over the reporter output as part of the guard suite.
 
@@ -11536,8 +11539,9 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:14Z'
+    last_updated: '2026-08-13T18:11:11Z'
     workflow: PW-16
+    released_at: '2026-08-13T18:11:11Z'
   GRD-UI-06:
     id: GRD-UI-06
     title: Accessibility gate per canonical surface

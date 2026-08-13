@@ -1,0 +1,64 @@
+{
+  "handoff_id": "wf02-grd-ui-batch19-20260813-03b-test-design-validator",
+  "run_id": "WF02-grd-ui-batch19-20260813",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-grd-ui-batch19-20260813/step-03b-test-design-validator.json",
+  "created_at": "2026-08-13T17:51:08Z",
+  "started_at": "2026-08-13T17:51:08Z",
+  "completed_at": "2026-08-13T18:08:44Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8",
+    "requirement_ids": [
+      "GRD-UI-02",
+      "GRD-UI-03",
+      "GRD-UI-04",
+      "GRD-UI-05"
+    ],
+    "related_handoff_ids": [
+      "wf02-grd-ui-batch19-20260813-03-test-designer"
+    ],
+    "artifacts_in": [
+      "web/tests/guards/",
+      "web/tests/unit/guardReporter.test.ts"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: validate test coverage for GRD-UI-02..05:\n(a) Every MUST AC has a runnable test\n(b) No .skip/.todo on MUST tests\n(c) Tests self-sufficient\n(d) GRD-UI-05 redaction assertion covers credential-shaped strings\n(e) bundle-scan fails on empty assets\n(f) Tests discoverable by test runner\nReturn PASS if all 6 pass.",
+    "acceptance_criteria": [
+      "All 6 checks evaluated",
+      "PASS only if all pass"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test design for GRD-UI-02..05 validated (rework 1) \u2014 all 6 checks PASS. Rework fixed: (1) literal-colour appliesTo changed from source to both so bundle scan applies it; (2) GRD-UI-03 AC4 synthetic bundle fixture test added to bundle-scan.spec.ts. Coverage: GRD-UI-02 source-scan.spec.ts, GRD-UI-03 bundle-scan.spec.ts (2 tests including AC4 literal-colour synthetic fixture), GRD-UI-04 meta-control.spec.ts (fixtures present for all 10 patterns), GRD-UI-05 guardReporter.test.ts TC-GR-01..10. No .skip/.todo. Tests self-sufficient (no DB/network). Redaction assertion covers /sk-/, /password/i, /token/i. Bundle-scan fails on empty assets. All tests discoverable by test runner.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "TDVF-GRD-UI-05-SPEC-MISSING",
+        "severity": "MINOR",
+        "requirement": "GRD-UI-05",
+        "ac": null,
+        "description": "TEST-DESIGNER handoff listed tests/specs/GRD-UI-05.md in artifacts_out but the file does not exist in the workspace. ACs are covered by guardReporter.test.ts TC-GR-01..10; missing spec file is documentation gap only. Does not block PASS.",
+        "fix": "TEST-DESIGNER should create tests/specs/GRD-UI-05.md listing TC-GR-01..10 and mapping each to its GRD-UI-05 AC."
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF02-grd-ui-batch19-20260813",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF02-grd-ui-batch19-20260813",
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}
