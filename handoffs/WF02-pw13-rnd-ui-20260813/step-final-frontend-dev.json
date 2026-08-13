@@ -1,0 +1,51 @@
+{
+  "handoff_id": "wf02-pw13-rnd-ui-20260813-final-frontend-dev",
+  "run_id": "WF02-pw13-rnd-ui-20260813",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "file": "handoffs/WF02-pw13-rnd-ui-20260813/step-final-frontend-dev.json",
+  "created_at": "2026-08-13T16:50:52Z",
+  "started_at": "2026-08-13T16:50:52Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8",
+    "requirement_ids": ["RND-UI-01", "RND-UI-02", "RND-UI-03", "RND-UI-04"],
+    "related_handoff_ids": ["wf02-pw13-rnd-ui-20260813-06-doc-updater"],
+    "artifacts_in": ["docs/agents/protocols/GIT_MERGE.md"],
+    "branch_name": "feature/WF02-pw13-rnd-ui-20260813",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/127"
+  },
+  "task": {
+    "description": "WF-02 Step Final (fn:git-merge) for PW-13 Batch 1. Execute per docs/agents/protocols/GIT_MERGE.md.\n\n1. Verify branch: feature/WF02-pw13-rnd-ui-20260813\n2. git add -A && stage any remaining files\n3. git fetch origin main && git rebase origin/main\n4. git push --force-with-lease origin feature/WF02-pw13-rnd-ui-20260813\n5. gh pr create --base main --head feature/WF02-pw13-rnd-ui-20260813 --title 'feat(frontend): PW-13 Batch 1 — RND-UI-01..04 renderer state contract' --body 'Closes #127\\n\\nImplements PW-13 Batch 1 (RND-UI-01..04):\\n- RendererState six-member union + classifyError() in web/src/utils/classifyError.ts\\n- QueryStateBoundary with exhaustive switch + never arm\\n- SkeletonLayout (aria-busy) for loading state\\n- FetchError (role=alert) for fetch-failure state\\n- PermissionDenied (fixed copy, no data leakage) for 401/403\\n- QueryClient retry:0 globally\\n- 19 pages wrapped with QueryStateBoundary\\n- 63 frontend tests passing'\n6. gh pr merge --squash --delete-branch\n7. git checkout main && git pull --ff-only origin main\n8. Verify clean working tree\n9. python tools/lint_handoffs.py — exit 0\n\nNote: GH-127 (PW-13 platform workflow) closes when all 6 requirements are RELEASED. RND-UI-05/06 are in a second batch. Close GH-127 only after both batches are done.\n\nRelease TaskManager:\n  python 'C:\\Users\\tvolo\\dev\\ai-dala\\TaskManager\\scripts\\release.py' task/current.json --status DONE --workspace-id r-co-2-loop",
+    "acceptance_criteria": [
+      "PR created and squash-merged to main",
+      "feature/WF02-pw13-rnd-ui-20260813 deleted",
+      "On main with clean working tree",
+      "release.py called with --status DONE",
+      "lint_handoffs exits 0"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": {
+    "status": null,
+    "summary": null,
+    "artifacts_out": [],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-pw13-rnd-ui-20260813",
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH writes DONE log entry. PW-13 Batch 2 (RND-UI-05/06) queued for next WF-02 run."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
