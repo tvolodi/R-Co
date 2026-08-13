@@ -2,9 +2,9 @@
   "version": 2,
   "generated_at": "2026-08-13T00:00:00Z",
   "source": "tools/lint_test_isolation.py --no-baseline --json tests/integration (updated for pool_size shift in helpers.zig, WF03-GH752-20260812)",
-  "regenerated_by": "ISS-0664/WF02-batch-0-20260811 (Green-Main Gate fix): removed 3 stale T010 entries left behind by WF03-GH681-20260810 line-renumbering (obs06_alerts_test.zig:174 x2, oidc13_tenant_claim_source_test.zig:106) that no longer matched a live --no-baseline scan; regenerated issues array directly from python tools/lint_test_isolation.py --no-baseline --json tests/integration.",
-  "regeneration_note": "T010 BLOCKER count = 74 (matches TC-RG-01 live-scan ceiling). Total issues = 116.",
-  "last_line_sync": "2026-08-11T04:58:09Z",
+  "regenerated_by": "WF03-GH759-20260813/BACKEND-DEV (ISS-0697, third recurrence of test-baseline-drift class -- predecessors ISS-0648/GH-653, ISS-0664/GH-701): refreshed preamble metadata after predecessor fix 0fff689f (feature/WF03-GH752-20260812, ISS-0692/GH-757) failed to land on main via the GH-752 squash-merge. Single line-number re-sync applied in the issues array: tests/integration/gh512_t010_regression_test.zig 337 -> 342 (the TC-RG-02 substring-search target RETAIN entry, line-shifted by +5 because this run expanded the ceiling constant's doc comment from 7 to 12 lines to reference snapshot_v5_addendum). No other line-number drift detected; live scan matches committed baseline by (severity, code, file, message) key: 117 total, T010 BLOCKER=75, T020=11, T030=6, T050=23, T060=2. Reconciliation is at the snapshot fixture (v4 -> v5) and the gh512_t010_regression_test.zig ceiling constant (74 -> 75) -- see tests/specs/fixtures/gh512-baseline-snapshot.json snapshot_v5_addendum.",
+  "regeneration_note": "T010 BLOCKER count = 75 (matches TC-RG-01 live-scan ceiling and gh512-baseline-snapshot.json v5). Total issues = 117. helpers.zig T020 entries remain at current line numbers (520, 525, 526) per fresh --no-baseline scan.",
+  "last_line_sync": "2026-08-13T10:12:38Z",
   "issues": [
     {
       "severity": "BLOCKER",
@@ -332,7 +332,7 @@
       "severity": "BLOCKER",
       "code": "T010",
       "file": "tests/integration/gh512_t010_regression_test.zig",
-      "line": 337,
+      "line": 342,
       "message": "hardcoded UUID `00000000-0000-0000-0000-000000000001` \u2014 generate per-test UUIDs instead"
     },
     {
