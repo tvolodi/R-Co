@@ -1,0 +1,60 @@
+{
+  "handoff_id": "wf03-gh760-20260813-final-backend-dev",
+  "run_id": "WF03-GH760-20260813",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH760-20260813/step-final-backend-dev.json",
+  "created_at": "2026-08-13T08:59:00Z",
+  "started_at": "2026-08-13T08:59:52Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh760-20260813-07-doc-updater"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_MERGE.md",
+      "handoffs/WF03-GH760-20260813/"
+    ],
+    "branch_name": "feature/WF03-GH760-20260813",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/760"
+  },
+  "task": {
+    "description": "WF-03 Step Final (git-merge) for GH-760 / ISS-0696. Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md.\n\nBranch: feature/WF03-GH760-20260813\nGitHub issue to close: #760\n\nSteps:\n1. Verify current branch is feature/WF03-GH760-20260813\n2. Stage any remaining uncommitted files (handoff JSONs, ISS files, registry, orchestrator.log): git add -A\n3. Commit remaining artifacts if any: git commit -m 'fix(WF03-GH760-20260813): finalize artifacts — handoffs, ISS-0696 registry, orchestrator.log'\n4. Rebase onto main: git fetch origin main && git rebase origin/main\n5. git push --force-with-lease origin feature/WF03-GH760-20260813 (if rebase advanced the branch)\n6. Create PR: gh pr create --base main --head feature/WF03-GH760-20260813 --title 'fix(tests): GH-760/ISS-0696 serialize public-schema test binaries to prevent parallel write conflicts' --body 'Closes #760\\n\\nISS-0696: Serializes iss205, iss203, iss106, env01, sch02 test binaries in build.zig to prevent resetTestData cross-binary row deletion race and env01 TC03 tenant visibility issue under parallel execution.\\n\\nFix: Removed these 5 binaries from test_integration_others_step parallel pool and added serial chain run_iss106_serial_public → run_iss203_serial_public → run_iss205_serial_public → run_sch02_serial_public → run_env_serial_public that executes after the parallel pool completes.\\n\\nNote: 5 pre-existing deterministic failures in these binaries (unrelated to GH-760) were discovered and are tracked separately in handoffs/global_queue.json.'\n7. Squash-merge: gh pr merge --squash --auto (or merge once PR is ready)\n8. After merge: git checkout main && git pull --ff-only origin main\n9. Delete feature branch: git push origin --delete feature/WF03-GH760-20260813 && git branch -d feature/WF03-GH760-20260813\n10. Close GH-760: gh issue close 760 --comment 'Fixed in PR merged to main. ISS-0696 RESOLVED. The 5 test binaries are now serialized in build.zig.'\n11. Verify: git branch --show-current must be 'main'; working tree must be clean.\n12. Run tools/lint_handoffs.py — must exit 0.",
+    "acceptance_criteria": [
+      "PR created for feature/WF03-GH760-20260813 → main",
+      "PR squash-merged to main",
+      "feature/WF03-GH760-20260813 deleted from origin and local",
+      "git checkout main; working tree clean",
+      "GH-760 closed with merge reference",
+      "tools/lint_handoffs.py exits 0",
+      "result.git_evidence.push_status = 'ok'",
+      "result.git_evidence.pr_url recorded",
+      "result.git_evidence.commit_sha_list has merged commit"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": {
+    "status": null,
+    "summary": null,
+    "artifacts_out": [],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH760-20260813",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-GH760-20260813",
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH writes DONE log entry"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

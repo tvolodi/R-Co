@@ -1,0 +1,63 @@
+{
+  "handoff_id": "wf03-gh760-20260813-02-code-designer",
+  "run_id": "WF03-GH760-20260813",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH760-20260813/step-02-code-designer.json",
+  "created_at": "2026-08-13T07:59:32Z",
+  "started_at": "2026-08-13T08:00:18Z",
+  "completed_at": "2026-08-13T08:03:57Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh760-20260813-01-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0696.json",
+      "build.zig",
+      "tests/integration/iss205_webhook_outbox_test.zig",
+      "tests/integration/iss203_idempotency_keys_test.zig",
+      "tests/integration/iss106_webhook_outbox_test.zig",
+      "tests/integration/env01_test.zig",
+      "tests/integration/sch02_timer_polling_test.zig",
+      "tests/integration/helpers.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 02 (CODE-DESIGNER) for GH-760 / ISS-0696.\n\nRoot cause (from Step 01): Five test binaries (iss205_test, iss203_test, iss106_test, env01_test, sch02_test) operate on public/tenant_default tables without per-run isolation. resetTestData() deletes in-flight rows from concurrent binaries; env01's TC-ENV-01-03 sees spurious tenant rows inserted by sibling TestHarness.init() calls.\n\nRecommended fix (option c): Serialize these five binaries by extracting their run steps from the parallel test barrier into a dedicated serial step that waits for the parallel pool to finish before starting.\n\nDesign task: Produce a Type-E prose design artefact at src/design/iss0696_serial_public_schema_tests.md that specifies:\n\n1. The exact change to build.zig:\n   - Read build.zig to identify how test_integration_others_step currently groups tests and how the five affected binaries are currently included in the parallel barrier.\n   - Design a new step (e.g., 'test-integration-serial-public') that depends on test_integration_others_step completing.\n   - Specify which run steps must be moved out of the parallel group and into this serial step.\n   - The serial step should NOT have a -j cap; it runs naturally (one binary at a time) because each step depends on the prior one.\n   - Also specify: update scripts/run-test-integration.{ps1,sh} (if they exist) to invoke the new serial step after the parallel step.\n   - Also specify: update docs/guides/test_developer_guide.md to document that these five binaries are intentionally serial.\n\n2. What NOT to change:\n   - Do NOT modify tests/integration/helpers.zig\n   - Do NOT modify any of the five test files themselves\n   - Do NOT modify tools/lint_test_isolation.baseline.json\n   - Do NOT modify any production src/ code\n\n3. Acceptance criteria for the implementation:\n   - zig build test-integration still works (runs the parallel binaries)\n   - The five serial binaries run sequentially after the parallel pool finishes\n   - zig build test passes\n   - tools/lint_handoffs.py exits 0\n   - 5 consecutive runs of the full integration suite complete with 0 public-schema write conflict failures\n\nThe design document must be a prose specification only — no Zig code in the document. BACKEND-DEV will write the actual code from this spec.",
+    "acceptance_criteria": [
+      "src/design/iss0696_serial_public_schema_tests.md created",
+      "Design specifies exact build.zig changes: which step(s) to add, which run steps move out of parallel group",
+      "Design specifies which scripts need updating (if any)",
+      "Design specifies test_developer_guide.md section to update",
+      "Design explicitly lists files NOT to change",
+      "No Zig implementation code in the design document",
+      "result.artifacts_out includes ['src/design/iss0696_serial_public_schema_tests.md']"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for iss0696 serial public-schema test binaries — Type E prose artefact. Specifies: (1) exact build.zig changes — remove 5 dependOn calls from test_integration_others_step, declare 5 new serial Run artifacts chained iss106→iss203→iss205→sch02→env01, wire last into test_integration_step; (2) scripts unchanged; (3) test_developer_guide.md §10.3 to add; (4) explicit do-not-touch list; (5) 8 acceptance criteria. No Zig source code in artefact.",
+    "artifacts_out": [
+      "src/design/iss0696_serial_public_schema_tests.md"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH dispatches step-02b-code-design-validator.json (hard gate)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

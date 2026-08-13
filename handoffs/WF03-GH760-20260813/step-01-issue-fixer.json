@@ -1,0 +1,63 @@
+{
+  "handoff_id": "wf03-gh760-20260813-01-issue-fixer",
+  "run_id": "WF03-GH760-20260813",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH760-20260813/step-01-issue-fixer.json",
+  "created_at": "2026-08-13T07:46:04Z",
+  "started_at": "2026-08-13T07:46:49Z",
+  "completed_at": "2026-08-13T07:57:52Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh760-20260813-00-backend-dev",
+      "wf03-gh760-20260813-00.5-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0696.json",
+      "tests/integration/iss205_webhook_outbox_test.zig",
+      "tests/integration/iss203_idempotency_keys_test.zig",
+      "tests/integration/iss106_webhook_outbox_test.zig",
+      "tests/integration/env01_test.zig",
+      "tests/integration/sch02_timer_polling_test.zig",
+      "tests/integration/helpers.zig",
+      "build.zig",
+      "tools/lint_test_isolation.py",
+      "tools/lint_test_isolation.baseline.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 01 (root cause diagnosis) for GH-760 / ISS-0696.\n\nIssue: Five test binaries (iss205_test, iss203_test, iss106_test, env01_test, sch02_test) fail non-deterministically under -j4 due to write conflicts on shared public-schema tables.\n\nDiagnose:\n1. Read each of the five affected test files. For each, determine: (a) does it use TestHarness.init()? (b) does it set api_tenant_context before creating its pool? (c) does it write directly to public-schema tables (users, webhook_subscriptions, idempotency_keys, etc.) that are shared across all concurrent test binaries? (d) does it use per-run schema isolation (bpm_test_ namespace)?\n\n2. Read tests/integration/helpers.zig to understand the TestHarness isolation model. The TestHarness is designed around rollback-on-deinit but operates on the tenant_default or public schema — not on a per-binary-run isolated schema. Identify what tables each failing binary writes to and whether those writes conflict with sibling binaries.\n\n3. Read tools/lint_test_isolation.py and tools/lint_test_isolation.baseline.json to understand what isolation violations are already tracked.\n\n4. Determine the root cause: specifically, which tables in the public schema do these binaries write to, and what kind of conflicts occur (FK violations, unique constraint violations, duplicate key violations, or row-level lock conflicts).\n\n5. Evaluate the three candidate fixes from GH-760:\n   (a) Move these test binaries to isolated per-run schemas (bpm_test_ namespace pattern)\n   (b) Serialize via a second advisory lock on the shared public-schema namespace  \n   (c) Mark as inherently serial and exclude from the -j pool\n   \n   For each option: state whether it is feasible, what its implementation complexity is, and any risks. Recommend ONE option with justification.\n\n6. Produce a concise root cause document in docs/issues/ISS-0696.json (update the description field with confirmed root cause, affected tables per binary, and recommended fix choice).\n\nReturn result.status=PASS when root cause is confirmed and recommended fix is documented. Include the recommended fix option (a/b/c) in result.summary.",
+    "acceptance_criteria": [
+      "Each of the 5 affected test files has been read and analyzed",
+      "Root cause confirmed: specific tables each binary writes to identified",
+      "Conflict type identified (FK, unique constraint, row lock, etc.)",
+      "Recommended fix option (a, b, or c) chosen with justification",
+      "docs/issues/ISS-0696.json updated with confirmed root cause and recommended fix",
+      "result.summary states the recommended fix option"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Recommended fix: Option (c) — mark as serial, exclude from -j pool (build.zig only change). Root cause confirmed: two failure modes. (1) resetTestData() cross-binary row deletion race: TestHarness.init() acquires bpm_test_migrations_public advisory lock, globally deletes shared tenant_default tables via resetTestData(), releases lock — then pool writes proceed unguarded. A sibling binary's next TestHarness.init() deletes the first binary's in-flight rows. Affects iss203 (tables: process_definitions, process_instances, events, timers, idempotency_keys), iss205 (tables: users, webhook_subscriptions, webhook_deliveries — aggravated by explicit h.conn.commit() in TC1 that bypasses rollback isolation), iss106 (perpetrator via its resetTestData deleting iss205's webhook_subscriptions; victim via advisory lock queue pressure from env01), sch02 (tables: process_definitions, process_instances, events, tasks, timers). (2) public.tenant non-deterministic row presence: env01 acquires integration lock per-test-block (not binary lifetime); TC-ENV-01-03 queries public.tenant expecting COUNT=0 non-production rows, but concurrent TestHarness binaries' ensureDefaultOidcSeeds() inserts default tenant (tenant_type='test') between env01's test blocks — TC03 fails when that row exists. Option (a) deferred (high complexity: iss203/sch02 engine-level schema isolation rework). Option (b) rejected (serializes against all 45+ parallel TestHarness.init() calls, degrades wall-clock time, doesn't fix env01 TC03 query-visibility issue). Option (c) is a build.zig-only change extracting the 5 run steps from the parallel barrier into a new post-parallel serial step.",
+    "artifacts_out": ["docs/issues/ISS-0696.json"],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH dispatches step-02-code-designer.json with recommended fix option (c)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

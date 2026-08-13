@@ -1,0 +1,53 @@
+{
+  "handoff_id": "wf03-gh760-20260813-00-backend-dev",
+  "run_id": "WF03-GH760-20260813",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH760-20260813/step-00-backend-dev.json",
+  "created_at": "2026-08-13T07:40:47Z",
+  "started_at": "2026-08-13T07:41:35Z",
+  "completed_at": "2026-08-13T07:42:28Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_SETUP.md"
+    ],
+    "branch_name": "feature/WF03-GH760-20260813",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/760"
+  },
+  "task": {
+    "description": "WF-03 Step 00 (git-setup) for GH-760. Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md. Branch name: feature/WF03-GH760-20260813. Steps: (1) git checkout main, (2) git pull --ff-only origin main (FAIL if non-fast-forward), (3) git checkout -b feature/WF03-GH760-20260813, (4) git push -u origin feature/WF03-GH760-20260813. Record branch_name, base_commit_sha, and push_status in result. Return PASS only when the branch is pushed to origin.",
+    "acceptance_criteria": [
+      "feature/WF03-GH760-20260813 branch created from current main HEAD",
+      "Branch pushed to origin (git push -u origin feature/WF03-GH760-20260813 succeeds)",
+      "result.git_evidence.branch_name = 'feature/WF03-GH760-20260813'",
+      "result.git_evidence.base_commit_sha recorded",
+      "result.git_evidence.push_status = 'ok'"
+    ],
+    "functions_to_call": ["fn:git-setup"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "fn:git-setup completed. Checked out main (ff-only pull succeeded, already up to date), created branch feature/WF03-GH760-20260813 from HEAD 30ea16f938e97d4e121e2cede212bb58d84e716c, and pushed to origin.",
+    "artifacts_out": ["branch: feature/WF03-GH760-20260813"],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH760-20260813",
+      "commit_sha_list": ["30ea16f938e97d4e121e2cede212bb58d84e716c"],
+      "remote_branch": "origin/feature/WF03-GH760-20260813",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH dispatches step-00.5-issue-fixer.json"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
