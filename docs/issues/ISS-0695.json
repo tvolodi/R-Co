@@ -9,5 +9,9 @@
   "discovered_during": "GH-753 triage (Step 00 scope expansion)",
   "description": "tests/integration/api03_instance_read_test.zig leaks one heap allocation per run. The discarded AppendResult captures the return value of store.append() with _ =, but the returned .record.metadata is heap-allocated by duplicateFromParams() (src/event_store/store.zig:1368). Same-shape leak as ISS-0691/GH-753 (different file, same root cause). Filed as a separate issue per core-directive one issue, one run.",
   "disposition": "Test-only allocation leak; no production code path affected. Fix: capture the AppendResult and free result.record.metadata.",
-  "created_at": "2026-08-12T22:08:33Z"
+  "created_at": "2026-08-12T22:08:33Z",
+  "resolution": "WF03-GH755-20260813 — captured AppendResult in api03_instance_read_test.zig line 988 (TC-API-05-01), freed record.metadata with defer if (append_res.record.metadata.len > 0) alloc.free(...). Mirrors GH-753/ISS-0691 fix pattern. Verified syntactically (zig ast-check exit 0) and full zig build exit 0. Runtime integration test verification deferred to follow-up — GH-758 client hang currently blocks reliable test-integration execution. Pattern identical to merged GH-753 (commit 34d0512c) which was verified in production.",
+  "resolved_at": "2026-08-13T12:18:00Z",
+  "resolved_by": "WF03-GH755-20260813 (ORCH)",
+  "resolution_commit": "PENDING (will set after commit)"
 }

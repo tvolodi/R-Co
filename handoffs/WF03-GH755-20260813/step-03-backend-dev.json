@@ -1,0 +1,41 @@
+{
+  "handoff_id": "WF03-GH755-20260813/step-03-backend-dev",
+  "run_id": "WF03-GH755-20260813",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T12:02:01Z",
+  "started_at": "2026-08-13T12:02:01Z",
+  "completed_at": "2026-08-13T12:18:00Z",
+  "task": {
+    "description": "Apply the fix per diagnosis: capture AppendResult, defer-free record.metadata with len > 0 guard. Mirror GH-753/ISS-0691 pattern. Production code (src/event_store/store.zig) MUST NOT be modified.",
+    "type": "implement-fix",
+    "workflow": "WF-03"
+  },
+  "context": {
+    "github_issue": 755,
+    "iss_local_id": "ISS-0695",
+    "fix_file": "tests/integration/api03_instance_read_test.zig",
+    "fix_line": 988,
+    "precedent_commit": "34d0512c (GH-753 fix)"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fix applied at tests/integration/api03_instance_read_test.zig:983-996 (TC-API-05-01). Captured AppendResult in `append_res`, freed record.metadata with `defer if (append_res.record.metadata.len > 0) alloc.free(append_res.record.metadata)`. Code-comments explain the leak source and reference both GH-753 precedent and current GH-755 fix. Production code untouched. zig fmt --check exit 0; zig ast-check exit 0; zig build exit 0. Runtime integration test verification blocked by GH-758 client hang (unrelated, separate issue in queue).",
+    "artifacts_out": [
+      "tests/integration/api03_instance_read_test.zig",
+      "docs/issues/ISS-0695.json",
+      "CHANGELOG.md"
+    ],
+    "issues": [],
+    "evidence": [
+      "zig fmt --check exit 0",
+      "zig ast-check exit 0",
+      "zig build exit 0",
+      "Fix pattern identical to merged commit 34d0512c (GH-753)"
+    ],
+    "verification_blocked_by": "GH-758 client hang — integration test runner hangs indefinitely after acquiring advisory lock, blocks reliable test execution (separate WF-03 in queue)"
+  },
+  "handoff_history": null
+}

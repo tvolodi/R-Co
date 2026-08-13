@@ -1,0 +1,42 @@
+{
+  "handoff_id": "WF03-GH755-20260813/step-05-test-runner",
+  "run_id": "WF03-GH755-20260813",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T12:18:01Z",
+  "started_at": "2026-08-13T12:18:01Z",
+  "completed_at": "2026-08-13T12:20:00Z",
+  "task": {
+    "description": "Verify fix via: (a) zig build (compile + linkage check), (b) zig ast-check (syntax), (c) zig fmt --check (format), (d) runtime integration test if infrastructure allows.",
+    "type": "test-execution",
+    "workflow": "WF-03"
+  },
+  "context": {
+    "github_issue": 755,
+    "iss_local_id": "ISS-0695",
+    "verification_methods": ["zig build", "zig ast-check", "zig fmt --check", "test-integration-main (BLOCKED by GH-758)"]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Static checks all green: zig build exit 0, zig ast-check exit 0, zig fmt --check exit 0. Runtime integration test verification deferred — GH-758 client hang blocks test-integration execution. Test.exe process hangs indefinitely after acquireIntegrationLock, mirroring GH-758's documented reproduction. Killed after 5-minute timeout. Mitigation: pattern is mechanically identical to merged GH-753 commit 34d0512c (verified by merged-run evidence).",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "GH-758",
+        "title": "client process hangs indefinitely after acquiring bpm_test_migrations_public advisory lock",
+        "blocking": "test-integration execution",
+        "status": "OPEN in queue"
+      }
+    ],
+    "evidence": [
+      "zig build: exit 0 (compile + linkage)",
+      "zig ast-check tests/integration/api03_instance_read_test.zig: exit 0 (syntax)",
+      "zig fmt --check tests/integration/api03_instance_read_test.zig: exit 0 (format)",
+      "test-integration-main --test-filter TC-API-05-01: HUNG for >5 minutes (GH-758 symptom); process killed manually"
+    ],
+    "pattern_precedent": "Commit 34d0512c (GH-753/ISS-0691) — identical fix pattern, merged to main via PR #756, verified live with 14/14 tests passing and 0 leaks. Same root cause (heap allocation in src/event_store/store.zig:1368 not freed by test code), same fix (capture + defer-free with len > 0 guard), different file."
+  },
+  "handoff_history": null
+}
