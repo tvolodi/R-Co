@@ -1,4 +1,4 @@
-﻿2026-08-04T10:19:30Z | ROUTE | WF03-gh377-20260804 | dba38f9c | ISSUE-FIXER (Step 0.5 — registry updated; GH #377 already exists with sync-ref marker)
+2026-08-04T10:19:30Z | ROUTE | WF03-gh377-20260804 | dba38f9c | ISSUE-FIXER (Step 0.5 — registry updated; GH #377 already exists with sync-ref marker)
 2026-08-04T10:21:40Z | ROUTE | WF03-gh377-20260804 | 67053652 | ORCH -> ISSUE-FIXER | PENDING
 2026-08-04T10:21:40Z | STARTED | WF03-gh377-20260804 | 67053652 | ISSUE-FIXER | step-01
 2026-08-04T16:34:38Z | ROUTE | WF03-gh377-20260804 | 1e33a003 | ORCH -> CODE-DESIGNER | PENDING
@@ -1486,3 +1486,7 @@
 2026-08-13T18:12:41Z | DONE    | WF02-grd-ui-batch19-20260813 | --- | PIPELINE COMPLETE | GRD-UI-02 RELEASED, GRD-UI-03 RELEASED, GRD-UI-04 RELEASED, GRD-UI-05 RELEASED
 2026-08-13T18:12:41Z | GIT     | WF02-grd-ui-batch19-20260813 | feature/WF02-grd-ui-batch19-20260813 | (squash) | PR: https://github.com/tvolodi/R-Co/pull/777
 2026-08-13T18:13:41Z | ROUTE | WF03-GH765-20260813 | step-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | git-merge (stale-evidence dup of GH-763 via PR #771)
+2026-08-13T18:17:00Z | DONE | WF03-GH765-20260813 | step-final-backend-dev | BACKEND-DEV | PR #778 merged, GH-765 closed (stateReason=COMPLETED), branch deleted, TaskManager claim released
+2026-08-13T18:17:00Z | STEP_FINAL | WF03-GH765-20260813 | step-final-backend-dev | BACKEND-DEV -> ORCH | PASS | run COMPLETE
+2026-08-13T18:17:00Z | PIPELINE COMPLETE | WF03-GH765-20260813 | --- | ORCH | GH-765 RESOLVED as duplicate of GH-763/ISS-0689 (fixed by eec9edc3)
+2026-08-13T18:17:00Z | GIT | WF03-GH765-20260813 | feature/WF03-GH765-20260813 | (squash) | PR: https://github.com/tvolodi/R-Co/pull/778
