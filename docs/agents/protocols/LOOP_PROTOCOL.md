@@ -85,41 +85,39 @@ path. `repo_id` for this repo is `r-co`.
 ### claim.py
 
 ```powershell
-python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\claim.py" r-co <workspace_id> task/current.json
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\claim.py" r-co task/current.json
 ```
 
 Atomically claims the newest `OPEN` work item for `r-co`, writes it into
 `task/current.json`, and (for GitHub-sourced items) adds a `claimed-by-<workspace_id>`
 label to the actual GitHub issue.
 
+**`workspace_id` is resolved automatically** — `claim.py` reads `BPM_WORKSPACE_ID` from
+this repo's own `.env` (via `repos.local_path`, set once by `repo_add.py`). Nobody has to
+compute or pass it by hand; the previous version required every call site to read `.env`
+itself, which is exactly the kind of repeated boilerplate that gets forgotten or done
+inconsistently. Pass `--workspace-id <id>` only to override (testing, or a repo that
+doesn't use the `.env` convention).
+
 | Exit | Meaning | ORCH action |
 |---|---|---|
 | 0 | Claimed; item JSON on stdout, `task/current.json` populated | Determine workflow (below), start it |
 | 2 | Nothing `OPEN` for `r-co` | Stop the loop |
 | 3 | `task/current.json` already non-empty | Caller bug — finish/release the current item first, do not retry blindly |
-| 1 | Unexpected error | Log, stop |
-
-`<workspace_id>` — same `BPM_WORKSPACE_ID` convention as before, read from `.env`:
-
-```powershell
-$workspace_id = (Get-Content .env | Select-String '^BPM_WORKSPACE_ID=').ToString().Split('=')[1]
-if (-not $workspace_id) {
-    Write-Error "BPM_WORKSPACE_ID not set in .env — set it before running loop mode (see .env.example)."
-    exit 1
-}
-```
+| 1 | Unexpected error (including `BPM_WORKSPACE_ID` unset in `.env` — set it per `.env.example` before running loop mode) | Log, stop |
 
 ### release.py
 
 ```powershell
-python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\release.py" <workspace_id> task/current.json --status DONE
-python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\release.py" <workspace_id> task/current.json --status DEFERRED --reason "..."
-python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\release.py" <workspace_id> task/current.json --status DONE --close-github-issue
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\release.py" task/current.json --status DONE
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\release.py" task/current.json --status DEFERRED --reason "..."
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\release.py" task/current.json --status DONE --close-github-issue
 ```
 
-Reads `item_id` from `task/current.json` (you don't need to remember it), verifies **this**
-workspace holds the claim, marks the item `DONE` or `DEFERRED` in the DB, clears the GitHub
-claim label, and empties `task/current.json` back to `{}`.
+Reads `item_id` from `task/current.json` (you don't need to remember it), resolves
+`workspace_id` from `.env` the same way `claim.py` does, verifies **this** workspace holds
+the claim, marks the item `DONE` or `DEFERRED` in the DB, clears the GitHub claim label, and
+empties `task/current.json` back to `{}`.
 
 **This call is mandatory at the end of every WF-02/WF-03 run** — it belongs in the same
 step that already exists (Step Final / DOC-UPDATER's git-merge step), not as a new step to
@@ -171,15 +169,16 @@ LOOP START
 ├─ python <TaskManager>\scripts\github_pull.py r-co --exclude-label requirement
 │  (cheap; refresh the mirror so newly-filed issues are claimable)
 │
-├─ python <TaskManager>\scripts\claim.py r-co <workspace_id> task/current.json
+├─ python <TaskManager>\scripts\claim.py r-co task/current.json
+│   (workspace_id auto-resolved from .env — nothing to compute here)
 │   ├─ exit 2 → nothing OPEN → loop complete, stop
 │   ├─ exit 3 → task/current.json already has an item → finish/release it first
-│   ├─ exit 1 → unexpected error → log, stop
+│   ├─ exit 1 → unexpected error (incl. BPM_WORKSPACE_ID unset in .env) → log, stop
 │   └─ exit 0 → item claimed, task/current.json populated
 │
 ├─ Read task/current.json — this IS your task, do not re-derive it from anywhere else:
 │   { "item_id": "r-co:GH-533", "source": "github_issue", "source_ref": "533",
-│     "title": "...", "claimed_by": "<workspace_id>", "claimed_at": "..." }
+│     "title": "...", "claimed_by": "r-co-1-loop", "claimed_at": "..." }
 │   or, for a requirement batch:
 │   { "item_id": "r-co:BATCH-<key>", "source": "requirement_batch",
 │     "payload": {"stage_key": "16", "requirement_ids": ["PRM-02", ...], "batch_index": 0} }
@@ -202,8 +201,9 @@ LOOP START
 │   how the item was selected and how the claim is held/released did.
 │
 ├─ Step Final / DOC-UPDATER calls, as part of its existing git-merge step:
-│   python <TaskManager>\scripts\release.py <workspace_id> task/current.json --status DONE [--close-github-issue]
-│   (or --status DEFERRED --reason "..." if a scope decision was made instead of finishing)
+│   python <TaskManager>\scripts\release.py task/current.json --status DONE [--close-github-issue]
+│   (or --status DEFERRED --reason "..." if a scope decision was made instead of finishing;
+│    workspace_id auto-resolved from .env here too)
 │
 └─ goto LOOP START
 ```

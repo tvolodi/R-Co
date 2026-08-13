@@ -485,10 +485,11 @@ currently holding.
 **Loop skeleton (mandatory — do not deviate):**
 
 ```python
-workspace_id  = read_from_env(".env", "BPM_WORKSPACE_ID")   # never derive from COMPUTERNAME alone
 task_file     = "task/current.json"
 stop_loop     = "handoffs/STOP_LOOP"
 TM            = r"C:\Users\tvolo\dev\ai-dala\TaskManager\scripts"
+# No workspace_id to read or compute here — claim.py/release.py resolve
+# BPM_WORKSPACE_ID from this repo's own .env automatically.
 
 while True:
     # 1. Check stop flag
@@ -500,14 +501,14 @@ while True:
 
     # 3. Claim the next OPEN item — one atomic SQLite transaction, no push/pull dance
     result = subprocess.run(
-        ["python", f"{TM}\\claim.py", "r-co", workspace_id, task_file],
+        ["python", f"{TM}\\claim.py", "r-co", task_file],
         capture_output=True, text=True
     )
     if result.returncode == 2:   # nothing OPEN → loop complete
         break
     if result.returncode == 3:   # task_file already has an unfinished item — caller bug
         break
-    if result.returncode != 0:   # unexpected error
+    if result.returncode != 0:   # unexpected error (incl. BPM_WORKSPACE_ID unset in .env)
         break
     item = json.loads(result.stdout)
     # item["item_id"]    = "r-co:GH-533" or "r-co:BATCH-<key>"
@@ -523,7 +524,7 @@ while True:
     #    step, not a separately-remembered one:
     status = "DONE"   # or "DEFERRED" if a scope decision was made instead of finishing
     subprocess.run(
-        ["python", f"{TM}\\release.py", workspace_id, task_file, "--status", status],
+        ["python", f"{TM}\\release.py", task_file, "--status", status],
         check=True
     )
 ```
