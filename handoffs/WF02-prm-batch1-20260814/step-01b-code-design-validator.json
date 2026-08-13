@@ -1,0 +1,83 @@
+{
+  "handoff_id": "wf02-prm-batch1-20260814-01b-code-design-validator",
+  "run_id": "WF02-prm-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-prm-batch1-20260814/step-01b-code-design-validator.json",
+  "created_at": "2026-08-13T19:24:32Z",
+  "started_at": "2026-08-13T19:24:32Z",
+  "completed_at": "2026-08-13T19:41:46Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": ["PRM-06", "PRM-07", "PRM-08", "PRM-09"],
+    "related_handoff_ids": [
+      "wf02-prm-batch1-20260814-01-code-designer",
+      "wf02-prm-batch1-20260814-01b-code-design-validator",
+      "wf02-prm-batch1-20260814-01c-code-designer-rework"
+    ],
+    "artifacts_in": ["src/design/prm-batch1-promotion-assertion-rerun.md"]
+  },
+  "task": {
+    "description": "Re-validate src/design/prm-batch1-promotion-assertion-rerun.md after CODE-DESIGNER rework (cycle 1). 7 checks: (a) PRM-06/07 MUST ACs covered incl. HTTP 422 integration point, (b) no Zig implementation code, (c) specific enough for BACKEND-DEV, (d) promotion_assertion_runs schema + UNIQUE, (e) sandbox teardown all exit paths, (f) migration file names specified, (g) Files NOT to change listed.",
+    "acceptance_criteria": ["All 7 checks evaluated", "PASS only if all 7 pass"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validation PASSES after rework cycle 1. All 4 MAJOR + 3 MINOR issues from the prior FAIL are resolved: lint_design_artefact.py exits 0 (no BLOCKER/MAJOR/MINOR). Section 7 HTTP integration point (L302-317) added with POST /api/v1/promotions/{review_id}/run-assertions mapping RunStatus.failed -> HTTP 422; src/api/routes/promotion_assertion.zig added to New files to create (L817). No fenced code block exceeds 40 lines (largest 16 lines). All 3 public.tenant occurrences replaced with bare tenant. promotion_assertion_runs schema includes UNIQUE (tenant_id, idempotency_key) named uq_promotion_assertion_runs_idempotency (L129-130). Single defer release() covers normal/error/panic (L326-345). Migration files 1156_prm06_promotion_assertion_runs.sql and 1157_prm09_solution_pack_update.sql named (L781-782). 7 files explicitly listed under Files NOT to change with reasons (L790-800).",
+    "artifacts_out": [],
+    "issues": [],
+    "check_results": [
+      {
+        "check": "(a) PRM-06/07 MUST ACs + HTTP 422 integration point",
+        "result": "PASS",
+        "evidence": "src/design/prm-batch1-promotion-assertion-rerun.md section 7 (L302-317) specifies POST /api/v1/promotions/{review_id}/run-assertions with explicit RunStatus->HTTP mapping (passed/teardown_failed->200; failed->422 with failing_assertion_ids; AlreadyRecorded->200 cached; SandboxUnavailable->503; FixtureLoadFailed->422). New file src/api/routes/promotion_assertion.zig added to New files (L817). Cross-checked against docs/processes/system/definition-promotion.md steps 12-16 (PRM-06/07): idempotency key, 60 s sandbox timeout, fixture-only sandbox, frozen clock/seeded RNG/stub effects/stripNonDeterministicFields, defer release, PROMOTION_ASSERTION_TEARDOWN_FAILED event all present."
+      },
+      {
+        "check": "(b) No Zig implementation code",
+        "result": "PASS",
+        "evidence": "All fenced blocks <=16 lines (largest at L560-L576). No full Zig function bodies. Sole 'pub fn deinit ... { ... }' at L464 is a signature stub with '...' literal. lint_design_artefact.py exits 0 with no findings."
+      },
+      {
+        "check": "(c) Specific enough for BACKEND-DEV",
+        "result": "PASS",
+        "evidence": "Function signatures list every parameter with Zig types; RollbackError/AssertionRerunError/PackUpdateError each enumerate error variants with HTTP mapping tables (L201-209, L494-509, L585-595). Idempotency check flow (L266-285) lists 4 ordered SQL steps. Frozen clock derivation rule (L229-230) and ClockProvider injection interface named. Open questions section enumerates 4 ambiguities for BACKEND-DEV discretion rather than guessing."
+      },
+      {
+        "check": "(d) promotion_assertion_runs schema + UNIQUE",
+        "result": "PASS",
+        "evidence": "L98-131: full per-tenant table schema (id, tenant_id, review_id, idempotency_key, status CHECK 4-value, sandbox_id, plan_digest, assertions_total/passed/failed, failing_assertion_ids JSONB, teardown_error, reaper_claimed_at, started_at, completed_at, created_at) with CONSTRAINT uq_promotion_assertion_runs_idempotency UNIQUE (tenant_id, idempotency_key). FK guard for promotion_reviews via to_regclass noted."
+      },
+      {
+        "check": "(e) Sandbox teardown on all exit paths",
+        "result": "PASS",
+        "evidence": "L326-345: single defer sandbox_pool.release() placed immediately after claim(); on release failure appends PROMOTION_ASSERTION_TEARDOWN_FAILED event (L334) and UPDATEs status to 'teardown_failed' with teardown_error message (L336-337). Explicit statement at L342 that defer covers normal/error/panic unwind (no errdefer with different logic). PRM-07 section 3 table (L371-376) confirms teardown_failed does NOT block promotion."
+      },
+      {
+        "check": "(f) Migration file names specified",
+        "result": "PASS",
+        "evidence": "L781-782 Migration file names table names both: migrations/1156_prm06_promotion_assertion_runs.sql (per-tenant) and migrations/1157_prm09_solution_pack_update.sql (global/public). Prerequisite ordering vs PRM-04 promotion_reviews noted (L784-785). Same paths repeated in New files to create table (L815-816)."
+      },
+      {
+        "check": "(g) Files NOT to change listed",
+        "result": "PASS",
+        "evidence": "L790-800 enumerates 7 files with per-file reason: src/definition/promotion.zig (ENV-03 unchanged), src/definition/promotion_plan.zig (PRM-01 read-only), src/api/routes/promotion.zig (ENV-03 handler), src/api/routes/promotions.zig (PRM-01 handler), src/effects/stub.zig (consumed as-is), src/event_store/store.zig (existing Store.append only), Any migration <=1155 (sealed)."
+      }
+    ],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "PASS: ORCH routes to BACKEND-DEV (Step 2a) and/or FRONTEND-DEV (Step 2b). PRM-06/07/08/09 design is implementation-ready."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

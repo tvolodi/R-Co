@@ -1,0 +1,58 @@
+{
+  "handoff_id": "wf02-prm-batch1-20260814-01-code-designer",
+  "run_id": "WF02-prm-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-prm-batch1-20260814/step-01-code-designer.json",
+  "created_at": "2026-08-13T19:04:24Z",
+  "started_at": "2026-08-13T19:04:24Z",
+  "completed_at": "2026-08-14T00:14:39Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": ["PRM-06", "PRM-07", "PRM-08", "PRM-09"],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/requirements.yaml",
+      "src/",
+      "migrations/"
+    ],
+    "branch_name": "feature/WF02-prm-batch1-20260814"
+  },
+  "task": {
+    "description": "WF-02 Step 01 (CODE-DESIGNER) for PRM Batch 1: PRM-06, PRM-07, PRM-08, PRM-09.\n\nAll are stage 16. PRM-06 and PRM-07 are MUST; PRM-08 and PRM-09 are SHOULD.\n\nRequirements summary:\n- PRM-06: Pre-promotion assertion re-run — replay assertions in ephemeral sandbox; idempotent via `promotion_assertion_runs` table with UNIQUE(tenant_id, idempotency_key); key format `promotion_rerun:<review_id>:<plan_digest>`; frozen clock, seeded RNG, stub effect recorder\n- PRM-07: Sandbox teardown doesn't block promotion — release sandbox on every exit path; teardown failure records `PROMOTION_ASSERTION_TEARDOWN_FAILED` and sets status `teardown_failed` but never converts PASS to FAIL\n- PRM-08 (SHOULD): Promotion rollback — `POST /api/v1/definitions/{process_key}/rollback` re-points active version pointer, appends `DEFINITION_VERSION_ROLLED_BACK`, no DDL; previous review moves to `superseded`\n- PRM-09 (SHOULD): Solution pack update conflict resolution — three-way comparison (base/theirs/incoming); classify per artefact as unchanged/clean_update/local_only/conflict; conflicts need resolution before apply\n\nDesign task: Read existing promotion-related source files (look for PRM-01..05 implementations in src/, promotion-related migrations, sandbox-related code). Then produce a Type-A/B design artefact at `src/design/prm-batch1-promotion-assertion-rerun.md` specifying:\n\n1. **PRM-06 design**:\n   - `promotion_assertion_runs` table schema: columns, UNIQUE constraint, FK references\n   - `applyPromotionAssertionRerun(review_id, plan_digest)` function signature in the promotion module\n   - Sandbox creation and fixture loading interface (fixture isolation from organic rows)\n   - Frozen clock and seeded RNG injection points\n   - Idempotency check flow: check key → return cached if exists → run → record\n\n2. **PRM-07 design**:\n   - Where sandbox release is called (every exit path)\n   - `PROMOTION_ASSERTION_TEARDOWN_FAILED` event append: when and how\n   - `promotion_assertion_runs.status` field: allowed values (`pass`, `fail`, `teardown_failed`)\n   - How teardown failure is surfaced on the promotion read endpoint\n\n3. **PRM-08 design**:\n   - `POST /api/v1/definitions/{process_key}/rollback` endpoint signature\n   - How active version pointer is updated\n   - `DEFINITION_VERSION_ROLLED_BACK` event payload structure\n   - How prior promotion_reviews row is set to `superseded`\n   - What happens to in-flight instances (nothing — they use PD-08 snapshot)\n\n4. **PRM-09 design**:\n   - Three-way diff algorithm entry point and data structures\n   - Artefact classification enum: unchanged/clean_update/local_only/conflict\n   - Conflict resolution recording: table/fields for `keep_local`, `take_incoming`, `merged`\n   - How a PRM-09 update is packaged as a PRM-01 promotion plan\n\n5. **Migration file names** to be created (e.g., `NNNN_prm06_promotion_assertion_runs.sql`)\n\n6. **Files NOT to change** (explicitly list)\n\n7. **Acceptance criteria** for BACKEND-DEV\n\nDesign must contain type signatures and function signatures ONLY — no Zig implementation code.",
+    "acceptance_criteria": [
+      "src/design/prm-batch1-promotion-assertion-rerun.md created",
+      "promotion_assertion_runs table schema specified",
+      "applyPromotionAssertionRerun function signature specified",
+      "Sandbox teardown-on-all-paths mechanism specified",
+      "Rollback endpoint signature and version-pointer update specified",
+      "Three-way diff data structures specified",
+      "Migration file names specified",
+      "No Zig implementation code in design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for prm-batch1 — types: [C, C, E]. Produced src/design/prm-batch1-promotion-assertion-rerun.md covering PRM-06 (promotion_assertion_runs schema + applyPromotionAssertionRerun signature + sandbox fixture isolation + frozen clock/seeded RNG injection + idempotency flow), PRM-07 (defer-based sandbox teardown on all exit paths + PROMOTION_ASSERTION_TEARDOWN_FAILED event + sandbox reaper), PRM-08 (rollbackDefinitionVersion signature + version-pointer move in-transaction + DEFINITION_VERSION_ROLLED_BACK event), PRM-09 (ArtefactClassification enum + three-way diff types + computePackUpdatePlan signature + solution_pack_* table schemas). Migration files named: 1156_prm06_promotion_assertion_runs.sql and 1157_prm09_solution_pack_update.sql.",
+    "artifacts_out": [
+      "src/design/prm-batch1-promotion-assertion-rerun.md",
+      "migrations/1156_prm06_promotion_assertion_runs.sql",
+      "migrations/1157_prm09_solution_pack_update.sql"
+    ],
+    "issues": [
+      "OQ-1: frozen clock derivation from rng_seed upper-32-bits is an assumption — needs REQ-ANALYST confirmation if artifact carries explicit frozen_clock_ms",
+      "OQ-2: fixture table allowlist scope — entity subsystem tables may need inclusion",
+      "OQ-3: SandboxPool provisioning mechanics deferred to BACKEND-DEV (minimal on-demand impl acceptable for PRM-06 gate)",
+      "OQ-4: promotion_assertion_runs search_path ordering must be verified in the apply handler"
+    ],
+    "git_evidence": {"branch_name": "feature/WF02-prm-batch1-20260814", "commit_sha_list": [], "remote_branch": null, "push_status": null, "pr_url": null, "pr_create_error": null},
+    "next_action": "After PASS: ORCH dispatches step-01b-code-design-validator"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

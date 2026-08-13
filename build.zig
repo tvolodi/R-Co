@@ -2456,6 +2456,7 @@ pub fn build(b: *std.Build) void {
     // `test-integration-env01-tt` is not the only thing that ever executes it —
     // a narrow opt-in step nothing invokes is what hid entity_subsystem_test.zig.
     test_integration_others_step.dependOn(&run_env01_tt_integration_tests.step);
+
     // ISS-0150 / GH #466: surfaced by the new unattached-run-artifact check in
     // tools/lint_test_wiring.py. Both of these had a narrow step and nothing
     // else, so their blocks never ran under `zig build test-integration`. Both
@@ -2910,6 +2911,67 @@ pub fn build(b: *std.Build) void {
     const test_integration_prm01_step = b.step("test-integration-prm01", "Run prm01_promotion_plan_diff_report_test.zig in isolation (requires BPM_TEST_DB_URL)");
     test_integration_prm01_step.dependOn(&clean_test_db.step);
     test_integration_prm01_step.dependOn(&run_prm01_solo_tests.step);
+    // PRM-06 + PRM-07 (WF02-prm-batch1-20260814, Step 3): pre-promotion
+    // assertion re-run and sandbox teardown on every exit path.
+    // ACs covered: PRM-06 AC1/AC2/AC4/AC5, PRM-07 AC1/AC2/AC4.
+    // See tests/specs/prm-06-09-promotion-assertion-rerun.md.
+    // PRM-06 + PRM-07 (WF02-prm-batch1-20260814, Step 3): pre-promotion
+    // assertion re-run and sandbox teardown on every exit path.
+    // ACs covered: PRM-06 AC1/AC2/AC4/AC5, PRM-07 AC1/AC2/AC4.
+    // See tests/specs/prm-06-09-promotion-assertion-rerun.md.
+    const prm06_07_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/prm-06-07-promotion-assertion.test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_prm06_07_solo_tests = addIntegrationRun(b, prm06_07_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_prm06_07_step = b.step("test-integration-prm06-07", "Run prm-06-07-promotion-assertion.test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_prm06_07_step.dependOn(&clean_test_db.step);
+    test_integration_prm06_07_step.dependOn(&run_prm06_07_solo_tests.step);
+
+
+    // PRM-08 (WF02-prm-batch1-20260814, Step 3): rollback definition
+    // version with sandbox execution.
+    // ACs covered: PRM-08 AC1/AC3/AC4/AC5.
+    // See tests/specs/prm-06-09-promotion-assertion-rerun.md.
+    const prm08_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/prm-08-rollback-sandbox.test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_prm08_solo_tests = addIntegrationRun(b, prm08_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_prm08_step = b.step("test-integration-prm08", "Run prm-08-rollback-sandbox.test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_prm08_step.dependOn(&clean_test_db.step);
+    test_integration_prm08_step.dependOn(&run_prm08_solo_tests.step);
+
+    // PRM-09 (WF02-prm-batch1-20260814, Step 3): solution-pack update
+    // planning with per-artefact classification.
+    // ACs covered: PRM-09 AC1/AC2/AC3/AC4.
+    // See tests/specs/prm-06-09-promotion-assertion-rerun.md.
+    const prm09_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/prm-09-pack-update.test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_prm09_solo_tests = addIntegrationRun(b, prm09_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_prm09_step = b.step("test-integration-prm09", "Run prm-09-pack-update.test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_prm09_step.dependOn(&clean_test_db.step);
+    test_integration_prm09_step.dependOn(&run_prm09_solo_tests.step);
+
+    // WF02-prm-batch1-20260814, Step 3: aggregate into test_integration_others_step.
+    test_integration_others_step.dependOn(&run_prm06_07_solo_tests.step);
+    test_integration_others_step.dependOn(&run_prm08_solo_tests.step);
+    test_integration_others_step.dependOn(&run_prm09_solo_tests.step);
+
 
     const exp201_202_solo_tests = b.addTest(.{
         .root_module = b.createModule(.{

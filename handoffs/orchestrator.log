@@ -1490,3 +1490,5 @@
 2026-08-13T18:17:00Z | STEP_FINAL | WF03-GH765-20260813 | step-final-backend-dev | BACKEND-DEV -> ORCH | PASS | run COMPLETE
 2026-08-13T18:17:00Z | PIPELINE COMPLETE | WF03-GH765-20260813 | --- | ORCH | GH-765 RESOLVED as duplicate of GH-763/ISS-0689 (fixed by eec9edc3)
 2026-08-13T18:17:00Z | GIT | WF03-GH765-20260813 | feature/WF03-GH765-20260813 | (squash) | PR: https://github.com/tvolodi/R-Co/pull/778
+2026-08-13T19:04:24Z | GIT_SETUP| WF02-prm-batch1-20260814 | --- | ORCH | feature/WF02-prm-batch1-20260814 from main, pushed to origin
+2026-08-13T19:04:24Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-01-code-designer | ORCH -> CODE-DESIGNER | PENDING (Step 01: design PRM-06..09 promotion assertion re-run, sandbox teardown, rollback, pack update)
