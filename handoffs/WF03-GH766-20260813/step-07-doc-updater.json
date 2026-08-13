@@ -1,0 +1,51 @@
+{
+  "handoff_id": "wf03-gh766-20260813-07-doc-updater",
+  "run_id": "WF03-GH766-20260813",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH766-20260813/step-07-doc-updater.json",
+  "created_at": "2026-08-13T10:48:20Z",
+  "started_at": "2026-08-13T10:48:40Z",
+  "completed_at": "2026-08-13T10:49:54Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": ["wf03-gh766-20260813-05-test-runner"],
+    "artifacts_in": [
+      "CHANGELOG.md",
+      "handoffs/WF03-GH766-20260813/step-05-test-runner.json"
+    ],
+    "branch_name": "feature/WF03-GH766-20260813"
+  },
+  "task": {
+    "description": "WF-03 Step 07 (DOC-UPDATER) for GH-766.\n\nYou are on branch feature/WF03-GH766-20260813.\n\nTasks:\n1. Update CHANGELOG.md: Add entry for GH-766 fix:\n   - fix(scheduler): GH-766 — appendEventInTx writes to plat_event_idempotency for deduplication enforcement\n   - Summary: After PAR-01 partitioning (migration 1147) removed the uq_event_idempotency unique index from events, appendEventInTx in src/scheduler/scheduler.zig no longer enforced idempotency. TC-SCH-02-03 was failing because the pre-seeded duplicate key caused no conflict. Fix: added a third conn.exec in appendEventInTx that INSERTs into plat_event_idempotency; duplicate keys now trigger a PRIMARY KEY violation propagated as SchedulerError.TransactionFailed via the ISS-0618 fix. Updated TC-SCH-02-03 to pre-seed plat_event_idempotency instead of relying on the removed events constraint.\n\n2. Commit: git add CHANGELOG.md handoffs/WF03-GH766-20260813/\n   git commit -m 'docs(WF03-GH766-20260813 Step 07): GH-766 CHANGELOG entry + handoff artifacts'\n   git push origin feature/WF03-GH766-20260813\n\n3. Run: python tools/lint_handoffs.py — must exit 0.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with GH-766 fix entry",
+      "All WF03-GH766-20260813 handoff files staged and committed",
+      "python tools/lint_handoffs.py exits 0",
+      "Changes pushed to feature/WF03-GH766-20260813"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with GH-766 fix entry under [Unreleased] 2026-08-13. All WF03-GH766-20260813 handoff artifacts staged and committed. python tools/lint_handoffs.py exited 0 (2717 handoffs checked, 0 BLOCKER, 0 MAJOR, 1 MINOR). Changes pushed to feature/WF03-GH766-20260813.",
+    "artifacts_out": ["CHANGELOG.md", "handoffs/WF03-GH766-20260813/step-07-doc-updater.json"],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH766-20260813",
+      "commit_sha_list": ["0ed04001"],
+      "remote_branch": "origin/feature/WF03-GH766-20260813",
+      "push_status": "PUSHED",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH dispatches step-final-backend-dev (fn:git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

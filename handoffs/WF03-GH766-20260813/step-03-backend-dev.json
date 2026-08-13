@@ -1,0 +1,62 @@
+{
+  "handoff_id": "wf03-gh766-20260813-03-backend-dev",
+  "run_id": "WF03-GH766-20260813",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH766-20260813/step-03-backend-dev.json",
+  "created_at": "2026-08-13T10:39:35Z",
+  "started_at": "2026-08-13T10:39:35Z",
+  "completed_at": "2026-08-13T10:44:33Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh766-20260813-02-code-designer",
+      "wf03-gh766-20260813-02b-code-design-validator"
+    ],
+    "artifacts_in": [
+      "src/design/iss-gh766-appendeventintx-idempotency.md",
+      "src/scheduler/scheduler.zig",
+      "tests/integration/sch02_timer_polling_test.zig"
+    ],
+    "branch_name": "feature/WF03-GH766-20260813"
+  },
+  "task": {
+    "description": "WF-03 Step 03 (BACKEND-DEV) for GH-766. Implement the fix per src/design/iss-gh766-appendeventintx-idempotency.md.\n\nYou are on branch feature/WF03-GH766-20260813. Verify with git branch --show-current before making changes.\n\nImplementation steps:\n1. Read src/design/iss-gh766-appendeventintx-idempotency.md in full.\n2. Read src/scheduler/scheduler.zig focusing on appendEventInTx (around line 913).\n3. Read tests/integration/sch02_timer_polling_test.zig focusing on TC-SCH-02-03 (around line 1213).\n\n4. Change appendEventInTx: After the existing events INSERT exec (which inserts the TIMER_FIRED event), add a third conn.exec that INSERTs into plat_event_idempotency. The SQL:\n   INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at)\n   SELECT $1, event_id, created_at FROM events WHERE instance_id = $2::uuid AND idempotency_key = $1 ORDER BY created_at DESC LIMIT 1\n   Parameters: &.{ idem_key, instance_id_text }\n   The catch clause: catch return SchedulerError.TransactionFailed\n   This must be placed BEFORE the UPDATE instance_projections exec.\n\n5. Change TC-SCH-02-03 in sch02_timer_polling_test.zig: After the existing pre-seed INSERT into events (which inserts the conflicting event), add a second conn.exec that also pre-inserts into plat_event_idempotency:\n   INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at) VALUES ($1, gen_random_uuid(), NOW())\n   Parameters: &.{conflicting_idem}\n   This must be placed BEFORE the scheduler.pollDueTimers call.\n\n6. Run: zig build\n   Must exit 0.\n\n7. Run: zig build test\n   Must exit 0.\n\n8. Run: zig build test-integration-sch02 (requires BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test)\n   Must pass with TC-SCH-02-03 green.\n\n9. Commit: git add src/scheduler/scheduler.zig tests/integration/sch02_timer_polling_test.zig src/design/iss-gh766-appendeventintx-idempotency.md\n   git commit -m 'fix(scheduler): GH-766 appendEventInTx writes to plat_event_idempotency for dedup enforcement'\n   git push origin feature/WF03-GH766-20260813\n\nDo NOT change:\n- Any migration files\n- src/db/event_store.zig or similar\n- build.zig",
+    "acceptance_criteria": [
+      "On branch feature/WF03-GH766-20260813",
+      "appendEventInTx has new exec: INSERT INTO plat_event_idempotency SELECT ... FROM events WHERE idempotency_key=$1",
+      "TC-SCH-02-03 pre-seeds plat_event_idempotency with conflicting_idem",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build test-integration-sch02 passes (TC-SCH-02-03 green)",
+      "Committed and pushed to feature/WF03-GH766-20260813"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented GH-766 fix: appendEventInTx now writes to plat_event_idempotency (exec 2) using SELECT subquery from events for accurate event_id/created_at. TC-SCH-02-03 pre-seeds plat_event_idempotency with conflicting_idem to restore PK-violation path post-migration-1147. zig build, zig build test, and zig build test-integration-sch02 all exit 0.",
+    "artifacts_out": [
+      "src/scheduler/scheduler.zig",
+      "tests/integration/sch02_timer_polling_test.zig",
+      "src/design/iss-gh766-appendeventintx-idempotency.md"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH766-20260813",
+      "commit_sha_list": ["44fc50a6"],
+      "remote_branch": "origin/feature/WF03-GH766-20260813",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH dispatches step-05-test-runner.json"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
