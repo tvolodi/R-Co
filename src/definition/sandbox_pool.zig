@@ -166,6 +166,76 @@ pub const SandboxPool = struct {
         self.allocator.free(sandbox_id);
         self.allocator.free(schema_name);
     }
+
+    /// PRM-07 AC5: reclaim leaked sandboxes whose teardown previously failed.
+    ///
+    /// Queries `promotion_assertion_runs` for rows with `status = 'teardown_failed'`
+    /// and `reaper_claimed_at IS NULL`, drops their schemas, and marks the rows
+    /// reaped. Errors for individual rows are silently skipped; the scheduler
+    /// retries on the next interval. The `tenant_id` parameter sets the
+    /// search_path context for the per-tenant table.
+    pub fn reclaimLeakedSandboxes(
+        self: *SandboxPool,
+        allocator: std.mem.Allocator,
+        tenant_id: []const u8,
+    ) void {
+        var arena = std.heap.ArenaAllocator.init(allocator);
+        defer arena.deinit();
+        const aa = arena.allocator();
+
+        // Set per-tenant search_path so the query resolves the per-tenant table.
+        const saved_ctx = tenant_context_mod.get();
+        const saved_len = saved_ctx.len;
+        tenant_context_mod.set(tenant_id);
+        defer if (saved_len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
+
+        // Phase 1: collect up to 20 leaked run ids and sandbox ids.
+        const conn1 = self.pool.acquire() catch return;
+        var query_result = conn1.query(
+            aa,
+            \\SELECT id::text, sandbox_id::text
+            \\  FROM promotion_assertion_runs
+            \\ WHERE status = 'teardown_failed'
+            \\   AND reaper_claimed_at IS NULL
+            \\   AND sandbox_id IS NOT NULL
+            \\ LIMIT 20
+        ,
+            &[_][]const u8{},
+        ) catch {
+            self.pool.release(conn1);
+            return;
+        };
+        self.pool.release(conn1);
+        defer query_result.deinit();
+
+        // Phase 2: for each leaked sandbox, drop its schema and mark it reaped.
+        for (query_result.rows) |row| {
+            const run_id = row[0] orelse continue;
+            const sandbox_id = row[1] orelse continue;
+
+            // schema_name is always derivable from sandbox_id (see claim()).
+            const schema_name = std.fmt.allocPrint(aa, "sandbox_{s}", .{sandbox_id}) catch continue;
+            const drop_ddl = std.fmt.allocPrint(aa, "DROP SCHEMA IF EXISTS {s} CASCADE", .{schema_name}) catch continue;
+
+            // Use a labeled block so break exits cleanly and defer fires.
+            blk: {
+                const conn2 = self.pool.acquire() catch break :blk;
+                defer self.pool.release(conn2);
+
+                conn2.simpleQuery(drop_ddl) catch break :blk;
+
+                _ = conn2.queryRow(
+                    aa,
+                    \\UPDATE promotion_assertion_runs
+                    \\   SET reaper_claimed_at = NOW()
+                    \\ WHERE id = $1::uuid
+                    \\RETURNING id::text
+                ,
+                    &[_][]const u8{run_id},
+                ) catch {};
+            }
+        }
+    }
 };
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
