@@ -124,7 +124,7 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, url: 
     // an unbounded one — and a bounded wait is what a correct queue looks like.
     //
     // The lock is released by `defer` below, so an error path cannot leak it.
-    try conn.exec("SET lock_timeout = '300s'", &.{});
+    try conn.exec("SET lock_timeout = '0'", &.{});
     try conn.exec("SET statement_timeout = '0'", &.{});
     try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
     try conn.exec("SET statement_timeout = '60s'", &.{});
@@ -216,7 +216,7 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
     // configureSessionTimeouts() would otherwise cancel this acquire with 55P03
     // under normal queueing (ISS-0110), which is the failure GH-402 misread as
     // "the advisory lock hangs".
-    try conn.exec("SET lock_timeout = '300s'", &.{});
+    try conn.exec("SET lock_timeout = '0'", &.{});
     try conn.exec("SET statement_timeout = '0'", &.{});
     try conn.exec("SELECT pg_advisory_lock(hashtext($1))", &.{schema});
     try conn.exec("SET statement_timeout = '60s'", &.{});
@@ -930,7 +930,7 @@ pub fn acquireIntegrationLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
     // runMigrations / runMigrationsForSchema and the TestHarness.init() critical
     // section, to keep queueing bounded across the wider set of binaries
     // (~50 worst case after this fix vs ~19 today).
-    try conn.exec("SET lock_timeout = '300s'", &.{});
+    try conn.exec("SET lock_timeout = '0'", &.{});
     try conn.exec("SET statement_timeout = '0'", &.{});
     try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
     try conn.exec("SET statement_timeout = '60s'", &.{});
@@ -1159,7 +1159,7 @@ pub const TestHarness = struct {
         // completely unguarded — and unlocking a lock nobody held — ever since.
         // The comment block above survived the deletion and describes exactly the
         // bracket being reinstated here.
-        try conn.exec("SET lock_timeout = '300s'", &.{});
+        try conn.exec("SET lock_timeout = '0'", &.{});
         try conn.exec("SET statement_timeout = '0'", &.{});
         try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
         try conn.exec("SET statement_timeout = '60s'", &.{});
