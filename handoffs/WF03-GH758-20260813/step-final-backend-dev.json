@@ -1,0 +1,53 @@
+{
+  "handoff_id": "WF03-GH758-20260813/step-final-backend-dev",
+  "run_id": "WF03-GH758-20260813",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-13T14:07:00Z",
+  "started_at": "2026-08-13T14:07:00Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step Final — git-merge (PR, squash-merge, branch delete, close GH-758 as duplicate)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-GH758-20260813/step-00-backend-dev",
+      "WF03-GH758-20260813/step-0.5-issue-fixer",
+      "WF03-GH758-20260813/step-01-issue-fixer",
+      "WF03-GH758-20260813/step-07-doc-updater"
+    ],
+    "artifacts_in": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0698.json",
+      "docs/issues/issue_index.json",
+      "handoffs/WF03-GH758-20260813/step-07-doc-updater.json"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/758",
+    "issue_id": "ISS-0698",
+    "branch": "feature/WF03-GH758-20260813",
+    "head_commit": "0e81b736",
+    "gh752_fix_commit": "9d06bdf4",
+    "duplicate_of": "GH-752, ISS-0692"
+  },
+  "task": {
+    "description": "WF-03 Step Final (BACKEND-DEV): open PR, squash-merge, delete branch, close GH-758 as duplicate of GH-752. Steps 2-5 are skipped -- no code change is needed; this is a metadata-only close. Reference: previous WF03-GH755-20260813 / WF03-GH754-20260813 runs that closed via PR + squash-merge. IMPORTANT: same body as 'chore(WF03-GH758-20260813): ...' commits, NOT as a 'fix' commit. PR title should be 'chore: close GH-758 as duplicate of GH-752/ISS-0692'.",
+    "acceptance_criteria": [
+      "PR is opened: feature/WF03-GH758-20260813 -> main, title 'chore: close GH-758 as duplicate of GH-752/ISS-0692'",
+      "PR body references GH-758, GH-752, ISS-0698, commit 9d06bdf4, and the prior diagnostic commit 13632334",
+      "PR is squash-merged to main",
+      "feature/WF03-GH758-20260813 branch is deleted from origin",
+      "GH-758 is closed via 'gh issue close 758 --repo tvolodi/R-Co --comment \"Closed as duplicate of GH-752/ISS-0692 (fixed by commit 9d06bdf4)\"'",
+      "TaskManager claim r-co:GH-758 is released",
+      "Handoff step-final-backend-dev.json: result.status = PASS, summary, pr_url, merge_commit, artifacts_out, next_action = 'DONE'",
+      "Lint clean: python tools/lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "handoff_history": null
+}
