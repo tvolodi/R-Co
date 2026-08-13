@@ -94,7 +94,7 @@ test.describe('GRD-UI-06 — a11y gate (no mocks)', () => {
       }
       const runAxe = await loadAxe()
       if (!runAxe) {
-        test.skip(true, '@axe-core/playwright not installed — skip the gate scan')
+        testInfo.skip(true, '@axe-core/playwright not installed — skip the gate scan')
         return
       }
       const result = await runA11yGate(
@@ -168,7 +168,7 @@ test.describe('GRD-UI-06 — a11y gate (no mocks)', () => {
     await page.goto('/tasks/inbox')
     const runAxe = await loadAxe()
     if (!runAxe) {
-      test.skip(true, '@axe-core/playwright not installed — skip the contrast scan')
+      testInfo.skip(true, '@axe-core/playwright not installed — skip the contrast scan')
       return
     }
     const result = await runA11yGate(

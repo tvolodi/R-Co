@@ -12,7 +12,13 @@
  *  interception of API or auth endpoints.
  */
 
-import { test, expect, type Page, type APIRequestContext } from '@playwright/test'
+import {
+  test,
+  expect,
+  type Page,
+  type APIRequestContext,
+  type TestInfo,
+} from '@playwright/test'
 import { getKeycloakToken, loginWithToken } from './helpers'
 
 async function loginAsWorker(page: Page, request: APIRequestContext): Promise<void> {
@@ -50,12 +56,12 @@ test.describe('RND-UI-05 — RateLimitBackpressure (no mocks)', () => {
   test('TC-RND-UI-05-E2E-01: real 429 mounts RateLimitBackpressure on /tasks/inbox', async ({
     page,
     request,
-  }) => {
+  }, testInfo: TestInfo) => {
     test.setTimeout(60_000)
     const token = await getKeycloakToken(request, 'worker-user', 'worker-pass')
     const burst = await burstUntil429(request, token, '/api/v1/tasks/inbox')
     if (!burst.limited) {
-      test.skip(
+      testInfo.skip(
         true,
         `No 429 observed after burst — backend rate-limit not engaged (status=${burst.status}). ` +
           'Increase maxRequests or check API-10 config.',
@@ -76,12 +82,12 @@ test.describe('RND-UI-05 — RateLimitBackpressure (no mocks)', () => {
   test('TC-RND-UI-05-E2E-02: countdown text decreases each second', async ({
     page,
     request,
-  }) => {
+  }, testInfo: TestInfo) => {
     test.setTimeout(60_000)
     const token = await getKeycloakToken(request, 'worker-user', 'worker-pass')
     const burst = await burstUntil429(request, token, '/api/v1/tasks/inbox', 60)
     if (!burst.limited) {
-      test.skip(true, 'No 429 observed after burst — skipping countdown assertion')
+      testInfo.skip(true, 'No 429 observed after burst — skipping countdown assertion')
       return
     }
     await page.goto('/tasks/inbox')
@@ -98,12 +104,12 @@ test.describe('RND-UI-05 — RateLimitBackpressure (no mocks)', () => {
   test('TC-RND-UI-05-E2E-03: clicking Retry-now fires exactly one refetch', async ({
     page,
     request,
-  }) => {
+  }, testInfo: TestInfo) => {
     test.setTimeout(60_000)
     const token = await getKeycloakToken(request, 'worker-user', 'worker-pass')
     const burst = await burstUntil429(request, token, '/api/v1/tasks/inbox', 60)
     if (!burst.limited) {
-      test.skip(true, 'No 429 observed after burst — skipping refetch assertion')
+      testInfo.skip(true, 'No 429 observed after burst — skipping refetch assertion')
       return
     }
 
@@ -128,12 +134,12 @@ test.describe('RND-UI-05 — RateLimitBackpressure (no mocks)', () => {
   test('TC-RND-UI-05-E2E-04: second 429 starts a new countdown', async ({
     page,
     request,
-  }) => {
+  }, testInfo: TestInfo) => {
     test.setTimeout(90_000)
     const token = await getKeycloakToken(request, 'worker-user', 'worker-pass')
     const first = await burstUntil429(request, token, '/api/v1/tasks/inbox', 60)
     if (!first.limited) {
-      test.skip(true, 'No 429 observed after burst — skipping second-429 assertion')
+      testInfo.skip(true, 'No 429 observed after burst — skipping second-429 assertion')
       return
     }
     await page.goto('/tasks/inbox')
@@ -142,7 +148,7 @@ test.describe('RND-UI-05 — RateLimitBackpressure (no mocks)', () => {
     await page.waitForTimeout(2_000)
     const second = await burstUntil429(request, token, '/api/v1/tasks/inbox', 60)
     if (!second.limited) {
-      test.skip(true, 'Second burst did not 429 — bucket recovered (documented skip)')
+      testInfo.skip(true, 'Second burst did not 429 — bucket recovered (documented skip)')
       return
     }
     await page.goto('/tasks/inbox')
@@ -155,7 +161,7 @@ test.describe('RND-UI-05 — RateLimitBackpressure (no mocks)', () => {
   test('TC-RND-UI-05-E2E-05: 429 without Retry-After renders FetchError (no RateLimitBackpressure)', async ({
     page,
     request,
-  }) => {
+  }, testInfo: TestInfo) => {
     test.setTimeout(60_000)
     const token = await getKeycloakToken(request, 'worker-user', 'worker-pass')
     const headers = { Authorization: `Bearer ${token}` }
@@ -168,7 +174,7 @@ test.describe('RND-UI-05 — RateLimitBackpressure (no mocks)', () => {
       }
     }
     if (!sawNoRetryAfter) {
-      test.skip(
+      testInfo.skip(
         true,
         'Backend fixture did not produce a 429 without Retry-After in this run. ' +
           'The unit test (RateLimitBackpressure.test.tsx + classifyError.test.ts) covers ' +

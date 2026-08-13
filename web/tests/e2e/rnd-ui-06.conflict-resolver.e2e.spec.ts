@@ -14,6 +14,7 @@ import {
   type Page,
   type APIRequestContext,
   type BrowserContext,
+  type TestInfo,
 } from '@playwright/test'
 import { getKeycloakToken, loginWithToken } from './helpers'
 
@@ -254,7 +255,7 @@ test.describe('RND-UI-06 — ConflictResolver (two-contexts, no mocks)', () => {
   test('TC-RND-UI-06-E2E-06: 409 without X-Resource-Version disables Merge; others available', async ({
     page,
     request,
-  }) => {
+  }, testInfo: TestInfo) => {
     test.setTimeout(60_000)
     // The fixture for "no X-Resource-Version" is owned by the BPM API
     // tenant-onboarding helper; if the seeded tenant does not enable
@@ -275,7 +276,7 @@ test.describe('RND-UI-06 — ConflictResolver (two-contexts, no mocks)', () => {
       }
     }
     if (!observed) {
-      test.skip(
+      testInfo.skip(
         true,
         'Backend fixture did not produce a 409 without X-Resource-Version in this run. ' +
           'Unit test (ConflictResolver.test.tsx TC-CR-02 + StaleVersionError.test.tsx TC-SVE-02) ' +
