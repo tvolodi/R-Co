@@ -1442,3 +1442,5 @@
 2026-08-13T11:58:05Z | GIT     | WF03-GH763-20260813 | feature/WF03-GH763-20260813 | eec9edc3 | PR: https://github.com/tvolodi/R-Co/pull/771
 2026-08-13T12:23:09Z | DONE | WF03-GH755-20260813 | step-final-backend-dev | ORCH | GH-755 closed COMPLETE via PR #772 (merge 9bc5c557); TaskManager claim released
 2026-08-13T12:23:09Z | DEFER | --- | --- | ORCH | GH-758 client hang blocks reliable test-integration execution — filed as blocker for follow-up run
+2026-08-13T12:25:05Z | DONE | WF03-GH754-20260813 | step-final-backend-dev | ORCH | GH-754 closed COMPLETE via PR #773 (merge 0dfdd65b); TaskManager claim released
+2026-08-13T12:25:05Z | NOTE | --- | --- | ORCH | All 3 ISS-0691/GH-753 scope-expansion leaks now RESOLVED (GH-753, GH-755, GH-754)
