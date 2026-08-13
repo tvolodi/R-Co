@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync, rmSync } from 'node:fs'
+import { readFileSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { execSync } from 'node:child_process'
 import fg from 'fast-glob'
@@ -77,4 +77,32 @@ describe('bundle-scan', () => {
     },
     180_000,
   )
+
+  it('GRD-UI-03 AC4: literal-colour is detected in a synthetic bundle fixture', () => {
+    // Creates a temp JS asset with a raw hex colour literal (CSS-style, outside a string)
+    // and verifies the literal-colour pattern fires — proving bundle-phase detection works.
+    const ASSETS_DIR = join(DIST_DIR, 'assets')
+    mkdirSync(ASSETS_DIR, { recursive: true })
+    const fixturePath = join(ASSETS_DIR, '__guard-test-literal-colour.js')
+    writeFileSync(fixturePath, '.btn{color:#ff0000;background:#e2e8f0;}\n', 'utf8')
+
+    try {
+      const wsPath = 'web/dist/assets/__guard-test-literal-colour.js'
+      const content = readFileSync(fixturePath, 'utf8')
+      const literalColour = PATTERNS.find(p => p.name === 'literal-colour')!
+
+      const violations: Violation[] = []
+      if (!isAllowed(wsPath, literalColour.allowedPaths)) {
+        literalColour.regex.lastIndex = 0
+        if (literalColour.regex.test(content)) {
+          violations.push({ file: wsPath, line: 0, patternName: literalColour.name })
+        }
+      }
+
+      expect(violations).toHaveLength(1)
+      expect(violations[0].patternName).toBe('literal-colour')
+    } finally {
+      rmSync(fixturePath, { force: true })
+    }
+  })
 })
