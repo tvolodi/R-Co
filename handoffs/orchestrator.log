@@ -1436,3 +1436,7 @@
 2026-08-13T11:43:12Z | SKIP | WF03-GH764-20260813 | step-00-backend-dev | ORCH | Skip GH-764 — same production-schema complexity class, user instructed to skip
 2026-08-13T11:43:12Z | DONE | WF03-GH764-20260813 | step-00-backend-dev | ORCH | GH-764 deferred; no further iterations pending user direction
 2026-08-13T11:43:12Z | DONE | WF03-GH766-20260813 | step-final-backend-dev | ORCH | GH-766 closed COMPLETE via PR #770 (merge 5c006160); branch deleted; TaskManager claim released
+2026-08-13T11:56:57Z | GIT_SETUP| WF03-GH763-20260813 | --- | ORCH | feature/WF03-GH763-20260813 from main, pushed to origin
+2026-08-13T11:56:57Z | DECISION| WF03-GH763-20260813 | --- | ORCH | Root cause: migration 1147 dropped webhook_deliveries ext02 columns; fix: migration 1155 restores them; zig build test + test-integration-iss106 both PASS; advancing to git-merge
+2026-08-13T11:58:05Z | DONE    | WF03-GH763-20260813 | --- | PIPELINE COMPLETE | GH-763 RESOLVED
+2026-08-13T11:58:05Z | GIT     | WF03-GH763-20260813 | feature/WF03-GH763-20260813 | eec9edc3 | PR: https://github.com/tvolodi/R-Co/pull/771
