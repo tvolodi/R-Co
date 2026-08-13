@@ -360,8 +360,37 @@ test "TC-ISS-203-02: replay dedup — ON CONFLICT DO NOTHING absorbs second inse
     const engine_key = engine_rows.rows[0][5] orelse "";
     try std.testing.expect(engine_key.len == 23);
 
+    // ----------------------------------------------------------------
+    // NOTE — schema dependency (GH-764 / ISS-0699)
+    // After PAR-01 partitioning (commit 38cb7967, migration
+    // 1147_par01_events_partitioning.sql) the uq_event_idempotency
+    // UNIQUE index on events(idempotency_key) was deliberately dropped.
+    // Global idempotency-key uniqueness now lives in
+    // plat_event_idempotency(idempotency_key) PRIMARY KEY — see
+    // migrations/1147_par01_events_partitioning.sql:176-201. This test
+    // mirrors the production dedup pattern at src/event_store/store.zig:288-294:
+    // the dedup happens on the sidecar table, not on events.
+    // ----------------------------------------------------------------
+
+    // Pre-claim the idempotency_key on the sidecar table. This is the
+    // real dedup target; the ON CONFLICT here silently absorbs the replay.
+    // First insert wins; subsequent inserts with the same key are no-ops.
+    conn.exec(
+        \\INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at)
+        \\VALUES ($1, gen_random_uuid(), NOW())
+        \\ON CONFLICT (idempotency_key) DO NOTHING
+    ,
+        &.{engine_key},
+    ) catch |err| {
+        std.debug.print("Unexpected error during replay idempotency claim: {}\n", .{err});
+        return err;
+    };
+
     // Attempt to re-insert an event with the same idempotency_key.
-    // The INSERT … ON CONFLICT DO NOTHING must silently skip it.
+    // Because the events table is partitioned and no longer carries a unique
+    // constraint on idempotency_key, dedup MUST be enforced upstream via
+    // plat_event_idempotency (above). The events INSERT itself no longer
+    // uses ON CONFLICT (idempotency_key) — that target does not exist.
     conn.exec(
         \\INSERT INTO events
         \\  (instance_id, event_type, payload, actor_id,
@@ -371,11 +400,13 @@ test "TC-ISS-203-02: replay dedup — ON CONFLICT DO NOTHING absorbs second inse
         \\       nextval('events_global_seq')
         \\FROM events
         \\WHERE idempotency_key = $1
-        \\ON CONFLICT (idempotency_key) DO NOTHING
+        \\  AND NOT EXISTS (
+        \\    SELECT 1 FROM plat_event_idempotency
+        \\    WHERE idempotency_key = $1
+        \\  )
     ,
         &.{engine_key},
     ) catch |err| {
-        // Any error other than a conflict is unexpected.
         std.debug.print("Unexpected error during replay insert: {}\n", .{err});
         return err;
     };
