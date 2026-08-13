@@ -1,8 +1,27 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-13T17:40:39Z",
-  "next_issue_id": 700,
+  "last_updated": "2026-08-13T18:12:19Z",
+  "next_issue_id": 701,
   "issues": [
+    {
+      "id": "ISS-0700",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/765",
+      "severity": "MAJOR",
+      "status": "OPEN",
+      "title": "iss205_webhook_outbox_test: all 3 tests fail with PoolError.QueryFailed (pre-existing, deterministic)",
+      "run_id": "WF03-GH765-20260813",
+      "handoff_id": "WF03-GH765-20260813/step-00.5-issue-fixer",
+      "category": "test-infrastructure/webhook-outbox-queryfailed",
+      "affected_areas": [
+        "tests/integration/iss205_webhook_outbox_test.zig",
+        "migrations/ (webhook_subscriptions, webhook_deliveries tables)",
+        "src/ (webhook / outbox handler code paths)"
+      ],
+      "created_at": "2026-08-13T17:54:03Z",
+      "step_0.5_completed_at": "2026-08-13T17:54:03Z",
+      "github_issue_confirmed": true,
+      "branch": "feature/WF03-GH765-20260813"
+    },
     {
       "id": "ISS-0696",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/760",
@@ -2471,6 +2490,16 @@
       "created_at": "2026-08-13T15:45:46Z",
       "resolved_at": "2026-08-13T17:40:39Z",
       "resolution_commit": "4174a1adf68fb749bd18f1e9a0d150b784e534ce"
+    },
+    {
+      "id": "ISS-0700",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/765",
+      "severity": "MAJOR",
+      "status": "RESOLVED",
+      "title": "iss205_webhook_outbox_test: all 3 tests fail with PoolError.QueryFailed (stale-evidence duplicate of GH-763/ISS-0689, fix already on main)",
+      "created_at": "2026-08-13T17:54:03Z",
+      "resolved_at": "2026-08-13T18:12:19Z",
+      "resolution_commit": "eec9edc3"
     }
   ]
 }

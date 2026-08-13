@@ -1,0 +1,43 @@
+{
+  "run_id": "WF03-GH765-20260813",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "handoff_id": "WF03-GH765-20260813/step-01-issue-fixer",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T17:55:27Z",
+  "started_at": "2026-08-13T18:05:00Z",
+  "completed_at": "2026-08-13T18:42:00Z",
+  "task": {
+    "type": "root-cause-analysis",
+    "title": "Step 01: ISSUE-FIXER root cause diagnosis for GH-765/ISS-0700",
+    "description": "Diagnose why iss205_webhook_outbox_test.zig TC1/TC2/TC3 fail with PoolError.QueryFailed. Read the test file, the webhook + outbox source files, and the migrations affecting webhook_subscriptions and webhook_deliveries. Run the test in isolation to capture the exact error. Identify the schema mismatch (missing column, FK constraint, missing table) and the migration that introduced the discrepancy. Produce a diagnosis report.",
+    "context": {
+      "gh_issue": 765,
+      "iss_id": "ISS-0700",
+      "test_file": "tests/integration/iss205_webhook_outbox_test.zig",
+      "affected_areas": ["webhook_subscriptions", "webhook_deliveries", "outbox"],
+      "branch": "feature/WF03-GH765-20260813",
+      "known_context": "TC1 seeds a webhook_subscriptions row and a users row before testing outbox insert + rollback atomicity. QueryFailed on first transaction insert suggests a schema mismatch. PAR-01 (migration 1147) also changed webhook_deliveries — see memories/repo/bpm-gh764-par01-idempotency-schema-shift.md (PAR-01 added/deleted columns on webhook_deliveries which were restored by migration 1155 per GH-763). Verify that 1155's restore is in place AND covers all columns the test references.",
+      "test_command": "zig build test-integration-iss205",
+      "test_args": "BPM_TEST_INTEGRATION_JOB_CAP=1, BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test, BPM_IDP_BASE_URL=http://localhost:8081, BPM_TEST_URL=http://127.0.0.1:8080"
+    },
+    "verification": {
+      "test_repro_captured": "YES — captured live run twice on main HEAD 93bfeb97; both runs end with 'All 3 tests passed' (full log: scratch/gh765_final_test.log).",
+      "root_cause_identified": "GH-765 is a stale-evidence duplicate of GH-763. PAR-01 (migration 1147, commit 38cb7967, 2026-08-11) dropped seven webhook_deliveries columns (event_type, instance_id, payload_json, trace_id, delivered_at, last_http_status, last_error) that 023_ext02_webhook_event_dispatch.sql had added. Migration 1155 (commit eec9edc3, PR #771, 2026-08-13 11:57 UTC) restored them idempotently under every tenant schema. GH-765 was opened at 2026-08-13T09:33:02Z — one minute after GH-763 — and captured the failure in the 2h25m window before the fix landed. The same report later claimed identical failure on main before GH-760's commit 1e4f31f1; that anomaly predates 1155 as well.",
+      "responsible_migration_sha": "38cb7967 (PAR-01, introduced drift; FIXED by eec9edc3 / migration 1155, already on main HEAD 93bfeb97).",
+      "responsible_source_sha": "n/a — no source file is at fault. The fix is migration-only.",
+      "diagnosis_report_path": "tests/reports/WF03-GH765-diagnosis.md"
+    }
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "GH-765 / ISS-0700 is a stale-evidence duplicate of GH-763. PAR-01 migration 1147 (commit 38cb7967) dropped seven webhook_deliveries columns (event_type, instance_id, payload_json, trace_id, delivered_at, last_http_status, last_error); migration 1155 (commit eec9edc3, PR #771, merged 2026-08-13 11:57 UTC) restored them. iss205_webhook_outbox_test.zig passes 3/3 on main HEAD 93bfeb97 with the fix in place. No code/migration change required. Recommend closing GH-765 as duplicate of GH-763 and letting DOC-UPDATER run Step 7 + Step Final only (pipeline collapse, same pattern as WF03-GH758-20260813).",
+    "artifacts_out": [
+      "tests/reports/WF03-GH765-diagnosis.md",
+      "handoffs/WF03-GH765-20260813/step-01-issue-fixer.json",
+      "scratch/gh765_final_test.log"
+    ],
+    "issues": []
+  }
+}

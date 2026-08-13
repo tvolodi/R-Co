@@ -1472,3 +1472,8 @@
 2026-08-13T17:45:14Z | DISPATCH | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV | push/PR/merge/cleanup
 2026-08-13T17:49:17Z | DONE | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV | PR #776 merged, GH-764 closed, branch deleted, TaskManager claim released
 2026-08-13T17:49:17Z | STEP_FINAL | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV -> ORCH | PASS | run COMPLETE
+2026-08-13T17:51:27Z | ROUTE | WF03-GH765-20260813 | step-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | git-setup (loop continues from GH-764 close)
+2026-08-13T17:52:49Z | ROUTE | WF03-GH765-20260813 | step-00.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | registry-lookup + GH-765 ack
+2026-08-13T17:55:27Z | ROUTE | WF03-GH765-20260813 | step-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | root-cause-analysis
+2026-08-13T18:11:10Z | ROUTE | WF03-GH765-20260813 | step-07-doc-updater | ORCH -> DOC-UPDATER | PENDING | doc-update (stale-evidence dup of GH-763, steps 2-6 skipped)
+2026-08-13T18:13:41Z | ROUTE | WF03-GH765-20260813 | step-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | git-merge (stale-evidence dup of GH-763 via PR #771)

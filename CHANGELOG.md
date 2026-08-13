@@ -4,6 +4,10 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-13
 
+### iss205 webhook_outbox test fixed — GH-765/ISS-0700 (RESOLVED)
+
+- **iss205 webhook_outbox test fixed — GH-765/ISS-0700 (RESOLVED) — rehomed to fix already on main in PR #771 (migration 1155 restores webhook_deliveries columns dropped by PAR-01). All 3 tests (TC1/TC2/TC3) pass on clean DB.** Diagnostic run `WF03-GH765-20260813` (ISS-0700) registered after WF03-GH764-20260813 closed GH-764 (PR #776 merged at 93bfeb97) per the user 'resolve issues in loop' directive. The `PoolError.QueryFailed` symptom reported in GH-765 was a snapshot of the 2h25m window between GH-763 reopening (09:32 UTC) and PR #771 merging (11:57 UTC), which restored the `webhook_deliveries` columns PAR-01's migration 1147 had dropped. The fix landed on `main` as commit `eec9edc3` (PR #771, 2026-08-13 11:57 UTC), before the diagnostic run started; no new fix required. Verified on the current `main` HEAD `93bfeb97`: `zig build test-integration-iss205` exits 0 (all 3 tests pass). Closing GH-765 as duplicate of GH-763/ISS-0689.
+
 ### feat(frontend): PW-13 Batch 1 — RND-UI-01..04 renderer state contract RELEASED (WF02-pw13-rnd-ui-20260813)
 
 - **feat(frontend): RND-UI-01..04 renderer state contract (PW-13 Batch 1).** Implements the closed six-state renderer union (`RendererState = 'loading' | 'success' | 'fetch-failure' | 'permission-denied' | 'stale-version' | 'rate-limit'`), `classifyError()` as the sole HTTP status reader, `QueryStateBoundary` as the single exhaustive switch consumer, `SkeletonLayout` for the loading state, `FetchError` with explicit user-triggered retry (retry:0 globally on QueryClient), and `PermissionDenied` with the fixed zero-leak copy. 19 pages under `web/src/pages/` wrapped with `<QueryStateBoundary>`. 63 frontend tests passing. Requirements RND-UI-01, RND-UI-02, RND-UI-03, RND-UI-04 advanced from DRAFT to RELEASED.
