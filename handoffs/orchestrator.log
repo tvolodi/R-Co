@@ -1440,3 +1440,5 @@
 2026-08-13T11:56:57Z | DECISION| WF03-GH763-20260813 | --- | ORCH | Root cause: migration 1147 dropped webhook_deliveries ext02 columns; fix: migration 1155 restores them; zig build test + test-integration-iss106 both PASS; advancing to git-merge
 2026-08-13T11:58:05Z | DONE    | WF03-GH763-20260813 | --- | PIPELINE COMPLETE | GH-763 RESOLVED
 2026-08-13T11:58:05Z | GIT     | WF03-GH763-20260813 | feature/WF03-GH763-20260813 | eec9edc3 | PR: https://github.com/tvolodi/R-Co/pull/771
+2026-08-13T12:23:09Z | DONE | WF03-GH755-20260813 | step-final-backend-dev | ORCH | GH-755 closed COMPLETE via PR #772 (merge 9bc5c557); TaskManager claim released
+2026-08-13T12:23:09Z | DEFER | --- | --- | ORCH | GH-758 client hang blocks reliable test-integration execution — filed as blocker for follow-up run
