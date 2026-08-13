@@ -1,0 +1,34 @@
+{
+  "handoff_id": "WF03-GH758-20260813/step-00-backend-dev",
+  "run_id": "WF03-GH758-20260813",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T13:36:00Z",
+  "started_at": "2026-08-13T13:36:00Z",
+  "completed_at": "2026-08-13T13:37:00Z",
+  "task": {
+    "description": "Branch setup for WF03-GH758-20260813: checkout feature branch off main, claim r-co:GH-758 from TaskManager.",
+    "type": "git-setup",
+    "workflow": "WF-03"
+  },
+  "context": {
+    "github_issue": 758,
+    "github_issue_title": "test-integration client hangs after acquireIntegrationLock -- backend PID idle on ClientRead at last query SET lock_timeout=5s",
+    "iss_local_id": "ISS-0698",
+    "fix_file": null,
+    "fix_line": null,
+    "branch": "feature/WF03-GH758-20260813",
+    "base_commit": "e9b1294d"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Branch created: feature/WF03-GH758-20260813 (off main HEAD e9b1294d). Claimed r-co:GH-758 from TaskManager. Diagnostic commit 13632334 'diag(WF03-GH758-20260813): minimal repro for test-integration client hang' pushed to origin (1 file, 52 lines, tests/integration/repro_g758.zig). Workspace r-co-1-loop.",
+    "artifacts_out": ["handoffs/WF03-GH758-20260813/step-00-backend-dev.json", "docs/issues/ISS-0698.json", "tests/integration/repro_g758.zig"],
+    "issues": []
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "handoff_history": null
+}

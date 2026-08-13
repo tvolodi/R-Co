@@ -1444,3 +1444,6 @@
 2026-08-13T12:23:09Z | DEFER | --- | --- | ORCH | GH-758 client hang blocks reliable test-integration execution — filed as blocker for follow-up run
 2026-08-13T12:25:05Z | DONE | WF03-GH754-20260813 | step-final-backend-dev | ORCH | GH-754 closed COMPLETE via PR #773 (merge 0dfdd65b); TaskManager claim released
 2026-08-13T12:25:05Z | NOTE | --- | --- | ORCH | All 3 ISS-0691/GH-753 scope-expansion leaks now RESOLVED (GH-753, GH-755, GH-754)
+2026-08-13T13:39:51Z | GIT_SETUP| WF03-GH758-20260813 | --- | ORCH | feature/WF03-GH758-20260813 from main (e9b1294d), diag commit 13632334 pushed to origin
+2026-08-13T13:39:51Z | ROUTE   | WF03-GH758-20260813 | step-0.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-13T13:39:51Z | NOTE    | WF03-GH758-20260813 | --- | ORCH | GH-758 diagnostic phase: created tests/integration/repro_g758.zig (minimal reproducer, hangs solo); registered ISS-0698 with hypothesis (test client never sends another command after SET lock_timeout=5s); build_runner IPC swallows test-binary stderr; -Dlog-pg-errors=true surfaces real PG errors but does not solve the hang. Routing to ISSUE-FIXER Step 0.5 for registry lookup + GitHub confirmation.

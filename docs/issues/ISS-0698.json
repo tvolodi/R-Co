@@ -1,0 +1,86 @@
+{
+  "issue_id": "ISS-0698",
+  "title": "GH-758: test-integration client hangs after acquireIntegrationLock -- backend PID idle on ClientRead at last query SET lock_timeout=5s",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/758",
+  "registered_at": "2026-08-13T13:38:47Z",
+  "registered_by": "ORCH (WF03-GH758-20260813 Step 0)",
+  "related_to": [
+    "GH-752",
+    "ISS-0692",
+    "GH-758"
+  ],
+  "severity": "BLOCKER",
+  "status": "OPEN",
+  "category": "test-infrastructure/pg-client-hang",
+  "scope": "tests/integration/*.zig (any test going through acquireIntegrationLock + Pool); vendor/pg/pg.zig (sync pg.Conn wrapper); src/db/pool.zig (Pool.init). NOT a production code path -- the integration-test client only.",
+  "affected_areas": [
+    "tests/integration/helpers.zig",
+    "tests/integration/repro_g758.zig",
+    "vendor/pg/pg.zig",
+    "src/db/pool.zig"
+  ],
+  "symptom": "test-integration step hangs indefinitely. Backend process is state=idle, wait_event=ClientRead, last query is `SET lock_timeout = '5s'` (or `SET statement_timeout = '60s'` in the older code). The test client never sends another command, but never disconnects either. The integration_test_advisory_lock held by the test process is not released, blocking all subsequent test-integration runs. The hang reproduces in solo mode (single binary, no cross-test contention). The build_runner swallows stderr from the test binary via IPC, so the actual failure point is silent unless `-Dlog-pg-errors=true` is passed at build time. With log_pg_errors=true, real PostgreSQL errors emitted on the connection include: check_violation on `ck_tenant_type_fk_coherence`, FK violation on `tenant_production_tenant_id_fkey`, 57014 statement_timeout. These errors are NOT the cause of the hang itself but indicate the test data setup is failing for separate reasons.",
+  "evidence_file": "docs/issue-reports/ISS-0698-evidence.md",
+  "evidence_trail": [
+    {
+      "step": "reproduction_in_solo_mode",
+      "command": "zig build test-integration-solo-step-that-uses-lock (currently reproduce_g758.zig is NOT wired into build.zig; run an existing test such as test-integration-tm or test-integration-pin01 that uses acquireIntegrationLock)",
+      "result": "Reproduces consistently. Backend PID state=idle, ClientRead. Last query SET lock_timeout=5s (or SET statement_timeout=60s). Tested 2+ times; each time the hang is reproducible."
+    },
+    {
+      "step": "rerunning_same_test",
+      "command": "zig build test-integration-<solo> (immediately after the hang)",
+      "result": "Same hang. The hung connection is still holding the integration_test_advisory_lock; subsequent runs block on pg_advisory_lock."
+    },
+    {
+      "step": "ipc_swallows_stderr",
+      "command": "std.debug.print() in test code is NOT visible in stderr.log captured by build_runner; only the build runner's own summary ('test failed' or 'timeout') is visible",
+      "result": "Confirmed: stdout/stderr from the test binary is consumed by the build runner's IPC; test code's std.debug.print() never reaches the operator. Mitigation: pass -Dlog-pg-errors=true at build time to surface real PostgreSQL errors via vendor/pg/pg.zig:347."
+    },
+    {
+      "step": "real_postgres_errors_visible",
+      "command": "zig build -Dlog-pg-errors=true ... && run hung test",
+      "result": "Real PostgreSQL errors visible: check_violation on ck_tenant_type_fk_coherence, FK violation on tenant_production_tenant_id_fkey, 57014 canceling statement due to statement_timeout. These are emitted by previous (already-completed) statements in the same session but indicate the test is hitting data-prep failures that may be tangentially related -- the Hang itself is not caused by these errors but they suggest the test environment is failing in ways that don't reach the client as expected."
+    },
+    {
+      "step": "minimal_repro",
+      "command": "zig test tests/integration/repro_g758.zig (with proper integration imports)",
+      "result": "REPRODUCED. The repro file (tests/integration/repro_g758.zig, committed at 13632334) is a minimal 8-step test: acquireIntegrationLock, init pool, acquire conn, run SELECT 1, release. Hangs at reproducing the same client-side signature."
+    }
+  ],
+  "root_cause_analysis": {
+    "type": "client_stopped_sending_after_set_lock_timeout",
+    "details": "The backend reports the last successful query as SET lock_timeout=5s (or SET statement_timeout=60s in older code). readUntilReady returned cleanly for that statement. After that, the test code never sends another command, but the connection is also never closed. The backend is waiting on ClientRead for the next command. There are several plausible root causes: (a) a panic/exception in the test code between SET lock_timeout and the next command, swallowed by Zig's panic handler and never surfaced because stderr is consumed by build_runner IPC; (b) a deadlock in the Zig pg.Conn wrapper after the SET lock_timeout response (e.g. awaiting a token that the next command would have produced); (c) a memory error in the test code that causes the process to wedge without exiting. Without diagnostic output from the test process, distinguishing (a)/(b)/(c) is hard. The compile-time `-Dlog-pg-errors=true` switch only enables `log_pg_errors` at vendor/pg/pg.zig:347; it does NOT enable stdout/stderr forwarding from the test binary to the build runner's terminal.",
+    "investigation_status": "OPEN. ORCH's diagnostic phase (this WF entry) reproduced the hang, identified the silent-stderr pattern, and created a minimal repro. The actual root cause -- whether it is a panic, a deadlock, or a memory error -- is owned by ISSUE-FIXER Step 1."
+  },
+  "pre_existing_issues_revealed": [
+    {
+      "description": "build_runner IPC swallows test-binary stderr/stdout by design (zig 0.16 std.Build.Run.step API). This makes integration tests effectively undebuggable from the operator's terminal. A workaround is to use std.io.getStdOut().writeAll() directly (bypassing std.debug.print) or to redirect to a file via portable_env.globalEnviron(). The systemic fix would be a -Dflags=... option that captures test-binary output to a log file.",
+      "filed_as": "Pre-existing follow-up; not new from this WF. Documented for future runs."
+    },
+    {
+      "description": "Real PostgreSQL errors (check_violation on ck_tenant_type_fk_coherence, FK violation on tenant_production_tenant_id_fkey, 57014 statement_timeout) are visible when log_pg_errors=true but are NOT the cause of the hang. They suggest the test data preparation is failing in non-trivial ways. These should be triaged separately as MINOR once GH-758 is resolved.",
+      "filed_as": "Pre-existing follow-up; not new from this WF. Documented for triage after GH-758 resolves."
+    },
+    {
+      "description": "The hung connection holds the integration_test_advisory_lock indefinitely. There is no operator-facing escape hatch other than restarting the PostgreSQL container. Consider adding a startup probe that detects a stale lock (older than X) and tries to release it before the test run begins.",
+      "filed_as": "Pre-existing follow-up; not new from this WF. Documented for future enhancement."
+    }
+  ],
+  "workarounds": [
+    "Build with -Dlog-pg-errors=true to surface real PostgreSQL errors (does NOT solve the hang but helps diagnose).",
+    "Restart the test database container to release the integration_test_advisory_lock: `docker-compose restart db_test`.",
+    "Run tests in smaller batches (e.g. one test-integration-<solo> step at a time) to avoid lock contention.",
+    "Avoid the standalone `zig build test-integration` step; run individual `test-integration-<solo>` steps."
+  ],
+  "reproduction_artifact": "tests/integration/repro_g758.zig (committed at 13632334 on feature/WF03-GH758-20260813).",
+  "fix_file": null,
+  "fix_line": null,
+  "resolution": null,
+  "verification": null,
+  "files_changed": [
+    "tests/integration/repro_g758.zig (new, 52 lines)"
+  ],
+  "created_at": "2026-08-13T13:38:47Z",
+  "resolved_at": null
+}
