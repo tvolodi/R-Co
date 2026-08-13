@@ -4,6 +4,10 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-13
 
+### TC-PIPELINE-RUN-CORRELATION DebugAllocator leak — ISS-0694/GH-754 (RESOLVED)
+
+- **fix(tests): GH-754/ISS-0694 — free record.metadata in TC-PIPELINE-RUN-CORRELATION.** `tests/integration/adp06_pipeline_run_correlation_test.zig` was discarding the `AppendResult` from `store.append()` (line 271) with `_ =`, leaking `result.record.metadata` (heap-allocated by `duplicateFromParams()` in `src/event_store/store.zig:1368`) every run. Now `append_res` is captured and `.metadata` freed via `defer if (.metadata.len > 0) alloc.free(...)`. Production code untouched. Same-shape as GH-753 (sim01_04 line 264), GH-755 (api03 line 988); the third and final leak from the original ISS-0691/GH-753 scope expansion. Verified `zig build` exit 0; runtime integration test verification deferred — GH-758 client hang currently blocks reliable test-integration execution.
+
 ### TC-API-05-01 DebugAllocator leak — ISS-0695/GH-755 (RESOLVED)
 
 - **fix(tests): GH-755/ISS-0695 — free record.metadata in TC-API-05-01.** `tests/integration/api03_instance_read_test.zig` was discarding the `AppendResult` from `ev_store.append()` (line 988) with `_ =`, leaking `result.record.metadata` (heap-allocated by `duplicateFromParams()` in `src/event_store/store.zig:1368`) every run. Now `append_res` is captured and `.metadata` freed via `defer if (.metadata.len > 0) alloc.free(...)`. Production code untouched. Same-shape leak as GH-753/ISS-0691 (which fixed `sim01_04_simulation_mode_test.zig` lines 254 and 264), adjacent call site. Pattern identical: capture result, defer-free with `len > 0` guard. Verified `zig build` exit 0; runtime integration test verification deferred — GH-758 client hang currently blocks reliable test-integration execution. The other adjacent same-shape leak (ISS-0694/GH-754 `adp06_pipeline_run_correlation_test.zig:271`) remains OPEN.

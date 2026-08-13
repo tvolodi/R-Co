@@ -268,7 +268,10 @@ test "TC-ADP-06-03: non-pipeline paths preserve null/absent compatibility and qu
     defer store.deinit();
 
     bpm.api_pipeline_context.clear();
-    _ = try store.append(alloc, AppendParams{
+    // GH-754/ISS-0694: capture AppendResult and free record.metadata (heap-allocated
+    // by src/event_store/store.zig:duplicateFromParams line 1368) to fix DebugAllocator
+    // leak at this call site (adjacent to GH-753/ISS-0691 and GH-755/ISS-0695 fixes; same shape).
+    const append_res = try store.append(alloc, AppendParams{
         .instance_id = try parseUuid(instance_id),
         .event_type = "ADP06_EVENT_COMPAT",
         .payload = "{}",
@@ -276,6 +279,7 @@ test "TC-ADP-06-03: non-pipeline paths preserve null/absent compatibility and qu
         .idempotency_key = "adp06-idem-compat-01",
         .metadata = "{}",
     });
+    defer if (append_res.record.metadata.len > 0) alloc.free(append_res.record.metadata);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
