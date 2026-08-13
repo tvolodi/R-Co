@@ -2131,9 +2131,10 @@
       ]
     },
     {
-      "issue_id": "TBD-iss106-preexisting",
-      "github_issue": null,
-      "title": "iss106_test: PgError.ServerError in full_contract_row_round_trips (pre-existing deterministic failure, isolated)",
+      "issue_id": "GH-763",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/763",
+      "issue_number": 763,
+      "title": "iss106_webhook_outbox_test: PgError.ServerError in full_contract_row_round_trips (pre-existing, deterministic)",
       "severity": "MAJOR",
       "status": "PENDING",
       "lock": null,
@@ -2144,9 +2145,10 @@
       "deferred_reason": "Pre-existing deterministic failure discovered during GH-760 step-05; needs separate WF-03 investigation"
     },
     {
-      "issue_id": "TBD-iss203-preexisting",
-      "github_issue": null,
-      "title": "iss203_test: QueryFailed in TC-ISS-203-02 ON CONFLICT DO NOTHING idempotency key insert (pre-existing deterministic failure, isolated)",
+      "issue_id": "GH-764",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/764",
+      "issue_number": 764,
+      "title": "iss203_idempotency_keys_test: QueryFailed in TC-ISS-203-02 ON CONFLICT DO NOTHING (pre-existing, deterministic)",
       "severity": "MAJOR",
       "status": "PENDING",
       "lock": null,
@@ -2157,9 +2159,10 @@
       "deferred_reason": "Pre-existing deterministic failure discovered during GH-760 step-05; needs separate WF-03 investigation"
     },
     {
-      "issue_id": "TBD-iss205-preexisting",
-      "github_issue": null,
-      "title": "iss205_test: PoolError.QueryFailed in TC1/TC2/TC3 webhook outbox (pre-existing deterministic failure, isolated)",
+      "issue_id": "GH-765",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/765",
+      "issue_number": 765,
+      "title": "iss205_webhook_outbox_test: all 3 tests fail with PoolError.QueryFailed (pre-existing, deterministic)",
       "severity": "MAJOR",
       "status": "PENDING",
       "lock": null,
@@ -2170,9 +2173,10 @@
       "deferred_reason": "Pre-existing deterministic failure discovered during GH-760 step-05; needs separate WF-03 investigation"
     },
     {
-      "issue_id": "TBD-sch02-preexisting",
-      "github_issue": null,
-      "title": "sch02_test: TC-SCH-02-03 expected TransactionFailed but got fired=1 (pre-existing deterministic failure, isolated)",
+      "issue_id": "GH-766",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/766",
+      "issue_number": 766,
+      "title": "sch02_timer_polling_test TC-SCH-02-03: expected TransactionFailed but timer fires (pre-existing, deterministic)",
       "severity": "MAJOR",
       "status": "PENDING",
       "lock": null,
@@ -2183,9 +2187,10 @@
       "deferred_reason": "Pre-existing deterministic failure discovered during GH-760 step-05; needs separate WF-03 investigation"
     },
     {
-      "issue_id": "TBD-env01-preexisting",
-      "github_issue": null,
-      "title": "env01_test: TC-ENV-01-03 wrong tenant_type in production rows (pre-existing deterministic failure, isolated)",
+      "issue_id": "GH-767",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/767",
+      "issue_number": 767,
+      "title": "env01_test TC-ENV-01-03: wrong tenant_type in production rows — test expects clean DB state (pre-existing, deterministic)",
       "severity": "MAJOR",
       "status": "PENDING",
       "lock": null,
