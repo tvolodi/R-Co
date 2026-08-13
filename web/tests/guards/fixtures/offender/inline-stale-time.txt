@@ -1,0 +1,5 @@
+const { data } = useQuery({
+  queryKey: queryKeys.tasks.list(filters),
+  queryFn: fetchTasks,
+  staleTime: 60000,
+})

@@ -1,0 +1,11 @@
+import { useQuery } from '@tanstack/react-query'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+
+export function TaskList() {
+  const { data } = useQuery({ queryKey: ['tasks'], queryFn: fetchTasks })
+  return (
+    <QueryStateBoundary query={{ data, isLoading: false, isError: false }}>
+      <ul>{data?.map(t => <li key={t.id}>{t.name}</li>)}</ul>
+    </QueryStateBoundary>
+  )
+}

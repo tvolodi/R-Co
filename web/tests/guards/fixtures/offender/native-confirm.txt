@@ -1,0 +1,5 @@
+function handleDelete() {
+  if (window.confirm('Delete this record?')) {
+    performDelete()
+  }
+}

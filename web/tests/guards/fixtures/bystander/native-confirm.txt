@@ -1,0 +1,3 @@
+// Uses a proper modal component, not native browser dialogs
+// confirmVariant is a design system component — not flagged
+const confirmed = await confirmVariant({ message: 'Delete this record?' })
