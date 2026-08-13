@@ -1,0 +1,61 @@
+{
+  "handoff_id": "wf03-gh760-20260813-03-backend-dev",
+  "run_id": "WF03-GH760-20260813",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH760-20260813/step-03-backend-dev.json",
+  "created_at": "2026-08-13T08:11:54Z",
+  "started_at": "2026-08-13T08:12:37Z",
+  "completed_at": "2026-08-13T08:20:32Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh760-20260813-02-code-designer",
+      "wf03-gh760-20260813-02b-code-design-validator"
+    ],
+    "artifacts_in": [
+      "src/design/iss0696_serial_public_schema_tests.md",
+      "build.zig",
+      "docs/guides/test_developer_guide.md"
+    ],
+    "branch_name": "feature/WF03-GH760-20260813"
+  },
+  "task": {
+    "description": "WF-03 Step 03 (BACKEND-DEV) for GH-760 / ISS-0696. Implement the fix per the approved design at src/design/iss0696_serial_public_schema_tests.md.\n\nYou are on branch feature/WF03-GH760-20260813. Do NOT run git checkout main or create a new branch. Make all commits to this feature branch.\n\nImplementation steps:\n1. Read src/design/iss0696_serial_public_schema_tests.md in full.\n2. Read build.zig in full to locate the exact lines referenced in the design.\n3. Implement the build.zig changes as specified:\n   - Remove the 5 dependOn calls that add the public-schema test binaries to test_integration_others_step\n   - Add 5 new serial Run artifacts (following the design's addIntegrationRun pattern), chained: iss106 -> iss203 -> iss205 -> sch02 -> env01, with the first depending on test_integration_others_step\n   - Wire the last (env01) into test_integration_step so zig build test-integration covers the full suite\n4. Update docs/guides/test_developer_guide.md: add §10.3 as specified in the design\n5. Run: zig build (must exit 0)\n6. Run: zig build test (must exit 0)\n7. Commit to feature/WF03-GH760-20260813 with message: fix(tests): GH-760/ISS-0696 serialize public-schema test binaries to prevent parallel write conflicts\n\nDo NOT modify:\n- tests/integration/helpers.zig\n- tests/integration/iss205_webhook_outbox_test.zig\n- tests/integration/iss203_idempotency_keys_test.zig\n- tests/integration/iss106_webhook_outbox_test.zig\n- tests/integration/env01_test.zig\n- tests/integration/sch02_timer_polling_test.zig\n- tools/lint_test_isolation.baseline.json\n- Any production src/ code\n\nThe full integration test (zig build test-integration) will be run by TEST-RUNNER in Step 05.",
+    "acceptance_criteria": [
+      "feature/WF03-GH760-20260813 branch used (not main)",
+      "build.zig: 5 dependOn calls removed from parallel group; 5 new serial Run artifacts added in chain",
+      "build.zig: last serial run artifact wired into test_integration_step",
+      "docs/guides/test_developer_guide.md: §10.3 added documenting the 5 serial binaries",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "Commit made to feature/WF03-GH760-20260813 with correct message",
+      "tools/lint_test_isolation.baseline.json unchanged",
+      "No test files or production src/ modified"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ISS-0696/GH-760: removed 5 dependOn calls from test_integration_others_step (iss106, iss203, iss205, sch02, env); added 5 new serial Run artifacts chained iss106->iss203->iss205->sch02->env01, with iss106 depending on test_integration_others_step and env01 wired into test_integration_step; added internal serial barrier step test-integration-serial-public-internal; added §10.3 to docs/guides/test_developer_guide.md; zig build exits 0; zig build test exits 0; lint_test_isolation.baseline.json unchanged.",
+    "artifacts_out": ["build.zig", "docs/guides/test_developer_guide.md"],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH760-20260813",
+      "commit_sha_list": ["1e4f31f1"],
+      "remote_branch": "feature/WF03-GH760-20260813",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH dispatches step-05-test-runner.json for 5-consecutive-run gate"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

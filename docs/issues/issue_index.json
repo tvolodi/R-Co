@@ -1,8 +1,16 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-13T07:16:08Z",
+  "last_updated": "2026-08-13T07:45:10Z",
   "next_issue_id": 212,
   "issues": [
+    {
+      "id": "ISS-0696",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/760",
+      "severity": "BLOCKER",
+      "status": "RESOLVED",
+      "title": "iss205/iss203/iss106/env01/sch02 test binaries fail non-deterministically under -j4 due to public-schema table write conflicts",
+      "created_at": "2026-08-13T07:45:10Z"
+    },
     {
       "id": "ISS-0692",
       "title": "zig build test-integration: pg_advisory_lock acquisition fails with ServerError under parallel test runs due to lock_timeout/statement_timeout interaction",

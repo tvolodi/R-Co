@@ -565,6 +565,43 @@ defect (ISS) against the test or the migration it ran.
 
 ---
 
+### 10.3 Public-schema test binaries: intentionally serial (ISS-0696 / GH-760)
+
+Five integration test binaries operate on shared `tenant_default` and `public.tenant` tables
+without per-run schema isolation. These binaries are **intentionally serialised** in the
+`build.zig` dependency graph and run sequentially after the parallel integration pool
+completes:
+
+| Binary | Root source file |
+|---|---|
+| `iss106_test` | `tests/integration/iss106_webhook_outbox_test.zig` |
+| `iss203_test` | `tests/integration/iss203_idempotency_keys_test.zig` |
+| `iss205_test` | `tests/integration/iss205_webhook_outbox_test.zig` |
+| `sch02_test`  | `tests/integration/sch02_timer_polling_test.zig` |
+| `env01_test`  | `tests/integration/env_test_root.zig` |
+
+**Why they are serial:** `TestHarness.init()` issues global unrestricted `DELETE` statements
+on shared tables, then releases the advisory lock before the test body begins. This is safe
+for isolated-schema binaries (they use their own schema) but produces row-deletion races
+for binaries sharing `tenant_default`. `env01_test` additionally reads `public.tenant` row
+counts that are disturbed by sibling `TestHarness.init()` calls. See ISS-0696 for the
+full root-cause writeup.
+
+**What this means for contributors adding new test binaries:** any new test file that
+writes to `tenant_default` or `public.tenant` without a private per-run schema (i.e.
+without a `bpm_test_<uuid>` namespace) MUST be added to this serial chain in `build.zig`
+rather than to `test_integration_others_step`. Consult `src/design/iss0696_serial_public_schema_tests.md`
+for the wiring pattern. `tools/lint_test_isolation.py` enforces the shared-table advisory-
+lock requirement (§12.5); use it to check whether your new binary qualifies as a
+public-schema binary that should go in the serial chain.
+
+**Running the serial binaries:** they run automatically as part of
+`zig build test-integration` and the wrapper scripts. To run them in isolation (after the
+parallel pool), use the narrow steps: `zig build test-integration-iss106`,
+`zig build test-integration-env`, etc. (existing narrow steps are unaffected by this change).
+
+---
+
 ## 11. Pipeline Tests
 
 ### 11.1 What pipeline tests are

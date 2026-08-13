@@ -1398,3 +1398,14 @@
 2026-08-13T06:48:04Z | ROUTE   | ADHOC-gh752-lockfix-20260813 | adhoc-gh752-lockfix-20260813-backend-dev | ORCH -> BACKEND-DEV | ADHOC: final fix lock_timeout 300s->0 in 4 advisory lock brackets + 5-run gate
 2026-08-13T07:13:11Z | DECISION| ADHOC-gh752-lockfix-20260813 | adhoc-gh752-lockfix-20260813-backend-dev | ORCH | PARTIAL accepted: GH-752 advisory lock fix confirmed SE=0; remaining failures are pre-existing on main. Advancing to Step 07 DOC-UPDATER.
 2026-08-13T07:14:01Z | ROUTE   | WF03-GH752-20260812 | wf03-gh752-20260812-07-doc-updater | ORCH -> DOC-UPDATER | Step 07: update CHANGELOG, ISS-0692.json, file 2 new GH issues for pre-existing problems
+2026-08-13T07:40:47Z | ROUTE   | WF03-GH760-20260813 | wf03-gh760-20260813-00-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 00: git-setup; branch feature/WF03-GH760-20260813)
+2026-08-13T07:43:43Z | ROUTE   | WF03-GH760-20260813 | wf03-gh760-20260813-00.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING (Step 00.5: registry lookup + ISS-0696 creation + GH-760 comment)
+2026-08-13T07:46:04Z | ROUTE   | WF03-GH760-20260813 | wf03-gh760-20260813-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING (Step 01: root cause diagnosis for GH-760/ISS-0696)
+2026-08-13T07:59:32Z | ROUTE   | WF03-GH760-20260813 | wf03-gh760-20260813-02-code-designer | ORCH -> CODE-DESIGNER | PENDING (Step 02: fix design — option c: serial step for 5 public-schema binaries)
+2026-08-13T08:07:21Z | ROUTE   | WF03-GH760-20260813 | wf03-gh760-20260813-02b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING (Step 02b: hard gate — validate design at src/design/iss0696_serial_public_schema_tests.md)
+2026-08-13T08:11:54Z | ROUTE   | WF03-GH760-20260813 | wf03-gh760-20260813-03-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 03: implement serial build step for 5 public-schema test binaries)
+2026-08-13T08:23:01Z | BENCH_ENV_CHECK | WF03-GH760-20260813 | --- | ORCH | CLEARED: zig build test-env-verify exits 0, HEALTHY 10/10 — dispatching TEST-RUNNER
+2026-08-13T08:23:01Z | ROUTE   | WF03-GH760-20260813 | wf03-gh760-20260813-05-test-runner | ORCH -> TEST-RUNNER | PENDING (Step 05: integration test gate — verify serial step eliminates public-schema write conflicts)
+2026-08-13T08:53:56Z | DECISION| WF03-GH760-20260813 | wf03-gh760-20260813-05-test-runner | ORCH | PARTIAL accepted: GH-760 serialization fix verified correct; 5 pre-existing deterministic failures documented — not write-conflict errors, not caused by this fix; advancing to Step 07 DOC-UPDATER. Pre-existing failures forwarded to global queue.
+2026-08-13T08:54:35Z | ROUTE   | WF03-GH760-20260813 | wf03-gh760-20260813-07-doc-updater | ORCH -> DOC-UPDATER | PENDING (Step 07: CHANGELOG, ISS-0696 resolved, 5 pre-existing failures to global queue)
+2026-08-13T08:59:00Z | ROUTE   | WF03-GH760-20260813 | wf03-gh760-20260813-final-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step Final: fn:git-merge — create PR, squash-merge, close GH-760)

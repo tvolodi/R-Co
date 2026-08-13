@@ -1,0 +1,64 @@
+{
+  "handoff_id": "wf03-gh760-20260813-07-doc-updater",
+  "run_id": "WF03-GH760-20260813",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH760-20260813/step-07-doc-updater.json",
+  "created_at": "2026-08-13T08:54:35Z",
+  "started_at": "2026-08-13T08:55:39Z",
+  "completed_at": "2026-08-13T08:58:20Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh760-20260813-03-backend-dev",
+      "wf03-gh760-20260813-05-test-runner"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0696.json",
+      "docs/issues/issue_index.json",
+      "CHANGELOG.md",
+      "docs/issue-reports/ISS-0696-step05-runs.md",
+      "handoffs/WF03-GH760-20260813/step-05-test-runner.json"
+    ],
+    "branch_name": "feature/WF03-GH760-20260813"
+  },
+  "task": {
+    "description": "WF-03 Step 07 (DOC-UPDATER) for GH-760 / ISS-0696.\n\nTasks:\n\n1. Update CHANGELOG.md: Add an entry under the current version section (or create an [Unreleased] section) with:\n   - fix(tests): GH-760/ISS-0696 — serialize 5 public-schema test binaries to prevent parallel write conflicts\n   - Summary: 5 test binaries (iss205, iss203, iss106, env01, sch02) were removed from the parallel pool in build.zig and replaced with a serial chain that runs after the parallel pool completes. This eliminates the resetTestData cross-binary row deletion race and env01 TC03 tenant visibility issue.\n   - Note: 5 pre-existing deterministic failures were discovered in these binaries (separate from the GH-760 parallel conflict); these are forwarded to the global queue for separate investigation.\n\n2. Update docs/issues/ISS-0696.json:\n   - Set status to 'RESOLVED'\n   - Add resolution section with commit SHA (1e4f31f1) and approach description\n   - Add resolved_at: current UTC timestamp\n   - Add note that 5 pre-existing deterministic failures remain (iss106/iss203/iss205/sch02/env01) and are forwarded to the global queue\n   - Add prevention notes about the serialization mechanism\n\n3. Update docs/issues/issue_index.json: Set ISS-0696 status to 'RESOLVED'.\n\n4. Add 5 entries to handoffs/global_queue.json for the pre-existing failures discovered in step-05:\n   - iss106: PgError.ServerError in full_contract_row_round_trips\n   - iss203: QueryFailed in TC-ISS-203-02 ON CONFLICT DO NOTHING  \n   - iss205: PoolError.QueryFailed in TC1/TC2/TC3\n   - sch02: TC-SCH-02-03 expected TransactionFailed but got fired=1\n   - env01: TC-ENV-01-03 wrong tenant_type in production rows\n   For each global_queue entry, use title, severity=MAJOR, status=PENDING, no lock, added_at=current timestamp. Since no GitHub issues exist yet for these (will be filed by ISSUE-FIXER later), use issue_id='TBD-iss106-preexisting' etc. and github_issue=null. Use the format from handoffs/global_queue.json.\n\n5. Run tools/lint_handoffs.py — must exit 0.\n\n6. Commit all changes: git add CHANGELOG.md docs/issues/ISS-0696.json docs/issues/issue_index.json handoffs/global_queue.json\n   git commit -m 'docs(WF03-GH760-20260813 Step 07): ISS-0696 RESOLVED — CHANGELOG, ISS-0696 resolved, 5 pre-existing failures queued'\n   git push origin feature/WF03-GH760-20260813",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with GH-760/ISS-0696 fix entry",
+      "docs/issues/ISS-0696.json status=RESOLVED, resolved_at set",
+      "docs/issues/issue_index.json ISS-0696 entry status=RESOLVED",
+      "handoffs/global_queue.json: 5 new entries for pre-existing failures",
+      "tools/lint_handoffs.py exits 0",
+      "Commit pushed to feature/WF03-GH760-20260813"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with GH-760/ISS-0696 fix entry. docs/issues/ISS-0696.json set to RESOLVED with resolved_at, resolution object (commits 1e4f31f1/0e27759e), pre_existing_unresolved (5 entries), and prevention array. docs/issues/issue_index.json ISS-0696 status set to RESOLVED. handoffs/global_queue.json: 5 new PENDING entries appended for TBD-iss106/iss203/iss205/sch02/env01 pre-existing failures. lint_handoffs.py: exit 0 (0 BLOCKER, 0 MAJOR, 1 MINOR, 291 ACKNOWLEDGED). Commit 582eb48d pushed to feature/WF03-GH760-20260813.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0696.json",
+      "docs/issues/issue_index.json",
+      "handoffs/global_queue.json"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH760-20260813",
+      "commit_sha_list": ["582eb48d"],
+      "remote_branch": "origin/feature/WF03-GH760-20260813",
+      "push_status": "PASS",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH dispatches step-final-backend-dev.json for git-merge"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

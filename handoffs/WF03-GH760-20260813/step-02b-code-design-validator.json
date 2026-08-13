@@ -1,0 +1,55 @@
+{
+  "handoff_id": "wf03-gh760-20260813-02b-code-design-validator",
+  "run_id": "WF03-GH760-20260813",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH760-20260813/step-02b-code-design-validator.json",
+  "created_at": "2026-08-13T08:07:21Z",
+  "started_at": "2026-08-13T08:08:20Z",
+  "completed_at": "2026-08-13T08:10:37Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh760-20260813-02-code-designer"
+    ],
+    "artifacts_in": [
+      "src/design/iss0696_serial_public_schema_tests.md",
+      "docs/issues/ISS-0696.json",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 02b (CODE-DESIGN-VALIDATOR hard gate) for GH-760 / ISS-0696.\n\nValidate the design artefact at src/design/iss0696_serial_public_schema_tests.md produced by CODE-DESIGNER.\n\nCheck all of the following:\n(a) Does the design document cover ALL the acceptance criteria from step-02 handoff? (8 acceptance criteria listed there)\n(b) Does the design contain NO implementation code (no Zig source code)?\n(c) Is the design specific enough for BACKEND-DEV to implement without ambiguity — are exact build.zig step names, dependency chains, and file sections named?\n(d) Does the design list files NOT to modify?\n(e) Is the design's scope limited to build.zig, scripts, and test_developer_guide.md — i.e., no production code changes, no test file changes?\n(f) Does the design address both failure modes identified in the root cause (resetTestData race AND env01 TC03 tenant visibility)?\n(g) Is the chosen approach (option c — serial ordering) correctly articulated?\n\nReturn PASS if all checks pass. Return FAIL with specific failures if any check fails.",
+    "acceptance_criteria": [
+      "All 7 checks (a)-(g) evaluated explicitly",
+      "PASS only if all 7 checks pass",
+      "FAIL with specific check IDs and descriptions if any check fails",
+      "result.status = 'PASS' or 'FAIL'"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 7 checks PASS. (a) All 8 acceptance criteria covered: file exists, build.zig changes specified with exact variable names verified against build.zig (lines 1974/2086/2119/2347/3267/2415/3288), scripts explicitly no-change, test_developer_guide.md §10.3 specified, do-not-touch list in §7, no Zig function bodies, result.artifacts_out confirmed in step-02 handoff, both failure modes addressed in §2.1-2.2. (b) No implementation code — build.zig API one-liners are specification-level declarations, no function bodies or algorithmic logic. (c) Fully unambiguous — all variable names and step names confirmed in actual build.zig, dependency chain and placement specified in §4.2-4.7. (d) §7 lists 11 explicit do-not-touch entries. (e) Scope limited to build.zig + test_developer_guide.md; scripts and production code explicitly excluded. (f) Both failure modes addressed — §2.1 resetTestData() cross-binary race, §2.2 env01 public.tenant non-deterministic row count. (g) Option (c) correctly articulated in §3 with all three options evaluated; §4.3 correctly identifies why new Run artifacts are needed (global Step dependency edges).",
+    "artifacts_out": [
+      "src/design/iss0696_serial_public_schema_tests.md"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "PASS: ORCH dispatches step-03-backend-dev.json | FAIL: ORCH re-routes to step-02-rework CODE-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -2423,20 +2423,15 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_iss102_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0091_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss103_integration_tests.step);
-    test_integration_others_step.dependOn(&run_iss106_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss107_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0605_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0607_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss502_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss202_integration_tests.step);
-    test_integration_others_step.dependOn(&run_iss203_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss207_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss208_integration_tests.step);
-    test_integration_others_step.dependOn(&run_iss205_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss601_integration_tests.step);
     test_integration_others_step.dependOn(&run_sch303_integration_tests.step);
-    // ISS-0618 / GH-567: SCH-02 timer polling lock + rollback integration tests.
-    test_integration_others_step.dependOn(&run_sch02_integration_tests.step);
     // ISS-0617 / GH-566: EXP-601 tier-to-quota enforcement tests.
     test_integration_others_step.dependOn(&run_exp601_integration_tests.step);
     // ISS-0176 / GH #504: LUA-07 manifest_hash audit persistence tests.
@@ -3285,7 +3280,6 @@ pub fn build(b: *std.Build) void {
     test_integration_iss0072_step.dependOn(&clean_test_db.step);
     test_integration_iss0072_step.dependOn(&run_iss0072_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0072_integration_tests.step); // ISS-0106: routed via barrier, not directly onto test_integration_step
-    test_integration_others_step.dependOn(&run_env_integration_tests.step); // ISS-0104 / GH-362: ENV-01..05 scoped step must also run under umbrella
     test_integration_others_step.dependOn(&run_svc_integration_tests.step); // ISS-0639 / GH-629: SVC-01..04 scoped step must also run under umbrella
 
     // ISS-0658 (GH #679): adp09_tamper_evident_audit_chain_test.zig and
@@ -3413,6 +3407,27 @@ pub fn build(b: *std.Build) void {
     const test_integration_mig06_step = b.step("test-integration-mig06", "Run MIG-06 platform migration admin surface integration tests in isolation (requires BPM_TEST_DB_URL)");
     test_integration_mig06_step.dependOn(&clean_test_db.step);
     test_integration_mig06_step.dependOn(&run_mig06_solo_tests.step);
+
+    // ---------------------------------------------------------------------------
+    // ISS-0696 / GH-760: serial-public barrier — five test binaries that write to
+    // shared tenant_default / public.tenant tables without per-run schema isolation.
+    // Extracted from test_integration_others_step (the parallel pool) and chained
+    // serially here so they run one at a time, after the parallel pool finishes.
+    // See src/design/iss0696_serial_public_schema_tests.md for the full rationale.
+    // ---------------------------------------------------------------------------
+    const run_iss106_serial_public = addIntegrationRun(b, iss106_integration_tests, migrations_dir, clean_test_db);
+    run_iss106_serial_public.step.dependOn(test_integration_others_step);
+    const run_iss203_serial_public = addIntegrationRun(b, iss203_integration_tests, migrations_dir, clean_test_db);
+    run_iss203_serial_public.step.dependOn(&run_iss106_serial_public.step);
+    const run_iss205_serial_public = addIntegrationRun(b, iss205_integration_tests, migrations_dir, clean_test_db);
+    run_iss205_serial_public.step.dependOn(&run_iss203_serial_public.step);
+    const run_sch02_serial_public = addIntegrationRun(b, sch02_integration_tests, migrations_dir, clean_test_db);
+    run_sch02_serial_public.step.dependOn(&run_iss205_serial_public.step);
+    const run_env_serial_public = addIntegrationRun(b, env_integration_tests, migrations_dir, clean_test_db);
+    run_env_serial_public.step.dependOn(&run_sch02_serial_public.step);
+    const test_integration_serial_public_step = b.step("test-integration-serial-public-internal", "Internal serial barrier for public-schema test binaries (ISS-0696) -- not for direct invocation");
+    test_integration_serial_public_step.dependOn(&run_env_serial_public.step);
+    test_integration_step.dependOn(&run_env_serial_public.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

@@ -1,0 +1,56 @@
+{
+  "id": "ISS-0696",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/760",
+  "severity": "BLOCKER",
+  "status": "OPEN",
+  "title": "iss205/iss203/iss106/env01/sch02 test binaries fail non-deterministically under -j4 due to public-schema table write conflicts",
+  "scope": "tests/integration/ — five test binaries: iss205_test, iss203_test, iss106_test, env01_test (env_integration_tests / env_test_root.zig), sch02_test. No production code affected.",
+  "discovered_by": "TEST-RUNNER",
+  "discovered_during": "WF03-GH752-20260812 five-run acceptance gate (step-05-retry2-test-runner)",
+  "description": "After the GH-752 advisory lock fix (ISS-0692, commit 91a71ef) eliminated all pg_advisory_lock-related ServerErrors, the remaining SE=6 across the 5-run gate were traced to these five public-schema test binaries. These test binaries do not use per-run schema isolation (they operate in public or tenant_default rather than in a private bpm_test_ namespace). When multiple binaries run in parallel and both write to the same shared tables, row-level conflicts and constraint violations produce sporadic failures. This is a pre-existing condition on main; it predates GH-752 and is not caused by the lock_timeout=0 fix.\n\n## CONFIRMED ROOT CAUSE (WF03-GH760-20260813, step-01-issue-fixer)\n\nTwo distinct failure modes were identified:\n\n### Failure Mode 1: resetTestData() cross-binary row deletion race (iss203, iss205, sch02, iss106)\n\nTestHarness.init() acquires the bpm_test_migrations_public advisory lock, runs resetTestData() (which issues global unrestricted DELETEs on shared tenant_default tables including process_definitions, events, tasks, timers, webhook_subscriptions, instance_projections, etc.), then RELEASES the advisory lock. Test execution continues via autocommit pool connections writing new rows to tenant_default AFTER the lock is released. When a sibling binary then starts its own TestHarness.init(), it re-acquires the lock and calls resetTestData() again — deleting the first binary's in-flight rows. The first binary's subsequent queries find no rows → assertion failures.\n\nThis is structurally unavoidable under -j4: the advisory lock serializes only the TestHarness.init() pipeline, not the entire test binary lifetime. Pool writes after TestHarness.init() returns are unguarded against sibling binaries' future init() calls.\n\n### Failure Mode 2: public.tenant non-deterministic row presence (env01)\n\nenv01_test.zig (compiled as env_integration_tests via env_test_root.zig) acquires the bpm_test_migrations_public advisory lock PER TEST BLOCK (not per binary lifetime). Between test blocks the lock is released. Concurrent TestHarness binaries can run their TestHarness.init() (which calls ensureDefaultOidcSeeds, inserting the 'default' tenant with tenant_type='test' into public.tenant) between env01's test blocks. TC-ENV-01-03 queries public.tenant counting non-production rows (slug NOT LIKE 'tc-env01-%') and expects COUNT=0, but the 'default' tenant (slug='default', tenant_type='test') is counted → TC03 fails when any concurrent TestHarness binary has previously run ensureDefaultOidcSeeds.\n\n## AFFECTED TABLES PER BINARY\n\n- **iss205_webhook_outbox_test.zig**: `tenant_default.users` (committed via h.conn.commit() in TC1, bypassing rollback isolation), `tenant_default.webhook_subscriptions` (committed via h.conn.commit()), `tenant_default.webhook_deliveries` (pool writes, not in resetTestData cleanup). Conflict: resetTestData() of sibling binary deletes webhook_subscriptions mid-test; TC2/TC3 then fail on missing subscriptions.\n- **iss203_idempotency_keys_test.zig**: `tenant_default.process_definitions`, `tenant_default.process_instances`, `tenant_default.events`, `tenant_default.timers`, `tenant_default.idempotency_keys` (all pool writes). Conflict: sibling binary's resetTestData() deletes these rows while iss203 is mid-test.\n- **iss106_webhook_outbox_test.zig**: Own test data in isolated per-run schemas (bpm_test_<uuid>), `public.tenant_schemas`, `public.schema_migrations` during provisioning (per-run UUIDs, no unique constraint conflicts). iss106 is a perpetrator: its TestHarness.init()→resetTestData() deletes iss205's tenant_default.webhook_subscriptions. iss106 is also a victim: under heavy -j4 contention, repeated env01 per-block lock acquisitions can create advisory lock queue buildup that delays iss106's own TestHarness.init().\n- **env01_test.zig (env_integration_tests)**: `public.tenant` (unique per-test slugs 'tc-env01-XX-YYY'). Conflict: TC-ENV-01-03 query sees 'default' tenant (tenant_type='test') inserted by concurrent TestHarness binaries' ensureDefaultOidcSeeds().\n- **sch02_timer_polling_test.zig**: `tenant_default.process_definitions`, `tenant_default.process_instances`, `tenant_default.events`, `tenant_default.tasks`, `tenant_default.timers` (pool writes). Conflict: sibling binary's resetTestData() deletes these rows while sch02 is mid-test.\n\n## RECOMMENDED FIX: Option (c) — Mark as serial, exclude from -j pool\n\nExtract the 5 run steps (run_iss205_integration_tests, run_iss203_integration_tests, run_iss106_integration_tests, run_env_integration_tests, run_sch02_integration_tests) from test_integration_others_step (the parallel barrier) into a new serial step that depends on test_integration_others_step completing first. This serializes the 5 problematic binaries against the rest of the parallel suite and against each other, eliminating both failure modes without any source changes.\n\n### Rationale vs options (a) and (b):\n- Option (a) (per-run schemas) requires significant refactoring of iss203/sch02 (which exercise DefinitionStore/InstanceStore with internal search_path assumptions), high complexity, separate ISS warranted.\n- Option (b) (binary-lifetime advisory lock) would serialize these 5 binaries against ALL other TestHarness.init() calls in the suite (~45 binaries), degrading wall-clock time significantly. Also does not fix env01 TC03 (a query visibility issue, not a write-conflict issue the lock addresses). env01's per-block lock pattern would need restructuring for binary-lifetime hold in Zig test binaries (no main() entry point).\n- Option (c) is a build.zig-only change, eliminates the race by removing concurrency, and is the correct short-term fix. Option (a) is the architecturally correct long-term fix and should be tracked as a separate work item.",
+  "pre_existing_issues_revealed": [],
+  "suggested_fix": "Option (c) — build.zig change only: extract the 5 failing run steps from test_integration_others_step into a new serial post-parallel step. See description for full rationale.",
+  "recommended_fix": "c",
+  "created_at": "2026-08-13T07:45:10Z",
+  "diagnosed_at": "2026-08-13T07:57:52Z",
+  "diagnosed_by": "ISSUE-FIXER (WF03-GH760-20260813)",
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-13T08:56:29Z",
+  "resolution": {
+    "type": "serial_build_step",
+    "commits": ["1e4f31f1", "0e27759e"],
+    "branch": "feature/WF03-GH760-20260813",
+    "details": "Removed 5 public-schema test binaries from parallel test_integration_others_step and added a serial chain (run_iss106_serial_public → run_iss203_serial_public → run_iss205_serial_public → run_sch02_serial_public → run_env_serial_public) that executes after the parallel pool completes. docs/guides/test_developer_guide.md §10.3 added."
+  },
+  "pre_existing_unresolved": [
+    {
+      "binary": "iss106_test",
+      "failure": "PgError.ServerError in full_contract_row_round_trips",
+      "queue_id": "TBD-iss106-preexisting"
+    },
+    {
+      "binary": "iss203_test",
+      "failure": "QueryFailed in TC-ISS-203-02 ON CONFLICT DO NOTHING idempotency key insert",
+      "queue_id": "TBD-iss203-preexisting"
+    },
+    {
+      "binary": "iss205_test",
+      "failure": "PoolError.QueryFailed in TC1/TC2/TC3 webhook outbox",
+      "queue_id": "TBD-iss205-preexisting"
+    },
+    {
+      "binary": "sch02_test",
+      "failure": "TC-SCH-02-03 expected TransactionFailed but got fired=1",
+      "queue_id": "TBD-sch02-preexisting"
+    },
+    {
+      "binary": "env01_test",
+      "failure": "TC-ENV-01-03 wrong tenant_type in production rows",
+      "queue_id": "TBD-env01-preexisting"
+    }
+  ],
+  "prevention": [
+    "Any test binary that writes to public/tenant_default tables without per-run schema isolation must be placed in the serial chain in build.zig, not in the parallel pool.",
+    "When a binary is extracted from the parallel pool, run it in isolation to verify it passes before concluding the parallelism is the only issue."
+  ]
+}
