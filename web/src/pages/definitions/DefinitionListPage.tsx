@@ -7,6 +7,8 @@ import { useDebounce } from '@/hooks/useDebounce'
 import { highlightText } from '@/utils/highlightText'
 import { useAuth } from '@/auth/AuthContext'
 import type { DefinitionStatus, ProcessDefinition, DefinitionGraph } from '@/types/api'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 const STATUS_BADGE: Record<string, string> = {
   DRAFT:      '#f59e0b',
@@ -48,7 +50,7 @@ export default function DefinitionListPage() {
       navigate(`/definitions/${pendingNavId}`)
     }
   }, [pendingNavId, navigate])
-  const { data, isLoading } = useDefinitions({ status })
+  const { data, isLoading, isError, error, refetch } = useDefinitions({ status })
   const searchQuery = useDefinitionSearch(debouncedSearch, { limit: 20 })
   const versionsQuery = useDefinitionVersions(expandedDefName ?? '')
   const activate = useActivateDefinition()
@@ -61,6 +63,7 @@ export default function DefinitionListPage() {
     ? (searchResults?.items?.map((r) => r.definition) ?? [])
     : ((data as { items?: ProcessDefinition[] } | undefined)?.items ?? [])
   const isLoadingItems = isSearching ? searchQuery.isLoading : isLoading
+  const rendererState: RendererState = isLoading ? 'loading' : isError ? classifyError(error) : 'success'
 
   const validateCreate = (): boolean => {
     const errors: { name?: string; version?: string } = {}
@@ -193,8 +196,11 @@ export default function DefinitionListPage() {
         </div>
       </div>
 
-      {isLoading && <p>Loading…</p>}
-
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void refetch() }}
+        columns={[{ widthPercent: 35 }, { widthPercent: 15 }, { widthPercent: 15 }, { widthPercent: 20 }, { widthPercent: 15 }]}
+      >
       {!isLoadingItems && items.length === 0 && (
         <p data-testid="empty-state" style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem' }}>
           {isSearching ? `No results found for "${debouncedSearch}"` : 'No definitions found'}
@@ -314,6 +320,7 @@ export default function DefinitionListPage() {
           </tbody>
         </table>
       )}
+      </QueryStateBoundary>
 
       {/* Create Definition Dialog */}
       {showCreate && (

@@ -1,0 +1,71 @@
+{
+  "handoff_id": "wf02-pw13-rnd-ui-20260813-05-release-validator",
+  "run_id": "WF02-pw13-rnd-ui-20260813",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-pw13-rnd-ui-20260813/step-05-release-validator.json",
+  "created_at": "2026-08-13T16:33:42Z",
+  "started_at": "2026-08-13T16:33:42Z",
+  "completed_at": "2026-08-13T16:36:03Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8",
+    "requirement_ids": [
+      "RND-UI-01",
+      "RND-UI-02",
+      "RND-UI-03",
+      "RND-UI-04"
+    ],
+    "related_handoff_ids": [
+      "wf02-pw13-rnd-ui-20260813-03b-test-design-validator"
+    ],
+    "artifacts_in": [
+      "web/src/utils/classifyError.ts",
+      "web/src/components/ui/QueryStateBoundary.tsx",
+      "web/src/components/ui/SkeletonLayout.tsx",
+      "web/src/components/ui/FetchError.tsx",
+      "web/src/components/ui/PermissionDenied.tsx",
+      "web/tests/unit/classifyError.test.ts",
+      "web/tests/unit/QueryStateBoundary.test.tsx",
+      "web/tests/unit/SkeletonLayout.test.tsx",
+      "web/tests/unit/FetchError.test.tsx",
+      "web/tests/unit/PermissionDenied.test.tsx"
+    ],
+    "branch_name": "feature/WF02-pw13-rnd-ui-20260813"
+  },
+  "task": {
+    "description": "WF-02 Step 05 (RELEASE-VALIDATOR) for PW-13 Batch 1.\n\nVerify the release criteria for RND-UI-01..04:\n\n1. Run: cd web && npm run type-check \u2014 must exit 0\n2. Run: cd web && npm run lint \u2014 must exit 0\n3. Run: cd web && npm run build \u2014 must exit 0\n4. Run: cd web && npm test \u2014 must exit 0 (all 26 new tests + existing tests green)\n5. Verify that all 4 requirements are MUST priority and covered by tests\n6. Verify that no production code is under src/ (Zig/SQL) \u2014 this is frontend only, so src/ should be unchanged\n7. Run: python tools/lint_handoffs.py \u2014 must exit 0\n\nDo NOT run NFR benchmarks (zig build bench-*) \u2014 this is a frontend-only change with no backend changes.\n\nReturn PASS if all checks pass.",
+    "acceptance_criteria": [
+      "type-check exits 0",
+      "lint exits 0",
+      "build exits 0",
+      "npm test exits 0",
+      "All 4 requirements are MUST and have test coverage",
+      "No Zig/SQL source changes",
+      "lint_handoffs exits 0"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 7 release criteria passed. type-check exit 0, lint exit 0, build exit 0, 63/63 tests green (15 files), all 4 requirements (RND-UI-01..04) MUST priority with test coverage, no Zig/SQL diff, lint_handoffs exit 0 (0 BLOCKER, 0 MAJOR). Release APPROVED for stage F8.",
+    "artifacts_out": [
+      "docs/status/release-F8-2026-08-13.yaml"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to DOC-UPDATER to set requirements status RELEASED"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

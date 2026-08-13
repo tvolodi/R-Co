@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTaskInbox, useCompleteTask, useTask, useClaimTask } from '@/hooks/useTasks'
 import { useAuth } from '@/auth/AuthContext'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 type FilterType = 'me' | 'group' | 'all'
 type SortOrder = 'created' | '-created'
@@ -28,7 +30,7 @@ export default function TaskInboxPage() {
   const sort = (searchParams.get('sort') ?? '-created') as SortOrder
   const search = searchParams.get('search') ?? ''
 
-  const { data: inboxData, isLoading: inboxLoading } = useTaskInbox()
+  const { data: inboxData, isLoading: inboxLoading, isError: inboxError, error: inboxErr, refetch: refetchInbox } = useTaskInbox()
 
   // Extract user ID from JWT token
   const userId = useMemo(() => {
@@ -162,8 +164,11 @@ export default function TaskInboxPage() {
             {filter === 'me' ? 'My Tasks' : filter === 'group' ? 'Group Tasks' : 'All Tasks'}
           </h2>
 
-          {inboxLoading && <p>Loading…</p>}
-
+          <QueryStateBoundary
+            state={(inboxLoading ? 'loading' : inboxError ? classifyError(inboxErr) : 'success') as RendererState}
+            onRetry={() => { void refetchInbox() }}
+            columns={[{ widthPercent: 40 }, { widthPercent: 30 }, { widthPercent: 30 }]}
+          >
           {!inboxLoading && filteredTasks.length === 0 && (
             <p style={{ color: '#64748b' }}>No tasks found.</p>
           )}
@@ -220,6 +225,7 @@ export default function TaskInboxPage() {
               </div>
             ))}
           </div>
+          </QueryStateBoundary>
         </div>
       </div>
 

@@ -1,0 +1,48 @@
+{
+  "handoff_id": "wf02-pw13-rnd-ui-20260813-01b-code-design-validator",
+  "run_id": "WF02-pw13-rnd-ui-20260813",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-pw13-rnd-ui-20260813/step-01b-code-design-validator.json",
+  "created_at": "2026-08-13T15:56:39Z",
+  "started_at": "2026-08-13T15:56:39Z",
+  "completed_at": "2026-08-13T15:58:36Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8",
+    "requirement_ids": ["RND-UI-01", "RND-UI-02", "RND-UI-03", "RND-UI-04"],
+    "related_handoff_ids": ["wf02-pw13-rnd-ui-20260813-01-code-designer"],
+    "artifacts_in": [
+      "src/design/rnd-ui-batch1-renderer-state.md",
+      "docs/requirements.yaml"
+    ]
+  },
+  "task": {
+    "description": "WF-02 Step 01b (CODE-DESIGN-VALIDATOR hard gate) for PW-13 Batch 1.\n\nValidate src/design/rnd-ui-batch1-renderer-state.md against:\n(a) Does it cover ALL acceptance criteria for RND-UI-01, RND-UI-02, RND-UI-03, RND-UI-04?\n(b) Does it contain NO implementation code (no function bodies, no JSX, no import statements)?\n(c) Is it specific enough for FRONTEND-DEV to implement without ambiguity?\n(d) Does it specify RendererState union, classifyError() signature, QueryStateBoundary props with exhaustive switch, SkeletonLayout props, FetchError props, PermissionDenied copy?\n(e) Does it list files NOT to change?\n(f) Does it identify which pages need QueryStateBoundary wrapping?\n(g) Does it specify how retry:0 is enforced globally?\n\nReturn PASS if all 7 checks pass.",
+    "acceptance_criteria": [
+      "All 7 checks evaluated",
+      "PASS only if all 7 pass"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "(a) PASS — all acceptance criteria for RND-UI-01, RND-UI-02, RND-UI-03, RND-UI-04 are covered: classifyError mapping (5 HTTP cases), exhaustive switch with never arm, GRD-UI-02 scan patterns (missing-query-state-boundary, status-read-outside-classifier, literal-colour), SkeletonLayout aria-busy and column-width contracts, FetchError role=alert and no-toast recovery, PermissionDenied fixed copy and axe audit, retry:0 static scan. (b) PASS — no function bodies, no JSX, no import statements; type definitions and function signature only; switch arms are pseudocode with arrow notation; lint_design_artefact.py exits 0 with no issues. (c) PASS — all file paths specified, all props interfaces defined, complete HTTP→state mapping table, 19 pages listed with query sources, exact PermissionDenied copy string, accessibility and CSS constraints explicit; only FRONTEND-DEV implementation detail left is per-page widthPercent values (correctly delegated). (d) PASS — RendererState 6-member union specified; classifyError() signature and exhaustive mapping table present; QueryStateBoundary props interface and 6-arm exhaustive switch with never default present; SkeletonLayout props (columns, rowCount) present; FetchError props (onRetry) present; PermissionDenied fixed copy string present. (e) PASS — 'Files NOT to change' table lists 10 entries with explicit reasons covering api/client.ts, types/api.ts, hooks/*.ts, router.tsx, auth/, migrations/, and Zig src/. (f) PASS — 19 page files enumerated with query sources and notes in 'Pages that need QueryStateBoundary wrapping' table. (g) PASS — 'Global retry configuration change' section specifies main.tsx defaultOptions.queries.retry changed from custom function to literal 0; GRD-UI-02 scan enforces no hook inline override; useTaskInbox refetchInterval explicitly preserved.",
+    "artifacts_out": [],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "PASS: ORCH dispatches step-02b-frontend-dev | FAIL: rework CODE-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -4,6 +4,8 @@ import { definitionsApi } from '@/api/definitions'
 import { instancesApi } from '@/api/instances'
 import { tasksApi } from '@/api/tasks'
 import { queryKeys } from '@/api/queryKeys'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 function SkeletonBox(): JSX.Element {
   return (
@@ -21,7 +23,7 @@ function SkeletonBox(): JSX.Element {
 export default function TenantDashboardPage(): JSX.Element {
   const { tenantDisplayName, isUnknown } = useTenantContext()
 
-  const { data: definitions, isLoading: loadingDefs } = useQuery({
+  const { data: definitions, isLoading: loadingDefs, isError: errorDefs, error: defsError, refetch: refetchDefs } = useQuery({
     queryKey: queryKeys.definitions.list({ page_size: 5 }),
     queryFn: () => definitionsApi.list({ page_size: 5 }),
   })
@@ -35,6 +37,8 @@ export default function TenantDashboardPage(): JSX.Element {
     queryKey: queryKeys.tasks.list({ status: 'PENDING', page_size: 1 }),
     queryFn: () => tasksApi.list({ status: 'PENDING', page_size: 1 }),
   })
+
+  const rendererState: RendererState = loadingDefs ? 'loading' : errorDefs ? classifyError(defsError) : 'success'
 
   return (
     <div style={{ padding: '2rem', maxWidth: '900px' }}>
@@ -66,6 +70,11 @@ export default function TenantDashboardPage(): JSX.Element {
         </div>
       )}
 
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void refetchDefs() }}
+        columns={[{ widthPercent: 33 }, { widthPercent: 33 }, { widthPercent: 34 }]}
+      >
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem' }}>
         {/* Recent Definitions */}
         <div
@@ -152,6 +161,7 @@ export default function TenantDashboardPage(): JSX.Element {
           )}
         </div>
       </div>
+      </QueryStateBoundary>
     </div>
   )
 }

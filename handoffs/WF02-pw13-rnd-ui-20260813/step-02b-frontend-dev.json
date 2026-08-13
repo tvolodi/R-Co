@@ -1,0 +1,87 @@
+{
+  "handoff_id": "wf02-pw13-rnd-ui-20260813-02b-frontend-dev",
+  "run_id": "WF02-pw13-rnd-ui-20260813",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "file": "handoffs/WF02-pw13-rnd-ui-20260813/step-02b-frontend-dev.json",
+  "created_at": "2026-08-13T16:00:57Z",
+  "started_at": "2026-08-13T16:00:57Z",
+  "completed_at": "2026-08-13T16:21:02Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8",
+    "requirement_ids": ["RND-UI-01", "RND-UI-02", "RND-UI-03", "RND-UI-04"],
+    "related_handoff_ids": [
+      "wf02-pw13-rnd-ui-20260813-01-code-designer",
+      "wf02-pw13-rnd-ui-20260813-01b-code-design-validator"
+    ],
+    "artifacts_in": [
+      "src/design/rnd-ui-batch1-renderer-state.md",
+      "web/src/"
+    ],
+    "branch_name": "feature/WF02-pw13-rnd-ui-20260813"
+  },
+  "task": {
+    "description": "WF-02 Step 02b (FRONTEND-DEV) for PW-13 Batch 1: RND-UI-01, RND-UI-02, RND-UI-03, RND-UI-04.\n\nYou are on branch feature/WF02-pw13-rnd-ui-20260813. Verify with git branch --show-current.\n\nImplement per src/design/rnd-ui-batch1-renderer-state.md:\n\n1. **web/src/utils/classifyError.ts**: Export RendererState union type and classifyError() function. This must be the ONLY file in web/src/ that reads HTTP status. Mapping: 401/403→'permission-denied', 409→'stale-version', 429+Retry-After header→'rate-limit', everything else→'fetch-failure'. Loading and success states are structural (not from classifyError).\n\n2. **web/src/components/ui/QueryStateBoundary.tsx**: Accept { state: RendererState; children: ReactNode; onRetry?: () => void }. Exhaustive switch with `never` default arm. Renders appropriate sub-component per state: loading→SkeletonLayout, fetch-failure→FetchError(onRetry), permission-denied→PermissionDenied, stale-version→appropriate stale UI (can be a simple message for now), rate-limit→appropriate rate-limit UI (simple message with retry timer for now), success→children.\n\n3. **web/src/components/ui/SkeletonLayout.tsx**: Accept { columns: Array<{widthPercent: number}>; rowCount?: number (default 5) }. The content region (a div or section) must have aria-busy=\"true\" unconditionally (it is always in loading state when rendered). Render rowCount skeleton rows with column widths matching the provided widths.\n\n4. **web/src/components/ui/FetchError.tsx**: Accept { onRetry: () => void }. Root element must have role=\"alert\". Render a retry button bound to onRetry.\n\n5. **web/src/components/ui/PermissionDenied.tsx**: No props. Fixed copy: 'You do not have access to this area. Contact your tenant administrator.' Plus a link to /tasks (Task Inbox). MUST NOT contain HTTP status numbers, problem type URIs, resource UUIDs, or any dynamic backend message.\n\n6. **web/src/main.tsx**: Set defaultOptions.queries.retry to 0 on the QueryClient. Preserve any existing refetchInterval overrides in hooks.\n\n7. **Page components**: For each page under web/src/pages/ that calls useQuery, wrap its query result rendering in <QueryStateBoundary>. Pass the classified error as state (use classifyError on the query error), pass query.refetch as onRetry. Pass appropriate column widths to SkeletonLayout based on the DataTable columns each page uses.\n\nAfter implementation:\n- Run: npm run type-check (in web/) — must exit 0\n- Run: npm run lint (in web/) — must exit 0\n- Run: npm run build (in web/) — must exit 0\n- Commit: git add web/src/ && git commit -m 'feat(frontend): RND-UI-01..04 renderer state contract, QueryStateBoundary, SkeletonLayout, FetchError, PermissionDenied'\n- Push: git push origin feature/WF02-pw13-rnd-ui-20260813",
+    "acceptance_criteria": [
+      "web/src/utils/classifyError.ts created with RendererState union and classifyError()",
+      "web/src/components/ui/QueryStateBoundary.tsx created with exhaustive switch + never default",
+      "web/src/components/ui/SkeletonLayout.tsx created with aria-busy and column widths",
+      "web/src/components/ui/FetchError.tsx created with role=alert and onRetry",
+      "web/src/components/ui/PermissionDenied.tsx created with fixed copy, no data leakage",
+      "web/src/main.tsx updated: QueryClient defaultOptions.queries.retry = 0",
+      "Page components under web/src/pages/ that use useQuery wrapped with QueryStateBoundary",
+      "npm run type-check exits 0",
+      "npm run lint exits 0",
+      "npm run build exits 0",
+      "Changes committed and pushed to feature/WF02-pw13-rnd-ui-20260813"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented RND-UI-01..04 renderer state contract. Created: web/src/utils/classifyError.ts (RendererState union + classifyError()), web/src/components/ui/QueryStateBoundary.tsx (exhaustive switch + never arm), web/src/components/ui/SkeletonLayout.tsx (aria-busy, CSS custom properties only), web/src/components/ui/FetchError.tsx (role=alert), web/src/components/ui/PermissionDenied.tsx (fixed copy, Task Inbox link). Updated: web/src/main.tsx (retry: 0). Updated all 19 pages listed in design to use QueryStateBoundary wrapping primary query regions. Gates: type-check exit 0, lint exit 0, build exit 0, lint_frontend_conventions 159 files OK, lint_test_isolation 160 files OK.",
+    "artifacts_out": [
+      "web/src/utils/classifyError.ts",
+      "web/src/components/ui/QueryStateBoundary.tsx",
+      "web/src/components/ui/SkeletonLayout.tsx",
+      "web/src/components/ui/FetchError.tsx",
+      "web/src/components/ui/PermissionDenied.tsx",
+      "web/src/main.tsx",
+      "web/src/pages/admin/AuditLogPage.tsx",
+      "web/src/pages/admin/GroupsPage.tsx",
+      "web/src/pages/admin/HealthDashboardPage.tsx",
+      "web/src/pages/admin/MetricsPage.tsx",
+      "web/src/pages/admin/services/ServicesPage.tsx",
+      "web/src/pages/admin/tenants/EditTenantPage.tsx",
+      "web/src/pages/admin/tenants/TenantsPage.tsx",
+      "web/src/pages/admin/TokensPage.tsx",
+      "web/src/pages/admin/UsersPage.tsx",
+      "web/src/pages/admin/UserDetailPage.tsx",
+      "web/src/pages/admin/users/UsersPage.tsx",
+      "web/src/pages/dashboard/TenantDashboardPage.tsx",
+      "web/src/pages/definitions/DefinitionListPage.tsx",
+      "web/src/pages/definitions/DefinitionEditorPage.tsx",
+      "web/src/pages/instances/InstanceBoardPage.tsx",
+      "web/src/pages/instances/InstanceDetailPage.tsx",
+      "web/src/pages/tasks/TaskInboxPage.tsx",
+      "web/src/pages/dlq/DlqPage.tsx",
+      "web/src/pages/dlq/WebhooksPage.tsx"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-pw13-rnd-ui-20260813",
+      "commit_sha_list": ["f112ec7e"],
+      "remote_branch": "origin/feature/WF02-pw13-rnd-ui-20260813",
+      "push_status": "PUSHED",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH dispatches step-03-test-designer"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

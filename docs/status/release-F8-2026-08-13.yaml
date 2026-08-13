@@ -1,0 +1,33 @@
+stage: "F8"
+date: "2026-08-13T16:36:03Z"
+run_id: "WF02-pw13-rnd-ui-20260813"
+branch: "feature/WF02-pw13-rnd-ui-20260813"
+decision: "APPROVED"
+gate_results:
+  type_check: "PASS (exit 0)"
+  lint: "PASS (exit 0)"
+  build: "PASS (exit 0)"
+  tests: "PASS (63/63 tests green, 15 test files)"
+  zig_sql_diff: "PASS (no diff in src/ or migrations/)"
+  lint_handoffs: "PASS (exit 0, 0 BLOCKER, 0 MAJOR, 1 MINOR acknowledged)"
+nfr_results:
+  note: "Frontend-only change — no Zig benchmarks required per handoff task definition"
+requirements:
+  - id: RND-UI-01
+    title: "Six-state renderer union and single error classifier"
+    priority: MUST
+    test_coverage: "tests/unit/classifyError.test.ts (7 tests), tests/unit/QueryStateBoundary.test.tsx (7 tests)"
+  - id: RND-UI-02
+    title: "Loading state with skeleton layout"
+    priority: MUST
+    test_coverage: "tests/unit/SkeletonLayout.test.tsx (4 tests)"
+  - id: RND-UI-03
+    title: "Fetch failure state with explicit retry"
+    priority: MUST
+    test_coverage: "tests/unit/FetchError.test.tsx (3 tests)"
+  - id: RND-UI-04
+    title: "Leak-free permission denied surface"
+    priority: MUST
+    test_coverage: "tests/unit/PermissionDenied.test.tsx (5 tests)"
+blocking_issues: []
+approved_requirements: ["RND-UI-01", "RND-UI-02", "RND-UI-03", "RND-UI-04"]

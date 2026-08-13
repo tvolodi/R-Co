@@ -1,0 +1,65 @@
+{
+  "handoff_id": "wf02-pw13-rnd-ui-20260813-03-test-designer",
+  "run_id": "WF02-pw13-rnd-ui-20260813",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-pw13-rnd-ui-20260813/step-03-test-designer.json",
+  "created_at": "2026-08-13T16:23:53Z",
+  "started_at": "2026-08-13T16:23:53Z",
+  "completed_at": "2026-08-13T16:28:10Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8",
+    "requirement_ids": ["RND-UI-01", "RND-UI-02", "RND-UI-03", "RND-UI-04"],
+    "related_handoff_ids": ["wf02-pw13-rnd-ui-20260813-02b-frontend-dev"],
+    "artifacts_in": [
+      "src/design/rnd-ui-batch1-renderer-state.md",
+      "web/src/utils/classifyError.ts",
+      "web/src/components/ui/QueryStateBoundary.tsx",
+      "web/src/components/ui/SkeletonLayout.tsx",
+      "web/src/components/ui/FetchError.tsx",
+      "web/src/components/ui/PermissionDenied.tsx",
+      "web/tests/"
+    ],
+    "branch_name": "feature/WF02-pw13-rnd-ui-20260813"
+  },
+  "task": {
+    "description": "WF-02 Step 03 (TEST-DESIGNER) for PW-13 Batch 1: RND-UI-01, RND-UI-02, RND-UI-03, RND-UI-04.\n\nBranch: feature/WF02-pw13-rnd-ui-20260813. Verify with git branch --show-current.\n\nDesign and write test specifications and test files for all 4 MUST requirements:\n\n**RND-UI-01 — Six-state renderer union and single error classifier:**\n- Unit tests in `web/tests/unit/classifyError.test.ts`:\n  * 401 → permission-denied\n  * 403 → permission-denied  \n  * 409 → stale-version\n  * 429 with Retry-After → rate-limit\n  * 429 without Retry-After → fetch-failure\n  * 5xx → fetch-failure\n  * Network error (no status) → fetch-failure\n- Component tests in `web/tests/unit/QueryStateBoundary.test.tsx`:\n  * never arm is unreachable (TypeScript check via @ts-expect-error)\n  * Each state renders the correct sub-component\n\n**RND-UI-02 — Loading state with skeleton layout:**\n- Component tests in `web/tests/unit/SkeletonLayout.test.tsx`:\n  * aria-busy='true' is present unconditionally\n  * Renders 5 skeleton rows by default\n  * Custom rowCount is respected\n  * Column widths match widthPercent values\n\n**RND-UI-03 — Fetch failure state with explicit retry:**\n- Component tests in `web/tests/unit/FetchError.test.tsx`:\n  * role='alert' is present\n  * onRetry is called when Retry button is clicked\n  * Component renders without crashing\n\n**RND-UI-04 — Leak-free permission denied surface:**\n- Component tests in `web/tests/unit/PermissionDenied.test.tsx`:\n  * Fixed copy text is present exactly\n  * Task Inbox link present\n  * No HTTP status numbers in rendered text\n  * No UUID-shaped strings in rendered text\n  * No numbers matching /40[13]/ in rendered text\n\nWrite the actual test files to web/tests/unit/. Read the implemented components first to write accurate tests.\n\nCommit: git add web/tests/ && git commit -m 'test(frontend): RND-UI-01..04 unit tests — classifyError, QueryStateBoundary, SkeletonLayout, FetchError, PermissionDenied'\ngit push origin feature/WF02-pw13-rnd-ui-20260813",
+    "acceptance_criteria": [
+      "web/tests/unit/classifyError.test.ts covers all 7 HTTP status mappings",
+      "web/tests/unit/QueryStateBoundary.test.tsx covers each state rendering",
+      "web/tests/unit/SkeletonLayout.test.tsx covers aria-busy, rowCount, column widths",
+      "web/tests/unit/FetchError.test.tsx covers role=alert and onRetry callback",
+      "web/tests/unit/PermissionDenied.test.tsx covers fixed copy, no data leakage",
+      "Every MUST acceptance criterion from RND-UI-01..04 has at least one test",
+      "Tests committed and pushed"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "26 unit tests across 5 files covering RND-UI-01 (classifyError 7 cases + QueryStateBoundary 7 cases), RND-UI-02 (SkeletonLayout 4 cases), RND-UI-03 (FetchError 3 cases), RND-UI-04 (PermissionDenied 5 cases). All 26 tests pass. Committed as 6f1b5136 and pushed to origin.",
+    "artifacts_out": [
+      "web/tests/unit/classifyError.test.ts",
+      "web/tests/unit/QueryStateBoundary.test.tsx",
+      "web/tests/unit/SkeletonLayout.test.tsx",
+      "web/tests/unit/FetchError.test.tsx",
+      "web/tests/unit/PermissionDenied.test.tsx"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-pw13-rnd-ui-20260813",
+      "commit_sha_list": ["6f1b5136ae45d00d0b4ebdfd01735f4bf33d2899"],
+      "remote_branch": "origin/feature/WF02-pw13-rnd-ui-20260813",
+      "push_status": "OK",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH dispatches step-03b-test-design-validator (hard gate)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

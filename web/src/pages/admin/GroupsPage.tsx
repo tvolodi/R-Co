@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groupsApi, usersApi } from '@/api/identity'
 import { queryKeys } from '@/api/queryKeys'
 import type { Group, User } from '@/types/api'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 type GroupRow = Group & {
   group_id?: string
@@ -36,13 +38,14 @@ export default function GroupsPage() {
   const [pendingDelete, setPendingDelete] = useState<GroupRow | null>(null)
   const [selectedUserId, setSelectedUserId] = useState('')
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.admin.groups(),
     queryFn: () => groupsApi.list(),
   })
 
   const groups = useMemo(() => (data?.items ?? []) as GroupRow[], [data?.items])
   const activeGroupId = groupId(activeGroup ?? ({} as GroupRow))
+  const rendererState: RendererState = isLoading ? 'loading' : isError ? classifyError(error) : 'success'
 
   const { data: members } = useQuery({
     queryKey: queryKeys.admin.groupMembers(activeGroupId),
@@ -132,8 +135,11 @@ export default function GroupsPage() {
         </div>
       )}
 
-      {isLoading && <p>Loading…</p>}
-
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void refetch() }}
+        columns={[{ widthPercent: 25 }, { widthPercent: 30 }, { widthPercent: 10 }, { widthPercent: 25 }, { widthPercent: 10 }]}
+      >
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
         <thead>
           <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
@@ -243,6 +249,8 @@ export default function GroupsPage() {
           </div>
         </div>
       )}
+
+      </QueryStateBoundary>
 
       {pendingDelete && (
         <div role="dialog" aria-modal="true" aria-label="Delete group" style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, .45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 40 }}>

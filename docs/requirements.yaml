@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-12T17:00:33Z'
+generated_at: '2026-08-13T16:40:33Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -12657,7 +12657,7 @@ requirements:
     title: Six-state renderer union and single error classifier
     stage: F8
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** API-06, narrowing the platform error contract into a closed client-side state union.
 
@@ -12674,14 +12674,15 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:59Z'
+    last_updated: '2026-08-13T16:40:09Z'
     workflow: PW-13
+    released_at: '2026-08-13T16:40:09Z'
   RND-UI-02:
     id: RND-UI-02
     title: Loading state with skeleton layout
     stage: F8
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The `loading` state SHALL render `web/src/components/ui/SkeletonLayout.tsx` with `aria-busy="true"` on the content region and five skeleton rows whose column widths match the column widths the resolved `DataTable` will use. On resolution to `success`, `aria-busy` SHALL be removed and `DataTable` SHALL receive `isLoading={false}`. No frame between navigation and resolution SHALL render an empty content region.
 
@@ -12696,14 +12697,15 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:00Z'
+    last_updated: '2026-08-13T16:40:31Z'
     workflow: PW-13
+    released_at: '2026-08-13T16:40:31Z'
   RND-UI-03:
     id: RND-UI-03
     title: Fetch failure state with explicit retry
     stage: F8
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The `fetch-failure` state SHALL render `web/src/components/ui/FetchError.tsx` with `role="alert"` and a single `onRetry` action bound to the query's `refetch()`. React Query automatic retry SHALL be set to 0 for every query passing through `QueryStateBoundary`, so a retry occurs only on a user action. A recovered read SHALL NOT fire a success toast.
 
@@ -12718,14 +12720,15 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:01Z'
+    last_updated: '2026-08-13T16:40:32Z'
     workflow: PW-13
+    released_at: '2026-08-13T16:40:32Z'
   RND-UI-04:
     id: RND-UI-04
     title: Leak-free permission denied surface
     stage: F8
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** IDN-02, giving role enforcement a client-side surface that discloses nothing about the protected resource.
 
@@ -12742,8 +12745,9 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:02Z'
+    last_updated: '2026-08-13T16:40:33Z'
     workflow: PW-13
+    released_at: '2026-08-13T16:40:33Z'
   RND-UI-05:
     id: RND-UI-05
     title: Rate limit backpressure with retry countdown

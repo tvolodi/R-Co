@@ -14,6 +14,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/auth/AuthContext'
 import { tenantsApi } from '@/api/tenants'
 import { queryKeys } from '@/api/queryKeys'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
@@ -116,14 +118,7 @@ export default function EditTenantPage() {
     return <p style={{ padding: '1.5rem', color: '#dc2626' }}>Invalid tenant slug.</p>
   }
 
-  if (tenantQuery.isLoading) {
-    return <p style={{ padding: '1.5rem' }}>Loading tenant...</p>
-  }
-
-  if (tenantQuery.isError || !tenantQuery.data) {
-    return <p style={{ padding: '1.5rem', color: '#dc2626' }}>Failed to load tenant.</p>
-  }
-
+  const rendererState: RendererState = tenantQuery.isLoading ? 'loading' : tenantQuery.isError ? classifyError(tenantQuery.error) : 'success'
   const original = tenantQuery.data
 
   function setRedirectUri(index: number, value: string) {
@@ -143,6 +138,7 @@ export default function EditTenantPage() {
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
+    if (!original) return
     setErrorBanner(null)
     setWarningBanner(null)
     setSuccessMessage('')
@@ -187,6 +183,13 @@ export default function EditTenantPage() {
       </button>
 
       <h2 style={{ margin: '0 0 1.25rem' }}>Edit Tenant</h2>
+
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void tenantQuery.refetch() }}
+        columns={[{ widthPercent: 30 }, { widthPercent: 70 }]}
+      >
+      {original && (<>
 
       {errorBanner && (
         <div
@@ -349,6 +352,8 @@ export default function EditTenantPage() {
           )}
         </div>
       </form>
+      </>)}
+      </QueryStateBoundary>
     </div>
   )
 }

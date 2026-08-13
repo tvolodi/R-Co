@@ -4,6 +4,8 @@ import { useAuth } from '@/auth/AuthContext'
 import { DeactivateUserDialog } from '@/components/admin/users/DeactivateUserDialog'
 import { useAdminGroups, useAdminRoles, useAdminUser, useDeactivateAdminUser, useUpdateAdminUser } from '@/hooks/useAdminUsers'
 import type { User } from '@/types/api'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 function userId(user: User): string {
   return user.user_id ?? user.id ?? ''
@@ -65,9 +67,11 @@ export default function UserDetailPage() {
         <h2 style={{ margin: 0 }}>User details</h2>
       </div>
 
-      {userQuery.isLoading && <p>Loading...</p>}
-      {userQuery.isError && <p role="alert">Failed to load user.</p>}
-
+      <QueryStateBoundary
+        state={(userQuery.isLoading ? 'loading' : userQuery.isError ? classifyError(userQuery.error) : 'success') as RendererState}
+        onRetry={() => { void userQuery.refetch() }}
+        columns={[{ widthPercent: 50 }, { widthPercent: 50 }]}
+      >
       {userQuery.data && (
         <form
           data-testid="admin-user-detail-form"
@@ -175,6 +179,7 @@ export default function UserDetailPage() {
           </div>
         </form>
       )}
+      </QueryStateBoundary>
 
       <DeactivateUserDialog
         open={showDeactivate}

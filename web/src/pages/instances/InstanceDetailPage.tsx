@@ -17,6 +17,8 @@ import { TimelineFeed } from '@/components/instances/TimelineFeed'
 import { HistoryScrubber } from '@/components/instances/HistoryScrubber'
 import { ProcessGraphWithTokens } from '@/components/instances/ProcessGraphWithTokens'
 import { CancelInstanceDialog } from '@/components/instances/CancelInstanceDialog'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: '#2563eb',
@@ -79,7 +81,7 @@ export default function InstanceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { session } = useAuth()
 
-  const { data: instance, isLoading } = useInstance(id!)
+  const { data: instance, isLoading, isError, error, refetch } = useInstance(id!)
   const { data: definition } = useDefinition(instance?.definition_id ?? '')
   const { data: pendingTasks } = useTasks({ status: 'PENDING', instance_id: id })
   const cancel = useCancelInstance()
@@ -150,11 +152,16 @@ export default function InstanceDetailPage() {
     setShowCancelDialog(false)
   }
 
-  if (isLoading) return <p style={{ padding: '1.5rem' }}>Loading…</p>
-  if (!instance) return <p style={{ padding: '1.5rem', color: '#dc2626' }}>Instance not found.</p>
+  const rendererState: RendererState = isLoading ? 'loading' : isError ? classifyError(error) : 'success'
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: '900px' }}>
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void refetch() }}
+        columns={[{ widthPercent: 20 }, { widthPercent: 20 }, { widthPercent: 15 }, { widthPercent: 15 }, { widthPercent: 15 }, { widthPercent: 15 }]}
+      >
+      {instance && (<>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', marginBottom: '1.25rem' }}>
         <h2 style={{ margin: 0 }}>Instance</h2>
         <code style={{ fontSize: '.8rem', color: '#64748b' }}>{instance.instance_id}</code>
@@ -389,6 +396,8 @@ export default function InstanceDetailPage() {
         onCancel={() => setShowCancelDialog(false)}
         isPending={cancel.isPending}
       />
+      </>)}
+      </QueryStateBoundary>
     </div>
   )
 }

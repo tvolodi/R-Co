@@ -5,6 +5,8 @@ import { dlqApi } from '@/api/dlq'
 import { queryKeys } from '@/api/queryKeys'
 import { useAuth } from '@/auth/AuthContext'
 import type { DlqEntry } from '@/types/api'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 const STATUS_COLOR: Record<string, string> = {
   pending:   '#f59e0b',
@@ -128,7 +130,7 @@ export default function DlqPage() {
   const canOperate = session?.roles.some((role) => OPERATE_ROLES.includes(role)) ?? false
   const cursor = cursorStack.length > 0 ? cursorStack[cursorStack.length - 1] : undefined
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.dlq.list({ search, status: statusFilter, source_type: sourceTypeFilter, cursor }),
     queryFn: () => dlqApi.list({
       search: search || undefined,
@@ -258,7 +260,11 @@ export default function DlqPage() {
         </button>
       </div>
 
-      {isLoading && <p>Loading…</p>}
+      <QueryStateBoundary
+        state={(isLoading ? 'loading' : isError ? classifyError(error) : 'success') as RendererState}
+        onRetry={() => { void refetch() }}
+        columns={[{ widthPercent: 20 }, { widthPercent: 40 }, { widthPercent: 10 }, { widthPercent: 15 }, { widthPercent: 15 }]}
+      >
       {actionError && <p style={{ color: '#dc2626' }}>{actionError}</p>}
 
       {rows.length === 0 && (
@@ -390,6 +396,7 @@ export default function DlqPage() {
           Next
         </button>
       </div>
+      </QueryStateBoundary>
 
       {selected && (
         <section data-testid="dlq-detail-panel" style={{ marginTop: '1rem', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '1rem', background: '#fff' }}>

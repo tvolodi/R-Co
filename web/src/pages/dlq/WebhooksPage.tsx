@@ -5,6 +5,8 @@ import { webhooksApi } from '@/api/dlq'
 import { queryKeys } from '@/api/queryKeys'
 import { WebhookSubscriptionDetailPanel } from '@/components/webhooks/WebhookSubscriptionDetailPanel'
 import type { WebhookSubscription } from '@/types/api'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 type CreateFormState = {
   targetUrl: string
@@ -49,7 +51,7 @@ export default function WebhooksPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [oneTimeSecret, setOneTimeSecret] = useState<string | null>(null)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.webhooks.list(),
     queryFn: () => webhooksApi.list(),
   })
@@ -249,8 +251,11 @@ export default function WebhooksPage() {
         </div>
       )}
 
-      {isLoading && <p>Loading…</p>}
-
+      <QueryStateBoundary
+        state={(isLoading ? 'loading' : isError ? classifyError(error) : 'success') as RendererState}
+        onRetry={() => { void refetch() }}
+        columns={[{ widthPercent: 35 }, { widthPercent: 25 }, { widthPercent: 10 }, { widthPercent: 15 }, { widthPercent: 15 }]}
+      >
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.875rem' }}>
         <thead>
           <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
@@ -304,6 +309,7 @@ export default function WebhooksPage() {
           })}
         </tbody>
       </table>
+      </QueryStateBoundary>
 
       {selectedSubscription ? (
         <WebhookSubscriptionDetailPanel

@@ -4,6 +4,8 @@ import { usersApi, rolesApi } from '@/api/identity'
 import { queryKeys } from '@/api/queryKeys'
 import type { User } from '@/types/api'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 function roleList(user: User): string[] {
   return Array.isArray(user.roles) ? user.roles : []
@@ -38,7 +40,7 @@ export default function UsersPage() {
 
   const usersQueryKey = queryKeys.admin.users({ search: searchApplied || undefined })
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: usersQueryKey,
     queryFn: () => usersApi.list({ search: searchApplied || undefined }),
   })
@@ -313,8 +315,11 @@ export default function UsersPage() {
         </div>
       )}
 
-      {isLoading && <p>Loading…</p>}
-
+      <QueryStateBoundary
+        state={isLoading ? 'loading' : isError ? classifyError(queryError) : 'success' as RendererState}
+        onRetry={() => { void refetch() }}
+        columns={[{ widthPercent: 20 }, { widthPercent: 25 }, { widthPercent: 25 }, { widthPercent: 15 }, { widthPercent: 10 }, { widthPercent: 5 }]}
+      >
       <table data-testid="admin-users-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
         <thead>
           <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
@@ -343,6 +348,7 @@ export default function UsersPage() {
           ))}
         </tbody>
       </table>
+      </QueryStateBoundary>
 
     </div>
   )

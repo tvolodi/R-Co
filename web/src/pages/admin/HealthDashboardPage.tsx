@@ -3,6 +3,8 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { healthApi, type AdminHealthSnapshot } from '@/api/health'
 import { queryKeys } from '@/api/queryKeys'
 import { useAuth } from '@/auth/AuthContext'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 const BADGE: Record<string, string> = { ok: '#16a34a', degraded: '#f59e0b', error: '#dc2626' }
 
@@ -17,12 +19,13 @@ export function useAdminHealthSnapshot(): UseQueryResult<AdminHealthSnapshot> {
 export default function HealthDashboardPage() {
   const { session } = useAuth()
   const isPlatformAdmin = Boolean(session?.roles.includes('PLATFORM_ADMIN'))
-  const { data, isLoading, isFetching, dataUpdatedAt, error, refetch } = useAdminHealthSnapshot()
+  const { data, isLoading, isError, isFetching, dataUpdatedAt, error, refetch } = useAdminHealthSnapshot()
 
   if (!isPlatformAdmin) {
     return <Navigate to="/instances" replace />
   }
 
+  const rendererState: RendererState = isLoading ? 'loading' : isError ? classifyError(error) : 'success'
   const isDegraded = data?.status === 'degraded' || data?.status === 'error'
 
   return (
@@ -45,14 +48,11 @@ export default function HealthDashboardPage() {
         </button>
       </div>
 
-      {isLoading && <p>Loading…</p>}
-
-      {!isLoading && error && (
-        <div style={{ marginBottom: '1rem', padding: '.75rem .9rem', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fff1f2', color: '#9f1239' }}>
-          Unable to refresh readiness snapshot. Showing the last known data.
-        </div>
-      )}
-
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void refetch() }}
+        columns={[{ widthPercent: 50 }, { widthPercent: 50 }]}
+      >
       {isDegraded && (
         <div style={{ marginBottom: '1rem', padding: '.75rem .9rem', borderRadius: '6px', border: '1px solid #fdba74', background: '#fff7ed', color: '#9a3412' }}>
           Platform is not fully ready. Review subsystem details below.
@@ -105,6 +105,7 @@ export default function HealthDashboardPage() {
           </div>
         </>
       )}
+      </QueryStateBoundary>
     </div>
   )
 }

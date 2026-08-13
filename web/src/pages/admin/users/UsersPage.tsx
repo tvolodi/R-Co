@@ -4,6 +4,8 @@ import { useAuth } from '@/auth/AuthContext'
 import { CreateUserDialog } from '@/components/admin/users/CreateUserDialog'
 import { useAdminUsers, useAdminRoles, useCreateAdminUser, type AdminUserFilters } from '@/hooks/useAdminUsers'
 import type { User } from '@/types/api'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 function userId(user: User): string {
     return user.user_id ?? user.id ?? ''
@@ -112,9 +114,11 @@ export default function UsersPage() {
                 <button type="submit" style={{ alignSelf: 'end', padding: '.45rem .8rem' }}>Apply</button>
             </form>
 
-            {usersQuery.isLoading && <p>Loading...</p>}
-            {usersQuery.isError && <p role="alert">Failed to load users.</p>}
-
+            <QueryStateBoundary
+              state={(usersQuery.isLoading ? 'loading' : usersQuery.isError ? classifyError(usersQuery.error) : 'success') as RendererState}
+              onRetry={() => { void usersQuery.refetch() }}
+              columns={[{ widthPercent: 15 }, { widthPercent: 20 }, { widthPercent: 20 }, { widthPercent: 15 }, { widthPercent: 10 }, { widthPercent: 12 }, { widthPercent: 8 }]}
+            >
             <table style={{ width: '100%', borderCollapse: 'collapse' }} data-testid="admin-users-table">
                 <thead>
                     <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
@@ -153,6 +157,7 @@ export default function UsersPage() {
                     <button type="button" onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}>Next</button>
                 )}
             </div>
+            </QueryStateBoundary>
 
             <CreateUserDialog
                 open={showCreate}

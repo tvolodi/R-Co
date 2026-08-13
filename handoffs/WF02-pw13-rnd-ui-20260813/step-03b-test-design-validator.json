@@ -1,0 +1,51 @@
+{
+  "handoff_id": "wf02-pw13-rnd-ui-20260813-03b-test-design-validator",
+  "run_id": "WF02-pw13-rnd-ui-20260813",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-pw13-rnd-ui-20260813/step-03b-test-design-validator.json",
+  "created_at": "2026-08-13T16:28:40Z",
+  "started_at": "2026-08-13T16:28:40Z",
+  "completed_at": "2026-08-13T16:31:54Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8",
+    "requirement_ids": ["RND-UI-01", "RND-UI-02", "RND-UI-03", "RND-UI-04"],
+    "related_handoff_ids": ["wf02-pw13-rnd-ui-20260813-03-test-designer"],
+    "artifacts_in": [
+      "web/tests/unit/classifyError.test.ts",
+      "web/tests/unit/QueryStateBoundary.test.tsx",
+      "web/tests/unit/SkeletonLayout.test.tsx",
+      "web/tests/unit/FetchError.test.tsx",
+      "web/tests/unit/PermissionDenied.test.tsx"
+    ]
+  },
+  "task": {
+    "description": "WF-02 Step 03b (TEST-DESIGN-VALIDATOR hard gate) for PW-13 Batch 1.\n\nValidate the 5 test files:\n(a) Every MUST acceptance criterion from RND-UI-01..04 has at least one runnable test\n(b) No SkipTest or .todo on any test for MUST requirements\n(c) Tests are self-sufficient (no shared mutable state between tests)\n(d) classifyError.test.ts covers all 7 HTTP status cases including the 429 edge (with/without Retry-After)\n(e) PermissionDenied.test.tsx verifies no HTTP status, no UUID, no backend message in rendered text\n(f) Tests are wired into the test run (can be discovered by the test runner)\n\nReturn PASS if all 6 checks pass.",
+    "acceptance_criteria": [
+      "All 6 checks evaluated",
+      "PASS only if all 6 pass"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 6 checks PASS for RND-UI-01..04 (PW-13 Batch 1). (a) Every MUST requirement has at least one implemented runnable test: classifyError.test.ts covers RND-UI-01 classification logic (TC-CE-01..07), QueryStateBoundary.test.tsx covers RND-UI-01 state rendering and exhaustive union (TC-QSB-00..06), SkeletonLayout.test.tsx covers RND-UI-02 (TC-SK-01..04), FetchError.test.tsx covers RND-UI-03 (TC-FE-01..03), PermissionDenied.test.tsx covers RND-UI-04 (TC-PD-01..05). (b) No skip, no .todo markers in any test block. (c) All tests use afterEach(cleanup)/vi.clearAllMocks(); no shared mutable state across test blocks. (d) classifyError.test.ts covers all 7 cases: 401, 403, 409, 429+retryAfter (rate-limit), 429-no-retryAfter (fetch-failure), 500, network error. (e) PermissionDenied.test.tsx: TC-PD-03 asserts no HTTP status numbers, TC-PD-04 asserts no UUID-shaped strings, TC-PD-05 asserts no /40[13]/ match, TC-PD-01 verifies exact fixed copy (implicit no-backend-message). (f) All 5 files match vitest default discovery pattern (*.test.{ts,tsx}); the npm test command excludes only tests/e2e/**, not tests/unit/**.",
+    "artifacts_out": [],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "PASS: ORCH dispatches step-04-test-runner | FAIL: rework TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

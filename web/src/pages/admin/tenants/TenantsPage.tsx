@@ -7,6 +7,8 @@ import { useAuth } from '@/auth/AuthContext'
 import { tenantsApi } from '@/api/tenants'
 import { queryKeys } from '@/api/queryKeys'
 import type { ApiError } from '@/types/api'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 /**
  * TenantsPage
@@ -60,6 +62,7 @@ export default function TenantsPage() {
   const total = data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1
+  const rendererState: RendererState = listQuery.isLoading ? 'loading' : listQuery.isError ? classifyError(listQuery.error) : 'success'
 
   function handleSearchChange(value: string) {
     setSearch(value)
@@ -122,10 +125,11 @@ export default function TenantsPage() {
         />
       </form>
 
-      {listQuery.isLoading && <p>Loading...</p>}
-      {listQuery.isError && (
-        <p style={{ color: '#dc2626' }}>Failed to load tenants.</p>
-      )}
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void listQuery.refetch() }}
+        columns={[{ widthPercent: 15 }, { widthPercent: 30 }, { widthPercent: 15 }, { widthPercent: 10 }, { widthPercent: 15 }, { widthPercent: 15 }]}
+      >
       {actionError && (
         <div
           role="alert"
@@ -323,6 +327,7 @@ export default function TenantsPage() {
           )}
         </>
       )}
+      </QueryStateBoundary>
 
       {confirmState && (
         <div
