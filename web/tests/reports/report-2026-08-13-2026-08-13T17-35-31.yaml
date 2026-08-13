@@ -1,0 +1,10 @@
+runId: 2026-08-13T17-35-31
+date: '2026-08-13'
+evaluatedPatterns:
+  - msw-import
+  - http-mock-adapter
+  - literal-colour
+violations:
+  - file: web/dist/assets/index-CdSbxnAE.js
+    line: 0
+    patternName: literal-colour

@@ -1,0 +1,113 @@
+runId: 2026-08-13T17-32-05-378Z
+date: '2026-08-13'
+evaluatedPatterns:
+  - msw-import
+  - http-mock-adapter
+  - raw-fetch-outside-client
+  - literal-colour
+  - native-confirm
+  - tenant-slug-in-source
+  - inline-query-key
+  - inline-stale-time
+  - missing-query-state-boundary
+  - test-only-or-skip
+violations:
+  - file: web/src/components/canvas/ConditionDialog.tsx
+    line: 82
+    patternName: literal-colour
+  - file: web/src/components/canvas/ProcessCanvas.tsx
+    line: 504
+    patternName: literal-colour
+  - file: web/src/components/instances/CancelInstanceDialog.tsx
+    line: 97
+    patternName: literal-colour
+  - file: web/src/components/instances/HistoryScrubber.tsx
+    line: 207
+    patternName: literal-colour
+  - file: web/src/components/instances/ProcessGraphWithTokens.tsx
+    line: 145
+    patternName: literal-colour
+  - file: web/src/components/webhooks/WebhookSubscriptionDetailPanel.tsx
+    line: 95
+    patternName: literal-colour
+  - file: web/src/components/ui/ConfirmPromoteModal.tsx
+    line: 34
+    patternName: literal-colour
+  - file: web/src/pages/dashboard/TenantDashboardPage.tsx
+    line: 87
+    patternName: literal-colour
+  - file: web/src/pages/dashboard/TenantDashboardPage.tsx
+    line: 26
+    patternName: missing-query-state-boundary
+  - file: web/src/pages/admin/AuditLogPage.tsx
+    line: 23
+    patternName: missing-query-state-boundary
+  - file: web/src/pages/admin/GroupsPage.tsx
+    line: 41
+    patternName: missing-query-state-boundary
+  - file: web/src/pages/admin/HealthDashboardPage.tsx
+    line: 12
+    patternName: missing-query-state-boundary
+  - file: web/src/pages/admin/MetricsPage.tsx
+    line: 10
+    patternName: missing-query-state-boundary
+  - file: web/src/pages/admin/TokensPage.tsx
+    line: 48
+    patternName: missing-query-state-boundary
+  - file: web/src/pages/admin/UsersPage.tsx
+    line: 43
+    patternName: missing-query-state-boundary
+  - file: web/src/components/layout/ErrorBoundary.tsx
+    line: 69
+    patternName: literal-colour
+  - file: web/src/pages/dlq/DlqPage.tsx
+    line: 133
+    patternName: missing-query-state-boundary
+  - file: web/src/pages/dlq/WebhooksPage.tsx
+    line: 54
+    patternName: missing-query-state-boundary
+  - file: web/src/pages/instances/InstanceBoardPage.tsx
+    line: 405
+    patternName: literal-colour
+  - file: web/src/pages/instances/InstanceDetailPage.tsx
+    line: 68
+    patternName: literal-colour
+  - file: web/src/pages/definitions/DefinitionEditorPage.tsx
+    line: 721
+    patternName: literal-colour
+  - file: web/src/pages/definitions/DefinitionListPage.tsx
+    line: 339
+    patternName: literal-colour
+  - file: web/src/components/canvas/nodes/EndNode.tsx
+    line: 18
+    patternName: literal-colour
+  - file: web/src/components/canvas/nodes/ExclusiveGatewayNode.tsx
+    line: 30
+    patternName: literal-colour
+  - file: web/src/components/canvas/nodes/HumanTaskNode.tsx
+    line: 19
+    patternName: literal-colour
+  - file: web/src/components/canvas/nodes/ParallelGatewayNode.tsx
+    line: 29
+    patternName: literal-colour
+  - file: web/src/components/canvas/nodes/ServiceTaskNode.tsx
+    line: 21
+    patternName: literal-colour
+  - file: web/src/components/canvas/nodes/StartNode.tsx
+    line: 17
+    patternName: literal-colour
+  - file: web/src/components/canvas/nodes/SubProcessNode.tsx
+    line: 21
+    patternName: literal-colour
+  - file: web/src/components/canvas/nodes/TimerNode.tsx
+    line: 18
+    patternName: literal-colour
+  - file: web/src/pages/admin/services/ServicesPage.tsx
+    line: 32
+    patternName: missing-query-state-boundary
+  - file: web/src/pages/admin/tenants/EditTenantPage.tsx
+    line: 71
+    patternName: missing-query-state-boundary
+  - file: web/src/pages/admin/tenants/TenantsPage.tsx
+    line: 36
+    patternName: missing-query-state-boundary

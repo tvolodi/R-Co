@@ -1,0 +1,4 @@
+const { data } = useQuery({
+  queryKey: ['tasks', 'list', filters],
+  queryFn: fetchTasks,
+})

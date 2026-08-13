@@ -1,0 +1,6 @@
+import { useQuery } from '@tanstack/react-query'
+
+export function TaskList() {
+  const { data } = useQuery({ queryKey: ['tasks'], queryFn: fetchTasks })
+  return <ul>{data?.map(t => <li key={t.id}>{t.name}</li>)}</ul>
+}

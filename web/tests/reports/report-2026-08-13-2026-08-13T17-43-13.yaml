@@ -1,0 +1,14 @@
+runId: 2026-08-13T17-43-13
+date: '2026-08-13'
+evaluatedPatterns:
+  - msw-import
+  - http-mock-adapter
+  - raw-fetch-outside-client
+  - literal-colour
+  - native-confirm
+  - tenant-slug-in-source
+  - inline-query-key
+  - inline-stale-time
+  - missing-query-state-boundary
+  - test-only-or-skip
+violations: []

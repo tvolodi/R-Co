@@ -1,0 +1,7 @@
+it('fetches tasks correctly', () => {
+  expect(tasks).toHaveLength(3)
+})
+
+test('renders task list', () => {
+  expect(screen.getByRole('list')).toBeInTheDocument()
+})
