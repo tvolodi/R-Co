@@ -1,0 +1,50 @@
+{
+  "run_id": "WF03-GH767-20260813",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "handoff_id": "WF03-GH767-20260813/step-07-doc-updater",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T19:27:00Z",
+  "started_at": "2026-08-13T19:27:00Z",
+  "completed_at": "2026-08-13T19:27:19Z",
+  "task": {
+    "type": "doc-update",
+    "title": "Step 07: DOC-UPDATER -- CHANGELOG, ISS-0701 RESOLVED via fix commit 2da073a4, issue_index bump",
+    "description": "Per the WF03-GH765-20260813 pattern: update CHANGELOG.md, mark ISS-0701 RESOLVED with resolution_commit=2da073a42d4d9d03c713b07dcc0b5dbe977d0f58, update docs/issues/issue_index.json, append orchestrator.log, bump registry.json.",
+    "context": {
+      "gh_issue": 767,
+      "iss_id": "ISS-0701",
+      "iss_path": "docs/issues/ISS-0701.json",
+      "fix_commit": "2da073a42d4d9d03c713b07dcc0b5dbe977d0f58",
+      "branch": "feature/WF03-GH767-20260813",
+      "branch_base_sha": "dc0b6033",
+      "regression_report": "tests/reports/WF03-GH767-regression.md",
+      "diagnosis_report": "tests/reports/WF03-GH767-diagnosis.md",
+      "pattern_reference": "WF03-GH765-20260813 (PR #778) -- same stale-evidence duplicate of GH-763 playbook"
+    },
+    "changelog_entry": "## [Unreleased] -- 2026-08-13\n\n### env01_test TC-ENV-01-03 fixed -- GH-767/ISS-0701 (RESOLVED)\n\n- **fix(tests): GH-767/ISS-0701 env01_test TC-ENV-01-03 -- relax tenant_type invariant check to exclude the `slug='default'` row.** The default tenant fixture (commit `a2eea7a1`) intentionally has `tenant_type='test'` and a non-null `production_tenant_id` to prevent ISS-0112 drift; the test must allow that row. Test-integration-env now passes 36/36 (was 35/36). See `tests/reports/WF03-GH767-diagnosis.md`. Commit `2da073a4` on `feature/WF03-GH767-20260813`.",
+    "verification": {
+      "changelog_updated": "DONE",
+      "iss_0701_status": "RESOLVED",
+      "iss_0701_resolution_commit": "2da073a42d4d9d03c713b07dcc0b5dbe977d0f58",
+      "issue_index_updated": "DONE",
+      "orchestrator_log_appended": "DONE",
+      "registry_bumped": "DONE",
+      "lint_handoffs_clean": "PENDING"
+    }
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF03-GH767-20260813 step-07 DOC-UPDATER: (1) Appended CHANGELOG.md entry under [Unreleased] 2026-08-13 for env01_test TC-ENV-01-03 fixed (GH-767/ISS-0701 RESOLVED) -- relax tenant_type invariant check to exclude slug='default' (fix commit 2da073a4). (2) Updated docs/issues/ISS-0701.json: status OPEN -> RESOLVED, resolution_commit=2da073a4, resolved_at=2026-08-13T19:27:19Z, resolved_by=DOC-UPDATER (WF03-GH767-20260813 step-07), added handoff_history entry. (3) Updated docs/issues/issue_index.json: ISS-0701 entry now status=RESOLVED, resolved_at=2026-08-13T19:27:19Z, resolution_commit=2da073a4; last_updated bumped to 2026-08-13T19:27:19Z; next_issue_id remains 702. (4) Appended orchestrator.log line for step-07 COMPLETED. (5) Bumped handoffs/registry.json: added entry for step-07-doc-updater (status=COMPLETED, started_at=2026-08-13T19:27:00Z, completed_at=2026-08-13T19:27:19Z, result=PASS); last_updated=2026-08-13T19:27:19Z. No push performed (Step Final BACKEND-DEV owns the push).",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0701.json",
+      "docs/issues/issue_index.json",
+      "handoffs/orchestrator.log",
+      "handoffs/registry.json",
+      "handoffs/WF03-GH767-20260813/step-07-doc-updater.json"
+    ],
+    "issues": []
+  }
+}

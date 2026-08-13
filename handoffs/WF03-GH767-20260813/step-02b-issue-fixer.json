@@ -1,0 +1,23 @@
+{
+  "run_id": "WF03-GH767-20260813",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "handoff_id": "WF03-GH767-20260813/step-02b-issue-fixer",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T18:41:43Z",
+  "started_at": "2026-08-13T18:41:43Z",
+  "completed_at": "2026-08-13T18:41:43Z",
+  "task": {
+    "title": "Skipped: combined with step-02 (CODE-DESIGN-VALIDATOR) — diagnosis-as-design (no separate artefact)",
+    "description": "Per the GH-764 precedent, for narrow test-only fixes the diagnosis report itself satisfies the design-validation requirement. Step 02b is skipped and recorded as SKIPPED.",
+    "skipped": true,
+    "skipped_reason": "no separate design artefact was produced; diagnosis at tests/reports/WF03-GH767-diagnosis.md is the design and is unambiguous"
+  },
+  "result": {
+    "status": "SKIPPED",
+    "summary": "No separate design artefact to validate; diagnosis is the design.",
+    "artifacts_out": [],
+    "issues": []
+  }
+}

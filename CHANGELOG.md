@@ -4,6 +4,10 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-13
 
+### env01_test TC-ENV-01-03 fixed — GH-767/ISS-0701 (RESOLVED)
+
+- **fix(tests): GH-767/ISS-0701 env01_test TC-ENV-01-03 — relax tenant_type invariant check to exclude the `slug='default'` row.** The default tenant fixture (commit `a2eea7a1`) intentionally has `tenant_type='test'` and a non-null `production_tenant_id` to prevent ISS-0112 drift; the test must allow that row. Test-integration-env now passes 36/36 (was 35/36). See `tests/reports/WF03-GH767-diagnosis.md`. Commit `2da073a4` on `feature/WF03-GH767-20260813`.
+
 ### iss205 webhook_outbox test fixed — GH-765/ISS-0700 (RESOLVED)
 
 - **iss205 webhook_outbox test fixed — GH-765/ISS-0700 (RESOLVED) — rehomed to fix already on main in PR #771 (migration 1155 restores webhook_deliveries columns dropped by PAR-01). All 3 tests (TC1/TC2/TC3) pass on clean DB.** Diagnostic run `WF03-GH765-20260813` (ISS-0700) registered after WF03-GH764-20260813 closed GH-764 (PR #776 merged at 93bfeb97) per the user 'resolve issues in loop' directive. The `PoolError.QueryFailed` symptom reported in GH-765 was a snapshot of the 2h25m window between GH-763 reopening (09:32 UTC) and PR #771 merging (11:57 UTC), which restored the `webhook_deliveries` columns PAR-01's migration 1147 had dropped. The fix landed on `main` as commit `eec9edc3` (PR #771, 2026-08-13 11:57 UTC), before the diagnostic run started; no new fix required. Verified on the current `main` HEAD `93bfeb97`: `zig build test-integration-iss205` exits 0 (all 3 tests pass). Closing GH-765 as duplicate of GH-763/ISS-0689.

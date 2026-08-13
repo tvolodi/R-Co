@@ -1,0 +1,48 @@
+{
+  "run_id": "WF03-GH767-20260813",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "handoff_id": "WF03-GH767-20260813/step-03-backend-dev",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T18:42:34Z",
+  "started_at": null,
+  "completed_at": "2026-08-13T18:52:45Z",
+  "task": {
+    "type": "fix-implementation",
+    "title": "Step 03: BACKEND-DEV — apply fix to env01_test.zig WHERE clause",
+    "description": "Apply the fix for GH-767/ISS-0701: relax the WHERE clause in tests/integration/env01_test.zig around line 280-285 to also exclude slug='default' (the harness fixture), and fix the parenthesization. Verify with zig build test-integration-env (the right step that runs env01_test.zig, NOT test-integration-env01-tt which runs a different file). Commit the fix on the branch.",
+    "context": {
+      "gh_issue": 767,
+      "iss_id": "ISS-0701",
+      "diagnosis_report": "tests/reports/WF03-GH767-diagnosis.md",
+      "test_file": "tests/integration/env01_test.zig",
+      "test_step": "test-integration-env",
+      "non_target_step": "test-integration-env01-tt (runs env01_tenant_type_field_test.zig, NOT env01_test.zig — does NOT include TC-ENV-01-03)",
+      "branch": "feature/WF03-GH767-20260813",
+      "from_main_sha": "dc0b6033",
+      "forbidden_fix_variants": [
+        "Revert a2eea7a1 (would re-introduce ISS-0112 drift)"
+      ],
+      "required_fix": "Relax WHERE clause to also exclude slug='default' AND fix parenthesisation"
+    },
+    "verification": {
+      "fix_applied": true,
+      "test_pass_count": 36,
+      "test_pass_detail": "All 36/36 tests passed under zig build test-integration-env (including TC-ENV-01-03 OK).",
+      "fix_commit": "2da073a42d4d9d03c713b07dcc0b5dbe977d0f58",
+      "branch_clean": true,
+      "diff_summary": "tests/integration/env01_test.zig: 9 insertions(+), 3 deletions(-)"
+    }
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed tests/integration/env01_test.zig TC-ENV-01-03 WHERE clause: wrapped (tenant_type != 'production' OR production_tenant_id IS NOT NULL) in parens (fixed parenthesization / AND-precedence bug) and added AND slug != 'default' to exclude the ISS-0112 harness fixture. Verified via zig build test-integration-env: all 36 tests passed (including TC-ENV-01-03, env01_tt, env02-05). Commit 2da073a4 on feature/WF03-GH767-20260813.",
+    "artifacts_out": [
+      "tests/integration/env01_test.zig",
+      "handoffs/WF03-GH767-20260813/step-03-backend-dev.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER / ORCH for next workflow step"
+  }
+}
