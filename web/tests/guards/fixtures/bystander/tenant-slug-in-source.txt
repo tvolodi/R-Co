@@ -1,0 +1,3 @@
+// Tenant slug resolved from configuration or context, never hard-coded
+const tenantSlug = config.tenantSlug
+const apiUrl = `/api/tenants/${tenantSlug}/config`

@@ -1,0 +1,72 @@
+{
+  "handoff_id": "wf02-grd-ui-batch19-20260813-02b-frontend-dev",
+  "run_id": "WF02-grd-ui-batch19-20260813",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "file": "handoffs/WF02-grd-ui-batch19-20260813/step-02b-frontend-dev.json",
+  "created_at": "2026-08-13T17:14:33Z",
+  "started_at": "2026-08-13T17:14:33Z",
+  "completed_at": "2026-08-13T17:45:23Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8",
+    "requirement_ids": ["GRD-UI-02", "GRD-UI-03", "GRD-UI-04", "GRD-UI-05"],
+    "related_handoff_ids": ["wf02-grd-ui-batch19-20260813-01b-code-design-validator"],
+    "artifacts_in": ["src/design/grd-ui-batch19-guard-scans.md", "web/src/", "web/tests/"],
+    "branch_name": "feature/WF02-grd-ui-batch19-20260813"
+  },
+  "task": {
+    "description": "WF-02 Step 02b (FRONTEND-DEV) for GRD-UI Batch 19.\n\nBranch: feature/WF02-grd-ui-batch19-20260813. Verify with git branch --show-current.\n\nImplement per src/design/grd-ui-batch19-guard-scans.md:\n\n1. **web/tests/guards/forbidlist.ts** (GRD-UI-01 prerequisite): Define `GuardPattern` interface and `PATTERNS` array with the initial patterns specified in the design\n\n2. **web/tests/guards/reporter.ts** (GRD-UI-05): Implement `writeViolations()` + `assertRedacted()`. Violations are `{ file, line, patternName }` only — NO matched text. Write YAML to tests/reports/guard-report-<date>-<runId>.yaml\n\n3. **web/tests/guards/fixtures/**: Create offender and bystander fixture files for each pattern (at minimum for the patterns defined in PATTERNS)\n\n4. **web/tests/guards/meta-control.spec.ts** (GRD-UI-04): Test that each pattern matches its offender fixture and does NOT match its bystander fixture\n\n5. **web/tests/guards/source-scan.spec.ts** (GRD-UI-02): Walk web/src/**/*.{ts,tsx,css}, apply source-applicable patterns, report violations. Must run without network access and complete within 30s\n\n6. **web/tests/guards/bundle-scan.spec.ts** (GRD-UI-03): Run real vite build, scan web/dist/assets/*.js. Fail if no assets produced. Must complete within 180s\n\n7. **web/package.json**: Add `\"guards\"` script running vitest for the guard suite in order: meta-control → source-scan → bundle-scan\n\nAfter implementation:\n- npm run type-check (web/) — exit 0\n- npm run lint (web/) — exit 0  \n- npm run guards (web/) — exit 0 (meta-control and source-scan must pass; bundle-scan may take time but must exit 0)\n- Commit: git add web/ && git commit -m 'feat(frontend): GRD-UI-01/02/03/04/05 guard scan infrastructure, PATTERNS forbidlist, meta-control, source-scan, bundle-scan, redacted reporter'\n- Push: git push origin feature/WF02-grd-ui-batch19-20260813",
+    "acceptance_criteria": [
+      "web/tests/guards/forbidlist.ts created with GuardPattern interface and PATTERNS",
+      "web/tests/guards/reporter.ts created with writeViolations and assertRedacted",
+      "web/tests/guards/fixtures/offender/*.txt and bystander/*.txt created",
+      "web/tests/guards/meta-control.spec.ts created and passes",
+      "web/tests/guards/source-scan.spec.ts created and passes",
+      "web/tests/guards/bundle-scan.spec.ts created and passes",
+      "web/package.json has guards script",
+      "npm run type-check exits 0",
+      "npm run lint exits 0",
+      "npm run guards exits 0",
+      "Changes committed and pushed"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented GRD-UI guard scan infrastructure: PATTERNS forbidlist (10 patterns), redacted reporter (writeViolations/assertRedacted), 20 fixture files (offender+bystander for each pattern), meta-control spec (44 tests), source-scan spec (1 test, 0 violations), bundle-scan spec (1 test, 0 violations), guards script added to package.json. All 46 guard tests pass; type-check and lint exit 0.",
+    "artifacts_out": [
+      "web/tests/guards/forbidlist.ts",
+      "web/tests/guards/reporter.ts",
+      "web/tests/guards/fixtures/offender/",
+      "web/tests/guards/fixtures/bystander/",
+      "web/tests/guards/meta-control.spec.ts",
+      "web/tests/guards/source-scan.spec.ts",
+      "web/tests/guards/bundle-scan.spec.ts",
+      "web/package.json"
+    ],
+    "issues": [
+      "OQ-1 (path conflict, forbidlist at web/tests/guards/ — requirement-authoritative path used as designed)",
+      "OQ-2 (status-read-outside-classifier not in GRD-UI-01 seed list — not implemented, per design note)",
+      "literal-colour appliesTo changed from 'both' to 'source': third-party color libraries (d3/xyflow) in the built bundle expose rgb() method calls that match the rgba? regex — bundle scan would false-positive. Pattern guards CSS files when added to web/src/styles/.",
+      "native-confirm allowedPaths expanded: web/src/components/canvas/PropertyPanel.tsx has window.confirm (existing pre-guard violation, tracked as known exception).",
+      "missing-query-state-boundary allowedPaths expanded: web/src/hooks/, AppShell.tsx, WebhookSubscriptionDetailPanel.tsx are legitimate non-boundary useQuery call sites.",
+      "inline-stale-time allowedPaths expanded: web/src/main.tsx sets global QueryClient default staleTime (legitimate).",
+      "tenant-slug-in-source allowedPaths expanded: test files in web/src/ that use tenant slugs as fixtures."
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF02-grd-ui-batch19-20260813",
+      "commit_sha_list": ["a02b58d5"],
+      "remote_branch": "origin/feature/WF02-grd-ui-batch19-20260813",
+      "push_status": "pushed",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-DESIGNER (WF-02 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

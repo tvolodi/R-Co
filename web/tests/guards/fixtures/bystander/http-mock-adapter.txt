@@ -1,0 +1,2 @@
+// No axios-mock-adapter — uses real backend via apiClient
+import { apiClient } from '../api/client'

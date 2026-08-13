@@ -1,0 +1,2 @@
+// No MSW imports here — uses real HTTP via the API client
+import { apiClient } from '../api/client'

@@ -1,0 +1,48 @@
+{
+  "handoff_id": "wf02-grd-ui-batch19-20260813-01b-code-design-validator",
+  "run_id": "WF02-grd-ui-batch19-20260813",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-grd-ui-batch19-20260813/step-01b-code-design-validator.json",
+  "created_at": "2026-08-13T17:11:14Z",
+  "started_at": "2026-08-13T17:11:14Z",
+  "completed_at": "2026-08-13T17:12:48Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8",
+    "requirement_ids": ["GRD-UI-02", "GRD-UI-03", "GRD-UI-04", "GRD-UI-05"],
+    "related_handoff_ids": ["wf02-grd-ui-batch19-20260813-01-code-designer"],
+    "artifacts_in": ["src/design/grd-ui-batch19-guard-scans.md"]
+  },
+  "task": {
+    "description": "Validate src/design/grd-ui-batch19-guard-scans.md:\n(a) Covers all acceptance criteria for GRD-UI-02..05\n(b) No implementation code\n(c) Specific enough for FRONTEND-DEV\n(d) PATTERNS/forbidlist structure specified\n(e) Redaction guarantee specified (no matched text)\n(f) File locations all named\n(g) npm run guards script specified\n\nReturn PASS if all 7 pass.",
+    "acceptance_criteria": ["All 7 checks evaluated", "PASS only if all pass"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/grd-ui-batch19-guard-scans.md validated — all 7 checks pass. All 20 acceptance criteria across GRD-UI-02..05 are covered. No implementation code. Design is specific enough for FRONTEND-DEV. PATTERNS/forbidlist structure fully specified (GuardPattern type + 10 seed patterns). Redaction guarantee specified (Violation shape excludes matchedText/snippet/context; assertRedacted function specified). All 8 file locations named. npm run guards script specified in §8.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "OQ-1",
+        "severity": "MINOR",
+        "description": "Path conflict flagged by CODE-DESIGNER: GRD-UI-01 requirement body names forbidlist at web/tests/guards/forbidlist.ts; handoff task description names web/src/guards/forbidlist.ts. Design uses requirement-authoritative path. ORCH should confirm or amend GRD-UI-01 before FRONTEND-DEV implements.",
+        "resolution": "NOTED — does not block PASS; flagged for ORCH/REQ-ANALYST follow-up"
+      },
+      {
+        "id": "OQ-2",
+        "severity": "MINOR",
+        "description": "Pattern status-read-outside-classifier referenced in handoff task description does not appear in GRD-UI-01's seed list. Recorded as open question by CODE-DESIGNER. ORCH must clarify whether to add it to GRD-UI-01 or remove the reference.",
+        "resolution": "NOTED — does not block PASS; flagged for ORCH/REQ-ANALYST follow-up"
+      }
+    ],
+    "git_evidence": {"branch_name": null, "commit_sha_list": [], "remote_branch": null, "push_status": null, "pr_url": null, "pr_create_error": null},
+    "next_action": "Route to FRONTEND-DEV (Step 2b). ORCH to resolve OQ-1 and OQ-2 with REQ-ANALYST in parallel."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,55 @@
+{
+  "handoff_id": "wf02-grd-ui-batch19-20260813-02b-rework1-frontend-dev",
+  "run_id": "WF02-grd-ui-batch19-20260813",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "02b-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "file": "handoffs/WF02-grd-ui-batch19-20260813/step-02b-rework1-frontend-dev.json",
+  "created_at": "2026-08-13T17:54:08Z",
+  "started_at": "2026-08-13T17:54:08Z",
+  "completed_at": "2026-08-13T18:04:35Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8",
+    "requirement_ids": ["GRD-UI-03"],
+    "related_handoff_ids": ["wf02-grd-ui-batch19-20260813-03b-test-design-validator"],
+    "artifacts_in": [
+      "web/tests/guards/forbidlist.ts",
+      "web/tests/guards/bundle-scan.spec.ts",
+      "web/tests/guards/fixtures/"
+    ],
+    "branch_name": "feature/WF02-grd-ui-batch19-20260813"
+  },
+  "task": {
+    "description": "REWORK 1 for GRD-UI-03 AC4. Targeted fix only.\n\nFailing AC: GRD-UI-03 AC4 requires that `literal-colour` be detected in the bundle. The current implementation sets `appliesTo: 'source'` for `literal-colour` to avoid third-party library false positives.\n\nFix: Change `literal-colour` pattern's `appliesTo` to `'both'` in web/tests/guards/forbidlist.ts.\n\nAdd appropriate allowedPaths entries if needed to exclude known third-party bundle patterns.\n\nAdd or update bundle-scan test to include a check that a file with a hex color literal in web/dist would be caught.\n\nVerify:\n- npm run guards exits 0\n- npm run type-check exits 0\n- npm run lint exits 0\n\nCommit: git add web/tests/guards/forbidlist.ts web/tests/guards/ ; git commit -m 'fix(frontend): GRD-UI-03 AC4 literal-colour appliesTo both for bundle scan coverage' ; git push",
+    "acceptance_criteria": [
+      "literal-colour appliesTo changed to 'both'",
+      "bundle-scan.spec.ts covers GRD-UI-03 AC4",
+      "npm run guards exits 0",
+      "Changes committed and pushed"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "GRD-UI-03 AC4 fix: literal-colour appliesTo changed to 'both'; regex tightened ([^)]+) to exclude zero-arg rgb() false positives from D3 library; synthetic bundle-scan test added; npm run guards exits 0 (47 tests pass); npm test exits 0 (73 tests pass).",
+    "artifacts_out": [
+      "web/tests/guards/forbidlist.ts",
+      "web/tests/guards/bundle-scan.spec.ts"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-grd-ui-batch19-20260813",
+      "commit_sha_list": ["054e89fd"],
+      "remote_branch": "origin/feature/WF02-grd-ui-batch19-20260813",
+      "push_status": "pushed",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH re-dispatches step-03b for re-validation"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}
