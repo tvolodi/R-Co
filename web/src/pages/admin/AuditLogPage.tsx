@@ -6,6 +6,8 @@ import { auditApi, type AuditEntry, type AuditLogFilters } from '@/api/audit'
 import type { CursorPage } from '@/types/api'
 import { JsonDiffView } from '@/components/ui/JsonDiffView'
 import { useAuth } from '@/auth/AuthContext'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 function isValidIsoDate(value?: string): boolean {
   if (!value) return true
@@ -48,12 +50,14 @@ export default function AuditLogPage() {
   }), [actor, resourceType, from, to, cursor, pageSize])
 
   const validFilters = isValidIsoDate(from) && isValidIsoDate(to) && isFilterRangeValid(from, to)
-  const { data, isLoading, error, isFetching } = useQuery({
+  const { data, isLoading, isError, error, isFetching, refetch } = useQuery({
     queryKey: queryKeys.admin.audit(filters),
     queryFn: () => auditApi.list(filters),
     enabled: validFilters,
     refetchInterval: 30_000,
   })
+
+  const rendererState: RendererState = isLoading ? 'loading' : isError ? classifyError(error) : 'success'
 
   if (!isPlatformAdmin) {
     return <Navigate to="/instances" replace />
@@ -126,15 +130,14 @@ export default function AuditLogPage() {
         </div>
       )}
 
-      {isLoading && <p>Loading…</p>}
-      {!isLoading && error && (
-        <div style={{ marginBottom: '1rem', padding: '.75rem .9rem', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fff1f2', color: '#9f1239' }}>
-          Failed to load audit entries for the selected filters.
-        </div>
-      )}
-      {!isLoading && !error && validFilters && !hasResults && (
-        <div style={{ marginBottom: '1rem', color: '#64748b' }}>No audit entries matched the selected filters.</div>
-      )}
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void refetch() }}
+        columns={[{ widthPercent: 5 }, { widthPercent: 20 }, { widthPercent: 20 }, { widthPercent: 25 }, { widthPercent: 20 }, { widthPercent: 10 }]}
+      >
+        {validFilters && !hasResults && (
+          <div style={{ marginBottom: '1rem', color: '#64748b' }}>No audit entries matched the selected filters.</div>
+        )}
 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
         <thead>
@@ -201,6 +204,7 @@ export default function AuditLogPage() {
           Next
         </button>
       </div>
+      </QueryStateBoundary>
     </div>
   )
 }

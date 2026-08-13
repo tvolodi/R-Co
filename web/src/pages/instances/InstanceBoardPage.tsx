@@ -7,6 +7,8 @@ import { useAuth } from '@/auth/AuthContext'
 import { usePolling } from '@/hooks/usePolling'
 import { queryKeys } from '@/api/queryKeys'
 import type { InstanceStatus } from '@/types/api'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 const STATUS_COLORS: Record<InstanceStatus, string> = {
   ACTIVE: '#2563eb',
@@ -306,9 +308,11 @@ export default function InstanceBoardPage() {
         </div>
       </div>
 
-      {instancesQuery.isLoading && <p>Loading…</p>}
-      {instancesQuery.error && <p style={{ color: '#dc2626' }}>Failed to load instances.</p>}
-
+      <QueryStateBoundary
+        state={(instancesQuery.isLoading ? 'loading' : instancesQuery.isError ? classifyError(instancesQuery.error) : 'success') as RendererState}
+        onRetry={() => { void instancesQuery.refetch() }}
+        columns={[{ widthPercent: 15 }, { widthPercent: 20 }, { widthPercent: 10 }, { widthPercent: 20 }, { widthPercent: 17 }, { widthPercent: 18 }]}
+      >
       {instancesQuery.data && (
         <>
           <table data-testid="instance-board-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
@@ -375,6 +379,7 @@ export default function InstanceBoardPage() {
           </div>
         </>
       )}
+      </QueryStateBoundary>
 
       {showStart && (
         <div

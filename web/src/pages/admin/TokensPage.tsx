@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tokensApi, usersApi } from '@/api/identity'
 import { queryKeys } from '@/api/queryKeys'
 import type { ApiToken, IssuedToken, User } from '@/types/api'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 type TokenRow = ApiToken & {
   token_id?: string
@@ -43,7 +45,7 @@ export default function TokensPage() {
   const [pendingRevoke, setPendingRevoke] = useState<TokenRow | null>(null)
   const [copyState, setCopyState] = useState('')
 
-  const { data: tokenList, isLoading } = useQuery({
+  const { data: tokenList, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.admin.tokens(),
     queryFn: () => tokensApi.list(),
   })
@@ -55,6 +57,7 @@ export default function TokensPage() {
 
   const tokenItems = useMemo(() => (tokenList?.items ?? []) as TokenRow[], [tokenList?.items])
   const usersById = useMemo(() => new Map((users?.items ?? []).map((user) => [user.id ?? user.user_id ?? '', user])), [users?.items])
+  const rendererState: RendererState = isLoading ? 'loading' : isError ? classifyError(error) : 'success'
 
   const createToken = useMutation({
     mutationFn: () => {
@@ -155,8 +158,11 @@ export default function TokensPage() {
         </div>
       )}
 
-      {isLoading && <p>Loading…</p>}
-
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void refetch() }}
+        columns={[{ widthPercent: 25 }, { widthPercent: 20 }, { widthPercent: 20 }, { widthPercent: 15 }, { widthPercent: 20 }]}
+      >
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
         <thead>
           <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
@@ -198,6 +204,7 @@ export default function TokensPage() {
           })}
         </tbody>
       </table>
+      </QueryStateBoundary>
 
       {pendingRevoke && (
         <div role="dialog" aria-modal="true" aria-label="Revoke token" style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, .45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 40 }}>

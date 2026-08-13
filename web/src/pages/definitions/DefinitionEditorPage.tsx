@@ -22,6 +22,8 @@ import { graphToFlow } from '@/utils/canvas/graphToFlow'
 import { flowToGraph } from '@/utils/canvas/flowToGraph'
 import { useCanvasHistoryStore } from '@/stores/canvasHistoryStore'
 import { ConfirmPromoteModal } from '@/components/ui/ConfirmPromoteModal'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
 import NodePalette from '@/components/canvas/NodePalette'
@@ -46,7 +48,7 @@ const EMPTY_GRAPH: DefinitionGraph = {
 export default function DefinitionEditorPage() {
   const { id } = useParams<{ id?: string }>()
   const isNew = !id
-  const { data: def, isLoading } = useDefinition(id!)
+  const { data: def, isLoading, isError, error: defError, refetch } = useDefinition(id!)
   const create = useCreateDefinition()
   const { session } = useAuth()
   const { tenantType, productionDisplayName, tenantId } = useTenantContext()
@@ -377,15 +379,8 @@ export default function DefinitionEditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasStateRef.current, validationErrors])
 
-  // ── Loading state ───────────────────────────────────────────────────────────
-
-  if (!isNew && isLoading) {
-    return (
-      <div style={{ padding: '1.5rem', color: 'var(--text-secondary, #6c757d)' }}>
-        Loading…
-      </div>
-    )
-  }
+  // ── Loading state via QueryStateBoundary — no early return needed ───────────
+  const rendererState: RendererState = (!isNew && isLoading) ? 'loading' : (!isNew && isError) ? classifyError(defError) : 'success'
 
   // ── Get selected node/edge for property panel from canvas ───────────────────
   // These are managed inside ProcessCanvas, but we pass them down via props
@@ -402,6 +397,11 @@ export default function DefinitionEditorPage() {
         background: 'var(--surface-page, #f8f9fa)',
       }}
     >
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void refetch() }}
+        columns={[{ widthPercent: 100 }]}
+      >
       {/* ── Toolbar ─────────────────────────────────────────────── */}
       <div
         style={{
@@ -785,6 +785,7 @@ export default function DefinitionEditorPage() {
           isLoading={promoting}
         />
       )}
+      </QueryStateBoundary>
     </div>
   )
 }

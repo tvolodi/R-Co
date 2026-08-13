@@ -3,6 +3,8 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { queryKeys } from '@/api/queryKeys'
 import { metricsApi, parsePrometheusText, type PrometheusMetricFamily } from '@/api/metrics'
 import { useAuth } from '@/auth/AuthContext'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 export function usePrometheusMetrics(): UseQueryResult<PrometheusMetricFamily[]> {
   return useQuery({
@@ -18,12 +20,13 @@ export function usePrometheusMetrics(): UseQueryResult<PrometheusMetricFamily[]>
 export default function MetricsPage() {
   const { session } = useAuth()
   const isPlatformAdmin = Boolean(session?.roles.includes('PLATFORM_ADMIN'))
-  const { data, isLoading, error, isFetching } = usePrometheusMetrics()
+  const { data, isLoading, isError, error, isFetching, refetch } = usePrometheusMetrics()
 
   if (!isPlatformAdmin) {
     return <Navigate to="/instances" replace />
   }
 
+  const rendererState: RendererState = isLoading ? 'loading' : isError ? classifyError(error) : 'success'
   const showParseError = (error as Error | null)?.message === 'PROM_PARSE_ERROR'
 
   return (
@@ -33,15 +36,14 @@ export default function MetricsPage() {
         {isFetching && <span style={{ fontSize: '.8rem', color: '#0369a1' }}>Refreshing…</span>}
       </div>
 
-      {isLoading && <p>Loading…</p>}
-      {!isLoading && showParseError && (
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void refetch() }}
+        columns={[{ widthPercent: 40 }, { widthPercent: 40 }, { widthPercent: 20 }]}
+      >
+      {showParseError && (
         <div style={{ marginBottom: '1rem', padding: '.75rem .9rem', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fff1f2', color: '#9f1239' }}>
           Metrics payload could not be parsed as Prometheus exposition text.
-        </div>
-      )}
-      {!isLoading && error && !showParseError && (
-        <div style={{ marginBottom: '1rem', padding: '.75rem .9rem', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fff1f2', color: '#9f1239' }}>
-          Metrics request failed. The previous successful data remains cached.
         </div>
       )}
 
@@ -82,7 +84,6 @@ export default function MetricsPage() {
             </tbody>
           </table>
         </section>
-      ))}
-    </div>
+      ))}      </QueryStateBoundary>    </div>
   )
 }

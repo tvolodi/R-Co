@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { servicesApi, type RegisterServiceBody, type ServiceRecord } from '@/api/services'
 import { queryKeys } from '@/api/queryKeys'
 import { useAuth } from '@/auth/AuthContext'
+import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
+import { classifyError, type RendererState } from '@/utils/classifyError'
 
 /**
  * ServicesPage — SVC-04
@@ -95,6 +97,7 @@ export default function ServicesPage() {
   }
 
   const items = listQuery.data?.items ?? []
+  const rendererState: RendererState = listQuery.isLoading ? 'loading' : listQuery.isError ? classifyError(listQuery.error) : 'success'
 
   return (
     <div style={{ padding: '1.5rem' }}>
@@ -130,13 +133,11 @@ export default function ServicesPage() {
         </select>
       </div>
 
-      {listQuery.isLoading && <p>Loading…</p>}
-      {listQuery.isError && (
-        <div style={{ padding: '.75rem', background: '#fff1f2', border: '1px solid #fca5a5', borderRadius: '6px', color: '#9f1239', marginBottom: '1rem' }}>
-          Failed to load services.
-        </div>
-      )}
-
+      <QueryStateBoundary
+        state={rendererState}
+        onRetry={() => { void listQuery.refetch() }}
+        columns={[{ widthPercent: 20 }, { widthPercent: 10 }, { widthPercent: 30 }, { widthPercent: 15 }, { widthPercent: 12 }, { widthPercent: 13 }]}
+      >
       {!listQuery.isLoading && !listQuery.isError && (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
           <thead>
@@ -204,6 +205,7 @@ export default function ServicesPage() {
           </tbody>
         </table>
       )}
+      </QueryStateBoundary>
 
       {/* CUSTOM: Register service modal (platform-admin only) */}
       {showCreate && (
