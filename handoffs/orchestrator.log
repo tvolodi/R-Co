@@ -1400,3 +1400,12 @@
 2026-08-13T07:14:01Z | ROUTE   | WF03-GH752-20260812 | wf03-gh752-20260812-07-doc-updater | ORCH -> DOC-UPDATER | Step 07: update CHANGELOG, ISS-0692.json, file 2 new GH issues for pre-existing problems
 2026-08-13T08:37:04Z | DEFER | ORCH-LOOP | --- | ORCH | GH-760 DEFERRED via TaskManager release.py — item is owned by another workspace, releasing claim
 2026-08-13T08:39:22Z | ROUTE | WF03-GH759-20260813 | 759-step00-00000001-20260813 | ORCH -> BACKEND-DEV | PENDING (Step 00: handoffs/WF03-GH759-20260813/step-00-backend-dev.json)
+2026-08-13T10:03:00Z | COMPLETE | WF03-GH759-20260813 | step-00-backend-dev | ORCH | Step 00 PASS — branch pushed, audit merged
+2026-08-13T10:03:23Z | ROUTE | WF03-GH759-20260813 | step-00.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING (Step 0.5: handoffs/WF03-GH759-20260813/step-00.5-issue-fixer.json)
+2026-08-13T10:04:55Z | ROUTE | WF03-GH759-20260813 | step-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING (Step 1: handoffs/WF03-GH759-20260813/step-01-issue-fixer.json)
+2026-08-13T10:11:36Z | SKIP | WF03-GH759-20260813 | step-02-code-designer | ORCH | Skip Step 2/2b — diagnosis unambiguous; precedent ISS-0664 skipped design pass too
+2026-08-13T10:11:40Z | ROUTE | WF03-GH759-20260813 | step-03-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 3: handoffs/WF03-GH759-20260813/step-03-backend-dev.json)
+2026-08-13T10:20:02Z | SKIP | WF03-GH759-20260813 | step-04-test-designer | ORCH | Skip Step 4/4b (TEST-DESIGNER/VALIDATOR) — test fixture update only, not business logic
+2026-08-13T10:20:06Z | ROUTE | WF03-GH759-20260813 | step-05-test-runner | ORCH -> TEST-RUNNER | PENDING (Step 5: handoffs/WF03-GH759-20260813/step-05-test-runner.json)
+2026-08-13T10:28:23Z | SKIP | WF03-GH759-20260813 | step-06-release-validator | ORCH | Skip Step 6 (RELEASE-VALIDATOR) — severity=MINOR (BLOCKER only)
+2026-08-13T10:28:27Z | ROUTE | WF03-GH759-20260813 | step-07-doc-updater | ORCH -> DOC-UPDATER | PENDING (Step 7: handoffs/WF03-GH759-20260813/step-07-doc-updater.json)

@@ -1,0 +1,66 @@
+{
+  "handoff_id": "759-step00-00000001-20260813",
+  "run_id": "WF03-GH759-20260813",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH759-20260813/step-00-backend-dev.json",
+  "created_at": "2026-08-13T08:38:19Z",
+  "started_at": "2026-08-13T08:39:25Z",
+  "completed_at": "2026-08-13T10:02:57Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "https://github.com/tvolodi/R-Co/issues/759",
+      "task/current.json",
+      "tools/lint_test_isolation.baseline.json",
+      "tools/lint_test_isolation.py"
+    ],
+    "branch_name": "feature/WF03-GH759-20260813",
+    "base_commit_sha": "6cf38a70",
+    "github_issue": 759,
+    "severity": "MINOR",
+    "claimed_item": "r-co:GH-759"
+  },
+  "task": {
+    "description": "WF-03 Step 00 (git-setup) for GH-759 / TC-RG-01/TC-RG-02 baseline drift.\n\nCONTEXT:\nGH-759 was filed by DOC-UPDATER (WF03-GH752-20260812 Step 07) as a pre-existing issue revealed during the GH-752 5-run acceptance gate. The lint_test_isolation snapshot at tools/lint_test_isolation.baseline.json expects 116 T010 BLOCKERs (GH-512 reference), but live main produces 117 T010 BLOCKERs because commit 0d9041b5 (WF02-batch-0) added a new test file that contributed one extra BLOCKER entry that was never re-baselined.\n\nFIX SUMMARY (expected):\nThe fix is a single-line change to tools/lint_test_isolation.baseline.json — bump the T010 entry count from 116 to 117 — after `zig build test` shows the live count is 117. No source code in src/ should be touched. No test files should be touched. The lint_test_isolation.py verifier should still exit 0 after the baseline update.\n\nYOUR TASKS:\n1. Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md:\n   - git checkout main\n   - git pull --ff-only origin main\n   - git checkout -b feature/WF03-GH759-20260813\n   - git push -u origin feature/WF03-GH759-20260813\n   - Verify git branch --show-current == feature/WF03-GH759-20260813\n   - Verify push landed (git ls-remote origin feature/WF03-GH759-20260813)\n2. Record: branch_name, base_commit_sha, push_status in result.\n3. Run: python3 tools/gh_project_status.py 759 --target in_progress\n   (Failure is logged but does NOT block the workflow — see PROJECT_BOARD.md.)\n4. Verify: tools/lint_test_isolation.py reports the actual T010 count on the current branch.\n5. Complete handoff with status=PASS, next_action='ORCH routes to ISSUE-FIXER Step 0.5'.",
+    "acceptance_criteria": [
+      "git pull --ff-only origin main exited 0",
+      "git branch --show-current outputs feature/WF03-GH759-20260813",
+      "git push -u origin feature/WF03-GH759-20260813 exited 0",
+      "gh_project_status.py 759 --target in_progress exited 0 (or failure logged but not blocking)",
+      "result.branch_name == feature/WF03-GH759-20260813",
+      "result.base_commit_sha == 6cf38a70",
+      "result.push_status == 'ok'"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Branch feature/WF03-GH759-20260813 created from main 7a1dd324 and pushed to origin. Audit files (handoffs/orchestrator.log + registry.json) merged with main via 534113f5. lint_handoffs.py exits 0. Branch ready for Step 03 fix.",
+    "artifacts_out": [
+      "branch: feature/WF03-GH759-20260813"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to ISSUE-FIXER Step 0.5",
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH759-20260813",
+      "base_commit_sha": "7a1dd324",
+      "remote_branch": "origin/feature/WF03-GH759-20260813",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    }
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

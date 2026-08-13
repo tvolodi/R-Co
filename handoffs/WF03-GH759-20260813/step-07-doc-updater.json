@@ -1,0 +1,31 @@
+{
+  "handoff_id": "step-07-doc-updater",
+  "run_id": "WF03-GH759-20260813",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "task": {
+    "description": "Step 7 — Documentation update, ISS status, registry cleanup, retrospective.\n\nGitHub issue: https://github.com/tvolodi/R-Co/issues/759 (claim label: claimed-by-r-co-1-loop)\nLocal ISS: docs/issues/ISS-0697.json (status: REGISTERED → RESOLVED)\nBranch: feature/WF03-GH759-20260813 (commit ba94e9a3)\n\nTasks (in order):\n\n1. Update CHANGELOG.md — add an entry under the current unreleased section:\n   ```\n   ### Fixed\n   - **GH-759 / ISS-0697** — TC-RG-01/TC-RG-02 baseline drift: tests/integration/gh512_t010_regression_test.zig's t010_blocker_ceiling (74→75) and tests/specs/fixtures/gh512-baseline-snapshot.json (v4→v5, totals 116→117) resynced to on-main tools/lint_test_isolation.baseline.json (75 T010 BLOCKERs / 117 total). Third recurrence of this drift class (ISS-0648/GH-653, ISS-0664/GH-701); root cause = a baseline regeneration not accompanied by a matching snapshot/ceiling update. Predecessor fix `0fff689f` was on branch `feature/WF03-GH752-20260812` but was not merged to main with GH-752.\n   ```\n   Use the existing CHANGELOG.md format — look at the most recent entries to mirror the style.\n\n2. Update docs/issues/ISS-0697.json:\n   - Set `\"status\": \"RESOLVED\"`\n   - Add a `resolved_at` field (use `python tools/utcnow.py`)\n   - Add a `resolved_by` field (BACKEND-DEV / commit ba94e9a3)\n   - Add a `resolution_commit` field pointing to ba94e9a3\n   - Update the `next_action` field to \"WF03 complete; awaiting Step Final git-merge.\"\n\n3. Update docs/issues/issue_index.json — find the ISS-0697 entry and update its status to RESOLVED. (Append-only edit.)\n\n4. Run `python tools/reqctl.py` (or whatever the equivalent tool is for ISS status) to mark the issue as RESOLVED in any auxiliary tracking.\n\n5. Retrospective — append a brief note to docs/Sessions.md (or wherever retrospectives go; check existing entries for format) with:\n   - Run ID: WF03-GH759-20260813\n   - GitHub: #759\n   - Branch: feature/WF03-GH759-20260813 (commit ba94e9a3)\n   - ISS: ISS-0697 (REGISTERED → RESOLVED)\n   - Skipped steps with justification: 2/2b (CODE-DESIGNER, design unambiguous + precedent ISS-0664 skipped too); 2c (no tenant-data path); 4/4b (test fixture update only); 6 (severity=MINOR, BLOCKER only)\n   - Verifications passed: lint_test_isolation.py (full), --no-baseline scan matches baseline, lint_handoffs.py, zig build test-integration-gh512 (TC-RG-01/02/03 PASS)\n   - V1 (`zig build test-env-verify`) FAILED on pre-existing C1+C9 infra drift (docker-compose project-name drift + keycloak config-hash stale), NOT caused by this fix. Recommend follow-up issue.\n   - Lessons: drift class is recurring (3rd); consider auto-regenerating the snapshot fixture as part of the baseline regeneration tool to prevent the next recurrence.\n\n6. Run `python tools/lint_handoffs.py` — must exit 0.\n\n7. Commit on the branch with message:\n   `docs(WF03-GH759-20260813 Step 07): ISS-0697 RESOLVED — CHANGELOG, issue file, registry cleanup`\n   (mirror the convention used by previous WF03-GH752-20260812 Step 07 commit)\n   Include `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`.\n\nDO NOT:\n- Touch src/ files (no production changes).\n- Push to remote — Step Final handles that.\n- Open a PR — Step Final handles that.\n- Edit the test files or fixtures — already correct.\n\nAfter commit, update the handoff file:\n- status: 'COMPLETED', completed_at from `python tools/utcnow.py`\n- result.status: 'PASS'\n- result.summary: list of files changed\n- result.artifacts_out: list of files\n- result.next_action: 'ORCH routes to BACKEND-DEV Step Final for git-merge (PR + squash + branch delete)'",
+    "context": {
+      "github_issue": 759,
+      "local_iss": "ISS-0697",
+      "branch": "feature/WF03-GH759-20260813",
+      "fix_commit": "ba94e9a3"
+    }
+  },
+  "context_artifacts": [
+    "handoffs/WF03-GH759-20260813/step-03-backend-dev.json (COMPLETED)",
+    "handoffs/WF03-GH759-20260813/step-05-test-runner.json (COMPLETED)",
+    "docs/issues/ISS-0697.json",
+    "CHANGELOG.md",
+    "docs/Sessions.md",
+    "previous similar runs: handoffs/WF03-GH752-20260812/ (mirror conventions)"
+  ],
+  "result": null,
+  "status": "IN_PROGRESS",
+  "created_at": "2026-08-13T10:26:51Z",
+  "started_at": "2026-08-13T10:28:28Z",
+  "completed_at": null,
+  "rework_count": 0,
+  "max_rework": 2
+}

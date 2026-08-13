@@ -1,0 +1,96 @@
+{
+  "issue_id": "ISS-0697",
+  "title": "TC-RG-01/TC-RG-02 fail on main: T010 baseline has 75 BLOCKERs (117 total) but GH-512 snapshot v4 still expects 74 / 116 -- snapshot stale after WF02-idn05-20260812 commit 34d7ca13",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/759",
+  "registered_at": "2026-08-13T10:03:55Z",
+  "registered_by": "ISSUE-FIXER (WF03-GH759-20260813 Step 0.5, third recurrence of test-baseline-drift class)",
+  "related_to": [
+    "ISS-0648",
+    "ISS-0664",
+    "GH-512",
+    "GH-653",
+    "GH-701"
+  ],
+  "severity": "MINOR",
+  "status": "RESOLVED",
+  "category": "test-infrastructure/baseline-drift",
+  "scope": "tools/lint_test_isolation.baseline.json (committed baseline); tests/specs/fixtures/gh512-baseline-snapshot.json (snapshot fixture); tests/integration/gh512_t010_regression_test.zig (TC-RG-01/02). No production code path affected.",
+  "affected_areas": [
+    "tools/lint_test_isolation.baseline.json",
+    "tests/specs/fixtures/gh512-baseline-snapshot.json",
+    "tests/integration/gh512_t010_regression_test.zig"
+  ],
+  "symptom": "tests/integration/gh512_t010_regression_test.zig TC-RG-01 (live ceiling) and TC-RG-02 (snapshot-vs-baseline) fail on main because the committed baseline (75 T010 BLOCKER, 117 total) no longer matches the snapshot fixture (74 T010 BLOCKER, 116 total, platform_admin_uuid_count=14) or the test's `t010_blocker_ceiling` constant (= 74). The drift was introduced by commit 34d7ca13 (WF02-idn05-20260812, GH-746 -- 'Named role registry and ROLE assignee resolution') which added tests/integration/idn05_role_registry_test.zig whose local adminActor() helper at line 70 reintroduces the canonical platform-admin UUID literal (RETAIN class), correctly bumping the baseline 74->75 / 116->117 -- but never updated the snapshot fixture or test ceiling constant in the same commit. The same drift was discovered and fixed inline (Unblock-Everything) as commit 0fff689f on feature/WF03-GH752-20260812 (filed as its own issue GH-757) but that fix was NOT merged to main when GH-752 was squash-merged (commit 9d06bdf4), so main remains stale. This is the THIRD recurrence of this drift class (predecessors: ISS-0648/GH-653, ISS-0664/GH-701).",
+  "evidence_file": "docs/issue-reports/ISS-0697-evidence.md",
+  "evidence_trail": [
+    {
+      "step": "live_scan",
+      "command": "python scratch/lint_summary.py",
+      "result": "files_checked: 159; total live: 117; T010 BLOCKER: 75; T020 MAJOR: 11; T030 MAJOR: 6; T050 MAJOR: 23; T060 MAJOR: 2; platform_admin_uuid_count (substring '00000000-0000-0000-0000-000000000001' in T010 message): 15"
+    },
+    {
+      "step": "baseline_on_disk",
+      "command": "python -c \"import json; d=json.loads(open('tools/lint_test_isolation.baseline.json','rb').read().decode('utf-8-sig')); print(len(d['issues'])); from collections import Counter; c=Counter((x['code'],x['severity']) for x in d['issues']); [print(k,v) for k,v in sorted(c.items())]\"",
+      "result": "total=117; T010 BLOCKER=75; T020 MAJOR=11; T030 MAJOR=6; T050 MAJOR=23; T060 MAJOR=2 (matches live scan exactly; the baseline file itself is consistent with main)"
+    },
+    {
+      "step": "snapshot_fixture",
+      "command": "cat tests/specs/fixtures/gh512-baseline-snapshot.json",
+      "result": "snapshot_version=4; captured_at=2026-08-11T04:51:13Z; expected.total_issues=116; expected.by_severity.BLOCKER=74; expected.by_code.T010=74; expected.platform_admin_uuid_count=14 (STALE: 75/117/15 expected)"
+    },
+    {
+      "step": "test_ceiling_constant",
+      "command": "grep t010_blocker_ceiling tests/integration/gh512_t010_regression_test.zig",
+      "result": "const t010_blocker_ceiling: u32 = 74; (STALE: 75 expected)"
+    },
+    {
+      "step": "drift_introducing_commit",
+      "command": "git show --stat 34d7ca13 | head -5; git show --stat 34d7ca13 -- tools/lint_test_isolation.baseline.json | tail -20",
+      "result": "Commit 34d7ca13 (WF02-idn05-20260812, GH-746) added tests/integration/idn05_role_registry_test.zig with a platform-admin UUID RETAIN entry (line 70, canonical literal 00000000-0000-0000-0000-000000000001, same pattern as every other integration test file's adminActor() helper). It correctly regenerated tools/lint_test_isolation.baseline.json (74->75 T010 BLOCKER, 116->117 total) but never updated the snapshot fixture or test ceiling."
+    },
+    {
+      "step": "predecessor_fix_unmerged",
+      "command": "git show --stat 0fff689f",
+      "result": "Commit 0fff689f (branch feature/WF03-GH752-20260812, 'fix(test-infra): resync gh512_t010_regression_test ceiling/snapshot to on-main baseline (ISS-0692/GH-757)') correctly updates all three artifacts (test ceiling 74->75, snapshot v4->v5 with snapshot_v5_addendum documenting rationale, baseline line-number re-syncs for T020 entries in helpers.zig). The squash-merge of GH-752 to main (commit 9d06bdf4) did NOT include 0fff689f, so main remains stale. Verified by: git log --oneline --all -- tools/lint_test_isolation.baseline.json | grep 0fff689f (absent on main)."
+    },
+    {
+      "step": "third_recurrence_check",
+      "command": "grep -E '(ISS-0648|ISS-0664)' docs/issues/ISS-0697.json",
+      "result": "Confirmed: related_to=[ISS-0648, ISS-0664, GH-512, GH-653, GH-701] -- this drift class has now recurred three times since the WF03-GH512-20260808 migration."
+    }
+  ],
+  "root_cause_analysis": {
+    "type": "stale_snapshot_after_new_test_file_added",
+    "drift_introducing_commit": "34d7ca13",
+    "drift_introducing_workflow": "WF02-idn05-20260812 (PR #746, GH-746)",
+    "drift_introducing_commit_summary": "feat: Named role registry and ROLE assignee resolution; added tests/integration/idn05_role_registry_test.zig with platform-admin UUID RETAIN at line 70 (adminActor() helper); correctly regenerated tools/lint_test_isolation.baseline.json but did not update the snapshot fixture or test ceiling constant.",
+    "predecessor_fix_commit": "0fff689f",
+    "predecessor_fix_branch": "feature/WF03-GH752-20260812",
+    "predecessor_fix_unmerged_reason": "Squash-merge of GH-752 (commit 9d06bdf4) did not include 0fff689f because 0fff689f was on the same feature branch but committed after the PR was already approved and queued for squash-merge.",
+    "details": "Third recurrence of the test-baseline-drift class (predecessors: ISS-0648/GH-653 in WF02-batch-0-20260811, ISS-0664/GH-701 in WF03-GH681-20260810). Each time a new test file is added that produces a T010 finding correctly-suppressed by tools/lint_test_isolation.baseline.json, the baseline's total_issues grows by the corresponding entry count but tests/specs/fixtures/gh512-baseline-snapshot.json's total_issues expectation is not updated in lockstep. The on-disk baseline.json is itself internally consistent (117 total, T010=75, T020=11, T030=6, T050=23, T060=2 matches live scan exactly). The drift is purely in the test fixture + ceiling constant + snapshot_v*_addendum documentation lag."
+  },
+  "pre_existing_issues_revealed": [
+    {
+      "description": "Predecessor-fix narrative error: docs/issues/ISS-0697.json (as authored by Step 0.5) and docs/issues/ISS-0692.json both attribute the drift to commit 0d9041b5 'WF02-batch-0', but git show 0d9041b5 reveals it is actually WF02-batch-2 (DDL-02/ORD-01/02/04, PR #710) and does NOT touch tools/lint_test_isolation.baseline.json. The actual drift source is 34d7ca13 per the predecessor fix 0fff689f's own commit message and per `git log -- tools/lint_test_isolation.baseline.json`.",
+      "filed_as": "Not separately filed -- this is corrected in-place by Step 1 of this WF."
+    },
+    {
+      "description": "Structural CI guard missing: per the existing ISS-0648 / ISS-0664 prevention notes, the right structural fix is a CI-level check that fails fast if the committed baseline's total_issues disagrees with a live scan. Currently only TC-RG-02 catches the drift post-commit; a pre-commit hook would prevent the third recurrence from being merged in the first place.",
+      "filed_as": "Pre-existing follow-up (not new from this WF); see ISS-0697.notes"
+    }
+  ],
+  "acceptance_criteria": [
+    "Verified live: `python scratch/lint_summary.py` -> total=117, T010 BLOCKER=75, platform_admin_substring_count=15 (the numbers the snapshot must match after the fix).",
+    "Verified snapshot fixture currently expects: total=116, T010=74, platform_admin=14 -- delta = +1 total, +1 T010, +1 platform_admin from snapshot v4 to v5.",
+    "Apply predecessor fix 0fff689f's source changes to three files: (a) tests/integration/gh512_t010_regression_test.zig: t010_blocker_ceiling 74->75 and doc-comment expansion referencing snapshot_v5_addendum; (b) tests/specs/fixtures/gh512-baseline-snapshot.json: bump snapshot_version 4->5, captured_at to current UTC, expected.total_issues 116->117, by_severity.BLOCKER 74->75, by_code.T010 74->75, platform_admin_uuid_count 14->15, and add snapshot_v5_addendum documenting the rationale (per the precedent set by snapshot_v3_addendum and snapshot_v4_addendum); (c) tools/lint_test_isolation.baseline.json: re-sync T020 line numbers in helpers.zig per the live scan (entries at lines 518, 523, 524 instead of 503, 508, 509 per 0fff689f) and update regenerated_by/regeneration_note/last_line_sync metadata.",
+    "Verification post-fix: re-run `python scratch/lint_summary.py` and decode tools/lint_test_isolation.baseline.json to confirm baseline remains internally consistent (75 T010, 117 total).",
+    "Verification post-fix: read the updated snapshot fixture and confirm expected.total_issues=117, expected.by_code.T010=75, expected.platform_admin_uuid_count=15.",
+    "Verification post-fix: zig build test-integration-gh512 (or the file's build step) exits 0; TC-RG-01/TC-RG-02/TC-RG-03 all PASS.",
+    "Verification post-fix: lint_handoffs.py on the updated handoff file is clean (BLOCKER=0, MAJOR=0)."
+  ],
+  "notes": "Third recurrence of this drift class. Per the existing ISS-0648 / ISS-0664 prevention notes, the right structural fix is a CI-level check that fails fast if the committed baseline's total_issues disagrees with a live scan, rather than relying solely on TC-RG-02's snapshot-vs-baseline comparison. Out of scope for Step 3 of this WF (fix the immediate drift by applying 0fff689f's source changes); the structural CI guard is a separate follow-up that should be filed as its own issue if not already tracked elsewhere (search docs/issues/ for 'structural CI' / 'baseline-vs-live guard' to confirm before filing).",
+  "next_action": "WF03 complete; awaiting Step Final git-merge.",
+  "resolved_at": "2026-08-13T10:29:57Z",
+  "resolved_by": "BACKEND-DEV (commit ba94e9a3)",
+  "resolution_commit": "ba94e9a368bba5198bbc12915ca542a1be84d81b"
+}

@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-13T07:45:10Z",
-  "next_issue_id": 212,
+  "last_updated": "2026-08-13T10:35:54Z",
+  "next_issue_id": 697,
   "issues": [
     {
       "id": "ISS-0696",
@@ -2418,6 +2418,25 @@
         "CODE-DESIGNER should design events_legacy's hand-off to PartitionRetention.runArchivalAging() as its own follow-up design artefact -- likely either (a) registering events_legacy into plat_partition_catalog with a distinct parent_table/state so the existing per-month archival aging loop picks it up once archive_after_months elapses, or (b) a dedicated one-time maintenance job that DETACHes/ATTACHes events_legacy to events_archive directly, mirroring archiveOnePartition()'s existing DETACH/ATTACH no-row-copy pattern.",
         "When a new requirement's design document defers an integration point to a 'future follow-up' (as PAR-05's Open questions #5 did), that deferral should be converted into a tracked ISS/GitHub issue at design time (Step 1/1b), not left as prose only until a later RELEASE-VALIDATOR pass rediscovers it -- this is the second time in two consecutive batches (see ISS-0670/GH-711 in WF02-batch-3-20260811) that a design-document-noted deferral was not filed as an issue until the release-validation step."
       ]
+    },
+    {
+      "id": "ISS-0697",
+      "title": "TC-RG-01/TC-RG-02 fail on main: T010 baseline has 117 BLOCKERs but GH-512 snapshot expects 116 \u2014 snapshot stale after WF02-batch-0 commit 0d9041b5",
+      "status": "RESOLVED",
+      "severity": "MINOR",
+      "run_id": "WF03-GH759-20260813",
+      "handoff_id": "step-00.5-issue-fixer",
+      "affected_areas": [
+        "tools/lint_test_isolation.baseline.json",
+        "tests/specs/fixtures/gh512-baseline-snapshot.json",
+        "tests/integration/gh512_t010_regression_test.zig"
+      ],
+      "created_at": "2026-08-13T10:03:55Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/759",
+      "resolved_at": "2026-08-13T10:35:54Z",
+      "resolved_by": "BACKEND-DEV (commit ba94e9a3)",
+      "resolution_commit": "ba94e9a368bba5198bbc12915ca542a1be84d81b",
+      "resolved_by_run": "WF03-GH759-20260813"
     }
   ]
 }
