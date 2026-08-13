@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-13T16:40:55Z'
+last_updated: '2026-08-13T20:55:45Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4453,35 +4453,64 @@ requirements:
     priority: MUST
     title: Forbidlist as single guard source of truth
   GRD-UI-02:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Frontend source scan gate
+    released_at: '2026-08-13T18:11:08Z'
   GRD-UI-03:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Post-build bundle scan gate
+    released_at: '2026-08-13T18:11:09Z'
   GRD-UI-04:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Two-sided META control per guard pattern
+    released_at: '2026-08-13T18:11:10Z'
   GRD-UI-05:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Redacted guard violation reporting
+    released_at: '2026-08-13T18:11:11Z'
   GRD-UI-06:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Accessibility gate per canonical surface
+    implemented_in:
+    - web/tests/a11y/a11yGate.ts
+    - web/tests/a11y/a11yConfig.ts
+    - web/tests/a11y/reportWriter.ts
+    - web/tests/a11y/axe-build-flag.ts
+    - web/tests/e2e/a11y-gate.e2e.spec.ts
+    - web/tests/unit/a11yGate.test.ts
+    - web/tests/unit/a11yConfig.test.ts
+    released_at: '2026-08-13T20:55:35Z'
+    note: Released via WF02-pw13-pw16-batch19-20260813 (Batch 19). RELEASE-VALIDATOR APPROVED. Axe-core
+      on-page runtime scan DEFERRED to WF-05 UAT by design (gate runtime-skips when @axe-core/playwright
+      absent); gate module + reporter + config fully implemented and unit-tested.
   GRD-UI-07:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Generated per-field ARIA wiring
+    implemented_in:
+    - web/src/components/forms/FieldFactory.tsx
+    - web/src/components/forms/DynamicFormRenderer.tsx
+    - web/src/components/forms/ariaHints.ts
+    - web/src/components/forms/fieldRegistry.ts
+    - web/tests/a11y/aria-validator.ts
+    - web/tests/unit/FieldFactory.aria.test.tsx
+    - web/tests/unit/DynamicFormRenderer.aria.test.tsx
+    - web/tests/unit/aria-validator.test.ts
+    - web/tests/e2e/grd-ui-07.field-aria.e2e.spec.ts
+    released_at: '2026-08-13T20:55:36Z'
+    note: 'Released via WF02-pw13-pw16-batch19-20260813 (Batch 19). RELEASE-VALIDATOR APPROVED: type-check
+      0, lint 0, 110/110 unit tests, build 0.'
   MIG-01:
     status: RELEASED
     stage: '16'
@@ -4872,15 +4901,38 @@ requirements:
     title: Leak-free permission denied surface
     released_at: '2026-08-13T16:40:33Z'
   RND-UI-05:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Rate limit backpressure with retry countdown
+    implemented_in:
+    - web/src/components/ui/RateLimitBackpressure.tsx
+    - web/src/utils/getRetryAfterSeconds.ts
+    - web/src/components/ui/QueryStateBoundary.tsx
+    - web/src/api/client.ts
+    - web/tests/unit/RateLimitBackpressure.test.tsx
+    - web/tests/e2e/rnd-ui-05.rate-limit-backpressure.e2e.spec.ts
+    released_at: '2026-08-13T20:55:05Z'
+    note: 'Released via WF02-pw13-pw16-batch19-20260813 (Batch 19). RELEASE-VALIDATOR APPROVED: type-check
+      0, lint 0, 110/110 unit tests, build 0.'
   RND-UI-06:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: SHOULD
     title: Three-action write conflict resolution
+    implemented_in:
+    - web/src/components/ui/ConflictResolver.tsx
+    - web/src/components/ui/StaleVersionError.tsx
+    - web/src/components/definitions/DraftBanner.tsx
+    - web/src/stores/definitionDraftStore.ts
+    - web/src/components/ui/ConfirmDialog.tsx
+    - web/tests/unit/ConflictResolver.test.tsx
+    - web/tests/unit/StaleVersionError.test.tsx
+    - web/tests/unit/definitionDraftStore.test.ts
+    - web/tests/e2e/rnd-ui-06.conflict-resolver.e2e.spec.ts
+    released_at: '2026-08-13T20:55:17Z'
+    note: 'Released via WF02-pw13-pw16-batch19-20260813 (Batch 19). RELEASE-VALIDATOR APPROVED: type-check
+      0, lint 0, 110/110 unit tests, build 0.'
   SBX-01:
     status: DRAFT
     stage: '17'

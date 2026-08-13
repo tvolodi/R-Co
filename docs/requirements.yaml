@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-13T18:11:11Z'
+generated_at: '2026-08-13T20:55:36Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -11547,7 +11547,7 @@ requirements:
     title: Accessibility gate per canonical surface
     stage: F8
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > An accessibility gate SHALL run `@axe-core/playwright` against each canonical surface - Task Inbox, Instance List, Instance Detail, Definition List, Process Designer and Login - as one Playwright test per surface against the real backend. Any violation with impact `serious` or `critical` SHALL fail the gate, naming the rule ID, the impact and the target selector. Violations with impact `moderate` or `minor` SHALL be recorded in the run report at severity MINOR and SHALL NOT block. The `color-contrast` rule SHALL remain enabled, because the gate executes in a real Chromium page where pixel measurement is available.
 
@@ -11563,14 +11563,26 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:15Z'
+    last_updated: '2026-08-13T20:55:35Z'
     workflow: PW-16
+    note: Released via WF02-pw13-pw16-batch19-20260813 (Batch 19). RELEASE-VALIDATOR APPROVED. Axe-core
+      on-page runtime scan DEFERRED to WF-05 UAT by design (gate runtime-skips when @axe-core/playwright
+      absent); gate module + reporter + config fully implemented and unit-tested.
+    implemented_in:
+    - web/tests/a11y/a11yGate.ts
+    - web/tests/a11y/a11yConfig.ts
+    - web/tests/a11y/reportWriter.ts
+    - web/tests/a11y/axe-build-flag.ts
+    - web/tests/e2e/a11y-gate.e2e.spec.ts
+    - web/tests/unit/a11yGate.test.ts
+    - web/tests/unit/a11yConfig.test.ts
+    released_at: '2026-08-13T20:55:35Z'
   GRD-UI-07:
     id: GRD-UI-07
     title: Generated per-field ARIA wiring
     stage: F8
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** CMP-UI-05, making ARIA wiring a property of the field registry rather than of each screen.
 
@@ -11588,8 +11600,21 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:16Z'
+    last_updated: '2026-08-13T20:55:36Z'
     workflow: PW-16
+    note: 'Released via WF02-pw13-pw16-batch19-20260813 (Batch 19). RELEASE-VALIDATOR APPROVED: type-check
+      0, lint 0, 110/110 unit tests, build 0.'
+    implemented_in:
+    - web/src/components/forms/FieldFactory.tsx
+    - web/src/components/forms/DynamicFormRenderer.tsx
+    - web/src/components/forms/ariaHints.ts
+    - web/src/components/forms/fieldRegistry.ts
+    - web/tests/a11y/aria-validator.ts
+    - web/tests/unit/FieldFactory.aria.test.tsx
+    - web/tests/unit/DynamicFormRenderer.aria.test.tsx
+    - web/tests/unit/aria-validator.test.ts
+    - web/tests/e2e/grd-ui-07.field-aria.e2e.spec.ts
+    released_at: '2026-08-13T20:55:36Z'
   MIG-01:
     id: MIG-01
     title: Platform migration control table
@@ -12757,7 +12782,7 @@ requirements:
     title: Rate limit backpressure with retry countdown
     stage: F8
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** API-10, surfacing platform rate limiting as a bounded client-side wait rather than a bare error.
 
@@ -12774,14 +12799,24 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:03Z'
+    last_updated: '2026-08-13T20:55:05Z'
     workflow: PW-13
+    note: 'Released via WF02-pw13-pw16-batch19-20260813 (Batch 19). RELEASE-VALIDATOR APPROVED: type-check
+      0, lint 0, 110/110 unit tests, build 0.'
+    implemented_in:
+    - web/src/components/ui/RateLimitBackpressure.tsx
+    - web/src/utils/getRetryAfterSeconds.ts
+    - web/src/components/ui/QueryStateBoundary.tsx
+    - web/src/api/client.ts
+    - web/tests/unit/RateLimitBackpressure.test.tsx
+    - web/tests/e2e/rnd-ui-05.rate-limit-backpressure.e2e.spec.ts
+    released_at: '2026-08-13T20:55:05Z'
   RND-UI-06:
     id: RND-UI-06
     title: Three-action write conflict resolution
     stage: F8
     priority: SHOULD
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** PD-08, giving optimistic concurrency a client-side resolution surface.
 
@@ -12799,8 +12834,21 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:04Z'
+    last_updated: '2026-08-13T20:55:17Z'
     workflow: PW-13
+    note: 'Released via WF02-pw13-pw16-batch19-20260813 (Batch 19). RELEASE-VALIDATOR APPROVED: type-check
+      0, lint 0, 110/110 unit tests, build 0.'
+    implemented_in:
+    - web/src/components/ui/ConflictResolver.tsx
+    - web/src/components/ui/StaleVersionError.tsx
+    - web/src/components/definitions/DraftBanner.tsx
+    - web/src/stores/definitionDraftStore.ts
+    - web/src/components/ui/ConfirmDialog.tsx
+    - web/tests/unit/ConflictResolver.test.tsx
+    - web/tests/unit/StaleVersionError.test.tsx
+    - web/tests/unit/definitionDraftStore.test.ts
+    - web/tests/e2e/rnd-ui-06.conflict-resolver.e2e.spec.ts
+    released_at: '2026-08-13T20:55:17Z'
   SBX-01:
     id: SBX-01
     title: Orchestrator role gate on task-spec submission

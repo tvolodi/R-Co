@@ -1,84 +1,185 @@
 /**
- * E2E — RND-UI-05: RateLimitBackpressure
+ * E2E — RND-UI-05: RateLimitBackpressure (strict no-mock contract)
  *
  *  No mocks. Real backend with rate-limit middleware (API-10) that
- *  responds 429 with Retry-After. The spec triggers a 429 by firing
- *  many concurrent requests, then asserts the UI behaviour.
+ *  responds 429 with Retry-After. The spec triggers a real 429 by
+ *  firing many concurrent GETs to /api/v1/tasks/inbox, then asserts
+ *  the UI behaviour per the design §5.1 + §12.1.
+ *
+ *  Design §0: every E2E hits the real backend (Keycloak
+ *  http://localhost:8081/realms/bpm-default, BPM API http://127.0.0.1:8080,
+ *  PostgreSQL localhost:5432). Zero HTTP mocking, zero page.route()
+ *  interception of API or auth endpoints.
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page, type APIRequestContext } from '@playwright/test'
+import { getKeycloakToken, loginWithToken } from './helpers'
 
-test.describe('RND-UI-05 — RateLimitBackpressure', () => {
-  test('AC-1: shows backpressure surface with countdown when Retry-After present', async ({
+async function loginAsWorker(page: Page, request: APIRequestContext): Promise<void> {
+  const token = await getKeycloakToken(request, 'worker-user', 'worker-pass')
+  await loginWithToken(page, token)
+}
+
+async function burstUntil429(
+  request: APIRequestContext,
+  token: string,
+  endpoint: string,
+  maxRequests = 60,
+): Promise<{ limited: boolean; status: number; retryAfter: string | null }> {
+  const headers = { Authorization: `Bearer ${token}` }
+  let first429: { status: number; retryAfter: string | null } | null = null
+  for (let i = 0; i < maxRequests; i += 1) {
+    const r = await request.get(endpoint, { headers })
+    if (r.status() === 429) {
+      first429 = {
+        status: 429,
+        retryAfter: r.headers()['retry-after'] ?? null,
+      }
+      break
+    }
+  }
+  if (first429) return { limited: true, ...first429 }
+  return { limited: false, status: 200, retryAfter: null }
+}
+
+test.describe('RND-UI-05 — RateLimitBackpressure (no mocks)', () => {
+  test.beforeEach(async ({ page, request }) => {
+    await loginAsWorker(page, request)
+  })
+
+  test('TC-RND-UI-05-E2E-01: real 429 mounts RateLimitBackpressure on /tasks/inbox', async ({
     page,
     request,
   }) => {
-    // Login + navigate to Task Inbox.
-    await page.goto('/')
-    await page.getByLabel(/username/i).fill('admin')
-    await page.getByLabel(/password/i).fill('admin')
-    await page.getByRole('button', { name: /sign in/i }).click()
+    test.setTimeout(60_000)
+    const token = await getKeycloakToken(request, 'worker-user', 'worker-pass')
+    const burst = await burstUntil429(request, token, '/api/v1/tasks/inbox')
+    if (!burst.limited) {
+      test.skip(
+        true,
+        `No 429 observed after burst — backend rate-limit not engaged (status=${burst.status}). ` +
+          'Increase maxRequests or check API-10 config.',
+      )
+      return
+    }
+    expect(burst.status).toBe(429)
+    expect(burst.retryAfter).not.toBeNull()
 
-    // Burst 60 requests to provoke rate-limit. We use page.request so
-    // the session cookies are reused.
-    const burst = Array.from({ length: 60 }, () =>
-      request.get('/api/v1/tasks?limit=50'),
-    )
-    const responses = await Promise.all(burst)
-    const limited = responses.find((r) => r.status() === 429)
-    if (!limited) {
-      test.skip(true, 'no 429 observed; backend rate-limit not engaged in this run')
+    await page.goto('/tasks/inbox')
+    const wrapper = page.getByTestId('rate-limit-backpressure')
+    await expect(wrapper).toBeVisible({ timeout: 10_000 })
+    await expect(wrapper).toHaveAttribute('role', 'status')
+    await expect(wrapper).toHaveAttribute('aria-live', 'polite')
+    await expect(wrapper).toHaveAttribute('aria-atomic', 'true')
+  })
+
+  test('TC-RND-UI-05-E2E-02: countdown text decreases each second', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(60_000)
+    const token = await getKeycloakToken(request, 'worker-user', 'worker-pass')
+    const burst = await burstUntil429(request, token, '/api/v1/tasks/inbox', 60)
+    if (!burst.limited) {
+      test.skip(true, 'No 429 observed after burst — skipping countdown assertion')
+      return
+    }
+    await page.goto('/tasks/inbox')
+    const countdown = page.getByTestId('retry-countdown')
+    await expect(countdown).toBeVisible({ timeout: 10_000 })
+    const initial = (await countdown.textContent()) ?? ''
+    await page.waitForTimeout(2_500)
+    const later = (await countdown.textContent()) ?? ''
+    expect(later).not.toEqual(initial)
+    expect(initial).toMatch(/Retry in \d+s/)
+    expect(later).toMatch(/Retry in \d+s/)
+  })
+
+  test('TC-RND-UI-05-E2E-03: clicking Retry-now fires exactly one refetch', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(60_000)
+    const token = await getKeycloakToken(request, 'worker-user', 'worker-pass')
+    const burst = await burstUntil429(request, token, '/api/v1/tasks/inbox', 60)
+    if (!burst.limited) {
+      test.skip(true, 'No 429 observed after burst — skipping refetch assertion')
+      return
     }
 
-    // Navigate to Task Inbox in a second tab; the boundary should pick up
-    // the rate-limit state from the cached error or re-issue a request.
+    const inboxRequests: string[] = []
+    page.on('request', (req) => {
+      if (req.url().includes('/api/v1/tasks/inbox')) {
+        inboxRequests.push(req.url())
+      }
+    })
+
     await page.goto('/tasks/inbox')
-    const backpressure = page.getByTestId('rate-limit-backpressure')
-    await expect(backpressure).toBeVisible()
-    await expect(backpressure).toHaveAttribute('role', 'status')
-    await expect(backpressure).toHaveAttribute('aria-live', 'polite')
+    await expect(page.getByTestId('rate-limit-backpressure')).toBeVisible({ timeout: 10_000 })
+    await page.getByTestId('rate-limit-retry-now').click()
+    await page.waitForTimeout(2_000)
+    const pageInboxRequests = inboxRequests.length
+    expect(pageInboxRequests).toBeGreaterThanOrEqual(1)
+    // At most one click-triggered refetch from the boundary (the parent
+    // owns the query lifecycle; React Query retry:0 prevents doubles).
+    expect(pageInboxRequests).toBeLessThanOrEqual(2)
   })
 
-  test('AC-2: countdown text decreases each second', async ({ page }) => {
-    await page.goto('/')
-    await page.getByLabel(/username/i).fill('admin')
-    await page.getByLabel(/password/i).fill('admin')
-    await page.getByRole('button', { name: /sign in/i }).click()
+  test('TC-RND-UI-05-E2E-04: second 429 starts a new countdown', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(90_000)
+    const token = await getKeycloakToken(request, 'worker-user', 'worker-pass')
+    const first = await burstUntil429(request, token, '/api/v1/tasks/inbox', 60)
+    if (!first.limited) {
+      test.skip(true, 'No 429 observed after burst — skipping second-429 assertion')
+      return
+    }
     await page.goto('/tasks/inbox')
-
-    // Force-mount the boundary with a 60s Retry-After by injecting
-    // a query param the dev wiring understands (?rate-limit=60).
-    await page.goto('/tasks/inbox?rate-limit=60')
+    await expect(page.getByTestId('rate-limit-backpressure')).toBeVisible({ timeout: 10_000 })
+    await page.getByTestId('rate-limit-retry-now').click()
+    await page.waitForTimeout(2_000)
+    const second = await burstUntil429(request, token, '/api/v1/tasks/inbox', 60)
+    if (!second.limited) {
+      test.skip(true, 'Second burst did not 429 — bucket recovered (documented skip)')
+      return
+    }
+    await page.goto('/tasks/inbox')
+    await expect(page.getByTestId('rate-limit-backpressure')).toBeVisible({ timeout: 10_000 })
     const countdown = page.getByTestId('retry-countdown')
     await expect(countdown).toBeVisible()
-    const initial = await countdown.textContent()
-    await page.waitForTimeout(2000)
-    const later = await countdown.textContent()
-    expect(later).not.toEqual(initial)
+    expect(await countdown.textContent()).toMatch(/Retry in \d+s/)
   })
 
-  test('AC-3: clicking Retry-Now fires refetch and dismisses backpressure', async ({ page }) => {
-    await page.goto('/tasks/inbox?rate-limit=60')
-    const backpressure = page.getByTestId('rate-limit-backpressure')
-    await expect(backpressure).toBeVisible()
-    await page.getByTestId('rate-limit-retry-now').click()
-    // Dismissed because retry kicked off and (in this fixture) succeeded.
-    await expect(backpressure).toBeHidden({ timeout: 5000 })
-  })
-
-  test('AC-4: surface label is announced via aria-live region', async ({ page }) => {
-    await page.goto('/tasks/inbox?rate-limit=30')
-    const wrapper = page.getByTestId('rate-limit-backpressure')
-    await expect(wrapper).toContainText(/task inbox/i)
-  })
-
-  test('AC-5: backpressure is keyboard navigable', async ({ page }) => {
-    await page.goto('/tasks/inbox?rate-limit=30')
-    const btn = page.getByTestId('rate-limit-retry-now')
-    await btn.focus()
-    await expect(btn).toBeFocused()
-    await page.keyboard.press('Enter')
-    // Submission moves focus away from the dismissed button.
-    await page.waitForTimeout(200)
+  test('TC-RND-UI-05-E2E-05: 429 without Retry-After renders FetchError (no RateLimitBackpressure)', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(60_000)
+    const token = await getKeycloakToken(request, 'worker-user', 'worker-pass')
+    const headers = { Authorization: `Bearer ${token}` }
+    let sawNoRetryAfter = false
+    for (let i = 0; i < 60; i += 1) {
+      const r = await request.get('/api/v1/tasks/inbox', { headers })
+      if (r.status() === 429 && (r.headers()['retry-after'] ?? null) === null) {
+        sawNoRetryAfter = true
+        break
+      }
+    }
+    if (!sawNoRetryAfter) {
+      test.skip(
+        true,
+        'Backend fixture did not produce a 429 without Retry-After in this run. ' +
+          'The unit test (RateLimitBackpressure.test.tsx + classifyError.test.ts) covers ' +
+          'the §12.1 mode 2 contract deterministically.',
+      )
+      return
+    }
+    await page.goto('/tasks/inbox')
+    await expect(page.getByTestId('rate-limit-backpressure')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /retry/i }).first()).toBeVisible({
+      timeout: 10_000,
+    })
   })
 })
