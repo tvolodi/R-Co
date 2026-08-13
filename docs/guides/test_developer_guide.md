@@ -496,22 +496,66 @@ harness connection.
    zig build test-<module>
    ```
 
-2. **Reduce concurrency** — pass `-j4` (or another small value) to serialise
-   more of the migration work:
+2. **Reduce concurrency** — the integration-test step is capped at **4 parallel
+   binaries by default** (lowered from 8 in REWORK 2 / ISS-0692, after an
+   empirical -j sweep on this host showed -j4 gives a much better
+   failure-rate vs wall-time tradeoff than -j8 — see
+   `tests/reports/ISS-0692-step03-rework2-sweep.md` for the data). Operators
+   can set `BPM_TEST_INTEGRATION_JOB_CAP` in the build environment, while CI
+   can override it with `-Dtest-integration-jobs=N`.
+
+   **The cap only takes effect when the build runner is invoked with `-j<N>`**.
+   Zig 0.16 removed `Step.setJobs()`; the `BPM_TEST_INTEGRATION_JOB_CAP` env
+   var and `-Dtest-integration-jobs=N` build option are surfaced in build
+   diagnostics, but the build runner itself does not pick them up
+   automatically. Use the wrapper scripts to apply the cap by default:
+
    ```powershell
-   zig build test-integration -j4
+   # Windows — reads BPM_TEST_INTEGRATION_JOB_CAP (default 8) and runs
+   # `zig build test-integration -j$N --summary all`:
+   scripts/run-test-integration.ps1
+
+   # Linux/macOS:
+   ./scripts/run-test-integration.sh
+
+   # Override at the call site:
+   scripts/run-test-integration.ps1 -Jobs 4
+   BPM_TEST_INTEGRATION_JOB_CAP=4 ./scripts/run-test-integration.sh
    ```
 
-3. **Widen the migration timeout** — set `BPM_TEST_STMT_TIMEOUT` to a value
-   larger than the default `300s` before the run:
+   Or invoke `zig build test-integration -j$N` directly:
+
    ```powershell
-   $env:BPM_TEST_STMT_TIMEOUT = "600s"
+   $env:BPM_TEST_INTEGRATION_JOB_CAP = "4"
+   zig build test-integration -j4
+   zig build test-integration -j4 -Dtest-integration-jobs=4
+   ```
+
+   Use `-j2` on small development machines, or lower the cap further on
+   heavily loaded hosts where `-j4` still does not help. The build option
+   takes precedence when both controls are supplied; the wrapper scripts
+   resolve the same precedence (env var > -Jobs flag > default 4).
+
+   **Important:** invoking `zig build test-integration` *without* `-j`
+   (with or without the env var set) leaves the cap unenforced — the
+   default job width is whatever the runner decides (typically
+   `#cores`/`-j1`). On a 16-core host this means ~16 concurrent test
+   binaries, which is the workload that produced the original
+   ISS-0692 / GH-752 capacity regressions. Use the wrapper or pass
+   `-jN` explicitly.
+
+3. **Widen the migration timeout** — `BPM_TEST_STMT_TIMEOUT` defaults to
+   `600s`; the environment-variable override remains available for catastrophic
+   hosts:
+   ```powershell
+   $env:BPM_TEST_STMT_TIMEOUT = "900s"
    zig build test-integration
    ```
-   The default (`300s`) is intentionally wider than the session `60s` used for
-   ordinary test queries; this variable controls only the DDL/migration window
-   inside `runMigrations()` / `runMigrationsForSchema()`. `configureSessionTimeouts()`
-   (which governs all other harness queries) is unaffected.
+   This variable controls only the DDL/migration window inside
+   `runMigrations()` / `runMigrationsForSchema()`. The default is intentionally
+   wider than the session `60s` used for ordinary test queries;
+   `configureSessionTimeouts()` (which governs all other harness queries) is
+   unaffected.
 
 **Do not** treat a statement-timeout cancellation during harness init as a
 test failure for traceability purposes unless the binary also fails when

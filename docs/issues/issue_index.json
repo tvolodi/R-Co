@@ -1,12 +1,29 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-12T18:37:15Z",
+  "last_updated": "2026-08-13T07:16:08Z",
   "next_issue_id": 212,
   "issues": [
     {
+      "id": "ISS-0692",
+      "title": "zig build test-integration: pg_advisory_lock acquisition fails with ServerError under parallel test runs due to lock_timeout/statement_timeout interaction",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-GH752-20260812",
+      "handoff_id": "wf03-gh752-20260812-07-doc-updater",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "scripts/run-test-integration.ps1",
+        "scripts/run-test-integration.sh",
+        "migrations/migrate.zig"
+      ],
+      "created_at": "2026-08-12T18:37:15Z",
+      "resolved_at": "2026-08-13T07:16:08Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/752"
+    },
+    {
       "id": "ISS-0211",
       "title": "zig build test-integration: statement_timeout contention under full concurrency continues despite ISS-0665 fix (300s DDL window insufficient / not fully effective at reduced concurrency either)",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "BLOCKER",
       "run_id": "WF02-batch-6-20260812",
       "handoff_id": "6621e151-eee2-4ffd-b1bd-b8881d8c5fa5",
@@ -16,7 +33,9 @@
         "build.zig (test-integration-others-internal barrier step)"
       ],
       "created_at": "2026-08-12T18:37:15Z",
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/752"
+      "resolved_at": "2026-08-13T07:16:08Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/752",
+      "resolution_note": "Resolved via ISS-0692/WF03-GH752-20260812; lock_timeout=0 and statement_timeout=0 brackets applied in helpers.zig commit 91a71ef6"
     },
     {
       "id": "ISS-0085",

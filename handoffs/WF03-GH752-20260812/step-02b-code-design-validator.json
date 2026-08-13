@@ -1,0 +1,44 @@
+{
+  "handoff_id": "wf03-gh752-20260812-02b-code-design-validator",
+  "run_id": "WF03-GH752-20260812",
+  "schema_version": 1,
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-12T22:31:40Z",
+  "started_at": "2026-08-12T22:31:40Z",
+  "status": "COMPLETED",
+  "stage": "WF-03 Issue Resolving",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh752-20260812-02-code-designer"
+    ],
+    "artifacts_in": [
+      "src/design/iss0692_test_integration_capacity_mitigation.md",
+      "tests/integration/helpers.zig",
+      "build.zig",
+      "docs/issue-reports/ISS-0692-step01-diagnosis.md"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 02b hard-gate (CODE-DESIGN-VALIDATOR) for GH-752/ISS-0692. Validate the design artefact at src/design/iss0692_test_integration_capacity_mitigation.md before BACKEND-DEV implements. Per AGENT_SYSTEM.md \u00a74 the design must: (1) cover every acceptance criterion listed in step-00-issue-fixer.json; (2) have no implementation code (only diffs, prose, and data flow); (3) be complete enough for BACKEND-DEV to proceed without ambiguity; (4) explicitly state the env-var name chosen and the default -j value with rationale; (5) explicitly state the BPM_TEST_STMT_TIMEOUT default change (300s -> ?) with rationale; (6) identify any risks or assumptions; (7) include a rollback plan if the chosen mitigations do not produce the required 5 consecutive clean runs.",
+    "acceptance_criteria": [
+      "Design covers all acceptance criteria from step-00-issue-fixer.json (5 consecutive clean runs, env-verify C6 PASS, no isolation violations, docs update)",
+      "Design has no implementation code; only diffs/prose/data-flow",
+      "BACKEND-DEV can implement without further questions",
+      "PASS or FAIL verdict written to result.status; if FAIL, route back to step-02 with rework_count++"
+    ]
+  },
+  "rework_count": 1,
+  "max_rework": 2,
+  "completed_at": "2026-08-12T22:38:15Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Second-attempt hard-gate re-validation of src/design/iss0692_test_integration_capacity_mitigation.md (rework by CODE-DESIGNER step-02c, attempt 1). All 5 issues from the first attempt (3 MAJOR + 2 MINOR) are resolved in the rework. All 8 hard-gate checks PASS. tools/lint_design_artefact.py now reports BLOCKER=0 MAJOR=0 MINOR=6 (was BLOCKER=0 MAJOR=2 MINOR=0; the 6 MINORs are E030 schema-qualified-name warnings inherited from the original design at lines 119/170/181, NOT regressions introduced by the rework). Chosen mitigation (b)+(a), env-var names (BPM_TEST_INTEGRATION_JOB_CAP, BPM_TEST_STMT_TIMEOUT), defaults (-j=8, 600s), no-touch list, and verification plan are all UNCHANGED from the first attempt per the change history (design section 10). The 5 specific fixes verified: (1) Module purpose and Error taxonomy second-level headings now present (E010 x2 resolved); (2) section 6.2 BPM_TEST_STMT_TIMEOUT=600s default anchor with ~65s cancellation-cluster citation from ISS-0692.json description and full WHY-NOT for 900s/450s; (3) section 9 Rollback plan with 5 sub-sections (full + partial revert, observable signal triggers per failure-count band, rollback verification, no-data-concerns confirmation, host-class escalation); (4) Zig 0.16 API corrected from getEnvVarOwned to getEnvVar with inline documentation comment; (5) section 6.1 -j=8 default anchor citing ISS-0665 prevention note (#cores/2 on 16-core host) with explicit WHY-NOT for -j4/-j16/-j32+/-j12. BACKEND-DEV may proceed at Step 03 to implement (b)+(a) on feature/WF03-GH752-20260812.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 03, implement (b)+(a) on feature/WF03-GH752-20260812)"
+  }
+}

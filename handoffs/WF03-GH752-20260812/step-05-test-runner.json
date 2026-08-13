@@ -1,0 +1,67 @@
+{
+  "handoff_id": "wf03-gh752-20260812-05-test-runner",
+  "run_id": "WF03-GH752-20260812",
+  "schema_version": 1,
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-12T23:05:57Z",
+  "started_at": "2026-08-12T23:05:57Z",
+  "status": "COMPLETED",
+  "stage": "WF-03 Issue Resolving",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh752-20260812-03-backend-dev",
+      "wf03-gh752-20260812-04-test-designer",
+      "wf03-gh752-20260812-04b-test-design-validator"
+    ],
+    "artifacts_in": [
+      "build.zig",
+      "tests/integration/helpers.zig",
+      "src/design/iss0692_test_integration_capacity_mitigation.md",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 05 (TEST-RUNNER) for GH-752/ISS-0692. CRITICAL GATE \u2014 execute the 5-consecutive-clean-run acceptance criterion from step-00-issue-fixer.json. Step 00 BACKEND-DEV reported that local integration environment was down (CONNECTION_REFUSED) when it tried zig build test-integration; you must first ensure the test infra is running (per the 'Infrastructure problems \u2014 ADHOC handoff, fully autonomous (NO user pause)' protocol in the ORCH mode instructions, if you cannot reach PostgreSQL/test services, route to an ADHOC BACKEND-DEV handoff to bring them up; do NOT ask the user). Procedure: (1) docker-compose ps to confirm db_test health; if unhealthy, bring up per the protocol; (2) zig build test-env-verify (must exit 0 \u2014 HEALTHY 10/10); (3) run zig build test-integration 5 times consecutively (do NOT pass -j manually \u2014 use the new default -j cap); after EACH run, immediately run zig build test-env-verify and confirm 0 ungranted locks (C6 PASS); all 5 runs must complete with 'Build Summary: N/N steps succeeded' and zero ServerError / 'test runner failed to respond' entries. Report results per ORCH protocol.",
+    "acceptance_criteria": [
+      "zig build test-env-verify exits 0 (HEALTHY 10/10, 0 ungranted locks) BEFORE the first test-integration run",
+      "5 consecutive `zig build test-integration` runs (default -j, NOT manual -j) ALL complete with 'Build Summary: N/N steps succeeded'",
+      "ZERO `ServerError` / 'test runner failed to respond' entries across all 5 runs",
+      "AFTER EACH of the 5 runs, `zig build test-env-verify` reports 0 ungranted locks (C6 PASS) with NO manual `db_test` restart between them",
+      "If any of the 5 runs fails, do NOT silently pass; report the failure with full diagnostic info (build summary, ServerError count, env-verify C6 status)",
+      "Write a structured test report to tests/reports/ISS-0692-step05-runs.md with the 5-run sequence and outcomes",
+      "Confirm tools/lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:test-env-verify",
+      "fn:test-integration",
+      "fn:register-inner-report"
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-08-12T23:09:39Z",
+  "result": {
+    "status": "FAIL",
+    "summary": "Pre-check gate zig build test-env-verify does not exit 0: 3 of 10 checks fail (C3 schema_migrations ledger 138 rows vs 137 files, C4 schema baseline delta=1, C5 test isolation lint MAJOR=7). C6 (stale locks) PASS. Halted per handoff protocol before the 5-run sequence. Implementation on feature/WF03-GH752-20260812 @ b0a21089 is correctly applied but the .zig build step uses the env var as documentation only (Zig 0.16 removed Step.setJobs); primary mitigation (b) is not active during default invocation. Report at tests/reports/ISS-0692-step05-runs.md.",
+    "artifacts_out": [
+      "tests/reports/ISS-0692-step05-runs.md",
+      "tests/reports/ISS-0692-step05-precheck.log",
+      "tests/reports/ISS-0692-step05-precheck-retry.log"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "zig build test-env-verify exit 1 before 5-run sequence: C3/C4 (public.schema_migrations has 138 rows for schema_name=public while migrations/ contains 137 files; auto-fix did not resolve) and C5 (lint_test_isolation MAJOR=7, BLOCKER=0). 5-run acceptance gate halts at step 2 per handoff protocol. Requires ADHOC BACKEND-DEV to investigate the spurious schema_migrations row and either fix it or amend the pre-check acceptance criteria to C6-only."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Design-vs-implementation gap: Step.setJobs() was removed in Zig 0.16; the implementation keeps BPM_TEST_INTEGRATION_JOB_CAP / -Dtest-integration-jobs as a documentation/operator knob rather than the built-in -j cap the design called for. Primary mitigation (b) is not active during default zig build test-integration invocation; only mitigation (a) (600s raise) is active. CI must append -j8 explicitly. Should be documented in DOC-UPDATER retrospective."
+      }
+    ],
+    "next_action": "Route to ORCH: spawn ADHOC BACKEND-DEV handoff to investigate the spurious public.schema_migrations ledger row (root cause + clean_test_db.py remediation + re-run verify_schema_baseline to confirm C3/C4 PASS), then re-dispatch TEST-RUNNER for the 5-run sequence. Separately consider whether C5 MAJOR=7 findings are in-scope for GH-752 (the design says no). Optionally, file an ISS for the design-vs-implementation gap on the -j cap (Zig 0.16 removed Step.setJobs)."
+  }
+}

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "created_at": null,
-  "last_updated": "2026-08-12T22:25:00Z",
+  "last_updated": "2026-08-13T07:14:01Z",
   "entries": [
     {
       "handoff_id": "iss201-git-merge-final",
@@ -26903,6 +26903,33 @@
       "completed_at": "2026-08-12T22:25:00Z",
       "status": "COMPLETED",
       "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "wf03-gh752-20260812-03-rework2-backend-dev",
+      "file": "handoffs/WF03-GH752-20260812/step-03-rework2-backend-dev.json",
+      "run_id": "WF03-GH752-20260812",
+      "step": "03-rework2",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-13T00:22:06Z",
+      "status": "PENDING",
+      "started_at": "2026-08-13T00:22:06Z"
+    },
+    {
+      "handoff_id": "adhoc-gh752-lockfix-20260813-backend-dev",
+      "run_id": "ADHOC-gh752-lockfix-20260813",
+      "step": "01",
+      "to_agent": "BACKEND-DEV",
+      "status": "PENDING",
+      "created_at": "2026-08-13T06:48:04Z"
+    },
+    {
+      "handoff_id": "wf03-gh752-20260812-07-doc-updater",
+      "run_id": "WF03-GH752-20260812",
+      "step": "07",
+      "to_agent": "DOC-UPDATER",
+      "status": "PENDING",
+      "created_at": "2026-08-13T07:14:01Z"
     }
   ]
 }
