@@ -21,11 +21,26 @@
     "docs/Sessions.md",
     "previous similar runs: handoffs/WF03-GH752-20260812/ (mirror conventions)"
   ],
-  "result": null,
-  "status": "IN_PROGRESS",
+  "result": {
+    "status": "PASS",
+    "summary": "Updated ISS-0697 status to RESOLVED (resolved_at, resolved_by, resolution_commit) and refreshed next_action; appended ISS-0697 entry + flipped its status to RESOLVED in docs/issues/issue_index.json (append-only, surgical regex edit, encoding style preserved); added ISS-0697 Fixed subsection to CHANGELOG.md [Unreleased] block (test ceiling 74->75, snapshot v4->v5, baseline preamble refreshed, T020 line-numbers re-synced for gh512_t010_regression_test.zig); appended single retrospective log line to docs/Sessions.md; tools/lint_handoffs.py exits 0 (2716 handoffs checked, 0 BLOCKER, 0 MAJOR, 1 MINOR, 291 ACKNOWLEDGED). Files changed: CHANGELOG.md, docs/Sessions.md, docs/issues/ISS-0697.json, docs/issues/issue_index.json (also bundling prior-step bookkeeping: handoffs/orchestrator.log, handoffs/registry.json, handoffs/WF03-GH759-20260813/, docs/issue-reports/ISS-0697-evidence.md). Commit d1f20f5b on feature/WF03-GH759-20260813.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/Sessions.md",
+      "docs/issues/ISS-0697.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/ISS-0697-evidence.md",
+      "handoffs/WF03-GH759-20260813/step-07-doc-updater.json",
+      "handoffs/orchestrator.log",
+      "handoffs/registry.json"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to BACKEND-DEV Step Final for git-merge (PR + squash + branch delete)"
+  },
+  "status": "COMPLETED",
   "created_at": "2026-08-13T10:26:51Z",
   "started_at": "2026-08-13T10:28:28Z",
-  "completed_at": null,
+  "completed_at": "2026-08-13T10:38:20Z",
   "rework_count": 0,
   "max_rework": 2
 }

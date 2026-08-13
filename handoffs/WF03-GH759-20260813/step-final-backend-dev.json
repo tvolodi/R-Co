@@ -1,0 +1,54 @@
+{
+  "handoff_id": "step-final-backend-dev",
+  "run_id": "WF03-GH759-20260813",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "task": {
+    "description": "Step Final — Git merge workflow for GH-759 / ISS-0697.\n\nBranch: feature/WF03-GH759-20260813 (commits ba94e9a3 [fix] + d1f20f5b [docs])\nBase: main @ 7a1dd324\n\nTasks (in order):\n\n1. Verify branch state on origin:\n   - `git status` — must be clean on feature/WF03-GH759-20260813\n   - `git log --oneline origin/feature/WF03-GH759-20260813 ^main` — must show exactly 2 commits (ba94e9a3, d1f20f5b)\n\n2. If branch is NOT pushed to origin:\n   - `git push -u origin feature/WF03-GH759-20260813` (capture $LASTEXITCODE; ignore PowerShell stderr trap)\n   - Verify: `git ls-remote origin feature/WF03-GH759-20260813` returns a SHA\n\n3. Create a PR via gh CLI:\n   ```\n   gh pr create --base main --head feature/WF03-GH759-20260813 \\\n     --title 'fix(test-infra): GH-759/ISS-0697 — resync gh512_t010_regression_test ceiling/snapshot to on-main baseline' \\\n     --body 'Closes #759\n\n   ## Summary\n   - **Issue:** TC-RG-01/TC-RG-02 in `tests/integration/gh512_t010_regression_test.zig` fail on every run against current main because the test ceiling constant and snapshot fixture are stale relative to `tools/lint_test_isolation.baseline.json`.\n   - **Root cause:** Commit 34d7ca13 (WF02-idn05-20260812, GH-746) regenerated the baseline (74→75 T010 BLOCKERs, 116→117 total) but did not update `gh512_t010_regression_test.zig`\\'s `t010_blocker_ceiling` or `tests/specs/fixtures/gh512-baseline-snapshot.json`. Third recurrence of this drift class (ISS-0648/GH-653, ISS-0664/GH-701).\n   - **Fix:**\n     - `tests/integration/gh512_t010_regression_test.zig`: `t010_blocker_ceiling: 74 → 75`, doc-comment expanded to reference `snapshot_v5_addendum`.\n     - `tests/specs/fixtures/gh512-baseline-snapshot.json`: v4 → v5, all expected counts bumped by +1, new `snapshot_v5_addendum` block documenting the rationale.\n     - `tools/lint_test_isolation.baseline.json`: preamble metadata refreshed for WF03-GH759-20260813, helpers.zig T020 line numbers re-synced.\n   - **Verification:**\n     - `python tools/lint_test_isolation.py` → exit 0 (159 files, 117 suppressed)\n     - `python tools/lint_test_isolation.py --no-baseline --json tests/integration` → T010=75, total=117 (matches baseline + snapshot)\n     - `python tools/lint_handoffs.py` → exit 0 (0 BLOCKER, 0 MAJOR)\n     - `zig build test-integration-gh512 --summary all` → 6/6 build steps, 3/3 tests passed (TC-RG-01/02/03)\n\n   ISS-0697 (REGISTERED → RESOLVED).\n   Predecessor fix 0fff689f on branch `feature/WF03-GH752-20260812` (ISS-0692/GH-757) made the same correction against an earlier branch state but was not squash-merged to main with GH-752.'\n   ```\n   Capture the PR URL from the gh output (ignore PowerShell stderr trap).\n\n4. If PR creation fails due to gh CLI auth, list the failure verbatim and stop.\n\n5. Squash-merge the PR:\n   ```\n   gh pr merge <PR_URL_OR_NUMBER> --squash --delete-branch\n   ```\n   This will:\n   - Squash-merge the branch into main (single commit on main)\n   - Delete the feature branch from origin\n   - Close the PR automatically (since body includes 'Closes #759')\n\n6. Verify post-merge:\n   - `git fetch origin` — refresh local view of main\n   - `git log --oneline origin/main -1` — confirm the squash commit is on main\n   - `git branch -D feature/WF03-GH759-20260813` — delete the local branch\n   - `git ls-remote origin feature/WF03-GH759-20260813` — must return empty (branch deleted from remote)\n\n7. Verify GH-759 closed:\n   - `gh issue view 759 --json state,stateReason` — should be CLOSED\n\n8. Run `python tools/lint_handoffs.py` — must exit 0.\n\n9. Update the handoff file with all the merge evidence:\n   - status: 'COMPLETED', completed_at from `python tools/utcnow.py`\n   - result.status: 'PASS'\n   - result.git_evidence: full PR URL, merge SHA, branch deletion confirmation\n   - result.summary: 'PR #<N> opened, squash-merged to main, branch deleted, GH-759 closed'\n   - result.next_action: 'ORCH releases TaskManager claim; loop to next item'\n\n10. Final: also append a COMPLETE log line for this handoff:\n    `python scratch/orch_log.py COMPLETE WF03-GH759-20260813 step-final-backend-dev ORCH 'PR merged, branch deleted, GH-759 closed'`\n\nDO NOT:\n- Use a rebase or merge-commit — squash only.\n- Touch the issue label manually (gh pr merge --delete-branch handles it).\n- Skip the verification step at the end (lint_handoffs.py must exit 0).\n\nCRITICAL:\n- PowerShell stderr trap: `gh pr create` and `gh pr merge` print progress to stderr. Check $LASTEXITCODE and the actual PR URL in output, NOT the 'Command exited with code 1' line.\n- If `gh` is not authenticated, the command will fail with an auth error. Capture and report.",
+    "context": {
+      "github_issue": 759,
+      "local_iss": "ISS-0697",
+      "branch": "feature/WF03-GH759-20260813",
+      "fix_commit": "ba94e9a3",
+      "docs_commit": "d1f20f5b"
+    }
+  },
+  "context_artifacts": [
+    "handoffs/WF03-GH759-20260813/step-03-backend-dev.json",
+    "handoffs/WF03-GH759-20260813/step-05-test-runner.json",
+    "handoffs/WF03-GH759-20260813/step-07-doc-updater.json"
+  ],
+  "result": {
+    "status": "PASS",
+    "summary": "PR #768 opened, squash-merged to main (f89275f8), branch deleted (local + remote), GH-759 closed (COMPLETED).",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "ORCH releases TaskManager claim; loop to next item",
+    "git_evidence": {
+      "pr_number": 768,
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/768",
+      "pr_title": "fix(test-infra): GH-759/ISS-0697 — resync gh512_t010_regression_test ceiling/snapshot to on-main baseline",
+      "merge_method": "squash",
+      "merge_sha": "f89275f8f42d32a779624aac65593ad00bba0eef",
+      "merge_short": "f89275f8",
+      "merged_at": "2026-08-13T10:46:57Z",
+      "branch_local_deleted": true,
+      "branch_remote_deleted": true,
+      "local_branch_delete_cmd": "git branch -D feature/WF03-GH759-20260813 (exit 0)",
+      "remote_branch_delete_cmd": "git push origin --delete feature/WF03-GH759-20260813 (exit 0; gh pr merge --delete-branch was blocked by dirty-tree checkout failure)",
+      "gh_759_state": "CLOSED",
+      "gh_759_stateReason": "COMPLETED",
+      "gh_759_closedAt": "2026-08-13T10:46:58Z",
+      "main_ff_to": "f89275f8 (squash commit on origin/main)",
+      "lint_handoffs_exit": 0,
+      "orch_log_appended": "2026-08-13T10:48:03Z | COMPLETE | WF03-GH759-20260813 | step-final-backend-dev | ORCH | PR merged, branch deleted, GH-759 closed"
+    }
+  },
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T10:38:20Z",
+  "started_at": "2026-08-13T10:40:55Z",
+  "completed_at": "2026-08-13T10:47:56Z",
+  "rework_count": 0,
+  "max_rework": 1
+}
