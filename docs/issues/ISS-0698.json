@@ -10,7 +10,10 @@
     "GH-758"
   ],
   "severity": "BLOCKER",
-  "status": "IN_PROGRESS",
+  "status": "RESOLVED",
+  "resolution_commit": "9d06bdf4",
+  "resolved_at": "2026-08-13T14:05:06Z",
+  "resolved_by": "DOC-UPDATER (WF03-GH758-20260813 step-07)",
   "github_issue_confirmed": true,
   "step_0.5_completed_at": "2026-08-13T13:42:03Z",
   "category": "test-infrastructure/pg-client-hang",
@@ -86,7 +89,18 @@
       "verified_on_branch": true,
       "branch_base": "e9b1294d"
     },
-    "step_1_findings_summary": "ISS-0698 step-1 ISSUE-FIXER diagnostic finds that the symptom is no longer reproducible on the current branch. The prior evidence in scratch/gh758_*.log was captured during a pre-9d06bdf4 code state and is stale. The fix landed on main as GH-752/ISS-0692 (commit 9d06bdf4) and is already inherited by this branch. No further code change is required; recommend closing GH-758 as a duplicate of GH-752."
+    "step_1_findings_summary": "ISS-0698 step-1 ISSUE-FIXER diagnostic finds that the symptom is no longer reproducible on the current branch. The prior evidence in scratch/gh758_*.log was captured during a pre-9d06bdf4 code state and is stale. The fix landed on main as GH-752/ISS-0692 (commit 9d06bdf4) and is already inherited by this branch. No further code change is required; recommend closing GH-758 as a duplicate of GH-752.",
+    "step_7_resolution_entry": {
+      "timestamp": "2026-08-13T14:05:06Z",
+      "agent": "DOC-UPDATER (WF03-GH758-20260813 step-07)",
+      "action": "GH-758 closed as duplicate of GH-752/ISS-0692. Comment posted to https://github.com/tvolodi/R-Co/issues/758 referencing the GH-752 fix commit 9d06bdf4 and the WF03-GH758-20260813 diagnostic findings. CHANGELOG.md updated under [Unreleased] 2026-08-13. No code change applied in this WF — the fix (commit 9d06bdf4 on main) was inherited from GH-752/ISS-0692 at branch base e9b1294d.",
+      "comment_url": "https://github.com/tvolodi/R-Co/issues/758#issuecomment-5281498751",
+      "duplicate_of": {
+        "github_issue": "https://github.com/tvolodi/R-Co/issues/752",
+        "internal_issue_id": "ISS-0692",
+        "fix_commit": "9d06bdf4"
+      }
+    }
   },
   "pre_existing_issues_revealed": [
     {
@@ -115,8 +129,11 @@
   "verification": "zig build test-integration-pin01 --verbose exits 0 on 2026-08-13 with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test and BPM_TEST_INTEGRATION_JOB_CAP=1. See scratch/gh758_pin01_verbose.log. Code reading of tests/integration/helpers.zig:906-915 confirms the lock_timeout='0' / statement_timeout='0' bracket is in place. Repo state: docker ps shows r-co-db_test-1 healthy on port 5434; pg_locks query returns no advisory locks; pg_stat_activity returns no test-integration backends.",
   "files_changed": [
     "tests/integration/repro_g758.zig (new, 52 lines)",
-    "docs/issues/ISS-0698.json (root_cause_analysis updated; evidence_trail appended)"
+    "docs/issues/ISS-0698.json (root_cause_analysis updated; evidence_trail appended)",
+    "docs/issues/ISS-0698.json (step-07 closure: status=RESOLVED, resolution_commit=9d06bdf4, resolved_at=2026-08-13T14:05:06Z, step_7_resolution_entry appended)",
+    "CHANGELOG.md (GH-758 closed as duplicate of GH-752/ISS-0692 entry added under [Unreleased] 2026-08-13)",
+    "docs/issues/issue_index.json (ISS-0698 entry updated to status=RESOLVED, resolved_at=2026-08-13T14:05:06Z)"
   ],
   "created_at": "2026-08-13T13:38:47Z",
-  "resolved_at": null
+  "resolved_at": "2026-08-13T14:05:06Z"
 }

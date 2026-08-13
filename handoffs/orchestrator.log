@@ -1450,3 +1450,4 @@
 2026-08-13T13:42:47Z | DONE | WF03-GH758-20260813 | step-0.5-issue-fixer | ORCH | GH-758 confirmed OPEN; ISS-0698 set IN_PROGRESS; routing to step-1 (root cause diagnosis)
 2026-08-13T13:42:47Z | ROUTE   | WF03-GH758-20260813 | step-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
 2026-08-13T14:00:46Z | DONE | WF03-GH758-20260813 | step-01-issue-fixer | ISSUE-FIXER | PASS; root_cause=superseded_by_gh752_iss0692; commit 9d06bdf4 on main already fixes the symptom (lock_timeout=0/statement_timeout=0 around pg_advisory_lock); branch base e9b1294d is post-fix; zig build test-integration-pin01 exits 0; GH-758 is a duplicate of GH-752 -- recommend closing as duplicate. Routing to STEP FINAL for DOC-UPDATER to comment on GH-758 issue and close it.
+2026-08-13T14:04:32Z | ROUTE   | WF03-GH758-20260813 | step-07-doc-updater | ORCH -> DOC-UPDATER | PENDING
