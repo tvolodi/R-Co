@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-13T14:05:06Z",
-  "next_issue_id": 697,
+  "last_updated": "2026-08-13T17:40:39Z",
+  "next_issue_id": 700,
   "issues": [
     {
       "id": "ISS-0696",
@@ -71,7 +71,7 @@
     },
     {
       "id": "ISS-0085",
-      "title": "ISS-0085 (GOV-01) \u2014 Apply the UAT scenario schema v1.1 addendum to the agent docs",
+      "title": "ISS-0085 (GOV-01) — Apply the UAT scenario schema v1.1 addendum to the agent docs",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "run_id": "WF03-GH300-20260810",
@@ -588,7 +588,7 @@
     },
     {
       "id": "ISS-0044",
-      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails \u2014 unique index not upgraded to named constraint",
+      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails — unique index not upgraded to named constraint",
       "status": "RESOLVED",
       "severity": "CRITICAL",
       "run_id": "WF03-def-store-regression-20260528",
@@ -954,7 +954,7 @@
     },
     {
       "id": "ISS-0068",
-      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() \u2014 tenant schemas missing for all tenants",
+      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() — tenant schemas missing for all tenants",
       "status": "RESOLVED",
       "severity": "BLOCKER",
       "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
@@ -1000,7 +1000,7 @@
     },
     {
       "id": "ISS-0071",
-      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input \u2014 swiftroute realm-missing inconsistent state compounds scenario unverifiability",
+      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input — swiftroute realm-missing inconsistent state compounds scenario unverifiability",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "test harness error + backend state inconsistency",
@@ -1015,7 +1015,7 @@
     },
     {
       "id": "ISS-0072",
-      "title": "Tenant admin login fails after onboarding \u2014 GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
+      "title": "Tenant admin login fails after onboarding — GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "logic error / design gap",
@@ -1032,10 +1032,10 @@
     },
     {
       "id": "ISS-0073",
-      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm \u2014 signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
+      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm — signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
       "status": "OPEN",
       "severity": "BLOCKER",
-      "category": "logic error \u2014 singleton cache bypasses realm resolution at callback time",
+      "category": "logic error — singleton cache bypasses realm resolution at callback time",
       "run_id": "WF03-oidc-callback-realm-20260616",
       "handoff_id": "1ef2a3b4-c5d6-7890-1ef2-a3b4c5d67890",
       "affected_areas": [
@@ -1077,7 +1077,7 @@
     },
     {
       "id": "ISS-0076",
-      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table \u2014 creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
+      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table — creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
       "status": "OPEN",
       "severity": "MAJOR",
       "category": "migration scoping / search_path defect",
@@ -1452,7 +1452,7 @@
     },
     {
       "id": "ISS-0123",
-      "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6\u00d7 alongside missing source_ref column",
+      "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6× alongside missing source_ref column",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "schema-drift / audit-trigger-side-effect",
@@ -1653,7 +1653,7 @@
     },
     {
       "id": "ISS-0143",
-      "title": "CI 'zig build test' retry loop can report PASS despite a 'failed command:' line \u2014 status==0 alone is not trustworthy",
+      "title": "CI 'zig build test' retry loop can report PASS despite a 'failed command:' line — status==0 alone is not trustworthy",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "ci-reliability / false-positive-gate",
@@ -1818,7 +1818,7 @@
     },
     {
       "id": "ISS-0175",
-      "title": "Vendored LuaJIT build input luajit_relver.txt is git-ignored but required by build.zig \u2014 a fresh clone cannot build test-lua (GH #503)",
+      "title": "Vendored LuaJIT build input luajit_relver.txt is git-ignored but required by build.zig — a fresh clone cannot build test-lua (GH #503)",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "build-infrastructure/untracked-required-build-input",
@@ -1882,7 +1882,7 @@
     },
     {
       "id": "ISS-0180",
-      "title": "verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL \u2014 C3 can report PASS against an unmigrated test database",
+      "title": "verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL — C3 can report PASS against an unmigrated test database",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "",
@@ -2082,7 +2082,7 @@
     },
     {
       "id": "ISS-0206",
-      "title": "src/definition/store.zig rowToDefinition leaks on allocation failure \u2014 4 sequential dupes, zero errdefer guards (GH #526)",
+      "title": "src/definition/store.zig rowToDefinition leaks on allocation failure — 4 sequential dupes, zero errdefer guards (GH #526)",
       "status": "OPEN",
       "severity": "MAJOR",
       "category": "memory-leak / allocator-dupe-without-errdefer",
@@ -2445,7 +2445,7 @@
     },
     {
       "id": "ISS-0697",
-      "title": "TC-RG-01/TC-RG-02 fail on main: T010 baseline has 117 BLOCKERs but GH-512 snapshot expects 116 \u2014 snapshot stale after WF02-batch-0 commit 0d9041b5",
+      "title": "TC-RG-01/TC-RG-02 fail on main: T010 baseline has 117 BLOCKERs but GH-512 snapshot expects 116 — snapshot stale after WF02-batch-0 commit 0d9041b5",
       "status": "RESOLVED",
       "severity": "MINOR",
       "run_id": "WF03-GH759-20260813",
@@ -2461,6 +2461,16 @@
       "resolved_by": "BACKEND-DEV (commit ba94e9a3)",
       "resolution_commit": "ba94e9a368bba5198bbc12915ca542a1be84d81b",
       "resolved_by_run": "WF03-GH759-20260813"
+    },
+    {
+      "id": "ISS-0699",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/764",
+      "severity": "MAJOR",
+      "status": "RESOLVED",
+      "title": "iss203_idempotency_keys_test TC-ISS-203-02 QueryFailed on ON CONFLICT DO NOTHING replay insert (post-PAR-01 schema mismatch)",
+      "created_at": "2026-08-13T15:45:46Z",
+      "resolved_at": "2026-08-13T17:40:39Z",
+      "resolution_commit": "4174a1adf68fb749bd18f1e9a0d150b784e534ce"
     }
   ]
 }

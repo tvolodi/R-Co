@@ -1,0 +1,148 @@
+{
+  "handoff_id": "WF03-GH764-20260813/step-01-issue-fixer",
+  "run_id": "WF03-GH764-20260813",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "step": "01",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T16:00:20Z",
+  "started_at": "2026-08-13T16:05:55Z",
+  "completed_at": "2026-08-13T16:18:00Z",
+  "task": {
+    "description": "Step 01: root cause diagnosis for TC-ISS-203-02 QueryFailed on ON CONFLICT DO NOTHING replay insert.",
+    "issue_refs": [
+      { "kind": "github", "id": "GH-764", "url": "https://github.com/tvolodi/R-Co/issues/764" },
+      { "kind": "local", "id": "ISS-0699", "path": "docs/issues/ISS-0699.json" }
+    ],
+    "test_refs": [
+      { "file": "tests/integration/iss203_idempotency_keys_test.zig", "test_name": "TC-ISS-203-02: replay dedup — ON CONFLICT DO NOTHING absorbs second insert" }
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause confirmed: Schema mismatch (root-cause class A). After PAR-01 partitioning (migration 1147_par01_events_partitioning.sql, shipped in commit 38cb7967), the uq_event_idempotency UNIQUE index on events(idempotency_key) was DELIBERATELY DROPPED — global idempotency-key uniqueness was moved to the new non-partitioned sidecar table plat_event_idempotency (idempotency_key PRIMARY KEY). The test TC-ISS-203-02 (tests/integration/iss203_idempotency_keys_test.zig:367-380) issues INSERT INTO events … ON CONFLICT (idempotency_key) DO NOTHING against the partitioned events table, which now has NO unique index on idempotency_key — PostgreSQL returns SQLSTATE 42P10 'there is no unique or exclusion constraint matching the ON CONFLICT specification', pg.zig surfaces it as PgError.ServerError (vendor/pg/pg.zig:329), pool.zig wraps it as PoolError.QueryFailed (src/db/pool.zig:526). Verified live against tenant_default.events on the test DB at port 5434 (scratch/gh764_oc_test.log, scratch/gh764_tenant_events_idx.log) and reproduced end-to-end via `zig build test-integration-iss203` (scratch/gh764_iss203_run.log). Pre-PAR-01 the test would have passed because uq_event_idempotency existed (migrations/001_event_store.sql:49); the test was written under that schema and was not updated when PAR-01 redesign landed. NOT a production bug: src/event_store/store.zig:291 already uses plat_event_idempotency correctly. NOT category B/C/D/E.",
+    "root_cause_class": "A — Schema mismatch (test design outdated by PAR-01)",
+    "category_definitive": true,
+    "evidence": [
+      {
+        "id": "E1",
+        "kind": "live_run",
+        "command": "zig build test-integration-iss203",
+        "env": {
+          "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5434/bpm_test",
+          "BPM_IDP_BASE_URL": "http://localhost:8081",
+          "BPM_TEST_URL": "http://127.0.0.1:8080"
+        },
+        "result": "FAILED: TC-ISS-203-02 — Unexpected error during replay insert: error.QueryFailed",
+        "stack": "vendor/pg/pg.zig:329 → src/db/pool.zig:526 → tests/integration/iss203_idempotency_keys_test.zig:380",
+        "artifact": "scratch/gh764_iss203_run.log"
+      },
+      {
+        "id": "E2",
+        "kind": "sql_probe",
+        "command": "docker-compose exec -T db_test psql -U bpm -d bpm_test -c \"INSERT INTO tenant_default.events (...) ON CONFLICT (idempotency_key) DO NOTHING\"",
+        "result": "ERROR: there is no unique or exclusion constraint matching the ON CONFLICT specification",
+        "sqlstate": "42P10",
+        "artifact": "scratch/gh764_oc_test.log"
+      },
+      {
+        "id": "E3",
+        "kind": "schema_introspection",
+        "command": "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname='tenant_default' AND tablename='events'",
+        "result": "10 indexes, none on idempotency_key. Confirmed absent: uq_event_idempotency. Only events_pkey (event_id, created_at) and uq_event_sequence (instance_id, sequence_number, created_at) provide uniqueness.",
+        "artifact": "scratch/gh764_tenant_events_idx.log"
+      },
+      {
+        "id": "E4",
+        "kind": "schema_introspection",
+        "command": "SELECT conname, contype, pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 'tenant_default.events'::regclass",
+        "result": "Only events_pkey (PRIMARY KEY (event_id, created_at)). No UNIQUE constraint on idempotency_key.",
+        "artifact": "scratch/gh764_tenant_events_con.log"
+      },
+      {
+        "id": "E5",
+        "kind": "migration_grep",
+        "command": "grep -n 'idempotency_key\\|uq_event_idempotency\\|plat_event_idempotency' migrations/1147_par01_events_partitioning.sql",
+        "result": "Line 162-164 explicitly notes: 'uq_event_idempotency (idempotency_key) is deliberately NOT recreated here — global idempotency now lives in plat_event_idempotency (Migration 2 below). Partitioning would otherwise silently narrow idempotency_key uniqueness to per-partition scope, which PAR-01 AC2 forbids.' Lines 176-201: plat_event_idempotency table created with idempotency_key PRIMARY KEY."
+      },
+      {
+        "id": "E6",
+        "kind": "test_history",
+        "command": "git log --oneline -- tests/integration/iss203_idempotency_keys_test.zig",
+        "result": "Last test edit: 3eca5be2 (ISS-203 original commit). PAR-01 migration (38cb7967) is more recent — test was not updated to match.",
+        "artifact": "scratch/gh764_main_test_history.log"
+      },
+      {
+        "id": "E7",
+        "kind": "production_reference",
+        "file": "src/event_store/store.zig",
+        "line": 291,
+        "snippet": "INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at) VALUES ($1, gen_random_uuid(), NOW()) ON CONFLICT (idempotency_key) DO NOTHING",
+        "significance": "Production code already uses plat_event_idempotency correctly. The bug is in the test, not in production."
+      },
+      {
+        "id": "E8",
+        "kind": "design_reference",
+        "file": "src/design/par-01-monthly-range-partitioning.md",
+        "line_range": "80-130",
+        "snippet": "global idempotency-key uniqueness preserved via a new, non-partitioned plat_event_idempotency table written in the same transaction as every append"
+      }
+    ],
+    "file_line_citations": {
+      "test_insertion": "tests/integration/iss203_idempotency_keys_test.zig:366-385 (specifically the conn.exec at 367-380)",
+      "test_error_print": "tests/integration/iss203_idempotency_keys_test.zig:381 (\"Unexpected error during replay insert\")",
+      "test_return": "tests/integration/iss203_idempotency_keys_test.zig:382 (\"return err\")",
+      "pg_servererror_return": "vendor/pg/pg.zig:329 (\"if (got_error) return PgError.ServerError\")",
+      "pg_capture_sqlstate": "vendor/pg/pg.zig:340-358 (ErrorResponse handler, calls captureSqlState)",
+      "pool_queryfailed_return": "src/db/pool.zig:526 (\"return PoolError.QueryFailed\")",
+      "production_correct_pattern": "src/event_store/store.zig:288-294 (plat_event_idempotency ON CONFLICT)",
+      "migration_drops_uq": "migrations/1147_par01_events_partitioning.sql:162-164 (explicit comment about not recreating uq_event_idempotency)",
+      "migration_creates_plat": "migrations/1147_par01_events_partitioning.sql:176-201 (plat_event_idempotency CREATE)",
+      "original_unique_index": "migrations/001_event_store.sql:49 (CREATE UNIQUE INDEX uq_event_idempotency ON events(idempotency_key))",
+      "original_commit": "ISS-203 initial commit 3eca5be2 — test predates PAR-01 (38cb7967)"
+    },
+    "diagnosis_notes": [
+      "Category E (stale-evidence) is RULED OUT: the live test execution reproduces the failure deterministically against the current production DB. NOT a transient DB state.",
+      "Category C (schema-not-migrated) is RULED OUT: tenant_default.events is partitioned (relkind=p) and matches the PAR-01 expected shape; the migration ran correctly. The test's assumption that uq_event_idempotency exists is what is wrong.",
+      "Category D (production code bug) is RULED OUT: src/event_store/store.zig:291 uses plat_event_idempotency ON CONFLICT correctly. Production replay dedup works.",
+      "Category B (missing requirement) is RULED OUT: the test's intent is valid (verify ON CONFLICT DO NOTHING absorbs replay inserts); it is the implementation that is wrong, not the requirement.",
+      "Category A (schema mismatch) is CONFIRMED: the test ON CONFLICT targets idempotency_key on events, but the post-PAR-01 schema has no unique constraint on events(idempotency_key). The intended uniqueness target is plat_event_idempotency (per the migration comment), but the test never migrated its ON CONFLICT target.",
+      "Fix direction: the test should target plat_event_idempotency instead of events. Specifically, the ON CONFLICT (idempotency_key) DO NOTHING must be applied to the INSERT INTO plat_event_idempotency (not INSERT INTO events). This matches the production code path at src/event_store/store.zig:288-294. Alternative fix: drop the unique-index-on-events requirement entirely and split into two statements — first INSERT INTO plat_event_idempotency (idempotency_key) VALUES ($1) ON CONFLICT DO NOTHING, then INSERT INTO events SELECT … WHERE NOT EXISTS (SELECT 1 FROM plat_event_idempotency WHERE idempotency_key=$1). The first alternative (single INSERT … SELECT INTO plat_event_idempotency with RETURNING, then INSERT INTO events) more faithfully reproduces the production path."
+    ],
+    "artifacts_out": [
+      "scratch/gh764_iss203_run.log",
+      "scratch/gh764_oc_test.log",
+      "scratch/gh764_tenant_events_idx.log",
+      "scratch/gh764_tenant_events_con.log",
+      "scratch/gh764_relations.log",
+      "scratch/gh764_docker_ps.log",
+      "scratch/gh764_search_path.log",
+      "scratch/gh764_default_schema.log",
+      "scratch/gh764_tenant_schemas.log",
+      "scratch/gh764_1147_history.log",
+      "scratch/gh764_branch_test_changes.log",
+      "scratch/gh764_branch_mig_changes.log",
+      "scratch/gh764_main_test_history.log",
+      "scratch/gh764_mig_history.log",
+      "scratch/gh764_test_history.log",
+      "scratch/gh764_par_migs.log",
+      "scratch/gh764_d_events_tenant.log",
+      "scratch/gh764_count.log",
+      "scratch/gh764_d_events.log",
+      "scratch/gh764_constraints.log",
+      "scratch/gh764_indexes.log",
+      "scratch/gh764_schema.log"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (or directly to TEST-DESIGNER / ISSUE-FIXER Step 2 if scope is test-only) for fix design. The fix is well-scoped and likely ≤ 1 source file (tests/integration/iss203_idempotency_keys_test.zig). No DB migration or production code change required. Proposed fix direction is documented in diagnosis_notes[5]. After fix lands, route to TEST-RUNNER (WF-03 Step 3). Optionally, the WF03 may collapse to Step 2 (fix) + Step 3 (verify) + Step Final as GH-758 did, since there is no new requirement/design ambiguity, only a test-update task."
+  },
+  "context": {
+    "branch": "feature/WF03-GH764-20260813",
+    "base_commit": "7f8ed9af (off main)",
+    "env": {
+      "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5434/bpm_test",
+      "BPM_TEST_URL": "http://127.0.0.1:8080",
+      "BPM_IDP_BASE_URL": "http://localhost:8081"
+    }
+  }
+}

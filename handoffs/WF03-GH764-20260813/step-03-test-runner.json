@@ -1,0 +1,56 @@
+{
+  "handoff_id": "WF03-GH764-20260813/step-03-test-runner",
+  "run_id": "WF03-GH764-20260813",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-13T16:22:36Z",
+  "started_at": "2026-08-13T17:35:00Z",
+  "completed_at": "2026-08-13T17:45:00Z",
+  "status": "COMPLETED",
+  "task": {
+    "description": "Step 03: Full regression test run to confirm the GH-764 fix does not regress any other test.",
+    "type": "regression-test",
+    "workflow": "WF-03"
+  },
+  "context": {
+    "github_issue": 764,
+    "github_issue_title": "iss203_idempotency_keys_test: QueryFailed in TC-ISS-203-02 ON CONFLICT DO NOTHING",
+    "iss_local_id": "ISS-0699",
+    "fix_commit": "4174a1adf68fb749bd18f1e9a0d150b784e534ce",
+    "fix_summary": "TC-ISS-203-02 in tests/integration/iss203_idempotency_keys_test.zig updated to use plat_event_idempotency sidecar for dedup after PAR-01 partitioning. No production code change, no migration.",
+    "branch": "feature/WF03-GH764-20260813",
+    "base_commit": "7f8ed9af",
+    "test_environment": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test, BPM_IDP_BASE_URL=http://localhost:8081, BPM_TEST_URL=http://127.0.0.1:8080"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Regression sweep complete. GH-764 fix verified: test-integration-iss203 was 4/5 fail on main, now 5/5 pass on feature/WF03-GH764-20260813 (commit 4174a1ad). 13 additional integration test steps all clean (test-integration-par02, par03, iss202, iss207, iss208, iss601, tm, pin01-05, prm01, idn05) -- no new regressions. Pre-existing baseline failures (lint_test_wiring on repro_g758.zig, iss0173-orphan, test-env-verify C9 keycloak) confirmed present on main HEAD 7f8ed9af and therefore not introduced by GH-764. Verdict: PASS.",
+    "artifacts_out": [
+      "tests/reports/WF03-GH764-regression.md",
+      "scratch/gh764_iss203_branch.log",
+      "scratch/gh764_iss203_main.log",
+      "scratch/gh764_unit_v2.log",
+      "scratch/gh764_unit_main_v2.log",
+      "scratch/gh764_env_v2.log",
+      "scratch/gh764_test-integration-tm.log",
+      "scratch/gh764_test-integration-pin01.log",
+      "scratch/gh764_test-integration-pin02.log",
+      "scratch/gh764_test-integration-pin03.log",
+      "scratch/gh764_test-integration-pin04.log",
+      "scratch/gh764_test-integration-pin05.log",
+      "scratch/gh764_test-integration-prm01.log",
+      "scratch/gh764_test-integration-idn05.log",
+      "scratch/gh764_test-integration-par02.log",
+      "scratch/gh764_test-integration-par03.log",
+      "scratch/gh764_test-integration-iss202.log",
+      "scratch/gh764_test-integration-iss207.log",
+      "scratch/gh764_test-integration-iss208.log",
+      "scratch/gh764_test-integration-iss601.log"
+    ],
+    "issues": []
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "handoff_history": null
+}

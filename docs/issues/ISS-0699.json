@@ -1,0 +1,45 @@
+{
+  "issue_id": "ISS-0699",
+  "title": "GH-764: iss203_idempotency_keys_test TC-ISS-203-02 QueryFailed on ON CONFLICT DO NOTHING replay insert",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/764",
+  "registered_at": "2026-08-13T15:45:46Z",
+  "registered_by": "ORCH (WF03-GH764-20260813 Step 0)",
+  "related_to": [
+    "GH-764"
+  ],
+  "severity": "MAJOR",
+  "status": "RESOLVED",
+  "resolution_commit": "4174a1adf68fb749bd18f1e9a0d150b784e534ce",
+  "resolved_at": "2026-08-13T17:40:39Z",
+  "resolved_by": "DOC-UPDATER (WF03-GH764-20260813 step-07)",
+  "github_issue_confirmed": true,
+  "step_0.5_completed_at": "2026-08-13T15:48:45Z",
+  "category": "test-infrastructure/idempotency-keys-on-conflict",
+  "scope": "tests/integration/iss203_idempotency_keys_test.zig (TC-ISS-203-02 -- replay dedup path); src/**/idempotency*.zig and migrations/** for the idempotency_keys table definition (constraint names, index, ON CONFLICT target column).",
+  "affected_areas": [
+    "tests/integration/iss203_idempotency_keys_test.zig",
+    "migrations/ (idempotency_keys table)",
+    "src/ (idempotency_keys handler / ON CONFLICT site)"
+  ],
+  "symptom": "iss203_idempotency_keys_test.zig TC-ISS-203-02 (replay dedup -- ON CONFLICT DO NOTHING absorbs second insert) fails deterministically with 'Unexpected error during replay insert: error.QueryFailed'. Pre-existing on main (HEAD~1 before GH-760/ISS-0696 commit 1e4f31f1). Fails in isolation (no concurrent binaries running). Build summary: 4/5 tests passed (1 failed).",
+  "evidence_file": null,
+  "evidence_trail": [
+    {
+      "step": "gh764_origin",
+      "command": "Discovered during WF03-GH760-20260813 Step 05; pre-existing deterministic failure; needs separate WF-03 investigation",
+      "result": "Re-queued for WF03-GH764-20260813 per user 'resolve issues in loop' directive after GH-758 closed."
+    },
+    {
+      "step": "step_0.5",
+      "command": "gh issue view 764 --repo tvolodi/R-Co --json state",
+      "result": "OPEN (confirmed) — gh issue comment 764 posted (comment id 5282773695)",
+      "timestamp": "2026-08-13T15:48:45Z"
+    },
+    {
+      "step": "step_07_resolution",
+      "command": "DOC-UPDATER: status set RESOLVED, changelog entry posted, GH-764 comment posted, registry updated",
+      "result": "GH-764 / ISS-0699 closed in commit 4174a1ad. test-integration-iss203 5/5 (was 4/5). 13 other integration test steps clean.",
+      "timestamp": "2026-08-13T17:40:39Z"
+    }
+  ]
+}
