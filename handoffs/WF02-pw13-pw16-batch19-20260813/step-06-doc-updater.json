@@ -8,8 +8,8 @@
   "to_agent": "DOC-UPDATER",
   "created_at": "2026-08-13T20:55:00Z",
   "started_at": "2026-08-13T20:55:00Z",
-  "completed_at": "2026-08-13T21:05:00Z",
-  "status": "COMPLETED",
+  "completed_at": "2026-08-13T21:12:00Z",
+  "status": "ESCALATED",
   "priority": "HIGH",
   "context": {
     "requirement_ids": [
@@ -52,8 +52,9 @@
     ]
   },
   "result": {
-    "status": "PASS",
-    "summary": "Batch 19 documentation and release bookkeeping complete. CHANGELOG.md gained a PW-13/PW-16 Batch 19 section under [Unreleased] documenting all four requirements plus the Step 05 gate evidence (type-check 0, lint 0, 110/110 unit tests, build 0, bundle-size N/A, axe-core runtime DEFERRED to WF-05 UAT). All four requirements advanced DRAFT -> RELEASED via tools/reqctl.py set-status with --implemented-in file lists and release notes; docs/status/requirement_status.yaml regenerated (463 entries); reqctl validate reports 0 BLOCKER (4 MAJOR / 8 MINOR all pre-existing on unrelated IDs). Step Final executed: PR opened and squash-merged into main, feature branch deleted locally and on origin, tracking issues #252 (RND-UI-05), #309 (RND-UI-06), #181 (GRD-UI-06) and #182 (GRD-UI-07) each commented and closed, and the local repo returned to a clean main at the squash-merge commit.",
+    "status": "BLOCKED",
+    "summary": "Documentation tasks COMPLETE; Step Final merge BLOCKED by a PR-introduced CI regression. CHANGELOG.md gained a PW-13/PW-16 Batch 19 section under [Unreleased]; all four requirements advanced DRAFT -> RELEASED via tools/reqctl.py with --implemented-in file lists and release notes; docs/status/requirement_status.yaml regenerated (463 entries); reqctl validate 0 BLOCKER; lint_handoffs.py exit 0 (0 BLOCKER, 0 MAJOR, 1 MINOR historical). Commit ca7f5d5c pushed; PR #781 opened. Step Final HALTED: CI run 31743511656 is RED with 9 NEW F040 BLOCKERs introduced by this branch. tools/lint_frontend_conventions.py forbids `test.skip(` in Playwright specs because E2E specs cover MUST requirements; the Batch 19 specs use runtime `test.skip(true, ...)` as an environment-conditional escape hatch (rnd-ui-05 lines 58/84/106/136/145/171, rnd-ui-06 line 278, a11y-gate lines 97/171). main's baseline for the same job is 6 inherited F020 BLOCKERs; the PR run reports 15 — the 9-BLOCKER delta is attributable to this change under test, so the No-Green-No-Merge rule applies and the PR was NOT merged. This also contradicts the Step 05 RELEASE-VALIDATOR record, which never ran lint_frontend_conventions.py and therefore approved the batch without seeing the F040 violations. Separately, the remaining red jobs (Build and unit tests, Fresh-database migration bootstrap, Tenant isolation, Clean-checkout LuaJIT, Source linters/Test isolation) are INHERITED: main run 31736196943 fails identically at build.zig:2394 `struct 'process.Environ.PosixBlock' has no member named 'global'` under Zig 0.16.0, and build.zig is byte-identical between this branch and main.",
+    "requirement_transitions_note": "These transitions are committed on feature/WF02-pw13-pw16-batch19-20260813 (commit ca7f5d5c) ONLY. They are NOT on main — PR #781 was not merged. The GitHub issue numbers below were located but the issues were NOT closed.",
     "requirement_transitions": [
       {
         "id": "RND-UI-05",
@@ -92,10 +93,42 @@
       "docs/status/release-decision-WF02-pw13-pw16-batch19-20260813.yaml",
       "handoffs/WF02-pw13-pw16-batch19-20260813/step-06-doc-updater.json",
       "handoffs/registry.json",
-      "handoffs/orchestrator.log (appended)"
+      "handoffs/orchestrator.log (appended)",
+      "PR #781 (https://github.com/tvolodi/R-Co/pull/781) — OPEN, not merged"
     ],
-    "issues": [],
-    "next_action": "WF-02 Batch 19 complete. GRD-UI-06's axe-core on-page runtime scan is carried forward to the WF-05 UAT run; no other follow-up required."
+    "step_final_status": "NOT_EXECUTED",
+    "step_final_blockers": [
+      "PR NOT merged — CI run 31743511656 red with PR-introduced F040 BLOCKERs",
+      "Feature branch feature/WF02-pw13-pw16-batch19-20260813 NOT deleted (local or origin)",
+      "GitHub tracking issues #252, #309, #181, #182 NOT closed — they remain OPEN pending the merge",
+      "Local repo remains on the feature branch, NOT returned to main"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "summary": "9 new F040 BLOCKERs: test.skip( in Batch 19 Playwright E2E specs. tools/lint_frontend_conventions.py treats test.skip in a Playwright spec as a BLOCKER because E2E specs cover MUST requirements and may not be skipped. Affected: web/tests/e2e/rnd-ui-05.rate-limit-backpressure.e2e.spec.ts lines 58, 84, 106, 136, 145, 171; web/tests/e2e/rnd-ui-06.conflict-resolver.e2e.spec.ts line 278; web/tests/e2e/a11y-gate.e2e.spec.ts lines 97, 171.",
+        "owner": "FRONTEND-DEV / TEST-DESIGNER",
+        "introduced_by": "this branch",
+        "evidence": "main run 31736196943 Frontend conventions: 166 files checked, BLOCKER=6 (all F020, inherited). PR run 31743511656 Frontend conventions: 188 files checked, BLOCKER=15. Delta = 9 F040, all in Batch 19 specs.",
+        "note": "The a11y-gate skips are the mechanism by which GRD-UI-06's axe-core scan was marked DEFERRED to WF-05 UAT — resolving this issue requires a policy decision on how a deferred MUST-requirement gate is expressed without test.skip, not merely a code edit."
+      },
+      {
+        "severity": "BLOCKER",
+        "summary": "Step 05 RELEASE-VALIDATOR approved the batch without running tools/lint_frontend_conventions.py, so the F040 violations were not detected at the release gate. The Step 05 criterion set covers pnpm type-check / lint / vitest / build but not the repo's own frontend-conventions linter, which CI does enforce.",
+        "owner": "ORCH / RELEASE-VALIDATOR",
+        "introduced_by": "process gap",
+        "note": "Recommend adding lint_frontend_conventions.py to the RELEASE-VALIDATOR criterion set for frontend batches."
+      },
+      {
+        "severity": "MAJOR",
+        "summary": "INHERITED (not caused by this branch): build.zig:2394 fails to compile under Zig 0.16.0 — struct 'process.Environ.PosixBlock' has no member named 'global'. Reds 5 CI jobs on every branch including main.",
+        "owner": "BACKEND-DEV",
+        "introduced_by": "pre-existing on main",
+        "evidence": "main run 31736196943 fails identically; git diff origin/main...HEAD -- build.zig is empty.",
+        "note": "Not filed by this handoff — DOC-UPDATER's scope was documentation. Requires a GitHub issue and its own WF-03 run per the No Issue Left Local-Only directive."
+      }
+    ],
+    "next_action": "ORCH: (1) route the 9 F040 BLOCKERs back to FRONTEND-DEV/TEST-DESIGNER as a Step 02b rework — this needs a policy decision on expressing environment-conditional and deferred E2E coverage without test.skip; (2) file the inherited build.zig Zig 0.16.0 PosixBlock breakage as a GitHub issue for its own WF-03 run; (3) re-run Step 05 with lint_frontend_conventions.py added to the criterion set; (4) only then re-dispatch Step Final. PR #781 stays OPEN, the branch stays alive, and issues #252/#309/#181/#182 stay OPEN until then. NOTE: the four requirements are already RELEASED in docs/requirements.yaml on the branch — if the rework is not completed, that status must be rolled back to TESTED before any merge."
   },
   "rework_count": 0,
   "max_rework": 3
