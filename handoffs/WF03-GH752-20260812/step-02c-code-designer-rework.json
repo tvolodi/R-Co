@@ -1,0 +1,56 @@
+{
+  "handoff_id": "wf03-gh752-20260812-02c-code-designer-rework",
+  "run_id": "WF03-GH752-20260812",
+  "schema_version": 1,
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-12T22:36:34Z",
+  "started_at": "2026-08-12T22:36:34Z",
+  "status": "COMPLETED",
+  "stage": "WF-03 Issue Resolving",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh752-20260812-02-code-designer",
+      "wf03-gh752-20260812-02b-code-design-validator"
+    ],
+    "artifacts_in": [
+      "src/design/iss0692_test_integration_capacity_mitigation.md",
+      "handoffs/WF03-GH752-20260812/step-02b-code-design-validator.json",
+      "docs/issue-reports/ISS-0692-step01-diagnosis.md",
+      "docs/issues/ISS-0692.json",
+      "tools/lint_design_artefact.py"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/752"
+  },
+  "task": {
+    "description": "REWORK (attempt 1) of WF-03 Step 02 (CODE-DESIGNER) for GH-752/ISS-0692. CODE-DESIGN-VALIDATOR (handoff wf03-gh752-20260812-02b-code-design-validator, result.status=FAIL, completed_at=2026-08-12T22:33:59Z) flagged 3 MAJOR issues (E010x2 missing required 'purpose' and 'errors' headings; 600s rationale lacked WHY-NOT-900s/WHY-NOT-450s and ~65s citation; no rollback plan) and 2 MINOR issues (Zig 0.16 API mismatch getEnvVarOwned vs getEnvVar; thin -j=8 rationale). Update src/design/iss0692_test_integration_capacity_mitigation.md to address all 5. Constraints: do NOT change the chosen mitigation ((b) primary + (a) secondary), do NOT change the env-var name BPM_TEST_INTEGRATION_JOB_CAP, do NOT change the BPM_TEST_STMT_TIMEOUT 300s->600s change, do NOT modify any source code (build.zig, tests/integration/helpers.zig, etc.). Only improve documentation/rationale/structure. After updating, run python3 tools/lint_design_artefact.py (E010 must be resolved) and python3 tools/lint_handoffs.py (must exit 0) before completing.",
+    "acceptance_criteria": [
+      "Design includes '## Module purpose' second-level heading (resolves E010 first instance)",
+      "Design includes '## Error taxonomy' (or '## Error cases') second-level heading (resolves E010 second instance)",
+      "Design's 600s rationale explicitly cites the ~65s cancellation clustering from docker logs r-co-db_test-1 (per docs/issues/ISS-0692.json description)",
+      "Design's 600s rationale includes explicit WHY-NOT-900s (would mask real DDL regressions) and WHY-NOT-450s (below the 5x65s envelope) arguments",
+      "Design includes a '## Rollback plan' section with revert strategy, observable signal triggers, rollback verification procedure, and no-data-concerns confirmation",
+      "Design's illustrative 'After' block uses Zig 0.16 API std.process.getEnvVar (not getEnvVarOwned)",
+      "Design's -j=8 rationale anchors against the ISS-0665 prevention note (#cores/2 on 16-core host)",
+      "python3 tools/lint_design_artefact.py reports 0 MAJOR for the file (E010 fully resolved)",
+      "python3 tools/lint_handoffs.py exits 0 (no new lint issues introduced)",
+      "handoffs/orchestrator.log has the STEP_REWORK_COMPLETED entry appended"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Reworked src/design/iss0692_test_integration_capacity_mitigation.md to address all 5 issues from CODE-DESIGN-VALIDATOR's FAIL verdict (3 MAJOR + 2 MINOR). Changes: (1) Added '## Module purpose' (one-paragraph goal statement) and '## Error taxonomy' (8-row table covering EnvUnset, EnvUnparseable, OptionOverridesEnv, JTooLow, JTooHigh, StmtTimeoutTooLow, StmtTimeoutUnparseable, LockReleaseLeftover) as second-level headings before the existing '## 1. Problem' section -- resolves E010x2 (lint_design_artefact.py now reports BLOCKER=0 MAJOR=0 on the file; the 6 remaining MINOR are E030 schema-qualified-name warnings inherited from the original design, not introduced by this rework). (2) Added '## 6.2 BPM_TEST_STMT_TIMEOUT=600s default anchor (full rationale)' with explicit citation of the ~65s cancellation clustering from docs/issues/ISS-0692.json description ('docker logs r-co-db_test-1 shows canceling statement due to statement timeout errors clustered at ~65s intervals'); argued 600s as the smallest power-of-two multiple above 5x65s=325s; argued WHY-NOT-900s (would mask real DDL regressions -- a 12-min index regression would silently bill wall-time rather than surface as a cancellation signal); argued WHY-NOT-450s (fails the margin check against 70s+ scheduling jitter and ~120s worst-case queue tail). Cross-referenced from the in-code comment at helpers.zig:139. (3) Added '## 9. Rollback plan' with 5 sub-sections: full revert via git revert (9.1), partial revert with knob-drop order (drop b first -- smaller blast radius -- then a) (9.1), observable signal triggers per failure-count band (0/1-2/3-4/5-of-5) (9.2), rollback verification procedure including the inverted 'must reproduce original failure mode' check (9.3), no-data-concerns confirmation -- both knobs are session-scoped, no DB migration reverts (9.4), and host-class escalation path beyond rollback (9.5). (4) MINOR: updated the illustrative 'After' block in §2.1 to use std.process.getEnvVar(b.allocator, 'BPM_TEST_INTEGRATION_JOB_CAP') (Zig 0.16 API) with inline comment documenting the API rename and how to verify with `zig version`. (5) MINOR: added '## 6.1 -j=8 default anchor (full rationale)' with the ISS-0665 prevention-note anchor (#cores/2 on 16-core host) and explicit WHY-NOT for -j4 (reproduces near failure threshold), -j16 (saturates host), -j32+ (above-N regression), -j12 (re-enters the 65s cancellation cluster). Cross-referenced from the in-code comment at the top of §2.1's 'After' block. The chosen mitigation (b)+(a), the env-var names, the chosen defaults (BPM_TEST_INTEGRATION_JOB_CAP, -j=8, BPM_TEST_STMT_TIMEOUT=600s), the no-touch list, and the verification plan are unchanged. Added §10 'Change history (rework summary)' documenting each fix. No source code touched. python3 tools/lint_design_artefact.py: BLOCKER=0 MAJOR=0 MINOR=6 (all 6 MINOR are pre-existing E030 schema-qualified-name warnings, not gate-blockers). python3 tools/lint_handoffs.py: 0 BLOCKER 0 MAJOR against this file (clean baseline; no new issues introduced).",
+    "artifacts_out": [
+      "src/design/iss0692_test_integration_capacity_mitigation.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 02b, second attempt) for hard-gate re-validation"
+  },
+  "rework_count": 1,
+  "max_rework": 2,
+  "completed_at": "2026-08-12T22:36:34Z"
+}

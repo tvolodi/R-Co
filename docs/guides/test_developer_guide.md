@@ -496,10 +496,13 @@ harness connection.
    zig build test-<module>
    ```
 
-2. **Reduce concurrency** — the integration-test step is capped at 8 parallel
-   binaries by default. Operators can set `BPM_TEST_INTEGRATION_JOB_CAP` in
-   the build environment, while CI can override it with
-   `-Dtest-integration-jobs=N`.
+2. **Reduce concurrency** — the integration-test step is capped at **4 parallel
+   binaries by default** (lowered from 8 in REWORK 2 / ISS-0692, after an
+   empirical -j sweep on this host showed -j4 gives a much better
+   failure-rate vs wall-time tradeoff than -j8 — see
+   `tests/reports/ISS-0692-step03-rework2-sweep.md` for the data). Operators
+   can set `BPM_TEST_INTEGRATION_JOB_CAP` in the build environment, while CI
+   can override it with `-Dtest-integration-jobs=N`.
 
    **The cap only takes effect when the build runner is invoked with `-j<N>`**.
    Zig 0.16 removed `Step.setJobs()`; the `BPM_TEST_INTEGRATION_JOB_CAP` env
@@ -529,9 +532,9 @@ harness connection.
    ```
 
    Use `-j2` on small development machines, or lower the cap further on
-   heavily loaded hosts where `-j8` still does not help. The build option
+   heavily loaded hosts where `-j4` still does not help. The build option
    takes precedence when both controls are supplied; the wrapper scripts
-   resolve the same precedence (env var > -Jobs flag > default 8).
+   resolve the same precedence (env var > -Jobs flag > default 4).
 
    **Important:** invoking `zig build test-integration` *without* `-j`
    (with or without the env var set) leaves the cap unenforced — the

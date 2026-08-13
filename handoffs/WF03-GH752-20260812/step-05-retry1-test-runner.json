@@ -1,0 +1,63 @@
+{
+  "handoff_id": "wf03-gh752-20260812-05-retry1-test-runner",
+  "run_id": "WF03-GH752-20260812",
+  "schema_version": 1,
+  "step": "05-retry1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-12T23:11:16Z",
+  "started_at": "2026-08-12T23:11:16Z",
+  "status": "COMPLETED",
+  "stage": "WF-03 Issue Resolving",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh752-20260812-05-test-runner",
+      "wf03-gh752-20260812-03-rework1-backend-dev"
+    ],
+    "artifacts_in": [
+      "tests/reports/ISS-0692-step05-runs.md",
+      "tests/reports/ISS-0692-step05-precheck.log"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 05 RETRY 1 (TEST-RUNNER) for GH-752/ISS-0692. After Step 03 REWORK addresses the `-j` cap and C3/C4/C5 pre-check failures, re-attempt the 5-consecutive-clean-run gate. Same procedure as before: (1) zig build test-env-verify pre-check (must exit 0); (2) 5 consecutive zig build test-integration runs with the new default -j cap (operator should NOT pass -j manually; let the env var / build option flow through); (3) after EACH run, zig build test-env-verify (must show 0 ungranted locks); (4) all 5 runs must complete cleanly.",
+    "acceptance_criteria": [
+      "Pre-check zig build test-env-verify exits 0 (HEALTHY 10/10)",
+      "5 consecutive zig build test-integration runs ALL complete cleanly",
+      "After EACH run, env-verify reports 0 ungranted locks (C6 PASS)",
+      "No ServerError / 'test runner failed to respond' entries",
+      "Update tests/reports/ISS-0692-step05-runs.md with the retry results",
+      "tools/lint_handoffs.py exits 0"
+    ]
+  },
+  "rework_count": 1,
+  "max_rework": 2,
+  "completed_at": "2026-08-13T00:20:24Z",
+  "result": {
+    "status": "FAIL",
+    "summary": "Pre-check (zig build test-env-verify) is now HEALTHY 10/10 (C3/C4/C5 all PASS \u2014 REWORK 1 fixed the prior FAIL). However, RUN 1 of the 5-run gate via scripts/run-test-integration.ps1 (-j8 default) failed with the EXACT GH-752 symptom still present: 8 'test runner failed to respond for ~1m+ms' entries (61\u201375 second timeouts) and 119 ServerError entries from pg_advisory_lock contention. Build summary: '87/117 steps succeeded (27 failed); 929/1023 tests passed (10 skipped, 84 failed)'. 32 distinct test files hit ServerError, plus 4 genuine test failures independent of GH-752 (TC-RG-01/02 baseline regression, TC-ISS-0185-03 dual-schema, TC-SCH-02-03 timer rollback). The -j8 cap is too lenient \u2014 the design's 8-default was not empirically justified. Controller halted at RUN 1 per handoff protocol.",
+    "artifacts_out": [
+      "tests/reports/ISS-0692-step05-runs.md",
+      "tests/reports/ISS-0692-step05-runs.log",
+      "scratch/wf03-gh752-5run-controller.ps1",
+      "scratch/extract_failures.py"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "GH-752 symptom persists at -j8: 8 'test runner failed to respond for ~1m+ms' + 119 ServerError on pg_advisory_lock(hashtext('bpm_test_migrations_public')) during RUN 1. Build summary 87/117 steps succeeded. Controller halted at RUN 1; RUNs 2-5 not run."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "Pre-existing test failures (not introduced by GH-752): (1) gh512_t010_regression_test.TC-RG-01 \u2014 T010 BLOCKER count regressed from ceiling 74 to 75 (new hardcoded UUID literal in tests/integration/); (2) gh512_t010_regression_test.TC-RG-02 \u2014 total_issues=117 vs expected=116 per GH-512 snapshot; (3) iss0185_dual_schema_test.TC-ISS-0185-03 \u2014 HYBRID tables test fails; (4) sch02_timer_polling_test.TC-SCH-02-03 \u2014 timer rollback expects TransactionFailed but gets .{ .fired = 1, .skipped_locked = 0 }. Should be filed as their own ISSes."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "Design-vs-implementation gap: src/design/iss0692_test_integration_capacity_mitigation.md chose -j8 default without empirical justification. At -j8, 8 parallel test binaries contend for the single pg_advisory_lock('bpm_test_migrations_public') and the postgres connection pool. The 8 runner-timeout failures + 119 ServerError entries prove the cap is too high. ADHOC BACKEND-DEV handoff should empirically determine the right cap (likely 2 or 4) or diagnose whether the bottleneck is connection-pool starvation rather than job count."
+      }
+    ],
+    "next_action": "Spawn ADHOC BACKEND-DEV handoff to (a) empirically determine the correct -j cap (try -j2 or -j4), (b) diagnose whether the underlying bottleneck is pg_advisory_lock contention or postgres connection-pool exhaustion, (c) consider increasing the zig test runner's 60s timeout. Then file the 4 pre-existing test failures as separate ISSes (TC-RG-01/02 baseline regression, TC-ISS-0185-03, TC-SCH-02-03). Re-dispatch TEST-RUNNER for the 5-run gate once the cap is fixed. NOTE: this is now rework_count=2 of max_rework=2 \u2014 one final attempt before escalation."
+  }
+}

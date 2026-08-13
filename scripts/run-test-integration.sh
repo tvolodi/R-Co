@@ -56,16 +56,20 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Resolve cap: --jobs flag > BPM_TEST_INTEGRATION_JOB_CAP > 8 (default).
+# Resolve cap: --jobs flag > BPM_TEST_INTEGRATION_JOB_CAP > 4 (default).
+# Default lowered 8 -> 4 by REWORK 2 (ISS-0692): empirical sweep on this host
+# showed -j4 gives a far better failure-rate/wall-time tradeoff than -j8 when
+# 30+ binaries all queue on pg_advisory_lock('bpm_test_migrations_public').
+# See tests/reports/ISS-0692-step03-rework2-sweep.md for the data.
 if [[ "$CAP_OVERRIDE" -gt 0 ]]; then
     cap="$CAP_OVERRIDE"
 else
-    raw="${BPM_TEST_INTEGRATION_JOB_CAP:-8}"
+    raw="${BPM_TEST_INTEGRATION_JOB_CAP:-4}"
     if [[ "$raw" =~ ^[1-9][0-9]*$ ]]; then
         cap="$raw"
     else
-        echo "[run-test-integration] BPM_TEST_INTEGRATION_JOB_CAP='$raw' is not a positive integer; falling back to default 8." >&2
-        cap=8
+        echo "[run-test-integration] BPM_TEST_INTEGRATION_JOB_CAP='$raw' is not a positive integer; falling back to default 4." >&2
+        cap=4
     fi
 fi
 

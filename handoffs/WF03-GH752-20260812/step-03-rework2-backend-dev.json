@@ -1,0 +1,33 @@
+{
+  "handoff_id": "wf03-gh752-20260812-03-rework2-backend-dev",
+  "run_id": "WF03-GH752-20260812",
+  "schema_version": 1,
+  "step": "03-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-13T00:22:06Z",
+  "started_at": "2026-08-13T04:57:48Z",
+  "status": "PENDING",
+  "stage": "WF-03 Issue Resolving",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh752-20260812-03-backend-dev",
+      "wf03-gh752-20260812-03-rework1-backend-dev",
+      "wf03-gh752-20260812-05-retry1-test-runner"
+    ],
+    "artifacts_in": [
+      "build.zig",
+      "scripts/run-test-integration.ps1",
+      "scripts/run-test-integration.sh",
+      "tests/reports/ISS-0692-step05-runs.md",
+      "tests/reports/ISS-0692-step05-runs.log"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 03 REWORK 2 (BACKEND-DEV) for GH-752/ISS-0692. DIAGNOSIS COMPLETE - no empirical sweep needed.\n\nROOT CAUSE: pg_advisory_lock acquisition fails because lock_timeout='90s' is too short. With -j8 and pool_size=2, the lock holder takes 60-90s for migrations; the 2nd-8th queuing binaries ALL exceed the 90s timeout. The pg library maps 55P03 (lock_timeout exceeded) to PgError.ServerError, producing the 118 ServerErrors observed in REWORK-1.\n\nUNCOMMITTED CHANGES ALREADY IN WORKING TREE (prepared by previous agent):\n- scripts/run-test-integration.ps1 and .sh: default cap 8->4\n- tests/integration/helpers.zig: pool_size 2->4 in runMigrations() and runMigrationsForSchema()\n- docs/guides/test_developer_guide.md: section 10.2 updated\n\nMISSING PIECE: lock_timeout='90s' was NOT raised in the working-tree changes. With -j4 the math is: worst-case queue position 4, holder takes ~30-45s with pool_size=4, so 3x45=135s > 90s. Still fails.\n\nDO EXACTLY THESE STEPS:\n\nSTEP A: In tests/integration/helpers.zig, change ALL occurrences of the advisory lock bracket from lock_timeout '90s' to '300s'. Run this to find them:\n  grep -n \"lock_timeout = '90s'\" tests/integration/helpers.zig\nExpect exactly 4 matches (approximately lines 127, 217, 929, 1156). Change each '90s' to '300s'. Do NOT change any other lock_timeout lines.\n\nSTEP B: Create tests/reports/ISS-0692-step03-rework2-sweep.md with a brief analysis documenting: (1) REWORK-1 observed 118 ServerErrors at -j8 pool_size=2 lock_timeout=90s; (2) root cause is lock_timeout=90s < queue_depth * migration_duration; (3) chosen fix: -j4 default, pool_size=4, lock_timeout=300s; (4) math: worst case 3*90s=270s < 300s with headroom. No additional empirical runs needed.\n\nSTEP C: Run `zig build` to verify compilation.\n\nSTEP D: Run `zig build test-env-verify`. Must exit 0, HEALTHY 10/10.\n\nSTEP E: Commit all working-tree changes on feature/WF03-GH752-20260812 with message: fix(tests): GH-752/ISS-0692 REWORK 2 - lower -j default to 4, pool_size 2->4, lock_timeout 90s->300s\nThen push: git push origin feature/WF03-GH752-20260812\n\nSTEP F: Run the 5-consecutive-clean-run acceptance gate:\n  powershell -NoProfile -ExecutionPolicy Bypass -File scratch/wf03-gh752-5run-controller.ps1\nThis appends to tests/reports/ISS-0692-step05-runs.log and prints COMPLETE (PASS) or HALTED (FAIL).\n\nIf ALL 5 runs pass: set result.status=PASS in this handoff.\nIf any run fails with advisory-lock ServerError: report the exact lock_timeout value in effect and the failure count - do NOT attempt more sweeps.\n\nCONSTRAINT: Do not make any other code changes. Do not run other test commands. Steps A-F only.j should be the empirically-determined best value. Document in scripts/run-test-integration.{ps1,sh} and docs/guides/test_developer_guide.md \u00a710.2.\n\n6. Commit on feature/WF03-GH752-20260812 with a clear message about what was tuned.\n\nAcceptance criteria:\n- Empirical sweep documented (with output) in tests/reports/ISS-0692-step03-rework2-sweep.md\n- Chosen default -j value justified by the sweep\n- If primary mitigation changed (e.g., pool size, timeout), that change is documented and the new mitigation's effect verified\n- zig build test-env-verify still HEALTHY 10/10\n- 5 consecutive clean runs achievable (Step 05 RETRY 2 will verify)\n- tools/lint_handoffs.py exits 0\n- Branch pushed"
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

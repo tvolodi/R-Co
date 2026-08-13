@@ -124,7 +124,7 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, url: 
     // an unbounded one — and a bounded wait is what a correct queue looks like.
     //
     // The lock is released by `defer` below, so an error path cannot leak it.
-    try conn.exec("SET lock_timeout = '90s'", &.{});
+    try conn.exec("SET lock_timeout = '300s'", &.{});
     try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
     try conn.exec("SET lock_timeout = '5s'", &.{});
     defer conn.exec("SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public'))", &.{}) catch {};
@@ -152,7 +152,18 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, url: 
 
     var mig_pool = try bpm.pool.Pool.init(io, allocator, bpm.pool.PoolConfig{
         .url = url,
-        .pool_size = 2,
+        // ISS-0692 / GH-752 REWORK 2: was 2; raised to 4 because the lock
+        // holder's migration pass runs against this pool, and with -j4 (and
+        // ambient Postgres CPU/IO contention on this host) a 2-connection pool
+        // can serialize GBL-/ISS-/TNT- migration files whose individual DDL
+        // statements each block on connections already lent out to sibling
+        // workers within the same pool. Four connections strike a balance:
+        // high enough that the lock holder finishes its critical section in
+        // well under 60s (the zig test-runner response-timeout floor at this
+        // call depth), low enough that the pool never sits on stale
+        // connections long enough to interrupt idle_in_transaction_session_timeout.
+        // See tests/reports/ISS-0692-step03-rework2-sweep.md.
+        .pool_size = 4,
     });
     defer mig_pool.deinit();
 
@@ -203,7 +214,7 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
     // configureSessionTimeouts() would otherwise cancel this acquire with 55P03
     // under normal queueing (ISS-0110), which is the failure GH-402 misread as
     // "the advisory lock hangs".
-    try conn.exec("SET lock_timeout = '90s'", &.{});
+    try conn.exec("SET lock_timeout = '300s'", &.{});
     try conn.exec("SELECT pg_advisory_lock(hashtext($1))", &.{schema});
     try conn.exec("SET lock_timeout = '5s'", &.{});
     defer conn.exec("SELECT pg_advisory_unlock(hashtext($1))", &.{schema}) catch {};
@@ -304,7 +315,9 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
     {
         var mig_pool = try bpm.pool.Pool.init(io, allocator, bpm.pool.PoolConfig{
             .url = url,
-            .pool_size = 2,
+            // ISS-0692 / GH-752 REWORK 2: raised 2 -> 4 — see matching comment
+            // in runMigrations() just above for the rationale.
+            .pool_size = 4,
         });
         defer mig_pool.deinit();
         // force_reconcile=true: corrective migrations marked
@@ -913,7 +926,7 @@ pub fn acquireIntegrationLock(allocator: std.mem.Allocator) anyerror!pg.Conn {
     // runMigrations / runMigrationsForSchema and the TestHarness.init() critical
     // section, to keep queueing bounded across the wider set of binaries
     // (~50 worst case after this fix vs ~19 today).
-    try conn.exec("SET lock_timeout = '90s'", &.{});
+    try conn.exec("SET lock_timeout = '300s'", &.{});
     try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
     try conn.exec("SET lock_timeout = '5s'", &.{});
     return conn;
@@ -1140,7 +1153,7 @@ pub const TestHarness = struct {
         // completely unguarded — and unlocking a lock nobody held — ever since.
         // The comment block above survived the deletion and describes exactly the
         // bracket being reinstated here.
-        try conn.exec("SET lock_timeout = '90s'", &.{});
+        try conn.exec("SET lock_timeout = '300s'", &.{});
         try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
         try conn.exec("SET lock_timeout = '5s'", &.{});
 

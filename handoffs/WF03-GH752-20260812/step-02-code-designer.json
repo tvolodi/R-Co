@@ -1,0 +1,39 @@
+{
+  "handoff_id": "wf03-gh752-20260812-02-code-designer",
+  "run_id": "WF03-GH752-20260812",
+  "schema_version": 1,
+  "step": "02",
+  "from_agent": "ISSUE-FIXER",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-12T22:31:40Z",
+  "started_at": "2026-08-12T22:31:40Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-12T22:31:40Z",
+  "stage": "WF-03 Issue Resolving",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh752-20260812-00-issue-fixer",
+      "wf03-gh752-20260812-01-issue-fixer"
+    ],
+    "artifacts_in": [
+      "src/design/iss0692_test_integration_capacity_mitigation.md",
+      "docs/issue-reports/ISS-0692-step01-diagnosis.md"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 02 (CODE-DESIGNER) for GH-752/ISS-0692. ISSUE-FIXER Step 01 chose mitigation (b) primary + (a) secondary: add a default -j cap to the test-integration build step in build.zig (env-var-configurable), AND raise the BPM_TEST_STMT_TIMEOUT default from 300s to 600s in tests/integration/helpers.zig runMigrations() and runMigrationsForSchema() (env var override preserved). Mitigation (c) was rejected because the lock-release path is already correct (defer conn.exec('SELECT pg_advisory_unlock(...)', ...) catch {} in both functions). Author the formal design artefact at src/design/iss0692_test_integration_capacity_mitigation.md, including: (1) exact before/after diff for build.zig and tests/integration/helpers.zig; (2) the env-var names chosen (suggest BPM_TEST_INTEGRATION_J or similar); (3) the rationale for the chosen -j value (e.g. -j8 = #cores/2 on a typical 16-core host, matching the documented ISS-0665 prevention note); (4) explicit no-touch list: do not modify tools/lint_test_isolation.baseline.json, do not modify src/event_store/store.zig (different scope), do not modify tests/integration/sim01_04_simulation_mode_test.zig (already fixed by sibling WF03-GH753-20260812)."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact already produced by ISSUE-FIXER sub-step (src/design/iss0692_test_integration_capacity_mitigation.md) covering (b)+(a) mitigations with env-var escape hatches and rationale.",
+    "artifacts_out": [
+      "src/design/iss0692_test_integration_capacity_mitigation.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 02b) for hard-gate review."
+  },
+  "rework_count": 1,
+  "max_rework": 2
+}

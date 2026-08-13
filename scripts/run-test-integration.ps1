@@ -34,11 +34,15 @@ param(
 
 $ErrorActionPreference = 'Continue'
 
-# Resolve cap: -Jobs flag > BPM_TEST_INTEGRATION_JOB_CAP > 8 (default).
+# Resolve cap: -Jobs flag > BPM_TEST_INTEGRATION_JOB_CAP > 4 (default).
+# Default lowered 8 -> 4 by REWORK 2 (ISS-0692): empirical sweep on this host
+# showed -j4 gives a far better failure-rate/wall-time tradeoff than -j8 when
+# 30+ binaries all queue on pg_advisory_lock('bpm_test_migrations_public').
+# See tests/reports/ISS-0692-step03-rework2-sweep.md for the data.
 if ($Jobs -le 0) {
     $envCap = $env:BPM_TEST_INTEGRATION_JOB_CAP
     if ([string]::IsNullOrWhiteSpace($envCap)) {
-        $cap = 8
+        $cap = 4
     } else {
         $trimmed = $envCap.Trim()
         # Windows PowerShell 5.1 does not support [ref] overloads of TryParse
@@ -53,8 +57,8 @@ if ($Jobs -le 0) {
             $ok = $false
         }
         if (-not $ok -or $parsed -le 0) {
-            Write-Warning "BPM_TEST_INTEGRATION_JOB_CAP=$envCap is not a positive integer; falling back to default 8."
-            $cap = 8
+            Write-Warning "BPM_TEST_INTEGRATION_JOB_CAP=$envCap is not a positive integer; falling back to default 4."
+            $cap = 4
         } else {
             $cap = $parsed
         }
