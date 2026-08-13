@@ -13,5 +13,5 @@
   "resolution": "WF03-GH754-20260813 — captured AppendResult in adp06_pipeline_run_correlation_test.zig line 271, freed record.metadata with defer if (append_res.record.metadata.len > 0) alloc.free(...). Mirrors GH-753/ISS-0691, GH-755/ISS-0695 fix pattern. Verified zig fmt --check exit 0, zig ast-check exit 0, zig build exit 0. Runtime integration test verification deferred — GH-758 client hang currently blocks reliable test-integration execution.",
   "resolved_at": "2026-08-13T12:30:00Z",
   "resolved_by": "WF03-GH754-20260813 (ORCH)",
-  "resolution_commit": "PENDING"
+  "resolution_commit": "23af0660"
 }
