@@ -1431,3 +1431,8 @@
 2026-08-13T10:51:21Z | ROUTE   | WF03-GH766-20260813 | wf03-gh766-20260813-final-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step Final: fn:git-merge — PR, squash-merge, close GH-766, release TaskManager)
 2026-08-13T11:20:21Z | DONE    | WF03-GH766-20260813 | --- | PIPELINE COMPLETE | GH-766 RESOLVED
 2026-08-13T11:20:21Z | GIT     | WF03-GH766-20260813 | feature/WF03-GH766-20260813 | 144f8d4b | PR: https://github.com/tvolodi/R-Co/pull/769
+2026-08-13T11:43:12Z | DONE | WF03-GH759-20260813 | step-final-backend-dev | ORCH | GH-759 closed COMPLETE via PR #768 (merge f89275f8); TaskManager claim released
+2026-08-13T11:43:12Z | SKIP | WF03-GH765-20260813 | step-00-backend-dev | ORCH | Skip GH-765 — production-schema complexity, deferring to deeper-dive run
+2026-08-13T11:43:12Z | SKIP | WF03-GH764-20260813 | step-00-backend-dev | ORCH | Skip GH-764 — same production-schema complexity class, user instructed to skip
+2026-08-13T11:43:12Z | DONE | WF03-GH764-20260813 | step-00-backend-dev | ORCH | GH-764 deferred; no further iterations pending user direction
+2026-08-13T11:43:12Z | DONE | WF03-GH766-20260813 | step-final-backend-dev | ORCH | GH-766 closed COMPLETE via PR #770 (merge 5c006160); branch deleted; TaskManager claim released
