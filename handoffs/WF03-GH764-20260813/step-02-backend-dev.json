@@ -1,0 +1,47 @@
+{
+  "handoff_id": "WF03-GH764-20260813/step-02-backend-dev",
+  "run_id": "WF03-GH764-20260813",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-13T15:48:45Z",
+  "started_at": "2026-08-13T16:20:00Z",
+  "completed_at": "2026-08-13T16:22:36Z",
+  "status": "COMPLETED",
+  "task": {
+    "description": "Step 02: Apply the test fix to TC-ISS-203-02. Root cause (Step 1) is a schema mismatch caused by PAR-01 partitioning (commit 38cb7967, migration 1147_par01_events_partitioning.sql) which deliberately dropped the uq_event_idempotency UNIQUE index on events(idempotency_key) and moved global uniqueness to the non-partitioned sidecar table plat_event_idempotency(idempotency_key) PRIMARY KEY. The test was authored pre-PAR-01 and still issues INSERT INTO events ... ON CONFLICT (idempotency_key) DO NOTHING, which now fails with SQLSTATE 42P10 (no unique/exclusion constraint matching ON CONFLICT specification). Apply the minimal-change pattern: add a preceeding INSERT INTO plat_event_idempotency ... ON CONFLICT (idempotency_key) DO NOTHING that absorbs the duplicate before the events INSERT runs. No production code change, no migration. Verify with: zig build test-integration-iss203 (or appropriate step) \u2014 must pass all 5 cases. Also add a small regression note in the test file referencing PAR-01/GH-764 so the next reader sees the schema dependency.",
+    "type": "fix-implementation",
+    "workflow": "WF-03"
+  },
+  "context": {
+    "github_issue": 764,
+    "github_issue_title": "iss203_idempotency_keys_test: QueryFailed in TC-ISS-203-02 ON CONFLICT DO NOTHING",
+    "iss_local_id": "ISS-0699",
+    "root_cause": "Class A: schema mismatch. After PAR-01 (commit 38cb7967, migration 1147_par01_events_partitioning.sql) the uq_event_idempotency UNIQUE index on events(idempotency_key) was deliberately dropped (lines 162-164). Global idempotency-key uniqueness now lives in plat_event_idempotency(idempotency_key) PRIMARY KEY (lines 176-201). The test at tests/integration/iss203_idempotency_keys_test.zig:367-380 still issues INSERT INTO events ... ON CONFLICT (idempotency_key) DO NOTHING against a partitioned table that no longer has the unique index on idempotency_key, producing SQLSTATE 42P10. Verified via direct psql probe and the live test-integration-iss203 run.",
+    "fix_file": "tests/integration/iss203_idempotency_keys_test.zig",
+    "fix_lines": "367-381 (TC-ISS-203-02 body)",
+    "production_code_change": "none",
+    "migration_change": "none",
+    "design_artifacts": "none (test-only fix, no design ambiguity \u2014 mirrors production pattern at src/event_store/store.zig:288-294)",
+    "branch": "feature/WF03-GH764-20260813",
+    "base_commit": "7f8ed9af",
+    "evidence_files": [
+      "scratch/gh764_iss203_run.log",
+      "scratch/gh764_oc_test.log",
+      "scratch/gh764_tenant_events_idx.log"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Applied minimal-change fix to TC-ISS-203-02. The pre-PAR-01 test issued INSERT INTO events ... ON CONFLICT (idempotency_key) DO NOTHING against the partitioned events table, which after PAR-01 (commit 38cb7967, migration 1147_par01_events_partitioning.sql) no longer carries a unique index on idempotency_key and so returns SQLSTATE 42P10. Fix mirrors the production dedup pattern at src/event_store/store.zig:288-294: a preceeding INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at) VALUES ($1, gen_random_uuid(), NOW()) ON CONFLICT (idempotency_key) DO NOTHING is now the dedup target; the events INSERT replaces ON CONFLICT (... idempotency_key) with a NOT EXISTS subquery against plat_event_idempotency. Added a comment block referencing GH-764 / ISS-0699 / PAR-01 so the next reader sees the schema dependency. No production code change, no migration. Verified: zig build test-integration-iss203 reports 'Build Summary: 6/6 steps succeeded; 5/5 tests passed' (scratch/gh764_iss203_postfix.log). Committed on feature/WF03-GH764-20260813 as 4174a1ad (no push yet \u2014 Step Final will push).",
+    "artifacts_out": [
+      "tests/integration/iss203_idempotency_keys_test.zig",
+      "scratch/gh764_iss203_postfix.log"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF03 Step 3) for verification, then DOC-UPDATER / Step Final for PR + merge."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "handoff_history": null
+}
