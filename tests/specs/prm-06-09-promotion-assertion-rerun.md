@@ -128,6 +128,39 @@ Each affected AC is annotated below as **(gap — not exercisable through integr
 **Layer:** integration
 **Maps:** PRM-07 AC2 (panic case is structurally guaranteed by `defer`; verified by code-reading)
 
+#### TC-PRM-06-03 (AC3 variant) — AC3 stripNonDeterministicFields strips named fields; applyPromotionAssertionRerun with non_deterministic_fields passes
+**Given:** (Part 1) A JSON payload `{"ts":"2026-08-14T00:00:00Z","value":"stable"}` and `non_deterministic_fields = ["ts"]`.
+**When:** `stripNonDeterministicFields()` is called twice on the same input.
+**Then:**
+- Both calls return equal strings (AC3: identical after stripping).
+- The `ts` field is absent in the stripped output.
+- The `value` field is present.
+**And given:** (Part 2) An artifact with one assertion `{"ts":..., "value":"stable"}` and `non_deterministic_fields = ["ts"]`; a `SandboxPool` with `max_concurrent = 4`.
+**When:** `applyPromotionAssertionRerun()` is called once.
+**Then:** `result.status == .passed` (stripped results matched across both internal replay runs).
+**Layer:** integration
+**Maps:** PRM-06 AC3
+
+#### TC-PRM-07-03 — AC3 GET endpoint surfaces teardown_error and sandbox_id
+**Given:** A `promotion_assertion_runs` row with `status='teardown_failed'`, `sandbox_id` set to a valid UUID, and `teardown_error = 'ProvisionFailed'`.
+**When:** `handleGetPromotion(&pool, alloc, actor, review_id)` is called.
+**Then:**
+- `handler_result.status_code == 200`.
+- Response body contains `"ProvisionFailed"` (teardown_error).
+- Response body contains the sandbox_id UUID.
+- Response body contains `"teardown_failed"` (status).
+**Layer:** integration
+**Maps:** PRM-07 AC3
+
+#### TC-PRM-07-04 — AC5 sandbox reaper marks reaper_claimed_at after reclaiming leaked sandbox
+**Given:** A `promotion_assertion_runs` row with `status='teardown_failed'`, `sandbox_id` set, and `reaper_claimed_at IS NULL`. The sandbox schema does not exist in the DB (safe because DROP SCHEMA IF EXISTS is used).
+**When:** `sandbox_pool.reclaimLeakedSandboxes(alloc, tenant_id)` is called.
+**Then:**
+- Before the call: `reaper_claimed_at IS NULL` (verified by SELECT).
+- After the call: `reaper_claimed_at IS NOT NULL` (verified by SELECT).
+**Layer:** integration
+**Maps:** PRM-07 AC5
+
 ### Group 2: PRM-08 — promotion rollback
 
 #### TC-PRM-08-01 — AC1 successful rollback: V2 -> V1 active pointer, DEFINITION_VERSION_ROLLED_BACK event appended, no DDL on tenant tables
@@ -212,14 +245,14 @@ Each affected AC is annotated below as **(gap — not exercisable through integr
 |---|---|---|---|
 | PRM-06 (MUST) | AC1 | TC-PRM-06-01 | ✅ implemented |
 | PRM-06 (MUST) | AC2 | TC-PRM-06-02 | ✅ implemented |
-| PRM-06 (MUST) | AC3 | — | ❌ gap (no `non_deterministic_fields` comparison fixture in b386ff3f; replay engine is a placeholder that returns passed/failed based on empty payload only) |
+| PRM-06 (MUST) | AC3 | TC-PRM-06-03 | ✅ implemented (rework1) |
 | PRM-06 (MUST) | AC4 | TC-PRM-06-04 | ✅ implemented |
 | PRM-06 (MUST) | AC5 | TC-PRM-06-03 | ✅ implemented |
 | PRM-07 (MUST) | AC1 | TC-PRM-07-01 | ✅ implemented |
 | PRM-07 (MUST) | AC2 | TC-PRM-07-02 | ✅ implemented (defer-release verified; panic case is structurally guaranteed) |
-| PRM-07 (MUST) | AC3 | — | ❌ gap (no `GET /api/v1/promotions/{id}` endpoint in b386ff3f) |
+| PRM-07 (MUST) | AC3 | TC-PRM-07-03 | ✅ implemented (rework1) |
 | PRM-07 (MUST) | AC4 | TC-PRM-07-01 + TC-PRM-08-01 | ✅ implemented (negative assertion: rollback succeeds after a teardown_failed run) |
-| PRM-07 (MUST) | AC5 | — | ❌ gap (no sandbox reaper in b386ff3f) |
+| PRM-07 (MUST) | AC5 | TC-PRM-07-04 | ✅ implemented (rework1) |
 | PRM-08 (SHOULD) | AC1 | TC-PRM-08-01 | ✅ implemented |
 | PRM-08 (SHOULD) | AC2 | TC-PRM-08-01 | ✅ implemented (row-count assertion: rollback does not INSERT/DELETE) |
 | PRM-08 (SHOULD) | AC3 | TC-PRM-08-02 | ✅ implemented |
@@ -232,7 +265,7 @@ Each affected AC is annotated below as **(gap — not exercisable through integr
 | PRM-09 (SHOULD) | AC5 | TC-PRM-09-02 + TC-PRM-09-03 | ✅ implemented |
 | PRM-09 (SHOULD) | AC6 | — | ❌ gap (PRM-02 not in b386ff3f; the `has_unresolved_conflicts` flag IS exercised by TC-PRM-09-03) |
 
-**Summary:** 12 / 22 ACs have runnable integration tests in this batch; 10 ACs are documented as gaps in `result.issues` for follow-on batches. Every MUST requirement (PRM-06, PRM-07) has at least one integration test.
+**Summary:** 15 / 22 ACs have runnable integration tests in this batch (rework1 added PRM-06 AC3, PRM-07 AC3, PRM-07 AC5); 7 ACs remain documented as gaps for follow-on batches. Every MUST requirement (PRM-06, PRM-07) now has full AC coverage.
 
 ---
 
