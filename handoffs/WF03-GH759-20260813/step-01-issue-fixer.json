@@ -1,0 +1,40 @@
+{
+  "handoff_id": "step-01-issue-fixer",
+  "run_id": "WF03-GH759-20260813",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "task": {
+    "description": "Step 1 — Root-cause diagnosis for GH-759 / ISS-0697.\n\nGitHub issue: https://github.com/tvolodi/R-Co/issues/759\nLocal ISS: docs/issues/ISS-0697.json (created in Step 0.5)\n\nPerform a root-cause diagnosis. This MUST include:\n\n1. Symptom confirmation: Run `python tools/lint_test_isolation.py --no-baseline --json tests/integration` and confirm the live T010 BLOCKER count = 75 and total issues = 117. Then `cat tests/specs/fixtures/gh512-baseline-snapshot.json` and confirm it still expects T010=74 / total=116 / platform_admin=14. Then read `tests/integration/gh512_t010_regression_test.zig` and confirm the `t010_blocker_ceiling` constant = 74.\n\n2. Evidence trail:\n   - The drift was introduced by commit 34d7ca13 (WF02-idn05-20260812, GH-746) which added tests/integration/idn05_role_registry_test.zig with a platform-admin UUID RETAIN entry. That commit regenerated tools/lint_test_isolation.baseline.json (74→75 T010) but did NOT update gh512_t010_regression_test.zig's ceiling constant or the snapshot fixture.\n   - The same fix was applied on branch feature/WF03-GH752-20260812 in commit 0fff689f (fix(test-infra): resync gh512_t010_regression_test ceiling/snapshot to on-main baseline (ISS-0692/GH-757)) — but that fix was NOT merged to main because the squash-merge of GH-752 (commit 9d06bdf4) did not include it.\n   - This is the THIRD recurrence of this drift class (see ISS-0648/GH-653 and ISS-0664/GH-701).\n\n3. Why it matters:\n   - TC-RG-01 / TC-RG-02 in tests/integration/gh512_t010_regression_test.zig fail on every fresh test run against main because the live lint scan reports 75 T010 BLOCKERs but the test asserts the ceiling is 74.\n   - zig build test-env-verify's C4 check (schema baseline delta) also fires.\n\n4. Proposed remediation (high-level only — Step 2 will design):\n   - Cherry-pick commit 0fff689f's source changes (only the file changes to tests/integration/gh512_t010_regression_test.zig and tests/specs/fixtures/gh512-baseline-snapshot.json — NOT the docs/issues/ISS-0692.json since ISS-0697 already exists).\n   - Verify with: `zig build test-env-verify` exits 0 AND `zig build test-integration-gh512 --summary all` shows 3/3 tests passed.\n\n5. Risk assessment:\n   - Severity = MINOR (test infrastructure only — does not affect production).\n   - Blast radius = 2 files, ~5 lines changed.\n   - No schema/migration/HTTP/auth changes.\n\n6. Hard-gate pre-checks:\n   - Does the fix touch a tenant-data path? NO. So SECURITY-REVIEWER (Step 2c) is NOT required.\n   - Does the fix add/modify business logic? NO. So TEST-DESIGNER / TEST-DESIGN-VALIDATOR are NOT required (we are only updating test fixtures).\n   - The fix is mechanical and small. Justification for skipping Step 2/2b is acceptable IF the diagnosis is unambiguous; otherwise still proceed with Step 2.\n\nDO NOT:\n- Modify source code (that's Step 3)\n- Push to remote\n- Merge anything\n- File a new GitHub issue (GH-759 already exists)\n\nAfter diagnosis, write a 'diagnosis report' into docs/issues/ISS-0697.json's `root_cause_analysis`, `acceptance_criteria`, and `evidence_file` fields. Then update the handoff file with status=COMPLETED, completed_at, and a result.summary that captures the diagnosis.",
+    "context": {
+      "github_issue": 759,
+      "local_iss": "ISS-0697",
+      "predecessor_fix_commit": "0fff689f",
+      "predecessor_fix_branch": "feature/WF03-GH752-20260812",
+      "why_unmerged": "Squash-merge of GH-752 (9d06bdf4) did not include 0fff689f."
+    }
+  },
+  "context_artifacts": [
+    "docs/issues/ISS-0697.json",
+    "handoffs/WF03-GH759-20260813/step-00.5-issue-fixer.json (COMPLETED)",
+    "tests/integration/gh512_t010_regression_test.zig",
+    "tests/specs/fixtures/gh512-baseline-snapshot.json",
+    "tools/lint_test_isolation.baseline.json"
+  ],
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0697 / GH-759 root-cause diagnosis complete. CONFIRMED: live scan = T010 BLOCKER=75 / total=117 (matches on-disk baseline.json); snapshot fixture v4 = T010=74 / total=116 / platform_admin=14 (stale); test ceiling constant = 74 (stale). DRIFT-INTRODUCING COMMIT = 34d7ca13 (WF02-idn05-20260812, GH-746 -- added idn05_role_registry_test.zig with platform-admin UUID RETAIN at line 70, regenerated baseline 74->75/116->117 but never updated snapshot/ceiling). Predecessor fix 0fff689f on feature/WF03-GH752-20260812 correctly applied all three artifact updates (test ceiling 74->75, snapshot v4->v5 with snapshot_v5_addendum, baseline helpers.zig T020 line-number re-sync) but was NOT included in the squash-merge of GH-752 (9d06bdf4) so main remains stale. Third recurrence of this drift class (predecessors: ISS-0648/GH-653, ISS-0664/GH-701). Severity=MINOR, blast radius=3 test-infra files (test + snapshot + baseline line-number sync), no production code path affected. Step 2c (SECURITY-REVIEWER) NOT required. Step 4/4b (TEST-DESIGNER/VALIDATOR) NOT required (test fixture update, not business logic). RECOMMEND SKIPPING Step 2/2b (CODE-DESIGNER/VALIDATOR) -- diagnosis is unambiguous, predecessor fix 0fff689f is a fully-specified mechanical change to three test-infra files, cherry-picking has zero design ambiguity (precedent: ISS-0664 was resolved by a single-commit direct fix 48d4add1 with no Step 2 pass).",
+    "artifacts_out": [
+      "docs/issues/ISS-0697.json (corrected: drift-introducing-commit 0d9041b5->34d7ca13, root_cause_analysis rewritten with verified facts, evidence_trail added with 7 steps, pre_existing_issues_revealed populated, acceptance_criteria expanded from 4 to 7)",
+      "docs/issue-reports/ISS-0697-evidence.md (NEW: 10-section evidence trail with verbatim command outputs, cross-references, and decision matrix)"
+    ],
+    "issues": [],
+    "next_action": "Advance to Step 3 (BACKEND-DEV) with implementation instructions: apply predecessor fix 0fff689f source changes to (a) tests/integration/gh512_t010_regression_test.zig: const t010_blocker_ceiling 74->75 plus doc-comment expansion referencing snapshot_v5_addendum; (b) tests/specs/fixtures/gh512-baseline-snapshot.json: snapshot_version 4->5, captured_at to current UTC, expected.total_issues 116->117, by_severity.BLOCKER 74->75, by_code.T010 74->75, platform_admin_uuid_count 14->15, plus snapshot_v5_addendum documenting rationale (per snapshot_v4_addendum precedent), plus t010_blocker_ceiling_history entry for WF02-idn05-20260812; (c) tools/lint_test_isolation.baseline.json: re-sync helpers.zig T020 entry line numbers (503/508/509 -> 518/523/524 per 0fff689f) and refresh regenerated_by/regeneration_note/last_line_sync metadata. Do NOT create a new ISS-*.json (ISS-0697 already exists and has been updated). Then advance to Step 4 (TEST-RUNNER) for verification: zig build test-integration-gh512 (or per-file build step) exits 0, TC-RG-01/02/03 all PASS, lint_handoffs.py clean. SKIP Step 2 (CODE-DESIGNER) and Step 2b (CODE-DESIGN-VALIDATOR) per recommendation; ORCH confirms."
+  },
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T10:03:24Z",
+  "started_at": "2026-08-13T10:04:56Z",
+  "completed_at": "2026-08-13T10:09:42Z",
+  "rework_count": 0,
+  "max_rework": 2
+}

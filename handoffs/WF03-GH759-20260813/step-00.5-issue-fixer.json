@@ -1,0 +1,44 @@
+{
+  "handoff_id": "step-00.5-issue-fixer",
+  "run_id": "WF03-GH759-20260813",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "task": {
+    "description": "Step 0.5 — Registry lookup + ISS file creation + GitHub issue update for GH-759.\n\nGitHub issue: https://github.com/tvolodi/R-Co/issues/759\nTitle: 'TC-RG-01/TC-RG-02 fail on main: T010 baseline has 117 BLOCKERs but GH-512 snapshot expects 116 — snapshot stale after WF02-batch-0 commit 0d9041b5'\nLabels: bug, good first issue, claimed-by-r-co-1-loop\n\nTasks:\n1. Search docs/issues/ for any existing ISS-NNNN.json that references GitHub issue #759. Use scratch/find_iss_for_gh.py if it exists, or grep docs/issues/issue_index.json for 759.\n2. If no ISS file exists, create docs/issues/ISS-NNNN.json with the next free number. Cross-check with docs/issues/issue_index.json (the index should have the same id).\n3. Update docs/issues/issue_index.json to add the new ISS entry (if it wasn't already there).\n4. Set severity = MINOR (per the existing fix commit 0fff689f's analysis: 'Third recurrence of a known drift class').\n5. Status = REGISTERED.\n6. Note the related_to: ISS-0648 (GH-653), ISS-0664 (GH-701) — the previous recurrences of this drift class.\n7. Write a brief symptom + scope + acceptance criteria (mirror the existing fix's ISS-0692.json as a template since this is the same class of fix applied in a fresh WF03 run).\n8. Return the new ISS-NNNN id in your result. Do not modify source code or test files — that is Step 3 work.\n\nCritical reminders:\n- Per core-directives.md: never invent timestamps. Run `python tools/utcnow.py` for `registered_at`.\n- Write files with encoding='utf-8' (no BOM).\n- Read with encoding='utf-8-sig'.\n- Append `ISS-NNNN` to docs/issues/issue_index.json in the correct spot. Do not regenerate the file.\n- Do NOT push to remote or create a GitHub issue (GH-759 already exists; if you want to comment, use gh issue comment, but the issue is already filed).",
+    "context": {
+      "github_issue": 759,
+      "github_url": "https://github.com/tvolodi/R-Co/issues/759",
+      "related_iss": [
+        "ISS-0648 (GH-653 — second recurrence)",
+        "ISS-0664 (GH-701 — second recurrence)"
+      ],
+      "predecessor_fix": {
+        "commit": "0fff689f",
+        "branch": "feature/WF03-GH752-20260812",
+        "reason_unmerged": "GH-757 fix was included in the feature branch's chain but the squash-merge of GH-752 (commit 9d06bdf4) did not pick up the GH-757 fix."
+      }
+    }
+  },
+  "context_artifacts": [
+    "docs/issues/ISS-0692.json (precedent for a same-class ISS file)",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-GH759-20260813/step-00-backend-dev.json (already COMPLETED)"
+  ],
+  "result": {
+    "status": "PASS",
+    "summary": "Registered ISS-0697 for GH-759 (TC-RG-01/02 baseline 117 vs snapshot 116 drift, third recurrence of class seen in ISS-0648/ISS-0664). Created docs/issues/ISS-0697.json with severity=MINOR, status=REGISTERED, related_to=[ISS-0648, ISS-0664, GH-512, GH-653, GH-701], scope/symptom/root_cause/acceptance_criteria mirroring the same-class template. Appended ISS-0697 to docs/issues/issue_index.json (append-only, 146->147 entries, next_issue_id 212->697). No source code or test files touched (Step 3 work).",
+    "artifacts_out": [
+      "docs/issues/ISS-0697.json",
+      "docs/issues/issue_index.json"
+    ],
+    "issues": [],
+    "next_action": "Route to STEP-1 (ISSUE-FIXER diagnosis) -> STEP-3 (BACKEND-DEV for snapshot fixture bump tests/specs/fixtures/gh512-baseline-snapshot.json v4->v5) -> STEP-4 (TEST-RUNNER verification)"
+  },
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T10:03:00Z",
+  "started_at": "2026-08-13T10:03:24Z",
+  "completed_at": "2026-08-13T10:04:10Z",
+  "rework_count": 0,
+  "max_rework": 2
+}

@@ -1,0 +1,98 @@
+{
+  "handoff_id": "step-03-backend-dev",
+  "run_id": "WF03-GH759-20260813",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "task": {
+    "description": "Step 3 — Apply the test-baseline resync fix for GH-759 / ISS-0697.\n\nBranch: feature/WF03-GH759-20260813 (already created and pushed in Step 00).\nBase: main @ 7a1dd324.\n\nImplement the fix by applying the source-code changes from predecessor commit 0fff689f (fix(test-infra): resync gh512_t010_regression_test ceiling/snapshot to on-main baseline (ISS-0692/GH-757)) — but DO NOT include that commit's docs/issues/ISS-0692.json (we already have ISS-0697).\n\nFiles to change:\n\n1. tests/integration/gh512_t010_regression_test.zig (around lines 33-38):\n   - Update doc-comment for t010_blocker_ceiling to reference `snapshot_v5_addendum` and document the +1 drift (per 0fff689f's diff in the diagnosis).\n   - Change `const t010_blocker_ceiling: u32 = 74;` to `const t010_blocker_ceiling: u32 = 75;`\n\n2. tests/specs/fixtures/gh512-baseline-snapshot.json:\n   - snapshot_version: 4 → 5\n   - captured_at: refresh to current UTC (use python tools/utcnow.py output)\n   - expected.total_issues: 116 → 117\n   - expected.by_severity.BLOCKER: 74 → 75\n   - expected.by_code.T010: 74 → 75\n   - platform_admin_uuid_count: 14 → 15\n   - Add a `snapshot_v5_addendum` field documenting the rationale (mirror the existing snapshot_v4_addendum structure, but for GH-759 / WF03-idn05-drift-20260813 instead of ISS-0692/GH-757).\n   - Add a `t010_blocker_ceiling_history` entry for WF02-idn05-20260812 (similar to existing entries).\n\n3. tools/lint_test_isolation.baseline.json (helpers.zig T020 entries):\n   - The diagnosis may say 're-sync helpers.zig T020 entry line numbers (503/508/509 -> 518/523/524 per 0fff689f)' BUT note: main has moved since 0fff689f. Check the actual current line numbers in tests/integration/helpers.zig and update the baseline.json entries' `line` fields to match. Run `python tools/lint_test_isolation.py --no-baseline --json tests/integration` and confirm ZERO fresh findings. If zero, no line-number update is needed.\n   - Refresh regenerated_by/regeneration_note/last_line_sync metadata in tools/lint_test_isolation.baseline.json (the file's preamble fields).\n\nVerification before commit:\n- `python tools/lint_test_isolation.py` exits 0 (no fresh findings, baseline matches live).\n- `zig build test-env-verify` exits 0 (or at least: 0 BLOCKER / 0 fresh findings; existing pre-existing failures are out of scope).\n- `zig build test-integration-gh512 --summary all` reports 3/3 tests passed (TC-RG-01/02/03).\n- `tools/lint_handoffs.py` exits 0.\n\nDO NOT:\n- Touch docs/issues/ISS-0697.json (already correct).\n- Touch docs/issues/ISS-0692.json (would be a duplicate of the predecessor).\n- Touch any source files in src/ (no production changes).\n- Push to remote until instructed.\n- Open a PR until instructed (Step Final handles git-merge).\n\nCommit message format (follow conventional commits):\n  fix(test-infra): GH-759/ISS-0697 — resync gh512_t010_regression_test ceiling/snapshot to on-main baseline\n\nAfter commit, update the handoff file:\n- status: 'COMPLETED', completed_at from `python tools/utcnow.py`\n- result.status: 'PASS' if all verification passes\n- result.summary: list of files changed and verification outputs\n- result.next_action: 'ORCH routes to TEST-RUNNER Step 5'",
+    "context": {
+      "github_issue": 759,
+      "local_iss": "ISS-0697",
+      "branch": "feature/WF03-GH759-20260813",
+      "base_commit": "7a1dd324",
+      "predecessor_fix": "0fff689f",
+      "skip_steps": "2, 2b (CODE-DESIGNER, CODE-DESIGN-VALIDATOR) — diagnosis unambiguous per ISSUE-FIXER Step 1",
+      "skip_steps_security": "2c (SECURITY-REVIEWER) — no tenant-data path change",
+      "skip_steps_test_design": "4, 4b (TEST-DESIGNER, TEST-DESIGN-VALIDATOR) — test fixture update only"
+    }
+  },
+  "context_artifacts": [
+    "docs/issues/ISS-0697.json (diagnosis)",
+    "docs/issue-reports/ISS-0697-evidence.md",
+    "handoffs/WF03-GH759-20260813/step-00-backend-dev.json (COMPLETED)",
+    "handoffs/WF03-GH759-20260813/step-01-issue-fixer.json (COMPLETED, contains detailed next_action instructions)",
+    "git show 0fff689f (predecessor fix — apply its source changes)",
+    "tests/integration/gh512_t010_regression_test.zig",
+    "tests/specs/fixtures/gh512-baseline-snapshot.json",
+    "tools/lint_test_isolation.baseline.json"
+  ],
+  "result": {
+    "status": "PASS",
+    "summary": "Step 3 of WF03-GH759-20260813 completed. Test-baseline-drift reconciliation applied: tests/integration/gh512_t010_regression_test.zig's t010_blocker_ceiling constant 74 -> 75 with doc-comment expanded to reference snapshot_v5_addendum; tests/specs/fixtures/gh512-baseline-snapshot.json bumped v4 -> v5 with snapshot_v5_addendum, captured_at refreshed to UTC stamp, expected.total_issues 116 -> 117, by_severity.BLOCKER 74 -> 75, by_code.T010 74 -> 75, platform_admin_uuid_count 14 -> 15, regression_policy.t010_blocker_ceiling 74 -> 75, notes refreshed, t010_blocker_ceiling_history extended with WF02-idn05-20260812 entry; tools/lint_test_isolation.baseline.json preamble metadata refreshed (regenerated_by / regeneration_note / last_line_sync) for WF03-GH759-20260813/ISS-0697, plus single line-number re-sync applied (gh512_t010_regression_test.zig 337 -> 342) to absorb the +5 line shift from this commit's doc-comment expansion -- all other line numbers already matched a fresh --no-baseline scan (verified zero stale-only / line-drift / missing-baseline findings against the committed baseline).",
+    "verification": {
+      "live_scan_vs_baseline_diff": {
+        "only_in_baseline_stale_entries": 0,
+        "only_in_live_missing_entries": 0,
+        "line_drift_mismatches": 0,
+        "live_total_issues": 117,
+        "live_t010_blocker": 75,
+        "baseline_total_issues": 117,
+        "baseline_t010_blocker": 75
+      },
+      "lint_test_isolation_full": {
+        "exit_code": 0,
+        "output": "OK - 159 file(s) checked, no isolation issues. Suppressed 117 issue(s) from baseline: tools/lint_test_isolation.baseline.json"
+      },
+      "lint_handoffs": {
+        "exit_code": 0,
+        "output_summary": "2714 handoffs checked, 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing on registry.json, acknowledged in baseline), 291 ACKNOWLEDGED"
+      },
+      "bom_check": {
+        "tools_lint_test_isolation_baseline_json": false,
+        "tests_specs_fixtures_gh512_baseline_snapshot_json": false,
+        "tests_integration_gh512_t010_regression_test_zig": false
+      },
+      "snapshot_fixture_post_fix": {
+        "snapshot_version": 5,
+        "captured_at": "2026-08-13T10:17:19Z",
+        "expected_total_issues": 117,
+        "expected_blocker": 75,
+        "expected_t010": 75,
+        "platform_admin_uuid_count": 15,
+        "has_snapshot_v5_addendum": true,
+        "regression_policy_ceiling": 75,
+        "ceiling_history_length": 3
+      },
+      "zig_test_ceiling_constant_post_fix": 75
+    },
+    "artifacts_out": [
+      "tests/integration/gh512_t010_regression_test.zig",
+      "tests/specs/fixtures/gh512-baseline-snapshot.json",
+      "tools/lint_test_isolation.baseline.json",
+      "commit:ba94e9a368bba5198bbc12915ca542a1be84d81b"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to TEST-RUNNER Step 5",
+    "commit": {
+      "sha": "ba94e9a368bba5198bbc12915ca542a1be84d81b",
+      "short_sha": "ba94e9a3",
+      "branch": "feature/WF03-GH759-20260813",
+      "subject": "fix(test-infra): GH-759/ISS-0697 - resync gh512_t010_regression_test ceiling/snapshot to on-main baseline",
+      "files_changed": 3,
+      "insertions": 30,
+      "deletions": 20,
+      "pushed": false,
+      "pr_opened": false
+    },
+    "pre_existing_unrelated_working_tree": {
+      "note": "docs/issues/issue_index.json, handoffs/orchestrator.log, handoffs/registry.json modified and docs/issue-reports/ISS-0697-evidence.md, docs/issues/ISS-0697.json, handoffs/WF03-GH759-20260813/ untracked -- all from Steps 0/0.5/1 (ISSUE-FIXER / orchestrator bookkeeping); out of scope for this Step 3 commit and intentionally left for Step Final (DOC-UPDATER) to bundle."
+    }
+  },
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T10:09:42Z",
+  "started_at": "2026-08-13T10:11:40Z",
+  "completed_at": "2026-08-13T10:17:19Z",
+  "rework_count": 0,
+  "max_rework": 3
+}

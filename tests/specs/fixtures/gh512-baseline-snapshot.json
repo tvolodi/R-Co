@@ -1,15 +1,19 @@
 {
-  "snapshot_version": 4,
-  "captured_at": "2026-08-11T04:51:13Z",
-  "captured_by": "WF02-batch-0-20260811 (ISS-0664, correcting drift from WF03-GH681-20260810 / PR #684)",
+  "snapshot_version": 5,
+  "captured_at": "2026-08-13T10:12:38Z",
+  "captured_by": "WF03-GH759-20260813 (BACKEND-DEV Step 3, third recurrence of test-baseline-drift class -- predecessors ISS-0648/GH-653, ISS-0664/GH-701; predecessor-fix 0fff689f on feature/WF03-GH752-20260812 was not squash-merged into main with GH-752)",
   "source_run": "WF03-GH512-20260808",
   "issue": "https://github.com/tvolodi/R-Co/issues/512",
   "source_file": "tools/lint_test_isolation.baseline.json",
   "expected": {
-    "total_issues": 116,
-    "by_severity": { "BLOCKER": 74, "MAJOR": 42, "MINOR": 0 },
-    "by_code":     { "T010": 74, "T020": 11, "T030": 6, "T050": 23, "T060": 2 },
-    "platform_admin_uuid_count": 14
+    "total_issues": 117,
+    "by_severity": { "BLOCKER": 75, "MAJOR": 42, "MINOR": 0 },
+    "by_code":     { "T010": 75, "T020": 11, "T030": 6, "T050": 23, "T060": 2 },
+    "platform_admin_uuid_count": 15
+  },
+  "snapshot_v5_addendum": {
+    "rationale": "116 -> 117 (T010 74 -> 75, platform_admin_uuid_count 14 -> 15): commit 34d7ca13 (WF02-idn05-20260812, GH-746, Named role registry / ROLE assignee resolution) added a new integration test file, tests/integration/idn05_role_registry_test.zig, whose local adminActor() helper (line 70) reintroduces the canonical platform-admin UUID literal (00000000-0000-0000-0000-000000000001) -- the same RETAIN pattern already documented for every other integration test file's own admin-actor helper (step_04_retain_addendum below), not a new defect class. That commit correctly regenerated tools/lint_test_isolation.baseline.json (verified: git show 34d7ca13 -- tools/lint_test_isolation.baseline.json shows exactly one added T010 entry, file=tests/integration/idn05_role_registry_test.zig line=70, same message text as every other platform-admin RETAIN entry) but never updated this snapshot fixture or gh512_t010_regression_test.zig's t010_blocker_ceiling constant (still 74) to match, so TC-RG-01/TC-RG-02 failed on any run against current main from that commit onward -- confirmed by diffing a fresh `python tools/lint_test_isolation.py --no-baseline --json tests/integration` scan against the committed baseline.json by (severity, code, file, message) key: zero differences, i.e. the 117-vs-116 gap is entirely this one already-committed, already-correct baseline entry versus a stale snapshot/ceiling, not new drift introduced by this run. Fixed by updating this snapshot and the test's ceiling constant to match the already-correct on-disk baseline; no change to tools/lint_test_isolation.baseline.json's issues array was needed (it was already correct as of 34d7ca13). Predecessor fix 0fff689f on branch feature/WF03-GH752-20260812 made the same correction against an earlier branch state -- not merged with GH-752 -- this v5 snapshot re-applies the same correction to current main as part of WF03-GH759-20260813 / ISS-0697.",
+    "verified_by": "WF03-GH759-20260813/BACKEND-DEV (ISS-0697; filed as its own follow-up issue per No Issue Left Local-Only, since it predates and is independent of ISS-0211/GH-752's lock_timeout work)"
   },
   "snapshot_v4_addendum": {
     "rationale": "117 -> 116 (T010 77 -> 74, T050 24 -> 23, MAJOR 43 -> 42): PR #684 (WF03-GH681-20260810, ISS-0659's advisory-lock extension to 31 self-managed-pool binaries) re-keyed tools/lint_test_isolation.baseline.json's line numbers (shifted ~13 by added imports + acquireLock helper) and, in the process, both removed one legitimate T050 entry (tests/integration/main_test.zig:1, net -1) and left 3 stale T010 entries behind whose line numbers (obs06_alerts_test.zig:174 x2, oidc13_tenant_claim_source_test.zig:106) no longer matched any real finding in a fresh `python tools/lint_test_isolation.py --no-baseline --json tests/integration` scan (confirmed by diffing baseline entries against a live scan by (severity, code, file, line, message) key: exactly 3 baseline-only entries, 0 live-only entries). Net effect on the committed baseline was +2 phantom BLOCKER entries (117 total instead of the correct 116), which also silently inflated T010 from the true live-scan ceiling of 74 to 77 in the baseline file (TC-RG-01 measures T010 live and correctly stayed at 74; only TC-RG-02, which reads the committed baseline file, caught the drift). Fixed by regenerating tools/lint_test_isolation.baseline.json's issues array directly from the live scan, discovered and fixed while running the WF02-batch-0-20260811 Step 00a Green-Main Gate.",
@@ -42,19 +46,20 @@
     "source": "docs/issue-reports/ISS-0181-gh512-diagnosis.yaml"
   },
   "regression_policy": {
-    "t010_blocker_ceiling": 74,
+    "t010_blocker_ceiling": 75,
     "block_new_codes": true,
     "block_new_severities": true,
     "notes": [
-      "T010 BLOCKER ceiling 74 is the post-step-04 count: 13 platform-admin UUIDs (design §R1) + 60 module-scope const/comptime UUIDs that BACKEND-DEV marked RETAIN per step-03 result + 1 step-04 RETAIN (TC-RG-02 substring-search target on the platform-admin canonical literal).",
-      "TC-RG-01 asserts T010 BLOCKER <= 74 (the post-step-04 ceiling, not 73); if a contributor re-introduces a hardcoded UUID literal anywhere under tests/integration/, the count rises above 74 and the test fails.",
-      "TC-RG-02 verifies this snapshot matches the on-disk tools/lint_test_isolation.baseline.json: same total_issues, same per-code distribution, same platform_admin_substring_count (14 after addendum).",
-      "Per the task statement TC-RG-01 pins T010 BLOCKER <= 13 (the platform-admin count only). The 60 RETAIN module-scope const sites that BACKEND-DEV left in the baseline are out of step-04 scope: they are platform-admin-adjacent literals or document-identity fixtures, all explicitly RETAIN in design S4 / R3 / step-03 summary. The ceiling 74 reflects the as-implemented state after step 4; the test message names any new file that pushes the count above the ceiling.",
-      "See step_04_retain_addendum for the new entry that brought the ceiling from 73 to 74. It is paired with this snapshot, so TC-RG-02 still passes locally while catching future contributors."
+      "T010 BLOCKER ceiling 75 is the current as-of-main count: 13 platform-admin UUIDs (design §R1) + 60 module-scope const/comptime UUIDs that BACKEND-DEV marked RETAIN per step-03 result + 1 step-04 RETAIN (TC-RG-02 substring-search target on the platform-admin canonical literal) + 1 snapshot-v5 RETAIN (idn05_role_registry_test.zig's own adminActor() helper, same platform-admin literal pattern, added by an unrelated WF02 batch).",
+      "TC-RG-01 asserts T010 BLOCKER <= 75 (the current ceiling); if a contributor re-introduces a hardcoded UUID literal anywhere under tests/integration/ beyond the documented RETAIN pattern, the count rises above 75 and the test fails.",
+      "TC-RG-02 verifies this snapshot matches the on-disk tools/lint_test_isolation.baseline.json: same total_issues, same per-code distribution, same platform_admin_substring_count (15 after the v5 addendum).",
+      "Per the task statement TC-RG-01 pins T010 BLOCKER <= 13 (the platform-admin count only). The 60 RETAIN module-scope const sites that BACKEND-DEV left in the baseline are out of step-04 scope: they are platform-admin-adjacent literals or document-identity fixtures, all explicitly RETAIN in design S4 / R3 / step-03 summary. The ceiling reflects the as-implemented state on main; the test message names any new file that pushes the count above the ceiling.",
+      "See step_04_retain_addendum for the entry that brought the ceiling from 73 to 74, and snapshot_v5_addendum for the entry that brought it from 74 to 75. Each is paired with this snapshot, so TC-RG-02 still passes locally while catching genuinely new, undocumented literals."
     ],
     "t010_blocker_ceiling_history": [
       { "step": "step-03 (BACKEND-DEV)", "ceiling": 73, "notes": "First post-migration ceiling after 111 conversions + 51 RETAIN comments." },
-      { "step": "step-04 (TEST-DESIGNER)", "ceiling": 74, "notes": "Step-04 adds 1 documented RETAIN entry: TC-RG-02 substring-search target on canonical platform-admin UUID literal." }
+      { "step": "step-04 (TEST-DESIGNER)", "ceiling": 74, "notes": "Step-04 adds 1 documented RETAIN entry: TC-RG-02 substring-search target on canonical platform-admin UUID literal." },
+      { "step": "WF02-idn05-20260812 (GH-746, commit 34d7ca13)", "ceiling": 75, "notes": "New idn05_role_registry_test.zig file's adminActor() helper reintroduces the same platform-admin canonical literal (RETAIN); ceiling/snapshot reconciled by WF03-GH759-20260813/BACKEND-DEV after predecessor fix 0fff689f failed to land on main via the GH-752 squash-merge -- see snapshot_v5_addendum for full history." }
     ]
   }
 }

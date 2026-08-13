@@ -33,9 +33,14 @@ const build_options = @import("build_options");
 /// as-implemented post-step-04 ceiling: 13 platform-admin UUIDs (design §R1)
 /// + 60 module-scope `const`/comptime UUIDs that BACKEND-DEV marked RETAIN
 /// per `step-03-backend-dev.json` summary + 1 step-04 RETAIN (the substring-
-/// search target below). See `tests/specs/fixtures/gh512-baseline-snapshot.json`
+/// search target below) + 1 (snapshot v5, GH-759/ISS-0697): a new integration
+/// test file (idn05_role_registry_test.zig, WF02-idn05-20260812 / commit
+/// 34d7ca13) reintroduced the canonical platform-admin UUID literal in its own
+/// local adminActor() helper -- same RETAIN class as every other file's
+/// admin-actor helper, not a new defect. See
+/// `tests/specs/fixtures/gh512-baseline-snapshot.json`'s `snapshot_v5_addendum`
 /// for the rationale.
-const t010_blocker_ceiling: u32 = 74;
+const t010_blocker_ceiling: u32 = 75;
 
 /// Path to the on-disk baseline (relative to repo root, which is the cwd).
 const baseline_relpath = "tools" ++ "/" ++ "lint_test_isolation.baseline.json";
