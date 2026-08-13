@@ -1,0 +1,61 @@
+{
+  "iss_id": "ISS-0700",
+  "id": "ISS-0700",
+  "gh_issue": 765,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/765",
+  "github_issue_confirmed": true,
+  "title": "iss205_webhook_outbox_test: all 3 tests fail with PoolError.QueryFailed (pre-existing, deterministic)",
+  "status": "RESOLVED",
+  "severity": "MAJOR",
+  "workflow_id": "WF03-GH765-20260813",
+  "run_id": "WF03-GH765-20260813",
+  "created_at": "2026-08-13T17:52:49Z",
+  "registered_at": "2026-08-13T17:54:03Z",
+  "created_by": "ISSUE-FIXER (WF03-GH765-20260813 step-00.5)",
+  "registered_by": "ISSUE-FIXER (WF03-GH765-20260813 step-00.5)",
+  "branch": "feature/WF03-GH765-20260813",
+  "branch_base_sha": "93bfeb97",
+  "labels": ["bug"],
+  "scope": "tests/integration/iss205_webhook_outbox_test.zig (TC1/TC2/TC3 webhook outbox atomicity). migrations/** for webhook_subscriptions and webhook_deliveries table definitions (column set, FK constraints, NOT NULL / DEFAULT clauses). src/**/webhook*.zig and outbox*.zig for any handler that reads/writes these tables.",
+  "affected_areas": [
+    "tests/integration/iss205_webhook_outbox_test.zig",
+    "migrations/ (webhook_subscriptions, webhook_deliveries tables)",
+    "src/ (webhook / outbox handler code paths)"
+  ],
+  "description": "Mirror of GH-765. iss205_webhook_outbox_test.zig \u2014 all 3 tests (TC1/TC2/TC3) fail with PoolError.QueryFailed. 1 memory leak detected. Confirmed pre-existing on main (HEAD~1 before GH-760/ISS-0696 commit 1e4f31f1). Fails in isolation. Identical failure on main before our changes. Discovered during WF03-GH760-20260813 Step 05; NOT caused by GH-760 fix (which only re-routed iss205 into a serial build.zig step). Build Summary: 0/3 tests passed.",
+  "symptom": "iss205_webhook_outbox_test.zig \u2014 all 3 tests (TC1/TC2/TC3) fail with PoolError.QueryFailed. 1 memory leak detected. Build Summary: 0/3 tests passed. Confirmed pre-existing on main (HEAD~1 before GH-760/ISS-0696 commit 1e4f31f1). Fails in isolation (no concurrent binaries running). Identical failure on main before our changes.",
+  "discovered_at": "2026-08-13T09:33:02Z",
+  "discovered_by": "WF03-GH760-20260813 Step 05",
+  "investigation_notes": "TC1 seeds a webhook_subscriptions row and a users row before testing outbox insert + rollback atomicity. QueryFailed on first transaction insert suggests a schema mismatch in webhook_subscriptions or webhook_deliveries \u2014 possibly a missing column added by a recent migration that the test binary's migration run doesn't apply, or a FK/constraint issue.",
+  "step_0.5_completed_at": "2026-08-13T17:54:03Z",
+  "evidence_trail": [
+    {
+      "step": "gh765_origin",
+      "command": "Discovered during WF03-GH760-20260813 Step 05; pre-existing deterministic failure on main (HEAD~1 before GH-760/ISS-0696 commit 1e4f31f1); not caused by GH-760's serial-step re-routing.",
+      "result": "Re-queued for WF03-GH765-20260813 per user 'resolve issues in loop' directive after GH-764 closed (PR #776 merged at 93bfeb97)."
+    },
+    {
+      "step": "step_0.5",
+      "command": "gh issue view 765 --repo tvolodi/R-Co --json state,closedAt,comments",
+      "result": "OPEN (confirmed, closedAt=null). Ack comment posted referencing WF03-GH765-20260813 + ISS-0700.",
+      "timestamp": "2026-08-13T17:54:03Z"
+    }
+  ],
+  "resolution_commit": "eec9edc3",
+  "resolved_at": "2026-08-13T18:12:19Z",
+  "resolved_by": "DOC-UPDATER (WF03-GH765-20260813 step-07)",
+  "resolution_pr": 771,
+  "resolution_via": "duplicate-of-GH-763",
+  "reproduction": "zig build test-integration-iss205 (or test-integration-iss205_serial_public per WF03-GH760-20260813 build.zig re-routing). Build Summary: 0/3 tests passed. Memory leak: 1 leaked allocation detected across TC1/TC2/TC3.",
+  "fix_file": null,
+  "fix_line": null,
+  "handoff_history": [
+    {
+      "step": "07",
+      "agent": "DOC-UPDATER",
+      "status": "PASS",
+      "completed_at": "2026-08-13T18:12:19Z",
+      "summary": "ISS-0700 marked RESOLVED via duplicate of GH-763/commmit eec9edc3 (PR #771)"
+    }
+  ]
+}

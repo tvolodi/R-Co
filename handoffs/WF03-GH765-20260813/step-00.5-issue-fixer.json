@@ -1,0 +1,86 @@
+{
+  "run_id": "WF03-GH765-20260813",
+  "step": "00.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "handoff_id": "WF03-GH765-20260813/step-00.5-issue-fixer",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T17:52:49Z",
+  "started_at": "2026-08-13T17:53:15Z",
+  "completed_at": "2026-08-13T17:54:44Z",
+  "task": {
+    "type": "registry-lookup",
+    "title": "Step 0.5: ISSUE-FIXER registry lookup + GH-765 confirm OPEN + create ISS-0700",
+    "description": "Look up GH-765 in the local issue registry (docs/issues/issue_index.json + docs/issues/ISS-*.json). Confirm GH-765 is still OPEN on GitHub (not silently closed). Create docs/issues/ISS-0700.json mirroring GH-765 metadata. Append ISS-0700 to docs/issues/issue_index.json. Post an ack comment on GH-765 referencing this WF ID. Do NOT do any root-cause analysis yet (that's Step 01).",
+    "context": {
+      "gh_issue": 765,
+      "gh_issue_title": "iss205_webhook_outbox_test: all 3 tests fail with PoolError.QueryFailed (pre-existing, deterministic)",
+      "gh_issue_created": "2026-08-13T09:33:02Z",
+      "gh_issue_ack_pattern": "GH-764 ack comment 5282773695 (use as format reference)",
+      "iss_id": "ISS-0700",
+      "iss_path": "docs/issues/ISS-0700.json",
+      "issue_index_path": "docs/issues/issue_index.json",
+      "next_issue_id_at_registry": 700,
+      "branch": "feature/WF03-GH765-20260813",
+      "task_manager": "r-co-1-loop"
+    },
+    "gh_ack_comment_template": "Acknowledged — this bug is now being worked as workflow **WF03-GH765-20260813** (ISS-0700 in the local registry). The webhook_outbox test failures (GC-205 TC1/TC2/TC3) will be root-caused, fixed, and merged via PR. Tracking: docs/issues/ISS-0700.json.",
+    "verification": {
+      "gh_765_state": "OPEN",
+      "iss_0700_created": true,
+      "issue_index_updated": true,
+      "gh_765_ack_comment_posted": true
+    }
+  },
+  "context": {
+    "github_issue": 765,
+    "github_issue_title": "iss205_webhook_outbox_test: all 3 tests fail with PoolError.QueryFailed (pre-existing, deterministic)",
+    "iss_local_id": "ISS-0700",
+    "iss_file": "docs/issues/ISS-0700.json",
+    "branch": "feature/WF03-GH765-20260813",
+    "branch_base_sha": "93bfeb97",
+    "task_manager_claim": "task/current.json (claimed: issue=765, run_id=WF03-GH765-20260813)"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 0.5 complete: GH-765 confirmed OPEN (state=OPEN, closedAt=null, commentCount=1 after ack). ISS-0700 created at docs/issues/ISS-0700.json (mirroring GH-765 metadata: iss_id=ISS-0700, gh_issue=765, status=OPEN, severity=MAJOR, branch=feature/WF03-GH765-20260813, branch_base=93bfeb97). docs/issues/issue_index.json updated: ISS-0700 entry prepended (newest-first), next_issue_id bumped 700->701, last_updated=2026-08-13T17:54:31Z, CRLF preserved (150 entries, was 149). Acknowledgment comment posted on GH-765 (comment id 5284414833, url https://github.com/tvolodi/R-Co/issues/765#issuecomment-5284414833) using the template from task.gh_ack_comment_template, referencing WF03-GH765-20260813, ISS-0700, and docs/issues/ISS-0700.json. Pre-flight: branch=feature/WF03-GH765-20260813 confirmed; task/current.json={issue:765, run_id:WF03-GH765-20260813, status:IN_PROGRESS} confirmed. ISS-0700 did not pre-exist (collision-free). No root-cause analysis performed (per task scope; deferred to Step 01).",
+    "artifacts_out": [
+      "docs/issues/ISS-0700.json",
+      "docs/issues/issue_index.json",
+      "handoffs/WF03-GH765-20260813/step-00.5-issue-fixer.json"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER for diagnosis (WF-03 Step 1): read tests/integration/iss205_webhook_outbox_test.zig, src/webhook*/outbox*.zig, and migrations/ for webhook_subscriptions + webhook_deliveries schema; identify the column/FK/constraint mismatch causing the deterministic PoolError.QueryFailed on TC1 seed insert."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "evidence": {
+    "branch_pre_flight": "feature/WF03-GH765-20260813 (verified via `git branch --show-current`)",
+    "task_current_json_pre_flight": {
+      "issue": 765,
+      "run_id": "WF03-GH765-20260813",
+      "status": "IN_PROGRESS",
+      "title": "iss205_webhook_outbox_test: all 3 tests fail with PoolError.QueryFailed",
+      "workspace_id": "r-co-1-loop"
+    },
+    "gh_765_view": {
+      "command": "gh issue view 765 --repo tvolodi/R-Co --json state,closedAt,comments",
+      "state": "OPEN",
+      "closedAt": null,
+      "commentCount": 1
+    },
+    "gh_765_ack_comment": {
+      "command": "gh issue comment 765 --repo tvolodi/R-Co --body <template>",
+      "comment_id": 5284414833,
+      "comment_url": "https://github.com/tvolodi/R-Co/issues/765#issuecomment-5284414833",
+      "verification": "gh api repos/tvolodi/R-Co/issues/comments/5284414833 --jq returned matching id + body"
+    },
+    "registry_state_after_patch": {
+      "next_issue_id": 701,
+      "last_updated": "2026-08-13T17:54:31Z",
+      "issues_count": 150,
+      "first_entry_id": "ISS-0700",
+      "line_endings_preserved": "CRLF"
+    }
+  }
+}

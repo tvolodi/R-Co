@@ -1,0 +1,48 @@
+{
+  "run_id": "WF03-GH765-20260813",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "handoff_id": "WF03-GH765-20260813/step-final-backend-dev",
+  "status": "PENDING",
+  "created_at": "2026-08-13T18:13:41Z",
+  "started_at": null,
+  "completed_at": null,
+  "task": {
+    "type": "git-merge",
+    "title": "Step Final: push branch, create PR, squash-merge, close GH-765, delete branch, release TaskManager",
+    "description": "Run git-merge finalisation for branch feature/WF03-GH765-20260813 (stale-evidence duplicate of GH-763/ISS-0689, fixed on main by PR #771). Subtasks: (1) commit DOC-UPDATER outputs, (2) git push -u origin feature/WF03-GH765-20260813, (3) gh pr create, (4) squash-merge, (5) gh issue close 765 as duplicate, (6) delete branch, (7) release TaskManager claim, (8) append DONE entries to orchestrator.log + registry.json.",
+    "context": {
+      "branch": "feature/WF03-GH765-20260813",
+      "gh_issue": 765,
+      "gh_issue_ack_comment": 5284414833,
+      "gh_issue_resolution_comment": 5284624199,
+      "iss_id": "ISS-0700",
+      "iss_path": "docs/issues/ISS-0700.json",
+      "iss_status": "RESOLVED",
+      "iss_resolution_commit": "eec9edc3",
+      "fix_commit_on_main": "eec9edc3",
+      "fix_pr_on_main": 771,
+      "diagnosis_report": "tests/reports/WF03-GH765-diagnosis.md",
+      "upstream_main_sha": "93bfeb97",
+      "pattern_reference": "WF03-GH758-20260813 (PR #774) — same stale-evidence-duplicate pattern"
+    },
+    "verification": {
+      "lint_clean": "TODO",
+      "pr_url": "TODO",
+      "pr_merged": "TODO",
+      "gh_765_closed": "TODO",
+      "branch_deleted_remote": "TODO",
+      "branch_deleted_local": "TODO",
+      "task_current_json": "{}",
+      "main_head_after": "TODO",
+      "registry_and_log_appended": "TODO"
+    }
+  },
+  "result": {
+    "status": null,
+    "summary": null,
+    "artifacts_out": [],
+    "issues": []
+  }
+}
