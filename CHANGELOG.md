@@ -4,6 +4,10 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-13
 
+### TC-API-05-01 DebugAllocator leak — ISS-0695/GH-755 (RESOLVED)
+
+- **fix(tests): GH-755/ISS-0695 — free record.metadata in TC-API-05-01.** `tests/integration/api03_instance_read_test.zig` was discarding the `AppendResult` from `ev_store.append()` (line 988) with `_ =`, leaking `result.record.metadata` (heap-allocated by `duplicateFromParams()` in `src/event_store/store.zig:1368`) every run. Now `append_res` is captured and `.metadata` freed via `defer if (.metadata.len > 0) alloc.free(...)`. Production code untouched. Same-shape leak as GH-753/ISS-0691 (which fixed `sim01_04_simulation_mode_test.zig` lines 254 and 264), adjacent call site. Pattern identical: capture result, defer-free with `len > 0` guard. Verified `zig build` exit 0; runtime integration test verification deferred — GH-758 client hang currently blocks reliable test-integration execution. The other adjacent same-shape leak (ISS-0694/GH-754 `adp06_pipeline_run_correlation_test.zig:271`) remains OPEN.
+
 ### Scheduler idempotency enforcement restored — GH-766 (RESOLVED)
 
 - **fix(scheduler): GH-766 — appendEventInTx writes to plat_event_idempotency for dedup enforcement.** After PAR-01 partitioning (migration 1147) removed the `uq_event_idempotency` unique index from `events`, `appendEventInTx` in `src/scheduler/scheduler.zig` no longer enforced idempotency for timer-fired events. `TC-SCH-02-03` was failing because the pre-seeded duplicate idempotency key caused no conflict (the constraint was gone). Fix: added a third `conn.exec` in `appendEventInTx` that INSERTs into `plat_event_idempotency(idempotency_key, event_id, created_at)`; duplicate keys now trigger a PRIMARY KEY violation that propagates as `SchedulerError.TransactionFailed` via the ISS-0618 error surfacing. Updated `TC-SCH-02-03` to pre-seed `plat_event_idempotency` instead of relying on the removed `events` constraint.

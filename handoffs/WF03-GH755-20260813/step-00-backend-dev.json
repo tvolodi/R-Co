@@ -1,0 +1,30 @@
+{
+  "handoff_id": "WF03-GH755-20260813/step-00-backend-dev",
+  "run_id": "WF03-GH755-20260813",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T12:01:02Z",
+  "started_at": "2026-08-13T12:01:02Z",
+  "completed_at": "2026-08-13T12:01:30Z",
+  "task": {
+    "description": "Branch setup for WF03-GH755-20260813: checkout feature branch off main.",
+    "type": "git-setup",
+    "workflow": "WF-03"
+  },
+  "context": {
+    "github_issue": 755,
+    "github_issue_title": "tests/integration/api03_instance_read_test.zig:988 — DebugAllocator leak",
+    "iss_local_id": "ISS-0695",
+    "fix_file": "tests/integration/api03_instance_read_test.zig",
+    "fix_line": 988
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Branch created: feature/WF03-GH755-20260813 (off main HEAD 8488cd7d). Claimed r-co:GH-755 from TaskManager. Workspace r-co-1-loop.",
+    "artifacts_out": ["handoffs/WF03-GH755-20260813/step-00-backend-dev.json"],
+    "issues": []
+  },
+  "handoff_history": null
+}
