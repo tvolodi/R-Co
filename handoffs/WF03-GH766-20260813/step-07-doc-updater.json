@@ -38,7 +38,7 @@
     "issues": [],
     "git_evidence": {
       "branch_name": "feature/WF03-GH766-20260813",
-      "commit_sha_list": ["5522b4f8"],
+      "commit_sha_list": ["0ed04001"],
       "remote_branch": "origin/feature/WF03-GH766-20260813",
       "push_status": "PUSHED",
       "pr_url": null,
