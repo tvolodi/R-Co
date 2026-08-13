@@ -1,0 +1,46 @@
+{
+  "handoff_id": "wf03-gh752-20260812-07-doc-updater",
+  "run_id": "WF03-GH752-20260812",
+  "schema_version": 1,
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-13T07:14:01Z",
+  "started_at": "2026-08-13T07:14:01Z",
+  "status": "COMPLETED",
+  "stage": "WF-03 Issue Resolving",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh752-20260812-03-rework3-backend-dev",
+      "adhoc-gh752-lockfix-20260813-backend-dev"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH752-20260812/step-01-issue-fixer.json",
+      "docs/issues/ISS-0692.json",
+      "feature/WF03-GH752-20260812 (HEAD: 91a71ef6)"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 07 (DOC-UPDATER) for GH-752/ISS-0692.\n\nFIX SUMMARY:\nGH-752 was about zig build test-integration failing non-deterministically with pg_advisory_lock contention. The fix: 4 bracketed calls in tests/integration/helpers.zig now set lock_timeout=0 and statement_timeout=0 before each pg_advisory_lock acquisition (then restore both after the lock is held). The scripts/run-test-integration.{ps1,sh} default was lowered to -j4. The migration pool_size was raised from 2 to 4.\n\nPRE-EXISTING ISSUES REVEALED (not caused by this fix, pre-exist on main):\n1. TC-RG-01/TC-RG-02 fail on main (baseline T010=75, snapshot expects 74).\n2. Various concurrent isolation failures in iss205/iss203/iss106/env01/sch02 test binaries.\n\nYOUR TASKS:\n1. Update CHANGELOG.md: add an entry under Unreleased for 'fix(tests): GH-752 — unbounded pg_advisory_lock acquire (lock_timeout=0, statement_timeout=0); -j4 default; migration pool_size=4'.\n2. Update docs/issues/ISS-0692.json: set status to RESOLVED, add resolution summary.\n3. File new GitHub issues for the 2 pre-existing problem categories discovered:\n   a. TC-RG-01/TC-RG-02 baseline drift: 'TC-RG-01/TC-RG-02 fail on main: baseline has T010=75 BLOCKERs but GH-512 snapshot expects 74 — snapshot is stale after WF02-batch-0 commit 0d9041b5 added a new test file'. Label: test-infra, good-first-issue.\n   b. Concurrent test isolation: 'iss205/iss203/iss106/env01/sch02 test binaries fail non-deterministically under -j4 due to public-schema table write conflicts'. Label: test-infra, flaky.\n4. Run python3 tools/lint_handoffs.py — must exit 0.\n5. Complete this handoff with result.status=PASS."
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "completed_at": "2026-08-13T07:19:58Z",
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with GH-752/ISS-0692 fix entry; docs/issues/ISS-0692.json created (status=RESOLVED); docs/issues/issue_index.json updated (ISS-0692 RESOLVED, ISS-0211 RESOLVED); GH-759 filed for TC-RG-01/TC-RG-02 baseline drift; GH-760 filed for concurrent public-schema isolation failures; tools/lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR, 1 MINOR, 291 ACKNOWLEDGED); registry cleanup: 5 terminal entries archived to handoffs/WF03-GH752-20260812/registry.json.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0692.json",
+      "docs/issues/issue_index.json",
+      "handoffs/registry.json",
+      "handoffs/WF03-GH752-20260812/registry.json",
+      "GH-759 (https://github.com/tvolodi/R-Co/issues/759)",
+      "GH-760 (https://github.com/tvolodi/R-Co/issues/760)"
+    ],
+    "issues": [],
+    "next_action": "Create PR for feature/WF03-GH752-20260812, merge squash, delete branch, return to main. Workflow complete."
+  }
+}

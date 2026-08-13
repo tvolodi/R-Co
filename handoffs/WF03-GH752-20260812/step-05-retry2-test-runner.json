@@ -6,24 +6,48 @@
   "from_agent": "ORCH",
   "to_agent": "TEST-RUNNER",
   "created_at": "2026-08-13T00:22:06Z",
-  "started_at": "2026-08-13T00:22:06Z",
-  "status": "PENDING",
+  "started_at": "2026-08-13T05:45:15Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-13T06:44:38Z",
   "stage": "WF-03 Issue Resolving",
   "context": {
     "stage": "WF-03",
     "requirement_ids": [],
     "related_handoff_ids": [
       "wf03-gh752-20260812-05-retry1-test-runner",
-      "wf03-gh752-20260812-03-rework2-backend-dev"
+      "wf03-gh752-20260812-03-rework3-backend-dev"
     ],
     "artifacts_in": [
-      "tests/reports/ISS-0692-step05-runs.md",
+      "tests/reports/ISS-0692-step05-runs.log",
       "tests/reports/ISS-0692-step03-rework2-sweep.md"
     ]
   },
   "task": {
-    "description": "WF-03 Step 05 RETRY 2 (TEST-RUNNER) for GH-752/ISS-0692. After Step 03 REWORK 2 has empirically tuned the -j value and/or addressed the actual bottleneck, re-attempt the 5-consecutive-clean-run gate. Same procedure as RETRY 1: pre-check (zig build test-env-verify HEALTHY 10/10), then 5 consecutive runs via the wrapper (with the new default -j value or other mitigation), env-verify between each."
+    "description": "WF-03 Step 05 RETRY 2 (TEST-RUNNER) for GH-752/ISS-0692.\n\nCURRENT STATE: Step 03 REWORK 3 is COMPLETED. The GH-752 advisory lock fix is confirmed working: last 5-run gate attempt (2026-08-13T05:41Z) showed ServerErrorCount=0, TestRunnerFailedToRespondCount=0 (down from 118/8). The gate was halted at RUN 1 due to TC-EXP-402-01 (exp401_exp402_comp_restore_test.zig:464 expectEqual restored_instances) which is UNRELATED to GH-752. This failure may be intermittent.\n\nYOUR TASK:\n1. Run `zig build test-env-verify` — must be HEALTHY 10/10.\n2. Run 5 consecutive clean runs via: powershell -NoProfile -ExecutionPolicy Bypass -File scratch/wf03-gh752-5run-controller.ps1\n3. Observe the output carefully in tests/reports/ISS-0692-step05-runs.log.\n\nJUDGMENT RULES:\n- If ALL 5 runs pass (wrapper exit=0, no test failures): set result.status=PASS. This is a GH-752 PASS.\n- If any run fails with ServerError or TestRunnerFailedToRespondCount > 0 at an advisory lock line: set result.status=FAIL. GH-752 fix is regressing.\n- If any run fails ONLY with non-advisory-lock assertion failures (e.g., TC-EXP-402-01 expectEqual, business logic): set result.status=PARTIAL with result.summary explaining that GH-752 is fixed (SE=0) but a pre-existing test failure was observed. List the failing test(s) by name.\n\nDo NOT attempt to fix any test failures. Just run and report."
   },
   "rework_count": 2,
-  "max_rework": 2
+  "max_rework": 2,
+  "result": {
+    "status": "FAIL",
+    "summary": "GH-752 advisory lock fix (REWORK 3: SET statement_timeout='0' before pg_advisory_lock) is insufficient. RUN 1 (seed=0xe1867b94) produced SE=37, TRFR=1; 8 of those SEs were at pg_advisory_lock(hashtext('bpm_test_migrations_public')) lines. Root cause: lock_timeout='300s' still expires when seed-determined test ordering causes many binaries to concurrently queue for the migrations advisory lock. Prior run (05:41Z, seed=0x3236dff) showed SE=0 — the fix is seed-sensitive and not robust. The 5/5 acceptance gate was not satisfied. REWORK 4 required.",
+    "gate_result": "HALTED_AT_RUN_1",
+    "run_1_se": 37,
+    "run_1_trfr": 1,
+    "advisory_lock_se_count": 8,
+    "run_duration_seconds": 3408,
+    "seed": "0xe1867b94",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-13-WF03-GH752-retry2.yaml",
+      "tests/reports/ISS-0692-step05-runs.log"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0692",
+        "severity": "BLOCKER",
+        "test": "multiple (entity_subsystem_test EXP-202, iss502_spt_cutover_test TC-ISS502-03/04, onboarding_realm_guard_test TC-ISS0071-01/02/03 + 21 others)",
+        "description": "GH-752/ISS-0692: lock_timeout='300s' still causes pg_advisory_lock timeout on bpm_test_migrations_public when test seed 0xe1867b94 orders execution such that >3 binaries concurrently wait for the lock. Requires REWORK 4: SET lock_timeout='0' (unbounded) before pg_advisory_lock in runMigrations, runMigrationsForSchema, and TestHarness.init."
+      }
+    ],
+    "next_action": "ORCH must spawn REWORK 4 BACKEND-DEV handoff for ISS-0692. max_rework=2 exhausted on this handoff chain."
+  }
 }

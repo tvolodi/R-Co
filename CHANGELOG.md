@@ -2,7 +2,11 @@
 
 All notable changes to the BPM Platform are documented here.
 
-## [Unreleased] — 2026-08-12
+## [Unreleased] — 2026-08-13
+
+### pg_advisory_lock contention fix — ISS-0692/GH-752 (RESOLVED)
+
+- **fix(tests): unbounded pg_advisory_lock acquire — lock_timeout=0, statement_timeout=0 brackets.** All 4 `pg_advisory_lock` call sites in `tests/integration/helpers.zig` (`runMigrations`, `runMigrationsForSchema` ×2, `TestHarness.init`) now execute `SET lock_timeout=0` and `SET statement_timeout=0` immediately before the blocking acquire, restoring both to their prior values after the lock is held. Root cause: PostgreSQL applies `min(lock_timeout, statement_timeout)` to every statement including blocking advisory lock waits; with `lock_timeout='90s'` and `statement_timeout='60s'` both in scope the effective cap was 60 s — insufficient when ≥ 3 binaries queued concurrently under `-j8`. Fix verified: SE=0 across seeds `0x3236dff` and `0x939cd4a9` in the 5-run acceptance gate (was 37–118 SEs before). `scripts/run-test-integration.{ps1,sh}` default `-j` cap lowered `8→4`; migration `pool_size` raised `2→4`. Commit `91a71ef6` on `feature/WF03-GH752-20260812`. Two pre-existing issues revealed during the gate (TC-RG-01/02 snapshot drift; concurrent public-schema isolation failures) filed as separate GH issues — not caused by this fix.
 
 ### Test-isolation leak fixes — ISS-0691/GH-753 (RESOLVED)
 

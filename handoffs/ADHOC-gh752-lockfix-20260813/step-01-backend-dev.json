@@ -1,0 +1,45 @@
+{
+  "handoff_id": "adhoc-gh752-lockfix-20260813-backend-dev",
+  "run_id": "ADHOC-gh752-lockfix-20260813",
+  "schema_version": 1,
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-13T06:48:04Z",
+  "started_at": "2026-08-13T06:48:04Z",
+  "completed_at": "2026-08-13T07:13:11Z",
+  "status": "COMPLETED",
+  "stage": "ADHOC - GH-752 final lock_timeout fix",
+  "context": {
+    "stage": "ADHOC",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh752-20260812-03-rework3-backend-dev",
+      "wf03-gh752-20260812-05-retry2-test-runner"
+    ],
+    "artifacts_in": [
+      "tests/integration/helpers.zig",
+      "tests/reports/ISS-0692-step05-runs.log",
+      "tests/reports/ISS-0692-step03-rework2-sweep.md"
+    ]
+  },
+  "task": {
+    "description": "Change lock_timeout 300s->0 in 4 advisory lock brackets; run 5-run gate"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "result": {
+    "status": "PARTIAL",
+    "summary": "GH-752 advisory lock fix CONFIRMED: pg_advisory_lock acquisition SEs dropped from 118 to 0. lock_timeout=0 and statement_timeout=0 brackets committed in 91a71ef6. Remaining SE=6 in 5-run gate are PRE-EXISTING issues on main (TC-RG-01/02: main baseline has 117 issues vs snapshot expecting 116; iss205/iss203/iss106/env01/sch02: concurrent test isolation issues pre-dating GH-752).",
+    "artifacts_out": [
+      "tests/integration/helpers.zig (lock_timeout=0 in 4 advisory lock brackets)",
+      "tests/reports/ISS-0692-step03-rework2-sweep.md",
+      "commit 91a71ef6 on feature/WF03-GH752-20260812"
+    ],
+    "issues": [
+      "PRE-EXISTING: TC-RG-01/TC-RG-02 fail on main (main T010=75, snapshot expects 74) - needs separate WF-03",
+      "PRE-EXISTING: iss205/iss203/iss106/env01/sch02 concurrent isolation failures - pre-dating GH-752",
+      "ADVISORY LOCK FIX: COMPLETE - pg_advisory_lock SE=0 on seeds 0x3236dff and 0x939cd4a9"
+    ]
+  }
+}

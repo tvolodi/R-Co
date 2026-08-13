@@ -113,6 +113,16 @@
       "status": "RESOLVED",
       "resolved_at": "2026-08-03T20:01:36Z",
       "resolution": "Root cause: transition() shallow-cloned InstanceState.variables/join_counters via std.json.ObjectMap.clone(), aliasing memory across generations; putVariableSafe's free-on-overwrite then freed memory still referenced by older generations, corrupting the allocator under high event volume. Fixed via deep-clone helpers (cloneObjectMapSafe/cloneJsonValueSafe) and a freeInstanceState() cleanup called on every superseded generation in reconstruction.zig's replay loops. See handoffs/WF03-gh409-20260803/step-03-backend-dev.json."
+    },
+    {
+      "escalation_id": "esc-wf03-gh752-20260812-step05-retry2",
+      "run_id": "WF03-GH752-20260812",
+      "escalated_at": "2026-08-13T06:48:04Z",
+      "step": "05-retry2",
+      "agent": "TEST-RUNNER",
+      "reason": "rework_count=2 >= max_rework=2. Step 05 RETRY 2 FAIL: 8 advisory-lock SEs with lock_timeout=300s still firing under high-concurrency seed. Fix is known: change lock_timeout=300s to lock_timeout=0 (unbounded) in all 4 pg_advisory_lock brackets. GH-752 core fix (statement_timeout=0) is confirmed working on most seeds. Routing to ADHOC for final targeted fix.",
+      "known_fix": "tests/integration/helpers.zig: change lock_timeout 300s -> 0 in all 4 advisory lock brackets",
+      "resolution_path": "ADHOC-gh752-lockfix-20260813"
     }
   ]
 }

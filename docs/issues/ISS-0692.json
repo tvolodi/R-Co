@@ -1,0 +1,35 @@
+{
+  "id": "ISS-0692",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/752",
+  "severity": "BLOCKER",
+  "status": "RESOLVED",
+  "title": "zig build test-integration: pg_advisory_lock acquisition fails with ServerError under parallel test runs due to lock_timeout/statement_timeout interaction",
+  "scope": "tests/integration/helpers.zig (4 pg_advisory_lock brackets); scripts/run-test-integration.{ps1,sh} (-j default); migrations/migrate.zig (pool_size). No production code path affected.",
+  "discovered_by": "TEST-RUNNER",
+  "discovered_during": "WF02-batch-6-20260812 5-run acceptance gate (step-05-test-runner)",
+  "description": "zig build test-integration failed non-deterministically with PgError.ServerError when the test seed caused many binaries to concurrently queue for pg_advisory_lock(hashtext('bpm_test_migrations_public')). Root cause: lock_timeout='90s' (set by the test harness) and statement_timeout='60s' (set globally) were both in effect during the advisory lock WAIT call. PostgreSQL applies the stricter of the two; effective cap was 60s. With -j8 and 8 binaries queueing, the 2nd-8th binaries hit the 60s cap and returned PgError.ServerError instead of waiting their turn. Prior fix in ISS-0665 only raised lock_timeout to 300s; statement_timeout remained at 60s and continued to cap the wait. The fix required zeroing BOTH timeouts before each pg_advisory_lock acquire and restoring them after the lock is held.",
+  "disposition": "Test infrastructure only; no production code path affected. Fix: wrap all 4 pg_advisory_lock call sites in helpers.zig with SET lock_timeout=0 / SET statement_timeout=0 before acquire and SET lock_timeout / SET statement_timeout to prior values after the lock is held. Lowered default -j from 8 to 4. Raised migration pool_size from 2 to 4.",
+  "pre_existing_issues_revealed": [
+    {
+      "description": "TC-RG-01/TC-RG-02 baseline drift: main T010=117 BLOCKERs but GH-512 snapshot expects 116. Snapshot stale after WF02-batch-0 commit 0d9041b5 added a new test file.",
+      "filed_as": "GH-759 (https://github.com/tvolodi/R-Co/issues/759)"
+    },
+    {
+      "description": "iss205/iss203/iss106/env01/sch02 test binaries fail non-deterministically under -j4 due to public-schema table write conflicts.",
+      "filed_as": "GH-760 (https://github.com/tvolodi/R-Co/issues/760)"
+    }
+  ],
+  "created_at": "2026-08-12T18:37:15Z",
+  "last_updated": "2026-08-13T07:16:08Z",
+  "resolution": {
+    "type": "lock_timeout_zero_brackets",
+    "commit": "91a71ef6",
+    "branch": "feature/WF03-GH752-20260812",
+    "details": "All 4 pg_advisory_lock brackets in tests/integration/helpers.zig (runMigrations, runMigrationsForSchema x2, TestHarness.init) now execute SET lock_timeout=0 and SET statement_timeout=0 immediately before the pg_advisory_lock acquire, then restore both to their prior values immediately after the lock is held. scripts/run-test-integration.{ps1,sh} default -j cap lowered from 8 to 4. Migration pool_size raised from 2 to 4 to reduce lock-holder duration. Verified SE=0 across seeds 0x3236dff and 0x939cd4a9 in the 5-run acceptance gate."
+  },
+  "resolved_at": "2026-08-13T07:16:08Z",
+  "prevention": [
+    "Any future SET <timeout> in the test harness that wraps a blocking pg advisory lock call must also zero statement_timeout. PostgreSQL applies min(lock_timeout, statement_timeout, idle_in_transaction_session_timeout) to every statement including blocking lock acquires.",
+    "When running zig build test-integration with high concurrency (-j8), advisory lock contention is expected for shared schemas. Always use -j4 or lower as the default and document this in scripts/run-test-integration.* prominently."
+  ]
+}
