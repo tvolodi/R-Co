@@ -1,0 +1,55 @@
+{
+  "run_id": "WF02-pw13-pw16-batch19-20260813",
+  "step": "01-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "handoff_id": "WF02-pw13-pw16-batch19-20260813/step-01-code-designer-rework1",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T20:06:25Z",
+  "started_at": "2026-08-13T20:06:30Z",
+  "completed_at": "2026-08-13T20:11:28Z",
+  "task": {
+    "type": "code-design-rework",
+    "title": "Step 01 rework 1: add Error taxonomy section to design",
+    "description": "The CODE-DESIGN-VALIDATOR (Step 01b) returned FAIL on a single MAJOR: design lint flagged E010 — missing required `errors` section. Add a new section to the design covering the runtime error modes per requirement, then re-emit. Re-run lint_design_artefact.py before reporting PASS.",
+    "context": {
+      "design_artefact": "src/design/pw13-pw16-batch19-20260813.md",
+      "validator_verdict": "handoffs/WF02-pw13-pw16-batch19-20260813/step-01b-code-design-validator.json",
+      "blocking_issue": "E010 MAJOR — no `error taxonomy` / `errors` / `error cases` heading",
+      "rework_count": 1,
+      "branch": "feature/WF02-pw13-pw16-batch19-20260813"
+    },
+    "functions_to_call": [
+      "fn:code-design-rework"
+    ],
+    "acceptance_criteria": [
+      "Add `## 12. Error taxonomy` (or `### Error cases`) section to the design",
+      "Enumerate runtime error modes per requirement: rate-limit classification failures, conflict-resolver 409-without-XRV edge, axe scan timeout vs violation, BLOCKER-unreachable path, dangling aria-errormessage detection, fieldRegistry lookup miss → fall-through",
+      "Re-run `tools/lint_design_artefact.py src/design/pw13-pw16-batch19-20260813.md` — must show BLOCKER=0 MAJOR=0 MINOR=0",
+      "Re-run `tools/lint_handoffs.py` — must exit 0",
+      "Update handoff file: status COMPLETED, result.status PASS, completed_at current UTC ISO8601",
+      "Append log line to orchestrator.log and registry entry (COMPLETED)"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Added `## 12. Error taxonomy` section to the design at line 827 covering per-requirement runtime error modes: RND-UI-05 classification failures / Retry-After parsing / countdown cleanup; RND-UI-06 409-without-XRV / non-definition endpoint fallbacks / Refetch-during-network-failure; GRD-UI-06 unreachable-services BLOCKER / per-surface timeout / axe rule miss / color-contrast-disabled E_CONFIG / report-write failure; GRD-UI-07 dangling aria-errormessage / fieldRegistry miss → defaultBuiltinRenderer / aria-busy finally / missing required / multi-hint ordering. lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0 MINOR=0). lint_handoffs.py exits 0. Subagent reported 'no response returned' after completing the work; ORCH completed the bookkeeping directly. Re-dispatch to CODE-DESIGN-VALIDATOR.",
+    "artifacts_out": [
+      "src/design/pw13-pw16-batch19-20260813.md (added ## 12. Error taxonomy at line 827)",
+      "scratch/rework1_summary.md (bookkeeping summary written by ORCH)"
+    ],
+    "issues": [],
+    "lint_design": "1 file(s) checked. BLOCKER=0 MAJOR=0 MINOR=0 (exit 0)",
+    "lint_handoffs": "exit 0 (0 BLOCKER, 0 MAJOR, 1 MINOR historical)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "previous_failures": [
+    {
+      "step": "01b",
+      "agent": "CODE-DESIGN-VALIDATOR",
+      "verdict": "FAIL",
+      "issue": "E010 MAJOR — missing errors section in design artefact"
+    }
+  ]
+}

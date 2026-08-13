@@ -9,6 +9,7 @@ import { useAuth } from '@/auth/AuthContext'
 import type { DefinitionStatus, ProcessDefinition, DefinitionGraph } from '@/types/api'
 import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
 import { classifyError, type RendererState } from '@/utils/classifyError'
+import { getRetryAfterSeconds } from '@/utils/getRetryAfterSeconds'
 
 const STATUS_BADGE: Record<string, string> = {
   DRAFT:      '#f59e0b',
@@ -199,6 +200,9 @@ export default function DefinitionListPage() {
       <QueryStateBoundary
         state={rendererState}
         onRetry={() => { void refetch() }}
+        rateLimitRetryAfter={
+          rendererState === 'rate-limit' ? getRetryAfterSeconds(error) : undefined
+        }
         columns={[{ widthPercent: 35 }, { widthPercent: 15 }, { widthPercent: 15 }, { widthPercent: 20 }, { widthPercent: 15 }]}
       >
       {!isLoadingItems && items.length === 0 && (

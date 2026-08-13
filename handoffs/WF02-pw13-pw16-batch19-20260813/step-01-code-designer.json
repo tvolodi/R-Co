@@ -1,0 +1,52 @@
+{
+  "run_id": "WF02-pw13-pw16-batch19-20260813",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "handoff_id": "WF02-pw13-pw16-batch19-20260813/step-01-code-designer",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T19:50:31Z",
+  "started_at": "2026-08-13T19:50:45Z",
+  "completed_at": "2026-08-13T20:02:27Z",
+  "task": {
+    "type": "code-design",
+    "title": "Step 01: design RND-UI-05, RND-UI-06, GRD-UI-06, GRD-UI-07 (PW-13 + PW-16 batch 19)",
+    "description": "Produce a code design artefact (Type A — interface contract) for Batch 19: RND-UI-05 (Rate limit backpressure with retry countdown), RND-UI-06 (Three-action write conflict resolution), GRD-UI-06 (Accessibility gate per canonical surface), GRD-UI-07 (Generated per-field ARIA wiring). All four are FRONTEND-only; backend APIs are RELEASED already (API-10 rate-limit middleware, PD-08 X-Resource-Version).",
+    "context": {
+      "branch": "feature/WF02-pw13-pw16-batch19-20260813",
+      "requirement_ids": ["RND-UI-05", "RND-UI-06", "GRD-UI-06", "GRD-UI-07"],
+      "workflows": ["PW-13", "PW-16"],
+      "prior_artefacts": [
+        "WF02-pw13-rnd-ui-20260813 (RND-UI-01..04 renderer state contract — same PW-13 workflow)",
+        "WF02-grd-ui-batch19-20260813 (GRD-UI-02..05 guard scan infrastructure — same PW-16 workflow)"
+      ],
+      "taskmanager_item_id": "r-co:BATCH-e2d5bb07eef8",
+      "design_artefact_path": "src/design/pw13-pw16-batch19-20260813.md"
+    },
+    "functions_to_call": [
+      "fn:code-design",
+      "fn:classify-requirements"
+    ],
+    "acceptance_criteria": [
+      "Design covers ALL acceptance criteria for RND-UI-05, RND-UI-06, GRD-UI-06, GRD-UI-07 (each requirement has a paragraph or section mapping acceptance criteria to design decisions)",
+      "Design references existing components: RateLimitBackpressure.tsx, StaleVersionError.tsx, ConflictResolver.tsx, JsonDiffView.tsx, ConfirmDialog, FieldFactory, DynamicFormRenderer, RND-UI-01..04 state classifier, GRD-UI-02..05 PATTERNS forbidlist",
+      "Design lists files to create / modify under web/src/ with one-line purpose per file",
+      "Design lists E2E test files to create under web/tests/e2e/ with one-line purpose per file",
+      "Design includes Playwright selectors / API paths for each acceptance criterion",
+      "No implementation code in the design (TypeScript snippets OK if they are interface/type signatures only, not bodies)",
+      "Design identifies axe-core/playwright version + which six canonical surfaces the GRD-UI-06 gate covers (Task Inbox, Instance List, Instance Detail, Definition List, Process Designer, Login)",
+      "Design flags dependency on running backend: every E2E must hit real backend (no HTTP mocking) per the RND-UI-05/RND-UI-06/GRD-UI-06/GRD-UI-07 acceptance criteria — explicit no-mock disclaimer in the design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for RND-UI-05, RND-UI-06, GRD-UI-06, GRD-UI-07 (PW-13 + PW-16 Batch 19) — produced prose artefact at src/design/pw13-pw16-batch19-20260813.md. Covers 11 distinct acceptance criteria across 4 requirements (RND-UI-05: RateLimitBackpressure with aria-live countdown and single-refetch guard; RND-UI-06: StaleVersionError + ConflictResolver + Zustand draft retention + X-Resource-Version round-trip; GRD-UI-06: 6 canonical surfaces, axe config with color-contrast enabled, impact-based gate, 30s per-surface budget, BLOCKER-if-unreachable; GRD-UI-07: FieldFactory ARIA wiring + DynamicFormRenderer aria-busy + CMP-UI-05 registry routing). Lists 7 new web/src/ files, 12 web/src/ files to modify, 18 new web/tests/ files (4 unit + 4 a11y-helpers + 10 a11y-helpers + 4 E2E specs). Every E2E hits the real backend (Keycloak + BPM API + PostgreSQL) with no HTTP mocking.",
+    "artifacts_out": [
+      "src/design/pw13-pw16-batch19-20260813.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
