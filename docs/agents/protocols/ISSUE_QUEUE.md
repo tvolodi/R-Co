@@ -11,11 +11,21 @@
 
 A run does one job. When an agent trips over a defect that is **not** the thing it was asked to fix, that defect is **filed and forwarded** — it does not extend the current run.
 
-Forwarding means: the discovering agent registers the issue (`docs/issues/ISS-NNNN.json`),
-files it on GitHub (mandatory — CLAUDE.md "No Issue Left Local-Only"), and adds it to the
-**global queue** (`handoffs/global_queue.json`) via `tools/queue_add.py`. It is picked up
-later as its own WF-03 run, with its own branch and PR — by this workspace's next loop
-iteration, or by another workspace. See `docs/agents/protocols/LOOP_PROTOCOL.md`.
+Forwarding means: the discovering agent registers the issue (`docs/issues/ISS-NNNN.json`)
+and files it on GitHub (mandatory — CLAUDE.md "No Issue Left Local-Only"). That's the whole
+forward — no separate queue-add step is needed: TaskManager's `github_pull.py` mirrors any
+open GitHub issue into `work_items` as a fresh `OPEN` item the next time it runs (loop
+start, or whenever an operator refreshes it), so the newly-filed issue becomes claimable
+automatically. It is picked up later as its own WF-03 run, with its own branch and PR — by
+this workspace's next loop iteration, or by another workspace. See
+`docs/agents/protocols/LOOP_PROTOCOL.md`.
+
+> **Changed 2026-08-13.** Versions before this filed the issue AND separately called
+> `tools/queue_add.py` to add it to `handoffs/global_queue.json` — a git-committed JSON
+> file being used as a cross-workspace lock, which had no compare-and-swap and is the root
+> cause documented in `docs/anti-patterns.md`'s GH-542/GH-518/GH-526 entries.
+> `tools/queue_add.py` is retired; the GitHub issue itself is now sufficient, TaskManager's
+> mirror does the rest.
 
 **There is no in-run drain loop.** A run has no per-run issue queue, no "Queue Check"
 between its last step and Step Final, and no repeated passes over WF-03 Steps 1–7. Step 00
@@ -56,23 +66,17 @@ already asked to fix**:
 1. → fn:search-issues (docs/issues/issue_index.json) — check for a duplicate, same as
    WF-03 Step 0.5 today. If a match exists, do not create a new ISS file; note the
    recurrence on the existing ISS file per WF-03 Step 0.5's procedure. If that existing
-   issue is already in the global queue, stop here — it is already scheduled.
+   issue is already OPEN or CLAIMED in TaskManager (`status.py --log ISS-<NNNN>`'s
+   linked item_id, or just check the GitHub issue's own open/closed state), stop here —
+   it is already scheduled.
 
 2. If new: → fn:register-issue (docs/issues/ISS-<NNNN>.json) — same schema and same
    "file it on GitHub" mandatory step as WF-03 Step 0.5 / CLAUDE.md's
    "No Issue Left Local-Only" directive. UNCHANGED — every issue still gets an ISS file
-   and a GitHub issue.
+   and a GitHub issue. This IS the forward — filing on GitHub is enough. No separate
+   queue-add call; TaskManager's `github_pull.py` finds it on its own.
 
-3. → fn:enqueue-issue — add it to the GLOBAL queue:
-
-     python3 tools/queue_add.py ISS-<NNNN> \
-         --severity BLOCKER|MAJOR|MINOR \
-         --title "<short description>" \
-         --github-issue "<url from step 2>"
-
-   Exit 4 means it is already queued — that is success, not an error.
-
-4. → fn:complete-handoff as normal for the CURRENT step (PASS/FAIL on the thing this
+3. → fn:complete-handoff as normal for the CURRENT step (PASS/FAIL on the thing this
    agent was actually asked to do). Discovering an incidental issue does NOT change this
    step's own result, and does NOT block the current run from reaching Step Final.
 ```
@@ -97,8 +101,9 @@ for defects that are merely *adjacent*, not ones standing in the way.
 Nothing extra. When the active workflow's last normal step returns PASS, ORCH dispatches
 Step Final (git-merge) directly. There is no queue to check.
 
-Issues forwarded during the run are visible in `handoffs/global_queue.json` and on GitHub.
-If ORCH is in loop mode (`LOOP_PROTOCOL.md`), the next iteration claims one of them.
+Issues forwarded during the run are visible on GitHub, and in TaskManager's `work_items`
+table once the next `github_pull.py` runs (`status.py r-co`). If ORCH is in loop mode
+(`LOOP_PROTOCOL.md`), the next iteration's `claim.py` call can pick one of them up.
 
 ---
 
@@ -131,8 +136,7 @@ legitimately needs would touch a module outside the declared list, expand it and
 ## Acceptance criteria
 
 - [ ] No new `handoffs/<run_id>/issue_queue.json` file is created by any workflow
-- [ ] Every issue discovered mid-run has a `docs/issues/ISS-NNNN.json` AND a filed GitHub issue AND an entry in `handoffs/global_queue.json`
+- [ ] Every issue discovered mid-run has a `docs/issues/ISS-NNNN.json` AND a filed GitHub issue (no separate queue-add call needed — see "Changed 2026-08-13" note above)
 - [ ] Step 00 (git-setup) appears exactly once per run in `handoffs/orchestrator.log`
 - [ ] Step Final (git-merge) appears exactly once per run, immediately following the run's last normal step — with no intervening drain passes
-- [ ] `handoffs/global_queue.json` is committed after every forward (per LOOP_PROTOCOL.md)
 - [ ] An incidental discovery never changes the discovering step's own PASS/FAIL verdict

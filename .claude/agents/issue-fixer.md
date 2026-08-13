@@ -96,13 +96,10 @@ cause), you MUST change your approach — do not repeat the same implementation 
 ## Step 4a — Incidental discovery
 
 If diagnosing or fixing THIS issue turns up a separate, unrelated defect, do not scope-creep
-into fixing it here. File it the same way (Step 5 below applies to it too) and
-`fn:enqueue-issue` it onto the **global queue**:
-
-```bash
-python3 tools/queue_add.py ISS-NNNN --severity MAJOR \
-    --title "<short description>" --github-issue "<url>"
-```
+into fixing it here. File it the same way (Step 5 below applies to it too) — filing it on
+GitHub IS the forward now; TaskManager's `github_pull.py` mirrors it into claimable work
+automatically, no separate queue-add call needed (see
+`docs/agents/protocols/ISSUE_QUEUE.md`'s 2026-08-13 change note).
 
 It is fixed later in its own WF-03 run, with its own branch and PR — not on this run's
 branch. See `docs/agents/protocols/ISSUE_QUEUE.md`. Continue with the current issue without
@@ -186,7 +183,6 @@ cat, grep, find, ls, head, tail
 python3 -c "import json ..."
 gh issue create
 gh issue list --search "<keywords>" --state all
-python3 tools/queue_add.py
 ```
 
 ## Forbidden commands

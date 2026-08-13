@@ -80,9 +80,10 @@ a compile error that stops the build, a broken migration that blocks yours, a fa
 that masks your results. Fix those in the current run.
 
 A defect you merely *notice* while working — unrelated, not blocking your acceptance
-criteria — is **filed and forwarded**, not fixed here: register it (`docs/issues/ISS-NNNN.json`),
-file the GitHub issue, and add it to the global queue via `python3 tools/queue_add.py`. It
-is fixed later in its own run, with its own branch and PR. See
+criteria — is **filed and forwarded**, not fixed here: register it (`docs/issues/ISS-NNNN.json`)
+and file the GitHub issue. Filing on GitHub is the whole forward — TaskManager's
+`github_pull.py` mirrors it into claimable work automatically, no separate queue-add call.
+It is fixed later in its own run, with its own branch and PR. See
 `docs/agents/protocols/ISSUE_QUEUE.md` and ORCHESTRATOR.md §8c.
 
 Each run therefore does one job and does it completely: git-setup once, the run's steps,
@@ -102,7 +103,7 @@ Before filing, check for an ID collision: local `ISS-NNNN` numbering and GitHub 
 
 "Out of scope for the current fix" is a reason to file the finding as its own issue — never a reason to leave it undocumented outside `docs/issues/`. See `.claude/agents/issue-fixer.md`'s Step 0.5 for the exact procedure.
 
-**Filing is not the same as scheduling.** Once filed, a NEW issue discovered during an active workflow run is also added to the **global queue** (`handoffs/global_queue.json`) via `python3 tools/queue_add.py`, so it is guaranteed to be picked up as its own run later. It is *not* fixed inside the current run — see `docs/agents/protocols/ISSUE_QUEUE.md` and `docs/agents/protocols/LOOP_PROTOCOL.md`. What this directive forbids is an issue that is discovered and then dropped: every discovery ends with an ISS file, a GitHub issue, and a queue entry.
+**Filing is not the same as scheduling.** A NEW issue discovered during an active workflow run is guaranteed to be picked up as its own run later purely by being filed on GitHub — TaskManager's `github_pull.py` mirrors any open GitHub issue into claimable `work_items` automatically, no separate queue-add step. It is *not* fixed inside the current run — see `docs/agents/protocols/ISSUE_QUEUE.md` and `docs/agents/protocols/LOOP_PROTOCOL.md`. What this directive forbids is an issue that is discovered and then dropped: every discovery ends with an ISS file and a GitHub issue.
 
 ---
 

@@ -56,6 +56,11 @@ handoffs/global_queue.lock
 # ── Loop stop flag ────────────────────────────────────────────────────────────
 handoffs/STOP_LOOP
 
+# ── TaskManager per-workspace claim file — local only, never shared/committed ─
+# (the coordination DB itself lives outside this repo entirely, see
+#  docs/agents/protocols/LOOP_PROTOCOL.md)
+task/current.json
+
 # ── Python virtualenv (local tooling: psycopg2-binary, PyYAML) ───────────────
 .venv/
 __pycache__/

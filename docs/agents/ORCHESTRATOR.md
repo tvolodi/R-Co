@@ -80,8 +80,9 @@ asked to check, ORCH does **not** extend the current run to fix it, and does **n
 a nested WF-03. Instead:
 
 1. The discovering agent files the issue as always (ISS file + mandatory GitHub issue —
-   unchanged), then adds it to the **global queue** (`handoffs/global_queue.json`) via
-   `python3 tools/queue_add.py`.
+   unchanged). Filing on GitHub is now the whole forward — TaskManager's `github_pull.py`
+   mirrors it into `work_items` as claimable `OPEN` work automatically; no separate
+   queue-add call (see `docs/agents/protocols/ISSUE_QUEUE.md`'s 2026-08-13 change note).
 2. The current step's own PASS/FAIL verdict is unaffected by an incidentally-discovered
    issue — only issues that ARE the current step's own failure drive that step's rework.
 3. The run continues to its own Step Final unchanged. There is **no queue check** and no

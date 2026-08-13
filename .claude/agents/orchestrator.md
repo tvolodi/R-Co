@@ -465,73 +465,87 @@ by exit code only. See `docs/agents/ORCHESTRATOR.md §8e` for the full procedure
 
 ## ORCH loop mode (multi-workspace autonomous processing)
 
-**Read:** `docs/agents/protocols/LOOP_PROTOCOL.md` before entering this mode.
+**Read:** `docs/agents/protocols/LOOP_PROTOCOL.md` before entering this mode — it is
+authoritative for this mode's mechanics; this section is a summary, not a second source of
+truth. If the two disagree, `LOOP_PROTOCOL.md` wins.
 
 Enter loop mode when the user says "start loop", "process the queue", "drain issues", "run
-autonomous loop", or equivalent. Each iteration resolves **exactly one open GitHub issue**,
-then commits the lock registry state to `main`.
+autonomous loop", or equivalent. Each iteration resolves **exactly one claimed work item**
+(a GitHub issue via WF-03, or a `docs/requirements.yaml` DRAFT batch via WF-02), then
+releases the claim.
 
-**Source of truth: GitHub open issues** at https://github.com/tvolodi/R-Co/issues
-**Lock registry: `handoffs/global_queue.json`** (records what is currently being worked on;
-NOT a backlog)
+**Source of truth: TaskManager's `work_items` table** (`C:\Users\tvolo\dev\ai-dala\TaskManager\work.db`,
+external to this repo, shared by every workspace on this machine — see LOOP_PROTOCOL.md
+for why a git-committed JSON lock file was replaced: it had no compare-and-swap and every
+incident in `docs/anti-patterns.md` tagged GH-542/GH-518/GH-526 was that race in a
+different disguise). GitHub and `docs/requirements.yaml` remain the sources of *work*;
+`task/current.json` in this checkout is the only place an agent looks to know what it's
+currently holding.
 
 **Loop skeleton (mandatory — do not deviate):**
 
 ```python
-workspace_id = "<COMPUTERNAME or user-supplied label>"   # e.g. "TVOLODI-loop"
-stop_loop    = "handoffs/STOP_LOOP"
+workspace_id  = read_from_env(".env", "BPM_WORKSPACE_ID")   # never derive from COMPUTERNAME alone
+task_file     = "task/current.json"
+stop_loop     = "handoffs/STOP_LOOP"
+TM            = r"C:\Users\tvolo\dev\ai-dala\TaskManager\scripts"
 
 while True:
     # 1. Check stop flag
     if os.path.exists(stop_loop):
         break
 
-    # 2. Claim the newest unclaimed GitHub issue
+    # 2. Refresh the mirror (cheap — picks up newly-filed issues/requirements)
+    subprocess.run(["python", f"{TM}\\github_pull.py", "r-co", "--exclude-label", "requirement"])
+
+    # 3. Claim the next OPEN item — one atomic SQLite transaction, no push/pull dance
     result = subprocess.run(
-        ["python3", "tools/gh_claim.py", workspace_id],
+        ["python", f"{TM}\\claim.py", "r-co", workspace_id, task_file],
         capture_output=True, text=True
     )
-    if result.returncode == 2:   # no open GitHub issues → loop complete
+    if result.returncode == 2:   # nothing OPEN → loop complete
         break
-    if result.returncode == 3:   # all open issues locked by other workspaces
+    if result.returncode == 3:   # task_file already has an unfinished item — caller bug
         break
     if result.returncode != 0:   # unexpected error
         break
     item = json.loads(result.stdout)
-    # item["issue_id"]     = "GH-533"
-    # item["issue_number"] = 533
-    # item["github_issue"] = "https://github.com/tvolodi/R-Co/issues/533"
-    # item["title"]        = "..."
+    # item["item_id"]    = "r-co:GH-533" or "r-co:BATCH-<key>"
+    # item["source"]     = "github_issue" | "requirement_batch"
+    # item["source_ref"] = "533" (issue number) or batch key
+    # item["payload"]    = {"requirement_ids": [...], "stage_key": "..."} for requirement_batch
 
-    # 3. Run WF-03 for this single item (own branch, own PR, own merge)
-    run_id = f"WF03-GH{item['issue_number']}-{date_str}"
-    #   Step 00 git-setup → Steps 0.5 → 1 → 2 → 2b → 3 → [4/4b] → 5 → [6] → 7 → Step Final
+    # 4. Determine workflow from item["source"] and run it to its own Step Final —
+    #    WF-03 (github_issue) or WF-02 (requirement_batch), own branch, own PR, own merge.
+    #    Nothing about the workflow steps themselves changed — only claim/release did.
 
-    # 4. Release lock in registry
-    status = "RESOLVED"   # or "DEFERRED" if scope decision made during WF-03
+    # 5. Release — this call belongs in Step Final / DOC-UPDATER's existing git-merge
+    #    step, not a separately-remembered one:
+    status = "DONE"   # or "DEFERRED" if a scope decision was made instead of finishing
     subprocess.run(
-        ["python3", "tools/queue_release.py", item["issue_id"], workspace_id,
-         "--status", status],
+        ["python", f"{TM}\\release.py", workspace_id, task_file, "--status", status],
         check=True
     )
-
-    # 5. Commit lock registry + audit log to main
-    #    git add handoffs/global_queue.json handoffs/orchestrator.log
-    #    git commit -m "queue: resolve GH-<number>"
-    #    git push origin main
 ```
 
-**Each item gets a full WF-03 run:** own Step 00 (git-setup), own WF-03 Steps 1–7, own Step
-Final (git-merge). No shared branches between items.
+**Each item gets a full run:** own Step 00 (git-setup), own workflow steps, own Step Final
+(git-merge). No shared branches between items.
 
-**Incidental issues discovered during a loop iteration** are filed as GitHub issues and added
-to the lock registry via `python3 tools/queue_add.py`, then picked up in a later loop
-iteration (`gh_claim.py` will find them because they are already open on GitHub).
+**Incidental issues discovered during a loop iteration** are filed as GitHub issues (`gh
+issue create`, unchanged) — no separate queue-add call is needed; the next
+`github_pull.py` run picks them up as a fresh `OPEN` `work_items` row automatically.
 
 **Stop the loop gracefully** (current item completes, then loop exits):
 ```powershell
 New-Item -ItemType File -Force handoffs/STOP_LOOP
 ```
+
+**Never treat a quiet-looking claim as abandoned and work it anyway.** If `task/current.json`
+is empty, call `claim.py` for the next item — do not reason about another workspace's
+branch looking stale and start editing its files directly. This exact mistake produced a
+multi-hour duplicate-work incident on GH-752/GH-758 (2026-08-13, see
+`docs/anti-patterns.md`) before TaskManager existed to make it structurally impossible via
+the claim file's own refusal-to-overwrite check.
 
 ## Infrastructure problems — ADHOC handoff, not deferral
 

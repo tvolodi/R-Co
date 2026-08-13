@@ -1,224 +1,105 @@
-# LOOP Protocol — GitHub Issues as Source of Truth, Multi-Workspace Locking
+# LOOP Protocol — TaskManager as Source of Truth, Multi-Workspace Locking
 
-**Version:** 2.1 · 2026-08-07
+**Version:** 3.0 · 2026-08-13
 **Function:** `fn:loop-mode`
 **Read by:** `ORCH` (owner); relevant to any workspace running an autonomous fix loop
-**Tools:** `tools/gh_claim.py`, `tools/queue_release.py`, `tools/queue_add.py`, `tools/gh_project_status.py`
+**Tool:** `C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\` (external to this repo — see below)
 **See also:** `docs/agents/protocols/PROJECT_BOARD.md` — the project-board status
 transitions this loop drives (`Todo → In Progress → Implemented → Validated by UAT
 agent → Done`) so the maintainer can read pipeline state without opening agent chats.
 
 ---
 
-## Purpose
+## What changed in v3 and why
 
-The loop drains **open GitHub issues** at https://github.com/tvolodi/R-Co/issues — bugs,
-BLOCKERs, and anything else that appears there — **except issues labeled `requirement`**.
-Those 166 (as of 2026-08-07) are from-scratch, never-implemented requirements; this loop
-runs WF-03 (Issue Resolving), which assumes the expected behaviour already exists — the
-wrong workflow for them (`ORCHESTRATOR.md`: *"if the feature has not been specified yet →
-WF-02"*). They are drained instead by the "Requirement batch loop mode" below, via
-`docs/requirements.yaml` and WF-02. Before this exclusion existed, `gh_claim.py`'s
-newest-number-first ordering meant a `requirement`-labeled issue could be — and, per a
-dry-run check, was about to be — claimed ahead of ordinary bugs simply for having a higher
-issue number, sending a from-scratch requirement through the wrong pipeline. See
-`docs/anti-patterns.md`.
+Every version of this protocol before v3 tried to make `handoffs/global_queue.json` (a
+plain JSON file, committed to git) behave like a lock across multiple concurrent
+workspaces. It never could, structurally: **git has no compare-and-swap.** Two workspaces
+can each read the file, each see an item unclaimed, each write a claim, and each push —
+the second push either wins outright (silently clobbering the first workspace's claim) or
+fails with a conflict that has to be caught, interpreted, and manually resolved after the
+fact. Every incident this file's history records (GH-542, GH-518, GH-526 — all still in
+`docs/anti-patterns.md`) is the same race in a different disguise, and the file accumulated
+increasingly elaborate defense-in-depth trying to detect the race after it happened
+(push-then-reread verification, mutex TTLs, "no TTL at all" as a fix for the TTL fix)
+rather than making the race impossible.
 
-The loop runs until every non-`requirement` open GitHub issue is resolved (exit 2) or all
-remaining ones are locked by other workspaces (exit 3).
+**v3 replaces the git-committed-JSON lock with a real transaction.** `TaskManager` is a
+small SQLite-backed tool living **outside this repo**, at
+`C:\Users\tvolo\dev\ai-dala\TaskManager\`, shared by every workspace on this machine. A
+claim is one `BEGIN IMMEDIATE` SQLite transaction: SQLite takes the write lock before the
+"is anything OPEN" read even runs, so a second workspace calling claim at the same instant
+blocks until the first commits, then re-reads a world where that item is already `CLAIMED`
+— there is no window where two workspaces both see the same item as claimable. This is not
+a smaller, tighter version of the old race-detection scaffolding; it removes the race the
+scaffolding existed to catch. Verify-the-push-landed, mutex-TTL-reclaim, and the
+"someone forgot to push before Step 00" class of incident are gone because the failure mode
+they existed to catch cannot occur — pushing to `main` is no longer part of how a claim
+becomes visible to other workspaces at all.
 
-`handoffs/global_queue.json` is a **lock registry only**. It records which workspace is
-currently processing which GitHub issue so two workspaces never work the same item
-simultaneously. It is NOT a backlog — the backlog is GitHub itself.
-
-The two protocols are the two halves of one flow:
-
-| | ISSUE_QUEUE.md (produce) | LOOP_PROTOCOL.md (consume) |
-|---|---|---|
-| Question answered | Where does a newly-found issue go? | How does a queued issue get fixed? |
-| Actor | Any agent, mid-run | ORCH in loop mode |
-| Action | File ISS + GitHub issue, `queue_add.py` | `gh_claim.py` → full WF-03 run → `queue_release.py` |
-| Effect on current run | None — the run finishes its own job | Each claimed item is its own run, own branch, own PR |
-
-> **Changed 2026-08-07 (v2).** Source of truth is now GitHub issues.
-> `queue_claim.py` (backlog-based) is replaced by `gh_claim.py` (GitHub-based).
-> `global_queue.json` is retained as the cross-workspace lock file only.
-
----
-
-## Queue file
-
-`handoffs/global_queue.json` — committed to git; modified by the tools below.
-
-```json
-{
-  "version": "1",
-  "items": [
-    {
-      "issue_id":        "ISS-0042",
-      "github_issue":    "https://github.com/tvolodi/R-Co/issues/42",
-      "title":           "Short description",
-      "severity":        "MAJOR",
-      "status":          "QUEUED",
-      "lock":            null,
-      "added_at":        "2026-08-06T10:00:00Z",
-      "started_at":      null,
-      "completed_at":    null,
-      "run_id":          null,
-      "deferred_reason": null
-    }
-  ]
-}
-```
-
-`status` transitions:
-
-```
-QUEUED → IN_PROGRESS → RESOLVED
-                     → DEFERRED  (scope/severity decision; stays in queue as a record)
-```
-
-`lock` is set when `status` is `IN_PROGRESS` and cleared when `RESOLVED` or `DEFERRED`:
-
-```json
-{
-  "workspace_id": "DESKTOP-XYZ-12345",
-  "locked_at":    "2026-08-06T10:05:00Z"
-}
-```
+GitHub issues (and `docs/requirements.yaml` DRAFT requirement batches) remain the two
+sources of *work* — TaskManager mirrors both into one local table (`work_items`) and pushes
+claim/release state back to GitHub as a label (`claimed-by-<workspace_id>`) so a human
+looking at GitHub sees live state without opening the DB. GitHub itself is not, and was
+never meant to be, the lock — see "Why not GitHub" below if that distinction is unclear.
 
 ---
 
-## Locking mechanism
+## Purpose (unchanged from v2)
 
-Two layers protect concurrent access:
+The loop drains open work — GitHub issues (bugs, BLOCKERs) via WF-03, and
+`docs/requirements.yaml` DRAFT requirement batches via WF-02 — until nothing claimable
+remains. Issues labeled `requirement` are excluded from the GitHub-issue loop (they're
+from-scratch, never-implemented requirements — the wrong workflow; see
+`ORCHESTRATOR.md`: *"if the feature has not been specified yet → WF-02"*). They're drained
+instead by the requirement-batch loop below.
 
-1. **File mutex** (`handoffs/global_queue.lock`) — atomically created via `O_CREAT|O_EXCL`
-   on NTFS. Held only for the duration of a JSON read-modify-write (milliseconds). A mutex
-   whose `at` timestamp is older than 120 minutes is considered stale and may be reclaimed.
+---
 
-2. **Item lock** (inside the JSON) — records which workspace owns the item for the duration
-   of a full WF-03 run (potentially hours). An item lock older than **120 minutes** is
-   considered stale and may be reclaimed by another workspace.
+## The task file — what an agent actually reads
 
-If a workspace crashes mid-fix, its item lock expires after 120 minutes and the next
-workspace that calls `queue_claim.py` will reclaim the item automatically.
+Every workspace's R-Co checkout has `task/current.json` (git-ignored). This file is the
+**only** thing an agent-in-loop-mode looks at to know what to work on:
+
+- `{}` → no claimed work. Call `claim.py` (see below).
+- Populated → this workspace has exactly one claimed item. Work it. Do not call `claim.py`
+  again until this is cleared.
+
+**Never read `handoffs/global_queue.json`, `handoffs/batch_queue.json`, or GitHub's issue
+list directly to decide what to work on.** Those files may still exist for historical/audit
+reasons during the migration window, but they are not the source of truth and reasoning
+about them (e.g. "this branch has been quiet for hours, the claim must be stale, I'll treat
+it as mine") is exactly the failure mode that produced the GH-752/GH-758 double-work
+incident on 2026-08-13 (see `docs/anti-patterns.md`). If `task/current.json` is empty, you
+have no work — full stop, ask `claim.py` for the next item. Do not decide an item is
+"probably abandoned" and start on it through any other route.
 
 ---
 
 ## Tools reference
 
-### gh_claim.py  ← USE THIS FOR LOOP MODE
+All commands below are run from **anywhere** (they take `repo_id`, not a path) but are
+typically run from the R-Co checkout root so `task/current.json` resolves as a relative
+path. `repo_id` for this repo is `r-co`.
 
+### claim.py
+
+```powershell
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\claim.py" r-co <workspace_id> task/current.json
 ```
-python3 tools/gh_claim.py [<workspace_id>]
-```
 
-Queries GitHub for all open issues (https://github.com/tvolodi/R-Co/issues), takes the
-**newest** one not currently locked, records the lock in `global_queue.json`, and prints
-the item JSON to stdout.
-
-**Source of truth: GitHub. Lock registry: `global_queue.json`.**
+Atomically claims the newest `OPEN` work item for `r-co`, writes it into
+`task/current.json`, and (for GitHub-sourced items) adds a `claimed-by-<workspace_id>`
+label to the actual GitHub issue.
 
 | Exit | Meaning | ORCH action |
 |---|---|---|
-| 0 | Item claimed; JSON on stdout | Start WF-03 for this item |
-| 2 | No claimable issues (GitHub has 0 open, all are locked, or every remaining open issue is already resolved locally — see below) | Stop the loop |
-| 3 | At least one open issue is locked by another workspace, and no unlocked/unresolved issue was found | Stop or retry after delay |
-| 1 | Unexpected error (gh CLI failure, JSON error) | Log, stop |
+| 0 | Claimed; item JSON on stdout, `task/current.json` populated | Determine workflow (below), start it |
+| 2 | Nothing `OPEN` for `r-co` | Stop the loop |
+| 3 | `task/current.json` already non-empty | Caller bug — finish/release the current item first, do not retry blindly |
+| 1 | Unexpected error | Log, stop |
 
-**Already-resolved-but-still-open detection (2026-08-07).** Before claiming a candidate
-issue, `gh_claim.py` checks whether any `docs/issues/ISS-*.json` already links this
-GitHub issue via its `github_issue` field with `status` in `RESOLVED` /
-`RESOLVED-WITH-INFRA-BLOCK`. If so, it skips the issue (printing a note to stderr) rather
-than claiming it. This exists because closing a GitHub issue and merging its fix are two
-separate actions with nothing enforcing they happen together — an issue can be fixed and
-merged to `main` by any workspace while staying open on GitHub, and the next
-`gh_claim.py` call (from any workspace, including the one that shipped the fix) would
-otherwise claim and re-work it. This happened four times in one session on 2026-08-07
-(GH-545, GH-548, GH-532, GH-366/GH-364) before being caught and fixed — see
-`docs/anti-patterns.md`. ISSUE-FIXER's Step 0.5 registry lookup already catches this once
-a run has started; this check catches it before a branch is even created, and matters
-more for a design/implementation run that can otherwise drift past the "already resolved"
-signal instead of stopping on it (observed on GH-548: the design step proceeded and
-failed its own validation gate before anyone noticed the issue was already fixed).
-**This check does not replace closing the GitHub issue** — the fix's own Step Final /
-DOC-UPDATER should still close it; this is a safety net for when that didn't happen.
-
-`<workspace_id>` defaults to `<hostname>-<pid>` when omitted — note the `-<pid>` makes this
-actually unique per *process*, but not stable across a workspace's *runs* (a new pid each time
-defeats "logs clearly identify which workspace did the work" across a history of loop runs).
-For loop mode, pass an explicit stable value instead: `BPM_WORKSPACE_ID` from `.env` (see
-"ORCH loop mode — step by step" below). Do **not** use `$env:COMPUTERNAME` alone or
-`$env:COMPUTERNAME + "-loop"` — every parallel checkout on the same host shares `COMPUTERNAME`,
-so that pattern collides across workspaces and lets two of them claim the same issue under an
-identical lock key (see `docs/anti-patterns.md`, 2026-08-07 GH-542 incident).
-
-The claimed item JSON includes `issue_id` in the form `GH-<number>` (e.g. `GH-533`).
-Pass this as the `<issue_id>` argument to `queue_release.py`.
-
-### queue_release.py
-
-```
-python3 tools/queue_release.py <issue_id> <workspace_id> [--status RESOLVED|DEFERRED]
-python3 tools/queue_release.py <issue_id> <workspace_id> --deferred-reason "<text>"
-```
-
-Clears the item lock in `global_queue.json` and sets the final status. Must be called
-after WF-03 completes (whether it succeeded or the issue was deferred). `<workspace_id>`
-must match the one used in `gh_claim.py`. For GitHub-sourced items, `<issue_id>` is
-`GH-<number>` (e.g. `GH-533`).
-
-### queue_add.py
-
-```
-python3 tools/queue_add.py <issue_id> --severity BLOCKER|MAJOR|MINOR \
-    [--title "<text>"] [--github-issue "<url>"]
-```
-
-Adds a new item to the global queue. Exit 4 = duplicate (already present).
-
-Every item added here must already have a corresponding `docs/issues/ISS-NNNN.json`
-and a GitHub issue filed — `queue_add.py` does not create them.
-
-### queue_heartbeat.py — deprecated, no longer needed
-
-An `IN_PROGRESS` claim no longer expires on wall-clock time at all (see
-`gh_claim.py`'s `active_locks` comment) — the only way a claim is released is an
-explicit `queue_release.py` call or manual intervention on a genuinely abandoned
-item. `queue_heartbeat.py` existed to extend a claim's life past the old
-`TTL_MINUTES` = 120 staleness window; that window no longer applies to issue
-claims, so there is nothing left to extend. The tool file is left in place (some
-older handoffs may still reference it) but calling it is a no-op you don't need to
-perform — do not add new call sites for it.
-
----
-
-## Stop flag
-
-Create the file `handoffs/STOP_LOOP` (any content) to signal all running loops to stop
-after completing their current item. Delete it to allow loops to start again.
-
-```powershell
-# Stop all loops gracefully (current item finishes, then loop exits):
-New-Item -ItemType File -Force handoffs/STOP_LOOP
-
-# Resume:
-Remove-Item handoffs/STOP_LOOP
-```
-
----
-
-## ORCH loop mode — step by step
-
-ORCH enters loop mode when the user says "start loop", "process issues", "run autonomous loop",
-"drain GitHub issues", or equivalent. Establish a stable `<workspace_id>` once at loop start —
-**read `BPM_WORKSPACE_ID` from `.env`, do not derive it from `$env:COMPUTERNAME` alone.**
-Two checkouts of this repo on the same host share the same `COMPUTERNAME`, so a
-`$env:COMPUTERNAME`-derived value collides across parallel workspaces and lets both claim the
-same GitHub issue under the identical lock key — this is exactly what happened on 2026-08-07
-for GH-542 (see `docs/anti-patterns.md`). `BPM_WORKSPACE_ID` is per-checkout, set by hand in each
-workspace's own `.env` (see `.env.example`), so it is guaranteed distinct:
+`<workspace_id>` — same `BPM_WORKSPACE_ID` convention as before, read from `.env`:
 
 ```powershell
 $workspace_id = (Get-Content .env | Select-String '^BPM_WORKSPACE_ID=').ToString().Split('=')[1]
@@ -228,309 +109,187 @@ if (-not $workspace_id) {
 }
 ```
 
-If `.env` has no `BPM_WORKSPACE_ID`, do not fall back to a `$env:COMPUTERNAME`-derived value —
-that silently reintroduces the collision. Stop and ask the operator to set it.
+### release.py
+
+```powershell
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\release.py" <workspace_id> task/current.json --status DONE
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\release.py" <workspace_id> task/current.json --status DEFERRED --reason "..."
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\release.py" <workspace_id> task/current.json --status DONE --close-github-issue
+```
+
+Reads `item_id` from `task/current.json` (you don't need to remember it), verifies **this**
+workspace holds the claim, marks the item `DONE` or `DEFERRED` in the DB, clears the GitHub
+claim label, and empties `task/current.json` back to `{}`.
+
+**This call is mandatory at the end of every WF-02/WF-03 run** — it belongs in the same
+step that already exists (Step Final / DOC-UPDATER's git-merge step), not as a new step to
+remember. `--close-github-issue` only makes sense for `--status DONE` on a `github_issue`
+item, and mirrors what Step Final's "close the requirement's tracking issue" instruction in
+`.claude/agents/doc-updater.md` already does — pass it there instead of calling `gh issue
+close` separately.
+
+| Exit | Meaning |
+|---|---|
+| 0 | Released |
+| 4 | `task/current.json` empty/missing — nothing to release |
+| 5 | Item is claimed by a **different** workspace — refused (this is not your claim to release) |
+| 1 | Unexpected error |
+
+### status.py — human-readable view, no DB browser needed
+
+```powershell
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\status.py"              # everything
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\status.py" r-co         # one repo
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\status.py" --claimed    # only CLAIMED, any repo
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\status.py" --log r-co:GH-752   # full claim history for one item
+```
+
+Also visible directly on GitHub: any item currently `CLAIMED` carries a
+`claimed-by-<workspace_id>` label on its issue.
+
+### github_pull.py / requirements_pull.py — refresh the mirror
+
+```powershell
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\github_pull.py" r-co --exclude-label requirement
+python "C:\Users\tvolo\dev\ai-dala\TaskManager\scripts\requirements_pull.py" r-co --stage "16"
+```
+
+Run at loop start (or whenever new issues/requirements might exist that aren't in the DB
+yet) to pick up anything new. Never overwrites an existing item's status — a `CLAIMED` or
+`DONE` row stays exactly as it is regardless of what GitHub or `requirements.yaml` currently
+shows; only genuinely new `OPEN` items get added. `requirements_pull.py` refuses to run
+against a repo that has an un-migrated legacy `handoffs/batch_queue.json` (see Migration
+note below) — this is deliberate, not a bug.
+
+---
+
+## ORCH loop mode — step by step
 
 ```
 LOOP START
 │
-├─ Check STOP_LOOP flag
-│   Test-Path handoffs/STOP_LOOP  →  if present: exit loop gracefully
+├─ python <TaskManager>\scripts\github_pull.py r-co --exclude-label requirement
+│  (cheap; refresh the mirror so newly-filed issues are claimable)
 │
-├─ PULL MAIN BEFORE CLAIMING — gh_claim.py reads handoffs/global_queue.json from the
-│  LOCAL WORKING TREE ONLY; it never fetches or pulls. A workspace with a stale local
-│  checkout can claim an issue another workspace already locked and pushed to
-│  origin/main minutes ago, simply because its local copy predates that push. The
-│  end-of-claim push-rejection check (below) catches this eventually, but only after
-│  wasting the time between a stale claim and the rejected push — pulling first avoids
-│  the wasted work rather than merely detecting it after the fact:
-│   git checkout main
-│   git pull --ff-only origin main
-│   If this fails (local main has diverged / uncommitted changes): resolve before
-│   proceeding — do not claim against a working tree that isn't known-fresh.
+├─ python <TaskManager>\scripts\claim.py r-co <workspace_id> task/current.json
+│   ├─ exit 2 → nothing OPEN → loop complete, stop
+│   ├─ exit 3 → task/current.json already has an item → finish/release it first
+│   ├─ exit 1 → unexpected error → log, stop
+│   └─ exit 0 → item claimed, task/current.json populated
 │
-├─ python3 tools/gh_claim.py <workspace_id>
-│   ├─ exit 2 → GitHub has 0 open issues  →  loop complete, stop
-│   ├─ exit 3 → all open issues locked    →  stop (another workspace active)
-│   ├─ exit 1 → unexpected error          →  log, stop
-│   └─ exit 0 → item claimed, JSON on stdout
+├─ Read task/current.json — this IS your task, do not re-derive it from anywhere else:
+│   { "item_id": "r-co:GH-533", "source": "github_issue", "source_ref": "533",
+│     "title": "...", "claimed_by": "<workspace_id>", "claimed_at": "..." }
+│   or, for a requirement batch:
+│   { "item_id": "r-co:BATCH-<key>", "source": "requirement_batch",
+│     "payload": {"stage_key": "16", "requirement_ids": ["PRM-02", ...], "batch_index": 0} }
 │
-├─ PUSH THE CLAIM TO MAIN IMMEDIATELY — before any WF-03 work starts, INCLUDING Step 00
-│  git-setup (creating the feature branch). This step remains mandatory even after
-│  pulling first above: the pull only closes the window before gh_claim.py runs, not a
-│  second race against another workspace claiming between your pull and your push.
-│  Treat this as defense-in-depth, not redundant:
-│   git add handoffs/global_queue.json
-│   git commit -m "queue: claim GH-<number> for <workspace_id>"
-│   git fetch origin main && git rebase origin/main   ← resolve any interleaving here
-│   git push origin main
-│   If the push is rejected (another workspace pushed a claim first): fetch, inspect
-│   whether THIS issue is now locked by someone else. If yes, your claim lost the race —
-│   release your local lock state, re-run gh_claim.py for a different issue, do not
-│   proceed with this one. This step is what makes the lock visible to other
-│   workspaces; gh_claim.py itself only writes the LOCAL file and never pushes —
-│   skipping this step is what caused two workspaces to both claim GH-542 on
-│   2026-08-07 (see docs/anti-patterns.md).
+├─ Determine workflow from `source`:
+│   github_issue      → WF-03 (issue resolving)
+│                        run_id = "WF03-GH<number>-<YYYYMMDD>"
+│                        branch = feature/WF03-GH<number>-<YYYYMMDD>
+│   requirement_batch  → WF-02 (requirement implementation)
+│                        run_id = "WF02-batch-<N>-<YYYYMMDD>"
+│                        branch = feature/WF02-batch-<N>-<YYYYMMDD>
 │
-├─ VERIFY THE PUSH LANDED — do not proceed to Step 00 on the strength of "git push
-│  exited 0" alone. A local push can report success to the calling process while a
-│  slow agent turn, a subsequent unrelated step, or simply time pressure delays the
-│  actual network completion being visible to a concurrent reader — or the workspace
-│  can simply move on to git-setup before confirming, which is what actually happened
-│  on 2026-08-07 (GH-518: workspace r-co-1-loop committed its claim, pushed its OWN
-│  feature branch, and began Step 00 work, all without the claim commit having reached
-│  origin/main — a second workspace's gh_claim.py, reading a main that still showed
-│  GH-518 unclaimed, was handed the same issue and had to detect the collision itself
-│  via a manual branch check, costing several minutes neither workspace's protocol
-│  compliance actually required). Confirm explicitly:
-│   git fetch origin main
-│   git log --oneline -1 origin/main   ← must show YOUR claim commit's message/hash
-│   If it does not: your push has not actually landed yet (or was superseded — check
-│   for a rejection first). Do not proceed to Step 00 until this check passes. Retry
-│   the push-then-verify pair (bounded — a handful of attempts with a short pause
-│   between) rather than looping indefinitely; if it still hasn't landed after several
-│   tries, treat it as an unexpected error (log, stop) rather than guessing.
+├─ (github_issue only) python3 tools/gh_project_status.py <issue_number> --target in_progress
+│   (moves the board card Todo -> In Progress; failure here is logged and never
+│    blocks the run — see PROJECT_BOARD.md "Failure handling")
 │
-├─ NO TTL ON A CLAIM — once `gh_claim.py` returns exit 0 for an item, that lock
-│  stays IN_PROGRESS indefinitely for this workspace, no matter how long the run
-│  takes (design work, rework loops, and investigation-heavy issues can
-│  legitimately run for a long time between commits). No other workspace's
-│  gh_claim.py can reclaim it. Nothing needs to be called periodically to keep the
-│  claim alive — do not add heartbeat calls to a run's steps. The ONLY way this
-│  claim is released is your own `queue_release.py` call at the end of the run (or
-│  manual intervention if a workspace is known to have genuinely abandoned an
-│  item — that is a human/ORCH judgment call, not something a TTL should decide
-│  automatically). This replaces an earlier TTL_MINUTES=120 mechanism that caused
-│  a real incident (2026-08-07, GH-526: a still-actively-working claim was
-│  reclaimed by a second workspace purely because 120 minutes had elapsed) — see
-│  `docs/anti-patterns.md`.
+├─ Run the determined workflow's full step sequence to its own Step Final —
+│   own feature branch, own PR, own squash-merge, exactly as WF-02/WF-03 already specify
+│   in ORCHESTRATOR.md. Nothing about the workflow steps themselves changed in v3 — only
+│   how the item was selected and how the claim is held/released did.
 │
-├─ Parse claimed item:
-│   {
-│     "issue_id":     "GH-533",       ← pass to queue_release.py
-│     "issue_number": 533,
-│     "github_issue": "https://github.com/tvolodi/R-Co/issues/533",
-│     "title":        "...",
-│     "severity":     "MAJOR",
-│     ...
-│   }
-│
-├─ Determine workflow:
-│   Every GitHub issue → WF-03 (issue resolving)
-│   run_id = "WF03-GH<number>-<YYYYMMDD>"   e.g. "WF03-GH533-20260807"
-│
-├─ python3 tools/gh_project_status.py <issue_number> --target in_progress
-│   (moves the board card Todo -> In Progress; see PROJECT_BOARD.md.
-│    a failure here is logged and never blocks the run — see that doc's
-│    "Failure handling" section)
-│
-├─ Run WF-03:  Step 00 → 0.5 → 1 → 2 → 2b → 3 → [4/4b] → 5 → [6] → 7 → Final
-│   (Step Final also moves the board to Implemented/Done — see
-│    CLAUDE.md "GitHub Branch Management (MANDATORY)" and PROJECT_BOARD.md)
-│   Own feature branch: feature/WF03-GH<number>-<YYYYMMDD>
-│   Own PR, own squash-merge
-│
-├─ After WF-03 Step Final returns PASS (or deliberate deferral decision):
-│
-├─ python3 tools/queue_release.py GH-<number> <workspace_id> --status RESOLVED
-│   (or --status DEFERRED --deferred-reason "..." if scope decision made)
-│
-├─ Commit lock registry + audit log to main:
-│   git add handoffs/global_queue.json handoffs/orchestrator.log
-│   git commit -m "queue: resolve GH-<number>"
-│   git push origin main
-│
-├─ Append to orchestrator.log:
-│   "<ts> | LOOP_ITEM_DONE | WF03-GH<number>-<date> | <workspace_id> | RESOLVED (PR #NNN)"
+├─ Step Final / DOC-UPDATER calls, as part of its existing git-merge step:
+│   python <TaskManager>\scripts\release.py <workspace_id> task/current.json --status DONE [--close-github-issue]
+│   (or --status DEFERRED --reason "..." if a scope decision was made instead of finishing)
 │
 └─ goto LOOP START
 ```
 
-**One branch per item** — unlike the per-run queue protocol, each issue in the global
-queue gets its own full WF-03 run with its own feature branch and PR. This keeps branches
-small, reviewable, and mergeable independently.
+**One branch per item**, exactly as before — each claimed item gets its own feature branch
+and PR, independent of every other item.
 
-**No nesting** — if WF-03 discovers a new incidental issue while fixing the claimed item,
-`fn:enqueue-issue` adds it to the global queue via `queue_add.py`. The current item's WF-03
-continues to its own Step Final unchanged; the new item is processed in a later loop
-iteration (by this or another workspace). An iteration never grows to include a second
-issue.
+**No nesting** — if a run discovers a new incidental issue while working the claimed item,
+`fn:enqueue-issue` still files it (ISS + GitHub issue) — `queue_add.py` is retired; the new
+GitHub issue will simply appear as an `OPEN` `work_items` row the next time `github_pull.py`
+runs, and get claimed in a later loop iteration. The current item's run continues to its own
+Step Final unchanged.
+
+---
+
+## Why not GitHub itself as the lock
+
+GitHub's issue list has no compare-and-swap either — an assignee field or a label can be
+written by two API calls in quick succession with no guarantee about which one "wins," and
+there's no way to make a read-then-write against it atomic without an external lock in
+front of it. That's exactly what TaskManager is: GitHub stays the human-readable record of
+*what work exists* and, via the claim label, *who currently has it* — but the actual
+decision of who gets to claim next is made inside one SQLite transaction that GitHub's API
+has no part in.
 
 ---
 
 ## Requirement batch loop mode (WF-02, `docs/requirements.yaml`)
 
-**Source of truth: `docs/requirements.yaml` (status=`DRAFT` requirements). Lock registry:
-`handoffs/batch_queue.json`.** This is a second, parallel loop — distinct from the
-GitHub-issue loop above — for draining a backlog of specified-but-unimplemented
-requirements via WF-02 (Requirement Implementation), not WF-03 (Issue Resolving).
-
-**Why a separate queue file, not `global_queue.json`:** a requirement batch has no GitHub
-issue to key off, and WF-02's git wrapping differs from WF-03's (own branch naming:
-`feature/WF02-batch-<N>-<date>`, no per-issue PR). The locking *discipline* is identical —
-`tools/_queue_sync.py` (fetch-fresh-before-write), the same-machine file mutex, and the
-mandatory immediate-push-after-claim rule all apply exactly as documented above for
-`global_queue.json`, just pointed at `handoffs/batch_queue.json`.
+No longer a separate loop with its own queue file — `requirements_pull.py` mirrors DRAFT
+requirement batches into the same `work_items` table as GitHub issues, under
+`source='requirement_batch'`, `item_id` of the form `r-co:BATCH-<key>`. `claim.py` and
+`release.py` work identically regardless of `source` — the loop skeleton above already
+covers both. Run `requirements_pull.py r-co --stage "<value>"` before looping if you want to
+drain a specific backlog stage; omit `--stage` only for a backlog meant to interleave freely
+(same caveat as the old `reqctl_batch_plan.py --stage` guidance — planning two
+independently-ordered backlogs together produces unrelated-batch churn).
 
 **Trigger phrases:** "start requirement loop", "drain requirements backlog", "process
-requirement batches", or equivalent — distinct from "start loop" (GitHub issues) so an
-operator can run either independently, or both (GitHub issues first, by convention, since
-bugs blocking other work should usually clear before new features build on top of a
-possibly-broken base — but nothing enforces that ordering; it is an operator choice).
-
-**Multiple independently-authored backlogs must be planned separately, via `--stage`.**
-`docs/requirements.yaml` can hold several `DRAFT` backlogs migrated from different source
-documents, each with its own internal ordering logic — e.g. the 92-requirement backlog
-(implicit ordering derived from `**Extends:**` markers added during migration) and the
-20-requirement `BRW-*` "borrowing" set (`stage: "BRW — Borrowing from ASCOA-GO"`, ordering
-transcribed directly from `docs/addon-2/03-implementation-order.md`'s hand-authored Track
-A / Track M plan). Planning them together (no `--stage` filter) produces a single merged
-batch stream where unrelated requirements from different backlogs land in the same batch
-— confirmed when this was built: without `--stage`, `BRW-*` Track-A engine work
-interleaved with unrelated `CAC-UI`/`CMP-UI` frontend work from the other backlog, exactly
-the unrelated-batch churn `ORCHESTRATOR.md`'s WF-02 rules exist to prevent. Always pass
-`--stage "<exact stage value>"` to `reqctl_batch_plan.py`, `reqctl_batch_claim.py`, and
-`reqctl_batch_release.py` together when draining a backlog that has one; omit it only for
-a backlog meant to interleave freely with everything else.
-
-**Tools reference:**
-
-```
-python3 tools/reqctl_batch_plan.py [--status DRAFT] [--stage "<stage value>"] [--json]
-```
-Computes the ordered batch list from `docs/requirements.yaml`, optionally restricted to
-one `stage` value (see above). Topological order from each requirement's
-`**Extends:** <ID>` marker (a genuine directional dependency — unlike `**See:**`, which is
-symmetric cross-referencing with no ordering meaning in how this repo writes it; verified
-when this was built that the `See:` graph among the initial 92-requirement backlog
-migration had 34 mutual-reference cycles while the `Extends:` graph was a clean DAG),
-workflow-clustered (keeps one feature's requirements adjacent), capped at 4 per batch
-(`ORCHESTRATOR.md`'s WF-02 hard limit), and a requirement never shares a batch with the
-thing it `Extends` even if the dependency graph says it's technically "ready" —
-CODE-DESIGNER needs the extended requirement's design settled first.
-
-```
-python3 tools/reqctl_batch_claim.py <workspace_id> [--stage "<stage value>"]
-```
-Claims the next unclaimed, non-`DONE` batch within the given stage (or across all stages
-if omitted). Exit 0 = claimed (JSON on stdout), exit 2 = nothing left to claim, exit 3 =
-all unclaimed batches locked by other workspaces, exit 1 = error. Same exit-code semantics
-as `gh_claim.py`. Batches from different `--stage` values are locked independently — they
-share `handoffs/batch_queue.json` but are keyed by `(stage_key, batch_index)`, never by a
-bare index, so claiming batch 0 of one backlog never collides with batch 0 of another.
-
-```
-python3 tools/reqctl_batch_release.py <batch_index> <workspace_id> [--run-id RUN_ID] [--stage "<stage value>"]
-```
-Marks a claimed batch `DONE`. Same lock-ownership check as `queue_release.py` (refuses to
-release a batch locked by a different `workspace_id`).
-
-**Loop skeleton:**
-
-```
-LOOP START
-│
-├─ Check STOP_LOOP flag (same flag as the GitHub-issue loop — shared kill switch)
-│
-├─ PULL MAIN BEFORE CLAIMING (same rationale as the GitHub-issue loop):
-│   git checkout main && git pull --ff-only origin main
-│
-├─ python3 tools/reqctl_batch_claim.py <workspace_id>
-│   ├─ exit 2 → nothing left to batch → loop complete, stop
-│   ├─ exit 3 → all unclaimed batches locked → stop or retry after delay
-│   ├─ exit 1 → unexpected error → log, stop
-│   └─ exit 0 → batch claimed, JSON on stdout (requirement_ids list)
-│
-├─ PUSH THE CLAIM TO MAIN IMMEDIATELY — before any WF-02 work starts (mirrors the
-│  GitHub-issue loop's mandatory immediate-push step exactly):
-│   git add handoffs/batch_queue.json
-│   git commit -m "batch: claim batch <N> for <workspace_id>"
-│   git fetch origin main && git rebase origin/main
-│   git push origin main
-│   If rejected: fetch, check whether this batch is now locked by someone else;
-│   if so, stand down and re-run reqctl_batch_claim.py.
-│
-├─ Run WF-02 for requirement_ids (Step 00 git-setup through Step 06 doc-updater,
-│  Step Final git-merge) — own branch feature/WF02-batch-<N>-<YYYYMMDD>, own PR,
-│  own squash-merge, per ORCHESTRATOR.md's WF-02 pipeline table
-│
-├─ python3 tools/reqctl_batch_release.py <N> <workspace_id> --run-id WF02-batch-<N>-<date>
-│
-├─ Commit + push handoffs/batch_queue.json + handoffs/orchestrator.log to main
-│
-└─ goto LOOP START
-```
-
-**No cross-loop interference:** a workspace running the GitHub-issue loop and a workspace
-running the requirement-batch loop can run simultaneously without racing each other —
-they read/write different queue files (`global_queue.json` vs `batch_queue.json`) and
-target different requirement/issue spaces entirely.
+requirement batches" — same as before, just routed through `claim.py`/`release.py` now
+instead of `reqctl_batch_claim.py`/`reqctl_batch_release.py`.
 
 ---
 
-## Multi-workspace interaction diagram
+## Stop flag
 
-```
-Workspace A                            Workspace B
-    │                                      │
-    ├─ queue_claim.py → claims ISS-0042    │
-    │    lock: {ws-A, 10:00}               │
-    │                                      ├─ queue_claim.py → claims ISS-0043
-    │                                      │    lock: {ws-B, 10:01}
-    │                                      │
-    ├─ WF-03 for ISS-0042 (running)        ├─ WF-03 for ISS-0043 (running)
-    │  (branch: feature/WF03-ISS-0042-…)  │  (branch: feature/WF03-ISS-0043-…)
-    │                                      │
-    ├─ queue_release.py ISS-0042 ws-A      │
-    ├─ git push → ISS-0042 → RESOLVED      │
-    │                                      ├─ queue_release.py ISS-0043 ws-B
-    │                                      ├─ git push → ISS-0043 → RESOLVED
-    │                                      │
-    ├─ queue_claim.py → claims ISS-0044    │
-    │  (ISS-0043 already RESOLVED, skip)   ├─ queue_claim.py → exit 2 (empty)
-    │                                      └─ Workspace B loop stops
-    ...
+Unchanged — `handoffs/STOP_LOOP` still works as the shared kill switch, still checked at
+the top of every `LOOP START` regardless of which source the loop is draining:
+
+```powershell
+New-Item -ItemType File -Force handoffs/STOP_LOOP   # stop after current item finishes
+Remove-Item handoffs/STOP_LOOP                       # resume
 ```
 
 ---
 
-## Adding issues to the global queue
+## Migration note (one-time, per repo)
 
-ORCH adds an issue to the global queue whenever it decides an issue should be processed
-autonomously (rather than interactively or inline). The standard flow:
+A repo with an existing `handoffs/global_queue.json` / `handoffs/batch_queue.json` from the
+v2 protocol needs its live claims imported once, so TaskManager knows about in-flight work
+instead of re-offering it as fresh `OPEN` items:
 
-```python
-# 1. Register the issue locally
-#    → docs/issues/ISS-NNNN.json  (fn:register-issue)
-
-# 2. File on GitHub (mandatory — see CLAUDE.md "No Issue Left Local-Only")
-#    → gh issue create ...
-
-# 3. Add to global queue
-import subprocess
-subprocess.run([
-    "python3", "tools/queue_add.py", "ISS-NNNN",
-    "--severity", "MAJOR",
-    "--title", "Short description",
-    "--github-issue", "https://github.com/tvolodi/R-Co/issues/NNN",
-], check=True)
-
-# 4. Commit global_queue.json to main
-#    git add handoffs/global_queue.json
-#    git commit -m "queue: enqueue ISS-NNNN"
-#    git push origin main
+```powershell
+python <TaskManager>\scripts\repo_add.py r-co tvolodi/R-Co --path "C:\Users\tvolo\dev\ai-dala\R-Co"
+python <TaskManager>\scripts\migrate_batch_queue.py r-co
+python <TaskManager>\scripts\github_pull.py r-co --exclude-label requirement
+python <TaskManager>\scripts\requirements_pull.py r-co --stage "16"
 ```
+
+Already done for `r-co` as of 2026-08-13 — the `PRM-02..05` batch that was `IN_PROGRESS`
+under the v2 protocol carried its claim through intact (`claimed_by` preserved). This
+section stays in the doc for the next repo TaskManager is wired into, or if this repo's DB
+ever needs rebuilding from scratch.
+
+`tools/gh_claim.py`, `tools/queue_release.py`, `tools/queue_add.py`,
+`tools/reqctl_batch_claim.py`, `tools/reqctl_batch_release.py` are **retired** — calling
+them now prints a pointer to this document and exits non-zero rather than silently writing
+to the old (no-longer-authoritative) queue files. `handoffs/global_queue.json` and
+`handoffs/batch_queue.json` are kept as read-only historical record; nothing writes to them
+going forward.
 
 ---
 
 ## Invariants
 
-- [ ] Every item in the global queue has a corresponding `docs/issues/ISS-NNNN.json`
-- [ ] Every item in the global queue has a corresponding GitHub issue (`github_issue` field non-empty)
-- [ ] `gh_claim.py` is the ONLY writer for the `lock` field — no agent sets it directly
-- [ ] `queue_release.py` is the ONLY writer that clears the `lock` field
-- [ ] `handoffs/global_queue.json` is committed AND PUSHED to `main` immediately after every claim — never deferred to end-of-run (see "ORCH loop mode — step by step" above; a deferred push is what let two workspaces both claim GH-542 on 2026-08-07, see `docs/anti-patterns.md`)
-- [ ] `handoffs/global_queue.json` is committed to `main` after every release
-- [ ] `handoffs/global_queue.lock` is NEVER committed to git (transient mutex file)
-- [ ] **Before Step 00 (git-setup), not just before "implementation work"**: re-fetch `origin/main` and confirm `git log --oneline -1 origin/main` actually shows this workspace's claim commit — not merely that the earlier `git push` command exited 0. A push that reports success locally is not the same as a push whose result a concurrent reader can see; verify by reading the ref back. A rejected/raced/not-yet-landed push means stand down or retry, not proceed to branch creation (see "VERIFY THE PUSH LANDED" above; skipping this exact check is what let workspace r-co-1-loop start Step 00 on GH-518 before its claim was visible on `main`, on 2026-08-07 — no double-run resulted only because the second workspace caught the collision manually via a branch check, see `docs/anti-patterns.md`)
-- [ ] An `IN_PROGRESS` claim is never treated as reclaimable due to elapsed time — a run may legitimately take a long time between commits (design work, rework loops, investigation-heavy issues); no heartbeat call is needed or expected
+- [ ] `task/current.json` is the only place any agent looks to determine current work — never `handoffs/global_queue.json`, `handoffs/batch_queue.json`, or a raw `gh issue list`
+- [ ] Every claim goes through `claim.py`; every release goes through `release.py` — no agent edits `work.db` directly, and no agent decides a claim is "probably stale" and works the item anyway (see `docs/anti-patterns.md`, 2026-08-13 GH-752/GH-758 incident — a branch going quiet for hours is not evidence its claiming workspace is gone)
+- [ ] `release.py` is called as part of the run's existing Step Final, not a separately-remembered step
+- [ ] A GitHub issue's `claimed-by-<workspace_id>` label reflects the current DB state — if you see a label with no corresponding `CLAIMED` row (or vice versa), that is a sync bug worth filing, not something to work around by editing the label by hand

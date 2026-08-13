@@ -91,7 +91,7 @@ python3 tools/gh_project_status.py <issue-number> --target <in_progress|implemen
 
 | When | Who calls it | Call |
 |---|---|---|
-| Issue claimed (WF-03 Step 00, or `gh_claim.py`/`queue_claim.py` claim) | `BACKEND-DEV`/`FRONTEND-DEV` | `gh_project_status.py <N> --target in_progress` |
+| Issue claimed (WF-03 Step 00, or a TaskManager `claim.py` claim — see `LOOP_PROTOCOL.md`) | `BACKEND-DEV`/`FRONTEND-DEV` | `gh_project_status.py <N> --target in_progress` |
 | WF-03 Step Final, issue is **not** UAT-scoped | `BACKEND-DEV`/`FRONTEND-DEV` (as part of `fn:git-merge`) | `gh_project_status.py <N> --target implemented` then `--target done` |
 | WF-03 Step Final, issue **is** UAT-scoped | `BACKEND-DEV`/`FRONTEND-DEV` (as part of `fn:git-merge`) | `gh_project_status.py <N> --target implemented` (stop — do not call `done`) |
 | WF-05 Step 1, UAT-Runner's scenario run covers this issue's requirement and it PASSES | `UAT-RUNNER` | `gh_project_status.py <N> --target validated` then `--target done` |
@@ -136,9 +136,8 @@ session and burned the GraphQL quota within a single afternoon of loop activity.
 ## Acceptance criteria
 
 - [ ] Every issue that reaches `In Progress` on the board corresponds to an active
-      lock in `handoffs/global_queue.json` (or, going forward, an item claimed via
-      `gh_claim.py`) — the board and the lock registry never disagree about what's
-      actively being worked
+      `CLAIMED` row in TaskManager's `work_items` table (`status.py --claimed`) — the
+      board and TaskManager never disagree about what's actively being worked
 - [ ] No issue reaches `Done` on the board while its GitHub issue is still open
 - [ ] No UAT-scoped issue reaches `Done` without first passing through
       `Validated by UAT agent`
