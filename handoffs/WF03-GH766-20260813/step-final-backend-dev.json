@@ -1,0 +1,52 @@
+{
+  "handoff_id": "wf03-gh766-20260813-final-backend-dev",
+  "run_id": "WF03-GH766-20260813",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH766-20260813/step-final-backend-dev.json",
+  "created_at": "2026-08-13T10:51:21Z",
+  "started_at": "2026-08-13T10:51:21Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": ["wf03-gh766-20260813-07-doc-updater"],
+    "artifacts_in": ["docs/agents/protocols/GIT_MERGE.md"],
+    "branch_name": "feature/WF03-GH766-20260813",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/766"
+  },
+  "task": {
+    "description": "WF-03 Step Final (fn:git-merge) for GH-766. Execute the git-merge protocol.\n\n1. Verify branch: git branch --show-current must be feature/WF03-GH766-20260813\n2. Stage any remaining uncommitted files: git add -A; commit if needed\n3. Rebase: git fetch origin main && git rebase origin/main\n4. Push: git push --force-with-lease origin feature/WF03-GH766-20260813 (if rebased)\n5. Create PR: gh pr create --base main --head feature/WF03-GH766-20260813 --title 'fix(scheduler): GH-766 appendEventInTx writes to plat_event_idempotency for dedup enforcement' --body 'Closes #766\\n\\nAfter PAR-01 partitioning (migration 1147) removed the uq_event_idempotency unique index from events, appendEventInTx no longer enforced idempotency for timer-fired events. TC-SCH-02-03 was failing because the pre-seeded duplicate key caused no conflict.\\n\\nFix: added INSERT INTO plat_event_idempotency in appendEventInTx; duplicate keys now trigger a PRIMARY KEY violation propagated as SchedulerError.TransactionFailed. Updated TC-SCH-02-03 to pre-seed plat_event_idempotency.'\n6. Squash-merge: gh pr merge --squash --delete-branch\n7. git checkout main && git pull --ff-only origin main\n8. Close GH-766: gh issue close 766 --comment 'Fixed in PR squash-merged to main (WF03-GH766-20260813). appendEventInTx now writes to plat_event_idempotency, restoring the idempotency guarantee removed by migration 1147. TC-SCH-02-03 passes.'\n9. Call: python 'C:\\Users\\tvolo\\dev\\ai-dala\\TaskManager\\scripts\\release.py' task/current.json --status DONE --close-github-issue\n10. Run: python tools/lint_handoffs.py — must exit 0",
+    "acceptance_criteria": [
+      "PR created and squash-merged",
+      "feature/WF03-GH766-20260813 deleted",
+      "On main with clean working tree",
+      "GH-766 closed",
+      "release.py called with --status DONE",
+      "lint_handoffs exits 0"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": {
+    "status": null,
+    "summary": null,
+    "artifacts_out": [],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH766-20260813",
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH writes DONE log entry"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
