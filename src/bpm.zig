@@ -115,6 +115,7 @@ pub const promotions_routes = @import("api/routes/promotions.zig"); // PRM-01 pr
 // PRM-06 / PRM-07 / PRM-08 / PRM-09 — Stage 16 batch
 pub const promotion_assertion_rerun = @import("definition/assertion_rerun.zig"); // PRM-06/07 assertion re-run domain
 pub const promotion_assertion_routes = @import("api/routes/promotion_assertion.zig"); // PRM-06/07 assertion re-run HTTP handler
+pub const promotion_read_routes = @import("api/routes/promotion_read.zig"); // PRM-07 AC3 GET promotion read handler
 pub const sandbox_pool = @import("definition/sandbox_pool.zig"); // PRM-06 ephemeral sandbox pool
 pub const fixture_loader = @import("definition/fixture_loader.zig"); // PRM-06 sandbox fixture loader
 pub const definition_rollback = @import("definition/rollback.zig"); // PRM-08 rollback domain

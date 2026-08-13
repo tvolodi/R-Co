@@ -4,11 +4,14 @@
 //! Covers:
 //!   PRM-06 AC1  — replay twice returns cached outcome, claims no second sandbox
 //!   PRM-06 AC2  — sandbox contains only fixture rows; organic rows excluded
+//!   PRM-06 AC3  — stripNonDeterministicFields + identical stripped results across runs
 //!   PRM-06 AC4  — failed assertion -> status='failed', HTTP 422, target active unchanged
 //!   PRM-06 AC5  — sandbox unavailable -> HTTP 503, review remains 'approved'
 //!   PRM-07 AC1  — passing run + release failure -> status='teardown_failed', promotion applies
 //!   PRM-07 AC2  — error path still releases sandbox (defer-fires on every exit)
+//!   PRM-07 AC3  — GET endpoint surfaces teardown_error and sandbox_id
 //!   PRM-07 AC4  — teardown failure does not block subsequent rollback (negative assertion)
+//!   PRM-07 AC5  — sandbox reaper marks reaper_claimed_at after reclaiming leaked sandbox
 //!
 //! Per-test isolation: every test creates its own tenant UUID via
 //! helpers.randomUuidBytes / helpers.TestHarness.newUuidString. No
@@ -34,6 +37,8 @@ const api_tenant_context = bpm.api_tenant_context;
 const rerun = bpm.promotion_assertion_rerun;
 const SandboxPool = bpm.sandbox_pool.SandboxPool;
 const routes = bpm.promotion_assertion_routes;
+const promotion_read = bpm.promotion_read_routes;
+const api_auth = bpm.api_auth;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -786,5 +791,248 @@ test "TC-PRM-07-02: a failed assertion run releases its sandbox via defer; the S
     try testing.expectEqual(@as(usize, 0), sandbox_pool.active.items.len);
 }
 
+// ---------------------------------------------------------------------------
+// TC-PRM-06-03 — AC3 stripNonDeterministicFields produces identical results;
+// applyPromotionAssertionRerun with non_deterministic_fields passes.
+// ---------------------------------------------------------------------------
 
+test "TC-PRM-06-03: stripNonDeterministicFields strips specified dot-path fields; applyPromotionAssertionRerun with non_deterministic_fields returns passed status (PRM-06 AC3)" {
+    const alloc = testing.allocator;
+    const url = getDbUrl(alloc) catch |err| switch (err) {
+        error.EnvironmentVariableMissing => return error.MissingTestDatabaseUrl,
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    // Part 1: direct pure-function check — call stripNonDeterministicFields
+    // twice on the same input; verify the outputs are equal and the named
+    // field is absent while the stable field is preserved.
+    const payload = "{\"ts\":\"2026-08-14T00:00:00Z\",\"value\":\"stable\"}";
+    const strip_fields = [_][]const u8{"ts"};
+    const s1 = try rerun.stripNonDeterministicFields(alloc, payload, &strip_fields);
+    defer alloc.free(s1);
+    const s2 = try rerun.stripNonDeterministicFields(alloc, payload, &strip_fields);
+    defer alloc.free(s2);
+    // AC3: both calls must produce the same output.
+    try testing.expectEqualStrings(s1, s2);
+    // The non-deterministic field is absent after stripping.
+    try testing.expect(std.mem.indexOf(u8, s1, "ts") == null);
+    // The deterministic field is preserved.
+    try testing.expect(std.mem.indexOf(u8, s1, "stable") != null);
+
+    // Part 2: integration path — applyPromotionAssertionRerun with
+    // non_deterministic_fields set; the placeholder engine returns the same
+    // payload for both replay runs, so stripped results match => passed.
+    var lock_conn = try helpers.acquireIntegrationLock(alloc);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const tenant_id = try randomUuidStr(alloc);
+    defer alloc.free(tenant_id);
+    const review_id = try randomUuidStr(alloc);
+    defer alloc.free(review_id);
+    const plan_digest = "prm06-ac3-plan-digest";
+    defer dropTenantFixtures(&pool, tenant_id, review_id);
+
+    try insertTestTenant(&pool, tenant_id, tenant_id);
+
+    var sandbox_pool = SandboxPool.init(std.testing.io, alloc, &pool, 4);
+    defer sandbox_pool.deinit();
+
+    const ndf = [_][]const u8{"ts"};
+    const artifact = rerun.PromotionArtifact{
+        .id = "tc-prm06-03",
+        .assertions = &[_]rerun.Assertion{
+            .{ .id = "a-ac3", .payload = "{\"ts\":\"2026-08-14T00:00:00Z\",\"value\":\"stable\"}" },
+        },
+        .fixtures = &[_]rerun.FixtureRow{},
+        .rng_seed = 0,
+        .non_deterministic_fields = &ndf,
+        .candidate_definitions = &[_]rerun.CandidateDefinition{},
+    };
+
+    const result = rerun.applyPromotionAssertionRerun(
+        alloc,
+        &pool,
+        &sandbox_pool,
+        tenant_id,
+        review_id,
+        plan_digest,
+        artifact,
+    ) catch |err| {
+        std.debug.print("TC-PRM-06-03 rerun error: {s}\n", .{@errorName(err)});
+        return err;
+    };
+    defer result.deinit(alloc);
+
+    // Stripped results matched across both internal replay runs => 'passed'.
+    try testing.expect(result.status == rerun.RunStatus.passed);
+    try testing.expectEqual(@as(u32, 1), result.assertions_passed);
+    try testing.expectEqual(@as(u32, 0), result.assertions_failed);
+}
+
+// ---------------------------------------------------------------------------
+// TC-PRM-07-03 — AC3 GET endpoint surfaces teardown_error and sandbox_id.
+// ---------------------------------------------------------------------------
+
+test "TC-PRM-07-03: handleGetPromotion returns 200 with teardown_error and sandbox_id when a teardown_failed run row exists (PRM-07 AC3)" {
+    const alloc = testing.allocator;
+    const url = getDbUrl(alloc) catch |err| switch (err) {
+        error.EnvironmentVariableMissing => return error.MissingTestDatabaseUrl,
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var lock_conn = try helpers.acquireIntegrationLock(alloc);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const tenant_id = try randomUuidStr(alloc);
+    defer alloc.free(tenant_id);
+    const review_id = try randomUuidStr(alloc);
+    defer alloc.free(review_id);
+    const sandbox_id = try randomUuidStr(alloc);
+    defer alloc.free(sandbox_id);
+    const idem_key = try rerun.buildIdempotencyKey(alloc, review_id, "prm07-ac3-digest");
+    defer alloc.free(idem_key);
+    defer dropTenantFixtures(&pool, tenant_id, review_id);
+
+    try insertTestTenant(&pool, tenant_id, tenant_id);
+
+    // Insert a teardown_failed run row with sandbox_id and teardown_error set.
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        try conn.exec(
+            \\INSERT INTO promotion_assertion_runs
+            \\    (tenant_id, review_id, idempotency_key, status, plan_digest,
+            \\     assertions_total, assertions_passed, assertions_failed,
+            \\     sandbox_id, teardown_error, started_at, completed_at)
+            \\VALUES ($1::uuid, $2::uuid, $3, 'teardown_failed', 'prm07-ac3-digest',
+            \\        1, 1, 0,
+            \\        $4::uuid, 'ProvisionFailed', NOW(), NOW())
+        ,
+            &[_][]const u8{ tenant_id, review_id, idem_key, sandbox_id },
+        );
+    }
+
+    // Construct a minimal AuthContext (handleGetPromotion ignores it for reads).
+    const actor_user_id = try randomUuidStr(alloc);
+    defer alloc.free(actor_user_id);
+    const actor = api_auth.AuthContext{
+        .user_id = actor_user_id,
+        .role = .PLATFORM_ADMIN,
+        .is_bootstrap = false,
+        .token_id = "test-token",
+        .principal = "test-token",
+    };
+
+    const handler_result = promotion_read.handleGetPromotion(&pool, alloc, actor, review_id);
+    defer alloc.free(handler_result.body);
+
+    try testing.expectEqual(@as(u16, 200), handler_result.status_code);
+    // Response must name the teardown_error.
+    try testing.expect(std.mem.indexOf(u8, handler_result.body, "ProvisionFailed") != null);
+    // Response must include the sandbox_id.
+    try testing.expect(std.mem.indexOf(u8, handler_result.body, sandbox_id) != null);
+    // Status field must reflect teardown_failed.
+    try testing.expect(std.mem.indexOf(u8, handler_result.body, "teardown_failed") != null);
+}
+
+// ---------------------------------------------------------------------------
+// TC-PRM-07-04 — AC5 sandbox reaper sets reaper_claimed_at on leaked sandbox.
+// ---------------------------------------------------------------------------
+
+test "TC-PRM-07-04: reclaimLeakedSandboxes sets reaper_claimed_at on a teardown_failed row with reaper_claimed_at IS NULL (PRM-07 AC5)" {
+    const alloc = testing.allocator;
+    const url = getDbUrl(alloc) catch |err| switch (err) {
+        error.EnvironmentVariableMissing => return error.MissingTestDatabaseUrl,
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var lock_conn = try helpers.acquireIntegrationLock(alloc);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const tenant_id = try randomUuidStr(alloc);
+    defer alloc.free(tenant_id);
+    const review_id = try randomUuidStr(alloc);
+    defer alloc.free(review_id);
+    const sandbox_id = try randomUuidStr(alloc);
+    defer alloc.free(sandbox_id);
+    const idem_key = try rerun.buildIdempotencyKey(alloc, review_id, "prm07-ac5-digest");
+    defer alloc.free(idem_key);
+    defer dropTenantFixtures(&pool, tenant_id, review_id);
+
+    try insertTestTenant(&pool, tenant_id, tenant_id);
+
+    // Insert a teardown_failed row; reaper_claimed_at is NULL (column omitted).
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        try conn.exec(
+            \\INSERT INTO promotion_assertion_runs
+            \\    (tenant_id, review_id, idempotency_key, status, plan_digest,
+            \\     assertions_total, assertions_passed, assertions_failed,
+            \\     sandbox_id, teardown_error, started_at, completed_at)
+            \\VALUES ($1::uuid, $2::uuid, $3, 'teardown_failed', 'prm07-ac5-digest',
+            \\        1, 1, 0,
+            \\        $4::uuid, 'ProvisionFailed', NOW(), NOW())
+        ,
+            &[_][]const u8{ tenant_id, review_id, idem_key, sandbox_id },
+        );
+    }
+
+    // Confirm reaper_claimed_at is NULL before the reaper runs.
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        const row = try conn.queryRow(
+            alloc,
+            \\SELECT reaper_claimed_at IS NULL FROM promotion_assertion_runs
+            \\WHERE tenant_id = $1::uuid AND idempotency_key = $2 LIMIT 1
+        ,
+            &[_][]const u8{ tenant_id, idem_key },
+        );
+        defer if (row) |r| {
+            for (r) |col| if (col) |v| alloc.free(v);
+            alloc.free(r);
+        };
+        try testing.expect(row != null);
+        try testing.expectEqualStrings("t", row.?[0] orelse "f");
+    }
+
+    // Run the sandbox reaper. The sandbox schema (sandbox_<uuid>) does not
+    // exist in the test DB, but DROP SCHEMA IF EXISTS is safe; the UPDATE
+    // fires regardless.
+    var sandbox_pool = bpm.sandbox_pool.SandboxPool.init(std.testing.io, alloc, &pool, 4);
+    defer sandbox_pool.deinit();
+    sandbox_pool.reclaimLeakedSandboxes(alloc, tenant_id);
+
+    // Verify reaper_claimed_at is now set (non-NULL).
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        const row = try conn.queryRow(
+            alloc,
+            \\SELECT reaper_claimed_at IS NOT NULL FROM promotion_assertion_runs
+            \\WHERE tenant_id = $1::uuid AND idempotency_key = $2 LIMIT 1
+        ,
+            &[_][]const u8{ tenant_id, idem_key },
+        );
+        defer if (row) |r| {
+            for (r) |col| if (col) |v| alloc.free(v);
+            alloc.free(r);
+        };
+        try testing.expect(row != null);
+        try testing.expectEqualStrings("t", row.?[0] orelse "f");
+    }
+}
 

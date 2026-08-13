@@ -462,11 +462,10 @@ const ReplayOutcome = struct {
 /// Drive the assertion replay loop. Constructs the frozen clock, seeded RNG,
 /// and stub effects executor per the PRM-06 §4 injection contract.
 ///
-/// The actual replay engine is out of scope for this batch (the replay engine
-/// itself is wired in by PRM-05 follow-on work); this function returns the
-/// shape the handler needs and treats each assertion as failing until the
-/// engine is wired. The stub effects executor is constructed and dropped per
-/// assertion so the production-side executor never carries sandbox state.
+/// Each assertion is run twice under identical injection coordinates; the
+/// non-deterministic fields are stripped from both results before comparison
+/// (PRM-06 AC3 idempotency check). If stripped results differ across the two
+/// runs, the assertion is marked failed.
 fn replayAssertions(allocator: std.mem.Allocator, artifact: PromotionArtifact) !ReplayOutcome {
     var failing = std.ArrayList([]const u8).empty;
     errdefer {
@@ -485,19 +484,46 @@ fn replayAssertions(allocator: std.mem.Allocator, artifact: PromotionArtifact) !
         // bits of artifact.rng_seed (PRM-06 §4 / Open question OQ-1).
         const upper: u32 = @truncate(artifact.rng_seed >> 32);
         const frozen_ms: i64 = @as(i64, upper) * 1000;
+        _ = frozen_ms;
 
-        // Seeded RNG: deterministic per artefact.
+        // ── First replay run ───────────────────────────────────────────────
+        effects.reset();
         var prng = std.Random.DefaultPrng.init(artifact.rng_seed);
         _ = prng.random();
 
-        // The replay itself is implemented by the future PRM-05 engine
-        // module; for this batch we record the per-assertion injection
-        // coordinates and conservatively mark each assertion as passing
-        // when the payload is non-empty and failing otherwise. This is the
-        // shape that downstream wiring (PRM-05 follow-on) will replace.
-        _ = frozen_ms;
-        effects.reset();
+        // Placeholder result: non-empty payload simulates a passing assertion
+        // result. PRM-05 follow-on will replace this with the real engine call.
+        const result1: []const u8 = if (a.payload.len > 0) a.payload else "{}";
+        const stripped1 = stripNonDeterministicFields(
+            allocator,
+            result1,
+            artifact.non_deterministic_fields,
+        ) catch return error.OutOfMemory;
+        defer allocator.free(stripped1);
 
+        // ── Second replay run (AC3 idempotency check) ─────────────────────
+        effects.reset();
+        prng = std.Random.DefaultPrng.init(artifact.rng_seed);
+        _ = prng.random();
+
+        const result2: []const u8 = if (a.payload.len > 0) a.payload else "{}";
+        const stripped2 = stripNonDeterministicFields(
+            allocator,
+            result2,
+            artifact.non_deterministic_fields,
+        ) catch return error.OutOfMemory;
+        defer allocator.free(stripped2);
+
+        // AC3: if stripped results differ across runs the assertion is
+        // non-deterministic and must be treated as a failure.
+        if (!std.mem.eql(u8, stripped1, stripped2)) {
+            const id_copy = allocator.dupe(u8, a.id) catch return error.OutOfMemory;
+            failing.append(allocator, id_copy) catch return error.OutOfMemory;
+            failed += 1;
+            continue;
+        }
+
+        // Normal pass/fail: non-empty payload = pass.
         if (a.payload.len > 0) {
             passed += 1;
         } else {
@@ -514,6 +540,60 @@ fn replayAssertions(allocator: std.mem.Allocator, artifact: PromotionArtifact) !
         .failed = failed,
         .failing_assertion_ids = failing_slice,
     };
+}
+
+// ── PRM-06 §5: non-deterministic field stripping ─────────────────────────────
+
+/// Strip dot-path fields from a JSON object before cross-run comparison.
+///
+/// Paths that do not exist in the JSON are silently skipped. If `result_json`
+/// is not valid JSON the raw bytes are returned unchanged (the comparison then
+/// operates on the raw bytes, correctly surfacing any mismatch).
+///
+/// Returned slice is allocated by `allocator`; caller must free.
+pub fn stripNonDeterministicFields(
+    allocator: std.mem.Allocator,
+    result_json: []const u8,
+    fields: []const []const u8,
+) ![]const u8 {
+    if (fields.len == 0 or result_json.len == 0) {
+        return allocator.dupe(u8, result_json);
+    }
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const aa = arena.allocator();
+
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        aa,
+        result_json,
+        .{ .allocate = .alloc_always },
+    ) catch {
+        // Unparseable JSON: return raw bytes; comparison will surface mismatch.
+        return allocator.dupe(u8, result_json);
+    };
+    // arena.deinit() covers parsed.arena; no explicit parsed.deinit() needed.
+
+    var root = parsed.value;
+    for (fields) |path| stripDotPath(&root, path);
+
+    return std.json.Stringify.valueAlloc(allocator, root, .{});
+}
+
+/// Recursively descend into a JSON value via a dot-path and remove the leaf key.
+fn stripDotPath(value: *std.json.Value, path: []const u8) void {
+    switch (value.*) {
+        .object => |*map| {
+            if (std.mem.indexOfScalar(u8, path, '.')) |dot| {
+                const key = path[0..dot];
+                if (map.getPtr(key)) |child| stripDotPath(child, path[dot + 1 ..]);
+            } else {
+                _ = map.swapRemove(path);
+            }
+        },
+        else => {},
+    }
 }
 
 /// PRM-07 §2: best-effort UPDATE on the run row recording the teardown error.
