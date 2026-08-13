@@ -1,0 +1,87 @@
+{
+  "handoff_id": "WF03-GH758-20260813/step-01-issue-fixer",
+  "run_id": "WF03-GH758-20260813",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-13T13:42:47Z",
+  "started_at": "2026-08-13T13:42:47Z",
+  "completed_at": "2026-08-13T14:00:46Z",
+  "status": "COMPLETED",
+  "priority": "BLOCKER",
+  "context": {
+    "stage": "WF-03 Step 1 — root cause diagnosis",
+    "requirement_ids": [],
+    "related_handoff_ids": ["WF03-GH758-20260813/step-0.5-issue-fixer"],
+    "artifacts_in": [
+      "docs/issues/ISS-0698.json",
+      "tests/integration/repro_g758.zig",
+      "docs/issue-reports/ISS-0698-evidence.md"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/758",
+    "issue_id": "ISS-0698",
+    "branch": "feature/WF03-GH758-20260813",
+    "base_commit": "e9b1294d",
+    "diag_commit": "13632334"
+  },
+  "task": {
+    "description": "Step 1: root cause diagnosis. Read ISS-0698 evidence and the diagnostic findings documented in scratch/gh758/ and prior session logs. Confirm or refine the hypothesis: 'test client never sends another command after SET lock_timeout=5s'. Identify the actual root cause (panic? deadlock? memory error?) and update ISS-0698.json root_cause_analysis with the verified type and details. The minimal reproducer tests/integration/repro_g758.zig is already committed. If new diagnostic instrumentation is needed, apply it via temporary trace() calls that write to scratch/gh758/trace.log (NOT to stderr — build_runner IPC swallows it). Identify exactly which line is the failure point.",
+    "acceptance_criteria": [
+      "ISS-0698.json root_cause_analysis.type is updated to a specific root cause (panic/deadlock/memory-error/etc), with details verified by code reading or trace output",
+      "ISS-0698.json root_cause_analysis.investigation_status = 'CLOSED' (if root cause confirmed) or 'OPEN' (with concrete next step)",
+      "If root cause is in a code path, the affected file and line are recorded in ISS-0698.json fix_file and fix_line",
+      "A evidence trail entry is appended to ISS-0698.json if any new diagnostic data was gathered",
+      "Handoff step-01-issue-fixer.json: result.status = PASS, summary, evidence (file:line citations), next_action = 'Route to CODE-DESIGNER step 2 (fix design)'"
+    ],
+    "functions_to_call": [
+      "fn:read-issue-registry",
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "GH-758 / ISS-0698 root cause: SUPERSEDED BY GH-752/ISS-0692 (commit 9d06bdf4 on main). The 'client hang after acquireIntegrationLock' symptom was caused by the pre-fix lock_timeout=90s + ambient statement_timeout=60s bracket around pg_advisory_lock, which 57014-cancelled the acquire under concurrent load (~50 binaries queueing). The error path was slow to propagate through build_runner IPC, presenting as a perceived hang. GH-752/ISS-0692 final fix zeroed both timeouts around the lock acquire. Branch base e9b1294d is post-9d06bdf4; symptom not reproducible (zig build test-integration-pin01 exits 0). All three plausible root causes listed in the prior OPEN analysis (panic / pg.Conn deadlock / memory error) are FALSE.",
+    "artifacts_out": [
+      "docs/issues/ISS-0698.json (root_cause_analysis updated; investigation_status=CLOSED; title updated to mark as duplicate of GH-752; fix_file and fix_line point at tests/integration/helpers.zig 127-131/188-192/906-910)",
+      "scratch/gh758_pin01_verbose.log (verification: exit 0 with post-GH-752 helpers.zig; no test-binary stderr; no deadlock; no panic)",
+      "memories/repo/bpm-gh758-stale-evidence.md (reusable pattern: stale scratch/*.log evidence + trace-label-vs-current-code cross-check)"
+    ],
+    "findings": [
+      {
+        "finding_id": "F1",
+        "type": "stale_evidence",
+        "description": "All scratch/gh758_*.log files were captured during a prior session that wired repro_g758.zig into build.zig AND added temporary trace() instrumentation to helpers.zig. The trace labels ('GH-758 trace -- lock_timeout=90s sent', 'pg_advisory_lock acquired') match the de572f01 era (ISS-0211/GH-752 initial bracket, 2026-08-13 01:49). Current code at tests/integration/helpers.zig:909 reads 'SET lock_timeout = 0' (unbounded). The 90s label is stale.",
+        "evidence": "tests/integration/helpers.zig:906-915 (current); commit 9d06bdf4 (GH-752 final, 2026-08-13 12:21); scratch/gh758_repro4.err (stale trace labels)"
+      },
+      {
+        "finding_id": "F2",
+        "type": "code_state_verification",
+        "description": "Post-GH-752 code in tests/integration/helpers.zig wraps every pg_advisory_lock acquire with lock_timeout='0' AND statement_timeout='0'. Both timeouts are zeroed, so the acquire cannot be cancelled by 57014 nor 55P03. The 'client hang' symptom requires a 57014 statement_timeout cancellation during the lock wait -- which the current code cannot produce.",
+        "evidence": "tests/integration/helpers.zig:127-131 (runMigrations), 188-192 (runMigrationsForSchema), 906-910 (acquireIntegrationLock)"
+      },
+      {
+        "finding_id": "F3",
+        "type": "reproduction_attempt",
+        "description": "zig build test-integration-pin01 --verbose on current branch exits 0 with no test-binary stderr. The 'client hangs after acquireIntegrationLock' symptom is NOT reproducible. DB has no stale advisory locks; r-co-db_test-1 is healthy on port 5434.",
+        "evidence": "scratch/gh758_pin01_verbose.log (exit code 0; build runner prints only the prep step output); docker ps (r-co-db_test-1 healthy); pg_locks query (no advisory locks)"
+      },
+      {
+        "finding_id": "F4",
+        "type": "gh752_relationship",
+        "description": "GH-758 was filed DURING the ISS-0211/GH-752 rework cycle (commits a7995c72, c11686fb, e7623aba). The 'client hang after SET lock_timeout=5s' signature is the SAME signature GH-752 was attempting to fix. GH-752 final fix (9d06bdf4) eliminates it. Branch base e9b1294d is post-9d06bdf4. GH-758 is therefore a duplicate of GH-752.",
+        "evidence": "commits 9d06bdf4 (GH-752 final), de572f01 (GH-752 initial), 13632334 (GH-758 repro), 3f6f4974 (GH-758 step-0.5); branch base e9b1294d post-9d06bdf4"
+      },
+      {
+        "finding_id": "F5",
+        "type": "prior_hypothesis_refutation",
+        "description": "All three plausible root causes in the prior OPEN analysis ((a) panic, (b) pg.Conn deadlock, (c) memory error) are FALSE. The actual cause was a 57014 statement_timeout cancellation during a contended pg_advisory_lock acquire, in code that has since been fixed. There is no panic, no deadlock, no memory error -- there was a pre-fix time-budget configuration that produced 57014 cancellation under contention.",
+        "evidence": "scratch/gh758_pin01_verbose.log (exit 0, no panic/deadlock); tests/integration/helpers.zig:906-910 (current '0' bracket); commit 9d06bdf4 (the fix)"
+      }
+    ],
+    "issues": [],
+    "next_action": "Route to STEP FINAL (skip Step 2 CODE-DESIGNER, Step 2b VALIDATOR, Step 3 BACKEND-DEV, Step 4 TEST-RUNNER, Step 5 RELEASE-VALIDATOR). GH-758 is already resolved by GH-752/ISS-0692 (commit 9d06bdf4 on main, inherited by branch base e9b1294d). Recommend closing GH-758 as a duplicate of GH-752 and updating the GitHub issue body. DOC-UPDATER step-final should: (1) append CHANGELOG.md entry marking GH-758 as duplicate of GH-752; (2) comment on https://github.com/tvolodi/R-Co/issues/758 referencing the GH-752 fix commit 9d06bdf4; (3) close the issue."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "handoff_history": null
+}
