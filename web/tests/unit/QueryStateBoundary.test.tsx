@@ -76,7 +76,7 @@ describe('RND-UI-01 — QueryStateBoundary', () => {
     expect(screen.getByText(/You do not have access/)).toBeVisible()
   })
 
-  it('TC-QSB-05: stale-version state renders alert with Refresh button that fires onRetry', () => {
+  it('TC-QSB-05: stale-version state without callbacks falls back to alert with Refresh button that fires onRetry', () => {
     const onRetry = vi.fn()
     render(
       <MemoryRouter>
@@ -88,15 +88,66 @@ describe('RND-UI-01 — QueryStateBoundary', () => {
     expect(onRetry).toHaveBeenCalledTimes(1)
   })
 
-  it('TC-QSB-06: rate-limit state renders alert with Try again button that fires onRetry', () => {
+  it('TC-QSB-06: rate-limit state renders RateLimitBackpressure (role=status) with Retry button', () => {
     const onRetry = vi.fn()
     render(
       <MemoryRouter>
-        <QueryStateBoundary state="rate-limit" onRetry={onRetry}><div>content</div></QueryStateBoundary>
+        <QueryStateBoundary state="rate-limit" rateLimitRetryAfter={30} onRetry={onRetry}><div>content</div></QueryStateBoundary>
       </MemoryRouter>,
     )
-    expect(screen.getByRole('alert')).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(screen.getByTestId('rate-limit-backpressure')).toBeVisible()
+    fireEvent.click(screen.getByTestId('rate-limit-retry-now'))
     expect(onRetry).toHaveBeenCalledTimes(1)
+  })
+
+  it('TC-QSB-07: stale-version state with full conflict callbacks mounts StaleVersionError with ConflictResolver', () => {
+    const onRetry = vi.fn()
+    const onSaveMerged = vi.fn()
+    const onDiscardConfirmed = vi.fn()
+    const error = { status: 409, message: 'Conflict', code: 'STALE_VERSION', details: { xResourceVersion: 'v42' } }
+    render(
+      <MemoryRouter>
+        <QueryStateBoundary
+          state="stale-version"
+          onRetry={onRetry}
+          staleVersionError={error}
+          staleVersionServerPayload={{ a: 1 }}
+          staleVersionLocalDraft={{ a: 2 }}
+          staleVersionOnSaveMerged={onSaveMerged}
+          staleVersionOnDiscardConfirmed={onDiscardConfirmed}
+        >
+          <div>content</div>
+        </QueryStateBoundary>
+      </MemoryRouter>,
+    )
+    expect(screen.getByTestId('conflict-resolver')).toBeVisible()
+    expect(screen.getByTestId('conflict-refetch')).toBeEnabled()
+    expect(screen.getByTestId('conflict-merge')).toBeEnabled()
+    expect(screen.getByTestId('conflict-discard')).toBeEnabled()
+  })
+
+  it('TC-QSB-08: stale-version state without X-Resource-Version disables Merge but keeps Refetch + Discard enabled', () => {
+    const onRetry = vi.fn()
+    const onSaveMerged = vi.fn()
+    const onDiscardConfirmed = vi.fn()
+    const error = { status: 409, message: 'Conflict', code: 'STALE_VERSION', details: { xResourceVersion: null } }
+    render(
+      <MemoryRouter>
+        <QueryStateBoundary
+          state="stale-version"
+          onRetry={onRetry}
+          staleVersionError={error}
+          staleVersionServerPayload={{ a: 1 }}
+          staleVersionLocalDraft={{ a: 2 }}
+          staleVersionOnSaveMerged={onSaveMerged}
+          staleVersionOnDiscardConfirmed={onDiscardConfirmed}
+        >
+          <div>content</div>
+        </QueryStateBoundary>
+      </MemoryRouter>,
+    )
+    expect(screen.getByTestId('conflict-merge')).toBeDisabled()
+    expect(screen.getByTestId('conflict-refetch')).toBeEnabled()
+    expect(screen.getByTestId('conflict-discard')).toBeEnabled()
   })
 })

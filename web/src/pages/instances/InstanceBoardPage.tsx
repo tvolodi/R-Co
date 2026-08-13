@@ -9,6 +9,7 @@ import { queryKeys } from '@/api/queryKeys'
 import type { InstanceStatus } from '@/types/api'
 import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
 import { classifyError, type RendererState } from '@/utils/classifyError'
+import { getRetryAfterSeconds } from '@/utils/getRetryAfterSeconds'
 
 const STATUS_COLORS: Record<InstanceStatus, string> = {
   ACTIVE: '#2563eb',
@@ -311,6 +312,11 @@ export default function InstanceBoardPage() {
       <QueryStateBoundary
         state={(instancesQuery.isLoading ? 'loading' : instancesQuery.isError ? classifyError(instancesQuery.error) : 'success') as RendererState}
         onRetry={() => { void instancesQuery.refetch() }}
+        rateLimitRetryAfter={
+          instancesQuery.isError && classifyError(instancesQuery.error) === 'rate-limit'
+            ? getRetryAfterSeconds(instancesQuery.error)
+            : undefined
+        }
         columns={[{ widthPercent: 15 }, { widthPercent: 20 }, { widthPercent: 10 }, { widthPercent: 20 }, { widthPercent: 17 }, { widthPercent: 18 }]}
       >
       {instancesQuery.data && (

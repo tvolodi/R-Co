@@ -103,6 +103,27 @@ async function request<T>(
     })
   }
 
+  if (response.status === 409) {
+    // PD-08: capture X-Resource-Version on 409 so the frontend ConflictResolver
+    // can carry the version stamp into the PATCH If-Match header.
+    const xResourceVersion = response.headers.get('X-Resource-Version')
+    let body: Record<string, unknown> = {}
+    try {
+      body = (await response.json()) as Record<string, unknown>
+    } catch {
+      /* not JSON */
+    }
+    throw buildError(response, {
+      status: 409,
+      message: (body['title'] as string) ?? (body['message'] as string) ?? 'Conflict',
+      code: (body['type'] as string) ?? (body['code'] as string) ?? 'STALE_VERSION',
+      details: {
+        xResourceVersion: xResourceVersion ?? null,
+        ...(Object.keys(body).length > 0 ? body : {}),
+      },
+    })
+  }
+
   if (!response.ok) {
     // RFC 9457 Problem Details
     let body: Record<string, unknown> = {}

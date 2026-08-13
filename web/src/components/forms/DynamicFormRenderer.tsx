@@ -34,6 +34,7 @@ export function DynamicFormRenderer(props: DynamicFormRendererProps) {
   const [parseError, setParseError] = useState<string | null>(null)
   const [validationSchema, setValidationSchema] = useState<ZodSchema | null>(null)
   const [formFields, setFormFields] = useState<Record<string, TaskFormField>>({})
+  const [localSubmitting, setLocalSubmitting] = useState<boolean>(false)
 
   const form = useForm<DynamicFormValue>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,12 +76,18 @@ export function DynamicFormRenderer(props: DynamicFormRendererProps) {
   }
 
   const handleFormSubmit = async (values: DynamicFormValue) => {
+    setLocalSubmitting(true)
     try {
       await onSubmit(values)
     } catch (err) {
       // Error handling done by parent
+    } finally {
+      // §4.2 / §12.4 mode 3 — aria-busy cleared in finally regardless of outcome.
+      setLocalSubmitting(false)
     }
   }
+
+  const formBusy = isSubmitting || localSubmitting
 
   const commonInputStyles = {
     width: '100%',
@@ -93,7 +100,12 @@ export function DynamicFormRenderer(props: DynamicFormRendererProps) {
   }
 
   return (
-    <form onSubmit={form.handleSubmit(handleFormSubmit)} style={{ overflow: 'hidden' }}>
+    <form
+      onSubmit={form.handleSubmit(handleFormSubmit)}
+      data-testid="task-form"
+      aria-busy={formBusy ? 'true' : 'false'}
+      style={{ overflow: 'hidden' }}
+    >
       {submitError && (
         <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '6px', padding: '1rem', marginBottom: '1rem' }}>
           <p style={{ color: '#991b1b', margin: 0, fontSize: '.9rem' }}>
@@ -237,7 +249,8 @@ export function DynamicFormRenderer(props: DynamicFormRendererProps) {
 
       <button
         type="submit"
-        disabled={isSubmitting}
+        data-testid="task-submit-btn"
+        disabled={formBusy}
         style={{
           width: '100%',
           padding: '.75rem 1rem',
@@ -245,13 +258,13 @@ export function DynamicFormRenderer(props: DynamicFormRendererProps) {
           color: '#fff',
           border: 'none',
           borderRadius: '4px',
-          cursor: isSubmitting ? 'not-allowed' : 'pointer',
-          opacity: isSubmitting ? 0.7 : 1,
+          cursor: formBusy ? 'not-allowed' : 'pointer',
+          opacity: formBusy ? 0.7 : 1,
           fontSize: '.9rem',
           fontWeight: 500,
         }}
       >
-        {isSubmitting ? 'Submitting…' : submitLabel}
+        {formBusy ? 'Submitting…' : submitLabel}
       </button>
     </form>
   )

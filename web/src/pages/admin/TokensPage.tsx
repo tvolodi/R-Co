@@ -5,6 +5,7 @@ import { queryKeys } from '@/api/queryKeys'
 import type { ApiToken, IssuedToken, User } from '@/types/api'
 import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
 import { classifyError, type RendererState } from '@/utils/classifyError'
+import { getRetryAfterSeconds } from '@/utils/getRetryAfterSeconds'
 
 type TokenRow = ApiToken & {
   token_id?: string
@@ -161,6 +162,9 @@ export default function TokensPage() {
       <QueryStateBoundary
         state={rendererState}
         onRetry={() => { void refetch() }}
+        rateLimitRetryAfter={
+          rendererState === 'rate-limit' ? getRetryAfterSeconds(error) : undefined
+        }
         columns={[{ widthPercent: 25 }, { widthPercent: 20 }, { widthPercent: 20 }, { widthPercent: 15 }, { widthPercent: 20 }]}
       >
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>

@@ -5,6 +5,7 @@ import { queryKeys } from '@/api/queryKeys'
 import type { Group, User } from '@/types/api'
 import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
 import { classifyError, type RendererState } from '@/utils/classifyError'
+import { getRetryAfterSeconds } from '@/utils/getRetryAfterSeconds'
 
 type GroupRow = Group & {
   group_id?: string
@@ -138,6 +139,9 @@ export default function GroupsPage() {
       <QueryStateBoundary
         state={rendererState}
         onRetry={() => { void refetch() }}
+        rateLimitRetryAfter={
+          rendererState === 'rate-limit' ? getRetryAfterSeconds(error) : undefined
+        }
         columns={[{ widthPercent: 25 }, { widthPercent: 30 }, { widthPercent: 10 }, { widthPercent: 25 }, { widthPercent: 10 }]}
       >
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>

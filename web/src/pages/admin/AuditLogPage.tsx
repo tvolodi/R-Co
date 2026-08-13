@@ -8,6 +8,7 @@ import { JsonDiffView } from '@/components/ui/JsonDiffView'
 import { useAuth } from '@/auth/AuthContext'
 import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
 import { classifyError, type RendererState } from '@/utils/classifyError'
+import { getRetryAfterSeconds } from '@/utils/getRetryAfterSeconds'
 
 function isValidIsoDate(value?: string): boolean {
   if (!value) return true
@@ -133,6 +134,11 @@ export default function AuditLogPage() {
       <QueryStateBoundary
         state={rendererState}
         onRetry={() => { void refetch() }}
+        rateLimitRetryAfter={
+          rendererState === 'rate-limit'
+            ? getRetryAfterSeconds(error)
+            : undefined
+        }
         columns={[{ widthPercent: 5 }, { widthPercent: 20 }, { widthPercent: 20 }, { widthPercent: 25 }, { widthPercent: 20 }, { widthPercent: 10 }]}
       >
         {validFilters && !hasResults && (

@@ -1,0 +1,49 @@
+{
+  "run_id": "WF02-pw13-pw16-batch19-20260813",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "handoff_id": "WF02-pw13-pw16-batch19-20260813/step-00-backend-dev",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T19:46:53Z",
+  "started_at": "2026-08-13T19:49:00Z",
+  "completed_at": "2026-08-13T19:49:55Z",
+  "task": {
+    "type": "git-setup",
+    "title": "Step 00: create feature branch from main, push to origin",
+    "description": "Set up the feature branch feature/WF02-pw13-pw16-batch19-20260813 from current main HEAD. Verify clean working tree, fetch latest origin/main, create branch, push to origin. This batch touches frontend only (PW-13 + PW-16 workflows: RND-UI-05, RND-UI-06, GRD-UI-06, GRD-UI-07), so no backend migrations are expected. BACKEND-DEV role is reused for git-setup consistency with the issue-fix loop pattern.",
+    "context": {
+      "branch": "feature/WF02-pw13-pw16-batch19-20260813",
+      "requirement_ids": ["RND-UI-05", "RND-UI-06", "GRD-UI-06", "GRD-UI-07"],
+      "taskmanager_item_id": "r-co:BATCH-e2d5bb07eef8",
+      "workspace_id": "r-co-1-loop",
+      "workflow_ids": ["PW-13", "PW-16"]
+    },
+    "functions_to_call": [
+      "fn:git-setup"
+    ],
+    "acceptance_criteria": [
+      "git status shows clean working tree before branching",
+      "git fetch origin main succeeds",
+      "git checkout -b feature/WF02-pw13-pw16-batch19-20260813 origin/main succeeds",
+      "git push -u origin feature/WF02-pw13-pw16-batch19-20260813 succeeds (branch visible on origin)",
+      "task/current.json still contains the r-co:BATCH-e2d5bb07eef8 claim"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created feature/WF02-pw13-pw16-batch19-20260813 from origin/main (tip d1408753, identical to local and origin). Push -u succeeded; branch visible on origin (ls-remote confirmed). task/current.json claim r-co:BATCH-e2d5bb07eef8 retained. Pre-existing uncommitted changes from WF03-GH767 step-final (handoffs/WF03-GH767-20260813/step-final-backend-dev.json, handoffs/orchestrator.log, handoffs/registry.json) carried over unmodified — not in scope of this Step 00.",
+    "artifacts_out": [
+      "handoffs/WF02-pw13-pw16-batch19-20260813/step-00-backend-dev.json",
+      "handoffs/orchestrator.log (appended)",
+      "handoffs/registry.json (appended)"
+    ],
+    "issues": [],
+    "branch": "feature/WF02-pw13-pw16-batch19-20260813",
+    "tip_sha": "d1408753",
+    "upstream_main_sha": "d1408753",
+    "next_action": "Route to FRONTEND-DEV (Step 01) for batch frontend work (RND-UI-05, RND-UI-06, GRD-UI-06, GRD-UI-07)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

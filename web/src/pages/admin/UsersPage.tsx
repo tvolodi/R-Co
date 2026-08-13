@@ -6,6 +6,7 @@ import type { User } from '@/types/api'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
 import { classifyError, type RendererState } from '@/utils/classifyError'
+import { getRetryAfterSeconds } from '@/utils/getRetryAfterSeconds'
 
 function roleList(user: User): string[] {
   return Array.isArray(user.roles) ? user.roles : []
@@ -318,6 +319,11 @@ export default function UsersPage() {
       <QueryStateBoundary
         state={isLoading ? 'loading' : isError ? classifyError(queryError) : 'success' as RendererState}
         onRetry={() => { void refetch() }}
+        rateLimitRetryAfter={
+          isError && classifyError(queryError) === 'rate-limit'
+            ? getRetryAfterSeconds(queryError)
+            : undefined
+        }
         columns={[{ widthPercent: 20 }, { widthPercent: 25 }, { widthPercent: 25 }, { widthPercent: 15 }, { widthPercent: 10 }, { widthPercent: 5 }]}
       >
       <table data-testid="admin-users-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
