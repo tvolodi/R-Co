@@ -1,0 +1,60 @@
+{
+  "handoff_id": "wf02-prm-batch1-20260814-04-test-runner",
+  "run_id": "WF02-prm-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-prm-batch1-20260814/step-04-test-runner.json",
+  "created_at": "2026-08-13T21:07:35Z",
+  "completed_at": "2026-08-13T21:14:47Z",
+  "priority": "HIGH",
+  "status": "COMPLETED",
+  "context": {
+    "branch": "feature/WF02-prm-batch1-20260814",
+    "commit": "f5257ef2",
+    "requirement_ids": [
+      "PRM-06",
+      "PRM-07",
+      "PRM-08",
+      "PRM-09"
+    ],
+    "artifacts_in": [
+      "tests/integration/prm-06-07-promotion-assertion.test.zig",
+      "tests/integration/prm-08-rollback-sandbox.test.zig",
+      "tests/integration/prm-09-pack-update.test.zig"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "build PASS | unit PASS* 1071/1135 (1 pre-existing lint_test_wiring) | prm06-07 FAIL compile-5 | prm08 FAIL runtime-0/4 (public.roles missing) | prm09 FAIL compile-1",
+    "artifacts_out": [
+      "docs/test-reports/WF02-prm-batch1-20260814-step04.yaml"
+    ],
+    "issues": [
+      {
+        "id": "ISS-NEW-PRM0607-COMPILE",
+        "severity": "BLOCKER",
+        "gate": "test-integration-prm06-07",
+        "fix_owner": "BACKEND-DEV",
+        "description": "5 compile errors: std.atomic.Mutex.lock() removed in Zig 0.16 (sandbox_pool.zig:59,151), std.time.milliTimestamp() removed (sandbox_pool.zig:77), PoolError ErrorSet mismatch (assertion_rerun.zig:210), helper return type ![]u8 vs declared !?[]u8 (test.zig:147)"
+      },
+      {
+        "id": "ISS-NEW-PRM08-RUNTIME",
+        "severity": "BLOCKER",
+        "gate": "test-integration-prm08",
+        "fix_owner": "BACKEND-DEV",
+        "description": "0/4 runtime: insertPlatformAdmin queries public.user_roles and public.roles which were removed from public schema by GBL-141. Tests must use tenant schema or app layer fixture."
+      },
+      {
+        "id": "ISS-NEW-PRM09-COMPILE",
+        "severity": "BLOCKER",
+        "gate": "test-integration-prm09",
+        "fix_owner": "BACKEND-DEV",
+        "description": "1 compile error: pack_update.zig:204 passes null where []const u8 expected; Zig 0.16 tightened null coercion."
+      }
+    ],
+    "next_action": "ORCH spawn WF-03 ISSUE-FIXER for each of ISS-NEW-PRM0607-COMPILE, ISS-NEW-PRM08-RUNTIME, ISS-NEW-PRM09-COMPILE then redispatch TEST-RUNNER"
+  }
+}

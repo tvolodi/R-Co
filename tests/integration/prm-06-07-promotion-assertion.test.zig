@@ -1,4 +1,4 @@
-//! Integration tests for PRM-06 (pre-promotion assertion re-run, MUST) and
+﻿//! Integration tests for PRM-06 (pre-promotion assertion re-run, MUST) and
 //! PRM-07 (sandbox teardown on every exit path, MUST).
 //!
 //! Covers:
@@ -144,7 +144,8 @@ fn getPromotionAssertionRunStatus(
     };
     if (row == null) return null;
     const s = row.?[0] orelse return null;
-    return std.testing.allocator.dupe(u8, s);
+    const duped = try std.testing.allocator.dupe(u8, s);
+    return duped;
 }
 
 fn dropTenantFixtures(pool: *Pool, tenant_id: []const u8, review_id: []const u8) void {
@@ -253,7 +254,7 @@ test "TC-PRM-06-01: applyPromotionAssertionRerun returns AlreadyRecorded for a s
     const idem_key = try rerun.buildIdempotencyKey(alloc, review_id, plan_digest);
     defer alloc.free(idem_key);
 
-    var sandbox_pool = SandboxPool.init(alloc, &pool, 4);
+    var sandbox_pool = SandboxPool.init(std.testing.io, alloc, &pool, 4);
     defer sandbox_pool.deinit();
 
     const active_before: usize = sandbox_pool.active.items.len;
@@ -356,7 +357,7 @@ test "TC-PRM-06-02: SandboxPool creates an ephemeral schema containing only the 
     // Now build a SandboxPool and claim a sandbox; verify the resulting
     // schema contains ONLY the rows we explicitly load via fixtures[] (per
     // AC2 — "sandbox contains only the rows named in fixtures[]").
-    var sandbox_pool = SandboxPool.init(alloc, &pool, 4);
+    var sandbox_pool = SandboxPool.init(std.testing.io, alloc, &pool, 4);
     defer sandbox_pool.deinit();
 
     const claim = sandbox_pool.claim(alloc, 60_000) catch |err| {
@@ -479,7 +480,7 @@ test "TC-PRM-06-03: applyPromotionAssertionRerun returns SandboxUnavailable when
 
     // SandboxPool with max_concurrent = 0 forces claim() to return
     // PoolExhausted immediately.
-    var sandbox_pool = SandboxPool.init(alloc, &pool, 0);
+    var sandbox_pool = SandboxPool.init(null, alloc, &pool, 0);
     defer sandbox_pool.deinit();
 
     const artifact = rerun.PromotionArtifact{
@@ -556,7 +557,7 @@ test "TC-PRM-06-04: assertion with empty payload produces status='failed'; HTTP 
     // test asserts this row is UNCHANGED after the failed assertion run.
     try insertProcessDefinition(&pool, tenant_id, def_id, "tc-prm06-04-proc", "2", "ACTIVE");
 
-    var sandbox_pool = SandboxPool.init(alloc, &pool, 4);
+    var sandbox_pool = SandboxPool.init(std.testing.io, alloc, &pool, 4);
     defer sandbox_pool.deinit();
 
     // Empty payload => replayAssertions marks this assertion as failed.
@@ -747,7 +748,7 @@ test "TC-PRM-07-02: a failed assertion run releases its sandbox via defer; the S
 
     try insertTestTenant(&pool, tenant_id, tenant_id);
 
-    var sandbox_pool = SandboxPool.init(alloc, &pool, 4);
+    var sandbox_pool = SandboxPool.init(std.testing.io, alloc, &pool, 4);
     defer sandbox_pool.deinit();
 
     // Empty payload => assertion fails => assertion_rerun.zig returns
@@ -784,3 +785,4 @@ test "TC-PRM-07-02: a failed assertion run releases its sandbox via defer; the S
     // claim() added one entry; release() (called via defer) removed it.
     try testing.expectEqual(@as(usize, 0), sandbox_pool.active.items.len);
 }
+

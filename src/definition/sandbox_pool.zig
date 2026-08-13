@@ -41,13 +41,15 @@ const ActiveClaim = struct {
 
 pub const SandboxPool = struct {
     allocator: std.mem.Allocator,
+    io: ?std.Io, // null when max_concurrent == 0 (placeholder pool)
     pool: *pool_mod.Pool,
     max_concurrent: u32,
     active: std.ArrayList(ActiveClaim),
     mutex: std.atomic.Mutex = .unlocked,
 
-    pub fn init(allocator: std.mem.Allocator, pool: *pool_mod.Pool, max_concurrent: u32) SandboxPool {
+    pub fn init(io: ?std.Io, allocator: std.mem.Allocator, pool: *pool_mod.Pool, max_concurrent: u32) SandboxPool {
         return .{
+            .io = io,
             .allocator = allocator,
             .pool = pool,
             .max_concurrent = max_concurrent,
@@ -56,7 +58,7 @@ pub const SandboxPool = struct {
     }
 
     pub fn deinit(self: *SandboxPool) void {
-        self.mutex.lock();
+        while (!self.mutex.tryLock()) std.atomic.spinLoopHint();
         defer self.mutex.unlock();
         for (self.active.items) |c| {
             self.allocator.free(c.sandbox_id);
@@ -74,20 +76,26 @@ pub const SandboxPool = struct {
         allocator: std.mem.Allocator,
         timeout_ms: u32,
     ) SandboxPoolError!SandboxClaim {
-        const started = std.time.milliTimestamp();
+        // Fast-path: quota 0 means sandbox orchestration is not yet wired in
+        // (placeholder route handler uses max_concurrent=0). Return immediately
+        // instead of spinning for timeout_ms milliseconds.
+        if (self.max_concurrent == 0) return SandboxPoolError.PoolExhausted;
+
+        const io = self.io orelse return SandboxPoolError.PoolExhausted;
+        const started: i64 = std.Io.Clock.real.now(io).toMilliseconds();
         while (true) {
             {
-                self.mutex.lock();
+                while (!self.mutex.tryLock()) std.atomic.spinLoopHint();
                 defer self.mutex.unlock();
                 if (self.active.items.len < self.max_concurrent) break;
             }
-            const elapsed: u64 = @intCast(std.time.milliTimestamp() - started);
+            const elapsed: u64 = @intCast(std.Io.Clock.real.now(io).toMilliseconds() - started);
             if (elapsed >= timeout_ms) return SandboxPoolError.PoolExhausted;
             std.Thread.yield() catch {};
         }
 
         // Provision: generate UUID, derive a schema name, CREATE SCHEMA.
-        const sandbox_id = generateUuidString(allocator) catch return SandboxPoolError.OutOfMemory;
+        const sandbox_id = generateUuidString(io, allocator) catch return SandboxPoolError.OutOfMemory;
         errdefer allocator.free(sandbox_id);
         const schema_name = std.fmt.allocPrint(allocator, "sandbox_{s}", .{sandbox_id}) catch
             return SandboxPoolError.OutOfMemory;
@@ -115,7 +123,7 @@ pub const SandboxPool = struct {
         const schema_copy = allocator.dupe(u8, schema_name) catch return SandboxPoolError.OutOfMemory;
         errdefer allocator.free(schema_copy);
 
-        self.mutex.lock();
+        while (!self.mutex.tryLock()) std.atomic.spinLoopHint();
         defer self.mutex.unlock();
         self.active.append(self.allocator, .{ .sandbox_id = id_copy, .schema_name = schema_copy }) catch
             return SandboxPoolError.OutOfMemory;
@@ -148,7 +156,7 @@ pub const SandboxPool = struct {
 
         conn.simpleQuery(ddl) catch return SandboxPoolError.ProvisionFailed;
 
-        self.mutex.lock();
+        while (!self.mutex.tryLock()) std.atomic.spinLoopHint();
         defer self.mutex.unlock();
         var i: usize = 0;
         while (i < self.active.items.len) {
@@ -240,9 +248,9 @@ pub const SandboxPool = struct {
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
 
-fn generateUuidString(allocator: std.mem.Allocator) ![]u8 {
+fn generateUuidString(io: std.Io, allocator: std.mem.Allocator) ![]u8 {
     var bytes: [16]u8 = undefined;
-    std.crypto.random.bytes(&bytes);
+    std.Io.random(io, &bytes);
     // Set RFC 4122 v4 bits.
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;

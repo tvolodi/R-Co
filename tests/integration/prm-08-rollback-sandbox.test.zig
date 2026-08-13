@@ -114,9 +114,19 @@ fn insertProcessDefinition(
 fn insertPlatformAdmin(pool: *Pool, user_id: []const u8) !void {
     const conn = try pool.acquire();
     defer pool.release(conn);
+    // Users table requires explicit schema — GBL-141 dropped public shadows.
     try conn.exec(
-        \\INSERT INTO public.user_roles (user_id, role_id)
-        \\SELECT $1::uuid, id FROM public.roles WHERE name = 'PLATFORM_ADMIN'
+        \\INSERT INTO tenant_default.users
+        \\    (id, email, display_name, password_hash, username, tenant_id)
+        \\VALUES ($1::uuid, $1 || '@test.local', 'Test Admin', 'x', $1,
+        \\        '00000000-0000-0000-0000-000000000000'::uuid)
+        \\ON CONFLICT (id) DO NOTHING
+    ,
+        &[_][]const u8{user_id},
+    );
+    try conn.exec(
+        \\INSERT INTO tenant_default.user_roles (user_id, role_id, role_source)
+        \\SELECT $1::uuid, id, 'internal' FROM tenant_default.roles WHERE name = 'PLATFORM_ADMIN'
         \\ON CONFLICT DO NOTHING
     ,
         &[_][]const u8{user_id},
@@ -126,18 +136,16 @@ fn insertPlatformAdmin(pool: *Pool, user_id: []const u8) !void {
 fn insertPlainUser(pool: *Pool, user_id: []const u8) !void {
     const conn = try pool.acquire();
     defer pool.release(conn);
+    // Insert a user with no role assignment — tests Forbidden path.
     try conn.exec(
-        \\INSERT INTO public.user_roles (user_id, role_id)
-        \\SELECT $1::uuid, id FROM public.roles WHERE name = 'PLATFORM_ADMIN'
-        \\ON CONFLICT DO NOTHING
+        \\INSERT INTO tenant_default.users
+        \\    (id, email, display_name, password_hash, username, tenant_id)
+        \\VALUES ($1::uuid, $1 || '@test.local', 'Plain User', 'x', $1,
+        \\        '00000000-0000-0000-0000-000000000000'::uuid)
+        \\ON CONFLICT (id) DO NOTHING
     ,
         &[_][]const u8{user_id},
     );
-    _ = conn.exec(
-        \\DELETE FROM public.user_roles WHERE user_id = $1::uuid
-    ,
-        &[_][]const u8{user_id},
-    ) catch {};
 }
 
 fn countProcessDefinitions(pool: *Pool, tenant_id: []const u8) !i64 {
@@ -267,6 +275,14 @@ fn dropTenantFixtures(pool: *Pool, tenant_id: []const u8, def_id_v1: []const u8,
         &[_][]const u8{tenant_id},
     ) catch {};
     _ = conn.exec(
+        "DELETE FROM tenant_default.user_roles WHERE user_id IN (SELECT id FROM tenant_default.users WHERE email LIKE '%@test.local')",
+        &.{},
+    ) catch {};
+    _ = conn.exec(
+        "DELETE FROM tenant_default.users WHERE email LIKE '%@test.local'",
+        &.{},
+    ) catch {};
+    _ = conn.exec(
         "DELETE FROM public.tenant WHERE id = $1::uuid",
         &[_][]const u8{tenant_id},
     ) catch {};
@@ -309,7 +325,7 @@ test "TC-PRM-08-01: rollbackDefinitionVersion moves ACTIVE pointer V2 -> V1, app
     const before_count = try countProcessDefinitions(&pool, tenant_id);
     try testing.expectEqual(@as(i64, 2), before_count);
 
-    api_tenant_context.set(tenant_id);
+    api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     const result = rollback.rollbackDefinitionVersion(
         alloc,
         &pool,
@@ -372,7 +388,7 @@ test "TC-PRM-08-02: rollbackDefinitionVersion returns VersionNeverActive when ta
     try insertPlatformAdmin(&pool, admin_id);
     defer dropTenantFixtures(&pool, tenant_id, "", def_id_v2);
 
-    api_tenant_context.set(tenant_id);
+    api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     const result = rollback.rollbackDefinitionVersion(
         alloc,
         &pool,
@@ -438,7 +454,7 @@ test "TC-PRM-08-03: rollback succeeds and (conditional) supersedes matching prom
 
     defer dropTenantFixtures(&pool, tenant_id, def_id_v1, def_id_v2);
 
-    api_tenant_context.set(tenant_id);
+    api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     const result = rollback.rollbackDefinitionVersion(
         alloc,
         &pool,
@@ -499,7 +515,7 @@ test "TC-PRM-08-04: rollbackDefinitionVersion returns Forbidden when caller has 
     try insertPlainUser(&pool, plain_user_id);
     defer dropTenantFixtures(&pool, tenant_id, "", def_id_v2);
 
-    api_tenant_context.set(tenant_id);
+    api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     const result = rollback.rollbackDefinitionVersion(
         alloc,
         &pool,

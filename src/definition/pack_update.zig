@@ -99,15 +99,10 @@ pub fn computePackUpdatePlan(
     incoming_version: []const u8,
     incoming_artefacts: []const IncomingArtefact,
 ) PackUpdateError!PackUpdatePlan {
-    const saved_ctx = blk: {
-        const s = tenant_context_mod.get();
-        break :blk if (s.len > 0) s else "";
-    };
-    defer if (saved_ctx.len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
-
-    // Public-schema reads for solution_pack_installs / artefact_bases /
-    // pack_update_resolutions.
-    tenant_context_mod.clear();
+    // Public-schema tables (solution_pack_installs, artefact_bases) are found
+    // via search_path fallback when a tenant context is active (tenant_default,public).
+    // Tenant-side tables (process_definitions) need the active tenant context.
+    // Do NOT clear tenant context here.
 
     const conn = pool.acquire() catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => PackUpdateError.PoolExhausted,
@@ -161,10 +156,10 @@ pub fn computePackUpdatePlan(
     // incoming payload, plus the union of any base artefact ids we may have
     // missed. (For the initial implementation we only fetch the base rows
     // that match an incoming artefact_id.)
-    var base_contents = std.StringHashMap([]const u8).init(allocator);
+    var base_contents = std.StringHashMap(?[]const u8).init(allocator);
     defer {
         var it = base_contents.iterator();
-        while (it.next()) |entry| allocator.free(entry.value_ptr.*);
+        while (it.next()) |entry| if (entry.value_ptr.*) |v| allocator.free(v);
         base_contents.deinit();
     }
 

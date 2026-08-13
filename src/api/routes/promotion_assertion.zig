@@ -118,7 +118,7 @@ pub fn handleRunAssertions(
     // the real SandboxPool from config and threads it into the request
     // handler. Until then the route is wired end-to-end and exercises the
     // error-mapping branch.
-    var sandbox_pool = sandbox_pool_mod.SandboxPool.init(pa, pool, 0);
+    var sandbox_pool = sandbox_pool_mod.SandboxPool.init(null, pa, pool, 0);
     defer sandbox_pool.deinit();
 
     const result = rerun.applyPromotionAssertionRerun(
