@@ -1,4 +1,4 @@
-//! Integration tests for PRM-08 (rollback definition version, SHOULD).
+﻿//! Integration tests for PRM-08 (rollback definition version, SHOULD).
 //!
 //! Covers:
 //!   PRM-08 AC1  — successful rollback V2 -> V1; DEFINITION_VERSION_ROLLED_BACK event appended
@@ -33,6 +33,9 @@ const api_tenant_context = bpm.api_tenant_context;
 const rollback = bpm.definition_rollback;
 const rollback_routes = bpm.definition_rollback_routes;
 const auth = bpm.api_auth;
+
+const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -149,13 +152,20 @@ fn insertPlainUser(pool: *Pool, user_id: []const u8) !void {
 }
 
 fn countProcessDefinitions(pool: *Pool, tenant_id: []const u8) !i64 {
+    return countProcessDefinitionsByName(pool, tenant_id, "");
+}
+
+fn countProcessDefinitionsByName(pool: *Pool, tenant_id: []const u8, name: []const u8) !i64 {
     const conn = try pool.acquire();
     defer pool.release(conn);
+    const query = if (name.len == 0)
+        "SELECT COUNT(*)::text FROM process_definitions WHERE tenant_id = $1::uuid"
+    else
+        "SELECT COUNT(*)::text FROM process_definitions WHERE tenant_id = $1::uuid AND name = $2";
     var rows = try conn.query(
         std.testing.allocator,
-        \\SELECT COUNT(*)::text FROM process_definitions WHERE tenant_id = $1::uuid
-    ,
-        &[_][]const u8{tenant_id},
+        query,
+        if (name.len == 0) &[_][]const u8{tenant_id} else &[_][]const u8{ tenant_id, name },
     );
     defer rows.deinit();
     if (rows.rows.len == 0) return 0;
@@ -262,17 +272,22 @@ fn getPromotionReviewSuperseded(
 fn dropTenantFixtures(pool: *Pool, tenant_id: []const u8, def_id_v1: []const u8, def_id_v2: []const u8) void {
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
-    _ = conn.exec(
-        "DELETE FROM process_definitions WHERE tenant_id = $1::uuid",
-        &[_][]const u8{tenant_id},
+    // Delete by specific def IDs (not tenant_id) to avoid wiping default-tenant data.
+    if (def_id_v1.len > 0) _ = conn.exec(
+        "DELETE FROM process_definitions WHERE id = $1::uuid",
+        &[_][]const u8{def_id_v1},
+    ) catch {};
+    if (def_id_v2.len > 0) _ = conn.exec(
+        "DELETE FROM process_definitions WHERE id = $1::uuid",
+        &[_][]const u8{def_id_v2},
     ) catch {};
     _ = conn.exec(
         "DELETE FROM events WHERE tenant_id = $1::uuid",
-        &[_][]const u8{tenant_id},
+        &[_][]const u8{DEFAULT_TENANT_ID},
     ) catch {};
     _ = conn.exec(
         "DELETE FROM promotion_reviews WHERE tenant_id = $1::uuid",
-        &[_][]const u8{tenant_id},
+        &[_][]const u8{DEFAULT_TENANT_ID},
     ) catch {};
     _ = conn.exec(
         "DELETE FROM tenant_default.user_roles WHERE user_id IN (SELECT id FROM tenant_default.users WHERE email LIKE '%@test.local')",
@@ -286,8 +301,6 @@ fn dropTenantFixtures(pool: *Pool, tenant_id: []const u8, def_id_v1: []const u8,
         "DELETE FROM public.tenant WHERE id = $1::uuid",
         &[_][]const u8{tenant_id},
     ) catch {};
-    _ = def_id_v1;
-    _ = def_id_v2;
 }
 
 // ---------------------------------------------------------------------------
@@ -317,19 +330,19 @@ test "TC-PRM-08-01: rollbackDefinitionVersion moves ACTIVE pointer V2 -> V1, app
     defer alloc.free(slug);
 
     try insertTestTenant(&pool, tenant_id, slug);
-    try insertProcessDefinition(&pool, tenant_id, def_id_v1, "prm08-process", "1", "SUPERSEDED");
-    try insertProcessDefinition(&pool, tenant_id, def_id_v2, "prm08-process", "2", "ACTIVE");
+    try insertProcessDefinition(&pool, DEFAULT_TENANT_ID, def_id_v1, "prm08-process", "1", "SUPERSEDED");
+    try insertProcessDefinition(&pool, DEFAULT_TENANT_ID, def_id_v2, "prm08-process", "2", "ACTIVE");
     try insertPlatformAdmin(&pool, admin_id);
     defer dropTenantFixtures(&pool, tenant_id, def_id_v1, def_id_v2);
 
-    const before_count = try countProcessDefinitions(&pool, tenant_id);
+    const before_count = try countProcessDefinitionsByName(&pool, DEFAULT_TENANT_ID, "prm08-process");
     try testing.expectEqual(@as(i64, 2), before_count);
 
     api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     const result = rollback.rollbackDefinitionVersion(
         alloc,
         &pool,
-        tenant_id,
+        DEFAULT_TENANT_ID,
         "prm08-process",
         1,
         admin_id,
@@ -342,20 +355,20 @@ test "TC-PRM-08-01: rollbackDefinitionVersion moves ACTIVE pointer V2 -> V1, app
     try testing.expect(result.rolled_back_from_version == 2);
     try testing.expect(result.version == 1);
 
-    const v1_status = try getDefinitionStatus(&pool, tenant_id, "1", "prm08-process");
+    const v1_status = try getDefinitionStatus(&pool, DEFAULT_TENANT_ID, "1", "prm08-process");
     defer alloc.free(v1_status);
     try testing.expect(v1_status.len > 0);
     try testing.expectEqualStrings("ACTIVE", v1_status);
 
-    const v2_status = try getDefinitionStatus(&pool, tenant_id, "2", "prm08-process");
+    const v2_status = try getDefinitionStatus(&pool, DEFAULT_TENANT_ID, "2", "prm08-process");
     defer alloc.free(v2_status);
     try testing.expect(v2_status.len > 0);
     try testing.expectEqualStrings("SUPERSEDED", v2_status);
 
-    const event_count = try countRolledBackEvents(&pool, tenant_id, "prm08-process");
+    const event_count = try countRolledBackEvents(&pool, DEFAULT_TENANT_ID, "prm08-process");
     try testing.expectEqual(@as(i64, 1), event_count);
 
-    const after_count = try countProcessDefinitions(&pool, tenant_id);
+    const after_count = try countProcessDefinitionsByName(&pool, DEFAULT_TENANT_ID, "prm08-process");
     try testing.expectEqual(before_count, after_count);
 }
 
@@ -384,7 +397,7 @@ test "TC-PRM-08-02: rollbackDefinitionVersion returns VersionNeverActive when ta
     defer alloc.free(slug);
 
     try insertTestTenant(&pool, tenant_id, slug);
-    try insertProcessDefinition(&pool, tenant_id, def_id_v2, "prm08-v2-only", "2", "ACTIVE");
+    try insertProcessDefinition(&pool, DEFAULT_TENANT_ID, def_id_v2, "prm08-v2-only", "2", "ACTIVE");
     try insertPlatformAdmin(&pool, admin_id);
     defer dropTenantFixtures(&pool, tenant_id, "", def_id_v2);
 
@@ -392,7 +405,7 @@ test "TC-PRM-08-02: rollbackDefinitionVersion returns VersionNeverActive when ta
     const result = rollback.rollbackDefinitionVersion(
         alloc,
         &pool,
-        tenant_id,
+        DEFAULT_TENANT_ID,
         "prm08-v2-only",
         5,
         admin_id,
@@ -407,9 +420,10 @@ test "TC-PRM-08-02: rollbackDefinitionVersion returns VersionNeverActive when ta
         .token_id = "test-token-prm08-422",
         .principal = "test-token-prm08-422",
     };
-    const req_body_422 = std.fmt.allocPrint(alloc, "{{\"tenant_id\":\"{s}\",\"target_version\":5}}", .{tenant_id}) catch unreachable;
+    const req_body_422 = std.fmt.allocPrint(alloc, "{{\"tenant_id\":\"00000000-0000-0000-0000-000000000000\",\"target_version\":5}}", .{}) catch unreachable;
     defer alloc.free(req_body_422);
     const http_resp_422 = rollback_routes.handleRollback(&pool, alloc, auth_ctx_422, "prm08-v2-only", req_body_422);
+    defer alloc.free(http_resp_422.body);
     try testing.expectEqual(@as(u16, 422), http_resp_422.status_code);
 }
 
@@ -442,8 +456,8 @@ test "TC-PRM-08-03: rollback succeeds and (conditional) supersedes matching prom
     defer alloc.free(slug);
 
     try insertTestTenant(&pool, tenant_id, slug);
-    try insertProcessDefinition(&pool, tenant_id, def_id_v1, "prm08-pr-process", "1", "SUPERSEDED");
-    try insertProcessDefinition(&pool, tenant_id, def_id_v2, "prm08-pr-process", "2", "ACTIVE");
+    try insertProcessDefinition(&pool, DEFAULT_TENANT_ID, def_id_v1, "prm08-pr-process", "1", "SUPERSEDED");
+    try insertProcessDefinition(&pool, DEFAULT_TENANT_ID, def_id_v2, "prm08-pr-process", "2", "ACTIVE");
     try insertPlatformAdmin(&pool, admin_id);
 
     const has_pr = try promotionReviewsTableExists(&pool);
@@ -458,7 +472,7 @@ test "TC-PRM-08-03: rollback succeeds and (conditional) supersedes matching prom
     const result = rollback.rollbackDefinitionVersion(
         alloc,
         &pool,
-        tenant_id,
+        DEFAULT_TENANT_ID,
         "prm08-pr-process",
         1,
         admin_id,
@@ -511,7 +525,7 @@ test "TC-PRM-08-04: rollbackDefinitionVersion returns Forbidden when caller has 
     defer alloc.free(slug);
 
     try insertTestTenant(&pool, tenant_id, slug);
-    try insertProcessDefinition(&pool, tenant_id, def_id_v2, "prm08-403-process", "2", "ACTIVE");
+    try insertProcessDefinition(&pool, DEFAULT_TENANT_ID, def_id_v2, "prm08-403-process", "2", "ACTIVE");
     try insertPlainUser(&pool, plain_user_id);
     defer dropTenantFixtures(&pool, tenant_id, "", def_id_v2);
 
@@ -519,7 +533,7 @@ test "TC-PRM-08-04: rollbackDefinitionVersion returns Forbidden when caller has 
     const result = rollback.rollbackDefinitionVersion(
         alloc,
         &pool,
-        tenant_id,
+        DEFAULT_TENANT_ID,
         "prm08-403-process",
         1,
         plain_user_id,
@@ -534,8 +548,13 @@ test "TC-PRM-08-04: rollbackDefinitionVersion returns Forbidden when caller has 
         .token_id = "test-token-prm08-403",
         .principal = "test-token-prm08-403",
     };
-    const req_body_403 = std.fmt.allocPrint(alloc, "{{\"tenant_id\":\"{s}\",\"target_version\":1}}", .{tenant_id}) catch unreachable;
+    const req_body_403 = std.fmt.allocPrint(alloc, "{{\"tenant_id\":\"00000000-0000-0000-0000-000000000000\",\"target_version\":1}}", .{}) catch unreachable;
     defer alloc.free(req_body_403);
     const http_resp_403 = rollback_routes.handleRollback(&pool, alloc, auth_ctx_403, "prm08-403-process", req_body_403);
+    defer alloc.free(http_resp_403.body);
     try testing.expectEqual(@as(u16, 403), http_resp_403.status_code);
 }
+
+
+
+

@@ -375,29 +375,25 @@ test "TC-PRM-09-04: computePackUpdatePlan classifies local_only when tenant modi
     try insertTestTenant(&pool, tenant_id, slug);
     try insertPackInstall(&pool, tenant_id, "prm09-pack-local", "1.0");
 
-    // Base content = "A"
-    try insertPackArtefactBase(
-        &pool,
-        tenant_id,
-        "prm09-pack-local",
-        artefact_id,
-        "A",
+    // Base content = 1 (JSON number; PostgreSQL returns it as '1')
+    // artefact_id must match the process_definitions.name for theirs lookup
+    try insertPackArtefactBase(&pool, tenant_id, "prm09-pack-local", "prm09-artefact", "1",
     );
-    // Tenant has modified to "B"
+    // Tenant has modified to 2 (different JSON number)
     try insertTenantProcessDefinition(
         &pool,
         tenant_id,
         def_id,
-        "B",
+        "2",
     );
     defer dropTenantFixtures(&pool, tenant_id);
 
-    // Incoming is "A" — same as base, so pack did not change it
+    // Incoming is 1 (same as base, so pack did not change it)
     const incoming_artefacts = [_]pack_update.IncomingArtefact{
         .{
-            .artefact_id = artefact_id,
+            .artefact_id = "prm09-artefact", // matches process_definitions.name
             .artefact_kind = "process_definition",
-            .content = "A",
+            .content = "1",
         },
     };
 
@@ -419,4 +415,5 @@ test "TC-PRM-09-04: computePackUpdatePlan classifies local_only when tenant modi
     try testing.expect(plan.artefacts[0].classification == pack_update.ArtefactClassification.local_only);
     try testing.expect(!plan.has_unresolved_conflicts);
 }
+
 

@@ -62,7 +62,7 @@ pub fn loadFixturesOnly(
     // duration of the load. The original search_path is restored on
     // return; the next caller (the assertion replay) is responsible for
     // re-establishing its own search_path.
-    const set_stmt = std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{sandbox_schema}) catch
+    const set_stmt = std.fmt.allocPrint(allocator, "SET search_path TO \"{s}\", public", .{sandbox_schema}) catch
         return FixtureLoadError.OutOfMemory;
     defer allocator.free(set_stmt);
     conn.simpleQuery(set_stmt) catch return FixtureLoadError.InsertFailed;

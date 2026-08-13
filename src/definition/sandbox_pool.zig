@@ -109,9 +109,8 @@ pub const SandboxPool = struct {
         };
         defer self.pool.release(conn);
 
-        // Schema name comes from a server-derived UUID and is bound as $1 —
-        // no SQL string interpolation.
-        const ddl = std.fmt.allocPrint(allocator, "CREATE SCHEMA {s}", .{schema_name}) catch
+        // Schema name quoted to handle UUID hyphens in the identifier.
+        const ddl = std.fmt.allocPrint(allocator, "CREATE SCHEMA \"{s}\"", .{schema_name}) catch
             return SandboxPoolError.OutOfMemory;
         defer allocator.free(ddl);
 
@@ -150,7 +149,7 @@ pub const SandboxPool = struct {
         };
         defer self.pool.release(conn);
 
-        const ddl = std.fmt.allocPrint(self.allocator, "DROP SCHEMA IF EXISTS {s} CASCADE", .{schema_name}) catch
+        const ddl = std.fmt.allocPrint(self.allocator, "DROP SCHEMA IF EXISTS \"{s}\" CASCADE", .{schema_name}) catch
             return SandboxPoolError.OutOfMemory;
         defer self.allocator.free(ddl);
 

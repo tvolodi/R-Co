@@ -114,7 +114,7 @@ fn countPromotionAssertionRuns(pool: *Pool, tenant_id: []const u8, idem_key: []c
     defer pool.release(conn);
     var rows = try conn.query(
         std.testing.allocator,
-        \\SELECT COUNT(*)::text FROM promotion_assertion_runs
+        \\SELECT COUNT(*)::text FROM public.promotion_assertion_runs
         \\WHERE tenant_id = $1::uuid AND idempotency_key = $2
     ,
         &[_][]const u8{ tenant_id, idem_key },
@@ -133,7 +133,7 @@ fn getPromotionAssertionRunStatus(
     defer pool.release(conn);
     const row = try conn.queryRow(
         std.testing.allocator,
-        \\SELECT status FROM promotion_assertion_runs
+        \\SELECT status FROM public.promotion_assertion_runs
         \\WHERE tenant_id = $1::uuid AND idempotency_key = $2 LIMIT 1
     ,
         &[_][]const u8{ tenant_id, idem_key },
@@ -152,7 +152,7 @@ fn dropTenantFixtures(pool: *Pool, tenant_id: []const u8, review_id: []const u8)
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
     _ = conn.exec(
-        "DELETE FROM promotion_assertion_runs WHERE tenant_id = $1::uuid",
+        "DELETE FROM public.promotion_assertion_runs WHERE tenant_id = $1::uuid",
         &[_][]const u8{tenant_id},
     ) catch {};
     _ = conn.exec(
@@ -371,7 +371,7 @@ test "TC-PRM-06-02: SandboxPool creates an ephemeral schema containing only the 
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    const set_path = try std.fmt.allocPrint(alloc, "SET search_path TO {s}, public", .{claim.schema_name});
+    const set_path = try std.fmt.allocPrint(alloc, "SET search_path TO \"{s}\", public", .{claim.schema_name});
     defer alloc.free(set_path);
     try conn.simpleQuery(set_path);
 
@@ -396,7 +396,7 @@ test "TC-PRM-06-02: SandboxPool creates an ephemeral schema containing only the 
     const fixture_id = try randomUuidStr(alloc);
     defer alloc.free(fixture_id);
 
-    const set_path2 = try std.fmt.allocPrint(alloc, "SET search_path TO {s}, public", .{claim.schema_name});
+    const set_path2 = try std.fmt.allocPrint(alloc, "SET search_path TO \"{s}\", public", .{claim.schema_name});
     defer alloc.free(set_path2);
     try conn.simpleQuery(set_path2);
     try conn.exec(
@@ -410,7 +410,7 @@ test "TC-PRM-06-02: SandboxPool creates an ephemeral schema containing only the 
     try conn.simpleQuery("SET search_path TO public");
 
     // Verify the fixture row is in the sandbox schema.
-    const set_path3 = try std.fmt.allocPrint(alloc, "SET search_path TO {s}, public", .{claim.schema_name});
+    const set_path3 = try std.fmt.allocPrint(alloc, "SET search_path TO \"{s}\", public", .{claim.schema_name});
     defer alloc.free(set_path3);
     try conn.simpleQuery(set_path3);
     const sandbox_count_row = try conn.queryRow(
@@ -691,7 +691,7 @@ test "TC-PRM-07-01: a successful assertion run whose sandbox release fails recor
             \\        ELSE 'teardown_failed'
             \\    END,
             \\    teardown_error = $2
-            \\WHERE id = (SELECT id FROM promotion_assertion_runs
+            \\WHERE id = (SELECT id FROM public.promotion_assertion_runs
             \\             WHERE tenant_id = $1::uuid AND idempotency_key = $3 LIMIT 1)::uuid
             \\RETURNING id::text
         ,
@@ -705,7 +705,7 @@ test "TC-PRM-07-01: a successful assertion run whose sandbox release fails recor
         defer pool.release(conn);
         const row = try conn.queryRow(
             alloc,
-            \\SELECT status, COALESCE(teardown_error, '') FROM promotion_assertion_runs
+            \\SELECT status, COALESCE(teardown_error, '') FROM public.promotion_assertion_runs
             \\WHERE tenant_id = $1::uuid AND idempotency_key = $2 LIMIT 1
         ,
             &[_][]const u8{ tenant_id, idem_key },
@@ -785,4 +785,6 @@ test "TC-PRM-07-02: a failed assertion run releases its sandbox via defer; the S
     // claim() added one entry; release() (called via defer) removed it.
     try testing.expectEqual(@as(usize, 0), sandbox_pool.active.items.len);
 }
+
+
 

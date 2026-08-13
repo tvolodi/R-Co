@@ -140,10 +140,12 @@ pub fn applyPromotionAssertionRerun(
     plan_digest: []const u8,
     artifact: PromotionArtifact,
 ) AssertionRerunError!AssertionRerunResult {
-    const saved_ctx = blk: {
-        const s = tenant_context_mod.get();
-        break :blk if (s.len > 0) s else "";
-    };
+    // Copy saved context bytes to avoid @memcpy alias when the defer restores it.
+    var saved_ctx_buf: [36]u8 = undefined;
+    const saved_ctx_raw = tenant_context_mod.get();
+    if (saved_ctx_raw.len > 0 and saved_ctx_raw.len <= 36)
+        @memcpy(saved_ctx_buf[0..saved_ctx_raw.len], saved_ctx_raw);
+    const saved_ctx: []const u8 = if (saved_ctx_raw.len > 0) saved_ctx_buf[0..saved_ctx_raw.len] else "";
     defer if (saved_ctx.len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
     tenant_context_mod.set(tenant_id);
 
@@ -224,7 +226,8 @@ pub fn applyPromotionAssertionRerun(
             break :blk allocator.dupe(u8, s) catch return AssertionRerunError.OutOfMemory;
         } else null;
         cached.deinit(allocator);
-        return fresh;
+        fresh.deinit(allocator); // free the result we built since we return the error
+        return AssertionRerunError.AlreadyRecorded;
     }
 
     // Step 4: claim sandbox; `defer` releases on every exit path.

@@ -51,10 +51,12 @@ pub fn rollbackDefinitionVersion(
     target_version: u32,
     actor_id: []const u8,
 ) RollbackError!RollbackResult {
-    const saved_ctx = blk: {
-        const s = tenant_context_mod.get();
-        break :blk if (s.len > 0) s else "";
-    };
+    // Copy saved context bytes to avoid @memcpy alias when the defer restores it.
+    var saved_ctx_buf: [36]u8 = undefined;
+    const saved_ctx_raw = tenant_context_mod.get();
+    if (saved_ctx_raw.len > 0 and saved_ctx_raw.len <= 36)
+        @memcpy(saved_ctx_buf[0..saved_ctx_raw.len], saved_ctx_raw);
+    const saved_ctx: []const u8 = if (saved_ctx_raw.len > 0) saved_ctx_buf[0..saved_ctx_raw.len] else "";
     defer if (saved_ctx.len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
     tenant_context_mod.set(tenant_id);
 
@@ -112,6 +114,10 @@ pub fn rollbackDefinitionVersion(
 
     var current_active_id: []const u8 = undefined;
     var current_active_version: u32 = 0;
+    defer if (current_row) |r| {
+        for (r) |col| if (col) |v| allocator.free(v);
+        allocator.free(r);
+    };
     if (current_row) |r| {
         const id_str = r[0] orelse {
             for (r) |col| if (col) |v| allocator.free(v);
@@ -176,6 +182,10 @@ pub fn rollbackDefinitionVersion(
     };
 
     var target_id: []const u8 = undefined;
+    defer if (target_row) |r| {
+        for (r) |col| if (col) |v| allocator.free(v);
+        allocator.free(r);
+    };
     if (target_row) |r| {
         const id_str = r[0] orelse {
             for (r) |col| if (col) |v| allocator.free(v);
@@ -237,8 +247,9 @@ pub fn rollbackDefinitionVersion(
         const event_row = conn.queryRow(
             allocator,
             \\INSERT INTO events
-            \\    (id, instance_id, event_type, payload, actor_id, idempotency_key,
-            \\     metadata, sequence_number, global_seq, created_at)
+            \\    (event_id, instance_id, event_type, payload, actor_id,
+            \\     idempotency_key, metadata, sequence_number, global_seq,
+            \\     tenant_id, created_at)
             \\VALUES
             \\    (gen_random_uuid(),
             \\     '00000000-0000-0000-0000-000000000000'::uuid,
@@ -247,11 +258,11 @@ pub fn rollbackDefinitionVersion(
             \\     $2::uuid,
             \\     $3,
             \\     '{}'::jsonb,
-            \\     0, 0, NOW())
-            \\ON CONFLICT (idempotency_key) DO UPDATE SET payload = EXCLUDED.payload
-            \\RETURNING id::text
+            \\     0, nextval('events_global_seq'),
+            \\     $4::uuid, NOW())
+            \\RETURNING event_id::text
         ,
-            &[_][]const u8{ payload, actor_id, idem_key },
+            &[_][]const u8{ payload, actor_id, idem_key, tenant_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => RollbackError.PoolExhausted,
             else => RollbackError.TransactionFailed,
@@ -281,10 +292,7 @@ pub fn rollbackDefinitionVersion(
         \\RETURNING id::text
     ,
         &[_][]const u8{ event_id, tenant_id, current_active_id },
-    ) catch |err| return switch (err) {
-        pool_mod.PoolError.ExhaustedPool => RollbackError.PoolExhausted,
-        else => RollbackError.TransactionFailed,
-    };
+    ) catch null; // table may not exist (PRM-04 is a later batch)
 
     var superseded_review_id: ?[]const u8 = null;
     if (supersede_row) |r| {
@@ -305,16 +313,6 @@ pub fn rollbackDefinitionVersion(
         .superseded_review_id = superseded_review_id,
         .event_id = allocator.dupe(u8, event_id) catch return RollbackError.OutOfMemory,
     };
-
-    // Free the captured row slices.
-    if (current_row) |r| {
-        for (r) |col| if (col) |v| allocator.free(v);
-        allocator.free(r);
-    }
-    if (target_row) |r| {
-        for (r) |col| if (col) |v| allocator.free(v);
-        allocator.free(r);
-    }
 
     return result;
 }

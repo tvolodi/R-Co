@@ -159,7 +159,10 @@ pub fn computePackUpdatePlan(
     var base_contents = std.StringHashMap(?[]const u8).init(allocator);
     defer {
         var it = base_contents.iterator();
-        while (it.next()) |entry| if (entry.value_ptr.*) |v| allocator.free(v);
+        while (it.next()) |entry| {
+            allocator.free(entry.key_ptr.*); // free the duped artefact_id key
+            if (entry.value_ptr.*) |v| allocator.free(v);
+        }
         base_contents.deinit();
     }
 
@@ -220,7 +223,7 @@ pub fn computePackUpdatePlan(
         const base_content: ?[]const u8 = if (base_present) base_opt.? else null;
 
         // For the initial implementation, `theirs` is read as the
-        // process_definitions.graph_json for artefact_kind='process_definition'
+        // process_definitions.graph for artefact_kind='process_definition'
         // rows matching (tenant, process_key). Other artefact_kinds have
         // theirs=null for now — PRM-09 AC5 still classifies these correctly
         // because canonical(base)!=canonical(incoming) cannot be proved.
@@ -228,7 +231,7 @@ pub fn computePackUpdatePlan(
             if (std.mem.eql(u8, ia.artefact_kind, "process_definition")) {
                 const theirs_row = conn.queryRow(
                     allocator,
-                    \\SELECT graph_json::text
+                    \\SELECT graph::text
                     \\FROM process_definitions
                     \\WHERE tenant_id = $1::uuid AND name = $2
                     \\LIMIT 1
@@ -264,7 +267,7 @@ pub fn computePackUpdatePlan(
 
     return PackUpdatePlan{
         .pack_id = allocator.dupe(u8, pack_id) catch return PackUpdateError.OutOfMemory,
-        .base_pack_version = installed_version,
+        .base_pack_version = allocator.dupe(u8, installed_version) catch return PackUpdateError.OutOfMemory,
         .incoming_pack_version = allocator.dupe(u8, incoming_version) catch return PackUpdateError.OutOfMemory,
         .artefacts = entries.toOwnedSlice(allocator) catch return PackUpdateError.OutOfMemory,
         .has_unresolved_conflicts = has_unresolved_conflicts,
