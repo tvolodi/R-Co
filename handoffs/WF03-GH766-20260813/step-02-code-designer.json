@@ -1,0 +1,55 @@
+{
+  "handoff_id": "wf03-gh766-20260813-02-code-designer",
+  "run_id": "WF03-GH766-20260813",
+  "workflow_id": "WF-03",
+  "schema_version": 1,
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH766-20260813/step-02-code-designer.json",
+  "created_at": "2026-08-13T10:31:57Z",
+  "started_at": "2026-08-13T10:31:57Z",
+  "completed_at": "2026-08-13T10:35:02Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [],
+    "related_handoff_ids": ["wf03-gh766-20260813-01-issue-fixer"],
+    "artifacts_in": [
+      "src/scheduler/scheduler.zig",
+      "tests/integration/sch02_timer_polling_test.zig",
+      "migrations/1147_par01_events_partitioning.sql"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/766"
+  },
+  "task": {
+    "description": "WF-03 Step 02 (CODE-DESIGNER) for GH-766.\n\nRoot cause (from step-01): appendEventInTx in src/scheduler/scheduler.zig does NOT insert into plat_event_idempotency. After migration 1147 removed the unique index on events.idempotency_key, there is no constraint to enforce uniqueness, so TC-SCH-02-03's pre-seeded duplicate key causes no conflict and the scheduler fires successfully.\n\nDesign task: Produce a Type-E prose design artefact at src/design/iss-gh766-appendeventintx-idempotency.md that specifies:\n\n1. Change to appendEventInTx in src/scheduler/scheduler.zig (lines ~913-946):\n   - The current SQL is a two-statement exec: (a) CTE INSERT seq + INSERT events, (b) UPDATE instance_projections\n   - Extend the CTE to also INSERT INTO plat_event_idempotency(idempotency_key, event_id, created_at)\n   - The events INSERT already RETURNs nothing — change the events INSERT to RETURNING event_id, created_at, then add a third CTE leg that inserts into plat_event_idempotency\n   - OR: add a second conn.exec() call after the events INSERT that INSERTs into plat_event_idempotency using the same idem_key. If this exec fails (PRIMARY KEY violation), the error will propagate as SchedulerError.TransactionFailed via the existing catch.\n   - Simpler approach: add a second exec: conn.exec(INSERT INTO plat_event_idempotency(idempotency_key, event_id, created_at) SELECT $1, event_id, created_at FROM events WHERE instance_id=$2::uuid AND idempotency_key=$1 ORDER BY created_at DESC LIMIT 1, &.{idem_key, instance_id_text}) catch return SchedulerError.TransactionFailed;\n   - Even simpler: use INSERT INTO plat_event_idempotency(idempotency_key, event_id, created_at) VALUES($1, gen_random_uuid(), NOW()) — the exact event_id is not required for the conflict detection, only the key\n   - Design must specify the exact approach: which SQL, which parameters, where in the function body\n\n2. Change to TC-SCH-02-03 in tests/integration/sch02_timer_polling_test.zig (~line 1213-1260):\n   - The test currently pre-inserts into events with the conflicting idempotency_key\n   - After the fix, the scheduler's conflict check is in plat_event_idempotency\n   - The test must ALSO pre-insert into plat_event_idempotency with the same key\n   - Specify: add an INSERT INTO plat_event_idempotency(idempotency_key, event_id, created_at) VALUES($1, gen_random_uuid()::text::uuid, NOW()) BEFORE the conn.exec that inserts into events (or instead of it, since the events insert is no longer the conflict trigger)\n   - The existing events pre-insert can be kept or removed — the critical new insert is into plat_event_idempotency\n\n3. Do NOT change:\n   - Any other function in scheduler.zig\n   - Any migrations\n   - Any other test\n\n4. Acceptance criteria for implementation:\n   - zig build test passes\n   - zig build test-integration-sch02 passes with TC-SCH-02-03 green\n   - zig build test-env-verify exits 0\n\nProduce prose only — no Zig code in the design document.",
+    "acceptance_criteria": [
+      "src/design/iss-gh766-appendeventintx-idempotency.md created",
+      "Design specifies exact appendEventInTx SQL change",
+      "Design specifies exact TC-SCH-02-03 test change",
+      "Design lists files NOT to change",
+      "No Zig code in the design document"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type-E design for GH-766: appendEventInTx must insert into plat_event_idempotency as a third conn.exec (SELECT subquery from events, PK violation propagates as TransactionFailed); TC-SCH-02-03 must pre-seed plat_event_idempotency with conflicting_idem to restore the conflict path removed when migration 1147 dropped uq_event_idempotency.",
+    "artifacts_out": [
+      "src/design/iss-gh766-appendeventintx-idempotency.md"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "After PASS: ORCH dispatches step-02b-code-design-validator.json (hard gate)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
