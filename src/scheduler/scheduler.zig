@@ -935,6 +935,18 @@ fn appendEventInTx(
     ) catch return SchedulerError.TransactionFailed;
 
     conn.exec(
+        \\INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at)
+        \\SELECT $1, event_id, created_at
+        \\FROM events
+        \\WHERE instance_id = $2::uuid
+        \\  AND idempotency_key = $1
+        \\ORDER BY created_at DESC
+        \\LIMIT 1
+    ,
+        &.{ idem_key, instance_id_text },
+    ) catch return SchedulerError.TransactionFailed;
+
+    conn.exec(
         \\UPDATE instance_projections
         \\SET
         \\    last_event_seq = last_event_seq + 1,
