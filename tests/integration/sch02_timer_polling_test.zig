@@ -706,6 +706,10 @@ test "TC-SCH-02-03: firing rollback keeps timer PENDING when event append fails"
         "INSERT INTO events (instance_id, event_type, payload, actor_id, sequence_number, idempotency_key) VALUES ($1::uuid, $2, $3::jsonb, $1::uuid, $4::bigint, $5)",
         &.{ inst_id_hex, "TIMER_FIRED", "{}", next_seq_text, conflicting_idem },
     );
+    try conn.exec(
+        "INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at) VALUES ($1, gen_random_uuid(), NOW())",
+        &.{conflicting_idem},
+    );
 
     var scheduler = Scheduler.init(&pool, .{});
     try std.testing.expectError(
