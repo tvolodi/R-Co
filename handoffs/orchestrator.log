@@ -1453,3 +1453,4 @@
 2026-08-13T14:04:32Z | ROUTE   | WF03-GH758-20260813 | step-07-doc-updater | ORCH -> DOC-UPDATER | PENDING
 2026-08-13T14:07:00Z | ROUTE   | WF03-GH758-20260813 | step-final-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-13T14:07:00Z | DECISION| WF03-GH758-20260813 | --- | ORCH | GH-758 confirmed duplicate of GH-752/ISS-0692 (fixed by 9d06bdf4); skipping WF03 Steps 2-5; routing to step-07 (DOC-UPDATER) and step-final (PR + merge)
+2026-08-13T14:09:17Z | DONE    | WF03-GH758-20260813 | step-final-backend-dev | ORCH | GH-758 closed COMPLETED via PR #774 (merge ff70be81); TaskManager claim released
