@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-12T17:18:02Z'
+last_updated: '2026-08-13T16:40:55Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4848,25 +4848,29 @@ requirements:
     priority: MUST
     title: Server-side field stripping on query results
   RND-UI-01:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Six-state renderer union and single error classifier
+    released_at: '2026-08-13T16:40:09Z'
   RND-UI-02:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Loading state with skeleton layout
+    released_at: '2026-08-13T16:40:31Z'
   RND-UI-03:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Fetch failure state with explicit retry
+    released_at: '2026-08-13T16:40:32Z'
   RND-UI-04:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Leak-free permission denied surface
+    released_at: '2026-08-13T16:40:33Z'
   RND-UI-05:
     status: DRAFT
     stage: F8
