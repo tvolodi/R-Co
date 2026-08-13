@@ -1,0 +1,50 @@
+{
+  "run_id": "WF03-GH767-20260813",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "handoff_id": "WF03-GH767-20260813/step-01-issue-fixer",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T18:22:31Z",
+  "started_at": "2026-08-13T18:22:31Z",
+  "completed_at": "2026-08-13T18:39:46Z",
+  "task": {
+    "type": "root-cause-analysis",
+    "title": "Step 01: ISSUE-FIXER root cause diagnosis for GH-767/ISS-0701 (REAL_BUG, NOT stale-evidence)",
+    "next_action": "Step 02 CODE-DESIGNER",
+    "description": "Diagnose why env01_test TC-ENV-01-03 fails with assertion error: existing tenant rows have tenant_type='production' and production_tenant_id IS NULL, but test finds rows that don't match. Run the test in isolation to capture the exact error. Read the test file and the env01_test helper. Identify the source of unclean state (e.g. clean_test_db.py doesn't drop all tenant schemas, or a parallel test left rows, or a migration added tenant_type enum). Produce a diagnosis report.",
+    "context": {
+      "gh_issue": 767,
+      "iss_id": "ISS-0701",
+      "test_file": "tests/integration/env01_test.zig",
+      "test_step": "test-integration-env01 (search build.zig for it)",
+      "affected_areas": ["env01_test", "tenant_schema", "clean_test_db"],
+      "branch": "feature/WF03-GH767-20260813",
+      "known_context": "Test verifies all non-test tenant rows have tenant_type='production' and production_tenant_id IS NULL. Failure suggests leftover state from a previous test run that clean_test_db.py didn't clean, OR test's assumption about seeded data doesn't match, OR a migration changed tenant_type enum/defaults. 35/36 tests passed (1 failed).",
+      "test_command": "zig build test-integration-env01",
+      "test_args": "BPM_TEST_INTEGRATION_JOB_CAP=1, BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test, BPM_IDP_BASE_URL=http://localhost:8081, BPM_TEST_URL=http://127.0.0.1:8080",
+      "stale_evidence_check": "**CRITICAL** — Per the GH-758/GH-765 pattern, check first if the test ALREADY passes on main (i.e. GH-767's reported snapshot is stale). Run zig build test-integration-env01 on main BEFORE assuming a real bug. If the test passes, the diagnosis is PASS with resolution_via='duplicate-of-existing-fix' and steps 2-6 are skipped."
+    },
+    "verification": {
+      "test_repro_captured": "zig build test-integration-env fails 35/36 on both main (dc0b60338) and feature/WF03-GH767-20260813 (same SHA) — TC-ENV-01-03 assertion at env01_test.zig:295 fails (count=1, expected 0)",
+      "root_cause_identified": "Harness fixture in tests/integration/helpers.zig:781 (INSERT default with tenant_type='test' AND production_tenant_id=00000000-...) contradicts TC-ENV-01-03's WHERE clause (env01_test.zig:280-285). The default row is excluded by neither slug!='default' nor slug NOT LIKE 'tc-env01-%'. Two individually-correct decisions (commit 106bb440 added the test; commit a2eea7a1 changed the fixture) were never reconciled.",
+      "stale_evidence_check_done": "PASS — stale-evidence pattern (GH-758/GH-765) explicitly ruled out. Test fails on main HEAD dc0b60338, deterministically, with BPM_TEST_INTEGRATION_JOB_CAP=1, no parallel binaries, fresh DB after clean_test_db.py.",
+      "test_passes_on_main": false,
+      "responsible_migration_sha": null,
+      "responsible_source_sha": "a2eea7a182733f669f172035251c42605c9b3397",
+      "diagnosis_report_path": "tests/reports/WF03-GH767-diagnosis.md"
+    }
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REAL BUG (not stale-evidence). TC-ENV-01-03 fails on main dc0b60338 because tests/integration/helpers.zig:781 (commit a2eea7a1, PR #393) deliberately sets the harness 'default' fixture to tenant_type='test' AND production_tenant_id=00000000-..., which TC-ENV-01-03's WHERE clause excludes by neither 'default' nor 'tc-env01-%'. Proposed fix: add 'slug != 'default'' (and parenthesisation) to env01_test.zig:280-285 WHERE clause — narrow test-file edit, no migration, no security impact.",
+    "artifacts_out": [
+      "tests/reports/WF03-GH767-diagnosis.md",
+      "handoffs/WF03-GH767-20260813/step-01-issue-fixer.json",
+      "scratch/gh767_feature_run.log",
+      "scratch/gh767_feature_env.log",
+      "scratch/gh767_main_env.log"
+    ],
+    "issues": []
+  }
+}

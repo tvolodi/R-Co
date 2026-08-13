@@ -1,0 +1,49 @@
+{
+  "run_id": "WF03-GH767-20260813",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "handoff_id": "WF03-GH767-20260813/step-final-backend-dev",
+  "status": "IN_PROGRESS",
+  "created_at": "2026-08-13T19:30:00Z",
+  "started_at": "2026-08-13T19:29:50Z",
+  "completed_at": null,
+  "task": {
+    "type": "git-merge",
+    "title": "Step Final: push branch, create PR, squash-merge, close GH-767, delete branch, release TaskManager",
+    "description": "Run git-merge finalisation for branch feature/WF03-GH767-20260813 (ISS-0701: env01_test TC-ENV-01-03 fix). Subtasks: (1) commit DOC-UPDATER outputs, (2) git push -u origin feature/WF03-GH767-20260813, (3) gh pr create, (4) squash-merge, (5) gh issue close 767, (6) delete branch, (7) release TaskManager claim, (8) append DONE entries to orchestrator.log + registry.json.",
+    "context": {
+      "branch": "feature/WF03-GH767-20260813",
+      "gh_issue": 767,
+      "gh_issue_ack_comment": 5284732986,
+      "gh_issue_resolution_comment": null,
+      "iss_id": "ISS-0701",
+      "iss_path": "docs/issues/ISS-0701.json",
+      "iss_status": "RESOLVED",
+      "iss_resolution_commit": "2da073a42d4d9d03c713b07dcc0b5dbe977d0f58",
+      "fix_commit_on_branch": "2da073a42d4d9d03c713b07dcc0b5dbe977d0f58",
+      "fix_pr_on_main": null,
+      "diagnosis_report": "tests/reports/WF03-GH767-diagnosis.md",
+      "regression_report": "tests/reports/WF03-GH767-regression.md",
+      "upstream_main_sha": "dc0b6033",
+      "pattern_reference": "WF03-GH765-20260813 (PR #778) — issue-resolving loop pattern, identical finalization shape"
+    },
+    "verification": {
+      "lint_clean": null,
+      "pr_url": null,
+      "pr_merged": null,
+      "gh_767_closed": null,
+      "branch_deleted_remote": null,
+      "branch_deleted_local": null,
+      "task_current_json": null,
+      "main_head_after": null,
+      "registry_and_log_appended": null
+    }
+  },
+  "result": {
+    "status": null,
+    "summary": null,
+    "artifacts_out": [],
+    "issues": []
+  }
+}

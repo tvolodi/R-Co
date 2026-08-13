@@ -1490,3 +1490,15 @@
 2026-08-13T18:17:00Z | STEP_FINAL | WF03-GH765-20260813 | step-final-backend-dev | BACKEND-DEV -> ORCH | PASS | run COMPLETE
 2026-08-13T18:17:00Z | PIPELINE COMPLETE | WF03-GH765-20260813 | --- | ORCH | GH-765 RESOLVED as duplicate of GH-763/ISS-0689 (fixed by eec9edc3)
 2026-08-13T18:17:00Z | GIT | WF03-GH765-20260813 | feature/WF03-GH765-20260813 | (squash) | PR: https://github.com/tvolodi/R-Co/pull/778
+2026-08-13T18:18:25Z | ROUTE | WF03-GH767-20260813 | step-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | git-setup (loop continues from GH-765 close)
+2026-08-13T18:21:17Z | ROUTE | WF03-GH767-20260813 | step-00.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | registry-lookup + GH-767 ack
+2026-08-13T18:22:31Z | ROUTE | WF03-GH767-20260813 | step-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | root-cause-analysis (stale-evidence check first)
+2026-08-13T18:41:14Z | ROUTE | WF03-GH767-20260813 | step-02-code-designer | ORCH -> CODE-DESIGNER | PENDING | fix-design for env01 TC-ENV-01-03
+2026-08-13T18:41:43Z | ROUTE | WF03-GH767-20260813 | step-02-issue-fixer | ORCH -> ISSUE-FIXER | COMPLETED | SKIPPED (diagnosis-as-design, narrow test-only fix)
+2026-08-13T18:41:43Z | ROUTE | WF03-GH767-20260813 | step-02b-issue-fixer | ORCH -> ISSUE-FIXER | COMPLETED | SKIPPED (no separate design artefact)
+2026-08-13T18:42:34Z | ROUTE | WF03-GH767-20260813 | step-03-backend-dev | ORCH -> BACKEND-DEV | PENDING | fix-implementation (env01_test WHERE clause)
+2026-08-13T18:54:01Z | ROUTE | WF03-GH767-20260813 | step-04-test-designer | ORCH -> TEST-DESIGNER | COMPLETED | SKIPPED (no new tests)
+2026-08-13T18:54:01Z | ROUTE | WF03-GH767-20260813 | step-04b-test-designer | ORCH -> TEST-DESIGNER | COMPLETED | SKIPPED (no design)
+2026-08-13T18:54:31Z | ROUTE | WF03-GH767-20260813 | step-05-test-runner | ORCH -> TEST-RUNNER | PENDING | regression sweep (env01 fix)
+2026-08-13T19:19:51Z | COMPLETED | WF03-GH767-20260813 | step-05-test-runner | ORCH -> TEST-RUNNER | PASS | regression sweep 36/36, 0 new failures vs baseline
+2026-08-13T19:27:19Z | COMPLETED | WF03-GH767-20260813 | step-07-doc-updater | ORCH -> DOC-UPDATER | PASS | CHANGELOG + ISS-0701 RESOLVED + issue_index bump
