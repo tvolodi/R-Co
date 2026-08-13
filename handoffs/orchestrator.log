@@ -1470,3 +1470,5 @@
 2026-08-13T17:50:00Z | DONE | WF03-GH764-20260813 | step-07-doc-updater | ORCH | CHANGELOG updated, ISS-0699 RESOLVED (commit 4174a1ad), GH-764 comment posted (id 5284284035)
 2026-08-13T17:45:14Z | ROUTE | WF03-GH764-20260813 | step-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | git-merge
 2026-08-13T17:45:14Z | DISPATCH | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV | push/PR/merge/cleanup
+2026-08-13T17:49:17Z | DONE | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV | PR #776 merged, GH-764 closed, branch deleted, TaskManager claim released
+2026-08-13T17:49:17Z | STEP_FINAL | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV -> ORCH | PASS | run COMPLETE
