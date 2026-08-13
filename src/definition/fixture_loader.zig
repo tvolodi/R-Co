@@ -113,7 +113,7 @@ pub fn loadFixturesOnly(
         ) catch return FixtureLoadError.OutOfMemory;
         defer allocator.free(stmt);
 
-        conn.queryRow(allocator, stmt, &[_][]const u8{f.row_json}) catch |err| {
+        _ = conn.queryRow(allocator, stmt, &[_][]const u8{f.row_json}) catch |err| {
             return switch (err) {
                 pool_mod.PoolError.ExhaustedPool => FixtureLoadError.PoolExhausted,
                 else => FixtureLoadError.InsertFailed,

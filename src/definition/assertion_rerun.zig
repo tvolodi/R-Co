@@ -207,7 +207,7 @@ pub fn applyPromotionAssertionRerun(
         defer allocator.free(idem_key);
         const cached = readCachedRerun(allocator, pool, tenant_id, idem_key) catch |err| {
             return switch (err) {
-                pool_mod.PoolError.ExhaustedPool => AssertionRerunError.PoolExhausted,
+                error.PoolExhausted => AssertionRerunError.PoolExhausted,
                 else => AssertionRerunError.TransactionFailed,
             };
         };
@@ -368,10 +368,11 @@ pub fn applyPromotionAssertionRerun(
         .sandbox_id = allocator.dupe(u8, claim.sandbox_id) catch return AssertionRerunError.OutOfMemory,
     };
     if (replay.failing_assertion_ids.len > 0) {
-        out.failing_assertion_ids = allocator.alloc([]const u8, replay.failing_assertion_ids.len) catch return AssertionRerunError.OutOfMemory;
+        var mutable_ids = allocator.alloc([]const u8, replay.failing_assertion_ids.len) catch return AssertionRerunError.OutOfMemory;
         for (replay.failing_assertion_ids, 0..) |id, idx| {
-            out.failing_assertion_ids[idx] = allocator.dupe(u8, id) catch return AssertionRerunError.OutOfMemory;
+            mutable_ids[idx] = allocator.dupe(u8, id) catch return AssertionRerunError.OutOfMemory;
         }
+        out.failing_assertion_ids = mutable_ids;
     }
     replay.deinit(allocator);
     allocator.free(idem_key);

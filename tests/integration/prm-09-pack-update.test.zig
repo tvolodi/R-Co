@@ -1,4 +1,4 @@
-//! Integration tests for PRM-09 (solution pack update planning, SHOULD).
+﻿//! Integration tests for PRM-09 (solution pack update planning, SHOULD).
 //!
 //! Covers:
 //!   PRM-09 AC1  — unmodified tenant + Vn offered -> every changed artefact = clean_update
@@ -93,10 +93,12 @@ fn insertPackInstall(
 ) !void {
     const conn = try pool.acquire();
     defer pool.release(conn);
+    // installed_by = tenant_id as placeholder; unique on (tenant_id, pack_id, installed_version).
     try conn.exec(
-        \\INSERT INTO solution_pack_installs (tenant_id, pack_id, installed_version)
-        \\VALUES ($1::uuid, $2, $3)
-        \\ON CONFLICT (tenant_id, pack_id) DO UPDATE SET installed_version = EXCLUDED.installed_version
+        \\INSERT INTO solution_pack_installs
+        \\    (tenant_id, pack_id, installed_version, installed_by)
+        \\VALUES ($1::uuid, $2, $3, $1::uuid)
+        \\ON CONFLICT (tenant_id, pack_id, installed_version) DO NOTHING
     ,
         &[_][]const u8{ tenant_id, pack_id, installed_version },
     );
@@ -104,18 +106,30 @@ fn insertPackInstall(
 
 fn insertPackArtefactBase(
     pool: *Pool,
+    tenant_id: []const u8,
     pack_id: []const u8,
     artefact_id: []const u8,
     base_content: []const u8,
 ) !void {
     const conn = try pool.acquire();
     defer pool.release(conn);
+    // Resolve install_id by looking up the most recent install for this tenant+pack.
+    const row = try conn.queryRow(
+        std.testing.allocator,
+        "SELECT id::text FROM solution_pack_installs WHERE tenant_id = $1::uuid AND pack_id = $2 LIMIT 1",
+        &[_][]const u8{ tenant_id, pack_id },
+    );
+    defer if (row) |r| {
+        for (r) |col| if (col) |v| std.testing.allocator.free(v);
+        std.testing.allocator.free(r);
+    };
+    const install_id = if (row) |r| (r[0] orelse return) else return;
     try conn.exec(
-        \\INSERT INTO solution_pack_artefact_bases (pack_id, artefact_id, base_content)
-        \\VALUES ($1, $2, $3)
-        \\ON CONFLICT (pack_id, artefact_id) DO UPDATE SET base_content = EXCLUDED.base_content
+        \\INSERT INTO solution_pack_artefact_bases (install_id, artefact_id, artefact_kind, base_content)
+        \\VALUES ($1::uuid, $2, 'process_definition', $3::jsonb)
+        \\ON CONFLICT (install_id, artefact_id) DO UPDATE SET base_content = EXCLUDED.base_content
     ,
-        &[_][]const u8{ pack_id, artefact_id, base_content },
+        &[_][]const u8{ install_id, artefact_id, base_content },
     );
 }
 
@@ -182,7 +196,7 @@ test "TC-PRM-09-01: computePackUpdatePlan classifies the changed artefact as cle
 
     try insertTestTenant(&pool, tenant_id, slug);
     try insertPackInstall(&pool, tenant_id, "prm09-pack-A", "1.0");
-    try insertPackArtefactBase(&pool, "prm09-pack-A", artefact_id,
+    try insertPackArtefactBase(&pool, tenant_id, "prm09-pack-A", artefact_id,
         \\{"nodes":[],"edges":[]}
     );
     try insertTenantProcessDefinition(&pool, tenant_id, def_id,
@@ -205,7 +219,7 @@ test "TC-PRM-09-01: computePackUpdatePlan classifies the changed artefact as cle
         },
     };
 
-    api_tenant_context.set(tenant_id);
+    api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     const plan = pack_update.computePackUpdatePlan(
         alloc,
         &pool,
@@ -263,7 +277,7 @@ test "TC-PRM-09-02: computePackUpdatePlan returns PackNotInstalled when no solut
         },
     };
 
-    api_tenant_context.set(tenant_id);
+    api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     const result = pack_update.computePackUpdatePlan(
         alloc,
         &pool,
@@ -315,7 +329,7 @@ test "TC-PRM-09-03: computePackUpdatePlan classifies per-artefact conflict when 
         },
     };
 
-    api_tenant_context.set(tenant_id);
+    api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     const plan = pack_update.computePackUpdatePlan(
         alloc,
         &pool,
@@ -364,6 +378,7 @@ test "TC-PRM-09-04: computePackUpdatePlan classifies local_only when tenant modi
     // Base content = "A"
     try insertPackArtefactBase(
         &pool,
+        tenant_id,
         "prm09-pack-local",
         artefact_id,
         "A",
@@ -386,7 +401,7 @@ test "TC-PRM-09-04: computePackUpdatePlan classifies local_only when tenant modi
         },
     };
 
-    api_tenant_context.set(tenant_id);
+    api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     const plan = pack_update.computePackUpdatePlan(
         alloc,
         &pool,
@@ -404,3 +419,4 @@ test "TC-PRM-09-04: computePackUpdatePlan classifies local_only when tenant modi
     try testing.expect(plan.artefacts[0].classification == pack_update.ArtefactClassification.local_only);
     try testing.expect(!plan.has_unresolved_conflicts);
 }
+

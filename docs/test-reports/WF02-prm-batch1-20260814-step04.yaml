@@ -1,0 +1,182 @@
+run_id: WF02-prm-batch1-20260814
+report_date: "2026-08-13T21:13:56Z"
+agent: TEST-RUNNER
+workflow_step: "4"
+branch: feature/WF02-prm-batch1-20260814
+commit: f5257ef2
+requirements: [PRM-06, PRM-07, PRM-08, PRM-09]
+
+pre_checks:
+  db_availability:
+    url: "postgres://bpm:bpm@localhost:5453/bpm_test"
+    result: AVAILABLE
+    note: "SELECT 1 via docker exec returned 1 row"
+  keycloak: NOT_CHECKED
+  note: "Keycloak not required for unit or targeted integration test suites"
+
+layers:
+  - name: build
+    command: "zig build"
+    exit_code: 0
+    result: PASS
+    summary: "Build succeeded — no output, exit 0"
+
+  - name: unit
+    command: "zig build test"
+    exit_code: 1
+    result: PASS_WITH_KNOWN_PREEXISTING_FAIL
+    summary: "1071/1135 tests passed; 64 skipped (ISS-0173 orphans); 101/103 steps succeeded; 1 step failed (lint_test_wiring — pre-existing)"
+    tests_total: 1135
+    tests_passed: 1071
+    tests_skipped: 64
+    tests_failed: 0
+    steps_total: 103
+    steps_succeeded: 101
+    steps_failed: 1
+    preexisting_failures:
+      - id: lint_test_wiring
+        file: tests/integration/repro_g758.zig
+        description: "1 test-bearing file unwired from any addTest root in build.zig"
+        note: "Pre-existing on main before this branch; branch improves from 4 unwired to 1 unwired. Per task spec: do not count as new."
+      - id: ISS-0173
+        description: "64 orphan test cases skipped — pre-existing"
+
+  - name: integration-prm06-07
+    command: "zig build test-integration-prm06-07"
+    env:
+      BPM_TEST_DB_URL: "postgres://bpm:bpm@localhost:5453/bpm_test"
+      BPM_TEST_URL: "http://127.0.0.1:8090"
+      BPM_IDP_BASE_URL: "http://localhost:8091"
+    exit_code: 1
+    result: FAIL
+    failure_mode: COMPILATION_ERROR
+    summary: "5 compilation errors; 0 tests ran"
+    errors:
+      - file: src/definition/sandbox_pool.zig
+        line: 59
+        error: "no field or member function named 'lock' in 'atomic.Mutex'"
+        note: "Zig 0.16: std.atomic.Mutex is now an enum, not a struct with .lock()/.unlock(). Requires replacement with std.Thread.Mutex or equivalent."
+      - file: src/definition/sandbox_pool.zig
+        line: 77
+        error: "root source file struct 'time' has no member named 'milliTimestamp'"
+        note: "Zig 0.16: std.time.milliTimestamp() was removed; use std.time.milliTimestamp() from std.posix or std.time.nanoTimestamp() / 1_000_000."
+      - file: src/definition/sandbox_pool.zig
+        line: 151
+        error: "no field or member function named 'lock' in 'atomic.Mutex'"
+        note: "Same as line 59 above — second call site."
+      - file: src/definition/assertion_rerun.zig
+        line: 210
+        error: "expected type '...error_set', found 'error{ConnectionFailed,ExhaustedPool,...}' — error.ExhaustedPool not a member of destination error set"
+        note: "Error set mismatch — pool PoolError variants not in AssertionRerunError. Likely caused by the sandbox_pool.zig changes cascading into the error set."
+      - file: tests/integration/prm-06-07-promotion-assertion.test.zig
+        line: 147
+        error: "expected type '...!?[]u8', found 'error{OutOfMemory}![]u8' — error union payload '[]u8' cannot cast into error union payload '?[]u8'"
+        note: "Return type of getPromotionAssertionRunStatus helper declared as !?[]u8 but helper returns ![]u8. Nullable/non-nullable mismatch."
+
+  - name: integration-prm08
+    command: "zig build test-integration-prm08"
+    env:
+      BPM_TEST_DB_URL: "postgres://bpm:bpm@localhost:5453/bpm_test"
+      BPM_TEST_URL: "http://127.0.0.1:8090"
+      BPM_IDP_BASE_URL: "http://localhost:8091"
+    exit_code: 1
+    result: FAIL
+    failure_mode: RUNTIME_ERROR
+    summary: "0/4 tests passed; all failed at insertPlatformAdmin/insertPlainUser"
+    tests_total: 4
+    tests_passed: 0
+    tests_failed: 4
+    root_cause: >
+      public.roles and public.user_roles tables do not exist in bpm_test.
+      These tables were created by 008_identity.sql but are PER_TENANT tables;
+      GBL-141_iss0641_drop_dual_schema_shadows.sql deliberately removed the
+      public-schema shadow copies. The PRM-08 test helpers (insertPlatformAdmin,
+      insertPlainUser) issue unqualified INSERT INTO public.user_roles / SELECT
+      FROM public.roles queries, which fail with PgError.ServerError because the
+      tables are absent from public. Tests must be rewritten to use the
+      tenant-scoped schema or to provision the test context via the application
+      layer.
+    test_cases:
+      - id: TC-PRM-08-01
+        name: "rollbackDefinitionVersion moves ACTIVE pointer V2->V1, appends DEFINITION_VERSION_ROLLED_BACK, row count unchanged"
+        result: FAIL
+        error: "PoolError.QueryFailed at insertPlatformAdmin (public.user_roles does not exist)"
+      - id: TC-PRM-08-02
+        name: "rollbackDefinitionVersion returns VersionNeverActive when target version was never active; handleRollback maps to 422"
+        result: FAIL
+        error: "PoolError.QueryFailed at insertPlatformAdmin (public.user_roles does not exist)"
+      - id: TC-PRM-08-03
+        name: "rollback succeeds and (conditional) supersedes matching promotion_reviews row"
+        result: FAIL
+        error: "PoolError.QueryFailed at insertPlatformAdmin (public.user_roles does not exist)"
+      - id: TC-PRM-08-04
+        name: "rollbackDefinitionVersion returns Forbidden when caller has no PLATFORM_ADMIN role; handleRollback maps to 403"
+        result: FAIL
+        error: "PoolError.QueryFailed at insertPlainUser (public.user_roles does not exist)"
+
+  - name: integration-prm09
+    command: "zig build test-integration-prm09"
+    env:
+      BPM_TEST_DB_URL: "postgres://bpm:bpm@localhost:5453/bpm_test"
+      BPM_TEST_URL: "http://127.0.0.1:8090"
+      BPM_IDP_BASE_URL: "http://localhost:8091"
+    exit_code: 1
+    result: FAIL
+    failure_mode: COMPILATION_ERROR
+    summary: "1 compilation error; 0 tests ran"
+    errors:
+      - file: src/definition/pack_update.zig
+        line: 204
+        error: "expected type '[]const u8', found '@TypeOf(null)'"
+        note: "A null literal is passed where []const u8 is required. Zig 0.16 tightened null-coercion rules. Likely needs an optional type annotation or a sentinel string."
+
+result:
+  status: FAIL
+  summary: |
+    Gate 1 (zig build): PASS
+    Gate 2 (zig build test): PASS* — 1071/1135 passed, 1 pre-existing lint_test_wiring failure (not counted as new)
+    Gate 3 (test-integration-prm06-07): FAIL — 5 compilation errors (Zig 0.16 API drift in sandbox_pool.zig, assertion_rerun.zig, test helper return type)
+    Gate 4 (test-integration-prm08): FAIL — 0/4 runtime (QueryFailed: public.roles/user_roles missing; GBL-141 deleted public shadows; test uses wrong schema prefix)
+    Gate 5 (test-integration-prm09): FAIL — 1 compilation error (null→[]const u8 coercion in pack_update.zig:204)
+
+issues:
+  - id: ISS-NEW-PRM0607-COMPILE
+    severity: BLOCKER
+    gate: test-integration-prm06-07
+    description: >
+      PRM-06/07 integration test suite fails to compile with 5 errors.
+      Root: Zig 0.16 API drift — std.atomic.Mutex no longer has .lock()/.unlock()
+      methods (now an enum); std.time.milliTimestamp() removed; PoolError error set
+      mismatch cascades into assertion_rerun.zig; test helper return type mismatch
+      (getPromotionAssertionRunStatus declared !?[]u8 returns ![]u8).
+      Fix owner: BACKEND-DEV.
+      Files: src/definition/sandbox_pool.zig, src/definition/assertion_rerun.zig,
+             tests/integration/prm-06-07-promotion-assertion.test.zig.
+
+  - id: ISS-NEW-PRM08-RUNTIME
+    severity: BLOCKER
+    gate: test-integration-prm08
+    description: >
+      PRM-08 integration tests compile but all 4 fail at runtime with
+      PgError.ServerError → PoolError.QueryFailed inside insertPlatformAdmin/
+      insertPlainUser because public.user_roles and public.roles do not exist.
+      GBL-141_iss0641_drop_dual_schema_shadows.sql deliberately removed these
+      public-schema shadows; the canonical tables live in the tenant schema.
+      PRM-08 test helpers reference public schema directly — wrong.
+      Fix owner: BACKEND-DEV (rewrite insertPlatformAdmin/insertPlainUser to
+      use the tenant schema, or provision via application layer, or create the
+      missing tables in public if PRM-08 legitimately requires a platform-scoped
+      roles table).
+      File: tests/integration/prm-08-rollback-sandbox.test.zig lines 113-135.
+
+  - id: ISS-NEW-PRM09-COMPILE
+    severity: BLOCKER
+    gate: test-integration-prm09
+    description: >
+      PRM-09 integration test suite fails to compile with 1 error.
+      Root: src/definition/pack_update.zig:204 passes a null literal where
+      []const u8 is required. Zig 0.16 tightened null-coercion; this must
+      either declare the field as optional ([]const u8 → ?[]const u8) or replace
+      null with a sentinel empty string "".
+      Fix owner: BACKEND-DEV.
+      File: src/definition/pack_update.zig line 204.
