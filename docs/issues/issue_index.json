@@ -1,8 +1,30 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-13T19:27:19Z",
-  "next_issue_id": 702,
+  "last_updated": "2026-08-14T04:49:04Z",
+  "next_issue_id": 703,
   "issues": [
+    {
+      "id": "ISS-0702",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/780",
+      "severity": "BLOCKER",
+      "status": "RESOLVED",
+      "title": "PRM-06..09 batch — implementation compile errors BLOCK test compilation (zig 0.16 incompatibilities)",
+      "run_id": "WF02-prm-batch1-20260814",
+      "workflow_id": "WF02-prm-batch1-20260814",
+      "resolution_commit": "f5257ef26a04ec21c7b8e8e94e54aae4df9a0cb5",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/782",
+      "pr_merge_commit": "47d4c7c9",
+      "created_at": "2026-08-13T20:58:11Z",
+      "resolved_at": "2026-08-14T04:49:04Z",
+      "resolved_by": "ORCH (resolution loop 2026-08-14, after PR #782 merge)",
+      "labels": ["bug", "blocker"],
+      "affected_areas": [
+        "src/definition/assertion_rerun.zig",
+        "src/definition/sandbox_pool.zig",
+        "src/definition/pack_update.zig",
+        "build.zig"
+      ]
+    },
     {
       "id": "ISS-0701",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/767",
