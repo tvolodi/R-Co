@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-14T08:14:15Z'
+last_updated: '2026-08-14T20:10:22Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4836,25 +4836,43 @@ requirements:
     - src/api/routes/promotions.zig
     released_at: '2026-08-12T17:00:15Z'
   PRM-02:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Conflict pre-flight rejection
+    implemented_in:
+    - src/promotion/rest_api.zig
+    - src/promotion/assertion_store.zig
+    - migrations/1164_prm02_assertion_rerun.sql
+    released_at: '2026-08-14T20:10:12Z'
   PRM-03:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Plan digest binds approval to a diff
+    implemented_in:
+    - src/promotion/rest_api.zig
+    - src/promotion/sandbox.zig
+    released_at: '2026-08-14T20:10:13Z'
   PRM-04:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Promotion review state machine
+    implemented_in:
+    - src/promotion/rest_api.zig
+    - src/promotion/rollback.zig
+    - migrations/1165_prm04_rollback.sql
+    released_at: '2026-08-14T20:10:15Z'
   PRM-05:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Non-skippable human approval gate
+    implemented_in:
+    - src/promotion/rest_api.zig
+    - src/promotion/conflict_resolver.zig
+    released_at: '2026-08-14T20:10:16Z'
   PRM-06:
     status: RELEASED
     stage: '16'
