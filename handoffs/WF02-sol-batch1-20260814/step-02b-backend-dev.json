@@ -1,0 +1,50 @@
+{
+  "handoff_id": "wf02-sol-batch1-20260814-02b-backend-dev",
+  "run_id": "WF02-sol-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-sol-batch1-20260814/step-02b-backend-dev.json",
+  "created_at": "2026-08-14T04:54:49Z",
+  "started_at": "2026-08-14T04:54:49Z",
+  "completed_at": "2026-08-14T05:01:59Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "15",
+    "requirement_ids": ["SOL-02"],
+    "related_handoff_ids": [
+      "wf02-sol-batch1-20260814-03b-test-design-validator"
+    ],
+    "artifacts_in": [
+      "src/solution/store.zig"
+    ],
+    "branch_name": "feature/WF02-sol-batch1-20260814"
+  },
+  "task": {
+    "description": "WF-02 Step 02b (BACKEND-DEV rework) — implement SOL-02 AC5 TenantInactive check.\n\nThe TEST-DESIGN-VALIDATOR identified that SOL-02 AC5 is MUST but not implemented:\n> 'GIVEN a target tenant not in ACTIVE status, WHEN installation is attempted, THEN HTTP 409 is returned'\n\nTask: In src/solution/store.zig, `installPack()` function:\n1. After acquiring the pool connection and before any installation logic:\n   - Query `public.tenant WHERE id = $1::uuid` to get the tenant's `status` field\n   - If `status != 'ACTIVE'`, return `SolutionPackError.TenantInactive`\n2. Ensure `SolutionPackError.TenantInactive` exists in the error set (or add it)\n3. Ensure the HTTP handler in `src/api/routes/solution_packs.zig` maps `TenantInactive` to HTTP 409\n\nValidation:\n1. `zig build` exits 0\n2. `python tools/lint_handoffs.py` exits 0\n3. No new test failures in `zig build test`",
+    "acceptance_criteria": [
+      "installPack() checks tenant status and returns TenantInactive if not ACTIVE",
+      "HTTP handler maps TenantInactive to HTTP 409",
+      "zig build exits 0",
+      "lint_handoffs.py exits 0"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented SOL-02 AC5: TenantInactive check in installPack(). Added tenant_context import to store.zig; queries public.tenant WHERE id = $1::uuid before any install logic and returns SolutionPackError.TenantInactive when status != ACTIVE or row absent. HTTP handler maps TenantInactive to HTTP 409 with body {\"error\":\"TenantInactive\",\"message\":\"Target tenant is not in ACTIVE status\"}. zig build exits 0; no new unit test failures.",
+    "artifacts_out": [
+      "src/solution/store.zig",
+      "src/api/routes/solution_packs.zig"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "commit_sha_list": ["ef13a294"]
+    },
+    "next_action": "ORCH routes to TEST-DESIGNER rework1 to add TC-SOL02-05"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

@@ -132,7 +132,7 @@ BEGIN
         p_pipeline_run_id, p_payload_full, p_prev_chain_hash, p_trace_id
     );
     BEGIN
-        v_hash := encode(digest(convert_to(v_canon, 'UTF8'), 'sha256'), 'hex');
+        v_hash := encode(public.digest(convert_to(v_canon, 'UTF8'), 'sha256'), 'hex');
     EXCEPTION WHEN OTHERS THEN
         -- Sentinel: 64 hex zeros — recognised as invalid by
         -- bpm_audit_validate_chain which will skip the row.
@@ -443,7 +443,7 @@ BEGIN
                         p_pipeline_run_id, p_payload_full, p_prev_chain_hash, p_trace_id
                     );
                     BEGIN
-                        v_hash := encode(digest(convert_to(v_canon, 'UTF8'), 'sha256'), 'hex');
+                        v_hash := encode(public.digest(convert_to(v_canon, 'UTF8'), 'sha256'), 'hex');
                     EXCEPTION WHEN OTHERS THEN
                         v_hash := repeat('0', 64);
                         RAISE WARNING 'bpm_audit_compute_chain_hash: payload could not be encoded as UTF-8, returning zero hash. SQLERRM=%', SQLERRM;

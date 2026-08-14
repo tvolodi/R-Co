@@ -90,6 +90,8 @@ pub const pin_rebind_routes = @import("api/routes/pin_rebind.zig"); // PIN-05 re
 pub const tenant_status_middleware = @import("api/middleware/tenant_status.zig"); // TNT-06 MIGRATING status middleware
 pub const service_catalog_repo = @import("repository/service_catalog.zig"); // SVC-01/SVC-04 service catalog store
 pub const services_routes = @import("api/routes/services.zig"); // SVC-04 service catalog HTTP handlers
+pub const solution_pack_store = @import("solution/store.zig"); // SOL-01/02/03
+pub const solution_pack_routes = @import("api/routes/solution_packs.zig"); // SOL-01/02 HTTP handlers
 
 const placeholder_health_live = "{\"status\":\"live\"}";
 const placeholder_health_ready = "{\"status\":\"ready\",\"api\":\"placeholder\"}";
@@ -718,9 +720,28 @@ fn serveRequest(
                     resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
                 }
             } else if (method == .POST and std.mem.eql(u8, seg5, "activate")) {
-                const r = definition_routes.handleActivate(def_store, req_alloc, seg4);
-                resp_status = r.status_code;
-                resp_body = r.body;
+                // SOL-03: role-mapping gate check before activation.
+                // Fail-open: gate errors do not block activation (logged implicitly).
+                var sol_store = solution_pack_store.SolutionPackStore.init(pool);
+                const gate = sol_store.checkRoleGate(req_alloc, seg4) catch
+                    solution_pack_store.RoleGateResult{ .allowed = true, .unbound_roles = &.{} };
+                if (!gate.allowed) {
+                    var gate_buf: std.ArrayList(u8) = .empty;
+                    gate_buf.appendSlice(req_alloc, "{\"error\":\"UNBOUND_ROLES\",\"unbound_roles\":[") catch {};
+                    for (gate.unbound_roles, 0..) |rname, ri| {
+                        if (ri > 0) gate_buf.append(req_alloc, ',') catch {};
+                        gate_buf.append(req_alloc, '"') catch {};
+                        gate_buf.appendSlice(req_alloc, rname) catch {};
+                        gate_buf.append(req_alloc, '"') catch {};
+                    }
+                    gate_buf.appendSlice(req_alloc, "]}") catch {};
+                    resp_status = 422;
+                    resp_body = gate_buf.toOwnedSlice(req_alloc) catch "{\"error\":\"UNBOUND_ROLES\"}";
+                } else {
+                    const r = definition_routes.handleActivate(def_store, req_alloc, seg4);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                }
             } else if (method == .POST and std.mem.eql(u8, seg5, "deprecate")) {
                 const r = definition_routes.handleDeprecate(def_store, req_alloc, seg4);
                 resp_status = r.status_code;
@@ -1396,6 +1417,20 @@ fn serveRequest(
                 const r = identity_routes.handleReactivateTenant(id_svc, req_alloc, actor, seg4, body);
                 resp_status = r.status_code;
                 resp_body = r.body;
+            } else if (method == .POST and std.mem.eql(u8, seg5, "solution-packs") and
+                (std.mem.eql(u8, seg6, "export") or std.mem.eql(u8, seg6, "install")))
+            {
+                // SOL-01: POST /api/v1/tenants/{tenant_id}/solution-packs/export
+                // SOL-02: POST /api/v1/tenants/{tenant_id}/solution-packs/install
+                if (std.mem.eql(u8, seg6, "export")) {
+                    const r = solution_pack_routes.handleExport(pool, req_alloc, body);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    const r = solution_pack_routes.handleInstall(pool, req_alloc, user_id, body);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                }
             } else if (method == .POST and std.mem.eql(u8, seg5, "promote") and seg6.len > 0) {
                 // ENV-03: POST /api/v1/tenants/:test_tenant_id/promote/:definition_name
                 const r = promotion_routes.handlePromotion(pool, req_alloc, actor, seg4, seg6);

@@ -118,8 +118,7 @@ pub const SandboxPool = struct {
 
         // Create empty copies of the fixture-target tables so tests can
         // INSERT fixture rows into the sandbox without touching organic data.
-        const setup_sql = std.fmt.allocPrint(
-            allocator,
+        const setup_sql = std.fmt.allocPrint(allocator,
             \\DO $body$
             \\BEGIN
             \\  EXECUTE 'CREATE TABLE "{s}".process_definitions (LIKE tenant_default.process_definitions INCLUDING DEFAULTS)';
