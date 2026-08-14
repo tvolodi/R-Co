@@ -1,0 +1,30 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-01-code-designer-rework1",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "CODE-DESIGNER",
+  "agent_name": "BPM Code Designer (CODE-DESIGNER)",
+  "step": "01",
+  "created_at": "2026-08-15T01:39:20Z",
+  "started_at": "2026-08-15T01:51:03Z",
+  "completed_at": "2026-08-15T01:53:22Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Design rework1 for PLC-01/02/03/04 complete. All 7 issues addressed: PLC-01 adds ModuleAlreadyActive (409), SubProcessHasBothChildDefAndModuleRef (422), global module_id uniqueness; PLC-03 fixes algorithm (optional->required is breaking), resolves OQ-1 (predecessor = highest semver < new), OQ-2 (null predecessor = no warning); PLC-04 adds audit_log events for grant/revoke. Commit 10bd0eeb on feature/WF02-plc-batch-a-20260815.",
+    "artifacts_out": [
+      "src/design/plc-01-process-module-catalog.md",
+      "src/design/plc-02-catalog-publication-requires-interface.md",
+      "src/design/plc-03-cross-version-compatibility.md",
+      "src/design/plc-04-cross-tenant-distribution.md"
+    ],
+    "issues": []
+  },
+  "task": {
+    "description": "REWORK 1 — Fix design gaps for PLC-01, PLC-02, PLC-03, PLC-04 (Stage 15, MUST/should).\n\nBRANCH: feature/WF02-plc-batch-a-20260815 (commit 8c5b3fc0)\n\nOPEN QUESTIONS — RESOLVED BY ORCH:\n1. PLC-01 OQ-2: module_id is GLOBALLY UNIQUE across all tenants. Affects primary key and share-table join.\n2. PLC-03 OQ-1: Predecessor = highest ACTIVE version with semver < new (full semver, not same-major-only).\n3. PLC-04 OQ-3: YES — grantModuleVisibility and revokeModuleVisibility MUST emit structured audit_log events.\n\nPREVIOUS ISSUES TO FIX:\n4. PLC-01-AC-MISSING: SUB_PROCESS with BOTH child_definition_id AND module_ref must be HTTP 422. Add to error taxonomy.\n5. PLC-01-PUBLISH-ALREADY-ACTIVE: Add ModuleAlreadyActive variant to ModuleCatalogError enum (HTTP 409 Conflict).\n6. PLC-03-OQ-2: null predecessor case (first ACTIVE version) must be explicitly handled — no warnings.\n7. PLC-03-OQ-3-ALGORITHM-BUG: optional->required is a breaking change. Update algorithm: if new.required == true AND prev.required in [false, absent] -> breaking.\n\nUpdate the 4 existing design files. Git add + git commit on feature/WF02-plc-batch-a-20260815.\n\nReturn PASS with updated artefact list.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
+  "stage": "stage15"
+}
