@@ -5,13 +5,14 @@
 //!   TC-SOL02-02: Service catalog conflict → CatalogConflict, transaction rolled back
 //!   TC-SOL02-03: Matching existing catalog entry → reused, no conflict
 //!   TC-SOL02-04: Re-install same pack version → idempotent (warning returned)
+//!   TC-SOL02-05: installPack returns TenantInactive when target tenant status != ACTIVE
 //!
 //! Per-test isolation: every test uses a per-test UUID as pack_id; every test
 //! registers a defer cleanup block. No error.SkipZigTest on MUST tests.
 //!
 //! BPM_TEST_DB_URL must be set; tests fail with a clear error when absent.
 //!
-//! Requirement traceability: SOL-02 AC1..AC5 → TC-SOL02-01..04
+//! Requirement traceability: SOL-02 AC1..AC5 → TC-SOL02-01..05
 
 const std = @import("std");
 const portable_env = @import("env");
@@ -450,4 +451,76 @@ test "TC-SOL02-04: installPack with duplicate (pack_id, version) is idempotent �
     // Exactly one solution_pack_installs row.
     const count = try countInstallRows(&pool, alloc, pack_id);
     try testing.expectEqual(@as(i64, 1), count);
+}
+
+// ---------------------------------------------------------------------------
+// TC-SOL02-05: Tenant inactive → TenantInactive error.
+// ---------------------------------------------------------------------------
+
+test "TC-SOL02-05: installPack returns TenantInactive when target tenant status != ACTIVE; HTTP 409" {
+    const alloc = testing.allocator;
+    var lock_conn = try helpers.acquireIntegrationLock(alloc);
+    defer helpers.releaseIntegrationLock(&lock_conn);
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    // Use the default tenant pool to insert the suspended tenant fixture.
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const tenant_id = try helpers.uuidBytesToString(alloc, helpers.randomUuidBytes());
+    defer alloc.free(tenant_id);
+    const tenant_slug = try std.fmt.allocPrint(alloc, "susp-{s}", .{tenant_id[0..8]});
+    defer alloc.free(tenant_slug);
+
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        try conn.exec(
+            \\INSERT INTO public.tenant (id, slug, display_name, status)
+            \\VALUES ($1::uuid, $2, 'TC05 Inactive Tenant', 'INACTIVE')
+        , &[_][]const u8{ tenant_id, tenant_slug });
+    }
+    // Cleanup: restore default context then delete the fixture tenant row.
+    defer {
+        bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
+        const conn = pool.acquire() catch return;
+        defer pool.release(conn);
+        conn.exec(
+            "DELETE FROM public.tenant WHERE id = $1::uuid",
+            &[_][]const u8{tenant_id},
+        ) catch {};
+    }
+
+    // Switch tenant context to the inactive tenant so installPack resolves it.
+    bpm.api_tenant_context.set(tenant_id);
+
+    const pack_id = try helpers.uuidBytesToString(alloc, helpers.randomUuidBytes());
+    defer alloc.free(pack_id);
+    const src_def_id = try helpers.uuidBytesToString(alloc, helpers.randomUuidBytes());
+    defer alloc.free(src_def_id);
+
+    const defs = [_]PackedDefinition{.{
+        .definition_id = src_def_id,
+        .process_key = "sol02-tc05-process",
+        .name = "sol02-tc05-process",
+        .version = "1.0.0",
+        .graph = MINIMAL_GRAPH,
+        .variable_schema = "{}",
+    }};
+    const doc = SolutionPackDocument{
+        .pack_id = pack_id,
+        .version = "1.0.0",
+        .bpm_export_schema_version = PACK_SCHEMA_VERSION,
+        .exported_at = "2026-08-14T00:00:00Z",
+        .definitions = &defs,
+        .service_catalog_entries = &.{},
+        .variable_schemas = &.{},
+        .manifest = PackManifest{ .required_roles = &.{} },
+    };
+
+    var store = SolutionPackStore.init(&pool);
+    const result = store.installPack(alloc, doc, ACTOR_ID);
+    try testing.expectError(SolutionPackError.TenantInactive, result);
 }

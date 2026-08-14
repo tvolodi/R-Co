@@ -29,9 +29,10 @@
 | TC-SOL02-01 | SOL-02 AC1 + AC4 | Build a `SolutionPackDocument` with 1 `PackedDefinition` (minimal graph), no catalog entries, 1 manifest role that is NOT bound in `tenant_role` | `installPack(doc, actor_id)` | `result.installed_definitions` has 1 entry with `status="DRAFT"`; a `solution_pack_installs` row exists in DB; `role_mapping_checklist` has 1 entry with `bound=false`; no auto-activation |
 | TC-SOL02-02 | SOL-02 AC2 | Pre-insert a `public.service_catalog` row with `service_id="sol02-conflict-svc"`; build a pack with the same `service_id` but a **different** `request_schema` | `installPack(doc, actor_id)` | Returns `error.CatalogConflict`; no `solution_pack_installs` row created (transaction rolled back) |
 | TC-SOL02-03 | SOL-02 AC3 | Pre-insert a `public.service_catalog` row; build a pack with the **identical** `service_id` and **identical** schemas | `installPack(doc, actor_id)` | Install succeeds (no error); `result.installed_definitions` has 1 entry; only 1 `service_catalog` row for that `service_id` exists |
-| TC-SOL02-04 | SOL-02 AC5 | Install a pack once; keep the exact same `doc` | `installPack(doc, actor_id)` a second time | Second call returns a result (no error); `result.warnings` contains the idempotent-skip message; exactly 1 `solution_pack_installs` row for `(pack_id, pack_version)` |
+| TC-SOL02-04 | SOL-02 AC5 (idempotent) | Install a pack once; keep the exact same `doc` | `installPack(doc, actor_id)` a second time | Second call returns a result (no error); `result.warnings` contains the idempotent-skip message; exactly 1 `solution_pack_installs` row for `(pack_id, pack_version)` |
+| TC-SOL02-05 | SOL-02 AC5 (TenantInactive) | Insert a `public.tenant` row with `status='INACTIVE'` and a per-test UUID; set tenant context to that UUID | `installPack(doc, actor_id)` | Returns `SolutionPackError.TenantInactive`; no `solution_pack_installs` row created |
 
-**SOL-02 test count: 4**
+**SOL-02 test count: 5**
 
 ---
 
@@ -52,8 +53,8 @@
 | Requirement | MUST ACs | Test IDs | Count |
 |-------------|----------|----------|-------|
 | SOL-01 | AC1, AC3 | TC-SOL01-01..04 | 4 |
-| SOL-02 | AC1, AC2, AC3, AC4, AC5 | TC-SOL02-01..04 | 4 |
+| SOL-02 | AC1, AC2, AC3, AC4, AC5 | TC-SOL02-01..05 | 5 |
 | SOL-03 | AC1, AC2, AC3 | TC-SOL03-01..03 | 3 |
-| **Total** | | | **11** |
+| **Total** | | | **12** |
 
-All 11 test cases are implemented. No deferred or phase-2 cases. No `error.SkipZigTest` on any MUST test.
+All 12 test cases are implemented. No deferred or phase-2 cases. No `error.SkipZigTest` on any MUST test.
