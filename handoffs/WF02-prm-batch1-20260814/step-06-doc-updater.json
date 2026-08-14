@@ -1,0 +1,51 @@
+{
+  "handoff_id": "wf02-prm-batch1-20260814-06-doc-updater",
+  "run_id": "WF02-prm-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-prm-batch1-20260814/step-06-doc-updater.json",
+  "created_at": "2026-08-14T03:10:40Z",
+  "started_at": "2026-08-14T03:10:40Z",
+  "completed_at": "2026-08-14T03:12:50Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": ["PRM-06", "PRM-07", "PRM-08", "PRM-09"],
+    "related_handoff_ids": [
+      "wf02-prm-batch1-20260814-05-release-validator"
+    ],
+    "branch_name": "feature/WF02-prm-batch1-20260814",
+    "release_decision": "docs/status/release-decision-WF02-prm-batch1-20260814.yaml"
+  },
+  "task": {
+    "description": "WF-02 Step 06 (DOC-UPDATER) for WF02-prm-batch1-20260814.\n\n1. Update CHANGELOG.md — add entry for PRM-06/07/08/09 release (stage 16, promotion assertion re-run, sandbox teardown, rollback, pack update)\n2. Update requirement status — mark PRM-06, PRM-07, PRM-08, PRM-09 as RELEASED:\n   `python tools/reqctl.py set-status PRM-06 RELEASED --run WF02-prm-batch1-20260814`\n   `python tools/reqctl.py set-status PRM-07 RELEASED --run WF02-prm-batch1-20260814`\n   `python tools/reqctl.py set-status PRM-08 RELEASED --run WF02-prm-batch1-20260814`\n   `python tools/reqctl.py set-status PRM-09 RELEASED --run WF02-prm-batch1-20260814`\n3. Regenerate status: `python tools/reqctl.py render-status`\n4. `python tools/lint_handoffs.py` — must exit 0\n5. Commit: `git commit -m 'chore(WF02-prm-batch1): DOC-UPDATER — PRM-06/07/08/09 RELEASED, CHANGELOG updated'`\n6. Push: `git push origin feature/WF02-prm-batch1-20260814`\n\nThen: dispatch step-final to BACKEND-DEV to create PR and squash-merge to main.\n\nNote: Close the GitHub tracking issues for PRM-06/07/08/09 if they have tracking issue numbers.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with PRM-06/07/08/09 entries",
+      "PRM-06 status = RELEASED in docs/requirements.yaml",
+      "PRM-07 status = RELEASED",
+      "PRM-08 status = RELEASED",
+      "PRM-09 status = RELEASED",
+      "docs/status/requirement_status.yaml regenerated",
+      "lint_handoffs.py exits 0",
+      "Changes committed and pushed"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PRM-06, PRM-07, PRM-08, PRM-09 marked RELEASED in docs/requirements.yaml; docs/status/requirement_status.yaml regenerated (463 entries); CHANGELOG.md updated with Stage 16 batch 1 entry; lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR); changes committed and pushed on feature/WF02-prm-batch1-20260814; GitHub tracking issues #239, #240, #241, #242 closed with release comment.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml",
+      "handoffs/registry.json"
+    ],
+    "issues": [],
+    "next_action": "ORCH dispatches step-final to BACKEND-DEV: create PR, squash-merge to main, delete branch."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,171 @@
+{
+  "handoff_id": "wf02-prm-batch1-20260814-03b-test-design-validator",
+  "run_id": "WF02-prm-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "03b",
+  "from_agent": "TEST-DESIGNER",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-prm-batch1-20260814/step-03b-test-design-validator.json",
+  "created_at": "2026-08-13T21:03:57Z",
+  "priority": "HIGH",
+  "status": "COMPLETED",
+  "context": {
+    "branch": "feature/WF02-prm-batch1-20260814",
+    "commit": "f5257ef2",
+    "requirement_ids": ["PRM-06", "PRM-07", "PRM-08", "PRM-09"],
+    "artifacts_in": [
+      "tests/specs/prm-06-09-promotion-assertion-rerun.md",
+      "tests/integration/prm-06-07-promotion-assertion.test.zig",
+      "tests/integration/prm-08-rollback-sandbox.test.zig",
+      "tests/integration/prm-09-pack-update.test.zig",
+      "src/definition/assertion_rerun.zig",
+      "src/definition/sandbox_pool.zig",
+      "src/definition/rollback.zig",
+      "src/definition/pack_update.zig"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "14 spec test cases validated against 14 implemented test blocks across 3 test files. All MUST requirements (PRM-06, PRM-07) have at least one integration test. No error.SkipZigTest on any MUST AC. No deferred/future/phase-2 labels on spec test cases. Fixture isolation uses per-test UUIDs throughout. All tests fail with error.MissingTestDatabaseUrl when BPM_TEST_DB_URL is absent. All SQL uses parameterized queries ($1/$2/…). No credentials or secrets hardcoded. 3 MAJOR issues and 3 MINOR issues recorded below; none are hard-gate failures. Pass with issues.",
+    "checks": [
+      {
+        "id": "C-01",
+        "description": "Every MUST requirement (PRM-06, PRM-07) has at least one integration test file actually implemented",
+        "result": "PASS",
+        "detail": "PRM-06: TC-PRM-06-01/02/03/04 (4 tests). PRM-07: TC-PRM-07-01/02 (2 tests)."
+      },
+      {
+        "id": "C-02",
+        "description": "No error.SkipZigTest on any test block covering a MUST requirement",
+        "result": "PASS",
+        "detail": "grep for 'SkipZigTest' across all three test files returns only comment lines. No actual skip in code."
+      },
+      {
+        "id": "C-03",
+        "description": "No spec test case labelled deferred / future / phase 2",
+        "result": "PASS",
+        "detail": "Spec uses 'gap' (not a test-case label) for 10 ACs. All 14 declared test cases have implementations."
+      },
+      {
+        "id": "C-04",
+        "description": "Spec test case count matches implemented test block count",
+        "result": "PASS",
+        "detail": "Coverage table: 14 TCs (TC-PRM-06-01..04, TC-PRM-07-01..02, TC-PRM-08-01..04, TC-PRM-09-01..04). Grep for ^test \" across 3 files: 14 blocks. Exact match."
+      },
+      {
+        "id": "C-05",
+        "description": "Fixture isolation: all integration test fixtures use per-test UUIDs",
+        "result": "PASS",
+        "detail": "All tenant_id, review_id, def_id, artefact_id values generated via randomUuidStr() (std.testing.io.random-seeded). One static sentinel UUID (00000000-0000-0000-0000-000000000000) used as production_tenant_id FK placeholder — not a fixture identity value; recorded as MINOR issue ISS-V-06."
+      },
+      {
+        "id": "C-06",
+        "description": "No fixture state shared across test blocks",
+        "result": "PASS",
+        "detail": "Each test block creates its own tenant UUID and uses it as the scope for all inserts. No module-level state."
+      },
+      {
+        "id": "C-07",
+        "description": "Every test cleans up fixtures even on failure (defer cleanup pattern)",
+        "result": "PASS",
+        "detail": "All three test files use 'defer dropTenantFixtures(...)' immediately after fixture creation. Cleanup runs on both pass and error paths."
+      },
+      {
+        "id": "C-08",
+        "description": "Tests connect to DB via BPM_TEST_DB_URL; fail with clear error when absent",
+        "result": "PASS",
+        "detail": "All three getDbUrl() functions map error.EnvironmentVariableMissing to a print + return, which the test harness propagates as error.MissingTestDatabaseUrl. No silent skip."
+      },
+      {
+        "id": "C-09",
+        "description": "Tests that require HTTP server start it themselves or use a health-check function",
+        "result": "PASS",
+        "detail": "No test in any of the three files requires an external running HTTP server. Route handlers (handleRollback, handleRunAssertions) are called as library functions, not via HTTP."
+      },
+      {
+        "id": "C-10",
+        "description": "Tests that require external services call a documented setup helper",
+        "result": "PASS",
+        "detail": "No external service (Keycloak, S3, etc.) is referenced by any of the three test files."
+      },
+      {
+        "id": "C-11",
+        "description": "No credentials, secrets, or real production URLs hardcoded",
+        "result": "PASS",
+        "detail": "grep for 'password|secret|localhost' across test files: zero matches in code; only comment lines and column name 'production_tenant_id'. DB URL sourced from environment variable only."
+      },
+      {
+        "id": "C-12",
+        "description": "All SQL in test files uses parameterised queries only",
+        "result": "PASS",
+        "detail": "All conn.exec / conn.query / conn.queryRow calls use $1/$2/… placeholders with separate &[_][]const u8{...} arrays. No string concatenation of test data into SQL found."
+      },
+      {
+        "id": "C-13",
+        "description": "Pipeline steps (MAJOR — non-blocking): every MUST requirement with sequential UI action has pl.step()",
+        "result": "PASS",
+        "detail": "PRM-06 and PRM-07 are pure backend API features (no sequential UI action sequence). No Playwright pipeline step is required or expected. Check N/A."
+      }
+    ],
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "ISS-V-01",
+        "severity": "MAJOR",
+        "requirement": "PRM-07",
+        "ac": "AC1",
+        "test_case": "TC-PRM-07-01",
+        "description": "TC-PRM-07-01 tests the SQL of recordTeardownFailure directly (manual INSERT + CASE WHEN UPDATE) rather than calling applyPromotionAssertionRerun() with a rigged-to-fail release(). The spec's When clause ('applyPromotionAssertionRerun() is called and release() is rigged to fail') is not exercised. A bug in the release() → recordTeardownFailure() call chain would pass this test undetected. PRM-07 AC1 (MUST) has SQL-level coverage but not end-to-end code-path coverage.",
+        "recommendation": "TEST-DESIGNER should rework TC-PRM-07-01 to use a SandboxPool stub or table-driven approach that forces release() to return SandboxPoolError.ProvisionFailed, then call applyPromotionAssertionRerun() and assert result.status == .teardown_failed from the function return."
+      },
+      {
+        "id": "ISS-V-02",
+        "severity": "MAJOR",
+        "requirement": "PRM-07",
+        "ac": "AC1",
+        "test_case": "TC-PRM-07-01",
+        "description": "TC-PRM-07-01 does not verify that a PROMOTION_ASSERTION_TEARDOWN_FAILED event is appended to the events table after teardown failure. PRM-07 AC1 requires this event. No other test case covers this assertion.",
+        "recommendation": "Add a countEvents(pool, tenant_id, 'PROMOTION_ASSERTION_TEARDOWN_FAILED') assertion to TC-PRM-07-01 (or a new TC-PRM-07-03)."
+      },
+      {
+        "id": "ISS-V-03",
+        "severity": "MAJOR",
+        "requirement": "PRM-08",
+        "ac": "AC4",
+        "test_case": "TC-PRM-08-03",
+        "description": "TC-PRM-08-03 silently returns (no assertions) when promotion_reviews table is absent (clean b386ff3f DB). The catch block executes 'return;' which causes the Zig test framework to record the test as passed. This is functionally equivalent to error.SkipZigTest for the AC4 assertion path. On a clean test DB, TC-PRM-08-03 provides zero coverage for PRM-08 AC4. PRM-08 is SHOULD so this is not a hard-gate failure, but it masks the gap. Documented as MAJOR in spec's result.issues.",
+        "recommendation": "Either (a) precondition the test exclusively on has_pr == true and return error.SkipZigTest (acceptable on SHOULD ACs) with a comment, or (b) remove TC-PRM-08-03 and consolidate AC4 coverage into TC-PRM-08-01 once promotion_reviews is available."
+      },
+      {
+        "id": "ISS-V-04",
+        "severity": "MINOR",
+        "requirement": "PRM-06",
+        "ac": "AC3, PRM-07 AC3, PRM-07 AC5",
+        "test_case": "none",
+        "description": "Three MUST ACs have no integration tests: PRM-06 AC3 (non-deterministic field comparison; replay engine is a placeholder), PRM-07 AC3 (GET /api/v1/promotions/{id} endpoint not in b386ff3f), PRM-07 AC5 (sandbox reaper not in b386ff3f). Spec correctly documents all three as infrastructure gaps requiring follow-on batch. Per requirement-level check, PRM-06 and PRM-07 each have at least one passing test, so the hard gate is satisfied.",
+        "recommendation": "ORCH should create a follow-on batch that implements the missing endpoint, reaper, and non-deterministic replay engine, then assigns these ACs to TEST-DESIGNER for coverage."
+      },
+      {
+        "id": "ISS-V-05",
+        "severity": "MINOR",
+        "requirement": "PRM-06",
+        "ac": "AC4",
+        "test_case": "TC-PRM-06-04",
+        "description": "TC-PRM-06-04 omits the HTTP 422 route handler call. The test comment explains that calling the handler directly would produce 503 (not 422) because a fresh SandboxPool with max_concurrent=4 would attempt to claim a sandbox before checking status. Only the domain-level result.status == .failed and promotion_assertion_runs.status == 'failed' are asserted. The HTTP 422 mapping for RunStatus.failed is untested at the integration level.",
+        "recommendation": "Mock or directly construct the handler with a pre-loaded run result (bypassing the sandbox claim) to verify the 422 status_code mapping."
+      },
+      {
+        "id": "ISS-V-06",
+        "severity": "MINOR",
+        "requirement": "all",
+        "ac": "fixture isolation",
+        "test_case": "all",
+        "description": "All three test files use static nil UUID '00000000-0000-0000-0000-000000000000' as the production_tenant_id FK value when inserting test tenants. This is not a fixture identity value but a structural FK sentinel. If the FK is enforced via a foreign key constraint and no tenant with this ID exists, inserts would fail. Earlier test batches use the same pattern, suggesting the FK is either deferrable or a bootstrap tenant with this ID is assumed to exist. This should be confirmed in the schema migration.",
+        "recommendation": "Verify in migration that production_tenant_id FK is deferrable or that a bootstrap nil-UUID tenant row is seeded by the test DB setup script."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4) — build targets: zig build test-integration-prm06-07, zig build test-integration-prm08, zig build test-integration-prm09. ISS-V-01 and ISS-V-02 should be logged as follow-on TEST-DESIGNER rework items but do not block this run."
+  },
+  "completed_at": "2026-08-13T21:03:57Z"
+}

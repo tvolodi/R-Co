@@ -1,0 +1,39 @@
+{
+  "handoff_id": "wf02-prm-batch1-20260814-01c-code-designer-rework",
+  "run_id": "WF02-prm-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "01c",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-prm-batch1-20260814/step-01c-code-designer-rework.json",
+  "created_at": "2026-08-13T19:27:08Z",
+  "started_at": "2026-08-13T19:27:08Z",
+  "completed_at": "2026-08-13T19:38:56Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": ["PRM-06", "PRM-07", "PRM-08", "PRM-09"],
+    "related_handoff_ids": ["wf02-prm-batch1-20260814-01b-code-design-validator"],
+    "artifacts_in": ["src/design/prm-batch1-promotion-assertion-rerun.md"]
+  },
+  "task": {
+    "description": "REWORK: Fix 4 issues flagged by CODE-DESIGN-VALIDATOR in src/design/prm-batch1-promotion-assertion-rerun.md.\n\n**MAJOR 1 (line ~173):** PromotionArtifact + AssertionRerunResult + AssertionRerunError fenced block >40 lines. Split into shorter stubs or move to a types table.\n\n**MAJOR 2 (line ~489):** 7-step SQL sequence inside rollbackDefinitionVersion() fenced block >40 lines. Condense to 4-5 line sketch or prose bullets.\n\n**MAJOR 3 (line ~559):** PackUpdateArtefactEntry / PackUpdatePlan / IncomingArtefact fenced block >40 lines. Summarise as a table of field names + types.\n\n**MAJOR 4 (INTEGRATION_POINT_MISSING):** applyPromotionAssertionRerun() has no call site. Both route handler files are in 'Files NOT to change', but the pre-promotion assertion gate must run before promoteDefinition(). Fix by either:\n- Adding a new handler file to 'New files to create' that owns the apply path and maps RunStatus.failed → HTTP 422\n- OR removing the relevant promotion route file from 'Files NOT to change' and specifying the exact modification needed\n\n**MINOR 1-3:** Replace public.tenant with bare `tenant` in 3 places (lines ~102, ~680, ~699).\n\nUpdate src/design/prm-batch1-promotion-assertion-rerun.md to fix all 4 MAJOR issues and 3 MINOR issues. Then run python tools/lint_design_artefact.py against the file to confirm 0 MAJOR findings before returning.",
+    "acceptance_criteria": [
+      "No fenced code block >40 lines",
+      "Integration point for applyPromotionAssertionRerun() call site specified",
+      "public.tenant replaced with bare tenant",
+      "lint_design_artefact.py exits 0 MAJOR"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework complete — 4 MAJOR + 3 MINOR issues resolved in src/design/prm-batch1-promotion-assertion-rerun.md. MAJOR 1: PromotionArtifact/AssertionRerunResult/AssertionRerunError block split into 3 field-name/type tables. MAJOR 2: rollbackDefinitionVersion() 7-step SQL fenced block condensed to 5 prose bullets. MAJOR 3: PackUpdateArtefactEntry/PackUpdatePlan/IncomingArtefact block converted to 4 tables. MAJOR 4: PRM-06 section 7 added (HTTP integration point for POST /api/v1/promotions/{review_id}/run-assertions, RunStatus.failed → HTTP 422); src/api/routes/promotion_assertion.zig added to New files to create. MINOR 1-3: public.tenant replaced with bare tenant in all 3 occurrences. lint_design_artefact.py exits 0.",
+    "artifacts_out": ["src/design/prm-batch1-promotion-assertion-rerun.md"],
+    "issues": [], "git_evidence": {"branch_name": null, "commit_sha_list": [], "remote_branch": null, "push_status": null, "pr_url": null, "pr_create_error": null},
+    "next_action": "After PASS: ORCH re-dispatches step-01b for re-validation"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

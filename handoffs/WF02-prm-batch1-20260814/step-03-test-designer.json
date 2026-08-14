@@ -1,0 +1,100 @@
+{
+  "handoff_id": "wf02-prm-batch1-20260814-03-test-designer",
+  "run_id": "WF02-prm-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-prm-batch1-20260814/step-03-test-designer.json",
+  "created_at": "2026-08-13T19:04:24Z",
+  "started_at": "2026-08-13T20:50:00Z",
+  "completed_at": "2026-08-13T20:55:00Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": [
+      "PRM-06",
+      "PRM-07",
+      "PRM-08",
+      "PRM-09"
+    ],
+    "related_handoff_ids": [
+      "wf02-prm-batch1-20260814-01-code-designer",
+      "wf02-prm-batch1-20260814-01b-code-design-validator",
+      "wf02-prm-batch1-20260814-01c-code-designer-rework",
+      "wf02-prm-batch1-20260814-02a-backend-dev"
+    ],
+    "artifacts_in": [
+      "src/design/prm-batch1-promotion-assertion-rerun.md",
+      "migrations/1156_prm06_promotion_assertion_runs.sql",
+      "migrations/1157_prm09_solution_pack_update.sql",
+      "src/definition/assertion_rerun.zig",
+      "src/definition/sandbox_pool.zig",
+      "src/definition/fixture_loader.zig",
+      "src/definition/rollback.zig",
+      "src/definition/pack_update.zig",
+      "src/api/routes/promotion_assertion.zig",
+      "src/api/routes/definition_rollback.zig"
+    ],
+    "branch_name": "feature/WF02-prm-batch1-20260814",
+    "implementation_commit": "b386ff3f"
+  },
+  "task": {
+    "description": "Test design for PRM-06/07/08/09 batch. Produce runnable integration tests that cover every MUST and SHOULD acceptance criterion. PRM-06/07 are MUST — must have integration tests, no `error.SkipZigTest`, no hardcoded UUIDs.\n\nActual implementation file paths (design used `src/promotion/*` but BACKEND-DEV placed them under `src/definition/*`):\n- src/definition/assertion_rerun.zig — applyPromotionAssertionRerun(), buildIdempotencyKey(), RunStatus enum\n- src/definition/sandbox_pool.zig — SandboxPool, claim()/release(), SandboxClaim\n- src/definition/fixture_loader.zig — loadFixturesOnly(), FixtureLoadError, ALLOWLIST\n- src/definition/rollback.zig — rollbackDefinitionVersion(), RollbackResult, RollbackError\n- src/definition/pack_update.zig — computePackUpdatePlan(), PackUpdatePlan, ArtefactClassification enum\n- src/api/routes/promotion_assertion.zig — handleRunAssertions() HTTP handler\n- src/api/routes/definition_rollback.zig — handleRollback() HTTP handler\n- src/bpm.zig — re-exports the above via bpm.promotion_assertion_rerun, bpm.sandbox_pool, etc.\n\nMigrations:\n- migrations/1156_prm06_promotion_assertion_runs.sql (promotion_assertion_runs per-tenant table; UNIQUE(tenant_id, idempotency_key))\n- migrations/1157_prm09_solution_pack_update.sql (solution_pack_installs + solution_pack_artefact_bases + pack_update_resolutions in public)\n\nAcceptance criteria (verbatim from docs/requirements.yaml):\nPRM-06 (MUST):\n  AC1 — replay twice with same (review_id, plan_digest) returns cached outcome and does NOT claim a second sandbox\n  AC2 — sandbox contains only rows named in fixtures[] (organic rows excluded)\n  AC3 — replay twice with same artifact produces identical result sets after stripping non_deterministic_fields\n  AC4 — assertion failure -> status='failed', review moves approved->failed, HTTP 422 with failing ids, target active version unchanged\n  AC5 — no sandbox free within 60s -> HTTP 503 SandboxUnavailable, review remains 'approved'\nPRM-07 (MUST):\n  AC1 — assertions passed + release fails -> promotion applies, status='teardown_failed', PROMOTION_ASSERTION_TEARDOWN_FAILED appended\n  AC2 — replay panics -> release still invoked\n  AC3 — teardown failure -> GET /api/v1/promotions/{id} names failed teardown and sandbox_id\n  AC4 — teardown failure NEVER sets promotion_reviews.status='failed' and never blocks version pointer move\n  AC5 — leaked sandbox reaped -> reclamation recorded against same run\nPRM-08 (SHOULD):\n  AC1 — V2 active, V1 was active before -> rollback to V1 -> active pointer V1, DEFINITION_VERSION_ROLLED_BACK appended, no DDL\n  AC2 — instances started under V2 continue on their PD-08 snapshot, pinned_versions[] unchanged\n  AC3 — version never active -> HTTP 422 VersionNeverActive\n  AC4 — successful rollback -> promotion_reviews row that applied V2 moves to 'superseded' with superseded_by naming event\n  AC5 — non-platform-admin caller -> HTTP 403\nPRM-09 (SHOULD):\n  AC1 — pack P at Vb installed, tenant unmodified, Vn offered -> every changed artefact = clean_update\n  AC2 — tenant modified D after Vb, Vn also changes D -> D classified conflict; plan carries base/local/incoming; apply without resolution -> HTTP 409 UnresolvedTemplateConflict naming D\n  AC3 — conflict artefact + keep_local resolution -> tenant's artefact byte-identical; TEMPLATE_UPDATE_CONFLICT_RESOLVED appended; recorded base advances to Vn\n  AC4 — local_only artefact -> not touched; reported as retained\n  AC5 — install record for Vb absent -> every artefact tenant holds -> conflict (cannot prove no modification)\n  AC6 — conflict without resolution -> PRM-02 reject before any transaction opens\n\nSpec & tests must satisfy:\n- Every MUST req (PRM-06, PRM-07) has at least one runnable integration test\n- Every SHOULD req (PRM-08, PRM-09) has at least one runnable integration test\n- Spec case count matches test `test \"...\"` block count exactly\n- Tests connect to real PostgreSQL via BPM_TEST_DB_URL; fail clearly if env var missing\n- Per-test UUIDs (no hardcoded literals); deferred cleanup on every test block\n- No mocks/stubs/fakes for integration tests\n- parameterised SQL only (no string concat into SQL except for the DDL strings that use $1/$2 binds)\n- No hardcoded credentials\n\nValidation gates before declaring PASS:\n1. zig build test exits 0\n2. python tools/lint_test_isolation.py tests/integration exits 0 (no BLOCKER)\n3. python tools/lint_handoffs.py exits 0\n4. Every MUST requirement (PRM-06, PRM-07) has at least one integration test that would fail if the requirement were violated (fail-first confirmed via temporary revert)\n5. Spec case count == test case count\n\nUpdate handoff with:\n- status: COMPLETED, result.status: PASS\n- result.artifacts_out: list of created test spec + test files with line counts\n- result.summary: AC coverage table (requirement/AC/test mapping)\n- result.issues: empty if no blockers; MINOR/MEDIUM where the implementation diverges from the requirement (e.g. PRM-07 AC3 requires GET endpoint surfacing — backend-dev's route only writes; PRM-09 AC2 requires UnresolvedTemplateConflict HTTP 409 mapping in PRM-02 — backend-dev's pack_update.zig only returns has_unresolved_conflicts in plan; document the gap)\n- completed_at: ISO8601 UTC timestamp\n- git_evidence.branch_name: feature/WF02-prm-batch1-20260814",
+    "acceptance_criteria": [
+      "tests/specs/prm-06-09-promotion-assertion-rerun.md created",
+      "tests/integration/prm-06-07-promotion-assertion.test.zig created with at least one MUST test for each of PRM-06 AC1, AC5 and PRM-07 AC1, AC4",
+      "tests/integration/prm-08-rollback-sandbox.test.zig created with at least one test for each of PRM-08 AC1, AC3, AC4, AC5",
+      "tests/integration/prm-09-pack-update.test.zig created with at least one test for each of PRM-09 AC1, AC5",
+      "build.zig gains three test-integration-prm06-07, test-integration-prm08, test-integration-prm09 steps",
+      "Spec case count == implemented test `test \"...\"` block count (no deferred, no future, no phase-2 placeholders)",
+      "zig build test exits 0",
+      "python tools/lint_test_isolation.py tests/integration exits 0",
+      "python tools/lint_handoffs.py exits 0",
+      "result.artifacts_out populated with line counts",
+      "result.issues records known gaps between PRM-06..09 requirements and the b386ff3f implementation (severity MINOR)"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "BLOCKED",
+    "summary": "Test spec + 3 integration test files written and wired into build.zig. Compile-time verified: PRM-08 + PRM-09 tests compile cleanly. PRM-06/07 tests fail to compile due to BLOCKER defects in implementation commit b386ff3f (zig 0.16 incompatibilities + PoolError switch gap + HashMap null value). Filed as GH-780. Per TEST-DESIGNER rules, these are infrastructure blockers — not test-design gaps.",
+    "artifacts_out": [
+      "tests/specs/prm-06-09-promotion-assertion-rerun.md",
+      "tests/integration/prm-06-07-promotion-assertion.test.zig",
+      "tests/integration/prm-08-rollback-sandbox.test.zig",
+      "tests/integration/prm-09-pack-update.test.zig",
+      "build.zig (added test-integration-prm06-07, test-integration-prm08, test-integration-prm09 steps; wired into test_integration_others_step umbrella)"
+    ],
+    "issues": [
+      {
+        "id": "GH-780",
+        "severity": "BLOCKER",
+        "kind": "implementation-defect",
+        "title": "PRM-06..09 batch — implementation compile errors BLOCK test compilation (zig 0.16 incompatibilities)",
+        "files": [
+          "src/definition/assertion_rerun.zig:210",
+          "src/definition/sandbox_pool.zig:59",
+          "src/definition/sandbox_pool.zig:77",
+          "src/definition/pack_update.zig:204"
+        ],
+        "details": [
+          "1. assertion_rerun.zig:210 — PoolError switch maps only PoolExhausted; other variants cause compile error.",
+          "2. sandbox_pool.zig:59 — self.mutex.lock() — zig 0.16 removed blocking .lock() from std.atomic.Mutex.",
+          "3. sandbox_pool.zig:77 — std.time.milliTimestamp() — zig 0.16 removed this.",
+          "4. pack_update.zig:204 — base_contents.put(aid_copy, null) — map value type mismatch."
+        ],
+        "github_url": "https://github.com/tvolodi/R-Co/issues/780"
+      }
+    ],
+    "next_action": "Request ORCH to spawn an ADHOC handoff (BACKEND-DEV) to fix the 4 compile defects in commit b386ff3f. After fixes, TEST-DESIGN-VALIDATOR can validate and TEST-RUNNER can execute."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -112,6 +112,15 @@ pub const promotion_mod = @import("definition/promotion.zig"); // ENV-03 definit
 pub const promotion_routes = @import("api/routes/promotion.zig"); // ENV-03 promotion HTTP handler
 pub const promotion_plan_mod = @import("definition/promotion_plan.zig"); // PRM-01 promotion plan and diff report
 pub const promotions_routes = @import("api/routes/promotions.zig"); // PRM-01 promotion plan HTTP handler
+// PRM-06 / PRM-07 / PRM-08 / PRM-09 — Stage 16 batch
+pub const promotion_assertion_rerun = @import("definition/assertion_rerun.zig"); // PRM-06/07 assertion re-run domain
+pub const promotion_assertion_routes = @import("api/routes/promotion_assertion.zig"); // PRM-06/07 assertion re-run HTTP handler
+pub const promotion_read_routes = @import("api/routes/promotion_read.zig"); // PRM-07 AC3 GET promotion read handler
+pub const sandbox_pool = @import("definition/sandbox_pool.zig"); // PRM-06 ephemeral sandbox pool
+pub const fixture_loader = @import("definition/fixture_loader.zig"); // PRM-06 sandbox fixture loader
+pub const definition_rollback = @import("definition/rollback.zig"); // PRM-08 rollback domain
+pub const definition_rollback_routes = @import("api/routes/definition_rollback.zig"); // PRM-08 rollback HTTP handler
+pub const pack_update = @import("definition/pack_update.zig"); // PRM-09 solution pack three-way diff
 pub const tenant_lifecycle_admin = @import("admin/tenant_lifecycle.zig"); // ENV-05 reset/delete lifecycle
 pub const entities = @import("entities/mod.zig"); // EXP-201/EXP-202 entities subsystem
 

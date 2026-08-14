@@ -1,0 +1,57 @@
+{
+  "handoff_id": "wf02-prm-batch1-20260814-03-test-designer-rework1",
+  "run_id": "WF02-prm-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "03-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-prm-batch1-20260814/step-03-test-designer-rework1.json",
+  "created_at": "2026-08-13T22:43:40Z",
+  "started_at": "2026-08-13T22:43:40Z",
+  "completed_at": "2026-08-13T22:54:48Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": ["PRM-06", "PRM-07"],
+    "related_handoff_ids": [
+      "wf02-prm-batch1-20260814-03-test-designer",
+      "wf02-prm-batch1-20260814-02b-backend-dev",
+      "wf02-prm-batch1-20260814-03b-test-design-validator"
+    ],
+    "artifacts_in": [
+      "tests/integration/prm-06-07-promotion-assertion.test.zig",
+      "src/definition/assertion_rerun.zig",
+      "src/definition/sandbox_pool.zig",
+      "src/api/routes/promotion_read.zig"
+    ],
+    "branch_name": "feature/WF02-prm-batch1-20260814",
+    "current_commit": "90851633"
+  },
+  "task": {
+    "description": "TEST-DESIGNER rework 1: Add tests for 3 missing pieces implemented in step-02b.\n\nThe original test file tests/integration/prm-06-07-promotion-assertion.test.zig is missing tests for:\n\n1. **PRM-06 AC3**: 'Replayed twice with same artifact produces identical result sets after stripping non_deterministic_fields'\n   - New function: stripNonDeterministicFields() is now in src/definition/assertion_rerun.zig\n   - Test: call applyPromotionAssertionRerun() twice with the same (review_id, plan_digest) fixture, strip non_deterministic_fields from each result, assert both are identical\n   - OR: call replayAssertions() directly with a fixture that has a non_deterministic_fields list and verify the idempotency path returns success (same stripped results)\n   \n2. **PRM-07 AC3**: 'GET /api/v1/promotions/{id} when teardown failure was recorded, response names the failed teardown and sandbox identifier'\n   - New function: handleGetPromotion() is now in src/api/routes/promotion_read.zig\n   - Test: insert a teardown_failed row in promotion_assertion_runs, call the GET endpoint, verify response includes teardown_error and sandbox_id\n   - Test should use BPM_TEST_URL for HTTP call if possible, or test handleGetPromotion() directly\n\n3. **PRM-07 AC5**: 'Given a leaked sandbox, when sandbox reaper next runs, the sandbox is reclaimed and reclamation recorded'\n   - New function: reclaimLeakedSandboxes() is now in src/definition/sandbox_pool.zig\n   - Test: insert a teardown_failed row with no reaper_claimed_at, call reclaimLeakedSandboxes(), verify reaper_claimed_at is now set\n\nAdd these tests to tests/integration/prm-06-07-promotion-assertion.test.zig (or create separate small files if cleaner).\n\nValidation gates:\n1. zig build test exits 0 (or tests compile at minimum)\n2. python tools/lint_handoffs.py exits 0\n3. python tools/lint_test_isolation.py tests/integration exits 0 (if script exists)\n4. All new test functions use TestHarness.newUuid() for IDs, not hardcoded strings\n5. All new tests have defer cleanup blocks\n\nUpdate tests/specs/prm-06-09-promotion-assertion-rerun.md to add the 3 new test cases if not already present.",
+    "acceptance_criteria": [
+      "PRM-06 AC3 has at least one test in prm-06-07-promotion-assertion.test.zig",
+      "PRM-07 AC3 has at least one test covering GET endpoint with teardown info",
+      "PRM-07 AC5 has at least one test covering sandbox reaper reclamation",
+      "No hardcoded UUIDs in new tests",
+      "All new tests have cleanup (defer)",
+      "zig build test exits 0 OR tests compile cleanly",
+      "lint_handoffs.py exits 0",
+      "tests/specs/prm-06-09-promotion-assertion-rerun.md updated to include new cases"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Added 3 missing tests to tests/integration/prm-06-07-promotion-assertion.test.zig: TC-PRM-06-03 (PRM-06 AC3: stripNonDeterministicFields + applyPromotionAssertionRerun with non_deterministic_fields passes), TC-PRM-07-03 (PRM-07 AC3: handleGetPromotion returns 200 with teardown_error and sandbox_id), TC-PRM-07-04 (PRM-07 AC5: reclaimLeakedSandboxes sets reaper_claimed_at). All tests use per-test UUIDs, have defer cleanup, no hardcoded UUIDs, no SkipZigTest. Compilation: zig build test-integration-prm06-07 compiles clean. lint_test_isolation.py exits 0. lint_handoffs.py will exit 0 after COMPLETED status resolves H009. Spec file prm-06-09-promotion-assertion-rerun.md updated with 3 new test case descriptions and coverage table updated from 12/22 to 15/22 ACs.",
+    "artifacts_out": [
+      "tests/integration/prm-06-07-promotion-assertion.test.zig",
+      "tests/specs/prm-06-09-promotion-assertion-rerun.md"
+    ],
+    "issues": [],
+    "next_action": "After PASS: ORCH dispatches step-03b-test-design-validator rework1. After FAIL: rework 2/3."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

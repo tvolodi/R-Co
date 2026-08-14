@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0660",
   "title": "MINOR-PI09-1: Make public schema pollution check explicit (allowlist or tenant-scoped)",
-  "status": "RESOLVED",
+  "status": "REGISTERED",
   "severity": "MINOR",
   "category": "test-quality / test-signal-clarity",
   "parent_iss": "ISS-0084",
@@ -21,7 +21,7 @@
     "tests/specs/ISS-0084.md"
   ],
   "created_at": "2026-08-10T21:54:00Z",
-  "last_updated": "2026-08-11T21:40:31Z",
-  "resolution_text": "Extended assertDatabaseConfigurationWithOverrides with public_table_count_override parameter. Both success tests use override=0 to test happy path. public_schema_polluted test uses extension override, real table count. 5/5 tests pass.",
-  "prevention_text": "When adding new overrideable parameters to test variants, always add the parameter as optional (?type) so existing tests don't need updating."
+  "last_updated": "2026-08-10T21:54:00Z",
+  "resolution_text": null,
+  "prevention_text": null
 }

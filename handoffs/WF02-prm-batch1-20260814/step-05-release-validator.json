@@ -1,0 +1,51 @@
+{
+  "handoff_id": "wf02-prm-batch1-20260814-05-release-validator",
+  "run_id": "WF02-prm-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-prm-batch1-20260814/step-05-release-validator.json",
+  "created_at": "2026-08-14T03:05:39Z",
+  "started_at": "2026-08-14T03:05:39Z",
+  "completed_at": "2026-08-14T03:08:31Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": [
+      "PRM-06",
+      "PRM-07",
+      "PRM-08",
+      "PRM-09"
+    ],
+    "related_handoff_ids": [
+      "wf02-prm-batch1-20260814-04-test-runner-rework1"
+    ],
+    "branch_name": "feature/WF02-prm-batch1-20260814",
+    "current_commit": "791ab789"
+  },
+  "task": {
+    "description": "WF-02 Step 05 (RELEASE-VALIDATOR) for WF02-prm-batch1-20260814.\n\nVerify all gates pass before release decision:\n\n1. `zig build` exits 0\n2. `zig build test --summary all` \u2014 report pass/fail/skip counts (expect 1071/1135 or better)\n3. `zig build test-integration-prm06-07 --summary all` \u2014 must exit 0, 9/9 PASS (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test)\n4. `zig build test-integration-prm08 --summary all` \u2014 must exit 0, 4/4 PASS\n5. `zig build test-integration-prm09 --summary all` \u2014 must exit 0, 4/4 PASS\n6. `python tools/lint_handoffs.py` \u2014 must exit 0 (0 BLOCKER, 0 MAJOR)\n7. `pnpm --dir web type-check` \u2014 must exit 0 (frontend unmodified, but check anyway)\n\nWrite release decision to docs/status/release-decision-WF02-prm-batch1-20260814.yaml with:\n- requirement_ids: [PRM-06, PRM-07, PRM-08, PRM-09]\n- decision: APPROVED or REJECTED\n- gate_results: build, unit, integration_prm0607, integration_prm08, integration_prm09, lint, frontend_typecheck\n- commit: 791ab789\n\nPASS if: all MUST tests pass (PRM-06/07), build passes, lint passes\nFAIL if: any MUST test fails or build fails",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "9/9 prm06-07 integration tests PASS",
+      "4/4 prm08 integration tests PASS",
+      "4/4 prm09 integration tests PASS",
+      "lint_handoffs.py exits 0",
+      "Release decision written to docs/status/"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for stage 16 (WF02-prm-batch1-20260814). All 7 gates passed: build OK, unit 1071/1135 (inherited lint_test_wiring failure pre-existing on main), integration prm06-07 9/9, prm08 4/4, prm09 4/4, lint_handoffs 0 BLOCKER/0 MAJOR, frontend typecheck OK. PRM-06 (MUST), PRM-07 (MUST), PRM-08 (SHOULD), PRM-09 (SHOULD) all approved.",
+    "artifacts_out": [
+      "docs/status/release-decision-WF02-prm-batch1-20260814.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER to set requirements status RELEASED for PRM-06/07/08/09"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

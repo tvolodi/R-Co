@@ -1490,6 +1490,25 @@
 2026-08-13T18:17:00Z | STEP_FINAL | WF03-GH765-20260813 | step-final-backend-dev | BACKEND-DEV -> ORCH | PASS | run COMPLETE
 2026-08-13T18:17:00Z | PIPELINE COMPLETE | WF03-GH765-20260813 | --- | ORCH | GH-765 RESOLVED as duplicate of GH-763/ISS-0689 (fixed by eec9edc3)
 2026-08-13T18:17:00Z | GIT | WF03-GH765-20260813 | feature/WF03-GH765-20260813 | (squash) | PR: https://github.com/tvolodi/R-Co/pull/778
+2026-08-13T19:04:24Z | GIT_SETUP| WF02-prm-batch1-20260814 | --- | ORCH | feature/WF02-prm-batch1-20260814 from main, pushed to origin
+2026-08-13T19:04:24Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-01-code-designer | ORCH -> CODE-DESIGNER | PENDING (Step 01: design PRM-06..09 promotion assertion re-run, sandbox teardown, rollback, pack update)
+2026-08-13T20:59:08Z | WF03_RESOLVE | WF03-GH780-prm-fixes-20260814 | wf03-gh780-prm-fixes-20260814-00-fix | ORCH | GH-780 zig 0.16 fixes committed f5257ef2 — resuming WF02-prm-batch1-20260814 step-03b
+2026-08-13T21:07:35Z | ROUTE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-03b-test-design-validator | ORCH -> TEST-RUNNER | PENDING
+2026-08-13T22:18:12Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-03b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING (Step 03b: validate test design for PRM-06..09 — GH-780 compile blockers fixed at f5257ef2, zig build exits 0)
+2026-08-13T22:23:42Z | FAIL    | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-03b-test-design-validator | TEST-DESIGN-VALIDATOR -> ORCH | FAIL (3 BLOCKERs: PRM-06 AC3 replay engine missing, PRM-07 AC3 GET teardown endpoint absent, PRM-07 AC5 sandbox reaper absent)
+2026-08-13T22:23:42Z | REWORK  | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-02b-backend-dev | ORCH -> BACKEND-DEV | PENDING (rework: implement PRM-06 AC3 non_deterministic_fields comparison + PRM-07 AC3 GET promotions teardown endpoint + PRM-07 AC5 sandbox reaper)
+2026-08-13T22:24:43Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-02b-backend-dev | ORCH -> BACKEND-DEV | PENDING (rework step 02b: PRM-06 AC3 non_deterministic_fields comparison + PRM-07 AC3 GET teardown endpoint + PRM-07 AC5 sandbox reaper)
+2026-08-14T03:04:08Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-02b-backend-dev | BACKEND-DEV -> ORCH | PASS | PRM-06 AC3 + PRM-07 AC3/AC5 + compile fixes implemented (commit 973459ff)
+2026-08-14T03:04:08Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-03b-test-design-validator | TEST-DESIGN-VALIDATOR -> ORCH | PASS | All PRM-06/07 MUST ACs covered (9/9 prm06-07 pass, 4/4 prm08 pass, 4/4 prm09 pass)
+2026-08-14T03:04:08Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-04-test-runner-rework1 | ORCH -> TEST-RUNNER | PENDING (Step 04 rework1: full test run on commit 973459ff)
+2026-08-14T03:04:12Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-02b-backend-dev | BACKEND-DEV -> ORCH | PASS | PRM-06 AC3 + PRM-07 AC3/AC5 + compile fixes (commit 973459ff): 9/9 prm06-07, 4/4 prm08, 4/4 prm09 ALL PASS
+2026-08-14T03:04:12Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-04-test-runner-rework1 | ORCH -> TEST-RUNNER | PENDING (Step 04 rework1: final test verification on commit 973459ff)
+2026-08-14T03:05:39Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING (Step 05: release gate check for PRM-06/07/08/09)
+2026-08-14T03:10:40Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-05-release-validator | RELEASE-VALIDATOR -> ORCH | APPROVED | All gates pass (9/9+4/4+4/4+1071/1135+typecheck) commit aa6ad445
+2026-08-14T03:10:40Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-06-doc-updater | ORCH -> DOC-UPDATER | PENDING (Step 06: CHANGELOG + PRM-06/07/08/09 RELEASED)
+2026-08-14T03:12:50Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-06-doc-updater | DOC-UPDATER | PASS — PRM-06/07/08/09 RELEASED, CHANGELOG updated, lint 0 BLOCKER, push pending
+2026-08-14T03:14:35Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-06-doc-updater | DOC-UPDATER -> ORCH | PASS | CHANGELOG + PRM-06/07/08/09 RELEASED (commit adb6b5d6), GH #239/#240/#241/#242 closed
+2026-08-14T03:14:35Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-final-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step Final: PR + squash-merge + branch cleanup)
 2026-08-13T18:18:25Z | ROUTE | WF03-GH767-20260813 | step-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | git-setup (loop continues from GH-765 close)
 2026-08-13T18:21:17Z | ROUTE | WF03-GH767-20260813 | step-00.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | registry-lookup + GH-767 ack
 2026-08-13T18:22:31Z | ROUTE | WF03-GH767-20260813 | step-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | root-cause-analysis (stale-evidence check first)
