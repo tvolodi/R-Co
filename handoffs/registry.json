@@ -1,8 +1,188 @@
 {
   "schema_version": 1,
   "created_at": null,
-  "last_updated": "2026-08-14T08:16:39Z",
+  "last_updated": "2026-08-15T01:09:13Z",
   "entries": [
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-03-test-designer",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "TEST-DESIGNER",
+      "agent_name": "BPM Test Designer (TEST-DESIGNER)",
+      "step": "03",
+      "created_at": "2026-08-14T20:39:34Z",
+      "started_at": "2026-08-14T20:39:34Z",
+      "status": "PENDING",
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-02b-frontend-dev",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "FRONTEND-DEV",
+      "agent_name": "BPM Frontend Dev (FRONTEND-DEV)",
+      "step": "02b",
+      "created_at": "2026-08-14T20:15:36Z",
+      "started_at": "2026-08-14T20:15:36Z",
+      "status": "PENDING",
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-02a-backend-dev",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "BACKEND-DEV",
+      "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+      "step": "02a",
+      "created_at": "2026-08-14T20:15:36Z",
+      "started_at": "2026-08-14T20:15:36Z",
+      "status": "PENDING",
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-01b-code-design-validator-rework2",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "CODE-DESIGN-VALIDATOR",
+      "agent_name": "BPM Code Design Validator (CODE-DESIGN-VALIDATOR)",
+      "step": "01b-rework2",
+      "created_at": "2026-08-14T20:12:12Z",
+      "started_at": "2026-08-14T20:12:12Z",
+      "status": "PENDING",
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-01-code-designer-rework2",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "CODE-DESIGNER",
+      "agent_name": "BPM Code Designer (CODE-DESIGNER)",
+      "step": "01-rework2",
+      "created_at": "2026-08-14T20:08:55Z",
+      "started_at": "2026-08-14T20:08:55Z",
+      "status": "PENDING",
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-01b-code-design-validator-rework1",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "CODE-DESIGN-VALIDATOR",
+      "agent_name": "BPM Code Design Validator (CODE-DESIGN-VALIDATOR)",
+      "step": "01b-rework1",
+      "created_at": "2026-08-14T20:04:11Z",
+      "started_at": "2026-08-14T20:04:11Z",
+      "status": "PENDING",
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-01-code-designer-rework1",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "CODE-DESIGNER",
+      "agent_name": "BPM Code Designer (CODE-DESIGNER)",
+      "step": "01-rework1",
+      "created_at": "2026-08-14T20:02:49Z",
+      "started_at": "2026-08-14T20:02:49Z",
+      "status": "PENDING",
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-01b-code-design-validator",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "CODE-DESIGN-VALIDATOR",
+      "agent_name": "BPM Code Design Validator (CODE-DESIGN-VALIDATOR)",
+      "step": "01b",
+      "created_at": "2026-08-14T19:59:23Z",
+      "started_at": "2026-08-14T19:59:23Z",
+      "status": "PENDING",
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-01-code-designer",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "CODE-DESIGNER",
+      "agent_name": "BPM Code Designer (CODE-DESIGNER)",
+      "step": "01",
+      "created_at": "2026-08-14T19:44:07Z",
+      "started_at": "2026-08-14T19:44:07Z",
+      "status": "PENDING",
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-00-backend-dev",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "BACKEND-DEV",
+      "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+      "step": "00",
+      "created_at": "2026-08-14T19:40:29Z",
+      "started_at": "2026-08-14T19:40:29Z",
+      "status": "PENDING",
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "stage": "stage16"
+    },
     {
       "handoff_id": "ad-hoc-bench-env-fix-20260814-01-backend-dev",
       "file": "handoffs/ADHOC-bench-env-fix-20260814/step-01-backend-dev.json",
@@ -30477,6 +30657,98 @@
       "completed_at": "2026-08-14T03:37:30Z",
       "status": "COMPLETED",
       "result": "PASS"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-03b-test-design-validator",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "TEST-DESIGN-VALIDATOR",
+      "step": "03b",
+      "status": "PENDING",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-03b-test-design-validator",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "TEST-DESIGN-VALIDATOR",
+      "agent_name": "BPM Test Design Validator (TEST-DESIGN-VALIDATOR)",
+      "step": "03b",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-08-15T00:48:02Z",
+      "started_at": "2026-08-15T00:48:37Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "ADHOC-bench-env-20260815-00-backend-dev",
+      "run_id": "ADHOC-bench-env-20260815",
+      "agent_id": "BACKEND-DEV",
+      "step": "00",
+      "status": "PENDING",
+      "requirements": [],
+      "workflow_ref": "ADHOC-bench-env-20260815",
+      "stage": null
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-04-test-runner",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "status": "PENDING",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-05-release-validator",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "RELEASE-VALIDATOR",
+      "step": "05",
+      "status": "COMPLETED",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "stage": "stage16",
+      "completed_at": "2026-08-14T20:06:38Z",
+      "result_status": "PASS"
+    },
+    {
+      "handoff_id": "WF02-prm-batch2-20260814-06-doc-updater",
+      "run_id": "WF02-prm-batch2-20260814",
+      "agent_id": "DOC-UPDATER",
+      "step": "06",
+      "status": "COMPLETED",
+      "requirements": [
+        "PRM-02",
+        "PRM-03",
+        "PRM-04",
+        "PRM-05"
+      ],
+      "workflow_ref": "WF02-prm-batch2-20260814",
+      "stage": "stage16"
     }
   ]
 }

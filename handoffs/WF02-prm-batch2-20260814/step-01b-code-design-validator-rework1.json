@@ -1,0 +1,34 @@
+{
+  "handoff_id": "WF02-prm-batch2-20260814-01b-code-design-validator-rework1",
+  "run_id": "WF02-prm-batch2-20260814",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "agent_name": "BPM Code Design Validator (CODE-DESIGN-VALIDATOR)",
+  "step": "01b",
+  "created_at": "2026-08-14T20:04:11Z",
+  "started_at": "2026-08-14T20:04:37Z",
+  "completed_at": "2026-08-15T01:07:48Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "FAIL",
+    "summary": "Design validation FAILED — BLOCKER: migration_number 59 still collides with 059_fix_audit_chain_trigger_args.sql. CODE-DESIGNER must update the YAML to a non-colliding number (096 is available). All 4 Type E artefacts pass lint cleanly.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "code": "Y111",
+        "artefact": "templates/specs/prm04-promotion-reviews.migration.yaml",
+        "message": "migration_number 59 collides with existing file(s): ['059_fix_audit_chain_trigger_args.sql']. The YAML still contains migration_number: 59 — the change to 059 was not persisted, or was overwritten. CODE-DESIGNER must change migration_number to 096 (confirmed available) or another non-colliding 3-digit number.",
+        "field": "migration_number",
+        "value": 59
+      }
+    ]
+  },
+  "task": {
+    "description": "REWORK 1 — Re-validate CODE-DESIGNER output for PRM-02..05 after migration number fix.\n\nPREVIOUS BLOCKER (now fixed):\n- Migration number 058 collided with existing 058_repo_artifacts_tenant_activation.sql\n- CODE-DESIGNER changed it to 059 in templates/specs/prm04-promotion-reviews.migration.yaml\n\nVALIDATE:\n1. Re-run lint on templates/specs/prm04-promotion-reviews.migration.yaml — must be clean\n2. Re-run codegen --dry-run — must exit 0\n3. Confirm all 5 artefacts are valid (prm-02 through prm-05 Type E + migration Type C)\n\nReturn PASS if all gates clear.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-prm-batch2-20260814",
+  "requirements": ["PRM-02", "PRM-03", "PRM-04", "PRM-05"],
+  "stage": "stage16"
+}

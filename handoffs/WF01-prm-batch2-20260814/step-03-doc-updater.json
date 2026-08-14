@@ -1,0 +1,97 @@
+{
+  "handoff_id": "wf01-prm-batch2-20260814-03-doc-updater",
+  "run_id": "WF01-prm-batch2-20260814",
+  "workflow_id": "WF-01",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF01-prm-batch2-20260814/step-03-doc-updater.json",
+  "created_at": "2026-08-14T09:30:11Z",
+  "started_at": "2026-08-14T09:35:48Z",
+  "completed_at": "2026-08-14T09:39:18Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [
+      "wf01-prm-batch2-20260814-01-req-analyst",
+      "wf01-prm-batch2-20260814-02-req-validator",
+      "wf01-prm-batch2-20260814-01-req-analyst-rework1",
+      "wf01-prm-batch2-20260814-02-req-validator-rework1"
+    ],
+    "artifacts_in": [
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml",
+      "docs/status/requirement_status.json",
+      "handoffs/WF01-prm-batch2-20260814/step-02-req-validator-rework1.json",
+      "docs/design-validation/WF01-prm-batch2-20260814-step-02-req-validator-rework1-VALIDATION-REPORT.yaml",
+      "docs/issue-reports/WF01-prm-batch2-20260814-step-02-req-validator-rework1-INNER-REPORT.yaml"
+    ],
+    "previous_step_result": "PASS",
+    "previous_step_summary": "REQ-VALIDATOR rework1 PASS. All 3 substantive defects (PRM-04 edge set, PRM-03 entry shape, PRM-05 NEEDS_REVIEW package) + 3 MINOR (See: lists + process doc mirror) verified fixed. reqctl validate clean (0 findings on PRM-02..05), lint 0 BLOCKER/0 MAJOR/1 MINOR."
+  },
+  "task": {
+    "description": "WF-01 Step 3 — DOC-UPDATER transition PRM-02, PRM-03, PRM-04, PRM-05 from DRAFT to VALIDATED. Per `docs/agents/workflows/WF-01_requirement_development.md` Step 3 procedure:\n\n1. For each requirement_id in [PRM-02, PRM-03, PRM-04, PRM-05]:\n   → fn:update-requirement-status(requirement_id, \"VALIDATED\")\n2. → fn:complete-handoff (status: PASS, next_action: \"Requirements ready. Orchestrator may launch WF-02.\")\n\nUse `python tools/reqctl.py` to update the status. Verify the tool supports `set-status <id> VALIDATED` or equivalent subcommand — if the actual CLI differs from this handoff's spec, use whatever valid subcommand exists and record the exact command run in `result.summary`. Do NOT modify the requirement bodies.\n\nAlso update `docs/status/requirement_status.yaml` (and `requirement_status.json` if the JSON mirror is auto-generated) to reflect the new VALIDATED status. Run `python tools/reqctl.py render-status` (or equivalent) if such a command exists.\n\nDO NOT transition to RELEASED — that's WF-02 Step 6 (DOC-UPDATER again, after RELEASE-VALIDATOR). VALIDATED only.\n\nAfter status transition, append a CHANGELOG entry for the WF-01 batch if the project convention requires it. The previous WF-01 batches did not add CHANGELOG entries (CHANGELOG is reserved for RELEASED features). Confirm with `git log --oneline -- CHANGELOG.md` and the recent DOC-UPDATER handoffs before adding a CHANGELOG entry. If in doubt, do NOT add a CHANGELOG entry.\n\nDO NOT open a PR or commit any changes for this step — the status transitions are local-only. The PR + commit happens at WF-02 Step 06 (DOC-UPDATER after RELEASED), or at WF-01 Step 03 if explicitly required by the project convention. Verify against `docs/agents/instructions/doc-updater.md` before committing.\n\nRun `tools/lint_handoffs.py` after writing the handoff to verify schema integrity (exit 0 required).",
+    "acceptance_criteria": [
+      "PRM-02, PRM-03, PRM-04, PRM-05 all have status VALIDATED in docs/requirements.yaml",
+      "docs/status/requirement_status.yaml reflects VALIDATED status for the four (and docs/status/requirement_status.json if applicable)",
+      "python tools/reqctl.py show <id> reports status=VALIDATED for each",
+      "python tools/lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR, ≤1 MINOR pre-existing)",
+      "DO NOT transition to RELEASED — that's WF-02 Step 6",
+      "DO NOT modify requirement bodies",
+      "CHANGELOG entry only if project convention requires it (verify before adding)",
+      "No PR/commit unless doc-updater protocol mandates it for status-only changes"
+    ],
+    "functions_to_call": [
+      "fn:update-requirement-status",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Ran 4 reqctl transitions then regenerated the rendered status file. Exact commands: `python tools/reqctl.py set-status PRM-02 VALIDATED --note \"WF01 step 3 DOC-UPDATER: validated by REQ-VALIDATOR (rework1 PASS, 0 BLOCKER)\"`; `python tools/reqctl.py set-status PRM-03 VALIDATED --note ...`; `python tools/reqctl.py set-status PRM-04 VALIDATED --note ...`; `python tools/reqctl.py set-status PRM-05 VALIDATED --note ...`; `python tools/reqctl.py render-status`; `python tools/reqctl.py validate` (BLOCKER: 0, MAJOR: 4 pre-existing on unrelated requirements, MINOR: 8 pre-existing); `python tools/lint_handoffs.py` (2823 handoffs, 0 BLOCKER / 0 MAJOR / 1 MINOR / 291 ACKNOWLEDGED — exit 0). All four IDs (PRM-02..05) show status=VALIDATED in both docs/requirements.yaml and docs/status/requirement_status.yaml (463 entries regenerated). No CHANGELOG entry added (project convention reserves CHANGELOG for RELEASED features; the prompt explicitly forbade it for status-only changes). No PR or commit performed (status-only changes are local, PR/commit happens at WF-02 Step 06).",
+    "requirement_transitions": [
+      {
+        "id": "PRM-02",
+        "from": "DRAFT",
+        "to": "VALIDATED",
+        "note": "WF01 step 3 DOC-UPDATER: validated by REQ-VALIDATOR (rework1 PASS, 0 BLOCKER)"
+      },
+      {
+        "id": "PRM-03",
+        "from": "DRAFT",
+        "to": "VALIDATED",
+        "note": "WF01 step 3 DOC-UPDATER: validated by REQ-VALIDATOR (rework1 PASS, 0 BLOCKER)"
+      },
+      {
+        "id": "PRM-04",
+        "from": "DRAFT",
+        "to": "VALIDATED",
+        "note": "WF01 step 3 DOC-UPDATER: validated by REQ-VALIDATOR (rework1 PASS, 0 BLOCKER)"
+      },
+      {
+        "id": "PRM-05",
+        "from": "DRAFT",
+        "to": "VALIDATED",
+        "note": "WF01 step 3 DOC-UPDATER: validated by REQ-VALIDATOR (rework1 PASS, 0 BLOCKER)"
+      }
+    ],
+    "artifacts_out": [
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml",
+      "handoffs/WF01-prm-batch2-20260814/step-03-doc-updater.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [],
+    "next_action": "Requirements ready. Orchestrator may launch WF-02."
+  },
+  "rework_count": 0,
+  "max_rework": 1
+}

@@ -1,0 +1,25 @@
+{
+  "handoff_id": "WF02-prm-batch2-20260814-01b-code-design-validator-rework2",
+  "run_id": "WF02-prm-batch2-20260814",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "agent_name": "BPM Code Design Validator (CODE-DESIGN-VALIDATOR)",
+  "step": "01b",
+  "created_at": "2026-08-14T20:12:12Z",
+  "started_at": "2026-08-14T20:12:34Z",
+  "completed_at": "2026-08-14T15:13:39Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "All 5 artefacts validated — migration_number 096 confirmed free, lint exits 0 on all files, codegen --dry-run exits 0 and generates correct DDL. prm02/03/04/05 Type E MD files and prm04 migration YAML all pass.",
+    "artifacts_out": [],
+    "issues": []
+  },
+  "task": {
+    "description": "REWORK 2 — Final re-validation after migration number fix.\n\nPREVIOUS BLOCKERS (fixed):\n- 058 collision → changed to 059 → collision → changed to 96\n- CODE-DESIGNER changed templates/specs/prm04-promotion-reviews.migration.yaml migration_number to 96\n\nVALIDATE:\n1. Lint on templates/specs/prm04-promotion-reviews.migration.yaml (migration_number: 96) — must be clean\n2. codegen --dry-run — must exit 0\n3. All 5 artefacts valid\n\nReturn PASS if all gates clear.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-prm-batch2-20260814",
+  "requirements": ["PRM-02", "PRM-03", "PRM-04", "PRM-05"],
+  "stage": "stage16"
+}

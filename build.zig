@@ -2971,6 +2971,22 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_prm08_solo_tests.step);
     test_integration_others_step.dependOn(&run_prm09_solo_tests.step);
 
+    // WF02-prm-batch2-20260814, Step 02a: PRM-04 promotion_reviews table state machine
+    // and PRM-05 non-skippable approval gate integration tests.
+    const prm04_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/promotion_reviews_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_prm04_solo_tests = addIntegrationRun(b, prm04_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_prm04_step = b.step("test-integration-prm04", "Run promotion_reviews_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_prm04_step.dependOn(&clean_test_db.step);
+    test_integration_prm04_step.dependOn(&run_prm04_solo_tests.step);
+    test_integration_others_step.dependOn(&run_prm04_solo_tests.step);
+
     // GH-758 regression: standalone pool/lock repro was intentionally left
     // un-wired in the original build graph; the lint gate treats that as a
     // blocker because a test-bearing file must be reachable from a root.

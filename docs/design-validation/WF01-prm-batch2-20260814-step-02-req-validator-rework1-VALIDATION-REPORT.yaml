@@ -1,0 +1,286 @@
+run_id: WF01-prm-batch2-20260814
+workflow_id: WF-01
+step: '02-rework1'
+agent: REQ-VALIDATOR
+handoff_id: wf01-prm-batch2-20260814-02-req-validator-rework1
+report_type: validation-report
+schema: 'WF-01 Step 2 procedure step 4 - [{requirement_id, passed, issues[{severity, description}]}]'
+created_at: '2026-08-14T09:24:50Z'
+rework_of:
+  run_id: WF01-prm-batch2-20260814
+  step: '02'
+  handoff_id: wf01-prm-batch2-20260814-02-req-validator
+  prior_report: docs/design-validation/WF01-prm-batch2-20260814-step-02-req-validator-VALIDATION-REPORT.yaml
+  prior_outcome: FAIL (1 BLOCKER + 2 MAJOR + 3 MINOR)
+
+tool_runs:
+  - name: 'python tools/reqctl.py validate'
+    exit_code: 0
+    result: 'BLOCKER: 0  MAJOR: 4  MINOR: 8  (472 requirements). Zero findings
+      attributed to PRM-02, PRM-03, PRM-04 or PRM-05. The 12 pre-existing findings
+      are on unrelated requirements (MAJOR: OIDC-F-06, TD-UI-01, TD-UI-02, WH-UI-03;
+      MINOR: SPT-01, TM-01..03, UAT-TM-01..04) - same baseline as REQ-ANALYST''s
+      inner report and the original step-02 validation pass. No new findings
+      introduced by the rework.'
+    side_effects: none
+  - name: 'python tools/lint_handoffs.py'
+    exit_code: 0
+    result: '2822 handoffs checked - 0 BLOCKER, 0 MAJOR, 1 MINOR (H010 registry,
+      pre-existing 49-of-2821 absence), 291 ACKNOWLEDGED. No new findings
+      introduced by the rework. The 1 MINOR is identical to the previous step-02
+      validation pass baseline.'
+    side_effects: none
+  - name: 'python scratch/req_validator_rework1_xref_check.py'
+    exit_code: 0
+    result: '22 cross-references across PRM-02..05 (See: lists); 0 dangling. All
+      targets resolve in docs/requirements.yaml. Specifically: PRM-04 now lists
+      PRM-01, PRM-02, PRM-03, PRM-05, PRM-06, PRM-08; PRM-05 now lists
+      PRM-01, PRM-03, PRM-04, PRM-06, SOL-02, IDN-05; PRM-03 now lists
+      PRM-01, PRM-02, PRM-04, PRM-05, PRM-06 (PRM-01 present, body references
+      it as "the entry shape emitted by RELEASED PRM-01"). PRM-02 unchanged.'
+    side_effects: none
+
+validation_report:
+  - requirement_id: PRM-02
+    passed: true
+    issues: []
+    notes: >-
+      PRM-02 was not modified by the rework. Body, See: list (PRM-01, PRM-03,
+      PRM-04, PRM-05, ENV-03), priority MUST, stage 16, status DRAFT, last_updated
+      2026-08-07T16:10:45Z all preserved. Cross-reference resolution re-confirmed.
+
+  - requirement_id: PRM-03
+    passed: true
+    issues: []
+    notes: >-
+      MAJOR FIX VERIFIED. The plan_digest entry shape in the body now reads
+      `{type, id, change_kind, before, after}` (line 12436) and is explicitly
+      annotated as "(the entry shape emitted by RELEASED PRM-01 and persisted
+      verbatim on the review row)". This matches PRM-01''s body (line 12385) and
+      the shipped response contract at src/api/routes/promotions.zig:34.
+      `changes` field is gone. See: list now begins with PRM-01 (5 refs total,
+      1 status RELEASED + 4 DRAFT). last_updated bumped to 2026-08-14T09:12:56Z;
+      alt_sources adds rework-20260814-prm-batch2; body_source preserved.
+
+  - requirement_id: PRM-04
+    passed: true
+    issues: []
+    notes: >-
+      BLOCKER FIX VERIFIED. The permitted edge set now contains exactly seven
+      edges (line 12453): pending_review->approved, pending_review->rejected,
+      pending_review->superseded, approved->applied, approved->failed,
+      approved->superseded, and the previously-missing applied->superseded.
+      CHECK vs application-layer enforcement clarified in the body
+      (CHECK constrains value domain; edges enforced in app layer + optional
+      trigger). New AC added (line 12467): "GIVEN a review in `applied`, WHEN
+      a rollback event moves the active version pointer off the applied
+      version (PRM-08), THEN `status` moves `applied` to `superseded` with
+      `superseded_by` naming the rollback event." This aligns with RELEASED
+      PRM-08 AC4 (line 12555) and the shipped rollback at
+      src/definition/rollback.zig:289-291. See: list (PRM-01, PRM-02, PRM-03,
+      PRM-05, PRM-06, PRM-08) - PRM-01 added (MINOR closed).
+      last_updated 2026-08-14T09:12:56Z; alt_sources adds rework-20260814-prm-batch2;
+      body_source preserved.
+
+  - requirement_id: PRM-05
+    passed: true
+    issues: []
+    notes: >-
+      MAJOR FIX VERIFIED. The `NEEDS_REVIEW` package is now defined inline as
+      a JSON object of shape `{marker: "NEEDS_REVIEW", assertions: [ {id,
+      description, severity, rule, sources: [{file, line}]} ]}` (line 12481),
+      with explicit textual anchors: marker is the constant string
+      `"NEEDS_REVIEW"`; assertions is the array of HumanReviewAssertion records
+      the source-side authoring agent attached at submit time. AC5 (line 12488)
+      states the shape, asserts the literal marker value, and specifies the
+      empty-array (length 0) convention when no records were attached.
+      Glossary entry present in docs/BPM_Platform_Functional_Requirements.md
+      (row 37, between "Named role" and the NFR table) and explicitly
+      distinguishes the promotion NEEDS_REVIEW package from AGT-06''s
+      `needs_review` artifact STATE ("a row state in a different subsystem").
+      See: list (PRM-01, PRM-03, PRM-04, PRM-06, SOL-02, IDN-05) - PRM-01 added
+      (MINOR closed); PRM-02 was already present (REQ-ANALYST noted it added
+      PRM-02 too, which is benign because See: lists are additive).
+      last_updated 2026-08-14T09:12:56Z; alt_sources adds rework-20260814-prm-batch2;
+      body_source preserved.
+
+process_doc_mirror_check:
+  file: docs/processes/system/definition-promotion.md
+  target_lines:
+    - line: 55
+      before_rework: "{type, id, changes}"
+      after_rework: '{type, id, change_kind, before, after}'
+      marker: '<!-- REWORK-WF01-prm-batch2-20260814: PRM-03 entry shape reconciled with RELEASED PRM-01; `changes` replaced by `change_kind, before, after` -->'
+      status: CORRECT
+    - line: 57
+      before_rework: "{type, id, changes}"
+      after_rework: '{type, id, change_kind, before, after}'
+      status: CORRECT
+    - line: 59
+      before_rework: undefined NEEDS_REVIEW package
+      after_rework: 'NEEDS_REVIEW package (shape `{marker: "NEEDS_REVIEW", assertions: [{id, description, severity, rule, sources: [{file, line}]}]}`)'
+      marker: "<!-- REWORK-WF01-prm-batch2-20260814: PRM-05 'NEEDS_REVIEW' package defined inline; see Glossary entry 'NEEDS_REVIEW package' for shape -->"
+      status: CORRECT
+    - line: 91
+      before_rework: six permitted edges (no applied->superseded)
+      after_rework: 'seven permitted edges including applied->superseded (the last is required for rollback after apply)'
+      marker: '<!-- REWORK-WF01-prm-batch2-20260814: PRM-04 seventh edge `applied -> superseded` added (required by RELEASED PRM-08 AC4 and exercised by src/definition/rollback.zig:289-291) -->'
+      status: CORRECT
+  outcome: All four substantive mirrors are present and consistent with the
+    corresponding requirement bodies. Rework annotations are written so the
+    process doc reads as a restatement of the corrected requirements.
+
+glossary_check:
+  file: docs/BPM_Platform_Functional_Requirements.md
+  entry: 'NEEDS_REVIEW package'
+  location: row 37, between "Named role (business role)" and "Non-Functional Requirements" table
+  status: PRESENT
+  text_excerpt: >-
+    "A JSON object of shape `{marker: "NEEDS_REVIEW", assertions: [ {id,
+    description, severity, rule, sources: [{file, line}]} ]}` carried on a
+    promotion artifact at submit time and returned by the reviewer context
+    endpoint (`GET /api/v1/promotions/{id}/context`). `marker` is the constant
+    string `"NEEDS_REVIEW"`; `assertions` is the array of `HumanReviewAssertion`
+    records the source-side authoring agent attached as items requiring
+    explicit human review, alongside the automatically-replayed assertions
+    carried by PRM-06. Distinct from AGT-06''s `needs_review` artifact STATE
+    (a row state in a different subsystem). Referenced by PRM-05."
+
+namespace_collision_check:
+  construction: 'NEEDS_REVIEW' (uppercase JSON marker, promotion subsystem)
+  other_uses_in_repo:
+    - location: docs/requirements.yaml:10850
+      construction: 'needs_review' (lowercase artifact STATE, agent artifact retention)
+      subsystem: AGT-06 artifact retention sweep
+      collision: NONE - different namespace (JSON marker string vs row state
+        constant), different subsystem, Glossary entry explicitly disambiguates.
+  outcome: PASS
+
+qualitative_checks:
+  TESTABILITY:
+    result: PASS
+    detail: >-
+      Re-scanned PRM-02..05 bodies and the new clauses for vague words
+      ("reasonably", "as needed", "appropriately", "as appropriate", "sensible",
+      "typically", "generally"). Zero occurrences. All 20 AC clauses remain
+      GIVEN/WHEN/THEN or definitive assertions with concrete HTTP codes / typed
+      error names / literal string values. The new clauses are testable:
+        - PRM-04 AC5 (rollback path): "status moves applied to superseded with
+          superseded_by naming the rollback event" - directly assertable from
+          the promotion_reviews row after a rollback.
+        - PRM-05 AC5: "marker field equals the literal string NEEDS_REVIEW;
+          assertions array is empty (length 0) when the authoring agent
+          attached no records" - directly assertable by parsing the context
+          response body and asserting marker == "NEEDS_REVIEW" and
+          len(assertions) == 0.
+  CONSISTENCY:
+    result: PASS
+    detail: >-
+      Re-verified against RELEASED PRM-01, PRM-06, PRM-07, PRM-08, PRM-09,
+      SOL-02, IDN-05 and the Stage 16 DDL/MIG/ORD/PAR/PIN sets on the keywords
+      promotion, plan_digest, review, apply, conflict, tenant, version,
+      sandbox, principal, digest, NEEDS_REVIEW.
+        - PRM-04 edge set now matches PRM-08 AC4 (applied->superseded for
+          rollback). The DB CHECK value domain (6 statuses) is consistent with
+          PRM-08''s emitted statuses. Application-layer edge enforcement plus
+          optional BEFORE UPDATE trigger is consistent with PRM-07''s
+          "teardown failure never sets status to failed" claim (different
+          edge, same enforcement pattern).
+        - PRM-03 entry shape now matches PRM-01''s emitted shape
+          ({type, id, change_kind, before, after}). The cross-reference
+          annotation "the entry shape emitted by RELEASED PRM-01 and persisted
+          verbatim on the review row" closes the previous MAJOR.
+        - PRM-05 NEEDS_REVIEW package - no other requirement defines a
+          NEEDS_REVIEW-like construct. AGT-06''s `needs_review` is an artifact
+          STATE in a different subsystem; the Glossary explicitly
+          disambiguates. SOL-02 / PRM-09 / IDN-05 references are unaffected.
+  COMPLETENESS:
+    result: PASS
+    detail: >-
+      All Stage 16 promotion terms have canonical definitions: plan_digest
+      (PRM-03 body, process doc Data table), base_version (PRM-08, process
+      doc), process_key (PRM-01, process doc), principal, requested_by,
+      approved_by (process doc Business Rules), canonical JSON serialisation
+      (PRM-03 body), partial unique index promotion_reviews_plan_digest_active_uniq
+      (PRM-04 body + process doc), reviewer context endpoint GET
+      /api/v1/promotions/{id}/context (PRM-05 body + process doc),
+      DEFINITION_PROMOTION_REJECTED/APPROVED/APPLIED/ROLLED_BACK,
+      ConflictRejection, PromotionConflict, PlanDigestMismatch, DuplicateReview,
+      InvalidReviewTransition (process doc Error / Event tables). NEEDS_REVIEW
+      package is defined inline in PRM-05 body AND in the Glossary row 37.
+      HumanReviewAssertion is the typed-array element used by NEEDS_REVIEW;
+      no explicit Glossary entry for HumanReviewAssertion, but the inline shape
+      in PRM-05 + Glossary is sufficient for implementation.
+  TRACEABILITY:
+    result: PASS
+    detail: >-
+      22 cross-references across PRM-02..05; all resolve. PRM-04 and PRM-05
+      both include PRM-01 in **See:** as required by the prior MINOR flags.
+      PRM-03 explicitly cross-references PRM-01 in the body annotation
+      "the entry shape emitted by RELEASED PRM-01". PRM-04 cross-references
+      PRM-08 AC4 in the body. PRM-05 cross-references SOL-02 (pre-vetted
+      template entry point), PRM-06 (replayed assertions), and IDN-05
+      (named-role principal resolution).
+  STAGE_FIT:
+    result: PASS
+    detail: >-
+      PRM-02..05 are stage 16, priority MUST, confined to the Promotion
+      module: conflict pre-flight, digest, review state machine, approval
+      gate. No identity-management logic added (IDN-05 referenced only as the
+      role registry a principal resolves against, not extended). No UI
+      requirement. No scheduler logic. Sister requirements PRM-06/07/08/09 are
+      already RELEASED in Stage 16, confirming the stage boundary.
+
+summary_counts:
+  requirements_validated: 4
+  passed: 4
+  failed: 0
+  blocker: 0
+  major: 0
+  minor: 0
+  previous_run_blocker: 1
+  previous_run_major: 2
+  previous_run_minor: 3
+  defects_resolved:
+    - severity: BLOCKER
+      requirement_id: PRM-04
+      description: 'Seventh permitted edge applied->superseded added; CHECK vs
+        application-layer enforcement clarified; rollback AC added; PRM-01 in
+        See: list.'
+    - severity: MAJOR
+      requirement_id: PRM-03
+      description: 'plan_digest entry shape reconciled with RELEASED PRM-01
+        emitted shape {type, id, change_kind, before, after}; PRM-01 cross-ref
+        added in body.'
+    - severity: MAJOR
+      requirement_id: PRM-05
+      description: 'NEEDS_REVIEW package defined inline as JSON object with
+        concrete shape and marker literal; Glossary entry added; PRM-01 in
+        See: list.'
+    - severity: MINOR
+      requirement_id: PRM-04
+      description: 'PRM-01 added to See: list (TRACEABILITY).'
+    - severity: MINOR
+      requirement_id: PRM-05
+      description: 'PRM-01 added to See: list (TRACEABILITY).'
+    - severity: MINOR
+      requirement_id: cross-cutting
+      description: 'Process doc mirrors at lines 55, 57, 59, 91; Glossary entry
+        added.'
+
+outcome: PASS
+outcome_reason: >-
+  REQ-ANALYST''s rework iteration 1 resolved all three substantive defects
+  (1 BLOCKER + 2 MAJOR) and all three MINOR traceability gaps. PRM-04 edge
+  set now includes applied->superseded (matching RELEASED PRM-08 AC4 and the
+  shipped rollback implementation). PRM-03 entry shape now matches PRM-01''s
+  emitted shape verbatim. PRM-05 NEEDS_REVIEW package is defined inline in
+  both the body and AC5, and is in the Glossary row 37 of the Functional
+  Requirements doc. Process doc mirrors are present at the four target
+  locations. All 22 cross-references resolve. tools/reqctl.py validate
+  reports zero findings on PRM-02..05 (same baseline as the previous run).
+  tools/lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR,
+  291 ACKNOWLEDGED). No new defects introduced. Priority / stage / status
+  preserved on all four requirements. PRM-01, PRM-08 and other RELEASED
+  requirements untouched. No git branches opened, no PRs created. Routing to
+  DOC-UPDATER (WF-01 Step 3) to set status VALIDATED.

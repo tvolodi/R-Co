@@ -1,0 +1,36 @@
+{
+  "handoff_id": "WF02-prm-batch2-20260814-01b-code-design-validator",
+  "run_id": "WF02-prm-batch2-20260814",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "agent_name": "BPM Code Design Validator (CODE-DESIGN-VALIDATOR)",
+  "step": "01b",
+  "created_at": "2026-08-14T19:59:23Z",
+  "started_at": "2026-08-14T19:59:45Z",
+  "completed_at": "2026-08-14T15:02:01Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "FAIL",
+    "summary": "CODE-DESIGN-VALIDATOR detected 1 BLOCKER: migration_number 58 collides with existing 058_repo_artifacts_tenant_activation.sql. All 5 artefacts pass lint (prm02/03/04/05 Type E MD files + migration YAML); codegen --dry-run exits 0 and generates correct DDL; all MUST acceptance criteria are covered. BLOCKER must be resolved before PASS.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "templates/specs/prm04-promotion-reviews.migration.yaml uses migration_number 58, but migrations/058_repo_artifacts_tenant_activation.sql already occupies that number. Y111 lint rule triggers. CODE-DESIGNER must assign a free migration number (e.g. 059) and retry lint."
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER for rework: assign free migration number to prm04-promotion-reviews.migration.yaml"
+  },
+  "task": {
+    "description": "Validate CODE-DESIGNER output for PRM-02, PRM-03, PRM-04, PRM-05.\n\nDESIGN ARTEFACTS TO VALIDATE:\n- src/design/prm-02-conflict-preflight-rejection.md\n- src/design/prm-03-plan-digest.md\n- src/design/prm-04-promotion-review-state-machine.md\n- templates/specs/prm04-promotion-reviews.migration.yaml\n- src/design/prm-05-non-skippable-approval-gate.md\n\nHARD GATE CHECKS:\n1. Every MUST acceptance criterion in PRM-02, PRM-03, PRM-04, PRM-05 has a corresponding design element that addresses it\n2. No implementation code in design artefacts\n3. Design is complete enough for BACKEND-DEV and FRONTEND-DEV to proceed without ambiguity\n4. prm04-promotion-reviews.migration.yaml passes codegen --dry-run\n5. All types, function signatures, data flows are described with no undefined references\n\nReturn PASS if all gate checks pass.\nReturn FAIL with specific issues if any gate check fails.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "task": {
+    "description": "Validate CODE-DESIGNER output for PRM-02, PRM-03, PRM-04, PRM-05.\n\nDESIGN ARTEFACTS TO VALIDATE:\n- src/design/prm-02-conflict-preflight-rejection.md\n- src/design/prm-03-plan-digest.md\n- src/design/prm-04-promotion-review-state-machine.md\n- templates/specs/prm04-promotion-reviews.migration.yaml\n- src/design/prm-05-non-skippable-approval-gate.md\n\nHARD GATE CHECKS:\n1. Every MUST acceptance criterion in PRM-02, PRM-03, PRM-04, PRM-05 has a corresponding design element that addresses it\n2. No implementation code in design artefacts\n3. Design is complete enough for BACKEND-DEV and FRONTEND-DEV to proceed without ambiguity\n4. prm04-promotion-reviews.migration.yaml passes codegen --dry-run\n5. All types, function signatures, data flows are described with no undefined references\n\nReturn PASS if all gate checks pass.\nReturn FAIL with specific issues if any gate check fails.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-prm-batch2-20260814",
+  "requirements": ["PRM-02", "PRM-03", "PRM-04", "PRM-05"],
+  "stage": "stage16"
+}

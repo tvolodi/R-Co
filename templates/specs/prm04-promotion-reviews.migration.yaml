@@ -1,0 +1,228 @@
+# Migration + integration-test parameter file (Lego Type C)
+#
+# Requirement: PRM-04 (promotion_reviews table — promotion review state machine)
+#
+# Design artefact: src/design/prm-04-promotion-review-state-machine.md
+#
+# This file is the COMPLETE design output for the Type C portion of PRM-04.
+# CODE-DESIGN-VALIDATOR lints it. BACKEND-DEV runs codegen_migration.py over it.
+
+schema_version: 1
+migration_number: 96
+name: promotion_reviews
+requirement_ids: [PRM-04]
+purpose: |
+  Persist promotion approvals in a promotion_reviews table. The table is the
+  central state machine for the promotion pipeline: records who requested a
+  promotion, what plan was approved, who approved it, and whether it has been
+  applied/rejected/failed/superseded. Status is CHECK-constrained to exactly
+  six values. Partial unique index enforces at most one live review per
+  (tenant_id, plan_digest). Extends PRM-01 (plan submission) and PRM-03
+  (plan digest storage), and is read by PRM-05 (approval gate), PRM-06/07
+  (assertion re-run), PRM-08 (rollback), and PRM-09 (solution pack).
+
+# ------------------------------------------------------------
+# Tables
+# ------------------------------------------------------------
+tables:
+  - mode: create
+    name: promotion_reviews
+    columns:
+      - { name: id,               type: uuid,          pk: true,          default: gen_random_uuid() }
+      - { name: tenant_id,        type: uuid,          not_null: true }
+      - { name: plan_digest,      type: text,          not_null: true }
+      - { name: def_type,         type: text,          not_null: true }
+      - { name: def_id,           type: text,          not_null: true }
+      - { name: serialised_plan,  type: text,          not_null: true }
+      - { name: status,           type: text,          not_null: true,     default: "'pending_review'" }
+      - { name: requested_by,     type: uuid,          not_null: true }
+      - { name: approved_by,      type: uuid,          not_null: false }
+      - { name: approved_at,      type: timestamptz,   not_null: false }
+      - { name: superseded_by,    type: uuid,          not_null: false }
+      - { name: row_version,      type: integer,       not_null: true,     default: "1" }
+      - { name: created_at,       type: timestamptz,   not_null: true,     default: now() }
+      - { name: updated_at,       type: timestamptz,   not_null: true,     default: now() }
+    constraints:
+      - kind: check
+        name: chk_promotion_reviews_status
+        expression: "status IN ('pending_review','approved','rejected','applied','failed','superseded')"
+    indexes:
+      - name: idx_promotion_reviews_tenant_id
+        columns: [tenant_id]
+      - name: idx_promotion_reviews_status
+        columns: [status]
+      - name: idx_promotion_reviews_requested_by
+        columns: [requested_by]
+      - name: promotion_reviews_plan_digest_active_uniq
+        unique: true
+        columns: [tenant_id, plan_digest]
+        where: "status IN ('pending_review', 'approved')"
+      - name: idx_promotion_reviews_tenant_status
+        unique: false
+        columns: [tenant_id, status]
+        where: "status IN ('applied', 'superseded')"
+
+# ------------------------------------------------------------
+# Fixtures
+# ------------------------------------------------------------
+fixtures:
+  - name: test_tenant_id
+    kind: uuid
+  - name: test_user_id
+    kind: uuid
+  - name: test_user_id_2
+    kind: uuid
+  - name: plan_digest_value
+    kind: sql_literal
+    value: "'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'"
+  - name: duplicate_digest
+    kind: sql_literal
+    value: "'duplicate-digest-value'"
+  - name: setup_tenant
+    kind: sql_setup
+    sql: |
+      INSERT INTO tenants (id, name, tenant_type, status, created_at, updated_at)
+      VALUES ($1, 'test-tenant', 'test', 'ACTIVE', now(), now())
+      ON CONFLICT (id) DO NOTHING;
+    params: [test_tenant_id]
+  - name: setup_user
+    kind: sql_setup
+    sql: |
+      INSERT INTO users (id, tenant_id, username, display_name, email, status, created_at, updated_at)
+      VALUES ($1, $2, 'testuser', 'Test User', 'test@example.com', 'ACTIVE', now(), now())
+      ON CONFLICT (id) DO NOTHING;
+      INSERT INTO users (id, tenant_id, username, display_name, email, status, created_at, updated_at)
+      VALUES ($3, $2, 'reviewer', 'Reviewer', 'reviewer@example.com', 'ACTIVE', now(), now())
+      ON CONFLICT (id) DO NOTHING;
+    params: [test_user_id, test_tenant_id, test_user_id_2]
+
+# ------------------------------------------------------------
+# Integration test scaffold
+# ------------------------------------------------------------
+test_scope: integration
+
+test_cases:
+  - name: prm04_insert_pending_review
+    requirement_ref: PRM-04
+    description: |
+      GIVEN no promotion_reviews rows exist,
+      WHEN a plan is submitted and inserted,
+      THEN the row is created with status = pending_review
+    arrange: |
+      // Setup: table already created by migration
+    act: |
+      // BACKEND-DEV: insert pending_review row via store.approveReview or raw SQL
+    assertions: |
+      // CUSTOM: assert that status = 'pending_review' and row_version = 1
+
+  - name: prm04_approve_review
+    requirement_ref: PRM-04
+    description: |
+      GIVEN a review in pending_review,
+      WHEN approveReview transitions it to approved,
+      THEN status becomes approved with approved_by and approved_at set
+    arrange: |
+      // Setup: insert pending_review row
+    act: |
+      // BACKEND-DEV: call approveReview(store, review_id, actor_id, plan_digest)
+    assertions: |
+      // CUSTOM: assert status = 'approved' and approved_by/approved_at are set and row_version = 2
+
+  - name: prm04_reject_review
+    requirement_ref: PRM-04
+    description: |
+      GIVEN a review in pending_review,
+      WHEN rejectReview transitions it to rejected,
+      THEN status becomes rejected with no approved_by/approved_at set
+    arrange: |
+      // Setup: insert pending_review row
+    act: |
+      // BACKEND-DEV: call rejectReview(store, review_id, actor_id)
+    assertions: |
+      // CUSTOM: assert status = 'rejected' and approved_by IS NULL and row_version = 2
+
+  - name: prm04_duplicate_review_unique_index
+    requirement_ref: PRM-04
+    description: |
+      GIVEN a live review for (tenant_id, plan_digest),
+      WHEN a second submission produces the same digest,
+      THEN the platform returns HTTP 409 DuplicateReview from the partial unique index
+    arrange: |
+      // Setup: insert first row with duplicate_digest
+    act: |
+      // BACKEND-DEV: attempt second INSERT with same tenant_id and plan_digest
+    assertions: |
+      // CUSTOM: assert unique violation error (23505 / unique constraint)
+
+  - name: prm04_mark_review_failed
+    requirement_ref: PRM-04
+    description: |
+      GIVEN a review in approved,
+      WHEN assertion re-run fails and markReviewFailed is called,
+      THEN status becomes failed
+    arrange: |
+      // Setup: approved review
+    act: |
+      // BACKEND-DEV: call markReviewFailed(store, review_id)
+    assertions: |
+      // CUSTOM: assert status = 'failed' and row_version = 3
+
+  - name: prm04_mark_review_applied
+    requirement_ref: PRM-04
+    description: |
+      GIVEN a review in approved,
+      WHEN markReviewApplied is called after successful assertion re-run,
+      THEN status becomes applied
+    arrange: |
+      // Setup: approved review
+    act: |
+      // BACKEND-DEV: call markReviewApplied(store, review_id)
+    assertions: |
+      // CUSTOM: assert status = 'applied' and row_version = 3
+
+  - name: prm04_supersede_review
+    requirement_ref: PRM-04
+    description: |
+      GIVEN any non-superseded review,
+      WHEN supersedeReview is called with a superseding_review_id,
+      THEN status becomes superseded with superseded_by set
+    arrange: |
+      // Setup: approved review
+    act: |
+      // BACKEND-DEV: call supersedeReview(store, review_id, superseding_review_id)
+    assertions: |
+      // CUSTOM: assert status = 'superseded' and superseded_by = $superseding_id and row_version = 4
+
+  - name: prm04_invalid_transition_rejected
+    requirement_ref: PRM-04
+    description: |
+      GIVEN a review in rejected,
+      WHEN supersedeReview is called,
+      THEN rejected to superseded edge is permitted (NEW edge, fixes BLOCKER vs RELEASED PRM-08)
+    arrange: |
+      // Setup: rejected review
+    act: |
+      // BACKEND-DEV: call supersedeReview(store, review_id, new_review_id)
+    assertions: |
+      // CUSTOM: assert status = 'superseded' and row_version = 2
+
+  - name: prm04_optimistic_locking
+    requirement_ref: PRM-04
+    description: |
+      GIVEN concurrent approve requests for the same review,
+      WHEN both use the same row_version,
+      THEN only one succeeds (optimistic locking)
+    arrange: |
+      // Setup: pending_review row with row_version = 1
+    act: |
+      // BACKEND-DEV: two concurrent UPDATE ... WHERE id = $review_id AND row_version = 1
+    assertions: |
+      // CUSTOM: assert exactly one affected row
+
+# ------------------------------------------------------------
+# Rollback strategy
+# ------------------------------------------------------------
+rollback_strategy: |
+  Append-only table. Rollback of promotion_reviews rows is not performed —
+  rows transition to superseded rather than being deleted. The table is
+  immutable append-only for audit purposes.
