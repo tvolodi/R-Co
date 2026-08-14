@@ -429,7 +429,8 @@ test "TC-PRM-06-02: SandboxPool creates an ephemeral schema containing only the 
     };
     const sandbox_count = sandbox_count_row.?[0] orelse "0";
     try testing.expectEqualStrings("1", sandbox_count);
-    try conn.simpleQuery("SET search_path TO public");
+    // Reset to tenant_default to verify the organic rows there are untouched.
+    try conn.simpleQuery("SET search_path TO tenant_default, public");
 
     // Verify the organic rows still exist in the tenant schema (untouched).
     const tenant_count_row = try conn.queryRow(
@@ -688,7 +689,7 @@ test "TC-PRM-07-01: a successful assertion run whose sandbox release fails recor
     {
         const conn = try pool.acquire();
         defer pool.release(conn);
-        _ = try conn.queryRow(
+        const upd_row = try conn.queryRow(
             alloc,
             \\UPDATE promotion_assertion_runs SET
             \\    status = CASE
@@ -702,6 +703,10 @@ test "TC-PRM-07-01: a successful assertion run whose sandbox release fails recor
         ,
             &[_][]const u8{ tenant_id, "PoolExhausted", idem_key },
         );
+        if (upd_row) |r| {
+            for (r) |col| if (col) |v| alloc.free(v);
+            alloc.free(r);
+        }
     }
 
     // Verify: status='teardown_failed', teardown_error populated.

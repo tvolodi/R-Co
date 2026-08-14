@@ -116,6 +116,23 @@ pub const SandboxPool = struct {
 
         conn.simpleQuery(ddl) catch return SandboxPoolError.ProvisionFailed;
 
+        // Create empty copies of the fixture-target tables so tests can
+        // INSERT fixture rows into the sandbox without touching organic data.
+        const setup_sql = std.fmt.allocPrint(
+            allocator,
+            \\DO $body$
+            \\BEGIN
+            \\  EXECUTE 'CREATE TABLE "{s}".process_definitions (LIKE tenant_default.process_definitions INCLUDING DEFAULTS)';
+            \\  EXECUTE 'CREATE TABLE "{s}".variable_schemas (LIKE tenant_default.variable_schemas INCLUDING DEFAULTS)';
+            \\  BEGIN
+            \\    EXECUTE 'CREATE TABLE "{s}".instances (LIKE tenant_default.instances INCLUDING DEFAULTS)';
+            \\  EXCEPTION WHEN undefined_table THEN NULL;
+            \\  END;
+            \\END $body$;
+        , .{ schema_name, schema_name, schema_name }) catch return SandboxPoolError.OutOfMemory;
+        defer allocator.free(setup_sql);
+        conn.simpleQuery(setup_sql) catch return SandboxPoolError.ProvisionFailed;
+
         // Record in active list — make owned copies.
         const id_copy = allocator.dupe(u8, sandbox_id) catch return SandboxPoolError.OutOfMemory;
         errdefer allocator.free(id_copy);
