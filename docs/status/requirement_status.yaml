@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-14T03:12:32Z'
+last_updated: '2026-08-14T08:14:15Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -3529,20 +3529,44 @@ requirements:
     released_at: '2026-05-29'
     release_run: WF02-stage11-sim05-08-rerun1-20260529
   SOL-01:
-    status: PENDING
+    status: RELEASED
     stage: 15
     priority: MUST
     title: Solution pack manifest
+    implemented_in:
+    - src/solution/pack_builder.zig
+    - src/solution/store.zig
+    - src/solution/types.zig
+    - src/api/routes/solution_packs.zig
+    - migrations/1107_fix_audit_chain_text_resource_id.sql
+    - tests/integration/sol01_export_test.zig
+    released_at: '2026-08-14T08:14:04Z'
+    note: 'Released via WF02-sol-batch1-20260814 (PR #783, commit 99ad43db)'
   SOL-02:
-    status: PENDING
+    status: RELEASED
     stage: 15
     priority: MUST
     title: Solution pack installation into a target tenant
+    implemented_in:
+    - src/solution/store.zig
+    - src/api/routes/solution_packs.zig
+    - migrations/1158_sol02_solution_pack_installs.sql
+    - migrations/1160_sol_definition_install_fk.sql
+    - tests/integration/sol02_install_test.zig
+    released_at: '2026-08-14T08:14:06Z'
+    note: 'Released via WF02-sol-batch1-20260814 (PR #783, commit 99ad43db)'
   SOL-03:
-    status: PENDING
+    status: RELEASED
     stage: 15
     priority: MUST
     title: Role-mapping completion gate before activation
+    implemented_in:
+    - src/solution/store.zig
+    - src/api/routes/solution_packs.zig
+    - migrations/1159_sol03_solution_pack_role_map.sql
+    - tests/integration/sol03_role_gate_test.zig
+    released_at: '2026-08-14T08:14:08Z'
+    note: 'Released via WF02-sol-batch1-20260814 (PR #783, commit 99ad43db)'
   SPC-01:
     status: PENDING
     stage: 15

@@ -1,0 +1,165 @@
+run_id: WF02-sol-batch1-20260814
+workflow_id: WF-02
+stage: "15"
+step: "05"
+agent: RELEASE-VALIDATOR
+handoff_id: wf02-sol-batch1-20260814-05-release-validator
+timestamp: "2026-08-14T08:07:19Z"
+commit: 99ad43db
+pr: PR #783
+github_issue: null
+requirement_ids:
+  - SOL-01
+  - SOL-02
+  - SOL-03
+
+scope_note: >
+  Pure-backend release for stage 15 (SOL-01/02/03). SOL-01 introduces the
+  audited solution-pack export endpoint and the audit chain hash for it.
+  SOL-02 introduces solution_pack_installs with FK to instance_definitions.
+  SOL-03 introduces solution_pack_role_map and ties installation to role
+  gates. No frontend changes. Squash-merged via PR #783 to commit 99ad43db
+  on main. Prior step-04-test-runner FAIL (commit 03e1f170) was re-driven
+  green by fix commit 12972390, producing step-04-test-runner-rework1 PASS
+  (2026-08-14T07:50:57Z) against the post-merge HEAD.
+
+prior_fail_resolved:
+  - id: ISS-SOL01-TC02
+    title: "audit chain hash digest() unqualified in tenant_default search_path"
+    fix: "migration 1107 qualifies public.digest(...) and re-creates bpm_audit_chain_canonical_payload with TEXT resource_id"
+    fix_landed_in: "12972390"
+    evidence: "TC-SOL01-02 now produces distinct hashes for distinct payloads; uq_audit_entries_tenant_chain_hash no longer collides on a 64-zero sentinel"
+  - id: ISS-SOL02-COMPILE
+    title: "defer/return in sol02_install_test.zig:488 prevented compilation"
+    fix: "restructured cleanup so defer does not contain `return`"
+    fix_landed_in: "12972390"
+    evidence: "test-integration-sol02 binary compiles, 5/5 pass"
+  - id: ISS-SOL03-LEAKS
+    title: "installPack dupe not freed in src/solution/store.zig:497 (memory leak)"
+    fix: "new_definition_id allocator.free in store.zig:497 path"
+    fix_landed_in: "12972390"
+    evidence: "test-integration-sol03 binary exits 0 with zero leak diagnostics; MaxRSS=10M stable across 3 tests"
+
+decision: APPROVED
+status: PASS
+
+preflight:
+  head_commit: 99ad43db
+  working_tree: clean (housekeeping-only: orchestrator.log, registry.json, WF02 handoff files)
+  zig_build_test_env_verify: "10/10 HEALTHY, exit 0"
+  python_verify_test_env: "10/10 HEALTHY, exit 0"
+  notes: >-
+    Initial pre-flight tripped C0 (BPM_DB_URL==BPM_TEST_DB_URL on 5434/bpm_test)
+    because the parent PowerShell shell had stale BPM_DB_URL exported from a
+    prior session. Cleared the stale env exports; verify_test_env.py then
+    loaded BPM_DB_URL=5432/bpm_dev and BPM_TEST_DB_URL=5434/bpm_test from
+    .env. C0 PASS after re-run. This was environment hygiene, not a code
+    defect.
+
+acceptance_criteria:
+  zig_build_exit_zero: PASS
+  full_suite: PASS
+  full_suite_baseline_match: PASS
+  sol01_integration_4_4: PASS
+  sol02_integration_5_5: PASS
+  sol03_integration_3_3_no_leaks: PASS
+  nfr_01_p99_documented: PASS
+  nfr_02_throughput_documented: PASS
+  nfr_04_memory_no_leaks: PASS
+  nfr_07_audit_chain_distinct_hashes: PASS
+  lint_handoffs_exit_zero: PASS
+
+nfr_results:
+  zig_build: PASS
+  full_test_suite: "1071/1135 (64 skipped, exit 0) — matches baseline, no new failures"
+  sol01_integration: "4/4 (exit 0)"
+  sol02_integration: "5/5 (exit 0)"
+  sol03_integration: "3/3 (exit 0, MaxRSS 10M stable, no leak diagnostics)"
+  nfr_01_p99_read_ms: 0.913            # target <=200 ms
+  nfr_01_p99_write_ms: 2.303           # target <=500 ms
+  nfr_02_append_throughput_eps: 13655.925   # target >=1000 events/sec
+  nfr_04_replay_10000_ms: 41.764       # target <=5000 ms
+  nfr_04_replay_snapshot_100000_ms: 6.116    # target <=1000 ms
+  nfr_06_pool_bounds: PASS             # confirmed via C7 — BPM_DB_URL resolves, schema applies
+  nfr_07_audit_chain: PASS             # TC-SOL01-02 distinct hashes verified via public.digest qualification in migration 1107
+  bench_overall_passed: true
+  bundle_size: N/A                     # pure-backend, no frontend changes
+  axe_core: N/A                        # no frontend changes
+
+bench_run:
+  command: "zig build bench"
+  exit_code: 0
+  db_url_source: BPM_BENCH_DB_URL -> postgres://bpm:bpm@localhost:5442/bpm_dev
+  pre_setup: "zig build migrate applied 7 idempotently-due migrations against dev DB before bench (1157_prm09_solution_pack_update.sql is tenant-scoped and skipped/recorded; no semantics change)"
+  result:
+    - "NFR-01|p99_read_ms|target=<=200|actual=0.913|passed=true"
+    - "NFR-01|p99_write_ms|target=<=500|actual=2.303|passed=true"
+    - "NFR-02|append_throughput_eps|target=>=1000|actual=13655.925|passed=true"
+    - "NFR-04|replay_10000_ms|target=<=5000|actual=41.764|passed=true"
+    - "NFR-04|replay_snapshot_100000_ms|target=<=1000|actual=6.116|passed=true"
+    - "NFR_BENCH_SUMMARY|overall_passed=true"
+
+mrrt_evidence:
+  fix_branch: PR #783
+  merge_commit: 99ad43db
+  fix_commit: 12972390
+  tests_re_passing:
+    - "test-integration-sol01: 4/4 pass (build summary 6/6 steps)"
+    - "test-integration-sol02: 5/5 pass (build summary 6/6 steps)"
+    - "test-integration-sol03: 3/3 pass (build summary 6/6 steps, zero leak diagnostics)"
+  no_regression_in_full_suite: true
+
+approved_requirements:
+  - SOL-01
+  - SOL-02
+  - SOL-03
+
+blocking_issues: []
+
+criterion_results:
+  - id: "preflight.git_head"
+    status: PASS
+    value: "99ad43db"
+    command: "git rev-parse --short HEAD"
+  - id: "preflight.git_status_clean"
+    status: PASS
+    value: "housekeeping-only (orchestrator.log, registry.json, WF02 handoffs)"
+    command: "git status --short"
+  - id: "preflight.zig_build_test_env_verify"
+    status: PASS
+    value: "10/10 HEALTHY, exit 0"
+    command: "zig build test-env-verify"
+  - id: "preflight.python_verify_test_env"
+    status: PASS
+    value: "10/10 HEALTHY, exit 0"
+    command: "python tools/verify_test_env.py"
+  - id: "gate.zig_build"
+    status: PASS
+    value: "exit 0, no compile errors"
+    command: "zig build"
+  - id: "gate.full_test_suite"
+    status: PASS
+    value: "1071/1135 tests passed (64 skipped, exit 0); no new failures vs baseline"
+    command: "zig build test --summary all"
+  - id: "gate.sol01_integration"
+    status: PASS
+    value: "4/4 (exit 0)"
+    command: "zig build test-integration-sol01 --summary all"
+  - id: "gate.sol02_integration"
+    status: PASS
+    value: "5/5 (exit 0)"
+    command: "zig build test-integration-sol02 --summary all"
+  - id: "gate.sol03_integration"
+    status: PASS
+    value: "3/3 (exit 0, MaxRSS 10M, no leak diagnostics)"
+    command: "zig build test-integration-sol03 --summary all"
+  - id: "gate.bench"
+    status: PASS
+    value: "overall_passed=true; NFR-01 read 0.913ms / write 2.303ms; NFR-02 13655.925 eps; NFR-04 replay 41.764ms / snapshot 6.116ms"
+    command: "zig build bench"
+  - id: "gate.lint_handoffs"
+    status: PASS
+    value: "0 BLOCKER, 0 MAJOR, 1 MINOR (acknowledged baseline), exit 0"
+    command: "python tools/lint_handoffs.py"
+
+next_action: "Step 06 — DOC-UPDATER (mark SOL-01/02/03 RELEASED, update requirement_status.yaml, append CHANGELOG, mark PR #783 as the release commit)"

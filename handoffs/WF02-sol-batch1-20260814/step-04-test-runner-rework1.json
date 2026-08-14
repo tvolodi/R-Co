@@ -1,0 +1,134 @@
+{
+  "handoff_id": "wf02-sol-batch1-20260814-04-test-runner-rework1",
+  "run_id": "WF02-sol-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "04-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-sol-batch1-20260814/step-04-test-runner-rework1.json",
+  "created_at": "2026-08-14T07:36:33Z",
+  "started_at": "2026-08-14T07:46:54Z",
+  "completed_at": "2026-08-14T07:50:57Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "15",
+    "requirement_ids": [
+      "SOL-01",
+      "SOL-02",
+      "SOL-03"
+    ],
+    "related_handoff_ids": [
+      "wf02-sol-batch1-20260814-04-test-runner",
+      "wf02-sol-batch1-20260814-03b-test-design-validator-rework1"
+    ],
+    "branch_name": "main",
+    "current_commit": "99ad43db",
+    "previous_fail": "2 BLOCKER + 1 MAJOR on commit 03e1f170: ISS-SOL01-TC02 (audit chain hash digest() not in tenant_default search_path), ISS-SOL02-COMPILE (defer/return in sol02_install_test.zig:488), ISS-SOL03-LEAKS (installPack dupe not freed in src/solution/store.zig:497)",
+    "previous_fail_at": "2026-08-14T05:25:55Z",
+    "fix_commit": "12972390",
+    "fix_commit_message": "fix(WF02-sol-batch1): post-step-04 polish \u2014 GH-758 wiring, audit digest qualification, SOL pack_builder object+string attrs, SOL02 TenantInactive defer fix, SOL03 new_definition_id free",
+    "merge_commit": "99ad43db",
+    "merge_pr": "PR #783",
+    "merge_message": "WF02-sol-batch1: SOL-01/02/03 solution pack + GH-758 wiring + audit digest fix (rebase onto main)",
+    "artifacts_in": [
+      "src/solution/store.zig",
+      "src/solution/pack_builder.zig",
+      "src/solution/types.zig",
+      "src/api/routes/solution_packs.zig",
+      "migrations/1107_fix_audit_chain_text_resource_id.sql",
+      "migrations/1158_sol02_solution_pack_installs.sql",
+      "migrations/1159_sol03_solution_pack_role_map.sql",
+      "migrations/1160_sol_definition_install_fk.sql",
+      "tests/integration/sol01_export_test.zig",
+      "tests/integration/sol02_install_test.zig",
+      "tests/integration/sol03_role_gate_test.zig",
+      "tests/specs/sol-01-03-solution-pack.md",
+      "src/design/sol-batch1-solution-pack.md"
+    ],
+    "test_env": {
+      "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5434/bpm_test"
+    }
+  },
+  "task": {
+    "description": "WF-02 Step 04 (TEST-RUNNER) REWORK 1 for SOL-01/02/03.\n\nThe previous test-runner handoff (step-04-test-runner.json, completed 2026-08-14T05:25:55Z) reported FAIL on commit 03e1f170 with three BLOCKER/MAJOR issues:\n  - ISS-SOL01-TC02: tenant_default.bpm_audit_compute_chain_hash calls digest(...) without schema qualification; sentinel zero hash collides with uq_audit_entries_tenant_chain_hash\n  - ISS-SOL02-COMPILE: cannot return from defer expression in sol02_install_test.zig:488 (catch return inside defer block)\n  - ISS-SOL03-LEAKS: installPack in src/solution/store.zig:497 allocates new_dup and never frees; 2 leaks at process exit\n\nThe orchestrator routed this to BACKEND-DEV via the active workflow branch. The fix landed in commit 12972390 (post-step-04 polish) and was squash-merged to main via PR #783 at commit 99ad43db on 2026-08-14T12:26:02 +0500. Main is now at 99ad43db which contains the fix.\n\nThis handoff is a RE-VERIFICATION of the fix on the post-merge commit. Local checkout is on main (99ad43db). The feature branch feature/WF02-sol-batch1-20260814 is still on origin but local was merged.\n\nSteps:\n1. Confirm HEAD = 99ad43db (or ancestor) and clean working tree: git rev-parse --short HEAD; git status --short\n2. Apply migrations: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; zig build migrate\n3. Run SOL-01: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; zig build test-integration-sol01 --summary all\n4. Run SOL-02: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; zig build test-integration-sol02 --summary all\n5. Run SOL-03: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; zig build test-integration-sol03 --summary all\n6. Run full suite: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; zig build test --summary all\n7. Specifically verify the three previously-failing tests NOW pass:\n   - TC-SOL01-02 in sol01_export_test.zig (no duplicate audit chain hash)\n   - TC-SOL02-01..05 in sol02_install_test.zig (no compile error, all 5 tests pass)\n   - TC-SOL03-01..03 in sol03_role_gate_test.zig (no memory leaks on exit)\n\nPASS: all 12 MUST tests pass + full suite shows no new failures vs baseline 1071/1135 (the 64 skipped + pre-existing repro_g758.zig unwired lint_test_wiring failure are inherited from main and not your concern).\nFAIL: any MUST test fails OR the three specifically-targeted tests still fail.\n\nNote: this is rework_count=1 of max_rework=3. After rework1, the same FAIL cannot repeat without a change-of-approach per ORCHESTRATOR.md \u00a74.4.",
+    "acceptance_criteria": [
+      "HEAD on a commit containing fix 12972390 (or descendant)",
+      "All 4 SOL-01 integration tests pass (TC-SOL01-01..04)",
+      "All 5 SOL-02 integration tests pass (TC-SOL02-01..05, including TC-SOL02-05 TenantInactive)",
+      "All 3 SOL-03 integration tests pass (TC-SOL03-01..03) with zero memory leaks (exit 0 from test binary)",
+      "Full suite: 1071/1135 pass (or +N for newly-fixed tests, 64 skipped) \u2014 no new failures vs baseline",
+      "No new lint_handoffs.py BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PASS \u2014 all three previously-failing issues resolved on commit 99ad43db (fix 12972390 squash-merged via PR #783). SOL-01: 4/4 pass (TC-SOL01-02 audit chain hash digest qualification fixed). SOL-02: 5/5 pass (compile error fixed, TC-SOL02-05 TenantInactive now runs). SOL-03: 3/3 pass with zero memory leaks (installPack dupe freed). Full unit suite: 1071/1135 pass, 64 skipped, 0 failed, exit 0 \u2014 matches baseline exactly. No regressions introduced.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-14-WF02-sol-batch1-20260814-step04-rework1.yaml",
+      "scratch/sol_rework1_migrate.log",
+      "scratch/sol_rework1_sol01.log",
+      "scratch/sol_rework1_sol02.log",
+      "scratch/sol_rework1_sol03.log",
+      "scratch/sol_rework1_full_test.log"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR step-05 (WF02-sol-batch1-20260814)",
+    "test_counts": {
+      "sol01": {
+        "pass": 4,
+        "fail": 0,
+        "total": 4,
+        "exit_code": 0,
+        "build_summary": "6/6 steps succeeded; 4/4 tests passed"
+      },
+      "sol02": {
+        "pass": 5,
+        "fail": 0,
+        "total": 5,
+        "exit_code": 0,
+        "build_summary": "6/6 steps succeeded; 5/5 tests passed"
+      },
+      "sol03": {
+        "pass": 3,
+        "fail": 0,
+        "total": 3,
+        "exit_code": 0,
+        "memory_leaks": 0,
+        "build_summary": "6/6 steps succeeded; 3/3 tests passed"
+      },
+      "full_unit_suite": {
+        "pass": 1071,
+        "fail": 0,
+        "skip": 64,
+        "total": 1135,
+        "exit_code": 0,
+        "build_steps_succeeded": "103/103",
+        "build_summary": "Build Summary: 103/103 steps succeeded; 1071/1135 tests passed (64 skipped)",
+        "baseline_match": true
+      }
+    },
+    "previously_failing_tests_now_passing": [
+      "TC-SOL01-02 (audit chain hash collision)",
+      "TC-SOL02-01..05 (compile error unblocked)",
+      "TC-SOL03-01..03 (memory leak fixed, exit 0)"
+    ],
+    "git_evidence": {
+      "branch_name": "main",
+      "commit_sha_list": [
+        "99ad43db"
+      ],
+      "fix_commit": "12972390",
+      "pr_url": "https://github.com/R-Co/R-Co/pull/783",
+      "merge_commit": "99ad43db"
+    }
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

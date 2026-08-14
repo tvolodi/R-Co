@@ -1,0 +1,172 @@
+{
+  "handoff_id": "wf02-sol-batch1-20260814-05-release-validator",
+  "run_id": "WF02-sol-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-sol-batch1-20260814/step-05-release-validator.json",
+  "created_at": "2026-08-14T07:52:32Z",
+  "started_at": "2026-08-14T07:54:16Z",
+  "completed_at": "2026-08-14T08:07:49Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "15",
+    "requirement_ids": [
+      "SOL-01",
+      "SOL-02",
+      "SOL-03"
+    ],
+    "related_handoff_ids": [
+      "wf02-sol-batch1-20260814-01-code-designer",
+      "wf02-sol-batch1-20260814-01b-code-design-validator",
+      "wf02-sol-batch1-20260814-02a-backend-dev",
+      "wf02-sol-batch1-20260814-02b-backend-dev",
+      "wf02-sol-batch1-20260814-03b-test-design-validator",
+      "wf02-sol-batch1-20260814-03b-test-design-validator-rework1",
+      "wf02-sol-batch1-20260814-04-test-runner-rework1"
+    ],
+    "artifacts_in": [
+      "src/solution/store.zig",
+      "src/solution/pack_builder.zig",
+      "src/solution/types.zig",
+      "src/api/routes/solution_packs.zig",
+      "src/design/sol-batch1-solution-pack.md",
+      "migrations/1107_fix_audit_chain_text_resource_id.sql",
+      "migrations/1158_sol02_solution_pack_installs.sql",
+      "migrations/1159_sol03_solution_pack_role_map.sql",
+      "migrations/1160_sol_definition_install_fk.sql",
+      "tests/integration/sol01_export_test.zig",
+      "tests/integration/sol02_install_test.zig",
+      "tests/integration/sol03_role_gate_test.zig",
+      "tests/specs/sol-01-03-solution-pack.md",
+      "tests/reports/report-2026-08-14-WF02-sol-batch1-20260814-step04-rework1.yaml"
+    ],
+    "branch_name": "main",
+    "current_commit": "99ad43db",
+    "merge_pr": "PR #783",
+    "merge_message": "WF02-sol-batch1: SOL-01/02/03 solution pack + GH-758 wiring + audit digest fix (rebase onto main)",
+    "previous_fail_summary": "step-04-test-runner FAIL on commit 03e1f170 (3 BLOCKER/MAJOR: ISS-SOL01-TC02 audit chain hash digest() not in tenant_default search_path, ISS-SOL02-COMPILE defer/return in sol02_install_test.zig:488, ISS-SOL03-LEAKS installPack dupe not freed in src/solution/store.zig:497). All three addressed in fix commit 12972390 and squash-merged via PR #783 at commit 99ad43db. step-04-test-runner-rework1 PASS at 2026-08-14T07:50:57Z."
+  },
+  "task": {
+    "type": "release-validation",
+    "title": "Step 05 release validation for SOL-01/02/03 (stage 15 MUST) \u2014 post-merge state on commit 99ad43db",
+    "description": "Validate SOL-01/02/03 (stage 15 MUST) for release. Pure-backend batch \u2014 no frontend. Step-04-test-runner-rework1 PASS at 2026-08-14T07:50:57Z against the post-merge commit 99ad43db (PR #783 squash-merged). The current main equals the delivered state.\n\nRun these in order:\n\n1. Confirm HEAD: `git rev-parse --short HEAD` should be 99ad43db (or a descendant). Confirm `git status --short` is clean (only housekeeping churn allowed).\n\n2. zig build check (compile): `zig build` \u2014 must exit 0.\n\n3. NFR-01..07 (relevant subset):\n   - NFR-01 p99 latency benchmarks: run `zig build bench` (or equivalent) and record p99 for SOL-relevant endpoints. Document the benchmark result.\n   - NFR-02 throughput: same run, record rps.\n   - NFR-04 memory: the test-runner already verified no leaks on SOL-03 (3/3 pass, 0 leaks). Document that finding here.\n   - NFR-06 error budget: no new SLOs introduced by this batch (solution_pack_installs and role_map are discrete endpoints; spot-check 200/4xx/5xx mixing via the existing tests).\n   - NFR-07 audit chain: the previous SOL-01 audit chain hash BLOCKER (ISS-SOL01-TC02) is fixed by migration 1107 (public.digest qualification). Document that the audit chain now produces distinct hashes for distinct payloads (TC-SOL01-02 now passes).\n\n4. Coverage: confirm every MUST acceptance criterion for SOL-01/02/03 has a corresponding test case that PASSES on the post-merge commit. Cross-check with tests/specs/sol-01-03-solution-pack.md and the test-runner rework1 report at tests/reports/report-2026-08-14-WF02-sol-batch1-20260814-step04-rework1.yaml.\n\n5. No-regression: full suite shows 1071/1135 baseline (or +N for newly-fixed tests, 64 skipped). The 64 skipped + the pre-existing repro_g758.zig unwired lint_test_wiring failure are inherited from main and not your concern.\n\n6. Decision file: write to docs/status/release-decision-WF02-sol-batch1-20260814.yaml with status APPROVED or BLOCKED.\n\nAcceptance criteria:\n- zig build exits 0\n- Full suite 1071/1135 (or +N) \u2014 no new failures vs baseline\n- NFR-01 p99 latency within target (document the value)\n- NFR-02 throughput within target (document the value)\n- NFR-04 memory: SOL-03 binary exits 0 with 0 leaks\n- NFR-07 audit chain: TC-SOL01-02 passes (no duplicate chain hash)\n- Decision file exists at docs/status/release-decision-WF02-sol-batch1-20260814.yaml with status APPROVED\n- No new lint_handoffs.py BLOCKER/MAJOR\n- Cross-check: all 12 MUST tests pass (4 SOL-01 + 5 SOL-02 + 3 SOL-03)",
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ],
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "Full integration + unit suite 1071/1135 (64 skipped) \u2014 no new failures vs baseline",
+      "NFR-01 p99 latency documented (zig build bench result)",
+      "NFR-02 throughput documented (zig build bench result)",
+      "NFR-04 memory: SOL-03 binary exits 0 with zero leaks",
+      "NFR-07 audit chain: TC-SOL01-02 passes \u2014 no duplicate chain hash",
+      "Decision file at docs/status/release-decision-WF02-sol-batch1-20260814.yaml with status APPROVED",
+      "All 12 MUST tests pass (4 SOL-01 + 5 SOL-02 + 3 SOL-03)",
+      "lint_handoffs.py exits 0 after this handoff is written"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for stage 15 (SOL-01/02/03) at commit 99ad43db (PR #783). All 12 MUST tests pass (4 SOL-01 + 5 SOL-02 + 3 SOL-03). Full suite 1071/1135 (64 skipped) matches baseline with no new failures. NFR-01 p99 read 0.913ms / write 2.303ms (targets <=200/<=500). NFR-02 throughput 13655.925 eps (target >=1000). NFR-04 replay 10k 41.764ms / snapshot 100k 6.116ms (targets <=5000/<=1000). NFR-07 audit chain fixed by migration 1107 (public.digest qualification); TC-SOL01-02 now produces distinct hashes. Prior step-04 failures (ISS-SOL01-TC02, ISS-SOL02-COMPILE, ISS-SOL03-LEAKS) all resolved in fix commit 12972390 prior to this validator run. lint_handoffs.py exit 0 with 0 BLOCKER / 0 MAJOR.",
+    "artifacts_out": [
+      "docs/status/release-decision-WF02-sol-batch1-20260814.yaml",
+      "scratch/01-test-env-verify.log",
+      "scratch/02-verify-test-env.log",
+      "scratch/03-zig-build.log",
+      "scratch/04b-zig-build-test-with-db.log",
+      "scratch/05-sol01.log",
+      "scratch/06-sol02.log",
+      "scratch/07-sol03.log",
+      "scratch/08-lint-handoffs.log",
+      "scratch/09-bench.log"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "main",
+      "commit_sha_list": [
+        "99ad43db"
+      ],
+      "remote_branch": "origin/main",
+      "push_status": "skipped",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/783",
+      "pr_create_error": null
+    },
+    "next_action": "PASS -> ORCH route to DOC-UPDATER step-06 (WF02-sol-batch1-20260814) -- mark SOL-01/02/03 RELEASED, update docs/status/requirement_status.yaml, append CHANGELOG.md, attach this release-decision YAML to PR #783",
+    "criterion_results": [
+      {
+        "id": "preflight.git_head",
+        "status": "PASS",
+        "value": "99ad43db",
+        "command": "git rev-parse --short HEAD"
+      },
+      {
+        "id": "preflight.git_status_clean",
+        "status": "PASS",
+        "value": "housekeeping-only",
+        "command": "git status --short"
+      },
+      {
+        "id": "preflight.zig_build_test_env_verify",
+        "status": "PASS",
+        "value": "10/10 HEALTHY",
+        "command": "zig build test-env-verify"
+      },
+      {
+        "id": "preflight.python_verify_test_env",
+        "status": "PASS",
+        "value": "10/10 HEALTHY",
+        "command": "python tools/verify_test_env.py"
+      },
+      {
+        "id": "gate.zig_build",
+        "status": "PASS",
+        "value": "exit 0",
+        "command": "zig build"
+      },
+      {
+        "id": "gate.full_test_suite",
+        "status": "PASS",
+        "value": "1071/1135 (64 skipped, exit 0)",
+        "command": "zig build test --summary all"
+      },
+      {
+        "id": "gate.sol01_integration",
+        "status": "PASS",
+        "value": "4/4 (exit 0)",
+        "command": "zig build test-integration-sol01 --summary all"
+      },
+      {
+        "id": "gate.sol02_integration",
+        "status": "PASS",
+        "value": "5/5 (exit 0)",
+        "command": "zig build test-integration-sol02 --summary all"
+      },
+      {
+        "id": "gate.sol03_integration",
+        "status": "PASS",
+        "value": "3/3 (exit 0, no leaks, MaxRSS 10M)",
+        "command": "zig build test-integration-sol03 --summary all"
+      },
+      {
+        "id": "gate.bench",
+        "status": "PASS",
+        "value": "NFR-01 read 0.913ms / write 2.303ms; NFR-02 13655.925 eps; NFR-04 replay 41.764ms / snapshot 6.116ms; overall_passed=true",
+        "command": "zig build bench"
+      },
+      {
+        "id": "gate.lint_handoffs",
+        "status": "PASS",
+        "value": "0 BLOCKER, 0 MAJOR, 1 MINOR (acknowledged), exit 0",
+        "command": "python tools/lint_handoffs.py"
+      }
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

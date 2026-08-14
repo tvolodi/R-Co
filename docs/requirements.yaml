@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-14T03:12:28Z'
+generated_at: '2026-08-14T08:14:08Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -8421,7 +8421,7 @@ requirements:
     title: Solution pack manifest
     stage: 15
     priority: MUST
-    status: PENDING
+    status: RELEASED
     body: |-
       > **Extends:** PD-09, generalized from a single definition to a dependency-closure bundle.
 
@@ -8437,12 +8437,22 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
+    note: 'Released via WF02-sol-batch1-20260814 (PR #783, commit 99ad43db)'
+    implemented_in:
+    - src/solution/pack_builder.zig
+    - src/solution/store.zig
+    - src/solution/types.zig
+    - src/api/routes/solution_packs.zig
+    - migrations/1107_fix_audit_chain_text_resource_id.sql
+    - tests/integration/sol01_export_test.zig
+    released_at: '2026-08-14T08:14:04Z'
+    last_updated: '2026-08-14T08:14:04Z'
   SOL-02:
     id: SOL-02
     title: Solution pack installation into a target tenant
     stage: 15
     priority: MUST
-    status: PENDING
+    status: RELEASED
     body: |-
       > **Extends:** ENV-03, generalized from a fixed test-tenant → linked-production-tenant pairing to installation into any target tenant by ID.
 
@@ -8464,12 +8474,21 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
+    note: 'Released via WF02-sol-batch1-20260814 (PR #783, commit 99ad43db)'
+    implemented_in:
+    - src/solution/store.zig
+    - src/api/routes/solution_packs.zig
+    - migrations/1158_sol02_solution_pack_installs.sql
+    - migrations/1160_sol_definition_install_fk.sql
+    - tests/integration/sol02_install_test.zig
+    released_at: '2026-08-14T08:14:06Z'
+    last_updated: '2026-08-14T08:14:06Z'
   SOL-03:
     id: SOL-03
     title: Role-mapping completion gate before activation
     stage: 15
     priority: MUST
-    status: PENDING
+    status: RELEASED
     body: |-
       **Extends:** IDN-05 (role registry), adding an activation-time completeness check specific to solution-pack-installed definitions.
 
@@ -8543,6 +8562,14 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
+    note: 'Released via WF02-sol-batch1-20260814 (PR #783, commit 99ad43db)'
+    implemented_in:
+    - src/solution/store.zig
+    - src/api/routes/solution_packs.zig
+    - migrations/1159_sol03_solution_pack_role_map.sql
+    - tests/integration/sol03_role_gate_test.zig
+    released_at: '2026-08-14T08:14:08Z'
+    last_updated: '2026-08-14T08:14:08Z'
   SPC-01:
     id: SPC-01
     title: Declared input/output contract for SUB_PROCESS nodes
