@@ -123,6 +123,9 @@ pub const definition_rollback_routes = @import("api/routes/definition_rollback.z
 pub const pack_update = @import("definition/pack_update.zig"); // PRM-09 solution pack three-way diff
 pub const tenant_lifecycle_admin = @import("admin/tenant_lifecycle.zig"); // ENV-05 reset/delete lifecycle
 pub const entities = @import("entities/mod.zig"); // EXP-201/EXP-202 entities subsystem
+pub const solution_pack_store = @import("solution/store.zig"); // SOL-01/02/03 solution pack
+pub const solution_pack_types = @import("solution/types.zig"); // SOL-01/02/03 types
+pub const solution_pack_routes = @import("api/routes/solution_packs.zig"); // SOL-01/02 HTTP handlers
 
 // ISS-0147 / GH #463 — src/wasm subsystem (WASM-01..14, all RELEASED).
 //

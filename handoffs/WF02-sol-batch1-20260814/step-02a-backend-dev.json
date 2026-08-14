@@ -1,0 +1,53 @@
+{
+  "handoff_id": "wf02-sol-batch1-20260814-02a-backend-dev",
+  "run_id": "WF02-sol-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-sol-batch1-20260814/step-02a-backend-dev.json",
+  "created_at": "2026-08-14T03:57:40Z",
+  "started_at": "2026-08-14T03:57:40Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "15",
+    "requirement_ids": ["SOL-01", "SOL-02", "SOL-03"],
+    "related_handoff_ids": [
+      "wf02-sol-batch1-20260814-01-code-designer",
+      "wf02-sol-batch1-20260814-01b-code-design-validator"
+    ],
+    "artifacts_in": [
+      "src/design/sol-batch1-solution-pack.md"
+    ],
+    "branch_name": "feature/WF02-sol-batch1-20260814"
+  },
+  "task": {
+    "description": "WF-02 Step 02a (BACKEND-DEV) for SOL-01/02/03 — implement solution pack.\n\nRead src/design/sol-batch1-solution-pack.md in full before starting.\n\nImplement exactly what the design specifies:\n\n1. Create migrations (as specified in design):\n   - 1158: solution_pack_installs table\n   - 1159: solution_pack_role_map table  \n   - 1160: solution_pack_install_id FK column on process_definitions\n\n2. Create Zig modules (as specified in design):\n   - src/definition/solution_pack_export.zig — exportSolutionPack() function\n   - src/definition/solution_pack_install.zig — installSolutionPack() function\n   - src/api/routes/solution_pack.zig — HTTP handlers for SOL-01/02\n\n3. Extend REPO-08 activation handler (src/api/routes/definitions.zig or similar) to add the SOL-03 role-mapping gate\n\n4. Wire into src/bpm.zig\n\nValidation gates:\n1. `zig build` exits 0\n2. `zig build test --summary all` — no new failures vs baseline (1071/1135)\n3. `zig build migrate` with BPM_TEST_DB_URL (apply new migrations)\n4. `python tools/lint_handoffs.py` exits 0\n\nConstraints:\n- No hardcoded UUIDs\n- No catch unreachable for realistic error paths\n- All SQL parameterized\n- Follow tenant schema routing pattern from existing code (tenant_context_mod)\n\nEnvironment: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test",
+    "acceptance_criteria": [
+      "All 3 migrations exist and apply cleanly",
+      "exportSolutionPack() implements SOL-01 ACs",
+      "installSolutionPack() implements SOL-02 ACs",
+      "SOL-03 role-mapping gate added to activation handler",
+      "zig build exits 0",
+      "zig build test — no new failures",
+      "lint_handoffs.py exits 0"
+    ]
+  },
+  "result": {
+    "status": null,
+    "summary": null,
+    "artifacts_out": [],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-sol-batch1-20260814",
+      "commit_sha_list": [],
+      "push_status": null
+    },
+    "next_action": "After PASS: ORCH dispatches step-03-test-designer. After FAIL: rework."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

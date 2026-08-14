@@ -1,0 +1,53 @@
+{
+  "handoff_id": "wf02-sol-batch1-20260814-01b-code-design-validator",
+  "run_id": "WF02-sol-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-sol-batch1-20260814/step-01b-code-design-validator.json",
+  "created_at": "2026-08-14T03:53:37Z",
+  "started_at": "2026-08-14T03:53:37Z",
+  "completed_at": "2026-08-14T03:56:47Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "15",
+    "requirement_ids": ["SOL-01", "SOL-02", "SOL-03"],
+    "related_handoff_ids": [
+      "wf02-sol-batch1-20260814-01-code-designer"
+    ],
+    "artifacts_in": [
+      "src/design/sol-batch1-solution-pack.md"
+    ],
+    "branch_name": "feature/WF02-sol-batch1-20260814"
+  },
+  "task": {
+    "description": "WF-02 Step 01b (CODE-DESIGN-VALIDATOR) for SOL-01/02/03 — hard gate.\n\nValidate the design at src/design/sol-batch1-solution-pack.md.\n\nChecklist:\n1. Read docs/requirements.yaml for SOL-01, SOL-02, SOL-03 — extract all MUST acceptance criteria\n2. Read src/design/sol-batch1-solution-pack.md in full\n3. Run python tools/lint_design_artefact.py src/design/sol-batch1-solution-pack.md — must exit 0\n4. For each MUST AC in SOL-01: verify the design covers it\n5. For each MUST AC in SOL-02: verify the design covers it\n6. For each MUST AC in SOL-03: verify the design covers it\n7. Verify: no Zig code in the design document\n8. Verify: Error taxonomy section present\n9. Verify: Files to create and Files NOT to change sections present\n10. Verify: Design is detailed enough for BACKEND-DEV to implement without ambiguity\n\nReturn PASS if all checks pass. FAIL with specific gaps otherwise.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0",
+      "All SOL-01 MUST ACs covered",
+      "All SOL-02 MUST ACs covered",
+      "All SOL-03 MUST ACs covered",
+      "No Zig code in design",
+      "Error taxonomy section present",
+      "Sufficient detail for BACKEND-DEV"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 10 checklist items passed. lint_design_artefact.py exited 0 (no BLOCKER/MAJOR). All MUST ACs for SOL-01 (3), SOL-02 (5+2 edge cases), and SOL-03 (3) are covered by the design. No Zig function bodies present (interface signatures only). Error taxonomy table complete (11 entries). 'Files to create' and 'Files NOT to change' sections present. Three open questions flagged for BACKEND-DEV action. Security guards (PROCESS_DESIGNER/PLATFORM_ADMIN) specified on all endpoints. Type E classification correctly justified per lego-catalog.md selection rules. One MINOR documentation note: the SOL-02 edge case 'v2.0.0 over existing v1.x install' is not explicitly narrated in the install flow; the mechanism is correct implicitly (different pack_version passes UNIQUE check, new DRAFTs created via store.create()). Does not block PASS.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "requirement": "SOL-02 edge case",
+        "description": "Install flow narrative does not explicitly state that 1.x definitions remain untouched when installing a v2.0.0 pack over an existing v1.x installation. The mechanism is correct (UNIQUE (pack_id, pack_version) allows the second install; store.create() creates new DRAFT definitions without touching existing ones), but the behavior is only implied, not stated. BACKEND-DEV should verify this is the intended outcome and add a comment in the implementation."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 02a) and/or FRONTEND-DEV (Step 02b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
