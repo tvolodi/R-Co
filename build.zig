@@ -2932,7 +2932,6 @@ pub fn build(b: *std.Build) void {
     test_integration_prm06_07_step.dependOn(&clean_test_db.step);
     test_integration_prm06_07_step.dependOn(&run_prm06_07_solo_tests.step);
 
-
     // PRM-08 (WF02-prm-batch1-20260814, Step 3): rollback definition
     // version with sandbox execution.
     // ACs covered: PRM-08 AC1/AC3/AC4/AC5.
@@ -2971,6 +2970,23 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_prm06_07_solo_tests.step);
     test_integration_others_step.dependOn(&run_prm08_solo_tests.step);
     test_integration_others_step.dependOn(&run_prm09_solo_tests.step);
+
+    // GH-758 regression: standalone pool/lock repro was intentionally left
+    // un-wired in the original build graph; the lint gate treats that as a
+    // blocker because a test-bearing file must be reachable from a root.
+    const repro_g758_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/repro_g758.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_repro_g758_solo_tests = addIntegrationRun(b, repro_g758_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_repro_g758_step = b.step("test-integration-repro-g758", "Run the GH-758 lock/pool regression repro in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_repro_g758_step.dependOn(&clean_test_db.step);
+    test_integration_repro_g758_step.dependOn(&run_repro_g758_solo_tests.step);
+    test_integration_others_step.dependOn(&run_repro_g758_solo_tests.step);
 
     // SOL-01 (WF02-sol-batch1-20260814, Step 3): solution pack export.
     // ACs covered: SOL-01 AC1 + AC3 → TC-SOL01-01..04.
@@ -3024,7 +3040,6 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_sol01_solo_tests.step);
     test_integration_others_step.dependOn(&run_sol02_solo_tests.step);
     test_integration_others_step.dependOn(&run_sol03_solo_tests.step);
-
 
     const exp201_202_solo_tests = b.addTest(.{
         .root_module = b.createModule(.{

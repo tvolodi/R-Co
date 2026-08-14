@@ -164,7 +164,7 @@ fn installTestPack(
     defer {
         for (result.installed_definitions) |d| {
             alloc.free(d.source_definition_id);
-            // Don't free new_definition_id — we return it to caller.
+            alloc.free(d.new_definition_id);
             alloc.free(d.process_key);
         }
         alloc.free(result.installed_definitions);

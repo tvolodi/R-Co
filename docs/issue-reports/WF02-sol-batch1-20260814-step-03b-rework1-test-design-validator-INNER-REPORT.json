@@ -1,0 +1,94 @@
+{
+  "report_id": "WF02-sol-batch1-20260814-step-03b-rework1-TEST-DESIGN-VALIDATOR",
+  "agent_id": "TEST-DESIGN-VALIDATOR",
+  "run_id": "WF02-sol-batch1-20260814",
+  "step": "03b-rework1",
+  "created_at": "2026-08-14T05:14:24Z",
+  "summary": "Re-validated test design for SOL-01/02/03 after rework1 added TC-SOL02-05. All 12 MUST ACs are covered by implemented integration tests. TC-SOL02-05 exists in sol02_install_test.zig and correctly asserts SolutionPackError.TenantInactive. No SkipZigTest on any MUST test. All fixtures use per-test UUIDs (ACTOR_ID=00000000... is a well-known system actor, consistent with other integration test files, not a fixture UUID). SQL uses parameterised queries only. All three test files are wired into build.zig (sol01, sol02, sol03 steps + test_integration_others_step). lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR). Three MINOR issues logged; none block TEST-RUNNER.",
+  "files_created": [],
+  "files_modified": [
+    "handoffs/WF02-sol-batch1-20260814/step-03b-test-design-validator-rework1.json"
+  ],
+  "tests_run": [
+    {
+      "name": "fn:validate-completeness — SOL-02 AC5 covered by TC-SOL02-05",
+      "status": "pass",
+      "detail": "tests/integration/sol02_install_test.zig line ~450: test 'TC-SOL02-05: installPack returns TenantInactive when target tenant status != ACTIVE; HTTP 409' — inserts INACTIVE tenant with per-test UUID, switches tenant context, calls installPack, asserts SolutionPackError.TenantInactive"
+    },
+    {
+      "name": "fn:validate-completeness — SOL-01 MUST ACs (AC1+AC3) covered",
+      "status": "pass",
+      "detail": "TC-SOL01-01..04 in sol01_export_test.zig — minimal doc shape, service catalog inclusion, sorted manifest roles, DefinitionNotFound"
+    },
+    {
+      "name": "fn:validate-completeness — SOL-02 MUST ACs (AC1..AC5) covered",
+      "status": "pass",
+      "detail": "TC-SOL02-01..05 in sol02_install_test.zig — happy path, catalog conflict, catalog reuse, idempotent re-install, TenantInactive"
+    },
+    {
+      "name": "fn:validate-completeness — SOL-03 MUST ACs (AC1..AC3) covered",
+      "status": "pass",
+      "detail": "TC-SOL03-01..03 in sol03_role_gate_test.zig — partial unbound roles, all bound, non-pack definition"
+    },
+    {
+      "name": "No SkipZigTest on MUST tests",
+      "status": "pass",
+      "detail": "grep for SkipZigTest in sol0*_test.zig returns only comment lines ('No error.SkipZigTest on MUST tests'); no actual skip calls"
+    },
+    {
+      "name": "Per-test UUIDs",
+      "status": "pass",
+      "detail": "All fixture names use {uuid_str[0..8]} suffix from helpers.randomUuidBytes(); pack_ids are per-test UUIDs; ACTOR_ID=00000000 is a well-known system actor consistent with all other integration test files"
+    },
+    {
+      "name": "defer cleanup on all tests",
+      "status": "pass",
+      "detail": "TC-SOL02-05 has tenant fixture cleanup; missing defer cleanupInstall(&pool, pack_id) but no row is expected to be created (TenantInactive rejects before insert) — logged as MINOR"
+    },
+    {
+      "name": "BPM_TEST_DB_URL self-sufficiency",
+      "status": "pass",
+      "detail": "All 3 files call env.getAlloc(alloc, 'BPM_TEST_DB_URL') and return MissingTestDatabaseUrl with a clear debug.print message when absent"
+    },
+    {
+      "name": "Parameterised SQL only",
+      "status": "pass",
+      "detail": "All SQL in test files uses $1/$2/... placeholders; no string concatenation of test data into SQL"
+    },
+    {
+      "name": "build.zig wiring",
+      "status": "pass",
+      "detail": "sol01_export_test.zig at line 2980, sol02_install_test.zig at 2996, sol03_role_gate_test.zig at 3012 — all three have solo steps and are added to test_integration_others_step"
+    },
+    {
+      "name": "Spec count vs implementation count",
+      "status": "pass",
+      "detail": "Spec: 4+5+3=12 total. Implementation: 4 test blocks in sol01, 5 in sol02, 3 in sol03 = 12 total. Match confirmed."
+    },
+    {
+      "name": "lint_handoffs.py",
+      "status": "pass",
+      "detail": "0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing), 291 ACKNOWLEDGED — exits 0"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "TC-SOL02-05 (sol02_install_test.zig): missing 'defer cleanupInstall(&pool, pack_id)'. Since TenantInactive rejects the install, no solution_pack_installs row is created and the cleanup is a no-op in normal operation. However, the project convention requires a cleanup defer in every test block for robustness. TEST-DESIGNER should add this on the next maintenance pass."
+    },
+    {
+      "severity": "MINOR",
+      "description": "build.zig comment for SOL-02 (line ~2999) reads '// ACs covered: SOL-02 AC1..AC5 → TC-SOL02-01..04.' — should be TC-SOL02-01..05. Stale comment left from before rework1 added TC-SOL02-05. Does not affect test execution."
+    },
+    {
+      "severity": "MINOR",
+      "description": "TC-SOL02-05 spec assertion 'no solution_pack_installs row created' is not verified by a DB COUNT query. The test checks SolutionPackError.TenantInactive (correct) but does not confirm the rollback via countInstallRows(). Recommend adding the assertion in a future pass; not required for the AC itself ('HTTP 409 is returned')."
+    }
+  ],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-02 Step 4): all MUST ACs covered, build.zig wired, lint clean.",
+    "TEST-RUNNER should run: zig build test-integration-sol01, test-integration-sol02, test-integration-sol03 (or test-integration-others) against BPM_TEST_DB_URL.",
+    "MINOR issues (#1 and #2) can be addressed by TEST-DESIGNER on next rework if test run reveals anything; they do not block execution."
+  ],
+  "blockers": []
+}

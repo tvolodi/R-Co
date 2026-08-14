@@ -55,22 +55,23 @@ pub fn collectGraphDeps(
         };
 
         const attrs_val = node.get("attributes") orelse continue;
-        const attrs_json = switch (attrs_val) {
-            .string => |s| s,
-            else => continue,
-        };
-        if (attrs_json.len == 0) continue;
 
-        var attrs_parsed = std.json.parseFromSlice(
-            std.json.Value,
-            allocator,
-            attrs_json,
-            .{ .allocate = .alloc_if_needed },
-        ) catch continue;
-        defer attrs_parsed.deinit();
-
-        const attrs = switch (attrs_parsed.value) {
+        const attrs = switch (attrs_val) {
             .object => |o| o,
+            .string => |s| blk: {
+                if (s.len == 0) continue;
+                var attrs_parsed = std.json.parseFromSlice(
+                    std.json.Value,
+                    allocator,
+                    s,
+                    .{ .allocate = .alloc_if_needed },
+                ) catch continue;
+                defer attrs_parsed.deinit();
+                break :blk switch (attrs_parsed.value) {
+                    .object => |o| o,
+                    else => continue,
+                };
+            },
             else => continue,
         };
 

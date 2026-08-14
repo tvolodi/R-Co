@@ -231,13 +231,15 @@ test "TC-SOL01-02: exportPack with SERVICE_TASK graph includes catalog entry" {
     defer alloc.free(svc_id);
 
     // Graph with a SERVICE_TASK node; attributes is a JSON-encoded string.
-    const graph_prefix =
-        \\{"nodes":[{"id":"S","node_type":"START","label":null,"attributes":null},{"id":"ST","node_type":"SERVICE_TASK","label":"t","attributes":"{\"service_id\":\"
-    ;
-    const graph_suffix =
-        \\"}"},{"id":"E","node_type":"END","label":null,"attributes":null}],"edges":[]}
-    ;
-    const graph = try std.mem.concat(alloc, u8, &[_][]const u8{ graph_prefix, svc_id, graph_suffix });
+    const graph = try std.mem.concat(
+        alloc,
+        u8,
+        &[_][]const u8{
+            "{\"nodes\":[{\"id\":\"S\",\"node_type\":\"START\",\"label\":null,\"attributes\":null},{\"id\":\"ST\",\"node_type\":\"SERVICE_TASK\",\"label\":\"t\",\"attributes\":{\"service_id\":\"",
+            svc_id,
+            "\"}},{\"id\":\"E\",\"node_type\":\"END\",\"label\":null,\"attributes\":null}],\"edges\":[]}",
+        },
+    );
     defer alloc.free(graph);
 
     cleanupDefinitionByName(&pool, def_name);

@@ -485,12 +485,13 @@ test "TC-SOL02-05: installPack returns TenantInactive when target tenant status 
     // Cleanup: restore default context then delete the fixture tenant row.
     defer {
         bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
-        const conn = pool.acquire() catch return;
-        defer pool.release(conn);
-        conn.exec(
-            "DELETE FROM public.tenant WHERE id = $1::uuid",
-            &[_][]const u8{tenant_id},
-        ) catch {};
+        if (pool.acquire()) |conn| {
+            defer pool.release(conn);
+            conn.exec(
+                "DELETE FROM public.tenant WHERE id = $1::uuid",
+                &[_][]const u8{tenant_id},
+            ) catch {};
+        } else |_| {}
     }
 
     // Switch tenant context to the inactive tenant so installPack resolves it.
