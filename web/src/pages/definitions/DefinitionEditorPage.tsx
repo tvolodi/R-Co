@@ -24,6 +24,10 @@ import { useCanvasHistoryStore } from '@/stores/canvasHistoryStore'
 import { ConfirmPromoteModal } from '@/components/ui/ConfirmPromoteModal'
 import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
 import { classifyError, type RendererState } from '@/utils/classifyError'
+import { useDefinitionDraftStore } from '@/stores/definitionDraftStore'
+import { DraftBanner } from '@/components/definitions/DraftBanner'
+import type { ApiError } from '@/types/api'
+import { getRetryAfterSeconds } from '@/utils/getRetryAfterSeconds'
 
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
 import NodePalette from '@/components/canvas/NodePalette'
@@ -91,6 +95,79 @@ export default function DefinitionEditorPage() {
 
   // ── Condition errors from server-side validation ────────────────────────────
   const [conditionErrors, setConditionErrors] = useState<Map<string, string>>(new Map())
+
+  // ── RND-UI-06: 409 conflict + draft retention state ─────────────────────────
+  const [saveConflict, setSaveConflict] = useState<ApiError | null>(null)
+  const draftStore = useDefinitionDraftStore()
+  const currentDraft = !isNew && id ? draftStore.draft : null
+
+  // Mirror the editor's current draft body into the Zustand store whenever
+  // the canvas state mutates. The editor never reads XRV directly; it only
+  // reads the draft (per §2.4 binding rule 1).
+  useEffect(() => {
+    if (isNew || !id) return
+    const state = canvasStateRef.current
+    if (!state) return
+    try {
+      const nodes: Node<CanvasNodeData>[] = JSON.parse(state.nodesJSON)
+      const edges: Edge<CanvasEdgeData>[] = JSON.parse(state.edgesJSON)
+      const graph = flowToGraph(nodes, edges)
+      const dirtyKeys: string[] = []
+      if (description !== (def?.description ?? '')) dirtyKeys.push('description')
+      if (graph && def?.graph && JSON.stringify(graph) !== JSON.stringify(def.graph)) {
+        dirtyKeys.push('graph')
+      }
+      if (dirtyKeys.length === 0) return
+      draftStore.setDraft({
+        definitionId: id,
+        body: { name: def?.name ?? '', version: def?.version ?? '', description, graph },
+        dirtyFieldKeys: dirtyKeys,
+        savedAt: draftStore.draft?.savedAt ?? null,
+      })
+    } catch {
+      /* graph parsing failure: don't write a partial draft */
+    }
+  }, [description, isNew, id, def?.description, def?.name, def?.version, def?.graph, draftStore])
+
+  const handleSaveMerged = async (
+    mergedBody: Record<string, unknown>,
+    version: string,
+  ): Promise<void> => {
+    // PD-08: send the version stamp as a body field (backend convention TBD
+    // — see design §2.3 OQ-3). For the PATCH path we pass it via the If-Match
+    // header equivalent — the backend's PATCH currently consumes the
+    // `version` field on the body for optimistic concurrency, falling back
+    // to the header on a future release.
+    void version
+    if (!id) return
+    try {
+      await definitionsApi.update(id, {
+        name: (mergedBody['name'] as string | undefined) ?? def?.name ?? '',
+        version: (mergedBody['version'] as string | undefined) ?? def?.version ?? '',
+        description: (mergedBody['description'] as string | undefined) ?? def?.description ?? undefined,
+        graph: (mergedBody['graph'] as DefinitionGraph | undefined) ?? def?.graph,
+        stage: null,
+      } as Partial<Parameters<typeof definitionsApi.update>[1]> & { version?: string })
+      draftStore.setDraft({
+        definitionId: id,
+        body: mergedBody,
+        dirtyFieldKeys: [],
+        savedAt: new Date().toISOString(),
+      })
+      setSaveConflict(null)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+      void refetch()
+    } catch (e: unknown) {
+      setError((e as { message?: string }).message ?? 'Merge save failed')
+    }
+  }
+
+  const handleDiscardConfirmed = (): void => {
+    if (id) draftStore.clearDraft(id)
+    setSaveConflict(null)
+    void refetch()
+  }
 
   // Ref to hold current canvas nodes/edges for serialization (filled by ProcessCanvas)
   const canvasStateRef = useRef<{ nodesJSON: string; edgesJSON: string } | null>(null)
@@ -196,6 +273,11 @@ export default function DefinitionEditorPage() {
       setTimeout(() => setSaved(false), 2000)
     } catch (e: unknown) {
       const err = e as { status?: number; details?: Record<string, unknown>; message?: string }
+      if (err.status === 409) {
+        // RND-UI-06: surface ConflictResolver via QueryStateBoundary.
+        setSaveConflict(err as ApiError)
+        return
+      }
       // Parse RFC 9457 Problem Details for condition errors
       if (err.details && typeof err.details === 'object') {
         const rawDetails = err.details
@@ -380,7 +462,13 @@ export default function DefinitionEditorPage() {
   }, [canvasStateRef.current, validationErrors])
 
   // ── Loading state via QueryStateBoundary — no early return needed ───────────
-  const rendererState: RendererState = (!isNew && isLoading) ? 'loading' : (!isNew && isError) ? classifyError(defError) : 'success'
+  const rendererState: RendererState = saveConflict
+    ? 'stale-version'
+    : (!isNew && isLoading)
+      ? 'loading'
+      : (!isNew && isError)
+        ? classifyError(defError)
+        : 'success'
 
   // ── Get selected node/edge for property panel from canvas ───────────────────
   // These are managed inside ProcessCanvas, but we pass them down via props
@@ -400,6 +488,16 @@ export default function DefinitionEditorPage() {
       <QueryStateBoundary
         state={rendererState}
         onRetry={() => { void refetch() }}
+        rateLimitRetryAfter={
+          rendererState === 'rate-limit' ? getRetryAfterSeconds(defError) : undefined
+        }
+        staleVersionError={saveConflict ?? undefined}
+        staleVersionServerPayload={
+          saveConflict ? ((saveConflict.details as Record<string, unknown>) ?? {}) : undefined
+        }
+        staleVersionLocalDraft={currentDraft?.body}
+        staleVersionOnSaveMerged={handleSaveMerged}
+        staleVersionOnDiscardConfirmed={handleDiscardConfirmed}
         columns={[{ widthPercent: 100 }]}
       >
       {/* ── Toolbar ─────────────────────────────────────────────── */}
@@ -495,6 +593,22 @@ export default function DefinitionEditorPage() {
       </div>
 
       {/* ── Error/success banners ──────────────────────────────── */}
+      {currentDraft && !saveConflict && (
+        <DraftBanner
+          draft={currentDraft}
+          onApply={() => {
+            // Re-apply the draft body into the editor fields. The canvas
+            // body is read-only here — the user can re-edit then Save.
+            if (currentDraft.body['description']) {
+              setDescription(String(currentDraft.body['description']))
+            }
+          }}
+          onDiscard={() => {
+            if (id) draftStore.clearDraft(id)
+          }}
+        />
+      )}
+
       {error && (
         <div
           style={{

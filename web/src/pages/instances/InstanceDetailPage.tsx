@@ -19,6 +19,7 @@ import { ProcessGraphWithTokens } from '@/components/instances/ProcessGraphWithT
 import { CancelInstanceDialog } from '@/components/instances/CancelInstanceDialog'
 import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
 import { classifyError, type RendererState } from '@/utils/classifyError'
+import { getRetryAfterSeconds } from '@/utils/getRetryAfterSeconds'
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: '#2563eb',
@@ -159,6 +160,9 @@ export default function InstanceDetailPage() {
       <QueryStateBoundary
         state={rendererState}
         onRetry={() => { void refetch() }}
+        rateLimitRetryAfter={
+          rendererState === 'rate-limit' ? getRetryAfterSeconds(error) : undefined
+        }
         columns={[{ widthPercent: 20 }, { widthPercent: 20 }, { widthPercent: 15 }, { widthPercent: 15 }, { widthPercent: 15 }, { widthPercent: 15 }]}
       >
       {instance && (<>

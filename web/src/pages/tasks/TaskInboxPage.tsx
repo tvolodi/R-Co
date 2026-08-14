@@ -4,6 +4,7 @@ import { useTaskInbox, useCompleteTask, useTask, useClaimTask } from '@/hooks/us
 import { useAuth } from '@/auth/AuthContext'
 import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
 import { classifyError, type RendererState } from '@/utils/classifyError'
+import { getRetryAfterSeconds } from '@/utils/getRetryAfterSeconds'
 
 type FilterType = 'me' | 'group' | 'all'
 type SortOrder = 'created' | '-created'
@@ -167,6 +168,9 @@ export default function TaskInboxPage() {
           <QueryStateBoundary
             state={(inboxLoading ? 'loading' : inboxError ? classifyError(inboxErr) : 'success') as RendererState}
             onRetry={() => { void refetchInbox() }}
+            rateLimitRetryAfter={
+              inboxError && classifyError(inboxErr) === 'rate-limit' ? getRetryAfterSeconds(inboxErr) : undefined
+            }
             columns={[{ widthPercent: 40 }, { widthPercent: 30 }, { widthPercent: 30 }]}
           >
           {!inboxLoading && filteredTasks.length === 0 && (

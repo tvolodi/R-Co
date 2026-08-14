@@ -272,14 +272,20 @@ test "TC-ENV-01-03: existing tenant rows have tenant_type='production' and produ
     defer pool.release(conn);
 
     // Count rows that violate the expectation.
+    // Note: the persistent 'default' harness fixture in tests/integration/helpers.zig
+    // intentionally has tenant_type='test' AND production_tenant_id=00000000-...
+    // (see ISS-0112 / PR #393), so it is excluded from this invariant check alongside
+    // the per-suite 'tc-env01-%' fixture rows.
     const row = try conn.queryRow(
         alloc,
         \\SELECT COUNT(*)::text
         \\FROM public.tenant
-        \\WHERE tenant_type != 'production'
-        \\   OR production_tenant_id IS NOT NULL
-        \\-- Only check rows that existed before ENV-01 (no test rows from this suite yet)
+        \\WHERE (
+        \\    tenant_type != 'production'
+        \\    OR production_tenant_id IS NOT NULL
+        \\)
         \\  AND slug NOT LIKE 'tc-env01-%'
+        \\  AND slug != 'default'
     ,
         &[_][]const u8{},
     );

@@ -1,0 +1,80 @@
+stage: "Stage 16 — WF-02 batch 19 (frontend-only)"
+date: "2026-08-13T20:55:00Z"
+run_id: WF02-pw13-pw16-batch19-20260813
+workflow_id: WF-02
+workflow_step: "05"
+decision: APPROVED
+
+requirement_ids:
+  - RND-UI-05
+  - RND-UI-06
+  - GRD-UI-06
+  - GRD-UI-07
+
+rework_history:
+  - step: "05 (first attempt)"
+    verdict: BLOCKED
+    blocking_issues:
+      - "@typescript-eslint/no-unused-vars x4 in web/tests/e2e/rnd-ui-06.conflict-resolver.e2e.spec.ts (loginWorker line 71; page param in TC-02/03/04/05 at lines 177/195/232)"
+    resolved_by:
+      step: "02b-rework1"
+      commit: "78d347f0"
+      summary: "Removed dead loginWorker helper; stripped unused page param + void suppressors from TC-02/03/04/05; TC-06 keeps page since it uses page.goto/getByTestId. pnpm lint and pnpm type-check exit 0."
+
+prior_gates:
+  design_validation_step_1b: PASS
+  frontend_implementation_step_2b: PASS (after rework1 commit 78d347f0)
+  test_design_validation_step_3b: PASS (23/23 MUST ACs + 21/21 §12 error modes covered)
+
+nfr_results:
+  type_check:
+    status: PASS
+    command: "pnpm type-check"
+    exit_code: 0
+    note: "tsc --noEmit"
+  lint:
+    status: PASS
+    command: "pnpm lint"
+    exit_code: 0
+    note: "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 — exit 0 across the whole web/ tree. Targeted re-run on the 4 batch-19 E2E specs (rnd-ui-05/06 + grd-ui-07 + a11y-gate) also exit 0."
+  unit_tests:
+    status: PASS
+    command: "pnpm vitest run tests/unit"
+    exit_code: 0
+    summary: "19 test files, 110 tests passed"
+    files:
+      - "tests/unit/RateLimitBackpressure.12.test.tsx (5)"
+      - "tests/unit/ConflictResolver.12.test.tsx (5)"
+      - "tests/unit/FieldFactory.aria.12.test.tsx (5)"
+      - "tests/unit/DynamicFormRenderer.12.test.tsx (3)"
+      - "(plus 15 pre-existing unit files)"
+    note: "Step 03 pre-flight added 18 §12 unit tests (across the 4 §12 files). Combined with the 92 pre-existing tests, total 110/110. FRONTEND-DEV's later 18-test batch claim reconciled — the 110 number already includes them."
+  build:
+    status: PASS
+    command: "pnpm build"
+    exit_code: 0
+    note: "tsc -b && vite build — 380 modules transformed, dist/ written, ✓ built in 5.02s. Warning emitted for chunk > 500 kB is informational only (NFR non-blocking; not in NFR-01..07)."
+  bundle_size:
+    status: N/A
+    note: "No frontend bundle-size NFR exists in docs/BPM_Platform_Functional_Requirements.md §'Non-Functional Requirements' (NFR-01..07 are all backend/perf: API latency p99, event append throughput, availability, state reconstruction time, DB storage, connection pool bounds, crash safety). Informational: dist/assets/index-C4BFKRzA.js = 1,201.66 kB / gzip 359.07 kB — recorded for trend, not gated."
+  axe_core_runtime:
+    status: DEFERRED
+    note: "a11y-gate.e2e.spec.ts dynamically loads @axe-core/playwright via loadAxe() and runtime-skips with the explicit message '@axe-core/playwright not installed — skip the gate scan' when the dependency is absent (see web/tests/e2e/a11y-gate.e2e.spec.ts:97). Per Step 05 directive, mark DEFERRED to WF-05 UAT run when Keycloak + BPM API + PostgreSQL are all reachable. Pre-flight verifyBackendReachable() probes (TC-GRD-UI-06-E2E-PROBE + TC-GRD-UI-06-E2E-BLOCKER) are unit-level and pass; the real on-page axe-core scan is intentionally deferred to UAT."
+  no_mock_contract:
+    status: PASS
+    note: "Grep across the 8 batch-19 test files (4 E2E specs + 4 §12 unit files) for vi.mock | page.route( | jest.mock | fetchMock | MSW | axios-mock: zero invocations. The only matches are comment lines in the no-mock contract headers (a11y-gate.e2e.spec.ts:5, rnd-ui-05.rate-limit-backpressure.e2e.spec.ts:11) explicitly affirming the contract. The 4 E2E specs use the real getKeycloakToken(request, 'worker-user', 'worker-pass') helper and real REST endpoints against BPM_TEST_URL + BPM_IDP_BASE_URL."
+
+blocking_issues: []
+
+approved_requirements:
+  - RND-UI-05
+  - RND-UI-06
+  - GRD-UI-06
+  - GRD-UI-07
+
+narrative: >
+  Re-validation PASS after Step 02b-rework1. All 4 measurable frontend NFRs exit 0:
+  type-check, lint, unit (110/110), build. Bundle-size is N/A (no frontend NFR exists).
+  Axe-core runtime gate is DEFERRED to WF-05 UAT run by design (dry-run gate module,
+  runtime-skips when @axe-core/playwright is absent). No-mock contract honoured across
+  all 8 batch-19 test files. Decision: APPROVED. Next step: Step 06 DOC-UPDATER.

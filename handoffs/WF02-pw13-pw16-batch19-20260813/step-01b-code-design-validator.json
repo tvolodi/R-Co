@@ -1,0 +1,105 @@
+{
+  "run_id": "WF02-pw13-pw16-batch19-20260813",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "handoff_id": "WF02-pw13-pw16-batch19-20260813/step-01b-code-design-validator",
+  "status": "COMPLETED",
+  "created_at": "2026-08-13T20:03:54Z",
+  "started_at": "2026-08-13T20:13:00Z",
+  "completed_at": "2026-08-13T20:13:08Z",
+  "task": {
+    "type": "code-design-validation",
+    "title": "Step 01b: validate code design for RND-UI-05/06 + GRD-UI-06/07",
+    "description": "Hard gate. Validate the CODE-DESIGNER artefact at src/design/pw13-pw16-batch19-20260813.md against the BPM Platform design checklist. PASS only if the design covers every acceptance criterion for all four requirements, has no implementation code, and is complete enough for FRONTEND-DEV to proceed without ambiguity.",
+    "context": {
+      "design_artefact": "src/design/pw13-pw16-batch19-20260813.md",
+      "requirement_ids": [
+        "RND-UI-05",
+        "RND-UI-06",
+        "GRD-UI-06",
+        "GRD-UI-07"
+      ],
+      "step_01_handoff": "handoffs/WF02-pw13-pw16-batch19-20260813/step-01-code-designer.json",
+      "branch": "feature/WF02-pw13-pw16-batch19-20260813",
+      "rework_count": 1,
+      "rework_reason": "Previous FAIL (2026-08-13T20:05:28Z): design lint E010 MAJOR — missing 'error taxonomy' / 'errors' / 'error cases' section heading. CODE-DESIGNER added ## 12. Error taxonomy covering runtime error modes for all four requirements; re-validation confirms lint now exits 0."
+    },
+    "functions_to_call": [
+      "fn:code-design-validate"
+    ],
+    "acceptance_criteria": [
+      "Every acceptance criterion in RND-UI-05, RND-UI-06, GRD-UI-06, GRD-UI-07 has a matching design section/decision",
+      "No implementation code in the design (interface/type signatures and 1-3 line sketches OK; bodies NOT)",
+      "File inventory lists every web/src/ and web/tests/e2e/ file the implementer must touch",
+      "Playwright selectors / API paths are concrete enough to write tests without re-deriving them",
+      "Six canonical surfaces explicitly enumerated for GRD-UI-06",
+      "axe config (color-contrast enabled, disabled rules listed) is concrete",
+      "No-mock E2E contract is explicit for every test",
+      "Open questions (OQ-1..OQ-4) flagged by CODE-DESIGNER do NOT block validation if each has a sensible default already chosen in the design",
+      "lint_handoffs.py exits 0",
+      "Error taxonomy section present and enumerates all required runtime error modes"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validation PASS. CODE-DESIGNER's rework added a substantive '## 12. Error taxonomy' section (lines 827-873) covering 21 runtime error modes across the four requirements: §12.1 RND-UI-05 (6 modes: classifyError fall-through, 429 without Retry-After, countdown reaches zero on unmount, component unmount during countdown, multiple refetch invocations, non-integer Retry-After), §12.2 RND-UI-06 (5 modes: 409 without X-Resource-Version, 409 on non-definition endpoints, ConfirmDialog dismiss-cancels, refetch network failure, server-version-behind), §12.3 GRD-UI-06 (5 modes: Keycloak/BPM-API/PostgreSQL unreachable, per-surface 30s budget exceeded, axe unknown-rule-id, color-contrast-disabled trip-wire, YAML report write failure), §12.4 GRD-UI-07 (5 modes: dangling aria-errormessage, fieldRegistry lookup miss → defaultBuiltinRenderer fall-through, aria-busy cleared in finally, missing required schema, multi-hint space-separated aria-describedby ordering). All 9 validation criteria PASS. tools/lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0 MINOR=0); tools/lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR, 1 MINOR pre-existing on handoffs\\registry.json — unrelated to this handoff). Next step: route to FRONTEND-DEV (Step 02b).",
+    "criterion_results": [
+      {
+        "id": "1-acceptance-criterion-coverage",
+        "status": "PASS",
+        "justification": "All 23 ACs across RND-UI-05 (5), RND-UI-06 (6), GRD-UI-06 (6), GRD-UI-07 (6) map to design sections: RND-UI-05 AC-1..5 → §1.1, §1.4, §5.1, §12.1; RND-UI-06 AC-1..6 → §2.1, §2.3, §2.4, §5.2, §12.2; GRD-UI-06 AC-1..6 → §3.2, §3.3, §3.4, §3.5, §3.6, §3.7, §5.3, §12.3; GRD-UI-07 AC-1..6 → §4.1, §4.2, §4.3, §4.4, §5.4, §12.4. §9 cross-reference table makes the mapping explicit; §12 enumerates failure-mode tests per AC."
+      },
+      {
+        "id": "2-no-implementation-code-bodies",
+        "status": "PASS",
+        "justification": "Only TypeScript interface/type signatures and 1-3 line sketches present (§1.1 RateLimitBackpressureProps, §2.1 ConflictResolverProps, §4.1 RenderFormFieldOptions, §4.3 FieldTypeRenderer). §12 adds runtime-failure-mode sketches (e.g. 1-line aria-describedby join pattern) but no full bodies, no SQL DDL, no JSX. §11 explicitly states 'No implementation code bodies. Interface signatures and 1–3 line code sketches only.' E050 (40-line fenced block) does not fire."
+      },
+      {
+        "id": "3-file-inventory-completeness",
+        "status": "PASS",
+        "justification": "§6.1 lists 7 new web/src files (RateLimitBackpressure, StaleVersionError, ConflictResolver, DraftBanner, definitionDraftStore, fieldRegistry, ariaHints). §6.2 lists 11 modified web/src files. §6.3 lists 18 new web/tests files (10 unit + 4 a11y helpers + 4 E2E specs). §6.4 enumerates files NOT to change. §12 references additional test files (aria-validator.ts, a11yConfig.test.ts, reportWriter.ts) for failure-mode tests. Coverage is comprehensive."
+      },
+      {
+        "id": "4-concrete-selectors-api-paths",
+        "status": "PASS",
+        "justification": "Each E2E in §5.1–§5.4 lists concrete selectors (data-testid=\"rate-limit-backpressure\", \"conflict-refetch\"/\"conflict-merge\"/\"conflict-discard\"/\"conflict-version-mismatch\", \"task-form\", \"task-row\") and API paths (GET /api/v1/instances, PATCH /api/v1/definitions/{id}, GET /api/v1/tasks/inbox, POST /api/v1/tasks/{id}/complete). §12.3 adds new selectors (data-testid=\"confirm-dialog-cancel\") and §12.4 confirms aria-describedby join pattern."
+      },
+      {
+        "id": "5-grd-ui-06-specifics",
+        "status": "PASS",
+        "justification": "§3.1 enumerates all six canonical surfaces. §3.2 axe config explicitly leaves color-contrast enabled (empty disabled-rules map). §3.3 serious/critical FAIL + moderate/minor record-only matrix. §3.4 YAML report path tests/reports/report-<date>-<run_id>.yaml verbatim. §3.5 30s per-surface budget. §3.6 BLOCKER-if-unreachable enumerates Keycloak + BPM API + PostgreSQL by name. §12.3 modes 1-5 extend the failure taxonomy for the gate."
+      },
+      {
+        "id": "6-no-mock-e2e-contract",
+        "status": "PASS",
+        "justification": "§0 scope paragraph contains explicit no-mock contract: 'every E2E hits the real backend … Zero HTTP mocking, zero page.route() interception of API or auth endpoints'. Each E2E section restates: real backend, getKeycloakToken helper, verifyBackendReachable() BLOCKER check. §5.4 AC-4 explicitly notes the 5s delay is via page.route().fulfill AFTER delay, NOT an HTTP mock. §12.3 mode 1 reinforces the BLOCKER contract for unreachable dependencies."
+      },
+      {
+        "id": "7-open-questions-handling",
+        "status": "PASS",
+        "justification": "§10 lists OQ-1 (ConfirmDialog existence), OQ-2 (best-practice tag), OQ-3 (If-Match vs body.version), OQ-4 (CMP-UI-05 registry key scheme). All four have sensible defaults already chosen. §12.2 mode 3 confirms ConfirmDialog dismiss-cancels semantics, directly addressing OQ-1."
+      },
+      {
+        "id": "8-lint-handoffs-py-exits-0",
+        "status": "PASS",
+        "justification": "tools/lint_handoffs.py exits 0 — '2783 handoffs checked — 0 BLOCKER, 0 MAJOR, 1 MINOR, 291 ACKNOWLEDGED'. The single MINOR is on handoffs\\registry.json (pre-existing repo-wide registry completeness issue from acknowledged historical data, unrelated to this handoff). No BLOCKER or MAJOR findings."
+      },
+      {
+        "id": "9-design-lint-no-blocker-or-major",
+        "status": "PASS",
+        "justification": "tools/lint_design_artefact.py src/design/pw13-pw16-batch19-20260813.md exits 0 — 'OK — 1 file(s) checked, no issues.' (was previously FAIL on E010 MAJOR for missing error-taxonomy section; the new ## 12. Error taxonomy section satisfies E010 with substantive content across 21 runtime failure modes.)"
+      }
+    ],
+    "artifacts_out": [
+      "handoffs/WF02-pw13-pw16-batch19-20260813/step-01b-code-design-validator.json",
+      "handoffs/orchestrator.log (appended)",
+      "handoffs/registry.json (entry appended)"
+    ],
+    "issues": [],
+    "rework_recommendation": "None — design is now content-complete and lint-clean. No further rework needed on this design artefact for the four requirements covered.",
+    "next_action": "Route to FRONTEND-DEV (Step 02b) to implement RND-UI-05, RND-UI-06, GRD-UI-06, GRD-UI-07 per the validated design. No BACKEND-DEV work is required (no Type C migration files, no Zig source changes — pure-frontend batch)."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

@@ -1,0 +1,65 @@
+{
+  "iss_id": "ISS-0701",
+  "id": "ISS-0701",
+  "gh_issue": 767,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/767",
+  "github_issue_confirmed": true,
+  "title": "env01_test TC-ENV-01-03: wrong tenant_type in production rows — test expects clean DB state (pre-existing, deterministic)",
+  "status": "RESOLVED",
+  "severity": "MAJOR",
+  "workflow_id": "WF03-GH767-20260813",
+  "run_id": "WF03-GH767-20260813",
+  "created_at": "2026-08-13T18:21:17Z",
+  "registered_at": "2026-08-13T18:21:59Z",
+  "created_by": "ISSUE-FIXER (WF03-GH767-20260813 step-00.5)",
+  "registered_by": "ISSUE-FIXER (WF03-GH767-20260813 step-00.5)",
+  "branch": "feature/WF03-GH767-20260813",
+  "branch_base_sha": "dc0b6033",
+  "labels": [
+    "bug"
+  ],
+  "scope": "tests/integration/env01_test.zig (TC-ENV-01-03 tenant DB state verification). migrations/** for tenants table definitions (tenant_type enum, production_tenant_id column, NOT NULL / DEFAULT clauses). scripts/clean_test_db.py for any tenant cleanup gap. src/**/tenant*.zig for any handler that reads/writes tenant rows.",
+  "affected_areas": [
+    "tests/integration/env01_test.zig",
+    "migrations/ (tenants table: tenant_type enum + production_tenant_id)",
+    "scripts/clean_test_db.py",
+    "src/ (tenant handler code paths)"
+  ],
+  "description": "Mirror of GH-767. env01_test.zig TC-ENV-01-03 fails with assertion error. Existing tenant rows have tenant_type='production' and production_tenant_id IS NULL, but test finds rows that don't match. Confirmed pre-existing on main (HEAD~1 before GH-760/ISS-0696). 35/36 tests passed.",
+  "symptom": "env01_test.zig TC-ENV-01-03 — assertion error. Existing tenant rows have tenant_type='production' and production_tenant_id IS NULL, but test finds rows that don't match. Confirmed pre-existing on main (HEAD~1 before GH-760/ISS-0696). 35/36 tests passed. Build Summary: 35/36 tests passed (1 failed).",
+  "discovered_at": "2026-08-13T09:33:26Z",
+  "discovered_by": "WF03-GH760-20260813 Step 05",
+  "investigation_notes": "TC-ENV-01-03 verifies database state about existing tenants. The failure suggests the test database has tenant rows with unexpected tenant_type values or production_tenant_id IS NOT NULL. Could be: leftover state from a previous test run that clean_test_db.py didn't clean, OR the test's assumption about what's in the DB doesn't match the actual seeded data, OR a migration changed tenant_type enum values or defaults.",
+  "step_0.5_completed_at": "2026-08-13T18:21:59Z",
+  "evidence_trail": [
+    {
+      "step": "gh767_origin",
+      "command": "Discovered during WF03-GH760-20260813 Step 05; pre-existing deterministic failure on main (HEAD~1 before GH-760/ISS-0696 commit 1e4f31f1); not caused by GH-760's serial-step re-routing.",
+      "result": "Re-queued for WF03-GH767-20260813 per user 'resolve issues in loop' directive after GH-765 closed (PR #771 merged at eec9edc3)."
+    },
+    {
+      "step": "step_0.5",
+      "command": "gh issue view 767 --repo tvolodi/R-Co --json state,closedAt,comments",
+      "result": "OPEN (confirmed, closedAt=null). Ack comment posted referencing WF03-GH767-20260813 + ISS-0701.",
+      "timestamp": "2026-08-13T18:21:59Z",
+      "ack_comment_id": "5284732986",
+      "completed_at": "2026-08-13T18:22:14Z",
+      "gh_issue_state": "OPEN"
+    }
+  ],
+  "resolution_commit": "2da073a42d4d9d03c713b07dcc0b5dbe977d0f58",
+  "resolved_at": "2026-08-13T19:27:19Z",
+  "resolved_by": "DOC-UPDATER (WF03-GH767-20260813 step-07)",
+  "reproduction": "zig build test-integration-env01 (or test-integration-env01_serial_public per WF03-GH760-20260813 build.zig re-routing). Build Summary: 35/36 tests passed (1 failed at TC-ENV-01-03).",
+  "fix_file": null,
+  "fix_line": null,
+  "handoff_history": [
+    {
+      "step": "07",
+      "agent": "DOC-UPDATER",
+      "status": "PASS",
+      "completed_at": "2026-08-13T19:27:19Z",
+      "summary": "ISS-0701 marked RESOLVED via fix commit 2da073a4 (relax tenant_type invariant check to exclude slug='default')"
+    }
+  ]
+}
