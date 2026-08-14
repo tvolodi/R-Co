@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-13T16:40:55Z'
+last_updated: '2026-08-14T03:12:32Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4453,25 +4453,29 @@ requirements:
     priority: MUST
     title: Forbidlist as single guard source of truth
   GRD-UI-02:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Frontend source scan gate
+    released_at: '2026-08-13T18:11:08Z'
   GRD-UI-03:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Post-build bundle scan gate
+    released_at: '2026-08-13T18:11:09Z'
   GRD-UI-04:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Two-sided META control per guard pattern
+    released_at: '2026-08-13T18:11:10Z'
   GRD-UI-05:
-    status: DRAFT
+    status: RELEASED
     stage: F8
     priority: MUST
     title: Redacted guard violation reporting
+    released_at: '2026-08-13T18:11:11Z'
   GRD-UI-06:
     status: DRAFT
     stage: F8
@@ -4803,25 +4807,33 @@ requirements:
     priority: MUST
     title: Non-skippable human approval gate
   PRM-06:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Pre-promotion assertion re-run
+    released_at: '2026-08-14T03:12:25Z'
+    note: Released via WF02-prm-batch1-20260814
   PRM-07:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Sandbox teardown does not block promotion
+    released_at: '2026-08-14T03:12:26Z'
+    note: Released via WF02-prm-batch1-20260814
   PRM-08:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: SHOULD
     title: Promotion rollback by version pointer move
+    released_at: '2026-08-14T03:12:27Z'
+    note: Released via WF02-prm-batch1-20260814
   PRM-09:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: SHOULD
     title: Solution pack update conflict resolution
+    released_at: '2026-08-14T03:12:28Z'
+    note: Released via WF02-prm-batch1-20260814
   QRY-01:
     status: DRAFT
     stage: '17'

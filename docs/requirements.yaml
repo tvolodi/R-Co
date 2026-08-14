@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-13T18:11:11Z'
+generated_at: '2026-08-14T03:12:28Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -12442,7 +12442,7 @@ requirements:
     title: Pre-promotion assertion re-run
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL re-run the assertions carried by the promotion artifact as a pre-production gate, in an ephemeral sandbox built from the promotion-candidate definitions and loaded with only the artifact's `fixtures[]`. The replay runs under a frozen clock, an RNG seeded from the artifact's `rng_seed`, and the stub effect recorder, and strips `non_deterministic_fields` before comparison. Each run is recorded in `promotion_assertion_runs` with `UNIQUE (tenant_id, idempotency_key)` and key `promotion_rerun:<review_id>:<plan_digest>`.
 
@@ -12457,14 +12457,16 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:49Z'
+    last_updated: '2026-08-14T03:12:25Z'
     workflow: PW-01
+    note: Released via WF02-prm-batch1-20260814
+    released_at: '2026-08-14T03:12:25Z'
   PRM-07:
     id: PRM-07
     title: Sandbox teardown does not block promotion
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL release the claimed sandbox on every exit path of the assertion re-run, including assertion failure, infrastructure failure and panic. A release failure appends `PROMOTION_ASSERTION_TEARDOWN_FAILED`, sets `promotion_assertion_runs.status` to `teardown_failed`, and is surfaced on the promotion read endpoint, but never converts a passing run into a promotion failure.
 
@@ -12479,14 +12481,16 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:50Z'
+    last_updated: '2026-08-14T03:12:26Z'
     workflow: PW-01
+    note: Released via WF02-prm-batch1-20260814
+    released_at: '2026-08-14T03:12:26Z'
   PRM-08:
     id: PRM-08
     title: Promotion rollback by version pointer move
     stage: '16'
     priority: SHOULD
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** PD-08. Because every instance carries a definition snapshot, reverting the active version affects only instances started afterwards.
 
@@ -12503,14 +12507,16 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:51Z'
+    last_updated: '2026-08-14T03:12:27Z'
     workflow: PW-01
+    note: Released via WF02-prm-batch1-20260814
+    released_at: '2026-08-14T03:12:27Z'
   PRM-09:
     id: PRM-09
     title: Solution pack update conflict resolution
     stage: '16'
     priority: SHOULD
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** SOL-02, which installs a solution pack into a target tenant. This requirement governs the case SOL-02 does not cover: a *later* version of a pack offered to a tenant that has since modified what the earlier version installed.
 
@@ -12528,8 +12534,10 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:52Z'
+    last_updated: '2026-08-14T03:12:28Z'
     workflow: PW-01
+    note: Released via WF02-prm-batch1-20260814
+    released_at: '2026-08-14T03:12:28Z'
   QRY-01:
     id: QRY-01
     title: Structured entity query surface

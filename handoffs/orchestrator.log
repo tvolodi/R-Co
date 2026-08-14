@@ -1503,3 +1503,7 @@
 2026-08-14T03:04:08Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-04-test-runner-rework1 | ORCH -> TEST-RUNNER | PENDING (Step 04 rework1: full test run on commit 973459ff)
 2026-08-14T03:04:12Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-02b-backend-dev | BACKEND-DEV -> ORCH | PASS | PRM-06 AC3 + PRM-07 AC3/AC5 + compile fixes (commit 973459ff): 9/9 prm06-07, 4/4 prm08, 4/4 prm09 ALL PASS
 2026-08-14T03:04:12Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-04-test-runner-rework1 | ORCH -> TEST-RUNNER | PENDING (Step 04 rework1: final test verification on commit 973459ff)
+2026-08-14T03:05:39Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING (Step 05: release gate check for PRM-06/07/08/09)
+2026-08-14T03:10:40Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-05-release-validator | RELEASE-VALIDATOR -> ORCH | APPROVED | All gates pass (9/9+4/4+4/4+1071/1135+typecheck) commit aa6ad445
+2026-08-14T03:10:40Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-06-doc-updater | ORCH -> DOC-UPDATER | PENDING (Step 06: CHANGELOG + PRM-06/07/08/09 RELEASED)
+2026-08-14T03:12:50Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-06-doc-updater | DOC-UPDATER | PASS — PRM-06/07/08/09 RELEASED, CHANGELOG updated, lint 0 BLOCKER, push pending

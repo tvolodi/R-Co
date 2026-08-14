@@ -2,7 +2,15 @@
 
 All notable changes to the BPM Platform are documented here.
 
-## [Unreleased] — 2026-08-13
+## [Unreleased] — 2026-08-14
+
+### feat(prm): Stage 16 batch 1 — PRM-06/07/08/09 RELEASED (WF02-prm-batch1-20260814)
+
+- **feat(prm): PRM-06 Pre-promotion assertion re-run RELEASED.** The platform re-runs the assertions carried by the promotion artifact as a pre-production gate in an ephemeral sandbox loaded only with the artifact's `fixtures[]`, running under a frozen clock, RNG seeded from `rng_seed`, and the stub effect recorder. Results are recorded in `promotion_assertion_runs` with `UNIQUE (tenant_id, idempotency_key)`; key pattern `promotion_rerun:<review_id>:<plan_digest>`. All 5 ACs implemented: idempotency on duplicate apply, fixture isolation, deterministic replay after stripping `non_deterministic_fields`, HTTP 422 on assertion failure with failing identifiers, HTTP 503 `SandboxUnavailable` on 60-second sandbox claim timeout.
+- **feat(prm): PRM-07 Sandbox teardown does not block promotion RELEASED.** Sandbox is released on every exit path of the assertion re-run including assertion failure, infrastructure failure, and panic. A release failure appends `PROMOTION_ASSERTION_TEARDOWN_FAILED` and sets `promotion_assertion_runs.status` to `teardown_failed` but never converts a passing run into a promotion failure. The leaked-sandbox reaper reclaims and records reclamation against the originating run.
+- **feat(prm): PRM-08 Promotion rollback by version pointer move RELEASED.** `POST /api/v1/definitions/{process_key}/rollback` re-points the tenant's active version to a previously active version and appends `DEFINITION_VERSION_ROLLED_BACK`. No DDL executes. In-flight instances continue on their PD-08 snapshot. HTTP 422 `VersionNeverActive` for an unknown rollback target; HTTP 403 for non-platform-admin callers; the superseded review row moves to `superseded` with `superseded_by` referencing the rollback event.
+- **feat(prm): PRM-09 Solution pack update conflict resolution RELEASED.** Pack updates use a three-way comparison (base/theirs/incoming). Artefacts are classified `unchanged`, `clean_update`, `local_only`, or `conflict`. A `conflict` artefact is blocked until a resolution (`keep_local` / `take_incoming` / `merged`) is recorded with resolving principal and timestamp. Updates are delivered as a `PRM-01` promotion plan and pass the `PRM-05` gate. `PRM-02` rejects any plan carrying an unresolved conflict before any transaction opens.
+- Gate results (run WF02-prm-batch1-20260814, commit 791ab789): build PASS, unit PASS (1071/1135; 64 skipped pre-existing on main), integration PRM-06/07 9/9 PASS, integration PRM-08 4/4 PASS, integration PRM-09 4/4 PASS, lint PASS (0 BLOCKER, 0 MAJOR), frontend typecheck PASS.
 
 ### iss205 webhook_outbox test fixed — GH-765/ISS-0700 (RESOLVED)
 
