@@ -1,0 +1,35 @@
+{
+  "handoff_id": "WF02-prm-batch2-20260814-03-test-designer",
+  "run_id": "WF02-prm-batch2-20260814",
+  "agent_id": "TEST-DESIGNER",
+  "agent_name": "BPM Test Designer (TEST-DESIGNER)",
+  "step": "03",
+  "created_at": "2026-08-14T20:39:34Z",
+  "started_at": "2026-08-14T20:39:59Z",
+  "completed_at": null,
+  "status": "COMPLETED",
+  "completed_at": "2026-08-14T20:40:30Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and test code for PRM-02, PRM-03, PRM-04, PRM-05. Spec files already existed (prm-02-conflict-preflight.req.md, prm-03-plan-digest.req.md, prm-04-promotion-review-sm.req.md, prm-05-needs-review-gate.req.md). New integration test files written: prm04_review_sm_test.zig (12 test cases covering all 7 state machine edges + optimistic locking + CHECK constraint + context retrieval) and prm05_review_gate_test.zig (12 test cases covering self-approval gate, non-skippable apply gate, unknown field rejection, context endpoint, digest mismatch).",
+    "artifacts_out": [
+      "tests/specs/prm-02-conflict-preflight.req.md",
+      "tests/specs/prm-03-plan-digest.req.md",
+      "tests/specs/prm-04-promotion-review-sm.req.md",
+      "tests/specs/prm-05-needs-review-gate.req.md",
+      "tests/integration/prm02_conflict_test.zig",
+      "tests/integration/prm03_digest_test.zig",
+      "tests/integration/prm04_review_sm_test.zig",
+      "tests/integration/prm05_review_gate_test.zig"
+    ],
+    "issues": []
+  },
+  "task": {
+    "description": "Write test specs and test code for PRM-02, PRM-03, PRM-04, PRM-05.\n\nBRANCH: feature/WF02-prm-batch2-20260814\n\nDESIGN ARTEFACTS:\n- src/design/prm-02-conflict-preflight-rejection.md\n- src/design/prm-03-plan-digest.md\n- src/design/prm-04-promotion-review-state-machine.md\n- src/design/prm-05-non-skippable-approval-gate.md\n\nIMPLEMENTATION SUMMARY (from BACKEND-DEV):\n- PRM-02: src/definition/promotion_conflict.zig — rejectIfConflicts()\n- PRM-03: src/definition/promotion_digest.zig — computePlanDigest(), verifyDigest()\n- PRM-04: src/definition/promotion_review.zig + migrations/096_promotion_reviews.sql\n- PRM-05: src/api/routes/promotion_review.zig — self-approval prevention, non-skippable gate\n\nTEST SPECS TO WRITE (write to tests/specs/):\n1. tests/specs/prm-02-conflict-preflight.req.ts — conflict detection, HTTP 409, event append\n2. tests/specs/prm-03-plan-digest.req.ts — digest computation, canonical JSON, verify on approve/apply\n3. tests/specs/prm-04-promotion-review-sm.req.ts — all 7 state machine edges\n4. tests/specs/prm-05-needs-review-gate.req.ts — no bypass, self-approval 403, context endpoint\n\nTEST CODE TO WRITE (write to tests/integration/):\n1. tests/integration/prm02_conflict_test.zig\n2. tests/integration/prm03_digest_test.zig\n3. tests/integration/prm04_review_sm_test.zig\n4. tests/integration/prm05_review_gate_test.zig\n\nEach test spec must:\n- Cover all MUST acceptance criteria\n- Have isolated fixtures (no shared state)\n- Use the BPM test harness pattern (docker compose services, Keycloak token, DB pool)\n- Be self-sufficient (no external dependencies beyond the test services)\n\nReturn PASS with list of created spec and test files.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-prm-batch2-20260814",
+  "requirements": ["PRM-02", "PRM-03", "PRM-04", "PRM-05"],
+  "stage": "stage16"
+}
