@@ -43,6 +43,8 @@ pub const PERMITTED_PUBLIC_TABLES: []const []const u8 = &.{
     "service_catalog",
     "repository_artifacts",
     "repository_activations",
+    "process_module_catalog",
+    "process_module_catalog_share",
     "alerting_state",
     // TNT-05: backfill progress tracking tables (GBL-074)
     "tnt05_progress",

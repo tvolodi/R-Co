@@ -1,0 +1,37 @@
+{
+  "handoff_id": "WF02-prm-batch2-20260814-04-test-runner",
+  "run_id": "WF02-prm-batch2-20260814",
+  "agent_id": "TEST-RUNNER",
+  "agent_name": "BPM Test Runner (TEST-RUNNER)",
+  "step": "04",
+  "created_at": "2026-08-15T00:56:10Z",
+  "started_at": "2026-08-15T00:56:30Z",
+  "completed_at": "2026-08-15T00:59:47Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "FAIL",
+    "summary": "PRM integration tests PASS (zig build test-integration-tm → exit 0). Full unit test suite has 4 pre-existing iss0173-orphan failures that exist on origin/main (verified by swapping to origin/main version and re-running — same failures). All other unit tests pass. The 4 PRM test files (prm02_conflict_test.zig, prm03_digest_test.zig, prm04_review_sm_test.zig, prm05_review_gate_test.zig) are unwired from zig build test (expected — they are integration tests run via test-integration-tm).",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "ISS-WF02-prm-batch2-20260814-orphan-pre-existing",
+        "severity": "MINOR",
+        "title": "Pre-existing unit test failures: iss0173_oidc_jwks_orphan_test.zig (4 test cases)",
+        "description": "TC-ISS-0173-01 through TC-ISS-0173-04 all fail on origin/main as well as on this branch. These are regression tests for a file that was supposed to be deleted but the deletion check fails. Root cause is not introduced by this branch.",
+        "layer": "unit",
+        "pre_existing": true,
+        "branch": "origin/main"
+      }
+    ],
+    "next_action": "Route to ORCH: The 4 iss0173-orphan failures are pre-existing on origin/main (verified). The PRM integration tests all pass. No code changes needed from BACKEND-DEV or FRONTEND-DEV. Recommend ORCH proceed to next step (RELEASE-VALIDATOR) or create an ISS-FIXER handoff to address the pre-existing orphan test failures independently."
+  },
+  "task": {
+    "description": "Execute integration test suite for PRM-02, PRM-03, PRM-04, PRM-05 on branch feature/WF02-prm-batch2-20260814 (commit fd64a5f8).\n\nBRANCH: feature/WF02-prm-batch2-20260814 (base: origin/main 05be8706)\nCURRENT COMMIT: fd64a5f8\n\nENV:\n- BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test\n- BPM_TEST_URL=http://127.0.0.1:8080\n- BPM_IDP_BASE_URL=http://localhost:8081\n\nTESTS TO RUN (zig build test-integration-tm):\n1. tests/integration/prm02_conflict_test.zig\n2. tests/integration/prm03_digest_test.zig\n3. tests/integration/prm04_review_sm_test.zig\n4. tests/integration/prm05_review_gate_test.zig\n\nAlso run:\n- Full zig build test (unit tests must not regress)\n- zig build test-integration-tm (the new PRM tests)\n\nReturn PASS if all tests pass. Return FAIL with detailed issue list if any test fails.\nIf failures are found, also fill result.next_action with routing recommendation.",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-prm-batch2-20260814",
+  "requirements": ["PRM-02", "PRM-03", "PRM-04", "PRM-05"],
+  "stage": "stage16",
+  "current_commit": "fd64a5f8"
+}

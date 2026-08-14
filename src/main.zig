@@ -90,6 +90,8 @@ pub const pin_rebind_routes = @import("api/routes/pin_rebind.zig"); // PIN-05 re
 pub const tenant_status_middleware = @import("api/middleware/tenant_status.zig"); // TNT-06 MIGRATING status middleware
 pub const service_catalog_repo = @import("repository/service_catalog.zig"); // SVC-01/SVC-04 service catalog store
 pub const services_routes = @import("api/routes/services.zig"); // SVC-04 service catalog HTTP handlers
+pub const process_module_catalog_repo = @import("repository/process_module_catalog.zig"); // PLC-01
+pub const process_modules_routes = @import("api/routes/process_modules.zig"); // PLC-01 HTTP handlers
 pub const solution_pack_store = @import("solution/store.zig"); // SOL-01/02/03
 pub const solution_pack_routes = @import("api/routes/solution_packs.zig"); // SOL-01/02 HTTP handlers
 
@@ -1011,6 +1013,97 @@ fn serveRequest(
             } else {
                 resp_status = 405;
                 resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+            }
+        } else if (std.mem.eql(u8, resource, "process-modules")) {
+            // PLC-01: process module catalog
+            var pmc_cat = process_module_catalog_repo.ProcessModuleCatalog.init(req_alloc, pool);
+            defer pmc_cat.deinit();
+
+            const actor_pm: api_auth.AuthContext = authenticated_ctx orelse .{
+                .user_id = user_id,
+                .role = .PLATFORM_ADMIN,
+                .is_bootstrap = false,
+                .token_id = user_id,
+                .principal = user_id,
+            };
+
+            if (seg5.len > 0 and std.mem.eql(u8, seg5, "versions") and seg6.len > 0) {
+                // GET /api/v1/process-modules/:id/versions/:v
+                if (method == .GET) {
+                    const r = process_modules_routes.handleGetModuleVersion(req_alloc, &pmc_cat, actor_pm, seg4, seg6);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 405;
+                    resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                }
+            } else if (seg5.len > 0 and std.mem.eql(u8, seg5, "publish")) {
+                // POST /api/v1/process-modules/:id/publish
+                if (method == .POST) {
+                    const r = process_modules_routes.handlePublishModule(req_alloc, &pmc_cat, actor_pm, seg4, seg6);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 405;
+                    resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                }
+            } else if (method == .GET) {
+                // GET /api/v1/process-modules
+                const after_cv = QS.get(query_str, "after_module_version");
+                const limit_opt: ?u32 = if (QS.get(query_str, "limit")) |ls|
+                    std.fmt.parseInt(u32, ls, 10) catch null
+                else
+                    null;
+                const r = process_modules_routes.handleListModules(req_alloc, &pmc_cat, actor_pm, after_cv, limit_opt);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (method == .POST) {
+                // POST /api/v1/process-modules
+                const r = process_modules_routes.handleRegisterModule(req_alloc, &pmc_cat, actor_pm, body);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else {
+                resp_status = 405;
+                resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+            }
+        } else if (std.mem.eql(u8, resource, "admin") and seg4.len > 0) {
+            // PLC-01/PLC-04 admin routes
+            var pmc_admin = process_module_catalog_repo.ProcessModuleCatalog.init(req_alloc, pool);
+            defer pmc_admin.deinit();
+
+            const actor_admin: api_auth.AuthContext = authenticated_ctx orelse .{
+                .user_id = user_id,
+                .role = .PLATFORM_ADMIN,
+                .is_bootstrap = false,
+                .token_id = user_id,
+                .principal = user_id,
+            };
+
+            if (std.mem.eql(u8, seg4, "module-shares")) {
+                if (seg5.len == 0) {
+                    // POST /api/v1/admin/module-shares
+                    if (method == .POST) {
+                        const r = process_modules_routes.handleGrantShare(req_alloc, &pmc_admin, actor_admin, body);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                } else {
+                    // DELETE /api/v1/admin/module-shares/:grant_id
+                    if (method == .DELETE) {
+                        const r = process_modules_routes.handleRevokeShare(req_alloc, &pmc_admin, actor_admin, seg5);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                }
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
             }
         } else if (std.mem.eql(u8, resource, "webhooks")) {
             const actor = api_auth.AuthContext{

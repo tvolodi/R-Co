@@ -1586,3 +1586,13 @@
 2026-08-14T20:15:36Z | ROUTE | WF02-prm-batch2-20260814 | WF02-prm-batch2-20260814-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-14T20:15:36Z | ROUTE | WF02-prm-batch2-20260814 | WF02-prm-batch2-20260814-02b-frontend-dev | ORCH -> FRONTEND-DEV | PENDING
 2026-08-15T09:31:25Z | ROUTE | ADHOC-ci-unblock-20260815 | step-final-fix | ORCH -> BACKEND-DEV | PENDING | (Fix branch pushed: fix/PosixBlock-global-20260815; PR #789 open; waiting for main CI to go green before merging PR #787)
+2026-08-15T01:22:05Z | ROUTE | WF01-plc-spc-batch1-20260815 | wf01-plc-spc-batch1-20260815-01-req-analyst | ORCH -> REQ-ANALYST | PENDING
+2026-08-15T01:25:29Z | ROUTE | WF01-plc-spc-batch1-20260815 | wf01-plc-spc-batch1-20260815-02-req-validator | ORCH -> REQ-VALIDATOR | PENDING
+2026-08-15T01:28:14Z | ROUTE | WF01-plc-spc-batch1-20260815 | wf01-plc-spc-batch1-20260815-03-doc-updater | ORCH -> DOC-UPDATER | PENDING
+2026-08-15T01:30:39Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-00-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-15T01:33:38Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-01-code-designer | ORCH -> CODE-DESIGNER | PENDING
+2026-08-15T01:39:20Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-01b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
+2026-08-15T01:39:20Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-01-code-designer-rework1 | ORCH -> CODE-DESIGNER | REWORK1
+2026-08-15T01:53:53Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-01b-code-design-validator-rework1 | ORCH -> CODE-DESIGN-VALIDATOR | REWORK1
+2026-08-15T01:56:27Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-15T01:56:27Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-02b-frontend-dev | ORCH -> FRONTEND-DEV | PENDING

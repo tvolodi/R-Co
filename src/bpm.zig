@@ -94,6 +94,7 @@ pub const bootstrap_audit = @import("bootstrap/audit.zig"); // TNT-04
 pub const tenant_migration = @import("admin/tenant_migration.zig"); // TNT-06
 pub const tenant_status = @import("api/middleware/tenant_status.zig"); // TNT-06
 pub const service_catalog = @import("repository/service_catalog.zig"); // SVC-01, SVC-04
+pub const process_module_catalog = @import("repository/process_module_catalog.zig"); // PLC-01
 // ISS-0137 / GH #439: exp601_tier_quota_test.zig reached these two by relative
 // path (../../src/...), which escapes the tests/integration module root and
 // Zig 0.16 rejects. Re-exporting here is what this shim is for — every other

@@ -1,0 +1,25 @@
+{
+  "handoff_id": "ADHOC-bench-env-20260815-00-backend-dev",
+  "run_id": "ADHOC-bench-env-20260815",
+  "agent_id": "BACKEND-DEV",
+  "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+  "step": "00",
+  "created_at": "2026-08-15T00:52:24Z",
+  "started_at": "2026-08-15T00:52:47Z",
+  "completed_at": "2026-08-15T00:54:32Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Test environment restored to full health. Started r-co-db-1 (dev DB on :5442) and r-co-db_test-1 (test DB on :5434). All 10 checks now pass: C0-C9 all green. zig build migrate succeeded with 144/144 migrations applied.",
+    "artifacts_out": [],
+    "issues": []
+  },
+  "task": {
+    "description": "Restore the test environment to full health. The following checks are FAILING:\n\n1. C1: db_test container healthy — r-co-db_test-1 port mismatch or not running\n2. C3: zig build migrate — migration failure against test DB\n3. C4: cleanup pre-step — clean_test_db.py fails\n4. C6: no stale locks — pg_locks query fails (OperationalError)\n\nRemediations:\n- docker-compose up -d db_test --wait\n- Verify r-co-db_test-1 publishes port 5434 (not 5453)\n- python tools/clean_test_db.py\n- zig build migrate\n- GET http://localhost:8081/health/ready (Keycloak)\n- psql $BPM_TEST_DB_URL -c \"SELECT 1\" (test DB)\n\nReturn PASS only when:\n- verify_test_env.py exits 0 (all 10 checks pass)\n- zig build migrate exits 0\n- All services healthy",
+    "fn": "none",
+    "max_rework": 1
+  },
+  "workflow_ref": "ADHOC-bench-env-20260815",
+  "requirements": [],
+  "stage": null
+}
