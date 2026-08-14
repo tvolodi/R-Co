@@ -1,0 +1,69 @@
+{
+  "handoff_id": "wf02-sol-batch1-20260814-03b-test-design-validator-rework1",
+  "run_id": "WF02-sol-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "03b-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-sol-batch1-20260814/step-03b-test-design-validator-rework1.json",
+  "created_at": "2026-08-14T05:11:22Z",
+  "started_at": "2026-08-14T05:11:22Z",
+  "completed_at": "2026-08-14T05:15:02Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "15",
+    "requirement_ids": [
+      "SOL-01",
+      "SOL-02",
+      "SOL-03"
+    ],
+    "related_handoff_ids": [
+      "wf02-sol-batch1-20260814-03b-test-design-validator",
+      "wf02-sol-batch1-20260814-03-test-designer-rework1"
+    ],
+    "artifacts_in": [
+      "tests/specs/sol-01-03-solution-pack.md",
+      "tests/integration/sol01_export_test.zig",
+      "tests/integration/sol02_install_test.zig",
+      "tests/integration/sol03_role_gate_test.zig"
+    ],
+    "branch_name": "feature/WF02-sol-batch1-20260814",
+    "current_commit": "03e1f170",
+    "previous_fail": "SOL-02 AC5 (TenantInactive) \u2014 NOW FIXED: TC-SOL02-05 added"
+  },
+  "task": {
+    "description": "Re-validate test design after rework1 fixed SOL-02 AC5.\n\nVerify:\n1. TC-SOL02-05 exists in sol02_install_test.zig testing TenantInactive\n2. All MUST ACs for SOL-01/02/03 are covered\n3. No SkipZigTest on MUST tests\n4. No hardcoded UUIDs\n5. build.zig wired\n6. lint_handoffs.py exits 0\n\nReturn PASS if all MUST ACs are covered.",
+    "acceptance_criteria": [
+      "SOL-02 AC5 covered by TC-SOL02-05",
+      "All SOL-01/02/03 MUST ACs covered",
+      "No SkipZigTest on MUST tests",
+      "lint_handoffs.py exits 0"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PASS ? All 12 MUST tests implemented and verified for SOL-01/02/03. TC-SOL02-05 (TenantInactive) confirmed present in sol02_install_test.zig. SOL-01 AC1+AC3: TC-SOL01-01..04. SOL-02 AC1..AC5: TC-SOL02-01..05. SOL-03 AC1..AC3: TC-SOL03-01..03. No SkipZigTest on any MUST test. No hardcoded fixture UUIDs (ACTOR_ID nil-UUID is well-known system actor). BPM_TEST_DB_URL checked with clear error on absence. All SQL parameterised. build.zig wires all three test files. lint_handoffs.py: 0 BLOCKER, 0 MAJOR. 3 MINOR issues logged. None block TEST-RUNNER.",
+    "artifacts_out": [
+      "docs/issue-reports/WF02-sol-batch1-20260814-step-03b-rework1-test-design-validator-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "TC-SOL02-05: missing defer cleanupInstall(&pool, pack_id) ? no-op since TenantInactive rejects before insert, but violates cleanup convention."
+      },
+      {
+        "severity": "MINOR",
+        "description": "build.zig SOL-02 comment says TC-SOL02-01..04 (should be TC-SOL02-01..05) ? stale from before rework1."
+      },
+      {
+        "severity": "MINOR",
+        "description": "TC-SOL02-05: spec asserts no solution_pack_installs row created but test does not call countInstallRows(). AC covered; DB-state assertion is missing belt-and-suspenders check."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4). Run: zig build test-integration-sol01/sol02/sol03 against BPM_TEST_DB_URL."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

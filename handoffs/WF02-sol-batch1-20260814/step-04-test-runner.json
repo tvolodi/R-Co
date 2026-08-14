@@ -1,0 +1,82 @@
+{
+  "handoff_id": "wf02-sol-batch1-20260814-04-test-runner",
+  "run_id": "WF02-sol-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-sol-batch1-20260814/step-04-test-runner.json",
+  "created_at": "2026-08-14T05:16:22Z",
+  "started_at": "2026-08-14T05:16:22Z",
+  "completed_at": "2026-08-14T05:25:55Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "15",
+    "requirement_ids": ["SOL-01", "SOL-02", "SOL-03"],
+    "related_handoff_ids": [
+      "wf02-sol-batch1-20260814-03b-test-design-validator-rework1"
+    ],
+    "branch_name": "feature/WF02-sol-batch1-20260814",
+    "current_commit": "03e1f170",
+    "test_env": {
+      "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5434/bpm_test"
+    }
+  },
+  "task": {
+    "description": "WF-02 Step 04 (TEST-RUNNER) for SOL-01/02/03.\n\nRun all SOL integration test suites:\n\nEnvironment: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test\n\n1. Apply migrations: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; zig build migrate\n2. Run SOL-01: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; zig build test-integration-sol01 --summary all\n3. Run SOL-02: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; zig build test-integration-sol02 --summary all\n4. Run SOL-03: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; zig build test-integration-sol03 --summary all\n5. Run full suite: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; zig build test --summary all\n\nReport pass/fail counts for each suite.\n\nPASS: all MUST tests pass (SOL-01 AC1/AC3, SOL-02 AC1..AC5, SOL-03 AC1..AC3)\nFAIL: any MUST test fails",
+    "acceptance_criteria": [
+      "All SOL-01 MUST tests pass",
+      "All SOL-02 MUST tests pass (including TC-SOL02-05 TenantInactive)",
+      "All SOL-03 MUST tests pass",
+      "Full test suite: no new failures vs baseline (1071/1135)"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "SOL-01: 3/4 pass (TC-SOL01-02 fails — duplicate audit chain hash due to digest() not found in tenant_default search_path). SOL-02: COMPILE ERROR — cannot return from defer expression in sol02_install_test.zig:488. SOL-03: 3/3 assertions pass but exits 1 due to 2 memory leaks in solution/store.zig:497 (installPack dupe not freed). Full suite: 1071/1135 pass (64 skipped), exit 1 due to pre-existing lint_test_wiring failure (repro_g758.zig unwired, pre-dates this branch).",
+    "artifacts_out": ["scratch/sol01_run.log", "scratch/sol02_run.log", "scratch/sol03_run.log", "scratch/fulltest_run.log"],
+    "issues": [
+      {
+        "id": "ISS-SOL01-TC02",
+        "severity": "BLOCKER",
+        "test": "TC-SOL01-02: exportPack with SERVICE_TASK graph includes catalog entry",
+        "suite": "test-integration-sol01",
+        "file": "tests/integration/sol01_export_test.zig:249",
+        "error": "PgError.ServerError from INSERT INTO process_definitions — PostgreSQL: duplicate key value violates unique constraint 'uq_audit_entries_tenant_chain_hash' DETAIL: Key (tenant_id, chain_hash)=(00000000-0000-0000-0000-000000000000, 0000000000000000000000000000000000000000000000000000000000000000) already exists",
+        "root_cause": "tenant_default.bpm_audit_compute_chain_hash calls digest(bytea, text) but digest lives in public schema; tenant connection search_path is tenant_default only so digest is not found. Exception handler returns 64-zero sentinel hash. TC-SOL01-01 creates the first audit entry with zero hash for tenant 000...0; TC-SOL01-02 triggers a second audit entry for the same tenant with the same zero hash, violating the unique constraint on (tenant_id, chain_hash).",
+        "fix": "In tenant_default.bpm_audit_compute_chain_hash, qualify the call as public.digest(...) OR add public to the function's search_path configuration OR set chain_hash = NULL for failed hashes instead of using a zero sentinel that collides with the unique constraint."
+      },
+      {
+        "id": "ISS-SOL02-COMPILE",
+        "severity": "BLOCKER",
+        "test": "ALL SOL-02 MUST tests (TC-SOL02-01..TC-SOL02-05) — not run due to compile error",
+        "suite": "test-integration-sol02",
+        "file": "tests/integration/sol02_install_test.zig:488",
+        "error": "error: cannot return from defer expression — 'const conn = pool.acquire() catch return;' inside a defer {} block",
+        "root_cause": "Zig does not allow 'return' inside a defer expression. The cleanup function (likely cleanupInstallByPackId or similar) uses 'catch return' inside a defer block at line 488.",
+        "fix": "Replace 'catch return' with 'catch {};' or 'catch |_| {}' in the defer block at sol02_install_test.zig:488. Pattern: defer { const conn = pool.acquire() catch return; } → defer { const conn = pool.acquire() catch |_| { return; }; } is ALSO invalid in defer; correct fix is to use catch {} or restructure to not use return."
+      },
+      {
+        "id": "ISS-SOL03-LEAKS",
+        "severity": "MAJOR",
+        "test": "TC-SOL03-01, TC-SOL03-02 (assertions pass, binary exits 1 due to leaks)",
+        "suite": "test-integration-sol03",
+        "file": "src/solution/store.zig:497",
+        "error": "2 allocations leaked: allocator.dupe(u8, new_def_id) in installPack — new_dup slice is never freed after being stored in result.installed_definition_ids",
+        "root_cause": "installPack in src/solution/store.zig:497 allocates new_dup = allocator.dupe(u8, new_def_id) and appends it to installed_definition_ids, but the callers in sol03_role_gate_test.zig do not free the strings in that result slice after use.",
+        "fix": "Either (a) the installPack result must document that caller owns and must free all strings in installed_definition_ids, and installTestPack must free them in its defer block; OR (b) installPack should track the allocation in the SolutionPackInstallResult so a deinit helper frees them."
+      }
+    ],
+    "test_counts": {
+      "sol01": {"pass": 3, "fail": 1, "total": 4, "exit_code": 1},
+      "sol02": {"pass": 0, "fail": 0, "total": 0, "compile_error": true, "exit_code": 1},
+      "sol03": {"pass": 3, "fail": 0, "total": 3, "leaks": 2, "exit_code": 1},
+      "full_suite": {"pass": 1071, "fail": 0, "skip": 64, "total": 1135, "exit_code": 1, "note": "exit 1 due to pre-existing lint_test_wiring failure (repro_g758.zig unwired on main — not introduced by this branch); test counts match baseline 1071/1135"}
+    },
+    "next_action": "ORCH must spawn WF-03 for three issues: ISS-SOL01-TC02 (audit chain hash collision), ISS-SOL02-COMPILE (defer/return compile error), ISS-SOL03-LEAKS (installPack dupe not freed). Dispatch BACKEND-DEV for all three."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
