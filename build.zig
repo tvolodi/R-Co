@@ -2972,6 +2972,59 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_prm08_solo_tests.step);
     test_integration_others_step.dependOn(&run_prm09_solo_tests.step);
 
+    // SOL-01 (WF02-sol-batch1-20260814, Step 3): solution pack export.
+    // ACs covered: SOL-01 AC1 + AC3 → TC-SOL01-01..04.
+    // See tests/specs/sol-01-03-solution-pack.md.
+    const sol01_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/sol01_export_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_sol01_solo_tests = addIntegrationRun(b, sol01_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_sol01_step = b.step("test-integration-sol01", "Run sol01_export_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_sol01_step.dependOn(&clean_test_db.step);
+    test_integration_sol01_step.dependOn(&run_sol01_solo_tests.step);
+
+    // SOL-02 (WF02-sol-batch1-20260814, Step 3): solution pack installation.
+    // ACs covered: SOL-02 AC1..AC5 → TC-SOL02-01..04.
+    // See tests/specs/sol-01-03-solution-pack.md.
+    const sol02_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/sol02_install_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_sol02_solo_tests = addIntegrationRun(b, sol02_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_sol02_step = b.step("test-integration-sol02", "Run sol02_install_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_sol02_step.dependOn(&clean_test_db.step);
+    test_integration_sol02_step.dependOn(&run_sol02_solo_tests.step);
+
+    // SOL-03 (WF02-sol-batch1-20260814, Step 3): role-mapping activation gate.
+    // ACs covered: SOL-03 AC1..AC3 → TC-SOL03-01..03.
+    // See tests/specs/sol-01-03-solution-pack.md.
+    const sol03_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/sol03_role_gate_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_sol03_solo_tests = addIntegrationRun(b, sol03_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_sol03_step = b.step("test-integration-sol03", "Run sol03_role_gate_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_sol03_step.dependOn(&clean_test_db.step);
+    test_integration_sol03_step.dependOn(&run_sol03_solo_tests.step);
+
+    // WF02-sol-batch1-20260814, Step 3: aggregate into test_integration_others_step.
+    test_integration_others_step.dependOn(&run_sol01_solo_tests.step);
+    test_integration_others_step.dependOn(&run_sol02_solo_tests.step);
+    test_integration_others_step.dependOn(&run_sol03_solo_tests.step);
+
 
     const exp201_202_solo_tests = b.addTest(.{
         .root_module = b.createModule(.{
