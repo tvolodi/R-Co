@@ -39,7 +39,7 @@ one — this is symmetric for removals but not for additions).
 | Required input removed | Removing an input is safe — callers may ignore the unused input |
 | Optional output removed | Removing an optional output is safe |
 | Required input made optional | Widening the contract — safe |
-| Required output made optional | Safe for the same reason |
+| Optional output made required | **Breaking** — callers relying on optional output will break |
 | `json_schema` type changed | Flagged if the input/output was required in the previous version |
 
 ---
@@ -56,8 +56,8 @@ computeCompatibilityWarning(newEntry, previousEntry) -> ?CompatibilityWarning:
         if prev == null:
             if input.required:
                 warnings.push("REQUIRED_INPUT_ADDED: " + input.name)
-        else if prev.required == false and input.required == true:
-            warnings.push("REQUIRED_INPUT_NOW_OPTIONAL->REQUIRED: " + input.name)
+        else if input.required == true and (prev.required == false or prev.required == absent):
+            warnings.push("REQUIRED_INPUT_ADDED: " + input.name)
 
     // Check outputs
     for each output in previousEntry.interface.outputs:
@@ -180,14 +180,7 @@ publication does not proceed and PLC-03 is never invoked.
 
 ## Open questions
 
-1. **Semver-based "immediately preceding" selection:** If versions are `1.0.0`, `1.1.0`,
-   `2.0.0`, `2.0.1`, and we publish `3.0.0`, is the "preceding" version `2.0.1` (highest
-   semver below 3.0.0) or `2.0.0` (same major version)? The requirement says "immediately
-   preceding ACTIVE version" — interpreted as the highest semver below the new version,
-   regardless of major/minor/patch. Confirm this interpretation.
-2. **No preceding version:** If the new version is the first ACTIVE version for this
-   `module_id`, there is no version to compare against. In this case, PLC-03 check produces
-   no warning (null).
-3. **Required flag default:** If `required` is absent from an interface element, it defaults
-   to `false` (optional) per SPC-01. The comparison logic must treat absent `required` as
-   `false`.
+All open questions are resolved (per ORCH handoff):
+- **OQ-1 (predecessor selection):** Predecessor = highest ACTIVE version with semver strictly less than the new version (full semver comparison, not same-major-only). E.g., given `1.0.0`, `1.1.0`, `2.0.0`, `2.0.1` already ACTIVE, publishing `3.0.0` uses `2.0.1` as predecessor.
+- **OQ-2 (null predecessor):** If the new version is the first ACTIVE version for this `module_id`, `computeCompatibilityWarning` returns `null` — no warning is produced and no error is raised.
+- **OQ-3 (required flag default):** Absent `required` is treated as `false` (optional). The algorithm checks `input.required == true and (prev.required == false or prev.required == absent)` for inputs.

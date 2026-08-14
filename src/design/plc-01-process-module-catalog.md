@@ -105,6 +105,8 @@ pub const ModuleCatalogError = error{
     InterfaceNotDeclared,       // 422
     SharingGrantNotFound,      // 404
     SharingGrantAlreadyExists,  // 409
+    ModuleAlreadyActive,       // 409
+    SubProcessHasBothChildDefAndModuleRef,  // 422
     InsufficientPermissions,   // 403
     InvalidVersionConstraint,  // 422
 };
@@ -146,11 +148,14 @@ pub const ModuleCatalogError = error{
 
 ## Visibility and resolution rules
 
+0. **`module_id` is globally unique.** A `module_id` value identifies the same logical module across all tenants — no two tenants can register a module with the same `module_id`. This is enforced by a `UNIQUE` constraint on `module_id` alone (in addition to the `(module_id, version)` primary key). This affects cross-tenant share-table joins: `process_module_catalog_share.module_id` + `process_module_catalog.owning_tenant_id` together identify a unique entry.
+
 1. **Owning tenant always sees its own modules.** Any module where `owning_tenant_id == requesting_tenant_id` is visible regardless of share grants.
 2. **Cross-tenant visibility requires an explicit share grant.** A grant row `(granting_tenant_id=A, module_id=X, receiving_tenant_id=B)` makes module `X` owned by `A` visible to `B`.
-3. **No grant → resolution fails silently.** `resolveModuleRef` returns `UnresolvedModuleRef` — same error used when the `module_id` does not exist at all. This is intentional: no information about other tenants' catalogs is leaked.
-4. **Grant revocation is not retroactive.** A running child instance started from a granted module continues to completion. Only future activations of that module by the revoked tenant are blocked.
-5. **Only ACTIVE versions are resolvable.** DRAFT and DEPRECATED versions are not returned by `resolveModuleRef`.
+3. **SUB_PROCESS node constraint.** A SUB_PROCESS node in a parent definition MUST NOT carry both `child_definition_id` (tenant-local) and `module_ref` (catalog lookup). If both are present, the definition is rejected at save-time with HTTP 422 `SubProcessHasBothChildDefAndModuleRef`. These are mutually exclusive attachment modes.
+4. **No grant → resolution fails silently.** `resolveModuleRef` returns `UnresolvedModuleRef` — same error used when the `module_id` does not exist at all. This is intentional: no information about other tenants' catalogs is leaked.
+5. **Grant revocation is not retroactive.** A running child instance started from a granted module continues to completion. Only future activations of that module by the revoked tenant are blocked.
+6. **Only ACTIVE versions are resolvable.** DRAFT and DEPRECATED versions are not returned by `resolveModuleRef`.
 
 ---
 
@@ -162,6 +167,8 @@ pub const ModuleCatalogError = error{
 | `ModuleNotFound` | 404 | Direct lookup by module_id + version with no visibility |
 | `UnresolvedModuleRef` | 422 | No ACTIVE version satisfies version_constraint |
 | `InterfaceNotDeclared` | 422 | Publication attempted without declared interface |
+| `ModuleAlreadyActive` | 409 | Attempt to publish a version already in ACTIVE status |
+| `SubProcessHasBothChildDefAndModuleRef` | 422 | SUB_PROCESS node carries both child_definition_id and module_ref |
 | `SharingGrantNotFound` | 404 | Revoke non-existent grant |
 | `SharingGrantAlreadyExists` | 409 | Duplicate grant for same tuple |
 | `InsufficientPermissions` | 403 | Caller lacks PROCESS_DESIGNER or PLATFORM_ADMIN |

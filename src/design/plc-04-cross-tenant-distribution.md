@@ -97,6 +97,8 @@ POST /api/v1/admin/module-shares
 Requires: caller holds `PLATFORM_ADMIN` role (global, not scoped to a tenant).
 Returns: 201 with `{ grant_id, ... }`.
 
+**Audit log:** `grantModuleVisibility` MUST emit a structured `audit_log` event with `event_type = "MODULE_SHARE_GRANTED"`, recording `granting_tenant_id`, `receiving_tenant_id`, `module_id`, `granted_by` (actor), and `granted_at`.
+
 Errors:
 - `409 CONFLICT` if grant already exists for the same tuple.
 - `404 NOT_FOUND` if `granting_tenant_id` does not own a module with that `module_id`.
@@ -119,6 +121,8 @@ DELETE /api/v1/admin/module-shares/{grant_id}
 
 Requires: caller holds `PLATFORM_ADMIN` role.
 Returns: 204 No Content on success.
+
+**Audit log:** `revokeModuleVisibility` MUST emit a structured `audit_log` event with `event_type = "MODULE_SHARE_REVOKED"`, recording the `grant_id`, `module_id`, `receiving_tenant_id`, and `revoked_by` (actor).
 
 ---
 
